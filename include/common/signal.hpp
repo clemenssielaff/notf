@@ -58,7 +58,7 @@ private: // struct
         ///
         /// \brief Is the connection still active?
         ///
-        std::atomic_flag is_connected = ATOMIC_FLAG_INIT;
+        std::atomic_bool is_connected{ true };
     };
 
     ///
@@ -105,7 +105,7 @@ public: // methods
     ///
     /// \return True if the connection is alive.
     ///
-    bool is_connected() const { return bool(m_data) && m_data->is_connected.test_and_set(); }
+    bool is_connected() const { return bool(m_data) && m_data->is_connected; }
 
     ///
     /// \brief Breaks this Connection.
@@ -121,7 +121,7 @@ public: // methods
         if (!m_data) {
             return;
         }
-        m_data->is_connected.clear();
+        m_data->is_connected.exchange(false);
 
         if (block) {
             while (m_data->running_calls) {
@@ -138,15 +138,15 @@ private: // methods for Signal
     /// \param callback Callback function to execute.
     /// \param args     Arguments to pass to the callback.
     ///
-    template <typename FUNCTION, typename... ARGS>
-    void call(FUNCTION&& callback, ARGS&&... args)
+    template <typename FUNCTION>
+    void call(FUNCTION&& callback)
     {
         if (!is_connected()) {
             return;
         }
         CallCountGuard callCountGuard(m_data->running_calls);
         UNUSED(callCountGuard);
-        callback(std::forward<ARGS>(args)...);
+        callback();
     }
 
     ///
@@ -408,7 +408,7 @@ public: // methods
         }
         // no lock required here as m_targets is never modified, only replaced, and we iterate over our own copy here
         for (auto& target : *targets) {
-            target.connection.call(target.function, std::forward<ARGS>(args)...);
+            target.connection.call([&]() { target.function(std::forward<ARGS>(args)...); });
         }
     }
 
