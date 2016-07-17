@@ -1,2 +1,2 @@
-# UntitledUIProject
-A untitled UI project I am working on at the moment
+# Ambitious UI
+Modern UI framework written in C++.
