@@ -38,74 +38,90 @@
 namespace untitled {
 
 ///
+/// \brief RAII helper to make sure the call count is always reset, even in case of an exception.
+///
+struct CallCountGuard {
+    ///
+    /// \brief Value constructor.
+    ///
+    /// \param counter  Atomic counter to guard.
+    ///
+    CallCountGuard(std::atomic_uint& counter)
+        : m_counter(counter)
+    {
+        ++m_counter;
+    }
+
+    ///
+    /// \brief Destructor.
+    ///
+    ~CallCountGuard() { --m_counter; }
+
+    CallCountGuard(CallCountGuard const&) = delete;
+    CallCountGuard& operator=(CallCountGuard const&) = delete;
+    CallCountGuard(CallCountGuard&&) = delete;
+    CallCountGuard& operator=(CallCountGuard&&) = delete;
+
+private: // fields
+    ///
+    /// \brief Atomic counter to guard.
+    ///
+    std::atomic_uint& m_counter;
+};
+
+///
+/// \brief Data block shared by multiple instances of Connection.
+///
+template <typename... ARGUMENTS>
+struct Data {
+    ///
+    /// \brief The number of currently active calls routed through this connection.
+    ///
+    std::atomic_uint running_calls{ 0 };
+
+    ///
+    /// \brief Is the connection still active?
+    ///
+    std::atomic_bool is_connected{ true };
+
+    ///
+    /// \brief The signal is only passed over this Connection if this function evaluates to true.
+    ///
+    std::function<bool(ARGUMENTS...)> test_function{ [](ARGUMENTS...) { return true; } };
+};
+
+///
 /// \brief A connection between a signal and a callback.
 ///
+template <typename... ARGUMENTS>
 struct Connection {
 
-    template <typename>
+    template <typename...>
     friend class Signal;
 
-private: // struct
-    ///
-    /// \brief Data block shared by multiple instances of Connection.
-    ///
-    struct Data {
-        ///
-        /// \brief The number of currently active calls routed through this connection.
-        ///
-        std::atomic<u_int16_t> running_calls{ 0 };
-
-        ///
-        /// \brief Is the connection still active?
-        ///
-        std::atomic_bool is_connected{ true };
-    };
-
-    ///
-    /// \brief RAII helper to make sure the call count is always reset, even in case of an exception.
-    ///
-    struct CallCountGuard {
-        ///
-        /// \brief Value constructor.
-        ///
-        /// \param counter  Atomic counter to guard.
-        ///
-        CallCountGuard(std::atomic<u_int16_t>& counter)
-            : m_counter(counter)
-        {
-            ++m_counter;
-        }
-
-        ///
-        /// \brief Destructor.
-        ///
-        ~CallCountGuard() { --m_counter; }
-
-    private:
-        ///
-        /// \brief Atomic counter to guard.
-        ///
-        std::atomic<u_int16_t>& m_counter;
-    };
-
-private: // methods
+private: // methods for Signal
     ///
     /// \brief Value constructor.
     ///
     /// \param data Data block, potentially shared by multiple Connection objects.
     ///
-    Connection(std::shared_ptr<Data> data)
+    Connection(std::shared_ptr<Data<ARGUMENTS...> > data)
         : m_data(std::move(data))
     {
     }
 
 public: // methods
+    Connection(Connection const&) = default;
+    Connection& operator=(Connection const&) = default;
+    Connection(Connection&&) = default;
+    Connection& operator=(Connection&&) = default;
+
     ///
     /// \brief Check if the connection is (still) alive.
     ///
     /// \return True if the connection is alive.
     ///
-    bool is_connected() const { return bool(m_data) && m_data->is_connected; }
+    bool is_connected() const { return m_data && m_data->is_connected; }
 
     ///
     /// \brief Breaks this Connection.
@@ -121,7 +137,7 @@ public: // methods
         if (!m_data) {
             return;
         }
-        m_data->is_connected.exchange(false);
+        m_data->is_connected.store(false, std::memory_order_release);
 
         if (block) {
             while (m_data->running_calls) {
@@ -131,39 +147,11 @@ public: // methods
         return;
     }
 
-private: // methods for Signal
-    ///
-    /// \brief Executes a callback over this Connection.
-    ///
-    /// \param callback Callback function to execute.
-    /// \param args     Arguments to pass to the callback.
-    ///
-    template <typename FUNCTION>
-    void call(FUNCTION&& callback)
-    {
-        if (!is_connected()) {
-            return;
-        }
-        CallCountGuard callCountGuard(m_data->running_calls);
-        UNUSED(callCountGuard);
-        callback();
-    }
-
-    ///
-    /// \brief Creates a new Connection with a new Data block.
-    ///
-    /// \return Created Connection
-    ///
-    static Connection make_connection() noexcept
-    {
-        return Connection(std::make_shared<Data>());
-    }
-
 private: // fields
     ///
     /// \brief Data, shared by multiple instances.
     ///
-    std::shared_ptr<Data> m_data;
+    std::shared_ptr<Data<ARGUMENTS...> > m_data;
 };
 
 ///
@@ -174,6 +162,7 @@ private: // fields
 /// This way, all data required for the last remaining calls to finish is still valid.
 /// The destructor of the Slots class blocks until all calls have been handled.
 ///
+template <typename... ARGUMENTS>
 class Slots {
 
 public: // methods
@@ -192,8 +181,10 @@ public: // methods
     ///
     ~Slots() { disconnect_all(true); }
 
-    Slots(Slots const& o) = delete;
-    Slots& operator=(Slots const& o) = delete;
+    Slots(Slots const&) = delete;
+    Slots& operator=(Slots const&) = delete;
+    Slots(Slots&&) = delete;
+    Slots& operator=(Slots&&) = delete;
 
     ///
     /// \brief Creates and tracks a new Connection between the Signal and target function.
@@ -214,7 +205,7 @@ public: // methods
     {
         // calls one of the two Signal.connect() overloads, depending whether you specify a single function object as
         // arguments or a pointer/method-address pair
-        Connection connection = signal.connect(std::forward<ARGS>(args)...);
+        Connection<ARGUMENTS...> connection = signal.connect(std::forward<ARGS>(args)...);
         m_connections.emplace_back(std::move(connection));
     }
 
@@ -227,13 +218,13 @@ public: // methods
     void disconnect_all(bool block = false)
     {
         // first disconnect all connections without waiting
-        for (Connection& connection : m_connections) {
+        for (Connection<ARGUMENTS...>& connection : m_connections) {
             connection.disconnect(false);
         }
 
         // ... then wait for them (if requested)
         if (block) {
-            for (Connection& connection : m_connections) {
+            for (Connection<ARGUMENTS...>& connection : m_connections) {
                 connection.disconnect(true);
             }
         }
@@ -244,15 +235,16 @@ private: // fields
     ///
     /// \brief All managed Connections.
     ///
-    std::vector<Connection> m_connections;
+    std::vector<Connection<ARGUMENTS...> > m_connections;
 };
 
 ///
 /// \brief An object capable of firing (emitting) signals to connected callbacks.
 ///
-template <typename SIGNATURE>
+template <typename... ARGUMENTS>
 class Signal {
 
+    template <typename...>
     friend class Slots;
 
 private: // struct
@@ -260,7 +252,7 @@ private: // struct
     /// \brief Connection and target function pair.
     ///
     struct Callback {
-        Callback(Connection connection, std::function<SIGNATURE> function)
+        Callback(Connection<ARGUMENTS...> connection, std::function<void(ARGUMENTS...)> function)
             : connection(std::move(connection))
             , function(std::move(function))
         {
@@ -269,12 +261,12 @@ private: // struct
         ///
         /// \brief Connection through which the Callback is performed.
         ///
-        Connection connection;
+        Connection<ARGUMENTS...> connection;
 
         ///
         /// \brief Callback function.
         ///
-        std::function<SIGNATURE> function;
+        std::function<void(ARGUMENTS...)> function;
     };
 
 public: // methods
@@ -293,6 +285,9 @@ public: // methods
     /// Blocks until all Connections are disconnected.
     ///
     ~Signal() { disconnect_all(true); }
+
+    Signal(Signal const&) = delete;
+    Signal& operator=(Signal const&) = delete;
 
     ///
     /// \brief Move Constructor.
@@ -323,9 +318,6 @@ public: // methods
         return *this;
     }
 
-    Signal(Signal const& o) = delete;
-    Signal& operator=(Signal const& o) = delete;
-
     ///
     /// \brief Connects a new callback target to this Signal.
     ///
@@ -335,7 +327,7 @@ public: // methods
     ///
     /// \return The created Connection.
     ///
-    Connection connect(std::function<SIGNATURE> target)
+    Connection<ARGUMENTS...> connect(std::function<void(ARGUMENTS...)> target)
     {
         assert(target);
 
@@ -358,7 +350,7 @@ public: // methods
         }
 
         // add the new connection to the new vector
-        auto connection = Connection::make_connection();
+        auto connection = Connection<ARGUMENTS...>(std::make_shared<Data<ARGUMENTS...> >());
         new_targets->emplace_back(connection, std::move(target));
 
         // replace the pointer to the targets (in a thread safe manner)
@@ -399,8 +391,7 @@ public: // methods
     /// Arguments to this function are passed to the connected callbacks and must match the signature with which the
     /// Signal instance was defined.
     ///
-    template <typename... ARGS>
-    void fire(ARGS&&... args) const
+    void fire(ARGUMENTS&... args) const
     {
         auto targets = m_targets;
         if (!targets) {
@@ -408,7 +399,13 @@ public: // methods
         }
         // no lock required here as m_targets is never modified, only replaced, and we iterate over our own copy here
         for (auto& target : *targets) {
-            target.connection.call([&]() { target.function(std::forward<ARGS>(args)...); });
+            auto& connection = target.connection;
+            if (!connection.is_connected() || !connection.m_data->test_function(args...)) {
+                continue;
+            }
+            CallCountGuard callCountGuard(connection.m_data->running_calls);
+            UNUSED(callCountGuard);
+            target.function(args...);
         }
     }
 
@@ -418,13 +415,29 @@ private: // methods for Connections
     ///
     /// Creates and stores a lambda function to access the member.
     ///
-    template <typename OBJ, typename... ARGS>
-    Connection connect(OBJ* obj, void (OBJ::*method)(ARGS... args))
+    template <typename OBJ>
+    Connection<ARGUMENTS...> connect(OBJ* obj, void (OBJ::*method)(ARGUMENTS... args))
     {
         assert(obj);
         assert(method);
-        return connect([=](ARGS... args) { (obj->*method)(args...); });
+        return connect([=](ARGUMENTS... args) { (obj->*method)(args...); });
     }
+
+    ///
+    /// \brief Overload of connect() to connect to member functions.
+    ///
+    /// Creates and stores a lambda function to access the member.
+    ///
+//    template <typename OBJ>
+//    Connection<ARGUMENTS...> connect(OBJ* obj, std::function<bool(ARGUMENTS...)> test_func, void (OBJ::*method)(ARGUMENTS... args))
+//    {
+//        assert(obj);
+//        assert(method);
+//        auto blub = connect([=](ARGUMENTS... args) { (obj->*method)(args...); });
+//        blub.m_data->test_function = test_func;
+//        return blub;
+//    }
+    // TODO: make implement this into the connect() function
 
 private: // fields
     ///
@@ -441,113 +454,3 @@ private: // fields
 };
 
 } // namespace untitled
-
-#if 0
-#include <iostream>
-
-#include "signals.hpp"
-using namespace untitled;
-
-using Clock = std::chrono::high_resolution_clock;
-using std::chrono::milliseconds;
-
-static ulong COUNTER = 0;
-
-void freeCallback(uint v)
-{
-    COUNTER += v;
-}
-
-void freeValueChanged(uint value)
-{
-    std::cout << "freeValueChanged: " << value << "\n";
-}
-
-class Sender {
-public:
-    void increaseCounter(uint value)
-    {
-        counterIncreased.fire(value);
-    }
-
-    void setValue(uint value)
-    {
-        valueChanged.fire(value);
-    }
-
-public:
-    Signal<void(uint)> counterIncreased;
-
-    Signal<void(uint)> valueChanged;
-};
-
-class Receiver {
-public:
-    Receiver()
-        : counter(0)
-    {
-    }
-
-    void onValueChanged(uint value)
-    {
-        counter += value;
-    }
-
-    void valueChanged(uint value)
-    {
-        std::cout << "valueChanged: " << value << "\n";
-    }
-
-    ulong counter;
-
-    Slots slots; // should be the last member
-};
-
-int main()
-{
-//    {
-//        Receiver* r1 = new Receiver();
-//        Sender s;
-//        r1->slots.connect(s.valueChanged, r1, &Receiver::valueChanged);
-//        {
-//            Receiver r2;
-//            r2.slots.connect(s.valueChanged, &r2, &Receiver::valueChanged);
-//            s.setValue(15);
-
-//            r2.slots.disconnect_all();
-//            s.setValue(13);
-
-//            s.valueChanged.connect(freeValueChanged);
-//        }
-//        delete r1;
-//        s.setValue(12);
-
-//        std::cout << "Should print 15 / 15 / 13 and free callback 12" << std::endl;
-//    }
-
-    ulong REPETITIONS = 123456789;
-
-    Sender sender;
-    Receiver receiver;
-    sender.counterIncreased.connect(freeCallback);
-    receiver.slots.connect(sender.counterIncreased, &receiver, &Receiver::onValueChanged);
-
-    Clock::time_point t0 = Clock::now();
-    for (uint i = 0; i < REPETITIONS; ++i) {
-        sender.increaseCounter(1);
-    }
-    Clock::time_point t1 = Clock::now();
-
-    milliseconds ms = std::chrono::duration_cast<milliseconds>(t1 - t0);
-    auto time_delta = ms.count();
-    if (time_delta == 0) {
-        time_delta = 1;
-    }
-    ulong throughput = REPETITIONS / static_cast<ulong>(time_delta);
-
-    std::cout << "Throughput with " << REPETITIONS << " repetitions: " << throughput << "/ms" << std::endl;
-
-    return 0;
-}
-
-#endif
