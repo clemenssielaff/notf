@@ -230,14 +230,19 @@ private: // fields
     std::thread m_thread;
 
     ///
-    /// \brief Flag indicating if the handler loop shoud continue or not.
+    /// \brief Counter, assigning a unique ID to each log message.
     ///
-    std::atomic_flag m_is_running = ATOMIC_FLAG_INIT; // set to false, see https://stackoverflow.com/a/24438336
+    ulong m_log_count;
 
     ///
     /// \brief How often the read- and write-buffers are swapped in milliseconds.
     ///
     milliseconds m_flush_interval;
+
+    ///
+    /// \brief Flag indicating if the handler loop shoud continue or not.
+    ///
+    std::atomic_flag m_is_running = ATOMIC_FLAG_INIT; // set to false, see https://stackoverflow.com/a/24438336
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

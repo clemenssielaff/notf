@@ -9,6 +9,7 @@ LogHandler::LogHandler(size_t initial_buffer, ulong flush_interval)
     , m_read_buffer()
     , m_mutex()
     , m_thread()
+    , m_log_count(0)
     , m_flush_interval{ flush_interval }
 {
     m_write_buffer.reserve(initial_buffer);
@@ -64,6 +65,11 @@ void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
     static const std::string FATAL = "fatal";
 
     for (auto& log_message : buffer) {
+
+        // id
+        std::cout << ++m_log_count << ". ";
+
+        // level
         switch (log_message.level) {
         case LogMessage::LEVEL::ALL:
         case LogMessage::LEVEL::DEBUG:
@@ -84,6 +90,8 @@ void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
         case LogMessage::LEVEL::NONE:
             continue;
         }
+
+        // message
         std::cout << ": " << log_message.message
                   << " (from '" << log_message.caller
                   << "' at " << log_message.file

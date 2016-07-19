@@ -25,8 +25,15 @@
 #pragma once
 
 #include <assert.h>
+#include <atomic>
 #include <memory>
+#include <mutex>
+#include <thread>
 #include <vector>
+
+#ifndef UNUSED
+#define UNUSED(x) (void)(x);
+#endif
 
 namespace untitled {
 
@@ -44,9 +51,14 @@ private: //struct
     ///
     struct Data {
         ///
+        /// \brief The number of currently active calls routed through this connection.
+        ///
+        std::atomic_uint running_calls{ 0 };
+
+        ///
         /// \brief Is the connection still active?
         ///
-        bool is_connected{ true };
+        std::atomic_bool is_connected{ true };
     };
 
 private: // methods for Signal
@@ -84,12 +96,22 @@ public: // methods
     /// After calling this function, future signals will not be delivered.
     /// Any active (issued, but not handled) calls are permitted to finish.
     ///
-    void disconnect()
+    /// \param block    If set, this function blocks until all active calls have finished.
+    ///                 Otherwise it returns immediately.
+    ///
+    void disconnect(bool block = false)
     {
         if (!m_data) {
             return;
         }
-        m_data->is_connected = false;
+        m_data->is_connected.store(false, std::memory_order_release);
+
+        if (block) {
+            while (m_data->running_calls) {
+                std::this_thread::yield();
+            }
+        }
+        return;
     }
 
 private: // fields
@@ -123,7 +145,7 @@ public: // methods
     ///
     /// Disconnects (blocking) all remaining connections.
     ///
-    ~Slots() { disconnect_all(); }
+    ~Slots() { disconnect_all(true); }
 
     Slots(Slots const&) = delete;
     Slots& operator=(Slots const&) = delete;
@@ -156,10 +178,21 @@ public: // methods
     ///
     /// \brief Disconnects all tracked Connections.
     ///
-    void disconnect_all()
+    /// \param block    If set, this function blocks until all active calls have finished.
+    ///                 Otherwise it returns immediately.
+    ///
+    void disconnect_all(bool block = false)
     {
+        // first disconnect all connections without waiting
         for (Connection& connection : m_connections) {
-            connection.disconnect();
+            connection.disconnect(false);
+        }
+
+        // ... then wait for them (if requested)
+        if (block) {
+            for (Connection& connection : m_connections) {
+                connection.disconnect(true);
+            }
         }
         m_connections.clear();
     }
@@ -208,19 +241,54 @@ private: // struct
         std::function<bool(ARGUMENTS...)> test_function;
     };
 
+    ///
+    /// \brief RAII helper to make sure the call count is always reset, even in case of an exception.
+    ///
+    struct CallCountGuard {
+        ///
+        /// \brief Value constructor.
+        ///
+        /// \param counter  Atomic counter to guard.
+        ///
+        CallCountGuard(std::atomic_uint& counter)
+            : m_counter(counter)
+        {
+            ++m_counter;
+        }
+
+        ///
+        /// \brief Destructor.
+        ///
+        ~CallCountGuard() { --m_counter; }
+
+        CallCountGuard(CallCountGuard const&) = delete;
+        CallCountGuard& operator=(CallCountGuard const&) = delete;
+        CallCountGuard(CallCountGuard&&) = delete;
+        CallCountGuard& operator=(CallCountGuard&&) = delete;
+
+    private: // fields
+        ///
+        /// \brief Atomic counter to guard.
+        ///
+        std::atomic_uint& m_counter;
+    };
+
 public: // methods
     ///
     /// \brief Default constructor.
     ///
     Signal()
-        : m_callbacks()
+        : m_mutex()
+        , m_callbacks()
     {
     }
 
     ///
     /// \brief Destructor.
     ///
-    ~Signal() { disconnect_all(); }
+    /// Blocks until all Connections are disconnected.
+    ///
+    ~Signal() { disconnect_all(true); }
 
     Signal(Signal const&) = delete;
     Signal& operator=(Signal const&) = delete;
@@ -244,6 +312,12 @@ public: // methods
     ///
     Signal& operator=(Signal&& other) noexcept
     {
+        // use std::lock(...) in combination with std::defer_lock to acquire two locks
+        // without worrying about potential deadlocks (see: http://en.cppreference.com/w/cpp/thread/lock)
+        std::unique_lock<std::mutex> lock1(m_mutex, std::defer_lock);
+        std::unique_lock<std::mutex> lock2(other.m_mutex, std::defer_lock);
+        std::lock(lock1, lock2);
+
         m_callbacks = std::move(other.m_callbacks);
         return *this;
     }
@@ -265,22 +339,28 @@ public: // methods
 
         // create a new callback vector (will be filled in with
         // the existing and still active callbacks within the lock below)
-        auto new_callbacks = std::vector<Callback>();
+        auto new_callbacks = std::make_shared<std::vector<Callback> >();
 
-        // copy existing, connected  targets
-        new_callbacks.reserve(m_callbacks.size() + 1);
-        for (const auto& target : m_callbacks) {
-            if (target.connection.is_connected()) {
-                new_callbacks.push_back(target);
+        // lock the mutex for writing
+        std::lock_guard<std::mutex> lock(m_mutex);
+        UNUSED(lock);
+
+        // copy existing, connected callbacks
+        if (auto current_callbacks = m_callbacks) {
+            new_callbacks->reserve(current_callbacks->size() + 1);
+            for (const auto& target : *current_callbacks) {
+                if (target.connection.is_connected()) {
+                    new_callbacks->push_back(target);
+                }
             }
         }
 
         // add the new connection to the new vector
         Connection connection = Connection::make_connection();
         if (test_func) {
-            new_callbacks.emplace_back(connection, std::move(callback), std::move(test_func));
+            new_callbacks->emplace_back(connection, std::move(callback), std::move(test_func));
         } else {
-            new_callbacks.emplace_back(connection, std::move(callback));
+            new_callbacks->emplace_back(connection, std::move(callback));
         }
 
         // replace the stored callbacks
@@ -292,11 +372,26 @@ public: // methods
     ///
     /// \brief Disconnect all Connections from this Signal.
     ///
-    void disconnect_all()
+    /// \param block    If set, this function blocks until all active calls have finished.
+    ///                 Otherwise it returns immediately.
+    ///
+    void disconnect_all(bool block = false)
     {
+        auto leftover_callbacks = decltype(m_callbacks)(nullptr);
+
+        // clean out the callback pointers so no other thread will fire this signal anymore
+        // (already running fired calls might still reference the callbacks)
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            UNUSED(lock);
+            std::swap(m_callbacks, leftover_callbacks); // replace m_callbacks pointer with a nullptr
+        }
+
         // disconnect all callbacks
-        for (auto& callback : m_callbacks) {
-            callback.connection.disconnect();
+        if (leftover_callbacks) {
+            for (auto& callback : *leftover_callbacks) {
+                callback.connection.disconnect(block);
+            }
         }
     }
 
@@ -308,10 +403,17 @@ public: // methods
     ///
     void fire(ARGUMENTS&... args) const
     {
-        for (auto& callback : m_callbacks) {
+        auto callbacks = m_callbacks;
+        if (!callbacks) {
+            return;
+        }
+        // no lock required here as m_callbacks is never modified, only replaced, and we iterate over our own copy here
+        for (auto& callback : *callbacks) {
             if (!callback.connection.is_connected() || !callback.test_function(args...)) {
                 continue;
             }
+            CallCountGuard callCountGuard(callback.connection.m_data->running_calls);
+            UNUSED(callCountGuard);
             callback.function(args...);
         }
     }
@@ -336,9 +438,16 @@ private: // methods for Connections
 
 private: // fields
     ///
+    /// \brief Mutex required to write to the 'm_callbacks' field.
+    ///
+    mutable std::mutex m_mutex;
+
+    ///
     /// \brief All target callbacks of this Signal.
     ///
-    std::vector<Callback> m_callbacks;
+    /// Is wrapped in a shared_ptr replace the contents in a thread-safe manner.
+    ///
+    std::shared_ptr<std::vector<Callback> > m_callbacks;
 };
 
 } // namespace untitled

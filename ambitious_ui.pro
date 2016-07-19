@@ -30,5 +30,6 @@ HEADERS += \
     include/app/component.hpp \
     include/app/object.hpp \
     include/common/debug.hpp \
+    include/common/signal_threaded.hpp \
     include/common/signal.hpp
 

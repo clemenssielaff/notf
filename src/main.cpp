@@ -1,5 +1,5 @@
 #include "app/application.hpp"
-#include "common/signal.hpp"
+#include "common/signal_threaded.hpp"
 
 using namespace untitled;
 
