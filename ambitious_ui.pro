@@ -2,13 +2,18 @@ TEMPLATE = app
 CONFIG += console c++14
 CONFIG -= app_bundle qt
 
-INCLUDEPATH *= thirdparty/ include/
+INCLUDEPATH *= thirdparty/ include/ test/
 
 LIBS *= -L/home/clemens/code/thirdparty/glfw-3.2/INSTALL/lib/
 LIBS *= -lglfw3 -lGL -ldl -lXinerama -lXrandr -lXcursor -lX11 -lXxf86vm -lpthread
 
+CONFIG(test) {
+    SOURCES += test/test_main.cpp
+} else {
+    SOURCES += src/main.cpp
+}
+
 SOURCES += \
-    src/main.cpp \
     src/app/application.cpp \
     src/app/window.cpp \
     thirdparty/glad/glad.c \
@@ -30,6 +35,8 @@ HEADERS += \
     include/app/component.hpp \
     include/app/object.hpp \
     include/common/debug.hpp \
-    include/common/signal_threaded.hpp \
-    include/common/signal.hpp
+    include/common/signal.hpp \
+    include/common/string_utils.hpp \
+    test/catch.hpp \
+    test/test_common_string_utils.hpp
 
