@@ -7,9 +7,13 @@ INCLUDEPATH *= thirdparty/ include/ test/
 LIBS *= -L/home/clemens/code/thirdparty/glfw-3.2/INSTALL/lib/
 LIBS *= -lglfw3 -lGL -ldl -lXinerama -lXrandr -lXcursor -lX11 -lXxf86vm -lpthread
 
+# Test sources
 CONFIG(test) {
-    SOURCES += test/test_main.cpp
-} else {
+    SOURCES += \
+    test/test_main.cpp \
+    test/test_common_string_utils.cpp
+}
+else {
     SOURCES += src/main.cpp
 }
 
@@ -37,6 +41,5 @@ HEADERS += \
     include/common/debug.hpp \
     include/common/signal.hpp \
     include/common/string_utils.hpp \
-    test/catch.hpp \
-    test/test_common_string_utils.hpp
+    test/catch.hpp
 
