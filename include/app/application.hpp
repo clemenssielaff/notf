@@ -93,6 +93,7 @@ public: // static methods
     /// \param message  Error message;
     ///
     static void on_error(int error, const char* message);
+    // TODO: error-handling should be internal to the Application class, it should then raise exceptions!
 
     ///
     /// \brief Called by GLFW when a key is pressed, repeated or released.

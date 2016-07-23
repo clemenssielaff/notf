@@ -115,6 +115,9 @@ private: // fields
     /// \brief The Window's title (is not accessible through GLFW).
     ///
     std::string m_title;
+
+    GLuint vertex_buffer, vertex_shader, fragment_shader, program;
+    GLint mvp_location, vpos_location, vcol_location;
 };
 
 } // namespace untitled
