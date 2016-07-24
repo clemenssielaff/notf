@@ -146,6 +146,8 @@ private: // fields
 /// The Slots member should be placed at the end of the class definition, so it is destructed before any other.
 /// This way, all data required for the last remaining calls to finish is still valid.
 /// The destructor of the Slots class blocks until all calls have been handled.
+/// If used within a class hierarchy, the most specialized class has the responsibility to disconnect all of its base
+/// class' signals before destroying any other members.
 class Slots {
 
 public: // methods
@@ -504,8 +506,8 @@ private: // fields
 #if 0
 using namespace signal;
 
-#include <iostream>
 #include <chrono>
+#include <iostream>
 
 using Clock = std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;

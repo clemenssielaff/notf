@@ -27,13 +27,13 @@ SOURCES += \
     src/scratch.cpp \
     src/app/component.cpp \
     src/app/object.cpp \
-    src/common/debug.cpp
+    src/common/debug.cpp \
+    src/app/key.cpp
 
 HEADERS += \
     include/app/application.hpp \
     include/app/window.hpp \
     include/common/vector.hpp \
-    include/common/keys.hpp \
     include/common/devel.hpp \
     thirdparty/glad/glad.h \
     thirdparty/KHR/khrplatform.h \
@@ -43,4 +43,5 @@ HEADERS += \
     include/common/debug.hpp \
     include/common/signal.hpp \
     include/common/string_utils.hpp \
-    include/app/glfw_wrapper.hpp
+    include/app/glfw_wrapper.hpp \
+    include/app/key.hpp

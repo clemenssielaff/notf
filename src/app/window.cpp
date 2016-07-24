@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "app/application.hpp"
+#include "app/key.hpp"
 #include "common/debug.hpp"
 #include "common/devel.hpp"
 
@@ -37,7 +38,7 @@ namespace signal {
 
 void window_deleter(GLFWwindow* glfw_window)
 {
-    if(glfw_window){
+    if (glfw_window) {
         glfwDestroyWindow(glfw_window);
     }
 }
@@ -45,7 +46,13 @@ void window_deleter(GLFWwindow* glfw_window)
 Window::Window(const WindowInfo& info)
     : m_glfw_window(nullptr, window_deleter)
     , m_title(info.title)
+    , m_slots()
 {
+    // close when the user presses ESC
+    m_slots.connect(on_token_key,
+        [this](const KeyEvent&) { close(); },
+        [](const KeyEvent& event) { return event.key == KEY::ESCAPE; });
+
     // set context variables before creating the window
     if (info.opengl_version_major >= 0) {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, info.opengl_version_major);
@@ -97,6 +104,7 @@ Window::~Window()
 void Window::close()
 {
     if (m_glfw_window) {
+        on_close.fire(*this);
         log_debug << "Closing Window \"" << m_title << "\"";
         Application::instance().unregister_window(this);
         m_glfw_window.reset(nullptr);
@@ -120,15 +128,6 @@ void Window::update()
     glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*)mvp);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glfwSwapBuffers(m_glfw_window.get());
-}
-
-void Window::on_token_key(KEY key, KEY_ACTION action, KEY_MODS mods)
-{
-    UNUSED(mods);
-
-    if (key == KEY_ESCAPE && action == KEY_PRESS) {
-        close();
-    }
 }
 
 } // namespace signal

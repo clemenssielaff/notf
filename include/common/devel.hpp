@@ -18,4 +18,8 @@ constexpr auto to_number(Enum enumerator) noexcept
     return static_cast<std::underlying_type_t<Enum> >(enumerator);
 }
 
+/// Turns a #define macro into a const char* usable at compile time.
+#define XSTRINGIFY(x) #x
+#define STRINGIFY(x) XSTRINGIFY(x)
+
 } // namespace signal

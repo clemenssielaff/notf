@@ -6,13 +6,13 @@
 
 #include "app/window.hpp"
 #include "common/devel.hpp"
-#include "common/keys.hpp"
 
 namespace signal {
 
 Application::Application()
     : m_windows()
     , m_log_handler(128, 200) // initial size of the log buffers
+    , m_key_states()
 {
     // install the log handler first, to catch errors right away
     install_log_message_handler(std::bind(&LogHandler::push_log, &m_log_handler, std::placeholders::_1));
@@ -57,7 +57,7 @@ void Application::on_error(int error, const char* message)
     std::cerr << "GLFW Error " << error << ": '" << message << "'" << std::endl;
 }
 
-void Application::on_token_key(GLFWwindow* glfw_window, int key, int scancode, int action, int mods)
+void Application::on_token_key(GLFWwindow* glfw_window, int key, int scancode, int action, int modifiers)
 {
     UNUSED(scancode);
     Window* window = instance().get_window(glfw_window);
@@ -65,7 +65,14 @@ void Application::on_token_key(GLFWwindow* glfw_window, int key, int scancode, i
         log_critical << "Callback to unknown GLFW window";
         return;
     }
-    window->on_token_key(static_cast<KEY>(key), static_cast<KEY_ACTION>(action), static_cast<KEY_MODS>(mods));
+
+    // update the key state
+    KEY signal_key = from_glfw_key(key);
+    set_key(instance().m_key_states, signal_key, action);
+
+    // let the window fire the key event
+    KeyEvent key_event{ window, signal_key, KEY_ACTION(action), KEY_MODIFIERS(modifiers), instance().m_key_states };
+    window->on_token_key.fire(key_event);
 }
 
 void Application::on_window_close(GLFWwindow* glfw_window)
@@ -80,7 +87,7 @@ void Application::on_window_close(GLFWwindow* glfw_window)
 
 void Application::register_window(Window* window)
 {
-    GLFWwindow* glfw_window = window->get_glwf_window();
+    GLFWwindow* glfw_window = window->glwf_window();
     if (!glfw_window) {
         log_fatal << "Window or context creation failed for window '" << window->title() << "'";
         shutdown();
@@ -99,7 +106,7 @@ void Application::register_window(Window* window)
 void Application::unregister_window(Window* window)
 {
     assert(window);
-    GLFWwindow* glfw_window = window->get_glwf_window();
+    GLFWwindow* glfw_window = window->glwf_window();
     auto iterator = m_windows.find(glfw_window);
     assert(iterator != m_windows.end());
 
@@ -115,7 +122,7 @@ void Application::unregister_window(Window* window)
 void Application::shutdown()
 {
     static bool is_running = true;
-    if(is_running){
+    if (is_running) {
         log_info << "Application shutdown";
         m_log_handler.stop();
         glfwTerminate();

@@ -4,6 +4,7 @@
 
 #include <unordered_map>
 
+#include "app/key.hpp"
 #include "common/debug.hpp"
 
 struct GLFWwindow;
@@ -63,8 +64,8 @@ public: // static methods
     /// \param key          Modified key.
     /// \param scancode     May hold additional information when key is set to KEY_UNKNOWN (platform dependent).
     /// \param action       The action that triggered this callback.
-    /// \param mods         Additional modifier keys.
-    static void on_token_key(GLFWwindow* glfw_window, int key, int scancode, int action, int mods);
+    /// \param modifiers    Additional modifier key bitmask.
+    static void on_token_key(GLFWwindow* glfw_window, int key, int scancode, int action, int modifiers);
 
     ///
     /// \brief Called by GLFW, if the user requested a window to be closed.
@@ -100,6 +101,9 @@ private: // fields
 
     /// \brief The log handler thread used to format and print out log messages in a thread-safe manner.
     LogHandler m_log_handler;
+
+    /// \brief The current state of all keyboard keys.
+    KeyStateSet m_key_states;
 };
 
 } // namespace signal

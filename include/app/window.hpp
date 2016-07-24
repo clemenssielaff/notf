@@ -5,11 +5,13 @@
 #include <memory>
 #include <string>
 
-#include "common/keys.hpp"
+#include "common/signal.hpp"
 
 struct GLFWwindow;
 
 namespace signal {
+
+struct KeyEvent;
 
 /// \brief Helper struct to create a Window instance.
 struct WindowInfo {
@@ -56,19 +58,23 @@ public: // methods
     /// \brief Closes this Window.
     void close();
 
+public: // signals
+    /// \brief Emitted, when a single key was pressed / released / repeated.
+    ///
+    /// \param The event object.
+    Signal<const KeyEvent&> on_token_key;
+
+    /// \brief Emitted just before this Window is closed.
+    ///
+    /// \param This window.
+    Signal<const Window&> on_close;
+
 private: // methods for Application
     /// \brief The wrapped GLFW window.
-    GLFWwindow* get_glwf_window() { return m_glfw_window.get(); }
+    GLFWwindow* glwf_window() { return m_glfw_window.get(); }
 
     /// \brief Updates the contents of this Window.
     void update();
-
-    /// \brief Callback when a key was pressed, repeated or released.
-    ///
-    /// \param key      Modified key.
-    /// \param action   The key action that triggered this callback.
-    /// \param mods     Additional modifier keys.
-    void on_token_key(KEY key, KEY_ACTION action, KEY_MODS mods);
 
 private: // fields
     /// \brief The GLFW window managed by this Window.
@@ -80,6 +86,9 @@ private: // fields
     // TEMP
     GLuint vertex_buffer, vertex_shader, fragment_shader, program;
     GLint mvp_location, vpos_location, vcol_location;
+
+    /// \brief Manager object for incoming signals.
+    Slots m_slots;
 };
 
 } // namespace signal
