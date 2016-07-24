@@ -12,7 +12,7 @@ void null_destructor(void*) {}
 
 } // namespace anoymous
 
-namespace untitled {
+namespace signal {
 
 using std::bitset;
 using std::vector;
@@ -127,4 +127,4 @@ private: // fields
     shared_ptr<void> m_monitor;
 };
 
-} // namespace untitled
+} // namespace signal

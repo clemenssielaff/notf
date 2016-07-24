@@ -1,10 +1,8 @@
 #pragma once
 
-namespace untitled {
+namespace signal {
 
-///
 /// \brief Enum for GLFW keys (from glfw3.h)
-///
 enum KEY {
     KEY_UNKNOWN = -1,
 
@@ -133,21 +131,17 @@ enum KEY {
     KEY_MENU = 348,
 };
 
-///
 /// \brief Actions you can do with a key.
-///
 enum KEY_ACTION {
     KEY_RELEASE = 0,
     KEY_PRESS = 1,
     KEY_REPEAT = 2,
 };
 
-///
 /// \brief Modifier keys.
 ///
 /// If you hold down more than one key of the same modifier (both shift-keys, for example)
 /// the flag is still set only once (meaning there is no double-shift modifier).
-///
 enum KEY_MODS {
     MOD_SHIFT = 0x0001,
     MOD_CTRL = 0x0002,
@@ -155,4 +149,4 @@ enum KEY_MODS {
     MOD_SUPER = 0x0008,
 };
 
-} // namespace untitled
+} // namespace signal

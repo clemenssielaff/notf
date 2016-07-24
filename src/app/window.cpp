@@ -1,56 +1,49 @@
 #include "app/window.hpp"
 
-#include <iostream>
+#include "linmath.h"
 
+#include <iostream>
+#include <utility>
+
+#include "app/application.hpp"
+#include "common/debug.hpp"
 #include "common/devel.hpp"
 
-
-
-
-
-#include "linmath.h"
 static const struct
 {
     float x, y;
     float r, g, b;
-} vertices[3] =
-{
+} vertices[3] = {
     { -0.6f, -0.4f, 1.f, 0.f, 0.f },
-    {  0.6f, -0.4f, 0.f, 1.f, 0.f },
-    {   0.f,  0.6f, 0.f, 0.f, 1.f }
+    { 0.6f, -0.4f, 0.f, 1.f, 0.f },
+    { 0.f, 0.6f, 0.f, 0.f, 1.f }
 };
-static const char* vertex_shader_text =
-"uniform mat4 MVP;\n"
-"attribute vec3 vCol;\n"
-"attribute vec2 vPos;\n"
-"varying vec3 color;\n"
-"void main()\n"
-"{\n"
-"    gl_Position = MVP * vec4(vPos, 0.0, 1.0);\n"
-"    color = vCol;\n"
-"}\n";
-static const char* fragment_shader_text =
-"varying vec3 color;\n"
-"void main()\n"
-"{\n"
-"    gl_FragColor = vec4(color, 1.0);\n"
-"}\n";
+static const char* vertex_shader_text = "uniform mat4 MVP;\n"
+                                        "attribute vec3 vCol;\n"
+                                        "attribute vec2 vPos;\n"
+                                        "varying vec3 color;\n"
+                                        "void main()\n"
+                                        "{\n"
+                                        "    gl_Position = MVP * vec4(vPos, 0.0, 1.0);\n"
+                                        "    color = vCol;\n"
+                                        "}\n";
+static const char* fragment_shader_text = "varying vec3 color;\n"
+                                          "void main()\n"
+                                          "{\n"
+                                          "    gl_FragColor = vec4(color, 1.0);\n"
+                                          "}\n";
 
+namespace signal {
 
-namespace  {
-
-
-void HACK () {
-
+void window_deleter(GLFWwindow* glfw_window)
+{
+    if(glfw_window){
+        glfwDestroyWindow(glfw_window);
+    }
 }
-}
-
-
-
-namespace untitled {
 
 Window::Window(const WindowInfo& info)
-    : m_glfw_window(nullptr) // set in constructor
+    : m_glfw_window(nullptr, window_deleter)
     , m_title(info.title)
 {
     // set context variables before creating the window
@@ -60,14 +53,18 @@ Window::Window(const WindowInfo& info)
     if (info.opengl_version_minor >= 0) {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, info.opengl_version_minor);
     }
-    //glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+    glfwWindowHint(GLFW_RESIZABLE, info.is_resizeable ? GL_TRUE : GL_FALSE);
 
-    // create the window
-    // might fail, but if it does this Window instance is immediately destroyed by the Application
-    m_glfw_window = glfwCreateWindow(info.width, info.height, m_title.c_str(), nullptr, nullptr);
+    // create the GLFW window
+    m_glfw_window.reset(glfwCreateWindow(info.width, info.height, m_title.c_str(), nullptr, nullptr));
 
+    // register with the application (if the GLFW window creation failed, this call will exit the application)
+    Application::instance().register_window(this);
 
-    // TODO: HACK OMFG
+    glfwMakeContextCurrent(m_glfw_window.get());
+    gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+    glfwSwapInterval(1);
+    // NOTE: OpenGL error checks have been omitted for brevity
     glGenBuffers(1, &vertex_buffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
@@ -86,43 +83,43 @@ Window::Window(const WindowInfo& info)
     vcol_location = glGetAttribLocation(program, "vCol");
     glEnableVertexAttribArray(vpos_location);
     glVertexAttribPointer(vpos_location, 2, GL_FLOAT, GL_FALSE,
-                          sizeof(float) * 5, (void*) 0);
+        sizeof(float) * 5, (void*)0);
     glEnableVertexAttribArray(vcol_location);
     glVertexAttribPointer(vcol_location, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(float) * 5, (void*) (sizeof(float) * 2));
+        sizeof(float) * 5, (void*)(sizeof(float) * 2));
 }
 
 Window::~Window()
 {
-    std::cout << "Closing Window \"" << m_title << "\"" << std::endl;
+    close();
+}
 
-    // destroy the GLFW window
+void Window::close()
+{
     if (m_glfw_window) {
-        glfwDestroyWindow(m_glfw_window);
-        m_glfw_window = nullptr;
+        log_debug << "Closing Window \"" << m_title << "\"";
+        Application::instance().unregister_window(this);
+        m_glfw_window.reset(nullptr);
     }
 }
 
 void Window::update()
 {
-//    float ratio;
-//    int width, height;
-//    mat4x4 m, p, mvp;
-//    glfwGetFramebufferSize(m_glfw_window, &width, &height);
-//    ratio = width / (float) height;
-//    glViewport(0, 0, width, height);
+    float ratio;
+    int width, height;
+    mat4x4 m, p, mvp;
+    glfwGetFramebufferSize(m_glfw_window.get(), &width, &height);
+    ratio = width / (float)height;
+    glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT);
-//    mat4x4_identity(m);
-//    mat4x4_rotate_Z(m, m, (float) glfwGetTime());
-//    mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
-//    mat4x4_mul(mvp, p, m);
-//    glUseProgram(program);
-//    glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
-//    glDrawArrays(GL_TRIANGLES, 0, 3);
-//    glfwSwapBuffers(m_glfw_window);
-
-    /* Swap front and back buffers */
-    glfwSwapBuffers(m_glfw_window);
+    mat4x4_identity(m);
+    mat4x4_rotate_Z(m, m, (float)glfwGetTime());
+    mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
+    mat4x4_mul(mvp, p, m);
+    glUseProgram(program);
+    glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*)mvp);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glfwSwapBuffers(m_glfw_window.get());
 }
 
 void Window::on_token_key(KEY key, KEY_ACTION action, KEY_MODS mods)
@@ -134,4 +131,4 @@ void Window::on_token_key(KEY key, KEY_ACTION action, KEY_MODS mods)
     }
 }
 
-} // namespace untitled
+} // namespace signal

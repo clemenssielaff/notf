@@ -2,7 +2,7 @@
 
 #include "common/devel.hpp"
 
-namespace untitled {
+namespace signal {
 
 LogHandler::LogHandler(size_t initial_buffer, ulong flush_interval)
     : m_write_buffer()
@@ -58,11 +58,11 @@ void LogHandler::run()
 
 void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
 {
-    static const std::string DEBUG = "debug";
-    static const std::string INFO = "info";
-    static const std::string WARNING = "warning";
-    static const std::string CRITICAL = "critical";
-    static const std::string FATAL = "fatal";
+    static const std::string DEBUG =    "debug:    ";
+    static const std::string INFO =     "info:     ";
+    static const std::string WARNING =  "warning:  ";
+    static const std::string CRITICAL = "critical: ";
+    static const std::string FATAL =    "fatal:    ";
 
     for (auto& log_message : buffer) {
 
@@ -92,7 +92,7 @@ void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
         }
 
         // message
-        std::cout << ": " << log_message.message
+        std::cout << log_message.message
                   << " (from '" << log_message.caller
                   << "' at " << log_message.file
                   << "[" << log_message.line
@@ -105,10 +105,10 @@ void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
 LogMessageHandler LogMessageFactory::s_message_handler;
 LogMessage::LEVEL LogMessageFactory::s_log_level = LogMessage::LEVEL::ALL;
 
-} // namespace untitled
+} // namespace signal
 
 #if 0
-using namespace untitled;
+using namespace signal;
 
 using Clock = std::chrono::high_resolution_clock;
 

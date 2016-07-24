@@ -2,7 +2,7 @@
 
 #include <assert.h>
 
-namespace untitled {
+namespace signal {
 
 bool Object::attach_component(shared_ptr<Component> component)
 {
@@ -17,4 +17,4 @@ bool Object::attach_component(shared_ptr<Component> component)
     return true;
 }
 
-} // namespace untitled
+} // namespace signal

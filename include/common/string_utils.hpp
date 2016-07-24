@@ -3,15 +3,13 @@
 #include <string>
 #include <vector>
 
-///
 /// \brief Tokenizes a string.
 ///
 /// \param input        Input string.
 /// \param delimiter    Delimiter character (is removed from the tokens).
 ///
 /// \return String tokens.
-///
-std::vector<std::string> tokenize(const std::string& input, const char delimiter)
+inline std::vector<std::string> tokenize(const std::string& input, const char delimiter)
 {
     std::vector<std::string> result;
     if (input.empty()) {
@@ -33,15 +31,13 @@ std::vector<std::string> tokenize(const std::string& input, const char delimiter
     return result;
 }
 
-///
 /// \brief tokenize() overload to deal with (potentially nullptr) c-style character arrays.
 ///
 /// \param input        Input string.
 /// \param delimiter    Delimiter character.
 ///
 /// \return String tokens.
-///
-std::vector<std::string> tokenize(const char* input, const char delimiter)
+inline std::vector<std::string> tokenize(const char* input, const char delimiter)
 {
     if (!input) {
         return {};

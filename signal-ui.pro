@@ -10,8 +10,11 @@ LIBS *= -lglfw3 -lGL -ldl -lXinerama -lXrandr -lXcursor -lX11 -lXxf86vm -lpthrea
 # Test sources
 CONFIG(test) {
     SOURCES += \
-    test/test_main.cpp \
-    test/test_common_string_utils.cpp
+        test/test_main.cpp \
+        test/test_common_string_utils.cpp
+
+    HEADERS += \
+        test/catch.hpp
 }
 else {
     SOURCES += src/main.cpp
@@ -28,7 +31,6 @@ SOURCES += \
 
 HEADERS += \
     include/app/application.hpp \
-    include/common/error.hpp \
     include/app/window.hpp \
     include/common/vector.hpp \
     include/common/keys.hpp \
@@ -41,5 +43,4 @@ HEADERS += \
     include/common/debug.hpp \
     include/common/signal.hpp \
     include/common/string_utils.hpp \
-    test/catch.hpp
-
+    include/app/glfw_wrapper.hpp

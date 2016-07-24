@@ -1,9 +1,9 @@
 #include "app/component.hpp"
 
-namespace untitled {
+namespace signal {
 
 Component::~Component()
 {
 }
 
-} // namespace untitled
+} // namespace signal

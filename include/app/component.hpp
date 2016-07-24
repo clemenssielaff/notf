@@ -1,6 +1,6 @@
 #pragma once
 
-namespace untitled {
+namespace signal {
 
 class Component {
 
@@ -32,4 +32,4 @@ public: // methods
 ///
 constexpr int componentKindCount() { return static_cast<int>(Component::KIND::_count); }
 
-} // namespace untitled
+} // namespace signal

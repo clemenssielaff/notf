@@ -1,101 +1,62 @@
 #pragma once
 
-#include <utility>
-#include <vector>
+#include "glfw_wrapper.hpp"
+
+#include <unordered_map>
 
 #include "common/debug.hpp"
-#include "common/error.hpp"
-#include "common/keys.hpp"
 
 struct GLFWwindow;
 
-namespace untitled {
-
-using std::vector;
-using std::pair;
+namespace signal {
 
 class Window;
-struct WindowInfo;
 
+/// \brief The Application class.
 ///
-/// \brief Singleton instance, the basis for all UI elements.
-///
+/// Is a singleton, available everywhere with Application::instance();
+/// Does not own any Windows (that is left to the client), but propagates events to all registered.
+/// Manages the lifetime of the LogHandler.
 class Application {
 
-    friend class Window; // may register/unregister itself
+    friend class Window;
 
-public: // enum
-    ///
+public:
     /// \brief Return codes of the Application's exec() function.
-    ///
     enum class RETURN_CODE {
         SUCCESS = 0,
         FAILURE = 1,
     };
 
 public: // methods
-    ///
-    /// \brief Creates a new Window for this Application.
-    ///
-    /// \param info WindowInfo providing initialization arguments.
-    ///
-    /// \return The created Window.
-    ///
-    Window* create_window(const WindowInfo& info);
+    /// \brief Copy constructor.
+    Application(const Application&) = delete;
 
-    ///
-    /// \brief Overload for create_window(const WindowInfo&) using a default WindowInfo.
-    ///
-    /// \return The created Window.
-    ///
-    Window* create_window();
+    /// \brief Assignment operator.
+    Application& operator=(Application) = delete;
 
-    ///
+    /// \brief Destructor.
+    ~Application();
+
     /// \brief Starts the application's main loop.
     ///
     /// \return The application's return value.
-    ///
     int exec();
 
-    ///
-    /// \brief Checks if any errors occurred.
-    ///
-    /// \return True iff one or more unhandled errors have occured.
-    ///
-    bool has_errors() const { return !m_errors.empty(); }
-
-    ///
-    /// \brief Returns all unhandled errors of the Application.
-    ///
-    /// Afterwards, calls to has_error() will respond negative because all errors returned by this function
-    /// are considered "handled".
-    ///
-    /// \return All unhandled errors of the Application.
-    ///
-    vector<Error> get_errors();
-
 public: // static methods
-    ///
     /// \brief The singleton Application instance.
-    ///
-    /// \return The singleton Application instance.
-    ///
-    static Application& get_instance()
+    static Application& instance()
     {
         static Application instance;
         return instance;
     }
 
-    ///
     /// \brief Called by GLFW in case of an error.
     ///
     /// \param error    Error ID.
     /// \param message  Error message;
-    ///
     static void on_error(int error, const char* message);
-    // TODO: error-handling should be internal to the Application class, it should then raise exceptions!
 
-    ///
     /// \brief Called by GLFW when a key is pressed, repeated or released.
     ///
     /// \param glfw_window  The GLFWwindow targeted by the event.
@@ -103,62 +64,42 @@ public: // static methods
     /// \param scancode     May hold additional information when key is set to KEY_UNKNOWN (platform dependent).
     /// \param action       The action that triggered this callback.
     /// \param mods         Additional modifier keys.
-    ///
     static void on_token_key(GLFWwindow* glfw_window, int key, int scancode, int action, int mods);
 
+    ///
+    /// \brief Called by GLFW, if the user requested a window to be closed.
+    ///
+    /// \param glfw_window  GLFW Window to close.
+    ///
+    static void on_window_close(GLFWwindow* glfw_window);
+
+private: // methods for Window
+    /// \brief Registers a new Window in this Application.
+    void register_window(Window* window);
+
+    /// \brief Unregisters an existing Window from this Application.
+    void unregister_window(Window* window);
+
 private: // methods
-    ///
     /// \brief Constructor.
-    ///
     explicit Application();
 
-    ///
-    /// \brief Destructor.
-    ///
-    ~Application();
+    /// \brief Shuts down the application.
+    void shutdown();
 
-    ///
     /// \brief Returns the Window instance associated with the given GLFW window.
     ///
     /// \param glfw_window  The GLFW window to look for.
     ///
     /// \return The Window instance associated with the given GLFW window or nullptr.
-    ///
-    Window* get_window(const GLFWwindow* glfw_window);
-
-    ///
-    /// \brief Closes the given window and removes it from the application.
-    ///
-    /// \param index    Index of the window to close.
-    ///
-    void close_window(size_t index);
-
-public: // deleted methods
-    ///
-    /// \brief Copy constructor.
-    ///
-    Application(const Application&) = delete;
-
-    ///
-    /// \brief Assignment operator.
-    ///
-    Application& operator=(Application) = delete;
+    Window* get_window(GLFWwindow* glfw_window);
 
 private: // fields
-    ///
-    /// \brief All (unhandled) errors of the Application.
-    ///
-    vector<Error> m_errors;
+    /// \brief All Windows known the the Application.
+    std::unordered_map<GLFWwindow*, Window*> m_windows;
 
-    ///
-    /// \brief All Windows of this application.
-    ///
-    vector<pair<GLFWwindow*, Window*> > m_windows;
-
-    ///
     /// \brief The log handler thread used to format and print out log messages in a thread-safe manner.
-    ///
     LogHandler m_log_handler;
 };
 
-} // namespace untitled
+} // namespace signal

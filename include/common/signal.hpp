@@ -47,45 +47,35 @@
 
 #endif
 
-namespace untitled {
+namespace signal {
 
-///
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /// \brief A connection between a signal and a callback.
-///
 struct Connection {
 
     template <typename...>
     friend class Signal;
 
 private: //struct
-    ///
     /// \brief Data block shared by multiple instances of Connection.
-    ///
     struct Data {
 #ifdef AMBANI_THREADED_SIGNALS
-        ///
         /// \brief The number of currently active calls routed through this connection.
-        ///
         std::atomic_uint running_calls{ 0 };
 
-        ///
         /// \brief Is the connection still active?
-        ///
         std::atomic_bool is_connected{ true };
 #else
-        ///
         /// \brief Is the connection still active?
-        ///
         bool is_connected{ true };
 #endif
     };
 
 private: // methods for Signal
-    ///
     /// \brief Value constructor.
     ///
     /// \param data Data block, potentially shared by multiple Connection objects.
-    ///
     Connection(std::shared_ptr<Data> data)
         : m_data(std::move(data))
     {
@@ -102,15 +92,12 @@ public: // methods
     Connection(Connection&&) = default;
     Connection& operator=(Connection&&) = default;
 
-    ///
     /// \brief Check if the connection is (still) alive.
     ///
     /// \return True if the connection is alive.
-    ///
     bool is_connected() const { return m_data && m_data->is_connected; }
 
 #ifdef AMBANI_THREADED_SIGNALS
-    ///
     /// \brief Breaks this Connection.
     ///
     /// After calling this function, future signals will not be delivered.
@@ -118,7 +105,6 @@ public: // methods
     ///
     /// \param block    If set, this function blocks until all active calls have finished.
     ///                 Otherwise it returns immediately.
-    ///
     void disconnect(bool block = false)
     {
         if (!m_data) {
@@ -134,12 +120,10 @@ public: // methods
         return;
     }
 #else
-    ///
     /// \brief Breaks this Connection.
     ///
     /// After calling this function, future signals will not be delivered.
     /// Any active (issued, but not handled) calls are permitted to finish.
-    ///
     void disconnect()
     {
         if (!m_data) {
@@ -150,42 +134,34 @@ public: // methods
 #endif
 
 private: // fields
-    ///
     /// \brief Data, shared by multiple instances.
-    ///
     std::shared_ptr<Data> m_data;
 };
 
-///
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /// \brief Manager class owned by instances that have methods connected to Signals.
 ///
 /// A Slots instance tracks all Connections into an object and disconnects them when that object goes out of scope.
 /// The Slots member should be placed at the end of the class definition, so it is destructed before any other.
 /// This way, all data required for the last remaining calls to finish is still valid.
 /// The destructor of the Slots class blocks until all calls have been handled.
-///
 class Slots {
 
 public: // methods
-    ///
     /// \brief Default Constructor.
-    ///
     Slots()
         : m_connections()
     {
     }
 
 #ifdef AMBANI_THREADED_SIGNALS
-    ///
     /// \brief Destructor.
     ///
     /// Disconnects (blocking) all remaining connections.
-    ///
     ~Slots() { disconnect_all(true); }
 #else
-    ///
     /// \brief Destructor.
-    ///
     ~Slots() { disconnect_all(); }
 #endif
 
@@ -194,7 +170,6 @@ public: // methods
     Slots(Slots&&) = delete;
     Slots& operator=(Slots&&) = delete;
 
-    ///
     /// \brief Creates and tracks a new Connection between the Signal and callback function.
     ///
     /// All arguments after the initial 'Signal' are passed to Signal::connect().
@@ -207,7 +182,6 @@ public: // methods
     ///
     /// \brief signal   The Signal to connect to.
     /// \brief args     Arguments passed to Signal::connect().
-    ///
     template <typename SIGNAL, typename... ARGS>
     void connect(SIGNAL& signal, ARGS&&... args)
     {
@@ -218,12 +192,10 @@ public: // methods
     }
 
 #ifdef AMBANI_THREADED_SIGNALS
-    ///
     /// \brief Disconnects all tracked Connections.
     ///
     /// \param block    If set, this function blocks until all active calls have finished.
     ///                 Otherwise it returns immediately.
-    ///
     void disconnect_all(bool block = false)
     {
         // first disconnect all connections without waiting
@@ -240,9 +212,7 @@ public: // methods
         m_connections.clear();
     }
 #else
-    ///
     /// \brief Disconnects all tracked Connections.
-    ///
     void disconnect_all()
     {
         for (Connection& connection : m_connections) {
@@ -253,24 +223,20 @@ public: // methods
 #endif
 
 private: // fields
-    ///
     /// \brief All managed Connections.
-    ///
     std::vector<Connection> m_connections;
 };
 
-///
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /// \brief An object capable of firing (emitting) signals to connected callbacks.
-///
 template <typename... ARGUMENTS>
 class Signal {
 
     friend class Slots;
 
 private: // struct
-    ///
     /// \brief Connection and target function pair.
-    ///
     struct Callback {
         Callback(Connection connection, std::function<void(ARGUMENTS...)> function,
             std::function<bool(ARGUMENTS...)> test_function = [](ARGUMENTS...) { return true; })
@@ -280,41 +246,29 @@ private: // struct
         {
         }
 
-        ///
         /// \brief Connection through which the Callback is performed.
-        ///
         Connection connection;
 
-        ///
         /// \brief Callback function.
-        ///
         std::function<void(ARGUMENTS...)> function;
 
-        ///
         /// \brief The signal is only passed over this Connection if this function evaluates to true.
-        ///
         std::function<bool(ARGUMENTS...)> test_function;
     };
 
 #ifdef AMBANI_THREADED_SIGNALS
-    ///
     /// \brief RAII helper to make sure the call count is always reset, even in case of an exception.
-    ///
     struct CallCountGuard {
-        ///
         /// \brief Value constructor.
         ///
         /// \param counter  Atomic counter to guard.
-        ///
         CallCountGuard(std::atomic_uint& counter)
             : m_counter(counter)
         {
             ++m_counter;
         }
 
-        ///
         /// \brief Destructor.
-        ///
         ~CallCountGuard() { --m_counter; }
 
         CallCountGuard(CallCountGuard const&) = delete;
@@ -323,17 +277,13 @@ private: // struct
         CallCountGuard& operator=(CallCountGuard&&) = delete;
 
     private: // fields
-        ///
         /// \brief Atomic counter to guard.
-        ///
         std::atomic_uint& m_counter;
     };
 #endif
 
 public: // methods
-    ///
     /// \brief Default constructor.
-    ///
     Signal()
 #ifdef AMBANI_THREADED_SIGNALS
         : m_mutex()
@@ -344,11 +294,9 @@ public: // methods
     {
     }
 
-///
 /// \brief Destructor.
 ///
 /// Blocks until all Connections are disconnected if AMBANI_THREADED_SIGNALS is defined.
-///
 #ifdef AMBANI_THREADED_SIGNALS
     ~Signal()
     {
@@ -364,23 +312,19 @@ public: // methods
     Signal(Signal const&) = delete;
     Signal& operator=(Signal const&) = delete;
 
-    ///
     /// \brief Move Constructor.
     ///
     /// \param other
-    ///
     Signal(Signal&& other) noexcept
     {
         this = other;
     }
 
-    ///
     /// \brief RValue assignment Operator.
     ///
     /// \param other
     ///
     /// \return This instance.
-    ///
     Signal& operator=(Signal&& other) noexcept
     {
 #ifdef AMBANI_THREADED_SIGNALS
@@ -394,7 +338,6 @@ public: // methods
         return *this;
     }
 
-    ///
     /// \brief Connects a new callback target to this Signal.
     ///
     /// Existing but disconnected Connections are purged before the new callback is connected.
@@ -403,7 +346,6 @@ public: // methods
     /// \param test_func    (optional) Test function. Callback is always called when empty.
     ///
     /// \return The created Connection.
-    ///
     Connection connect(std::function<void(ARGUMENTS...)> callback,
         std::function<bool(ARGUMENTS...)> test_func = {})
     {
@@ -462,12 +404,10 @@ public: // methods
     }
 
 #ifdef AMBANI_THREADED_SIGNALS
-    ///
     /// \brief Disconnect all Connections from this Signal.
     ///
     /// \param block    If set, this function blocks until all active calls have finished.
     ///                 Otherwise it returns immediately.
-    ///
     void disconnect_all(bool block = false)
     {
         auto leftover_callbacks = decltype(m_callbacks)(nullptr);
@@ -488,9 +428,7 @@ public: // methods
         }
     }
 #else
-    ///
     /// \brief Disconnect all Connections from this Signal.
-    ///
     void disconnect_all()
     {
         // disconnect all callbacks
@@ -500,12 +438,10 @@ public: // methods
     }
 #endif
 
-    ///
     /// \brief Fires (emits) the signal.
     ///
     /// Arguments to this function are passed to the connected callbacks and must match the signature with which the
     /// Signal instance was defined.
-    ///
     void fire(ARGUMENTS&... args) const
     {
 #ifdef AMBANI_THREADED_SIGNALS
@@ -533,7 +469,6 @@ public: // methods
     }
 
 private: // methods for Connections
-    ///
     /// \brief Overload of connect() to connect to member functions.
     ///
     /// Creates and stores a lambda function to access the member.
@@ -541,7 +476,6 @@ private: // methods for Connections
     /// \param obj          Instance providing the callback.
     /// \param method       Address of the method.
     /// \param test_func    (optional) Test function. Callback is always called when empty.
-    ///
     template <typename OBJ>
     Connection connect(OBJ* obj, void (OBJ::*method)(ARGUMENTS... args), std::function<bool(ARGUMENTS...)> test_func = {})
     {
@@ -552,29 +486,23 @@ private: // methods for Connections
 
 private: // fields
 #ifdef AMBANI_THREADED_SIGNALS
-    ///
     /// \brief Mutex required to write to the 'm_callbacks' field.
-    ///
     mutable std::mutex m_mutex;
 
-    ///
     /// \brief All target callbacks of this Signal.
     ///
     /// Is wrapped in a shared_ptr replace the contents in a thread-safe manner.
-    ///
     std::shared_ptr<std::vector<Callback> > m_callbacks;
 #else
-    ///
     /// \brief All target callbacks of this Signal.
-    ///
     std::vector<Callback> m_callbacks;
 #endif
 };
 
-} // namespace untitled
+} // namespace signal
 
 #if 0
-using namespace untitled;
+using namespace signal;
 
 #include <iostream>
 #include <chrono>
