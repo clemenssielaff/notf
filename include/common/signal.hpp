@@ -1,51 +1,13 @@
-//
-// The MIT License (MIT)
-//
-// Copyright (c) 2016 by Clemens Sielaff
-// Copyright (c) 2013 by Konstantin (Kosta) Baumann & Autodesk Inc.
-//
-// Permission is hereby granted, free of charge,  to any person obtaining a copy of
-// this software and  associated documentation  files  (the "Software"), to deal in
-// the  Software  without  restriction,  including without limitation the rights to
-// use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-// the Software,  and to permit persons to whom the Software is furnished to do so,
-// subject to the following conditions:
-//
-// The above copyright notice and this  permission notice  shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE  SOFTWARE  IS  PROVIDED  "AS IS",  WITHOUT  WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-// FOR A PARTICULAR PURPOSE  AND NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS OR
-// COPYRIGHT HOLDERS BE  LIABLE FOR ANY CLAIM,  DAMAGES OR OTHER LIABILITY, WHETHER
-// IN  AN  ACTION  OF  CONTRACT,  TORT  OR  OTHERWISE,  ARISING  FROM, OUT OF OR IN
-// CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-
 #pragma once
+
+/// Signals are dynamic Signal-Callback connections between different objects in the code.
+///
+/// There is nothing stoping you from creating circular callbacks with these, so be careful not to do that.
+/// If you do it by accident - you'll know.
 
 #include <assert.h>
 #include <memory>
 #include <vector>
-
-;
-/// If AMBANI_THREADED_SIGNALS is defined, Signal, Slot and Connection will be thread-safe, but only 30% as fast.
-/// Note that thread-safe only means that connecting/disconnecting and firing signals can be performed by multiple
-/// threads at the same time.
-/// It does NOT mean, that the callback functions are executed in a thread-safe fashion.
-/// If a signal is fired from two threads at the same time and the connected callback is not implemented in a thread-
-/// safe manner, data-races will occur.
-#ifdef AMBANI_THREADED_SIGNALS
-
-#ifndef UNUSED
-#define UNUSED(x) (void)(x);
-#endif
-
-#include <atomic>
-#include <mutex>
-#include <thread>
-
-#endif
 
 namespace signal {
 
@@ -58,29 +20,22 @@ struct Connection {
     friend class Signal;
 
 private: //struct
-    /// \brief Data block shared by multiple instances of Connection.
+    /// \brief Data block shared by two Connection instances.
     struct Data {
-#ifdef AMBANI_THREADED_SIGNALS
-        /// \brief The number of currently active calls routed through this connection.
-        std::atomic_uint running_calls{ 0 };
-
-        /// \brief Is the connection still active?
-        std::atomic_bool is_connected{ true };
-#else
         /// \brief Is the connection still active?
         bool is_connected{ true };
-#endif
     };
 
 private: // methods for Signal
     /// \brief Value constructor.
     ///
-    /// \param data Data block, potentially shared by multiple Connection objects.
+    /// \param data Shared Connection data block.
     Connection(std::shared_ptr<Data> data)
         : m_data(std::move(data))
     {
     }
 
+    /// \brief Creates a new, default constructed Connections object.
     static Connection make_connection()
     {
         return Connection(std::make_shared<Data>());
@@ -92,38 +47,14 @@ public: // methods
     Connection(Connection&&) = default;
     Connection& operator=(Connection&&) = default;
 
-    /// \brief Check if the connection is (still) alive.
+    /// \brief Check if the connection is alive.
     ///
     /// \return True if the connection is alive.
     bool is_connected() const { return m_data && m_data->is_connected; }
 
-#ifdef AMBANI_THREADED_SIGNALS
     /// \brief Breaks this Connection.
     ///
     /// After calling this function, future signals will not be delivered.
-    /// Any active (issued, but not handled) calls are permitted to finish.
-    ///
-    /// \param block    If set, this function blocks until all active calls have finished.
-    ///                 Otherwise it returns immediately.
-    void disconnect(bool block = false)
-    {
-        if (!m_data) {
-            return;
-        }
-        m_data->is_connected.store(false, std::memory_order_release);
-
-        if (block) {
-            while (m_data->running_calls) {
-                std::this_thread::yield();
-            }
-        }
-        return;
-    }
-#else
-    /// \brief Breaks this Connection.
-    ///
-    /// After calling this function, future signals will not be delivered.
-    /// Any active (issued, but not handled) calls are permitted to finish.
     void disconnect()
     {
         if (!m_data) {
@@ -131,10 +62,9 @@ public: // methods
         }
         m_data->is_connected = false;
     }
-#endif
 
 private: // fields
-    /// \brief Data, shared by multiple instances.
+    /// \brief Data block shared by two Connection instances.
     std::shared_ptr<Data> m_data;
 };
 
@@ -142,41 +72,34 @@ private: // fields
 
 /// \brief Manager class owned by instances that have methods connected to Signals.
 ///
-/// A Slots instance tracks all Connections into an object and disconnects them when that object goes out of scope.
-/// The Slots member should be placed at the end of the class definition, so it is destructed before any other.
+/// A Callback instance tracks all Connections representing Signal Targets to a member function of an object,
+/// and disconnects them when that object goes out of scope.
+/// The Callback member should be placed at the end of the class definition, so it is destructed before any other.
 /// This way, all data required for the last remaining calls to finish is still valid.
-/// The destructor of the Slots class blocks until all calls have been handled.
 /// If used within a class hierarchy, the most specialized class has the responsibility to disconnect all of its base
-/// class' signals before destroying any other members.
-class Slots {
+/// class' Signals before destroying any other members.
+class Callback {
 
 public: // methods
     /// \brief Default Constructor.
-    Slots()
+    Callback()
         : m_connections()
     {
     }
 
-#ifdef AMBANI_THREADED_SIGNALS
     /// \brief Destructor.
-    ///
-    /// Disconnects (blocking) all remaining connections.
-    ~Slots() { disconnect_all(true); }
-#else
-    /// \brief Destructor.
-    ~Slots() { disconnect_all(); }
-#endif
+    ~Callback() { disconnect_all(); }
 
-    Slots(Slots const&) = delete;
-    Slots& operator=(Slots const&) = delete;
-    Slots(Slots&&) = delete;
-    Slots& operator=(Slots&&) = delete;
+    Callback(Callback const&) = delete;
+    Callback& operator=(Callback const&) = delete;
+    Callback(Callback&&) = delete;
+    Callback& operator=(Callback&&) = delete;
 
-    /// \brief Creates and tracks a new Connection between the Signal and callback function.
+    /// \brief Creates and tracks a new Connection between the Signal and target function.
     ///
     /// All arguments after the initial 'Signal' are passed to Signal::connect().
     ///
-    /// Connect a method of 'receiver' like this:
+    /// Connect a method of object 'receiver' like this:
     ///     receiver->slots.connect(sender.signal, receiver, &Reciver::callback)
     ///
     /// Can also be used to connect to a lambda expression like so:
@@ -193,27 +116,6 @@ public: // methods
         m_connections.emplace_back(std::move(connection));
     }
 
-#ifdef AMBANI_THREADED_SIGNALS
-    /// \brief Disconnects all tracked Connections.
-    ///
-    /// \param block    If set, this function blocks until all active calls have finished.
-    ///                 Otherwise it returns immediately.
-    void disconnect_all(bool block = false)
-    {
-        // first disconnect all connections without waiting
-        for (Connection& connection : m_connections) {
-            connection.disconnect(false);
-        }
-
-        // ... then wait for them (if requested)
-        if (block) {
-            for (Connection& connection : m_connections) {
-                connection.disconnect(true);
-            }
-        }
-        m_connections.clear();
-    }
-#else
     /// \brief Disconnects all tracked Connections.
     void disconnect_all()
     {
@@ -222,7 +124,6 @@ public: // methods
         }
         m_connections.clear();
     }
-#endif
 
 private: // fields
     /// \brief All managed Connections.
@@ -231,16 +132,16 @@ private: // fields
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// \brief An object capable of firing (emitting) signals to connected callbacks.
+/// \brief An object capable of firing (emitting) signals to connected targets.
 template <typename... ARGUMENTS>
 class Signal {
 
-    friend class Slots;
+    friend class Callback;
 
 private: // struct
     /// \brief Connection and target function pair.
-    struct Callback {
-        Callback(Connection connection, std::function<void(ARGUMENTS...)> function,
+    struct Target {
+        Target(Connection connection, std::function<void(ARGUMENTS...)> function,
             std::function<bool(ARGUMENTS...)> test_function = [](ARGUMENTS...) { return true; })
             : connection(std::move(connection))
             , function(std::move(function))
@@ -258,58 +159,18 @@ private: // struct
         std::function<bool(ARGUMENTS...)> test_function;
     };
 
-#ifdef AMBANI_THREADED_SIGNALS
-    /// \brief RAII helper to make sure the call count is always reset, even in case of an exception.
-    struct CallCountGuard {
-        /// \brief Value constructor.
-        ///
-        /// \param counter  Atomic counter to guard.
-        CallCountGuard(std::atomic_uint& counter)
-            : m_counter(counter)
-        {
-            ++m_counter;
-        }
-
-        /// \brief Destructor.
-        ~CallCountGuard() { --m_counter; }
-
-        CallCountGuard(CallCountGuard const&) = delete;
-        CallCountGuard& operator=(CallCountGuard const&) = delete;
-        CallCountGuard(CallCountGuard&&) = delete;
-        CallCountGuard& operator=(CallCountGuard&&) = delete;
-
-    private: // fields
-        /// \brief Atomic counter to guard.
-        std::atomic_uint& m_counter;
-    };
-#endif
-
 public: // methods
     /// \brief Default constructor.
     Signal()
-#ifdef AMBANI_THREADED_SIGNALS
-        : m_mutex()
-        , m_callbacks()
-#else
-        : m_callbacks()
-#endif
+        : m_targets()
     {
     }
 
-/// \brief Destructor.
-///
-/// Blocks until all Connections are disconnected if AMBANI_THREADED_SIGNALS is defined.
-#ifdef AMBANI_THREADED_SIGNALS
-    ~Signal()
-    {
-        disconnect_all(true);
-    }
-#else
+    /// \brief Destructor.
     ~Signal()
     {
         disconnect_all();
     }
-#endif
 
     Signal(Signal const&) = delete;
     Signal& operator=(Signal const&) = delete;
@@ -318,8 +179,8 @@ public: // methods
     ///
     /// \param other
     Signal(Signal&& other) noexcept
+        : m_targets(std::move(other.m_targets))
     {
-        this = other;
     }
 
     /// \brief RValue assignment Operator.
@@ -329,116 +190,57 @@ public: // methods
     /// \return This instance.
     Signal& operator=(Signal&& other) noexcept
     {
-#ifdef AMBANI_THREADED_SIGNALS
-        // use std::lock(...) in combination with std::defer_lock to acquire two locks
-        // without worrying about potential deadlocks (see: http://en.cppreference.com/w/cpp/thread/lock)
-        std::unique_lock<std::mutex> lock1(m_mutex, std::defer_lock);
-        std::unique_lock<std::mutex> lock2(other.m_mutex, std::defer_lock);
-        std::lock(lock1, lock2);
-#endif
-        m_callbacks = std::move(other.m_callbacks);
+        m_targets = std::move(other.m_targets);
         return *this;
     }
 
-    /// \brief Connects a new callback target to this Signal.
+    /// \brief Connects a new target to this Signal.
     ///
-    /// Existing but disconnected Connections are purged before the new callback is connected.
+    /// Existing but disconnected Connections are purged before the new target is connected.
     ///
-    /// \param callback     Target callback.
-    /// \param test_func    (optional) Test function. Callback is always called when empty.
+    /// \param function     Target function.
+    /// \param test_func    (optional) Test function. Target is always called when empty.
     ///
     /// \return The created Connection.
-    Connection connect(std::function<void(ARGUMENTS...)> callback,
+    Connection connect(std::function<void(ARGUMENTS...)> function,
         std::function<bool(ARGUMENTS...)> test_func = {})
     {
-        assert(callback);
-#ifdef AMBANI_THREADED_SIGNALS
-        // create a new callback vector (will be filled in with
-        // the existing and still active callbacks within the lock below)
-        auto new_callbacks = std::make_shared<std::vector<Callback> >();
+        assert(function);
 
-        // lock the mutex for writing
-        std::lock_guard<std::mutex> lock(m_mutex);
-        UNUSED(lock);
+        // create a new target vector (will be filled in with
+        // the existing and still active targets within the lock below)
+        auto new_targets = std::vector<Target>();
 
-        // copy existing, connected callbacks
-        if (auto current_callbacks = m_callbacks) {
-            new_callbacks->reserve(current_callbacks->size() + 1);
-            for (const auto& target : *current_callbacks) {
-                if (target.connection.is_connected()) {
-                    new_callbacks->push_back(target);
-                }
-            }
-        }
-
-        // add the new connection to the new vector
-        Connection connection = Connection::make_connection();
-        if (test_func) {
-            new_callbacks->emplace_back(connection, std::move(callback), std::move(test_func));
-        } else {
-            new_callbacks->emplace_back(connection, std::move(callback));
-        }
-#else
-        // create a new callback vector (will be filled in with
-        // the existing and still active callbacks within the lock below)
-        auto new_callbacks = std::vector<Callback>();
-
-        // copy existing, connected  targets
-        new_callbacks.reserve(m_callbacks.size() + 1);
-        for (const auto& target : m_callbacks) {
+        // copy existing, connected targets
+        new_targets.reserve(m_targets.size() + 1);
+        for (const auto& target : m_targets) {
             if (target.connection.is_connected()) {
-                new_callbacks.push_back(target);
+                new_targets.push_back(target);
             }
         }
 
         // add the new connection to the new vector
         Connection connection = Connection::make_connection();
         if (test_func) {
-            new_callbacks.emplace_back(connection, std::move(callback), std::move(test_func));
+            new_targets.emplace_back(connection, std::move(function), std::move(test_func));
         } else {
-            new_callbacks.emplace_back(connection, std::move(callback));
+            new_targets.emplace_back(connection, std::move(function));
         }
-#endif
-        // replace the stored callbacks
-        std::swap(m_callbacks, new_callbacks);
+
+        // replace the stored targets
+        std::swap(m_targets, new_targets);
 
         return connection;
     }
 
-#ifdef AMBANI_THREADED_SIGNALS
-    /// \brief Disconnect all Connections from this Signal.
-    ///
-    /// \param block    If set, this function blocks until all active calls have finished.
-    ///                 Otherwise it returns immediately.
-    void disconnect_all(bool block = false)
-    {
-        auto leftover_callbacks = decltype(m_callbacks)(nullptr);
-
-        // clean out the callback pointers so no other thread will fire this signal anymore
-        // (already running fired calls might still reference the callbacks)
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            UNUSED(lock);
-            std::swap(m_callbacks, leftover_callbacks); // replace m_callbacks pointer with a nullptr
-        }
-
-        // disconnect all callbacks
-        if (leftover_callbacks) {
-            for (auto& callback : *leftover_callbacks) {
-                callback.connection.disconnect(block);
-            }
-        }
-    }
-#else
     /// \brief Disconnect all Connections from this Signal.
     void disconnect_all()
     {
         // disconnect all callbacks
-        for (auto& callback : m_callbacks) {
-            callback.connection.disconnect();
+        for (auto& target : m_targets) {
+            target.connection.disconnect();
         }
     }
-#endif
 
     /// \brief Fires (emits) the signal.
     ///
@@ -446,28 +248,12 @@ public: // methods
     /// Signal instance was defined.
     void fire(ARGUMENTS&... args) const
     {
-#ifdef AMBANI_THREADED_SIGNALS
-        auto callbacks = m_callbacks;
-        if (!callbacks) {
-            return;
-        }
-        // no lock required here as m_callbacks is never modified, only replaced, and we iterate over our own copy here
-        for (auto& callback : *callbacks) {
-            if (!callback.connection.is_connected() || !callback.test_function(args...)) {
+        for (auto& target : m_targets) {
+            if (!target.connection.is_connected() || !target.test_function(args...)) {
                 continue;
             }
-            CallCountGuard callCountGuard(callback.connection.m_data->running_calls);
-            UNUSED(callCountGuard);
-            callback.function(args...);
+            target.function(args...);
         }
-#else
-        for (auto& callback : m_callbacks) {
-            if (!callback.connection.is_connected() || !callback.test_function(args...)) {
-                continue;
-            }
-            callback.function(args...);
-        }
-#endif
     }
 
 private: // methods for Connections
@@ -487,43 +273,195 @@ private: // methods for Connections
     }
 
 private: // fields
-#ifdef AMBANI_THREADED_SIGNALS
-    /// \brief Mutex required to write to the 'm_callbacks' field.
-    mutable std::mutex m_mutex;
+    /// \brief All targets of this Signal.
+    std::vector<Target> m_targets;
+};
 
-    /// \brief All target callbacks of this Signal.
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// \brief Full specialization for Signals that require no arguments.
+template <>
+class Signal<> {
+
+    friend class Callback;
+
+private: // struct
+    /// \brief Connection and target function pair.
+    struct Target {
+        Target(Connection connection, std::function<void()> function)
+            : connection(std::move(connection))
+            , function(std::move(function))
+        {
+        }
+
+        /// \brief Connection through which the Callback is performed.
+        Connection connection;
+
+        /// \brief Callback function.
+        std::function<void()> function;
+    };
+
+public: // methods
+    /// \brief Default constructor.
+    Signal()
+        : m_targets()
+    {
+    }
+
+    /// \brief Destructor.
+    ~Signal()
+    {
+        disconnect_all();
+    }
+
+    Signal(Signal const&) = delete;
+    Signal& operator=(Signal const&) = delete;
+
+    /// \brief Move Constructor.
     ///
-    /// Is wrapped in a shared_ptr replace the contents in a thread-safe manner.
-    std::shared_ptr<std::vector<Callback> > m_callbacks;
-#else
-    /// \brief All target callbacks of this Signal.
-    std::vector<Callback> m_callbacks;
-#endif
+    /// \param other
+    Signal(Signal&& other) noexcept
+        : m_targets(std::move(other.m_targets))
+    {
+    }
+
+    /// \brief RValue assignment Operator.
+    ///
+    /// \param other
+    ///
+    /// \return This instance.
+    Signal& operator=(Signal&& other) noexcept
+    {
+        m_targets = std::move(other.m_targets);
+        return *this;
+    }
+
+    /// \brief Connects a new target to this Signal.
+    ///
+    /// Existing but disconnected Connections are purged before the new target is connected.
+    ///
+    /// \param function     Target function.
+    ///
+    /// \return The created Connection.
+    Connection connect(std::function<void()> function)
+    {
+        assert(function);
+
+        // create a new target vector (will be filled in with
+        // the existing and still active targets within the lock below)
+        auto new_targets = std::vector<Target>();
+
+        // copy existing, connected targets
+        new_targets.reserve(m_targets.size() + 1);
+        for (const auto& target : m_targets) {
+            if (target.connection.is_connected()) {
+                new_targets.push_back(target);
+            }
+        }
+
+        // add the new connection to the new vector
+        Connection connection = Connection::make_connection();
+        new_targets.emplace_back(connection, std::move(function));
+
+        // replace the stored targets
+        std::swap(m_targets, new_targets);
+
+        return connection;
+    }
+
+    /// \brief Disconnect all Connections from this Signal.
+    void disconnect_all()
+    {
+        // disconnect all callbacks
+        for (auto& target : m_targets) {
+            target.connection.disconnect();
+        }
+    }
+
+    /// \brief Fires (emits) the signal.
+    void fire() const
+    {
+        for (auto& target : m_targets) {
+            if (!target.connection.is_connected()) {
+                continue;
+            }
+            target.function();
+        }
+    }
+
+private: // methods for Connections
+    /// \brief Overload of connect() to connect to member functions.
+    ///
+    /// Creates and stores a lambda function to access the member.
+    ///
+    /// \param obj          Instance providing the callback.
+    /// \param method       Address of the method.
+    /// \param test_func    (optional) Test function. Callback is always called when empty.
+    template <typename OBJ>
+    Connection connect(OBJ* obj, void (OBJ::*method)())
+    {
+        assert(obj);
+        assert(method);
+        return connect([=]() { (obj->*method)(); });
+    }
+
+private: // fields
+    /// \brief All targets of this Signal.
+    std::vector<Target> m_targets;
 };
 
 } // namespace signal
 
 #if 0
-using namespace signal;
-
 #include <chrono>
 #include <iostream>
+
+#include "signal.hpp"
+#include "signal_threaded.hpp"
+using namespace signal;
+
+#if 0
+#define CALLBACK Callback
+#define SIGNAL Signal
+#else
+#define CALLBACK ThreadedCallback
+#define SIGNAL ThreadedSignal
+#endif
+
 
 using Clock = std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 
-static ulong COUNTER = 0;
-void freeCallback(uint v) { COUNTER += v; }
+/// \brief Free signal receiver.
+/// \param value    Value to add
+void freeCallback(uint value)
+{
+    static ulong counter = 0;
+    counter += value;
+}
 
+void emptyCallback()
+{
+    static ulong counter = 0;
+    counter += 1;
+}
+
+/// \brief Free signal receiver for testing values.
+/// \param value    Value to print
+void freePrintCallback(uint value)
+{
+    std::cout << "Free print callback: " << value << "\n";
+}
+
+/// \brief Simple class with a signal.
 class Sender {
 public:
-    void increaseCounter(uint value) { counterIncreased.fire(value); }
     void setValue(uint value) { valueChanged.fire(value); }
-public:
-    Signal<uint> counterIncreased;
-    Signal<uint> valueChanged;
+    void fireEmpty() { emptySignal.fire(); }
+    SIGNAL<uint> valueChanged;
+    SIGNAL<> emptySignal;
 };
 
+/// \brief Simple receiver class providing two slots.
 class Receiver {
 public:
     Receiver()
@@ -531,17 +469,17 @@ public:
     {
     }
 
-    void onValueChanged(uint value) { counter += value; }
-    void valueChanged(uint value) { std::cout << "valueChanged: " << value << "\n"; }
-
+    void memberCallback(uint value) { counter += value; }
+    void memberPrintCallback(uint value) { std::cout << "valueChanged: " << value << "\n"; }
     ulong counter;
-    Slots slots; // should be the last member
+    CALLBACK callbacks; // should be the last member
 };
 
-class Receiver2 {
+/// \brief Receiver class with an invalid slot.
+class BadReceiver {
 public:
     void this_shouldnt_work(double) {}
-    Slots slots;
+    CALLBACK callbacks;
 };
 
 int main()
@@ -549,21 +487,20 @@ int main()
     {
         Receiver* r1 = new Receiver();
         Sender s;
-        //        r1->slots.connect(s.valueChanged, r1, &Receiver::valueChanged);
-        r1->slots.connect(s.valueChanged, r1, &Receiver::valueChanged, [](uint i) { return i == 1; });
+        r1->callbacks.connect(s.valueChanged, r1, &Receiver::memberPrintCallback);
+        //        r1->slots.connect(s.valueChanged, r1, &Receiver::valueChanged, [](uint i) { return i == 1; });
 
         //        Receiver2 double_rec;
         //        double_rec.slots.connect(s.valueChanged, &double_rec, &Receiver2::this_shouldnt_work);
-
         {
             Receiver r2;
-            r2.slots.connect(s.valueChanged, &r2, &Receiver::valueChanged);
+            r2.callbacks.connect(s.valueChanged, &r2, &Receiver::memberPrintCallback);
             s.setValue(15);
 
-            r2.slots.disconnect_all();
+            r2.callbacks.disconnect_all();
             s.setValue(13);
 
-            s.valueChanged.connect(freeValueChanged);
+            s.valueChanged.connect(freePrintCallback);
         }
         delete r1;
         s.setValue(12);
@@ -574,15 +511,16 @@ int main()
     ulong REPETITIONS = 10000000;
 
     Sender sender;
+    //    sender.counterIncreased.connect(freeCallback);
+    sender.emptySignal.connect(emptyCallback);
+
     Receiver receiver;
-    sender.counterIncreased.connect(freeCallback);
-    receiver.slots.connect(sender.counterIncreased, &receiver, &Receiver::onValueChanged);
+    receiver.callbacks.connect(sender.valueChanged, &receiver, &Receiver::memberCallback);
 
     Clock::time_point t0 = Clock::now();
     for (uint i = 0; i < REPETITIONS; ++i) {
-        sender.increaseCounter(1);
-        //        freeCallback(1);
-        //        receiver.onValueChanged(1);
+//        sender.setValue(1);
+        sender.fireEmpty();
     }
     Clock::time_point t1 = Clock::now();
 
@@ -594,6 +532,10 @@ int main()
     ulong throughput = REPETITIONS / static_cast<ulong>(time_delta);
 
     std::cout << "Throughput with " << REPETITIONS << " repetitions: " << throughput << "/ms" << std::endl;
+    // throughput is <= 333333/ms on a release build with a single receiver and 10000000 repetitions, single-threaded, no arguments
+    // throughput is <= 200000/ms on a release build with a single receiver and 10000000 repetitions, single-threaded, argument
+    // throughput is <=  58850/ms on a release build with a single receiver and 10000000 repetitions, multi-threaded, no arguments
+    // throughput is <=  55555/ms on a release build with a single receiver and 10000000 repetitions, multi-threaded, argument
 
     return 0;
 }

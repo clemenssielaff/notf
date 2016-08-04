@@ -27,6 +27,8 @@ Application::Application()
         shutdown();
         exit(to_number(RETURN_CODE::FAILURE));
     }
+    log_info << "Started application";
+    log_debug << "GLFW version: " << glfwGetVersionString();
 }
 
 Application::~Application()
@@ -62,7 +64,7 @@ void Application::on_token_key(GLFWwindow* glfw_window, int key, int scancode, i
     UNUSED(scancode);
     Window* window = instance().get_window(glfw_window);
     if (!window) {
-        log_critical << "Callback to unknown GLFW window";
+        log_critical << "Callback for unknown GLFW window";
         return;
     }
 
@@ -79,7 +81,7 @@ void Application::on_window_close(GLFWwindow* glfw_window)
 {
     Window* window = instance().get_window(glfw_window);
     if (!window) {
-        log_critical << "Callback to unknown GLFW window";
+        log_critical << "Callback for unknown GLFW window";
         return;
     }
     window->close();

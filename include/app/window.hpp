@@ -88,7 +88,7 @@ private: // fields
     GLint mvp_location, vpos_location, vcol_location;
 
     /// \brief Manager object for incoming signals.
-    Slots m_slots;
+    Callback m_callbacks;
 };
 
 } // namespace signal

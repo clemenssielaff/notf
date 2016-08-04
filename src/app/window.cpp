@@ -6,7 +6,7 @@
 #include <utility>
 
 #include "app/application.hpp"
-#include "app/key.hpp"
+#include "app/keyboard.hpp"
 #include "common/debug.hpp"
 #include "common/devel.hpp"
 
@@ -46,10 +46,10 @@ void window_deleter(GLFWwindow* glfw_window)
 Window::Window(const WindowInfo& info)
     : m_glfw_window(nullptr, window_deleter)
     , m_title(info.title)
-    , m_slots()
+    , m_callbacks()
 {
     // close when the user presses ESC
-    m_slots.connect(on_token_key,
+    m_callbacks.connect(on_token_key,
         [this](const KeyEvent&) { close(); },
         [](const KeyEvent& event) { return event.key == KEY::ESCAPE; });
 

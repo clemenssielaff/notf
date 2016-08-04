@@ -1,4 +1,4 @@
-#include "app/key.hpp"
+#include "app/keyboard.hpp"
 
 #include "app/glfw_wrapper.hpp"
 

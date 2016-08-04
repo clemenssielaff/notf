@@ -4,7 +4,7 @@
 
 #include <unordered_map>
 
-#include "app/key.hpp"
+#include "app/keyboard.hpp"
 #include "common/debug.hpp"
 
 struct GLFWwindow;
