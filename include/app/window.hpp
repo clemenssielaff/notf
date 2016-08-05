@@ -58,6 +58,14 @@ public: // methods
     /// \brief Closes this Window.
     void close();
 
+    /// \brief Connects a method of this instance to a compatible signal.
+    ///
+    /// \brief signal       The Signal to connect to.
+    /// \brief method       The callback method of the object owning this CallbackManager.
+    /// \brief test_func    (optional) Test function.
+    template <typename... ARGS>
+    void connect(ARGS&&... args) { m_callbacks.connect(std::forward<ARGS>(args)...); }
+
 public: // signals
     /// \brief Emitted, when a single key was pressed / released / repeated.
     ///
@@ -88,7 +96,7 @@ private: // fields
     GLint mvp_location, vpos_location, vcol_location;
 
     /// \brief Manager object for incoming signals.
-    CallbackManager m_callbacks;
+    CallbackManager<Window> m_callbacks;
 };
 
 } // namespace signal

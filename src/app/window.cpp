@@ -46,10 +46,10 @@ void window_deleter(GLFWwindow* glfw_window)
 Window::Window(const WindowInfo& info)
     : m_glfw_window(nullptr, window_deleter)
     , m_title(info.title)
-    , m_callbacks()
+    , m_callbacks(this)
 {
     // close when the user presses ESC
-    m_callbacks.connect(on_token_key,
+    connect(on_token_key,
         [this](const KeyEvent&) { close(); },
         [](const KeyEvent& event) { return event.key == KEY::ESCAPE; });
 
