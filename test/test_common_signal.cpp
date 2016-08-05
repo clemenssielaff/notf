@@ -15,23 +15,29 @@ struct Sender {
 };
 
 struct Receiver {
-    Receiver()
-        : void_counter(0)
-        , int_counter(0)
-        , float_counter(0.f)
-        , two_bool_counter(0)
-        , slots(this)
+    template <typename SIGNAL, typename... ARGS>
+    void connect(SIGNAL& signal, ARGS&&... args) { m_callbacks.connect(signal, std::forward<ARGS>(args)...); }
+
+    template <typename SIGNAL, typename... SIGNATURE, typename... TEST_FUNC>
+    void connect(SIGNAL& signal, void (Receiver::*method)(SIGNATURE...), TEST_FUNC&&... test_func)
     {
+        m_callbacks.connect(signal, this, std::forward<decltype(method)>(method), std::forward<TEST_FUNC>(test_func)...);
     }
+
+    void disconnect_all() { m_callbacks.disconnect_all(); }
+
     void on_void_signal() { ++void_counter; }
     void on_int_signal(int v) { int_counter += v; }
     void on_float_signal(float v) { float_counter += v; }
     void on_two_bool_signal(bool, bool) { ++two_bool_counter; }
-    int void_counter;
-    int int_counter;
-    float float_counter;
-    uint two_bool_counter;
-    CallbackManager<Receiver> slots;
+
+    int void_counter = 0;
+    int int_counter = 0;
+    float float_counter = 0.f;
+    uint two_bool_counter = 0;
+
+private:
+    CallbackManager m_callbacks;
 };
 
 int free_void_counter = 0;
@@ -67,10 +73,10 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         Sender sender;
         Receiver receiver;
 
-        receiver.slots.connect(sender.void_signal, &Receiver::on_void_signal);
-        receiver.slots.connect(sender.int_signal, &Receiver::on_int_signal);
-        receiver.slots.connect(sender.float_signal, &Receiver::on_float_signal);
-        receiver.slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
+        receiver.connect(sender.void_signal, &Receiver::on_void_signal);
+        receiver.connect(sender.int_signal, &Receiver::on_int_signal);
+        receiver.connect(sender.float_signal, &Receiver::on_float_signal);
+        receiver.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
 
         sender.void_signal();
         sender.int_signal(123);
@@ -142,15 +148,39 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         }
     }
 
+    WHEN("you connect a signal to a lambda function that is managed by a receiver")
+    {
+        Sender sender;
+        Receiver receiver;
+
+        receiver.connect(sender.void_signal, [&receiver]() { ++receiver.void_counter; });
+        receiver.connect(sender.int_signal, [&receiver](int v) { receiver.int_counter += v; });
+        receiver.connect(sender.float_signal, [&receiver](float v) { receiver.float_counter += v; });
+        receiver.connect(sender.two_bool_signal, [&receiver](bool, bool) { ++receiver.two_bool_counter; });
+
+        sender.void_signal();
+        sender.int_signal(123);
+        sender.float_signal(1.23f);
+        sender.two_bool_signal(true, true);
+
+        THEN("it is called just like any other callback")
+        {
+            REQUIRE(receiver.void_counter == 1);
+            REQUIRE(receiver.int_counter == 123);
+            REQUIRE(receiver.float_counter == Approx(1.23f));
+            REQUIRE(receiver.two_bool_counter == 1);
+        }
+    }
+
     WHEN("you emit signal with an l-value")
     {
         Sender sender;
         Receiver receiver;
 
-        receiver.slots.connect(sender.void_signal, &Receiver::on_void_signal);
-        receiver.slots.connect(sender.int_signal, &Receiver::on_int_signal);
-        receiver.slots.connect(sender.float_signal, &Receiver::on_float_signal);
-        receiver.slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
+        receiver.connect(sender.void_signal, &Receiver::on_void_signal);
+        receiver.connect(sender.int_signal, &Receiver::on_int_signal);
+        receiver.connect(sender.float_signal, &Receiver::on_float_signal);
+        receiver.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
 
         int int_value = 123;
         float float_value = 1.23f;
@@ -175,15 +205,15 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         Sender sender;
         Receiver receiver;
 
-        receiver.slots.connect(sender.void_signal, &Receiver::on_void_signal);
-        receiver.slots.connect(sender.int_signal, &Receiver::on_int_signal);
-        receiver.slots.connect(sender.float_signal, &Receiver::on_float_signal);
-        receiver.slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
+        receiver.connect(sender.void_signal, &Receiver::on_void_signal);
+        receiver.connect(sender.int_signal, &Receiver::on_int_signal);
+        receiver.connect(sender.float_signal, &Receiver::on_float_signal);
+        receiver.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
 
-        receiver.slots.connect(sender.void_signal, &Receiver::on_void_signal);
-        receiver.slots.connect(sender.int_signal, &Receiver::on_int_signal);
-        receiver.slots.connect(sender.float_signal, &Receiver::on_float_signal);
-        receiver.slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
+        receiver.connect(sender.void_signal, &Receiver::on_void_signal);
+        receiver.connect(sender.int_signal, &Receiver::on_int_signal);
+        receiver.connect(sender.float_signal, &Receiver::on_float_signal);
+        receiver.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
 
         sender.void_signal();
         sender.int_signal(123);
@@ -205,15 +235,15 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         Receiver receiver1;
         Receiver receiver2;
 
-        receiver1.slots.connect(sender.void_signal, &Receiver::on_void_signal);
-        receiver1.slots.connect(sender.int_signal, &Receiver::on_int_signal);
-        receiver1.slots.connect(sender.float_signal, &Receiver::on_float_signal);
-        receiver1.slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
+        receiver1.connect(sender.void_signal, &Receiver::on_void_signal);
+        receiver1.connect(sender.int_signal, &Receiver::on_int_signal);
+        receiver1.connect(sender.float_signal, &Receiver::on_float_signal);
+        receiver1.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
 
-        receiver2.slots.connect(sender.void_signal, &Receiver::on_void_signal);
-        receiver2.slots.connect(sender.int_signal, &Receiver::on_int_signal);
-        receiver2.slots.connect(sender.float_signal, &Receiver::on_float_signal);
-        receiver2.slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
+        receiver2.connect(sender.void_signal, &Receiver::on_void_signal);
+        receiver2.connect(sender.int_signal, &Receiver::on_int_signal);
+        receiver2.connect(sender.float_signal, &Receiver::on_float_signal);
+        receiver2.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
 
         sender.void_signal();
         sender.int_signal(123);
@@ -244,10 +274,10 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         sender.float_signal(1.23f);
         sender.two_bool_signal(true, true);
 
-        receiver.slots.connect(sender.void_signal, &Receiver::on_void_signal);
-        receiver.slots.connect(sender.int_signal, &Receiver::on_int_signal);
-        receiver.slots.connect(sender.float_signal, &Receiver::on_float_signal);
-        receiver.slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
+        receiver.connect(sender.void_signal, &Receiver::on_void_signal);
+        receiver.connect(sender.int_signal, &Receiver::on_int_signal);
+        receiver.connect(sender.float_signal, &Receiver::on_float_signal);
+        receiver.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
 
         sender.void_signal();
         sender.int_signal(123);
@@ -268,12 +298,12 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         Sender sender;
         Receiver receiver;
 
-        receiver.slots.connect(sender.void_signal, &Receiver::on_void_signal);
-        receiver.slots.connect(sender.int_signal, &Receiver::on_int_signal);
-        receiver.slots.connect(sender.float_signal, &Receiver::on_float_signal);
-        receiver.slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
+        receiver.connect(sender.void_signal, &Receiver::on_void_signal);
+        receiver.connect(sender.int_signal, &Receiver::on_int_signal);
+        receiver.connect(sender.float_signal, &Receiver::on_float_signal);
+        receiver.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
 
-        receiver.slots.disconnect_all();
+        receiver.disconnect_all();
 
         sender.void_signal();
         sender.int_signal(123);
@@ -294,10 +324,10 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         Sender sender;
         Receiver receiver;
 
-        receiver.slots.connect(sender.void_signal, &Receiver::on_void_signal);
-        receiver.slots.connect(sender.int_signal, &Receiver::on_int_signal);
-        receiver.slots.connect(sender.float_signal, &Receiver::on_float_signal);
-        receiver.slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
+        receiver.connect(sender.void_signal, &Receiver::on_void_signal);
+        receiver.connect(sender.int_signal, &Receiver::on_int_signal);
+        receiver.connect(sender.float_signal, &Receiver::on_float_signal);
+        receiver.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
 
         sender.void_signal.disconnect_all();
         sender.int_signal.disconnect_all();
@@ -324,17 +354,17 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         Receiver receiver1;
         Receiver receiver2;
 
-        receiver1.slots.connect(sender.void_signal, &Receiver::on_void_signal);
-        receiver1.slots.connect(sender.int_signal, &Receiver::on_int_signal);
-        receiver1.slots.connect(sender.float_signal, &Receiver::on_float_signal);
-        receiver1.slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
+        receiver1.connect(sender.void_signal, &Receiver::on_void_signal);
+        receiver1.connect(sender.int_signal, &Receiver::on_int_signal);
+        receiver1.connect(sender.float_signal, &Receiver::on_float_signal);
+        receiver1.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
 
-        receiver2.slots.connect(sender.void_signal, &Receiver::on_void_signal);
-        receiver2.slots.connect(sender.int_signal, &Receiver::on_int_signal);
-        receiver2.slots.connect(sender.float_signal, &Receiver::on_float_signal);
-        receiver2.slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
+        receiver2.connect(sender.void_signal, &Receiver::on_void_signal);
+        receiver2.connect(sender.int_signal, &Receiver::on_int_signal);
+        receiver2.connect(sender.float_signal, &Receiver::on_float_signal);
+        receiver2.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
 
-        receiver1.slots.disconnect_all();
+        receiver1.disconnect_all();
 
         sender.void_signal();
         sender.int_signal(123);
@@ -360,17 +390,17 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         Sender sender;
 
         Receiver receiver1;
-        receiver1.slots.connect(sender.void_signal, &Receiver::on_void_signal);
-        receiver1.slots.connect(sender.int_signal, &Receiver::on_int_signal);
-        receiver1.slots.connect(sender.float_signal, &Receiver::on_float_signal);
-        receiver1.slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
+        receiver1.connect(sender.void_signal, &Receiver::on_void_signal);
+        receiver1.connect(sender.int_signal, &Receiver::on_int_signal);
+        receiver1.connect(sender.float_signal, &Receiver::on_float_signal);
+        receiver1.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
 
         {
             Receiver receiver2;
-            receiver2.slots.connect(sender.void_signal, &Receiver::on_void_signal);
-            receiver2.slots.connect(sender.int_signal, &Receiver::on_int_signal);
-            receiver2.slots.connect(sender.float_signal, &Receiver::on_float_signal);
-            receiver2.slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
+            receiver2.connect(sender.void_signal, &Receiver::on_void_signal);
+            receiver2.connect(sender.int_signal, &Receiver::on_int_signal);
+            receiver2.connect(sender.float_signal, &Receiver::on_float_signal);
+            receiver2.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
         }
 
         sender.void_signal();
@@ -392,17 +422,17 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         Sender sender;
 
         auto receiver1 = std::make_unique<Receiver>();
-        receiver1->slots.connect(sender.void_signal, &Receiver::on_void_signal);
-        receiver1->slots.connect(sender.int_signal, &Receiver::on_int_signal);
-        receiver1->slots.connect(sender.float_signal, &Receiver::on_float_signal);
-        receiver1->slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
+        receiver1->connect(sender.void_signal, &Receiver::on_void_signal);
+        receiver1->connect(sender.int_signal, &Receiver::on_int_signal);
+        receiver1->connect(sender.float_signal, &Receiver::on_float_signal);
+        receiver1->connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
 
         {
             auto receiver2 = std::make_unique<Receiver>();
-            receiver2->slots.connect(sender.void_signal,&Receiver::on_void_signal);
-            receiver2->slots.connect(sender.int_signal, &Receiver::on_int_signal);
-            receiver2->slots.connect(sender.float_signal, &Receiver::on_float_signal);
-            receiver2->slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
+            receiver2->connect(sender.void_signal, &Receiver::on_void_signal);
+            receiver2->connect(sender.int_signal, &Receiver::on_int_signal);
+            receiver2->connect(sender.float_signal, &Receiver::on_float_signal);
+            receiver2->connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
         }
 
         sender.void_signal();
@@ -424,10 +454,10 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         Receiver receiver;
         {
             Sender sender;
-            receiver.slots.connect(sender.void_signal, &Receiver::on_void_signal);
-            receiver.slots.connect(sender.int_signal, &Receiver::on_int_signal);
-            receiver.slots.connect(sender.float_signal, &Receiver::on_float_signal);
-            receiver.slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
+            receiver.connect(sender.void_signal, &Receiver::on_void_signal);
+            receiver.connect(sender.int_signal, &Receiver::on_int_signal);
+            receiver.connect(sender.float_signal, &Receiver::on_float_signal);
+            receiver.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal);
 
             sender.void_signal();
             sender.int_signal(123);
@@ -450,15 +480,15 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         Sender sender2;
         Receiver receiver;
 
-        receiver.slots.connect(sender1.void_signal, &Receiver::on_void_signal);
-        receiver.slots.connect(sender1.int_signal, &Receiver::on_int_signal);
-        receiver.slots.connect(sender1.float_signal, &Receiver::on_float_signal);
-        receiver.slots.connect(sender1.two_bool_signal, &Receiver::on_two_bool_signal);
+        receiver.connect(sender1.void_signal, &Receiver::on_void_signal);
+        receiver.connect(sender1.int_signal, &Receiver::on_int_signal);
+        receiver.connect(sender1.float_signal, &Receiver::on_float_signal);
+        receiver.connect(sender1.two_bool_signal, &Receiver::on_two_bool_signal);
 
-        receiver.slots.connect(sender2.void_signal, &Receiver::on_void_signal);
-        receiver.slots.connect(sender2.int_signal, &Receiver::on_int_signal);
-        receiver.slots.connect(sender2.float_signal, &Receiver::on_float_signal);
-        receiver.slots.connect(sender2.two_bool_signal, &Receiver::on_two_bool_signal);
+        receiver.connect(sender2.void_signal, &Receiver::on_void_signal);
+        receiver.connect(sender2.int_signal, &Receiver::on_int_signal);
+        receiver.connect(sender2.float_signal, &Receiver::on_float_signal);
+        receiver.connect(sender2.two_bool_signal, &Receiver::on_two_bool_signal);
 
         sender1.void_signal();
         sender1.int_signal(123);
@@ -486,10 +516,10 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         Sender sender;
         Receiver receiver;
 
-//        receiver.slots.connect(sender.void_signal, &Receiver::on_int_signal);
-//        receiver.slots.connect(sender.int_signal, &Receiver::on_float_signal);
-//        receiver.slots.connect(sender.float_signal, &Receiver::on_two_bool_signal);
-//        receiver.slots.connect(sender.two_bool_signal, &Receiver::on_void_signal);
+        //        receiver.connect(sender.void_signal, &Receiver::on_int_signal);
+        //        receiver.connect(sender.int_signal, &Receiver::on_float_signal);
+        //        receiver.connect(sender.float_signal, &Receiver::on_two_bool_signal);
+        //        receiver.connect(sender.two_bool_signal, &Receiver::on_void_signal);
     }
 
     WHEN("you connect a signal to a member function with a test function")
@@ -497,9 +527,9 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         Sender sender;
         Receiver receiver;
 
-        receiver.slots.connect(sender.int_signal, &Receiver::on_int_signal, [](int v) { return v == 1; });
-        receiver.slots.connect(sender.float_signal, &Receiver::on_float_signal, [](float v) { return v == 1.f; });
-        receiver.slots.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal, [](bool a, bool b) { return a == b; });
+        receiver.connect(sender.int_signal, &Receiver::on_int_signal, [](int v) { return v == 1; });
+        receiver.connect(sender.float_signal, &Receiver::on_float_signal, [](float v) { return v == 1.f; });
+        receiver.connect(sender.two_bool_signal, &Receiver::on_two_bool_signal, [](bool a, bool b) { return a == b; });
 
         sender.int_signal(1);
         sender.int_signal(123);

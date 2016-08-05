@@ -75,51 +75,29 @@ private: // fields
 /// This way, all data required for the last remaining calls to finish is still valid.
 /// If used within a class hierarchy, the most specialized class has the responsibility to disconnect all of its base
 /// class' Signals before destroying any other members.
-template <class OBJECT>
 class CallbackManager {
 
 public: // methods
     /// \brief Default Constructor.
-    CallbackManager(OBJECT* object)
-        : m_object(object)
-        , m_connections()
-    {
-    }
-
-    /// \brief Destructor.
-    ~CallbackManager() { disconnect_all(); }
+    CallbackManager() = default;
 
     CallbackManager(CallbackManager const&) = delete;
     CallbackManager& operator=(CallbackManager const&) = delete;
     CallbackManager(CallbackManager&&) = delete;
     CallbackManager& operator=(CallbackManager&&) = delete;
 
-    /// \brief Creates and tracks a new Connection between the Signal and member function.
-    ///
-    /// \brief signal       The Signal to connect to.
-    /// \brief method       The callback method of the object owning this CallbackManager.
-    /// \brief test_func    (optional) Test function.
-    template <typename SIGNAL, typename... ARGUMENTS, typename... TEST_FUNCTION>
-    void connect(SIGNAL& signal, void (OBJECT::*method)(ARGUMENTS...), TEST_FUNCTION&&... test_function)
-    {
-        Connection connection = signal.connect_method(
-            m_object,
-            std::forward<decltype(method)>(method),
-            std::forward<TEST_FUNCTION>(test_function)...);
-        m_connections.emplace_back(std::move(connection));
-    }
+    /// \brief Destructor.
+    ~CallbackManager() { disconnect_all(); }
 
     /// \brief Creates and tracks a new Connection between the Signal and a lambda or free function.
     ///
     /// \brief signal       The Signal to connect to.
-    /// \brief lambda       The lambda to call.
+    /// \brief lambda       Function object (lambda / free function) to call.
     /// \brief test_func    (optional) Test function.
-    template <typename SIGNAL, typename LAMBDA, typename... TEST_FUNCTION>
-    void connect(SIGNAL& signal, LAMBDA&& lambda, TEST_FUNCTION&&... test_function)
+    template <typename SIGNAL, typename... ARGS>
+    void connect(SIGNAL& signal, ARGS&&... args)
     {
-        Connection connection = signal.connect(
-            std::forward<LAMBDA>(lambda),
-            std::forward<TEST_FUNCTION>(test_function)...);
+        Connection connection = signal.connect(std::forward<ARGS>(args)...);
         m_connections.emplace_back(std::move(connection));
     }
 
@@ -133,9 +111,6 @@ public: // methods
     }
 
 private: // fields
-    /// \brief Instance owning this CallbackManager.
-    OBJECT* m_object;
-
     /// \brief All managed Connections.
     std::vector<Connection> m_connections;
 };
@@ -146,7 +121,6 @@ private: // fields
 template <typename... SIGNATURE>
 class Signal {
 
-    template <class>
     friend class CallbackManager;
 
 private: // struct
@@ -177,14 +151,11 @@ public: // methods
     {
     }
 
-    /// \brief Destructor.
-    ~Signal()
-    {
-        disconnect_all();
-    }
-
     Signal(Signal const&) = delete;
     Signal& operator=(Signal const&) = delete;
+
+    /// \brief Destructor.
+    ~Signal() { disconnect_all(); }
 
     /// \brief Move Constructor.
     ///
@@ -258,7 +229,7 @@ public: // methods
     /// Arguments to this function are passed to the connected callbacks and must match the signature with which the
     /// Signal instance was defined.
     /// Build-in type casting works as expected (float -> int etc.).
-    template<typename... ARGUMENTS>
+    template <typename... ARGUMENTS>
     void operator()(ARGUMENTS&&... args) const
     {
         for (auto& target : m_targets) {
@@ -278,7 +249,7 @@ private: // methods for Connections
     /// \param method       Address of the method.
     /// \param test_func    (optional) Test function. Callback is always called when empty.
     template <typename OBJ>
-    Connection connect_method(OBJ* obj, void (OBJ::*method)(SIGNATURE... args), std::function<bool(SIGNATURE...)>&& test_func = {})
+    Connection connect(OBJ* obj, void (OBJ::*method)(SIGNATURE... args), std::function<bool(SIGNATURE...)>&& test_func = {})
     {
         assert(obj);
         assert(method);
@@ -297,7 +268,6 @@ private: // fields
 template <>
 class Signal<> {
 
-    template <class>
     friend class CallbackManager;
 
 private: // struct
@@ -413,7 +383,7 @@ private: // methods for Connections
     /// \param method       Address of the method.
     /// \param test_func    (optional) Test function. Callback is always called when empty.
     template <typename OBJ>
-    Connection connect_method(OBJ* obj, void (OBJ::*method)())
+    Connection connect(OBJ* obj, void (OBJ::*method)())
     {
         assert(obj);
         assert(method);
