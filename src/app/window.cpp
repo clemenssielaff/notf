@@ -104,7 +104,7 @@ Window::~Window()
 void Window::close()
 {
     if (m_glfw_window) {
-        on_close.fire(*this);
+        on_close(*this);
         log_debug << "Closing Window \"" << m_title << "\"";
         Application::instance().unregister_window(this);
         m_glfw_window.reset(nullptr);

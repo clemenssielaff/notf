@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+namespace signal {
+
 /// \brief Tokenizes a string.
 ///
 /// \param input        Input string.
@@ -44,3 +46,5 @@ inline std::vector<std::string> tokenize(const char* input, const char delimiter
     }
     return tokenize(std::string(input), delimiter);
 }
+
+} // namespace signal

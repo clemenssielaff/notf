@@ -1,13 +1,10 @@
 #pragma once
 
-/// Signals are dynamic Signal-Callback connections between different objects in the code.
-///
-/// There is nothing stoping you from creating circular callbacks with these, so be careful not to do that.
-/// If you do it by accident - you'll know.
-
 #include <assert.h>
 #include <memory>
 #include <vector>
+
+// see commit de6d173f0339fadc20f128891ecaba6f637e07cb for a thread-safe (but only 16-25% as fast) implementation
 
 namespace signal {
 
@@ -72,28 +69,28 @@ private: // fields
 
 /// \brief Manager class owned by instances that have methods connected to Signals.
 ///
-/// A Callback instance tracks all Connections representing Signal Targets to a member function of an object,
+/// The Callback Manager tracks all Connections representing Signal Targets to a member function of an object,
 /// and disconnects them when that object goes out of scope.
-/// The Callback member should be placed at the end of the class definition, so it is destructed before any other.
+/// The Callback Manager member should be placed at the end of the class definition, so it is destructed before any other.
 /// This way, all data required for the last remaining calls to finish is still valid.
 /// If used within a class hierarchy, the most specialized class has the responsibility to disconnect all of its base
 /// class' Signals before destroying any other members.
-class Callback {
+class CallbackManager {
 
 public: // methods
     /// \brief Default Constructor.
-    Callback()
+    CallbackManager()
         : m_connections()
     {
     }
 
     /// \brief Destructor.
-    ~Callback() { disconnect_all(); }
+    ~CallbackManager() { disconnect_all(); }
 
-    Callback(Callback const&) = delete;
-    Callback& operator=(Callback const&) = delete;
-    Callback(Callback&&) = delete;
-    Callback& operator=(Callback&&) = delete;
+    CallbackManager(CallbackManager const&) = delete;
+    CallbackManager& operator=(CallbackManager const&) = delete;
+    CallbackManager(CallbackManager&&) = delete;
+    CallbackManager& operator=(CallbackManager&&) = delete;
 
     /// \brief Creates and tracks a new Connection between the Signal and target function.
     ///
@@ -136,7 +133,7 @@ private: // fields
 template <typename... ARGUMENTS>
 class Signal {
 
-    friend class Callback;
+    friend class CallbackManager;
 
 private: // struct
     /// \brief Connection and target function pair.
@@ -246,7 +243,7 @@ public: // methods
     ///
     /// Arguments to this function are passed to the connected callbacks and must match the signature with which the
     /// Signal instance was defined.
-    void fire(ARGUMENTS&... args) const
+    void operator()(ARGUMENTS&&... args) const
     {
         for (auto& target : m_targets) {
             if (!target.connection.is_connected() || !target.test_function(args...)) {
@@ -282,7 +279,7 @@ private: // fields
 template <>
 class Signal<> {
 
-    friend class Callback;
+    friend class CallbackManager;
 
 private: // struct
     /// \brief Connection and target function pair.
@@ -378,7 +375,7 @@ public: // methods
     }
 
     /// \brief Fires (emits) the signal.
-    void fire() const
+    void operator()() const
     {
         for (auto& target : m_targets) {
             if (!target.connection.is_connected()) {
@@ -410,133 +407,3 @@ private: // fields
 };
 
 } // namespace signal
-
-#if 0
-#include <chrono>
-#include <iostream>
-
-#include "signal.hpp"
-#include "signal_threaded.hpp"
-using namespace signal;
-
-#if 0
-#define CALLBACK Callback
-#define SIGNAL Signal
-#else
-#define CALLBACK ThreadedCallback
-#define SIGNAL ThreadedSignal
-#endif
-
-
-using Clock = std::chrono::high_resolution_clock;
-using std::chrono::milliseconds;
-
-/// \brief Free signal receiver.
-/// \param value    Value to add
-void freeCallback(uint value)
-{
-    static ulong counter = 0;
-    counter += value;
-}
-
-void emptyCallback()
-{
-    static ulong counter = 0;
-    counter += 1;
-}
-
-/// \brief Free signal receiver for testing values.
-/// \param value    Value to print
-void freePrintCallback(uint value)
-{
-    std::cout << "Free print callback: " << value << "\n";
-}
-
-/// \brief Simple class with a signal.
-class Sender {
-public:
-    void setValue(uint value) { valueChanged.fire(value); }
-    void fireEmpty() { emptySignal.fire(); }
-    SIGNAL<uint> valueChanged;
-    SIGNAL<> emptySignal;
-};
-
-/// \brief Simple receiver class providing two slots.
-class Receiver {
-public:
-    Receiver()
-        : counter(0)
-    {
-    }
-
-    void memberCallback(uint value) { counter += value; }
-    void memberPrintCallback(uint value) { std::cout << "valueChanged: " << value << "\n"; }
-    ulong counter;
-    CALLBACK callbacks; // should be the last member
-};
-
-/// \brief Receiver class with an invalid slot.
-class BadReceiver {
-public:
-    void this_shouldnt_work(double) {}
-    CALLBACK callbacks;
-};
-
-int main()
-{
-    {
-        Receiver* r1 = new Receiver();
-        Sender s;
-        r1->callbacks.connect(s.valueChanged, r1, &Receiver::memberPrintCallback);
-        //        r1->slots.connect(s.valueChanged, r1, &Receiver::valueChanged, [](uint i) { return i == 1; });
-
-        //        Receiver2 double_rec;
-        //        double_rec.slots.connect(s.valueChanged, &double_rec, &Receiver2::this_shouldnt_work);
-        {
-            Receiver r2;
-            r2.callbacks.connect(s.valueChanged, &r2, &Receiver::memberPrintCallback);
-            s.setValue(15);
-
-            r2.callbacks.disconnect_all();
-            s.setValue(13);
-
-            s.valueChanged.connect(freePrintCallback);
-        }
-        delete r1;
-        s.setValue(12);
-
-        std::cout << "Should print 15 / 15 / 13 and free callback 12" << std::endl;
-    }
-
-    ulong REPETITIONS = 10000000;
-
-    Sender sender;
-    //    sender.counterIncreased.connect(freeCallback);
-    sender.emptySignal.connect(emptyCallback);
-
-    Receiver receiver;
-    receiver.callbacks.connect(sender.valueChanged, &receiver, &Receiver::memberCallback);
-
-    Clock::time_point t0 = Clock::now();
-    for (uint i = 0; i < REPETITIONS; ++i) {
-//        sender.setValue(1);
-        sender.fireEmpty();
-    }
-    Clock::time_point t1 = Clock::now();
-
-    milliseconds ms = std::chrono::duration_cast<milliseconds>(t1 - t0);
-    auto time_delta = ms.count();
-    if (time_delta == 0) {
-        time_delta = 1;
-    }
-    ulong throughput = REPETITIONS / static_cast<ulong>(time_delta);
-
-    std::cout << "Throughput with " << REPETITIONS << " repetitions: " << throughput << "/ms" << std::endl;
-    // throughput is <= 333333/ms on a release build with a single receiver and 10000000 repetitions, single-threaded, no arguments
-    // throughput is <= 200000/ms on a release build with a single receiver and 10000000 repetitions, single-threaded, argument
-    // throughput is <=  58850/ms on a release build with a single receiver and 10000000 repetitions, multi-threaded, no arguments
-    // throughput is <=  55555/ms on a release build with a single receiver and 10000000 repetitions, multi-threaded, argument
-
-    return 0;
-}
-#endif

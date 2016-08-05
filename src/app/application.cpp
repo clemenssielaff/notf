@@ -74,7 +74,7 @@ void Application::on_token_key(GLFWwindow* glfw_window, int key, int scancode, i
 
     // let the window fire the key event
     KeyEvent key_event{ window, signal_key, KEY_ACTION(action), KEY_MODIFIERS(modifiers), instance().m_key_states };
-    window->on_token_key.fire(key_event);
+    window->on_token_key(key_event);
 }
 
 void Application::on_window_close(GLFWwindow* glfw_window)

@@ -1,8 +1,9 @@
 #include "test/catch.hpp"
 
 #include "common/string_utils.hpp"
+using signal::tokenize;
 
-SCENARIO("strings can be tokenized", "[string]")
+SCENARIO("strings can be tokenized", "[common][string]")
 {
     WHEN("a string with one or more delimiter characters is passed")
     {
