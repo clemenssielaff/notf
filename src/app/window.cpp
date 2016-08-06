@@ -46,7 +46,6 @@ void window_deleter(GLFWwindow* glfw_window)
 Window::Window(const WindowInfo& info)
     : m_glfw_window(nullptr, window_deleter)
     , m_title(info.title)
-    , m_callbacks()
 {
     // close when the user presses ESC
     connect(on_token_key,
@@ -55,7 +54,7 @@ Window::Window(const WindowInfo& info)
 
     // set context variables before creating the window
     if (info.opengl_version_major >= 0) {
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, info.opengl_version_major);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, info.opengl_version_major);
     }
     if (info.opengl_version_minor >= 0) {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, info.opengl_version_minor);
@@ -68,9 +67,13 @@ Window::Window(const WindowInfo& info)
     // register with the application (if the GLFW window creation failed, this call will exit the application)
     Application::instance().register_window(this);
 
+    // setup OpenGl
     glfwMakeContextCurrent(m_glfw_window.get());
-    gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-    glfwSwapInterval(1);
+    gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
+
+    log_debug << "Created Window '" << m_title << "' "
+              << "using OpenGl version: " << glad_glGetString(GL_VERSION);
+
     // NOTE: OpenGL error checks have been omitted for brevity
     glGenBuffers(1, &vertex_buffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
@@ -117,11 +120,11 @@ void Window::update()
     int width, height;
     mat4x4 m, p, mvp;
     glfwGetFramebufferSize(m_glfw_window.get(), &width, &height);
-    ratio = width / (float)height;
+    ratio = width / static_cast<float>(height);
     glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT);
     mat4x4_identity(m);
-    mat4x4_rotate_Z(m, m, (float)glfwGetTime());
+    mat4x4_rotate_Z(m, m, static_cast<float>(glfwGetTime()));
     mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
     mat4x4_mul(mvp, p, m);
     glUseProgram(program);

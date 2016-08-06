@@ -1,8 +1,8 @@
 #pragma once
 
-namespace signal {
-
 #include <type_traits>
+
+namespace signal {
 
 /// Macro silencing 'unused parameter / argument' warnings and making it clear that the variable will not be used.
 ///

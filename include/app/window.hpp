@@ -58,28 +58,6 @@ public: // methods
     /// \brief Closes this Window.
     void close();
 
-    /// \brief Connects a signal to any function with a Connection managed by this CallbackManager.
-    ///
-    /// \brief signal       The Signal to connect to.
-    /// \brief function     Callback function (lambda / free function).
-    /// \brief test_func    (optional) Test function.
-    template <typename SIGNAL, typename... ARGS>
-    void connect(SIGNAL& signal, ARGS&&... args)
-    {
-        m_callbacks.connect(signal, std::forward<ARGS>(args)...);
-    }
-
-    /// \brief Connects a signal to a compatible method of this instance.
-    ///
-    /// \brief signal       The Signal to connect to.
-    /// \brief method       The callback method of the object owning this CallbackManager.
-    /// \brief test_func    (optional) Test function.
-    template <typename SIGNAL, typename... SIGNATURE, typename... TEST_FUNC>
-    void connect(SIGNAL& signal, void (Window::*method)(SIGNATURE...), TEST_FUNC&&... test_func)
-    {
-        m_callbacks.connect(signal, this, std::forward<decltype(method)>(method), std::forward<TEST_FUNC>(test_func)...);
-    }
-
 public: // signals
     /// \brief Emitted, when a single key was pressed / released / repeated.
     ///
@@ -109,8 +87,7 @@ private: // fields
     GLuint vertex_buffer, vertex_shader, fragment_shader, program;
     GLint mvp_location, vpos_location, vcol_location;
 
-    /// \brief Manager object for incoming signals.
-    CallbackManager m_callbacks;
+    CALLBACKS(Window)
 };
 
 } // namespace signal

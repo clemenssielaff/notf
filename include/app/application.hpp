@@ -2,15 +2,18 @@
 
 #include "glfw_wrapper.hpp"
 
+#include <memory>
 #include <unordered_map>
 
 #include "app/keyboard.hpp"
 #include "common/debug.hpp"
+#include "common/handle.hpp"
 
 struct GLFWwindow;
 
 namespace signal {
 
+class Widget;
 class Window;
 
 /// \brief The Application class.
@@ -20,6 +23,7 @@ class Window;
 /// Manages the lifetime of the LogHandler.
 class Application {
 
+    friend class Widget;
     friend class Window;
 
 public:
@@ -44,6 +48,22 @@ public: // methods
     /// \return The application's return value.
     int exec();
 
+    /// \brief Creates and registers a new Widget with the Application.
+    ///
+    /// If an explicit handle is passed, it will be assigned to the new Widget.
+    /// This function will fail if the existing Handle is already taken.
+    /// If no handle is passed, a new one is created.
+    ///
+    /// \param handle   [optional] Handle of the new widget.
+    ///
+    /// \return The created Widget.
+    std::shared_ptr<Widget> create_widget(Handle handle = BAD_HANDLE);
+
+    /// \brief Returns a Widget by its Handle.
+    ///
+    /// \param handle   Handle associated with the requested Widget.
+    std::shared_ptr<Widget> get_widget(Handle handle);
+
 public: // static methods
     /// \brief The singleton Application instance.
     static Application& instance()
@@ -67,11 +87,9 @@ public: // static methods
     /// \param modifiers    Additional modifier key bitmask.
     static void on_token_key(GLFWwindow* glfw_window, int key, int scancode, int action, int modifiers);
 
-    ///
     /// \brief Called by GLFW, if the user requested a window to be closed.
     ///
     /// \param glfw_window  GLFW Window to close.
-    ///
     static void on_window_close(GLFWwindow* glfw_window);
 
 private: // methods for Window
@@ -91,13 +109,26 @@ private: // methods
     /// \brief Returns the Window instance associated with the given GLFW window.
     ///
     /// \param glfw_window  The GLFW window to look for.
-    ///
-    /// \return The Window instance associated with the given GLFW window or nullptr.
     Window* get_window(GLFWwindow* glfw_window);
+
+    /// \brief Returns the next Handle.
+    Handle get_next_handle() { return m_nextHandle++; }
+
+    /// \brief Removes handles to Widgets that have been deleted.
+    ///
+    /// It should rarely be necessary to call this function as the lookup complexity is constant on average.
+    /// Can be useful to determine how many Widgets are currently alive though.
+    void clean_unused_handles();
 
 private: // fields
     /// \brief All Windows known the the Application.
     std::unordered_map<GLFWwindow*, Window*> m_windows;
+
+    /// \brief All Widgets in the Application indexed by handle.
+    std::unordered_map<Handle, std::weak_ptr<Widget>> m_widgets;
+
+    /// \brief The next available handle, is ever-increasing.
+    Handle m_nextHandle;
 
     /// \brief The log handler thread used to format and print out log messages in a thread-safe manner.
     LogHandler m_log_handler;

@@ -30,7 +30,8 @@ SOURCES += \
     src/app/component.cpp \
     src/app/object.cpp \
     src/common/debug.cpp \
-    src/app/keyboard.cpp
+    src/app/keyboard.cpp \
+    src/app/widget.cpp
 
 HEADERS += \
     include/app/application.hpp \
@@ -46,4 +47,6 @@ HEADERS += \
     include/common/signal.hpp \
     include/common/string_utils.hpp \
     include/app/glfw_wrapper.hpp \
-    include/app/keyboard.hpp
+    include/app/keyboard.hpp \
+    include/app/widget.hpp \
+    include/common/handle.hpp

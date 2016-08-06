@@ -99,6 +99,7 @@ void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
                   << "], thread #" << log_message.thread_id
                   << ")\n";
     }
+    std::cout.flush();
     buffer.clear();
 }
 

@@ -1,16 +1,26 @@
 #include "app/application.hpp"
 
+#include <algorithm>
 #include <assert.h>
 #include <iostream>
 #include <sstream>
 
+#include "app/widget.hpp"
 #include "app/window.hpp"
 #include "common/devel.hpp"
+
+namespace { // anonymous
+
+const size_t WIDGET_RESERVE = 1024; // how many widgets to reserve space for
+
+} // namespace anonymous
 
 namespace signal {
 
 Application::Application()
     : m_windows()
+    , m_widgets()
+    , m_nextHandle(1024) // 0 is the BAD_HANDLE, the next 1023 handles are reserved for internal use
     , m_log_handler(128, 200) // initial size of the log buffers
     , m_key_states()
 {
@@ -21,6 +31,8 @@ Application::Application()
     // set the error callback to catch any errors right away
     glfwSetErrorCallback(Application::on_error);
 
+    m_widgets.reserve(WIDGET_RESERVE);
+
     // initialize GLFW
     if (!glfwInit()) {
         log_fatal << "GLFW initialization failed";
@@ -28,7 +40,7 @@ Application::Application()
         exit(to_number(RETURN_CODE::FAILURE));
     }
     log_info << "Started application";
-    log_debug << "GLFW version: " << glfwGetVersionString();
+    log_info << "GLFW version: " << glfwGetVersionString();
 }
 
 Application::~Application()
@@ -52,6 +64,41 @@ int Application::exec()
 
     shutdown();
     return to_number(RETURN_CODE::SUCCESS);
+}
+
+std::shared_ptr<Widget> Application::create_widget(Handle handle)
+{
+    // check or create the Widget's handle
+    if (handle) {
+        if (m_widgets.count(handle)) {
+            log_critical << "Cannot register Widget with handle " << handle
+                         << " because the handle is already taken";
+            return {};
+        }
+    } else {
+        handle = get_next_handle();
+    }
+
+    // create and register the Widget
+    auto widget = Widget::make_widget(handle);
+    m_widgets.emplace(std::make_pair(std::move(handle), widget));
+    return widget;
+}
+
+std::shared_ptr<Widget> Application::get_widget(Handle handle)
+{
+    auto it = m_widgets.find(handle);
+    if (it == m_widgets.end()) {
+        log_warning << "Requested Widget with unknown handle:" << handle;
+        return {};
+    }
+    auto widget = it->second.lock();
+    if (!widget) {
+        m_widgets.erase(it);
+        log_warning << "Requested Widget with expired handle:" << handle;
+        return {};
+    }
+    return widget;
 }
 
 void Application::on_error(int error, const char* message)
@@ -140,6 +187,18 @@ Window* Application::get_window(GLFWwindow* glfw_window)
         return nullptr;
     }
     return iterator->second;
+}
+
+void Application::clean_unused_handles()
+{
+    std::unordered_map<Handle, std::weak_ptr<Widget> > good_widgets;
+    good_widgets.reserve(std::max(good_widgets.size(), WIDGET_RESERVE));
+    for (auto it = m_widgets.begin(); it != m_widgets.end(); ++it) {
+        if (!it->second.expired()) {
+            good_widgets.emplace(it->first, std::move(it->second));
+        }
+    }
+    m_widgets.swap(good_widgets);
 }
 
 } // namespace signal

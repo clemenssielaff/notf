@@ -1,0 +1,58 @@
+#pragma once
+
+#include <memory>
+#include <vector>
+
+#include "common/handle.hpp"
+#include "common/signal.hpp"
+
+namespace signal {
+
+class Widget {
+
+    friend class Application;
+
+public: // enums
+    /// \brief Framing is how a Widget is drawn relative to its parent.
+    enum class FRAMING {
+        WITHIN,
+        BEHIND,
+        OVER,
+    };
+
+public: // methods
+    /// \brief Destructor.
+    ~Widget();
+
+    void set_parent(std::shared_ptr<Widget> parent);
+
+    /// \brief The Application-unique Handle of this Widget.
+    Handle get_handle() const { return m_handle; }
+
+protected: // methods
+    /// \brief Value Constructor.
+    explicit Widget(Handle handle);
+
+private: // methods for Application
+    /// \brief Factory function to create a new Widget instance.
+    ///
+    /// \param handle   Handle of the new Widget.
+    static std::shared_ptr<Widget> make_widget(Handle handle);
+
+private: // fields
+    /// \brief Application-unique Handle of this Widget.
+    Handle m_handle;
+
+    /// \brief Framing of this Widget.
+    FRAMING m_framing;
+
+    /// \brief Parent widget.
+    std::weak_ptr<Widget> m_parent;
+
+    /// \brief All child widgets.
+    std::vector<std::shared_ptr<Widget> > m_children;
+
+    CALLBACKS(Widget)
+};
+
+} // namespace signal
