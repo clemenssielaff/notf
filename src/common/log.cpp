@@ -1,4 +1,4 @@
-#include "common/debug.hpp"
+#include "common/log.hpp"
 
 #include "common/devel.hpp"
 

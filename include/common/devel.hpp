@@ -22,4 +22,17 @@ constexpr auto to_number(Enum enumerator) noexcept
 #define XSTRINGIFY(x) #x
 #define STRINGIFY(x) XSTRINGIFY(x)
 
+/// Can_copy checks (at compile time) that a T1 can be assigned to a T2.
+///
+/// See http://www.stroustrup.com/bs_faq2.html#constraints
+template <class T1, class T2>
+struct Can_copy {
+    static void constraints(T1 a, T2 b)
+    {
+        T2 c = a;
+        b = a;
+    }
+    Can_copy() { void (*p)(T1, T2) = constraints; }
+};
+
 } // namespace signal

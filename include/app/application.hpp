@@ -6,7 +6,7 @@
 #include <unordered_map>
 
 #include "app/keyboard.hpp"
-#include "common/debug.hpp"
+#include "common/log.hpp"
 #include "common/handle.hpp"
 
 struct GLFWwindow;
@@ -23,7 +23,6 @@ class Window;
 /// Manages the lifetime of the LogHandler.
 class Application {
 
-    friend class Widget;
     friend class Window;
 
 public:
@@ -50,7 +49,7 @@ public: // methods
 
     /// \brief Creates and registers a new Widget with the Application.
     ///
-    /// If an explicit handle is passed, it will be assigned to the new Widget.
+    /// If an explicit handle is passed, it is assigned to the new Widget.
     /// This function will fail if the existing Handle is already taken.
     /// If no handle is passed, a new one is created.
     ///

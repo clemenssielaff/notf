@@ -7,7 +7,7 @@
 
 #include "app/application.hpp"
 #include "app/keyboard.hpp"
-#include "common/debug.hpp"
+#include "common/log.hpp"
 #include "common/devel.hpp"
 
 static const struct

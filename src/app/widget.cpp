@@ -1,8 +1,8 @@
 #include "app/widget.hpp"
 
 #include "app/application.hpp"
-#include "common/debug.hpp"
-#include "common/vector.hpp"
+#include "common/log.hpp"
+#include "common/vector_utils.hpp"
 
 namespace { // anonymous
 
