@@ -277,7 +277,6 @@ static inline void mat4x4_rotate_Z(mat4x4 Q, mat4x4 M, float angle)
 }
 static inline void mat4x4_invert(mat4x4 T, mat4x4 M)
 {
-	/* TODO: Implement a Gauss-Jordan elimination or an iterative Jacobian */
 	mat4x4 R;
 	R[0][0] = M[1][1]*(M[2][2]*M[3][3] - M[2][3]*M[3][2]) - M[2][1]*(M[1][2]*M[3][3] - M[1][3]*M[3][2]) - M[3][1]*(M[1][3]*M[2][2] - M[1][2]*M[2][3]);
 	R[0][1] = M[0][1]*(M[2][3]*M[3][2] - M[2][2]*M[3][3]) - M[2][1]*(M[0][3]*M[3][2] - M[0][2]*M[3][3]) - M[3][1]*(M[0][2]*M[2][3] - M[0][3]*M[2][2]);
@@ -334,8 +333,6 @@ static inline void mat4x4_ortho(mat4x4 M, float l, float r, float b, float t, fl
 }
 static inline void mat4x4_perspective(mat4x4 m, float y_fov, float aspect, float n, float f)
 {
-	/* NOTE: Degrees are an unhandy unit to work with.
-	 * linmath.h uses radians for everything! */
 	float const a = 1.f / tan(y_fov / 2.f);
 
 	m[0][0] = a / aspect;
@@ -364,8 +361,6 @@ static inline void mat4x4_look_at(mat4x4 m, vec3 eye, vec3 center, vec3 up)
 	/* See the OpenGL GLUT documentation for gluLookAt for a description */
 	/* of the algorithm. We implement it in a straightforward way:       */
 
-	/* TODO: The negation of of can be spared by swapping the order of
-	 *       operands in the following cross products in the right way. */
 	vec3 f;
 	vec3_sub(f, center, eye);	
 	vec3_norm(f, f);	

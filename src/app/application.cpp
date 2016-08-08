@@ -18,11 +18,12 @@ const size_t WIDGET_RESERVE = 1024; // how many widgets to reserve space for
 namespace signal {
 
 Application::Application()
-    : m_windows()
-    , m_widgets()
-    , m_nextHandle(1024) // 0 is the BAD_HANDLE, the next 1023 handles are reserved for internal use
-    , m_log_handler(128, 200) // initial size of the log buffers
-    , m_key_states()
+    : m_nextHandle{ 1024 } // 0 is the BAD_HANDLE, the next 1023 handles are reserved for internal use
+    , m_log_handler{ 128, 200 } // initial size of the log buffers
+    , m_key_states{}
+    , m_dirty_components{}
+    , m_windows{}
+    , m_widgets{}
 {
     // install the log handler first, to catch errors right away
     install_log_message_handler(std::bind(&LogHandler::push_log, &m_log_handler, std::placeholders::_1));
@@ -109,7 +110,7 @@ void Application::on_error(int error, const char* message)
 void Application::on_token_key(GLFWwindow* glfw_window, int key, int scancode, int action, int modifiers)
 {
     UNUSED(scancode);
-    Window* window = instance().get_window(glfw_window);
+    Window* window = get_instance().get_window(glfw_window);
     if (!window) {
         log_critical << "Callback for unknown GLFW window";
         return;
@@ -117,21 +118,28 @@ void Application::on_token_key(GLFWwindow* glfw_window, int key, int scancode, i
 
     // update the key state
     KEY signal_key = from_glfw_key(key);
-    set_key(instance().m_key_states, signal_key, action);
+    set_key(get_instance().m_key_states, signal_key, action);
 
     // let the window fire the key event
-    KeyEvent key_event{ window, signal_key, KEY_ACTION(action), KEY_MODIFIERS(modifiers), instance().m_key_states };
+    KeyEvent key_event{ window, signal_key, KEY_ACTION(action), KEY_MODIFIERS(modifiers), get_instance().m_key_states };
     window->on_token_key(key_event);
 }
 
 void Application::on_window_close(GLFWwindow* glfw_window)
 {
-    Window* window = instance().get_window(glfw_window);
+    Window* window = get_instance().get_window(glfw_window);
     if (!window) {
         log_critical << "Callback for unknown GLFW window";
         return;
     }
     window->close();
+}
+
+void Application::register_dirty_component(std::shared_ptr<Component> component)
+{
+    assert(component->is_dirty());
+    size_t index = static_cast<size_t>(to_number(component->get_kind()));
+    m_dirty_components.at(index).emplace_back(std::move(component));
 }
 
 void Application::register_window(Window* window)

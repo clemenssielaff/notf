@@ -21,8 +21,11 @@ public:
 namespace signal {
 
 Widget::Widget(Handle handle)
-    : m_handle(std::move(handle))
-    , m_framing(FRAMING::WITHIN)
+    : m_handle{ std::move(handle) }
+    , m_framing{ FRAMING::WITHIN }
+    , m_parent{}
+    , m_components{} // initialize all to empty
+    , m_children{}
 {
     log_debug << "Created Widget with handle:" << m_handle;
 }
@@ -34,11 +37,11 @@ Widget::~Widget()
 
 void Widget::set_parent(std::shared_ptr<Widget> parent)
 {
-    std::shared_ptr<Widget> this_widget = Application::instance().get_widget(m_handle);
+    std::shared_ptr<Widget> this_widget = Application::get_instance().get_widget(m_handle);
     assert(this_widget);
 
     // remove yourself from your current parent
-    if (std::shared_ptr<Widget> current_parent = m_parent.lock()){
+    if (std::shared_ptr<Widget> current_parent = m_parent.lock()) {
         bool success = remove_one_unordered(current_parent->m_children, this_widget);
         assert(success);
     }
@@ -46,6 +49,12 @@ void Widget::set_parent(std::shared_ptr<Widget> parent)
     // register with the new parent
     m_parent = parent;
     parent->m_children.emplace_back(std::move(this_widget));
+}
+
+std::shared_ptr<Component> Widget::set_component(std::shared_ptr<Component> component)
+{
+    std::swap(m_components[static_cast<size_t>(to_number(component->get_kind()))], component);
+    return component;
 }
 
 std::shared_ptr<Widget> Widget::make_widget(Handle handle)

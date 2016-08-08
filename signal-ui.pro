@@ -38,12 +38,14 @@ SOURCES += \
     src/app/window.cpp \
     thirdparty/glad/glad.c \
     src/app/component.cpp \
-    src/app/object.cpp \
     src/app/keyboard.cpp \
     src/app/widget.cpp \
     src/common/log.cpp \
     src/common/vector2.cpp \
-    src/common/aabr.cpp
+    src/common/aabr.cpp \
+    src/common/const.cpp \
+    src/app/shapecomponent.cpp \
+    src/app/texturecomponent.cpp
 
 HEADERS += \
     include/app/application.hpp \
@@ -53,7 +55,6 @@ HEADERS += \
     thirdparty/KHR/khrplatform.h \
     thirdparty/linmath.h \
     include/app/component.hpp \
-    include/app/object.hpp \
     include/common/signal.hpp \
     include/common/string_utils.hpp \
     include/app/glfw_wrapper.hpp \
@@ -67,4 +68,6 @@ HEADERS += \
     include/common/vector2.hpp \
     include/common/math.hpp \
     include/common/aabr.hpp \
-    include/common/real.hpp
+    include/common/real.hpp \
+    include/app/shapecomponent.hpp \
+    include/app/texturecomponent.hpp

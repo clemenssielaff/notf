@@ -65,7 +65,7 @@ Window::Window(const WindowInfo& info)
     m_glfw_window.reset(glfwCreateWindow(info.width, info.height, m_title.c_str(), nullptr, nullptr));
 
     // register with the application (if the GLFW window creation failed, this call will exit the application)
-    Application::instance().register_window(this);
+    Application::get_instance().register_window(this);
 
     // setup OpenGl
     glfwMakeContextCurrent(m_glfw_window.get());
@@ -109,7 +109,7 @@ void Window::close()
     if (m_glfw_window) {
         on_close(*this);
         log_debug << "Closing Window \"" << m_title << "\"";
-        Application::instance().unregister_window(this);
+        Application::get_instance().unregister_window(this);
         m_glfw_window.reset(nullptr);
     }
 }

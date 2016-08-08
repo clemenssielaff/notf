@@ -6,7 +6,7 @@ using namespace signal;
 
 int main()
 {
-    Application& app = Application::instance();
+    Application& app = Application::get_instance();
     std::shared_ptr<Widget> outer = app.create_widget();
     Handle blub;
     {

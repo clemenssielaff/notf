@@ -5,8 +5,8 @@ namespace signal {
 ///
 /// \brief PI.
 ///
-static const double HALF_PI = 1.570796326794896619231321691639751442098584699687552910487472;
-static const double PI = 3.141592653589793238462643383279502884197169399375105820974944;
-static const double TWO_PI = 6.283185307179586476925286766559005768394338798750211641949889;
+extern const double HALF_PI;
+extern const double PI;
+extern const double TWO_PI;
 
 } // namespace signal

@@ -2,17 +2,22 @@
 
 #include "glfw_wrapper.hpp"
 
+#include <array>
+#include <atomic>
 #include <memory>
 #include <unordered_map>
 
+#include "app/component.hpp"
 #include "app/keyboard.hpp"
-#include "common/log.hpp"
 #include "common/handle.hpp"
+#include "common/log.hpp"
 
 struct GLFWwindow;
 
 namespace signal {
 
+class ShapeComponent;
+class TextureComponent;
 class Widget;
 class Window;
 
@@ -23,6 +28,7 @@ class Window;
 /// Manages the lifetime of the LogHandler.
 class Application {
 
+    friend class Component;
     friend class Window;
 
 public:
@@ -47,6 +53,10 @@ public: // methods
     /// \return The application's return value.
     int exec();
 
+    /// \brief Returns the next Handle.
+    /// Is thread-safe.
+    Handle get_next_handle() { return m_nextHandle++; }
+
     /// \brief Creates and registers a new Widget with the Application.
     ///
     /// If an explicit handle is passed, it is assigned to the new Widget.
@@ -56,7 +66,7 @@ public: // methods
     /// \param handle   [optional] Handle of the new widget.
     ///
     /// \return The created Widget.
-    std::shared_ptr<Widget> create_widget(Handle handle = BAD_HANDLE);
+    std::shared_ptr<Widget> create_widget(Handle handle = BAD_HANDLE); // TODO: get rid of the Application::create_widget function
 
     /// \brief Returns a Widget by its Handle.
     ///
@@ -65,7 +75,7 @@ public: // methods
 
 public: // static methods
     /// \brief The singleton Application instance.
-    static Application& instance()
+    static Application& get_instance()
     {
         static Application instance;
         return instance;
@@ -91,6 +101,12 @@ public: // static methods
     /// \param glfw_window  GLFW Window to close.
     static void on_window_close(GLFWwindow* glfw_window);
 
+private: // methods for Component
+    /// \brief Registers a dirty Component - it will be updated before the next frame.
+    ///
+    /// \param component    Component to update.
+    void register_dirty_component(std::shared_ptr<Component> component);
+
 private: // methods for Window
     /// \brief Registers a new Window in this Application.
     void register_window(Window* window);
@@ -103,15 +119,13 @@ private: // methods
     explicit Application();
 
     /// \brief Shuts down the application.
+    /// Is called automatically, after the last Window has been closed.
     void shutdown();
 
     /// \brief Returns the Window instance associated with the given GLFW window.
     ///
     /// \param glfw_window  The GLFW window to look for.
     Window* get_window(GLFWwindow* glfw_window);
-
-    /// \brief Returns the next Handle.
-    Handle get_next_handle() { return m_nextHandle++; }
 
     /// \brief Removes handles to Widgets that have been deleted.
     ///
@@ -120,20 +134,25 @@ private: // methods
     void clean_unused_handles();
 
 private: // fields
-    /// \brief All Windows known the the Application.
-    std::unordered_map<GLFWwindow*, Window*> m_windows;
-
-    /// \brief All Widgets in the Application indexed by handle.
-    std::unordered_map<Handle, std::weak_ptr<Widget>> m_widgets;
-
     /// \brief The next available handle, is ever-increasing.
-    Handle m_nextHandle;
+    std::atomic<Handle> m_nextHandle;
 
     /// \brief The log handler thread used to format and print out log messages in a thread-safe manner.
     LogHandler m_log_handler;
 
     /// \brief The current state of all keyboard keys.
     KeyStateSet m_key_states;
+
+    /// \brief A list of lists of dirty Components that need to be updated for the next frame.
+    /// The index of the Component vector in the array corresponds to the Component's kind.
+    /// Components are updated in ascending order of their kind.
+    std::array<std::vector<Component>, Component::get_count()> m_dirty_components;
+
+    /// \brief All Windows known the the Application.
+    std::unordered_map<GLFWwindow*, Window*> m_windows;
+
+    /// \brief All Widgets in the Application indexed by handle.
+    std::unordered_map<Handle, std::weak_ptr<Widget> > m_widgets;
 };
 
 } // namespace signal

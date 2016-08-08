@@ -1,8 +1,11 @@
 #pragma once
 
+#include <array>
 #include <memory>
 #include <vector>
 
+#include "app/component.hpp"
+#include "common/devel.hpp"
 #include "common/handle.hpp"
 #include "common/signal.hpp"
 
@@ -29,13 +32,47 @@ public: // enums
     };
 
 public: // methods
+    /// no copy / assignment
+    Widget(const Widget&) = delete;
+    Widget& operator=(Widget const&) = delete;
+
     /// \brief Destructor.
     ~Widget();
 
+    /// \brief Returns the parent Widget. If this Widget has no parent, the returned shared pointer is empty.
+    std::shared_ptr<Widget> get_parent() const { return m_parent.lock(); }
+
+    /// \brief Sets a new parent Widget.
+    ///
+    /// \param parent   New parent Widget.
     void set_parent(std::shared_ptr<Widget> parent);
 
     /// \brief The Application-unique Handle of this Widget.
     Handle get_handle() const { return m_handle; }
+
+    /// \brief Checks if this Object contains a Component of the given kind.
+    ///
+    /// \param kind Component kind to check for.
+    bool has_component_kind(Component::KIND kind) const { return bool(get_component(kind)); }
+
+    /// Requests the Component of a given kind from this Widget.
+    ///
+    /// \return The requested Component, shared pointer is empty if this Widget has no Component of the requested kind.
+    std::shared_ptr<Component> get_component(Component::KIND kind) const
+    {
+        return m_components.at(static_cast<size_t>(to_number(kind)));
+    }
+
+    /// \brief Attaches a new Component to this Object.
+    ///
+    /// Each Object can only have one instance of each Component kind attached.
+    /// The previous Component of the given kind is returned.
+    /// The shared pointer is empty if the Widget had no previous Component of the given kind.
+    ///
+    /// \param kind The kind of Component to attach to this Object.
+    ///
+    /// \return The previous Component of the new Component's type - may be empty.
+    std::shared_ptr<Component> set_component(std::shared_ptr<Component> component);
 
 protected: // methods
     /// \brief Value Constructor.
@@ -56,6 +93,9 @@ private: // fields
 
     /// \brief Parent widget.
     std::weak_ptr<Widget> m_parent;
+
+    /// \brief All components of this Widget.
+    std::array<std::shared_ptr<Component>, Component::get_count()> m_components;
 
     /// \brief All child widgets.
     std::vector<std::shared_ptr<Widget> > m_children;
