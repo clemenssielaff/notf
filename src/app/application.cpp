@@ -67,25 +67,6 @@ int Application::exec()
     return to_number(RETURN_CODE::SUCCESS);
 }
 
-std::shared_ptr<Widget> Application::create_widget(Handle handle)
-{
-    // check or create the Widget's handle
-    if (handle) {
-        if (m_widgets.count(handle)) {
-            log_critical << "Cannot register Widget with handle " << handle
-                         << " because the handle is already taken";
-            return {};
-        }
-    } else {
-        handle = get_next_handle();
-    }
-
-    // create and register the Widget
-    auto widget = Widget::make_widget(handle);
-    m_widgets.emplace(std::make_pair(std::move(handle), widget));
-    return widget;
-}
-
 std::shared_ptr<Widget> Application::get_widget(Handle handle)
 {
     auto it = m_widgets.find(handle);
@@ -140,6 +121,16 @@ void Application::register_dirty_component(std::shared_ptr<Component> component)
     assert(component->is_dirty());
     size_t index = static_cast<size_t>(to_number(component->get_kind()));
     m_dirty_components.at(index).emplace_back(std::move(component));
+}
+
+bool Application::register_widget(std::shared_ptr<Widget> widget)
+{
+    // don't register the Widget if its handle is already been used
+    if (m_widgets.count(widget->get_handle())) {
+        return false;
+    }
+    m_widgets.emplace(std::make_pair(widget->get_handle(), widget));
+    return true;
 }
 
 void Application::register_window(Window* window)

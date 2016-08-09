@@ -27,7 +27,6 @@ Widget::Widget(Handle handle)
     , m_components{} // initialize all to empty
     , m_children{}
 {
-    log_debug << "Created Widget with handle:" << m_handle;
 }
 
 Widget::~Widget()
@@ -59,7 +58,18 @@ std::shared_ptr<Component> Widget::set_component(std::shared_ptr<Component> comp
 
 std::shared_ptr<Widget> Widget::make_widget(Handle handle)
 {
-    return std::make_shared<MakeSharedWidgetEnabler>(std::move(handle));
+    Application& app = Application::get_instance();
+    if(!handle){
+        handle = app.get_next_handle();
+    }
+    std::shared_ptr<Widget> widget = std::make_shared<MakeSharedWidgetEnabler>(handle);
+    if(!app.register_widget(widget)){
+        log_critical << "Cannot register Widget with handle " << handle
+                     << " because the handle is already taken";
+        return {};
+    }
+    log_debug << "Created Widget with handle:" << handle;
+    return widget;
 }
 
 } // namespace signal

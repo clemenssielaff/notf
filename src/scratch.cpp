@@ -1,3 +1,4 @@
+#if 1
 #include <iostream>
 
 #include "app/widget.hpp"
@@ -7,11 +8,15 @@ using namespace signal;
 int main()
 {
     Application& app = Application::get_instance();
-    std::shared_ptr<Widget> outer = app.create_widget();
+    std::shared_ptr<Widget> outer = Widget::make_widget();
+    std::shared_ptr<Widget> a = Widget::make_widget(1026);
+    std::shared_ptr<Widget> b = Widget::make_widget();
+    std::shared_ptr<Widget> c = Widget::make_widget();
+
     Handle blub;
     {
-        std::shared_ptr<Widget> inner = app.create_widget();
-//        inner->set_parent(outer);
+        std::shared_ptr<Widget> inner = Widget::make_widget();
+        inner->set_parent(outer);
         blub = inner->get_handle();
     }
 
@@ -20,3 +25,4 @@ int main()
 
     return 0;
 }
+#endif

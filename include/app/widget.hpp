@@ -74,15 +74,21 @@ public: // methods
     /// \return The previous Component of the new Component's type - may be empty.
     std::shared_ptr<Component> set_component(std::shared_ptr<Component> component);
 
+public: // static methods
+    /// \brief Factory function to create a new Widget instance.
+    ///
+    /// If an explicit handle is passed, it is assigned to the new Widget.
+    /// This function will fail if the existing Handle is already taken.
+    /// If no handle is passed, a new one is created.
+    ///
+    /// \param handle   [optional] Handle of the new widget.
+    ///
+    /// \return The created Widget, pointer is empty on error.
+    static std::shared_ptr<Widget> make_widget(Handle handle = BAD_HANDLE);
+
 protected: // methods
     /// \brief Value Constructor.
     explicit Widget(Handle handle);
-
-private: // methods for Application
-    /// \brief Factory function to create a new Widget instance.
-    ///
-    /// \param handle   Handle of the new Widget.
-    static std::shared_ptr<Widget> make_widget(Handle handle);
 
 private: // fields
     /// \brief Application-unique Handle of this Widget.

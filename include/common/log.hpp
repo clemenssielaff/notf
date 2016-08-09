@@ -22,13 +22,13 @@ struct LogMessage {
 
     /// \brief The level of a LogMessage indicates under what circumstance the message was created.
     enum class LEVEL {
-        NONE = 0,
-        FATAL, // for critical errors, documenting what went wrong before the application crashes
-        CRITICAL, // for errors that disrupt normal program flow and are noticeable by the user
-        WARNING, // for unexpected but valid behavior
-        INFO, // for documenting expected behavior
+        ALL = 0,
         DEBUG, // for development only
-        ALL,
+        INFO, // for documenting expected behavior
+        WARNING, // for unexpected but valid behavior
+        CRITICAL, // for errors that disrupt normal program flow and are noticeable by the user
+        FATAL, // for critical errors, documenting what went wrong before the application crashes
+        NONE,
     };
 
     /// \brief Level of this LogMessage;
@@ -83,7 +83,7 @@ public: // methods
     /// \brief Destructor.
     ~LogMessageFactory()
     {
-        if (s_message_handler && message.level <= s_log_level) {
+        if (s_message_handler && message.level >= s_log_level) {
             // construct the message from the input stream before passing it on to the handler
             message.message = input.str();
             s_message_handler(std::move(message));
@@ -101,7 +101,7 @@ private: // static fields
     /// \brief The message handler to which all fully created LogMessages are passed before destruction.
     static LogMessageHandler s_message_handler;
 
-    /// \brief The maximum level at which operations are still logged.
+    /// \brief The minimum level at which operations are logged.
     static LogMessage::LEVEL s_log_level;
 };
 
@@ -128,7 +128,15 @@ public: // methods
         if (m_is_running.test_and_set()) {
             std::lock_guard<std::mutex> scoped_lock(m_mutex);
             UNUSED(scoped_lock);
+
+            bool force_flush = message.level > LogMessage::LEVEL::WARNING;
             m_write_buffer.emplace_back(std::move(message));
+
+            // messages of level warning or higher cause an immediate (blocking) flush,
+            // because the application might crash before we have the chance to properly swap the buffers
+            if(force_flush){
+                flush_buffer(m_write_buffer);
+            }
         }
 
         // otherwise do nothing
@@ -252,7 +260,7 @@ constexpr const char* basename(const char* input, const char delimiter = '/')
 ///
 /// It is used instead of a LogMessageFactory as target for logging strings when the code was compiled with flags to
 /// ignore certain levels of logging calls.
-/// For example, if the code was compiled using UNTITLED_LOG_LEVEL = 3 (warnings and errors only), all log_info and
+/// For example, if the code was compiled using SIGNAL_LOG_LEVEL = 3 (warnings and errors only), all log_info and
 /// log_debug calls target a _NullBuffer.
 /// The _NullBuffer class provides a '<<' operator for all types of inputs but just ignores the argument.
 /// This way, input into a _NullBuffer is simply optimized out of existence.
@@ -273,56 +281,56 @@ struct _NullBuffer {
 ///     log_critical << "Caught unhandled error: " << error_object;
 ///
 /// The object provided by log_* is a std::stringstream or a _NullBuffer, which accepts all the same inputs.
-#ifndef UNTITLED_LOG_LEVEL
-#define UNTITLED_LOG_LEVEL 6 // log all messages if no value for UNTITLED_LOG_LEVEL was given
-#endif
-
-#ifndef log_fatal
-#if UNTITLED_LOG_LEVEL > 0
-#define log_fatal signal::LogMessageFactory(signal::LogMessage::LEVEL::FATAL, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
-#else
-#define log_fatal signal::_NullBuffer()
-#endif
-#else
-#warning "Macro "log_fatal" is already defined - Untitled's log_fatal macro will remain disabled."
-#endif
-
-#ifndef log_critical
-#if UNTITLED_LOG_LEVEL > 1
-#define log_critical signal::LogMessageFactory(signal::LogMessage::LEVEL::CRITICAL, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
-#else
-#define log_critical signal::_NullBuffer()
-#endif
-#else
-#warning "Macro "log_critical" is already defined - Untitled's log_critical macro will remain disabled."
-#endif
-
-#ifndef log_warning
-#if UNTITLED_LOG_LEVEL > 2
-#define log_warning signal::LogMessageFactory(signal::LogMessage::LEVEL::WARNING, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
-#else
-#define log_warning signal::_NullBuffer()
-#endif
-#else
-#warning "Macro "log_warning" is already defined - Untitled's log_warning macro will remain disabled."
-#endif
-
-#ifndef log_info
-#if UNTITLED_LOG_LEVEL > 3
-#define log_info signal::LogMessageFactory(signal::LogMessage::LEVEL::INFO, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
-#else
-#define log_info signal::_NullBuffer()
-#endif
-#else
-#warning "Macro "log_info" is already defined - Untitled's log_info macro will remain disabled."
+#ifndef handle_LEVEL
+#define SIGNAL_LOG_LEVEL 0 // log all messages if no value for SIGNAL_LOG_LEVEL was given
 #endif
 
 #ifndef log_debug
-#if UNTITLED_LOG_LEVEL > 4
+#if SIGNAL_LOG_LEVEL <= 1
 #define log_debug signal::LogMessageFactory(signal::LogMessage::LEVEL::DEBUG, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_debug signal::_NullBuffer()
 #endif
 #else
-#warning "Macro "log_debug" is already defined - Untitled's log_debug macro will remain disabled."
+#warning "Macro "log_debug" is already defined - Signal'slog_debug macro will remain disabled."
+#endif
+
+#ifndef log_info
+#if SIGNAL_LOG_LEVEL <= 2
+#define log_info signal::LogMessageFactory(signal::LogMessage::LEVEL::INFO, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
+#else
+#define log_info signal::_NullBuffer()
+#endif
+#else
+#warning "Macro "log_info" is already defined - Signal'slog_info macro will remain disabled."
+#endif
+
+#ifndef log_warning
+#if SIGNAL_LOG_LEVEL <= 3
+#define log_warning signal::LogMessageFactory(signal::LogMessage::LEVEL::WARNING, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
+#else
+#define log_warning signal::_NullBuffer()
+#endif
+#else
+#warning "Macro "log_warning" is already defined - Signal'slog_warning macro will remain disabled."
+#endif
+
+#ifndef log_critical
+#if SIGNAL_LOG_LEVEL <= 4
+#define log_critical signal::LogMessageFactory(signal::LogMessage::LEVEL::CRITICAL, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
+#else
+#define log_critical signal::_NullBuffer()
+#endif
+#else
+#warning "Macro "log_critical" is already defined - Signal'slog_critical macro will remain disabled."
+#endif
+
+#ifndef log_fatal
+#if SIGNAL_LOG_LEVEL <= 5
+#define log_fatal signal::LogMessageFactory(signal::LogMessage::LEVEL::FATAL, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
+#else
+#define log_fatal signal::_NullBuffer()
+#endif
+#else
+#warning "Macro "log_fatal" is already defined - Signal'slog_fatal macro will remain disabled."
 #endif

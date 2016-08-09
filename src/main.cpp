@@ -6,7 +6,7 @@ using namespace signal;
 
 int main(void)
 {
-    Application& app = Application::instance();
+    Application& app = Application::get_instance();
     Window window;
     return app.exec();
 }

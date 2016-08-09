@@ -47,6 +47,9 @@ Window::Window(const WindowInfo& info)
     : m_glfw_window(nullptr, window_deleter)
     , m_title(info.title)
 {
+    // always make sure that the Application is constructed first
+    Application& app = Application::get_instance();
+
     // close when the user presses ESC
     connect(on_token_key,
         [this](const KeyEvent&) { close(); },
@@ -65,7 +68,7 @@ Window::Window(const WindowInfo& info)
     m_glfw_window.reset(glfwCreateWindow(info.width, info.height, m_title.c_str(), nullptr, nullptr));
 
     // register with the application (if the GLFW window creation failed, this call will exit the application)
-    Application::get_instance().register_window(this);
+    app.register_window(this);
 
     // setup OpenGl
     glfwMakeContextCurrent(m_glfw_window.get());

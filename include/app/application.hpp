@@ -29,6 +29,7 @@ class Window;
 class Application {
 
     friend class Component;
+    friend class Widget;
     friend class Window;
 
 public:
@@ -53,20 +54,16 @@ public: // methods
     /// \return The application's return value.
     int exec();
 
-    /// \brief Returns the next Handle.
+    /// \brief Returns the next, free Handle.
     /// Is thread-safe.
-    Handle get_next_handle() { return m_nextHandle++; }
-
-    /// \brief Creates and registers a new Widget with the Application.
-    ///
-    /// If an explicit handle is passed, it is assigned to the new Widget.
-    /// This function will fail if the existing Handle is already taken.
-    /// If no handle is passed, a new one is created.
-    ///
-    /// \param handle   [optional] Handle of the new widget.
-    ///
-    /// \return The created Widget.
-    std::shared_ptr<Widget> create_widget(Handle handle = BAD_HANDLE); // TODO: get rid of the Application::create_widget function
+    Handle get_next_handle()
+    {
+        Handle handle;
+        do {
+            handle = m_nextHandle++;
+        } while (m_widgets.count(handle));
+        return handle;
+    }
 
     /// \brief Returns a Widget by its Handle.
     ///
@@ -107,6 +104,16 @@ private: // methods for Component
     /// \param component    Component to update.
     void register_dirty_component(std::shared_ptr<Component> component);
 
+private: // methods for Widget
+    /// \brief Registers a new Widget with the Application.
+    ///
+    /// The handle of the Widget may not be the BAD_HANDLE, nor may it have been used to register another Widget.
+    ///
+    /// \param widget   Widget to register with its handle.
+    ///
+    /// \return True iff the Widget was successfully registered - false if its handle is already taken.
+    bool register_widget(std::shared_ptr<Widget> widget);
+
 private: // methods for Window
     /// \brief Registers a new Window in this Application.
     void register_window(Window* window);
@@ -146,7 +153,7 @@ private: // fields
     /// \brief A list of lists of dirty Components that need to be updated for the next frame.
     /// The index of the Component vector in the array corresponds to the Component's kind.
     /// Components are updated in ascending order of their kind.
-    std::array<std::vector<Component>, Component::get_count()> m_dirty_components;
+    std::array<std::vector<std::shared_ptr<Component> >, Component::get_count()> m_dirty_components;
 
     /// \brief All Windows known the the Application.
     std::unordered_map<GLFWwindow*, Window*> m_windows;

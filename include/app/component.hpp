@@ -24,7 +24,7 @@ public: // enum
     };
 
 public: // methods
-    /// \brief Defautl Constructor.
+    /// \brief Default Constructor.
     explicit Component();
 
     /// \brief Virtual Destructor.
