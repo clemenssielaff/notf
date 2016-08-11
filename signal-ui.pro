@@ -45,7 +45,7 @@ SOURCES += \
     src/common/aabr.cpp \
     src/common/const.cpp \
     src/core/shapecomponent.cpp \
-    src/core/texturecomponent.cpp
+    src/core/shadercomponent.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -70,4 +70,4 @@ HEADERS += \
     include/common/aabr.hpp \
     include/common/real.hpp \
     include/core/shapecomponent.hpp \
-    include/core/texturecomponent.hpp
+    include/core/shadercomponent.hpp

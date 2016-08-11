@@ -1,7 +1,5 @@
 #pragma once
 
-#include "glfw_wrapper.hpp"
-
 #include <memory>
 #include <string>
 
@@ -12,6 +10,7 @@ struct GLFWwindow;
 namespace signal {
 
 struct KeyEvent;
+class Widget;
 
 /// \brief Helper struct to create a Window instance.
 struct WindowInfo {
@@ -53,7 +52,10 @@ public: // methods
     virtual ~Window();
 
     /// \brief The Window's title.
-    const std::string& title() const { return m_title; }
+    const std::string& get_title() const { return m_title; }
+
+    /// \brief The invisible root widget of this Window.
+    std::shared_ptr<Widget> get_root_widget() const { return m_root_widget; }
 
     /// \brief Closes this Window.
     void close();
@@ -83,9 +85,8 @@ private: // fields
     /// \brief The Window's title (is not accessible through GLFW).
     std::string m_title;
 
-    // TEMP
-    GLuint vertex_buffer, vertex_shader, fragment_shader, program;
-    GLint mvp_location, vpos_location, vcol_location;
+    /// \brief The invisible root widget of this Window.
+    std::shared_ptr<Widget> m_root_widget;
 
     CALLBACKS(Window)
 };

@@ -19,7 +19,7 @@ namespace signal {
 /// Each Window has its own Widget hierarchy with a single root-Widget at the top.
 /// Widgets can be freely moved in the hierarchy, store its Handle to to keep a persistent reference to a Widget.
 /// Using the Handle, you can even serialize and deserialize a hierarchy (which wouldn't work with pointers).
-class Widget {
+class Widget : public std::enable_shared_from_this<Widget> {
 
     friend class Application;
 
@@ -30,6 +30,10 @@ public: // enums
         BEHIND,
         OVER,
     };
+
+protected: // methods
+    /// \brief Value Constructor.
+    explicit Widget(Handle handle);
 
 public: // methods
     /// no copy / assignment
@@ -50,18 +54,18 @@ public: // methods
     /// \brief The Application-unique Handle of this Widget.
     Handle get_handle() const { return m_handle; }
 
+    /// Requests the Component of a given kind from this Widget.
+    ///
+    /// \return The requested Component, shared pointer is empty if this Widget has no Component of the requested kind.
+    auto get_component(Component::KIND kind) const
+    {
+        return m_components.at(static_cast<size_t>(to_number(kind)));
+    }
+
     /// \brief Checks if this Object contains a Component of the given kind.
     ///
     /// \param kind Component kind to check for.
     bool has_component_kind(Component::KIND kind) const { return bool(get_component(kind)); }
-
-    /// Requests the Component of a given kind from this Widget.
-    ///
-    /// \return The requested Component, shared pointer is empty if this Widget has no Component of the requested kind.
-    std::shared_ptr<Component> get_component(Component::KIND kind) const
-    {
-        return m_components.at(static_cast<size_t>(to_number(kind)));
-    }
 
     /// \brief Attaches a new Component to this Object.
     ///
@@ -74,6 +78,9 @@ public: // methods
     /// \return The previous Component of the new Component's type - may be empty.
     std::shared_ptr<Component> set_component(std::shared_ptr<Component> component);
 
+    /// \brief Draws this and all child widgets recursively.
+    void redraw();
+
 public: // static methods
     /// \brief Factory function to create a new Widget instance.
     ///
@@ -85,10 +92,6 @@ public: // static methods
     ///
     /// \return The created Widget, pointer is empty on error.
     static std::shared_ptr<Widget> make_widget(Handle handle = BAD_HANDLE);
-
-protected: // methods
-    /// \brief Value Constructor.
-    explicit Widget(Handle handle);
 
 private: // fields
     /// \brief Application-unique Handle of this Widget.

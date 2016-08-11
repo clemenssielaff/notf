@@ -26,13 +26,13 @@ constexpr auto to_number(Enum enumerator) noexcept
 ///
 /// See http://www.stroustrup.com/bs_faq2.html#constraints
 template <class T1, class T2>
-struct Can_copy {
+struct CanCopy {
     static void constraints(T1 a, T2 b)
     {
         T2 c = a;
         b = a;
     }
-    Can_copy() { void (*p)(T1, T2) = constraints; }
+    CanCopy() { void (*p)(T1, T2) = constraints; }
 };
 
 } // namespace signal

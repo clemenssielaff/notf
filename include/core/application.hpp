@@ -16,8 +16,6 @@ struct GLFWwindow;
 
 namespace signal {
 
-class ShapeComponent;
-class TextureComponent;
 class Widget;
 class Window;
 

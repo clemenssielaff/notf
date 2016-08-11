@@ -138,7 +138,7 @@ void Application::register_window(Window* window)
 {
     GLFWwindow* glfw_window = window->glwf_window();
     if (!glfw_window) {
-        log_fatal << "Window or context creation failed for window '" << window->title() << "'";
+        log_fatal << "Window or context creation failed for window '" << window->get_title() << "'";
         shutdown();
         exit(to_number(RETURN_CODE::FAILURE));
     }
@@ -164,7 +164,7 @@ void Application::unregister_window(Window* window)
     glfwSetKeyCallback(glfw_window, nullptr);
 
     // unregister the window
-    log_debug << "Unregistered window: " << window->title();
+    log_debug << "Unregistered window: " << window->get_title();
     m_windows.erase(iterator);
 }
 

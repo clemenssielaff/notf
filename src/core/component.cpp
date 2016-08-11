@@ -13,14 +13,14 @@ Component::~Component()
 {
 }
 
-void Component::update()
+void Component::set_dirty()
 {
     // no need to register twice
     if (m_is_dirty) {
         return;
     }
     m_is_dirty = true;
-//    Application::get_instance().register_dirty_component(std::move(shared_from_this()));
+    Application::get_instance().register_dirty_component(std::move(shared_from_this()));
 }
 
 } // namespace signal

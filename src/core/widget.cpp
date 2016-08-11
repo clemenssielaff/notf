@@ -56,6 +56,17 @@ std::shared_ptr<Component> Widget::set_component(std::shared_ptr<Component> comp
     return component;
 }
 
+void Widget::redraw()
+{
+    // TODO: proper redraw respecting the FRAMING of each child
+    for(auto& child : m_children){
+        child->redraw();
+    }
+    if(has_component_kind(Component::KIND::TEXTURE)){
+        (*get_component(Component::KIND::TEXTURE)).update();
+    }
+}
+
 std::shared_ptr<Widget> Widget::make_widget(Handle handle)
 {
     Application& app = Application::get_instance();

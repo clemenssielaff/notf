@@ -6,9 +6,6 @@
 
 namespace signal {
 
-// TODO: perhaps _nocheck - versions of some functions that assume that are input values are valid
-// these functions can then be called from other functions that may have checked the validity already
-
 /// \brief The Vector2 class.
 struct Vector2 {
 
