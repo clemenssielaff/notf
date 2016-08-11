@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 
-#include "app/component.hpp"
+#include "core/component.hpp"
 #include "common/devel.hpp"
 #include "common/handle.hpp"
 #include "common/signal.hpp"

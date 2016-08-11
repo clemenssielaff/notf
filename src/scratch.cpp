@@ -1,8 +1,8 @@
-#if 1
+#if 0
 #include <iostream>
 
-#include "app/widget.hpp"
-#include "app/application.hpp"
+#include "core/widget.hpp"
+#include "core/application.hpp"
 using namespace signal;
 
 int main()

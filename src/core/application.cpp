@@ -1,12 +1,12 @@
-#include "app/application.hpp"
+#include "core/application.hpp"
 
 #include <algorithm>
 #include <assert.h>
 #include <iostream>
 #include <sstream>
 
-#include "app/widget.hpp"
-#include "app/window.hpp"
+#include "core/widget.hpp"
+#include "core/window.hpp"
 #include "common/devel.hpp"
 
 namespace { // anonymous
@@ -60,7 +60,8 @@ int Application::exec()
         }
 
         // poll and process GLWF events
-        glfwPollEvents();
+        glfwWaitEvents();
+//        glfwPollEvents();
     }
 
     shutdown();
@@ -118,9 +119,9 @@ void Application::on_window_close(GLFWwindow* glfw_window)
 
 void Application::register_dirty_component(std::shared_ptr<Component> component)
 {
-    assert(component->is_dirty());
-    size_t index = static_cast<size_t>(to_number(component->get_kind()));
-    m_dirty_components.at(index).emplace_back(std::move(component));
+//    assert(component->is_dirty());
+//    size_t index = static_cast<size_t>(to_number(component->get_kind()));
+//    m_dirty_components.at(index).emplace_back(std::move(component));
 }
 
 bool Application::register_widget(std::shared_ptr<Widget> widget)

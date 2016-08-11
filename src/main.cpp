@@ -1,6 +1,6 @@
-#if 0
-#include "app/application.hpp"
-#include "app/window.hpp"
+#if 1
+#include "core/application.hpp"
+#include "core/window.hpp"
 
 using namespace signal;
 

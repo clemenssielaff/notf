@@ -7,8 +7,8 @@
 #include <memory>
 #include <unordered_map>
 
-#include "app/component.hpp"
-#include "app/keyboard.hpp"
+#include "core/component.hpp"
+#include "core/keyboard.hpp"
 #include "common/handle.hpp"
 #include "common/log.hpp"
 

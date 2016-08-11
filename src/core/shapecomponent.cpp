@@ -1,4 +1,4 @@
-#include "app/shapecomponent.hpp"
+#include "core/shapecomponent.hpp"
 
 namespace signal {
 

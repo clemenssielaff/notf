@@ -1,4 +1,4 @@
-#include "app/texturecomponent.hpp"
+#include "core/texturecomponent.hpp"
 
 namespace signal {
 

@@ -1,6 +1,6 @@
-#include "app/keyboard.hpp"
+#include "core/keyboard.hpp"
 
-#include "app/glfw_wrapper.hpp"
+#include "core/glfw_wrapper.hpp"
 
 namespace signal {
 

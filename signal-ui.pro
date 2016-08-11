@@ -34,32 +34,32 @@ else {
 }
 
 SOURCES += \
-    src/app/application.cpp \
-    src/app/window.cpp \
+    src/core/application.cpp \
+    src/core/window.cpp \
     thirdparty/glad/glad.c \
-    src/app/component.cpp \
-    src/app/keyboard.cpp \
-    src/app/widget.cpp \
+    src/core/component.cpp \
+    src/core/keyboard.cpp \
+    src/core/widget.cpp \
     src/common/log.cpp \
     src/common/vector2.cpp \
     src/common/aabr.cpp \
     src/common/const.cpp \
-    src/app/shapecomponent.cpp \
-    src/app/texturecomponent.cpp
+    src/core/shapecomponent.cpp \
+    src/core/texturecomponent.cpp
 
 HEADERS += \
-    include/app/application.hpp \
-    include/app/window.hpp \
+    include/core/application.hpp \
+    include/core/window.hpp \
     include/common/devel.hpp \
     thirdparty/glad/glad.h \
     thirdparty/KHR/khrplatform.h \
     thirdparty/linmath.h \
-    include/app/component.hpp \
+    include/core/component.hpp \
     include/common/signal.hpp \
     include/common/string_utils.hpp \
-    include/app/glfw_wrapper.hpp \
-    include/app/keyboard.hpp \
-    include/app/widget.hpp \
+    include/core/glfw_wrapper.hpp \
+    include/core/keyboard.hpp \
+    include/core/widget.hpp \
     include/common/handle.hpp \
     include/common/vector_utils.hpp \
     include/common/log.hpp \
@@ -69,5 +69,5 @@ HEADERS += \
     include/common/math.hpp \
     include/common/aabr.hpp \
     include/common/real.hpp \
-    include/app/shapecomponent.hpp \
-    include/app/texturecomponent.hpp
+    include/core/shapecomponent.hpp \
+    include/core/texturecomponent.hpp

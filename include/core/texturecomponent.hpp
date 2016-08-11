@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/component.hpp"
+#include "core/component.hpp"
 
 namespace signal {
 

@@ -1,6 +1,6 @@
-#include "app/widget.hpp"
+#include "core/widget.hpp"
 
-#include "app/application.hpp"
+#include "core/application.hpp"
 #include "common/log.hpp"
 #include "common/vector_utils.hpp"
 

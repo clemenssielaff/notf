@@ -1,12 +1,12 @@
-#include "app/window.hpp"
+#include "core/window.hpp"
 
 #include "linmath.h"
 
 #include <iostream>
 #include <utility>
 
-#include "app/application.hpp"
-#include "app/keyboard.hpp"
+#include "core/application.hpp"
+#include "core/keyboard.hpp"
 #include "common/log.hpp"
 #include "common/devel.hpp"
 

@@ -1,6 +1,6 @@
-#include "app/component.hpp"
+#include "core/component.hpp"
 
-#include "app/application.hpp"
+#include "core/application.hpp"
 
 namespace signal {
 
@@ -20,7 +20,7 @@ void Component::update()
         return;
     }
     m_is_dirty = true;
-    Application::get_instance().register_dirty_component(std::move(shared_from_this()));
+//    Application::get_instance().register_dirty_component(std::move(shared_from_this()));
 }
 
 } // namespace signal
