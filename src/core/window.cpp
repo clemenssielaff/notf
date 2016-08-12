@@ -6,7 +6,7 @@
 #include "common/log.hpp"
 #include "core/application.hpp"
 #include "core/glfw_wrapper.hpp"
-#include "core/keyboard.hpp"
+#include "core/key_event.hpp"
 #include "core/widget.hpp"
 
 namespace signal {
@@ -39,6 +39,7 @@ Window::Window(const WindowInfo& info)
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, info.opengl_version_minor);
     }
     glfwWindowHint(GLFW_RESIZABLE, info.is_resizeable ? GL_TRUE : GL_FALSE);
+    glfwWindowHint(GLFW_SAMPLES, std::max(0, info.samples));
 
     // create the GLFW window
     m_glfw_window.reset(glfwCreateWindow(info.width, info.height, m_title.c_str(), nullptr, nullptr));
@@ -62,8 +63,9 @@ Window::~Window()
 void Window::close()
 {
     if (m_glfw_window) {
-        on_close(*this);
         log_debug << "Closing Window \"" << m_title << "\"";
+        on_close(*this);
+        m_root_widget.reset();
         Application::get_instance().unregister_window(this);
         m_glfw_window.reset(nullptr);
     }

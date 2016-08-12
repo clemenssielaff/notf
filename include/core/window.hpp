@@ -13,6 +13,7 @@ struct KeyEvent;
 class Widget;
 
 /// \brief Helper struct to create a Window instance.
+///
 struct WindowInfo {
 
     /// \brief Width of the window.
@@ -30,6 +31,9 @@ struct WindowInfo {
     /// \brief If the Window is resizeable or not.
     bool is_resizeable = true;
 
+    /// \brief Number of samples for multisampling, <=0 disables multisampling
+    int samples = 2;
+
     /// \brief Window title.
     std::string title = "Window";
 };
@@ -38,6 +42,7 @@ struct WindowInfo {
 void window_deleter(GLFWwindow* glfwWindow);
 
 /// \brief The Window is a OS window containing an OpenGL context.
+///
 class Window {
 
     friend class Application;

@@ -12,6 +12,7 @@
 namespace signal {
 
 /// \brief Base class for all Components.
+///
 class Component : public std::enable_shared_from_this<Component> {
 
     friend class Application;

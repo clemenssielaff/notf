@@ -5,9 +5,10 @@
 #include <iostream>
 #include <sstream>
 
+#include "common/devel.hpp"
+#include "core/key_event.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
-#include "common/devel.hpp"
 
 namespace { // anonymous
 
@@ -60,8 +61,8 @@ int Application::exec()
         }
 
         // poll and process GLWF events
-        glfwWaitEvents();
-//        glfwPollEvents();
+//        glfwWaitEvents();
+                glfwPollEvents();
     }
 
     shutdown();
@@ -119,9 +120,9 @@ void Application::on_window_close(GLFWwindow* glfw_window)
 
 void Application::register_dirty_component(std::shared_ptr<Component> component)
 {
-//    assert(component->is_dirty());
-//    size_t index = static_cast<size_t>(to_number(component->get_kind()));
-//    m_dirty_components.at(index).emplace_back(std::move(component));
+    //    assert(component->is_dirty());
+    //    size_t index = static_cast<size_t>(to_number(component->get_kind()));
+    //    m_dirty_components.at(index).emplace_back(std::move(component));
 }
 
 bool Application::register_widget(std::shared_ptr<Widget> widget)
@@ -164,20 +165,21 @@ void Application::unregister_window(Window* window)
     glfwSetKeyCallback(glfw_window, nullptr);
 
     // unregister the window
-    log_debug << "Unregistered window: " << window->get_title();
     m_windows.erase(iterator);
 }
 
 void Application::shutdown()
 {
     static bool is_running = true;
-    if (is_running) {
-        log_info << "Application shutdown";
-        m_log_handler.stop();
-        glfwTerminate();
-        m_log_handler.join();
-        is_running = false;
+    if (!is_running) {
+        return;
     }
+    is_running = false;
+
+    log_info << "Application shutdown";
+    glfwTerminate();
+    m_log_handler.stop();
+    m_log_handler.join();
 }
 
 Window* Application::get_window(GLFWwindow* glfw_window)

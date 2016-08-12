@@ -70,4 +70,6 @@ HEADERS += \
     include/common/aabr.hpp \
     include/common/real.hpp \
     include/core/shapecomponent.hpp \
-    include/core/shadercomponent.hpp
+    include/core/shadercomponent.hpp \
+    include/core/key_event.hpp \
+    thirdparty/randutils/randutils.hpp

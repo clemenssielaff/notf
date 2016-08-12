@@ -138,6 +138,7 @@ enum class KEY {
 };
 
 /// \brief Actions you can do with a key.
+///
 enum class KEY_ACTION {
     KEY_RELEASE = 0,
     KEY_PRESS,
@@ -191,25 +192,5 @@ inline void set_key(KeyStateSet& state_set, KEY key, bool state)
 ///
 /// \return The same key as signal::KEY.
 KEY from_glfw_key(int key);
-
-/// \brief A key event.
-///
-struct KeyEvent {
-
-    /// \brief The Window to which the event was sent.
-    const Window* window;
-
-    /// \brief The key that triggered this event.
-    const KEY key;
-
-    /// \brief The action that triggered this event.
-    const KEY_ACTION action;
-
-    /// \brief Mask of all active modifiers for this event.
-    const KEY_MODIFIERS modifiers;
-
-    /// \brief The state of all keys.
-    const KeyStateSet stateset;
-};
 
 } // namespace signal

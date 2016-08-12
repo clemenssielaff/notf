@@ -21,6 +21,8 @@ private: // fields
     // TEMP
     GLuint vertex_buffer, vertex_shader, fragment_shader, program;
     GLint mvp_location, vpos_location, vcol_location;
+
+    float test_offset;
 };
 
 } // namespace signal

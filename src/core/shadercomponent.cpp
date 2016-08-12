@@ -1,7 +1,8 @@
 #include "core/shadercomponent.hpp"
 
-
+#include "common/const.hpp"
 #include "linmath.h"
+#include "randutils/randutils.hpp"
 
 static const struct
 {
@@ -31,6 +32,8 @@ namespace signal {
 
 ShaderComponent::ShaderComponent()
 {
+    test_offset = randutils::mt19937_rng().uniform(0.f, static_cast<float>(TWO_PI));
+
     glGenBuffers(1, &vertex_buffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
@@ -53,24 +56,26 @@ ShaderComponent::ShaderComponent()
     glEnableVertexAttribArray(vcol_location);
     glVertexAttribPointer(vcol_location, 3, GL_FLOAT, GL_FALSE,
         sizeof(float) * 5, (void*)(sizeof(float) * 2));
+
+//        glUseProgram(program);
 }
 
 void ShaderComponent::update()
 {
     float ratio;
-    int width = 100;
-    int height = 100;
-    mat4x4 m, p, mvp;
+    int width = 400;
+    int height = 400;
+    mat4x4 model_matrix, projection_matrix, model_view_projection;
     ratio = width / static_cast<float>(height);
     glViewport(0, 0, width, height);
-    glClear(GL_COLOR_BUFFER_BIT);
-    mat4x4_identity(m);
-    mat4x4_rotate_Z(m, m, static_cast<float>(glfwGetTime()));
-    mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
-    mat4x4_mul(mvp, p, m);
-    glUseProgram(program);
-    glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*)mvp);
+    mat4x4_identity(model_matrix);
+    mat4x4_rotate_Z(model_matrix, model_matrix, static_cast<float>(glfwGetTime()) + test_offset);
+    mat4x4_ortho(projection_matrix, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
+    mat4x4_mul(model_view_projection, projection_matrix, model_matrix);
+
+//    mat4x4 model_view_projection;
+//    mat4x4_identity(model_view_projection);
+    glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*)model_view_projection);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 }
-
 }

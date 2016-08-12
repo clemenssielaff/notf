@@ -30,8 +30,13 @@ void LogHandler::start()
 void LogHandler::join()
 {
     if (m_thread.joinable()) {
+        stop();
         m_thread.join();
     }
+
+    // just in case, to sure that all messages are flushed
+    flush_buffer(m_read_buffer);
+    flush_buffer(m_write_buffer);
 }
 
 void LogHandler::run()
