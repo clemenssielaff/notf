@@ -8,6 +8,7 @@
 #include "core/glfw_wrapper.hpp"
 #include "core/key_event.hpp"
 #include "core/widget.hpp"
+#include "graphics/gl_errors.hpp"
 
 namespace signal {
 
@@ -41,7 +42,7 @@ Window::Window(const WindowInfo& info)
     glfwWindowHint(GLFW_RESIZABLE, info.is_resizeable ? GL_TRUE : GL_FALSE);
     glfwWindowHint(GLFW_SAMPLES, std::max(0, info.samples));
 
-    // create the GLFW window
+    // create the GLFW window (error test in next step)
     m_glfw_window.reset(glfwCreateWindow(info.width, info.height, m_title.c_str(), nullptr, nullptr));
 
     // register with the application (if the GLFW window creation failed, this call will exit the application)
@@ -51,8 +52,17 @@ Window::Window(const WindowInfo& info)
     glfwMakeContextCurrent(m_glfw_window.get());
     gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
 
-    log_debug << "Created Window '" << m_title << "' "
-              << "using OpenGl version: " << glad_glGetString(GL_VERSION);
+    // TODO: window info variable for clear color?
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+
+    // log error or success
+    GLenum gl_error = glad_glGetError();
+    if (gl_error != GL_NO_ERROR) {
+        log_critical << "OpenGL error:" << gl_error_string(gl_error);
+    } else {
+        log_info << "Created Window '" << m_title << "' "
+                 << "using OpenGl version: " << glad_glGetString(GL_VERSION);
+    }
 }
 
 Window::~Window()
@@ -73,6 +83,15 @@ void Window::close()
 
 void Window::update()
 {
+    // TODO: is it really necessary to set the context every time?
+    if(glfwGetCurrentContext() != m_glfw_window.get()){ // and how much does it really cost just setting it twice?
+        glfwMakeContextCurrent(m_glfw_window.get());
+    }
+
+    int width, height;
+    glfwGetFramebufferSize(m_glfw_window.get(), &width, &height);
+    glViewport(0, 0, width, height);
+
     glClear(GL_COLOR_BUFFER_BIT);
 
     m_root_widget->redraw();

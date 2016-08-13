@@ -13,11 +13,17 @@ int main(void)
 {
     Window window;
 
+    {
+//        std::shared_ptr<Widget> widget = Widget::make_widget();
+//        widget->set_parent(window.get_root_widget());
 
+//        std::shared_ptr<ShaderComponent> shader = make_component<ShaderComponent>();
+//        widget->set_component(shader);
+    }
 
-    window.on_token_key.connect([&](const KeyEvent& event){
+    window.on_token_key.connect([&](const KeyEvent&){
 
-        for(auto i = 0; i < 100; ++i){
+        for(auto i = 0; i < 1; ++i){
             std::shared_ptr<Widget> widget = Widget::make_widget();
             widget->set_parent(window.get_root_widget());
 
@@ -26,7 +32,7 @@ int main(void)
         }
 
     }, [](const KeyEvent& event){
-        return event.action == KEY_ACTION::KEY_PRESS;
+        return event.action != KEY_ACTION::KEY_RELEASE && event.key == KEY::SPACE;
     });
 
     return Application::get_instance().exec();

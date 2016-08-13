@@ -1,27 +1,39 @@
 #if 0
-#include <iostream>
 
-#include "core/widget.hpp"
+#define SIGNAL_LOG_LEVEL 3
+
+#include <string>
+
 #include "core/application.hpp"
+#include "common/log.hpp"
 using namespace signal;
+
+constexpr const char* derbe_please(ulong i)
+{
+    const char* derbe_please = "Derbe please";
+    const char* derbe_indeed = "Derbe indeed!";
+
+    switch(i){
+    case 0:
+        return derbe_please;
+    default:
+        return derbe_indeed;
+    }
+}
+
 
 int main()
 {
     Application& app = Application::get_instance();
-    std::shared_ptr<Widget> outer = Widget::make_widget();
-    std::shared_ptr<Widget> a = Widget::make_widget(1026);
-    std::shared_ptr<Widget> b = Widget::make_widget();
-    std::shared_ptr<Widget> c = Widget::make_widget();
 
-    Handle blub;
-    {
-        std::shared_ptr<Widget> inner = Widget::make_widget();
-        inner->set_parent(outer);
-        blub = inner->get_handle();
+    set_log_level(LogMessage::LEVEL::WARNING);
+
+    std::string message;
+    message = "Derbe indeed";
+
+    for(ulong i = 0; i < 1000000000; ++i){
+        log_debug << message;
     }
-
-    std::shared_ptr<Widget> inner = app.get_widget(blub);
-    inner = app.get_widget(blub);
 
     return 0;
 }

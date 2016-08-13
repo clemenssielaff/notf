@@ -1,5 +1,42 @@
 #pragma once
 
+/*! @file log.hpp
+ * @brief Signal UI logging mechanism.
+ *
+ * A very powerful, header-only logging library printing out log messages to std::out.
+ *
+ * @section log_logging Logging
+ *
+ * @subsection log_optimization Compile-time optimization
+ *
+ * One important feature is the support compile-time switches to disable log messages under a certain level.
+ * Setting those flags will cause all calls to log_* be compiled away (limitations see below).
+ * This way, you are free to plaster your code with log_debug messages and be sure that they won't negatively affect
+ * runtime performance, if you compile with -DSIGNAL_LOG_LEVEL=2.
+ * Note that this optimization is only true for 'constexpr' log messages, so either string literals like:
+ *
+ * @code
+ * log_debug << "this is a string literal";
+ * @endcode
+ *
+ * or:
+ * @code
+ * log_debug << constexpr_function();
+ * @endcode
+ *
+ * with:
+ *
+ * @code
+ * constexpr const char* constexpr_function()
+ * {
+ *     static const char* message = "return value from a constexpr function";
+ *     return message;
+ * }
+ * @endcode
+ *
+ * Non-constexpr functions might have runtime side-effects and can therefore not be discarted by the compiler.
+ */
+
 #include <iostream>
 #include <mutex>
 #include <sstream>
@@ -281,7 +318,7 @@ struct _NullBuffer {
 ///     log_critical << "Caught unhandled error: " << error_object;
 ///
 /// The object provided by log_* is a std::stringstream or a _NullBuffer, which accepts all the same inputs.
-#ifndef handle_LEVEL
+#ifndef SIGNAL_LOG_LEVEL
 #define SIGNAL_LOG_LEVEL 0 // log all messages if no value for SIGNAL_LOG_LEVEL was given
 #endif
 

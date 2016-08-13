@@ -36,8 +36,7 @@ Widget::~Widget()
 
 void Widget::set_parent(std::shared_ptr<Widget> parent)
 {
-    std::shared_ptr<Widget> this_widget = Application::get_instance().get_widget(m_handle);
-    assert(this_widget);
+    std::shared_ptr<Widget> this_widget = shared_from_this();
 
     // remove yourself from your current parent
     if (std::shared_ptr<Widget> current_parent = m_parent.lock()) {

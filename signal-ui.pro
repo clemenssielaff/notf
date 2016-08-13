@@ -5,7 +5,7 @@ CONFIG -= app_bundle qt
 INCLUDEPATH *= thirdparty/ include/ test/
 
 LIBS *= -L/home/clemens/code/thirdparty/glfw-3.2/INSTALL/lib/
-LIBS *= -lglfw3 -lGL -ldl -lXinerama -lXrandr -lXcursor -lX11 -lXxf86vm -lpthread
+LIBS *= -lglfw3 -lGL -ldl -lpthread -lX11 -lXrandr -lXcursor -lXinerama -lXxf86vm #-lXi
 
 # debug
 CONFIG(debug, debug|release) {
@@ -72,4 +72,8 @@ HEADERS += \
     include/core/shapecomponent.hpp \
     include/core/shadercomponent.hpp \
     include/core/key_event.hpp \
-    thirdparty/randutils/randutils.hpp
+    thirdparty/randutils/randutils.hpp \
+    include/common/random.hpp \
+    thirdparty/GLFW/glfw3.h \
+    thirdparty/GLFW/glfw3native.h \
+    include/graphics/gl_errors.hpp
