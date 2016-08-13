@@ -45,7 +45,8 @@ SOURCES += \
     src/common/aabr.cpp \
     src/common/const.cpp \
     src/core/shapecomponent.cpp \
-    src/core/shadercomponent.cpp
+    src/core/shadercomponent.cpp \
+    src/graphics/load_shaders.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -76,4 +77,11 @@ HEADERS += \
     include/common/random.hpp \
     thirdparty/GLFW/glfw3.h \
     thirdparty/GLFW/glfw3native.h \
-    include/graphics/gl_errors.hpp
+    include/graphics/gl_errors.hpp \
+    include/common/system.hpp \
+    include/graphics/load_shaders.hpp \
+    include/graphics/gl_utils.hpp
+
+DISTFILES += \
+    res/shaders/test01.vert \
+    res/shaders/test01.frag

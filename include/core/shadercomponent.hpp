@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "core/component.hpp"
 #include "core/glfw_wrapper.hpp"
 
@@ -10,7 +12,10 @@ class ShaderComponent : public Component {
 protected:
     explicit ShaderComponent();
 
-public:
+public: // methods
+    /// \brief Destructor.
+    virtual ~ShaderComponent() override;
+
     /// \brief This Component's type.
     virtual KIND get_kind() const override { return KIND::TEXTURE; }
 
@@ -18,11 +23,17 @@ public:
     virtual void update() override;
 
 private: // fields
-    // TEMP
-    GLuint vertex_buffer, vertex_shader, fragment_shader, program;
-    GLint mvp_location, vpos_location, vcol_location;
+    const std::vector<GLfloat> m_vertices;
 
-    float test_offset;
+    const std::vector<GLuint> m_indices;
+
+    GLuint m_vao;
+
+    GLuint m_vbo;
+
+    GLuint m_ebo;
+
+    GLuint m_program;
 };
 
 } // namespace signal

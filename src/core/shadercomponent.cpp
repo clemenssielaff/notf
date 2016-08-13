@@ -1,76 +1,75 @@
 #include "core/shadercomponent.hpp"
 
 #include "common/const.hpp"
-#include "linmath.h"
 #include "common/random.hpp"
-
-static const struct
-{
-    float x, y;
-    float r, g, b;
-} vertices[3] = {
-    { -0.6f, -0.4f, 1.f, 0.f, 0.f },
-    { 0.6f, -0.4f, 0.f, 1.f, 0.f },
-    { 0.f, 0.6f, 0.f, 0.f, 1.f }
-};
-static const char* vertex_shader_text = "uniform mat4 MVP;\n"
-                                        "attribute vec3 vCol;\n"
-                                        "attribute vec2 vPos;\n"
-                                        "varying vec3 color;\n"
-                                        "void main()\n"
-                                        "{\n"
-                                        "    gl_Position = MVP * vec4(vPos, 0.0, 1.0);\n"
-                                        "    color = vCol;\n"
-                                        "}\n";
-static const char* fragment_shader_text = "varying vec3 color;\n"
-                                          "void main()\n"
-                                          "{\n"
-                                          "    gl_FragColor = vec4(color, 1.0);\n"
-                                          "}\n";
+#include "graphics/gl_utils.hpp"
+#include "graphics/load_shaders.hpp"
+#include "linmath.h"
 
 namespace signal {
 
 ShaderComponent::ShaderComponent()
+    : m_vertices{
+        0.5f, 0.5f, 0.0f, // Top Right
+        0.5f, -0.5f, 0.0f, // Bottom Right
+        -0.5f, -0.5f, 0.0f, // Bottom Left
+        -0.5f, 0.5f, 0.0f // Top Left
+    }
+    , m_indices{
+        0, 1, 3, // First Triangle
+        1, 2, 3 // Second Triangle
+    }
+    , m_vao(0)
+    , m_vbo(0)
+    , m_ebo(0)
+    , m_program(0)
 {
-    test_offset = random().uniform(0.f, static_cast<float>(TWO_PI));
+    // create and bind the vertex array object (VAO)
+    glGenVertexArrays(1, &m_vao);
+    VaoBindRAII bind_vao(m_vao);
+    UNUSED(bind_vao);
 
-    glGenBuffers(1, &vertex_buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_shader, 1, &vertex_shader_text, NULL);
-    glCompileShader(vertex_shader);
-    fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_shader, 1, &fragment_shader_text, NULL);
-    glCompileShader(fragment_shader);
-    program = glCreateProgram();
-    glAttachShader(program, vertex_shader);
-    glAttachShader(program, fragment_shader);
-    glLinkProgram(program);
-    mvp_location = glGetUniformLocation(program, "MVP");
-    vpos_location = glGetAttribLocation(program, "vPos");
-    vcol_location = glGetAttribLocation(program, "vCol");
-    glEnableVertexAttribArray(vpos_location);
-    glVertexAttribPointer(vpos_location, 2, GL_FLOAT, GL_FALSE,
-        sizeof(float) * 5, (void*)0);
-    glEnableVertexAttribArray(vcol_location);
-    glVertexAttribPointer(vcol_location, 3, GL_FLOAT, GL_FALSE,
-        sizeof(float) * 5, (void*)(sizeof(float) * 2));
+    // create the vertex buffer
+    glGenBuffers(1, &m_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+    glBufferData(GL_ARRAY_BUFFER,
+        static_cast<GLsizeiptr>(m_vertices.size() * sizeof(decltype(m_vertices)::value_type)),
+        m_vertices.data(),
+        GL_STATIC_DRAW);
+
+    // create the element buffer
+    glGenBuffers(1, &m_ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+        static_cast<GLsizeiptr>(m_indices.size() * sizeof(decltype(m_indices)::value_type)),
+        m_indices.data(),
+        GL_STATIC_DRAW);
+
+    // define the vertex attributes
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), buffer_offset(0));
+    glEnableVertexAttribArray(0);
+
+    // create the shader program
+    m_program = produce_gl_program(
+        "../../res/shaders/test01.vert",
+        "../../res/shaders/test01.frag");
+
+    // TODO: move to window for "draw as wireframe" option?
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+}
+
+ShaderComponent::~ShaderComponent()
+{
+    glDeleteBuffers(1, &m_vbo);
+    glDeleteProgram(m_program); // ignored if uninitialized
 }
 
 void ShaderComponent::update()
 {
-    float ratio;
-    int width = 400;
-    int height = 400;
-    mat4x4 model_matrix, projection_matrix, model_view_projection;
-    ratio = width / static_cast<float>(height);
-    mat4x4_identity(model_matrix);
-    mat4x4_rotate_Z(model_matrix, model_matrix, static_cast<float>(glfwGetTime()) + test_offset);
-    mat4x4_ortho(projection_matrix, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
-    mat4x4_mul(model_view_projection, projection_matrix, model_matrix);
-    glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*)model_view_projection);
-    glUseProgram(program);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glUseProgram(m_program);
+    VaoBindRAII bind_vao(m_vao);
+    UNUSED(bind_vao);
+    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(m_indices.size()), GL_UNSIGNED_INT, 0);
 }
-}
+
+} // namespace signal
