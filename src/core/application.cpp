@@ -6,6 +6,7 @@
 #include <sstream>
 
 #include "common/devel.hpp"
+#include "core/glfw_wrapper.hpp"
 #include "core/key_event.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
@@ -61,8 +62,8 @@ int Application::exec()
         }
 
         // poll and process GLWF events
-//        glfwWaitEvents();
-                glfwPollEvents();
+        //        glfwWaitEvents();
+        glfwPollEvents();
     }
 
     shutdown();

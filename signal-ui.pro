@@ -46,14 +46,15 @@ SOURCES += \
     src/common/const.cpp \
     src/core/shapecomponent.cpp \
     src/core/shadercomponent.cpp \
-    src/graphics/load_shaders.cpp
+    src/graphics/load_shaders.cpp \
+    thirdparty/polypartition/polypartition.cpp
 
 HEADERS += \
     include/core/application.hpp \
     include/core/window.hpp \
     include/common/devel.hpp \
     thirdparty/glad/glad.h \
-    thirdparty/KHR/khrplatform.h \
+    thirdparty/khr/khrplatform.h \
     thirdparty/linmath.h \
     include/core/component.hpp \
     include/common/signal.hpp \
@@ -75,12 +76,14 @@ HEADERS += \
     include/core/key_event.hpp \
     thirdparty/randutils/randutils.hpp \
     include/common/random.hpp \
-    thirdparty/GLFW/glfw3.h \
-    thirdparty/GLFW/glfw3native.h \
+    thirdparty/glfw/glfw3.h \
+    thirdparty/glfw/glfw3native.h \
     include/graphics/gl_errors.hpp \
     include/common/system.hpp \
     include/graphics/load_shaders.hpp \
-    include/graphics/gl_utils.hpp
+    include/graphics/gl_utils.hpp \
+    include/graphics/gl_forwards.hpp \
+    thirdparty/polypartition/polypartition.h
 
 DISTFILES += \
     res/shaders/test01.vert \

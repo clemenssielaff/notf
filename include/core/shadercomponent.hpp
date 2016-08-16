@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "core/component.hpp"
-#include "core/glfw_wrapper.hpp"
+#include "graphics/gl_forwards.hpp"
 
 namespace signal {
 

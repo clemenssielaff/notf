@@ -1,7 +1,5 @@
 #pragma once
 
-#include "glfw_wrapper.hpp"
-
 #include <array>
 #include <atomic>
 #include <memory>
