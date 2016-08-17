@@ -98,7 +98,7 @@ private: // methods for Component
     /// \brief Registers a dirty Component - it will be updated before the next frame.
     ///
     /// \param component    Component to update.
-    void register_dirty_component(std::shared_ptr<Component> component);
+    void register_dirty_component(std::shared_ptr<Component>);
 
 private: // methods for Widget
     /// \brief Registers a new Widget with the Application.

@@ -16,12 +16,4 @@ namespace signal {
  */
 GLuint produce_gl_program(std::string vertex_shader_path, std::string fragment_shader_path);
 
-/*!
- * @brief Helper class to make sure that a Vertex Array Object (VAO) is always unbound after a function exits.
- */
-struct VaoBindRAII {
-    VaoBindRAII(GLuint vao) { glBindVertexArray(vao); }
-    ~VaoBindRAII() { glBindVertexArray(0); }
-};
-
 } // namespace signal

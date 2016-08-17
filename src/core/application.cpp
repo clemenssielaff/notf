@@ -62,8 +62,8 @@ int Application::exec()
         }
 
         // poll and process GLWF events
-        //        glfwWaitEvents();
-        glfwPollEvents();
+        glfwWaitEvents();
+        //glfwPollEvents();
     }
 
     shutdown();
@@ -119,7 +119,7 @@ void Application::on_window_close(GLFWwindow* glfw_window)
     window->close();
 }
 
-void Application::register_dirty_component(std::shared_ptr<Component> component)
+void Application::register_dirty_component(std::shared_ptr<Component>)
 {
     //    assert(component->is_dirty());
     //    size_t index = static_cast<size_t>(to_number(component->get_kind()));
