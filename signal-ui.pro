@@ -47,7 +47,8 @@ SOURCES += \
     src/core/shapecomponent.cpp \
     src/core/shadercomponent.cpp \
     src/graphics/load_shaders.cpp \
-    thirdparty/polypartition/polypartition.cpp
+    thirdparty/polypartition/polypartition.cpp \
+    thirdparty/stb_image/stb_image.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -83,7 +84,8 @@ HEADERS += \
     include/graphics/load_shaders.hpp \
     include/graphics/gl_utils.hpp \
     include/graphics/gl_forwards.hpp \
-    thirdparty/polypartition/polypartition.h
+    thirdparty/polypartition/polypartition.h \
+    thirdparty/stb_image/std_image.h
 
 DISTFILES += \
     res/shaders/test01.vert \

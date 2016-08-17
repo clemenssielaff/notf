@@ -34,6 +34,9 @@ private: // fields
     GLuint m_ebo;
 
     GLuint m_program;
+
+    GLuint m_texture1;
+    GLuint m_texture2;
 };
 
 } // namespace signal
