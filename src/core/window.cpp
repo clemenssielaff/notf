@@ -51,17 +51,15 @@ Window::Window(const WindowInfo& info)
     // setup OpenGl
     glfwMakeContextCurrent(m_glfw_window.get());
     gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
+    glfwSwapInterval(info.enable_vsync ? 1 : 0);
 
     // TODO: window info variable for clear color?
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
     // log error or success
-    GLenum gl_error = glad_glGetError();
-    if (gl_error != GL_NO_ERROR) {
-        log_critical << "OpenGL error:" << gl_error_string(gl_error);
-    } else {
+    if(!check_gl_error()){
         log_info << "Created Window '" << m_title << "' "
-                 << "using OpenGl version: " << glad_glGetString(GL_VERSION);
+                 << "using OpenGl version: " << glGetString(GL_VERSION);
     }
 }
 

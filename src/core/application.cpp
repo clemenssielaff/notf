@@ -53,6 +53,9 @@ Application::~Application()
 
 int Application::exec()
 {
+    double last_time = glfwGetTime();
+    uint frame_count = 0;
+
     // loop until there are no more windows open
     while (m_windows.size() > 0) {
 
@@ -62,8 +65,19 @@ int Application::exec()
         }
 
         // poll and process GLWF events
-        glfwWaitEvents();
-        //glfwPollEvents();
+        //glfwWaitEvents();
+        glfwPollEvents();
+
+        // print time per frame in ms, averaged over the last second
+        ++frame_count;
+        if(glfwGetTime() - last_time >= 1.){
+            double ms_per_frame = 1000./static_cast<double>(frame_count);
+            log_debug << ms_per_frame << "ms/frame "
+                      << "(" << static_cast<uint>(ms_per_frame / (1./6.)) << "%) = "
+                      << frame_count << "f/s";
+            frame_count = 0;
+            last_time += 1.;
+        }
     }
 
     shutdown();

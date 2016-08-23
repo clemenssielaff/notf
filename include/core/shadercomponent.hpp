@@ -4,6 +4,7 @@
 
 #include "core/component.hpp"
 #include "graphics/gl_forwards.hpp"
+#include "graphics/shader.hpp"
 
 namespace signal {
 
@@ -33,7 +34,7 @@ private: // fields
 
     GLuint m_ebo;
 
-    GLuint m_program;
+    Shader m_shader;
 
     GLuint m_texture1;
     GLuint m_texture2;

@@ -34,6 +34,9 @@ struct WindowInfo {
     /// \brief Number of samples for multisampling, <=0 disables multisampling
     int samples = 2;
 
+    /// \brief If vertical synchronization is turned on or off.
+    bool enable_vsync = true;
+
     /// \brief Window title.
     std::string title = "Window";
 };

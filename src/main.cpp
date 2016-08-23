@@ -11,7 +11,9 @@ using namespace signal;
 
 int main(void)
 {
-    Window window;
+    WindowInfo window_info;
+    window_info.enable_vsync = false; // to correctly time each frame
+    Window window(window_info);
 
     {
 //        std::shared_ptr<Widget> widget = Widget::make_widget();
