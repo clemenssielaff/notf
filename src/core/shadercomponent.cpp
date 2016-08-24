@@ -1,9 +1,10 @@
 #include "core/shadercomponent.hpp"
 
+#include <glad/glad.h>
+
 #include "common/const.hpp"
 #include "common/log.hpp"
 #include "common/random.hpp"
-#include "core/glfw_wrapper.hpp"
 #include "graphics/gl_utils.hpp"
 #include "linmath.h"
 #include "thirdparty/stb_image/std_image.h"
@@ -32,8 +33,8 @@ ShaderComponent::ShaderComponent()
     , m_vbo(0)
     , m_ebo(0)
     , m_shader()
-    , m_texture1(0)
-    , m_texture2(0)
+    , m_texture1()
+    , m_texture2()
 {
     // create and bind the vertex array object (VAO)
     glGenVertexArrays(1, &m_vao);
@@ -86,46 +87,8 @@ ShaderComponent::ShaderComponent()
     }
 
     // setup the textures
-    {
-        int tex_width, tex_height, tex_bits;
-        static std::string texture_path = "/home/clemens/temp/container.png";
-        unsigned char* data = stbi_load(texture_path.c_str(), &tex_width, &tex_height, &tex_bits, 0);
-        if (!data) {
-            log_critical << "Failed to load file from: " << texture_path;
-        } else {
-            glGenTextures(1, &m_texture1);
-            glBindTexture(GL_TEXTURE_2D, m_texture1);
-            glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, transparent);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex_width, tex_height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-            glGenerateMipmap(GL_TEXTURE_2D);
-            glBindTexture(GL_TEXTURE_2D, 0);
-        }
-        stbi_image_free(data);
-    }
-    {
-        int tex_width, tex_height, tex_bits;
-        static std::string texture_path = "/home/clemens/temp/awesomeface.jpg";
-        unsigned char* data = stbi_load(texture_path.c_str(), &tex_width, &tex_height, &tex_bits, 0);
-        if (!data) {
-            log_critical << "Failed to load file from: " << texture_path;
-        } else {
-            glGenTextures(1, &m_texture2);
-            glBindTexture(GL_TEXTURE_2D, m_texture2);
-            glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, transparent);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex_width, tex_height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-            glGenerateMipmap(GL_TEXTURE_2D);
-            glBindTexture(GL_TEXTURE_2D, 0);
-        }
-        stbi_image_free(data);
-    }
+    m_texture1 = Texture2::load("/home/clemens/temp/container.png");
+    m_texture2 = Texture2::load("/home/clemens/temp/awesomeface2.png");
 
     // TODO: move to window for "draw as wireframe" option?
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -141,11 +104,11 @@ void ShaderComponent::update()
     m_shader.use();
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, m_texture1);
+    m_texture1.bind();
     glUniform1i(glGetUniformLocation(m_shader.get_id(), "ourTexture1"), 0);
 
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, m_texture2);
+    m_texture2.bind();
     glUniform1i(glGetUniformLocation(m_shader.get_id(), "ourTexture2"), 1);
 
     VaoBindRAII bind_vao(m_vao);

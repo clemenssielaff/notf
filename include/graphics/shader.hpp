@@ -2,20 +2,46 @@
 
 #include <string>
 
-#include "glm/glm.hpp" // TODO: remove glm in favor of my own vector / matrix classes?
+#include "common/vector2.hpp"
 #include "graphics/gl_forwards.hpp"
 
 namespace signal {
 
 /**
  * /brief Manages the compilation, runtime functionality and resources of an OpenGL shader program.
- *
- * /param vertex_shader_path    Path to the vertex shader file.
- * /param fragment_shader_path  Path to the fragment shader file.
- *
- * /return  OpenGL handle for the produced shader, will be zero if the compilation failed.
  */
 class Shader {
+
+public: // enums
+    /**
+     * \brief Shader stages.
+     */
+    enum class STAGE {
+        INVALID = 0,
+        VERTEX,
+        FRAGMENT,
+        GEOMETRY,
+    };
+
+    /**
+     * \brief Returns the name of the given Shader stage.
+     * \param stage Requested stage.
+     * \return Name of the requested stage.
+     */
+    static const std::string& stage_name(const STAGE stage);
+
+public: // static methods
+    /**
+     * \brief Compiles a Shader instance from source files.
+     * \param vertex_shader_path    Path to a vertex shader source file.
+     * \param fragment_shader_path  Path to a fragment shader source file.
+     * \param geometry_shader_path  (optional) Path to a geometry shader source file.
+     * \return Shader instance, is empty if the compilation failed.
+     */
+    static Shader from_sources(
+        const std::string& vertex_shader_path,
+        const std::string& fragment_shader_path,
+        const std::string& geometry_shader_path = "");
 
 private: // methods
     /**
@@ -27,22 +53,9 @@ private: // methods
     {
     }
 
-public: // static methods
-    /**
-     * \brief Compiles a Shader instance from source files.
-     * \param vertex_shader_path    Path to a vertex shader source file.
-     * \param fragment_shader_path  Path to a fragment shader source file.
-     * \param geometry_shader_path  (optional) Path to a geometry shader source file.
-     * \return Shader instace.
-     */
-    static Shader from_sources(
-        const std::string& vertex_shader_path,
-        const std::string& fragment_shader_path,
-        const std::string& geometry_shader_path = "");
-
 public: // methods
     /**
-     * \brief Default constructor.
+     * \brief Default constructor, produces an empty Shader.
      */
     explicit Shader()
         : m_id(0)
@@ -95,73 +108,66 @@ public: // methods
     GLuint get_id() const { return m_id; }
 
     /**
+     * \brief Checks if this Shader is empty.
+     */
+    bool is_empty() const { return m_id == 0; }
+
+    /**
      * \brief Activates this Shader in OpenGL.
      * \return This Shader.
      */
     Shader& use();
 
-    /*
+    /**
      * \brief Sets an uniform float in this Shader.
      * \param name  Name of the uniform to set.
      * \param value New value.
      */
     void set_uniform(const GLchar* name, GLfloat value);
 
-    /*
+    /**
      * \brief Sets an uniform integer in this Shader.
      * \param name  Name of the uniform to set.
      * \param value New value.
      */
     void set_uniform(const GLchar* name, GLint value);
 
-    /*
+    /**
      * \brief Sets an uniform 2D float vector in this Shader.
      * \param name  Name of the uniform to set.
      * \param value New value.
      */
     void set_uniform(const GLchar* name, GLfloat x, GLfloat y);
 
-    /*
+    /**
      * \brief Sets an uniform 2D float vector in this Shader.
      * \param name  Name of the uniform to set.
      * \param value New value.
      */
-    void set_uniform(const GLchar* name, const glm::vec2& value);
+    void set_uniform(const GLchar* name, const Vector2& value);
 
-    /*
+    /**
      * \brief Sets an uniform 3D float vector in this Shader.
      * \param name  Name of the uniform to set.
      * \param value New value.
      */
     void set_uniform(const GLchar* name, GLfloat x, GLfloat y, GLfloat z);
 
-    /*
-     * \brief Sets an uniform 3D float vector in this Shader.
-     * \param name  Name of the uniform to set.
-     * \param value New value.
-     */
-    void set_uniform(const GLchar* name, const glm::vec3& value);
-
-    /*
+    /**
      * \brief Sets an uniform 4D float vector in this Shader.
      * \param name  Name of the uniform to set.
      * \param value New value.
      */
     void set_uniform(const GLchar* name, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
 
-    /*
-     * \brief Sets an uniform 4D float vector in this Shader.
-     * \param name  Name of the uniform to set.
-     * \param value New value.
+private: // static methods
+    /**
+     * \brief Compiles a single shader stage from a given source file.
+     * \param stage         Stage of the shader represented by the source.
+     * \param shader_path   Source file to compile.
+     * \return OpenGL ID of the shader - is 0 on error.
      */
-    void set_uniform(const GLchar* name, const glm::vec4& value);
-
-    /*
-     * \brief Sets an uniform 4x4 matrix in this Shader.
-     * \param name  Name of the uniform to set.
-     * \param value New value.
-     */
-    void set_uniform(const GLchar* name, const glm::mat4& matrix);
+    static GLuint compile(STAGE stage, const std::string& shader_path);
 
 private: // fields
     /**

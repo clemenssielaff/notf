@@ -1,11 +1,12 @@
 #pragma once
 
+#include <glad/glad.h>
+
 #include "common/log.hpp"
-#include "core/glfw_wrapper.hpp"
 
 namespace signal {
 
-/*!
+/**
  * \brief String representation of an OpenGl error code.
  *
  * \remark Is a constant expression so it can be used as optimizable input to log_* - functions.
@@ -56,7 +57,7 @@ constexpr const char* gl_error_string(GLenum error_code)
 }
 
 #if SIGNAL_LOG_LEVEL <= 3
-/*!
+/**
  * \brief Checks if there was an OpenGL error and reports it to Signal's logger.
  *
  * \param line      Line at which the error occurred.
@@ -78,7 +79,7 @@ int _check_gl_error(uint line, const char* file, const char* function)
 }
 #define check_gl_error() _check_gl_error(__LINE__, signal::basename(__FILE__), __FUNCTION__)
 #else
-#define check_gl_error() (false)
+#define check_gl_error() 0
 #endif
 
 } // namespace signal

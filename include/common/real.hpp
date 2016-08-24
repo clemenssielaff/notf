@@ -8,7 +8,7 @@
 
 namespace signal {
 
-using Real = double;
+using Real = float;
 
 using std::abs;
 using std::max;

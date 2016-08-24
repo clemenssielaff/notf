@@ -35,148 +35,115 @@ private:
     GLuint m_program;
 };
 
+/**
+ * \brief Produces an empty Shader.
+ */
+signal::Shader empty_shader()
+{
+    return signal::Shader();
+}
+
 } // namespace anonymous
 
 namespace signal {
+
+const std::string& Shader::stage_name(const STAGE stage)
+{
+    static const std::string invalid = "invalid";
+    static const std::string vertex = "vertex";
+    static const std::string fragment = "fragment";
+    static const std::string geometry = "geometry";
+    static const std::string unknown = "unknown";
+
+    switch (stage) {
+    case STAGE::INVALID:
+        return invalid;
+    case STAGE::VERTEX:
+        return vertex;
+    case STAGE::FRAGMENT:
+        return fragment;
+    case STAGE::GEOMETRY:
+        return geometry;
+    }
+    return unknown;
+}
 
 Shader Shader::from_sources(
     const std::string& vertex_shader_path,
     const std::string& fragment_shader_path,
     const std::string& geometry_shader_path)
 {
-    // compile the vertex shader
-    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    // compile the mandatory shaders
+    GLuint vertex_shader = compile(STAGE::VERTEX, vertex_shader_path);
     ShaderRAII vertex_shader_raii(vertex_shader);
-    {
-        std::string vertex_shader_code = read_file(vertex_shader_path);
-        char const* vertex_source_ptr = vertex_shader_code.c_str();
-        glShaderSource(vertex_shader, 1, &vertex_source_ptr, nullptr);
-        glCompileShader(vertex_shader);
-
-        // check for errors
-        GLint success = GL_FALSE;
-        glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
-        if (!success) {
-            GLint error_size;
-            glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &error_size);
-            std::vector<char> error_message(static_cast<size_t>(error_size));
-            glGetShaderInfoLog(vertex_shader, error_size, nullptr, &error_message[0]);
-            log_critical << "Failed to compile vertex shader '"
-                         << basename(vertex_shader_path.c_str()) << "'\n\t"
-                         << error_message.data();
-            return Shader();
-        }
-    }
-
-    // compile the fragment shader
-    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    GLuint fragment_shader = compile(STAGE::FRAGMENT, fragment_shader_path);
     ShaderRAII fragment_shader_raii(fragment_shader);
-    {
-        std::string fragment_shader_code = read_file(fragment_shader_path);
-        char const* fragment_source_ptr = fragment_shader_code.c_str();
-        glShaderSource(fragment_shader, 1, &fragment_source_ptr, nullptr);
-        glCompileShader(fragment_shader);
-
-        // check for errors
-        GLint success = GL_FALSE;
-        glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
-        if (!success) {
-            GLint error_size;
-            glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH, &error_size);
-            std::vector<char> error_message(static_cast<size_t>(error_size));
-            glGetShaderInfoLog(fragment_shader, error_size, nullptr, &error_message[0]);
-            log_critical << "Failed to compile fragment shader '"
-                         << basename(fragment_shader_path.c_str()) << "'\n\t"
-                         << error_message.data();
-            return Shader();
-        }
+    if (!(vertex_shader && fragment_shader)) {
+        return empty_shader();
     }
 
+    // compile the optional geometry shader
     GLuint geometry_shader = 0;
-    ShaderRAII geometry_shader_raii(geometry_shader);
     if (!geometry_shader_path.empty()) {
-#ifdef GL_GEOMETRY_SHADER
-        geometry_shader = glCreateShader(GL_GEOMETRY_SHADER);
-
-        std::string geometry_shader_code = read_file(geometry_shader_path);
-        char const* geometry_source_ptr = geometry_shader_code.c_str();
-        glShaderSource(geometry_shader, 1, &geometry_source_ptr, nullptr);
-        glCompileShader(geometry_shader);
-
-        // check for errors
-        GLint success = GL_FALSE;
-        glGetShaderiv(geometry_shader, GL_COMPILE_STATUS, &success);
-        if (!success) {
-            GLint error_size;
-            glGetShaderiv(geometry_shader, GL_INFO_LOG_LENGTH, &error_size);
-            std::vector<char> error_message(static_cast<size_t>(error_size));
-            glGetShaderInfoLog(geometry_shader, error_size, nullptr, &error_message[0]);
-            log_critical << "Failed to compile geometry shader '"
-                         << basename(geometry_shader_path.c_str()) << "'\n\t"
-                         << error_message.data();
-            return Shader();
+        geometry_shader = compile(STAGE::GEOMETRY, geometry_shader_path);
+        if (!geometry_shader) {
+            return empty_shader();
         }
-#else
-        log_warning << "Ignored geometry shader '" << geometry_shader_path
-                    << "' because geometry shaders are not supprted in this version of OpenGL "
-                    << "(" << glGetString(GL_VERSION) << ")";
-#endif
     }
+    ShaderRAII geometry_shader_raii(geometry_shader);
 
     // link the program
     GLuint program = glCreateProgram();
-    {
-        glAttachShader(program, vertex_shader);
-        vertex_shader_raii.set_program(program);
-        glAttachShader(program, fragment_shader);
-        fragment_shader_raii.set_program(program);
+    glAttachShader(program, vertex_shader);
+    vertex_shader_raii.set_program(program);
+    glAttachShader(program, fragment_shader);
+    fragment_shader_raii.set_program(program);
+    if (geometry_shader) {
+        glAttachShader(program, geometry_shader);
+        geometry_shader_raii.set_program(program);
+    }
+    glLinkProgram(program);
+
+    // check for errors
+    GLint success = GL_FALSE;
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
+    if (success) {
         if (geometry_shader) {
-            glAttachShader(program, geometry_shader);
-            geometry_shader_raii.set_program(program);
-        }
-        glLinkProgram(program);
-
-        // check for errors
-        GLint success = GL_FALSE;
-        glGetProgramiv(program, GL_LINK_STATUS, &success);
-        if (success) {
-            if (geometry_shader) {
-                log_debug << "Compiled and linked shader program with vertex shader '"
-                          << basename(vertex_shader_path.c_str())
-                          << "', fragment shader '"
-                          << basename(fragment_shader_path.c_str()) << "'"
-                          << "', and geometry shader '"
-                          << basename(geometry_shader_path.c_str()) << "'";
-            } else {
-                log_debug << "Compiled and linked shader program with vertex shader '"
-                          << basename(vertex_shader_path.c_str())
-                          << "' and fragment shader '"
-                          << basename(fragment_shader_path.c_str()) << "'";
-            }
-
+            log_debug << "Compiled and linked shader program with vertex shader '"
+                      << basename(vertex_shader_path.c_str())
+                      << "', fragment shader '"
+                      << basename(fragment_shader_path.c_str()) << "'"
+                      << "', and geometry shader '"
+                      << basename(geometry_shader_path.c_str()) << "'";
         } else {
-            GLint error_size;
-            glGetProgramiv(program, GL_INFO_LOG_LENGTH, &error_size);
-            std::vector<char> error_message(static_cast<size_t>(error_size));
-            glGetProgramInfoLog(program, error_size, nullptr, &error_message[0]);
-            if (geometry_shader) {
-                log_critical << "Failed to link shader program with vertex shader '"
-                             << basename(vertex_shader_path.c_str())
-                             << "', fragment shader '"
-                             << basename(fragment_shader_path.c_str())
-                             << "', and geometry shader '"
-                             << basename(geometry_shader_path.c_str()) << "'\n\t"
-                             << error_message.data();
-            } else {
-                log_critical << "Failed to link shader program with vertex shader '"
-                             << basename(vertex_shader_path.c_str())
-                             << "' and fragment shader '"
-                             << basename(fragment_shader_path.c_str()) << "'\n\t"
-                             << error_message.data();
-            }
-            glDeleteProgram(program);
-            return Shader();
+            log_debug << "Compiled and linked shader program with vertex shader '"
+                      << basename(vertex_shader_path.c_str())
+                      << "' and fragment shader '"
+                      << basename(fragment_shader_path.c_str()) << "'";
         }
+
+    } else {
+        GLint error_size;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &error_size);
+        std::vector<char> error_message(static_cast<size_t>(error_size));
+        glGetProgramInfoLog(program, error_size, nullptr, &error_message[0]);
+        if (geometry_shader) {
+            log_critical << "Failed to link shader program with vertex shader '"
+                         << basename(vertex_shader_path.c_str())
+                         << "', fragment shader '"
+                         << basename(fragment_shader_path.c_str())
+                         << "', and geometry shader '"
+                         << basename(geometry_shader_path.c_str()) << "'\n\t"
+                         << error_message.data();
+        } else {
+            log_critical << "Failed to link shader program with vertex shader '"
+                         << basename(vertex_shader_path.c_str())
+                         << "' and fragment shader '"
+                         << basename(fragment_shader_path.c_str()) << "'\n\t"
+                         << error_message.data();
+        }
+        glDeleteProgram(program);
+        return empty_shader();
     }
 
     return Shader(program);
@@ -189,6 +156,9 @@ Shader::~Shader()
 
 Shader& Shader::use()
 {
+    if(is_empty()){
+        log_warning << "Using empty Shader";
+    }
     glUseProgram(m_id);
     return *this;
 }
@@ -208,9 +178,9 @@ void Shader::set_uniform(const GLchar* name, GLfloat x, GLfloat y)
     glUniform2f(glGetUniformLocation(m_id, name), x, y);
 }
 
-void Shader::set_uniform(const GLchar* name, const glm::vec2& value)
+void Shader::set_uniform(const GLchar* name, const Vector2& value)
 {
-    glUniform2f(glGetUniformLocation(m_id, name), value.x, value.y);
+    glUniform2f(glGetUniformLocation(m_id, name), static_cast<GLfloat>(value.x), static_cast<GLfloat>(value.y));
 }
 
 void Shader::set_uniform(const GLchar* name, GLfloat x, GLfloat y, GLfloat z)
@@ -218,24 +188,61 @@ void Shader::set_uniform(const GLchar* name, GLfloat x, GLfloat y, GLfloat z)
     glUniform3f(glGetUniformLocation(m_id, name), x, y, z);
 }
 
-void Shader::set_uniform(const GLchar* name, const glm::vec3& value)
-{
-    glUniform3f(glGetUniformLocation(m_id, name), value.x, value.y, value.z);
-}
-
 void Shader::set_uniform(const GLchar* name, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 {
     glUniform4f(glGetUniformLocation(m_id, name), x, y, z, w);
 }
 
-void Shader::set_uniform(const GLchar* name, const glm::vec4& value)
+GLuint Shader::compile(STAGE stage, const std::string& shader_path)
 {
-    glUniform4f(glGetUniformLocation(m_id, name), value.x, value.y, value.z, value.w);
-}
+    // create the OpenGL shader
+    GLuint shader = 0;
+    switch (stage) {
+    case STAGE::VERTEX:
+        shader = glCreateShader(GL_VERTEX_SHADER);
+        break;
+    case STAGE::FRAGMENT:
+        shader = glCreateShader(GL_FRAGMENT_SHADER);
+        break;
+    case STAGE::GEOMETRY:
+#ifdef GL_GEOMETRY_SHADER
+        shader = glCreateShader(GL_GEOMETRY_SHADER);
+        break;
+#else
+        log_critical << "Cannot compile geometry shader '" << shader_path
+                     << "' because geometry shaders are not supprted in this version of OpenGL "
+                     << "(" << glGetString(GL_VERSION) << ")";
+        return 0;
+#endif
+    case STAGE::INVALID:
+    default:
+        log_critical << "Cannot compile " << stage_name(stage) << " Shader '" << shader_path << "'";
+        return 0;
+    }
+    assert(shader);
 
-void Shader::set_uniform(const GLchar* name, const glm::mat4& matrix)
-{
-    glUniformMatrix4fv(glGetUniformLocation(m_id, name), 1, GL_FALSE, glm::value_ptr(matrix));
+    // compile the shader
+    std::string shader_code = read_file(shader_path);
+    char const* code_ptr = shader_code.c_str();
+    glShaderSource(shader, 1, &code_ptr, nullptr);
+    glCompileShader(shader);
+
+    // check for errors
+    GLint success = GL_FALSE;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (success) {
+        return shader;
+    } else {
+        GLint error_size;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &error_size);
+        std::vector<char> error_message(static_cast<size_t>(error_size));
+        glGetShaderInfoLog(shader, error_size, nullptr, &error_message[0]);
+        log_critical << "Failed to compile " << stage_name(stage) << " shader '"
+                     << basename(shader_path.c_str()) << "'\n\t"
+                     << error_message.data();
+        glDeleteShader(shader);
+        return 0;
+    }
 }
 
 } // namespace signal

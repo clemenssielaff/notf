@@ -5,6 +5,7 @@
 #include "core/component.hpp"
 #include "graphics/gl_forwards.hpp"
 #include "graphics/shader.hpp"
+#include "graphics/texture2.hpp"
 
 namespace signal {
 
@@ -36,8 +37,8 @@ private: // fields
 
     Shader m_shader;
 
-    GLuint m_texture1;
-    GLuint m_texture2;
+    Texture2 m_texture1;
+    Texture2 m_texture2;
 };
 
 } // namespace signal
