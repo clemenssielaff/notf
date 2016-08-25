@@ -310,6 +310,16 @@ struct _NullBuffer {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#define SIGNAL_LOG_LEVEL_DEBUG 1
+#define SIGNAL_LOG_LEVEL_INFO 2
+#define SIGNAL_LOG_LEVEL_WARNING 3
+#define SIGNAL_LOG_LEVEL_CRITICAL 4
+#define SIGNAL_LOG_LEVEL_FATAL 5
+
+#ifndef SIGNAL_LOG_LEVEL
+#define SIGNAL_LOG_LEVEL 0 // log all messages if no value for SIGNAL_LOG_LEVEL was given
+#endif
+
 /// Define log_* macros.
 ///
 /// Use these macros like this:
@@ -318,56 +328,52 @@ struct _NullBuffer {
 ///     log_critical << "Caught unhandled error: " << error_object;
 ///
 /// The object provided by log_* is a std::stringstream or a _NullBuffer, which accepts all the same inputs.
-#ifndef SIGNAL_LOG_LEVEL
-#define SIGNAL_LOG_LEVEL 0 // log all messages if no value for SIGNAL_LOG_LEVEL was given
-#endif
-
 #ifndef log_debug
-#if SIGNAL_LOG_LEVEL <= 1
+#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_DEBUG
 #define log_debug signal::LogMessageFactory(signal::LogMessage::LEVEL::DEBUG, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_debug signal::_NullBuffer()
 #endif
 #else
-#warning "Macro "log_debug" is already defined - Signal'slog_debug macro will remain disabled."
+#warning "Macro 'log_debug' is already defined - Signal's log_debug macro will remain disabled."
 #endif
 
 #ifndef log_info
-#if SIGNAL_LOG_LEVEL <= 2
+#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_INFO
 #define log_info signal::LogMessageFactory(signal::LogMessage::LEVEL::INFO, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_info signal::_NullBuffer()
 #endif
 #else
-#warning "Macro "log_info" is already defined - Signal'slog_info macro will remain disabled."
+#warning "Macro 'log_info' is already defined - Signal's log_info macro will remain disabled."
 #endif
 
 #ifndef log_warning
-#if SIGNAL_LOG_LEVEL <= 3
+#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_WARNING
 #define log_warning signal::LogMessageFactory(signal::LogMessage::LEVEL::WARNING, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_warning signal::_NullBuffer()
 #endif
 #else
-#warning "Macro "log_warning" is already defined - Signal'slog_warning macro will remain disabled."
+#warning "Macro 'log_warning' is already defined - Signal's log_warning macro will remain disabled."
 #endif
 
 #ifndef log_critical
-#if SIGNAL_LOG_LEVEL <= 4
+#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_CRITICAL
 #define log_critical signal::LogMessageFactory(signal::LogMessage::LEVEL::CRITICAL, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_critical signal::_NullBuffer()
 #endif
 #else
-#warning "Macro "log_critical" is already defined - Signal'slog_critical macro will remain disabled."
+#warning "Macro 'log_critical' is already defined - Signal's log_critical macro will remain disabled."
 #endif
 
 #ifndef log_fatal
-#if SIGNAL_LOG_LEVEL <= 5
+#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_FATAL
 #define log_fatal signal::LogMessageFactory(signal::LogMessage::LEVEL::FATAL, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_fatal signal::_NullBuffer()
 #endif
 #else
-#warning "Macro "log_fatal" is already defined - Signal'slog_fatal macro will remain disabled."
+#warning "Macro 'log_fatal' is already defined - Signal's log_fatal macro will remain disabled."
 #endif

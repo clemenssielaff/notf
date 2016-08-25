@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <type_traits>
 
 namespace signal {
@@ -15,7 +16,7 @@ namespace signal {
 template <typename Enum>
 constexpr auto to_number(Enum enumerator) noexcept
 {
-    return static_cast<std::underlying_type_t<Enum> >(enumerator);
+    return static_cast<std::underlying_type_t<Enum>>(enumerator);
 }
 
 /// Turns a #define macro into a const char* usable at compile time.
@@ -33,6 +34,17 @@ struct CanCopy {
         b = a;
     }
     CanCopy() { void (*p)(T1, T2) = constraints; }
+};
+
+// https://stackoverflow.com/a/8147213/3444217 and https://stackoverflow.com/a/25069711/3444217
+template <typename T>
+class MakeSharedEnabler : public T {
+public:
+    template <typename... Args>
+    MakeSharedEnabler(Args&&... args)
+        : T(std::forward<Args>(args)...)
+    {
+    }
 };
 
 } // namespace signal

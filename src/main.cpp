@@ -1,4 +1,4 @@
-#if 1
+#if 0
 
 #include "common/signal.hpp"
 #include "core/application.hpp"

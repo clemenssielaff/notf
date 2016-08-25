@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 
 #include "graphics/gl_forwards.hpp"
@@ -8,8 +9,12 @@ namespace signal {
 
 /**
  * \brief Manages the loading and setup of an OpenGL texture.
+ *
+ * The Texture2 object has minimal state, it queries all additional values from the OpenGL texture.
+ * Every time you ask for a value via get_*(), OpenGL has to rebind the texture.
+ * If this ever becomes a performance bottleneck, we can pull more state into this class.
  */
-class Texture2 {
+class Texture2 : public std::enable_shared_from_this<Texture2> {
 
 public: // static methods
     /**
@@ -17,82 +22,27 @@ public: // static methods
      * \param texture_path  Path to a texture file.
      * \return Texture2 instance, is empty if the texture could not be loaded.
      */
-    static Texture2 load(const std::string& texture_path);
+    static std::shared_ptr<Texture2> load(const std::string& texture_path);
 
-private: // methods
     /**
-     * \brief Value constructor.
-     * \param id                OpenGL texture ID.
-     * \param width             Width of the loaded image in pixels.
-     * \param height            Height of the loaded image in pixels.
+     * \brief Unbinds any current active GL_TEXTURE_2D.
      */
-    explicit Texture2(const GLuint id, const GLuint width, const GLuint height)
-        : m_id(id)
-        , m_width(width)
-        , m_height(height)
-    {
-    }
+    static void unbind();
 
 public: // methods
-    /**
-     * \brief Default constructor - produces an empty Texture2.
-     */
-    explicit Texture2()
-        : m_id(0)
-        , m_width(0)
-        , m_height(0)
-    {
-    }
+    /// no copy / assignment
+    Texture2(const Texture2&) = delete;
+    Texture2& operator=(const Texture2&) = delete;
 
     /**
      * \brief Destructor.
      */
     ~Texture2();
 
-    Texture2(const Texture2&) = delete; // no copy construction
-    Texture2& operator=(const Texture2&) = delete; // no copy assignment
-
-    /**
-     * \brief Move constructor.
-     * \param other Texture2 to move from.
-     */
-    Texture2(Texture2&& other) noexcept
-        : Texture2()
-    {
-        swap(*this, other);
-    }
-
-    /**
-     * \brief Assignment operator with rvalue.
-     * \param other Texture2 to assign from.
-     * \return This Texture2.
-     */
-    Texture2& operator=(Texture2&& other) noexcept
-    {
-        swap(*this, other);
-        return *this;
-    }
-
-    /**
-     * \brief Swap specialization
-     * \param first     One of the two Textures to swap.
-     * \param second    The other of the two Textures to swap.
-     */
-    friend void swap(Texture2& first, Texture2& second) noexcept
-    {
-        using std::swap;
-        swap(first.m_id, second.m_id);
-    }
-
     /**
      * \brief The OpenGL ID of this Texture2.
      */
     GLuint get_id() const { return m_id; }
-
-    /**
-     * \brief Checks if this Texture2 is empty.
-     */
-    bool is_empty() const { return m_id == 0; }
 
     /**
      * \brief Width of the loaded image in pixels.
@@ -153,11 +103,19 @@ public: // methods
      */
     void bind() const;
 
-public: // static methods
+protected: // methods
     /**
-     * \brief Unbinds any current active GL_TEXTURE_2D.
+     * \brief Value constructor.
+     * \param id        OpenGL texture ID.
+     * \param width     Width of the loaded image in pixels.
+     * \param height    Height of the loaded image in pixels.
      */
-    static void unbind();
+    explicit Texture2(const GLuint id, const GLuint width, const GLuint height)
+        : m_id(id)
+        , m_width(width)
+        , m_height(height)
+    {
+    }
 
 private: // fields
     /**

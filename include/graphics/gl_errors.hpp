@@ -56,7 +56,7 @@ constexpr const char* gl_error_string(GLenum error_code)
     }
 }
 
-#if SIGNAL_LOG_LEVEL <= 3
+#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_WARNING
 /**
  * \brief Checks if there was an OpenGL error and reports it to Signal's logger.
  *

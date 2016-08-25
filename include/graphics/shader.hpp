@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 
 #include "common/vector2.hpp"
@@ -10,7 +11,7 @@ namespace signal {
 /**
  * /brief Manages the compilation, runtime functionality and resources of an OpenGL shader program.
  */
-class Shader {
+class Shader: public std::enable_shared_from_this<Shader> {
 
 public: // enums
     /**
@@ -32,18 +33,18 @@ public: // enums
 
 public: // static methods
     /**
-     * \brief Compiles a Shader instance from source files.
+     * \brief Builds an OpenGL Shader instance from source files.
      * \param vertex_shader_path    Path to a vertex shader source file.
      * \param fragment_shader_path  Path to a fragment shader source file.
      * \param geometry_shader_path  (optional) Path to a geometry shader source file.
      * \return Shader instance, is empty if the compilation failed.
      */
-    static Shader from_sources(
+    static std::shared_ptr<Shader> build(
         const std::string& vertex_shader_path,
         const std::string& fragment_shader_path,
         const std::string& geometry_shader_path = "");
 
-private: // methods
+protected: // methods
     /**
      * \brief Value constructor.
      * \param id    OpenGL shader ID.
@@ -54,63 +55,19 @@ private: // methods
     }
 
 public: // methods
-    /**
-     * \brief Default constructor, produces an empty Shader.
-     */
-    explicit Shader()
-        : m_id(0)
-    {
-    }
+    /// no copy / assignment
+    Shader(const Shader&) = delete;
+    Shader& operator=(const Shader&) = delete;
 
     /**
      * \brief Destructor.
      */
     ~Shader();
 
-    Shader(const Shader&) = delete; // no copy construction
-    Shader& operator=(const Shader&) = delete; // no copy assignment
-
-    /**
-     * \brief Move constructor.
-     * \param other Shader to move from.
-     */
-    Shader(Shader&& other) noexcept
-        : Shader()
-    {
-        swap(*this, other);
-    }
-
-    /**
-     * \brief Assignment operator with rvalue.
-     * \param other Shader to assign from.
-     * \return This Shader.
-     */
-    Shader& operator=(Shader&& other) noexcept
-    {
-        swap(*this, other);
-        return *this;
-    }
-
-    /**
-     * \brief Swap specialization
-     * \param first     One of the two Shaders to swap.
-     * \param second    The other of the two Shader to swap.
-     */
-    friend void swap(Shader& first, Shader& second) noexcept
-    {
-        using std::swap;
-        swap(first.m_id, second.m_id);
-    }
-
     /**
      * \brief The OpenGL ID of this Shader.
      */
     GLuint get_id() const { return m_id; }
-
-    /**
-     * \brief Checks if this Shader is empty.
-     */
-    bool is_empty() const { return m_id == 0; }
 
     /**
      * \brief Activates this Shader in OpenGL.

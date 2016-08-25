@@ -3,6 +3,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
 
+#include "common/devel.hpp"
 #include "common/log.hpp"
 #include "common/system.hpp"
 #include "core/glfw_wrapper.hpp"
@@ -35,14 +36,6 @@ private:
     GLuint m_program;
 };
 
-/**
- * \brief Produces an empty Shader.
- */
-signal::Shader empty_shader()
-{
-    return signal::Shader();
-}
-
 } // namespace anonymous
 
 namespace signal {
@@ -68,7 +61,7 @@ const std::string& Shader::stage_name(const STAGE stage)
     return unknown;
 }
 
-Shader Shader::from_sources(
+std::shared_ptr<Shader> Shader::build(
     const std::string& vertex_shader_path,
     const std::string& fragment_shader_path,
     const std::string& geometry_shader_path)
@@ -79,7 +72,7 @@ Shader Shader::from_sources(
     GLuint fragment_shader = compile(STAGE::FRAGMENT, fragment_shader_path);
     ShaderRAII fragment_shader_raii(fragment_shader);
     if (!(vertex_shader && fragment_shader)) {
-        return empty_shader();
+        return {};
     }
 
     // compile the optional geometry shader
@@ -87,7 +80,7 @@ Shader Shader::from_sources(
     if (!geometry_shader_path.empty()) {
         geometry_shader = compile(STAGE::GEOMETRY, geometry_shader_path);
         if (!geometry_shader) {
-            return empty_shader();
+            return {};
         }
     }
     ShaderRAII geometry_shader_raii(geometry_shader);
@@ -115,14 +108,15 @@ Shader Shader::from_sources(
                       << basename(fragment_shader_path.c_str()) << "'"
                       << "', and geometry shader '"
                       << basename(geometry_shader_path.c_str()) << "'";
-        } else {
+        }
+        else {
             log_debug << "Compiled and linked shader program with vertex shader '"
                       << basename(vertex_shader_path.c_str())
                       << "' and fragment shader '"
                       << basename(fragment_shader_path.c_str()) << "'";
         }
-
-    } else {
+    }
+    else {
         GLint error_size;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &error_size);
         std::vector<char> error_message(static_cast<size_t>(error_size));
@@ -135,7 +129,8 @@ Shader Shader::from_sources(
                          << "', and geometry shader '"
                          << basename(geometry_shader_path.c_str()) << "'\n\t"
                          << error_message.data();
-        } else {
+        }
+        else {
             log_critical << "Failed to link shader program with vertex shader '"
                          << basename(vertex_shader_path.c_str())
                          << "' and fragment shader '"
@@ -143,10 +138,9 @@ Shader Shader::from_sources(
                          << error_message.data();
         }
         glDeleteProgram(program);
-        return empty_shader();
+        return {};
     }
-
-    return Shader(program);
+    return std::make_shared<MakeSharedEnabler<Shader>>(program);
 }
 
 Shader::~Shader()
@@ -156,9 +150,6 @@ Shader::~Shader()
 
 Shader& Shader::use()
 {
-    if(is_empty()){
-        log_warning << "Using empty Shader";
-    }
     glUseProgram(m_id);
     return *this;
 }
@@ -232,7 +223,8 @@ GLuint Shader::compile(STAGE stage, const std::string& shader_path)
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
     if (success) {
         return shader;
-    } else {
+    }
+    else {
         GLint error_size;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &error_size);
         std::vector<char> error_message(static_cast<size_t>(error_size));

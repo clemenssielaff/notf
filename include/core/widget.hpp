@@ -4,10 +4,10 @@
 #include <memory>
 #include <vector>
 
-#include "core/component.hpp"
 #include "common/devel.hpp"
 #include "common/handle.hpp"
 #include "common/signal.hpp"
+#include "core/component.hpp"
 
 namespace signal {
 
@@ -33,7 +33,14 @@ public: // enums
 
 protected: // methods
     /// \brief Value Constructor.
-    explicit Widget(Handle handle);
+    explicit Widget(Handle handle)
+        : m_handle{std::move(handle)}
+        , m_framing{FRAMING::WITHIN}
+        , m_parent()
+        , m_components() // initialize all to empty
+        , m_children()
+    {
+    }
 
 public: // methods
     /// no copy / assignment
@@ -107,7 +114,7 @@ private: // fields
     std::array<std::shared_ptr<Component>, Component::get_count()> m_components;
 
     /// \brief All child widgets.
-    std::vector<std::shared_ptr<Widget> > m_children;
+    std::vector<std::shared_ptr<Widget>> m_children;
 
     CALLBACKS(Widget)
 };

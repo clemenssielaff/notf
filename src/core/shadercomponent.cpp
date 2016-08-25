@@ -58,7 +58,7 @@ ShaderComponent::ShaderComponent()
         GL_STATIC_DRAW);
 
     // create the shader program
-    m_shader = Shader::from_sources("../../res/shaders/test01.vert", "../../res/shaders/test01.frag");
+    m_shader = Shader::build("../../res/shaders/test01.vert", "../../res/shaders/test01.frag");
 
     // define the vertex attributes
     {
@@ -67,19 +67,19 @@ ShaderComponent::ShaderComponent()
         static const int texture_dimensions = 2;
         static const ulong stride = static_cast<ulong>(vertex_dimensions + color_dimensions + texture_dimensions);
 
-        GLuint position = static_cast<GLuint>(glGetAttribLocation(m_shader.get_id(), "position"));
+        GLuint position = static_cast<GLuint>(glGetAttribLocation(m_shader->get_id(), "position"));
         glVertexAttribPointer(position, vertex_dimensions, GL_FLOAT, GL_FALSE,
             static_cast<GLsizei>(stride * sizeof(GLfloat)),
             buffer_offset<GLfloat>(0));
         glEnableVertexAttribArray(position);
 
-        GLuint color = static_cast<GLuint>(glGetAttribLocation(m_shader.get_id(), "color"));
+        GLuint color = static_cast<GLuint>(glGetAttribLocation(m_shader->get_id(), "color"));
         glVertexAttribPointer(color, color_dimensions, GL_FLOAT, GL_FALSE,
             static_cast<GLsizei>(stride * sizeof(GLfloat)),
             buffer_offset<GLfloat>(vertex_dimensions));
         glEnableVertexAttribArray(color);
 
-        GLuint tex_coord = static_cast<GLuint>(glGetAttribLocation(m_shader.get_id(), "texCoord"));
+        GLuint tex_coord = static_cast<GLuint>(glGetAttribLocation(m_shader->get_id(), "texCoord"));
         glVertexAttribPointer(tex_coord, texture_dimensions, GL_FLOAT, GL_FALSE,
             static_cast<GLsizei>(stride * sizeof(GLfloat)),
             buffer_offset<GLfloat>(vertex_dimensions + color_dimensions));
@@ -101,15 +101,15 @@ ShaderComponent::~ShaderComponent()
 
 void ShaderComponent::update()
 {
-    m_shader.use();
+    m_shader->use();
 
     glActiveTexture(GL_TEXTURE0);
-    m_texture1.bind();
-    glUniform1i(glGetUniformLocation(m_shader.get_id(), "ourTexture1"), 0);
+    m_texture1->bind();
+    glUniform1i(glGetUniformLocation(m_shader->get_id(), "ourTexture1"), 0);
 
     glActiveTexture(GL_TEXTURE1);
-    m_texture2.bind();
-    glUniform1i(glGetUniformLocation(m_shader.get_id(), "ourTexture2"), 1);
+    m_texture2->bind();
+    glUniform1i(glGetUniformLocation(m_shader->get_id(), "ourTexture2"), 1);
 
     VaoBindRAII bind_vao(m_vao);
     UNUSED(bind_vao);

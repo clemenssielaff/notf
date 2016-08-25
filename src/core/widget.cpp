@@ -20,15 +20,6 @@ public:
 
 namespace signal {
 
-Widget::Widget(Handle handle)
-    : m_handle{ std::move(handle) }
-    , m_framing{ FRAMING::WITHIN }
-    , m_parent{}
-    , m_components{} // initialize all to empty
-    , m_children{}
-{
-}
-
 Widget::~Widget()
 {
     log_debug << "Destroyed Widget with handle:" << m_handle;

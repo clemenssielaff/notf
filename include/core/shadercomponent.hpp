@@ -35,10 +35,10 @@ private: // fields
 
     GLuint m_ebo;
 
-    Shader m_shader;
+    std::shared_ptr<Shader> m_shader;
 
-    Texture2 m_texture1;
-    Texture2 m_texture2;
+    std::shared_ptr<Texture2> m_texture1;
+    std::shared_ptr<Texture2> m_texture2;
 };
 
 } // namespace signal

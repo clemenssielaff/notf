@@ -5,6 +5,7 @@
 #include <glad/glad.h>
 #include <stb_image/std_image.h>
 
+#include "common/devel.hpp"
 #include "common/log.hpp"
 
 namespace { // anonymous
@@ -14,19 +15,11 @@ namespace { // anonymous
  */
 static const float transparency[] = {0.0f, 0.0f, 0.0f, 0.0f};
 
-/**
- * \brief Produces an empty Texture2.
- */
-signal::Texture2 empty_texture()
-{
-    return signal::Texture2();
-}
-
 } // namespace anonymous
 
 namespace signal {
 
-Texture2 Texture2::load(const std::string& texture_path)
+std::shared_ptr<Texture2> Texture2::load(const std::string& texture_path)
 {
     // load the texture from file
     int width, height, bits;
@@ -67,14 +60,15 @@ Texture2 Texture2::load(const std::string& texture_path)
     }
     stbi_image_free(data);
 
-    // return empty texture on failure
+    // return empty pointer on failure
     if (!success) {
         log_critical << "Failed to load texture from: " << texture_path;
-        return empty_texture();
+        return {};
     }
 
     // log success
     {
+#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_DEBUG
         static const std::string grayscale = "grayscale";
         static const std::string rgb = "rgb";
         static const std::string rgba = "rgba";
@@ -90,18 +84,27 @@ Texture2 Texture2::load(const std::string& texture_path)
             assert(bits == 4);
             format_name = &rgba;
         }
-        log_debug << "Loaded " << width << "x" << height << " " << *format_name << " texture: " << texture_path;
+
+        log_debug << "Loaded " << width << "x" << height << " " << *format_name << " texture: " << texture_path
+                  << " with ID: " << id;
+#endif
     }
 
     // return the loaded texture on success
     assert(id);
     assert(width >= 0);
     assert(height >= 0);
-    return Texture2(id, static_cast<GLuint>(width), static_cast<GLuint>(height));
+    return std::make_shared<MakeSharedEnabler<Texture2>>(id, static_cast<GLuint>(width), static_cast<GLuint>(height));
+}
+
+void Texture2::unbind()
+{
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 Texture2::~Texture2()
 {
+    log_debug << "Deleting OpenGL texture with ID: " << m_id;
     glDeleteTextures(1, &m_id);
 }
 
@@ -163,15 +166,7 @@ void Texture2::set_filter_mag(const GLint mode)
 
 void Texture2::bind() const
 {
-    if (is_empty()) {
-        log_warning << "Binding empty Texture2";
-    }
     glBindTexture(GL_TEXTURE_2D, m_id);
-}
-
-void Texture2::unbind()
-{
-    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 } // namespace signal

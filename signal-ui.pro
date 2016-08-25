@@ -51,7 +51,8 @@ SOURCES += \
     src/breakout.cpp \
     src/breakout/game.cpp \
     src/graphics/shader.cpp \
-    src/graphics/texture2.cpp
+    src/graphics/texture2.cpp \
+    src/graphics/graphics_manager.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -89,9 +90,9 @@ HEADERS += \
     thirdparty/polypartition/polypartition.h \
     thirdparty/stb_image/std_image.h \
     include/breakout/game.hpp \
-    include/breakout/resource_manager.hpp \
     include/graphics/shader.hpp \
-    include/graphics/texture2.hpp
+    include/graphics/texture2.hpp \
+    include/graphics/graphics_manager.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \
