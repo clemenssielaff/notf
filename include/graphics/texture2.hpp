@@ -14,7 +14,7 @@ namespace signal {
  * Every time you ask for a value via get_*(), OpenGL has to rebind the texture.
  * If this ever becomes a performance bottleneck, we can pull more state into this class.
  */
-class Texture2 : public std::enable_shared_from_this<Texture2> {
+class Texture2 {
 
 public: // static methods
     /**

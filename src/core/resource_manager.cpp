@@ -1,4 +1,4 @@
-#include "graphics/graphics_manager.hpp"
+#include "core/resource_manager.hpp"
 
 #include "common/log.hpp"
 
@@ -10,30 +10,39 @@ namespace { // anonymous
  * Cleaning up in this case means removing all entries where the shared pointer is the only one managing its data.
  */
 template <typename Type>
-void remove_uniques(Type& member)
+void remove_unused(Type& member)
 {
     Type member_swap;
-    for( auto it = member.cbegin(); it != member.cend(); ++it){
-        if(!it->second.unique()){
+    for (auto it = member.cbegin(); it != member.cend(); ++it) {
+        if (!it->second.unique()) {
             member_swap.emplace(std::move(*it));
         }
     }
     std::swap(member, member_swap);
 }
 
+void ensure_ends_in_forward_slash(std::string& input)
+{
+    if(input.back() != '/'){
+        input.push_back('/');
+    }
+}
+
 } // namespace anonymous
 
 namespace signal {
 
-GraphicsManager::GraphicsManager(std::string texture_directory, std::string shader_directory)
+ResourceManager::ResourceManager(std::string texture_directory, std::string shader_directory)
     : m_texture_directory(std::move(texture_directory))
     , m_shader_directory(std::move(shader_directory))
     , m_textures()
     , m_shaders()
 {
+    ensure_ends_in_forward_slash(m_texture_directory);
+    ensure_ends_in_forward_slash(m_shader_directory);
 }
 
-std::shared_ptr<Texture2> GraphicsManager::get_texture(const std::string& texture_path)
+std::shared_ptr<Texture2> ResourceManager::get_texture(const std::string& texture_path)
 {
     // return the existing texture, if it has already been loaded once
     if (m_textures.count(texture_path)) {
@@ -52,7 +61,7 @@ std::shared_ptr<Texture2> GraphicsManager::get_texture(const std::string& textur
     return texture;
 }
 
-std::shared_ptr<Shader> GraphicsManager::get_shader(const std::string& shader_name)
+std::shared_ptr<Shader> ResourceManager::get_shader(const std::string& shader_name)
 {
     if (m_shaders.count(shader_name)) {
         return m_shaders.at(shader_name);
@@ -62,7 +71,7 @@ std::shared_ptr<Shader> GraphicsManager::get_shader(const std::string& shader_na
     }
 }
 
-std::shared_ptr<Shader> GraphicsManager::build_shader(const std::string& shader_name,
+std::shared_ptr<Shader> ResourceManager::build_shader(const std::string& shader_name,
                                                       const std::string& vertex_shader_path,
                                                       const std::string& fragment_shader_path,
                                                       const std::string& geometry_shader_path)
@@ -87,10 +96,16 @@ std::shared_ptr<Shader> GraphicsManager::build_shader(const std::string& shader_
     return shader;
 }
 
-void GraphicsManager::cleanup()
+void ResourceManager::cleanup()
 {
-    remove_uniques(m_textures);
-    remove_uniques(m_shaders);
+    remove_unused(m_textures);
+    remove_unused(m_shaders);
+}
+
+void ResourceManager::clear()
+{
+    m_textures.clear();
+    m_shaders.clear();
 }
 
 } // namespace signal

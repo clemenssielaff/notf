@@ -43,16 +43,21 @@ SOURCES += \
     src/common/log.cpp \
     src/common/vector2.cpp \
     src/common/aabr.cpp \
-    src/common/const.cpp \
     src/core/shapecomponent.cpp \
     src/core/shadercomponent.cpp \
     thirdparty/polypartition/polypartition.cpp \
     thirdparty/stb_image/stb_image.cpp \
     src/breakout.cpp \
     src/breakout/game.cpp \
+    src/breakout/gameobject.cpp \
+    src/breakout/ballobject.cpp \
+    src/breakout/gamelevel.cpp \
     src/graphics/shader.cpp \
     src/graphics/texture2.cpp \
-    src/graphics/graphics_manager.cpp
+    src/core/resource_manager.cpp \
+    src/common/real.cpp \
+    src/common/system.cpp \
+    src/breakout/spriterenderer.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -71,7 +76,6 @@ HEADERS += \
     include/common/vector_utils.hpp \
     include/common/log.hpp \
     include/common/debug.hpp \
-    include/common/const.hpp \
     include/common/vector2.hpp \
     include/common/math.hpp \
     include/common/aabr.hpp \
@@ -90,10 +94,16 @@ HEADERS += \
     thirdparty/polypartition/polypartition.h \
     thirdparty/stb_image/std_image.h \
     include/breakout/game.hpp \
+    include/breakout/gameobject.hpp \
+    include/breakout/ballobject.hpp \
+    include/breakout/gamelevel.hpp \
     include/graphics/shader.hpp \
     include/graphics/texture2.hpp \
-    include/graphics/graphics_manager.hpp
+    include/core/resource_manager.hpp \
+    include/breakout/spriterenderer.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \
-    res/shaders/test01.frag
+    res/shaders/test01.frag \
+    res/shaders/sprite.vert \
+    res/shaders/sprite.frag

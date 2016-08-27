@@ -1,14 +1,23 @@
 #pragma once
 
-#include <algorithm>
 #include <cfloat>
 #include <cmath>
-#include <cstddef>
 #include <functional>
 
 namespace signal {
 
+#ifdef SIGNAL_DOUBLE_PRECISION
+using Real = double;
+#else
 using Real = float;
+#endif
+
+///
+/// \brief PI.
+///
+extern const Real HALF_PI;
+extern const Real PI;
+extern const Real TWO_PI;
 
 using std::abs;
 using std::max;

@@ -1,12 +1,12 @@
 #include "graphics/shader.hpp"
 
-#include <glm/gtc/type_ptr.hpp>
 #include <vector>
+
+#include <glad/glad.h>
 
 #include "common/devel.hpp"
 #include "common/log.hpp"
 #include "common/system.hpp"
-#include "core/glfw_wrapper.hpp"
 
 namespace { // anonymous
 
@@ -182,6 +182,26 @@ void Shader::set_uniform(const GLchar* name, GLfloat x, GLfloat y, GLfloat z)
 void Shader::set_uniform(const GLchar* name, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 {
     glUniform4f(glGetUniformLocation(m_id, name), x, y, z, w);
+}
+
+void Shader::set_uniform(const GLchar* name, const glm::vec2& value)
+{
+    glUniform2f(glGetUniformLocation(m_id, name), value.x, value.y);
+}
+
+void Shader::set_uniform(const GLchar* name, const glm::vec3& value)
+{
+    glUniform3f(glGetUniformLocation(m_id, name), value.x, value.y, value.z);
+}
+
+void Shader::set_uniform(const GLchar* name, const glm::vec4& value)
+{
+    glUniform4f(glGetUniformLocation(m_id, name), value.x, value.y, value.z, value.w);
+}
+
+void Shader::set_uniform(const GLchar* name, const glm::mat4& matrix)
+{
+    glUniformMatrix4fv(glGetUniformLocation(m_id, name), 1, GL_FALSE, glm::value_ptr(matrix));
 }
 
 GLuint Shader::compile(STAGE stage, const std::string& shader_path)

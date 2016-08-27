@@ -3,6 +3,9 @@
 #include <memory>
 #include <string>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include "common/vector2.hpp"
 #include "graphics/gl_forwards.hpp"
 
@@ -11,7 +14,7 @@ namespace signal {
 /**
  * /brief Manages the compilation, runtime functionality and resources of an OpenGL shader program.
  */
-class Shader: public std::enable_shared_from_this<Shader> {
+class Shader {
 
 public: // enums
     /**
@@ -116,6 +119,34 @@ public: // methods
      * \param value New value.
      */
     void set_uniform(const GLchar* name, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
+
+    /**
+     * \brief Sets an uniform 2D GLM vector in this Shader.
+     * \param name  Name of the uniform to set.
+     * \param value New value.
+     */
+    void set_uniform(const GLchar* name, const glm::vec2& value);
+
+    /**
+     * \brief Sets an uniform 3D GLM vector in this Shader.
+     * \param name  Name of the uniform to set.
+     * \param value New value.
+     */
+    void set_uniform(const GLchar* name, const glm::vec3& value);
+
+    /**
+     * \brief Sets an uniform 3D GLM vector in this Shader.
+     * \param name  Name of the uniform to set.
+     * \param value New value.
+     */
+    void set_uniform(const GLchar* name, const glm::vec4& value);
+
+    /**
+     * \brief Sets an uniform 4x4 GLM matrix in this Shader.
+     * \param name  Name of the uniform to set.
+     * \param value New value.
+     */
+    void set_uniform(const GLchar* name, const glm::mat4& matrix);
 
 private: // static methods
     /**

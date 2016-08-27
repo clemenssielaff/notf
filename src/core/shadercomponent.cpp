@@ -2,7 +2,6 @@
 
 #include <glad/glad.h>
 
-#include "common/const.hpp"
 #include "common/log.hpp"
 #include "common/random.hpp"
 #include "graphics/gl_utils.hpp"

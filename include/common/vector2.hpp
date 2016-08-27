@@ -241,7 +241,7 @@ struct Vector2 {
     /// \brief Component-wise division of a Vector2 by another Vector2.
     ///
     /// \param other   Factor to divide this Vector2 by.
-    Vector2 operator/(const Vector2& other) const { return { x / other.x, y / other.y }; }
+    Vector2 operator/(const Vector2& other) const { return {x / other.x, y / other.y}; }
 
     /// \brief In-place component-wise division of a Vector2 by another Vector2.
     ///

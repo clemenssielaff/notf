@@ -10,21 +10,21 @@
 namespace signal {
 
 /**
- * \brief The Graphics Manager owns all OpenGL related resources.
+ * \brief The Resource Manager owns all dynamically loaded resources.
  *
  * It is not a Singleton, even though each Application will most likely only have one.
  */
-class GraphicsManager {
+class ResourceManager {
 public: // methods
     /**
      * \brief Value Constructor.
      * \param texture_directory  System path to the texture directory, absolute or relative to the executable.
      * \param shader_directory  System path to the shader directory, absolute or relative to the executable.
      */
-    explicit GraphicsManager(std::string texture_directory, std::string shader_directory);
+    explicit ResourceManager(std::string texture_directory, std::string shader_directory);
 
-    GraphicsManager(const GraphicsManager&) = delete; // no copy construction
-    GraphicsManager& operator=(const GraphicsManager&) = delete; // no copy assignment
+    ResourceManager(const ResourceManager&) = delete; // no copy construction
+    ResourceManager& operator=(const ResourceManager&) = delete; // no copy assignment
 
     /**
      * \brief The Graphic Manager's texture directory path, absolute or relative to the executable.
@@ -78,16 +78,23 @@ public: // methods
      */
     void cleanup();
 
+    /**
+     * \brief Releases all ownership of the managed resources
+     *
+     * If a resource is not currently in use by another object owning a shared pointer to it, it is deleted.
+     */
+    void clear();
+
 private: // fields
     /**
      * \brief System path to the texture directory, absolute or relative to the executable.
      */
-    const std::string m_texture_directory;
+    std::string m_texture_directory;
 
     /**
      * \brief System path to the shader directory, absolute or relative to the executable.
      */
-    const std::string m_shader_directory;
+    std::string m_shader_directory;
 
     /**
      * \brief All managed Textures - indexed by name relative to the texture directory.

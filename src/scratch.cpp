@@ -1,17 +1,17 @@
-#if 1
+#if 0
 
 #include <string>
 
 #include "common/log.hpp"
 #include "core/application.hpp"
 #include "core/window.hpp"
-#include "graphics/graphics_manager.hpp"
+#include "core/resource_manager.hpp"
 using namespace signal;
 
 int main()
 {
     Window window;
-    GraphicsManager gm("/home/clemens/temp/", "/home/clemens/temp/");
+    ResourceManager gm("/home/clemens/temp/", "/home/clemens/temp/");
     {
         auto bla = gm.get_texture("awesomeface2.png");
         {
