@@ -7,10 +7,21 @@
 #include "graphics/gl_forwards.hpp"
 using namespace signal;
 
-#include "breakout/gamelevel.hpp"
 #include "breakout/ballobject.hpp"
+#include "breakout/gamelevel.hpp"
 
 class SpriteRenderer;
+
+// Represents the four possible (collision) directions
+enum Direction {
+    UP,
+    RIGHT,
+    DOWN,
+    LEFT
+};
+
+// Defines a Collision typedef that represents collision data
+typedef std::tuple<GLboolean, Direction, glm::vec2> Collision;
 
 class Game {
 
@@ -35,9 +46,12 @@ public: // methods
     void init();
 
     // GameLoop
-    void processInput(double dt);
-    void update(double dt);
+    void process_input(GLfloat dt);
+    void update(GLfloat dt);
     void render();
+    void do_collisions();
+    void reset_level();
+    void reset_player();
 
     void set_state(STATE state) { m_state = state; }
 

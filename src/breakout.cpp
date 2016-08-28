@@ -52,7 +52,7 @@ int main(int, char* [])
 
         //deltaTime = 0.001f;
         // Manage user input
-        Breakout.processInput(deltaTime);
+        Breakout.process_input(deltaTime);
 
         // Update Game state
         Breakout.update(deltaTime);

@@ -61,17 +61,20 @@ struct Aabr {
             if (a.y < b.y) {
                 _min = a;
                 _max = b;
-            } else {
-                _min = { a.x, b.y };
-                _max = { b.x, a.y };
             }
-        } else {
+            else {
+                _min = {a.x, b.y};
+                _max = {b.x, a.y};
+            }
+        }
+        else {
             if (a.y > b.y) {
                 _min = b;
                 _max = a;
-            } else {
-                _min = { b.x, a.y };
-                _max = { a.x, b.y };
+            }
+            else {
+                _min = {b.x, a.y};
+                _max = {a.x, b.y};
             }
         }
     }
@@ -79,7 +82,7 @@ struct Aabr {
     //  STATIC CONSTRUCTORS  //////////////////////////////////////////////////////////////////////////////////////////
 
     /// \brief The null Aabr.
-    static Aabr null() { return Aabr({ 0, 0 }, { 0, 0 }); }
+    static Aabr null() { return Aabr({0, 0}, {0, 0}); }
 
     //  INSPECTION  ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -96,7 +99,7 @@ struct Aabr {
     /// \brief The position of this Aabr.
     ///
     /// Is always at the center.
-    Vector2 position() const { return { x(), y() }; }
+    Vector2 position() const { return {x(), y()}; }
 
     /// \brief X-coordinate of the left edge of this Aabr.
     Real left() const { return _min.x; }
@@ -111,7 +114,7 @@ struct Aabr {
     Real bottom() const { return _min.y; }
 
     /// \brief The top left corner of this Aabr.
-    Vector2 top_left() const { return { _min.x, _max.y }; }
+    Vector2 top_left() const { return {_min.x, _max.y}; }
 
     /// \brief The top right corner of this Aabr.
     Vector2 top_right() const { return _max; }
@@ -120,7 +123,7 @@ struct Aabr {
     Vector2 bottom_left() const { return _min; }
 
     /// \brief The bottom right corner of this Aabr.
-    Vector2 bottom_right() const { return { _max.x, _min.y }; }
+    Vector2 bottom_right() const { return {_max.x, _min.y}; }
 
     /// \brief The width of this Aabr
     Real width() const { return _max.x - _min.x; }
@@ -140,12 +143,14 @@ struct Aabr {
 
     /// \brief Checks if this Aabr contains a given point.
     ///
+    /// A point on the edge of an Aabr is not contained.
+    ///
     /// \param point   Point to test.
     ///
     /// \return True, if the Aabr contains the given point.
     bool contains(const Vector2& point) const
     {
-        return !((point.x < left()) || (point.x > right()) || (point.y < bottom()) || (point.y > top()));
+        return ((point.x > left()) && (point.x < right()) && (point.y > bottom()) && (point.y < top()));
     }
 
     /// \brief Checks if two Aabrs intersect.
@@ -160,7 +165,25 @@ struct Aabr {
     bool intersects(const Aabr& other) const
     {
         return !((right() < other.left()) || (left() > other.right())
-            || (top() < other.bottom()) || (bottom() > other.top()));
+                 || (top() < other.bottom()) || (bottom() > other.top()));
+    }
+
+    /// \brief Returns the closest point inside the Aabr to a given target point.
+    ///
+    /// Both this Aabr and the target point have to be in the same coordinate space.
+    /// The result will also be in that space.
+    /// For targets outside the Aabr, the returned point will lay on the Aabr's edge.
+    /// Targets inside the Aabr are returned unchanged.
+    ///
+    /// \param target   Target point.
+    /// \return Closest point inside the Aabr to the target point.
+    Vector2 closest_point_to(const Vector2& target) const
+    {
+        const Vector2 pos = position();
+        const Real half_width = width() / 2;
+        const Real half_height = height() / 2;
+        return {pos.x + clamp(target.x - pos.x, -half_width, half_width),
+                pos.y + clamp(target.y - pos.y, -half_height, half_height)};
     }
 
     //  OPERATORS  ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -317,7 +340,7 @@ struct Aabr {
     /// \brief Changes the width of this Aabr in place.
     ///
     /// The scaling occurs from the center of the Aabr, meaning its position does not change.
-    /// If a width less than zero is specified, the actual width is zero.
+    /// If a width less than zero is specified, the resulting width is zero.
     ///
     /// \param width    New Aabr width.
     ///
@@ -334,7 +357,7 @@ struct Aabr {
     /// \brief Changes the height of this Aabr in place.
     ///
     /// The scaling occurs from the center of the Aabr, meaning its position does not change.
-    /// If a height less than zero is specified, the actual height is zero.
+    /// If a height less than zero is specified, the resulting height is zero.
     ///
     /// \param height   New Aabr height.
     ///
@@ -399,8 +422,8 @@ struct Aabr {
             return Aabr::null();
         }
         return Aabr(
-            { left() < other.left() ? other.left() : left(), bottom() < other.bottom() ? other.bottom() : bottom() },
-            { right() > other.right() ? other.right() : right(), top() > other.top() ? other.top() : top() });
+            {left() < other.left() ? other.left() : left(), bottom() < other.bottom() ? other.bottom() : bottom()},
+            {right() > other.right() ? other.right() : right(), top() > other.top() ? other.top() : top()});
     }
     Aabr operator&(const Aabr& other) { return intersection(other); }
 
@@ -432,8 +455,8 @@ struct Aabr {
     Aabr union_(const Aabr& other)
     {
         return Aabr(
-            { left() < other.left() ? left() : other.left(), bottom() < other.bottom() ? bottom() : other.bottom() },
-            { right() > other.right() ? right() : other.right(), top() > other.top() ? top() : other.top() });
+            {left() < other.left() ? left() : other.left(), bottom() < other.bottom() ? bottom() : other.bottom()},
+            {right() > other.right() ? right() : other.right(), top() > other.top() ? top() : other.top()});
     }
     Aabr operator|(const Aabr& other) { return union_(other); }
 

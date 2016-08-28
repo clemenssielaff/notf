@@ -23,6 +23,8 @@ public:
 
     GLboolean isCompleted();
 
+    std::vector<GameObject>& get_bricks() { return m_bricks; }
+
 private:
     // Initialize level from tile data
     void init(std::vector<std::vector<GLuint>> tileData, GLuint screenWidth, GLuint screenHeight);
