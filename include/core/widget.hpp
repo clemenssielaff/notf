@@ -1,11 +1,12 @@
 #pragma once
 
-#include <array>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "common/devel.hpp"
 #include "common/handle.hpp"
+#include "common/hashmap.hpp"
 #include "common/signal.hpp"
 #include "core/component.hpp"
 
@@ -64,26 +65,29 @@ public: // methods
     /// Requests the Component of a given kind from this Widget.
     ///
     /// \return The requested Component, shared pointer is empty if this Widget has no Component of the requested kind.
-    auto get_component(Component::KIND kind) const
+    std::shared_ptr<Component> get_component(Component::KIND kind) const
     {
-        return m_components.at(static_cast<size_t>(to_number(kind)));
+        auto it = m_components.find(kind);
+        if (it == m_components.end()) {
+            return {};
+        }
+        return it->second;
     }
 
     /// \brief Checks if this Object contains a Component of the given kind.
     ///
     /// \param kind Component kind to check for.
-    bool has_component_kind(Component::KIND kind) const { return bool(get_component(kind)); }
+    bool has_component_kind(Component::KIND kind) const { return m_components.count(kind); }
 
     /// \brief Attaches a new Component to this Object.
     ///
-    /// Each Object can only have one instance of each Component kind attached.
-    /// The previous Component of the given kind is returned.
-    /// The shared pointer is empty if the Widget had no previous Component of the given kind.
+    /// Each Widget can only have one instance of each Component kind attached.
     ///
-    /// \param kind The kind of Component to attach to this Object.
-    ///
-    /// \return The previous Component of the new Component's type - may be empty.
-    std::shared_ptr<Component> set_component(std::shared_ptr<Component> component);
+    /// \param component    The Component to attach.
+    void set_component(std::shared_ptr<Component> component)
+    {
+        m_components[component->get_kind()] = std::move(component);
+    }
 
     /// \brief Draws this and all child widgets recursively.
     void redraw();
@@ -111,7 +115,7 @@ private: // fields
     std::weak_ptr<Widget> m_parent;
 
     /// \brief All components of this Widget.
-    std::array<std::shared_ptr<Component>, Component::get_count()> m_components;
+    HashMap<Component::KIND, std::shared_ptr<Component>> m_components;
 
     /// \brief All child widgets.
     std::vector<std::shared_ptr<Widget>> m_children;

@@ -19,13 +19,25 @@ const size_t WIDGET_RESERVE = 1024; // how many widgets to reserve space for
 
 namespace signal {
 
+bool register_widget(std::shared_ptr<Widget> widget)
+{
+    Application& app = Application::get_instance();
+    // don't register the Widget if its handle is already been used
+    if (app.m_widgets.count(widget->get_handle())) {
+        return false;
+    }
+    app.m_widgets.emplace(std::make_pair(widget->get_handle(), widget));
+    return true;
+}
+
 Application::Application()
-    : m_nextHandle{ 1024 } // 0 is the BAD_HANDLE, the next 1023 handles are reserved for internal use
-    , m_log_handler{ 128, 200 } // initial size of the log buffers
-    , m_key_states{}
-    , m_dirty_components{}
-    , m_windows{}
-    , m_widgets{}
+    : m_nextHandle(1024) // 0 is the BAD_HANDLE, the next 1023 handles are reserved for internal use
+    , m_log_handler(128, 200) // initial size of the log buffers
+    , m_resource_manager()
+    , m_render_manager()
+    , m_key_states()
+    , m_windows()
+    , m_widgets()
 {
     // install the log handler first, to catch errors right away
     install_log_message_handler(std::bind(&LogHandler::push_log, &m_log_handler, std::placeholders::_1));
@@ -70,10 +82,10 @@ int Application::exec()
 
         // print time per frame in ms, averaged over the last second
         ++frame_count;
-        if(glfwGetTime() - last_time >= 1.){
-            double ms_per_frame = 1000./static_cast<double>(frame_count);
+        if (glfwGetTime() - last_time >= 1.) {
+            double ms_per_frame = 1000. / static_cast<double>(frame_count);
             log_debug << ms_per_frame << "ms/frame "
-                      << "(" << static_cast<uint>(ms_per_frame / (1./6.)) << "%) = "
+                      << "(" << static_cast<uint>(ms_per_frame / (1. / 6.)) << "%) = "
                       << frame_count << "f/s";
             frame_count = 0;
             last_time += 1.;
@@ -119,7 +131,7 @@ void Application::on_token_key(GLFWwindow* glfw_window, int key, int scancode, i
     set_key(get_instance().m_key_states, signal_key, action);
 
     // let the window fire the key event
-    KeyEvent key_event{ window, signal_key, KEY_ACTION(action), KEY_MODIFIERS(modifiers), get_instance().m_key_states };
+    KeyEvent key_event{window, signal_key, KEY_ACTION(action), KEY_MODIFIERS(modifiers), get_instance().m_key_states};
     window->on_token_key(key_event);
 }
 
@@ -131,23 +143,6 @@ void Application::on_window_close(GLFWwindow* glfw_window)
         return;
     }
     window->close();
-}
-
-void Application::register_dirty_component(std::shared_ptr<Component>)
-{
-    //    assert(component->is_dirty());
-    //    size_t index = static_cast<size_t>(to_number(component->get_kind()));
-    //    m_dirty_components.at(index).emplace_back(std::move(component));
-}
-
-bool Application::register_widget(std::shared_ptr<Widget> widget)
-{
-    // don't register the Widget if its handle is already been used
-    if (m_widgets.count(widget->get_handle())) {
-        return false;
-    }
-    m_widgets.emplace(std::make_pair(widget->get_handle(), widget));
-    return true;
 }
 
 void Application::register_window(Window* window)
@@ -193,6 +188,7 @@ void Application::shutdown()
 
     log_info << "Application shutdown";
     glfwTerminate();
+    m_resource_manager.clear();
     m_log_handler.stop();
     m_log_handler.join();
 }
@@ -208,7 +204,7 @@ Window* Application::get_window(GLFWwindow* glfw_window)
 
 void Application::clean_unused_handles()
 {
-    std::unordered_map<Handle, std::weak_ptr<Widget> > good_widgets;
+    std::unordered_map<Handle, std::weak_ptr<Widget>> good_widgets;
     good_widgets.reserve(std::max(good_widgets.size(), WIDGET_RESERVE));
     for (auto it = m_widgets.begin(); it != m_widgets.end(); ++it) {
         if (!it->second.expired()) {

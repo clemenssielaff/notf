@@ -74,14 +74,16 @@ Game::Game(GLuint width, GLuint height)
     , m_width(width)
     , m_height(height)
     , m_renderer()
-    , m_resource_manager("/home/clemens/code/signal-ui/res/textures",
-                         "/home/clemens/code/signal-ui/res/shaders")
+    , m_resource_manager()
     , m_log_handler{128, 200} // initial size of the log buffers
     , m_levels()
     , m_current_level(2)
     , m_paddle()
     , m_ball()
 {
+    m_resource_manager.set_texture_directory("/home/clemens/code/signal-ui/res/textures");
+    m_resource_manager.set_shader_directory("/home/clemens/code/signal-ui/res/shaders");
+
     // install the log handler first, to catch errors right away
     install_log_message_handler(std::bind(&LogHandler::push_log, &m_log_handler, std::placeholders::_1));
     m_log_handler.start();

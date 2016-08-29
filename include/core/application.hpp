@@ -1,14 +1,14 @@
 #pragma once
 
-#include <array>
 #include <atomic>
 #include <memory>
 #include <unordered_map>
 
-#include "core/component.hpp"
-#include "core/keyboard.hpp"
 #include "common/handle.hpp"
 #include "common/log.hpp"
+#include "core/keyboard.hpp"
+#include "core/render_manager.hpp"
+#include "core/resource_manager.hpp"
 
 struct GLFWwindow;
 
@@ -24,9 +24,8 @@ class Window;
 /// Manages the lifetime of the LogHandler.
 class Application {
 
-    friend class Component;
-    friend class Widget;
     friend class Window;
+    friend bool register_widget(std::shared_ptr<Widget> widget);
 
 public:
     /// \brief Return codes of the Application's exec() function.
@@ -66,6 +65,12 @@ public: // methods
     /// \param handle   Handle associated with the requested Widget.
     std::shared_ptr<Widget> get_widget(Handle handle);
 
+    /// \brief Returns the Application's Resource Manager.
+    ResourceManager& get_resource_manager() { return m_resource_manager; }
+
+    /// \brief Returns the Application's Render Manager.
+    RenderManager& get_render_manager() { return m_render_manager; }
+
 public: // static methods
     /// \brief The singleton Application instance.
     static Application& get_instance()
@@ -93,22 +98,6 @@ public: // static methods
     ///
     /// \param glfw_window  GLFW Window to close.
     static void on_window_close(GLFWwindow* glfw_window);
-
-private: // methods for Component
-    /// \brief Registers a dirty Component - it will be updated before the next frame.
-    ///
-    /// \param component    Component to update.
-    void register_dirty_component(std::shared_ptr<Component>);
-
-private: // methods for Widget
-    /// \brief Registers a new Widget with the Application.
-    ///
-    /// The handle of the Widget may not be the BAD_HANDLE, nor may it have been used to register another Widget.
-    ///
-    /// \param widget   Widget to register with its handle.
-    ///
-    /// \return True iff the Widget was successfully registered - false if its handle is already taken.
-    bool register_widget(std::shared_ptr<Widget> widget);
 
 private: // methods for Window
     /// \brief Registers a new Window in this Application.
@@ -143,19 +132,29 @@ private: // fields
     /// \brief The log handler thread used to format and print out log messages in a thread-safe manner.
     LogHandler m_log_handler;
 
+    /// \brief The Application's resource manager.
+    ResourceManager m_resource_manager;
+
+    /// \brief The Application's render manager.
+    RenderManager m_render_manager;
+
     /// \brief The current state of all keyboard keys.
     KeyStateSet m_key_states;
-
-    /// \brief A list of lists of dirty Components that need to be updated for the next frame.
-    /// The index of the Component vector in the array corresponds to the Component's kind.
-    /// Components are updated in ascending order of their kind.
-    std::array<std::vector<std::shared_ptr<Component> >, Component::get_count()> m_dirty_components;
 
     /// \brief All Windows known the the Application.
     std::unordered_map<GLFWwindow*, Window*> m_windows;
 
     /// \brief All Widgets in the Application indexed by handle.
-    std::unordered_map<Handle, std::weak_ptr<Widget> > m_widgets;
+    std::unordered_map<Handle, std::weak_ptr<Widget>> m_widgets;
 };
+
+/// \brief Registers a new Widget with the Application.
+///
+/// The handle of the Widget may not be the BAD_HANDLE, nor may it have been used to register another Widget.
+///
+/// \param widget   Widget to register with its handle.
+///
+/// \return True iff the Widget was successfully registered - false if its handle is already taken.
+bool register_widget(std::shared_ptr<Widget> widget);
 
 } // namespace signal

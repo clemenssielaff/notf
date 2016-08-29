@@ -43,8 +43,6 @@ SOURCES += \
     src/common/log.cpp \
     src/common/vector2.cpp \
     src/common/aabr.cpp \
-    src/core/shapecomponent.cpp \
-    src/core/shadercomponent.cpp \
     thirdparty/polypartition/polypartition.cpp \
     thirdparty/stb_image/stb_image.cpp \
     src/breakout.cpp \
@@ -57,7 +55,11 @@ SOURCES += \
     src/core/resource_manager.cpp \
     src/common/real.cpp \
     src/common/system.cpp \
-    src/breakout/spriterenderer.cpp
+    src/breakout/spriterenderer.cpp \
+    src/core/render_manager.cpp \
+    src/core/components/sprite_component.cpp \
+    src/common/color.cpp \
+    src/core/components/single_color_component.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -80,8 +82,6 @@ HEADERS += \
     include/common/math.hpp \
     include/common/aabr.hpp \
     include/common/real.hpp \
-    include/core/shapecomponent.hpp \
-    include/core/shadercomponent.hpp \
     include/core/key_event.hpp \
     thirdparty/randutils/randutils.hpp \
     include/common/random.hpp \
@@ -100,7 +100,15 @@ HEADERS += \
     include/graphics/shader.hpp \
     include/graphics/texture2.hpp \
     include/core/resource_manager.hpp \
-    include/breakout/spriterenderer.hpp
+    include/breakout/spriterenderer.hpp \
+    include/core/render_manager.hpp \
+    include/core/components/sprite_component.hpp \
+    include/core/components/render_component.hpp \
+    include/core/components/shape_component.hpp \
+    include/core/components/color_component.hpp \
+    include/common/color.hpp \
+    include/core/components/single_color_component.hpp \
+    include/common/hashmap.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

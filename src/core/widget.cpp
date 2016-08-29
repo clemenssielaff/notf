@@ -40,21 +40,15 @@ void Widget::set_parent(std::shared_ptr<Widget> parent)
     parent->m_children.emplace_back(std::move(this_widget));
 }
 
-std::shared_ptr<Component> Widget::set_component(std::shared_ptr<Component> component)
-{
-    std::swap(m_components[static_cast<size_t>(to_number(component->get_kind()))], component);
-    return component;
-}
-
 void Widget::redraw()
 {
     // TODO: proper redraw respecting the FRAMING of each child
-    for(auto& child : m_children){
-        child->redraw();
-    }
-    if(has_component_kind(Component::KIND::TEXTURE)){
-        (*get_component(Component::KIND::TEXTURE)).update();
-    }
+//    for(auto& child : m_children){
+//        child->redraw();
+//    }
+//    if(has_component_kind(Component::KIND::RENDER)){
+//        (*get_component(Component::KIND::RENDER)).update();
+//    }
 }
 
 std::shared_ptr<Widget> Widget::make_widget(Handle handle)
@@ -64,7 +58,7 @@ std::shared_ptr<Widget> Widget::make_widget(Handle handle)
         handle = app.get_next_handle();
     }
     std::shared_ptr<Widget> widget = std::make_shared<MakeSharedWidgetEnabler>(handle);
-    if(!app.register_widget(widget)){
+    if(!register_widget(widget)){
         log_critical << "Cannot register Widget with handle " << handle
                      << " because the handle is already taken";
         return {};
