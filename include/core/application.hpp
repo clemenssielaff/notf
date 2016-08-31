@@ -7,7 +7,6 @@
 #include "common/handle.hpp"
 #include "common/log.hpp"
 #include "core/keyboard.hpp"
-#include "core/render_manager.hpp"
 #include "core/resource_manager.hpp"
 
 struct GLFWwindow;
@@ -68,9 +67,6 @@ public: // methods
     /// \brief Returns the Application's Resource Manager.
     ResourceManager& get_resource_manager() { return m_resource_manager; }
 
-    /// \brief Returns the Application's Render Manager.
-    RenderManager& get_render_manager() { return m_render_manager; }
-
 public: // static methods
     /// \brief The singleton Application instance.
     static Application& get_instance()
@@ -106,6 +102,9 @@ private: // methods for Window
     /// \brief Unregisters an existing Window from this Application.
     void unregister_window(Window* window);
 
+    /// \brief Changes the current Window of the Application.
+    void set_current_window(Window* window);
+
 private: // methods
     /// \brief Constructor.
     explicit Application();
@@ -135,14 +134,14 @@ private: // fields
     /// \brief The Application's resource manager.
     ResourceManager m_resource_manager;
 
-    /// \brief The Application's render manager.
-    RenderManager m_render_manager;
-
     /// \brief The current state of all keyboard keys.
     KeyStateSet m_key_states;
 
     /// \brief All Windows known the the Application.
     std::unordered_map<GLFWwindow*, Window*> m_windows;
+
+    /// \brief The Window with the current OpenGL context.
+    Window* m_current_window;
 
     /// \brief All Widgets in the Application indexed by handle.
     std::unordered_map<Handle, std::weak_ptr<Widget>> m_widgets;

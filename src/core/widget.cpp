@@ -1,8 +1,9 @@
 #include "core/widget.hpp"
 
-#include "core/application.hpp"
 #include "common/log.hpp"
 #include "common/vector_utils.hpp"
+#include "core/application.hpp"
+#include "core/window.hpp"
 
 namespace { // anonymous
 
@@ -37,28 +38,32 @@ void Widget::set_parent(std::shared_ptr<Widget> parent)
 
     // register with the new parent
     m_parent = parent;
+    m_window = parent->m_window;
     parent->m_children.emplace_back(std::move(this_widget));
 }
 
 void Widget::redraw()
 {
-    // TODO: proper redraw respecting the FRAMING of each child
-//    for(auto& child : m_children){
-//        child->redraw();
-//    }
-//    if(has_component_kind(Component::KIND::RENDER)){
-//        (*get_component(Component::KIND::RENDER)).update();
-//    }
+    // widgets without a Window cannot be drawn
+    if (!m_window) {
+        return;
+    }
+
+    // TODO: proper redraw respecting the FRAMING of each child and dirtying of course
+    for (const std::shared_ptr<Widget>& child : m_children) {
+        child->redraw();
+    }
+    m_window->get_render_manager().register_widget(shared_from_this());
 }
 
 std::shared_ptr<Widget> Widget::make_widget(Handle handle)
 {
     Application& app = Application::get_instance();
-    if(!handle){
+    if (!handle) {
         handle = app.get_next_handle();
     }
     std::shared_ptr<Widget> widget = std::make_shared<MakeSharedWidgetEnabler>(handle);
-    if(!register_widget(widget)){
+    if (!register_widget(widget)) {
         log_critical << "Cannot register Widget with handle " << handle
                      << " because the handle is already taken";
         return {};

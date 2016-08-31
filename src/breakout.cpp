@@ -14,7 +14,7 @@ const GLuint SCREEN_HEIGHT = 600;
 
 static Game Breakout(SCREEN_WIDTH, SCREEN_HEIGHT);
 
-int main(int, char* [])
+int mains(int, char* [])
 {
     glfwInit();
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);

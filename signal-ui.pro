@@ -57,9 +57,10 @@ SOURCES += \
     src/common/system.cpp \
     src/breakout/spriterenderer.cpp \
     src/core/render_manager.cpp \
-    src/core/components/sprite_component.cpp \
+    src/graphics/sprite_component.cpp \
     src/common/color.cpp \
-    src/core/components/single_color_component.cpp
+    src/core/components/single_color_component.cpp \
+    src/core/components/render_component.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -102,13 +103,13 @@ HEADERS += \
     include/core/resource_manager.hpp \
     include/breakout/spriterenderer.hpp \
     include/core/render_manager.hpp \
-    include/core/components/sprite_component.hpp \
+    include/graphics/sprite_component.hpp \
     include/core/components/render_component.hpp \
     include/core/components/shape_component.hpp \
     include/core/components/color_component.hpp \
     include/common/color.hpp \
     include/core/components/single_color_component.hpp \
-    include/common/hashmap.hpp
+    include/common/enummap.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

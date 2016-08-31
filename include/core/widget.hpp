@@ -5,12 +5,14 @@
 #include <vector>
 
 #include "common/devel.hpp"
+#include "common/enummap.hpp"
 #include "common/handle.hpp"
-#include "common/hashmap.hpp"
 #include "common/signal.hpp"
 #include "core/component.hpp"
 
 namespace signal {
+
+class Window;
 
 /// \brief The Widget class
 ///
@@ -22,7 +24,7 @@ namespace signal {
 /// Using the Handle, you can even serialize and deserialize a hierarchy (which wouldn't work with pointers).
 class Widget : public std::enable_shared_from_this<Widget> {
 
-    friend class Application;
+    friend class Window;
 
 public: // enums
     /// \brief Framing is how a Widget is drawn in relation to its parent.
@@ -38,7 +40,8 @@ protected: // methods
         : m_handle{std::move(handle)}
         , m_framing{FRAMING::WITHIN}
         , m_parent()
-        , m_components() // initialize all to empty
+        , m_window(nullptr)
+        , m_components()
         , m_children()
     {
     }
@@ -104,6 +107,15 @@ public: // static methods
     /// \return The created Widget, pointer is empty on error.
     static std::shared_ptr<Widget> make_widget(Handle handle = BAD_HANDLE);
 
+private: // methods for Window
+    /// \brief Special factory function to create a Window's root Widget.
+    static std::shared_ptr<Widget> make_root_widget(Window* window, Handle handle = BAD_HANDLE)
+    {
+        std::shared_ptr<Widget> widget = make_widget(handle);
+        widget->m_window = window;
+        return widget;
+    }
+
 private: // fields
     /// \brief Application-unique Handle of this Widget.
     Handle m_handle;
@@ -111,11 +123,14 @@ private: // fields
     /// \brief Framing of this Widget.
     FRAMING m_framing;
 
-    /// \brief Parent widget.
+    /// \brief Parent Widget.
     std::weak_ptr<Widget> m_parent;
 
+    /// \brief Window containing this Widget.
+    Window* m_window;
+
     /// \brief All components of this Widget.
-    HashMap<Component::KIND, std::shared_ptr<Component>> m_components;
+    EnumMap<Component::KIND, std::shared_ptr<Component>> m_components;
 
     /// \brief All child widgets.
     std::vector<std::shared_ptr<Widget>> m_children;

@@ -38,7 +38,7 @@ protected: // methods
 };
 
 /// \brief Factory function to create shared pointers to any subclass of Component.
-/// Make sure that all Component subclasses have a protected default Constructor
+/// Make sure that all Component subclasses have a protected Constructor
 template <class COMPONENT, typename... ARGS>
 std::shared_ptr<COMPONENT> make_component(ARGS&&... args)
 {

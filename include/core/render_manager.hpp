@@ -30,7 +30,7 @@ private: // fields
     /**
      * \brief Widgets to draw in the next render call.
      */
-    std::set<std::weak_ptr<Widget>, std::owner_less<std::weak_ptr<Widget>>> m_widgets;
+    std::set<std::weak_ptr<Widget>, std::owner_less<std::weak_ptr<Widget>> > m_widgets;
 };
 
 } // namespace signal

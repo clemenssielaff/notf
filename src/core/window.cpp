@@ -22,7 +22,8 @@ void window_deleter(GLFWwindow* glfw_window)
 Window::Window(const WindowInfo& info)
     : m_glfw_window(nullptr, window_deleter)
     , m_title(info.title)
-    , m_root_widget(Widget::make_widget())
+    , m_root_widget(Widget::make_root_widget(this))
+    , m_render_manager()
 {
     // always make sure that the Application is constructed first
     Application& app = Application::get_instance();
@@ -55,6 +56,10 @@ Window::Window(const WindowInfo& info)
 
     // TODO: window info variable for clear color?
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glViewport(0, 0, info.width, info.height);
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // log error or success
     if(!check_gl_error()){
@@ -81,19 +86,17 @@ void Window::close()
 
 void Window::update()
 {
-    // TODO: is it really necessary to set the context every time?
-    if(glfwGetCurrentContext() != m_glfw_window.get()){ // and how much does it really cost just setting it twice?
-        glfwMakeContextCurrent(m_glfw_window.get());
-    }
+    Application::get_instance().set_current_window(this);
 
-    int width, height;
-    glfwGetFramebufferSize(m_glfw_window.get(), &width, &height);
-    glViewport(0, 0, width, height);
+//    int width, height;
+//    glfwGetFramebufferSize(m_glfw_window.get(), &width, &height);
+//    glViewport(0, 0, width, height);
 
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     m_root_widget->redraw();
-
+    m_render_manager.render();
     glfwSwapBuffers(m_glfw_window.get());
 }
 

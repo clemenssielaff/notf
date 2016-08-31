@@ -4,6 +4,7 @@
 #include <string>
 
 #include "common/signal.hpp"
+#include "core/render_manager.hpp"
 
 struct GLFWwindow;
 
@@ -65,6 +66,9 @@ public: // methods
     /// \brief The invisible root widget of this Window.
     std::shared_ptr<Widget> get_root_widget() const { return m_root_widget; }
 
+    /// \brief Returns the Application's Render Manager.
+    RenderManager& get_render_manager() { return m_render_manager; }
+
     /// \brief Closes this Window.
     void close();
 
@@ -95,6 +99,9 @@ private: // fields
 
     /// \brief The invisible root widget of this Window.
     std::shared_ptr<Widget> m_root_widget;
+
+    /// \brief The Window's render manager.
+    RenderManager m_render_manager;
 
     CALLBACKS(Window)
 };

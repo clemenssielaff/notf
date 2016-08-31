@@ -21,6 +21,6 @@ template <typename Key>
 using _HashType = typename std::conditional<std::is_enum<Key>::value, _EnumClassHash, std::hash<Key>>::type;
 
 template <typename Key, typename T>
-using HashMap = std::unordered_map<Key, T, _HashType<Key>>;
+using EnumMap = std::unordered_map<Key, T, _HashType<Key>>;
 
 } // namespace signal

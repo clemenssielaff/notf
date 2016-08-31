@@ -34,9 +34,9 @@ Application::Application()
     : m_nextHandle(1024) // 0 is the BAD_HANDLE, the next 1023 handles are reserved for internal use
     , m_log_handler(128, 200) // initial size of the log buffers
     , m_resource_manager()
-    , m_render_manager()
     , m_key_states()
     , m_windows()
+    , m_current_window(nullptr)
     , m_widgets()
 {
     // install the log handler first, to catch errors right away
@@ -85,8 +85,8 @@ int Application::exec()
         if (glfwGetTime() - last_time >= 1.) {
             double ms_per_frame = 1000. / static_cast<double>(frame_count);
             log_debug << ms_per_frame << "ms/frame "
-                      << "(" << static_cast<uint>(ms_per_frame / (1. / 6.)) << "%) = "
-                      << frame_count << "f/s";
+                      << "(" << static_cast<float>(ms_per_frame / (1. / 6.)) << "%) = "
+                      << frame_count << "fps";
             frame_count = 0;
             last_time += 1.;
         }
@@ -176,6 +176,14 @@ void Application::unregister_window(Window* window)
 
     // unregister the window
     m_windows.erase(iterator);
+}
+
+void Application::set_current_window(Window* window)
+{
+    if (m_current_window != window) {
+        glfwMakeContextCurrent(window->glwf_window());
+        m_current_window = window;
+    }
 }
 
 void Application::shutdown()
