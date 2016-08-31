@@ -10,13 +10,19 @@ void RenderManager::render()
     for (const std::weak_ptr<Widget>& weak_widget : m_widgets) {
         auto widget = weak_widget.lock();
         if (widget) {
-            auto renderer = std::dynamic_pointer_cast<RenderComponent>(widget->get_component(Component::KIND::RENDER));
+            auto renderer = std::static_pointer_cast<RenderComponent>(widget->get_component(Component::KIND::RENDER));
             if (renderer) {
                 renderer->render(*widget.get());
             }
         }
     }
-    m_widgets.clear();
+//    for (const std::shared_ptr<Widget>& widget : m_widgets) {
+//        auto renderer = std::static_pointer_cast<RenderComponent>(widget->get_component(Component::KIND::RENDER));
+//        if (renderer) {
+//            renderer->render(*widget.get());
+//        }
+//    }
+//    m_widgets.clear();
 }
 
 } // namespace signal

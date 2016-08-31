@@ -16,9 +16,11 @@ public: // enums
     ///
     /// Acts as a unique identifier of each Component type and as index for the Widget components member.
     enum class KIND {
-        SHAPE = 0, // first entry must be zero
+        INVALID = 0,
+        SHAPE,
         RENDER,
         COLOR,
+        TEXTURE,
         _count, // must always be the last entry
     };
 

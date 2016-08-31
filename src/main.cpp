@@ -1,7 +1,8 @@
 #include "core/application.hpp"
-#include "graphics/sprite_component.hpp"
+#include "core/components/texture_component.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
+#include "graphics/sprite_component.hpp"
 using namespace signal;
 
 int main(void)
@@ -22,8 +23,12 @@ int main(void)
     widget->set_parent(window.get_root_widget());
 
     auto shader = resource_manager.build_shader("sprite", "sprite.vert", "sprite.frag");
+    widget->add_component(make_component<SpriteComponent>(shader));
+
     auto texture = resource_manager.get_texture("background.jpg");
-    widget->set_component(make_component<SpriteComponent>(shader, texture));
+    auto texture_component = make_component<TextureComponent>();
+    texture_component->set_texture(0, texture);
+    widget->add_component(texture_component);
 
     return app.exec();
 }

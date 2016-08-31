@@ -60,7 +60,8 @@ SOURCES += \
     src/graphics/sprite_component.cpp \
     src/common/color.cpp \
     src/core/components/single_color_component.cpp \
-    src/core/components/render_component.cpp
+    src/core/components/render_component.cpp \
+    src/core/components/texture_component.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -109,7 +110,8 @@ HEADERS += \
     include/core/components/color_component.hpp \
     include/common/color.hpp \
     include/core/components/single_color_component.hpp \
-    include/common/enummap.hpp
+    include/common/enummap.hpp \
+    include/core/components/texture_component.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/components/render_component.hpp"
+#include "graphics/gl_forwards.hpp"
 
 namespace signal {
 
@@ -19,7 +20,7 @@ protected: // methods
     /// \brief Value Constructor.
     /// \param shader   The Shader used for rendering.
     /// \param texture  The Texture used for rendering.
-    explicit SpriteComponent(std::shared_ptr<Shader> shader, std::shared_ptr<Texture2> texture);
+    explicit SpriteComponent(std::shared_ptr<Shader> shader);
 
 private: // fields
     /// \brief Vertex Array Object of the rendered quat.

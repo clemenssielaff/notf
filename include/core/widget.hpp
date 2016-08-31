@@ -87,7 +87,7 @@ public: // methods
     /// Each Widget can only have one instance of each Component kind attached.
     ///
     /// \param component    The Component to attach.
-    void set_component(std::shared_ptr<Component> component)
+    void add_component(std::shared_ptr<Component> component)
     {
         m_components[component->get_kind()] = std::move(component);
     }
