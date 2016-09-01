@@ -53,7 +53,9 @@ void Widget::redraw()
     for (const std::shared_ptr<Widget>& child : m_children) {
         child->redraw();
     }
-    m_window->get_render_manager().register_widget(shared_from_this());
+    if(has_component_kind(Component::KIND::RENDER)){
+        m_window->get_render_manager().register_widget(shared_from_this());
+    }
 }
 
 std::shared_ptr<Widget> Widget::make_widget(Handle handle)

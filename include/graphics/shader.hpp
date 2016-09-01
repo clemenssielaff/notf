@@ -1,15 +1,18 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 
-#include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include <glm/fwd.hpp>
 
 #include "common/vector2.hpp"
 #include "graphics/gl_forwards.hpp"
 
 namespace signal {
+
+class Widget;
+class Window;
 
 /**
  * /brief Manages the compilation, runtime functionality and resources of an OpenGL shader program.
@@ -54,13 +57,14 @@ protected: // methods
      */
     explicit Shader(GLuint id)
         : m_id(id)
+        , m_window_setup()
+        , m_widget_setup()
     {
     }
 
 public: // methods
-    /// no copy / assignment
-    Shader(const Shader&) = delete;
-    Shader& operator=(const Shader&) = delete;
+    Shader(const Shader&) = delete; // no copy construction
+    Shader& operator=(const Shader&) = delete; // no copy assignment
 
     /**
      * \brief Destructor.
@@ -77,6 +81,28 @@ public: // methods
      * \return This Shader.
      */
     Shader& use();
+
+    /**
+     * \brief Defines a new Window setup function for this Shader.
+     * \param function  New Window setup function.
+     *
+     * The Window setup function is called once for each Window in which this Shader is used to render a Widget.
+     */
+    void set_window_setup(std::function<void(Shader&, const Window&)> function)
+    {
+        m_window_setup = std::move(function);
+    }
+
+    /**
+     * \brief Defines a new Widget setup function for this Shader.
+     * \param function  New Widget setup function.
+     *
+     * The Widget setup function is called once for each Widget that is rendered using this Shader.
+     */
+    void set_widget_setup(std::function<void(Shader&, const Widget&)> function)
+    {
+        m_widget_setup = std::move(function);
+    }
 
     /**
      * \brief Sets an uniform float in this Shader.
@@ -148,6 +174,28 @@ public: // methods
      */
     void set_uniform(const GLchar* name, const glm::mat4& matrix);
 
+    /**
+     * \brief Configures this Shader to render to the given Window.
+     * \param window    Window to render to.
+     */
+    void setup_window(const Window& window)
+    {
+        if (m_window_setup) {
+            m_window_setup(*this, window);
+        }
+    }
+
+    /**
+     * \brief Configures this Shader to render the given Widget.
+     * \param widget    Widget to render.
+     */
+    void setup_widget(const Widget& widget)
+    {
+        if (m_widget_setup) {
+            m_widget_setup(*this, widget);
+        }
+    }
+
 private: // static methods
     /**
      * \brief Compiles a single shader stage from a given source file.
@@ -161,7 +209,17 @@ private: // fields
     /**
      * \brief The OpenGL ID of this Shader.
      */
-    GLuint m_id;
+    const GLuint m_id;
+
+    /**
+     * \brief Configuration function used to configure this Shader for rendering in a given Window.
+     */
+    std::function<void(Shader&, const Window&)> m_window_setup;
+
+    /**
+     * \brief Configuration function used to configure this Shader for rendering a given Widget.
+     */
+    std::function<void(Shader&, const Widget&)> m_widget_setup;
 };
 
 } // namespace signal

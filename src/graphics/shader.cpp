@@ -3,6 +3,8 @@
 #include <vector>
 
 #include <glad/glad.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "common/devel.hpp"
 #include "common/log.hpp"

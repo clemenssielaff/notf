@@ -4,6 +4,7 @@
 #include <string>
 
 #include "common/signal.hpp"
+#include "common/size2.hpp"
 #include "core/render_manager.hpp"
 
 struct GLFWwindow;
@@ -68,6 +69,15 @@ public: // methods
 
     /// \brief Returns the Application's Render Manager.
     RenderManager& get_render_manager() { return m_render_manager; }
+
+    /// \brief Returns the Window's size in screen coordinates (not pixels).
+    Size2 get_window_size() const;
+
+    /// \brief Returns the size of the Window including decorators added by the OS in screen coordinates (not pixels).
+    Size2 get_framed_window_size() const;
+
+    /// \brief Returns the size of the canvas displayed in this Window in pixels.
+    Size2 get_canvas_size() const;
 
     /// \brief Closes this Window.
     void close();

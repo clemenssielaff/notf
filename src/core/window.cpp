@@ -73,6 +73,33 @@ Window::~Window()
     close();
 }
 
+Size2 Window::get_window_size() const
+{
+    int width, height;
+    glfwGetWindowSize(m_glfw_window.get(), &width, &height);
+    assert(width >= 0);
+    assert(height >= 0);
+    return {static_cast<uint>(width), static_cast<uint>(height)};
+}
+
+Size2 Window::get_framed_window_size() const
+{
+    int left, top, right, bottom;
+    glfwGetWindowFrameSize(m_glfw_window.get(), &left, &top, &right, &bottom);
+    assert(right - left >= 0);
+    assert(bottom - top >= 0);
+    return {static_cast<uint>(right - left), static_cast<uint>(bottom - top)};
+}
+
+Size2 Window::get_canvas_size() const
+{
+    int width, height;
+    glfwGetFramebufferSize(m_glfw_window.get(), &width, &height);
+    assert(width >= 0);
+    assert(height >= 0);
+    return {static_cast<uint>(width), static_cast<uint>(height)};
+}
+
 void Window::close()
 {
     if (m_glfw_window) {
@@ -86,17 +113,18 @@ void Window::close()
 
 void Window::update()
 {
+    // make the window current
     Application::get_instance().set_current_window(this);
 
-//    int width, height;
-//    glfwGetFramebufferSize(m_glfw_window.get(), &width, &height);
-//    glViewport(0, 0, width, height);
+    // update the viewport buffer
+    int width, height;
+    glfwGetFramebufferSize(m_glfw_window.get(), &width, &height);
+    glViewport(0, 0, width, height);
 
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     m_root_widget->redraw();
-    m_render_manager.render();
+    m_render_manager.render(*this);
     glfwSwapBuffers(m_glfw_window.get());
 }
 

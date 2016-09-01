@@ -6,6 +6,7 @@
 namespace signal {
 
 class Widget;
+class Window;
 
 class RenderManager {
 
@@ -20,19 +21,17 @@ public: // methods
      * \param widget    Widget to register
      */
     void register_widget(std::weak_ptr<Widget> widget) { m_widgets.emplace(std::move(widget)); }
-//    void register_widget(std::shared_ptr<Widget> widget) { m_widgets.emplace(std::move(widget)); }
 
     /**
      * \brief Renders all registered Widgets and clears the register.
      */
-    void render();
+    void render(const Window& window);
 
 private: // fields
     /**
      * \brief Widgets to draw in the next render call.
      */
     std::set<std::weak_ptr<Widget>, std::owner_less<std::weak_ptr<Widget>> > m_widgets;
-//    std::set<std::shared_ptr<Widget>> m_widgets;
 };
 
 } // namespace signal

@@ -65,6 +65,9 @@ public: // methods
     /// \brief The Application-unique Handle of this Widget.
     Handle get_handle() const { return m_handle; }
 
+    /// \brief Returns the Window containing this Widget (can be nullptr).
+    const Window* get_window() const { return m_window; }
+
     /// Requests the Component of a given kind from this Widget.
     ///
     /// \return The requested Component, shared pointer is empty if this Widget has no Component of the requested kind.

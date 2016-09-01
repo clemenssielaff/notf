@@ -17,10 +17,10 @@ public: // methods
 
     /// \brief Renders the given Widget.
     /// \param widget   Widget to render.
-    virtual void render(Widget& widget) = 0;
+    virtual void render(const Widget& widget) = 0;
 
     /// \brief OpenGL ID of the shader used for rendering.
-    const Shader& get_shader() const {return *m_shader.get(); }
+    Shader& get_shader() { return *m_shader.get(); }
 
 protected: // methods
     /// \brief Value Constructor.

@@ -86,11 +86,6 @@ SpriteComponent::SpriteComponent(std::shared_ptr<Shader> shader)
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), buffer_offset<GLfloat>(0));
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-
-    m_shader->use();
-    glm::mat4 projection = glm::ortho(0.0f, static_cast<GLfloat>(800), static_cast<GLfloat>(600), 0.0f, -1.0f, 1.0f);
-    m_shader->set_uniform("image", 0);
-    m_shader->set_uniform("projection", projection);
 }
 
 SpriteComponent::~SpriteComponent()
@@ -98,28 +93,12 @@ SpriteComponent::~SpriteComponent()
     glDeleteVertexArrays(1, &m_quad);
 }
 
-void SpriteComponent::render(Widget& widget)
+void SpriteComponent::render(const Widget& widget)
 {
+    m_shader->setup_widget(widget);
     m_shader->use();
 
-    glm::mat4 model;
-    glm::vec2 position(0, 0);
-    GLfloat rotate = 0.0f;
-    glm::vec2 size(800, 600);
-    glm::vec3 color(1.0f);
-
-    model = glm::translate(model, glm::vec3(position, 0.0f)); // First translate (transformations are: scale happens first, then rotation and then finall translation happens; reversed order)
-
-    model = glm::translate(model, glm::vec3(0.5f * size.x, 0.5f * size.y, 0.0f)); // Move origin of rotation to center of quad
-    model = glm::rotate(model, rotate, glm::vec3(0.0f, 0.0f, 1.0f)); // Then rotate
-    model = glm::translate(model, glm::vec3(-0.5f * size.x, -0.5f * size.y, 0.0f)); // Move origin back
-
-    model = glm::scale(model, glm::vec3(size, 1.0f)); // Last scale
-
-    m_shader->set_uniform("model", model);
-
-    // Render textured quad
-    m_shader->set_uniform("spriteColor", color);
+    // TODO: that should be part of the TExtureComponent (see Trello TODO)
 
     if (std::shared_ptr<TextureComponent> texture_component = std::static_pointer_cast<TextureComponent>(widget.get_component(KIND::TEXTURE))) {
         for (auto it = texture_component->all_textures().cbegin(); it != texture_component->all_textures().cend(); ++it) {

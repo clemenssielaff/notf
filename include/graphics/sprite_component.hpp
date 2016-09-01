@@ -13,8 +13,7 @@ public: // methods
 
     /// \brief Renders the given Widget.
     /// \param widget   Widget to render.
-    ///
-    virtual void render(Widget& widget) override;
+    virtual void render(const Widget &widget) override;
 
 protected: // methods
     /// \brief Value Constructor.
