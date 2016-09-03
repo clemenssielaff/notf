@@ -44,6 +44,38 @@ protected: // methods
     explicit Component() = default;
 };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class RenderComponent;
+class ShapeComponent;
+class TextureComponent;
+class ColorComponent;
+
+/// \brief Returns the Component kind associated with a given Component subclass.
+/// There should be one class name per entry in Component::KIND (order doesn't matter).
+/// This is required by Widget::get_component<COMPONENT>() to correctly associate any Component subclass with its first-
+/// level specialization.
+template <typename T>
+constexpr Component::KIND get_kind()
+{
+    Component::KIND kind = Component::KIND::INVALID;
+    if (std::is_base_of<RenderComponent, T>::value) {
+        kind = Component::KIND::RENDER;
+    }
+    else if (std::is_base_of<ShapeComponent, T>::value) {
+        kind = Component::KIND::SHAPE;
+    }
+    else if (std::is_base_of<TextureComponent, T>::value) {
+        kind = Component::KIND::TEXTURE;
+    }
+    else if (std::is_base_of<ColorComponent, T>::value) {
+        kind = Component::KIND::COLOR;
+    }
+    return kind;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /// \brief Factory function to create shared pointers to any subclass of Component.
 /// Make sure that all Component subclasses have a protected Constructor
 /// If the Component fails validation with `validate`, the returned shared pointer will be empty.

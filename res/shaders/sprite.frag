@@ -9,5 +9,5 @@ uniform vec3 sprite_color;
 
 void main()
 {
-    color = vec4(spriteColor, 1.0) * texture2D(image, tex_coords);
+    color = vec4(sprite_color, 1.0) * texture2D(image, tex_coords);
 }

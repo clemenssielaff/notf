@@ -22,7 +22,7 @@ void RenderManager::render(const Window& window)
     // render all widgets
     std::set<GLuint> configured_renderers;
     for (const std::shared_ptr<Widget>& widget : locked_widgets) {
-        std::shared_ptr<RenderComponent> renderer = std::static_pointer_cast<RenderComponent>(widget->get_component(Component::KIND::RENDER));
+        auto renderer = widget->get_component<RenderComponent>();
         assert(renderer);
 
         // perform the window setup, if this shader isn't set up yet

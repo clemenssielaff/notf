@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
@@ -72,13 +73,14 @@ public: // methods
     /// Requests the Component of a given kind from this Widget.
     ///
     /// \return The requested Component, shared pointer is empty if this Widget has no Component of the requested kind.
-    std::shared_ptr<Component> get_component(Component::KIND kind) const
+    template <typename COMPONENT>
+    std::shared_ptr<COMPONENT> get_component() const
     {
-        auto it = m_components.find(kind);
+        auto it = m_components.find(get_kind<COMPONENT>());
         if (it == m_components.end()) {
             return {};
         }
-        return it->second;
+        return std::static_pointer_cast<COMPONENT>(it->second);
     }
 
     /// \brief Checks if this Object contains a Component of the given kind.

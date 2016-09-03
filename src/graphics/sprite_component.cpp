@@ -144,7 +144,7 @@ void SpriteComponent::render(const Widget& widget)
 
     // TODO: that should be part of the TExtureComponent (see Trello TODO)
 
-    if (std::shared_ptr<TextureComponent> texture_component = std::static_pointer_cast<TextureComponent>(widget.get_component(KIND::TEXTURE))) {
+      if(auto texture_component = widget.get_component<TextureComponent>()){
         for (auto it = texture_component->all_textures().cbegin(); it != texture_component->all_textures().cend(); ++it) {
             glActiveTexture(gl_texture_channel(it->first));
             it->second->bind();
