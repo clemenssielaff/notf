@@ -7,6 +7,7 @@
 #include "common/devel.hpp"
 #include "common/enummap.hpp"
 #include "common/handle.hpp"
+#include "common/log.hpp"
 #include "common/signal.hpp"
 #include "core/component.hpp"
 
@@ -92,6 +93,10 @@ public: // methods
     /// \param component    The Component to attach.
     void add_component(std::shared_ptr<Component> component)
     {
+        if (!component) {
+            log_critical << "Cannot add invalid Component to Widget " << m_handle;
+            return;
+        }
         m_components[component->get_kind()] = std::move(component);
     }
 

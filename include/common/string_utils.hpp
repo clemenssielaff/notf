@@ -48,11 +48,11 @@ inline std::vector<std::string> tokenize(const char* input, const char delimiter
 }
 
 /// \brief Tests if an input string starts with a given prefix.
-/// \param prefix   Prefix to test for.
 /// \param input    Input string.
+/// \param prefix   Prefix to test for.
 /// \return True iff the first n input string characters match the prefix of size n.
 ///
-inline bool starts_with(const std::string& prefix, const std::string& input)
+inline bool starts_with(const std::string& input, const std::string& prefix)
 {
     return (input.compare(0, prefix.size(), prefix) == 0);
 }

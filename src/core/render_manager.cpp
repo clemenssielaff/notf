@@ -20,17 +20,17 @@ void RenderManager::render(const Window& window)
     }
 
     // render all widgets
-    std::set<GLuint> configured_shaders;
+    std::set<GLuint> configured_renderers;
     for (const std::shared_ptr<Widget>& widget : locked_widgets) {
         std::shared_ptr<RenderComponent> renderer = std::static_pointer_cast<RenderComponent>(widget->get_component(Component::KIND::RENDER));
         assert(renderer);
 
         // perform the window setup, if this shader isn't set up yet
         Shader& shader = renderer->get_shader();
-        if (!configured_shaders.count(shader.get_id())) {
+        if (!configured_renderers.count(shader.get_id())) {
             shader.use();
-            shader.setup_window(window);
-            configured_shaders.insert(shader.get_id());
+            renderer->setup_window(window);
+            configured_renderers.insert(shader.get_id());
         }
 
         // render the widget

@@ -56,10 +56,6 @@ Window::Window(const WindowInfo& info)
 
     // TODO: window info variable for clear color?
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glViewport(0, 0, info.width, info.height);
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // log error or success
     if(!check_gl_error()){

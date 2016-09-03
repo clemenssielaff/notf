@@ -64,6 +64,7 @@ const std::string& Shader::stage_name(const STAGE stage)
 }
 
 std::shared_ptr<Shader> Shader::build(
+    const std::string& shader_name,
     const std::string& vertex_shader_path,
     const std::string& fragment_shader_path,
     const std::string& geometry_shader_path)
@@ -142,7 +143,7 @@ std::shared_ptr<Shader> Shader::build(
         glDeleteProgram(program);
         return {};
     }
-    return std::make_shared<MakeSharedEnabler<Shader>>(program);
+    return std::make_shared<MakeSharedEnabler<Shader>>(shader_name, program);
 }
 
 Shader::~Shader()
@@ -252,7 +253,7 @@ GLuint Shader::compile(STAGE stage, const std::string& shader_path)
         std::vector<char> error_message(static_cast<size_t>(error_size));
         glGetShaderInfoLog(shader, error_size, nullptr, &error_message[0]);
         log_critical << "Failed to compile " << stage_name(stage) << " shader '"
-                     << basename(shader_path.c_str()) << "'\n\t"
+                     << basename(shader_path.c_str()) << "'\n"
                      << error_message.data();
         glDeleteShader(shader);
         return 0;

@@ -5,7 +5,7 @@ in vec2 tex_coords;
 out vec4 color;
 
 uniform sampler2D image;
-uniform vec3 spriteColor;
+uniform vec3 sprite_color;
 
 void main()
 {

@@ -2,6 +2,16 @@
 
 #include "common/devel.hpp"
 
+namespace { // anonymous
+
+/// \brief Constructs a terminal color prefix for the given color.
+inline std::string color_prefix(u_short color)
+{
+    return "\033[38;5;" + std::to_string(color) + "m";
+}
+
+} // namespace anonymous
+
 namespace signal {
 
 LogHandler::LogHandler(size_t initial_buffer, ulong flush_interval)
@@ -10,7 +20,12 @@ LogHandler::LogHandler(size_t initial_buffer, ulong flush_interval)
     , m_mutex()
     , m_thread()
     , m_log_count(0)
-    , m_flush_interval{ flush_interval }
+    , m_flush_interval{flush_interval}
+    , m_color_debug(242)
+    , m_color_info(249)
+    , m_color_warning(227)
+    , m_color_critical(196)
+    , m_color_fatal(13)
 {
     m_write_buffer.reserve(initial_buffer);
     m_read_buffer.reserve(initial_buffer);
@@ -39,6 +54,42 @@ void LogHandler::join()
     flush_buffer(m_write_buffer);
 }
 
+void LogHandler::set_color(LogMessage::LEVEL level, u_char color)
+{
+    switch (level) {
+    case LogMessage::LEVEL::DEBUG:
+        m_color_debug = color;
+        break;
+
+    case LogMessage::LEVEL::INFO:
+        m_color_info = color;
+        break;
+
+    case LogMessage::LEVEL::WARNING:
+        m_color_warning = color;
+        break;
+
+    case LogMessage::LEVEL::CRITICAL:
+        m_color_critical = color;
+        break;
+
+    case LogMessage::LEVEL::FATAL:
+        m_color_fatal = color;
+        break;
+
+    case LogMessage::LEVEL::ALL:
+        m_color_debug = color;
+        m_color_info = color;
+        m_color_warning = color;
+        m_color_critical = color;
+        m_color_fatal = color;
+        break;
+
+    case LogMessage::LEVEL::NONE:
+        break;
+    }
+}
+
 void LogHandler::run()
 {
     // loop until the 'running' flag is cleared
@@ -63,34 +114,31 @@ void LogHandler::run()
 
 void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
 {
-    static const std::string DEBUG =    "debug:    ";
-    static const std::string INFO =     "info:     ";
-    static const std::string WARNING =  "warning:  ";
+    static const std::string DEBUG = "debug:    ";
+    static const std::string INFO = "info:     ";
+    static const std::string WARNING = "warning:  ";
     static const std::string CRITICAL = "critical: ";
-    static const std::string FATAL =    "fatal:    ";
+    static const std::string FATAL = "fatal:    ";
 
     for (auto& log_message : buffer) {
 
-        // id
-        std::cout << ++m_log_count << ". ";
-
-        // level
+        // prefix
         switch (log_message.level) {
         case LogMessage::LEVEL::ALL:
         case LogMessage::LEVEL::DEBUG:
-            std::cout << DEBUG;
+            std::cout << color_prefix(m_color_debug) << ++m_log_count << ". " << DEBUG;
             break;
         case LogMessage::LEVEL::INFO:
-            std::cout << INFO;
+            std::cout << color_prefix(m_color_info) << ++m_log_count << ". " << INFO;
             break;
         case LogMessage::LEVEL::WARNING:
-            std::cout << WARNING;
+            std::cout << color_prefix(m_color_warning) << ++m_log_count << ". " << WARNING;
             break;
         case LogMessage::LEVEL::CRITICAL:
-            std::cout << CRITICAL;
+            std::cout << color_prefix(m_color_critical) << ++m_log_count << ". " << CRITICAL;
             break;
         case LogMessage::LEVEL::FATAL:
-            std::cout << FATAL;
+            std::cout << color_prefix(m_color_fatal) << ++m_log_count << ". " << FATAL;
             break;
         case LogMessage::LEVEL::NONE:
             continue;
@@ -102,7 +150,7 @@ void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
                   << "' at " << log_message.file
                   << "[" << log_message.line
                   << "], thread #" << log_message.thread_id
-                  << ")\n";
+                  << ")\033[0m\n";
     }
     std::cout.flush();
     buffer.clear();

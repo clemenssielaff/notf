@@ -31,6 +31,11 @@ public: // methods
     /// \brief Virtual Destructor.
     virtual ~Component();
 
+    /// \brief Abstract method to validate a fully constructed component.
+    /// \return True iff the Component is valid, false otherwise.
+    /// Implement in subclasses (if you want) to perform specific checks.
+    virtual bool is_valid() { return true; }
+
     /// \brief This Component's type.
     virtual KIND get_kind() const = 0;
 
@@ -41,12 +46,17 @@ protected: // methods
 
 /// \brief Factory function to create shared pointers to any subclass of Component.
 /// Make sure that all Component subclasses have a protected Constructor
+/// If the Component fails validation with `validate`, the returned shared pointer will be empty.
 template <class COMPONENT, typename... ARGS>
 std::shared_ptr<COMPONENT> make_component(ARGS&&... args)
 {
     static_assert(std::is_base_of<Component, COMPONENT>::value,
                   "make_component must only be used with subclasses of signal::Component");
-    return std::make_shared<MakeSharedEnabler<COMPONENT>>(std::forward<ARGS>(args)...);
+    auto component = std::make_shared<MakeSharedEnabler<COMPONENT>>(std::forward<ARGS>(args)...);
+    if(!component->is_valid()){
+        return {};
+    }
+    return component;
 }
 
 } // namespace signal

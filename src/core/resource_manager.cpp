@@ -95,7 +95,7 @@ std::shared_ptr<Shader> ResourceManager::build_shader(const std::string& shader_
     const std::string full_vertex_path = m_shader_directory + vertex_shader_path;
     const std::string full_fragment_path = m_shader_directory + fragment_shader_path;
     const std::string full_geometry_path = geometry_shader_path.empty() ? "" : m_shader_directory + geometry_shader_path;
-    std::shared_ptr<Shader> shader = Shader::build(full_vertex_path, full_fragment_path, full_geometry_path);
+    std::shared_ptr<Shader> shader = Shader::build(shader_name, full_vertex_path, full_fragment_path, full_geometry_path);
     if (!shader) {
         return {};
     }

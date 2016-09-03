@@ -105,10 +105,10 @@ public: // methods
     /// \param file     File in which this constructor is called.
     /// \param caller   Name of the function from where this constructor is called.
     LogMessageFactory(LogMessage::LEVEL level, uint line, std::string file, std::string caller) noexcept
-        : message()
-        , input()
+        : message(),
+          input()
     {
-        message = LogMessage{ level, line, std::this_thread::get_id(), std::move(file), std::move(caller), {} };
+        message = LogMessage{level, line, std::this_thread::get_id(), std::move(file), std::move(caller), {}};
     }
 
     // Forbid allocation on the heap.
@@ -171,7 +171,7 @@ public: // methods
 
             // messages of level warning or higher cause an immediate (blocking) flush,
             // because the application might crash before we have the chance to properly swap the buffers
-            if(force_flush){
+            if (force_flush) {
                 flush_buffer(m_write_buffer);
             }
         }
@@ -195,6 +195,15 @@ public: // methods
     /// Is a separate function so you can use the time between stop() and the thread finishing.
     /// Does nothing if the handler cannot be joined.
     void join();
+
+    /// \brief Colors all future log messages of the given level in the given color.
+    /// \param level    Log message level to color.
+    /// \param color    Which color to use, see description for details.
+    ///
+    /// Signal UI can color log messages with up to 256 colors.
+    /// See http://misc.flogisoft.com/bash/tip_colors_and_formatting#colors1
+    ///
+    void set_color(LogMessage::LEVEL level, u_char color);
 
 private: // methods
     /// \brief Thread execution function.
@@ -228,6 +237,13 @@ private: // fields
 
     /// \brief Flag indicating if the handler loop shoud continue or not.
     std::atomic_flag m_is_running = ATOMIC_FLAG_INIT; // set to false, see https://stackoverflow.com/a/24438336
+
+    /// \brief Log Colors
+    u_char m_color_debug;
+    u_char m_color_info;
+    u_char m_color_warning;
+    u_char m_color_critical;
+    u_char m_color_fatal;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

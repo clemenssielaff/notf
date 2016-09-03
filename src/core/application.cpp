@@ -194,9 +194,19 @@ void Application::shutdown()
     }
     is_running = false;
 
-    log_info << "Application shutdown";
+    // stop the event loop
     glfwTerminate();
+
+    // close all remaining windows
+    for(auto it : m_windows){
+        it.second->close();
+    }
+
+    // release all resources
     m_resource_manager.clear();
+
+    // stop the logger
+    log_info << "Application shutdown";
     m_log_handler.stop();
     m_log_handler.join();
 }
