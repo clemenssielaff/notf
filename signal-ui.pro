@@ -4,7 +4,7 @@ CONFIG -= app_bundle qt
 
 INCLUDEPATH *= thirdparty/ include/ test/
 
-LIBS *= -L/home/clemens/code/thirdparty/glfw-3.2/INSTALL/lib/
+LIBS *= -L/home/clemens/code/thirdparty/glfw-3.2.1/INSTALL/lib/
 LIBS *= -lglfw3 -lGL -ldl -lpthread -lX11 -lXrandr -lXcursor -lXinerama -lXxf86vm #-lXi
 
 # debug
@@ -57,9 +57,9 @@ SOURCES += \
     src/common/system.cpp \
     src/breakout/spriterenderer.cpp \
     src/core/render_manager.cpp \
-    src/graphics/sprite_component.cpp \
+    src/dynamic/render/sprite_component.cpp \
     src/common/color.cpp \
-    src/core/components/single_color_component.cpp \
+    src/dynamic/color/single_color_component.cpp \
     src/core/components/render_component.cpp \
     src/core/components/texture_component.cpp \
     src/common/size2.cpp
@@ -105,12 +105,12 @@ HEADERS += \
     include/core/resource_manager.hpp \
     include/breakout/spriterenderer.hpp \
     include/core/render_manager.hpp \
-    include/graphics/sprite_component.hpp \
+    include/dynamic/render/sprite_component.hpp \
     include/core/components/render_component.hpp \
     include/core/components/shape_component.hpp \
     include/core/components/color_component.hpp \
     include/common/color.hpp \
-    include/core/components/single_color_component.hpp \
+    include/dynamic/color/single_color_component.hpp \
     include/common/enummap.hpp \
     include/core/components/texture_component.hpp \
     include/common/size2.hpp

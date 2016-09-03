@@ -1,4 +1,4 @@
-#include "graphics/sprite_component.hpp"
+#include "dynamic/render/sprite_component.hpp"
 
 #include <glad/glad.h>
 #include <glm/gtc/matrix_transform.hpp>
@@ -142,13 +142,8 @@ void SpriteComponent::render(const Widget& widget)
 
     m_shader->use();
 
-    // TODO: that should be part of the TExtureComponent (see Trello TODO)
-
-      if(auto texture_component = widget.get_component<TextureComponent>()){
-        for (auto it = texture_component->all_textures().cbegin(); it != texture_component->all_textures().cend(); ++it) {
-            glActiveTexture(gl_texture_channel(it->first));
-            it->second->bind();
-        }
+    if (auto texture_component = widget.get_component<TextureComponent>()) {
+        texture_component->bind_texture(0);
     }
 
     glBindVertexArray(m_quad);

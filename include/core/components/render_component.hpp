@@ -19,6 +19,9 @@ public: // methods
     /// \brief This Component's type.
     virtual KIND get_kind() const override { return KIND::RENDER; }
 
+    /// \brief OpenGL ID of the shader used for rendering, is empty if invalid.
+    Shader& get_shader() { return *m_shader.get(); }
+
     // \brief Configures the renderer to render to the given Window.
     // \param window    Window to render to.
     virtual void setup_window(const Window& /*window*/) {}
@@ -26,9 +29,6 @@ public: // methods
     /// \brief Renders the given Widget.
     /// \param widget   Widget to render.
     virtual void render(const Widget& widget) = 0;
-
-    /// \brief OpenGL ID of the shader used for rendering, is empty if invalid.
-    Shader& get_shader() { return *m_shader.get(); }
 
 protected: // methods
     /// \brief Value Constructor.

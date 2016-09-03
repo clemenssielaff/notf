@@ -53,9 +53,7 @@ Window::Window(const WindowInfo& info)
     glfwMakeContextCurrent(m_glfw_window.get());
     gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
     glfwSwapInterval(info.enable_vsync ? 1 : 0);
-
-    // TODO: window info variable for clear color?
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClearColor(info.clear_color.r, info.clear_color.g, info.clear_color.b, info.clear_color.a);
 
     // log error or success
     if(!check_gl_error()){
