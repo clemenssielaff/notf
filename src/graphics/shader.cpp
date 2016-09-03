@@ -105,7 +105,7 @@ std::shared_ptr<Shader> Shader::build(
     glGetProgramiv(program, GL_LINK_STATUS, &success);
     if (success) {
         if (geometry_shader) {
-            log_debug << "Compiled and linked shader program with vertex shader '"
+            log_trace << "Compiled and linked shader program with vertex shader '"
                       << basename(vertex_shader_path.c_str())
                       << "', fragment shader '"
                       << basename(fragment_shader_path.c_str()) << "'"
@@ -113,7 +113,7 @@ std::shared_ptr<Shader> Shader::build(
                       << basename(geometry_shader_path.c_str()) << "'";
         }
         else {
-            log_debug << "Compiled and linked shader program with vertex shader '"
+            log_trace << "Compiled and linked shader program with vertex shader '"
                       << basename(vertex_shader_path.c_str())
                       << "' and fragment shader '"
                       << basename(fragment_shader_path.c_str()) << "'";

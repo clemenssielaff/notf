@@ -23,7 +23,7 @@ namespace signal {
 
 Widget::~Widget()
 {
-    log_debug << "Destroyed Widget with handle:" << m_handle;
+    log_trace << "Destroyed Widget with handle:" << m_handle;
 }
 
 void Widget::set_parent(std::shared_ptr<Widget> parent)
@@ -70,7 +70,7 @@ std::shared_ptr<Widget> Widget::make_widget(Handle handle)
                      << " because the handle is already taken";
         return {};
     }
-    log_debug << "Created Widget with handle:" << handle;
+    log_trace << "Created Widget with handle:" << handle;
     return widget;
 }
 

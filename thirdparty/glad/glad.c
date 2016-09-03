@@ -220,6 +220,7 @@ static int has_ext(const char *ext) {
 
     return 0;
 }
+
 int GLAD_GL_VERSION_1_0;
 int GLAD_GL_VERSION_1_1;
 int GLAD_GL_VERSION_1_2;

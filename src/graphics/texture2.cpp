@@ -68,7 +68,7 @@ std::shared_ptr<Texture2> Texture2::load(const std::string& texture_path)
 
     // log success
     {
-#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_DEBUG
+#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_TRACE
         static const std::string grayscale = "grayscale";
         static const std::string rgb = "rgb";
         static const std::string rgba = "rgba";
@@ -85,7 +85,7 @@ std::shared_ptr<Texture2> Texture2::load(const std::string& texture_path)
             format_name = &rgba;
         }
 
-        log_debug << "Loaded " << width << "x" << height << " " << *format_name << " texture: " << texture_path
+        log_trace << "Loaded " << width << "x" << height << " " << *format_name << " texture: " << texture_path
                   << " with ID: " << id;
 #endif
     }
@@ -104,7 +104,7 @@ void Texture2::unbind()
 
 Texture2::~Texture2()
 {
-    log_debug << "Deleting OpenGL texture with ID: " << m_id;
+    log_trace << "Deleting OpenGL texture with ID: " << m_id;
     glDeleteTextures(1, &m_id);
 }
 

@@ -97,7 +97,7 @@ Size2 Window::get_canvas_size() const
 void Window::close()
 {
     if (m_glfw_window) {
-        log_debug << "Closing Window \"" << m_title << "\"";
+        log_trace << "Closing Window \"" << m_title << "\"";
         on_close(*this);
         m_root_widget.reset();
         Application::get_instance().unregister_window(this);

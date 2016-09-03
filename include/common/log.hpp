@@ -11,17 +11,17 @@
  *
  * One important feature is the support compile-time switches to disable log messages under a certain level.
  * Setting those flags will cause all calls to log_* be compiled away (limitations see below).
- * This way, you are free to plaster your code with log_debug messages and be sure that they won't negatively affect
+ * This way, you are free to plaster your code with log_trace messages and be sure that they won't negatively affect
  * runtime performance, if you compile with -DSIGNAL_LOG_LEVEL=2.
  * Note that this optimization is only true for 'constexpr' log messages, so either string literals like:
  *
  * @code
- * log_debug << "this is a string literal";
+ * log_trace << "this is a string literal";
  * @endcode
  *
  * or:
  * @code
- * log_debug << constexpr_function();
+ * log_trace << constexpr_function();
  * @endcode
  *
  * with:
@@ -44,6 +44,7 @@
 #include <vector>
 
 #include "common/devel.hpp"
+#include "common/int_utils.hpp"
 
 namespace signal {
 
@@ -60,7 +61,7 @@ struct LogMessage {
     /// \brief The level of a LogMessage indicates under what circumstance the message was created.
     enum class LEVEL {
         ALL = 0,
-        DEBUG, // for development only
+        TRACE, // for development only
         INFO, // for documenting expected behavior
         WARNING, // for unexpected but valid behavior
         CRITICAL, // for errors that disrupt normal program flow and are noticeable by the user
@@ -196,6 +197,9 @@ public: // methods
     /// Does nothing if the handler cannot be joined.
     void join();
 
+    /// \brief Sets the number of digits that the Log message counter should align for.
+    void set_number_padding(ushort digits) { m_number_padding = digits; }
+
     /// \brief Colors all future log messages of the given level in the given color.
     /// \param level    Log message level to color.
     /// \param color    Which color to use, see description for details.
@@ -238,12 +242,16 @@ private: // fields
     /// \brief Flag indicating if the handler loop shoud continue or not.
     std::atomic_flag m_is_running = ATOMIC_FLAG_INIT; // set to false, see https://stackoverflow.com/a/24438336
 
+    /// \brief The number of digits that the message should align for.
+    /// If '3', single digit numbers will be padded with two spaces to the left, double-digits with a single space.
+    ushort m_number_padding;
+
     /// \brief Log Colors
-    u_char m_color_debug;
-    u_char m_color_info;
-    u_char m_color_warning;
-    u_char m_color_critical;
-    u_char m_color_fatal;
+    uchar m_color_trace;
+    uchar m_color_info;
+    uchar m_color_warning;
+    uchar m_color_critical;
+    uchar m_color_fatal;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -314,7 +322,7 @@ constexpr const char* basename(const char* input, const char delimiter = '/')
 /// It is used instead of a LogMessageFactory as target for logging strings when the code was compiled with flags to
 /// ignore certain levels of logging calls.
 /// For example, if the code was compiled using SIGNAL_LOG_LEVEL = 3 (warnings and errors only), all log_info and
-/// log_debug calls target a _NullBuffer.
+/// log_trace calls target a _NullBuffer.
 /// The _NullBuffer class provides a '<<' operator for all types of inputs but just ignores the argument.
 /// This way, input into a _NullBuffer is simply optimized out of existence.
 struct _NullBuffer {
@@ -326,7 +334,7 @@ struct _NullBuffer {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define SIGNAL_LOG_LEVEL_DEBUG 1
+#define SIGNAL_LOG_LEVEL_TRACE 1
 #define SIGNAL_LOG_LEVEL_INFO 2
 #define SIGNAL_LOG_LEVEL_WARNING 3
 #define SIGNAL_LOG_LEVEL_CRITICAL 4
@@ -340,18 +348,18 @@ struct _NullBuffer {
 ///
 /// Use these macros like this:
 ///
-///     log_debug << "this is log message: " << 42;
+///     log_trace << "this is log message: " << 42;
 ///     log_critical << "Caught unhandled error: " << error_object;
 ///
 /// The object provided by log_* is a std::stringstream or a _NullBuffer, which accepts all the same inputs.
-#ifndef log_debug
-#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_DEBUG
-#define log_debug signal::LogMessageFactory(signal::LogMessage::LEVEL::DEBUG, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
+#ifndef log_trace
+#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_TRACE
+#define log_trace signal::LogMessageFactory(signal::LogMessage::LEVEL::TRACE, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
 #else
-#define log_debug signal::_NullBuffer()
+#define log_trace signal::_NullBuffer()
 #endif
 #else
-#warning "Macro 'log_debug' is already defined - Signal's log_debug macro will remain disabled."
+#warning "Macro 'log_trace' is already defined - Signal's log_trace macro will remain disabled."
 #endif
 
 #ifndef log_info

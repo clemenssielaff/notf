@@ -21,7 +21,8 @@ LogHandler::LogHandler(size_t initial_buffer, ulong flush_interval)
     , m_thread()
     , m_log_count(0)
     , m_flush_interval{flush_interval}
-    , m_color_debug(242)
+    , m_number_padding(2)
+    , m_color_trace(242)
     , m_color_info(249)
     , m_color_warning(227)
     , m_color_critical(196)
@@ -57,8 +58,8 @@ void LogHandler::join()
 void LogHandler::set_color(LogMessage::LEVEL level, u_char color)
 {
     switch (level) {
-    case LogMessage::LEVEL::DEBUG:
-        m_color_debug = color;
+    case LogMessage::LEVEL::TRACE:
+        m_color_trace = color;
         break;
 
     case LogMessage::LEVEL::INFO:
@@ -78,7 +79,7 @@ void LogHandler::set_color(LogMessage::LEVEL level, u_char color)
         break;
 
     case LogMessage::LEVEL::ALL:
-        m_color_debug = color;
+        m_color_trace = color;
         m_color_info = color;
         m_color_warning = color;
         m_color_critical = color;
@@ -114,31 +115,37 @@ void LogHandler::run()
 
 void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
 {
-    static const std::string DEBUG = "debug:    ";
-    static const std::string INFO = "info:     ";
-    static const std::string WARNING = "warning:  ";
-    static const std::string CRITICAL = "critical: ";
-    static const std::string FATAL = "fatal:    ";
+    static const std::string TRACE      = "trace: ";
+    static const std::string INFO       = "info:  ";
+    static const std::string WARNING    = "warn:  ";
+    static const std::string CRITICAL   = "crit:  ";
+    static const std::string FATAL      = "fatal: ";
 
     for (auto& log_message : buffer) {
+
+        // padding
+        ++m_log_count;
+        for (auto i = m_number_padding; i > count_digits(m_log_count); --i) {
+            std::cout << " ";
+        }
 
         // prefix
         switch (log_message.level) {
         case LogMessage::LEVEL::ALL:
-        case LogMessage::LEVEL::DEBUG:
-            std::cout << color_prefix(m_color_debug) << ++m_log_count << ". " << DEBUG;
+        case LogMessage::LEVEL::TRACE:
+            std::cout << color_prefix(m_color_trace) << m_log_count << ". " << TRACE;
             break;
         case LogMessage::LEVEL::INFO:
-            std::cout << color_prefix(m_color_info) << ++m_log_count << ". " << INFO;
+            std::cout << color_prefix(m_color_info) << m_log_count << ". " << INFO;
             break;
         case LogMessage::LEVEL::WARNING:
-            std::cout << color_prefix(m_color_warning) << ++m_log_count << ". " << WARNING;
+            std::cout << color_prefix(m_color_warning) << m_log_count << ". " << WARNING;
             break;
         case LogMessage::LEVEL::CRITICAL:
-            std::cout << color_prefix(m_color_critical) << ++m_log_count << ". " << CRITICAL;
+            std::cout << color_prefix(m_color_critical) << m_log_count << ". " << CRITICAL;
             break;
         case LogMessage::LEVEL::FATAL:
-            std::cout << color_prefix(m_color_fatal) << ++m_log_count << ". " << FATAL;
+            std::cout << color_prefix(m_color_fatal) << m_log_count << ". " << FATAL;
             break;
         case LogMessage::LEVEL::NONE:
             continue;
@@ -173,7 +180,7 @@ static const uint thread_count = 3;
 void produce_garbage()
 {
     for (uint i = 0; i < operations; ++i) {
-        log_debug << "This is garbage with a number: " << 231;
+        log_trace << "This is garbage with a number: " << 231;
     }
 }
 

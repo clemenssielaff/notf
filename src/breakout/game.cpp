@@ -34,16 +34,6 @@ Direction VectorDirection(glm::vec2 target)
     return static_cast<Direction>(best_match);
 }
 
-GLboolean check_collision(const GameObject& one, const GameObject& two) // AABB - AABB collision
-{
-    // Collision x-axis?
-    bool collisionX = one.position.x + one.size.x >= two.position.x && two.position.x + two.size.x >= one.position.x;
-    // Collision y-axis?
-    bool collisionY = one.position.y + one.size.y >= two.position.y && two.position.y + two.size.y >= one.position.y;
-    // Collision only if on both axes
-    return collisionX && collisionY;
-}
-
 Collision check_collision(const BallObject& one, const GameObject& two) // AABB - Circle collision
 {
     // Get center point circle first

@@ -84,7 +84,7 @@ int Application::exec()
         ++frame_count;
         if (glfwGetTime() - last_time >= 1.) {
             double ms_per_frame = 1000. / static_cast<double>(frame_count);
-            log_debug << ms_per_frame << "ms/frame "
+            log_trace << ms_per_frame << "ms/frame "
                       << "(" << static_cast<float>(ms_per_frame / (1. / 6.)) << "%) = "
                       << frame_count << "fps";
             frame_count = 0;

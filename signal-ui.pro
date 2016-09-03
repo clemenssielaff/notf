@@ -113,7 +113,8 @@ HEADERS += \
     include/dynamic/color/single_color_component.hpp \
     include/common/enummap.hpp \
     include/core/components/texture_component.hpp \
-    include/common/size2.hpp
+    include/common/size2.hpp \
+    include/common/int_utils.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \
