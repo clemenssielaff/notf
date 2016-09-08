@@ -26,6 +26,10 @@ using std::sqrt;
 using std::fmod;
 using std::isnan;
 using std::isinf;
+using std::sin;
+using std::cos;
+using std::tan;
+using std::atan2;
 
 /// \brief Tests, if a value is positive or negative.
 ///

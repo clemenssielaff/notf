@@ -5,20 +5,6 @@
 #include "core/application.hpp"
 #include "core/window.hpp"
 
-namespace { // anonymous
-
-// https://stackoverflow.com/a/8147213/3444217 and https://stackoverflow.com/a/25069711/3444217
-class MakeSharedWidgetEnabler : public signal::Widget {
-public:
-    template <typename... Args>
-    MakeSharedWidgetEnabler(Args&&... args)
-        : signal::Widget(std::forward<Args>(args)...)
-    {
-    }
-};
-
-} // namespace anonymous
-
 namespace signal {
 
 Widget::~Widget()
@@ -40,6 +26,28 @@ void Widget::set_parent(std::shared_ptr<Widget> parent)
     m_parent = parent;
     m_window = parent->m_window;
     parent->m_children.emplace_back(std::move(this_widget));
+}
+
+void Widget::add_component(std::shared_ptr<Component> component)
+{
+    if (!component) {
+        log_critical << "Cannot add invalid Component to Widget " << m_handle;
+        return;
+    }
+    remove_component(component->get_kind());
+    component->register_widget(shared_from_this());
+    m_components[component->get_kind()] = std::move(component);
+}
+
+void Widget::remove_component(Component::KIND kind)
+{
+    if(!has_component_kind(kind)){
+        return;
+    }
+    auto it = m_components.find(kind);
+    assert(it != m_components.end());
+    it->second->unregister_widget(shared_from_this());
+    m_components.erase(it);
 }
 
 void Widget::redraw()
@@ -64,7 +72,7 @@ std::shared_ptr<Widget> Widget::make_widget(Handle handle)
     if (!handle) {
         handle = app.get_next_handle();
     }
-    std::shared_ptr<Widget> widget = std::make_shared<MakeSharedWidgetEnabler>(handle);
+    std::shared_ptr<Widget> widget = std::make_shared<MakeSharedEnabler<Widget>>(handle);
     if (!register_widget(widget)) {
         log_critical << "Cannot register Widget with handle " << handle
                      << " because the handle is already taken";

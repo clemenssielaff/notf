@@ -5,7 +5,7 @@
 #include "core/components/texture_component.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
-#include "dynamic/render/sprite_component.hpp"
+#include "dynamic/render/sprite.hpp"
 
 using namespace signal;
 

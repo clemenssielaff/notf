@@ -7,7 +7,7 @@ namespace signal {
 
 class Widget;
 
-/// \brief Virtual ase class for all Shape Components.
+/// \brief Virtual base class for all Shape Components.
 ///
 class ShapeComponent : public Component {
 
@@ -15,10 +15,10 @@ public: // methods
     /// \brief This Component's type.
     virtual KIND get_kind() const override { return KIND::SHAPE; }
 
-    /// \brief Returns the Aabr of the shape of the given Widget.
+    /// \brief Returns the Shape's Axis Aligned Bounding Rect.
     /// \param widget   Widget determining the shape.
     ///
-    virtual Aabr bounding_rect(Widget& widget) = 0;
+    virtual Aabr get_aabr(const Widget& widget) = 0;
 
 protected: // methods
     /// \brief Default Constructor.

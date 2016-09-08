@@ -57,12 +57,17 @@ SOURCES += \
     src/common/system.cpp \
     src/breakout/spriterenderer.cpp \
     src/core/render_manager.cpp \
-    src/dynamic/render/sprite_component.cpp \
     src/common/color.cpp \
-    src/dynamic/color/single_color_component.cpp \
     src/core/components/render_component.cpp \
     src/core/components/texture_component.cpp \
-    src/common/size2.cpp
+    src/common/size2.cpp \
+    src/dynamic/render/sprite.cpp \
+    src/dynamic/color/singlecolor.cpp \
+    src/dynamic/shape/aabr_shape.cpp \
+    src/core/layout.cpp \
+    src/common/transform2.cpp \
+    src/core/components/layout_component.cpp \
+    src/dynamic/layout/flexbox_layout.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -105,16 +110,21 @@ HEADERS += \
     include/core/resource_manager.hpp \
     include/breakout/spriterenderer.hpp \
     include/core/render_manager.hpp \
-    include/dynamic/render/sprite_component.hpp \
     include/core/components/render_component.hpp \
     include/core/components/shape_component.hpp \
     include/core/components/color_component.hpp \
     include/common/color.hpp \
-    include/dynamic/color/single_color_component.hpp \
     include/common/enummap.hpp \
     include/core/components/texture_component.hpp \
     include/common/size2.hpp \
-    include/common/int_utils.hpp
+    include/common/int_utils.hpp \
+    include/dynamic/render/sprite.hpp \
+    include/dynamic/shape/aabr_shape.hpp \
+    include/dynamic/color/singlecolor.hpp \
+    include/core/layout.hpp \
+    include/common/transform2.hpp \
+    include/core/components/layout_component.hpp \
+    include/dynamic/layout/flexbox_layout.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

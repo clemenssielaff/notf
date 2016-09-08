@@ -1,4 +1,4 @@
-#include "dynamic/color/single_color_component.hpp"
+#include "dynamic/color/singlecolor.hpp"
 
 namespace signal {
 

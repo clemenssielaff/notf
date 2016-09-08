@@ -20,7 +20,7 @@ private: //struct
     /// \brief Data block shared by two Connection instances.
     struct Data {
         /// \brief Is the connection still active?
-        bool is_connected{ true };
+        bool is_connected{true};
     };
 
 private: // methods for Signal
@@ -39,8 +39,8 @@ private: // methods for Signal
     }
 
 public: // methods
-    Connection(Connection const&) = default;
-    Connection& operator=(Connection const&) = default;
+    Connection(const Connection&) = default;
+    Connection& operator=(const Connection&) = default;
     Connection(Connection&&) = default;
     Connection& operator=(Connection&&) = default;
 
@@ -81,8 +81,8 @@ public: // methods
     /// \brief Default Constructor.
     CallbackManager() = default;
 
-    CallbackManager(CallbackManager const&) = delete;
-    CallbackManager& operator=(CallbackManager const&) = delete;
+    CallbackManager(const CallbackManager&) = delete;
+    CallbackManager& operator=(const CallbackManager&) = delete;
     CallbackManager(CallbackManager&&) = delete;
     CallbackManager& operator=(CallbackManager&&) = delete;
 
@@ -127,7 +127,7 @@ private: // struct
     /// \brief Connection and target function pair.
     struct Target {
         Target(Connection connection, std::function<void(SIGNATURE...)> function,
-            std::function<bool(SIGNATURE...)> test_function = [](SIGNATURE...) { return true; })
+               std::function<bool(SIGNATURE...)> test_function = [](SIGNATURE...) { return true; })
             : connection(std::move(connection))
             , function(std::move(function))
             , test_function(std::move(test_function))
@@ -151,8 +151,8 @@ public: // methods
     {
     }
 
-    Signal(Signal const&) = delete;
-    Signal& operator=(Signal const&) = delete;
+    Signal(const Signal&) = delete;
+    Signal& operator=(const Signal&) = delete;
 
     /// \brief Destructor.
     ~Signal() { disconnect_all(); }
@@ -185,7 +185,7 @@ public: // methods
     ///
     /// \return The created Connection.
     Connection connect(std::function<void(SIGNATURE...)> function,
-        std::function<bool(SIGNATURE...)> test_func = {})
+                       std::function<bool(SIGNATURE...)> test_func = {})
     {
         assert(function);
 
@@ -205,7 +205,8 @@ public: // methods
         Connection connection = Connection::make_connection();
         if (test_func) {
             new_targets.emplace_back(connection, std::move(function), std::move(test_func));
-        } else {
+        }
+        else {
             new_targets.emplace_back(connection, std::move(function));
         }
 
@@ -255,7 +256,7 @@ private: // methods for Connections
         assert(method);
         return connect(
             [obj, method](SIGNATURE... args) { (obj->*method)(args...); },
-            std::forward<std::function<bool(SIGNATURE...)> >(test_func));
+            std::forward<std::function<bool(SIGNATURE...)>>(test_func));
     }
 
 private: // fields
@@ -300,8 +301,8 @@ public: // methods
         disconnect_all();
     }
 
-    Signal(Signal const&) = delete;
-    Signal& operator=(Signal const&) = delete;
+    Signal(const Signal&) = delete;
+    Signal& operator=(const Signal&) = delete;
 
     /// \brief Move Constructor.
     ///
@@ -421,17 +422,19 @@ private: // fields
 ///         CALLBACKS(Foo)
 ///     };
 ///
-#define CALLBACKS(CLASSNAME) \
-public:\
-    template <typename SIGNAL, typename... ARGS>\
-    void connect(SIGNAL& signal, ARGS&&... args) {__callbacks.connect(signal, std::forward<ARGS>(args)...);}\
-    \
-    template <typename SIGNAL, typename... SIGNATURE, typename... TEST_FUNC>\
-    void connect(SIGNAL& signal, void (CLASSNAME::*method)(SIGNATURE...), TEST_FUNC&&... test_func)\
-    {__callbacks.connect(signal, this, std::forward<decltype(method)>(method), std::forward<TEST_FUNC>(test_func)...);}\
-    \
-    void disconnect_all() {__callbacks.disconnect_all();}\
-private:\
+#define CALLBACKS(CLASSNAME)                                                                                              \
+public:                                                                                                                   \
+    template <typename SIGNAL, typename... ARGS>                                                                          \
+    void connect(SIGNAL& signal, ARGS&&... args) { __callbacks.connect(signal, std::forward<ARGS>(args)...); }            \
+                                                                                                                          \
+    template <typename SIGNAL, typename... SIGNATURE, typename... TEST_FUNC>                                              \
+    void connect(SIGNAL& signal, void (CLASSNAME::*method)(SIGNATURE...), TEST_FUNC&&... test_func)                       \
+    {                                                                                                                     \
+        __callbacks.connect(signal, this, std::forward<decltype(method)>(method), std::forward<TEST_FUNC>(test_func)...); \
+    }                                                                                                                     \
+                                                                                                                          \
+    void disconnect_all() { __callbacks.disconnect_all(); }                                                               \
+private:                                                                                                                  \
     CallbackManager __callbacks;
 
 } // namespace signal

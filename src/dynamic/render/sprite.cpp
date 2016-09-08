@@ -1,4 +1,4 @@
-#include "dynamic/render/sprite_component.hpp"
+#include "dynamic/render/sprite.hpp"
 
 #include <glad/glad.h>
 #include <glm/gtc/matrix_transform.hpp>

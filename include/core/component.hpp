@@ -1,15 +1,20 @@
 #pragma once
 
 #include <memory>
+#include <set>
 #include <type_traits>
 
 #include "common/devel.hpp"
 
 namespace signal {
 
+class Widget;
+
 /// \brief Virtual base class for all Components.
 ///
-class Component {
+class Component : public std::enable_shared_from_this<Component> {
+
+    friend class Widget;
 
 public: // enums
     /// \brief Component kind enum.
@@ -17,19 +22,20 @@ public: // enums
     /// Acts as a unique identifier of each Component type and as index for the Widget components member.
     enum class KIND {
         INVALID = 0,
-        SHAPE,
         RENDER,
-        COLOR,
+        SHAPE,
+        LAYOUT,
         TEXTURE,
+        COLOR,
         _count, // must always be the last entry
     };
 
 public: // methods
-    Component(Component const&) = delete; // no copy construction
-    Component& operator=(Component const&) = delete; // no copy assignment
+    Component(const Component&) = delete; // no copy construction
+    Component& operator=(const Component&) = delete; // no copy assignment
 
     /// \brief Virtual Destructor.
-    virtual ~Component();
+    virtual ~Component() = default;
 
     /// \brief Abstract method to validate a fully constructed component.
     /// \return True iff the Component is valid, false otherwise.
@@ -42,12 +48,27 @@ public: // methods
 protected: // methods
     /// \brief Default Constructor.
     explicit Component() = default;
+
+    /// \brief Redraws all Widgets registered with this Component.
+    void redraw_widgets();
+
+private: // methods for Widget
+    // \brief Registers a new Widget to receive updates when this Component changes.
+    void register_widget(std::shared_ptr<Widget> widget);
+
+    /// \brief Unregisters a Widget from receiving updates from this Component.
+    void unregister_widget(std::shared_ptr<Widget> widget);
+
+private: // fields
+    /// \brief All Widgets that use this Component.
+    std::set<std::weak_ptr<Widget>, std::owner_less<std::weak_ptr<Widget>>> m_widgets;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class RenderComponent;
 class ShapeComponent;
+class LayoutComponent;
 class TextureComponent;
 class ColorComponent;
 
@@ -64,6 +85,9 @@ constexpr Component::KIND get_kind()
     }
     else if (std::is_base_of<ShapeComponent, T>::value) {
         kind = Component::KIND::SHAPE;
+    }
+    else if (std::is_base_of<LayoutComponent, T>::value) {
+        kind = Component::KIND::LAYOUT;
     }
     else if (std::is_base_of<TextureComponent, T>::value) {
         kind = Component::KIND::TEXTURE;
@@ -85,7 +109,7 @@ std::shared_ptr<COMPONENT> make_component(ARGS&&... args)
     static_assert(std::is_base_of<Component, COMPONENT>::value,
                   "make_component must only be used with subclasses of signal::Component");
     auto component = std::make_shared<MakeSharedEnabler<COMPONENT>>(std::forward<ARGS>(args)...);
-    if(!component->is_valid()){
+    if (!component->is_valid()) {
         return {};
     }
     return component;

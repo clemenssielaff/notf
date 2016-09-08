@@ -246,11 +246,19 @@ private: // fields
     /// If '3', single digit numbers will be padded with two spaces to the left, double-digits with a single space.
     ushort m_number_padding;
 
-    /// \brief Log Colors
+    // \brief Terminal color value of trace log messages.
     uchar m_color_trace;
+
+    // \brief Terminal color value of info log messages.
     uchar m_color_info;
+
+    // \brief Terminal color value of warning log messages.
     uchar m_color_warning;
+
+    // \brief Terminal color value of critical log messages.
     uchar m_color_critical;
+
+    // \brief Terminal color value of fatal log messages.
     uchar m_color_fatal;
 };
 
