@@ -19,6 +19,14 @@ public: // enum
     };
 
 public: // methods
+    /// \brief Appends a new Widget to the end of the Flexbox.
+    void add_widget(std::shared_ptr<Widget> widget);
+
+    /// \brief Returns the LayoutItem at a given local position.
+    /// \param local_pos    Local coordinates where to look for the LayoutItem.
+    /// \return LayoutItem at the given position or an empty shared pointer, if there is none.
+    virtual std::shared_ptr<LayoutItem> item_at(const Vector2& local_pos) override;
+
     /// \brief Sets the direction into which the Flexbox expands.
     /// If wrap direction == direction, this will also set the wrap direction to keep the non-wrapping behaviour.
     void set_direction(DIRECTION direction)
@@ -37,16 +45,6 @@ public: // methods
         m_wrap_direction = direction;
         update();
     }
-
-    /// \brief Adds a new Widget into the Layout.
-    /// \param widget   Widget to add.
-    /// \return The created Layout Item.
-    std::weak_ptr<FlexboxLayoutItem> add_widget(std::shared_ptr<Widget> widget);
-
-    /// \brief Returns the LayoutItem at a given local position.
-    /// \param local_pos    Local coordinates where to look for the LayoutItem.
-    /// \return LayoutItem at the given position or an empty shared pointer, if there is none.
-    virtual std::shared_ptr<LayoutItem> item_at(const Vector2& local_pos) override;
 
     /// \brief Updates the layout.
     virtual void update() override;
@@ -87,7 +85,7 @@ public: // methods
     {
         if(collapsed != m_is_collapsed){
             m_is_collapsed = collapsed;
-            m_layout.lock()->update(); // TODO: plain pointers from LayoutItem to Layout?
+            m_layout.lock()->update();
         }
     }
 
@@ -103,5 +101,3 @@ protected: // fields
 };
 
 } // namespace signal
-
-// TODO: continue here by creating a size component? or is that a part of the shape?

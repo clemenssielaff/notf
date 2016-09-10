@@ -172,7 +172,7 @@ struct Vector2 {
     /// \brief Checks, if this Vector2 contains only real, finite values.
     ///
     /// INFINITY and NAN are not real numbers.
-    bool is_real() const { return !(isnan(x) || isinf(x) || isnan(y) || isinf(y)); }
+    bool is_real() const { return is_valid(x) && is_valid(y); }
 
     /// \brief Checks, if any component of this Vector2 is a zero.
     bool contains_zero() const { return approx(x, 0) || approx(y, 0); }

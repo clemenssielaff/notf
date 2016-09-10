@@ -43,7 +43,7 @@ private: // fields
 
 /// \brief A non-owning, abstract container for Widgets in a Layout.
 ///
-class LayoutItem {
+class LayoutItem : public std::enable_shared_from_this<LayoutItem> {
 
 public: // methods
     /// \brief Virtual Destructor.

@@ -24,19 +24,18 @@ using std::max;
 using std::min;
 using std::sqrt;
 using std::fmod;
-using std::isnan;
-using std::isinf;
 using std::sin;
 using std::cos;
 using std::tan;
 using std::atan2;
+const Real bla  = INFINITY;
 
 /// \brief Tests, if a value is positive or negative.
 ///
 /// \param value    Value to test.
 ///
 /// \return -1 if the value is negative, 1 if it is zero or above.
-inline Real sign(Real value) { return std::signbit(value) ? -1 : 1; }
+inline Real sign(const Real value) { return std::signbit(value) ? -1 : 1; }
 
 /// \brief Clamps an input value to a given range.
 ///
@@ -45,7 +44,10 @@ inline Real sign(Real value) { return std::signbit(value) ? -1 : 1; }
 /// \param max      Upper end of range (inclusive).
 ///
 /// \return New, clamped value.
-inline Real clamp(Real value, Real min, Real max) { return value < min ? min : (value > max ? max : value); }
+inline Real clamp(const Real value, const Real min, const Real max)
+{
+    return value < min ? min : (value > max ? max : value);
+}
 
 /// \brief Test if two Reals are approximately the same value.
 ///
@@ -59,26 +61,38 @@ inline Real clamp(Real value, Real min, Real max) { return value < min ? min : (
 /// \param epsilon Maximal relative error.
 ///
 /// \return True, if both inputs are approximately the same, False otherwise.
-inline bool approx(Real a, Real b, Real epsilon = FLT_EPSILON) { return abs(a - b) <= max(abs(a), abs(b)) * epsilon; }
+inline bool approx(const Real a, const Real b, const Real epsilon = FLT_EPSILON)
+{
+    return abs(a - b) <= max(abs(a), abs(b)) * epsilon;
+}
 
 /// \brief Save asin calculation
 ///
 /// \param value   Input, is clamped to the range of [-1.0 ... 1.0], prior to the call to asin.
 ///
 /// \return The arc-sine of the input value.
-inline Real asin(Real value) { return std::asin(clamp(value, -1, 1)); }
+inline Real asin(const Real value) { return std::asin(clamp(value, -1, 1)); }
 
 /// \brief Save acos calculation
 ///
 /// \param value   Input, is clamped to the range of [-1.0 ... 1.0], prior to the call to acos.
 ///
 /// \return The arc-cosine of the input value.
-inline Real acos(Real value) { return std::acos(clamp(value, -1, 1)); }
+inline Real acos(const Real value) { return std::acos(clamp(value, -1, 1)); }
 
 /// \brief Calculates a hash value from a supplied Real.
 ///
 /// \param value    Real to hash.
-inline size_t hash(Real value) { return std::hash<Real>()(value); }
+inline size_t hash(const Real value) { return std::hash<Real>()(value); }
+
+/// \brief Tests whether a given value is NAN.
+inline bool is_nan(const Real value) { return std::isnan(value); }
+
+/// \brief Tests whether a given value is INFINITY.
+inline bool is_inf(const Real value) { return std::isinf(value); }
+
+/// \brief Tests whether a given value is a valid Real value (not NAN, not INFINITY).
+inline bool is_valid(const Real value) { return !is_nan(value) && !is_inf(value); }
 
 /// \brief Builds up a hash value from an existing hash AND the supplied Real.
 ///

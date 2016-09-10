@@ -15,6 +15,7 @@
 namespace signal {
 
 class Window;
+class LayoutItem;
 
 /// \brief The Widget class
 ///
@@ -27,6 +28,7 @@ class Window;
 class Widget : public std::enable_shared_from_this<Widget> {
 
     friend class Window;
+    friend class LayoutItem;
 
 public: // enums
     /// \brief Framing is how a Widget is drawn in relation to its parent.
@@ -43,6 +45,7 @@ protected: // methods
         , m_framing{FRAMING::WITHIN}
         , m_parent()
         , m_window(nullptr)
+        , m_layout_item()
         , m_components()
         , m_children()
     {
@@ -80,6 +83,9 @@ public: // methods
         }
         return std::static_pointer_cast<COMPONENT>(it->second);
     }
+
+    /// \brief Returns the LayoutItem used to transform this Widget, can be empty.
+    std::shared_ptr<LayoutItem> get_layout_item() { return m_layout_item.lock(); }
 
     /// \brief Checks if this Widget contains a Component of the given kind.
     /// \param kind Component kind to check for.
@@ -119,6 +125,10 @@ private: // methods for Window
         return widget;
     }
 
+private: // methods for LayoutItem
+    /// \brief Set a new LayoutItem to transform this Widget.
+    void set_layout_item(std::shared_ptr<LayoutItem> layout_item) { m_layout_item = layout_item; }
+
 private: // fields
     /// \brief Application-unique Handle of this Widget.
     Handle m_handle;
@@ -131,6 +141,9 @@ private: // fields
 
     /// \brief Window containing this Widget.
     Window* m_window;
+
+    /// \brief LayoutItem transforming this Widget.
+    std::weak_ptr<LayoutItem> m_layout_item;
 
     /// \brief All components of this Widget.
     EnumMap<Component::KIND, std::shared_ptr<Component>> m_components;

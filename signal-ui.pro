@@ -67,7 +67,8 @@ SOURCES += \
     src/core/layout.cpp \
     src/common/transform2.cpp \
     src/core/components/layout_component.cpp \
-    src/dynamic/layout/flexbox_layout.cpp
+    src/dynamic/layout/flexbox_layout.cpp \
+    src/core/components/shape_component.cpp
 
 HEADERS += \
     include/core/application.hpp \
