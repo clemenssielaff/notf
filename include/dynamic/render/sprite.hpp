@@ -5,11 +5,11 @@
 
 namespace signal {
 
-class SpriteComponent : public RenderComponent {
+class SpriteRenderer : public RenderComponent {
 
 public: // methods
     /// \brief Destructor
-    virtual ~SpriteComponent() override;
+    virtual ~SpriteRenderer() override;
 
     /// \brief Checks if the given Shader fits this Component.
     /// Is called in the constructor and reports any errors to the console.
@@ -28,7 +28,7 @@ protected: // methods
     /// \brief Value Constructor.
     /// \param shader   The Shader used for rendering.
     /// \param texture  The Texture used for rendering.
-    explicit SpriteComponent(std::shared_ptr<Shader> shader);
+    explicit SpriteRenderer(std::shared_ptr<Shader> shader);
 
 private: // fields
     /// \brief Vertex Array Object of the rendered quat.

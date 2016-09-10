@@ -4,7 +4,7 @@
 
 namespace signal {
 
-Aabr RectShapeComponent::get_screen_aabr(const Widget& widget)
+Aabr RectShape::get_screen_aabr(const Widget& widget)
 {
     // position
     Aabr aabr;
@@ -16,37 +16,37 @@ Aabr RectShapeComponent::get_screen_aabr(const Widget& widget)
 
     // no rotation
 
-    return m_aabr;
+    return aabr;
 }
 
-void RectShapeComponent::set_fixed()
+void RectShape::set_fixed()
 {
-    set_horizontal_size({get_horizontal_size().preferred});
-    set_vertical_size({get_vertical_size().preferred});
+    set_horizontal_size({get_horizontal_size().get_preferred()});
+    set_vertical_size({get_vertical_size().get_preferred()});
     redraw_widgets();
 }
 
-void RectShapeComponent::set_min_width(const Real width)
+void RectShape::set_min_width(const Real width)
 {
-    set_horizontal_size(SizeRange(get_horizontal_size().preferred, width, get_horizontal_size().max));
+    set_horizontal_size(SizeRange(get_horizontal_size().get_preferred(), width, get_horizontal_size().get_max()));
     redraw_widgets();
 }
 
-void RectShapeComponent::set_max_width(const Real width)
+void RectShape::set_max_width(const Real width)
 {
-    set_horizontal_size(SizeRange(get_horizontal_size().preferred, get_horizontal_size().min, width));
+    set_horizontal_size(SizeRange(get_horizontal_size().get_preferred(), get_horizontal_size().get_min(), width));
     redraw_widgets();
 }
 
-void RectShapeComponent::set_min_height(const Real height)
+void RectShape::set_min_height(const Real height)
 {
-    set_vertical_size(SizeRange(get_vertical_size().preferred, height, get_vertical_size().max));
+    set_vertical_size(SizeRange(get_vertical_size().get_preferred(), height, get_vertical_size().get_max()));
     redraw_widgets();
 }
 
-void RectShapeComponent::set_max_height(const Real height)
+void RectShape::set_max_height(const Real height)
 {
-    set_vertical_size(SizeRange(get_vertical_size().preferred, get_vertical_size().min, height));
+    set_vertical_size(SizeRange(get_vertical_size().get_preferred(), get_vertical_size().get_min(), height));
     redraw_widgets();
 }
 

@@ -22,7 +22,7 @@ const char* color_var = "sprite_color";
 
 namespace signal {
 
-SpriteComponent::SpriteComponent(std::shared_ptr<Shader> shader)
+SpriteRenderer::SpriteRenderer(std::shared_ptr<Shader> shader)
     : RenderComponent(shader)
     , m_quad(0)
 {
@@ -51,7 +51,7 @@ SpriteComponent::SpriteComponent(std::shared_ptr<Shader> shader)
     glBindVertexArray(0);
 }
 
-bool SpriteComponent::is_valid()
+bool SpriteRenderer::is_valid()
 {
     return RenderComponent::is_valid()
         && assert_uniform(image_var)
@@ -60,12 +60,12 @@ bool SpriteComponent::is_valid()
         && assert_uniform(color_var);
 }
 
-SpriteComponent::~SpriteComponent()
+SpriteRenderer::~SpriteRenderer()
 {
     glDeleteVertexArrays(1, &m_quad);
 }
 
-void SpriteComponent::setup_window(const Window& window)
+void SpriteRenderer::setup_window(const Window& window)
 {
     Size2 size = window.get_canvas_size();
     glm::mat4 projection_matrix = glm::ortho(0.0f, static_cast<GLfloat>(size.width), static_cast<GLfloat>(size.height), 0.0f, -1.0f, 1.0f);
@@ -73,7 +73,7 @@ void SpriteComponent::setup_window(const Window& window)
     m_shader->set_uniform(projection_var, projection_matrix);
 }
 
-void SpriteComponent::render(const Widget& widget)
+void SpriteRenderer::render(const Widget& widget)
 {
     Size2 canvas_size = widget.get_window()->get_canvas_size();
 

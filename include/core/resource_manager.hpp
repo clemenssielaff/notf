@@ -4,10 +4,10 @@
 #include <string>
 #include <unordered_map>
 
-#include "graphics/shader.hpp"
-#include "graphics/texture2.hpp"
-
 namespace signal {
+
+class Shader;
+class Texture2;
 
 /**
  * \brief The Resource Manager owns all dynamically loaded resources.

@@ -12,22 +12,14 @@ class Widget;
 /// A SizeRange includes a lower bound, a preferred size and an upper bound.
 /// The constructor enforces that min <= preferred <= max and that min >= 0.
 ///
-struct SizeRange {
+class SizeRange {
 
-    /// \brief Preferred size in local units, is >= 0.
-    const Real preferred;
-
-    /// \brief Minimum size in local units, is 0 <= min <= preferred.
-    const Real min;
-
-    /// \brief Maximum size in local units, is >= preferred.
-    const Real max;
-
+public: // methods
     /// \brief Default Constructor.
     SizeRange()
-        : preferred(0)
-        , min(0)
-        , max(0)
+        : m_preferred(0)
+        , m_min(0)
+        , m_max(0)
     {
     }
 
@@ -36,25 +28,33 @@ struct SizeRange {
     /// \param min          (optional) Minimum size, is clamped to 0 <= value <= preferred, defaults to 'preferred'.
     /// \param max          (optional) Maximum size, is clamped to preferred <= value, can be INFINITY, defaults to 'preferred'.
     SizeRange(const Real preferred, const Real min = NAN, const Real max = NAN)
-        : preferred(is_valid(preferred) ? signal::max(preferred, Real(0)) : 0)
-        , min(is_valid(min) ? signal::min(std::max(Real(0), min), this->preferred) : this->preferred)
-        , max(is_valid(preferred) ? (is_nan(max) ? this->preferred : signal::max(max, this->preferred)) : 0)
+        : m_preferred(is_valid(preferred) ? signal::max(preferred, Real(0)) : 0)
+        , m_min(is_valid(min) ? signal::min(std::max(Real(0), min), m_preferred) : m_preferred)
+        , m_max(is_valid(preferred) ? (is_nan(max) ? m_preferred : signal::max(max, m_preferred)) : 0)
     {
     }
 
-    /// \brief Swap implementation.
-    /// Since all fields of the SizeRange class are constant, we cannot assign to them.
-    /// We can however safely swap the entire object.
-    friend void swap(SizeRange& first, SizeRange& second) noexcept
-    {
-        using std::swap;
-        swap(first.preferred, second.preferred);
-        swap(first.min, second.min);
-        swap(first.max, second.max);
-    }
+    /// \brief Preferred size in local units, is >= 0.
+    Real get_preferred() const { return m_preferred; }
+
+    /// \brief Minimum size in local units, is 0 <= min <= preferred.
+    Real get_min() const { return m_min; }
+
+    /// \brief Maximum size in local units, is >= preferred.
+    Real get_max() const { return m_max; }
 
     /// \brief Tests if this SizeRange is a fixed size where all 3 values are the same.
-    bool is_fixed() const { return approx(preferred, min) && approx(preferred, max); }
+    bool is_fixed() const { return approx(m_preferred, m_min) && approx(m_preferred, m_max); }
+
+private: // fields
+    /// \brief Preferred size in local units, is >= 0.
+    Real m_preferred;
+
+    /// \brief Minimum size in local units, is 0 <= min <= preferred.
+    Real m_min;
+
+    /// \brief Maximum size in local units, is >= preferred.
+    Real m_max;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,15 +77,32 @@ public: // methods
     /// \brief Returns the horizontal size range of this Shape.
     const SizeRange& get_horizontal_size() const { return m_horizontal_size; }
 
+public: // signals
+    /// \brief Emitted, when the horizontal size of this Shape changed.
+    /// \param New size range.
+    Signal<const SizeRange&> horizontal_size_changed;
+
+    /// \brief Emitted, when the vertical size of this Shape changed.
+    /// \param New size range.
+    Signal<const SizeRange&> vertical_size_changed;
+
 protected: // methods
     /// \brief Default Constructor.
     explicit ShapeComponent() = default;
 
-    /// \brief Sets the vertical size range of this Shape.
-    void set_vertical_size(SizeRange size) { swap(m_vertical_size, size); }
-
     /// \brief Sets the horizontal size range of this Shape.
-    void set_horizontal_size(SizeRange size) { swap(m_horizontal_size, size); }
+    void set_horizontal_size(const SizeRange& size)
+    {
+        m_horizontal_size = size;
+        horizontal_size_changed(m_horizontal_size);
+    }
+
+    /// \brief Sets the vertical size range of this Shape.
+    void set_vertical_size(const SizeRange& size)
+    {
+        m_vertical_size = size;
+        vertical_size_changed(m_vertical_size);
+    }
 
 private: // fields
     /// \brief Vertical size range.

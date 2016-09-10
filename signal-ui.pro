@@ -64,7 +64,6 @@ SOURCES += \
     src/dynamic/render/sprite.cpp \
     src/dynamic/color/singlecolor.cpp \
     src/dynamic/shape/aabr_shape.cpp \
-    src/core/layout.cpp \
     src/common/transform2.cpp \
     src/core/components/layout_component.cpp \
     src/dynamic/layout/flexbox_layout.cpp \
@@ -122,7 +121,6 @@ HEADERS += \
     include/dynamic/render/sprite.hpp \
     include/dynamic/shape/aabr_shape.hpp \
     include/dynamic/color/singlecolor.hpp \
-    include/core/layout.hpp \
     include/common/transform2.hpp \
     include/core/components/layout_component.hpp \
     include/dynamic/layout/flexbox_layout.hpp

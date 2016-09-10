@@ -6,7 +6,7 @@ namespace signal {
 
 /// \brief Simple, Rectangular shape.
 ///
-class RectShapeComponent : public ShapeComponent {
+class RectShape : public ShapeComponent {
 
 public: // methods
     /// \brief Returns the Shape's Axis Aligned Bounding Rect in screen coordinates.
@@ -40,7 +40,7 @@ public: // methods
 protected: // methods
     /// \brief Value Constructor.
     /// Produces a RectShape of fixed size.
-    explicit RectShapeComponent(const Real width, const Real height)
+    explicit RectShape(const Real width, const Real height)
         : ShapeComponent()
     {
         set_horizontal_size({width});

@@ -1,5 +1,6 @@
 #include "core/render_manager.hpp"
 
+#include "core/application.hpp"
 #include "core/components/render_component.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
@@ -9,19 +10,20 @@ namespace signal {
 
 void RenderManager::render(const Window& window)
 {
+    auto& app = Application::get_instance();
+
     // lock all widgets for rendering
-    std::vector<std::shared_ptr<Widget>> locked_widgets;
-    locked_widgets.reserve(m_widgets.size());
-    for (const std::weak_ptr<Widget>& weak_widget : m_widgets) {
-        std::shared_ptr<Widget> widget = weak_widget.lock();
-        if (widget) {
-            locked_widgets.emplace_back(widget);
+    std::vector<std::shared_ptr<Widget>> widgets;
+    widgets.reserve(m_widgets.size());
+    for (const Handle widget_handle : m_widgets) {
+        if (std::shared_ptr<Widget> widget = app.get_widget(widget_handle)) {
+            widgets.emplace_back(widget);
         }
     }
 
     // render all widgets
     std::set<GLuint> configured_renderers;
-    for (const std::shared_ptr<Widget>& widget : locked_widgets) {
+    for (const std::shared_ptr<Widget>& widget : widgets) {
         auto renderer = widget->get_component<RenderComponent>();
         assert(renderer);
 

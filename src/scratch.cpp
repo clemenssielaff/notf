@@ -1,26 +1,22 @@
-#if 0
-
 #include <string>
+
+#define SIGNAL_LOG_LEVEL SIGNAL_LOG_LEVEL_CRITICAL
 
 #include "common/log.hpp"
 #include "core/application.hpp"
+#include "core/widget.hpp"
 #include "core/window.hpp"
-#include "core/resource_manager.hpp"
 using namespace signal;
 
-int main()
+//int main()
+int log_test()
 {
     Window window;
-    ResourceManager gm("/home/clemens/temp/", "/home/clemens/temp/");
-    {
-        auto bla = gm.get_texture("awesomeface2.png");
-        {
-            gm.get_texture("awesomeface.png");
-        }
-        gm.cleanup();
+    std::shared_ptr<Widget> widget = Widget::make_widget();
+    widget->set_parent(window.get_root_widget());
+    for(size_t i=0; i < 10000000; ++i){
+        log_warning << "Derbe" << widget->get_handle();
     }
-    gm.cleanup();
 
     return 0;
 }
-#endif

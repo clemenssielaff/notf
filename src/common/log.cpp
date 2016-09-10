@@ -1,6 +1,6 @@
 #include "common/log.hpp"
 
-#include "common/devel.hpp"
+#include "common/int_utils.hpp"
 
 namespace { // anonymous
 
@@ -115,11 +115,11 @@ void LogHandler::run()
 
 void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
 {
-    static const std::string TRACE      = "trace: ";
-    static const std::string INFO       = "info:  ";
-    static const std::string WARNING    = "warn:  ";
-    static const std::string CRITICAL   = "crit:  ";
-    static const std::string FATAL      = "fatal: ";
+    static const std::string TRACE = "trace: ";
+    static const std::string INFO = "info:  ";
+    static const std::string WARNING = "warn:  ";
+    static const std::string CRITICAL = "crit:  ";
+    static const std::string FATAL = "fatal: ";
 
     for (auto& log_message : buffer) {
 

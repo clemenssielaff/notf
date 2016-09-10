@@ -1,6 +1,8 @@
 #include "core/resource_manager.hpp"
 
 #include "common/log.hpp"
+#include "graphics/shader.hpp"
+#include "graphics/texture2.hpp"
 
 namespace { // anonymous
 

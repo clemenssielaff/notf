@@ -43,13 +43,11 @@
 #include <thread>
 #include <vector>
 
-#include "common/devel.hpp"
-#include "common/int_utils.hpp"
-
 namespace signal {
 
 struct LogMessage;
 
+using uchar = unsigned char;
 using std::chrono::milliseconds;
 using LogMessageHandler = std::function<void(LogMessage&&)>;
 
@@ -164,8 +162,7 @@ public: // methods
     {
         // if the thread is running, add the log message to the write buffer
         if (m_is_running.test_and_set()) {
-            std::lock_guard<std::mutex> scoped_lock(m_mutex);
-            UNUSED(scoped_lock);
+            std::lock_guard<std::mutex> _(m_mutex);
 
             bool force_flush = message.level > LogMessage::LEVEL::WARNING;
             m_write_buffer.emplace_back(std::move(message));

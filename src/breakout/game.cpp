@@ -7,6 +7,7 @@
 #include "breakout/spriterenderer.hpp"
 #include "core/glfw_wrapper.hpp"
 #include "core/resource_manager.hpp"
+#include "graphics/shader.hpp"
 
 namespace {
 const glm::vec2 PLAYER_SIZE(100, 20);

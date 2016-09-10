@@ -5,6 +5,8 @@
 #include <type_traits>
 
 #include "common/devel.hpp"
+#include "common/handle.hpp"
+#include "common/signal.hpp"
 
 namespace signal {
 
@@ -54,14 +56,16 @@ protected: // methods
 
 private: // methods for Widget
     // \brief Registers a new Widget to receive updates when this Component changes.
-    void register_widget(std::shared_ptr<Widget> widget);
+    void register_widget(Handle widget_handle);
 
     /// \brief Unregisters a Widget from receiving updates from this Component.
-    void unregister_widget(std::shared_ptr<Widget> widget);
+    void unregister_widget(Handle widget_handle);
 
 private: // fields
-    /// \brief All Widgets that use this Component.
-    std::set<std::weak_ptr<Widget>, std::owner_less<std::weak_ptr<Widget>>> m_widgets;
+    /// \brief Handles of all Widgets that use this Component.
+    std::set<Handle> m_widgets;
+
+    CALLBACKS(Component)
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

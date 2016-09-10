@@ -2,7 +2,7 @@
 
 namespace signal {
 
-Color SingleColorComponent::get_color(int) const
+Color SingleColor::get_color(int) const
 {
     return m_color;
 }

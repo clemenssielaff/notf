@@ -5,17 +5,15 @@
 #include <unordered_map>
 #include <vector>
 
-#include "common/devel.hpp"
 #include "common/enummap.hpp"
 #include "common/handle.hpp"
-#include "common/log.hpp"
 #include "common/signal.hpp"
+#include "common/transform2.hpp"
 #include "core/component.hpp"
 
 namespace signal {
 
 class Window;
-class LayoutItem;
 
 /// \brief The Widget class
 ///
@@ -28,24 +26,22 @@ class LayoutItem;
 class Widget : public std::enable_shared_from_this<Widget> {
 
     friend class Window;
-    friend class LayoutItem;
 
 public: // enums
-    /// \brief Framing is how a Widget is drawn in relation to its parent.
-    enum class FRAMING {
-        WITHIN,
-        BEHIND,
-        OVER,
+    /// \brief Coordinate Spaces to pass to get_transform().
+    enum class SPACE {
+        PARENT, // returns transform in local coordinates, relative to the parent Widget
+        WINDOW, // returns transform in global coordinates, relative to the Window
+        SCREEN, // returns transform in screen coordinates, relative to the screen origin
     };
 
 protected: // methods
     /// \brief Value Constructor.
     explicit Widget(Handle handle)
         : m_handle{std::move(handle)}
-        , m_framing{FRAMING::WITHIN}
-        , m_parent()
+        , m_parent(BAD_HANDLE)
         , m_window(nullptr)
-        , m_layout_item()
+        , m_transform(Transform2::identity())
         , m_components()
         , m_children()
     {
@@ -60,7 +56,7 @@ public: // methods
     ~Widget();
 
     /// \brief Returns the parent Widget. If this Widget has no parent, the returned shared pointer is empty.
-    std::shared_ptr<Widget> get_parent() const { return m_parent.lock(); }
+    Handle get_parent() const { return m_parent; }
 
     /// \brief Sets a new parent Widget.
     /// \param parent   New parent Widget.
@@ -71,6 +67,26 @@ public: // methods
 
     /// \brief Returns the Window containing this Widget (can be nullptr).
     const Window* get_window() const { return m_window; }
+
+    /// \brief Returns this Widget's transformation in the given space.
+    Transform2 get_transform(const SPACE space) const;
+
+    /// \brief Checks whether this Widget is visible or hidden.
+    bool is_visible() const { return m_is_visible; }
+
+    /// \brief Shows or hides this Widget.
+    void set_visible(const bool is_visible)
+    {
+        if(is_visible != m_is_visible){
+            m_is_visible = is_visible;
+            visibility_changed(m_is_visible);
+            redraw();
+        }
+    }
+
+    /// \brief Checks if this Widget contains a Component of the given kind.
+    /// \param kind Component kind to check for.
+    bool has_component_kind(Component::KIND kind) const { return m_components.count(kind); }
 
     /// \brief Requests the Component of a given kind from this Widget.
     /// \return The requested Component, shared pointer is empty if this Widget has no Component of the requested kind.
@@ -83,13 +99,6 @@ public: // methods
         }
         return std::static_pointer_cast<COMPONENT>(it->second);
     }
-
-    /// \brief Returns the LayoutItem used to transform this Widget, can be empty.
-    std::shared_ptr<LayoutItem> get_layout_item() { return m_layout_item.lock(); }
-
-    /// \brief Checks if this Widget contains a Component of the given kind.
-    /// \param kind Component kind to check for.
-    bool has_component_kind(Component::KIND kind) const { return m_components.count(kind); }
 
     /// \brief Attaches a new Component to this Widget.
     /// \param component    The Component to attach.
@@ -105,6 +114,14 @@ public: // methods
 
     /// \brief Draws this and all child widgets recursively.
     void redraw();
+
+public: // signals
+    /// \brief Emitted, when the visibility of this Widget has changed.
+    /// \param New visiblity.
+    Signal<bool> visibility_changed;
+
+    /// \brief Emitted, when the Widget is about to be deleted.
+    Signal<> about_to_be_deleted;
 
 public: // static methods
     /// \brief Factory function to create a new Widget instance.
@@ -125,25 +142,25 @@ private: // methods for Window
         return widget;
     }
 
-private: // methods for LayoutItem
-    /// \brief Set a new LayoutItem to transform this Widget.
-    void set_layout_item(std::shared_ptr<LayoutItem> layout_item) { m_layout_item = layout_item; }
+private: // methods
+    /// \brief Removes a given child from this Widget.
+    void remove_child(std::shared_ptr<Widget> child);
 
 private: // fields
     /// \brief Application-unique Handle of this Widget.
     Handle m_handle;
 
-    /// \brief Framing of this Widget.
-    FRAMING m_framing;
-
-    /// \brief Parent Widget.
-    std::weak_ptr<Widget> m_parent;
+    /// \brief Handle of parent Widget.
+    Handle m_parent;
 
     /// \brief Window containing this Widget.
     Window* m_window;
 
-    /// \brief LayoutItem transforming this Widget.
-    std::weak_ptr<LayoutItem> m_layout_item;
+    /// \brief 2D transformation of this Widget in local space.
+    Transform2 m_transform;
+
+    /// \brief Whether this Widget is visible or hidden.
+    bool m_is_visible;
 
     /// \brief All components of this Widget.
     EnumMap<Component::KIND, std::shared_ptr<Component>> m_components;

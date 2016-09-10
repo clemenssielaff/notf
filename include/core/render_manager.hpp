@@ -3,6 +3,8 @@
 #include <memory>
 #include <set>
 
+#include "common/handle.hpp"
+
 namespace signal {
 
 class Widget;
@@ -20,7 +22,7 @@ public: // methods
      * \brief Registers a Widget to be drawn in the next render call.
      * \param widget    Widget to register
      */
-    void register_widget(std::weak_ptr<Widget> widget) { m_widgets.emplace(std::move(widget)); }
+    void register_widget(const Handle widget_handle) { m_widgets.emplace(widget_handle); }
 
     /**
      * \brief Renders all registered Widgets and clears the register.
@@ -31,7 +33,7 @@ private: // fields
     /**
      * \brief Widgets to draw in the next render call.
      */
-    std::set<std::weak_ptr<Widget>, std::owner_less<std::weak_ptr<Widget>> > m_widgets;
+    std::set<Handle> m_widgets;
 };
 
 } // namespace signal

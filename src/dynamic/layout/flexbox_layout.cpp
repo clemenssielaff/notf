@@ -1,43 +1,39 @@
 #include "dynamic/layout/flexbox_layout.hpp"
 
+#include "common/log.hpp"
+#include "common/vector_utils.hpp"
 #include "core/widget.hpp"
 
 namespace signal {
 
-FlexboxLayoutComponent::FlexboxLayoutComponent(std::shared_ptr<Widget> owner,
+FlexboxLayout::FlexboxLayout(std::shared_ptr<Widget> owner,
                                                DIRECTION direction, DIRECTION wrap_direction)
-    : LayoutComponent(owner)
+    : LayoutComponent()
     , m_items()
     , m_direction(direction)
     , m_wrap_direction(wrap_direction == DIRECTION::INVALID ? direction : wrap_direction)
 {
 }
 
-void FlexboxLayoutComponent::add_widget(std::shared_ptr<Widget> widget)
+void FlexboxLayout::add_widget(std::shared_ptr<Widget> widget)
 {
-    m_items.emplace_back(std::make_shared<FlexboxLayoutItem>(shared_from_this(), std::move(widget)));
-    update();
+    m_items.emplace_back(std::move(widget));
+//    update();
 }
 
-std::shared_ptr<LayoutItem> FlexboxLayoutComponent::item_at(const Vector2& local_pos)
-{
-    return {};
-}
-
-void FlexboxLayoutComponent::update()
-{
-
-}
-
-FlexboxLayoutItem::FlexboxLayoutItem(std::shared_ptr<FlexboxLayoutComponent> layout, std::shared_ptr<Widget> widget)
-    : LayoutItem(std::move(layout), std::move(widget))
-    , m_is_collapsed(false)
-{
-}
-
-Transform2 FlexboxLayoutItem::get_transform() const
+std::shared_ptr<Widget> FlexboxLayout::widget_at(const Vector2& local_pos)
 {
     return {};
 }
+
+void FlexboxLayout::remove_widget(std::shared_ptr<Widget> widget)
+{
+    remove_one_unordered(m_items, widget);
+//    update();
+}
+
+//void FlexboxLayout::update()
+//{
+//}
 
 } // namespace signal

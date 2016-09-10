@@ -4,7 +4,7 @@ namespace signal {
 
 /// \brief A Color component providing a single color.
 ///
-class SingleColorComponent : public ColorComponent {
+class SingleColor : public ColorComponent {
 
 public: // methods
     /// \brief Returns the Component's single Color, regardless of the given index.
@@ -14,7 +14,7 @@ protected: // methods
     /// \brief Value Constructor.
     ///
     /// \param color    The single Color provided by this Component.
-    explicit SingleColorComponent(Color color)
+    explicit SingleColor(Color color)
         : ColorComponent()
         , m_color(std::move(color))
     {
