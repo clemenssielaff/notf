@@ -5,8 +5,8 @@
 #include <glad/glad.h>
 #include <stb_image/std_image.h>
 
-#include "common/devel.hpp"
 #include "common/log.hpp"
+#include "utils/smart_enabler.hpp"
 
 namespace { // anonymous
 
@@ -94,7 +94,7 @@ std::shared_ptr<Texture2> Texture2::load(const std::string& texture_path)
     assert(id);
     assert(width >= 0);
     assert(height >= 0);
-    return std::make_shared<MakeSharedEnabler<Texture2>>(id, static_cast<GLuint>(width), static_cast<GLuint>(height));
+    return std::make_shared<MakeSmartEnabler<Texture2>>(id, static_cast<GLuint>(width), static_cast<GLuint>(height));
 }
 
 void Texture2::unbind()

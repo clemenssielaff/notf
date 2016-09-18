@@ -1,46 +1,32 @@
 #include "core/components/layout_component.hpp"
 
-#include "common/devel.hpp"
 #include "common/log.hpp"
+#include "common/size_range.hpp"
 #include "core/widget.hpp"
+
+namespace { // anonymous
+
+// null value to reference
+const signal::SizeRange g_null_size = {};
+
+} // namespace anonymous
 
 namespace signal {
 
 LayoutComponent::LayoutComponent()
     : m_layouts()
-    , m_internal_layout()
+    , m_internal_layout(std::make_unique<MakeSmartEnabler<InternalLayout>>(this))
 {
-}
-
-template <typename LAYOUT, typename>
-std::shared_ptr<LAYOUT> LayoutComponent::create_layout(const std::string& name)
-{
-    if (m_layouts.count(name)) {
-        log_critical << "Could not add layout '" << name
-                     << "'to LayoutComponent, because it already contains another layout by the same name.";
-        return {};
-    }
-    std::shared_ptr<LAYOUT> layout = std::make_shared<MakeSharedEnabler<LAYOUT>>(this, name);
-    m_layouts.emplace(std::make_pair(name, layout));
-    return layout;
 }
 
 void LayoutComponent::set_internal_layout(std::shared_ptr<Layout> layout)
 {
-    if (layout->get_layout_component() != this) {
-        log_critical << "Could not set internal layout '" << layout->get_name()
-                     << "'because it is not owned by this LayoutComponent.";
+    if(m_layouts.find(layout) == m_layouts.end()){
+        log_critical << "Did not replace the internal Layout of LayoutComponent"
+                     << " with a LayoutItem that wasn't created by this Component";
         return;
     }
-    assert(m_layouts.count(layout->get_name()));
-    assert(m_layouts.at(layout->get_name()) == layout);
-
-    if (layout) {
-        m_internal_layout = layout;
-    }
-    else {
-        m_internal_layout.reset();
-    }
+    m_internal_layout->set_layout(std::move(layout));
 }
 
 LayoutItem::~LayoutItem()
@@ -49,6 +35,22 @@ LayoutItem::~LayoutItem()
 
 Layout::~Layout()
 {
+}
+
+const SizeRange& InternalLayout::get_horizontal_size() const
+{
+    if (m_layout) {
+        return m_layout->get_horizontal_size();
+    }
+    return g_null_size;
+}
+
+const SizeRange& InternalLayout::get_vertical_size() const
+{
+    if (m_layout) {
+        return m_layout->get_vertical_size();
+    }
+    return g_null_size;
 }
 
 } // namespace signal

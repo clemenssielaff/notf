@@ -4,9 +4,9 @@
 #include <set>
 #include <type_traits>
 
-#include "common/devel.hpp"
 #include "common/handle.hpp"
 #include "common/signal.hpp"
+#include "utils/smart_enabler.hpp"
 
 namespace signal {
 
@@ -112,7 +112,7 @@ std::shared_ptr<COMPONENT> make_component(ARGS&&... args)
 {
     static_assert(std::is_base_of<Component, COMPONENT>::value,
                   "make_component must only be used with subclasses of signal::Component");
-    auto component = std::make_shared<MakeSharedEnabler<COMPONENT>>(std::forward<ARGS>(args)...);
+    auto component = std::make_shared<MakeSmartEnabler<COMPONENT>>(std::forward<ARGS>(args)...);
     if (!component->is_valid()) {
         return {};
     }

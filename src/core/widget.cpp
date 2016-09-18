@@ -5,6 +5,7 @@
 #include "core/application.hpp"
 #include "core/components/layout_component.hpp"
 #include "core/window.hpp"
+#include "utils/smart_enabler.hpp"
 
 namespace signal {
 
@@ -96,7 +97,7 @@ std::shared_ptr<Widget> Widget::make_widget(Handle handle)
     if (!handle) {
         handle = app.get_next_handle();
     }
-    std::shared_ptr<Widget> widget = std::make_shared<MakeSharedEnabler<Widget>>(handle);
+    std::shared_ptr<Widget> widget = std::make_shared<MakeSmartEnabler<Widget>>(handle);
     if (!register_widget(widget)) {
         log_critical << "Cannot register Widget with handle " << handle
                      << " because the handle is already taken";

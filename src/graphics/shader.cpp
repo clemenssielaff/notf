@@ -6,7 +6,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "common/devel.hpp"
+#include "utils/smart_enabler.hpp"
 #include "common/log.hpp"
 #include "common/system.hpp"
 
@@ -143,7 +143,7 @@ std::shared_ptr<Shader> Shader::build(
         glDeleteProgram(program);
         return {};
     }
-    return std::make_shared<MakeSharedEnabler<Shader>>(shader_name, program);
+    return std::make_shared<MakeSmartEnabler<Shader>>(shader_name, program);
 }
 
 Shader::~Shader()

@@ -72,7 +72,6 @@ SOURCES += \
 HEADERS += \
     include/core/application.hpp \
     include/core/window.hpp \
-    include/common/devel.hpp \
     thirdparty/glad/glad.h \
     thirdparty/khr/khrplatform.h \
     thirdparty/linmath.h \
@@ -123,7 +122,11 @@ HEADERS += \
     include/dynamic/color/singlecolor.hpp \
     include/common/transform2.hpp \
     include/core/components/layout_component.hpp \
-    include/dynamic/layout/flexbox_layout.hpp
+    include/dynamic/layout/flexbox_layout.hpp \
+    include/common/size_range.hpp \
+    include/utils/smart_enabler.hpp \
+    include/utils/enum_to_number.hpp \
+    include/utils/unused.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

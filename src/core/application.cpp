@@ -5,11 +5,11 @@
 #include <iostream>
 #include <sstream>
 
-#include "common/devel.hpp"
 #include "core/glfw_wrapper.hpp"
 #include "core/key_event.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
+#include "utils/unused.hpp"
 
 namespace { // anonymous
 
@@ -65,8 +65,8 @@ Application::~Application()
 
 int Application::exec()
 {
-//    double last_time = glfwGetTime();
-//    uint frame_count = 0;
+    //    double last_time = glfwGetTime();
+    //    uint frame_count = 0;
 
     // loop until there are no more windows open
     while (m_windows.size() > 0) {
@@ -78,18 +78,18 @@ int Application::exec()
 
         // poll and process GLWF events
         glfwWaitEvents();
-//        glfwPollEvents();
+        //        glfwPollEvents();
 
-//        // print time per frame in ms, averaged over the last second
-//        ++frame_count;
-//        if (glfwGetTime() - last_time >= 1.) {
-//            double ms_per_frame = 1000. / static_cast<double>(frame_count);
-//            log_trace << ms_per_frame << "ms/frame "
-//                      << "(" << static_cast<float>(ms_per_frame / (1. / 6.)) << "%) = "
-//                      << frame_count << "fps";
-//            frame_count = 0;
-//            last_time += 1.;
-//        }
+        //        // print time per frame in ms, averaged over the last second
+        //        ++frame_count;
+        //        if (glfwGetTime() - last_time >= 1.) {
+        //            double ms_per_frame = 1000. / static_cast<double>(frame_count);
+        //            log_trace << ms_per_frame << "ms/frame "
+        //                      << "(" << static_cast<float>(ms_per_frame / (1. / 6.)) << "%) = "
+        //                      << frame_count << "fps";
+        //            frame_count = 0;
+        //            last_time += 1.;
+        //        }
     }
 
     shutdown();
@@ -198,7 +198,7 @@ void Application::shutdown()
     glfwTerminate();
 
     // close all remaining windows
-    for(auto it : m_windows){
+    for (auto it : m_windows) {
         it.second->close();
     }
 

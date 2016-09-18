@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <bitset>
 
-#include "common/devel.hpp"
+#include "utils/enum_to_number.hpp"
 
 namespace signal {
 
