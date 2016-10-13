@@ -1,83 +1,34 @@
 #pragma once
 
 #include <memory>
-#include <type_traits>
-#include <unordered_map>
 #include <vector>
 
 #include "common/enummap.hpp"
-#include "common/handle.hpp"
 #include "common/signal.hpp"
-#include "common/transform2.hpp"
 #include "core/component.hpp"
+#include "core/layout_item.hpp"
 
 namespace signal {
 
 class Window;
 
-/// \brief The Widget class
-///
-/// Widgets form a hierarchy.
-/// Each Widget has a single parent (or not) and 0-n children.
-/// Widgets without parents are not part of any hierarchy unless they are the root-Widget of a Window.
-/// Each Window has its own Widget hierarchy with a single root-Widget at the top.
-/// Widgets can be freely moved in the hierarchy, store its Handle to to keep a persistent reference to a Widget.
-/// Using the Handle, you can even serialize and deserialize a hierarchy (which wouldn't work with pointers).
-class Widget : public std::enable_shared_from_this<Widget> {
-
-    friend class Window;
-
-public: // enums
-    /// \brief Coordinate Spaces to pass to get_transform().
-    enum class SPACE {
-        PARENT, // returns transform in local coordinates, relative to the parent Widget
-        WINDOW, // returns transform in global coordinates, relative to the Window
-        SCREEN, // returns transform in screen coordinates, relative to the screen origin
-    };
-
-protected: // methods
-    /// \brief Value Constructor.
-    explicit Widget(Handle handle)
-        : m_handle{std::move(handle)}
-        , m_parent(BAD_HANDLE)
-        , m_window(nullptr)
-        , m_transform(Transform2::identity())
-        , m_components()
-        , m_children()
-    {
-    }
+/// \brief Something drawn on the screen, potentially able to interact with the user.
+class Widget : public LayoutItem {
 
 public: // methods
-    /// no copy / assignment
-    Widget(const Widget&) = delete;
-    Widget& operator=(const Widget&) = delete;
-
     /// \brief Destructor.
-    ~Widget();
-
-    /// \brief Returns the parent Widget. If this Widget has no parent, the returned shared pointer is empty.
-    Handle get_parent() const { return m_parent; }
-
-    /// \brief Sets a new parent Widget.
-    /// \param parent   New parent Widget.
-    void set_parent(std::shared_ptr<Widget> parent);
-
-    /// \brief The Application-unique Handle of this Widget.
-    Handle get_handle() const { return m_handle; }
+    virtual ~Widget() override;
 
     /// \brief Returns the Window containing this Widget (can be nullptr).
-    const Window* get_window() const { return m_window; }
-
-    /// \brief Returns this Widget's transformation in the given space.
-    Transform2 get_transform(const SPACE space) const;
+    Window* get_window() const { return m_window; }
 
     /// \brief Checks whether this Widget is visible or hidden.
-    bool is_visible() const { return m_is_visible; }
+    virtual bool is_visible() const override { return m_is_visible; }
 
     /// \brief Shows or hides this Widget.
     void set_visible(const bool is_visible)
     {
-        if(is_visible != m_is_visible){
+        if (is_visible != m_is_visible) {
             m_is_visible = is_visible;
             visibility_changed(m_is_visible);
             redraw();
@@ -113,7 +64,7 @@ public: // methods
     void remove_component(Component::KIND kind);
 
     /// \brief Draws this and all child widgets recursively.
-    void redraw();
+    virtual void redraw() override;
 
 public: // signals
     /// \brief Emitted, when the visibility of this Widget has changed.
@@ -122,6 +73,14 @@ public: // signals
 
     /// \brief Emitted, when the Widget is about to be deleted.
     Signal<> about_to_be_deleted;
+
+protected: // methods
+    /// \brief Value Constructor.
+    explicit Widget(Handle handle)
+        : LayoutItem(handle)
+        , m_components()
+    {
+    }
 
 public: // static methods
     /// \brief Factory function to create a new Widget instance.
@@ -133,40 +92,12 @@ public: // static methods
     /// If no handle is passed, a new one is created.
     static std::shared_ptr<Widget> make_widget(Handle handle = BAD_HANDLE);
 
-private: // methods for Window
-    /// \brief Special factory function to create a Window's root Widget.
-    static std::shared_ptr<Widget> make_root_widget(Window* window, Handle handle = BAD_HANDLE)
-    {
-        std::shared_ptr<Widget> widget = make_widget(handle);
-        widget->m_window = window;
-        return widget;
-    }
-
-private: // methods
-    /// \brief Removes a given child from this Widget.
-    void remove_child(std::shared_ptr<Widget> child);
-
 private: // fields
-    /// \brief Application-unique Handle of this Widget.
-    Handle m_handle;
-
-    /// \brief Handle of parent Widget.
-    Handle m_parent;
-
-    /// \brief Window containing this Widget.
-    Window* m_window;
-
-    /// \brief 2D transformation of this Widget in local space.
-    Transform2 m_transform;
-
     /// \brief Whether this Widget is visible or hidden.
     bool m_is_visible;
 
     /// \brief All components of this Widget.
     EnumMap<Component::KIND, std::shared_ptr<Component>> m_components;
-
-    /// \brief All child widgets.
-    std::vector<std::shared_ptr<Widget>> m_children;
 
     CALLBACKS(Widget)
 };

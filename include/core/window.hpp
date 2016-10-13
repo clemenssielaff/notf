@@ -6,13 +6,13 @@
 #include "common/color.hpp"
 #include "common/signal.hpp"
 #include "common/size2.hpp"
-#include "core/render_manager.hpp"
 
 struct GLFWwindow;
 
 namespace signal {
 
 struct KeyEvent;
+class RenderManager;
 class Widget;
 
 /// \brief Helper struct to create a Window instance.
@@ -72,7 +72,7 @@ public: // methods
     std::shared_ptr<Widget> get_root_widget() const { return m_root_widget; }
 
     /// \brief Returns the Application's Render Manager.
-    RenderManager& get_render_manager() { return m_render_manager; }
+    RenderManager& get_render_manager() { return *m_render_manager; }
 
     /// \brief Returns the Window's size in screen coordinates (not pixels).
     Size2 get_window_size() const;
@@ -115,7 +115,7 @@ private: // fields
     std::shared_ptr<Widget> m_root_widget;
 
     /// \brief The Window's render manager.
-    RenderManager m_render_manager;
+    std::unique_ptr<RenderManager> m_render_manager;
 
     CALLBACKS(Window)
 };

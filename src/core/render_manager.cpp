@@ -16,7 +16,7 @@ void RenderManager::render(const Window& window)
     std::vector<std::shared_ptr<Widget>> widgets;
     widgets.reserve(m_widgets.size());
     for (const Handle widget_handle : m_widgets) {
-        if (std::shared_ptr<Widget> widget = app.get_widget(widget_handle)) {
+        if (std::shared_ptr<Widget> widget = app.get_item(widget_handle)) {
             widgets.emplace_back(widget);
         }
     }

@@ -7,6 +7,7 @@
 #include "core/application.hpp"
 #include "core/glfw_wrapper.hpp"
 #include "core/key_event.hpp"
+#include "core/render_manager.hpp"
 #include "core/widget.hpp"
 #include "graphics/gl_errors.hpp"
 
@@ -30,8 +31,8 @@ Window::Window(const WindowInfo& info)
 
     // close when the user presses ESC
     connect(on_token_key,
-        [this](const KeyEvent&) { close(); },
-        [](const KeyEvent& event) { return event.key == KEY::ESCAPE; });
+            [this](const KeyEvent&) { close(); },
+            [](const KeyEvent& event) { return event.key == KEY::ESCAPE; });
 
     // set context variables before creating the window
     if (info.opengl_version_major >= 0) {
@@ -56,7 +57,7 @@ Window::Window(const WindowInfo& info)
     glClearColor(info.clear_color.r, info.clear_color.g, info.clear_color.b, info.clear_color.a);
 
     // log error or success
-    if(!check_gl_error()){
+    if (!check_gl_error()) {
         log_info << "Created Window '" << m_title << "' "
                  << "using OpenGl version: " << glGetString(GL_VERSION);
     }

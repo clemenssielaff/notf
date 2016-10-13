@@ -26,7 +26,6 @@ public: // enums
         INVALID = 0,
         RENDER,
         SHAPE,
-        LAYOUT,
         TEXTURE,
         COLOR,
         _count, // must always be the last entry
@@ -72,7 +71,6 @@ private: // fields
 
 class RenderComponent;
 class ShapeComponent;
-class LayoutComponent;
 class TextureComponent;
 class ColorComponent;
 
@@ -89,9 +87,6 @@ constexpr Component::KIND get_kind()
     }
     else if (std::is_base_of<ShapeComponent, T>::value) {
         kind = Component::KIND::SHAPE;
-    }
-    else if (std::is_base_of<LayoutComponent, T>::value) {
-        kind = Component::KIND::LAYOUT;
     }
     else if (std::is_base_of<TextureComponent, T>::value) {
         kind = Component::KIND::TEXTURE;
