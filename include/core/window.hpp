@@ -6,6 +6,7 @@
 #include "common/color.hpp"
 #include "common/signal.hpp"
 #include "common/size2.hpp"
+#include "core/widget.hpp"
 
 struct GLFWwindow;
 
@@ -13,7 +14,14 @@ namespace signal {
 
 struct KeyEvent;
 class RenderManager;
-class Widget;
+class WindowWidget;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// \brief Destroys a GLFW window.
+void window_deleter(GLFWwindow* glfwWindow);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// \brief Helper struct to create a Window instance.
 ///
@@ -45,23 +53,19 @@ struct WindowInfo {
 
     /// \brief Window title.
     std::string title = "Window";
+
+    /// \brief Handle of this Window's root Widget (BAD_HANDLE means that a new Handle is assigned).
+    Handle root_widget_handle = BAD_HANDLE;
 };
 
-/// \brief Destroys a GLFW window.
-void window_deleter(GLFWwindow* glfwWindow);
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// \brief The Window is a OS window containing an OpenGL context.
-///
-class Window {
+class Window : public std::enable_shared_from_this<Window> {
 
     friend class Application;
 
 public: // methods
-    /// \brief Constructor.
-    ///
-    /// \param info WindowInfo providing initialization arguments.
-    explicit Window(const WindowInfo& info = WindowInfo());
-
     /// \brief Destructor.
     virtual ~Window();
 
@@ -69,7 +73,7 @@ public: // methods
     const std::string& get_title() const { return m_title; }
 
     /// \brief The invisible root widget of this Window.
-    std::shared_ptr<Widget> get_root_widget() const { return m_root_widget; }
+    std::shared_ptr<WindowWidget> get_root_widget() const { return m_root_widget; }
 
     /// \brief Returns the Application's Render Manager.
     RenderManager& get_render_manager() { return *m_render_manager; }
@@ -85,6 +89,12 @@ public: // methods
 
     /// \brief Closes this Window.
     void close();
+
+public: // static methods
+    /// \brief Factory function to create a new Window.
+    /// \param info WindowInfo providing initialization arguments.
+    /// \return The created Window, pointer is empty on error.
+    static std::shared_ptr<Window> create(const WindowInfo& info = WindowInfo());
 
 public: // signals
     /// \brief Emitted, when a single key was pressed / released / repeated.
@@ -104,6 +114,11 @@ private: // methods for Application
     /// \brief Updates the contents of this Window.
     void update();
 
+protected: // methods
+    /// \brief Value Constructor.
+    /// \param info WindowInfo providing initialization arguments.
+    explicit Window(const WindowInfo& info);
+
 private: // fields
     /// \brief The GLFW window managed by this Window.
     std::unique_ptr<GLFWwindow, decltype(&window_deleter)> m_glfw_window;
@@ -112,12 +127,39 @@ private: // fields
     std::string m_title;
 
     /// \brief The invisible root widget of this Window.
-    std::shared_ptr<Widget> m_root_widget;
+    std::shared_ptr<WindowWidget> m_root_widget;
 
     /// \brief The Window's render manager.
     std::unique_ptr<RenderManager> m_render_manager;
 
     CALLBACKS(Window)
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class WindowWidget : public Widget {
+
+    friend class Window;
+
+public: // methods
+    /// \brief Returns the Window owning this RootWidget.
+    std::shared_ptr<Window> get_window() const { return m_window.lock(); }
+
+protected: // methods
+    /// \brief Value Constructor.
+    /// \param handle   Handle of this Widget.
+    /// \param window   Window owning this RootWidget.
+    explicit WindowWidget(Handle handle, std::weak_ptr<Window> window);
+
+private: // static methods for Window
+    /// \brief Factory function to create a new RootWidget.
+    /// \param handle   Handle of this Widget.
+    /// \param window   Window owning this RootWidget.
+    static std::shared_ptr<WindowWidget> create(Handle handle, std::weak_ptr<Window> window);
+
+private: // fields
+    /// \brief The Window containing this RootWidget.
+    std::weak_ptr<Window> m_window;
 };
 
 } // namespace signal

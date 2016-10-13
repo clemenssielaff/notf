@@ -3,6 +3,7 @@
 #include "common/log.hpp"
 #include "core/application.hpp"
 #include "core/widget.hpp"
+#include "utils/enum_to_number.hpp"
 
 namespace signal {
 

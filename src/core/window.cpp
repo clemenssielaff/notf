@@ -20,49 +20,6 @@ void window_deleter(GLFWwindow* glfw_window)
     }
 }
 
-Window::Window(const WindowInfo& info)
-    : m_glfw_window(nullptr, window_deleter)
-    , m_title(info.title)
-    , m_root_widget(Widget::make_root_widget(this))
-    , m_render_manager()
-{
-    // always make sure that the Application is constructed first
-    Application& app = Application::get_instance();
-
-    // close when the user presses ESC
-    connect(on_token_key,
-            [this](const KeyEvent&) { close(); },
-            [](const KeyEvent& event) { return event.key == KEY::ESCAPE; });
-
-    // set context variables before creating the window
-    if (info.opengl_version_major >= 0) {
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, info.opengl_version_major);
-    }
-    if (info.opengl_version_minor >= 0) {
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, info.opengl_version_minor);
-    }
-    glfwWindowHint(GLFW_RESIZABLE, info.is_resizeable ? GL_TRUE : GL_FALSE);
-    glfwWindowHint(GLFW_SAMPLES, std::max(0, info.samples));
-
-    // create the GLFW window (error test in next step)
-    m_glfw_window.reset(glfwCreateWindow(info.width, info.height, m_title.c_str(), nullptr, nullptr));
-
-    // register with the application (if the GLFW window creation failed, this call will exit the application)
-    app.register_window(this);
-
-    // setup OpenGl
-    glfwMakeContextCurrent(m_glfw_window.get());
-    gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
-    glfwSwapInterval(info.enable_vsync ? 1 : 0);
-    glClearColor(info.clear_color.r, info.clear_color.g, info.clear_color.b, info.clear_color.a);
-
-    // log error or success
-    if (!check_gl_error()) {
-        log_info << "Created Window '" << m_title << "' "
-                 << "using OpenGl version: " << glGetString(GL_VERSION);
-    }
-}
-
 Window::~Window()
 {
     close();
@@ -106,6 +63,11 @@ void Window::close()
     }
 }
 
+std::shared_ptr<Window> Window::create(const WindowInfo& info)
+{
+    return std::make_shared<MakeSmartEnabler<Window>>(info);
+}
+
 void Window::update()
 {
     // make the window current
@@ -119,8 +81,79 @@ void Window::update()
     glClear(GL_COLOR_BUFFER_BIT);
 
     m_root_widget->redraw();
-    m_render_manager.render(*this);
+    m_render_manager->render(*this);
     glfwSwapBuffers(m_glfw_window.get());
+}
+
+Window::Window(const WindowInfo& info)
+    : m_glfw_window(nullptr, window_deleter)
+    , m_title(info.title)
+    , m_root_widget(WindowWidget::create(info.root_widget_handle, shared_from_this()))
+    , m_render_manager()
+{
+    // always make sure that the Application is constructed first
+    Application& app = Application::get_instance();
+
+    // close when the user presses ESC
+    connect(on_token_key,
+            [this](const KeyEvent&) { close(); },
+            [](const KeyEvent& event) { return event.key == KEY::ESCAPE; });
+
+    // set context variables before creating the window
+    if (info.opengl_version_major >= 0) {
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, info.opengl_version_major);
+    }
+    if (info.opengl_version_minor >= 0) {
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, info.opengl_version_minor);
+    }
+    glfwWindowHint(GLFW_RESIZABLE, info.is_resizeable ? GL_TRUE : GL_FALSE);
+    glfwWindowHint(GLFW_SAMPLES, std::max(0, info.samples));
+
+    // create the GLFW window (error test in next step)
+    m_glfw_window.reset(glfwCreateWindow(info.width, info.height, m_title.c_str(), nullptr, nullptr));
+
+    // register with the application (if the GLFW window creation failed, this call will exit the application)
+    app.register_window(this);
+
+    // setup OpenGl
+    glfwMakeContextCurrent(m_glfw_window.get());
+    gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
+    glfwSwapInterval(info.enable_vsync ? 1 : 0);
+    glClearColor(info.clear_color.r, info.clear_color.g, info.clear_color.b, info.clear_color.a);
+
+    // log error or success
+    if (!check_gl_error()) {
+        log_info << "Created Window '" << m_title << "' "
+                 << "using OpenGl version: " << glGetString(GL_VERSION);
+    }
+}
+
+WindowWidget::WindowWidget(Handle handle, std::weak_ptr<Window> window)
+    : Widget(handle)
+    , m_window(std::move(window))
+{
+}
+
+std::shared_ptr<WindowWidget> WindowWidget::create(Handle handle, std::weak_ptr<Window> window)
+{
+    // make sure there's a valid handle for the RootWidget
+    Application& app = Application::get_instance();
+    if (!handle) {
+        handle = app.get_next_handle();
+    }
+
+    // create the RootWidget and try to register it with the Application
+    std::shared_ptr<WindowWidget> root_widget = std::make_shared<MakeSmartEnabler<WindowWidget>>(handle, std::move(window));
+    if (!register_item(root_widget)) {
+        log_critical << "Cannot register Window RootWidget with handle " << handle
+                     << " because the handle is already taken";
+        return {};
+    }
+
+    // finalize the RootWidget's creation
+    app.set_parent(root_widget->get_handle(), ROOT_HANDLE);
+    log_trace << "Created RootWidget with handle: " << handle << " for Window \"" << window.lock()->get_title() << "\"";
+    return root_widget;
 }
 
 } // namespace signal

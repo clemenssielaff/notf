@@ -20,7 +20,7 @@ public: // methods
     virtual ~Widget() override;
 
     /// \brief Returns the Window containing this Widget (can be nullptr).
-    Window* get_window() const { return m_window; }
+    std::shared_ptr<Window> get_window() const;
 
     /// \brief Checks whether this Widget is visible or hidden.
     virtual bool is_visible() const override { return m_is_visible; }
@@ -76,6 +76,7 @@ public: // signals
 
 protected: // methods
     /// \brief Value Constructor.
+    /// \param handle   Handle of this Widget.
     explicit Widget(Handle handle)
         : LayoutItem(handle)
         , m_components()
@@ -90,7 +91,7 @@ public: // static methods
     /// If an explicit handle is passed, it is assigned to the new Widget.
     /// This function will fail if the existing Handle is already taken.
     /// If no handle is passed, a new one is created.
-    static std::shared_ptr<Widget> make_widget(Handle handle = BAD_HANDLE);
+    static std::shared_ptr<Widget> create(Handle handle = BAD_HANDLE);
 
 private: // fields
     /// \brief Whether this Widget is visible or hidden.

@@ -47,7 +47,7 @@ Application::Application()
     , m_layout_items()
 {
     // install the log handler first, to catch errors right away
-    install_log_message_handler(std::bind(&LogHandler::push_log, &m_log_handler, std::placeholders::_1));
+    install_log_message_handler(std::bind(&LogHandler::push_log, m_log_handler.get(), std::placeholders::_1));
     m_log_handler->start();
 
     // set the error callback to catch any errors right away

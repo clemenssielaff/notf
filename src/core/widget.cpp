@@ -3,6 +3,7 @@
 #include "common/log.hpp"
 #include "common/vector_utils.hpp"
 #include "core/application.hpp"
+#include "core/render_manager.hpp"
 #include "core/window.hpp"
 #include "utils/smart_enabler.hpp"
 
@@ -12,6 +13,25 @@ Widget::~Widget()
 {
     about_to_be_deleted();
     log_trace << "Destroyed Widget with handle:" << get_handle();
+}
+
+std::shared_ptr<Window> Widget::get_window() const
+{
+    Application& app = Application::get_instance();
+    Handle root_handle = app.get_root(get_handle());
+    if(!root_handle){
+        log_critical << "Cannot determine Window for unrooted Widget " << get_handle();
+        return {};
+    }
+
+    std::shared_ptr<LayoutItem> root_item = app.get_item(root_handle);
+    std::shared_ptr<WindowWidget> root_widget = std::dynamic_pointer_cast<WindowWidget>(root_item);
+    if(!root_widget){
+        log_critical << "Expected Widget " << root_item->get_handle() << " to be a WindowWidget but it isn't";
+        return {};
+    }
+
+    return root_widget->get_window();
 }
 
 void Widget::add_component(std::shared_ptr<Component> component)
@@ -39,13 +59,13 @@ void Widget::remove_component(Component::KIND kind)
 void Widget::redraw()
 {
     // widgets without a Window cannot be drawn
-    Window* window = get_window();
+    std::shared_ptr<Window> window = get_window();
     if (!window) {
         return;
     }
 
     // TODO: proper redraw respecting the FRAMING of each child and dirtying of course
-    if(auto internal_child = get_internal_child()){
+    if (auto internal_child = get_internal_child()) {
         internal_child->redraw();
     }
     for (auto external_child : get_external_children()) {
@@ -56,7 +76,7 @@ void Widget::redraw()
     }
 }
 
-std::shared_ptr<Widget> Widget::make_widget(Handle handle)
+std::shared_ptr<Widget> Widget::create(Handle handle)
 {
     Application& app = Application::get_instance();
     if (!handle) {

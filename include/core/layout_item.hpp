@@ -41,7 +41,7 @@ class Widget;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// \brief Abstraction layer for something that can be put into a Layout - a Widget or another Layout.
-class LayoutItem : public std::enable_shared_from_this<LayoutItem> {
+class LayoutItem {
 
 public: // enums
     /// \brief Coordinate Spaces to pass to get_transform().
