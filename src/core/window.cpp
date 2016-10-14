@@ -3,10 +3,12 @@
 #include <iostream>
 #include <utility>
 
+#include "common/handle.hpp"
 #include "common/log.hpp"
 #include "core/application.hpp"
 #include "core/glfw_wrapper.hpp"
 #include "core/key_event.hpp"
+#include "core/layout_item_manager.hpp"
 #include "core/render_manager.hpp"
 #include "core/widget.hpp"
 #include "graphics/gl_errors.hpp"
@@ -137,21 +139,20 @@ WindowWidget::WindowWidget(Handle handle, std::weak_ptr<Window> window)
 std::shared_ptr<WindowWidget> WindowWidget::create(Handle handle, std::weak_ptr<Window> window)
 {
     // make sure there's a valid handle for the RootWidget
-    Application& app = Application::get_instance();
+    LayoutItemManager& manager = Application::get_instance().get_layout_item_manager();
     if (!handle) {
-        handle = app.get_next_handle();
+        handle = manager.get_next_handle();
     }
 
     // create the RootWidget and try to register it with the Application
     std::shared_ptr<WindowWidget> root_widget = std::make_shared<MakeSmartEnabler<WindowWidget>>(handle, std::move(window));
-    if (!register_item(root_widget)) {
+    if (!manager.register_item(root_widget)) {
         log_critical << "Cannot register Window RootWidget with handle " << handle
                      << " because the handle is already taken";
         return {};
     }
 
     // finalize the RootWidget's creation
-    app.set_parent(root_widget->get_handle(), ROOT_HANDLE);
     log_trace << "Created RootWidget with handle: " << handle << " for Window \"" << window.lock()->get_title() << "\"";
     return root_widget;
 }

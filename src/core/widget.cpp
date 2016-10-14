@@ -1,37 +1,22 @@
 #include "core/widget.hpp"
 
 #include "common/log.hpp"
-#include "common/vector_utils.hpp"
 #include "core/application.hpp"
+#include "core/layout_item_manager.hpp"
 #include "core/render_manager.hpp"
 #include "core/window.hpp"
 #include "utils/smart_enabler.hpp"
 
 namespace signal {
 
-Widget::~Widget()
-{
-    about_to_be_deleted();
-    log_trace << "Destroyed Widget with handle:" << get_handle();
-}
-
 std::shared_ptr<Window> Widget::get_window() const
 {
-    Application& app = Application::get_instance();
-    Handle root_handle = app.get_root(get_handle());
-    if(!root_handle){
+    std::shared_ptr<WindowWidget> window_widget = get_window_widget();
+    if (!window_widget) {
         log_critical << "Cannot determine Window for unrooted Widget " << get_handle();
         return {};
     }
-
-    std::shared_ptr<LayoutItem> root_item = app.get_item(root_handle);
-    std::shared_ptr<WindowWidget> root_widget = std::dynamic_pointer_cast<WindowWidget>(root_item);
-    if(!root_widget){
-        log_critical << "Expected Widget " << root_item->get_handle() << " to be a WindowWidget but it isn't";
-        return {};
-    }
-
-    return root_widget->get_window();
+    return window_widget->get_window();
 }
 
 void Widget::add_component(std::shared_ptr<Component> component)
@@ -78,12 +63,12 @@ void Widget::redraw()
 
 std::shared_ptr<Widget> Widget::create(Handle handle)
 {
-    Application& app = Application::get_instance();
+    LayoutItemManager& manager = Application::get_instance().get_layout_item_manager();
     if (!handle) {
-        handle = app.get_next_handle();
+        handle = manager.get_next_handle();
     }
     std::shared_ptr<Widget> widget = std::make_shared<MakeSmartEnabler<Widget>>(handle);
-    if (!register_item(widget)) {
+    if (!manager.register_item(widget)) {
         log_critical << "Cannot register Widget with handle " << handle
                      << " because the handle is already taken";
         return {};

@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "common/enummap.hpp"
-#include "common/signal.hpp"
 #include "core/component.hpp"
 #include "core/layout_item.hpp"
 
@@ -16,24 +15,8 @@ class Window;
 class Widget : public LayoutItem {
 
 public: // methods
-    /// \brief Destructor.
-    virtual ~Widget() override;
-
     /// \brief Returns the Window containing this Widget (can be nullptr).
     std::shared_ptr<Window> get_window() const;
-
-    /// \brief Checks whether this Widget is visible or hidden.
-    virtual bool is_visible() const override { return m_is_visible; }
-
-    /// \brief Shows or hides this Widget.
-    void set_visible(const bool is_visible)
-    {
-        if (is_visible != m_is_visible) {
-            m_is_visible = is_visible;
-            visibility_changed(m_is_visible);
-            redraw();
-        }
-    }
 
     /// \brief Checks if this Widget contains a Component of the given kind.
     /// \param kind Component kind to check for.
@@ -63,16 +46,10 @@ public: // methods
     /// If the Widget doesn't have the given Component kind, the call is ignored.
     void remove_component(Component::KIND kind);
 
+    virtual std::shared_ptr<Widget> get_widget_at(const Vector2&) const override { return {}; } // TODO: todo
+
     /// \brief Draws this and all child widgets recursively.
     virtual void redraw() override;
-
-public: // signals
-    /// \brief Emitted, when the visibility of this Widget has changed.
-    /// \param New visiblity.
-    Signal<bool> visibility_changed;
-
-    /// \brief Emitted, when the Widget is about to be deleted.
-    Signal<> about_to_be_deleted;
 
 protected: // methods
     /// \brief Value Constructor.
@@ -94,13 +71,8 @@ public: // static methods
     static std::shared_ptr<Widget> create(Handle handle = BAD_HANDLE);
 
 private: // fields
-    /// \brief Whether this Widget is visible or hidden.
-    bool m_is_visible;
-
     /// \brief All components of this Widget.
     EnumMap<Component::KIND, std::shared_ptr<Component>> m_components;
-
-    CALLBACKS(Widget)
 };
 
 } // namespace signal

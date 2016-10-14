@@ -2,6 +2,7 @@
 
 #include "common/log.hpp"
 #include "core/application.hpp"
+#include "core/layout_item_manager.hpp"
 #include "core/widget.hpp"
 #include "utils/enum_to_number.hpp"
 
@@ -10,7 +11,7 @@ namespace signal {
 void Component::redraw_widgets()
 {
     for (Handle widget_handle : m_widgets) {
-        if (auto widget = Application::get_instance().get_item(widget_handle)) {
+        if (auto widget = Application::get_instance().get_layout_item_manager().get_item(widget_handle)) {
             widget->redraw();
         }
         else {

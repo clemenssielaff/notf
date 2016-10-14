@@ -68,7 +68,8 @@ SOURCES += \
     src/core/components/layout_component.cpp \
     src/dynamic/layout/flexbox_layout.cpp \
     src/core/components/shape_component.cpp \
-    src/core/layout_item.cpp
+    src/core/layout_item.cpp \
+    src/core/layout_item_manager.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -128,7 +129,8 @@ HEADERS += \
     include/utils/smart_enabler.hpp \
     include/utils/enum_to_number.hpp \
     include/utils/unused.hpp \
-    include/core/layout_item.hpp
+    include/core/layout_item.hpp \
+    include/core/layout_item_manager.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

@@ -12,8 +12,9 @@ namespace signal {
 
 class Widget;
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /// \brief Virtual base class for all Components.
-///
 class Component : public std::enable_shared_from_this<Component> {
 
     friend class Widget;
