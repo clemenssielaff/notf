@@ -1,7 +1,5 @@
 #include "core/layout_item.hpp"
 
-#include "assert.h"
-
 #include "common/log.hpp"
 #include "common/vector_utils.hpp"
 #include "core/application.hpp"
@@ -12,28 +10,34 @@ namespace signal {
 
 LayoutItem::~LayoutItem()
 {
-    visibility_changed(VISIBILITY::UNROOTED);
+    // send the signal before actually changing anything
     about_to_be_destroyed();
 
-    auto& manager = Application::get_instance().get_layout_item_manager();
-
-    // set your children's parent to BAD_HANDLE - this way, even if the user kept ownership of the child, it will know
-    // that this LayoutItem is gone
-    if (m_internal_child) {
-        m_internal_child->set_parent({});
-    }
-    for (std::shared_ptr<LayoutItem>& external_child : m_external_children) {
-        external_child->set_parent({}); // TODO: propagate state change downstream
-    }
+    // unparent this LayoutItem and let all children update their visibility to unrooted
+    unparent();
 
     // release the manager's weak_ptr
-    manager.release_item(m_handle);
+    Application::get_instance().get_layout_item_manager().release_item(m_handle);
+
+    // unparent the children, they are already unrooted so their visibility won't update again
+    if (m_internal_child) {
+        m_internal_child->unparent();
+    }
+    for (std::shared_ptr<LayoutItem>& external_child : m_external_children) {
+        external_child->unparent();
+    }
 
     log_trace << "Destroyed LayoutItem with handle:" << get_handle();
 }
 
 bool LayoutItem::is_ancestor_of(const std::shared_ptr<LayoutItem> ancestor)
 {
+    // invalid LayoutItems can never be an ancestor
+    if (!ancestor) {
+        return false;
+    }
+
+    // check all actual ancestors against the candidate
     std::shared_ptr<LayoutItem> parent = get_parent();
     while (parent) {
         if (parent == ancestor) {
@@ -41,14 +45,16 @@ bool LayoutItem::is_ancestor_of(const std::shared_ptr<LayoutItem> ancestor)
         }
         parent = parent->get_parent();
     }
+
+    // if no ancestor matches, we have our answer
     return false;
 }
 
-const std::shared_ptr<WindowWidget> LayoutItem::get_window_widget() const
+std::shared_ptr<const WindowWidget> LayoutItem::get_window_widget() const
 {
     // this might be the WindowWidget itself
     if (m_parent.expired()) {
-        return std::dynamic_pointer_cast<WindowWidget>(shared_from_this());
+        return std::dynamic_pointer_cast<const WindowWidget>(shared_from_this());
     }
 
     // otherwise it may be one of its ancestors
@@ -56,104 +62,76 @@ const std::shared_ptr<WindowWidget> LayoutItem::get_window_widget() const
     while (!it->m_parent.expired()) {
         it = it->get_parent();
     }
-    return std::dynamic_pointer_cast<WindowWidget>(it);
-}
-
-LayoutItem::VISIBILITY LayoutItem::get_visibility() const
-{
-    if (!m_is_visible) {
-        return VISIBILITY::INVISIBLE;
-    }
-
-    std::shared_ptr<const LayoutItem> current = shared_from_this();
-    std::shared_ptr<const LayoutItem> next_parent = get_parent();
-    while (next_parent) {
-        if (!next_parent->m_is_visible) {
-            return VISIBILITY::HIDDEN;
-        }
-        current = next_parent;
-        next_parent = current->get_parent();
-    }
-
-    if (std::dynamic_pointer_cast<WindowWidget>(current)) { // TODO: WindowWidgets may never be hidden
-        return VISIBILITY::VISIBLE;
-    }
-    else {
-        return VISIBILITY::UNROOTED;
-    }
+    return std::dynamic_pointer_cast<const WindowWidget>(it);
 }
 
 void LayoutItem::set_visible(const bool is_visible)
 {
     // ignore non-changes
-    if (is_visible == m_is_visible) {
+    if ((is_visible && m_visibility == VISIBILITY::VISIBLE) || (!is_visible && m_visibility == VISIBILITY::INVISIBLE)) {
         return;
     }
+    const VISIBILITY previous_visibility = m_visibility;
 
-    // detect how the change affects visiblity
-    const VISIBILITY previous_visiblity = get_visibility();
-    m_is_visible = is_visible;
-    const VISIBILITY new_visiblity = get_visibility();
-
-    // it is possible that the change didn't affect visiblity at all (for example of a hidden LayoutItem)
-    if (new_visiblity == previous_visiblity) {
-        return;
-    }
-    visibility_changed(new_visiblity);
-
-    // if the LayoutItem just changed visibility, all children must emit their corresponding signals
-    if (new_visiblity == VISIBILITY::VISIBLE) {
-        if (m_internal_child) {
-            m_internal_child->emit_visibility_change_downstream(true);
-        }
-        for (std::shared_ptr<LayoutItem>& external_child : m_external_children) {
-            external_child->emit_visibility_change_downstream(true);
+    // update visibility
+    if(is_visible){
+        std::shared_ptr<LayoutItem> parent = get_parent();
+        if(parent){
+            if(parent->m_visibility == VISIBILITY::INVISIBLE){
+                update_visibility(VISIBILITY::HIDDEN);
+            } else {
+                update_visibility(parent->m_visibility);
+            }
+        } else {
+            update_visibility(VISIBILITY::UNROOTED);
         }
     }
-    else if (previous_visiblity == VISIBILITY::VISIBLE) {
-        if (m_internal_child) {
-            m_internal_child->emit_visibility_change_downstream(false);
-        }
-        for (std::shared_ptr<LayoutItem>& external_child : m_external_children) {
-            external_child->emit_visibility_change_downstream(false);
-        }
-    }
-
-    // if the LayoutItem has neither appeared or disappeared, don't redraw
     else {
+        if(dynamic_cast<const WindowWidget*>(this)){
+            return; // WindowWidgets cannot be hidden
+        }
+        update_visibility(VISIBILITY::INVISIBLE);
+    }
+
+    // do nothing if the update didn't change anything
+    if(previous_visibility == m_visibility){
         return;
     }
 
-    redraw();
+    // only redraw if the LayoutItem either appeared or disappeared
+    if ((previous_visibility == VISIBILITY::VISIBLE) || (m_visibility == VISIBILITY::VISIBLE)) {
+        redraw();
+    }
 }
 
 void LayoutItem::set_parent(std::shared_ptr<LayoutItem> parent)
 {
+    // do nothing if the new parent is the same as the old (or both are invalid)
     if (parent == m_parent.lock()) {
-        return;
-    }
-
-    const VISIBILITY previous_visiblity = get_visibility();
-
-    if (!parent) {
-        if (previous_visiblity != VISIBILITY::UNROOTED) {
-            visibility_changed(VISIBILITY::UNROOTED);
-        }
         return;
     }
 
     // check for cyclic ancestry
     if (is_ancestor_of(parent)) {
-        log_critical << "Cannot make " << parent->get_handle() << " the parent of "
-                     << m_handle << " because " << parent->get_handle() << " is already a child of " << get_handle();
+        log_critical << "Cannot make " << parent->get_handle() << " the parent of " << get_handle()
+                     << " because " << parent->get_handle() << " is already a child of " << get_handle();
         return;
     }
     m_parent = parent;
 
-    // reparenting may show or hide this LayoutItem
-    const VISIBILITY new_visiblity = get_visibility();
-    if (previous_visiblity != new_visiblity) {
-        visibility_changed(new_visiblity);
+    // update visibility
+    if(!parent){
+        if (m_visibility != VISIBILITY::INVISIBLE) {
+            update_visibility(VISIBILITY::UNROOTED);
+        }
+    }
+    else if (parent->m_visibility == VISIBILITY::INVISIBLE) {
+        if (m_visibility != VISIBILITY::INVISIBLE) {
+            update_visibility(VISIBILITY::HIDDEN);
+        }
+    }
+    else if (m_visibility != VISIBILITY::INVISIBLE) {
+        update_visibility(parent->m_visibility);
     }
 }
 
@@ -184,30 +162,36 @@ Transform2 LayoutItem::get_screen_transform() const
     return get_parent_transform();
 }
 
-void LayoutItem::emit_visibility_change_downstream(bool is_parent_visible) const
+void LayoutItem::update_visibility(const VISIBILITY visibility)
 {
-    // invisible children stay invisible
-    if (!m_is_visible) {
+    // ignore non-changes
+    if(visibility == m_visibility){
         return;
     }
 
-    // visible children either become visible or hidden
-    if (is_parent_visible) {
-        visibility_changed(VISIBILITY::VISIBLE);
-    }
-    else {
-        visibility_changed(VISIBILITY::HIDDEN);
-    }
+    // update your own visibility
+    m_visibility = visibility;
+    visibility_changed(m_visibility);
 
-    // propagate further downstream
+    // update your children's visiblity
     if (m_internal_child) {
-        m_internal_child->emit_visibility_change_downstream(is_parent_visible);
+        if (m_internal_child->m_visibility != VISIBILITY::INVISIBLE) {
+            if(m_visibility == VISIBILITY::INVISIBLE){
+                m_internal_child->update_visibility(VISIBILITY::HIDDEN);
+            } else {
+                m_internal_child->update_visibility(m_visibility);
+            }
+        }
     }
     for (const std::shared_ptr<LayoutItem>& external_child : m_external_children) {
-        external_child->emit_visibility_change_downstream(is_parent_visible);
+        if (external_child->m_visibility != VISIBILITY::INVISIBLE) {
+            if(m_visibility == VISIBILITY::INVISIBLE){
+                external_child->update_visibility(VISIBILITY::HIDDEN);
+            } else {
+                external_child->update_visibility(m_visibility);
+            }
+        }
     }
 }
 
 } // namespace signal
-
-// TODO: visibility is overloaded as it is, maybe there should be a state_changed and a separate visibility_changed

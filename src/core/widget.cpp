@@ -11,7 +11,7 @@ namespace signal {
 
 std::shared_ptr<Window> Widget::get_window() const
 {
-    std::shared_ptr<WindowWidget> window_widget = get_window_widget();
+    std::shared_ptr<const WindowWidget> window_widget = get_window_widget();
     if (!window_widget) {
         log_critical << "Cannot determine Window for unrooted Widget " << get_handle();
         return {};

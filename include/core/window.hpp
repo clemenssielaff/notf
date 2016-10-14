@@ -149,13 +149,13 @@ protected: // methods
     /// \brief Value Constructor.
     /// \param handle   Handle of this Widget.
     /// \param window   Window owning this RootWidget.
-    explicit WindowWidget(Handle handle, std::weak_ptr<Window> window);
+    explicit WindowWidget(Handle handle, std::shared_ptr<Window> window);
 
 private: // static methods for Window
     /// \brief Factory function to create a new RootWidget.
     /// \param handle   Handle of this Widget.
     /// \param window   Window owning this RootWidget.
-    static std::shared_ptr<WindowWidget> create(Handle handle, std::weak_ptr<Window> window);
+    static std::shared_ptr<WindowWidget> create(Handle handle, std::shared_ptr<Window> window);
 
 private: // fields
     /// \brief The Window containing this RootWidget.

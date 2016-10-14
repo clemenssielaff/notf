@@ -67,7 +67,9 @@ void Window::close()
 
 std::shared_ptr<Window> Window::create(const WindowInfo& info)
 {
-    return std::make_shared<MakeSmartEnabler<Window>>(info);
+    std::shared_ptr<Window> window = std::make_shared<MakeSmartEnabler<Window>>(info);
+    window->m_root_widget = WindowWidget::create(info.root_widget_handle, window);
+    return window;
 }
 
 void Window::update()
@@ -90,8 +92,8 @@ void Window::update()
 Window::Window(const WindowInfo& info)
     : m_glfw_window(nullptr, window_deleter)
     , m_title(info.title)
-    , m_root_widget(WindowWidget::create(info.root_widget_handle, shared_from_this()))
-    , m_render_manager()
+    , m_root_widget()
+    , m_render_manager(std::make_unique<RenderManager>())
 {
     // always make sure that the Application is constructed first
     Application& app = Application::get_instance();
@@ -130,13 +132,13 @@ Window::Window(const WindowInfo& info)
     }
 }
 
-WindowWidget::WindowWidget(Handle handle, std::weak_ptr<Window> window)
+WindowWidget::WindowWidget(Handle handle, std::shared_ptr<Window> window)
     : Widget(handle)
-    , m_window(std::move(window))
+    , m_window(window)
 {
 }
 
-std::shared_ptr<WindowWidget> WindowWidget::create(Handle handle, std::weak_ptr<Window> window)
+std::shared_ptr<WindowWidget> WindowWidget::create(Handle handle, std::shared_ptr<Window> window)
 {
     // make sure there's a valid handle for the RootWidget
     LayoutItemManager& manager = Application::get_instance().get_layout_item_manager();
@@ -153,7 +155,8 @@ std::shared_ptr<WindowWidget> WindowWidget::create(Handle handle, std::weak_ptr<
     }
 
     // finalize the RootWidget's creation
-    log_trace << "Created RootWidget with handle: " << handle << " for Window \"" << window.lock()->get_title() << "\"";
+    log_trace << "Created RootWidget with handle: " << handle << " for Window \""
+              << root_widget->get_window()->get_title() << "\"";
     return root_widget;
 }
 

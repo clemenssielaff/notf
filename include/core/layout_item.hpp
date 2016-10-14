@@ -43,12 +43,8 @@
 
 namespace signal {
 
-class SizeRange;
-struct Vector2;
 class Widget;
 class WindowWidget;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// \brief Abstraction layer for something that can be put into a Layout - a Widget or another Layout.
 class LayoutItem : public std::enable_shared_from_this<LayoutItem> {
@@ -61,11 +57,12 @@ public: // enums
         SCREEN, // returns transform in screen coordinates, relative to the screen origin
     };
 
+    /// \brief Visibility states, all but one mean that the LayoutItem is not visible, but all for different reasons.
     enum class VISIBILITY {
-        VISIBLE, // LayoutItem is displayed
-        HIDDEN, // LayoutItem is VISIBLE but one of its parents is INVISIBLE, so it is not displayed
-        UNROOTED, // LayoutItem is not the child of a RootWidget and cannot be displayed
         INVISIBLE, // LayoutItem is not displayed
+        HIDDEN, // LayoutItem is not INVISIBLE but one of its parents is, so it cannot be displayed
+        UNROOTED, // LayoutItem and all ancestors are not INVISIBLE, but the Widget is not a child of a WindowWidget
+        VISIBLE, // LayoutItem is displayed
     };
 
 public: // methods
@@ -82,22 +79,18 @@ public: // methods
     /// \brief Returns the parent LayoutItem, may be invalid.
     std::shared_ptr<LayoutItem> get_parent() const { return m_parent.lock(); }
 
-    /// \brief Tests, if 'ancestor' is an ancestor of this LayoutItem.
+    /// \brief Tests, if `ancestor` is an ancestor of this LayoutItem.
     /// \param ancestor Potential ancestor
-    /// \return True iff ancestor is an ancestor, false otherwise.
+    /// \return True iff `ancestor` is an ancestor of this LayoutItem, false otherwise.
     bool is_ancestor_of(const std::shared_ptr<LayoutItem> ancestor);
 
-    /// \brief Returns the WindowWidget of the hierarchy containing this LayoutItem.
-    const std::shared_ptr<WindowWidget> get_window_widget() const;
+    /// \brief Returns the WindowWidget of the hierarchy containing this LayoutItem, may be invalid.
+    std::shared_ptr<const WindowWidget> get_window_widget() const;
 
     /// \brief Checks the visibility of this LayoutItem.
-    VISIBILITY get_visibility() const;
+    VISIBILITY get_visibility() const { return m_visibility; }
 
-    /// \brief Returns true only if this LayoutItem is currently being displayed.
-    /// See `get_visibility` for details on other visibility states.
-    bool is_visible() const { return get_visibility() == VISIBILITY::VISIBLE; }
-
-    /// \brief Shows or hides this LayoutItem.
+    /// \brief Shows (if possible) or hides this LayoutItem.
     void set_visible(const bool is_visible);
 
     /// \brief Returns this LayoutItem's transformation in the given space.
@@ -138,12 +131,18 @@ public: // signals
     /// \brief Emitted, when the LayoutItem is about to be destroyed.
     Signal<> about_to_be_destroyed;
 
+
+public: // TODO:TEMP
+    /// \brief Sets a new parent LayoutItem.
+    /// \param parent   New parent LayoutItem.
+    void set_parent(std::shared_ptr<LayoutItem> parent);
+
 protected: // methods
     /// \brief Value Constructor.
     explicit LayoutItem(Handle handle)
         : m_handle(handle)
         , m_parent()
-        , m_is_visible(true)
+        , m_visibility(VISIBILITY::VISIBLE)
         , m_transform(Transform2::identity())
         , m_horizontal_size()
         , m_vertical_size()
@@ -153,14 +152,13 @@ protected: // methods
     }
 
     /// \brief Returns the internal child or an empty shared pointer if there isn't one.
-    std::shared_ptr<LayoutItem> get_internal_child() const;
+    std::shared_ptr<LayoutItem> get_internal_child() const { return m_internal_child; }
 
     /// \brief Returns all external children.
-    const std::vector<std::shared_ptr<LayoutItem>>& get_external_children() const;
+    const std::vector<std::shared_ptr<LayoutItem>>& get_external_children() const { return m_external_children; }
 
-    /// \brief Sets a new parent LayoutItem.
-    /// \param parent   New parent LayoutItem.
-    void set_parent(std::shared_ptr<LayoutItem> parent);
+    /// \brief Unroots this LayoutItem by clearing its parent.
+    void unparent() { set_parent({}); }
 
     /// \brief Removes a child LayoutItem.
     /// \param parent   Child LayoutItem to remove.
@@ -185,7 +183,7 @@ private: // methods
     Transform2 get_parent_transform() const { return m_transform; }
 
     /// \brief Recursive function to let all children emit visibility_changed when the parent's visibility changed.
-    void emit_visibility_change_downstream(bool is_parent_visible) const;
+    void update_visibility(const VISIBILITY visibility);
 
 protected: // fields
     /// \brief Application-unique Handle.
@@ -194,8 +192,8 @@ protected: // fields
     /// \brief Parent of this LayoutItem.
     std::weak_ptr<LayoutItem> m_parent;
 
-    /// \brief Whether this LayoutItem is visible or hidden.
-    bool m_is_visible;
+    /// \brief Visibility state of this LayoutItem.
+    VISIBILITY m_visibility;
 
     /// \brief 2D transformation of this LayoutItem in local space.
     Transform2 m_transform;
