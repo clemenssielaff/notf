@@ -7,9 +7,10 @@
 #include "common/log.hpp"
 #include "core/application.hpp"
 #include "core/glfw_wrapper.hpp"
+#include "core/item_manager.hpp"
 #include "core/key_event.hpp"
-#include "core/layout_item_manager.hpp"
 #include "core/render_manager.hpp"
+#include "core/root_layout_item.hpp"
 #include "core/widget.hpp"
 #include "graphics/gl_errors.hpp"
 
@@ -25,6 +26,11 @@ void window_deleter(GLFWwindow* glfw_window)
 Window::~Window()
 {
     close();
+    // TODO: OpenGL Components and Textures etc. can survive the destruction of a Window and its OpenGL Context!
+    // This seems to cause a crash on shutdown when running in OpenGL 4.5 but strangely not in 3.0.
+    // I guess because the error is just silently ignored?
+    // Anyway, there should either be a single, shared Context per Application, so that I can just destroy all
+    // Components before the Application's Context is closed, or ... Context dependent Components? (nah.)
 }
 
 Size2 Window::get_window_size() const
@@ -68,7 +74,9 @@ void Window::close()
 std::shared_ptr<Window> Window::create(const WindowInfo& info)
 {
     std::shared_ptr<Window> window = std::make_shared<MakeSmartEnabler<Window>>(info);
-    window->m_root_widget = WindowWidget::create(info.root_widget_handle, window);
+    window->m_root_widget = RootLayoutItem::create(info.root_widget_handle, window);
+    log_trace << "Assigned RootLayoutItem with handle: " << window->m_root_widget->get_handle()
+              << " to Window \"" << window->get_title() << "\"";
     return window;
 }
 
@@ -130,34 +138,6 @@ Window::Window(const WindowInfo& info)
         log_info << "Created Window '" << m_title << "' "
                  << "using OpenGl version: " << glGetString(GL_VERSION);
     }
-}
-
-WindowWidget::WindowWidget(Handle handle, std::shared_ptr<Window> window)
-    : Widget(handle)
-    , m_window(window)
-{
-}
-
-std::shared_ptr<WindowWidget> WindowWidget::create(Handle handle, std::shared_ptr<Window> window)
-{
-    // make sure there's a valid handle for the RootWidget
-    LayoutItemManager& manager = Application::get_instance().get_layout_item_manager();
-    if (!handle) {
-        handle = manager.get_next_handle();
-    }
-
-    // create the RootWidget and try to register it with the Application
-    std::shared_ptr<WindowWidget> root_widget = std::make_shared<MakeSmartEnabler<WindowWidget>>(handle, std::move(window));
-    if (!manager.register_item(root_widget)) {
-        log_critical << "Cannot register Window RootWidget with handle " << handle
-                     << " because the handle is already taken";
-        return {};
-    }
-
-    // finalize the RootWidget's creation
-    log_trace << "Created RootWidget with handle: " << handle << " for Window \""
-              << root_widget->get_window()->get_title() << "\"";
-    return root_widget;
 }
 
 } // namespace signal

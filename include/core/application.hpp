@@ -7,7 +7,7 @@ struct GLFWwindow;
 
 namespace signal {
 
-class LayoutItemManager;
+class ItemManager;
 class LogHandler;
 class ResourceManager;
 class Window;
@@ -46,7 +46,7 @@ public: // methods
     ResourceManager& get_resource_manager() { return *m_resource_manager; }
 
     /// \brief Returns the Application's LayoutItem Manager.
-    LayoutItemManager& get_layout_item_manager() { return *m_layout_item_manager; }
+    ItemManager& get_item_manager() { return *m_layout_item_manager; }
 
 public: // static methods
     /// \brief The singleton Application instance.
@@ -103,7 +103,7 @@ private: // fields
     std::unique_ptr<ResourceManager> m_resource_manager;
 
     /// \brief The Application's LayoutItem manger.
-    std::unique_ptr<LayoutItemManager> m_layout_item_manager;
+    std::unique_ptr<ItemManager> m_layout_item_manager;
 
     /// \brief All Windows known the the Application.
     std::unordered_map<GLFWwindow*, Window*> m_windows;

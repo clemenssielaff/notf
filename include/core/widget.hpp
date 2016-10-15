@@ -46,7 +46,7 @@ public: // methods
     /// If the Widget doesn't have the given Component kind, the call is ignored.
     void remove_component(Component::KIND kind);
 
-    virtual std::shared_ptr<Widget> get_widget_at(const Vector2&) const override { return {}; } // TODO: todo
+    virtual std::shared_ptr<Widget> get_widget_at(const Vector2&) const override { return {}; } // TODO: Widget::get_widget_at
 
     /// \brief Draws this and all child widgets recursively.
     virtual void redraw() override;
@@ -68,7 +68,10 @@ public: // static methods
     /// If an explicit handle is passed, it is assigned to the new Widget.
     /// This function will fail if the existing Handle is already taken.
     /// If no handle is passed, a new one is created.
-    static std::shared_ptr<Widget> create(Handle handle = BAD_HANDLE);
+    static std::shared_ptr<Widget> create(Handle handle = BAD_HANDLE)
+    {
+        return create_item<Widget>(handle);
+    }
 
 private: // fields
     /// \brief All components of this Widget.

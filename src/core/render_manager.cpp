@@ -2,7 +2,7 @@
 
 #include "core/application.hpp"
 #include "core/components/render_component.hpp"
-#include "core/layout_item_manager.hpp"
+#include "core/item_manager.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
 #include "graphics/shader.hpp"
@@ -17,7 +17,7 @@ void RenderManager::render(const Window& window)
     std::vector<std::shared_ptr<Widget>> widgets;
     widgets.reserve(m_widgets.size());
     for (const Handle widget_handle : m_widgets) {
-        std::shared_ptr<LayoutItem> layout_item = app.get_layout_item_manager().get_item(widget_handle);
+        std::shared_ptr<LayoutItem> layout_item = app.get_item_manager().get_item<LayoutItem>(widget_handle);
         if (std::shared_ptr<Widget> widget = std::dynamic_pointer_cast<Widget>(layout_item)) {
             widgets.emplace_back(widget);
         }

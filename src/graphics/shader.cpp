@@ -149,6 +149,7 @@ std::shared_ptr<Shader> Shader::build(
 Shader::~Shader()
 {
     glDeleteProgram(m_id);
+    log_trace << "Deleted Shader \"" << m_name << "\"";
 }
 
 Shader& Shader::use()

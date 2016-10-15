@@ -104,8 +104,8 @@ void Texture2::unbind()
 
 Texture2::~Texture2()
 {
-    log_trace << "Deleting OpenGL texture with ID: " << m_id;
     glDeleteTextures(1, &m_id);
+    log_trace << "Deleted OpenGL texture with ID: " << m_id;
 }
 
 GLint Texture2::get_wrap_x() const

@@ -65,11 +65,14 @@ SOURCES += \
     src/dynamic/color/singlecolor.cpp \
     src/dynamic/shape/aabr_shape.cpp \
     src/common/transform2.cpp \
-    src/core/components/layout_component.cpp \
     src/dynamic/layout/flexbox_layout.cpp \
     src/core/components/shape_component.cpp \
     src/core/layout_item.cpp \
-    src/core/layout_item_manager.cpp
+    src/core/item_manager.cpp \
+    src/dynamic/layout/fill_layout.cpp \
+    src/core/abstract_item.cpp \
+    src/core/abstract_layout_item.cpp \
+    src/core/root_layout_item.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -123,14 +126,17 @@ HEADERS += \
     include/dynamic/shape/aabr_shape.hpp \
     include/dynamic/color/singlecolor.hpp \
     include/common/transform2.hpp \
-    include/core/components/layout_component.hpp \
     include/dynamic/layout/flexbox_layout.hpp \
     include/common/size_range.hpp \
     include/utils/smart_enabler.hpp \
     include/utils/enum_to_number.hpp \
     include/utils/unused.hpp \
     include/core/layout_item.hpp \
-    include/core/layout_item_manager.hpp
+    include/core/item_manager.hpp \
+    include/dynamic/layout/fill_layout.hpp \
+    include/core/abstract_item.hpp \
+    include/core/abstract_layout_item.hpp \
+    include/core/root_layout_item.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

@@ -2,8 +2,9 @@
 
 #include "common/log.hpp"
 #include "core/application.hpp"
-#include "core/layout_item_manager.hpp"
+#include "core/item_manager.hpp"
 #include "core/render_manager.hpp"
+#include "core/root_layout_item.hpp"
 #include "core/window.hpp"
 #include "utils/smart_enabler.hpp"
 
@@ -11,12 +12,12 @@ namespace signal {
 
 std::shared_ptr<Window> Widget::get_window() const
 {
-    std::shared_ptr<const WindowWidget> window_widget = get_window_widget();
-    if (!window_widget) {
+    std::shared_ptr<const RootLayoutItem> root_item = get_root_item();
+    if (!root_item) {
         log_critical << "Cannot determine Window for unrooted Widget " << get_handle();
         return {};
     }
-    return window_widget->get_window();
+    return root_item->get_window();
 }
 
 void Widget::add_component(std::shared_ptr<Component> component)
@@ -50,7 +51,7 @@ void Widget::redraw()
     }
 
     // TODO: proper redraw respecting the FRAMING of each child and dirtying of course
-    if (auto internal_child = get_internal_child()) {
+    if (const std::shared_ptr<LayoutItem>& internal_child = get_internal_child()) {
         internal_child->redraw();
     }
     for (auto external_child : get_external_children()) {
@@ -59,22 +60,6 @@ void Widget::redraw()
     if (has_component_kind(Component::KIND::RENDER)) {
         window->get_render_manager().register_widget(get_handle());
     }
-}
-
-std::shared_ptr<Widget> Widget::create(Handle handle)
-{
-    LayoutItemManager& manager = Application::get_instance().get_layout_item_manager();
-    if (!handle) {
-        handle = manager.get_next_handle();
-    }
-    std::shared_ptr<Widget> widget = std::make_shared<MakeSmartEnabler<Widget>>(handle);
-    if (!manager.register_item(widget)) {
-        log_critical << "Cannot register Widget with handle " << handle
-                     << " because the handle is already taken";
-        return {};
-    }
-    log_trace << "Created Widget with handle:" << handle;
-    return widget;
 }
 
 } // namespace signal
