@@ -72,7 +72,8 @@ SOURCES += \
     src/dynamic/layout/fill_layout.cpp \
     src/core/abstract_item.cpp \
     src/core/abstract_layout_item.cpp \
-    src/core/root_layout_item.cpp
+    src/core/root_layout_item.cpp \
+    src/core/layout.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -136,7 +137,8 @@ HEADERS += \
     include/dynamic/layout/fill_layout.hpp \
     include/core/abstract_item.hpp \
     include/core/abstract_layout_item.hpp \
-    include/core/root_layout_item.hpp
+    include/core/root_layout_item.hpp \
+    include/core/layout.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

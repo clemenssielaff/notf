@@ -54,7 +54,7 @@ public: // methods
 protected: // methods
     /// \brief Value Constructor.
     /// \param handle   Handle of this Widget.
-    explicit Widget(Handle handle)
+    explicit Widget(const Handle handle)
         : LayoutItem(handle)
         , m_components()
     {

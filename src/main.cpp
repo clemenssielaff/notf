@@ -15,9 +15,8 @@ using namespace signal;
 
 int main(void)
 {
-
     Application& app = Application::get_instance();
-    int result;
+    std::shared_ptr<Window> window;
     {
         ResourceManager& resource_manager = app.get_resource_manager();
         resource_manager.set_texture_directory("/home/clemens/code/signal-ui/res/textures");
@@ -26,25 +25,22 @@ int main(void)
         WindowInfo window_info;
         window_info.width = 800;
         window_info.height = 600;
-        std::shared_ptr<Window> window = Window::create(window_info);
+        window = Window::create(window_info);
 
         // setup the background
-        {
-            std::shared_ptr<FillLayout> layout = FillLayout::create();
-            std::shared_ptr<RootLayoutItem> root_item = window->get_root_widget();
-            root_item->set_layout(layout);
+        std::shared_ptr<FillLayout> layout = FillLayout::create();
+        std::shared_ptr<RootLayoutItem> root_item = window->get_root_widget();
+        root_item->set_layout(layout);
 
-            std::shared_ptr<Widget> background = Widget::create();
-            layout->set_widget(background);
+        std::shared_ptr<Widget> background = Widget::create();
+        layout->set_widget(background);
 
-            std::shared_ptr<Shader> shader = resource_manager.build_shader("sprite", "sprite.vert", "sprite.frag");
-            background->add_component(make_component<SpriteRenderer>(shader));
+        std::shared_ptr<Shader> shader = resource_manager.build_shader("sprite", "sprite.vert", "sprite.frag");
+        background->add_component(make_component<SpriteRenderer>(shader));
 
-            std::shared_ptr<TextureComponent> texture_component = make_component<TextureComponent>(TextureChannels{
-                {0, resource_manager.get_texture("background.jpg")}});
-            background->add_component(texture_component);
-        }
-        result = app.exec();
+        std::shared_ptr<TextureComponent> texture_component = make_component<TextureComponent>(TextureChannels{
+            {0, resource_manager.get_texture("background.jpg")}});
+        background->add_component(texture_component);
     }
-    return result;
+    return app.exec();
 }

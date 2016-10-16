@@ -6,6 +6,11 @@
 
 namespace signal {
 
+class Layout;
+
+/*
+ * \brief LayoutItem owned by a Window and root of all LayoutItems displayed within the Window.
+ */
 class RootLayoutItem : public AbstractLayoutItem {
 
     friend class Window;
@@ -19,7 +24,8 @@ public: // methods
     /// \return The Widget at a given local position or an empty shared_ptr if there is none.
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) const override;
 
-    void set_layout(std::shared_ptr<LayoutItem> item) { set_internal_child(item); }
+    /// \brief Changes the internal Layout of the RootLayoutItem.
+    void set_layout(std::shared_ptr<Layout> item);
 
     /// \brief Draws the internal child and all of its descendants recursively.
     virtual void redraw() override;

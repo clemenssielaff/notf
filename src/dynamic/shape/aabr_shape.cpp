@@ -4,7 +4,7 @@
 
 namespace signal {
 
-Aabr RectShape::get_screen_aabr(const Widget& widget)
+Aabr RectShape::get_screen_aabr(const Widget& /*widget*/)
 {
     // position
     Aabr aabr;

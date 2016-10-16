@@ -68,7 +68,7 @@ protected: // methods
 
     /// \brief Sets the internal child of this LayoutItem, an existing internal child is dropped.
     /// \param child    New internal child.
-    void set_internal_child(std::shared_ptr<LayoutItem> child); // TODO: special (thin) Layout class so that Widgets may only contain Layouts
+    void set_internal_child(std::shared_ptr<LayoutItem> child);
 
     /// \brief Removes a child LayoutItem.
     /// \param parent   Child LayoutItem to remove.

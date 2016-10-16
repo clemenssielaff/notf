@@ -11,15 +11,13 @@ namespace signal {
 
 void RenderManager::render(const Window& window)
 {
-    auto& app = Application::get_instance();
-
     // lock all widgets for rendering
     std::vector<std::shared_ptr<Widget>> widgets;
+    ItemManager& item_manager = Application::get_instance().get_item_manager();
     widgets.reserve(m_widgets.size());
     for (const Handle widget_handle : m_widgets) {
-        std::shared_ptr<LayoutItem> layout_item = app.get_item_manager().get_item<LayoutItem>(widget_handle);
-        if (std::shared_ptr<Widget> widget = std::dynamic_pointer_cast<Widget>(layout_item)) {
-            widgets.emplace_back(widget);
+        if (std::shared_ptr<Widget> widget = item_manager.get_item<Widget>(widget_handle)) {
+            widgets.emplace_back(std::move(widget));
         }
     }
 

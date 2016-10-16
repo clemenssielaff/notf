@@ -46,8 +46,6 @@ class RootLayoutItem;
 /// \brief Abstraction layer for something that can be put into a Layout - a Widget or another Layout.
 class LayoutItem : public AbstractLayoutItem {
 
-    friend class AbstractLayoutItem;
-
 public: // enums
     /// \brief Coordinate Spaces to pass to get_transform().
     enum class SPACE {

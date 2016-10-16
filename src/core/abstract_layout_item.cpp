@@ -80,7 +80,7 @@ bool AbstractLayoutItem::set_parent(std::shared_ptr<AbstractLayoutItem> parent)
 void AbstractLayoutItem::set_internal_child(std::shared_ptr<LayoutItem> child)
 {
     m_internal_child = child;
-    m_internal_child->set_parent(std::static_pointer_cast<AbstractLayoutItem>(shared_from_this()));
+    std::static_pointer_cast<AbstractLayoutItem>(m_internal_child)->set_parent(std::static_pointer_cast<AbstractLayoutItem>(shared_from_this()));
 }
 
 void AbstractLayoutItem::remove_child(std::shared_ptr<LayoutItem> child)
