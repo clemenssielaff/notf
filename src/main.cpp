@@ -29,9 +29,13 @@ int main(void)
         std::shared_ptr<Window> window = Window::create(window_info);
 
         // setup the background
-        std::shared_ptr<Widget> background = Widget::create();
         {
-            background->set_parent(window->get_root_widget());
+            std::shared_ptr<FillLayout> layout = FillLayout::create();
+            std::shared_ptr<RootLayoutItem> root_item = window->get_root_widget();
+            root_item->set_layout(layout);
+
+            std::shared_ptr<Widget> background = Widget::create();
+            layout->set_widget(background);
 
             std::shared_ptr<Shader> shader = resource_manager.build_shader("sprite", "sprite.vert", "sprite.frag");
             background->add_component(make_component<SpriteRenderer>(shader));

@@ -26,10 +26,7 @@ public: // methods
 public: // static methods
     /// \brief Factory function to create a new FillLayout.
     /// \param handle   Handle of this Layout.
-    static std::shared_ptr<FillLayout> create(Handle handle = BAD_HANDLE)
-    {
-        return create_item<FillLayout>(handle);
-    }
+    static std::shared_ptr<FillLayout> create(Handle handle = BAD_HANDLE) { return create_item<FillLayout>(handle); }
 
 protected: // methods
     /// \brief Value Constructor.

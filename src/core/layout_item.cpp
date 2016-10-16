@@ -1,27 +1,15 @@
 #include "core/layout_item.hpp"
 
 #include "common/log.hpp"
-#include "core/application.hpp"
-#include "core/item_manager.hpp"
-#include "core/window.hpp"
 
 namespace signal {
 
 LayoutItem::~LayoutItem()
 {
-    // send the signal before actually changing anything
+    // TODO: the `about_to_be_destroyed` signal here is sent AFTER the destructors of subclasses already finished
+    // maybe there should be a 'prepare removal' function that has a flag to only execute once
+    // and it is the user's responsibility to make sure to call that method as soon as possible?
     about_to_be_destroyed();
-
-    // unparent this LayoutItem and let all children update their visibility to unrooted
-    unparent();
-
-    // unparent the children, they are already unrooted so their visibility won't update again
-    if (m_internal_child) {
-        m_internal_child->set_parent({});
-    }
-    for (const std::shared_ptr<LayoutItem>& external_child : m_external_children) {
-        external_child->unparent();
-    }
 }
 
 void LayoutItem::set_visible(const bool is_visible)
@@ -71,18 +59,10 @@ void LayoutItem::set_visible(const bool is_visible)
 
 bool LayoutItem::set_parent(std::shared_ptr<AbstractLayoutItem> parent)
 {
-    // do nothing if the new parent is the same as the old (or both are invalid)
-    if (parent == get_parent()) {
+    // update the parent
+    if(!AbstractLayoutItem::set_parent(parent)){
         return false;
     }
-
-    // check for cyclic ancestry
-    if (is_ancestor_of(parent)) {
-        log_critical << "Cannot make " << parent->get_handle() << " the parent of " << get_handle()
-                     << " because " << parent->get_handle() << " is already a child of " << get_handle();
-        return false;
-    }
-    m_parent = parent;
 
     // update visibility
     if (!parent) {
@@ -136,17 +116,17 @@ void LayoutItem::update_visibility(const VISIBILITY visibility)
     visibility_changed(m_visibility);
 
     // update your children's visiblity
-    if (m_internal_child) {
-        if (m_internal_child->m_visibility != VISIBILITY::INVISIBLE) {
+    if (const std::shared_ptr<LayoutItem>& internal_child = get_internal_child()) {
+        if (internal_child->m_visibility != VISIBILITY::INVISIBLE) {
             if (m_visibility == VISIBILITY::INVISIBLE) {
-                m_internal_child->update_visibility(VISIBILITY::HIDDEN);
+                internal_child->update_visibility(VISIBILITY::HIDDEN);
             }
             else {
-                m_internal_child->update_visibility(m_visibility);
+                internal_child->update_visibility(m_visibility);
             }
         }
     }
-    for (const std::shared_ptr<LayoutItem>& external_child : m_external_children) {
+    for (const std::shared_ptr<LayoutItem>& external_child : get_external_children()) {
         if (external_child->m_visibility != VISIBILITY::INVISIBLE) {
             if (m_visibility == VISIBILITY::INVISIBLE) {
                 external_child->update_visibility(VISIBILITY::HIDDEN);

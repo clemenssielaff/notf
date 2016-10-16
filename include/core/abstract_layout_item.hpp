@@ -13,8 +13,6 @@ class RootLayoutItem;
 
 class AbstractLayoutItem : public AbstractItem {
 
-    friend class LayoutItem; // TODO: that can't be right? why does LayoutItem modify it's ancestry beyond allowed?
-
 public: // methods
     /// \brief Virtual destructor.
     virtual ~AbstractLayoutItem() override;
@@ -59,9 +57,18 @@ protected: // methods
     /// \brief Returns all external children.
     const std::vector<std::shared_ptr<LayoutItem>>& get_external_children() const { return m_external_children; }
 
+    /// \brief Sets a new parent Item.
+    /// If the parent is already a child of this Item, the operation is ignored and returns false.
+    /// \param parent   New parent Item.
+    /// \return True iff the parent was changed successfully.
+    virtual bool set_parent(std::shared_ptr<AbstractLayoutItem> parent);
+
+    /// \brief Unroots this LayoutItem by clearing its parent.
+    void unparent() { set_parent({}); }
+
     /// \brief Sets the internal child of this LayoutItem, an existing internal child is dropped.
     /// \param child    New internal child.
-    void set_internal_child(std::shared_ptr<LayoutItem> child) { m_internal_child = child; }
+    void set_internal_child(std::shared_ptr<LayoutItem> child); // TODO: special (thin) Layout class so that Widgets may only contain Layouts
 
     /// \brief Removes a child LayoutItem.
     /// \param parent   Child LayoutItem to remove.

@@ -26,6 +26,11 @@ public: // methods
     /// \brief Checks if the the given Handle denotes a known Item.
     bool has_item(const Handle handle) const { return m_items.count(handle); }
 
+    /// \brief Returns an AbsractItem by its Handle.
+    /// \param handle   Handle associated with the requested Item.
+    /// \return Shared pointer to the item, is invalid on error.
+    std::shared_ptr<AbstractItem> get_item(const Handle handle) const { return get_abstract_item(handle); }
+
     /// \brief Returns an Item by its Handle.
     /// The returned pointer is invalid if the handle does not identify an Item or the Item is of the wrong type.
     /// \param handle   Handle associated with the requested Item.

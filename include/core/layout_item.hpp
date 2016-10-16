@@ -46,6 +46,8 @@ class RootLayoutItem;
 /// \brief Abstraction layer for something that can be put into a Layout - a Widget or another Layout.
 class LayoutItem : public AbstractLayoutItem {
 
+    friend class AbstractLayoutItem;
+
 public: // enums
     /// \brief Coordinate Spaces to pass to get_transform().
     enum class SPACE {
@@ -117,10 +119,7 @@ protected: // methods
     /// If the parent is already a child of this Item, the operation is ignored and returns false.
     /// \param parent   New parent Item.
     /// \return True iff the parent was changed successfully.
-    bool set_parent(std::shared_ptr<AbstractLayoutItem> parent);
-
-    /// \brief Unroots this LayoutItem by clearing its parent.
-    void unparent() { set_parent({}); }
+    virtual bool set_parent(std::shared_ptr<AbstractLayoutItem> parent) override;
 
 private: // methods
     /// \brief Returns the LayoutItem's transformation in window space.
