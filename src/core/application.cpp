@@ -9,7 +9,7 @@
 #include "core/glfw_wrapper.hpp"
 #include "core/key_event.hpp"
 #include "core/keyboard.hpp"
-#include "core/layout_item.hpp"
+#include "core/layout_object.hpp"
 #include "core/item_manager.hpp"
 #include "core/resource_manager.hpp"
 #include "core/window.hpp"

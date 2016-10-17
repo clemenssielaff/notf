@@ -5,14 +5,14 @@
 
 #include "common/enummap.hpp"
 #include "core/component.hpp"
-#include "core/layout_item.hpp"
+#include "core/layout_object.hpp"
 
 namespace signal {
 
 class Window;
 
 /// \brief Something drawn on the screen, potentially able to interact with the user.
-class Widget : public LayoutItem {
+class Widget : public LayoutObject {
 
 public: // methods
     /// \brief Returns the Window containing this Widget (can be nullptr).
@@ -55,7 +55,7 @@ protected: // methods
     /// \brief Value Constructor.
     /// \param handle   Handle of this Widget.
     explicit Widget(const Handle handle)
-        : LayoutItem(handle)
+        : LayoutObject(handle)
         , m_components()
     {
     }

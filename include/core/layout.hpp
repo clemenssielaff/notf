@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/layout_item.hpp"
+#include "core/layout_object.hpp"
 
 namespace signal {
 
@@ -9,7 +9,7 @@ namespace signal {
  *
  * Doesn't add any functionality to LayoutItem.
  */
-class Layout : public LayoutItem {
+class Layout : public LayoutObject {
 
 public: // methods
     /// \brief Virtual Destructor.
@@ -19,7 +19,7 @@ protected: // methods
     /// \brief Value Constructor.
     /// \param handle   Handle of this Layout.
     explicit Layout(const Handle handle)
-        : LayoutItem(handle)
+        : LayoutObject(handle)
     {
     }
 };

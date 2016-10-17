@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "core/abstract_layout_item.hpp"
+#include "core/abstract_layout_object.hpp"
 
 namespace signal {
 
@@ -11,13 +11,16 @@ class Layout;
 /*
  * \brief LayoutItem owned by a Window and root of all LayoutItems displayed within the Window.
  */
-class RootLayoutItem : public AbstractLayoutItem {
+class LayoutRoot : public AbstractLayoutObject {
 
     friend class Window;
 
 public: // methods
     /// \brief Returns the Window owning this RootWidget.
     std::shared_ptr<Window> get_window() const { return m_window.lock(); }
+
+    /// \brief Returns the unscaled size of this LayoutItem in pixels.
+    virtual Size2r get_size() const override;
 
     /// \brief Looks for a Widget at a given local position.
     /// \param local_pos    Local coordinates where to look for the Widget.
@@ -34,8 +37,8 @@ protected: // methods
     /// \brief Value Constructor.
     /// \param handle   Handle of this Widget.
     /// \param window   Window owning this RootWidget.
-    explicit RootLayoutItem(Handle handle, std::shared_ptr<Window> window)
-        : AbstractLayoutItem(handle)
+    explicit LayoutRoot(Handle handle, std::shared_ptr<Window> window)
+        : AbstractLayoutObject(handle)
         , m_window(window)
     {
     }
@@ -44,9 +47,9 @@ private: // static methods for Window
     /// \brief Factory function to create a new RootWidget.
     /// \param handle   Handle of this Widget.
     /// \param window   Window owning this RootWidget.
-    static std::shared_ptr<RootLayoutItem> create(Handle handle, std::shared_ptr<Window> window)
+    static std::shared_ptr<LayoutRoot> create(Handle handle, std::shared_ptr<Window> window)
     {
-        return create_item<RootLayoutItem>(handle, std::move(window));
+        return create_item<LayoutRoot>(handle, std::move(window));
     }
 
 private: // fields

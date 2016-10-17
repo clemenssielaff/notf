@@ -1,10 +1,10 @@
-#include "core/layout_item.hpp"
+#include "core/layout_object.hpp"
 
 #include "common/log.hpp"
 
 namespace signal {
 
-LayoutItem::~LayoutItem()
+LayoutObject::~LayoutObject()
 {
     // TODO: the `about_to_be_destroyed` signal here is sent AFTER the destructors of subclasses already finished
     // maybe there should be a 'prepare removal' function that has a flag to only execute once
@@ -12,7 +12,7 @@ LayoutItem::~LayoutItem()
     about_to_be_destroyed();
 }
 
-void LayoutItem::set_visible(const bool is_visible)
+void LayoutObject::set_visible(const bool is_visible)
 {
     // ignore non-changes
     if ((is_visible && m_visibility == VISIBILITY::VISIBLE) || (!is_visible && m_visibility == VISIBILITY::INVISIBLE)) {
@@ -22,12 +22,12 @@ void LayoutItem::set_visible(const bool is_visible)
 
     // update visibility
     if (is_visible) {
-        std::shared_ptr<AbstractLayoutItem> abstract_parent = get_parent();
+        std::shared_ptr<AbstractLayoutObject> abstract_parent = get_parent();
         if (!abstract_parent) {
             update_visibility(VISIBILITY::UNROOTED);
         }
         else {
-            std::shared_ptr<LayoutItem> parent = std::dynamic_pointer_cast<LayoutItem>(abstract_parent);
+            std::shared_ptr<LayoutObject> parent = std::dynamic_pointer_cast<LayoutObject>(abstract_parent);
             if (parent) {
                 const VISIBILITY parent_visibility = parent->get_visibility();
                 if (parent_visibility == VISIBILITY::INVISIBLE) {
@@ -57,10 +57,15 @@ void LayoutItem::set_visible(const bool is_visible)
     }
 }
 
-bool LayoutItem::set_parent(std::shared_ptr<AbstractLayoutItem> parent)
+Size2r LayoutObject::get_size() const
+{
+    return {};
+}
+
+bool LayoutObject::set_parent(std::shared_ptr<AbstractLayoutObject> parent)
 {
     // update the parent
-    if(!AbstractLayoutItem::set_parent(parent)){
+    if(!AbstractLayoutObject::set_parent(parent)){
         return false;
     }
 
@@ -72,7 +77,7 @@ bool LayoutItem::set_parent(std::shared_ptr<AbstractLayoutItem> parent)
     }
     else {
         VISIBILITY parent_visibility;
-        if (std::shared_ptr<LayoutItem> parent_layout_item = std::dynamic_pointer_cast<LayoutItem>(parent)) {
+        if (std::shared_ptr<LayoutObject> parent_layout_item = std::dynamic_pointer_cast<LayoutObject>(parent)) {
             parent_visibility = parent_layout_item->get_visibility();
         }
         else {
@@ -90,21 +95,21 @@ bool LayoutItem::set_parent(std::shared_ptr<AbstractLayoutItem> parent)
     return true;
 }
 
-void LayoutItem::get_window_transform_impl(Transform2& result) const
+void LayoutObject::get_window_transform_impl(Transform2& result) const
 {
-    if (std::shared_ptr<LayoutItem> parent = std::dynamic_pointer_cast<LayoutItem>(get_parent())) {
+    if (std::shared_ptr<LayoutObject> parent = std::dynamic_pointer_cast<LayoutObject>(get_parent())) {
         parent->get_window_transform_impl(result);
     }
     result = m_transform * result;
 }
 
-Transform2 LayoutItem::get_screen_transform() const
+Transform2 LayoutObject::get_screen_transform() const
 {
     log_critical << "get_transform(SPACE::SCREEN) is not emplemented yet";
     return get_parent_transform();
 }
 
-void LayoutItem::update_visibility(const VISIBILITY visibility)
+void LayoutObject::update_visibility(const VISIBILITY visibility)
 {
     // ignore non-changes
     if (visibility == m_visibility) {
@@ -116,7 +121,7 @@ void LayoutItem::update_visibility(const VISIBILITY visibility)
     visibility_changed(m_visibility);
 
     // update your children's visiblity
-    if (const std::shared_ptr<LayoutItem>& internal_child = get_internal_child()) {
+    if (const std::shared_ptr<LayoutObject>& internal_child = get_internal_child()) {
         if (internal_child->m_visibility != VISIBILITY::INVISIBLE) {
             if (m_visibility == VISIBILITY::INVISIBLE) {
                 internal_child->update_visibility(VISIBILITY::HIDDEN);
@@ -126,7 +131,7 @@ void LayoutItem::update_visibility(const VISIBILITY visibility)
             }
         }
     }
-    for (const std::shared_ptr<LayoutItem>& external_child : get_external_children()) {
+    for (const std::shared_ptr<LayoutObject>& external_child : get_external_children()) {
         if (external_child->m_visibility != VISIBILITY::INVISIBLE) {
             if (m_visibility == VISIBILITY::INVISIBLE) {
                 external_child->update_visibility(VISIBILITY::HIDDEN);

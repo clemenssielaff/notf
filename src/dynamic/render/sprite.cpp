@@ -3,7 +3,7 @@
 #include <glad/glad.h>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "common/size2.hpp"
+#include "common/size2i.hpp"
 #include "core/components/texture_component.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
@@ -67,7 +67,7 @@ SpriteRenderer::~SpriteRenderer()
 
 void SpriteRenderer::setup_window(const Window& window)
 {
-    Size2 size = window.get_canvas_size();
+    Size2i size = window.get_canvas_size();
     glm::mat4 projection_matrix = glm::ortho(0.0f, static_cast<GLfloat>(size.width), static_cast<GLfloat>(size.height), 0.0f, -1.0f, 1.0f);
     m_shader->set_uniform(image_var, 0);
     m_shader->set_uniform(projection_var, projection_matrix);
@@ -75,7 +75,8 @@ void SpriteRenderer::setup_window(const Window& window)
 
 void SpriteRenderer::render(const Widget& widget)
 {
-    Size2 canvas_size = widget.get_window()->get_canvas_size();
+    Size2i canvas_size = widget.get_window()->get_canvas_size();
+//    Size2 widget_size = widget.get_
 
     glm::mat4 model;
     glm::vec2 position(0, 0);

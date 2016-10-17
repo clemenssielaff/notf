@@ -10,7 +10,7 @@
 #include "core/item_manager.hpp"
 #include "core/key_event.hpp"
 #include "core/render_manager.hpp"
-#include "core/root_layout_item.hpp"
+#include "core/layout_root.hpp"
 #include "core/widget.hpp"
 #include "graphics/gl_errors.hpp"
 
@@ -33,7 +33,7 @@ Window::~Window()
     // Components before the Application's Context is closed, or ... Context dependent Components? (nah.)
 }
 
-Size2 Window::get_window_size() const
+Size2i Window::get_window_size() const
 {
     int width, height;
     glfwGetWindowSize(m_glfw_window.get(), &width, &height);
@@ -42,7 +42,7 @@ Size2 Window::get_window_size() const
     return {static_cast<uint>(width), static_cast<uint>(height)};
 }
 
-Size2 Window::get_framed_window_size() const
+Size2i Window::get_framed_window_size() const
 {
     int left, top, right, bottom;
     glfwGetWindowFrameSize(m_glfw_window.get(), &left, &top, &right, &bottom);
@@ -51,7 +51,7 @@ Size2 Window::get_framed_window_size() const
     return {static_cast<uint>(right - left), static_cast<uint>(bottom - top)};
 }
 
-Size2 Window::get_canvas_size() const
+Size2i Window::get_canvas_size() const
 {
     int width, height;
     glfwGetFramebufferSize(m_glfw_window.get(), &width, &height);
@@ -74,7 +74,7 @@ void Window::close()
 std::shared_ptr<Window> Window::create(const WindowInfo& info)
 {
     std::shared_ptr<Window> window = std::make_shared<MakeSmartEnabler<Window>>(info);
-    window->m_root_widget = RootLayoutItem::create(info.root_widget_handle, window);
+    window->m_root_widget = LayoutRoot::create(info.root_widget_handle, window);
     log_trace << "Assigned RootLayoutItem with handle: " << window->m_root_widget->get_handle()
               << " to Window \"" << window->get_title() << "\"";
     return window;

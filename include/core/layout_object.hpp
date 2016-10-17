@@ -37,14 +37,14 @@
 #include "common/signal.hpp"
 #include "common/size_range.hpp"
 #include "common/transform2.hpp"
-#include "core/abstract_layout_item.hpp"
+#include "core/abstract_layout_object.hpp"
 
 namespace signal {
 
-class RootLayoutItem;
+class LayoutRoot;
 
 /// \brief Abstraction layer for something that can be put into a Layout - a Widget or another Layout.
-class LayoutItem : public AbstractLayoutItem {
+class LayoutObject : public AbstractLayoutObject {
 
 public: // enums
     /// \brief Coordinate Spaces to pass to get_transform().
@@ -64,7 +64,7 @@ public: // enums
 
 public: // methods
     /// \brief Virtual destructor.
-    virtual ~LayoutItem() override;
+    virtual ~LayoutObject() override;
 
     /// \brief Checks the visibility of this LayoutItem.
     VISIBILITY get_visibility() const { return m_visibility; }
@@ -88,6 +88,9 @@ public: // methods
         return get_parent_transform();
     }
 
+    /// \brief Returns the unscaled size of this LayoutItem in pixels.
+    virtual Size2r get_size() const override;
+
     /// \brief Returns the horizontal size range of this LayoutItem.
     const SizeRange& get_horizontal_size() const { return m_horizontal_size; }
 
@@ -104,8 +107,8 @@ public: // signals
 
 protected: // methods
     /// \brief Value Constructor.
-    explicit LayoutItem(const Handle handle)
-        : AbstractLayoutItem(handle)
+    explicit LayoutObject(const Handle handle)
+        : AbstractLayoutObject(handle)
         , m_visibility(VISIBILITY::VISIBLE)
         , m_transform(Transform2::identity())
         , m_horizontal_size()
@@ -117,7 +120,18 @@ protected: // methods
     /// If the parent is already a child of this Item, the operation is ignored and returns false.
     /// \param parent   New parent Item.
     /// \return True iff the parent was changed successfully.
-    virtual bool set_parent(std::shared_ptr<AbstractLayoutItem> parent) override;
+    virtual bool set_parent(std::shared_ptr<AbstractLayoutObject> parent) override;
+
+    /// \brief Tells the containing layout that this LayoutObject has changed.
+    /// Updates are propagated upwards in the LayoutObject hierarchy.
+//    void update_parent() const
+//    {
+//        if (std::shared_ptr<AbstractLayoutObject> parent = get_parent()) {
+//            if (parent->has_internal_child(this)) {
+//                parent->update_layout();
+//            }
+//        }
+//    }
 
 private: // methods
     /// \brief Returns the LayoutItem's transformation in window space.
@@ -153,7 +167,7 @@ protected: // fields
     /// \brief Vertical size range of the LayoutItem.
     SizeRange m_vertical_size;
 
-    CALLBACKS(LayoutItem)
+    CALLBACKS(LayoutObject)
 };
 
 } // namespace signal

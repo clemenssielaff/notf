@@ -60,20 +60,21 @@ SOURCES += \
     src/common/color.cpp \
     src/core/components/render_component.cpp \
     src/core/components/texture_component.cpp \
-    src/common/size2.cpp \
     src/dynamic/render/sprite.cpp \
     src/dynamic/color/singlecolor.cpp \
     src/dynamic/shape/aabr_shape.cpp \
     src/common/transform2.cpp \
     src/dynamic/layout/flexbox_layout.cpp \
     src/core/components/shape_component.cpp \
-    src/core/layout_item.cpp \
     src/core/item_manager.cpp \
     src/dynamic/layout/fill_layout.cpp \
     src/core/abstract_item.cpp \
-    src/core/abstract_layout_item.cpp \
-    src/core/root_layout_item.cpp \
-    src/core/layout.cpp
+    src/core/layout.cpp \
+    src/core/abstract_layout_object.cpp \
+    src/core/layout_object.cpp \
+    src/core/layout_root.cpp \
+    src/common/size2i.cpp \
+    src/common/size2r.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -121,7 +122,6 @@ HEADERS += \
     include/common/color.hpp \
     include/common/enummap.hpp \
     include/core/components/texture_component.hpp \
-    include/common/size2.hpp \
     include/common/int_utils.hpp \
     include/dynamic/render/sprite.hpp \
     include/dynamic/shape/aabr_shape.hpp \
@@ -132,13 +132,15 @@ HEADERS += \
     include/utils/smart_enabler.hpp \
     include/utils/enum_to_number.hpp \
     include/utils/unused.hpp \
-    include/core/layout_item.hpp \
     include/core/item_manager.hpp \
     include/dynamic/layout/fill_layout.hpp \
     include/core/abstract_item.hpp \
-    include/core/abstract_layout_item.hpp \
-    include/core/root_layout_item.hpp \
-    include/core/layout.hpp
+    include/core/layout.hpp \
+    include/core/abstract_layout_object.hpp \
+    include/core/layout_object.hpp \
+    include/core/layout_root.hpp \
+    include/common/size2i.hpp \
+    include/common/size2r.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

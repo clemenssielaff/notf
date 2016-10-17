@@ -6,7 +6,7 @@
 #include "common/color.hpp"
 #include "common/handle.hpp"
 #include "common/signal.hpp"
-#include "common/size2.hpp"
+#include "common/size2i.hpp"
 
 struct GLFWwindow;
 
@@ -14,7 +14,7 @@ namespace signal {
 
 struct KeyEvent;
 class RenderManager;
-class RootLayoutItem;
+class LayoutRoot;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -73,19 +73,19 @@ public: // methods
     const std::string& get_title() const { return m_title; }
 
     /// \brief The invisible root widget of this Window.
-    std::shared_ptr<RootLayoutItem> get_root_widget() const { return m_root_widget; }
+    std::shared_ptr<LayoutRoot> get_root_widget() const { return m_root_widget; }
 
     /// \brief Returns the Application's Render Manager.
     RenderManager& get_render_manager() { return *m_render_manager; }
 
     /// \brief Returns the Window's size in screen coordinates (not pixels).
-    Size2 get_window_size() const;
+    Size2i get_window_size() const;
 
     /// \brief Returns the size of the Window including decorators added by the OS in screen coordinates (not pixels).
-    Size2 get_framed_window_size() const;
+    Size2i get_framed_window_size() const;
 
     /// \brief Returns the size of the canvas displayed in this Window in pixels.
-    Size2 get_canvas_size() const;
+    Size2i get_canvas_size() const;
 
     /// \brief Closes this Window.
     void close();
@@ -127,7 +127,7 @@ private: // fields
     std::string m_title;
 
     /// \brief The invisible root widget of this Window.
-    std::shared_ptr<RootLayoutItem> m_root_widget;
+    std::shared_ptr<LayoutRoot> m_root_widget;
 
     /// \brief The Window's render manager.
     std::unique_ptr<RenderManager> m_render_manager;
