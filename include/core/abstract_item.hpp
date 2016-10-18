@@ -14,26 +14,6 @@ namespace signal {
  *
  * The memory of Items is always managed through std::shared_ptrs.
  * In fact, you cannot create one on the stack but must use the static `create()`-methods that Items generally offer.
- *
- * A quick rundown of the class hierarchy:
- *
- *                          AbstractItem
- *                          |          |
- *                          V          V
- *             AbstractLayoutItem     ...
- *             |                |
- *             V                V
- *         LayoutItem      RootWidget
- *         |        |
- *         V        V
- *       Widget  (Layouts)
- *
- * AbstractItem         = Everything that has a Handle.
- * AbstractLayoutItem   = Everything that is part of the Widget hierarchy
- * LayoutItem           = Adds fields like position, visibility and size
- * Widget               = Container for Components
- * RootWidget           = Root of the Widget hierarchy, has only one internal child but doesn't offer pos, size etc.
- * (Layouts)            = All Layouts used to place Widgets and child Layouts
  */
 class AbstractItem : public std::enable_shared_from_this<AbstractItem> {
 
@@ -60,7 +40,7 @@ protected: // static methods
     /// \brief Factory function to create a new Item.
     /// \param handle   [optional] Requested Handle of the new item - a new one is generated if BAD_HANDLE is passed.
     /// \return The created Item, is invalid if a requested Handle is already taken.
-    template <typename T, typename = typename std::enable_if<std::is_base_of<AbstractItem, T>::value>::type, typename... ARGS>
+    template <typename T, typename = std::enable_if_t<std::is_base_of<AbstractItem, T>::value>, typename... ARGS>
     static std::shared_ptr<T> create_item(Handle handle, ARGS&&... args)
     {
         ItemManager& manager = Application::get_instance().get_item_manager();

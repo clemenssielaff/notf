@@ -10,7 +10,7 @@
 #include "core/item_manager.hpp"
 #include "core/key_event.hpp"
 #include "core/render_manager.hpp"
-#include "core/layout_root.hpp"
+#include "core/old_layout_root.hpp"
 #include "core/widget.hpp"
 #include "graphics/gl_errors.hpp"
 
@@ -74,7 +74,7 @@ void Window::close()
 std::shared_ptr<Window> Window::create(const WindowInfo& info)
 {
     std::shared_ptr<Window> window = std::make_shared<MakeSmartEnabler<Window>>(info);
-    window->m_root_widget = LayoutRoot::create(info.root_widget_handle, window);
+    window->m_root_widget = OldLayoutRoot::create(info.root_widget_handle, window);
     log_trace << "Assigned RootLayoutItem with handle: " << window->m_root_widget->get_handle()
               << " to Window \"" << window->get_title() << "\"";
     return window;

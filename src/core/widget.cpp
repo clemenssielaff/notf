@@ -4,7 +4,7 @@
 #include "core/application.hpp"
 #include "core/item_manager.hpp"
 #include "core/render_manager.hpp"
-#include "core/layout_root.hpp"
+#include "core/old_layout_root.hpp"
 #include "core/window.hpp"
 #include "utils/smart_enabler.hpp"
 
@@ -12,7 +12,7 @@ namespace signal {
 
 std::shared_ptr<Window> Widget::get_window() const
 {
-    std::shared_ptr<const LayoutRoot> root_item = get_root_item();
+    std::shared_ptr<const OldLayoutRoot> root_item = get_root_item();
     if (!root_item) {
         log_critical << "Cannot determine Window for unrooted Widget " << get_handle();
         return {};
@@ -50,10 +50,10 @@ void Widget::redraw()
     }
 
     // TODO: proper redraw respecting the FRAMING of each child and dirtying of course
-    if (const std::shared_ptr<LayoutObject>& internal_child = get_internal_child()) {
+    if (const std::shared_ptr<OldLayoutObject>& internal_child = get_internal_child()) {
         internal_child->redraw();
     }
-    for (const std::shared_ptr<LayoutObject>& external_child : get_external_children()) {
+    for (const std::shared_ptr<OldLayoutObject>& external_child : get_external_children()) {
         external_child->redraw();
     }
     if (has_component_kind(Component::KIND::RENDER)) {

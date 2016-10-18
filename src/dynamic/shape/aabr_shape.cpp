@@ -28,25 +28,25 @@ void RectShape::set_fixed()
 
 void RectShape::set_min_width(const Real width)
 {
-    set_horizontal_size(SizeRange(get_horizontal_size().get_preferred(), width, get_horizontal_size().get_max()));
+    set_horizontal_size(Stretch(get_horizontal_size().get_preferred(), width, get_horizontal_size().get_max()));
     redraw_widgets();
 }
 
 void RectShape::set_max_width(const Real width)
 {
-    set_horizontal_size(SizeRange(get_horizontal_size().get_preferred(), get_horizontal_size().get_min(), width));
+    set_horizontal_size(Stretch(get_horizontal_size().get_preferred(), get_horizontal_size().get_min(), width));
     redraw_widgets();
 }
 
 void RectShape::set_min_height(const Real height)
 {
-    set_vertical_size(SizeRange(get_vertical_size().get_preferred(), height, get_vertical_size().get_max()));
+    set_vertical_size(Stretch(get_vertical_size().get_preferred(), height, get_vertical_size().get_max()));
     redraw_widgets();
 }
 
 void RectShape::set_max_height(const Real height)
 {
-    set_vertical_size(SizeRange(get_vertical_size().get_preferred(), get_vertical_size().get_min(), height));
+    set_vertical_size(Stretch(get_vertical_size().get_preferred(), get_vertical_size().get_min(), height));
     redraw_widgets();
 }
 

@@ -69,12 +69,10 @@ SOURCES += \
     src/core/item_manager.cpp \
     src/dynamic/layout/fill_layout.cpp \
     src/core/abstract_item.cpp \
-    src/core/layout.cpp \
-    src/core/abstract_layout_object.cpp \
-    src/core/layout_object.cpp \
-    src/core/layout_root.cpp \
     src/common/size2i.cpp \
-    src/common/size2r.cpp
+    src/common/size2r.cpp \
+    src/core/layout.cpp \
+    src/scratch2.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -128,19 +126,17 @@ HEADERS += \
     include/dynamic/color/singlecolor.hpp \
     include/common/transform2.hpp \
     include/dynamic/layout/flexbox_layout.hpp \
-    include/common/size_range.hpp \
     include/utils/smart_enabler.hpp \
     include/utils/enum_to_number.hpp \
     include/utils/unused.hpp \
     include/core/item_manager.hpp \
     include/dynamic/layout/fill_layout.hpp \
     include/core/abstract_item.hpp \
-    include/core/layout.hpp \
-    include/core/abstract_layout_object.hpp \
-    include/core/layout_object.hpp \
-    include/core/layout_root.hpp \
     include/common/size2i.hpp \
-    include/common/size2r.hpp
+    include/common/size2r.hpp \
+    include/core/layout.hpp \
+    include/utils/guarded_ptr.hpp \
+    include/common/stretch.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

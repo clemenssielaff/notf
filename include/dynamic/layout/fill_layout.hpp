@@ -1,12 +1,12 @@
 #pragma once
 
-#include "core/layout.hpp"
+#include "core/old_layout.hpp"
 
 namespace signal {
 
 class Widget;
 
-class FillLayout : public Layout {
+class FillLayout : public OldLayout {
 
 public: // methods
     /// \brief Returns the Widget contained in this Layout.
@@ -32,7 +32,7 @@ protected: // methods
     /// \brief Value Constructor.
     /// \param handle   Handle of this Layout.
     explicit FillLayout(const Handle handle)
-        : Layout(handle)
+        : OldLayout(handle)
     {
     }
 };

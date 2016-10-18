@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/aabr.hpp"
-#include "common/size_range.hpp"
+#include "common/stretch.hpp"
 #include "core/component.hpp"
 
 namespace signal {
@@ -23,33 +23,33 @@ public: // methods
     virtual Aabr get_screen_aabr(const Widget& widget) = 0;
 
     /// \brief Returns the vertical size range of this Shape.
-    const SizeRange& get_vertical_size() const { return m_vertical_size; }
+    const Stretch& get_vertical_size() const { return m_vertical_size; }
 
     /// \brief Returns the horizontal size range of this Shape.
-    const SizeRange& get_horizontal_size() const { return m_horizontal_size; }
+    const Stretch& get_horizontal_size() const { return m_horizontal_size; }
 
 public: // signals
     /// \brief Emitted, when the horizontal size of this Shape changed.
     /// \param New size range.
-    Signal<const SizeRange&> horizontal_size_changed;
+    Signal<const Stretch&> horizontal_size_changed;
 
     /// \brief Emitted, when the vertical size of this Shape changed.
     /// \param New size range.
-    Signal<const SizeRange&> vertical_size_changed;
+    Signal<const Stretch&> vertical_size_changed;
 
 protected: // methods
     /// \brief Default Constructor.
     explicit ShapeComponent() = default;
 
     /// \brief Sets the horizontal size range of this Shape.
-    void set_horizontal_size(const SizeRange& size)
+    void set_horizontal_size(const Stretch& size)
     {
         m_horizontal_size = size;
         horizontal_size_changed(m_horizontal_size);
     }
 
     /// \brief Sets the vertical size range of this Shape.
-    void set_vertical_size(const SizeRange& size)
+    void set_vertical_size(const Stretch& size)
     {
         m_vertical_size = size;
         vertical_size_changed(m_vertical_size);
@@ -57,10 +57,10 @@ protected: // methods
 
 private: // fields
     /// \brief Vertical size range.
-    SizeRange m_vertical_size;
+    Stretch m_vertical_size;
 
     /// \brief Horizontal size range.
-    SizeRange m_horizontal_size;
+    Stretch m_horizontal_size;
 };
 
 } // namespace signal
