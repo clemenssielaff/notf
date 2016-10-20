@@ -71,8 +71,10 @@ SOURCES += \
     src/core/abstract_item.cpp \
     src/common/size2i.cpp \
     src/common/size2r.cpp \
-    src/core/layout.cpp \
-    src/scratch2.cpp
+    src/scratch2.cpp \
+    src/core/layout_object.cpp \
+    src/layout.cpp \
+    src/core/layout_root.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -136,7 +138,9 @@ HEADERS += \
     include/common/size2r.hpp \
     include/core/layout.hpp \
     include/utils/guarded_ptr.hpp \
-    include/common/stretch.hpp
+    include/common/stretch.hpp \
+    include/core/layout_object.hpp \
+    include/core/layout_root.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

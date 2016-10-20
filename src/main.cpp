@@ -3,8 +3,8 @@
 
 #include "core/application.hpp"
 #include "core/components/texture_component.hpp"
+#include "core/layout_root.hpp"
 #include "core/resource_manager.hpp"
-#include "core/old_layout_root.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
 
@@ -13,8 +13,8 @@
 
 using namespace signal;
 
-//int main(void)
-int notmain(void)
+int main(void)
+//int notmain(void)
 {
     Application& app = Application::get_instance();
     std::shared_ptr<Window> window;
@@ -30,7 +30,7 @@ int notmain(void)
 
         // setup the background
         std::shared_ptr<FillLayout> layout = FillLayout::create();
-        std::shared_ptr<OldLayoutRoot> root_item = window->get_root_widget();
+        std::shared_ptr<LayoutRoot> root_item = window->get_root_widget();
         root_item->set_layout(layout);
 
         std::shared_ptr<Widget> background = Widget::create();

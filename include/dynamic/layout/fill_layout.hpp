@@ -1,14 +1,36 @@
 #pragma once
 
-#include "core/old_layout.hpp"
+#include "core/layout.hpp"
 
 namespace signal {
 
-class Widget;
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class FillLayout : public OldLayout {
+class FillLayoutItem : public LayoutItem {
 
 public: // methods
+    virtual ~FillLayoutItem() override;
+
+protected: // for LayoutRoot
+    /// \brief Empty default Constructor.
+    explicit FillLayoutItem() = default;
+
+    /// \brief Value Constructor.
+    /// \param layout_object    The LayoutObject owned by this Item.
+    explicit FillLayoutItem(std::shared_ptr<LayoutObject> layout_object)
+        : LayoutItem(std::move(layout_object))
+    {
+    }
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class FillLayout : public BaseLayout<FillLayoutItem> {
+
+public: // methods
+    /// Checks, if this Layout contains a Widget.
+    bool has_widget() const { return has_children(); }
+
     /// \brief Returns the Widget contained in this Layout.
     std::shared_ptr<Widget> get_widget() const;
 
@@ -20,9 +42,6 @@ public: // methods
     /// \return The Widget at a given local position or an empty shared_ptr if there is none.
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) const override;
 
-    /// \brief Lets the parent LayoutObjects know that the .
-    virtual void redraw() override;
-
 public: // static methods
     /// \brief Factory function to create a new FillLayout.
     /// \param handle   Handle of this Layout.
@@ -32,9 +51,11 @@ protected: // methods
     /// \brief Value Constructor.
     /// \param handle   Handle of this Layout.
     explicit FillLayout(const Handle handle)
-        : OldLayout(handle)
+        : BaseLayout(handle)
     {
     }
 };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 } // namespace signal

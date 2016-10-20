@@ -14,7 +14,7 @@ namespace signal {
 
 struct KeyEvent;
 class RenderManager;
-class OldLayoutRoot;
+class LayoutRoot;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -73,7 +73,7 @@ public: // methods
     const std::string& get_title() const { return m_title; }
 
     /// \brief The invisible root widget of this Window.
-    std::shared_ptr<OldLayoutRoot> get_root_widget() const { return m_root_widget; }
+    std::shared_ptr<LayoutRoot> get_root_widget() const { return m_root_widget; }
 
     /// \brief Returns the Application's Render Manager.
     RenderManager& get_render_manager() { return *m_render_manager; }
@@ -127,7 +127,7 @@ private: // fields
     std::string m_title;
 
     /// \brief The invisible root widget of this Window.
-    std::shared_ptr<OldLayoutRoot> m_root_widget;
+    std::shared_ptr<LayoutRoot> m_root_widget;
 
     /// \brief The Window's render manager.
     std::unique_ptr<RenderManager> m_render_manager;

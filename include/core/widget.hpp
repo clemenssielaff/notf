@@ -5,14 +5,14 @@
 
 #include "common/enummap.hpp"
 #include "core/component.hpp"
-#include "core/old_layout_object.hpp"
+#include "core/layout_object.hpp"
 
 namespace signal {
 
 class Window;
 
 /// \brief Something drawn on the screen, potentially able to interact with the user.
-class Widget : public OldLayoutObject {
+class Widget : public LayoutObject {
 
 public: // methods
     /// \brief Returns the Window containing this Widget (can be nullptr).
@@ -46,16 +46,16 @@ public: // methods
     /// If the Widget doesn't have the given Component kind, the call is ignored.
     void remove_component(Component::KIND kind);
 
-    virtual std::shared_ptr<Widget> get_widget_at(const Vector2&) const override { return {}; } // TODO: Widget::get_widget_at
-
     /// \brief Draws this and all child widgets recursively.
     virtual void redraw() override;
+
+    virtual std::shared_ptr<Widget> get_widget_at(const Vector2&) const override { return {}; } // TODO: Widget::get_widget_at
 
 protected: // methods
     /// \brief Value Constructor.
     /// \param handle   Handle of this Widget.
     explicit Widget(const Handle handle)
-        : OldLayoutObject(handle)
+        : LayoutObject(handle)
         , m_components()
     {
     }
