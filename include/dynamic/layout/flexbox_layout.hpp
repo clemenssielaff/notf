@@ -21,9 +21,7 @@ public: // methods
     /// \brief Appends a new Widget to the end of the Flexbox.
     void add_widget(std::shared_ptr<Widget> widget);
 
-    /// \brief Returns the LayoutItem at a given local position.
-    /// \param local_pos    Local coordinates where to look for the LayoutItem.
-    /// \return LayoutItem at the given position or an empty shared pointer, if there is none.
+
     virtual std::shared_ptr<Widget> widget_at(const Vector2& local_pos) override;
 
     /// \brief Removes a given Widget from this Layout.

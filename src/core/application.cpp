@@ -28,7 +28,7 @@ namespace notf {
 Application::Application()
     : m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
     , m_resource_manager(std::make_unique<ResourceManager>())
-    , m_layout_item_manager(std::make_unique<ItemManager>(1024)) // reserve space for 1024 LayoutItems right away
+    , m_layout_item_manager(std::make_unique<ItemManager>(1024)) // reserve space for 1024 Items right away
     , m_windows()
     , m_current_window(nullptr)
 {

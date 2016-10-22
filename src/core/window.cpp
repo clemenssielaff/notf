@@ -84,7 +84,7 @@ std::shared_ptr<Window> Window::create(const WindowInfo& info)
 {
     std::shared_ptr<Window> window = std::make_shared<MakeSmartEnabler<Window>>(info);
     window->m_root_widget = LayoutRoot::create(info.root_widget_handle, window);
-    log_trace << "Assigned RootLayoutItem with handle: " << window->m_root_widget->get_handle()
+    log_trace << "Assigned RootLayout with handle: " << window->m_root_widget->get_handle()
               << " to Window \"" << window->get_title() << "\"";
     return window;
 }

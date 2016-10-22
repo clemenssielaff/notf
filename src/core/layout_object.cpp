@@ -6,22 +6,18 @@
 
 namespace notf {
 
-LayoutItem::~LayoutItem()
-{
-}
-
 LayoutObject::~LayoutObject()
 {
     // explicitly unparent all children so they can send the `parent_changed` signal
     for (auto& it : m_children) {
-        it.second->get_object()->unparent();
+        it.second->unparent();
     }
 }
 
 bool LayoutObject::has_child(const std::shared_ptr<LayoutObject>& candidate) const
 {
     for (const auto& it : m_children) {
-        if (it.second->get_object() == candidate) {
+        if (it.second == candidate) {
             return true;
         }
     }
@@ -57,27 +53,25 @@ std::shared_ptr<const LayoutRoot> LayoutObject::get_root() const
     return std::dynamic_pointer_cast<const LayoutRoot>(it);
 }
 
-const std::unique_ptr<LayoutItem>& LayoutObject::get_child(const Handle child_handle) const
+std::shared_ptr<LayoutObject> LayoutObject::get_child(const Handle child_handle) const
 {
-    static const std::unique_ptr<LayoutItem> INVALID;
     auto it = m_children.find(child_handle);
     if (it == m_children.end()) {
         log_warning << "Requested unknown child" << child_handle << " from LayoutObject " << get_handle();
-        return INVALID;
+        return {};
     }
     return it->second;
 }
 
-void LayoutObject::add_child(std::unique_ptr<LayoutItem> child_item)
+void LayoutObject::add_child(std::shared_ptr<LayoutObject> child_object)
 {
-    const std::shared_ptr<LayoutObject>& child_object = child_item->get_object();
     const Handle child_handle = child_object->get_handle();
     if (m_children.count(child_handle)) {
         log_warning << "Did not add existing child " << child_handle << " to LayoutObject " << get_handle();
         return;
     }
     child_object->set_parent(std::static_pointer_cast<LayoutObject>(shared_from_this()));
-    m_children.emplace(std::make_pair(child_handle, std::move(child_item)));
+    m_children.emplace(std::make_pair(child_handle, std::move(child_object)));
     child_added(child_handle);
 }
 
@@ -135,7 +129,7 @@ void LayoutObject::redraw()
 
     // redraw all children
     for (auto& it : m_children) {
-        it.second->get_object()->redraw();
+        it.second->redraw();
     }
 }
 
@@ -192,7 +186,7 @@ void LayoutObject::cascade_visibility(const VISIBILITY visibility)
 
     // update your children's visiblity
     for (auto& it : m_children) {
-        const std::shared_ptr<LayoutObject>& child = it.second->get_object();
+        const std::shared_ptr<LayoutObject>& child = it.second;
         if (child->get_visibility() != VISIBILITY::INVISIBLE) {
             if (m_visibility == VISIBILITY::INVISIBLE) {
                 child->cascade_visibility(VISIBILITY::HIDDEN);

@@ -6,10 +6,6 @@
 
 namespace notf {
 
-FillLayoutItem::~FillLayoutItem()
-{
-}
-
 std::shared_ptr<Widget> FillLayout::get_widget() const
 {
     if (!has_widget()) {
@@ -17,7 +13,7 @@ std::shared_ptr<Widget> FillLayout::get_widget() const
     }
     const auto& children = get_children();
     assert(children.size() == 1);
-    std::shared_ptr<LayoutObject> obj = children.begin()->second->get_object();
+    std::shared_ptr<LayoutObject> obj = children.begin()->second;
     return std::static_pointer_cast<Widget>(obj);
 }
 
@@ -29,11 +25,11 @@ std::shared_ptr<Widget> FillLayout::set_widget(std::shared_ptr<Widget> widget)
         const auto& children = get_children();
         assert(children.size() == 1);
         auto it = children.begin();
-        previous = std::static_pointer_cast<Widget>(it->second->get_object());
+        previous = std::static_pointer_cast<Widget>(it->second);
         remove_child(it->first);
     }
 
-    add_item(std::make_unique<MakeSmartEnabler<FillLayoutItem>>(std::move(widget)));
+    add_child(std::move(widget));
     return previous;
 }
 

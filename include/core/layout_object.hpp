@@ -11,8 +11,7 @@
 
 namespace notf {
 
-class AbstractLayout;
-class LayoutItem;
+class Layout;
 class LayoutObject;
 class LayoutRoot;
 class Widget;
@@ -32,41 +31,6 @@ enum class SPACE {
     PARENT, // returns transform in local coordinates, relative to the parent LayoutObject
     WINDOW, // returns transform in global coordinates, relative to the Window
     SCREEN, // returns transform in screen coordinates, relative to the screen origin
-};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/*
- * \brief Specializeable container to wrap a child LayoutObject in a Layout.
- */
-class LayoutItem {
-
-public: // methods
-    /// \brief Virtual Destructor.
-    virtual ~LayoutItem();
-
-    /// \brief Tests if this LayoutItem is valid.
-    bool is_valid() const { return static_cast<bool>(m_object); }
-
-    /// \brief Returns the LayoutObject owned by this Item.
-    const std::shared_ptr<LayoutObject>& get_object() const { return m_object; }
-
-protected: // methods
-    /// \brief Default Constructor.
-    /// All LayoutItem subclasses need to be default-constructible.
-    /// However, a default-constructed LayoutItem is not valid and does not own a LayoutObject.
-    explicit LayoutItem() = default;
-
-    /// \brief Value Constructor.
-    /// \param layout_object    The LayoutObject owned by this Item.
-    explicit LayoutItem(std::shared_ptr<LayoutObject> layout_object)
-        : m_object(layout_object)
-    {
-    }
-
-private: // fields
-    /// \brief The LayoutObject owned by this Item.
-    const std::shared_ptr<LayoutObject> m_object;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -170,14 +134,14 @@ protected: // methods
     {
     }
 
-    /// \brief Returns a LayoutItem for a child, is invalid if no child with the given Handle exists.
-    const std::unique_ptr<LayoutItem>& get_child(const Handle child_handle) const;
+    /// \brief Returns a child LayoutObject, is invalid if no child with the given Handle exists.
+    std::shared_ptr<LayoutObject> get_child(const Handle child_handle) const;
 
     /// \brief Returns all children of this LayoutObject.
-    const std::unordered_map<Handle, std::unique_ptr<LayoutItem>>& get_children() const { return m_children; }
+    const std::unordered_map<Handle, std::shared_ptr<LayoutObject>>& get_children() const { return m_children; }
 
     /// \brief Adds the given child to this LayoutObject.
-    void add_child(std::unique_ptr<LayoutItem> child_item);
+    void add_child(std::shared_ptr<LayoutObject> child_object);
 
     /// \brief Removes the child with the given Handle.
     void remove_child(const Handle child_handle);
@@ -218,8 +182,8 @@ private: // fields
     /// \brief The parent LayoutObject, may be invalid.
     std::weak_ptr<LayoutObject> m_parent;
 
-    /// \brief All children wrapped in this class' LayoutItems.
-    std::unordered_map<Handle, std::unique_ptr<LayoutItem>> m_children;
+    /// \brief All children of this LayoutObject.
+    std::unordered_map<Handle, std::shared_ptr<LayoutObject>> m_children;
 
     /// \brief Visibility state of this LayoutObject.
     VISIBILITY m_visibility;

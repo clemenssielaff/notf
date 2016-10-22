@@ -4,30 +4,7 @@
 
 namespace notf {
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class FillLayoutItem : public LayoutItem {
-
-    friend class FillLayout;
-
-public: // methods
-    virtual ~FillLayoutItem() override;
-
-protected: // for FillLayout
-    /// \brief Empty default Constructor.
-    explicit FillLayoutItem() = default;
-
-    /// \brief Value Constructor.
-    /// \param layout_object    The LayoutObject owned by this Item.
-    explicit FillLayoutItem(std::shared_ptr<LayoutObject> layout_object)
-        : LayoutItem(std::move(layout_object))
-    {
-    }
-};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class FillLayout : public BaseLayout<FillLayoutItem> {
+class FillLayout : public Layout {
 
 public: // methods
     /// Checks, if this Layout contains a Widget.
@@ -53,11 +30,9 @@ protected: // methods
     /// \brief Value Constructor.
     /// \param handle   Handle of this Layout.
     explicit FillLayout(const Handle handle)
-        : BaseLayout(handle)
+        : Layout(handle)
     {
     }
 };
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 } // namespace notf

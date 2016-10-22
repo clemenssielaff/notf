@@ -8,31 +8,7 @@
 
 namespace notf {
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class StackLayoutItem : public LayoutItem {
-
-    friend class AbstractLayout;
-
-public: // methods
-    /// \brief Virtual Destructor.
-    virtual ~StackLayoutItem() override;
-
-    /// \brief Empty default Constructor.
-    explicit StackLayoutItem() = default;
-
-protected: // for StackLayout
-    /// \brief Value Constructor.
-    /// \param layout_object    The LayoutObject owned by this Item.
-    explicit StackLayoutItem(std::shared_ptr<LayoutObject> layout_object)
-        : LayoutItem(std::move(layout_object))
-    {
-    }
-};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class StackLayout : public BaseLayout<StackLayoutItem> {
+class StackLayout : public Layout {
 
 public: // enum
     /// \brief Direction in which the StackLayout is stacked.
@@ -62,17 +38,17 @@ public: // methods
         return Index::make_invalid();
     }
 
-    /// \brief Returns the LayoutItem at a given Index in this Layout, be be invalid.
-    StackLayoutItem& get_index(const Index index)
+    /// \brief Returns the LayoutObject at a given Index in this Layout, be be invalid.
+    std::shared_ptr<LayoutObject> get_index(const Index index)
     {
         if (!index || index.get() >= m_items.size()) {
-            return get_item(BAD_HANDLE);
+            return {};
         }
-        return get_item(m_items[index.get()]);
+        return get_child(m_items[index.get()]);
     }
 
     /// \brief Places a new Widget into the Layout, and returns the current Widget.
-    //    StackLayoutItem& add_item(std::shared_ptr<Widget> widget);
+    //    std::shared_ptr<LayoutObject> add_item(std::shared_ptr<Widget> widget);
 
     /// \brief Looks for a Widget at a given local position.
     /// \param local_pos    Local coordinates where to look for the Widget.
@@ -92,7 +68,7 @@ protected: // methods
     /// \brief Value Constructor.
     /// \param handle   Handle of this Layout.
     explicit StackLayout(const Handle handle, const DIRECTION direction)
-        : BaseLayout(handle)
+        : Layout(handle)
         , m_direction(direction)
         , m_spacing(0)
         , m_items()
@@ -109,7 +85,5 @@ private: // fields
     /// \brief All items in this Layout in order.
     std::vector<Handle> m_items;
 };
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 } // namespace notf

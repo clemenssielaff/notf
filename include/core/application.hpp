@@ -45,7 +45,7 @@ public: // methods
     /// \brief Returns the Application's Resource Manager.
     ResourceManager& get_resource_manager() { return *m_resource_manager; }
 
-    /// \brief Returns the Application's LayoutItem Manager.
+    /// \brief Returns the Application's Item Manager.
     ItemManager& get_item_manager() { return *m_layout_item_manager; }
 
 public: // static methods
@@ -102,7 +102,7 @@ private: // fields
     /// \brief The Application's resource manager.
     std::unique_ptr<ResourceManager> m_resource_manager;
 
-    /// \brief The Application's LayoutItem manger.
+    /// \brief The Application's Item manger.
     std::unique_ptr<ItemManager> m_layout_item_manager;
 
     /// \brief All Windows known the the Application.

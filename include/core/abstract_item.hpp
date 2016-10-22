@@ -25,7 +25,7 @@ public: // methods
     /// \brief Virtual destructor.
     virtual ~AbstractItem();
 
-    /// \brief The Application-unique Handle of this LayoutItem.
+    /// \brief The Application-unique Handle of this Item.
     Handle get_handle() const { return m_handle; }
 
 protected: // methods

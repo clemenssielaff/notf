@@ -7,10 +7,6 @@
 
 namespace notf {
 
-LayoutRootItem::~LayoutRootItem()
-{
-}
-
 std::shared_ptr<Widget> LayoutRoot::get_widget_at(const Vector2& local_pos) const
 {
     if (has_layout()) {
@@ -19,7 +15,7 @@ std::shared_ptr<Widget> LayoutRoot::get_widget_at(const Vector2& local_pos) cons
     return {};
 }
 
-void LayoutRoot::set_layout(std::shared_ptr<AbstractLayout> item)
+void LayoutRoot::set_layout(std::shared_ptr<Layout> item)
 {
     // remove the existing item first
     if (has_layout()) {
@@ -27,18 +23,18 @@ void LayoutRoot::set_layout(std::shared_ptr<AbstractLayout> item)
         assert(children.size() == 1);
         remove_child(children.begin()->first);
     }
-    add_item(std::make_unique<MakeSmartEnabler<LayoutRootItem>>(std::move(item)));
+    add_child(std::move(item));
 }
 
-std::shared_ptr<AbstractLayout> LayoutRoot::get_layout() const
+std::shared_ptr<Layout> LayoutRoot::get_layout() const
 {
     if (!has_layout()) {
         return {};
     }
     const auto& children = get_children();
     assert(children.size() == 1);
-    std::shared_ptr<LayoutObject> obj = children.begin()->second->get_object();
-    return std::static_pointer_cast<AbstractLayout>(obj);
+    std::shared_ptr<LayoutObject> obj = children.begin()->second;
+    return std::static_pointer_cast<Layout>(obj);
 }
 
 } // namespace notf

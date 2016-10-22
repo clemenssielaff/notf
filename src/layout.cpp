@@ -2,7 +2,7 @@
 
 namespace notf {
 
-AbstractLayout::~AbstractLayout()
+Layout::~Layout()
 {
 }
 

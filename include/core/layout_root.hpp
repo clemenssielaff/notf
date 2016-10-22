@@ -4,32 +4,10 @@
 
 namespace notf {
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class LayoutRootItem : public LayoutItem {
-
-public: // methods
-    /// \brief Virtual Destructor.
-    virtual ~LayoutRootItem() override;
-
-    /// \brief Empty default Constructor.
-    explicit LayoutRootItem() = default;
-
-protected: // for LayoutRoot
-    /// \brief Value Constructor.
-    /// \param layout_object    The LayoutObject owned by this Item.
-    explicit LayoutRootItem(std::shared_ptr<LayoutObject> layout_object)
-        : LayoutItem(std::move(layout_object))
-    {
-    }
-};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 /*
  * \brief Root Layout owned by a Window and root of all LayoutObjects displayed within the Window.
  */
-class LayoutRoot : public BaseLayout<LayoutRootItem> {
+class LayoutRoot : public Layout {
 
     friend class Window;
 
@@ -46,21 +24,21 @@ public: // methods
     bool has_layout() const { return has_children(); }
 
     /// \brief Changes the internal Layout of the LayoutRoot.
-    void set_layout(std::shared_ptr<AbstractLayout> item);
+    void set_layout(std::shared_ptr<Layout> item);
 
 protected: // methods
     /// \brief Value Constructor.
     /// \param handle   Handle of this Widget.
     /// \param window   Window owning this RootWidget.
     explicit LayoutRoot(Handle handle, std::shared_ptr<Window> window)
-        : BaseLayout(handle)
+        : Layout(handle)
         , m_window(window)
     {
     }
 
 private: // methods
     /// \brief Returns the Layout contained in this LayoutRoot, may be invalid.
-    std::shared_ptr<AbstractLayout> get_layout() const;
+    std::shared_ptr<Layout> get_layout() const;
 
 private: // static methods for Window
     /// \brief Factory function to create a new LayoutRoot.
@@ -75,7 +53,5 @@ private: // fields
     /// \brief The Window containing this LayoutRoot.
     const std::weak_ptr<Window> m_window;
 };
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 } // namespace notf
