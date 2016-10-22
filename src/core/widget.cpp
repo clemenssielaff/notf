@@ -8,7 +8,7 @@
 #include "core/window.hpp"
 #include "utils/smart_enabler.hpp"
 
-namespace signal {
+namespace notf {
 
 std::shared_ptr<Window> Widget::get_window() const
 {
@@ -59,4 +59,4 @@ void Widget::redraw()
     }
 }
 
-} // namespace signal
+} // namespace notf

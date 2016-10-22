@@ -2,7 +2,7 @@
 
 #include "core/glfw_wrapper.hpp"
 
-namespace signal {
+namespace notf {
 
 KEY from_glfw_key(int key)
 {
@@ -251,4 +251,4 @@ KEY from_glfw_key(int key)
     return KEY::INVALID;
 }
 
-} // namespace signal
+} // namespace notf

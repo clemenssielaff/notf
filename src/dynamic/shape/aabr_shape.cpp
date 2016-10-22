@@ -2,7 +2,7 @@
 
 #include "core/widget.hpp"
 
-namespace signal {
+namespace notf {
 
 Aabr RectShape::get_screen_aabr(const Widget& /*widget*/)
 {
@@ -50,4 +50,4 @@ void RectShape::set_max_height(const Real height)
     redraw_widgets();
 }
 
-} // namespace signal
+} // namespace notf

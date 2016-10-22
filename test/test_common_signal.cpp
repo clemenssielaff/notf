@@ -2,8 +2,8 @@
 #include "test/catch_utils.hpp"
 
 #include "common/signal.hpp"
-using signal::Signal;
-using signal::CallbackManager;
+using notf::Signal;
+using notf::CallbackManager;
 
 namespace { // anonymous
 

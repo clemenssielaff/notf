@@ -7,7 +7,7 @@
 #include "core/component.hpp"
 #include "core/layout_object.hpp"
 
-namespace signal {
+namespace notf {
 
 class Window;
 
@@ -78,4 +78,4 @@ private: // fields
     EnumMap<Component::KIND, std::shared_ptr<Component>> m_components;
 };
 
-} // namespace signal
+} // namespace notf

@@ -2,7 +2,7 @@
 
 #include "core/component.hpp"
 
-namespace signal {
+namespace notf {
 
 class Widget;
 class Window;
@@ -45,4 +45,4 @@ protected: // fields
     std::shared_ptr<Shader> m_shader;
 };
 
-} // namespace signal
+} // namespace notf

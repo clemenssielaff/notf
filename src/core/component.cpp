@@ -6,7 +6,7 @@
 #include "core/widget.hpp"
 #include "utils/enum_to_number.hpp"
 
-namespace signal {
+namespace notf {
 
 void Component::redraw_widgets()
 {
@@ -40,4 +40,4 @@ void Component::unregister_widget(Handle widget_handle)
     }
 }
 
-} // namespace signal
+} // namespace notf

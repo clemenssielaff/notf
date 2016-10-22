@@ -5,7 +5,7 @@
 #include <iostream>
 #include <ostream>
 
-namespace signal {
+namespace notf {
 
 /// \brief Simple RAII timer for timing a single function call.
 ///
@@ -49,4 +49,4 @@ private: // fields
     std::chrono::high_resolution_clock::time_point m_start;
 };
 
-} // namespace signal
+} // namespace notf

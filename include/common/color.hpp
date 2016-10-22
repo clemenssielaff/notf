@@ -4,7 +4,7 @@
 
 #include "common/real.hpp"
 
-namespace signal {
+namespace notf {
 
 /// \brief The Color class.
 struct Color {
@@ -34,4 +34,4 @@ struct Color {
 /// \return Output stream for further output.
 std::ostream& operator<<(std::ostream& out, const Color& color);
 
-} // namespace signal
+} // namespace notf

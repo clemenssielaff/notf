@@ -19,11 +19,11 @@ namespace { // anonymous
 
 /// \brief The current state of all keyboard keys.
 /// Is unit-global instead of a member variable to keep the application header small.
-signal::KeyStateSet g_key_states;
+notf::KeyStateSet g_key_states;
 
 } // namespace anonymous
 
-namespace signal {
+namespace notf {
 
 Application::Application()
     : m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
@@ -102,11 +102,11 @@ void Application::on_token_key(GLFWwindow* glfw_window, int key, int scancode, i
     }
 
     // update the key state
-    KEY signal_key = from_glfw_key(key);
-    set_key(g_key_states, signal_key, action);
+    KEY notf_key = from_glfw_key(key);
+    set_key(g_key_states, notf_key, action);
 
     // let the window fire the key event
-    KeyEvent key_event{window, signal_key, KEY_ACTION(action), KEY_MODIFIERS(modifiers), g_key_states};
+    KeyEvent key_event{window, notf_key, KEY_ACTION(action), KEY_MODIFIERS(modifiers), g_key_states};
     window->on_token_key(key_event);
 }
 
@@ -169,9 +169,6 @@ void Application::shutdown()
     }
     is_running = false;
 
-    // stop the event loop
-    glfwTerminate();
-
     // close all remaining windows
     for (auto it : m_windows) {
         it.second->close();
@@ -179,6 +176,9 @@ void Application::shutdown()
 
     // release all resources
     m_resource_manager->clear();
+
+    // stop the event loop
+    glfwTerminate();
 
     // stop the logger
     log_info << "Application shutdown";
@@ -195,4 +195,4 @@ Window* Application::get_window(GLFWwindow* glfw_window)
     return iterator->second;
 }
 
-} // namespace signal
+} // namespace notf

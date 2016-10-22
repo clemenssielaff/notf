@@ -7,11 +7,11 @@
 
 #include "graphics/gl_forwards.hpp"
 
-namespace signal {
+namespace notf {
 class Texture2;
 class Shader;
 }
-using namespace signal;
+using namespace notf;
 
 class SpriteRenderer {
 public:

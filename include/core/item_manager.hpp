@@ -7,7 +7,7 @@
 
 #include "common/handle.hpp"
 
-namespace signal {
+namespace notf {
 
 class AbstractItem;
 
@@ -79,4 +79,4 @@ private: // fields
     std::unordered_map<Handle, std::weak_ptr<AbstractItem>> m_items;
 };
 
-} // namespace signal
+} // namespace notf

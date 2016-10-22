@@ -3,7 +3,7 @@
 
 #include "core/layout.hpp"
 
-using namespace signal;
+using namespace notf;
 
 class MyLayoutItem : public LayoutItem {
 

@@ -8,7 +8,7 @@
 #include "common/vector2.hpp"
 #include "graphics/gl_forwards.hpp"
 
-namespace signal {
+namespace notf {
 
 class Widget;
 class Window;
@@ -178,4 +178,4 @@ private: // fields
     const std::string m_name;
 };
 
-} // namespace signal
+} // namespace notf

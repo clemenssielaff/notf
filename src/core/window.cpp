@@ -14,7 +14,7 @@
 #include "core/widget.hpp"
 #include "graphics/gl_errors.hpp"
 
-namespace signal {
+namespace notf {
 
 void window_deleter(GLFWwindow* glfw_window)
 {
@@ -35,6 +35,9 @@ Window::~Window()
 
 Size2i Window::get_window_size() const
 {
+    if (!m_glfw_window) {
+        return {};
+    }
     int width, height;
     glfwGetWindowSize(m_glfw_window.get(), &width, &height);
     assert(width >= 0);
@@ -44,6 +47,9 @@ Size2i Window::get_window_size() const
 
 Size2i Window::get_framed_window_size() const
 {
+    if (!m_glfw_window) {
+        return {};
+    }
     int left, top, right, bottom;
     glfwGetWindowFrameSize(m_glfw_window.get(), &left, &top, &right, &bottom);
     assert(right - left >= 0);
@@ -53,6 +59,9 @@ Size2i Window::get_framed_window_size() const
 
 Size2i Window::get_canvas_size() const
 {
+    if (!m_glfw_window) {
+        return {};
+    }
     int width, height;
     glfwGetFramebufferSize(m_glfw_window.get(), &width, &height);
     assert(width >= 0);
@@ -82,6 +91,8 @@ std::shared_ptr<Window> Window::create(const WindowInfo& info)
 
 void Window::update()
 {
+    assert(m_glfw_window);
+
     // make the window current
     Application::get_instance().set_current_window(this);
 
@@ -115,10 +126,43 @@ Window::Window(const WindowInfo& info)
     if (info.opengl_version_major >= 0) {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, info.opengl_version_major);
     }
+
     if (info.opengl_version_minor >= 0) {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, info.opengl_version_minor);
     }
+
+    if (info.opengl_remove_deprecated) {
+        if (info.opengl_version_major >= 3) {
+            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+        }
+        else {
+            log_warning << "Ignored WindowInfo flag 'opengl_remove_deprecated' "
+                        << "as it can only be used with OpenGL versions 3.0 or above.";
+        }
+    }
+
+    if (info.opengl_profile == WindowInfo::PROFILE::ANY) {
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
+    }
+    else {
+        if ((info.opengl_version_major < 3) || (info.opengl_version_minor < 2)) {
+            log_warning << "Ignored WindowInfo field 'opengl_profile' (set to "
+                        << (info.opengl_profile == WindowInfo::PROFILE::CORE ? "PROFILE::CORE" : "PROFILE::COMPAT")
+                        << ") as it can only be used with OpenGL versions 3.2 or above.";
+        }
+        else {
+            if (info.opengl_profile == WindowInfo::PROFILE::CORE) {
+                glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+            }
+            else {
+                assert(info.opengl_profile == WindowInfo::PROFILE::COMPAT);
+                glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
+            }
+        }
+    }
+
     glfwWindowHint(GLFW_RESIZABLE, info.is_resizeable ? GL_TRUE : GL_FALSE);
+
     glfwWindowHint(GLFW_SAMPLES, std::max(0, info.samples));
 
     // create the GLFW window (error test in next step)
@@ -140,4 +184,4 @@ Window::Window(const WindowInfo& info)
     }
 }
 
-} // namespace signal
+} // namespace notf

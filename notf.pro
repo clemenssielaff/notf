@@ -147,3 +147,5 @@ DISTFILES += \
     res/shaders/test01.frag \
     res/shaders/sprite.vert \
     res/shaders/sprite.frag
+
+QMAKE_CXX = ccache g++

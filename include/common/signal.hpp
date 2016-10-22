@@ -6,7 +6,7 @@
 
 // see commit de6d173f0339fadc20f128891ecaba6f637e07cb for a thread-safe (but only 16-25% as fast) implementation
 
-namespace signal {
+namespace notf {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -437,14 +437,14 @@ public:                                                                         
 private:                                                                                                                  \
     CallbackManager __callbacks;
 
-} // namespace signal
+} // namespace notf
 
 #if 0
 #include <chrono>
 #include <iostream>
 
 #include "signal.hpp"
-using namespace signal;
+using namespace notf;
 
 using Clock = std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;

@@ -2,7 +2,7 @@
 
 #include <core/keyboard.hpp>
 
-namespace signal {
+namespace notf {
 
 /// \brief A key event.
 ///
@@ -24,4 +24,4 @@ struct KeyEvent {
     const KeyStateSet stateset;
 };
 
-} // namespace signal
+} // namespace notf

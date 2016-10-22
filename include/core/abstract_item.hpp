@@ -7,7 +7,7 @@
 #include "core/item_manager.hpp"
 #include "utils/smart_enabler.hpp"
 
-namespace signal {
+namespace notf {
 
 /*
  * \brief AbstractItem is the base class for everything in an Application that can be accessible by a unique Handle.
@@ -59,4 +59,4 @@ private: // fields
     const Handle m_handle;
 };
 
-} // namespace signal
+} // namespace notf

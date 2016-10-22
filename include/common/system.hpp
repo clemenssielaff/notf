@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace signal {
+namespace notf {
 
 /*!
  * @brief Reads the contents of a file into a string.
@@ -13,4 +13,4 @@ namespace signal {
  */
 std::string read_file(std::string file_path);
 
-} // namespace signal
+} // namespace notf

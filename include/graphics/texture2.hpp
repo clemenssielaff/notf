@@ -5,7 +5,7 @@
 
 #include "graphics/gl_forwards.hpp"
 
-namespace signal {
+namespace notf {
 
 /**
  * \brief Manages the loading and setup of an OpenGL texture.
@@ -134,4 +134,4 @@ private: // fields
     GLuint m_height;
 };
 
-} // namespace signal
+} // namespace notf

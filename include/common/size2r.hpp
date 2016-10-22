@@ -4,7 +4,7 @@
 
 #include "common/real.hpp"
 
-namespace signal {
+namespace notf {
 
 /// \brief The Size2r class.
 struct Size2r {
@@ -36,4 +36,4 @@ struct Size2r {
 /// \return Output stream for further output.
 std::ostream& operator<<(std::ostream& out, const Size2r& size);
 
-} // namespace signal
+} // namespace notf

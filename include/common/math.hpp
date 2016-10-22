@@ -1,6 +1,6 @@
 #pragma once
 
-namespace signal {
+namespace notf {
 
 /// \brief Implements Python's modulo operation where negative values wrap around.
 ///
@@ -13,4 +13,4 @@ inline int wrap_mod(int n, int M)
     return ((n % M) + M) % M;
 }
 
-} // namespace signal
+} // namespace notf

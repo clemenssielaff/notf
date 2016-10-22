@@ -2,7 +2,7 @@
 
 #include "common/log.hpp"
 
-namespace signal {
+namespace notf {
 
 AbstractItem::~AbstractItem()
 {
@@ -12,4 +12,4 @@ AbstractItem::~AbstractItem()
     log_trace << "Destroyed Item with handle:" << get_handle();
 }
 
-} // namespace signal
+} // namespace notf

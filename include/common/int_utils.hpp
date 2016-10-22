@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-namespace signal {
+namespace notf {
 
 // use cool names, just in case your compiler isn't cool enough
 using uchar = unsigned char;

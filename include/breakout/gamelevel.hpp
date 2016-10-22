@@ -8,7 +8,7 @@
 #include "breakout/spriterenderer.hpp"
 
 #include "core/resource_manager.hpp"
-using namespace signal;
+using namespace notf;
 
 class GameLevel {
 public:

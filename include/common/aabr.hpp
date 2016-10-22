@@ -4,7 +4,7 @@
 
 #include "common/vector2.hpp"
 
-namespace signal {
+namespace notf {
 
 /// \brief A 2D Axis-Aligned-Bounding-Rectangle.
 ///
@@ -486,4 +486,4 @@ struct Aabr {
 /// \return Output stream for further output.
 std::ostream& operator<<(std::ostream& out, const Aabr& aabr);
 
-} // namespace signal
+} // namespace notf

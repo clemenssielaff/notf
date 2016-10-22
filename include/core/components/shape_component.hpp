@@ -4,7 +4,7 @@
 #include "common/stretch.hpp"
 #include "core/component.hpp"
 
-namespace signal {
+namespace notf {
 
 class Widget;
 
@@ -63,4 +63,4 @@ private: // fields
     Stretch m_horizontal_size;
 };
 
-} // namespace signal
+} // namespace notf

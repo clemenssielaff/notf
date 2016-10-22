@@ -1,7 +1,7 @@
 #if 0
 #include "core/components/layout_component.hpp"
 
-namespace signal {
+namespace notf {
 
 /// \brief Layout to arrange Widgets inside a flexbox.
 ///
@@ -68,5 +68,5 @@ protected: // fields
     DIRECTION m_wrap_direction;
 };
 
-} // namespace signal
+} // namespace notf
 #endif

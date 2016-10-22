@@ -72,8 +72,8 @@ Game::Game(GLuint width, GLuint height)
     , m_paddle()
     , m_ball()
 {
-    m_resource_manager.set_texture_directory("/home/clemens/code/signal-ui/res/textures");
-    m_resource_manager.set_shader_directory("/home/clemens/code/signal-ui/res/shaders");
+    m_resource_manager.set_texture_directory("/home/clemens/code/notf/res/textures");
+    m_resource_manager.set_shader_directory("/home/clemens/code/notf/res/shaders");
 
     // install the log handler first, to catch errors right away
     install_log_message_handler(std::bind(&LogHandler::push_log, &m_log_handler, std::placeholders::_1));
@@ -108,10 +108,10 @@ void Game::init()
     GameLevel three(&m_resource_manager);
     GameLevel four(&m_resource_manager);
 
-    one.load("/home/clemens/code/signal-ui/res/levels/standard.lvl", m_width, levelHeight);
-    two.load("/home/clemens/code/signal-ui/res/levels/small_gaps.lvl", m_width, levelHeight);
-    three.load("/home/clemens/code/signal-ui/res/levels/space_invader.lvl", m_width, levelHeight);
-    four.load("/home/clemens/code/signal-ui/res/levels/bounce_galore.lvl", m_width, levelHeight);
+    one.load("/home/clemens/code/notf/res/levels/standard.lvl", m_width, levelHeight);
+    two.load("/home/clemens/code/notf/res/levels/small_gaps.lvl", m_width, levelHeight);
+    three.load("/home/clemens/code/notf/res/levels/space_invader.lvl", m_width, levelHeight);
+    four.load("/home/clemens/code/notf/res/levels/bounce_galore.lvl", m_width, levelHeight);
     m_levels.emplace_back(std::move(one));
     m_levels.emplace_back(std::move(two));
     m_levels.emplace_back(std::move(three));
@@ -233,16 +233,16 @@ void Game::reset_level()
 {
     GLuint levelHeight = static_cast<GLuint>(m_height * 0.52);
     if (m_current_level == 0) {
-        m_levels[0].load("/home/clemens/code/signal-ui/res/levels/standard.lvl", m_width, levelHeight);
+        m_levels[0].load("/home/clemens/code/notf/res/levels/standard.lvl", m_width, levelHeight);
     }
     else if (m_current_level == 1) {
-        m_levels[1].load("/home/clemens/code/signal-ui/res/levels/small_gaps.lvl", m_width, levelHeight);
+        m_levels[1].load("/home/clemens/code/notf/res/levels/small_gaps.lvl", m_width, levelHeight);
     }
     else if (m_current_level == 2) {
-        m_levels[2].load("/home/clemens/code/signal-ui/res/levels/space_invader.lvl", m_width, levelHeight);
+        m_levels[2].load("/home/clemens/code/notf/res/levels/space_invader.lvl", m_width, levelHeight);
     }
     else if (m_current_level == 3) {
-        m_levels[3].load("/home/clemens/code/signal-ui/res/levels/bounce_galore.lvl", m_width, levelHeight);
+        m_levels[3].load("/home/clemens/code/notf/res/levels/bounce_galore.lvl", m_width, levelHeight);
     }
 }
 

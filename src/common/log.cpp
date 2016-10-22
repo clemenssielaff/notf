@@ -12,7 +12,7 @@ inline std::string color_prefix(u_short color)
 
 } // namespace anonymous
 
-namespace signal {
+namespace notf {
 
 LogHandler::LogHandler(size_t initial_buffer, ulong flush_interval)
     : m_write_buffer()
@@ -166,10 +166,10 @@ void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
 LogMessageHandler LogMessageFactory::s_message_handler;
 LogMessage::LEVEL LogMessageFactory::s_log_level = LogMessage::LEVEL::ALL;
 
-} // namespace signal
+} // namespace notf
 
 #if 0
-using namespace signal;
+using namespace notf;
 
 using Clock = std::chrono::high_resolution_clock;
 

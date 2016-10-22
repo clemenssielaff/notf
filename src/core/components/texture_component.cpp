@@ -53,7 +53,7 @@ constexpr GLenum gl_texture_channel(ushort channel)
 
 } // anonymous
 
-namespace signal {
+namespace notf {
 
 TextureComponent::TextureComponent(std::unordered_map<ushort, std::shared_ptr<Texture2>> textures)
     : m_textures(std::move(textures))
@@ -90,4 +90,4 @@ bool TextureComponent::bind_texture(ushort channel) const
     return true;
 }
 
-} // namespace signal
+} // namespace notf

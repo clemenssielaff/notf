@@ -2,7 +2,7 @@
 
 #include <glad/glad.h>
 
-namespace signal {
+namespace notf {
 
 /**
  * \brief Nicer way to provide a buffer offset to glVertexAttribPointer.
@@ -21,4 +21,4 @@ struct VaoBindRAII {
     ~VaoBindRAII() { glBindVertexArray(0); }
 };
 
-} // namespace signal
+} // namespace notf

@@ -4,7 +4,7 @@
 
 #include "common/real.hpp"
 
-namespace signal {
+namespace notf {
 
 /// \brief The Vector2 class.
 struct Vector2 {
@@ -510,4 +510,4 @@ inline Vector2 nlerp(const Vector2& from, const Vector2& to, const Real blend)
     return lerp(from, to, blend).normalize();
 }
 
-} // namespace signal
+} // namespace notf

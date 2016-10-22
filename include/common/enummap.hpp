@@ -10,7 +10,7 @@
 
 #include <unordered_map>
 
-namespace signal {
+namespace notf {
 
 struct _EnumClassHash {
     template <typename T>
@@ -23,4 +23,4 @@ using _HashType = typename std::conditional<std::is_enum<Key>::value, _EnumClass
 template <typename Key, typename T>
 using EnumMap = std::unordered_map<Key, T, _HashType<Key>>;
 
-} // namespace signal
+} // namespace notf

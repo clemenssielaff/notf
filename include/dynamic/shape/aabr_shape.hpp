@@ -2,7 +2,7 @@
 
 #include "core/components/shape_component.hpp"
 
-namespace signal {
+namespace notf {
 
 /// \brief Simple, Rectangular shape.
 ///
@@ -48,4 +48,4 @@ protected: // methods
     }
 };
 
-} // namespace signal
+} // namespace notf

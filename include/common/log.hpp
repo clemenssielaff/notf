@@ -43,7 +43,7 @@
 #include <thread>
 #include <vector>
 
-namespace signal {
+namespace notf {
 
 struct LogMessage;
 
@@ -335,7 +335,7 @@ struct _NullBuffer {
     _NullBuffer& operator<<(ANY&&) { return *this; }
 };
 
-} // namespace signal
+} // namespace notf
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -359,9 +359,9 @@ struct _NullBuffer {
 /// The object provided by log_* is a std::stringstream or a _NullBuffer, which accepts all the same inputs.
 #ifndef log_trace
 #if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_TRACE
-#define log_trace signal::LogMessageFactory(signal::LogMessage::LEVEL::TRACE, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
+#define log_trace notf::LogMessageFactory(notf::LogMessage::LEVEL::TRACE, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
-#define log_trace signal::_NullBuffer()
+#define log_trace notf::_NullBuffer()
 #endif
 #else
 #warning "Macro 'log_trace' is already defined - Signal's log_trace macro will remain disabled."
@@ -369,9 +369,9 @@ struct _NullBuffer {
 
 #ifndef log_info
 #if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_INFO
-#define log_info signal::LogMessageFactory(signal::LogMessage::LEVEL::INFO, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
+#define log_info notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
-#define log_info signal::_NullBuffer()
+#define log_info notf::_NullBuffer()
 #endif
 #else
 #warning "Macro 'log_info' is already defined - Signal's log_info macro will remain disabled."
@@ -379,9 +379,9 @@ struct _NullBuffer {
 
 #ifndef log_warning
 #if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_WARNING
-#define log_warning signal::LogMessageFactory(signal::LogMessage::LEVEL::WARNING, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
+#define log_warning notf::LogMessageFactory(notf::LogMessage::LEVEL::WARNING, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
-#define log_warning signal::_NullBuffer()
+#define log_warning notf::_NullBuffer()
 #endif
 #else
 #warning "Macro 'log_warning' is already defined - Signal's log_warning macro will remain disabled."
@@ -389,9 +389,9 @@ struct _NullBuffer {
 
 #ifndef log_critical
 #if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_CRITICAL
-#define log_critical signal::LogMessageFactory(signal::LogMessage::LEVEL::CRITICAL, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
+#define log_critical notf::LogMessageFactory(notf::LogMessage::LEVEL::CRITICAL, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
-#define log_critical signal::_NullBuffer()
+#define log_critical notf::_NullBuffer()
 #endif
 #else
 #warning "Macro 'log_critical' is already defined - Signal's log_critical macro will remain disabled."
@@ -399,9 +399,9 @@ struct _NullBuffer {
 
 #ifndef log_fatal
 #if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_FATAL
-#define log_fatal signal::LogMessageFactory(signal::LogMessage::LEVEL::FATAL, __LINE__, signal::basename(__FILE__), __FUNCTION__).input
+#define log_fatal notf::LogMessageFactory(notf::LogMessage::LEVEL::FATAL, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
-#define log_fatal signal::_NullBuffer()
+#define log_fatal notf::_NullBuffer()
 #endif
 #else
 #warning "Macro 'log_fatal' is already defined - Signal's log_fatal macro will remain disabled."

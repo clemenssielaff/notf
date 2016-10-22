@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace signal {
+namespace notf {
 
 /// \brief Tokenizes a string.
 ///
@@ -87,4 +87,4 @@ inline bool istarts_with(const std::string& input, const std::string& prefix)
     return relevant_input.compare(0, prefix.length(), prefix) == 0;
 }
 
-} // namespace signal
+} // namespace notf

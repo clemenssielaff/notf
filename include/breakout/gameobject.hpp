@@ -4,10 +4,10 @@
 
 #include <glm/glm.hpp>
 
-namespace signal {
+namespace notf {
 class Texture2;
 }
-using namespace signal;
+using namespace notf;
 
 class SpriteRenderer;
 

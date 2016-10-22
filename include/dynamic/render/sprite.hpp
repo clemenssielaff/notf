@@ -3,7 +3,7 @@
 #include "core/components/render_component.hpp"
 #include "graphics/gl_forwards.hpp"
 
-namespace signal {
+namespace notf {
 
 class SpriteRenderer : public RenderComponent {
 
@@ -35,4 +35,4 @@ private: // fields
     GLuint m_quad;
 };
 
-} // namespace signal
+} // namespace notf

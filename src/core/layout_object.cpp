@@ -4,7 +4,7 @@
 #include "core/layout.hpp"
 #include "core/layout_root.hpp"
 
-namespace signal {
+namespace notf {
 
 LayoutItem::~LayoutItem()
 {
@@ -218,4 +218,4 @@ Transform2 LayoutObject::get_screen_transform() const
     return get_parent_transform();
 }
 
-} // namespace signal
+} // namespace notf

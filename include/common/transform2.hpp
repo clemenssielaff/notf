@@ -7,7 +7,7 @@
 #include "common/real.hpp"
 #include "common/vector2.hpp"
 
-namespace signal {
+namespace notf {
 
 /// \brief A 2D Transformation Matrix with 3x3 components.
 /// Only the first two rows are actually stored though, the last row is a static constant.
@@ -147,4 +147,4 @@ private: // methods
     }
 };
 
-} // namespace signal
+} // namespace notf

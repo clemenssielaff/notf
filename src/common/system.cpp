@@ -5,7 +5,7 @@
 
 #include "common/log.hpp"
 
-namespace signal {
+namespace notf {
 
 std::string read_file(std::string file_path)
 {
@@ -20,4 +20,4 @@ std::string read_file(std::string file_path)
     return buffer.str();
 }
 
-} // namespace signal
+} // namespace notf

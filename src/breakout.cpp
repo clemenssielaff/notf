@@ -2,7 +2,7 @@
 
 #include "breakout/game.hpp"
 #include "core/resource_manager.hpp"
-using namespace signal;
+using namespace notf;
 
 // GLFW function declerations
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);

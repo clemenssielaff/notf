@@ -17,7 +17,7 @@ static const float transparency[] = {0.0f, 0.0f, 0.0f, 0.0f};
 
 } // namespace anonymous
 
-namespace signal {
+namespace notf {
 
 std::shared_ptr<Texture2> Texture2::load(const std::string& texture_path)
 {
@@ -169,4 +169,4 @@ void Texture2::bind() const
     glBindTexture(GL_TEXTURE_2D, m_id);
 }
 
-} // namespace signal
+} // namespace notf

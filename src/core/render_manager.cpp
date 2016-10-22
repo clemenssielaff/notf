@@ -7,7 +7,7 @@
 #include "core/window.hpp"
 #include "graphics/shader.hpp"
 
-namespace signal {
+namespace notf {
 
 void RenderManager::render(const Window& window)
 {
@@ -40,4 +40,4 @@ void RenderManager::render(const Window& window)
     }
 }
 
-} // namespace signal
+} // namespace notf

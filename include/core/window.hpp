@@ -10,7 +10,7 @@
 
 struct GLFWwindow;
 
-namespace signal {
+namespace notf {
 
 struct KeyEvent;
 class RenderManager;
@@ -27,6 +27,13 @@ void window_deleter(GLFWwindow* glfwWindow);
 ///
 struct WindowInfo {
 
+    /// \brief OpenGL profiles.
+    enum class PROFILE : unsigned char {
+        ANY,
+        CORE,
+        COMPAT,
+    };
+
     /// \brief Width of the window.
     int width = 640;
 
@@ -38,6 +45,14 @@ struct WindowInfo {
 
     /// \brief Minimum required OpenGL major version number (-1 = no minimum)
     int opengl_version_major = -1;
+
+    /// \brief Profile of the created OpenGL context.
+    PROFILE opengl_profile = PROFILE::ANY;
+
+    /// \brief If set, requests that the OpenGL context should be forward-compatible,
+    /// meaning that deprecated functionality in the requested version of OpenGL is removed.
+    /// This option is ignored, if the requested OpenGL version is less than 3.0.
+    bool opengl_remove_deprecated = false;
 
     /// \brief If the Window is resizeable or not.
     bool is_resizeable = true;
@@ -135,4 +150,4 @@ private: // fields
     CALLBACKS(Window)
 };
 
-} // namespace signal
+} // namespace notf

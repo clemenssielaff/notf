@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <vector>
 
-namespace signal {
+namespace notf {
 
 /// \brief Removes all occurences of 'element' from 'vector'.
 ///
@@ -66,4 +66,4 @@ std::vector<VALUE> values(const MAP<KEY, VALUE>& map)
     return result;
 }
 
-} // namespace signal
+} // namespace notf

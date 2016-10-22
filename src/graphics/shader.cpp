@@ -40,7 +40,7 @@ private:
 
 } // namespace anonymous
 
-namespace signal {
+namespace notf {
 
 const std::string& Shader::stage_name(const STAGE stage)
 {
@@ -261,4 +261,4 @@ GLuint Shader::compile(STAGE stage, const std::string& shader_path)
     }
 }
 
-} // namespace signal
+} // namespace notf

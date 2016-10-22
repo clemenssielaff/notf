@@ -5,7 +5,7 @@
 
 struct GLFWwindow;
 
-namespace signal {
+namespace notf {
 
 class ItemManager;
 class LogHandler;
@@ -112,4 +112,4 @@ private: // fields
     Window* m_current_window;
 };
 
-} // namespace signal
+} // namespace notf

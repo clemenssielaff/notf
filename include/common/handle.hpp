@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-namespace signal {
+namespace notf {
 
 using Handle = size_t;
 
@@ -18,4 +18,4 @@ static const Handle _FIRST_HANDLE = 2;
 /// \brief Checks if a given Handle is valid or reserved.
 inline bool is_valid(const Handle handle) { return handle >= _FIRST_HANDLE; }
 
-} // namespace signal
+} // namespace notf

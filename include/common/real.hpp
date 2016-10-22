@@ -4,7 +4,7 @@
 #include <cmath>
 #include <functional>
 
-namespace signal {
+namespace notf {
 
 #ifdef SIGNAL_DOUBLE_PRECISION
 using Real = double;
@@ -109,4 +109,4 @@ inline size_t hash(Real value, size_t seed)
     return result;
 }
 
-} // namespace signal
+} // namespace notf

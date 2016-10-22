@@ -2,7 +2,7 @@
 
 #include <iosfwd>
 
-namespace signal {
+namespace notf {
 
 /// \brief The Size2i class.
 struct Size2i {
@@ -34,4 +34,4 @@ struct Size2i {
 /// \return Output stream for further output.
 std::ostream& operator<<(std::ostream& out, const Size2i& size);
 
-} // namespace signal
+} // namespace notf

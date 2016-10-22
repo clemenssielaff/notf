@@ -1,9 +1,9 @@
 #include "core/layout.hpp"
 
-namespace signal {
+namespace notf {
 
 AbstractLayout::~AbstractLayout()
 {
 }
 
-} // namespace signal
+} // namespace notf

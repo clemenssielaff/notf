@@ -2,7 +2,7 @@
 
 #include "randutils/randutils.hpp"
 
-namespace signal {
+namespace notf {
 
 /// \brief Convenience accessor to a randutils random engine.
 ///
@@ -13,4 +13,4 @@ decltype(randutils::default_rng()) & random()
     return random_engine;
 }
 
-} // namespace signal
+} // namespace notf

@@ -5,7 +5,7 @@
 #include "common/vector_utils.hpp"
 #include "core/widget.hpp"
 
-namespace signal {
+namespace notf {
 
 FlexboxLayout::FlexboxLayout(std::shared_ptr<Widget> owner,
                                                DIRECTION direction, DIRECTION wrap_direction)
@@ -37,5 +37,5 @@ void FlexboxLayout::remove_widget(std::shared_ptr<Widget> widget)
 //{
 //}
 
-} // namespace signal
+} // namespace notf
 #endif

@@ -1,5 +1,5 @@
 #include "core/components/shape_component.hpp"
 
-namespace signal {
+namespace notf {
 
-} // namespace signal
+} // namespace notf

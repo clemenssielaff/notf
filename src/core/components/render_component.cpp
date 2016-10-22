@@ -7,7 +7,7 @@
 #include "graphics/gl_errors.hpp"
 #include "graphics/shader.hpp"
 
-namespace signal {
+namespace notf {
 
 RenderComponent::RenderComponent(std::shared_ptr<Shader> shader)
     : Component()
@@ -48,4 +48,4 @@ bool RenderComponent::assert_uniform(const char* name) const
     return true;
 }
 
-} // namespace signal
+} // namespace notf

@@ -4,7 +4,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace signal {
+namespace notf {
 
 class Shader;
 class Texture2;
@@ -118,4 +118,4 @@ private: // fields
     std::unordered_map<std::string, std::shared_ptr<Shader>> m_shaders;
 };
 
-} // namespace signal
+} // namespace notf

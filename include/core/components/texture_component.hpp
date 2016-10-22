@@ -5,7 +5,7 @@
 
 #include "core/component.hpp"
 
-namespace signal {
+namespace notf {
 
 class Texture2;
 
@@ -37,4 +37,4 @@ protected: // fields
     TextureChannels m_textures;
 };
 
-} // namespace signal
+} // namespace notf

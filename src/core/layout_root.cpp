@@ -5,7 +5,7 @@
 #include "core/layout_object.hpp"
 #include "core/window.hpp"
 
-namespace signal {
+namespace notf {
 
 std::shared_ptr<Widget> LayoutRoot::get_widget_at(const Vector2& local_pos) const
 {
@@ -37,4 +37,4 @@ std::shared_ptr<AbstractLayout> LayoutRoot::get_layout() const
     return std::static_pointer_cast<AbstractLayout>(obj);
 }
 
-} // namespace signal
+} // namespace notf

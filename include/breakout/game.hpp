@@ -5,7 +5,7 @@
 #include "common/log.hpp"
 #include "core/resource_manager.hpp"
 #include "graphics/gl_forwards.hpp"
-using namespace signal;
+using namespace notf;
 
 #include "breakout/ballobject.hpp"
 #include "breakout/gamelevel.hpp"

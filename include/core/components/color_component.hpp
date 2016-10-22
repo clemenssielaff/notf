@@ -3,7 +3,7 @@
 #include "common/color.hpp"
 #include "core/component.hpp"
 
-namespace signal {
+namespace notf {
 
 /// \brief Virtual base class for all Color Components.
 ///
@@ -28,4 +28,4 @@ protected: // methods
     explicit ColorComponent() = default;
 };
 
-} // namespace signal
+} // namespace notf

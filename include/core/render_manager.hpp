@@ -5,7 +5,7 @@
 
 #include "common/handle.hpp"
 
-namespace signal {
+namespace notf {
 
 class Widget;
 class Window;
@@ -36,4 +36,4 @@ private: // fields
     std::set<Handle> m_widgets;
 };
 
-} // namespace signal
+} // namespace notf

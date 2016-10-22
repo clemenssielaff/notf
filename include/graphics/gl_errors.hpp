@@ -4,7 +4,7 @@
 
 #include "common/log.hpp"
 
-namespace signal {
+namespace notf {
 
 /**
  * \brief String representation of an OpenGl error code.
@@ -72,14 +72,14 @@ inline int _check_gl_error(uint line, const char* file, const char* function)
     GLenum error_code;
     while ((error_code = glGetError()) != GL_NO_ERROR) {
         ++error_count;
-        signal::LogMessageFactory(signal::LogMessage::LEVEL::WARNING, line, file, function).input
+        notf::LogMessageFactory(notf::LogMessage::LEVEL::WARNING, line, file, function).input
             << "OpenGL error: " << gl_error_string(error_code);
     }
     return error_count;
 }
-#define check_gl_error() _check_gl_error(__LINE__, signal::basename(__FILE__), __FUNCTION__)
+#define check_gl_error() _check_gl_error(__LINE__, notf::basename(__FILE__), __FUNCTION__)
 #else
 #define check_gl_error() 0
 #endif
 
-} // namespace signal
+} // namespace notf

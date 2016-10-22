@@ -20,7 +20,7 @@ const char* color_var = "sprite_color";
 
 } // anonymous
 
-namespace signal {
+namespace notf {
 
 SpriteRenderer::SpriteRenderer(std::shared_ptr<Shader> shader)
     : RenderComponent(shader)
@@ -108,4 +108,4 @@ void SpriteRenderer::render(const Widget& widget)
     glBindVertexArray(0);
 }
 
-} // namespace signal
+} // namespace notf

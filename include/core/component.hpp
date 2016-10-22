@@ -8,7 +8,7 @@
 #include "common/signal.hpp"
 #include "utils/smart_enabler.hpp"
 
-namespace signal {
+namespace notf {
 
 class Widget;
 
@@ -107,7 +107,7 @@ template <class COMPONENT, typename... ARGS>
 std::shared_ptr<COMPONENT> make_component(ARGS&&... args)
 {
     static_assert(std::is_base_of<Component, COMPONENT>::value,
-                  "make_component must only be used with subclasses of signal::Component");
+                  "make_component must only be used with subclasses of notf::Component");
     auto component = std::make_shared<MakeSmartEnabler<COMPONENT>>(std::forward<ARGS>(args)...);
     if (!component->is_valid()) {
         return {};
@@ -115,4 +115,4 @@ std::shared_ptr<COMPONENT> make_component(ARGS&&... args)
     return component;
 }
 
-} // namespace signal
+} // namespace notf

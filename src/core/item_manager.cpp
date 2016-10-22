@@ -5,7 +5,7 @@
 #include "common/log.hpp"
 #include "core/abstract_item.hpp"
 
-namespace signal {
+namespace notf {
 
 ItemManager::ItemManager(const size_t reserve)
     : m_nextHandle(_FIRST_HANDLE)
@@ -76,4 +76,4 @@ void ItemManager::wrong_type_warning(const std::string& type_name, const Handle 
 #endif
 }
 
-} // namespace signal
+} // namespace notf

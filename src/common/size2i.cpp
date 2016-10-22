@@ -3,7 +3,7 @@
 #include <iostream>
 #include <type_traits>
 
-namespace signal {
+namespace notf {
 
 std::ostream& operator<<(std::ostream& out, const Size2i& size)
 {
@@ -14,10 +14,10 @@ std::ostream& operator<<(std::ostream& out, const Size2i& size)
  * Compile-time sanity check.
  */
 static_assert(sizeof(Size2i) == sizeof(uint) * 2,
-              "This compiler seems to inject padding bits into the signal::Size2i memory layout. "
+              "This compiler seems to inject padding bits into the notf::Size2i memory layout. "
               "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
 static_assert(std::is_pod<Size2i>::value,
-              "This compiler does not recognize the signal::Size2i as a POD.");
+              "This compiler does not recognize the notf::Size2i as a POD.");
 
-} // namespace signal
+} // namespace notf

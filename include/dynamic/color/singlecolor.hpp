@@ -1,6 +1,6 @@
 #include "core/components/color_component.hpp"
 
-namespace signal {
+namespace notf {
 
 /// \brief A Color component providing a single color.
 ///
@@ -25,4 +25,4 @@ private: // fields
     Color m_color;
 };
 
-} // namespace signal
+} // namespace notf

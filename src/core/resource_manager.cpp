@@ -36,7 +36,7 @@ void ensure_ends_in_forward_slash(std::string& input)
 
 } // namespace anonymous
 
-namespace signal {
+namespace notf {
 
 void ResourceManager::set_texture_directory(std::string texture_directory)
 {
@@ -120,4 +120,4 @@ void ResourceManager::clear()
     m_shaders.clear();
 }
 
-} // namespace signal
+} // namespace notf

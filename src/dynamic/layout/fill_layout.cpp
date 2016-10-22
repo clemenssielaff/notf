@@ -4,7 +4,7 @@
 
 #include "core/widget.hpp"
 
-namespace signal {
+namespace notf {
 
 FillLayoutItem::~FillLayoutItem()
 {
@@ -45,4 +45,4 @@ std::shared_ptr<Widget> FillLayout::get_widget_at(const Vector2& local_pos) cons
     return {};
 }
 
-} // namespace signal
+} // namespace notf

@@ -9,7 +9,7 @@
 #include "common/transform2.hpp"
 #include "core/abstract_item.hpp"
 
-namespace signal {
+namespace notf {
 
 class AbstractLayout;
 class LayoutItem;
@@ -235,7 +235,7 @@ private: // fields
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-} // namespace signal
+} // namespace notf
 
 // TODO: redraw methods
 // As is it set up right now, there is no strong relationship between a Widget and its child widgets, they can be

@@ -11,7 +11,7 @@
 #include "dynamic/layout/fill_layout.hpp"
 #include "dynamic/render/sprite.hpp"
 
-using namespace signal;
+using namespace notf;
 
 int main(void)
 //int notmain(void)
@@ -20,12 +20,16 @@ int main(void)
     std::shared_ptr<Window> window;
     {
         ResourceManager& resource_manager = app.get_resource_manager();
-        resource_manager.set_texture_directory("/home/clemens/code/signal-ui/res/textures");
-        resource_manager.set_shader_directory("/home/clemens/code/signal-ui/res/shaders");
+        resource_manager.set_texture_directory("/home/clemens/code/notf/res/textures");
+        resource_manager.set_shader_directory("/home/clemens/code/notf/res/shaders");
 
         WindowInfo window_info;
         window_info.width = 800;
         window_info.height = 600;
+        window_info.opengl_version_major = 3;
+        window_info.opengl_version_minor = 3;
+        window_info.opengl_remove_deprecated = true;
+        window_info.opengl_profile = WindowInfo::PROFILE::CORE;
         window = Window::create(window_info);
 
         // setup the background

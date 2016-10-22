@@ -1,7 +1,7 @@
 #include "test/catch.hpp"
 
 #include "common/string_utils.hpp"
-using signal::tokenize;
+using notf::tokenize;
 
 SCENARIO("strings can be tokenized", "[common][string]")
 {
