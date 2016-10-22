@@ -2,7 +2,7 @@
 
 #include "core/application.hpp"
 #include "core/components/render_component.hpp"
-#include "core/item_manager.hpp"
+#include "core/object_manager.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
 #include "graphics/shader.hpp"
@@ -13,10 +13,10 @@ void RenderManager::render(const Window& window)
 {
     // lock all widgets for rendering
     std::vector<std::shared_ptr<Widget>> widgets;
-    ItemManager& item_manager = Application::get_instance().get_item_manager();
+    ObjectManager& item_manager = Application::get_instance().get_item_manager();
     widgets.reserve(m_widgets.size());
     for (const Handle widget_handle : m_widgets) {
-        if (std::shared_ptr<Widget> widget = item_manager.get_item<Widget>(widget_handle)) {
+        if (std::shared_ptr<Widget> widget = item_manager.get_object<Widget>(widget_handle)) {
             widgets.emplace_back(std::move(widget));
         }
     }

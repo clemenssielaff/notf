@@ -9,8 +9,8 @@
 #include "core/glfw_wrapper.hpp"
 #include "core/key_event.hpp"
 #include "core/keyboard.hpp"
-#include "core/layout_object.hpp"
-#include "core/item_manager.hpp"
+#include "core/layout_item.hpp"
+#include "core/object_manager.hpp"
 #include "core/resource_manager.hpp"
 #include "core/window.hpp"
 #include "utils/unused.hpp"
@@ -28,7 +28,7 @@ namespace notf {
 Application::Application()
     : m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
     , m_resource_manager(std::make_unique<ResourceManager>())
-    , m_layout_item_manager(std::make_unique<ItemManager>(1024)) // reserve space for 1024 Items right away
+    , m_layout_item_manager(std::make_unique<ObjectManager>(1024)) // reserve space for 1024 Items right away
     , m_windows()
     , m_current_window(nullptr)
 {

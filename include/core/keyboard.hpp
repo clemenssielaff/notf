@@ -12,8 +12,8 @@ class Window;
 /// \brief All keys recognized by GLFW.
 ///
 /// Can be used as indices for a KeyStateSet object.
-enum class KEY {
-    INVALID = -1,
+enum class KEY : unsigned char {
+    INVALID = 0,
     SPACE,
     APOSTROPHE,
     COMMA,
@@ -139,7 +139,7 @@ enum class KEY {
 
 /// \brief Actions you can do with a key.
 ///
-enum class KEY_ACTION {
+enum class KEY_ACTION : unsigned char {
     KEY_RELEASE = 0,
     KEY_PRESS,
     KEY_REPEAT,
@@ -149,11 +149,11 @@ enum class KEY_ACTION {
 ///
 /// If you hold down more than one key of the same modifier (both shift-keys, for example),
 /// the flag is still set only once (meaning there is no double-shift modifier).
-enum KEY_MODIFIERS {
-    MOD_SHIFT = 0x0001,
-    MOD_CTRL = 0x0002,
-    MOD_ALT = 0x0004,
-    MOD_SUPER = 0x0008,
+enum KEY_MODIFIERS : unsigned char {
+    MOD_SHIFT = 1,
+    MOD_CTRL = 2,
+    MOD_ALT = 4,
+    MOD_SUPER = 8,
 };
 
 /// \brief  The state of all regonized keys in a compact bitset.

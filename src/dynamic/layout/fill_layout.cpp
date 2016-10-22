@@ -13,7 +13,7 @@ std::shared_ptr<Widget> FillLayout::get_widget() const
     }
     const auto& children = get_children();
     assert(children.size() == 1);
-    std::shared_ptr<LayoutObject> obj = children.begin()->second;
+    std::shared_ptr<LayoutItem> obj = children.begin()->second;
     return std::static_pointer_cast<Widget>(obj);
 }
 

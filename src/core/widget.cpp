@@ -2,7 +2,7 @@
 
 #include "common/log.hpp"
 #include "core/application.hpp"
-#include "core/item_manager.hpp"
+#include "core/object_manager.hpp"
 #include "core/render_manager.hpp"
 #include "core/layout_root.hpp"
 #include "core/window.hpp"
@@ -49,7 +49,7 @@ void Widget::redraw()
         return;
     }
 
-    LayoutObject::redraw();
+    LayoutItem::redraw();
 
     // if this Widget is renderable, register yourself to be rendered in the next frame
     if (has_component_kind(Component::KIND::RENDER)) {

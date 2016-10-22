@@ -2,7 +2,7 @@
 
 #include <assert.h>
 
-#include "core/layout_object.hpp"
+#include "core/layout_item.hpp"
 #include "core/window.hpp"
 
 namespace notf {
@@ -33,7 +33,7 @@ std::shared_ptr<Layout> LayoutRoot::get_layout() const
     }
     const auto& children = get_children();
     assert(children.size() == 1);
-    std::shared_ptr<LayoutObject> obj = children.begin()->second;
+    std::shared_ptr<LayoutItem> obj = children.begin()->second;
     return std::static_pointer_cast<Layout>(obj);
 }
 

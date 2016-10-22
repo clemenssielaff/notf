@@ -7,7 +7,7 @@
 #include "common/log.hpp"
 #include "core/application.hpp"
 #include "core/glfw_wrapper.hpp"
-#include "core/item_manager.hpp"
+#include "core/object_manager.hpp"
 #include "core/key_event.hpp"
 #include "core/layout_root.hpp"
 #include "core/render_manager.hpp"

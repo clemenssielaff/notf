@@ -173,9 +173,9 @@ using namespace notf;
 
 using Clock = std::chrono::high_resolution_clock;
 
-static const uint operations = 250;
-static const uint repeat = 1;
-static const uint thread_count = 3;
+static constexpr uint operations = 250;
+static constexpr uint repeat = 1;
+static constexpr uint thread_count = 3;
 
 void produce_garbage()
 {

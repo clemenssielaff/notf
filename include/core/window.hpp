@@ -64,7 +64,8 @@ struct WindowInfo {
     bool enable_vsync = true;
 
     /// \brief Background color of the Window.
-    Color clear_color = {0.2f, 0.3f, 0.3f, 1.0f};
+//    Color clear_color = {0.2f, 0.3f, 0.3f, 1.0f}; // sensible
+    Color clear_color = {1.0f, 0.0f, 1.0f, 1.0f}; // PINK!!!!
 
     /// \brief Window title.
     std::string title = "Window";
@@ -76,7 +77,7 @@ struct WindowInfo {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// \brief The Window is a OS window containing an OpenGL context.
-class Window : public std::enable_shared_from_this<Window> {
+class Window : public std::enable_shared_from_this<Window>, public Signaler<Window> {
 
     friend class Application;
 
@@ -146,8 +147,6 @@ private: // fields
 
     /// \brief The Window's render manager.
     std::unique_ptr<RenderManager> m_render_manager;
-
-    CALLBACKS(Window)
 };
 
 } // namespace notf

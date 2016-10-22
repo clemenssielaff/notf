@@ -7,19 +7,16 @@
 #include "common/signal.hpp"
 #include "common/size2r.hpp"
 #include "common/transform2.hpp"
-#include "core/abstract_item.hpp"
+#include "core/abstract_object.hpp"
 
 namespace notf {
 
-class Layout;
-class LayoutObject;
+class LayoutItem;
 class LayoutRoot;
 class Widget;
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 /// \brief Visibility states, all but one mean that the LayoutObject is not visible, but all for different reasons.
-enum class VISIBILITY {
+enum class VISIBILITY : unsigned char {
     INVISIBLE, // LayoutObject is not displayed
     HIDDEN, // LayoutObject is not INVISIBLE but one of its parents is, so it cannot be displayed
     UNROOTED, // LayoutObject and all ancestors are not INVISIBLE, but the Widget is not a child of a RootWidget
@@ -27,7 +24,7 @@ enum class VISIBILITY {
 };
 
 /// \brief Coordinate Spaces to pass to get_transform().
-enum class SPACE {
+enum class SPACE : unsigned char {
     PARENT, // returns transform in local coordinates, relative to the parent LayoutObject
     WINDOW, // returns transform in global coordinates, relative to the Window
     SCREEN, // returns transform in screen coordinates, relative to the screen origin
@@ -38,7 +35,7 @@ enum class SPACE {
 /*
  * \brief A LayoutObject is anything that can be put into a Layout - a Widget or any subclass of Layout.
  */
-class LayoutObject : public AbstractItem {
+class LayoutItem : public AbstractObject, public Signaler<LayoutItem> {
 
 public: // abstract methods
     /// \brief Looks for a Widget at a given local position.
@@ -48,13 +45,13 @@ public: // abstract methods
 
 public: // methods
     /// \brief Virtual destructor.
-    virtual ~LayoutObject() override;
+    virtual ~LayoutItem() override;
 
     /// \brief Returns true iff this LayoutObject has a parent
     bool has_parent() const { return !m_parent.expired(); }
 
     /// \brief Tests if a given LayoutObject is a child of this LayoutObject.
-    bool has_child(const std::shared_ptr<LayoutObject>& candidate) const;
+    bool has_child(const std::shared_ptr<LayoutItem>& candidate) const;
 
     /// \brief Returns true iff this LayoutObject has at least one child.
     bool has_children() const { return !m_children.empty(); }
@@ -62,10 +59,10 @@ public: // methods
     /// \brief Tests, if this LayoutObject is a descendant of the given `ancestor`.
     /// \param ancestor Potential ancestor
     /// \return True iff `ancestor` is an ancestor of this LayoutObject, false otherwise.
-    bool has_ancestor(const std::shared_ptr<LayoutObject>& ancestor) const;
+    bool has_ancestor(const std::shared_ptr<LayoutItem>& ancestor) const;
 
     /// \brief Returns the parent LayoutObject containing this LayoutObject, may be invalid.
-    std::shared_ptr<const LayoutObject> get_parent() const { return m_parent.lock(); }
+    std::shared_ptr<const LayoutItem> get_parent() const { return m_parent.lock(); }
 
     /// \brief Returns the LayoutObject of the hierarchy containing this LayoutObject.
     /// Is invalid if this LayoutObject is unrooted.
@@ -124,8 +121,8 @@ public: // signals
 protected: // methods
     /// \brief Value Constructor.
     /// \param handle   Application-unique Handle of this Item.
-    explicit LayoutObject(const Handle handle)
-        : AbstractItem(handle)
+    explicit LayoutItem(const Handle handle)
+        : AbstractObject(handle)
         , m_parent()
         , m_children()
         , m_visibility(VISIBILITY::VISIBLE)
@@ -135,13 +132,13 @@ protected: // methods
     }
 
     /// \brief Returns a child LayoutObject, is invalid if no child with the given Handle exists.
-    std::shared_ptr<LayoutObject> get_child(const Handle child_handle) const;
+    std::shared_ptr<LayoutItem> get_child(const Handle child_handle) const;
 
     /// \brief Returns all children of this LayoutObject.
-    const std::unordered_map<Handle, std::shared_ptr<LayoutObject>>& get_children() const { return m_children; }
+    const std::unordered_map<Handle, std::shared_ptr<LayoutItem>>& get_children() const { return m_children; }
 
     /// \brief Adds the given child to this LayoutObject.
-    void add_child(std::shared_ptr<LayoutObject> child_object);
+    void add_child(std::shared_ptr<LayoutItem> child_object);
 
     /// \brief Removes the child with the given Handle.
     void remove_child(const Handle child_handle);
@@ -161,7 +158,7 @@ protected: // methods
 
 private: // methods
     /// \brief Sets a new LayoutObject to contain this LayoutObject.
-    void set_parent(std::shared_ptr<LayoutObject> parent);
+    void set_parent(std::shared_ptr<LayoutItem> parent);
 
     /// \brief Removes the current parent of this LayoutObject.
     void unparent() { set_parent({}); }
@@ -180,10 +177,10 @@ private: // methods
 
 private: // fields
     /// \brief The parent LayoutObject, may be invalid.
-    std::weak_ptr<LayoutObject> m_parent;
+    std::weak_ptr<LayoutItem> m_parent;
 
     /// \brief All children of this LayoutObject.
-    std::unordered_map<Handle, std::shared_ptr<LayoutObject>> m_children;
+    std::unordered_map<Handle, std::shared_ptr<LayoutItem>> m_children;
 
     /// \brief Visibility state of this LayoutObject.
     VISIBILITY m_visibility;
@@ -193,11 +190,7 @@ private: // fields
 
     /// \brief 2D transformation of this LayoutObject in local space.
     Transform2 m_transform;
-
-    CALLBACKS(LayoutObject)
 };
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 } // namespace notf
 

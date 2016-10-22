@@ -8,6 +8,9 @@
 
 namespace notf {
 
+/**
+ * @brief The StackLayout class
+ */
 class StackLayout : public Layout {
 
 public: // enum
@@ -39,7 +42,7 @@ public: // methods
     }
 
     /// \brief Returns the LayoutObject at a given Index in this Layout, be be invalid.
-    std::shared_ptr<LayoutObject> get_index(const Index index)
+    std::shared_ptr<LayoutItem> get_index(const Index index)
     {
         if (!index || index.get() >= m_items.size()) {
             return {};
@@ -47,8 +50,8 @@ public: // methods
         return get_child(m_items[index.get()]);
     }
 
-    /// \brief Places a new Widget into the Layout, and returns the current Widget.
-    //    std::shared_ptr<LayoutObject> add_item(std::shared_ptr<Widget> widget);
+    /// \brief Places a new Object into the Layout.
+    void add_item(std::shared_ptr<LayoutItem> widget);
 
     /// \brief Looks for a Widget at a given local position.
     /// \param local_pos    Local coordinates where to look for the Widget.
@@ -70,7 +73,6 @@ protected: // methods
     explicit StackLayout(const Handle handle, const DIRECTION direction)
         : Layout(handle)
         , m_direction(direction)
-        , m_spacing(0)
         , m_items()
     {
     }
@@ -78,9 +80,6 @@ protected: // methods
 private: // fields
     /// \brief Direction in which the StackLayout is stacked.
     DIRECTION m_direction;
-
-    /// \brief Spacing between the individual Items.
-    Real m_spacing;
 
     /// \brief All items in this Layout in order.
     std::vector<Handle> m_items;

@@ -7,13 +7,21 @@ INCLUDEPATH *= thirdparty/ include/ test/
 LIBS *= -L/home/clemens/code/thirdparty/glfw-3.2.1/INSTALL/lib/
 LIBS *= -lglfw3 -lGL -ldl -lpthread -lX11 -lXrandr -lXcursor -lXinerama -lXxf86vm #-lXi
 
+CONFIG(release, debug|release) {
+#    message("Building in Release Mode.")
+    DEFINES += "SIGNAL_LOG_LEVEL=4"
+}
+
 # debug
 CONFIG(debug, debug|release) {
+#    message("Building in Debug Mode.")
     DEFINES += _DEBUG
 }
 
 # test
 CONFIG(test) {
+#    message("Building in Test Mode.")
+
     SOURCES += \
         test/test_main.cpp \
         test/test_common_string_utils.cpp \
@@ -66,16 +74,16 @@ SOURCES += \
     src/common/transform2.cpp \
     src/dynamic/layout/flexbox_layout.cpp \
     src/core/components/shape_component.cpp \
-    src/core/item_manager.cpp \
     src/dynamic/layout/fill_layout.cpp \
-    src/core/abstract_item.cpp \
     src/common/size2i.cpp \
     src/common/size2r.cpp \
     src/scratch2.cpp \
-    src/core/layout_object.cpp \
     src/layout.cpp \
     src/core/layout_root.cpp \
-    src/dynamic/layout/stack_layout.cpp
+    src/dynamic/layout/stack_layout.cpp \
+    src/core/layout_item.cpp \
+    src/core/abstract_object.cpp \
+    src/core/object_manager.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -132,18 +140,18 @@ HEADERS += \
     include/utils/smart_enabler.hpp \
     include/utils/enum_to_number.hpp \
     include/utils/unused.hpp \
-    include/core/item_manager.hpp \
     include/dynamic/layout/fill_layout.hpp \
-    include/core/abstract_item.hpp \
     include/common/size2i.hpp \
     include/common/size2r.hpp \
     include/core/layout.hpp \
     include/utils/guarded_ptr.hpp \
     include/common/stretch.hpp \
-    include/core/layout_object.hpp \
     include/core/layout_root.hpp \
     include/dynamic/layout/stack_layout.hpp \
-    include/common/index.hpp
+    include/common/index.hpp \
+    include/core/layout_item.hpp \
+    include/core/abstract_object.hpp \
+    include/core/object_manager.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

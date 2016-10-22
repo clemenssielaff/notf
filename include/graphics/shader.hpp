@@ -22,7 +22,7 @@ public: // enums
     /**
      * \brief Shader stages.
      */
-    enum class STAGE {
+    enum class STAGE : unsigned char {
         INVALID = 0,
         VERTEX,
         FRAGMENT,

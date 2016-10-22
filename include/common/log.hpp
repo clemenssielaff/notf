@@ -57,7 +57,7 @@ using LogMessageHandler = std::function<void(LogMessage&&)>;
 struct LogMessage {
 
     /// \brief The level of a LogMessage indicates under what circumstance the message was created.
-    enum class LEVEL {
+    enum class LEVEL : int {
         ALL = 0,
         TRACE, // for development only
         INFO, // for documenting expected behavior

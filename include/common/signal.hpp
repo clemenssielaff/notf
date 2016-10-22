@@ -399,43 +399,29 @@ private: // fields
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// \brief Macro to place at the end of an object definitions.
-///
-/// Contents of this macro:
-///
-///     connect(signal, function, [test_function])
-///     Creates a connection managed by the object connecting the given signal to a function object.
-///
-///     connect(signal, object::method, [test_function])
-///     Creates a connection managed by this object connecting the given signal to a member function of this object.
-///
-///     disconnect_all()
-///     Disconnects all signals from connections managed by the object.
-///
-///     __callbacks
-///     CallbackManager member, placed at the end of the class, so it is the first one to be deleted.
-///
-/// Use the macro as follows:
-///
-///     class Foo {
-///         [...]
-///         CALLBACKS(Foo)
-///     };
-///
-#define CALLBACKS(CLASSNAME)                                                                                              \
-public:                                                                                                                   \
-    template <typename SIGNAL, typename... ARGS>                                                                          \
-    void connect(SIGNAL& signal, ARGS&&... args) { __callbacks.connect(signal, std::forward<ARGS>(args)...); }            \
-                                                                                                                          \
-    template <typename SIGNAL, typename... SIGNATURE, typename... TEST_FUNC>                                              \
-    void connect(SIGNAL& signal, void (CLASSNAME::*method)(SIGNATURE...), TEST_FUNC&&... test_func)                       \
-    {                                                                                                                     \
-        __callbacks.connect(signal, this, std::forward<decltype(method)>(method), std::forward<TEST_FUNC>(test_func)...); \
-    }                                                                                                                     \
-                                                                                                                          \
-    void disconnect_all() { __callbacks.disconnect_all(); }                                                               \
-private:                                                                                                                  \
-    CallbackManager __callbacks;
+/// \brief Curiously recurring template pattern mixin class to provide Signals to SUBCLASS.
+template <typename SUBCLASS>
+class Signaler {
+
+public: // methods
+    /// \brief Creates a connection managed by the object connecting the given signal to a function object.
+    template <typename SIGNAL, typename... ARGS>
+    void connect(SIGNAL& signal, ARGS&&... args) { m_callback_manager.connect(signal, std::forward<ARGS>(args)...); }
+
+    /// \brief Creates a Connection connecting the given Signal to a member function of this Object.
+    template <typename SIGNAL, typename... SIGNATURE, typename... TEST_FUNC>
+    void connect(SIGNAL& signal, void (SUBCLASS::*method)(SIGNATURE...), TEST_FUNC&&... test_func)
+    {
+        m_callback_manager.connect(signal, this, std::forward<decltype(method)>(method), std::forward<TEST_FUNC>(test_func)...);
+    }
+
+    /// \brief Disconnects all Signals from Connections managed by this object.
+    void disconnect_all() { m_callback_manager.disconnect_all(); }
+
+private: // fields
+    // \brief Callback manager owning one half of the Signals' Connections.
+    CallbackManager m_callback_manager;
+};
 
 } // namespace notf
 
@@ -480,13 +466,11 @@ public:
 };
 
 /// \brief Simple receiver class providing two slots.
-class Receiver {
+class Receiver : public Signaler<Receiver>{
 public:
     void memberCallback(uint value) { counter += value; }
     void memberPrintCallback(uint value) { std::cout << "valueChanged: " << value << "\n"; }
     ulong counter = 0;
-
-    CALLBACKS(Receiver)
 };
 
 int main()

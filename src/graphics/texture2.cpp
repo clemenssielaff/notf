@@ -13,7 +13,7 @@ namespace { // anonymous
 /**
  * \brief Transparency - is used as default border.
  */
-static const float transparency[] = {0.0f, 0.0f, 0.0f, 0.0f};
+static constexpr float transparency[] = {0.0f, 0.0f, 0.0f, 0.0f};
 
 } // namespace anonymous
 
@@ -49,9 +49,9 @@ std::shared_ptr<Texture2> Texture2::load(const std::string& texture_path)
     if (success) {
         glGenTextures(1, &id);
         glBindTexture(GL_TEXTURE_2D, id);
-        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, transparency); // TODO: own color class
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+//        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, transparency); // TODO: own color class
+//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(format), width, height, 0, format, GL_UNSIGNED_BYTE, data);

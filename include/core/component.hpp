@@ -15,7 +15,7 @@ class Widget;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// \brief Virtual base class for all Components.
-class Component : public std::enable_shared_from_this<Component> {
+class Component : public std::enable_shared_from_this<Component>, public Signaler<Component> {
 
     friend class Widget;
 
@@ -23,7 +23,7 @@ public: // enums
     /// \brief Component kind enum.
     ///
     /// Acts as a unique identifier of each Component type and as index for the Widget components member.
-    enum class KIND {
+    enum class KIND : unsigned char {
         INVALID = 0,
         RENDER,
         SHAPE,
@@ -64,8 +64,6 @@ private: // methods for Widget
 private: // fields
     /// \brief Handles of all Widgets that use this Component.
     std::set<Handle> m_widgets;
-
-    CALLBACKS(Component)
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

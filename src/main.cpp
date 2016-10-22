@@ -44,7 +44,7 @@ int main(void)
         background->add_component(make_component<SpriteRenderer>(shader));
 
         std::shared_ptr<TextureComponent> texture_component = make_component<TextureComponent>(TextureChannels{
-            {0, resource_manager.get_texture("background.jpg")}});
+            {0, resource_manager.get_texture("blue.png")}});
         background->add_component(texture_component);
     }
     return app.exec();

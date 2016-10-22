@@ -2,7 +2,7 @@
 
 #include "common/log.hpp"
 #include "core/application.hpp"
-#include "core/item_manager.hpp"
+#include "core/object_manager.hpp"
 #include "core/widget.hpp"
 #include "utils/enum_to_number.hpp"
 
@@ -11,7 +11,7 @@ namespace notf {
 void Component::redraw_widgets()
 {
     for (Handle widget_handle : m_widgets) {
-        if (auto widget = Application::get_instance().get_item_manager().get_item<Widget>(widget_handle)) {
+        if (auto widget = Application::get_instance().get_item_manager().get_object<Widget>(widget_handle)) {
             widget->redraw();
         }
         else {
