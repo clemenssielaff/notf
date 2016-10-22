@@ -42,9 +42,9 @@ public: // methods
 
     /// \brief Returns a requested LayoutItem by its LayoutObject's Handle.
     /// The returned LayoutItem is invalid, if this Layout has no child LayoutObject with the given Handle.
-    const LayoutItemType& get_item(const Handle handle)
+    LayoutItemType& get_item(const Handle handle)
     {
-        static const LayoutItemType INVALID;
+        static LayoutItemType INVALID;
         const std::unique_ptr<LayoutItem>& item = get_child(handle);
         if (item) {
             return static_cast<LayoutItemType&>(*item.get());

@@ -8,10 +8,12 @@ namespace notf {
 
 class FillLayoutItem : public LayoutItem {
 
+    friend class FillLayout;
+
 public: // methods
     virtual ~FillLayoutItem() override;
 
-protected: // for LayoutRoot
+protected: // for FillLayout
     /// \brief Empty default Constructor.
     explicit FillLayoutItem() = default;
 

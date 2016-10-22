@@ -8,10 +8,14 @@ namespace notf {
 
 class LayoutRootItem : public LayoutItem {
 
-protected: // for LayoutRoot
+public: // methods
+    /// \brief Virtual Destructor.
+    virtual ~LayoutRootItem() override;
+
     /// \brief Empty default Constructor.
     explicit LayoutRootItem() = default;
 
+protected: // for LayoutRoot
     /// \brief Value Constructor.
     /// \param layout_object    The LayoutObject owned by this Item.
     explicit LayoutRootItem(std::shared_ptr<LayoutObject> layout_object)

@@ -74,7 +74,8 @@ SOURCES += \
     src/scratch2.cpp \
     src/core/layout_object.cpp \
     src/layout.cpp \
-    src/core/layout_root.cpp
+    src/core/layout_root.cpp \
+    src/dynamic/layout/stack_layout.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -140,7 +141,9 @@ HEADERS += \
     include/utils/guarded_ptr.hpp \
     include/common/stretch.hpp \
     include/core/layout_object.hpp \
-    include/core/layout_root.hpp
+    include/core/layout_root.hpp \
+    include/dynamic/layout/stack_layout.hpp \
+    include/common/index.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

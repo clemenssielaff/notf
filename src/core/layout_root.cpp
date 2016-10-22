@@ -7,6 +7,10 @@
 
 namespace notf {
 
+LayoutRootItem::~LayoutRootItem()
+{
+}
+
 std::shared_ptr<Widget> LayoutRoot::get_widget_at(const Vector2& local_pos) const
 {
     if (has_layout()) {
