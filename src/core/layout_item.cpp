@@ -26,7 +26,7 @@ bool LayoutItem::has_child(const std::shared_ptr<LayoutItem>& candidate) const
 
 bool LayoutItem::has_ancestor(const std::shared_ptr<LayoutItem>& ancestor) const
 {
-    // invalid LayoutObject can never be an ancestor
+    // invalid LayoutItem can never be an ancestor
     if (!ancestor) {
         return false;
     }
@@ -57,7 +57,7 @@ std::shared_ptr<LayoutItem> LayoutItem::get_child(const Handle child_handle) con
 {
     auto it = m_children.find(child_handle);
     if (it == m_children.end()) {
-        log_warning << "Requested unknown child" << child_handle << " from LayoutObject " << get_handle();
+        log_warning << "Requested unknown child" << child_handle << " from LayoutItem " << get_handle();
         return {};
     }
     return it->second;
@@ -67,7 +67,7 @@ void LayoutItem::add_child(std::shared_ptr<LayoutItem> child_object)
 {
     const Handle child_handle = child_object->get_handle();
     if (m_children.count(child_handle)) {
-        log_warning << "Did not add existing child " << child_handle << " to LayoutObject " << get_handle();
+        log_warning << "Did not add existing child " << child_handle << " to LayoutItem " << get_handle();
         return;
     }
     child_object->set_parent(std::static_pointer_cast<LayoutItem>(shared_from_this()));
@@ -79,7 +79,7 @@ void LayoutItem::remove_child(const Handle child_handle)
 {
     auto it = m_children.find(child_handle);
     if (it == m_children.end()) {
-        log_critical << "Failed to remove unknown child " << child_handle << " from LayoutObject " << get_handle();
+        log_critical << "Failed to remove unknown child " << child_handle << " from LayoutItem " << get_handle();
     }
     else {
         m_children.erase(it);

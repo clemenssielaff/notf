@@ -33,7 +33,7 @@ std::shared_ptr<Widget> FillLayout::set_widget(std::shared_ptr<Widget> widget)
     return previous;
 }
 
-std::shared_ptr<Widget> FillLayout::get_widget_at(const Vector2& local_pos) const
+std::shared_ptr<Widget> FillLayout::get_widget_at(const Vector2& local_pos)
 {
     if (has_widget()) {
         return get_widget()->get_widget_at(local_pos);

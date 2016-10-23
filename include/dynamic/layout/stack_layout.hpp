@@ -30,7 +30,7 @@ public: // methods
 
     //    void set_spacing();
 
-    /// \brief Finds the Index of the LayoutObject in this Layout, be be invalid.
+    /// \brief Finds the Index of the LayoutItem in this Layout, might be invalid.
     Index find_index(const Handle handle) const
     {
         for (Index::Type index = 0; index < m_items.size(); ++index) {
@@ -41,7 +41,7 @@ public: // methods
         return Index::make_invalid();
     }
 
-    /// \brief Returns the LayoutObject at a given Index in this Layout, be be invalid.
+    /// \brief Returns the LayoutItem at a given Index in this Layout, might be invalid.
     std::shared_ptr<LayoutItem> get_index(const Index index)
     {
         if (!index || index.get() >= m_items.size()) {
@@ -53,10 +53,7 @@ public: // methods
     /// \brief Places a new Object into the Layout.
     void add_item(std::shared_ptr<LayoutItem> widget);
 
-    /// \brief Looks for a Widget at a given local position.
-    /// \param local_pos    Local coordinates where to look for the Widget.
-    /// \return The Widget at a given local position or an empty shared_ptr if there is none.
-    virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) const override;
+    virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
 
 public: // static methods
     /// \brief Factory function to create a new FillLayout.

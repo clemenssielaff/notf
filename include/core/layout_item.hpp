@@ -15,17 +15,17 @@ class LayoutItem;
 class LayoutRoot;
 class Widget;
 
-/// \brief Visibility states, all but one mean that the LayoutObject is not visible, but all for different reasons.
+/// \brief Visibility states, all but one mean that the LayoutItem is not visible, but all for different reasons.
 enum class VISIBILITY : unsigned char {
-    INVISIBLE, // LayoutObject is not displayed
-    HIDDEN, // LayoutObject is not INVISIBLE but one of its parents is, so it cannot be displayed
-    UNROOTED, // LayoutObject and all ancestors are not INVISIBLE, but the Widget is not a child of a RootWidget
-    VISIBLE, // LayoutObject is displayed
+    INVISIBLE, // LayoutItem is not displayed
+    HIDDEN, // LayoutItem is not INVISIBLE but one of its parents is, so it cannot be displayed
+    UNROOTED, // LayoutItem and all ancestors are not INVISIBLE, but the Widget is not a child of a RootWidget
+    VISIBLE, // LayoutItem is displayed
 };
 
 /// \brief Coordinate Spaces to pass to get_transform().
 enum class SPACE : unsigned char {
-    PARENT, // returns transform in local coordinates, relative to the parent LayoutObject
+    PARENT, // returns transform in local coordinates, relative to the parent LayoutItem
     WINDOW, // returns transform in global coordinates, relative to the Window
     SCREEN, // returns transform in screen coordinates, relative to the screen origin
 };
@@ -33,7 +33,9 @@ enum class SPACE : unsigned char {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
- * \brief A LayoutObject is anything that can be put into a Layout - a Widget or any subclass of Layout.
+ * \brief A LayoutItem is an abstraction of an item in the Layout hierarchy.
+ *
+ * Both Widget and all Layout subclasses inherit from it.
  */
 class LayoutItem : public AbstractObject, public Signaler<LayoutItem> {
 
@@ -41,40 +43,40 @@ public: // abstract methods
     /// \brief Looks for a Widget at a given local position.
     /// \param local_pos    Local coordinates where to look for the Widget.
     /// \return The Widget at a given local position or an empty shared_ptr if there is none.
-    virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) const = 0;
+    virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) = 0;
 
 public: // methods
     /// \brief Virtual destructor.
     virtual ~LayoutItem() override;
 
-    /// \brief Returns true iff this LayoutObject has a parent
+    /// \brief Returns true iff this LayoutItem has a parent
     bool has_parent() const { return !m_parent.expired(); }
 
-    /// \brief Tests if a given LayoutObject is a child of this LayoutObject.
+    /// \brief Tests if a given LayoutItem is a child of this LayoutItem.
     bool has_child(const std::shared_ptr<LayoutItem>& candidate) const;
 
-    /// \brief Returns true iff this LayoutObject has at least one child.
+    /// \brief Returns true iff this LayoutItem has at least one child.
     bool has_children() const { return !m_children.empty(); }
 
-    /// \brief Tests, if this LayoutObject is a descendant of the given `ancestor`.
+    /// \brief Tests, if this LayoutItem is a descendant of the given `ancestor`.
     /// \param ancestor Potential ancestor
-    /// \return True iff `ancestor` is an ancestor of this LayoutObject, false otherwise.
+    /// \return True iff `ancestor` is an ancestor of this LayoutItem, false otherwise.
     bool has_ancestor(const std::shared_ptr<LayoutItem>& ancestor) const;
 
-    /// \brief Returns the parent LayoutObject containing this LayoutObject, may be invalid.
+    /// \brief Returns the parent LayoutItem containing this LayoutItem, may be invalid.
     std::shared_ptr<const LayoutItem> get_parent() const { return m_parent.lock(); }
 
-    /// \brief Returns the LayoutObject of the hierarchy containing this LayoutObject.
-    /// Is invalid if this LayoutObject is unrooted.
+    /// \brief Returns the LayoutItem of the hierarchy containing this LayoutItem.
+    /// Is invalid if this LayoutItem is unrooted.
     std::shared_ptr<const LayoutRoot> get_root() const;
 
-    /// \brief Checks the visibility of this LayoutObject.
+    /// \brief Checks the visibility of this LayoutItem.
     VISIBILITY get_visibility() const { return m_visibility; }
 
-    /// \brief Returns the unscaled size of this LayoutObject in pixels.
+    /// \brief Returns the unscaled size of this LayoutItem in pixels.
     const Size2r& get_size() const { return m_size; }
 
-    /// \brief Returns this LayoutObject's transformation in the given space.
+    /// \brief Returns this LayoutItem's transformation in the given space.
     Transform2 get_transform(const SPACE space) const
     {
         Transform2 result = Transform2::identity();
@@ -98,23 +100,23 @@ public: // methods
     }
 
 public: // signals
-    /// \brief Emitted when this LayoutObject got a new parent.
+    /// \brief Emitted when this LayoutItem got a new parent.
     /// \param Handle of the new parent.
     Signal<Handle> parent_changed;
 
-    /// \brief Emitted when a new child LayoutObject was added to this one.
+    /// \brief Emitted when a new child LayoutItem was added to this one.
     /// \param Handle of the new child.
     Signal<Handle> child_added;
 
-    /// \brief Emitted when a child LayoutObject of this one was removed.
+    /// \brief Emitted when a child LayoutItem of this one was removed.
     /// \param Handle of the removed child.
     Signal<Handle> child_removed;
 
-    /// \brief Emitted, when the visibility of this LayoutObject has changed.
+    /// \brief Emitted, when the visibility of this LayoutItem has changed.
     /// \param New visiblity.
     Signal<VISIBILITY> visibility_changed;
 
-    /// \brief Emitted when this LayoutObject' size changed.
+    /// \brief Emitted when this LayoutItem' size changed.
     /// \param New size.
     Signal<Size2r> size_changed;
 
@@ -131,22 +133,22 @@ protected: // methods
     {
     }
 
-    /// \brief Returns a child LayoutObject, is invalid if no child with the given Handle exists.
+    /// \brief Returns a child LayoutItem, is invalid if no child with the given Handle exists.
     std::shared_ptr<LayoutItem> get_child(const Handle child_handle) const;
 
-    /// \brief Returns all children of this LayoutObject.
+    /// \brief Returns all children of this LayoutItem.
     const std::unordered_map<Handle, std::shared_ptr<LayoutItem>>& get_children() const { return m_children; }
 
-    /// \brief Adds the given child to this LayoutObject.
+    /// \brief Adds the given child to this LayoutItem.
     void add_child(std::shared_ptr<LayoutItem> child_object);
 
     /// \brief Removes the child with the given Handle.
     void remove_child(const Handle child_handle);
 
-    /// \brief Shows (if possible) or hides this LayoutObject.
+    /// \brief Shows (if possible) or hides this LayoutItem.
     void set_visible(const bool is_visible);
 
-    /// \brief Updates the size of this LayoutObject.
+    /// \brief Updates the size of this LayoutItem.
     void set_size(const Size2r size)
     {
         m_size = size;
@@ -188,38 +190,38 @@ protected: // methods
     }
 
 private: // methods
-    /// \brief Sets a new LayoutObject to contain this LayoutObject.
+    /// \brief Sets a new LayoutItem to contain this LayoutItem.
     void set_parent(std::shared_ptr<LayoutItem> parent);
 
-    /// \brief Removes the current parent of this LayoutObject.
+    /// \brief Removes the current parent of this LayoutItem.
     void unparent() { set_parent({}); }
 
     /// \brief Recursive function to let all children emit visibility_changed when the parent's visibility changed.
     void cascade_visibility(const VISIBILITY visibility);
 
-    /// \brief Recursive implementation to produce the LayoutObject's transformation in window space.
+    /// \brief Recursive implementation to produce the LayoutItem's transformation in window space.
     void get_window_transform(Transform2& result) const;
 
-    /// \brief Returns the LayoutObject's transformation in screen space.
+    /// \brief Returns the LayoutItem's transformation in screen space.
     Transform2 get_screen_transform() const;
 
-    /// \brief Returns the LayoutObject's transformation in parent space.
+    /// \brief Returns the LayoutItem's transformation in parent space.
     Transform2 get_parent_transform() const { return m_transform; }
 
 private: // fields
-    /// \brief The parent LayoutObject, may be invalid.
+    /// \brief The parent LayoutItem, may be invalid.
     std::weak_ptr<LayoutItem> m_parent;
 
-    /// \brief All children of this LayoutObject.
+    /// \brief All children of this LayoutItem.
     std::unordered_map<Handle, std::shared_ptr<LayoutItem>> m_children;
 
-    /// \brief Visibility state of this LayoutObject.
+    /// \brief Visibility state of this LayoutItem.
     VISIBILITY m_visibility;
 
-    /// \brief Unscaled size of this LayoutObject in pixels.
+    /// \brief Unscaled size of this LayoutItem in pixels.
     Size2r m_size;
 
-    /// \brief 2D transformation of this LayoutObject in local space.
+    /// \brief 2D transformation of this LayoutItem in local space.
     Transform2 m_transform;
 };
 
@@ -248,7 +250,7 @@ private: // fields
  * This is potentially dangerous because it can lead to cycles.
  * What we need is that a child notices that its size has changed and lets its parent know (using a signal for example).
  * The parent then looks at all of its children and updates them or itself.
- * Basically, we traverse the hierarchy upwards until the LayoutObject finds that its size did not change.
+ * Basically, we traverse the hierarchy upwards until the LayoutItem finds that its size did not change.
  * At that point, it updates all of its children.
  * They in turn also determine if their size actually changed or not and if it didn't they don't pass the call onwards.
  * There isn't any other way of a Widget to communicate upwards the hierarchy, except its size, is there...?
@@ -270,15 +272,9 @@ private: // fields
  ** The Items's claim.
  *  Consists of a horizontal and vertical Strech.
  *  Is a hard constraint that no parent should ever be able to change.
- *  If the parent Layout cannot accompany the Items minimal size, then it must simply overflow the parent Layout.
- *  Also has a min and max ratio betweeen horizontal and vertical.
- *  For example, a circular Item may have a size range from 1 - 10 both vertically and horizontally, but should only
- *  expand in the ration 1:1, to stay circular.
- *  Also, greedyness, both for vertical and horizontal expansion.
- *  Linear factors work great if you want all to expand at the same time, but not if you want some to expand before
- *  others.
- *  For that, you also need a tier system, where widgets in tier two are expanded before tier one.
- *  Reversly, widget in tier -1 are shrunk before tier 0 etc.
+ *
+ *
+ *
  *
  * WTF?
  * Could it be, that Widgets are the leafs of the Widget hierarchy and may themselves never have children?

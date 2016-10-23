@@ -6,12 +6,11 @@
 
 namespace notf {
 
-void StackLayout::add_item(std::shared_ptr<LayoutItem> widget)
+void StackLayout::add_item(std::shared_ptr<LayoutItem> /*widget*/)
 {
-
 }
 
-std::shared_ptr<Widget> StackLayout::get_widget_at(const Vector2& local_pos) const
+std::shared_ptr<Widget> StackLayout::get_widget_at(const Vector2& /*local_pos*/)
 {
     return {};
 }

@@ -153,4 +153,15 @@ void Widget::redraw()
     }
 }
 
+std::shared_ptr<Widget> Widget::get_widget_at(const Vector2& /*local_pos*/)
+{
+    // if this Widget has no shape, you cannot find it at any location
+    if(!has_component_kind(Component::KIND::SHAPE)){
+        return {};
+    }
+
+    // TODO: Widget::get_widget_at() should test if the given local_pos is loctated in its shape
+    return std::static_pointer_cast<Widget>(shared_from_this());
+}
+
 } // namespace notf

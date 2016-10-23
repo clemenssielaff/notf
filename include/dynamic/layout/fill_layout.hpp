@@ -16,10 +16,7 @@ public: // methods
     /// \brief Places a new Widget into the Layout, and returns the current Widget.
     std::shared_ptr<Widget> set_widget(std::shared_ptr<Widget> widget);
 
-    /// \brief Looks for a Widget at a given local position.
-    /// \param local_pos    Local coordinates where to look for the Widget.
-    /// \return The Widget at a given local position or an empty shared_ptr if there is none.
-    virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) const override;
+    virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
 
 public: // static methods
     /// \brief Factory function to create a new FillLayout.

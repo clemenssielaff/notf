@@ -7,7 +7,7 @@
 
 namespace notf {
 
-std::shared_ptr<Widget> LayoutRoot::get_widget_at(const Vector2& local_pos) const
+std::shared_ptr<Widget> LayoutRoot::get_widget_at(const Vector2& local_pos)
 {
     if (has_layout()) {
         return get_layout()->get_widget_at(local_pos);

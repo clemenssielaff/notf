@@ -13,6 +13,20 @@ class Window;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/**
+ * @brief The Claim of a Widget determines how much space it will receive in its parent Layout.
+ *
+ * Widget Claims are not changed by the Layout, only by the Widget or User.
+ * If the parent Layout cannot accompany the Items minimal size, then it must simply overflow the parent Layout.
+ * Also has a min and max ratio betweeen horizontal and vertical.
+ * For example, a circular Item may have a size range from 1 - 10 both vertically and horizontally, but should only
+ * expand in the ration 1:1, to stay circular.
+ * Also, scale factors, both for vertical and horizontal expansion.
+ * Linear factors work great if you want all to expand at the same time, but not if you want some to expand before
+ * others.
+ * For that, you also need a priority system, where widgets in priority two are expanded before priority one.
+ * Reversly, widget in priority -1 are shrunk before priority 0 etc.
+ */
 class Claim {
 
     /// \brief A Claim has two Directions: horizontal and vertical.
@@ -157,10 +171,9 @@ public: // methods
     /// If the Widget doesn't have the given Component kind, the call is ignored.
     void remove_component(Component::KIND kind);
 
-    /// \brief Draws this and all child widgets recursively.
     virtual void redraw() override;
 
-    virtual std::shared_ptr<Widget> get_widget_at(const Vector2&) const override { return {}; } // TODO: Widget::get_widget_at
+    virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
 
 protected: // methods
     /// \brief Value Constructor.
