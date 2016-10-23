@@ -2,13 +2,107 @@
 
 #include "common/log.hpp"
 #include "core/application.hpp"
+#include "core/layout_root.hpp"
 #include "core/object_manager.hpp"
 #include "core/render_manager.hpp"
-#include "core/layout_root.hpp"
 #include "core/window.hpp"
 #include "utils/smart_enabler.hpp"
 
 namespace notf {
+
+void Claim::Direction::set_min(const Real min)
+{
+    if (!is_valid(min) || min < 0) {
+        log_warning << "Invalid minimum Stretch value: " << min << " - using 0 instead.";
+        m_min = 0;
+    }
+    else {
+        m_min = min;
+    }
+    if (m_min > m_preferred) {
+        m_preferred = m_min;
+        if (m_min > m_max) {
+            m_max = m_min;
+        }
+    }
+}
+
+void Claim::Direction::set_max(const Real max)
+{
+    if (is_nan(max) || max < 0) {
+        log_warning << "Invalid maximum Stretch value: " << max << " - using 0 instead.";
+        m_max = 0;
+    }
+    else {
+        m_max = max;
+    }
+    if (m_max < m_preferred) {
+        m_preferred = m_max;
+        if (m_max < m_min) {
+            m_min = m_max;
+        }
+    }
+}
+
+void Claim::Direction::set_preferred(const Real preferred)
+{
+    if (!is_valid(preferred) || preferred < 0) {
+        log_warning << "Invalid preferred Stretch value: " << preferred << " - using 0 instead.";
+        m_preferred = 0;
+    }
+    else {
+        m_preferred = preferred;
+    }
+    if (m_preferred < m_min) {
+        m_min = m_preferred;
+    }
+    if (m_preferred > m_max) {
+        m_max = m_preferred;
+    }
+}
+
+void Claim::Direction::set_scale_factor(const Real factor)
+{
+    if (!is_valid(factor) || factor < 0) {
+        log_warning << "Invalid Stretch scale factor: " << factor << " - using 0 instead.";
+        m_scale_factor = 0;
+    }
+    else {
+        m_scale_factor = factor;
+    }
+}
+
+void Claim::set_height_for_width(const Real ratio_min, const Real ratio_max)
+{
+    if (!is_valid(ratio_min) || ratio_min < 0) {
+        log_warning << "Invalid min ratio: " << ratio_min << " - using 0 instead.";
+        if (!is_nan(ratio_max)) {
+            log_warning << "Ignoring ratio_max value, since the min ratio constraint is set to 0.";
+        }
+        m_height_for_width = {0, 0};
+        return;
+    }
+
+    if (is_nan(ratio_max)) {
+        m_height_for_width = {ratio_min, ratio_min};
+        return;
+    }
+
+    if (ratio_max < ratio_min) {
+        log_warning << "Ignoring ratio_max value " << ratio_max
+                    << ", since it is smaller than the min_ratio " << ratio_min;
+        m_height_for_width = {ratio_min, ratio_min};
+        return;
+    }
+
+    if (approx(ratio_min, 0)) {
+        log_warning << "Ignoring ratio_max value, since the min ratio constraint is set to 0.";
+        m_height_for_width = {ratio_min, ratio_min};
+        return;
+    }
+
+    m_height_for_width = {ratio_min, ratio_max};
+}
 
 std::shared_ptr<Window> Widget::get_window() const
 {

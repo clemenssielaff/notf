@@ -153,8 +153,39 @@ protected: // methods
         size_changed(m_size);
     }
 
-    /// \brief Tells the object and all of its children to redraw.
+    /// \brief Tells this LayoutItem and all of its children to redraw.
     virtual void redraw();
+
+    /// \brief Tells this LayoutItem to update its size based on the size of its children and its parents restrictions.
+    //    virtual bool relayout() = 0;
+    virtual bool relayout() { return false; }
+
+    /// \brief Propagates a layout change upwards to the first ancestor that doesn't need to change its size.
+    /// Then continues to spread down again through all children of that ancestor.
+    void relayout_up()
+    {
+        std::shared_ptr<LayoutItem> parent = m_parent.lock();
+        while (parent) {
+            if (parent->relayout()) {
+                parent = parent->m_parent.lock();
+            }
+            else {
+                parent->relayout_down();
+                parent.reset();
+            }
+        }
+    }
+
+    /// \brief Recursively propagates a layout change downwards to all descendants of this LayoutItem.
+    /// Recursion is stopped, when a LayoutItem didn't need to change its size.
+    void relayout_down()
+    {
+        for (const auto& it : m_children) {
+            if (it.second->relayout()) {
+                it.second->relayout_down();
+            }
+        }
+    }
 
 private: // methods
     /// \brief Sets a new LayoutObject to contain this LayoutObject.
@@ -194,11 +225,62 @@ private: // fields
 
 } // namespace notf
 
-// TODO: redraw methods
-// As is it set up right now, there is no strong relationship between a Widget and its child widgets, they can be
-// positioned all over the place.
-// Unlike in Qt, we cannot say that a widget must update all of its child widgets when it redraws but that is a good
-// thing as you might not need that.
-// Instead, every widget that changes should register with the Window's renderer.
-// Just before rendering, the Renderer then figures out what Widgets to redraw, only consulting their bounding box
-// overlaps and z-values, ignoring the Widget hierarchy.
+/*
+ * We have to things going on here: redraw and update.
+ *
+ * A redraw means, that the Widget registers itself with the Render Manager to be drawn next frame.
+ * Currently, all Widgets (the one that is displayed) is drawn each frame, so worrying about the redraw method now
+ * is a bit premature.
+ * Still, there is the question of how we can minimize redraws.
+ * I like the idea that only those Widgets that really change (dirty) register themselves with the Manager.
+ * Just before rendering, the Manager than figures out the min. set of Widgets that need to be drawn, in what order etc.
+ * It also takes into consideration that non-dirty Widgets may need to be drawn if, for example, part of them was
+ * revealed by another Widget that was in front of them on the previous frame but has now moved away.
+ * Much like the dirtying in Ambani, there a few 'root' dirt Widgets that register themselves and the RenderManager
+ * extrapolates from there.
+ * Actually, since all Widgets must now fully encapsulate their children, we can at least determine that if a parent
+ * is redrawn, that all of its children must be redrawn as well just because they are drawn onto the parent's canvas.
+ *
+ * Updating means that the size or setup of the Widget has changed and that it in turn might have to re-arrange its
+ * children and parent.
+ * An update will most likely trigger a redraw, but we'll ignore that for now.
+ * An update works potentially in both directions, both up and down the Widget hierarchy.
+ * This is potentially dangerous because it can lead to cycles.
+ * What we need is that a child notices that its size has changed and lets its parent know (using a signal for example).
+ * The parent then looks at all of its children and updates them or itself.
+ * Basically, we traverse the hierarchy upwards until the LayoutObject finds that its size did not change.
+ * At that point, it updates all of its children.
+ * They in turn also determine if their size actually changed or not and if it didn't they don't pass the call onwards.
+ * There isn't any other way of a Widget to communicate upwards the hierarchy, except its size, is there...?
+ * There is opacity, but that only works downwards.
+ * Let's say there isn't until proven otherwise.
+ * We could use signals, but I guess they are unnecessary in this setup as both children know their parents and parent
+ * know their children explicitly.
+ * Also, for using signals, I would have to implement a disconnect method ... not yet.
+ * Okay, so what happens?
+ * Some Widget changes its size.
+ * This may happen because it was just created (size changed from zero), it was just removed (size changed to zero) or
+ * actually because its size changed.
+ * I guess creation, show, hide, deletion are points in time where I can automatically relayout.
+ *
+ * Okay, so we now have a virtual relayout() function that needs to report whether the size of the LayoutItem changed.
+ * This leads to the question, how does a LayoutItem decide its size?
+ * Well, it has several constraints.
+ *
+ ** The Items's claim.
+ *  Consists of a horizontal and vertical Strech.
+ *  Is a hard constraint that no parent should ever be able to change.
+ *  If the parent Layout cannot accompany the Items minimal size, then it must simply overflow the parent Layout.
+ *  Also has a min and max ratio betweeen horizontal and vertical.
+ *  For example, a circular Item may have a size range from 1 - 10 both vertically and horizontally, but should only
+ *  expand in the ration 1:1, to stay circular.
+ *  Also, greedyness, both for vertical and horizontal expansion.
+ *  Linear factors work great if you want all to expand at the same time, but not if you want some to expand before
+ *  others.
+ *  For that, you also need a tier system, where widgets in tier two are expanded before tier one.
+ *  Reversly, widget in tier -1 are shrunk before tier 0 etc.
+ *
+ * WTF?
+ * Could it be, that Widgets are the leafs of the Widget hierarchy and may themselves never have children?
+ *
+ */

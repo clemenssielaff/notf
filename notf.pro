@@ -70,7 +70,6 @@ SOURCES += \
     src/core/components/texture_component.cpp \
     src/dynamic/render/sprite.cpp \
     src/dynamic/color/singlecolor.cpp \
-    src/dynamic/shape/aabr_shape.cpp \
     src/common/transform2.cpp \
     src/dynamic/layout/flexbox_layout.cpp \
     src/core/components/shape_component.cpp \
@@ -133,7 +132,6 @@ HEADERS += \
     include/core/components/texture_component.hpp \
     include/common/int_utils.hpp \
     include/dynamic/render/sprite.hpp \
-    include/dynamic/shape/aabr_shape.hpp \
     include/dynamic/color/singlecolor.hpp \
     include/common/transform2.hpp \
     include/dynamic/layout/flexbox_layout.hpp \
@@ -145,7 +143,6 @@ HEADERS += \
     include/common/size2r.hpp \
     include/core/layout.hpp \
     include/utils/guarded_ptr.hpp \
-    include/common/stretch.hpp \
     include/core/layout_root.hpp \
     include/dynamic/layout/stack_layout.hpp \
     include/common/index.hpp \
