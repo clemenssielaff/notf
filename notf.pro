@@ -148,7 +148,8 @@ HEADERS += \
     include/common/index.hpp \
     include/core/layout_item.hpp \
     include/core/abstract_object.hpp \
-    include/core/object_manager.hpp
+    include/core/object_manager.hpp \
+    include/common/claim.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

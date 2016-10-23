@@ -72,7 +72,7 @@ void LayoutItem::set_visible(const bool is_visible)
     }
 }
 
-void LayoutItem::relayout_up()
+void LayoutItem::update_parent_layouts()
 {
     std::shared_ptr<Layout> parent = m_parent.lock();
     while (parent) {
@@ -80,7 +80,7 @@ void LayoutItem::relayout_up()
             parent = parent->m_parent.lock();
         }
         else {
-            parent->relayout_down();
+            parent->update_child_layouts();
             parent.reset();
         }
     }

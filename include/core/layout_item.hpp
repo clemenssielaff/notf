@@ -130,12 +130,12 @@ protected: // methods
         size_changed(m_size);
     }
 
-    /// @brief Tells this LayoutItem and all of its children to redraw.
-    virtual void redraw() = 0;
-
     /// @brief Propagates a layout change upwards to the first ancestor that doesn't need to change its size.
     /// Then continues to spread down again through all children of that ancestor.
-    void relayout_up();
+    void update_parent_layouts();
+
+    /// @brief Tells this LayoutItem and all of its children to redraw.
+    virtual void redraw() = 0;
 
 private: // methods
     /// @brief Sets a new LayoutItem to contain this LayoutItem.
@@ -210,18 +210,5 @@ private: // fields
  * actually because its size changed.
  * I guess creation, show, hide, deletion are points in time where I can automatically relayout.
  *
- * Okay, so we now have a virtual relayout() function that needs to report whether the size of the LayoutItem changed.
- * This leads to the question, how does a LayoutItem decide its size?
- * Well, it has several constraints.
- *
- ** The Items's claim.
- *  Consists of a horizontal and vertical Strech.
- *  Is a hard constraint that no parent should ever be able to change.
- *
- *
- *
- *
- * WTF?
- * Could it be, that Widgets are the leafs of the Widget hierarchy and may themselves never have children?
  *
  */

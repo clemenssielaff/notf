@@ -56,12 +56,12 @@ void Layout::remove_child(const Handle child_handle)
     }
 }
 
-void Layout::relayout_down()
+void Layout::update_child_layouts()
 {
     for (const auto& it : m_children) {
         if (std::shared_ptr<Layout> layout = std::dynamic_pointer_cast<Layout>(it.second)) {
             if (layout->relayout()) {
-                layout->relayout_down();
+                layout->update_child_layouts();
             }
         }
     }

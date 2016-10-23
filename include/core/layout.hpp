@@ -57,17 +57,31 @@ protected: // methods
     /// @brief Removes the child with the given Handle.
     void remove_child(const Handle child_handle);
 
-    /// @brief Tells this LayoutItem to update its size based on the size of its children and its parents restrictions.
-    //    virtual bool relayout() = 0;
-    virtual bool relayout() { return false; }
-
     /// @brief Recursively propagates a layout change downwards to all descendants of this LayoutItem.
     /// Recursion is stopped, when a LayoutItem didn't need to change its size.
-    void relayout_down();
+    void update_child_layouts();
 
     virtual void cascade_visibility(const VISIBILITY visibility) override;
 
     virtual void redraw() override;
+
+    /// @brief Tells this LayoutItem to update its size based on the size of its children and its parents restrictions.
+    virtual bool relayout() = 0;
+
+    /* TODO: CONTINUE HERE
+     * Layouts and Widgets need to "negotiate" the Layout.
+     * First, a Widget lays a Claim.
+     * The parent Layout then takes that Claim and accumulates them will all Claims from its other Widgets (in this
+     * model, the Layout doesn't have any Layout children).
+     * It then checks, if it can accompass the Claim within its current size.
+     * If it can, all is good.
+     * If it cannot, it passes on the combined Claim to its parent Layout where the process is repeated.
+     * This model does not take scaling into account where a Layout might well be able to accomodate all Claims, but we
+     * would still prefer its parent Layout to update, because the scale factor of the one Widget is higher than another
+     * ...
+     * Then again, not all Layouts make use of the scale factor :-/ mmmmm
+     * Think about that.
+     */
 
 private: // fields
     /// @brief All children of this Layout.

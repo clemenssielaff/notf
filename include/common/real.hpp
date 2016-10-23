@@ -28,7 +28,6 @@ using std::sin;
 using std::cos;
 using std::tan;
 using std::atan2;
-const Real bla  = INFINITY;
 
 /// @brief Tests, if a value is positive or negative.
 ///
