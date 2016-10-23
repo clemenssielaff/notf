@@ -11,11 +11,11 @@
 
 namespace notf {
 
-class LayoutItem;
+class Layout;
 class LayoutRoot;
 class Widget;
 
-/// \brief Visibility states, all but one mean that the LayoutItem is not visible, but all for different reasons.
+/// @brief Visibility states, all but one mean that the LayoutItem is not visible, but all for different reasons.
 enum class VISIBILITY : unsigned char {
     INVISIBLE, // LayoutItem is not displayed
     HIDDEN, // LayoutItem is not INVISIBLE but one of its parents is, so it cannot be displayed
@@ -23,7 +23,7 @@ enum class VISIBILITY : unsigned char {
     VISIBLE, // LayoutItem is displayed
 };
 
-/// \brief Coordinate Spaces to pass to get_transform().
+/// @brief Coordinate Spaces to pass to get_transform().
 enum class SPACE : unsigned char {
     PARENT, // returns transform in local coordinates, relative to the parent LayoutItem
     WINDOW, // returns transform in global coordinates, relative to the Window
@@ -32,51 +32,47 @@ enum class SPACE : unsigned char {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/*
- * \brief A LayoutItem is an abstraction of an item in the Layout hierarchy.
+/**
+ * @brief A LayoutItem is an abstraction of an item in the Layout hierarchy.
  *
  * Both Widget and all Layout subclasses inherit from it.
  */
 class LayoutItem : public AbstractObject, public Signaler<LayoutItem> {
 
+    friend class Layout;
+
 public: // abstract methods
-    /// \brief Looks for a Widget at a given local position.
-    /// \param local_pos    Local coordinates where to look for the Widget.
-    /// \return The Widget at a given local position or an empty shared_ptr if there is none.
+    /// @brief Looks for a Widget at a given local position.
+    /// @param local_pos    Local coordinates where to look for the Widget.
+    /// @return The Widget at a given local position or an empty shared_ptr if there is none.
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) = 0;
 
 public: // methods
-    /// \brief Virtual destructor.
+    /// @brief Virtual destructor.
     virtual ~LayoutItem() override;
 
-    /// \brief Returns true iff this LayoutItem has a parent
+    /// @brief Returns true iff this LayoutItem has a parent
     bool has_parent() const { return !m_parent.expired(); }
 
-    /// \brief Tests if a given LayoutItem is a child of this LayoutItem.
-    bool has_child(const std::shared_ptr<LayoutItem>& candidate) const;
-
-    /// \brief Returns true iff this LayoutItem has at least one child.
-    bool has_children() const { return !m_children.empty(); }
-
-    /// \brief Tests, if this LayoutItem is a descendant of the given `ancestor`.
-    /// \param ancestor Potential ancestor
-    /// \return True iff `ancestor` is an ancestor of this LayoutItem, false otherwise.
+    /// @brief Tests, if this LayoutItem is a descendant of the given `ancestor`.
+    /// @param ancestor Potential ancestor
+    /// @return True iff `ancestor` is an ancestor of this LayoutItem, false otherwise.
     bool has_ancestor(const std::shared_ptr<LayoutItem>& ancestor) const;
 
-    /// \brief Returns the parent LayoutItem containing this LayoutItem, may be invalid.
-    std::shared_ptr<const LayoutItem> get_parent() const { return m_parent.lock(); }
+    /// @brief Returns the parent LayoutItem containing this LayoutItem, may be invalid.
+    std::shared_ptr<const Layout> get_parent() const { return m_parent.lock(); }
 
-    /// \brief Returns the LayoutItem of the hierarchy containing this LayoutItem.
+    /// @brief Returns the LayoutItem of the hierarchy containing this LayoutItem.
     /// Is invalid if this LayoutItem is unrooted.
     std::shared_ptr<const LayoutRoot> get_root() const;
 
-    /// \brief Checks the visibility of this LayoutItem.
+    /// @brief Checks the visibility of this LayoutItem.
     VISIBILITY get_visibility() const { return m_visibility; }
 
-    /// \brief Returns the unscaled size of this LayoutItem in pixels.
+    /// @brief Returns the unscaled size of this LayoutItem in pixels.
     const Size2r& get_size() const { return m_size; }
 
-    /// \brief Returns this LayoutItem's transformation in the given space.
+    /// @brief Returns this LayoutItem's transformation in the given space.
     Transform2 get_transform(const SPACE space) const
     {
         Transform2 result = Transform2::identity();
@@ -100,128 +96,77 @@ public: // methods
     }
 
 public: // signals
-    /// \brief Emitted when this LayoutItem got a new parent.
-    /// \param Handle of the new parent.
+    /// @brief Emitted when this LayoutItem got a new parent.
+    /// @param Handle of the new parent.
     Signal<Handle> parent_changed;
 
-    /// \brief Emitted when a new child LayoutItem was added to this one.
-    /// \param Handle of the new child.
-    Signal<Handle> child_added;
-
-    /// \brief Emitted when a child LayoutItem of this one was removed.
-    /// \param Handle of the removed child.
-    Signal<Handle> child_removed;
-
-    /// \brief Emitted, when the visibility of this LayoutItem has changed.
-    /// \param New visiblity.
+    /// @brief Emitted, when the visibility of this LayoutItem has changed.
+    /// @param New visiblity.
     Signal<VISIBILITY> visibility_changed;
 
-    /// \brief Emitted when this LayoutItem' size changed.
-    /// \param New size.
+    /// @brief Emitted when this LayoutItem' size changed.
+    /// @param New size.
     Signal<Size2r> size_changed;
 
 protected: // methods
-    /// \brief Value Constructor.
-    /// \param handle   Application-unique Handle of this Item.
+    /// @brief Value Constructor.
+    /// @param handle   Application-unique Handle of this Item.
     explicit LayoutItem(const Handle handle)
         : AbstractObject(handle)
         , m_parent()
-        , m_children()
         , m_visibility(VISIBILITY::VISIBLE)
         , m_size()
         , m_transform(Transform2::identity())
     {
     }
 
-    /// \brief Returns a child LayoutItem, is invalid if no child with the given Handle exists.
-    std::shared_ptr<LayoutItem> get_child(const Handle child_handle) const;
-
-    /// \brief Returns all children of this LayoutItem.
-    const std::unordered_map<Handle, std::shared_ptr<LayoutItem>>& get_children() const { return m_children; }
-
-    /// \brief Adds the given child to this LayoutItem.
-    void add_child(std::shared_ptr<LayoutItem> child_object);
-
-    /// \brief Removes the child with the given Handle.
-    void remove_child(const Handle child_handle);
-
-    /// \brief Shows (if possible) or hides this LayoutItem.
+    /// @brief Shows (if possible) or hides this LayoutItem.
     void set_visible(const bool is_visible);
 
-    /// \brief Updates the size of this LayoutItem.
+    /// @brief Updates the size of this LayoutItem.
     void set_size(const Size2r size)
     {
         m_size = size;
         size_changed(m_size);
     }
 
-    /// \brief Tells this LayoutItem and all of its children to redraw.
-    virtual void redraw();
+    /// @brief Tells this LayoutItem and all of its children to redraw.
+    virtual void redraw() = 0;
 
-    /// \brief Tells this LayoutItem to update its size based on the size of its children and its parents restrictions.
-    //    virtual bool relayout() = 0;
-    virtual bool relayout() { return false; }
-
-    /// \brief Propagates a layout change upwards to the first ancestor that doesn't need to change its size.
+    /// @brief Propagates a layout change upwards to the first ancestor that doesn't need to change its size.
     /// Then continues to spread down again through all children of that ancestor.
-    void relayout_up()
-    {
-        std::shared_ptr<LayoutItem> parent = m_parent.lock();
-        while (parent) {
-            if (parent->relayout()) {
-                parent = parent->m_parent.lock();
-            }
-            else {
-                parent->relayout_down();
-                parent.reset();
-            }
-        }
-    }
-
-    /// \brief Recursively propagates a layout change downwards to all descendants of this LayoutItem.
-    /// Recursion is stopped, when a LayoutItem didn't need to change its size.
-    void relayout_down()
-    {
-        for (const auto& it : m_children) {
-            if (it.second->relayout()) {
-                it.second->relayout_down();
-            }
-        }
-    }
+    void relayout_up();
 
 private: // methods
-    /// \brief Sets a new LayoutItem to contain this LayoutItem.
-    void set_parent(std::shared_ptr<LayoutItem> parent);
+    /// @brief Sets a new LayoutItem to contain this LayoutItem.
+    void set_parent(std::shared_ptr<Layout> parent);
 
-    /// \brief Removes the current parent of this LayoutItem.
+    /// @brief Removes the current parent of this LayoutItem.
     void unparent() { set_parent({}); }
 
-    /// \brief Recursive function to let all children emit visibility_changed when the parent's visibility changed.
-    void cascade_visibility(const VISIBILITY visibility);
+    /// @brief Recursive function to let all children emit visibility_changed when the parent's visibility changed.
+    virtual void cascade_visibility(const VISIBILITY visibility);
 
-    /// \brief Recursive implementation to produce the LayoutItem's transformation in window space.
+    /// @brief Recursive implementation to produce the LayoutItem's transformation in window space.
     void get_window_transform(Transform2& result) const;
 
-    /// \brief Returns the LayoutItem's transformation in screen space.
+    /// @brief Returns the LayoutItem's transformation in screen space.
     Transform2 get_screen_transform() const;
 
-    /// \brief Returns the LayoutItem's transformation in parent space.
+    /// @brief Returns the LayoutItem's transformation in parent space.
     Transform2 get_parent_transform() const { return m_transform; }
 
 private: // fields
-    /// \brief The parent LayoutItem, may be invalid.
-    std::weak_ptr<LayoutItem> m_parent;
+    /// @brief The parent LayoutItem, may be invalid.
+    std::weak_ptr<Layout> m_parent;
 
-    /// \brief All children of this LayoutItem.
-    std::unordered_map<Handle, std::shared_ptr<LayoutItem>> m_children;
-
-    /// \brief Visibility state of this LayoutItem.
+    /// @brief Visibility state of this LayoutItem.
     VISIBILITY m_visibility;
 
-    /// \brief Unscaled size of this LayoutItem in pixels.
+    /// @brief Unscaled size of this LayoutItem in pixels.
     Size2r m_size;
 
-    /// \brief 2D transformation of this LayoutItem in local space.
+    /// @brief 2D transformation of this LayoutItem in local space.
     Transform2 m_transform;
 };
 

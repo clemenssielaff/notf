@@ -6,12 +6,12 @@
 
 namespace notf {
 
-/// \brief Tokenizes a string.
+/// @brief Tokenizes a string.
 ///
-/// \param input        Input string.
-/// \param delimiter    Delimiter character (is removed from the tokens).
+/// @param input        Input string.
+/// @param delimiter    Delimiter character (is removed from the tokens).
 ///
-/// \return String tokens.
+/// @return String tokens.
 inline std::vector<std::string> tokenize(const std::string& input, const char delimiter)
 {
     std::vector<std::string> result;
@@ -34,12 +34,12 @@ inline std::vector<std::string> tokenize(const std::string& input, const char de
     return result;
 }
 
-/// \brief tokenize() overload to deal with (potentially nullptr) c-style character arrays.
+/// @brief tokenize() overload to deal with (potentially nullptr) c-style character arrays.
 ///
-/// \param input        Input string.
-/// \param delimiter    Delimiter character.
+/// @param input        Input string.
+/// @param delimiter    Delimiter character.
 ///
-/// \return String tokens.
+/// @return String tokens.
 inline std::vector<std::string> tokenize(const char* input, const char delimiter)
 {
     if (!input) {
@@ -48,18 +48,18 @@ inline std::vector<std::string> tokenize(const char* input, const char delimiter
     return tokenize(std::string(input), delimiter);
 }
 
-/// \brief Tests if an input string starts with a given prefix.
-/// \param input    Input string.
-/// \param prefix   Prefix to test for.
-/// \return True iff the first n input string characters match the prefix of size n.
+/// @brief Tests if an input string starts with a given prefix.
+/// @param input    Input string.
+/// @param prefix   Prefix to test for.
+/// @return True iff the first n input string characters match the prefix of size n.
 ///
 inline bool starts_with(const std::string& input, const std::string& prefix)
 {
     return (input.compare(0, prefix.size(), prefix) == 0);
 }
 
-/// \brief Case-insensitive string comparison.
-/// \return True iff both strings are the same in lower case letters.
+/// @brief Case-insensitive string comparison.
+/// @return True iff both strings are the same in lower case letters.
 ///
 inline bool icompare(const std::string& left, const std::string& right)
 {
@@ -73,10 +73,10 @@ inline bool icompare(const std::string& left, const std::string& right)
     }
 }
 
-/// \brief Case-insensitive test, if the input string starts with a given prefix.
-/// \param input    Input string.
-/// \param prefix   Prefix to test for.
-/// \return True iff the first n input string characters match the prefix of size n.
+/// @brief Case-insensitive test, if the input string starts with a given prefix.
+/// @param input    Input string.
+/// @param prefix   Prefix to test for.
+/// @return True iff the first n input string characters match the prefix of size n.
 ///
 inline bool istarts_with(const std::string& input, const std::string& prefix)
 {

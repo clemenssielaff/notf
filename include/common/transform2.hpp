@@ -9,13 +9,13 @@
 
 namespace notf {
 
-/// \brief A 2D Transformation Matrix with 3x3 components.
+/// @brief A 2D Transformation Matrix with 3x3 components.
 /// Only the first two rows are actually stored though, the last row is a static constant.
 ///
 struct Transform2 {
 
 private: // class
-    /// \brief Private Row class to enforce bound checks during debug.
+    /// @brief Private Row class to enforce bound checks during debug.
     ///
     struct Row {
 
@@ -23,7 +23,7 @@ private: // class
 
         std::array<Real, 3> values;
 
-        /// \brief Read-access to a value in the Row.
+        /// @brief Read-access to a value in the Row.
         Real operator[](unsigned char col) const
         {
             assert(col < 3);
@@ -31,7 +31,7 @@ private: // class
         }
 
     private: // methods for Transform2
-        /// \brief Write access to the Row's data.
+        /// @brief Write access to the Row's data.
         Real& operator[](unsigned char col)
         {
             return values[col];
@@ -41,7 +41,7 @@ private: // class
 public: // methods
     //  FIELDS  ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// \brief Matrix values.
+    /// @brief Matrix values.
     std::array<Row, 2> rows;
 
     //  HOUSEHOLD  ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -54,23 +54,23 @@ public: // methods
 
     //  STATIC CONSTRUCTORS  //////////////////////////////////////////////////////////////////////////////////////////
 
-    /// \brief The identity matrix.
+    /// @brief The identity matrix.
     static Transform2 identity()
     {
         return {{{{{{1, 0, 0}}},
                   {{{0, 1, 0}}}}}};
     }
 
-    /// \brief A translation matrix.
-    /// \param vector   Translation vector.
+    /// @brief A translation matrix.
+    /// @param vector   Translation vector.
     static Transform2 translation(const Vector2& vector)
     {
         return {{{{{{0, 0, vector.x}}},
                   {{{0, 0, vector.y}}}}}};
     }
 
-    /// \brief A rotation matrix.
-    /// \param radians  Counter-clockwise rotation in radians.
+    /// @brief A rotation matrix.
+    /// @param radians  Counter-clockwise rotation in radians.
     static Transform2 rotation(const Real radians)
     {
         const Real sine = sin(radians);
@@ -79,24 +79,24 @@ public: // methods
                   {{{-sine, cosine, 0}}}}}};
     }
 
-    /// \brief A uniform scale matrix.
-    /// \param factor   Uniform scale factor.
+    /// @brief A uniform scale matrix.
+    /// @param factor   Uniform scale factor.
     static Transform2 scale(const Real factor)
     {
         return {{{{{{factor, 0, 0}}},
                   {{{0, factor, 0}}}}}};
     }
 
-    /// \brief A non-uniform scale matrix.
-    /// \param vector   Non-uniform scale vector.
+    /// @brief A non-uniform scale matrix.
+    /// @param vector   Non-uniform scale vector.
     static Transform2 scale(const Vector2& vector)
     {
         return {{{{{{vector.x, 0, 0}}},
                   {{{0, vector.y, 0}}}}}};
     }
 
-    /// \brief A non-uniform skew matrix.
-    /// \param vector   Non-uniform skew vector.
+    /// @brief A non-uniform skew matrix.
+    /// @param vector   Non-uniform skew vector.
     static Transform2 skew(const Vector2& vector)
     {
         return {{{{{{1, tan(vector.x), 0}}},
@@ -105,7 +105,7 @@ public: // methods
 
     //  INSPECTION  ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /// \brief Read access to the Matrix.
+    /// @brief Read access to the Matrix.
     const Row& operator[](unsigned char row) const
     {
         static const Row last_row{{{0, 0, 1}}};
@@ -118,7 +118,7 @@ public: // methods
         }
     }
 
-    /// \brief Matrix multiplication of this Matrix with another.
+    /// @brief Matrix multiplication of this Matrix with another.
     Transform2 operator*(const Transform2& other) const
     {
         Transform2 result;
@@ -131,7 +131,7 @@ public: // methods
         return result;
     }
 
-    /// \brief In-place Matrix multiplication of this Matrix with another.
+    /// @brief In-place Matrix multiplication of this Matrix with another.
     Transform2& operator*=(const Transform2& other)
     {
         Transform2 temp = *this * other;
@@ -140,7 +140,7 @@ public: // methods
     }
 
 private: // methods
-    /// \brief Write access to the Matrix.
+    /// @brief Write access to the Matrix.
     Row& operator[](unsigned char row)
     {
         return rows[row];

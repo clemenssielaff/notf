@@ -6,7 +6,7 @@
 
 namespace notf {
 
-/// \brief Specialized type for Index into arrays, vectors or other indexeable things.
+/// @brief Specialized type for Index into arrays, vectors or other indexeable things.
 /// This became necessary for the StackLayout class, where you could ask for an index of an object which might not be in
 /// the Layout at all.
 /// In that case, the method should return an invalid index.
@@ -19,25 +19,25 @@ namespace notf {
 class Index {
 
 public: // typedefs
-    /// \brief Index value type.
+    /// @brief Index value type.
     using Type = size_t;
 
 public: // methods
-    /// \brief Default Constructor - produces an invalid Index.
+    /// @brief Default Constructor - produces an invalid Index.
     explicit Index()
         : m_value(BAD_INDEX)
     {
     }
 
-    /// \brief Value Constructor.
-    /// \param value    Index value.
+    /// @brief Value Constructor.
+    /// @param value    Index value.
     explicit Index(const Type value)
         : m_value(value)
     {
     }
 
-    /// \brief Copy Constructor.
-    /// \param other    Index to copy.
+    /// @brief Copy Constructor.
+    /// @param other    Index to copy.
     Index(const Index& other)
         : m_value(other.m_value)
     {
@@ -46,10 +46,10 @@ public: // methods
     // no assignment
     Index& operator=(const Index&) = delete;
 
-    /// \brief Tests if this Index is valid.
+    /// @brief Tests if this Index is valid.
     bool is_valid() const { return m_value != BAD_INDEX; }
 
-    /// \brief Returns the Index value to be used.
+    /// @brief Returns the Index value to be used.
     /// 'getting' an invalid Index will raise an assert.
     Type get() const
     {
@@ -57,19 +57,19 @@ public: // methods
         return m_value;
     }
 
-    /// \brief Bool conversion to use an Index in an if-statement, for example.
+    /// @brief Bool conversion to use an Index in an if-statement, for example.
     explicit operator bool() const { return is_valid(); }
 
 public: // static methods
-    /// \brief Produces an invalid Index.
+    /// @brief Produces an invalid Index.
     static Index make_invalid() { return Index(); }
 
 private: // fields
-    /// \brief Index value.
+    /// @brief Index value.
     const Type m_value;
 
 private: // static fields
-    // \brief The invalid Index value.
+    // @brief The invalid Index value.
     static constexpr Type BAD_INDEX = std::numeric_limits<Type>::max();
 };
 

@@ -14,13 +14,13 @@ class Widget;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// \brief Virtual base class for all Components.
+/// @brief Virtual base class for all Components.
 class Component : public std::enable_shared_from_this<Component>, public Signaler<Component> {
 
     friend class Widget;
 
 public: // enums
-    /// \brief Component kind enum.
+    /// @brief Component kind enum.
     ///
     /// Acts as a unique identifier of each Component type and as index for the Widget components member.
     enum class KIND : unsigned char {
@@ -36,33 +36,33 @@ public: // methods
     Component(const Component&) = delete; // no copy construction
     Component& operator=(const Component&) = delete; // no copy assignment
 
-    /// \brief Virtual Destructor.
+    /// @brief Virtual Destructor.
     virtual ~Component() = default;
 
-    /// \brief Abstract method to validate a fully constructed component.
-    /// \return True iff the Component is valid, false otherwise.
+    /// @brief Abstract method to validate a fully constructed component.
+    /// @return True iff the Component is valid, false otherwise.
     /// Implement in subclasses (if you want) to perform specific checks.
     virtual bool is_valid() { return true; }
 
-    /// \brief This Component's type.
+    /// @brief This Component's type.
     virtual KIND get_kind() const = 0;
 
 protected: // methods
-    /// \brief Default Constructor.
+    /// @brief Default Constructor.
     explicit Component() = default;
 
-    /// \brief Redraws all Widgets registered with this Component.
+    /// @brief Redraws all Widgets registered with this Component.
     void redraw_widgets();
 
 private: // methods for Widget
-    // \brief Registers a new Widget to receive updates when this Component changes.
+    // @brief Registers a new Widget to receive updates when this Component changes.
     void register_widget(Handle widget_handle);
 
-    /// \brief Unregisters a Widget from receiving updates from this Component.
+    /// @brief Unregisters a Widget from receiving updates from this Component.
     void unregister_widget(Handle widget_handle);
 
 private: // fields
-    /// \brief Handles of all Widgets that use this Component.
+    /// @brief Handles of all Widgets that use this Component.
     std::set<Handle> m_widgets;
 };
 
@@ -73,7 +73,7 @@ class ShapeComponent;
 class TextureComponent;
 class ColorComponent;
 
-/// \brief Returns the Component kind associated with a given Component subclass.
+/// @brief Returns the Component kind associated with a given Component subclass.
 /// There should be one class name per entry in Component::KIND (order doesn't matter).
 /// This is required by Widget::get_component<COMPONENT>() to correctly associate any Component subclass with its first-
 /// level specialization.
@@ -98,7 +98,7 @@ constexpr Component::KIND get_kind()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// \brief Factory function to create shared pointers to any subclass of Component.
+/// @brief Factory function to create shared pointers to any subclass of Component.
 /// Make sure that all Component subclasses have a protected Constructor
 /// If the Component fails validation with `validate`, the returned shared pointer will be empty.
 template <class COMPONENT, typename... ARGS>

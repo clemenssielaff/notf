@@ -143,8 +143,6 @@ void Widget::redraw()
         return;
     }
 
-    LayoutItem::redraw();
-
     // if this Widget is renderable, register yourself to be rendered in the next frame
     if (has_component_kind(Component::KIND::RENDER)) {
         std::shared_ptr<Window> window = get_window();

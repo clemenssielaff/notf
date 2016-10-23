@@ -26,7 +26,7 @@ typedef std::tuple<GLboolean, Direction, glm::vec2> Collision;
 class Game {
 
 public: // enum
-    /// \brief The current state of the game.
+    /// @brief The current state of the game.
     enum class STATE {
         ACTIVE,
         MENU,
@@ -34,10 +34,10 @@ public: // enum
     };
 
 public: // methods
-    /// \brief Constructor
+    /// @brief Constructor
     ///
-    /// \param width    Width of the Window in pixels.
-    /// \param height   Height of the Window in pixels.
+    /// @param width    Width of the Window in pixels.
+    /// @param height   Height of the Window in pixels.
     explicit Game(GLuint width, GLuint height);
 
     ~Game();
@@ -59,23 +59,23 @@ public: // methods
     void set_key(int key, GLboolean value) { m_keys[key] = value; }
 
 private: // fields
-    /// \brief Game state
+    /// @brief Game state
     STATE m_state;
 
-    /// \brief Keyboard state
+    /// @brief Keyboard state
     GLboolean m_keys[1024];
 
-    /// \brief Width of the Window in pixels.
+    /// @brief Width of the Window in pixels.
     GLuint m_width;
 
-    /// \brief Height of the Window in pixels.
+    /// @brief Height of the Window in pixels.
     GLuint m_height;
 
     std::unique_ptr<SpriteRenderer> m_renderer;
 
     ResourceManager m_resource_manager;
 
-    /// \brief The log handler thread used to format and print out log messages in a thread-safe manner.
+    /// @brief The log handler thread used to format and print out log messages in a thread-safe manner.
     LogHandler m_log_handler;
 
     std::vector<GameLevel> m_levels;

@@ -17,7 +17,7 @@
 
 namespace { // anonymous
 
-/// \brief The current state of all keyboard keys.
+/// @brief The current state of all keyboard keys.
 /// Is unit-global instead of a member variable to keep the application header small.
 notf::KeyStateSet g_key_states;
 

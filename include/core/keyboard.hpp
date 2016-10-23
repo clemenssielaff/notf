@@ -9,7 +9,7 @@ namespace notf {
 
 class Window;
 
-/// \brief All keys recognized by GLFW.
+/// @brief All keys recognized by GLFW.
 ///
 /// Can be used as indices for a KeyStateSet object.
 enum class KEY : unsigned char {
@@ -137,7 +137,7 @@ enum class KEY : unsigned char {
     __last,
 };
 
-/// \brief Actions you can do with a key.
+/// @brief Actions you can do with a key.
 ///
 enum class KEY_ACTION : unsigned char {
     KEY_RELEASE = 0,
@@ -145,7 +145,7 @@ enum class KEY_ACTION : unsigned char {
     KEY_REPEAT,
 };
 
-/// \brief Modifier keys.
+/// @brief Modifier keys.
 ///
 /// If you hold down more than one key of the same modifier (both shift-keys, for example),
 /// the flag is still set only once (meaning there is no double-shift modifier).
@@ -156,29 +156,29 @@ enum KEY_MODIFIERS : unsigned char {
     MOD_SUPER = 8,
 };
 
-/// \brief  The state of all regonized keys in a compact bitset.
+/// @brief  The state of all regonized keys in a compact bitset.
 ///
 /// True means pressed, false unpressed.
 /// Use KEY values as index to access individual key states.
 using KeyStateSet = std::bitset<to_number(KEY::__last)>;
 
-/// \brief Checks the state of a given key in the KeyStateSet.
+/// @brief Checks the state of a given key in the KeyStateSet.
 ///
-/// \param state_set    KeyStateSet to test.
-/// \param key          Key to test.
+/// @param state_set    KeyStateSet to test.
+/// @param key          Key to test.
 ///
-/// \return True iff the key is pressed, false otherwise.
+/// @return True iff the key is pressed, false otherwise.
 inline bool test_key(const KeyStateSet& state_set, KEY key)
 {
     assert(key > KEY::INVALID && key < KEY::__last);
     return state_set.test(static_cast<size_t>(to_number(key)));
 }
 
-/// \brief Sets the state of a given key in the KeyStateSet.
+/// @brief Sets the state of a given key in the KeyStateSet.
 ///
-/// \param state_set    KeyStateSet to change.
-/// \param key          Key to modify.
-/// \param state        Whether the key is pressed or not.
+/// @param state_set    KeyStateSet to change.
+/// @param key          Key to modify.
+/// @param state        Whether the key is pressed or not.
 ///
 inline void set_key(KeyStateSet& state_set, KEY key, bool state)
 {
@@ -186,11 +186,11 @@ inline void set_key(KeyStateSet& state_set, KEY key, bool state)
     state_set.set(static_cast<size_t>(to_number(key)), state);
 }
 
-/// \brief Converts a GLFW key into a notf::KEY.
+/// @brief Converts a GLFW key into a notf::KEY.
 ///
-/// \param key  GLFW key value.
+/// @param key  GLFW key value.
 ///
-/// \return The same key as notf::KEY.
+/// @return The same key as notf::KEY.
 KEY from_glfw_key(int key);
 
 } // namespace notf

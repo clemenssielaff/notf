@@ -4,7 +4,7 @@
 
 namespace { // anonymous
 
-/// \brief Constructs a terminal color prefix for the given color.
+/// @brief Constructs a terminal color prefix for the given color.
 inline std::string color_prefix(u_short color)
 {
     return "\033[38;5;" + std::to_string(color) + "m";

@@ -8,9 +8,9 @@
 namespace { // anonymous
 
 /**
- * \brief Convenience function to translate a Texture channel into an OpenGL GL_TEXTURE* format.
- * \param channel   The channel to translate.
- * \return The corresponding GL_TEXTURE* value.
+ * @brief Convenience function to translate a Texture channel into an OpenGL GL_TEXTURE* format.
+ * @param channel   The channel to translate.
+ * @return The corresponding GL_TEXTURE* value.
  */
 constexpr GLenum gl_texture_channel(ushort channel)
 {

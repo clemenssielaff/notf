@@ -8,20 +8,6 @@ namespace notf {
 
 LayoutItem::~LayoutItem()
 {
-    // explicitly unparent all children so they can send the `parent_changed` signal
-    for (auto& it : m_children) {
-        it.second->unparent();
-    }
-}
-
-bool LayoutItem::has_child(const std::shared_ptr<LayoutItem>& candidate) const
-{
-    for (const auto& it : m_children) {
-        if (it.second == candidate) {
-            return true;
-        }
-    }
-    return false;
 }
 
 bool LayoutItem::has_ancestor(const std::shared_ptr<LayoutItem>& ancestor) const
@@ -32,7 +18,7 @@ bool LayoutItem::has_ancestor(const std::shared_ptr<LayoutItem>& ancestor) const
     }
 
     // check all actual ancestors against the candidate
-    std::shared_ptr<const LayoutItem> parent = get_parent();
+    std::shared_ptr<const Layout> parent = get_parent();
     while (parent) {
         if (parent == ancestor) {
             return true;
@@ -53,40 +39,6 @@ std::shared_ptr<const LayoutRoot> LayoutItem::get_root() const
     return std::dynamic_pointer_cast<const LayoutRoot>(it);
 }
 
-std::shared_ptr<LayoutItem> LayoutItem::get_child(const Handle child_handle) const
-{
-    auto it = m_children.find(child_handle);
-    if (it == m_children.end()) {
-        log_warning << "Requested unknown child" << child_handle << " from LayoutItem " << get_handle();
-        return {};
-    }
-    return it->second;
-}
-
-void LayoutItem::add_child(std::shared_ptr<LayoutItem> child_object)
-{
-    const Handle child_handle = child_object->get_handle();
-    if (m_children.count(child_handle)) {
-        log_warning << "Did not add existing child " << child_handle << " to LayoutItem " << get_handle();
-        return;
-    }
-    child_object->set_parent(std::static_pointer_cast<LayoutItem>(shared_from_this()));
-    m_children.emplace(std::make_pair(child_handle, std::move(child_object)));
-    child_added(child_handle);
-}
-
-void LayoutItem::remove_child(const Handle child_handle)
-{
-    auto it = m_children.find(child_handle);
-    if (it == m_children.end()) {
-        log_critical << "Failed to remove unknown child " << child_handle << " from LayoutItem " << get_handle();
-    }
-    else {
-        m_children.erase(it);
-        child_removed(child_handle);
-    }
-}
-
 void LayoutItem::set_visible(const bool is_visible)
 {
     // ignore non-changes
@@ -97,7 +49,7 @@ void LayoutItem::set_visible(const bool is_visible)
     // update visibility
     const VISIBILITY previous_visibility = m_visibility;
     if (is_visible) {
-        if (std::shared_ptr<const LayoutItem> parent = get_parent()) {
+        if (std::shared_ptr<const Layout> parent = get_parent()) {
             const VISIBILITY parent_visibility = parent->get_visibility();
             if (parent_visibility == VISIBILITY::INVISIBLE) {
                 cascade_visibility(VISIBILITY::HIDDEN);
@@ -120,23 +72,24 @@ void LayoutItem::set_visible(const bool is_visible)
     }
 }
 
-void LayoutItem::redraw()
+void LayoutItem::relayout_up()
 {
-    // don't draw invisible objects
-    if (m_visibility != VISIBILITY::VISIBLE) {
-        return;
-    }
-
-    // redraw all children
-    for (auto& it : m_children) {
-        it.second->redraw();
+    std::shared_ptr<Layout> parent = m_parent.lock();
+    while (parent) {
+        if (parent->relayout()) {
+            parent = parent->m_parent.lock();
+        }
+        else {
+            parent->relayout_down();
+            parent.reset();
+        }
     }
 }
 
-void LayoutItem::set_parent(std::shared_ptr<LayoutItem> parent)
+void LayoutItem::set_parent(std::shared_ptr<Layout> parent)
 {
     // do nothing if the new parent is the same as the old (or both are invalid)
-    std::shared_ptr<LayoutItem> old_parent = m_parent.lock();
+    std::shared_ptr<Layout> old_parent = m_parent.lock();
     if (parent == old_parent) {
         return;
     }
@@ -183,24 +136,11 @@ void LayoutItem::cascade_visibility(const VISIBILITY visibility)
     }
     m_visibility = visibility;
     visibility_changed(m_visibility);
-
-    // update your children's visiblity
-    for (auto& it : m_children) {
-        const std::shared_ptr<LayoutItem>& child = it.second;
-        if (child->get_visibility() != VISIBILITY::INVISIBLE) {
-            if (m_visibility == VISIBILITY::INVISIBLE) {
-                child->cascade_visibility(VISIBILITY::HIDDEN);
-            }
-            else {
-                child->cascade_visibility(visibility);
-            }
-        }
-    }
 }
 
 void LayoutItem::get_window_transform(Transform2& result) const
 {
-    if (std::shared_ptr<const LayoutItem> parent = get_parent()) {
+    if (std::shared_ptr<const Layout> parent = get_parent()) {
         parent->get_window_transform(result);
     }
     result = m_transform * result;

@@ -1765,7 +1765,7 @@ namespace Detail {
     }
 } // end namespace Detail
 
-/// \brief converts any type to a string
+/// @brief converts any type to a string
 ///
 /// The default template forwards on to ostringstream - except when an
 /// ostringstream overload does not exist - in which case it attempts to detect

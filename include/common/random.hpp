@@ -4,7 +4,7 @@
 
 namespace notf {
 
-/// \brief Convenience accessor to a randutils random engine.
+/// @brief Convenience accessor to a randutils random engine.
 ///
 /// Also saves the cost of re-creating a new random engine every time we want a random number.
 decltype(randutils::default_rng()) & random()

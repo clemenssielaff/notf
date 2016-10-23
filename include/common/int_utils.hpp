@@ -11,7 +11,7 @@ using uint = unsigned int;
 using ulong = unsigned long;
 using ulonglong = unsigned long long;
 
-/// \brief Counts the digits in a given integral number.
+/// @brief Counts the digits in a given integral number.
 template <typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
 constexpr ushort count_digits(T digits)
 {

@@ -13,7 +13,7 @@ using Real = float;
 #endif
 
 ///
-/// \brief PI.
+/// @brief PI.
 ///
 extern const Real HALF_PI;
 extern const Real PI;
@@ -30,78 +30,78 @@ using std::tan;
 using std::atan2;
 const Real bla  = INFINITY;
 
-/// \brief Tests, if a value is positive or negative.
+/// @brief Tests, if a value is positive or negative.
 ///
-/// \param value    Value to test.
+/// @param value    Value to test.
 ///
-/// \return -1 if the value is negative, 1 if it is zero or above.
+/// @return -1 if the value is negative, 1 if it is zero or above.
 inline Real sign(const Real value) { return std::signbit(value) ? -1 : 1; }
 
-/// \brief Clamps an input value to a given range.
+/// @brief Clamps an input value to a given range.
 ///
-/// \param value    Value to clamp.
-/// \param min      Lower end of range (exclusive).
-/// \param max      Upper end of range (inclusive).
+/// @param value    Value to clamp.
+/// @param min      Lower end of range (exclusive).
+/// @param max      Upper end of range (inclusive).
 ///
-/// \return New, clamped value.
+/// @return New, clamped value.
 inline Real clamp(const Real value, const Real min, const Real max)
 {
     return value < min ? min : (value > max ? max : value);
 }
 
-/// \brief Test if two Reals are approximately the same value.
+/// @brief Test if two Reals are approximately the same value.
 ///
 /// From https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 ///
 /// approx() returns true also if the difference is exactly epsilon.
 /// This behavior allows epsilon to be zero for exact comparison.
 ///
-/// \param a       First Real.
-/// \param b       Second Real.
-/// \param epsilon Maximal relative error.
+/// @param a       First Real.
+/// @param b       Second Real.
+/// @param epsilon Maximal relative error.
 ///
-/// \return True, if both inputs are approximately the same, False otherwise.
+/// @return True, if both inputs are approximately the same, False otherwise.
 inline bool approx(const Real a, const Real b, const Real epsilon = FLT_EPSILON)
 {
     return abs(a - b) <= max(abs(a), abs(b)) * epsilon;
 }
 
-/// \brief Save asin calculation
+/// @brief Save asin calculation
 ///
-/// \param value   Input, is clamped to the range of [-1.0 ... 1.0], prior to the call to asin.
+/// @param value   Input, is clamped to the range of [-1.0 ... 1.0], prior to the call to asin.
 ///
-/// \return The arc-sine of the input value.
+/// @return The arc-sine of the input value.
 inline Real asin(const Real value) { return std::asin(clamp(value, -1, 1)); }
 
-/// \brief Save acos calculation
+/// @brief Save acos calculation
 ///
-/// \param value   Input, is clamped to the range of [-1.0 ... 1.0], prior to the call to acos.
+/// @param value   Input, is clamped to the range of [-1.0 ... 1.0], prior to the call to acos.
 ///
-/// \return The arc-cosine of the input value.
+/// @return The arc-cosine of the input value.
 inline Real acos(const Real value) { return std::acos(clamp(value, -1, 1)); }
 
-/// \brief Calculates a hash value from a supplied Real.
+/// @brief Calculates a hash value from a supplied Real.
 ///
-/// \param value    Real to hash.
+/// @param value    Real to hash.
 inline size_t hash(const Real value) { return std::hash<Real>()(value); }
 
-/// \brief Tests whether a given value is NAN.
+/// @brief Tests whether a given value is NAN.
 inline bool is_nan(const Real value) { return std::isnan(value); }
 
-/// \brief Tests whether a given value is INFINITY.
+/// @brief Tests whether a given value is INFINITY.
 inline bool is_inf(const Real value) { return std::isinf(value); }
 
-/// \brief Tests whether a given value is a valid Real value (not NAN, not INFINITY).
+/// @brief Tests whether a given value is a valid Real value (not NAN, not INFINITY).
 inline bool is_valid(const Real value) { return !is_nan(value) && !is_inf(value); }
 
-/// \brief Builds up a hash value from an existing hash AND the supplied Real.
+/// @brief Builds up a hash value from an existing hash AND the supplied Real.
 ///
 /// Useful for building up hashes from several Reals, like in a Vector2 - for example.
 ///
-/// \param value    Real to hash.
-/// \param seed     Existing hash value to build up upon.
+/// @param value    Real to hash.
+/// @param seed     Existing hash value to build up upon.
 ///
-/// \return New hash value.
+/// @return New hash value.
 inline size_t hash(Real value, size_t seed)
 {
     size_t result = seed;

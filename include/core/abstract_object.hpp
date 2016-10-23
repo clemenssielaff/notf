@@ -10,7 +10,7 @@
 namespace notf {
 
 /*
- * \brief AbstractItem is the base class for everything in an Application that can be accessible by a unique Handle.
+ * @brief AbstractItem is the base class for everything in an Application that can be accessible by a unique Handle.
  *
  * The memory of Items is always managed through std::shared_ptrs.
  * In fact, you cannot create one on the stack but must use the static `create()`-methods that Items generally offer.
@@ -22,24 +22,24 @@ public: // methods
     AbstractObject(const AbstractObject&) = delete;
     AbstractObject& operator=(const AbstractObject&) = delete;
 
-    /// \brief Virtual destructor.
+    /// @brief Virtual destructor.
     virtual ~AbstractObject();
 
-    /// \brief The Application-unique Handle of this Item.
+    /// @brief The Application-unique Handle of this Item.
     Handle get_handle() const { return m_handle; }
 
 protected: // methods
-    /// \brief Value Constructor.
-    /// \param handle   Application-unique Handle of this Item.
+    /// @brief Value Constructor.
+    /// @param handle   Application-unique Handle of this Item.
     explicit AbstractObject(const Handle handle)
         : m_handle(handle)
     {
     }
 
 protected: // static methods
-    /// \brief Factory function to create a new Item.
-    /// \param handle   [optional] Requested Handle of the new item - a new one is generated if BAD_HANDLE is passed.
-    /// \return The created Item, is invalid if a requested Handle is already taken.
+    /// @brief Factory function to create a new Item.
+    /// @param handle   [optional] Requested Handle of the new item - a new one is generated if BAD_HANDLE is passed.
+    /// @return The created Item, is invalid if a requested Handle is already taken.
     template <typename T, typename = std::enable_if_t<std::is_base_of<AbstractObject, T>::value>, typename... ARGS>
     static std::shared_ptr<T> create_item(Handle handle, ARGS&&... args)
     {
@@ -55,7 +55,7 @@ protected: // static methods
     }
 
 private: // fields
-    /// \brief Application-unique Handle.
+    /// @brief Application-unique Handle.
     const Handle m_handle;
 };
 

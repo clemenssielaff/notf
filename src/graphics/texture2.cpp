@@ -11,7 +11,7 @@
 namespace { // anonymous
 
 /**
- * \brief Transparency - is used as default border.
+ * @brief Transparency - is used as default border.
  */
 static constexpr float transparency[] = {0.0f, 0.0f, 0.0f, 0.0f};
 

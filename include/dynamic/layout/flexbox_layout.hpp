@@ -3,12 +3,12 @@
 
 namespace notf {
 
-/// \brief Layout to arrange Widgets inside a flexbox.
+/// @brief Layout to arrange Widgets inside a flexbox.
 ///
 class FlexboxLayout : public LayoutComponent {
 
 public: // enum
-    /// \brief Direction of the Flexbox.
+    /// @brief Direction of the Flexbox.
     enum class DIRECTION {
         INVALID = 0,
         RIGHT,
@@ -18,16 +18,16 @@ public: // enum
     };
 
 public: // methods
-    /// \brief Appends a new Widget to the end of the Flexbox.
+    /// @brief Appends a new Widget to the end of the Flexbox.
     void add_widget(std::shared_ptr<Widget> widget);
 
 
     virtual std::shared_ptr<Widget> widget_at(const Vector2& local_pos) override;
 
-    /// \brief Removes a given Widget from this Layout.
+    /// @brief Removes a given Widget from this Layout.
     virtual void remove_widget(std::shared_ptr<Widget> widget) override;
 
-    /// \brief Sets the direction into which the Flexbox expands.
+    /// @brief Sets the direction into which the Flexbox expands.
     /// If wrap direction == direction, this will also set the wrap direction to keep the non-wrapping behaviour.
     void set_direction(DIRECTION direction)
     {
@@ -38,7 +38,7 @@ public: // methods
 //        update();
     }
 
-    /// \brief Sets the direction into which the Flexbox wraps.
+    /// @brief Sets the direction into which the Flexbox wraps.
     /// If wrap direction == direction, the flexbox will not wrap.
     void set_wrap_direction(DIRECTION direction)
     {
@@ -48,21 +48,21 @@ public: // methods
 
 
 protected: // methods
-    /// \brief Value Constructor.
-    /// \param owner            Widget owning this Layout.
-    /// \param direction        Primary direction of the Flexbox.
-    /// \param wrap_direction   Secondary direction of the Flexbox, defaults to the direction parameter (non-wrapping).
+    /// @brief Value Constructor.
+    /// @param owner            Widget owning this Layout.
+    /// @param direction        Primary direction of the Flexbox.
+    /// @param wrap_direction   Secondary direction of the Flexbox, defaults to the direction parameter (non-wrapping).
     explicit FlexboxLayout(std::shared_ptr<Widget> owner,
                            DIRECTION direction, DIRECTION wrap_direction = DIRECTION::INVALID);
 
 protected: // fields
-    /// \brief All Layout items contained in this widget.
+    /// @brief All Layout items contained in this widget.
     std::vector<std::shared_ptr<Widget>> m_items;
 
-    /// \brief Primary direction of this Flexbox (where new items are added, if there is enough space).
+    /// @brief Primary direction of this Flexbox (where new items are added, if there is enough space).
     DIRECTION m_direction;
 
-    /// \brief Secondary direction of this Flexbox, where overflowing items are wrapped.
+    /// @brief Secondary direction of this Flexbox, where overflowing items are wrapped.
     DIRECTION m_wrap_direction;
 };
 

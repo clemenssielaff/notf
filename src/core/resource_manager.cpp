@@ -7,7 +7,7 @@
 namespace { // anonymous
 
 /**
- * \brief Helper function to clean up a map to shared pointers.
+ * @brief Helper function to clean up a map to shared pointers.
  *
  * Cleaning up in this case means removing all entries where the shared pointer is the only one managing its data.
  */
@@ -24,8 +24,8 @@ void remove_unused(Type& member)
 }
 
 /**
- * \brief Makes sure that a given (directory) string ends in a forward slash for concatenation with a file name.
- * \param input Input string.
+ * @brief Makes sure that a given (directory) string ends in a forward slash for concatenation with a file name.
+ * @param input Input string.
  */
 void ensure_ends_in_forward_slash(std::string& input)
 {

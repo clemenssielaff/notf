@@ -7,13 +7,13 @@
 namespace notf {
 
 /**
- * \brief String representation of an OpenGl error code.
+ * @brief String representation of an OpenGl error code.
  *
  * \remark Is a constant expression so it can be used as optimizable input to log_* - functions.
  *
- * \param error_code    The OpenGl error code.
+ * @param error_code    The OpenGl error code.
  *
- * \return The given error code as a string, empty if GL_NO_ERROR was passed.
+ * @return The given error code as a string, empty if GL_NO_ERROR was passed.
  */
 constexpr const char* gl_error_string(GLenum error_code)
 {
@@ -58,13 +58,13 @@ constexpr const char* gl_error_string(GLenum error_code)
 
 #if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_WARNING
 /**
- * \brief Checks if there was an OpenGL error and reports it to Signal's logger.
+ * @brief Checks if there was an OpenGL error and reports it to Signal's logger.
  *
- * \param line      Line at which the error occurred.
- * \param file      File in which the error occurred.
- * \param function  Name of the function in which the error occurred.
+ * @param line      Line at which the error occurred.
+ * @param file      File in which the error occurred.
+ * @param function  Name of the function in which the error occurred.
  *
- * \return The number of encountered errors.
+ * @return The number of encountered errors.
  */
 inline int _check_gl_error(uint line, const char* file, const char* function)
 {
