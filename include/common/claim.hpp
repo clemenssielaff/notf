@@ -68,6 +68,12 @@ public: // class
         /// @param max  Maximal size, must be 0 <= size <= INFINITY.
         void set_max(const Real max);
 
+        /// @brief Adds an offset to the min, max and preferred value.
+        /// The offset can be negative.
+        /// Fields are truncated to be >= 0, invalid values are ignored.
+        /// Useful, for example, if you want to add a fixed "spacing" to the claim of a Layout.
+        void add_offset(const Real offset);
+
         /// @brief Sets a new preferred size, accomodates both the min and max size if necessary.
         /// @param preferred    Preferred size, must be 0 <= size < INFINITY.
         void set_preferred(const Real preferred);
@@ -80,16 +86,47 @@ public: // class
         /// @param priority Scaling priority.
         void set_priority(const int priority) { m_priority = priority; }
 
-        /// @brief Addition operator for Directions.
-        Direction operator+(const Direction& right)
+        /// @brief Assignment operator.
+        Direction& operator=(const Direction& other)
         {
-            Direction result;
-            result.m_preferred = m_preferred + right.m_preferred;
-            result.m_min = m_min + right.m_min;
-            result.m_max = m_max + right.m_max;
-            result.m_scale_factor = m_scale_factor + right.m_scale_factor;
-            result.m_priority = max(m_priority, right.m_priority);
-            return result;
+            m_preferred = other.m_preferred;
+            m_min = other.m_min;
+            m_max = other.m_max;
+            m_scale_factor = other.m_scale_factor;
+            m_priority = other.m_priority;
+            return *this;
+        }
+
+        /// @brief Equality operator.
+        bool operator==(const Direction& other) const
+        {
+            return (approx(m_preferred, other.m_preferred)
+                    && approx(m_min, other.m_min)
+                    && approx(m_max, other.m_max)
+                    && approx(m_scale_factor, other.m_scale_factor)
+                    && m_priority == other.m_priority);
+        }
+
+        /// @brief In-place addition operator for Directions.
+        Direction& operator+=(const Direction& other)
+        {
+            m_preferred += other.m_preferred;
+            m_min += other.m_min;
+            m_max += other.m_max;
+            m_scale_factor += other.m_scale_factor;
+            m_priority = max(m_priority, other.m_priority);
+            return *this;
+        }
+
+        /// @brief In-place max operator for Directions.
+        Direction& maxed(const Direction& other)
+        {
+            m_preferred = max(m_preferred, other.m_preferred);
+            m_min = max(m_min, other.m_min);
+            m_max = max(m_max, other.m_max);
+            m_scale_factor+= max(m_scale_factor, other.m_scale_factor);
+            m_priority = max(m_priority, other.m_priority);
+            return *this;
         }
 
     private: // fields
@@ -109,9 +146,77 @@ public: // class
         int m_priority = 0;
     };
 
+private: // class
+    /// @brief A height-for-width ratio constraint of the Claim.
+    /// Is its own class so two Ratios can be properly added.
+    class Ratio {
+
+    public: // methods
+        /// @brief Default Constructor.
+        explicit Ratio() = default;
+
+        /// @brief Value Constructor.
+        /// Setting one or both values to zero, results in an invalid Ratio.
+        /// @param height   Height in continuous units, is 0 < height < INFINITY
+        /// @param width    Width in units, is 0 < width < INFINITY
+        Ratio(const Real height, const Real width = 1)
+            : m_width(height)
+            , m_height(width)
+        {
+            if (!notf::is_valid(height) || !notf::is_valid(width) || height <= 0 || width <= 0) {
+                m_width = 0;
+                m_height = 0;
+            }
+        }
+
+        /// @brief Tests if this Ratio is valid.
+        bool is_valid() const { return !(approx(m_width, 0) || approx(m_height, 0)); }
+
+        /// @brief Returns the height-for-width ratio, is 0 if invalid.
+        Real get_height_for_width() const
+        {
+            if (!is_valid()) {
+                return 0;
+            }
+            return m_height / m_width;
+        }
+
+        /// @brief Equality operator.
+        bool operator==(const Ratio& other) const
+        {
+            return (approx(m_width, other.m_width) && approx(m_height, other.m_height));
+        }
+
+        /// @brief In-place, horizontal addition operator for Directions.
+        Ratio& add_horizontal(const Ratio& other)
+        {
+            m_width += other.m_width;
+            m_height = max(m_height, other.m_height);
+            return *this;
+        }
+
+        /// @brief In-place, vertical addition operator for Directions.
+        Ratio& add_vertical(const Ratio& other)
+        {
+            m_width = max(m_width, other.m_width);
+            m_height += other.m_height;
+            return *this;
+        }
+
+    private: // fields
+        /// @brief Width in discrete steps.
+        Real m_width;
+
+        /// @brief Height in continuous units.
+        Real m_height;
+    };
+
 public: // methods
     /// @brief Default Constructor.
     explicit Claim() = default;
+
+    /// @brief Copy Constructor.
+    Claim(const Claim& other) = default;
 
     /// @brief Returns the horizontal part of this Claim.
     Direction& get_horizontal() { return m_horizontal; }
@@ -119,25 +224,56 @@ public: // methods
     /// @brief Returns the vertical part of this Claim.
     Direction& get_vertical() { return m_vertical; }
 
-    /// @brief Returns the minimum and maximum ratio scaling constraint
-    const std::pair<Real, Real>& get_height_for_width() const { return m_height_for_width; }
+    /// Returns the min and max ratio constraints, 0 means no constraint, is: 0 <= min <= max < INFINITY
+    std::pair<Real, Real> get_height_for_width() const
+    {
+        return {m_ratios.first.get_height_for_width(), m_ratios.second.get_height_for_width()};
+    }
 
     /// @brief Sets the ratio constraint.
     /// @param ratio_min    Height for width (min/fixed value), is used as minimum value if the second parameter is set.
     /// @param ratio_max    Height for width (max value), 'ratio_min' is use by default.
     void set_height_for_width(const Real ratio_min, const Real ratio_max = NAN);
 
-    /// @brief Addition operator for Claims.
-    Claim operator+(const Claim& right)
+    /// @brief Assignment operator
+    Claim& operator=(const Claim& other)
     {
-        Claim result;
-        result.m_horizontal = m_horizontal + right.m_horizontal;
-        result.m_vertical = m_vertical + right.m_vertical;
-        result.m_height_for_width = {
-            max(m_height_for_width.first, right.m_height_for_width.first) * Real(0.5),
-            max(m_height_for_width.second, right.m_height_for_width.second) * Real(0.5),
+        m_horizontal = other.m_horizontal;
+        m_vertical = other.m_vertical;
+        m_ratios = other.m_ratios;
+        return *this;
+    }
+
+    /// @brief Equality operator.
+    bool operator==(const Claim& other) const
+    {
+        return (m_horizontal == other.m_horizontal
+                && m_vertical == other.m_vertical
+                && m_ratios == other.m_ratios);
+    }
+
+    /// @brief In-place, horizontal addition operator for Claims.
+    Claim& add_horizontal(const Claim& other)
+    {
+        m_horizontal += other.m_horizontal;
+        m_vertical.maxed(other.m_vertical);
+        m_ratios = {
+            m_ratios.first.add_horizontal(other.m_ratios.first),
+            m_ratios.second.add_horizontal(other.m_ratios.second),
         };
-        return result;
+        return *this;
+    }
+
+    /// @brief In-place, vertical addition operator for Claims.
+    Claim& add_vertical(const Claim& other)
+    {
+        m_horizontal.maxed(other.m_horizontal);
+        m_vertical += other.m_vertical;
+        m_ratios = {
+            m_ratios.first.add_vertical(other.m_ratios.first),
+            m_ratios.second.add_vertical(other.m_ratios.second),
+        };
+        return *this;
     }
 
 private: // members
@@ -147,10 +283,8 @@ private: // members
     /// @brief The horizontal part of this Claim.
     Direction m_vertical;
 
-    /// @brief Minimum and maximum ratio scaling constraint, 0 means no constraint, is: 0 <= min <= max < INFINITY.
-    std::pair<Real, Real> m_height_for_width;
+    /// @brief Minimum and maximum ratio scaling constraint.
+    std::pair<Ratio, Ratio> m_ratios;
 };
-
-
 
 } // namespace notf

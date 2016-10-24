@@ -5,7 +5,7 @@
 namespace notf {
 
 /*
- * @brief Root Layout owned by a Window and root of all LayoutItems displayed within the Window.
+ * @brief The Layout Root is owned by a Window and root of all LayoutItems displayed within the Window.
  */
 class LayoutRoot : public Layout {
 
@@ -32,6 +32,9 @@ protected: // methods
         , m_window(window)
     {
     }
+
+    /// @brief The Layout Root does not relayout.
+    virtual bool relayout() override { return false; }
 
 private: // methods
     /// @brief Returns the Layout contained in this LayoutRoot, may be invalid.

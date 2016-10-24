@@ -30,6 +30,9 @@ protected: // methods
         : Layout(handle)
     {
     }
+
+    /// @brief FillLayouts do not relayout.
+    virtual bool relayout() override { return false; }
 };
 
 } // namespace notf

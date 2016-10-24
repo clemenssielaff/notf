@@ -26,7 +26,17 @@ public: // methods
     /// @brief Direction in which the StackLayout is stacked.
     DIRECTION get_direction() const { return m_direction; }
 
-    //    void set_direction();
+    /// @brief Updates the direction in which the StackLayout is stacked.
+    void set_direction(const DIRECTION direction)
+    {
+        if (m_direction == direction) {
+            return;
+        }
+        m_direction = direction;
+        if (relayout()) {
+            update_parent_layouts();
+        }
+    }
 
     //    void set_spacing();
 
@@ -50,7 +60,7 @@ public: // methods
         return get_child(m_items[index.get()]);
     }
 
-    /// @brief Places a new Object into the Layout.
+    /// @brief Places a new LayoutItem into the Layout.
     void add_item(std::shared_ptr<LayoutItem> widget);
 
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
@@ -74,9 +84,13 @@ protected: // methods
     {
     }
 
+    virtual bool relayout() override;
+
 private: // fields
     /// @brief Direction in which the StackLayout is stacked.
     DIRECTION m_direction;
+
+    Real m_spacing;
 
     /// @brief All items in this Layout in order.
     std::vector<Handle> m_items;

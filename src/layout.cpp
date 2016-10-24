@@ -22,7 +22,7 @@ bool Layout::has_child(const std::shared_ptr<LayoutItem>& candidate) const
     return false;
 }
 
-std::shared_ptr<LayoutItem> Layout::get_child(const Handle child_handle) const
+std::shared_ptr<LayoutItem>& Layout::get_child(const Handle child_handle) const
 {
     auto it = m_children.find(child_handle);
     if (it == m_children.end()) {

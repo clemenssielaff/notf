@@ -82,7 +82,8 @@ SOURCES += \
     src/dynamic/layout/stack_layout.cpp \
     src/core/layout_item.cpp \
     src/core/abstract_object.cpp \
-    src/core/object_manager.cpp
+    src/core/object_manager.cpp \
+    src/common/claim.cpp
 
 HEADERS += \
     include/core/application.hpp \

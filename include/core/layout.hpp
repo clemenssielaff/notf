@@ -65,10 +65,9 @@ protected: // methods
 
     virtual void redraw() override;
 
-    /// @brief Tells this LayoutItem to update its size based on the size of its children and its parents restrictions.
-    virtual bool relayout() = 0;
-
-    /* TODO: CONTINUE HERE
+    /*
+     * @brief Tells this LayoutItem to update its size based on the size of its children and its parents restrictions.
+     *
      * Layouts and Widgets need to "negotiate" the Layout.
      * First, a Widget lays a Claim.
      * The parent Layout then takes that Claim and accumulates them will all Claims from its other Widgets (in this
@@ -76,12 +75,8 @@ protected: // methods
      * It then checks, if it can accompass the Claim within its current size.
      * If it can, all is good.
      * If it cannot, it passes on the combined Claim to its parent Layout where the process is repeated.
-     * This model does not take scaling into account where a Layout might well be able to accomodate all Claims, but we
-     * would still prefer its parent Layout to update, because the scale factor of the one Widget is higher than another
-     * ...
-     * Then again, not all Layouts make use of the scale factor :-/ mmmmm
-     * Think about that.
      */
+    virtual bool relayout() = 0;
 
 private: // fields
     /// @brief All children of this Layout.

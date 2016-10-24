@@ -3,7 +3,6 @@
 #include <memory>
 #include <vector>
 
-#include "common/claim.hpp"
 #include "common/enummap.hpp"
 #include "core/component.hpp"
 #include "core/layout_item.hpp"
@@ -45,8 +44,15 @@ public: // methods
     /// If the Widget doesn't have the given Component kind, the call is ignored.
     void remove_component(Component::KIND kind);
 
-    /// @brief Updates the Layouts containting this Widget.
-    void update_layout() { LayoutItem::update_parent_layouts(); }
+    /// @brief Updates the Claim of this Widget.
+    void set_claim(const Claim claim)
+    {
+        if (claim == get_claim()) {
+            return;
+        }
+        LayoutItem::set_claim(std::move(claim));
+        update_parent_layouts();
+    }
 
     virtual void redraw() override;
 
@@ -75,9 +81,6 @@ public: // static methods
     }
 
 private: // fields
-    /// @brief The Claim of a Widget determines how much space it receives in the parent Layout.
-    Claim m_claim;
-
     /// @brief All components of this Widget.
     EnumMap<Component::KIND, std::shared_ptr<Component>> m_components;
 };
