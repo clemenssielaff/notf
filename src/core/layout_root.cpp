@@ -3,22 +3,13 @@
 #include <assert.h>
 
 #include "core/layout_item.hpp"
-#include "core/window.hpp"
 
 namespace notf {
 
-std::shared_ptr<Widget> LayoutRoot::get_widget_at(const Vector2& local_pos)
-{
-    if (has_layout()) {
-        return get_layout()->get_widget_at(local_pos);
-    }
-    return {};
-}
-
-void LayoutRoot::set_layout(std::shared_ptr<Layout> item)
+void LayoutRoot::set_item(std::shared_ptr<LayoutItem> item)
 {
     // remove the existing item first
-    if (has_layout()) {
+    if (!is_empty()) {
         const auto& children = get_children();
         assert(children.size() == 1);
         remove_child(children.begin()->first);
@@ -26,15 +17,22 @@ void LayoutRoot::set_layout(std::shared_ptr<Layout> item)
     add_child(std::move(item));
 }
 
-std::shared_ptr<Layout> LayoutRoot::get_layout() const
+std::shared_ptr<Widget> LayoutRoot::get_widget_at(const Vector2& local_pos)
 {
-    if (!has_layout()) {
+    if (is_empty()) {
+        return {};
+    }
+    return get_item()->get_widget_at(local_pos);
+}
+
+std::shared_ptr<LayoutItem> LayoutRoot::get_item() const
+{
+    if (is_empty()) {
         return {};
     }
     const auto& children = get_children();
     assert(children.size() == 1);
-    std::shared_ptr<LayoutItem> obj = children.begin()->second;
-    return std::static_pointer_cast<Layout>(obj);
+    return children.begin()->second;
 }
 
 } // namespace notf

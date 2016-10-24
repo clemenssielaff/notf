@@ -8,7 +8,6 @@
 #include "core/widget.hpp"
 #include "core/window.hpp"
 
-#include "dynamic/layout/fill_layout.hpp"
 #include "dynamic/render/sprite.hpp"
 
 using namespace notf;
@@ -33,19 +32,16 @@ int main(void)
         window = Window::create(window_info);
 
         // setup the background
-        std::shared_ptr<FillLayout> layout = FillLayout::create();
-        std::shared_ptr<LayoutRoot> root_item = window->get_root_widget();
-        root_item->set_layout(layout);
-
-        std::shared_ptr<Widget> background = Widget::create();
-        layout->set_widget(background);
+        std::shared_ptr<Widget> background_widget = Widget::create();
+        std::shared_ptr<LayoutRoot> root_layout = window->get_layout_root();
+        root_layout->set_item(background_widget);
 
         std::shared_ptr<Shader> shader = resource_manager.build_shader("sprite", "sprite.vert", "sprite.frag");
-        background->add_component(make_component<SpriteRenderer>(shader));
+        background_widget->add_component(make_component<SpriteRenderer>(shader));
 
         std::shared_ptr<TextureComponent> texture_component = make_component<TextureComponent>(TextureChannels{
             {0, resource_manager.get_texture("blue.png")}});
-        background->add_component(texture_component);
+        background_widget->add_component(texture_component);
     }
     return app.exec();
 }

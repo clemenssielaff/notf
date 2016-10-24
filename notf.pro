@@ -73,7 +73,6 @@ SOURCES += \
     src/common/transform2.cpp \
     src/dynamic/layout/flexbox_layout.cpp \
     src/core/components/shape_component.cpp \
-    src/dynamic/layout/fill_layout.cpp \
     src/common/size2i.cpp \
     src/common/size2r.cpp \
     src/scratch2.cpp \
@@ -139,7 +138,6 @@ HEADERS += \
     include/utils/smart_enabler.hpp \
     include/utils/enum_to_number.hpp \
     include/utils/unused.hpp \
-    include/dynamic/layout/fill_layout.hpp \
     include/common/size2i.hpp \
     include/common/size2r.hpp \
     include/core/layout.hpp \

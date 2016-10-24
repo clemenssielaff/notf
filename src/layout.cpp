@@ -22,7 +22,7 @@ bool Layout::has_child(const std::shared_ptr<LayoutItem>& candidate) const
     return false;
 }
 
-std::shared_ptr<LayoutItem>& Layout::get_child(const Handle child_handle) const
+std::shared_ptr<LayoutItem> Layout::get_child(const Handle child_handle) const
 {
     auto it = m_children.find(child_handle);
     if (it == m_children.end()) {
@@ -53,17 +53,6 @@ void Layout::remove_child(const Handle child_handle)
     else {
         m_children.erase(it);
         child_removed(child_handle);
-    }
-}
-
-void Layout::update_child_layouts()
-{
-    for (const auto& it : m_children) {
-        if (std::shared_ptr<Layout> layout = std::dynamic_pointer_cast<Layout>(it.second)) {
-            if (layout->relayout()) {
-                layout->update_child_layouts();
-            }
-        }
     }
 }
 

@@ -33,8 +33,10 @@ public: // methods
             return;
         }
         m_direction = direction;
-        if (relayout()) {
-            update_parent_layouts();
+        const Claim sentinel = m_claim;
+        update_claim();
+        if (sentinel != m_claim) {
+            update_parent_layout();
         }
     }
 
@@ -84,7 +86,9 @@ protected: // methods
     {
     }
 
-    virtual bool relayout() override;
+    virtual void update_claim() override;
+
+    virtual void relayout(const Size2r size) override;
 
 private: // fields
     /// @brief Direction in which the StackLayout is stacked.

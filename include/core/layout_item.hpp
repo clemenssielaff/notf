@@ -117,9 +117,9 @@ protected: // methods
     /// @param handle   Application-unique Handle of this Item.
     explicit LayoutItem(const Handle handle)
         : AbstractObject(handle)
+        , m_claim()
         , m_parent()
         , m_visibility(VISIBILITY::VISIBLE)
-        , m_claim()
         , m_size()
         , m_transform(Transform2::identity())
     {
@@ -128,19 +128,37 @@ protected: // methods
     /// @brief Shows (if possible) or hides this LayoutItem.
     void set_visible(const bool is_visible);
 
-    /// @brief Updates the Claim of this LayoutItem.
-    void set_claim(const Claim claim) { m_claim = claim; }
+    /// @brief Updates the size of this LayoutItem.
+    /// @return True iff the size of this LayoutItem was changed.
+    bool set_size(const Size2r size)
+    {
+        if (size == m_size) {
+            return false;
+        }
+        m_size = size;
+        size_changed(m_size);
+        return true;
+    }
 
-    /// @brief Propagates a layout change upwards to the first ancestor that doesn't need to change its size.
-    /// Then continues to spread down again through all children of that ancestor.
-    void update_parent_layouts();
+    /// @brief Notifies the parent Layout that the Claim of this Item has changed.
+    /// Propagates up the Layout hierarchy to the first ancestor that doesn't need to change its Claim.
+    void update_parent_layout();
 
     /// @brief Tells this LayoutItem and all of its children to redraw.
     virtual void redraw() = 0;
 
+    /// @brief Called by the parent Layout to let this Item know that its size has changed.
+    /// Layout subclasses use this method to update their Layout and child items, if required.
+    /// @param size     New size.
+    virtual void relayout(const Size2r size) = 0;
+
 protected: // static methods
-    /// @brief Allows derived classes to call set_size() on each other.
-    static void set_item_size(std::shared_ptr<LayoutItem> item, const Size2r size) { item->set_size(size); }
+    /// @brief Allows derived classes to call update_size() on each other.
+    static void update_item_size(std::shared_ptr<LayoutItem> item, const Size2r size)
+    {
+        assert(item);
+        item->relayout(size);
+    }
 
 private: // methods
     /// @brief Sets a new LayoutItem to contain this LayoutItem.
@@ -148,16 +166,6 @@ private: // methods
 
     /// @brief Removes the current parent of this LayoutItem.
     void unparent() { set_parent({}); }
-
-    /// @brief Updates the size of this LayoutItem.
-    void set_size(const Size2r size)
-    {
-        if (size == m_size) {
-            return;
-        }
-        m_size = size;
-        size_changed(m_size);
-    }
 
     /// @brief Recursive function to let all children emit visibility_changed when the parent's visibility changed.
     virtual void cascade_visibility(const VISIBILITY visibility);
@@ -171,15 +179,16 @@ private: // methods
     /// @brief Returns the LayoutItem's transformation in parent space.
     Transform2 get_parent_transform() const { return m_transform; }
 
+protected: // fields
+    /// @brief The Claim of a LayoutItem determines how much space it receives in the parent Layout.
+    Claim m_claim;
+
 private: // fields
     /// @brief The parent LayoutItem, may be invalid.
     std::weak_ptr<Layout> m_parent;
 
     /// @brief Visibility state of this LayoutItem.
     VISIBILITY m_visibility;
-
-    /// @brief The Claim of a LayoutItem determines how much space it receives in the parent Layout.
-    Claim m_claim;
 
     /// @brief Unscaled size of this LayoutItem in pixels.
     Size2r m_size;

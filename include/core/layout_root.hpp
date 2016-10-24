@@ -15,13 +15,10 @@ public: // methods
     /// @brief Returns the Window owning this LayoutRoot.
     std::shared_ptr<Window> get_window() const { return m_window.lock(); }
 
-    virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
-
-    /// Checks, if there is a Layout contained in this root LayoutItem.
-    bool has_layout() const { return !is_empty(); }
-
     /// @brief Changes the internal Layout of the LayoutRoot.
-    void set_layout(std::shared_ptr<Layout> item);
+    void set_item(std::shared_ptr<LayoutItem> item);
+
+    virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
 
 protected: // methods
     /// @brief Value Constructor.
@@ -33,12 +30,18 @@ protected: // methods
     {
     }
 
-    /// @brief The Layout Root does not relayout.
-    virtual bool relayout() override { return false; }
+    virtual void update_claim() override {}
+
+    virtual void relayout(const Size2r size) override
+    {
+        if (!is_empty()) {
+            update_item_size(get_item(), size);
+        }
+    }
 
 private: // methods
     /// @brief Returns the Layout contained in this LayoutRoot, may be invalid.
-    std::shared_ptr<Layout> get_layout() const;
+    std::shared_ptr<LayoutItem> get_item() const;
 
 private: // static methods for Window
     /// @brief Factory function to create a new LayoutRoot.

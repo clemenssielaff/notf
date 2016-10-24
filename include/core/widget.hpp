@@ -50,22 +50,13 @@ public: // methods
         if (claim == get_claim()) {
             return;
         }
-        LayoutItem::set_claim(std::move(claim));
-        update_parent_layouts();
+        m_claim = std::move(claim);
+        update_parent_layout();
     }
 
     virtual void redraw() override;
 
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
-
-protected: // methods
-    /// @brief Value Constructor.
-    /// @param handle   Handle of this Widget.
-    explicit Widget(const Handle handle)
-        : LayoutItem(handle)
-        , m_components()
-    {
-    }
 
 public: // static methods
     /// @brief Factory function to create a new Widget instance.
@@ -79,6 +70,17 @@ public: // static methods
     {
         return create_item<Widget>(handle);
     }
+
+protected: // methods
+    /// @brief Value Constructor.
+    /// @param handle   Handle of this Widget.
+    explicit Widget(const Handle handle)
+        : LayoutItem(handle)
+        , m_components()
+    {
+    }
+
+    virtual void relayout(const Size2r size) override { set_size(size); }
 
 private: // fields
     /// @brief All components of this Widget.

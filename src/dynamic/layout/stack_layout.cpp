@@ -15,7 +15,7 @@ std::shared_ptr<Widget> StackLayout::get_widget_at(const Vector2& /*local_pos*/)
     return {};
 }
 
-bool StackLayout::relayout()
+void StackLayout::update_claim()
 {
     // construct the new claim
     Claim new_claim;
@@ -36,22 +36,12 @@ bool StackLayout::relayout()
             new_claim.get_vertical().add_offset((m_items.size() - 1) * m_spacing);
         }
     }
+    m_claim = new_claim;
+}
 
-    /* TODO: CONTINUE HERE
-     *
-     * There is little use in changing widget size or child layout size right after updating the claim.
-     * Instead, update_parent_layout() (or whatever) should be called update_claim().
-     * If THAT function returns false, meaning the Claim of parent Layout X did not change,
-     * THEN we call X->update_child_layouts.
-     */
-
-    set_item_size(get_child(BAD_HANDLE), {0, 0});
-
-    if (new_claim == get_claim()) {
-        return false;
-    }
-    set_claim(new_claim);
-    return true;
+void StackLayout::relayout(const Size2r size)
+{
+    // TODO: CONTINUE HERE
 }
 
 } // namespace notf

@@ -107,6 +107,12 @@ public: // class
                     && m_priority == other.m_priority);
         }
 
+        /// @brief Inequality operator.
+        bool operator!=(const Direction& other) const
+        {
+            return !(*this == other);
+        }
+
         /// @brief In-place addition operator for Directions.
         Direction& operator+=(const Direction& other)
         {
@@ -124,7 +130,7 @@ public: // class
             m_preferred = max(m_preferred, other.m_preferred);
             m_min = max(m_min, other.m_min);
             m_max = max(m_max, other.m_max);
-            m_scale_factor+= max(m_scale_factor, other.m_scale_factor);
+            m_scale_factor += max(m_scale_factor, other.m_scale_factor);
             m_priority = max(m_priority, other.m_priority);
             return *this;
         }
@@ -185,6 +191,12 @@ private: // class
         bool operator==(const Ratio& other) const
         {
             return (approx(m_width, other.m_width) && approx(m_height, other.m_height));
+        }
+
+        /// @brief Inequality operator.
+        bool operator!=(const Ratio& other) const
+        {
+            return !(*this == other);
         }
 
         /// @brief In-place, horizontal addition operator for Directions.
@@ -250,6 +262,12 @@ public: // methods
         return (m_horizontal == other.m_horizontal
                 && m_vertical == other.m_vertical
                 && m_ratios == other.m_ratios);
+    }
+
+    /// @brief Inequality operator.
+    bool operator!=(const Claim& other) const
+    {
+        return !(*this == other);
     }
 
     /// @brief In-place, horizontal addition operator for Claims.

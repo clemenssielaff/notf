@@ -72,16 +72,19 @@ void LayoutItem::set_visible(const bool is_visible)
     }
 }
 
-void LayoutItem::update_parent_layouts()
+void LayoutItem::update_parent_layout()
 {
+    Claim sentinel;
     std::shared_ptr<Layout> parent = m_parent.lock();
     while (parent) {
-        if (parent->relayout()) {
-            parent = parent->m_parent.lock();
+        sentinel = parent->get_claim();
+        parent->update_claim();
+        if (sentinel == parent->get_claim()) {
+            parent->relayout(parent->get_size());
+            parent.reset();
         }
         else {
-            parent->update_child_layouts();
-            parent.reset();
+            parent = parent->m_parent.lock();
         }
     }
 }
