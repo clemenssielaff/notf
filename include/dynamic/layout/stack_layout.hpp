@@ -63,7 +63,8 @@ public: // methods
     }
 
     /// @brief Places a new LayoutItem into the Layout.
-    void add_item(std::shared_ptr<LayoutItem> widget);
+    /// @param item     Item to place at the end of the Layout. If it is already a child, it is moved to last place.
+    void add_item(std::shared_ptr<LayoutItem> item);
 
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
 

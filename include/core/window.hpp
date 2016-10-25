@@ -65,7 +65,8 @@ struct WindowInfo {
 
     /// @brief Background color of the Window.
 //    Color clear_color = {0.2f, 0.3f, 0.3f, 1.0f}; // sensible
-    Color clear_color = {1.0f, 0.0f, 1.0f, 1.0f}; // PINK!!!!
+//    Color clear_color = {1.0f, 0.0f, 1.0f, 1.0f}; // PINK!!!!
+    Color clear_color = {0.0f, 0.0f, 0.0f, 1.0f}; // black
 
     /// @brief Window title.
     std::string title = "Window";

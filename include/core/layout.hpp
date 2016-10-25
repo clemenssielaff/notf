@@ -65,6 +65,9 @@ protected: // methods
      * @brief Tells this LayoutItem to update its Claim based on the combined Claims of its children.
      *
      * Layouts and Widgets need to "negotiate" the Layout.
+     * Whenever a Widget changes its Claim, the parent Layout has to see if it needs to update its Claim accordingly.
+     * If its Claim changes, its respective parent might need to update as well - up to the first Layout that does not
+     * update its Claim (at the latest, the LayoutRoot never updates its Claim).
      */
     virtual void update_claim() = 0;
 

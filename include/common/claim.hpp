@@ -102,7 +102,7 @@ public: // class
         {
             return (approx(m_preferred, other.m_preferred)
                     && approx(m_min, other.m_min)
-                    && approx(m_max, other.m_max)
+                    && (approx(m_max, other.m_max) || (is_inf(m_max) && is_inf(other.m_max)))
                     && approx(m_scale_factor, other.m_scale_factor)
                     && m_priority == other.m_priority);
         }

@@ -32,12 +32,7 @@ protected: // methods
 
     virtual void update_claim() override {}
 
-    virtual void relayout(const Size2r size) override
-    {
-        if (!is_empty()) {
-            update_item_size(get_item(), size);
-        }
-    }
+    virtual void relayout(const Size2r size) override;
 
 private: // methods
     /// @brief Returns the Layout contained in this LayoutRoot, may be invalid.

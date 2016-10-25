@@ -75,13 +75,15 @@ void SpriteRenderer::setup_window(const Window& window)
 
 void SpriteRenderer::render(const Widget& widget)
 {
-    Size2i canvas_size = widget.get_window()->get_canvas_size();
-//    Size2 widget_size = widget.get_
+//    const Size2i canvas_size = widget.get_window()->get_canvas_size();
+    const Transform2 transform = widget.get_transform(SPACE::WINDOW);
+    const Vector2 translation = transform.get_translation();
+    const Size2r widget_size = widget.get_size();
 
     glm::mat4 model;
-    glm::vec2 position(0, 0);
+    glm::vec2 position(translation.x, translation.y);
     GLfloat rotate = 0.0f;
-    glm::vec2 size(canvas_size.width, canvas_size.height);
+    glm::vec2 size(widget_size.width, widget_size.height);
     glm::vec3 color(1.0f);
 
     model = glm::translate(model, glm::vec3(position, 0.0f)); // First translate (transformations are: scale happens first, then rotation and then finall translation happens; reversed order)

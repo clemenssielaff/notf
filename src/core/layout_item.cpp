@@ -74,17 +74,23 @@ void LayoutItem::set_visible(const bool is_visible)
 
 void LayoutItem::update_parent_layout()
 {
+    set_size({}); // invalidate // TODO: this is all a big hack!
+
     Claim sentinel;
     std::shared_ptr<Layout> parent = m_parent.lock();
     while (parent) {
         sentinel = parent->get_claim();
         parent->update_claim();
-        if (sentinel == parent->get_claim()) {
+
+        // if the parent Layout's Claim changed, we also need to update its parent
+        if (sentinel != parent->get_claim()) {
+            parent = parent->m_parent.lock();
+        }
+        // ... otherwise, we have reached the end of the propagation through the ancestry
+        // and continue to relayout all children from the parent downwards
+        else {
             parent->relayout(parent->get_size());
             parent.reset();
-        }
-        else {
-            parent = parent->m_parent.lock();
         }
     }
 }

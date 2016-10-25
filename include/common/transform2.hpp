@@ -30,6 +30,12 @@ private: // class
             return values[col];
         }
 
+        /// @brief Equality operator.
+        bool operator==(const Row& other) const { return values == other.values; }
+
+        /// @brief Inequality operator.
+        bool operator!=(const Row& other) const { return values != other.values; }
+
     private: // methods for Transform2
         /// @brief Write access to the Row's data.
         Real& operator[](unsigned char col)
@@ -105,6 +111,9 @@ public: // methods
 
     //  INSPECTION  ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    /// @brief Returns the translation part of this Transform.
+    Vector2 get_translation() const { return {rows[0][2], rows[1][2]}; }
+
     /// @brief Read access to the Matrix.
     const Row& operator[](unsigned char row) const
     {
@@ -138,6 +147,12 @@ public: // methods
         std::swap((*this).rows, temp.rows);
         return *this;
     }
+
+    /// @brief Equality operator.
+    bool operator==(const Transform2& other) const { return rows == other.rows; }
+
+    /// @brief Inequality operator.
+    bool operator!=(const Transform2& other) const { return rows != other.rows; }
 
 private: // methods
     /// @brief Write access to the Matrix.

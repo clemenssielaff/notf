@@ -9,6 +9,7 @@
 #include "core/window.hpp"
 
 #include "dynamic/render/sprite.hpp"
+#include "dynamic/layout/stack_layout.hpp"
 
 using namespace notf;
 
@@ -18,10 +19,12 @@ int main(void)
     Application& app = Application::get_instance();
     std::shared_ptr<Window> window;
     {
+        // resource manager
         ResourceManager& resource_manager = app.get_resource_manager();
         resource_manager.set_texture_directory("/home/clemens/code/notf/res/textures");
         resource_manager.set_shader_directory("/home/clemens/code/notf/res/shaders");
 
+        // window
         WindowInfo window_info;
         window_info.width = 800;
         window_info.height = 600;
@@ -31,17 +34,39 @@ int main(void)
         window_info.opengl_profile = WindowInfo::PROFILE::CORE;
         window = Window::create(window_info);
 
-        // setup the background
-        std::shared_ptr<Widget> background_widget = Widget::create();
-        std::shared_ptr<LayoutRoot> root_layout = window->get_layout_root();
-        root_layout->set_item(background_widget);
+        // components
+        std::shared_ptr<SpriteRenderer> sprite_renderer;
+//        std::shared_ptr<TextureComponent> blue_texture;
+        std::shared_ptr<TextureComponent> red_texture;
+        std::shared_ptr<TextureComponent> green_texture;
+        {
+            std::shared_ptr<Shader> shader = resource_manager.build_shader("sprite", "sprite.vert", "sprite.frag");
+            sprite_renderer = make_component<SpriteRenderer>(shader);
+//            blue_texture = make_component<TextureComponent>(TextureChannels{{0, resource_manager.get_texture("blue.png")}});
+            red_texture = make_component<TextureComponent>(TextureChannels{{0, resource_manager.get_texture("red.png")}});
+            green_texture = make_component<TextureComponent>(TextureChannels{{0, resource_manager.get_texture("green.png")}});
+        }
 
-        std::shared_ptr<Shader> shader = resource_manager.build_shader("sprite", "sprite.vert", "sprite.frag");
-        background_widget->add_component(make_component<SpriteRenderer>(shader));
+        // background (blue)
+//        std::shared_ptr<Widget> background_widget = Widget::create();
+//        background_widget->add_component(sprite_renderer);
+//        background_widget->add_component(blue_texture);
 
-        std::shared_ptr<TextureComponent> texture_component = make_component<TextureComponent>(TextureChannels{
-            {0, resource_manager.get_texture("blue.png")}});
-        background_widget->add_component(texture_component);
+        // left widget (green)
+        std::shared_ptr<Widget> left_widget = Widget::create();
+        left_widget->add_component(sprite_renderer);
+        left_widget->add_component(green_texture);
+
+        // right widget (red)
+        std::shared_ptr<Widget> right_widget = Widget::create();
+        right_widget->add_component(sprite_renderer);
+        right_widget->add_component(red_texture);
+
+        // layout
+        std::shared_ptr<StackLayout> stack_layout = StackLayout::create(StackLayout::DIRECTION::LEFT_TO_RIGHT);
+        window->get_layout_root()->set_item(stack_layout);
+        stack_layout->add_item(left_widget);
+        stack_layout->add_item(right_widget);
     }
     return app.exec();
 }

@@ -112,6 +112,10 @@ public: // signals
     /// @param New size.
     Signal<Size2r> size_changed;
 
+    /// @brief Emitted when this LayoutItem' transformation changed.
+    /// @param New local transformation.
+    Signal<Transform2> transform_changed;
+
 protected: // methods
     /// @brief Value Constructor.
     /// @param handle   Application-unique Handle of this Item.
@@ -129,15 +133,23 @@ protected: // methods
     void set_visible(const bool is_visible);
 
     /// @brief Updates the size of this LayoutItem.
-    /// @return True iff the size of this LayoutItem was changed.
     bool set_size(const Size2r size)
     {
-        if (size == m_size) {
-            return false;
+        if (size != m_size) {
+            m_size = size;
+            size_changed(m_size);
+            return true;
         }
-        m_size = size;
-        size_changed(m_size);
-        return true;
+        return false;
+    }
+
+    /// @brief Updates the size of this LayoutItem.
+    void set_transform(const Transform2 transform)
+    {
+        if (transform != m_transform) {
+            m_transform = transform;
+            transform_changed(m_transform);
+        }
     }
 
     /// @brief Notifies the parent Layout that the Claim of this Item has changed.
@@ -153,11 +165,20 @@ protected: // methods
     virtual void relayout(const Size2r size) = 0;
 
 protected: // static methods
-    /// @brief Allows derived classes to call update_size() on each other.
-    static void update_item_size(std::shared_ptr<LayoutItem> item, const Size2r size)
+    /// @brief Allows derived classes to call set_size() on each other.
+    static void set_item_size(std::shared_ptr<LayoutItem> item, const Size2r size)
     {
         assert(item);
-        item->relayout(size);
+        if(item->set_size(size)){
+            item->relayout(size); // TODO: this is so weird...
+        }
+    }
+
+    /// @brief Allows derived classes to call set_size() on each other.
+    static void set_item_transform(std::shared_ptr<LayoutItem> item, const Transform2 transform)
+    {
+        assert(item);
+        item->set_transform(transform);
     }
 
 private: // methods
