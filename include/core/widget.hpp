@@ -47,16 +47,14 @@ public: // methods
     /// @brief Updates the Claim of this Widget.
     void set_claim(const Claim claim)
     {
-        if (claim == get_claim()) {
-            return;
-        }
-        m_claim = std::move(claim);
-        update_parent_layout();
+        _set_claim(std::move(claim));
+        _set_dirty();
     }
 
-    virtual void redraw() override;
-
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
+
+    /// @brief Tells this Widget to redraw.
+    void redraw() { _redraw(); }
 
 public: // static methods
     /// @brief Factory function to create a new Widget instance.
@@ -68,7 +66,7 @@ public: // static methods
     /// If no handle is passed, a new one is created.
     static std::shared_ptr<Widget> create(Handle handle = BAD_HANDLE)
     {
-        return create_item<Widget>(handle);
+        return _create_item<Widget>(handle);
     }
 
 protected: // methods
@@ -80,7 +78,9 @@ protected: // methods
     {
     }
 
-    virtual void relayout(const Size2r size) override { set_size(size); }
+    virtual void _redraw() override;
+
+    virtual void _relayout(const Size2r) override {}
 
 private: // fields
     /// @brief All components of this Widget.

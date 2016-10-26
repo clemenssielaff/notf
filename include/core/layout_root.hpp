@@ -30,13 +30,13 @@ protected: // methods
     {
     }
 
-    virtual void update_claim() override {}
+    virtual void _update_claim() override {}
 
-    virtual void relayout(const Size2r size) override;
+    virtual void _relayout(const Size2r size) override;
 
 private: // methods
     /// @brief Returns the Layout contained in this LayoutRoot, may be invalid.
-    std::shared_ptr<LayoutItem> get_item() const;
+    std::shared_ptr<LayoutItem> _get_item() const;
 
 private: // static methods for Window
     /// @brief Factory function to create a new LayoutRoot.
@@ -44,7 +44,7 @@ private: // static methods for Window
     /// @param window   Window owning this LayoutRoot.
     static std::shared_ptr<LayoutRoot> create(Handle handle, std::shared_ptr<Window> window)
     {
-        return create_item<LayoutRoot>(handle, std::move(window));
+        return _create_item<LayoutRoot>(handle, std::move(window));
     }
 
 private: // fields

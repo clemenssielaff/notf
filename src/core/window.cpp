@@ -7,9 +7,9 @@
 #include "common/log.hpp"
 #include "core/application.hpp"
 #include "core/glfw_wrapper.hpp"
-#include "core/object_manager.hpp"
 #include "core/key_event.hpp"
 #include "core/layout_root.hpp"
+#include "core/object_manager.hpp"
 #include "core/render_manager.hpp"
 #include "core/widget.hpp"
 #include "graphics/gl_errors.hpp"
@@ -75,7 +75,7 @@ void Window::close()
         log_trace << "Closing Window \"" << m_title << "\"";
         on_close(*this);
         m_root_widget.reset();
-        Application::get_instance().unregister_window(this);
+        Application::get_instance()._unregister_window(this);
         m_glfw_window.reset(nullptr);
     }
 }
@@ -87,25 +87,6 @@ std::shared_ptr<Window> Window::create(const WindowInfo& info)
     log_trace << "Assigned RootLayout with handle: " << window->m_root_widget->get_handle()
               << " to Window \"" << window->get_title() << "\"";
     return window;
-}
-
-void Window::update()
-{
-    assert(m_glfw_window);
-
-    // make the window current
-    Application::get_instance().set_current_window(this);
-
-    // update the viewport buffer
-    int width, height;
-    glfwGetFramebufferSize(m_glfw_window.get(), &width, &height);
-    glViewport(0, 0, width, height);
-
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    m_root_widget->redraw();
-    m_render_manager->render(*this);
-    glfwSwapBuffers(m_glfw_window.get());
 }
 
 Window::Window(const WindowInfo& info)
@@ -169,7 +150,7 @@ Window::Window(const WindowInfo& info)
     m_glfw_window.reset(glfwCreateWindow(info.width, info.height, m_title.c_str(), nullptr, nullptr));
 
     // register with the application (if the GLFW window creation failed, this call will exit the application)
-    app.register_window(this);
+    app._register_window(this);
 
     // setup OpenGl
     glfwMakeContextCurrent(m_glfw_window.get());
@@ -182,6 +163,25 @@ Window::Window(const WindowInfo& info)
         log_info << "Created Window '" << m_title << "' "
                  << "using OpenGl version: " << glGetString(GL_VERSION);
     }
+}
+
+void Window::_update()
+{
+    assert(m_glfw_window);
+
+    // make the window current
+    Application::get_instance()._set_current_window(this);
+
+    // update the viewport buffer
+    int width, height;
+    glfwGetFramebufferSize(m_glfw_window.get(), &width, &height);
+    glViewport(0, 0, width, height);
+
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    m_root_widget->_redraw();
+    m_render_manager->render(*this);
+    glfwSwapBuffers(m_glfw_window.get());
 }
 
 } // namespace notf

@@ -80,9 +80,9 @@ SOURCES += \
     src/core/layout_root.cpp \
     src/dynamic/layout/stack_layout.cpp \
     src/core/layout_item.cpp \
-    src/core/abstract_object.cpp \
     src/core/object_manager.cpp \
-    src/common/claim.cpp
+    src/common/claim.cpp \
+    src/core/object.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -146,9 +146,9 @@ HEADERS += \
     include/dynamic/layout/stack_layout.hpp \
     include/common/index.hpp \
     include/core/layout_item.hpp \
-    include/core/abstract_object.hpp \
     include/core/object_manager.hpp \
-    include/common/claim.hpp
+    include/common/claim.hpp \
+    include/core/object.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

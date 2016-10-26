@@ -39,7 +39,7 @@ std::shared_ptr<const LayoutRoot> LayoutItem::get_root() const
     return std::dynamic_pointer_cast<const LayoutRoot>(it);
 }
 
-void LayoutItem::set_visible(const bool is_visible)
+void LayoutItem::_set_visible(const bool is_visible)
 {
     // ignore non-changes
     if ((is_visible && m_visibility == VISIBILITY::VISIBLE) || (!is_visible && m_visibility == VISIBILITY::INVISIBLE)) {
@@ -52,50 +52,47 @@ void LayoutItem::set_visible(const bool is_visible)
         if (std::shared_ptr<const Layout> parent = get_parent()) {
             const VISIBILITY parent_visibility = parent->get_visibility();
             if (parent_visibility == VISIBILITY::INVISIBLE) {
-                cascade_visibility(VISIBILITY::HIDDEN);
+                _cascade_visibility(VISIBILITY::HIDDEN);
             }
             else {
-                cascade_visibility(parent_visibility);
+                _cascade_visibility(parent_visibility);
             }
         }
         else {
-            cascade_visibility(VISIBILITY::UNROOTED);
+            _cascade_visibility(VISIBILITY::UNROOTED);
         }
     }
     else {
-        cascade_visibility(VISIBILITY::INVISIBLE);
+        _cascade_visibility(VISIBILITY::INVISIBLE);
     }
 
     // redraw if the object just became visible
     if (previous_visibility != m_visibility && m_visibility == VISIBILITY::VISIBLE) {
-        redraw();
+        _redraw();
     }
 }
 
-void LayoutItem::update_parent_layout()
+void LayoutItem::_update_parent_layout()
 {
-    set_size({}); // invalidate // TODO: this is all a big hack!
-
-    Claim sentinel;
     std::shared_ptr<Layout> parent = m_parent.lock();
     while (parent) {
-        sentinel = parent->get_claim();
-        parent->update_claim();
+        parent->_update_claim();
 
         // if the parent Layout's Claim changed, we also need to update its parent
-        if (sentinel != parent->get_claim()) {
+        if (parent->_is_dirty()) {
             parent = parent->m_parent.lock();
+            assert(parent); // the only LayoutItem without a parent is the RootLayout - and that shouln't be dirty
         }
         // ... otherwise, we have reached the end of the propagation through the ancestry
         // and continue to relayout all children from the parent downwards
         else {
-            parent->relayout(parent->get_size());
+            parent->_relayout(parent->get_size());
             parent.reset();
         }
     }
 }
 
-void LayoutItem::set_parent(std::shared_ptr<Layout> parent)
+void LayoutItem::_set_parent(std::shared_ptr<Layout> parent)
 {
     // do nothing if the new parent is the same as the old (or both are invalid)
     std::shared_ptr<Layout> old_parent = m_parent.lock();
@@ -112,7 +109,7 @@ void LayoutItem::set_parent(std::shared_ptr<Layout> parent)
 
     // update your parent
     if (old_parent) {
-        old_parent->remove_child(get_handle());
+        old_parent->_remove_child(get_handle());
     }
 
     m_parent = parent;
@@ -121,23 +118,23 @@ void LayoutItem::set_parent(std::shared_ptr<Layout> parent)
     // update visibility
     if (!parent) {
         if (m_visibility != VISIBILITY::INVISIBLE) {
-            cascade_visibility(VISIBILITY::UNROOTED);
+            _cascade_visibility(VISIBILITY::UNROOTED);
         }
     }
     else {
         VISIBILITY parent_visibility = parent->get_visibility();
         if (parent_visibility == VISIBILITY::INVISIBLE) {
             if (m_visibility != VISIBILITY::INVISIBLE) {
-                cascade_visibility(VISIBILITY::HIDDEN);
+                _cascade_visibility(VISIBILITY::HIDDEN);
             }
         }
         else if (m_visibility != VISIBILITY::INVISIBLE) {
-            cascade_visibility(parent_visibility);
+            _cascade_visibility(parent_visibility);
         }
     }
 }
 
-void LayoutItem::cascade_visibility(const VISIBILITY visibility)
+void LayoutItem::_cascade_visibility(const VISIBILITY visibility)
 {
     // update your own visibility
     if (visibility == m_visibility) {
@@ -147,18 +144,18 @@ void LayoutItem::cascade_visibility(const VISIBILITY visibility)
     visibility_changed(m_visibility);
 }
 
-void LayoutItem::get_window_transform(Transform2& result) const
+void LayoutItem::_get_window_transform(Transform2& result) const
 {
     if (std::shared_ptr<const Layout> parent = get_parent()) {
-        parent->get_window_transform(result);
+        parent->_get_window_transform(result);
     }
     result = m_transform * result;
 }
 
-Transform2 LayoutItem::get_screen_transform() const
+Transform2 LayoutItem::_get_screen_transform() const
 {
     log_critical << "get_transform(SPACE::SCREEN) is not emplemented yet";
-    return get_parent_transform();
+    return _get_parent_transform();
 }
 
 } // namespace notf

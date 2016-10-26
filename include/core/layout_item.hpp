@@ -8,7 +8,7 @@
 #include "common/signal.hpp"
 #include "common/size2r.hpp"
 #include "common/transform2.hpp"
-#include "core/abstract_object.hpp"
+#include "core/object.hpp"
 
 namespace notf {
 
@@ -38,7 +38,7 @@ enum class SPACE : unsigned char {
  *
  * Both Widget and all Layout subclasses inherit from it.
  */
-class LayoutItem : public AbstractObject, public Signaler<LayoutItem> {
+class LayoutItem : public Object, public Signaler<LayoutItem> {
 
     friend class Layout;
 
@@ -82,15 +82,15 @@ public: // methods
         Transform2 result = Transform2::identity();
         switch (space) {
         case SPACE::WINDOW:
-            get_window_transform(result);
+            _get_window_transform(result);
             break;
 
         case SPACE::SCREEN:
-            result = get_screen_transform();
+            result = _get_screen_transform();
             break;
 
         case SPACE::PARENT:
-            result = get_parent_transform();
+            result = _get_parent_transform();
             break;
 
         default:
@@ -120,31 +120,29 @@ protected: // methods
     /// @brief Value Constructor.
     /// @param handle   Application-unique Handle of this Item.
     explicit LayoutItem(const Handle handle)
-        : AbstractObject(handle)
-        , m_claim()
+        : Object(handle)
         , m_parent()
         , m_visibility(VISIBILITY::VISIBLE)
+        , m_claim()
         , m_size()
         , m_transform(Transform2::identity())
     {
     }
 
     /// @brief Shows (if possible) or hides this LayoutItem.
-    void set_visible(const bool is_visible);
+    void _set_visible(const bool is_visible);
 
     /// @brief Updates the size of this LayoutItem.
-    bool set_size(const Size2r size)
+    void _set_size(const Size2r size)
     {
         if (size != m_size) {
             m_size = size;
             size_changed(m_size);
-            return true;
         }
-        return false;
     }
 
-    /// @brief Updates the size of this LayoutItem.
-    void set_transform(const Transform2 transform)
+    /// @brief Updates the transformation.
+    void _set_transform(const Transform2 transform)
     {
         if (transform != m_transform) {
             m_transform = transform;
@@ -152,57 +150,65 @@ protected: // methods
         }
     }
 
+    /// @brief Updates the Claim and triggers.
+    void _set_claim(const Claim claim)
+    {
+        if (claim != m_claim) {
+            m_claim = std::move(claim);
+            _set_dirty();
+        }
+    }
+
+    /// @brief A dirty LayoutItem changed its Claim but did not have its size updated by its parent Layout.
+    void _set_dirty() { m_size.invalidate(); }
+
+    /// @brief Dirty LayoutItems require their parent to update their size.
+    bool _is_dirty() const { return !m_size.is_valid(); }
+
     /// @brief Notifies the parent Layout that the Claim of this Item has changed.
     /// Propagates up the Layout hierarchy to the first ancestor that doesn't need to change its Claim.
-    void update_parent_layout();
-
-    /// @brief Tells this LayoutItem and all of its children to redraw.
-    virtual void redraw() = 0;
+    void _update_parent_layout();
 
     /// @brief Called by the parent Layout to let this Item know that its size has changed.
     /// Layout subclasses use this method to update their Layout and child items, if required.
     /// @param size     New size.
-    virtual void relayout(const Size2r size) = 0;
+    virtual void _relayout(const Size2r size) = 0;
+
+    /// @brief Tells this LayoutItem and all of its children to redraw.
+    virtual void _redraw() = 0;
 
 protected: // static methods
-    /// @brief Allows derived classes to call set_size() on each other.
-    static void set_item_size(std::shared_ptr<LayoutItem> item, const Size2r size)
+    /// @brief Allows an update of a LayoutItem from all other LayoutItem subclasses.
+    /// @param item          LayoutItem to update.
+    /// @param size          New size of the item.
+    /// @param transform     New transform of the item.
+    static void _update_item(std::shared_ptr<LayoutItem> item, const Size2r size, const Transform2 transform)
     {
         assert(item);
-        if(item->set_size(size)){
-            item->relayout(size); // TODO: this is so weird...
-        }
-    }
-
-    /// @brief Allows derived classes to call set_size() on each other.
-    static void set_item_transform(std::shared_ptr<LayoutItem> item, const Transform2 transform)
-    {
-        assert(item);
-        item->set_transform(transform);
+        assert(size.is_valid());
+        item->_set_size(size);
+        item->_set_transform(transform);
+        item->_relayout(size);
     }
 
 private: // methods
     /// @brief Sets a new LayoutItem to contain this LayoutItem.
-    void set_parent(std::shared_ptr<Layout> parent);
+    void _set_parent(std::shared_ptr<Layout> parent);
 
     /// @brief Removes the current parent of this LayoutItem.
-    void unparent() { set_parent({}); }
+    void _unparent() { _set_parent({}); }
 
     /// @brief Recursive function to let all children emit visibility_changed when the parent's visibility changed.
-    virtual void cascade_visibility(const VISIBILITY visibility);
+    virtual void _cascade_visibility(const VISIBILITY visibility);
 
     /// @brief Recursive implementation to produce the LayoutItem's transformation in window space.
-    void get_window_transform(Transform2& result) const;
+    void _get_window_transform(Transform2& result) const;
 
     /// @brief Returns the LayoutItem's transformation in screen space.
-    Transform2 get_screen_transform() const;
+    Transform2 _get_screen_transform() const;
 
     /// @brief Returns the LayoutItem's transformation in parent space.
-    Transform2 get_parent_transform() const { return m_transform; }
-
-protected: // fields
-    /// @brief The Claim of a LayoutItem determines how much space it receives in the parent Layout.
-    Claim m_claim;
+    Transform2 _get_parent_transform() const { return m_transform; }
 
 private: // fields
     /// @brief The parent LayoutItem, may be invalid.
@@ -210,6 +216,9 @@ private: // fields
 
     /// @brief Visibility state of this LayoutItem.
     VISIBILITY m_visibility;
+
+    /// @brief The Claim of a LayoutItem determines how much space it receives in the parent Layout.
+    Claim m_claim;
 
     /// @brief Unscaled size of this LayoutItem in pixels.
     Size2r m_size;

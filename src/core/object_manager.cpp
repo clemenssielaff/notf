@@ -3,7 +3,7 @@
 #include <assert.h>
 
 #include "common/log.hpp"
-#include "core/abstract_object.hpp"
+#include "core/object.hpp"
 
 namespace notf {
 
@@ -14,7 +14,7 @@ ObjectManager::ObjectManager(const size_t reserve)
     m_object.reserve(reserve);
 }
 
-Handle ObjectManager::get_next_handle()
+Handle ObjectManager::_get_next_handle()
 {
     Handle handle;
     do {
@@ -23,7 +23,7 @@ Handle ObjectManager::get_next_handle()
     return handle;
 }
 
-bool ObjectManager::register_object(std::shared_ptr<AbstractObject> object)
+bool ObjectManager::_register_object(std::shared_ptr<Object> object)
 {
     // don't register the Object if its handle is already been used
     const Handle handle = object->get_handle();
@@ -37,7 +37,7 @@ bool ObjectManager::register_object(std::shared_ptr<AbstractObject> object)
     return true;
 }
 
-void ObjectManager::release_object(const Handle handle)
+void ObjectManager::_release_object(const Handle handle)
 {
     auto it = m_object.find(handle);
     if (it == m_object.end()) {
@@ -49,21 +49,21 @@ void ObjectManager::release_object(const Handle handle)
     }
 }
 
-std::shared_ptr<AbstractObject> ObjectManager::get_abstract_object(const Handle handle) const
+std::shared_ptr<Object> ObjectManager::_get_abstract_object(const Handle handle) const
 {
     auto it = m_object.find(handle);
     if (it == m_object.end()) {
         log_warning << "Requested Object with unknown handle:" << handle;
         return {};
     }
-    std::shared_ptr<AbstractObject> result = it->second.lock();
+    std::shared_ptr<Object> result = it->second.lock();
     if (!result) {
         log_warning << "Encountered expired Object with handle:" << handle;
     }
     return result;
 }
 
-void ObjectManager::wrong_type_warning(const std::string& type_name, const Handle handle) const
+void ObjectManager::_wrong_type_warning(const std::string& type_name, const Handle handle) const
 {
 #if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_WARNING
     auto it = m_object.find(handle);

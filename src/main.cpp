@@ -32,6 +32,7 @@ int main(void)
         window_info.opengl_version_minor = 3;
         window_info.opengl_remove_deprecated = true;
         window_info.opengl_profile = WindowInfo::PROFILE::CORE;
+        window_info.enable_vsync = true;
         window = Window::create(window_info);
 
         // components

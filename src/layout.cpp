@@ -8,7 +8,7 @@ Layout::~Layout()
 {
     // explicitly unparent all children so they can send the `parent_changed` signal
     for (auto& it : m_children) {
-        it.second->unparent();
+        it.second->_unparent();
     }
 }
 
@@ -22,7 +22,7 @@ bool Layout::has_child(const std::shared_ptr<LayoutItem>& candidate) const
     return false;
 }
 
-std::shared_ptr<LayoutItem> Layout::get_child(const Handle child_handle) const
+std::shared_ptr<LayoutItem> Layout::_get_child(const Handle child_handle) const
 {
     auto it = m_children.find(child_handle);
     if (it == m_children.end()) {
@@ -32,19 +32,19 @@ std::shared_ptr<LayoutItem> Layout::get_child(const Handle child_handle) const
     return it->second;
 }
 
-void Layout::add_child(std::shared_ptr<LayoutItem> child_object)
+void Layout::_add_child(std::shared_ptr<LayoutItem> child_object)
 {
     const Handle child_handle = child_object->get_handle();
     if (m_children.count(child_handle)) {
         log_warning << "Did not add existing child " << child_handle << " to LayoutItem " << get_handle();
         return;
     }
-    child_object->set_parent(std::static_pointer_cast<Layout>(shared_from_this()));
+    child_object->_set_parent(std::static_pointer_cast<Layout>(shared_from_this()));
     m_children.emplace(std::make_pair(child_handle, std::move(child_object)));
     child_added(child_handle);
 }
 
-void Layout::remove_child(const Handle child_handle)
+void Layout::_remove_child(const Handle child_handle)
 {
     auto it = m_children.find(child_handle);
     if (it == m_children.end()) {
@@ -56,27 +56,27 @@ void Layout::remove_child(const Handle child_handle)
     }
 }
 
-void Layout::cascade_visibility(const VISIBILITY visibility)
+void Layout::_cascade_visibility(const VISIBILITY visibility)
 {
     if (visibility == get_visibility()) {
         return;
     }
-    LayoutItem::cascade_visibility(visibility);
+    LayoutItem::_cascade_visibility(visibility);
 
     // update your children's visiblity
     for (auto& it : m_children) {
         if (it.second->get_visibility() != VISIBILITY::INVISIBLE) {
             if (get_visibility() == VISIBILITY::INVISIBLE) {
-                it.second->cascade_visibility(VISIBILITY::HIDDEN);
+                it.second->_cascade_visibility(VISIBILITY::HIDDEN);
             }
             else {
-                it.second->cascade_visibility(visibility);
+                it.second->_cascade_visibility(visibility);
             }
         }
     }
 }
 
-void Layout::redraw()
+void Layout::_redraw()
 {
     // don't draw invisible objects
     if (get_visibility() != VISIBILITY::VISIBLE) {
@@ -85,7 +85,7 @@ void Layout::redraw()
 
     // redraw all children
     for (auto& it : m_children) {
-        it.second->redraw();
+        it.second->_redraw();
     }
 }
 

@@ -24,6 +24,16 @@ struct Size2r {
 
     /// @brief Not-equal comparison with another Size2r.
     bool operator!=(const Size2r& other) const { return !approx(other.width, width) || !approx(other.height, height); }
+
+    /// @brief Invalidates this Size2r.
+    void invalidate()
+    {
+        width = NAN;
+        height = NAN;
+    }
+
+    /// @brief Tests if this Size2r is valid.
+    bool is_valid() const { return !is_nan(width) && !is_nan(height); }
 };
 
 //  FREE FUNCTIONS  ///////////////////////////////////////////////////////////////////////////////////////////////////

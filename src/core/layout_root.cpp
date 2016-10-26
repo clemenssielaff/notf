@@ -3,6 +3,7 @@
 #include <assert.h>
 
 #include "common/log.hpp"
+#include "common/transform2.hpp"
 #include "core/layout_item.hpp"
 #include "core/window.hpp"
 
@@ -12,11 +13,11 @@ void LayoutRoot::set_item(std::shared_ptr<LayoutItem> item)
 {
     // remove the existing item first
     if (!is_empty()) {
-        const auto& children = get_children();
+        const auto& children = _get_children();
         assert(children.size() == 1);
-        remove_child(children.begin()->first);
+        _remove_child(children.begin()->first);
     }
-    add_child(std::move(item));
+    _add_child(std::move(item));
 }
 
 std::shared_ptr<Widget> LayoutRoot::get_widget_at(const Vector2& local_pos)
@@ -24,10 +25,10 @@ std::shared_ptr<Widget> LayoutRoot::get_widget_at(const Vector2& local_pos)
     if (is_empty()) {
         return {};
     }
-    return get_item()->get_widget_at(local_pos);
+    return _get_item()->get_widget_at(local_pos);
 }
 
-void LayoutRoot::relayout(const Size2r /*size*/)
+void LayoutRoot::_relayout(const Size2r /*size*/)
 {
     // TODO: I need a way to update the size of the LayoutRoot whenever the Window's size changes... Signals?
     std::shared_ptr<Window> window = m_window.lock();
@@ -36,18 +37,18 @@ void LayoutRoot::relayout(const Size2r /*size*/)
         return;
     }
     Size2i canvas_size = window->get_canvas_size();
-    set_size({Real(canvas_size.width), Real(canvas_size.height)});
+    _set_size({Real(canvas_size.width), Real(canvas_size.height)});
     if (!is_empty()) {
-        set_item_size(get_item(), get_size());
+        _update_item(_get_item(), get_size(), Transform2::identity());
     }
 }
 
-std::shared_ptr<LayoutItem> LayoutRoot::get_item() const
+std::shared_ptr<LayoutItem> LayoutRoot::_get_item() const
 {
     if (is_empty()) {
         return {};
     }
-    const auto& children = get_children();
+    const auto& children = _get_children();
     assert(children.size() == 1);
     return children.begin()->second;
 }

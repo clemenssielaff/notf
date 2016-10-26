@@ -33,10 +33,9 @@ public: // methods
             return;
         }
         m_direction = direction;
-        const Claim sentinel = m_claim;
-        update_claim();
-        if (sentinel != m_claim) {
-            update_parent_layout();
+        _update_claim();
+        if (_is_dirty()) {
+            _update_parent_layout();
         }
     }
 
@@ -59,7 +58,7 @@ public: // methods
         if (!index || index.get() >= m_items.size()) {
             return {};
         }
-        return get_child(m_items[index.get()]);
+        return _get_child(m_items[index.get()]);
     }
 
     /// @brief Places a new LayoutItem into the Layout.
@@ -74,7 +73,7 @@ public: // static methods
     /// @param handle       Handle of this Layout.
     static std::shared_ptr<StackLayout> create(const DIRECTION direction, Handle handle = BAD_HANDLE)
     {
-        return create_item<StackLayout>(handle, direction);
+        return _create_item<StackLayout>(handle, direction);
     }
 
 protected: // methods
@@ -87,9 +86,9 @@ protected: // methods
     {
     }
 
-    virtual void update_claim() override;
+    virtual void _update_claim() override;
 
-    virtual void relayout(const Size2r size) override;
+    virtual void _relayout(const Size2r size) override;
 
 private: // fields
     /// @brief Direction in which the StackLayout is stacked.

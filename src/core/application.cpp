@@ -42,7 +42,7 @@ Application::Application()
     // initialize GLFW
     if (!glfwInit()) {
         log_fatal << "GLFW initialization failed";
-        shutdown();
+        _shutdown();
         exit(to_number(RETURN_CODE::FAILURE));
     }
     log_info << "Started application";
@@ -51,7 +51,7 @@ Application::Application()
 
 Application::~Application()
 {
-    shutdown();
+    _shutdown();
 }
 
 int Application::exec()
@@ -64,7 +64,7 @@ int Application::exec()
 
         // update all windows
         for (const auto& windowItem : m_windows) {
-            windowItem.second->update();
+            windowItem.second->_update();
         }
 
         // poll and process GLWF events
@@ -83,7 +83,7 @@ int Application::exec()
         //        }
     }
 
-    shutdown();
+    _shutdown();
     return to_number(RETURN_CODE::SUCCESS);
 }
 
@@ -95,7 +95,7 @@ void Application::on_error(int error, const char* message)
 void Application::on_token_key(GLFWwindow* glfw_window, int key, int scancode, int action, int modifiers)
 {
     UNUSED(scancode);
-    Window* window = get_instance().get_window(glfw_window);
+    Window* window = get_instance()._get_window(glfw_window);
     if (!window) {
         log_critical << "Received 'on_token_key' Callback for unknown GLFW window";
         return;
@@ -112,7 +112,7 @@ void Application::on_token_key(GLFWwindow* glfw_window, int key, int scancode, i
 
 void Application::on_window_close(GLFWwindow* glfw_window)
 {
-    Window* window = get_instance().get_window(glfw_window);
+    Window* window = get_instance()._get_window(glfw_window);
     if (!window) {
         log_critical << "Callback for unknown GLFW window";
         return;
@@ -120,12 +120,12 @@ void Application::on_window_close(GLFWwindow* glfw_window)
     window->close();
 }
 
-void Application::register_window(Window* window)
+void Application::_register_window(Window* window)
 {
-    GLFWwindow* glfw_window = window->glwf_window();
+    GLFWwindow* glfw_window = window->_glwf_window();
     if (!glfw_window) {
         log_fatal << "Window or context creation failed for window '" << window->get_title() << "'";
-        shutdown();
+        _shutdown();
         exit(to_number(RETURN_CODE::FAILURE));
     }
     assert(m_windows.count(glfw_window) == 0);
@@ -138,10 +138,10 @@ void Application::register_window(Window* window)
     glfwSetKeyCallback(glfw_window, on_token_key);
 }
 
-void Application::unregister_window(Window* window)
+void Application::_unregister_window(Window* window)
 {
     assert(window);
-    GLFWwindow* glfw_window = window->glwf_window();
+    GLFWwindow* glfw_window = window->_glwf_window();
     auto iterator = m_windows.find(glfw_window);
     assert(iterator != m_windows.end());
 
@@ -153,15 +153,15 @@ void Application::unregister_window(Window* window)
     m_windows.erase(iterator);
 }
 
-void Application::set_current_window(Window* window)
+void Application::_set_current_window(Window* window)
 {
     if (m_current_window != window) {
-        glfwMakeContextCurrent(window->glwf_window());
+        glfwMakeContextCurrent(window->_glwf_window());
         m_current_window = window;
     }
 }
 
-void Application::shutdown()
+void Application::_shutdown()
 {
     static bool is_running = true;
     if (!is_running) {
@@ -186,7 +186,7 @@ void Application::shutdown()
     m_log_handler->join();
 }
 
-Window* Application::get_window(GLFWwindow* glfw_window)
+Window* Application::_get_window(GLFWwindow* glfw_window)
 {
     auto iterator = m_windows.find(glfw_window);
     if (iterator == m_windows.end()) {

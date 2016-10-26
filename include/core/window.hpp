@@ -124,17 +124,17 @@ public: // signals
     /// @param This window.
     Signal<const Window&> on_close;
 
-private: // methods for Application
-    /// @brief The wrapped GLFW window.
-    GLFWwindow* glwf_window() { return m_glfw_window.get(); }
-
-    /// @brief Updates the contents of this Window.
-    void update();
-
 protected: // methods
     /// @brief Value Constructor.
     /// @param info WindowInfo providing initialization arguments.
     explicit Window(const WindowInfo& info);
+
+private: // methods for Application
+    /// @brief The wrapped GLFW window.
+    GLFWwindow* _glwf_window() { return m_glfw_window.get(); }
+
+    /// @brief Updates the contents of this Window.
+    void _update();
 
 private: // fields
     /// @brief The GLFW window managed by this Window.

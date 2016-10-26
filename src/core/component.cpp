@@ -8,7 +8,7 @@
 
 namespace notf {
 
-void Component::redraw_widgets()
+void Component::_redraw_widgets()
 {
     for (Handle widget_handle : m_widgets) {
         if (auto widget = Application::get_instance().get_item_manager().get_object<Widget>(widget_handle)) {
@@ -20,7 +20,7 @@ void Component::redraw_widgets()
     }
 }
 
-void Component::register_widget(Handle widget_handle)
+void Component::_register_widget(Handle widget_handle)
 {
     auto result = m_widgets.emplace(widget_handle);
     if (!result.second) {
@@ -30,7 +30,7 @@ void Component::register_widget(Handle widget_handle)
     }
 }
 
-void Component::unregister_widget(Handle widget_handle)
+void Component::_unregister_widget(Handle widget_handle)
 {
     auto success = m_widgets.erase(widget_handle);
     if (!success) {

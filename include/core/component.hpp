@@ -52,14 +52,14 @@ protected: // methods
     explicit Component() = default;
 
     /// @brief Redraws all Widgets registered with this Component.
-    void redraw_widgets();
+    void _redraw_widgets();
 
 private: // methods for Widget
     // @brief Registers a new Widget to receive updates when this Component changes.
-    void register_widget(Handle widget_handle);
+    void _register_widget(Handle widget_handle);
 
     /// @brief Unregisters a Widget from receiving updates from this Component.
-    void unregister_widget(Handle widget_handle);
+    void _unregister_widget(Handle widget_handle);
 
 private: // fields
     /// @brief Handles of all Widgets that use this Component.

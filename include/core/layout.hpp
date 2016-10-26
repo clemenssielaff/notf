@@ -21,12 +21,13 @@ public: // methods
     bool has_child(const std::shared_ptr<LayoutItem>& candidate) const;
 
     /// @brief Returns the number of items in this Layout.
-    size_t count_children() const { return get_children().size(); }
+    size_t count_children() const { return _get_children().size(); }
 
     /// @brief Checks if this Layout is empty.
     bool is_empty() const { return m_children.empty(); }
 
-    using LayoutItem::set_visible;
+    /// @brief Shows (if possible) or hides this Layout.
+    void set_visible(const bool is_visible) { _set_visible(is_visible); }
 
 public: // signals
     /// @brief Emitted when a new child LayoutItem was added to this one.
@@ -46,20 +47,20 @@ protected: // methods
     }
 
     /// @brief Returns a child LayoutItem, is invalid if no child with the given Handle exists.
-    std::shared_ptr<LayoutItem> get_child(const Handle child_handle) const;
+    std::shared_ptr<LayoutItem> _get_child(const Handle child_handle) const;
 
     /// @brief Returns all children of this LayoutItem.
-    const std::unordered_map<Handle, std::shared_ptr<LayoutItem>>& get_children() const { return m_children; }
+    const std::unordered_map<Handle, std::shared_ptr<LayoutItem>>& _get_children() const { return m_children; }
 
     /// @brief Adds the given child to this LayoutItem.
-    void add_child(std::shared_ptr<LayoutItem> child_object);
+    void _add_child(std::shared_ptr<LayoutItem> child_object);
 
     /// @brief Removes the child with the given Handle.
-    void remove_child(const Handle child_handle);
+    void _remove_child(const Handle child_handle);
 
-    virtual void cascade_visibility(const VISIBILITY visibility) override;
+    virtual void _cascade_visibility(const VISIBILITY visibility) override;
 
-    virtual void redraw() override;
+    virtual void _redraw() override;
 
     /*
      * @brief Tells this LayoutItem to update its Claim based on the combined Claims of its children.
@@ -69,9 +70,9 @@ protected: // methods
      * If its Claim changes, its respective parent might need to update as well - up to the first Layout that does not
      * update its Claim (at the latest, the LayoutRoot never updates its Claim).
      */
-    virtual void update_claim() = 0;
+    virtual void _update_claim() = 0;
 
-    virtual void relayout(const Size2r size) override = 0;
+    virtual void _relayout(const Size2r size) override = 0;
 
 private: // fields
     /// @brief All children of this Layout.

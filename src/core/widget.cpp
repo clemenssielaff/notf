@@ -27,7 +27,7 @@ void Widget::add_component(std::shared_ptr<Component> component)
         return;
     }
     remove_component(component->get_kind());
-    component->register_widget(get_handle());
+    component->_register_widget(get_handle());
     m_components[component->get_kind()] = std::move(component);
 }
 
@@ -38,11 +38,22 @@ void Widget::remove_component(Component::KIND kind)
     }
     auto it = m_components.find(kind);
     assert(it != m_components.end());
-    it->second->unregister_widget(get_handle());
+    it->second->_unregister_widget(get_handle());
     m_components.erase(it);
 }
 
-void Widget::redraw()
+std::shared_ptr<Widget> Widget::get_widget_at(const Vector2& /*local_pos*/)
+{
+    // if this Widget has no shape, you cannot find it at any location
+    if (!has_component_kind(Component::KIND::SHAPE)) {
+        return {};
+    }
+
+    // TODO: Widget::get_widget_at() should test if the given local_pos is loctated in its shape
+    return std::static_pointer_cast<Widget>(shared_from_this());
+}
+
+void Widget::_redraw()
 {
     // don't draw invisible widgets
     if (get_visibility() != VISIBILITY::VISIBLE) {
@@ -55,17 +66,6 @@ void Widget::redraw()
         assert(window);
         window->get_render_manager().register_widget(get_handle());
     }
-}
-
-std::shared_ptr<Widget> Widget::get_widget_at(const Vector2& /*local_pos*/)
-{
-    // if this Widget has no shape, you cannot find it at any location
-    if(!has_component_kind(Component::KIND::SHAPE)){
-        return {};
-    }
-
-    // TODO: Widget::get_widget_at() should test if the given local_pos is loctated in its shape
-    return std::static_pointer_cast<Widget>(shared_from_this());
 }
 
 } // namespace notf

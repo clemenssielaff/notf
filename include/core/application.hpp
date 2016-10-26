@@ -75,13 +75,13 @@ public: // static methods
 
 private: // methods for Window
     /// @brief Registers a new Window in this Application.
-    void register_window(Window* window);
+    void _register_window(Window* window);
 
     /// @brief Unregisters an existing Window from this Application.
-    void unregister_window(Window* window);
+    void _unregister_window(Window* window);
 
     /// @brief Changes the current Window of the Application.
-    void set_current_window(Window* window);
+    void _set_current_window(Window* window);
 
 private: // methods
     /// @brief Constructor.
@@ -89,11 +89,11 @@ private: // methods
 
     /// @brief Shuts down the application.
     /// Is called automatically, after the last Window has been closed.
-    void shutdown();
+    void _shutdown();
 
     /// @brief Returns the Window instance associated with the given GLFW window.
     /// @param glfw_window  The GLFW window to look for.
-    Window* get_window(GLFWwindow* glfw_window);
+    Window* _get_window(GLFWwindow* glfw_window);
 
 private: // fields
     /// @brief The log handler thread used to format and print out log messages in a thread-safe manner.
