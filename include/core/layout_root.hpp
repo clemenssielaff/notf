@@ -20,6 +20,9 @@ public: // methods
 
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
 
+    /// @brief Updates the LayoutRoot after the Window's size has changed.
+    void relayout(const Size2r size) { _relayout(std::move(size)); }
+
 protected: // methods
     /// @brief Value Constructor.
     /// @param handle   Handle of this Widget.

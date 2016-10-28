@@ -48,7 +48,9 @@ public: // methods
     void set_claim(const Claim claim)
     {
         _set_claim(std::move(claim));
-        _set_dirty();
+        if (_is_dirty()) {
+            _update_parent_layout();
+        }
     }
 
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
@@ -58,12 +60,11 @@ public: // methods
 
 public: // static methods
     /// @brief Factory function to create a new Widget instance.
-    /// @param handle   [optional] Handle of the new widget.
-    /// @return The created Widget, pointer is empty on error.
-    ///
     /// If an explicit handle is passed, it is assigned to the new Widget.
     /// This function will fail if the existing Handle is already taken.
     /// If no handle is passed, a new one is created.
+    /// @param handle   [optional] Handle of the new widget.
+    /// @return The created Widget, pointer is empty on error.
     static std::shared_ptr<Widget> create(Handle handle = BAD_HANDLE)
     {
         return _create_item<Widget>(handle);

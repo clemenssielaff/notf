@@ -1,12 +1,9 @@
 #include "core/widget.hpp"
 
 #include "common/log.hpp"
-#include "core/application.hpp"
 #include "core/layout_root.hpp"
-#include "core/object_manager.hpp"
 #include "core/render_manager.hpp"
 #include "core/window.hpp"
-#include "utils/smart_enabler.hpp"
 
 namespace notf {
 

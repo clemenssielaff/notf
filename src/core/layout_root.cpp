@@ -30,7 +30,6 @@ std::shared_ptr<Widget> LayoutRoot::get_widget_at(const Vector2& local_pos)
 
 void LayoutRoot::_relayout(const Size2r /*size*/)
 {
-    // TODO: I need a way to update the size of the LayoutRoot whenever the Window's size changes... Signals?
     std::shared_ptr<Window> window = m_window.lock();
     if (!window) {
         log_critical << "Failed to relayout LayoutRoot " << get_handle() << " without a Window";

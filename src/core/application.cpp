@@ -120,6 +120,16 @@ void Application::on_window_close(GLFWwindow* glfw_window)
     window->close();
 }
 
+void Application::on_window_reize(GLFWwindow* glfw_window, int width, int height)
+{
+    Window* window = get_instance()._get_window(glfw_window);
+    if (!window) {
+        log_critical << "Callback for unknown GLFW window";
+        return;
+    }
+    window->_on_resize(width, height);
+}
+
 void Application::_register_window(Window* window)
 {
     GLFWwindow* glfw_window = window->_glwf_window();
@@ -136,6 +146,7 @@ void Application::_register_window(Window* window)
     // connect the window callbacks
     glfwSetWindowCloseCallback(glfw_window, on_window_close);
     glfwSetKeyCallback(glfw_window, on_token_key);
+    glfwSetWindowSizeCallback(glfw_window, on_window_reize);
 }
 
 void Application::_unregister_window(Window* window)
@@ -148,6 +159,7 @@ void Application::_unregister_window(Window* window)
     // disconnect the window callbacks
     glfwSetWindowCloseCallback(glfw_window, nullptr);
     glfwSetKeyCallback(glfw_window, nullptr);
+    glfwSetWindowSizeCallback(glfw_window, nullptr);
 
     // unregister the window
     m_windows.erase(iterator);

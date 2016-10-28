@@ -73,6 +73,12 @@ public: // static methods
     /// @param glfw_window  GLFW Window to close.
     static void on_window_close(GLFWwindow* glfw_window);
 
+    /// @brief Called when the Window is resize.
+    /// @param glfw_window  Resized windwow.
+    /// @param width        New width of the Window.
+    /// @param height       New height of the Window.
+    static void on_window_reize(GLFWwindow* glfw_window, int width, int height);
+
 private: // methods for Window
     /// @brief Registers a new Window in this Application.
     void _register_window(Window* window);

@@ -56,13 +56,25 @@ void StackLayout::_relayout(const Size2r size)
     if (item_count == 0) {
         return;
     }
-    const Real width_per_item = size.width / item_count;
-    const Size2r item_size{width_per_item, size.height};
-    Real x_offset = 0;
-    for (const Handle handle : m_items) {
-        auto child = _get_child(handle);
-        _update_item(child, item_size, Transform2::translation({x_offset, 0}));
-        x_offset += width_per_item;
+    if ((m_direction == DIRECTION::LEFT_TO_RIGHT) || (m_direction == DIRECTION::RIGHT_TO_LEFT)) { // horizontal
+        const Real width_per_item = size.width / item_count;
+        const Size2r item_size{width_per_item, size.height};
+        Real x_offset = 0;
+        for (const Handle handle : m_items) {
+            auto child = _get_child(handle);
+            _update_item(child, item_size, Transform2::translation({x_offset, 0}));
+            x_offset += width_per_item;
+        }
+    }
+    else {
+        const Real height_per_item = size.height / item_count;
+        const Size2r item_size{size.width, height_per_item};
+        Real y_offset = 0;
+        for (const Handle handle : m_items) {
+            auto child = _get_child(handle);
+            _update_item(child, item_size, Transform2::translation({0, y_offset}));
+            y_offset += height_per_item;
+        }
     }
 }
 

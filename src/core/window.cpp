@@ -165,6 +165,11 @@ Window::Window(const WindowInfo& info)
     }
 }
 
+void Window::_on_resize(int width, int height)
+{
+    m_root_widget->relayout({static_cast<Real>(width), static_cast<Real>(height)});
+}
+
 void Window::_update()
 {
     assert(m_glfw_window);

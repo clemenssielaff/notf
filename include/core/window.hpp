@@ -64,8 +64,6 @@ struct WindowInfo {
     bool enable_vsync = true;
 
     /// @brief Background color of the Window.
-//    Color clear_color = {0.2f, 0.3f, 0.3f, 1.0f}; // sensible
-//    Color clear_color = {1.0f, 0.0f, 1.0f, 1.0f}; // PINK!!!!
     Color clear_color = {0.0f, 0.0f, 0.0f, 1.0f}; // black
 
     /// @brief Window title.
@@ -132,6 +130,11 @@ protected: // methods
 private: // methods for Application
     /// @brief The wrapped GLFW window.
     GLFWwindow* _glwf_window() { return m_glfw_window.get(); }
+
+    /// @brief Called when the Window was resized.
+    /// @param width        New width of the Window.
+    /// @param height       New height of the Window.
+    void _on_resize(int width, int height);
 
     /// @brief Updates the contents of this Window.
     void _update();
