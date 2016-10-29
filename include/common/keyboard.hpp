@@ -186,11 +186,4 @@ inline void set_key(KeyStateSet& state_set, KEY key, bool state)
     state_set.set(static_cast<size_t>(to_number(key)), state);
 }
 
-/// @brief Converts a GLFW key into a notf::KEY.
-///
-/// @param key  GLFW key value.
-///
-/// @return The same key as notf::KEY.
-KEY from_glfw_key(int key);
-
 } // namespace notf

@@ -63,9 +63,10 @@ std::shared_ptr<Object> ObjectManager::_get_abstract_object(const Handle handle)
     return result;
 }
 
+#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_WARNING
 void ObjectManager::_wrong_type_warning(const std::string& type_name, const Handle handle) const
 {
-#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_WARNING
+
     auto it = m_object.find(handle);
     assert(it != m_object.end());
     auto object = it->second.lock();
@@ -73,7 +74,11 @@ void ObjectManager::_wrong_type_warning(const std::string& type_name, const Hand
 
     log_warning << "Requested handle " << handle << " as type \"" << type_name << "\" "
                 << "but the Object is a \"" << typeid(*object).name() << "\"";
-#endif
 }
+#else
+void ObjectManager::_wrong_type_warning(const std::string&, const Handle) const
+{
+}
+#endif
 
 } // namespace notf

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -85,6 +86,19 @@ inline bool istarts_with(const std::string& input, const std::string& prefix)
         return std::tolower(c);
     });
     return relevant_input.compare(0, prefix.length(), prefix) == 0;
+}
+
+/// \brief String Formatting function using std::snprinftf.
+///
+/// For details on the format string see: http://en.cppreference.com/w/cpp/io/c/fprintf
+/// Adapted from: http://stackoverflow.com/a/26221725/3444217
+template <typename... Args>
+std::string string_format(const std::string& format, Args... args)
+{
+    size_t size = std::snprintf(nullptr, 0, format.c_str(), args...) + 1; // Extra space for '\0'
+    std::unique_ptr<char[]> bufffer(new char[size]);
+    std::snprintf(bufffer.get(), size, format.c_str(), args...);
+    return std::string(bufffer.get(), bufffer.get() + size - 1); // We don't want the '\0' inside
 }
 
 } // namespace notf

@@ -6,8 +6,8 @@
 #include "common/handle.hpp"
 #include "common/log.hpp"
 #include "core/application.hpp"
+#include "core/events/key_event.hpp"
 #include "core/glfw_wrapper.hpp"
-#include "core/key_event.hpp"
 #include "core/layout_root.hpp"
 #include "core/object_manager.hpp"
 #include "core/render_manager.hpp"
@@ -80,18 +80,18 @@ void Window::close()
     }
 }
 
-std::shared_ptr<Window> Window::create(const WindowInfo& info)
+std::shared_ptr<Window> Window::create(const WindowMake& make)
 {
-    std::shared_ptr<Window> window = std::make_shared<MakeSmartEnabler<Window>>(info);
-    window->m_root_widget = LayoutRoot::create(info.root_widget_handle, window);
+    std::shared_ptr<Window> window = std::make_shared<MakeSmartEnabler<Window>>(make);
+    window->m_root_widget = LayoutRoot::create(make.root_widget_handle, window);
     log_trace << "Assigned RootLayout with handle: " << window->m_root_widget->get_handle()
               << " to Window \"" << window->get_title() << "\"";
     return window;
 }
 
-Window::Window(const WindowInfo& info)
+Window::Window(const WindowMake& make)
     : m_glfw_window(nullptr, window_deleter)
-    , m_title(info.title)
+    , m_title(make.title)
     , m_root_widget()
     , m_render_manager(std::make_unique<RenderManager>())
 {
@@ -104,50 +104,50 @@ Window::Window(const WindowInfo& info)
             [](const KeyEvent& event) { return event.key == KEY::ESCAPE; });
 
     // set context variables before creating the window
-    if (info.opengl_version_major >= 0) {
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, info.opengl_version_major);
+    if (make.opengl_version_major >= 0) {
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, make.opengl_version_major);
     }
 
-    if (info.opengl_version_minor >= 0) {
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, info.opengl_version_minor);
+    if (make.opengl_version_minor >= 0) {
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, make.opengl_version_minor);
     }
 
-    if (info.opengl_remove_deprecated) {
-        if (info.opengl_version_major >= 3) {
+    if (make.opengl_remove_deprecated) {
+        if (make.opengl_version_major >= 3) {
             glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
         }
         else {
-            log_warning << "Ignored WindowInfo flag 'opengl_remove_deprecated' "
+            log_warning << "Ignored WindowMake flag 'opengl_remove_deprecated' "
                         << "as it can only be used with OpenGL versions 3.0 or above.";
         }
     }
 
-    if (info.opengl_profile == WindowInfo::PROFILE::ANY) {
+    if (make.opengl_profile == WindowMake::PROFILE::ANY) {
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
     }
     else {
-        if ((info.opengl_version_major < 3) || (info.opengl_version_minor < 2)) {
-            log_warning << "Ignored WindowInfo field 'opengl_profile' (set to "
-                        << (info.opengl_profile == WindowInfo::PROFILE::CORE ? "PROFILE::CORE" : "PROFILE::COMPAT")
+        if ((make.opengl_version_major < 3) || (make.opengl_version_minor < 2)) {
+            log_warning << "Ignored WindowMake field 'opengl_profile' (set to "
+                        << (make.opengl_profile == WindowMake::PROFILE::CORE ? "PROFILE::CORE" : "PROFILE::COMPAT")
                         << ") as it can only be used with OpenGL versions 3.2 or above.";
         }
         else {
-            if (info.opengl_profile == WindowInfo::PROFILE::CORE) {
+            if (make.opengl_profile == WindowMake::PROFILE::CORE) {
                 glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
             }
             else {
-                assert(info.opengl_profile == WindowInfo::PROFILE::COMPAT);
+                assert(make.opengl_profile == WindowMake::PROFILE::COMPAT);
                 glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
             }
         }
     }
 
-    glfwWindowHint(GLFW_RESIZABLE, info.is_resizeable ? GL_TRUE : GL_FALSE);
+    glfwWindowHint(GLFW_RESIZABLE, make.is_resizeable ? GL_TRUE : GL_FALSE);
 
-    glfwWindowHint(GLFW_SAMPLES, std::max(0, info.samples));
+    glfwWindowHint(GLFW_SAMPLES, std::max(0, make.samples));
 
     // create the GLFW window (error test in next step)
-    m_glfw_window.reset(glfwCreateWindow(info.width, info.height, m_title.c_str(), nullptr, nullptr));
+    m_glfw_window.reset(glfwCreateWindow(make.width, make.height, m_title.c_str(), nullptr, nullptr));
 
     // register with the application (if the GLFW window creation failed, this call will exit the application)
     app._register_window(this);
@@ -155,8 +155,8 @@ Window::Window(const WindowInfo& info)
     // setup OpenGl
     glfwMakeContextCurrent(m_glfw_window.get());
     gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
-    glfwSwapInterval(info.enable_vsync ? 1 : 0);
-    glClearColor(info.clear_color.r, info.clear_color.g, info.clear_color.b, info.clear_color.a);
+    glfwSwapInterval(make.enable_vsync ? 1 : 0);
+    glClearColor(make.clear_color.r, make.clear_color.g, make.clear_color.b, make.clear_color.a);
 
     // log error or success
     if (!check_gl_error()) {

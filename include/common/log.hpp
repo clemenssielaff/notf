@@ -305,8 +305,6 @@ inline void set_log_level(LogMessage::LEVEL level)
 
 /// @brief Extracts the last part of a pathname at compile time.
 ///
-/// We know that this function is performed at compile time because you can initialize a 'constexpr' variable with it.
-///
 /// @param input        Path to investigate.
 /// @param delimiter    Delimiter used to separate path elements.
 ///

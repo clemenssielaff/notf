@@ -20,6 +20,7 @@ void RenderManager::render(const Window& window)
             widgets.emplace_back(std::move(widget));
         }
     }
+    m_widgets.clear();
 
     // render all widgets
     std::set<GLuint> configured_renderers;

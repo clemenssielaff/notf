@@ -49,9 +49,9 @@ std::shared_ptr<Texture2> Texture2::load(const std::string& texture_path)
     if (success) {
         glGenTextures(1, &id);
         glBindTexture(GL_TEXTURE_2D, id);
-//        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, transparency); // TODO: own color class
-//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        //        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, transparency); // TODO: own color class
+        //        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        //        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(format), width, height, 0, format, GL_UNSIGNED_BYTE, data);
@@ -85,8 +85,8 @@ std::shared_ptr<Texture2> Texture2::load(const std::string& texture_path)
             format_name = &rgba;
         }
 
-        log_trace << "Loaded " << width << "x" << height << " " << *format_name << " texture: " << texture_path
-                  << " with ID: " << id;
+        log_trace << "Loaded " << width << "x" << height << " " << *format_name << " OpenGL texture with ID: " << id
+                  << " from: " << texture_path;
 #endif
     }
 

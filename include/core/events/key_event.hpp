@@ -1,6 +1,6 @@
 #pragma once
 
-#include <core/keyboard.hpp>
+#include <common/keyboard.hpp>
 
 namespace notf {
 

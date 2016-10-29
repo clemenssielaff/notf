@@ -25,7 +25,7 @@ void window_deleter(GLFWwindow* glfwWindow);
 
 /// @brief Helper struct to create a Window instance.
 ///
-struct WindowInfo {
+struct WindowMake {
 
     /// @brief OpenGL profiles.
     enum class PROFILE : unsigned char {
@@ -107,9 +107,9 @@ public: // methods
 
 public: // static methods
     /// @brief Factory function to create a new Window.
-    /// @param info WindowInfo providing initialization arguments.
+    /// @param make     WindowMake providing initialization arguments.
     /// @return The created Window, pointer is empty on error.
-    static std::shared_ptr<Window> create(const WindowInfo& info = WindowInfo());
+    static std::shared_ptr<Window> create(const WindowMake& make = WindowMake());
 
 public: // signals
     /// @brief Emitted, when a single key was pressed / released / repeated.
@@ -124,8 +124,8 @@ public: // signals
 
 protected: // methods
     /// @brief Value Constructor.
-    /// @param info WindowInfo providing initialization arguments.
-    explicit Window(const WindowInfo& info);
+    /// @param info     WindowMake providing initialization arguments.
+    explicit Window(const WindowMake& make);
 
 private: // methods for Application
     /// @brief The wrapped GLFW window.

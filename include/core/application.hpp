@@ -9,8 +9,22 @@ namespace notf {
 
 class ObjectManager;
 class LogHandler;
+class PythonInterpreter;
 class ResourceManager;
 class Window;
+
+/// @brief Information for the Application.
+/// To initialize the Application we require the `argv` and `argc` fields to be set and valid.
+struct ApplicationMake {
+
+    /// @brief Command line arguments passed to main() by the OS.
+    char** argv = nullptr;
+
+    /// @brief Number of strings in argv (first one is usually the name of the program).
+    int argc = -1;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// @brief The Application class.
 ///
@@ -25,7 +39,9 @@ public:
     /// @brief Return codes of the Application's exec() function.
     enum class RETURN_CODE : int {
         SUCCESS = 0,
-        FAILURE = 1,
+        UNINITIALIZED,
+        GLFW_FAILURE,
+        PYTHON_FAILURE,
     };
 
 public: // methods
@@ -46,20 +62,38 @@ public: // methods
     ResourceManager& get_resource_manager() { return *m_resource_manager; }
 
     /// @brief Returns the Application's Item Manager.
-    ObjectManager& get_item_manager() { return *m_layout_item_manager; }
+    ObjectManager& get_item_manager() { return *m_object_manager; }
+
+    /// @brief Returns the Application's Python interpreter wrapper.
+    PythonInterpreter& get_python_interpreter() { return *m_interpreter; }
+
+    /// @brief Returns the Application's Make.
+    const ApplicationMake& get_make() const { return m_make; }
 
 public: // static methods
-    /// @brief The singleton Application instance.
-    static Application& get_instance()
+    // @brief Initializes the Application through an user-defined ApplicationMake object.
+    static Application& initialize(const ApplicationMake& make);
+
+    /// @brief Initializes the Application using only the Command line arguments passed by the OS.
+    static Application& initialize(const int argc, char* argv[])
     {
-        static Application instance;
+        ApplicationMake make;
+        make.argc = argc;
+        make.argv = argv;
+        return get_instance(std::move(make));
+    }
+
+    /// @brief The singleton Application instance.
+    static Application& get_instance(const ApplicationMake& make = ApplicationMake())
+    {
+        static Application instance(make);
         return instance;
     }
 
     /// @brief Called by GLFW in case of an error.
     /// @param error    Error ID.
     /// @param message  Error message;
-    static void on_error(int error, const char* message);
+    static void _on_error(int error, const char* message);
 
     /// @brief Called by GLFW when a key is pressed, repeated or released.
     /// @param glfw_window  The GLFWwindow targeted by the event.
@@ -67,17 +101,17 @@ public: // static methods
     /// @param scancode     May hold additional information when key is set to KEY_UNKNOWN (platform dependent).
     /// @param action       The action that triggered this callback.
     /// @param modifiers    Additional modifier key bitmask.
-    static void on_token_key(GLFWwindow* glfw_window, int key, int scancode, int action, int modifiers);
+    static void _on_token_key(GLFWwindow* glfw_window, int key, int scancode, int action, int modifiers);
 
     /// @brief Called by GLFW, if the user requested a window to be closed.
     /// @param glfw_window  GLFW Window to close.
-    static void on_window_close(GLFWwindow* glfw_window);
+    static void _on_window_close(GLFWwindow* glfw_window);
 
     /// @brief Called when the Window is resize.
     /// @param glfw_window  Resized windwow.
     /// @param width        New width of the Window.
     /// @param height       New height of the Window.
-    static void on_window_reize(GLFWwindow* glfw_window, int width, int height);
+    static void _on_window_reize(GLFWwindow* glfw_window, int width, int height);
 
 private: // methods for Window
     /// @brief Registers a new Window in this Application.
@@ -91,7 +125,8 @@ private: // methods for Window
 
 private: // methods
     /// @brief Constructor.
-    explicit Application();
+    /// @param make     ApplicationMake providing initialization arguments.
+    explicit Application(const ApplicationMake make);
 
     /// @brief Shuts down the application.
     /// Is called automatically, after the last Window has been closed.
@@ -102,17 +137,23 @@ private: // methods
     Window* _get_window(GLFWwindow* glfw_window);
 
 private: // fields
+    /// @brief The make of this Application object.
+    const ApplicationMake m_make;
+
     /// @brief The log handler thread used to format and print out log messages in a thread-safe manner.
     std::unique_ptr<LogHandler> m_log_handler;
 
     /// @brief The Application's resource manager.
     std::unique_ptr<ResourceManager> m_resource_manager;
 
-    /// @brief The Application's Item manger.
-    std::unique_ptr<ObjectManager> m_layout_item_manager;
+    /// @brief The Application's object manger.
+    std::unique_ptr<ObjectManager> m_object_manager;
 
     /// @brief All Windows known the the Application.
     std::unordered_map<GLFWwindow*, Window*> m_windows;
+
+    /// @brief The Python Interpreter embedded in the Application.
+    std::unique_ptr<PythonInterpreter> m_interpreter;
 
     /// @brief The Window with the current OpenGL context.
     Window* m_current_window;
