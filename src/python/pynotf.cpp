@@ -6,11 +6,49 @@ namespace py = pybind11;
 
 #include "common/string_utils.hpp"
 #include "common/vector2.hpp"
+#include "core/application.hpp"
+#include "core/widget.hpp"
+#include "dynamic/layout/stack_layout.hpp"
+#include "dynamic/render/sprite.hpp"
 using namespace notf;
+
+const char* python_notf_module_name = "notf";
+
+PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
 
 PyObject* produce_pynotf_module()
 {
     py::module module(python_notf_module_name, "NoTF Python bindings");
+
+    py::class_<Object, std::shared_ptr<Object>> object(module, "Object");
+
+    py::class_<LayoutItem, std::shared_ptr<LayoutItem>> layout_item(module, "LayoutItem", object);
+
+    // Widget
+    {
+        py::class_<Widget, std::shared_ptr<Widget>>(module, "Widget", layout_item)
+            //            .def("__init__", [](Widget& inst) { new(&inst) &(Widget::create().get()); })
+            //            .def("__init__", (std::shared_ptr<Widget>(*)())[]() { return Widget::create(); })
+            //            .def("__init__", (std::shared_ptr<Widget>(*)(Handle))[](Handle handle) { return Widget::create(handle); })
+            //                        .def("__init__", [](Widget& instance){Widget::create();})
+
+            //              .def("__init__", [](Widget& instance){new (&instance) Widget::create();})
+            //            .def(py::init<Handle>())
+            //            .def("__init__", (std::shared_ptr<Widget>(*)()) & Widget::create)
+            .def_static("create", []() { return Widget::create(); })
+            //            .def("create", (std::shared_ptr<Widget>(*)()) & Widget::create)
+            .def("get_handle", &Widget::get_handle);
+
+        //        module.def("create_widget", (std::shared_ptr<Widget>(*)()) & Widget::create);
+        module.def("create_widget", []() { return Widget::create(); });
+    }
+
+    // SpriteRenderer
+    //    {
+    //        py::class_<SpriteRenderer, std::shared_ptr<SpriteRenderer>>(module, "SpriteRenderer")
+    //            .def(py::init<std::string, std::string ,std::string>(), []() { Widget::create(); })
+    //            .def("get_handle", &Widget::get_handle);
+    //    }
 
     // Vector2
     {
@@ -18,7 +56,7 @@ PyObject* produce_pynotf_module()
 
             // constructors
             .def(py::init<>())
-            .def("__init__", [](Vector2& instance, Real x, Real y) { new (&instance) Vector2(x, y); })
+            .def(py::init<Real, Real>())
             .def(py::init<Vector2>())
 
             // static constructors
@@ -82,7 +120,7 @@ PyObject* produce_pynotf_module()
             .def("side_of", &Vector2::side_of, "The side of the other 2D Vector relative to direction of this 2D Vector (+1 = left, -1 = right).", py::arg("other"))
 
             // representation
-            .def("__repr__", [](const Vector2& vec) { return string_format("pynotf.Vector2(%f, %f)", vec.x, vec.y); });
+            .def("__repr__", [](const Vector2& vec) { return string_format("notf.Vector2(%f, %f)", vec.x, vec.y); });
 
         // free functions
         module.def("orthonormal_basis", (void (*)(Vector2&, Vector2&)) & orthonormal_basis, "Constructs a duo of mutually orthogonal, normalized vectors with 'a' as the reference vector", py::arg("a"), py::arg("b"));
@@ -108,7 +146,7 @@ PyObject* produce_pynotf_module()
     //            .def("intersects", &Circle::intersects, "Checks if two circles are intersecting.", py::arg("other"))
 
     //            // representation
-    //            .def("__repr__", [](const Circle& circle) { return formatString("pynotf.Circle((%f, %f), %f)", circle.position.x, circle.position.y, circle.radius); });
+    //            .def("__repr__", [](const Circle& circle) { return formatString("notf.Circle((%f, %f), %f)", circle.position.x, circle.position.y, circle.radius); });
     //    }
 
     //    // Line2
@@ -141,7 +179,7 @@ PyObject* produce_pynotf_module()
     //            .def("bounding_rect", &Line2::bounding_rect, "Returns the axis-aligned bounding rect of this Line.")
 
     //            // representation
-    //            .def("__repr__", [](const Line2& line) { return formatString("pynotf.Line2((%f, %f), (%f, %f))", line.start().x, line.start().y, line.end().x, line.end().y); });
+    //            .def("__repr__", [](const Line2& line) { return formatString("notf.Line2((%f, %f), (%f, %f))", line.start().x, line.start().y, line.end().x, line.end().y); });
     //    }
 
     //    // Aabr
@@ -186,7 +224,7 @@ PyObject* produce_pynotf_module()
     //            .def("union", &Aabr::union_, "The union of this Aabr with other.", py::arg("other"))
 
     //            // representation
-    //            .def("__repr__", [](const Aabr& aabr) { return formatString("pynotf.Aabr((%f, %f), (%f, %f))",
+    //            .def("__repr__", [](const Aabr& aabr) { return formatString("notf.Aabr((%f, %f), (%f, %f))",
     //                                                        aabr.bottom_left().x, aabr.bottom_left().y,
     //                                                        aabr.top_right().x, aabr.top_right().y); });
     //    }

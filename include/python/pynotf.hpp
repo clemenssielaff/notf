@@ -3,7 +3,7 @@
 struct _object;
 typedef _object PyObject;
 
-static const char* python_notf_module_name = "notf";
+extern const char* python_notf_module_name;
 
 /**
  * @brief Produces the NoTF python module that is available in the embedded Python interpreter.
