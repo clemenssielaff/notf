@@ -11,7 +11,7 @@ namespace notf {
 void Component::_redraw_widgets()
 {
     for (Handle widget_handle : m_widgets) {
-        if (auto widget = Application::get_instance().get_item_manager().get_object<Widget>(widget_handle)) {
+        if (auto widget = Application::get_instance().get_object_manager().get_object<Widget>(widget_handle)) {
             widget->redraw();
         }
         else {

@@ -67,7 +67,7 @@ public: // static methods
     /// @return The created Widget, pointer is empty on error.
     static std::shared_ptr<Widget> create(Handle handle = BAD_HANDLE)
     {
-        return _create_item<Widget>(handle);
+        return _create_object<Widget>(handle);
     }
 
 protected: // methods

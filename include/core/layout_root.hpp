@@ -47,7 +47,7 @@ private: // static methods for Window
     /// @param window   Window owning this LayoutRoot.
     static std::shared_ptr<LayoutRoot> create(Handle handle, std::shared_ptr<Window> window)
     {
-        return _create_item<LayoutRoot>(handle, std::move(window));
+        return _create_object<LayoutRoot>(handle, std::move(window));
     }
 
 private: // fields

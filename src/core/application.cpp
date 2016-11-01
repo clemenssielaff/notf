@@ -28,8 +28,8 @@ namespace notf {
 
 KEY from_glfw_key(int key);
 
-Application::Application(const ApplicationMake make)
-    : m_make(std::move(make))
+Application::Application(const ApplicationInfo info)
+    : m_info(std::move(info))
     , m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
     , m_resource_manager(std::make_unique<ResourceManager>())
     , m_object_manager(std::make_unique<ObjectManager>(1024)) // reserve space for 1024 Items right away
@@ -42,7 +42,7 @@ Application::Application(const ApplicationMake make)
     m_log_handler->start();
 
     // exit here, if the user failed to call Application::initialize()
-    if (m_make.argc == -1) {
+    if (m_info.argc == -1) {
         log_fatal << "Cannot start an uninitialized Application!\n"
                   << "Make sure to call `Application::initialize()` in `main()` before creating the first NoTF object";
         exit(to_number(RETURN_CODE::UNINITIALIZED));
@@ -60,7 +60,7 @@ Application::Application(const ApplicationMake make)
     log_info << "GLFW version: " << glfwGetVersionString();
 
     // initialize Python
-    m_interpreter = std::make_unique<PythonInterpreter>(m_make.argv);
+    m_interpreter = std::make_unique<PythonInterpreter>(m_info.argv);
 
     log_trace << "Started application";
 }
@@ -103,13 +103,13 @@ int Application::exec()
     return to_number(RETURN_CODE::SUCCESS);
 }
 
-Application& Application::initialize(const ApplicationMake& make)
+Application& Application::initialize(const ApplicationInfo& info)
 {
-    if (make.argc == -1 || make.argv == nullptr) {
-        log_fatal << "Cannot initialize an Application from a Make object with missing `argc` and `argv` fields";
+    if (info.argc == -1 || info.argv == nullptr) {
+        log_fatal << "Cannot initialize an Application from a Info object with missing `argc` and `argv` fields";
         exit(to_number(RETURN_CODE::UNINITIALIZED));
     }
-    return get_instance(make);
+    return get_instance(info);
 }
 
 void Application::_on_error(int error, const char* message)

@@ -1,10 +1,5 @@
 if __name__ == "__main__":
     from notf import *
-    #w1 = Widget()
-    #w22 = Widget(123)
-    #w3 = create_widget();
-    w4 = Widget.create()
+    w4 = Widget()
     print(w4.get_handle())
     
-
-

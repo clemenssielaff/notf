@@ -73,7 +73,7 @@ public: // static methods
     /// @param handle       Handle of this Layout.
     static std::shared_ptr<StackLayout> create(const DIRECTION direction, Handle handle = BAD_HANDLE)
     {
-        return _create_item<StackLayout>(handle, direction);
+        return _create_object<StackLayout>(handle, direction);
     }
 
 protected: // methods

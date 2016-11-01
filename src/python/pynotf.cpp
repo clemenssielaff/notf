@@ -1,5 +1,7 @@
 #include "python/pynotf.hpp"
 
+#include <exception>
+
 #include "pybind11/operators.h"
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
@@ -7,6 +9,7 @@ namespace py = pybind11;
 #include "common/string_utils.hpp"
 #include "common/vector2.hpp"
 #include "core/application.hpp"
+#include "core/resource_manager.hpp"
 #include "core/widget.hpp"
 #include "dynamic/layout/stack_layout.hpp"
 #include "dynamic/render/sprite.hpp"
@@ -14,41 +17,53 @@ using namespace notf;
 
 const char* python_notf_module_name = "notf";
 
-PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
+/**********************************************************************************************************************/
+
+/** Python wrapper for notf::Widget. */
+struct PyWidget {
+
+    /** The actual NoTF Widget. */
+    std::shared_ptr<Widget> widget;
+
+    /** Constructor with exception handling. */
+    explicit PyWidget(const Handle handle)
+        : widget(Widget::create(handle))
+    {
+        if (!widget) {
+            std::string message;
+            if (handle) {
+                message = string_format("Failed to create Widget with requested Handle %u", handle);
+            }
+            else {
+                message = "Failed to allocate new Handle for Widget";
+            }
+            throw std::runtime_error(message);
+        }
+    }
+
+    /** Default Constructor. */
+    explicit PyWidget()
+        : PyWidget(BAD_HANDLE)
+    {
+    }
+
+    /** The Application-unique Handle of this Object. */
+    Handle get_handle() const { return widget->get_handle(); }
+};
+
+/**********************************************************************************************************************/
 
 PyObject* produce_pynotf_module()
 {
     py::module module(python_notf_module_name, "NoTF Python bindings");
 
-    py::class_<Object, std::shared_ptr<Object>> object(module, "Object");
-
-    py::class_<LayoutItem, std::shared_ptr<LayoutItem>> layout_item(module, "LayoutItem", object);
-
     // Widget
     {
-        py::class_<Widget, std::shared_ptr<Widget>>(module, "Widget", layout_item)
-            //            .def("__init__", [](Widget& inst) { new(&inst) &(Widget::create().get()); })
-            //            .def("__init__", (std::shared_ptr<Widget>(*)())[]() { return Widget::create(); })
-            //            .def("__init__", (std::shared_ptr<Widget>(*)(Handle))[](Handle handle) { return Widget::create(handle); })
-            //                        .def("__init__", [](Widget& instance){Widget::create();})
-
-            //              .def("__init__", [](Widget& instance){new (&instance) Widget::create();})
-            //            .def(py::init<Handle>())
-            //            .def("__init__", (std::shared_ptr<Widget>(*)()) & Widget::create)
-            .def_static("create", []() { return Widget::create(); })
-            //            .def("create", (std::shared_ptr<Widget>(*)()) & Widget::create)
-            .def("get_handle", &Widget::get_handle);
-
-        //        module.def("create_widget", (std::shared_ptr<Widget>(*)()) & Widget::create);
-        module.def("create_widget", []() { return Widget::create(); });
+        py::class_<PyWidget>(module, "Widget")
+            .def(py::init<>())
+            .def(py::init<Handle>())
+            .def("get_handle", &PyWidget::get_handle, "The Application-unique Handle of this Widget.");
     }
-
-    // SpriteRenderer
-    //    {
-    //        py::class_<SpriteRenderer, std::shared_ptr<SpriteRenderer>>(module, "SpriteRenderer")
-    //            .def(py::init<std::string, std::string ,std::string>(), []() { Widget::create(); })
-    //            .def("get_handle", &Widget::get_handle);
-    //    }
 
     // Vector2
     {

@@ -96,9 +96,9 @@ template <typename... Args>
 std::string string_format(const std::string& format, Args... args)
 {
     size_t size = std::snprintf(nullptr, 0, format.c_str(), args...) + 1; // Extra space for '\0'
-    std::unique_ptr<char[]> bufffer(new char[size]);
-    std::snprintf(bufffer.get(), size, format.c_str(), args...);
-    return std::string(bufffer.get(), bufffer.get() + size - 1); // We don't want the '\0' inside
+    std::unique_ptr<char[]> buffer(new char[size]);
+    std::snprintf(buffer.get(), size, format.c_str(), args...);
+    return std::string(buffer.get(), buffer.get() + size - 1); // We don't want the '\0' inside
 }
 
 } // namespace notf

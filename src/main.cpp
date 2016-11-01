@@ -69,13 +69,13 @@ int main(int argc, char* argv[])
     resource_manager.set_shader_directory("/home/clemens/code/notf/res/shaders");
 
     // window
-    WindowMake window_make;
+    WindowInfo window_make;
     window_make.width = 800;
     window_make.height = 600;
     window_make.opengl_version_major = 3;
     window_make.opengl_version_minor = 3;
     window_make.opengl_remove_deprecated = true;
-    window_make.opengl_profile = WindowMake::PROFILE::CORE;
+    window_make.opengl_profile = WindowInfo::PROFILE::CORE;
     window_make.enable_vsync = false;
     std::shared_ptr<Window> window = Window::create(window_make);
 

@@ -15,7 +15,7 @@ class Window;
 
 /// @brief Information for the Application.
 /// To initialize the Application we require the `argv` and `argc` fields to be set and valid.
-struct ApplicationMake {
+struct ApplicationInfo {
 
     /// @brief Command line arguments passed to main() by the OS.
     char** argv = nullptr;
@@ -61,32 +61,32 @@ public: // methods
     /// @brief Returns the Application's Resource Manager.
     ResourceManager& get_resource_manager() { return *m_resource_manager; }
 
-    /// @brief Returns the Application's Item Manager.
-    ObjectManager& get_item_manager() { return *m_object_manager; }
+    /// @brief Returns the Application's Object Manager.
+    ObjectManager& get_object_manager() { return *m_object_manager; }
 
     /// @brief Returns the Application's Python interpreter wrapper.
     PythonInterpreter& get_python_interpreter() { return *m_interpreter; }
 
-    /// @brief Returns the Application's Make.
-    const ApplicationMake& get_make() const { return m_make; }
+    /// @brief Returns the Application's Info.
+    const ApplicationInfo& get_info() const { return m_info; }
 
 public: // static methods
-    // @brief Initializes the Application through an user-defined ApplicationMake object.
-    static Application& initialize(const ApplicationMake& make);
+    // @brief Initializes the Application through an user-defined ApplicationInfo object.
+    static Application& initialize(const ApplicationInfo& info);
 
     /// @brief Initializes the Application using only the Command line arguments passed by the OS.
     static Application& initialize(const int argc, char* argv[])
     {
-        ApplicationMake make;
-        make.argc = argc;
-        make.argv = argv;
-        return get_instance(std::move(make));
+        ApplicationInfo info;
+        info.argc = argc;
+        info.argv = argv;
+        return get_instance(std::move(info));
     }
 
     /// @brief The singleton Application instance.
-    static Application& get_instance(const ApplicationMake& make = ApplicationMake())
+    static Application& get_instance(const ApplicationInfo& info = ApplicationInfo())
     {
-        static Application instance(make);
+        static Application instance(info);
         return instance;
     }
 
@@ -125,8 +125,8 @@ private: // methods for Window
 
 private: // methods
     /// @brief Constructor.
-    /// @param make     ApplicationMake providing initialization arguments.
-    explicit Application(const ApplicationMake make);
+    /// @param info     ApplicationInfo providing initialization arguments.
+    explicit Application(const ApplicationInfo info);
 
     /// @brief Shuts down the application.
     /// Is called automatically, after the last Window has been closed.
@@ -137,8 +137,8 @@ private: // methods
     Window* _get_window(GLFWwindow* glfw_window);
 
 private: // fields
-    /// @brief The make of this Application object.
-    const ApplicationMake m_make;
+    /// @brief The ApplicationInfo of this Application object.
+    const ApplicationInfo m_info;
 
     /// @brief The log handler thread used to format and print out log messages in a thread-safe manner.
     std::unique_ptr<LogHandler> m_log_handler;
