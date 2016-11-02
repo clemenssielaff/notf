@@ -48,28 +48,30 @@ public: // methods
     void set_shader_directory(std::string shader_directory);
 
     /**
-     * @brief Retrieves a texture by its path.
+     * @brief Retrieves a Texture2 by its path.
      *
      * This function either loads the texture from disk if this is the first time it has been requested,
      * or reuses a cached texture, if it was already loaded.
      *
-     * @param texture_path  Texture path, relative to the texture directory.
+     * @param texture_path          Texture path, relative to the texture directory.
+    * @throw std::runtime_error     If loading a Texture from the given path failed.
      * @return The loaded Texture - or an empty pointer, if an error occurred.
      */
     std::shared_ptr<Texture2> get_texture(const std::string& texture_path);
 
     /**
-     * @brief Retrieves a texture by its name.
+     * @brief Retrieves a previously built Shader by its name.
      *
-     * The Shader must have been built before retrieval using `build_shader`;
+     * The Shader must have been built before retrieval using `build_shader` or this function will throw.
      *
-     * @param shader_name   Name of the texture to retrieve.
-     * @return The Shader - or an empty pointer, if the name does not identify a Shader.
+     * @param shader_name           Name of the texture to retrieve.
+     * @throw std::runtime_error    If the name does not identify a Shader.
+     * @return The Shader.
      */
     std::shared_ptr<Shader> get_shader(const std::string& shader_name);
 
     /**
-     * @brief Loads several shader source files from disk and compiles an OpenGL shader from them.
+     * @brief Loads several shader source files from disk and compiles a Shader from them.
      *
      * If the given name already identifies a Shader, it is returned instead.
      *
@@ -77,7 +79,8 @@ public: // methods
      * @param vertex_shader_path    Path to a vertex shader source file.
      * @param fragment_shader_path  Path to a fragment shader source file.
      * @param geometry_shader_path  (optional) Path to a geometry shader source file.
-     * @return The requested Shader - or an empty pointer, if an error occurred.
+     * @throw std::runtime_error    If an error occurred during shader compilation.
+     * @return The requested Shader.
      */
     std::shared_ptr<Shader> build_shader(const std::string& shader_name,
                                          const std::string& vertex_shader_path,

@@ -61,14 +61,14 @@ public: // methods
         return _get_child(m_items[index.get()]);
     }
 
-    /// @brief Places a new LayoutItem into the Layout.
+    /// @brief Adds a new LayoutItem into the Layout.
     /// @param item     Item to place at the end of the Layout. If it is already a child, it is moved to last place.
     void add_item(std::shared_ptr<LayoutItem> item);
 
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
 
 public: // static methods
-    /// @brief Factory function to create a new FillLayout.
+    /// @brief Factory function to create a new StackLayout.
     /// @param direction    Direction in which the StackLayout is stacked.
     /// @param handle       Handle of this Layout.
     static std::shared_ptr<StackLayout> create(const DIRECTION direction, Handle handle = BAD_HANDLE)

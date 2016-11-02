@@ -23,181 +23,7 @@ using namespace notf;
 
 const char* python_notf_module_name = "notf";
 
-/**********************************************************************************************************************/
-
-/** Python wrapper for notf::Shader. */
-struct PyShader {
-
-    std::shared_ptr<Shader> data;
-
-    explicit PyShader(const std::string& name)
-        : data(Application::get_instance().get_resource_manager().get_shader(name))
-    {
-        if (!data) {
-            throw std::runtime_error(string_format("Cannot load unknown Shader named '%s'", name));
-        }
-    }
-
-    explicit PyShader(const std::string& shader_name,
-                      const std::string& vertex_shader_path,
-                      const std::string& fragment_shader_path)
-        : data(Application::get_instance().get_resource_manager().build_shader(
-              shader_name, vertex_shader_path, fragment_shader_path))
-    {
-        if (!data) {
-            throw std::runtime_error(string_format("Failed to build Shader '%s' from the folloing sources:\n"
-                                                   "\tvertex shader:   '%s'\n"
-                                                   "\tfragment shader: '%s'",
-                                                   shader_name, vertex_shader_path, fragment_shader_path));
-        }
-    }
-};
-
-/**********************************************************************************************************************/
-
-/** Python wrapper for notf::Texture2. */
-struct PyTexture {
-
-    std::shared_ptr<Texture2> data;
-
-    explicit PyTexture(const std::string& texture_path)
-        : data(Application::get_instance().get_resource_manager().get_texture(texture_path))
-    {
-        if (!data) {
-            throw std::runtime_error(string_format("Cannot load unknown Texture '%s'", texture_path));
-        }
-    }
-};
-
-/**********************************************************************************************************************/
-
-/** Python wrapper for notf::TextureComponent. */
-struct PyTextureComponent {
-
-    std::shared_ptr<TextureComponent> data;
-
-    explicit PyTextureComponent(const PyTexture& texture)
-        : data(make_component<TextureComponent>(TextureChannels{{0, texture.data}}))
-    {
-        if (!data) {
-            throw std::runtime_error(string_format("Failed to produce valid TextureComponent from Texture ID %u",
-                                                   texture.data->get_id()));
-        }
-    }
-};
-
-/**********************************************************************************************************************/
-
-/** Python wrapper for notf::SpriteRenderer. */
-struct PySpriteRenderer {
-
-    std::shared_ptr<SpriteRenderer> data;
-
-    explicit PySpriteRenderer(const PyShader& shader)
-        : data(make_component<SpriteRenderer>(shader.data))
-    {
-        if (!data) {
-            throw std::runtime_error(string_format("Failed to produce valid SpriteRenderer from Shader '%s'",
-                                                   shader.data->get_name()));
-        }
-    }
-};
-
-/**********************************************************************************************************************/
-
-/** Python wrapper for notf::Widget. */
-struct PyWidget {
-
-    std::shared_ptr<Widget> data;
-
-    explicit PyWidget(const Handle handle)
-        : data(Widget::create(handle))
-    {
-        if (!data) {
-            std::string message;
-            if (handle) {
-                message = string_format("Failed to create Widget with requested Handle %u", handle);
-            }
-            else {
-                message = "Failed to allocate new Handle for Widget";
-            }
-            throw std::runtime_error(message);
-        }
-    }
-
-    explicit PyWidget()
-        : PyWidget(BAD_HANDLE)
-    {
-    }
-
-    Handle get_handle() const { return data->get_handle(); }
-
-    void add_component(const PySpriteRenderer& component) { data->add_component(component.data); }
-    void add_component(const PyTextureComponent& component) { data->add_component(component.data); }
-};
-
-/**********************************************************************************************************************/
-
-/** Python wrapper for notf::StackLayout. */
-struct PyStackLayout {
-
-    std::shared_ptr<StackLayout> data;
-
-    explicit PyStackLayout(unsigned char direction)
-        : data()
-    {
-        if (direction > to_number(StackLayout::DIRECTION::BOTTOM_TO_TOP)) {
-            throw std::runtime_error(string_format("Invalid StackLayout direction: %u. Valid values are:\n"
-                                                   "\t0 : Left->Right\n",
-                                                   "\t1 : Top->Bottom\n",
-                                                   "\t2 : Right->Left\n",
-                                                   "\t3 : Bottom->Top",
-                                                   direction));
-        }
-        data = StackLayout::create(static_cast<StackLayout::DIRECTION>(direction));
-        if (!data) {
-            throw std::runtime_error(string_format("Failed to create StackLayout with direction: %u", direction));
-        }
-    }
-
-    void add_item(const PyWidget& widget) { data->add_item(widget.data); }
-    void add_item(const PyStackLayout& layout) { data->add_item(layout.data); }
-};
-
-/**********************************************************************************************************************/
-
-struct PyLayoutRoot {
-
-    friend struct PyWindow;
-
-    std::shared_ptr<LayoutRoot> data;
-
-    void set_item(const PyStackLayout& layout) { data->set_item(layout.data); }
-    void set_item(const PyWidget& widget) { data->set_item(widget.data); }
-
-private:
-    PyLayoutRoot(std::shared_ptr<LayoutRoot> layout_root)
-        : data(layout_root)
-    {
-    }
-};
-
-/**********************************************************************************************************************/
-
-/** Python wrapper for notf::StackLayout. */
-struct PyWindow {
-
-    std::shared_ptr<Window> data;
-
-    explicit PyWindow()
-        : data(Application::get_instance().get_current_window())
-    {
-    }
-
-    PyLayoutRoot get_layout_root() { return PyLayoutRoot(data->get_layout_root()); }
-};
-
-/**********************************************************************************************************************/
+PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -209,60 +35,95 @@ PyObject* produce_pynotf_module()
     py::module module(python_notf_module_name, "NoTF Python bindings");
 
     // Shader
+    py::class_<Shader, std::shared_ptr<Shader>>(module, "_Shader");
     {
-        py::class_<PyShader>(module, "Shader")
-            .def(py::init<const std::string&>())
-            .def(py::init<const std::string&, const std::string&, const std::string&>());
+        module.def("Shader", [](const std::string& shader_name) -> std::shared_ptr<Shader> {
+            return Application::get_instance().get_resource_manager().get_shader(shader_name);
+        }, "Retrieves a previously built Shader by its name.", py::arg("shader_name"));
+
+        module.def("Shader", [](const std::string& shader_name,
+                                const std::string& vertex_shader_path,
+                                const std::string& fragment_shader_path) -> std::shared_ptr<Shader> {
+            return Application::get_instance().get_resource_manager().build_shader(shader_name, vertex_shader_path, fragment_shader_path);
+        }, "Loads several shader source files from disk and compiles a Shader from them.",
+        py::arg("shader_name"), py::arg("vertex_shader_path"), py::arg("fragment_shader_path"));
     }
 
     // Texture2
+    py::class_<Texture2, std::shared_ptr<Texture2>>(module, "_Texture2");
     {
-        py::class_<PyTexture>(module, "Texture2")
-            .def(py::init<const std::string&>());
+        module.def("Texture2", [](const std::string& texture_path) -> std::shared_ptr<Texture2> {
+            return Application::get_instance().get_resource_manager().get_texture(texture_path);
+        }, "Retrieves a Texture2 by its path.", py::arg("texture_path"));
     }
 
+    // Component
+    py::class_<Component, std::shared_ptr<Component>> Py_Component(module, "_Component");
+
     // TextureComponent
+    py::class_<TextureComponent, std::shared_ptr<TextureComponent>>(module, "_TextureComponent", Py_Component);
     {
-        py::class_<PyTextureComponent>(module, "TextureComponent")
-            .def(py::init<const PyTexture&>());
+        module.def("TextureComponent", [](std::shared_ptr<Texture2> texture) -> std::shared_ptr<TextureComponent> {
+            return make_component<TextureComponent>(TextureChannels{{0, texture}});
+        }, "Creates a new TextureComponent.", py::arg("texture"));
     }
 
     // SpriteRenderer
+    py::class_<SpriteRenderer, std::shared_ptr<SpriteRenderer>>(module, "_SpriteRenderer", Py_Component);
     {
-        py::class_<PySpriteRenderer>(module, "SpriteRenderer")
-            .def(py::init<const PyShader&>());
+        module.def("SpriteRenderer", [](std::shared_ptr<Shader> shader) -> std::shared_ptr<SpriteRenderer> {
+            return make_component<SpriteRenderer>(shader);
+        }, "Creates a new SpriteRenderer.", py::arg("shader"));
     }
 
+
+    // LayoutItem
+    py::class_<LayoutItem, std::shared_ptr<LayoutItem>> Py_LayoutItem(module, "_LayoutItem");
+
     // Widget
+    py::class_<Widget, std::shared_ptr<Widget>> Py_Widget(module, "_Widget", Py_LayoutItem);
     {
-        py::class_<PyWidget>(module, "Widget")
-            .def(py::init<>())
-            .def(py::init<Handle>())
-            .def("get_handle", &PyWidget::get_handle, "The Application-unique Handle of this Widget.")
-            .def("add_component", (void (PyWidget::*)(const PySpriteRenderer&)) & PyWidget::add_component)
-            .def("add_component", (void (PyWidget::*)(const PyTextureComponent&)) & PyWidget::add_component);
+        module.def("Widget", []() -> std::shared_ptr<Widget> {
+            return Widget::create();
+        }, "Creates a new Widget with an automatically assigned Handle.");
+
+        module.def("Widget", [](const Handle handle) -> std::shared_ptr<Widget> {
+            return Widget::create(handle);
+        }, "Creates a new Widget with an explicitly assigned Handle.", py::arg("handle"));
+
+
+        Py_Widget.def("get_handle", &Widget::get_handle, "The Application-unique Handle of this Widget.");
+        Py_Widget.def("add_component", &Widget::add_component, "Attaches a new Component to this Widget.", py::arg("component"));
     }
 
     // StackLayout
+    py::class_<StackLayout, std::shared_ptr<StackLayout>> Py_StackLayout(module, "_StackLayout", Py_LayoutItem);
     {
-        py::class_<PyStackLayout>(module, "StackLayout")
-            .def(py::init<unsigned char>())
-            .def("add_item", (void (PyStackLayout::*)(const PyWidget&)) & PyStackLayout::add_item)
-            .def("add_item", (void (PyStackLayout::*)(const PyStackLayout&)) & PyStackLayout::add_item);
+        module.def("StackLayout", [](unsigned short direction) -> std::shared_ptr<StackLayout> {
+            return StackLayout::create(static_cast<StackLayout::DIRECTION>(direction));
+        }, "Creates a new StackLayout with an automatically assigned Handle.", py::arg("direction"));
+
+        module.def("StackLayout", [](const StackLayout::DIRECTION direction, const Handle handle) -> std::shared_ptr<StackLayout> {
+            return StackLayout::create(direction, handle);
+        }, "Creates a new StackLayout with an explicitly assigned Handle.", py::arg("direction"), py::arg("handle"));
+
+        Py_StackLayout.def("add_item", &StackLayout::add_item, "Adds a new LayoutItem into the Layout.", py::arg("item"));
     }
 
     // LayoutRoot
+    py::class_<LayoutRoot, std::shared_ptr<LayoutRoot>> Py_LayoutRoot(module, "_LayoutRoot", Py_LayoutItem);
     {
-        py::class_<PyLayoutRoot>(module, "LayoutRoot")
-            .def("set_item", (void (PyLayoutRoot::*)(const PyWidget&)) & PyLayoutRoot::set_item)
-            .def("set_item", (void (PyLayoutRoot::*)(const PyStackLayout&)) & PyLayoutRoot::set_item);
+        Py_LayoutRoot.def("set_item", &LayoutRoot::set_item, "Sets a new Item at the LayoutRoot.", py::arg("item"));
     }
 
     // Window
+    py::class_<Window, std::shared_ptr<Window>> Py_Window(module, "_Window");
     {
-        py::class_<PyWindow>(module, "Window")
-            .def(py::init<>())
-            .def("get_layout_root", &PyWindow::get_layout_root);
+        module.def("Window", []() -> std::shared_ptr<Window> {
+            return Application::get_instance().get_current_window();
+        }, "Reference to the current Window of the Application.");
+
+        Py_Window.def("get_layout_root", &Window::get_layout_root, "The invisible root Layout of this Window.");
     }
 
     // Vector2

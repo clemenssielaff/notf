@@ -15,7 +15,7 @@ public: // methods
     /// @brief Returns the Window owning this LayoutRoot.
     std::shared_ptr<Window> get_window() const { return m_window.lock(); }
 
-    /// @brief Changes the internal Layout of the LayoutRoot.
+    /// @brief Sets a new Item at the LayoutRoot.
     void set_item(std::shared_ptr<LayoutItem> item);
 
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;

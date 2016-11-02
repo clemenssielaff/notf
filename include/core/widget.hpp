@@ -61,14 +61,12 @@ public: // methods
 public: // static methods
     /// @brief Factory function to create a new Widget instance.
     /// If an explicit handle is passed, it is assigned to the new Widget.
-    /// This function will fail if the existing Handle is already taken.
+    /// This function will throw if the existing Handle is already taken.
     /// If no handle is passed, a new one is created.
-    /// @param handle   [optional] Handle of the new widget.
+    /// @param handle               [optional] Handle of the new widget.
+    /// @throw std::runtime_error   If the Widget could not be created with the given Handle (or at all).
     /// @return The created Widget, pointer is empty on error.
-    static std::shared_ptr<Widget> create(Handle handle = BAD_HANDLE)
-    {
-        return _create_object<Widget>(handle);
-    }
+    static std::shared_ptr<Widget> create(Handle handle = BAD_HANDLE);
 
 protected: // methods
     /// @brief Value Constructor.

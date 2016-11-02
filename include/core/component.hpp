@@ -100,7 +100,7 @@ constexpr Component::KIND get_kind()
 
 /// @brief Factory function to create shared pointers to any subclass of Component.
 /// Make sure that all Component subclasses have a protected Constructor
-/// If the Component fails validation with `validate`, the returned shared pointer will be empty.
+/// @throw std::runtime_error   If the Component failed to validate with `validate`.
 template <class COMPONENT, typename... ARGS>
 std::shared_ptr<COMPONENT> make_component(ARGS&&... args)
 {
@@ -108,7 +108,7 @@ std::shared_ptr<COMPONENT> make_component(ARGS&&... args)
                   "make_component must only be used with subclasses of notf::Component");
     auto component = std::make_shared<MakeSmartEnabler<COMPONENT>>(std::forward<ARGS>(args)...);
     if (!component->is_valid()) {
-        return {};
+        throw std::runtime_error("Failed to produce valid Component");
     }
     return component;
 }

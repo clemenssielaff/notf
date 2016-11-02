@@ -87,7 +87,7 @@ public: // methods
     /// @brief The Window's title.
     const std::string& get_title() const { return m_title; }
 
-    /// @brief The invisible root widget of this Window.
+    /// @brief The invisible root Layout of this Window.
     std::shared_ptr<LayoutRoot> get_layout_root() const { return m_root_widget; }
 
     /// @brief Returns the Application's Render Manager.
