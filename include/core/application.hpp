@@ -70,7 +70,7 @@ public: // methods
     PythonInterpreter& get_python_interpreter() { return *m_interpreter; }
 
     /// @brief Returns the current Window.
-    std::shared_ptr<Window> get_current_window();
+    std::shared_ptr<Window> get_current_window() { return m_current_window; }
 
     /// @brief Returns the Application's Info.
     const ApplicationInfo& get_info() const { return m_info; }
@@ -120,13 +120,13 @@ public: // static methods
 
 private: // methods for Window
     /// @brief Registers a new Window in this Application.
-    void _register_window(Window* window);
+    void _register_window(std::shared_ptr<Window> window);
 
     /// @brief Unregisters an existing Window from this Application.
-    void _unregister_window(Window* window);
+    void _unregister_window(std::shared_ptr<Window> window);
 
     /// @brief Changes the current Window of the Application.
-    void _set_current_window(Window* window);
+    void _set_current_window(std::shared_ptr<Window> window);
 
 private: // methods
     /// @brief Constructor.
@@ -139,7 +139,7 @@ private: // methods
 
     /// @brief Returns the Window instance associated with the given GLFW window.
     /// @param glfw_window  The GLFW window to look for.
-    Window* _get_window(GLFWwindow* glfw_window);
+    std::shared_ptr<Window> _get_window(GLFWwindow* glfw_window);
 
 private: // fields
     /// @brief The ApplicationInfo of this Application object.
@@ -155,13 +155,13 @@ private: // fields
     std::unique_ptr<ObjectManager> m_object_manager;
 
     /// @brief All Windows known the the Application.
-    std::unordered_map<GLFWwindow*, Window*> m_windows;
+    std::unordered_map<GLFWwindow*, std::shared_ptr<Window>> m_windows;
 
     /// @brief The Python Interpreter embedded in the Application.
     std::unique_ptr<PythonInterpreter> m_interpreter;
 
     /// @brief The Window with the current OpenGL context.
-    Window* m_current_window;
+    std::shared_ptr<Window> m_current_window;
 };
 
 } // namespace notf

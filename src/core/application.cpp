@@ -35,7 +35,7 @@ Application::Application(const ApplicationInfo info)
     , m_object_manager(std::make_unique<ObjectManager>(1024)) // reserve space for 1024 Items right away
     , m_windows()
     , m_interpreter(nullptr)
-    , m_current_window(nullptr)
+    , m_current_window()
 {
     // install the log handler first, to catch errors right away
     install_log_message_handler(std::bind(&LogHandler::push_log, m_log_handler.get(), std::placeholders::_1));
@@ -103,14 +103,6 @@ int Application::exec()
     return to_number(RETURN_CODE::SUCCESS);
 }
 
-std::shared_ptr<Window> Application::get_current_window()
-{
-    if (!m_current_window) {
-        return {};
-    }
-    return m_current_window->shared_from_this();
-}
-
 Application& Application::initialize(const ApplicationInfo& info)
 {
     if (info.argc == -1 || info.argv == nullptr) {
@@ -128,7 +120,7 @@ void Application::_on_error(int error, const char* message)
 void Application::_on_token_key(GLFWwindow* glfw_window, int key, int scancode, int action, int modifiers)
 {
     UNUSED(scancode);
-    Window* window = get_instance()._get_window(glfw_window);
+    std::shared_ptr<Window> window = get_instance()._get_window(glfw_window);
     if (!window) {
         log_critical << "Received 'on_token_key' Callback for unknown GLFW window";
         return;
@@ -139,13 +131,13 @@ void Application::_on_token_key(GLFWwindow* glfw_window, int key, int scancode, 
     set_key(g_key_states, notf_key, action);
 
     // let the window fire the key event
-    KeyEvent key_event{window, notf_key, KEY_ACTION(action), KEY_MODIFIERS(modifiers), g_key_states};
+    KeyEvent key_event{window.get(), notf_key, KEY_ACTION(action), KEY_MODIFIERS(modifiers), g_key_states};
     window->on_token_key(key_event);
 }
 
 void Application::_on_window_close(GLFWwindow* glfw_window)
 {
-    Window* window = get_instance()._get_window(glfw_window);
+    std::shared_ptr<Window> window = get_instance()._get_window(glfw_window);
     if (!window) {
         log_critical << "Callback for unknown GLFW window";
         return;
@@ -155,7 +147,7 @@ void Application::_on_window_close(GLFWwindow* glfw_window)
 
 void Application::_on_window_reize(GLFWwindow* glfw_window, int width, int height)
 {
-    Window* window = get_instance()._get_window(glfw_window);
+    std::shared_ptr<Window> window = get_instance()._get_window(glfw_window);
     if (!window) {
         log_critical << "Callback for unknown GLFW window";
         return;
@@ -163,7 +155,7 @@ void Application::_on_window_reize(GLFWwindow* glfw_window, int width, int heigh
     window->_on_resize(width, height);
 }
 
-void Application::_register_window(Window* window)
+void Application::_register_window(std::shared_ptr<Window> window)
 {
     GLFWwindow* glfw_window = window->_glwf_window();
     if (!glfw_window) {
@@ -182,7 +174,7 @@ void Application::_register_window(Window* window)
     glfwSetWindowSizeCallback(glfw_window, _on_window_reize);
 }
 
-void Application::_unregister_window(Window* window)
+void Application::_unregister_window(std::shared_ptr<Window> window)
 {
     assert(window);
     GLFWwindow* glfw_window = window->_glwf_window();
@@ -198,7 +190,7 @@ void Application::_unregister_window(Window* window)
     m_windows.erase(iterator);
 }
 
-void Application::_set_current_window(Window* window)
+void Application::_set_current_window(std::shared_ptr<Window> window)
 {
     if (m_current_window != window) {
         glfwMakeContextCurrent(window->_glwf_window());
@@ -234,7 +226,7 @@ void Application::_shutdown()
     m_log_handler->join();
 }
 
-Window* Application::_get_window(GLFWwindow* glfw_window)
+std::shared_ptr<Window> Application::_get_window(GLFWwindow* glfw_window)
 {
     auto iterator = m_windows.find(glfw_window);
     if (iterator == m_windows.end()) {

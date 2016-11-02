@@ -29,7 +29,7 @@ def main():
     vertical_layout.add_item(background)
 
     window = Window()
-    window.get_layout_root().set_item(horizontal_layout)
+    window.get_layout_root().set_item(vertical_layout)
 
 
 if __name__ == "__main__":
