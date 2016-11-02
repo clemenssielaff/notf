@@ -103,6 +103,14 @@ int Application::exec()
     return to_number(RETURN_CODE::SUCCESS);
 }
 
+std::shared_ptr<Window> Application::get_current_window()
+{
+    if (!m_current_window) {
+        return {};
+    }
+    return m_current_window->shared_from_this();
+}
+
 Application& Application::initialize(const ApplicationInfo& info)
 {
     if (info.argc == -1 || info.argv == nullptr) {

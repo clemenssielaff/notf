@@ -26,6 +26,8 @@ struct ApplicationInfo {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// TODO: think about whether we really want raw pointers to Windows all over the place (no)
+
 /// @brief The Application class.
 ///
 /// Is a singleton, available everywhere with Application::instance();
@@ -66,6 +68,9 @@ public: // methods
 
     /// @brief Returns the Application's Python interpreter wrapper.
     PythonInterpreter& get_python_interpreter() { return *m_interpreter; }
+
+    /// @brief Returns the current Window.
+    std::shared_ptr<Window> get_current_window();
 
     /// @brief Returns the Application's Info.
     const ApplicationInfo& get_info() const { return m_info; }

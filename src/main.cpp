@@ -20,17 +20,12 @@ void blub(std::shared_ptr<Window> window)
     ResourceManager& resource_manager = Application::get_instance().get_resource_manager();
 
     // components
-    std::shared_ptr<SpriteRenderer> sprite_renderer;
-    std::shared_ptr<TextureComponent> blue_texture;
-    std::shared_ptr<TextureComponent> red_texture;
-    std::shared_ptr<TextureComponent> green_texture;
-    {
-        std::shared_ptr<Shader> shader = resource_manager.build_shader("sprite", "sprite.vert", "sprite.frag");
-        sprite_renderer = make_component<SpriteRenderer>(shader);
-        blue_texture = make_component<TextureComponent>(TextureChannels{{0, resource_manager.get_texture("blue.png")}});
-        red_texture = make_component<TextureComponent>(TextureChannels{{0, resource_manager.get_texture("red.png")}});
-        green_texture = make_component<TextureComponent>(TextureChannels{{0, resource_manager.get_texture("green.png")}});
-    }
+    std::shared_ptr<Shader> shader = resource_manager.build_shader("sprite", "sprite.vert", "sprite.frag");
+    std::shared_ptr<SpriteRenderer> sprite_renderer = make_component<SpriteRenderer>(shader);
+
+    std::shared_ptr<TextureComponent> blue_texture = make_component<TextureComponent>(TextureChannels{{0, resource_manager.get_texture("blue.png")}});
+    std::shared_ptr<TextureComponent> red_texture = make_component<TextureComponent>(TextureChannels{{0, resource_manager.get_texture("red.png")}});
+    std::shared_ptr<TextureComponent> green_texture = make_component<TextureComponent>(TextureChannels{{0, resource_manager.get_texture("green.png")}});
 
     // background (blue)
     std::shared_ptr<Widget> background_widget = Widget::create();

@@ -69,6 +69,25 @@ Size2i Window::get_canvas_size() const
     return {static_cast<uint>(width), static_cast<uint>(height)};
 }
 
+void Window::_update()
+{
+    assert(m_glfw_window);
+
+    // make the window current
+    Application::get_instance()._set_current_window(this);
+
+    // update the viewport buffer
+    int width, height;
+    glfwGetFramebufferSize(m_glfw_window.get(), &width, &height);
+    glViewport(0, 0, width, height);
+
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    m_root_widget->_redraw();
+    m_render_manager->render(*this);
+    glfwSwapBuffers(m_glfw_window.get());
+}
+
 void Window::close()
 {
     if (m_glfw_window) {
@@ -168,25 +187,6 @@ Window::Window(const WindowInfo& info)
 void Window::_on_resize(int width, int height)
 {
     m_root_widget->relayout({static_cast<Real>(width), static_cast<Real>(height)});
-}
-
-void Window::_update()
-{
-    assert(m_glfw_window);
-
-    // make the window current
-    Application::get_instance()._set_current_window(this);
-
-    // update the viewport buffer
-    int width, height;
-    glfwGetFramebufferSize(m_glfw_window.get(), &width, &height);
-    glViewport(0, 0, width, height);
-
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    m_root_widget->_redraw();
-    m_render_manager->render(*this);
-    glfwSwapBuffers(m_glfw_window.get());
 }
 
 } // namespace notf

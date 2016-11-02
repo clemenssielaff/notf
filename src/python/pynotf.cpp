@@ -9,27 +9,111 @@ namespace py = pybind11;
 #include "common/string_utils.hpp"
 #include "common/vector2.hpp"
 #include "core/application.hpp"
+#include "core/components/texture_component.hpp"
+#include "core/layout_root.hpp"
 #include "core/resource_manager.hpp"
 #include "core/widget.hpp"
+#include "core/window.hpp"
 #include "dynamic/layout/stack_layout.hpp"
 #include "dynamic/render/sprite.hpp"
+#include "graphics/shader.hpp"
+#include "graphics/texture2.hpp"
+#include "utils/enum_to_number.hpp"
 using namespace notf;
 
 const char* python_notf_module_name = "notf";
 
 /**********************************************************************************************************************/
 
+/** Python wrapper for notf::Shader. */
+struct PyShader {
+
+    std::shared_ptr<Shader> data;
+
+    explicit PyShader(const std::string& name)
+        : data(Application::get_instance().get_resource_manager().get_shader(name))
+    {
+        if (!data) {
+            throw std::runtime_error(string_format("Cannot load unknown Shader named '%s'", name));
+        }
+    }
+
+    explicit PyShader(const std::string& shader_name,
+                      const std::string& vertex_shader_path,
+                      const std::string& fragment_shader_path)
+        : data(Application::get_instance().get_resource_manager().build_shader(
+              shader_name, vertex_shader_path, fragment_shader_path))
+    {
+        if (!data) {
+            throw std::runtime_error(string_format("Failed to build Shader '%s' from the folloing sources:\n"
+                                                   "\tvertex shader:   '%s'\n"
+                                                   "\tfragment shader: '%s'",
+                                                   shader_name, vertex_shader_path, fragment_shader_path));
+        }
+    }
+};
+
+/**********************************************************************************************************************/
+
+/** Python wrapper for notf::Texture2. */
+struct PyTexture {
+
+    std::shared_ptr<Texture2> data;
+
+    explicit PyTexture(const std::string& texture_path)
+        : data(Application::get_instance().get_resource_manager().get_texture(texture_path))
+    {
+        if (!data) {
+            throw std::runtime_error(string_format("Cannot load unknown Texture '%s'", texture_path));
+        }
+    }
+};
+
+/**********************************************************************************************************************/
+
+/** Python wrapper for notf::TextureComponent. */
+struct PyTextureComponent {
+
+    std::shared_ptr<TextureComponent> data;
+
+    explicit PyTextureComponent(const PyTexture& texture)
+        : data(make_component<TextureComponent>(TextureChannels{{0, texture.data}}))
+    {
+        if (!data) {
+            throw std::runtime_error(string_format("Failed to produce valid TextureComponent from Texture ID %u",
+                                                   texture.data->get_id()));
+        }
+    }
+};
+
+/**********************************************************************************************************************/
+
+/** Python wrapper for notf::SpriteRenderer. */
+struct PySpriteRenderer {
+
+    std::shared_ptr<SpriteRenderer> data;
+
+    explicit PySpriteRenderer(const PyShader& shader)
+        : data(make_component<SpriteRenderer>(shader.data))
+    {
+        if (!data) {
+            throw std::runtime_error(string_format("Failed to produce valid SpriteRenderer from Shader '%s'",
+                                                   shader.data->get_name()));
+        }
+    }
+};
+
+/**********************************************************************************************************************/
+
 /** Python wrapper for notf::Widget. */
 struct PyWidget {
 
-    /** The actual NoTF Widget. */
-    std::shared_ptr<Widget> widget;
+    std::shared_ptr<Widget> data;
 
-    /** Constructor with exception handling. */
     explicit PyWidget(const Handle handle)
-        : widget(Widget::create(handle))
+        : data(Widget::create(handle))
     {
-        if (!widget) {
+        if (!data) {
             std::string message;
             if (handle) {
                 message = string_format("Failed to create Widget with requested Handle %u", handle);
@@ -41,28 +125,144 @@ struct PyWidget {
         }
     }
 
-    /** Default Constructor. */
     explicit PyWidget()
         : PyWidget(BAD_HANDLE)
     {
     }
 
-    /** The Application-unique Handle of this Object. */
-    Handle get_handle() const { return widget->get_handle(); }
+    Handle get_handle() const { return data->get_handle(); }
+
+    void add_component(const PySpriteRenderer& component) { data->add_component(component.data); }
+    void add_component(const PyTextureComponent& component) { data->add_component(component.data); }
 };
 
 /**********************************************************************************************************************/
 
+/** Python wrapper for notf::StackLayout. */
+struct PyStackLayout {
+
+    std::shared_ptr<StackLayout> data;
+
+    explicit PyStackLayout(unsigned char direction)
+        : data()
+    {
+        if (direction > to_number(StackLayout::DIRECTION::BOTTOM_TO_TOP)) {
+            throw std::runtime_error(string_format("Invalid StackLayout direction: %u. Valid values are:\n"
+                                                   "\t0 : Left->Right\n",
+                                                   "\t1 : Top->Bottom\n",
+                                                   "\t2 : Right->Left\n",
+                                                   "\t3 : Bottom->Top",
+                                                   direction));
+        }
+        data = StackLayout::create(static_cast<StackLayout::DIRECTION>(direction));
+        if (!data) {
+            throw std::runtime_error(string_format("Failed to create StackLayout with direction: %u", direction));
+        }
+    }
+
+    void add_item(const PyWidget& widget) { data->add_item(widget.data); }
+    void add_item(const PyStackLayout& layout) { data->add_item(layout.data); }
+};
+
+/**********************************************************************************************************************/
+
+struct PyLayoutRoot {
+
+    friend struct PyWindow;
+
+    std::shared_ptr<LayoutRoot> data;
+
+    void set_item(const PyStackLayout& layout) { data->set_item(layout.data); }
+    void set_item(const PyWidget& widget) { data->set_item(widget.data); }
+
+private:
+    PyLayoutRoot(std::shared_ptr<LayoutRoot> layout_root)
+        : data(layout_root)
+    {
+    }
+};
+
+/**********************************************************************************************************************/
+
+/** Python wrapper for notf::StackLayout. */
+struct PyWindow {
+
+    std::shared_ptr<Window> data;
+
+    explicit PyWindow()
+        : data(Application::get_instance().get_current_window())
+    {
+    }
+
+    PyLayoutRoot get_layout_root() { return PyLayoutRoot(data->get_layout_root()); }
+};
+
+/**********************************************************************************************************************/
+
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#endif
+
 PyObject* produce_pynotf_module()
 {
     py::module module(python_notf_module_name, "NoTF Python bindings");
+
+    // Shader
+    {
+        py::class_<PyShader>(module, "Shader")
+            .def(py::init<const std::string&>())
+            .def(py::init<const std::string&, const std::string&, const std::string&>());
+    }
+
+    // Texture2
+    {
+        py::class_<PyTexture>(module, "Texture2")
+            .def(py::init<const std::string&>());
+    }
+
+    // TextureComponent
+    {
+        py::class_<PyTextureComponent>(module, "TextureComponent")
+            .def(py::init<const PyTexture&>());
+    }
+
+    // SpriteRenderer
+    {
+        py::class_<PySpriteRenderer>(module, "SpriteRenderer")
+            .def(py::init<const PyShader&>());
+    }
 
     // Widget
     {
         py::class_<PyWidget>(module, "Widget")
             .def(py::init<>())
             .def(py::init<Handle>())
-            .def("get_handle", &PyWidget::get_handle, "The Application-unique Handle of this Widget.");
+            .def("get_handle", &PyWidget::get_handle, "The Application-unique Handle of this Widget.")
+            .def("add_component", (void (PyWidget::*)(const PySpriteRenderer&)) & PyWidget::add_component)
+            .def("add_component", (void (PyWidget::*)(const PyTextureComponent&)) & PyWidget::add_component);
+    }
+
+    // StackLayout
+    {
+        py::class_<PyStackLayout>(module, "StackLayout")
+            .def(py::init<unsigned char>())
+            .def("add_item", (void (PyStackLayout::*)(const PyWidget&)) & PyStackLayout::add_item)
+            .def("add_item", (void (PyStackLayout::*)(const PyStackLayout&)) & PyStackLayout::add_item);
+    }
+
+    // LayoutRoot
+    {
+        py::class_<PyLayoutRoot>(module, "LayoutRoot")
+            .def("set_item", (void (PyLayoutRoot::*)(const PyWidget&)) & PyLayoutRoot::set_item)
+            .def("set_item", (void (PyLayoutRoot::*)(const PyStackLayout&)) & PyLayoutRoot::set_item);
+    }
+
+    // Window
+    {
+        py::class_<PyWindow>(module, "Window")
+            .def(py::init<>())
+            .def("get_layout_root", &PyWindow::get_layout_root);
     }
 
     // Vector2
@@ -246,3 +446,7 @@ PyObject* produce_pynotf_module()
 
     return module.ptr();
 }
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif

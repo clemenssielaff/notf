@@ -18,6 +18,7 @@ void LayoutRoot::set_item(std::shared_ptr<LayoutItem> item)
         _remove_child(children.begin()->first);
     }
     _add_child(std::move(item));
+    _relayout({});
 }
 
 std::shared_ptr<Widget> LayoutRoot::get_widget_at(const Vector2& local_pos)
