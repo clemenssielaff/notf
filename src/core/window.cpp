@@ -3,6 +3,8 @@
 #include <iostream>
 #include <utility>
 
+#include <stb_image/std_image.h>
+
 #include "common/handle.hpp"
 #include "common/log.hpp"
 #include "core/application.hpp"
@@ -11,6 +13,7 @@
 #include "core/layout_root.hpp"
 #include "core/object_manager.hpp"
 #include "core/render_manager.hpp"
+#include "core/resource_manager.hpp"
 #include "core/widget.hpp"
 #include "graphics/gl_errors.hpp"
 
@@ -184,6 +187,27 @@ Window::Window(const WindowInfo& info)
     gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
     glfwSwapInterval(info.enable_vsync ? 1 : 0);
     glClearColor(info.clear_color.r, info.clear_color.g, info.clear_color.b, info.clear_color.a);
+
+    // apply the Window icon
+    if (!info.icon.empty()) {
+        // load the texture from file
+        std::string icon_path = app.get_resource_manager().get_texture_directory() + info.icon;
+        int width, height, bytes;
+        unsigned char* data = stbi_load(icon_path.c_str(), &width, &height, &bytes, 0);
+        if (!static_cast<bool>(data)) {
+            log_warning << "Failed to load Window icon from '" << icon_path << "'";
+        }
+        else if (bytes != 4) {
+            log_warning << "Icon file '" << icon_path << "' does not provide the required 4 byte per pixel, but " << bytes;
+        }
+        else {
+            const GLFWimage icon{width, height, data};
+            glfwSetWindowIcon(m_glfw_window.get(), 1, &icon);
+        }
+        // In order to remove leftover icons on Ubuntu call:
+        // rm ~/.local/share/applications/notf.desktop; rm ~/.local/share/icons/notf.png
+
+    }
 }
 
 void Window::_on_resize(int width, int height)

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <limits>
 
+#include "common/const.hpp"
 #include "common/index.hpp"
 #include "core/layout.hpp"
 
@@ -13,21 +14,12 @@ namespace notf {
  */
 class StackLayout : public Layout {
 
-public: // enum
-    /// @brief Direction in which the StackLayout is stacked.
-    enum class DIRECTION : unsigned char {
-        LEFT_TO_RIGHT,
-        TOP_TO_BOTTOM,
-        RIGHT_TO_LEFT,
-        BOTTOM_TO_TOP,
-    };
-
 public: // methods
     /// @brief Direction in which the StackLayout is stacked.
-    DIRECTION get_direction() const { return m_direction; }
+    STACK_DIRECTION get_direction() const { return m_direction; }
 
     /// @brief Updates the direction in which the StackLayout is stacked.
-    void set_direction(const DIRECTION direction)
+    void set_direction(const STACK_DIRECTION direction)
     {
         if (m_direction == direction) {
             return;
@@ -71,7 +63,7 @@ public: // static methods
     /// @brief Factory function to create a new StackLayout.
     /// @param direction    Direction in which the StackLayout is stacked.
     /// @param handle       Handle of this Layout.
-    static std::shared_ptr<StackLayout> create(const DIRECTION direction, Handle handle = BAD_HANDLE)
+    static std::shared_ptr<StackLayout> create(const STACK_DIRECTION direction, Handle handle = BAD_HANDLE)
     {
         return _create_object<StackLayout>(handle, direction);
     }
@@ -79,7 +71,7 @@ public: // static methods
 protected: // methods
     /// @brief Value Constructor.
     /// @param handle   Handle of this Layout.
-    explicit StackLayout(const Handle handle, const DIRECTION direction)
+    explicit StackLayout(const Handle handle, const STACK_DIRECTION direction)
         : Layout(handle)
         , m_direction(direction)
         , m_items()
@@ -92,7 +84,7 @@ protected: // methods
 
 private: // fields
     /// @brief Direction in which the StackLayout is stacked.
-    DIRECTION m_direction;
+    STACK_DIRECTION m_direction;
 
     Real m_spacing;
 

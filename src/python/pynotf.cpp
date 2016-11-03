@@ -34,6 +34,12 @@ PyObject* produce_pynotf_module()
 {
     py::module module(python_notf_module_name, "NoTF Python bindings");
 
+    py::enum_<STACK_DIRECTION>(module, "STACK_DIRECTION")
+        .value("LEFT_TO_RIGHT", STACK_DIRECTION::LEFT_TO_RIGHT)
+        .value("TOP_TO_BOTTOM", STACK_DIRECTION::TOP_TO_BOTTOM)
+        .value("RIGHT_TO_LEFT", STACK_DIRECTION::RIGHT_TO_LEFT)
+        .value("BOTTOM_TO_TOP", STACK_DIRECTION::BOTTOM_TO_TOP);
+
     // Shader
     py::class_<Shader, std::shared_ptr<Shader>>(module, "_Shader");
     {
@@ -76,7 +82,6 @@ PyObject* produce_pynotf_module()
         }, "Creates a new SpriteRenderer.", py::arg("shader"));
     }
 
-
     // LayoutItem
     py::class_<LayoutItem, std::shared_ptr<LayoutItem>> Py_LayoutItem(module, "_LayoutItem");
 
@@ -91,7 +96,6 @@ PyObject* produce_pynotf_module()
             return Widget::create(handle);
         }, "Creates a new Widget with an explicitly assigned Handle.", py::arg("handle"));
 
-
         Py_Widget.def("get_handle", &Widget::get_handle, "The Application-unique Handle of this Widget.");
         Py_Widget.def("add_component", &Widget::add_component, "Attaches a new Component to this Widget.", py::arg("component"));
     }
@@ -99,11 +103,11 @@ PyObject* produce_pynotf_module()
     // StackLayout
     py::class_<StackLayout, std::shared_ptr<StackLayout>> Py_StackLayout(module, "_StackLayout", Py_LayoutItem);
     {
-        module.def("StackLayout", [](unsigned short direction) -> std::shared_ptr<StackLayout> {
-            return StackLayout::create(static_cast<StackLayout::DIRECTION>(direction));
+        module.def("StackLayout", [](const STACK_DIRECTION direction) -> std::shared_ptr<StackLayout> {
+            return StackLayout::create(direction);
         }, "Creates a new StackLayout with an automatically assigned Handle.", py::arg("direction"));
 
-        module.def("StackLayout", [](const StackLayout::DIRECTION direction, const Handle handle) -> std::shared_ptr<StackLayout> {
+        module.def("StackLayout", [](const STACK_DIRECTION direction, const Handle handle) -> std::shared_ptr<StackLayout> {
             return StackLayout::create(direction, handle);
         }, "Creates a new StackLayout with an explicitly assigned Handle.", py::arg("direction"), py::arg("handle"));
 

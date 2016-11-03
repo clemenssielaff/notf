@@ -1,3 +1,4 @@
+TARGET = notf
 TEMPLATE = app
 CONFIG += console c++14
 CONFIG -= app_bundle qt
@@ -153,7 +154,8 @@ HEADERS += \
     include/common/claim.hpp \
     include/python/interpreter.hpp \
     include/core/object.hpp \
-    include/python/pynotf.hpp
+    include/python/pynotf.hpp \
+    include/common/const.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

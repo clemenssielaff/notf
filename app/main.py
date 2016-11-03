@@ -20,11 +20,11 @@ def main():
     right.add_component(sprite_renderer)
     right.add_component(red_texture)
 
-    horizontal_layout = StackLayout(0)
+    horizontal_layout = StackLayout(STACK_DIRECTION.LEFT_TO_RIGHT)
     horizontal_layout.add_item(left)
     horizontal_layout.add_item(right)
 
-    vertical_layout = StackLayout(1)
+    vertical_layout = StackLayout(STACK_DIRECTION.TOP_TO_BOTTOM)
     vertical_layout.add_item(horizontal_layout)
     vertical_layout.add_item(background)
 

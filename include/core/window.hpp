@@ -67,7 +67,10 @@ struct WindowInfo {
     Color clear_color = {0.0f, 0.0f, 0.0f, 1.0f}; // black
 
     /// @brief Window title.
-    std::string title = "Window";
+    std::string title = "NoTF";
+
+    /// @brief File name of the Window's icon, relative to the Application's texture directory, empty means no icon.
+    std::string icon = "";
 
     /// @brief Handle of this Window's root Widget (BAD_HANDLE means that a new Handle is assigned).
     Handle root_widget_handle = BAD_HANDLE;

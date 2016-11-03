@@ -237,7 +237,7 @@ GLuint Shader::compile(STAGE stage, const std::string& shader_path)
     assert(shader);
 
     // compile the shader
-    std::string shader_code = read_file(shader_path);
+    std::string shader_code = load_file(shader_path);
     char const* code_ptr = shader_code.c_str();
     glShaderSource(shader, 1, &code_ptr, nullptr);
     glCompileShader(shader);

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <numeric>
 #include <string>
 #include <vector>
 
@@ -99,6 +100,41 @@ std::string string_format(const std::string& format, Args... args)
     std::unique_ptr<char[]> buffer(new char[size]);
     std::snprintf(buffer.get(), size, format.c_str(), args...);
     return std::string(buffer.get(), buffer.get() + size - 1); // We don't want the '\0' inside
+}
+
+/// \brief Levenshtein "string distance" algorithm.
+///
+/// Originally from
+/// https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#C.2B.2B
+/// \param s1   First string.
+/// \param s2   Second string.
+/// \return Number of additions, modifications or removals to get from s1 to s2.
+inline size_t levenshtein_distance(const std::string& s1, const std::string& s2)
+{
+    size_t s1len = s1.size();
+    size_t s2len = s2.size();
+
+    auto column_start = static_cast<decltype(s1len)>(1);
+
+    auto column = new decltype(s1len)[s1len + 1];
+    std::iota(column + column_start, column + s1len + 1, column_start);
+
+    for (auto x = column_start; x <= s2len; x++) {
+        column[0] = x;
+        auto last_diagonal = x - column_start;
+        for (auto y = column_start; y <= s1len; y++) {
+            auto old_diagonal = column[y];
+            auto possibilities = {
+                column[y] + 1,
+                column[y - 1] + 1,
+                last_diagonal + (s1[y - 1] == s2[x - 1] ? 0 : 1)};
+            column[y] = std::min(possibilities);
+            last_diagonal = old_diagonal;
+        }
+    }
+    auto result = column[s1len];
+    delete[] column;
+    return result;
 }
 
 } // namespace notf

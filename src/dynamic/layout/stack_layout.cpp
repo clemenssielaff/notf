@@ -30,7 +30,7 @@ void StackLayout::_update_claim()
 {
     // construct the new claim
     Claim new_claim;
-    if ((m_direction == DIRECTION::LEFT_TO_RIGHT) || (m_direction == DIRECTION::RIGHT_TO_LEFT)) { // horizontal
+    if ((m_direction == STACK_DIRECTION::LEFT_TO_RIGHT) || (m_direction == STACK_DIRECTION::RIGHT_TO_LEFT)) { // horizontal
         for (Handle handle : m_items) {
             new_claim.add_horizontal(_get_child(handle)->get_claim());
         }
@@ -39,7 +39,7 @@ void StackLayout::_update_claim()
         }
     }
     else {
-        assert((m_direction == DIRECTION::TOP_TO_BOTTOM) || (m_direction == DIRECTION::BOTTOM_TO_TOP)); // vertical
+        assert((m_direction == STACK_DIRECTION::TOP_TO_BOTTOM) || (m_direction == STACK_DIRECTION::BOTTOM_TO_TOP)); // vertical
         for (Handle handle : m_items) {
             new_claim.add_vertical(_get_child(handle)->get_claim());
         }
@@ -56,7 +56,7 @@ void StackLayout::_relayout(const Size2r size)
     if (item_count == 0) {
         return;
     }
-    if ((m_direction == DIRECTION::LEFT_TO_RIGHT) || (m_direction == DIRECTION::RIGHT_TO_LEFT)) { // horizontal
+    if ((m_direction == STACK_DIRECTION::LEFT_TO_RIGHT) || (m_direction == STACK_DIRECTION::RIGHT_TO_LEFT)) { // horizontal
         const Real width_per_item = size.width / item_count;
         const Size2r item_size{width_per_item, size.height};
         Real x_offset = 0;

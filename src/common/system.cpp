@@ -7,7 +7,7 @@
 
 namespace notf {
 
-std::string read_file(const std::string& file_path)
+std::string load_file(const std::string& file_path)
 {
     std::ifstream file(file_path.c_str(), std::ifstream::in);
     if (!file.is_open()) {
