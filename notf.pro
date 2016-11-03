@@ -89,7 +89,8 @@ SOURCES += \
     src/common/claim.cpp \
     src/python/interpreter.cpp \
     src/core/object.cpp \
-    src/python/pynotf.cpp
+    src/python/pynotf.cpp \
+    src/graphics/raw_image.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -155,7 +156,8 @@ HEADERS += \
     include/python/interpreter.hpp \
     include/core/object.hpp \
     include/python/pynotf.hpp \
-    include/common/const.hpp
+    include/common/const.hpp \
+    include/graphics/raw_image.hpp
 
 DISTFILES += \
     res/shaders/test01.vert \

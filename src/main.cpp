@@ -1,26 +1,18 @@
-#include "common/log.hpp"
 #include "core/application.hpp"
-#include "core/components/texture_component.hpp"
 #include "core/events/key_event.hpp"
-#include "core/layout_root.hpp"
-#include "core/resource_manager.hpp"
-#include "core/widget.hpp"
 #include "core/window.hpp"
 #include "python/interpreter.hpp"
-
-#include "dynamic/layout/stack_layout.hpp"
-#include "dynamic/render/sprite.hpp"
 
 using namespace notf;
 
 int main(int argc, char* argv[])
 {
-    Application& app = Application::initialize(argc, argv);
-
-    // resource manager
-    ResourceManager& resource_manager = app.get_resource_manager();
-    resource_manager.set_texture_directory("/home/clemens/code/notf/res/textures");
-    resource_manager.set_shader_directory("/home/clemens/code/notf/res/shaders");
+    ApplicationInfo app_info;
+    app_info.argc = argc;
+    app_info.argv = argv;
+    app_info.texture_directory = "/home/clemens/code/notf/res/textures";
+    app_info.shader_directory = "/home/clemens/code/notf/res/shaders";
+    Application& app = Application::initialize(app_info);
 
     // window
     WindowInfo window_info;

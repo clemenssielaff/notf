@@ -48,6 +48,14 @@ Application::Application(const ApplicationInfo info)
         exit(to_number(RETURN_CODE::UNINITIALIZED));
     }
 
+    // set resource directories
+    if (!info.texture_directory.empty()) {
+        m_resource_manager->set_texture_directory(info.texture_directory);
+    }
+    if (!info.shader_directory.empty()) {
+        m_resource_manager->set_shader_directory(info.shader_directory);
+    }
+
     // set the error callback to catch all GLFW errors
     glfwSetErrorCallback(Application::_on_error);
 
@@ -109,7 +117,7 @@ Application& Application::initialize(const ApplicationInfo& info)
         log_fatal << "Cannot initialize an Application from a Info object with missing `argc` and `argv` fields";
         exit(to_number(RETURN_CODE::UNINITIALIZED));
     }
-    return get_instance(info);
+    return _get_instance(info);
 }
 
 void Application::_on_error(int error, const char* message)

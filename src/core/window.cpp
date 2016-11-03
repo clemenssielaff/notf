@@ -3,8 +3,6 @@
 #include <iostream>
 #include <utility>
 
-#include <stb_image/std_image.h>
-
 #include "common/handle.hpp"
 #include "common/log.hpp"
 #include "core/application.hpp"
@@ -16,6 +14,7 @@
 #include "core/resource_manager.hpp"
 #include "core/widget.hpp"
 #include "graphics/gl_errors.hpp"
+#include "graphics/raw_image.hpp"
 
 namespace notf {
 
@@ -29,11 +28,6 @@ void window_deleter(GLFWwindow* glfw_window)
 Window::~Window()
 {
     close();
-    // TODO: OpenGL Components and Textures etc. can survive the destruction of a Window and its OpenGL Context!
-    // This seems to cause a crash on shutdown when running in OpenGL 4.5 but strangely not in 3.0.
-    // I guess because the error is just silently ignored?
-    // Anyway, there should either be a single, shared Context per Application, so that I can just destroy all
-    // Components before the Application's Context is closed, or ... Context dependent Components? (nah.)
 }
 
 Size2i Window::get_window_size() const
@@ -189,24 +183,24 @@ Window::Window(const WindowInfo& info)
     glClearColor(info.clear_color.r, info.clear_color.g, info.clear_color.b, info.clear_color.a);
 
     // apply the Window icon
+    // In order to remove leftover icons on Ubuntu call:
+    // rm ~/.local/share/applications/notf.desktop; rm ~/.local/share/icons/notf.png
     if (!info.icon.empty()) {
-        // load the texture from file
-        std::string icon_path = app.get_resource_manager().get_texture_directory() + info.icon;
-        int width, height, bytes;
-        unsigned char* data = stbi_load(icon_path.c_str(), &width, &height, &bytes, 0);
-        if (!static_cast<bool>(data)) {
-            log_warning << "Failed to load Window icon from '" << icon_path << "'";
+        const std::string icon_path = app.get_resource_manager().get_texture_directory() + info.icon;
+        try {
+            Image icon(icon_path);
+            if (icon.get_bytes_per_pixel() != 4) {
+                log_warning << "Icon file '" << icon_path
+                            << "' does not provide the required 4 byte per pixel, but " << icon.get_bytes_per_pixel();
+            }
+            else {
+                const GLFWimage glfw_icon{icon.get_width(), icon.get_height(), const_cast<uchar*>(icon.get_data())};
+                glfwSetWindowIcon(m_glfw_window.get(), 1, &glfw_icon);
+            }
         }
-        else if (bytes != 4) {
-            log_warning << "Icon file '" << icon_path << "' does not provide the required 4 byte per pixel, but " << bytes;
+        catch (std::runtime_error) {
+            log_warning << "Failed to load Window icon '" << icon_path << "'";
         }
-        else {
-            const GLFWimage icon{width, height, data};
-            glfwSetWindowIcon(m_glfw_window.get(), 1, &icon);
-        }
-        // In order to remove leftover icons on Ubuntu call:
-        // rm ~/.local/share/applications/notf.desktop; rm ~/.local/share/icons/notf.png
-
     }
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <unordered_map>
 
 struct GLFWwindow;
@@ -13,6 +14,8 @@ class PythonInterpreter;
 class ResourceManager;
 class Window;
 
+/**********************************************************************************************************************/
+
 /// @brief Information for the Application.
 /// To initialize the Application we require the `argv` and `argc` fields to be set and valid.
 struct ApplicationInfo {
@@ -22,11 +25,15 @@ struct ApplicationInfo {
 
     /// @brief Number of strings in argv (first one is usually the name of the program).
     int argc = -1;
+
+    /** System path to the texture directory, absolute or relative to the executable. */
+    std::string texture_directory = "";
+
+    /** System path to the shader directory, absolute or relative to the executable. */
+    std::string shader_directory = "";
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// TODO: think about whether we really want raw pointers to Windows all over the place (no)
+/**********************************************************************************************************************/
 
 /// @brief The Application class.
 ///
@@ -85,15 +92,11 @@ public: // static methods
         ApplicationInfo info;
         info.argc = argc;
         info.argv = argv;
-        return get_instance(std::move(info));
+        return _get_instance(std::move(info));
     }
 
     /// @brief The singleton Application instance.
-    static Application& get_instance(const ApplicationInfo& info = ApplicationInfo())
-    {
-        static Application instance(info);
-        return instance;
-    }
+    static Application& get_instance() { return _get_instance(); }
 
     /// @brief Called by GLFW in case of an error.
     /// @param error    Error ID.
@@ -129,6 +132,13 @@ private: // methods for Window
     void _set_current_window(std::shared_ptr<Window> window);
 
 private: // methods
+    /// @brief Static (private) function holding the actual Application instance.
+    static Application& _get_instance(const ApplicationInfo& info = ApplicationInfo())
+    {
+        static Application instance(info);
+        return instance;
+    }
+
     /// @brief Constructor.
     /// @param info     ApplicationInfo providing initialization arguments.
     explicit Application(const ApplicationInfo info);

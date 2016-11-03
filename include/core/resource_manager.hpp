@@ -32,7 +32,7 @@ public: // methods
 
     /**
      * @brief Sets a new texture directory.
-     * @param texture_directory System path to the texture directory, absolute or relative to the executable.
+     * @param texture_directory     System path to the texture directory, absolute or relative to the executable.
      */
     void set_texture_directory(std::string texture_directory);
 
@@ -43,7 +43,7 @@ public: // methods
 
     /**
      * @brief Sets a new shader directory.
-     * @param shader_directory  System path to the shader directory, absolute or relative to the executable.
+     * @param shader_directory      System path to the shader directory, absolute or relative to the executable.
      */
     void set_shader_directory(std::string shader_directory);
 

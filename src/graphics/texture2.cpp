@@ -3,43 +3,34 @@
 #include "assert.h"
 
 #include <glad/glad.h>
-#include <stb_image/std_image.h>
 
 #include "common/log.hpp"
+#include "graphics/raw_image.hpp"
 #include "utils/smart_enabler.hpp"
-
-namespace { // anonymous
-
-/**
- * @brief Transparency - is used as default border.
- */
-static constexpr float transparency[] = {0.0f, 0.0f, 0.0f, 0.0f};
-
-} // namespace anonymous
 
 namespace notf {
 
 std::shared_ptr<Texture2> Texture2::load(const std::string& texture_path)
 {
     // load the texture from file
-    int width, height, bits;
-    unsigned char* data = stbi_load(texture_path.c_str(), &width, &height, &bits, 0);
-    bool success = static_cast<bool>(data);
+    Image image(texture_path);
+    bool success = static_cast<bool>(image);
 
     // analyze the texture
     GLenum format = 0;
     if (success) {
-        if (bits == 1) { // grayscale
+        const int bytes = image.get_bytes_per_pixel();
+        if (bytes == 1) { // grayscale
             format = GL_DEPTH_COMPONENT;
         }
-        else if (bits == 3) { // color
+        else if (bytes == 3) { // color
             format = GL_RGB;
         }
-        else if (bits == 4) { // color + alpha
+        else if (bytes == 4) { // color + alpha
             format = GL_RGBA;
         }
         else {
-            log_critical << "Cannot load texture with " << bits << " bits per pixel (must be 1, 3 or 4)";
+            log_critical << "Cannot load texture with " << bytes << " bytes per pixel (must be 1, 3 or 4)";
             success = false;
         }
     }
@@ -49,16 +40,13 @@ std::shared_ptr<Texture2> Texture2::load(const std::string& texture_path)
     if (success) {
         glGenTextures(1, &id);
         glBindTexture(GL_TEXTURE_2D, id);
-        //        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, transparency); // TODO: own color class
-        //        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-        //        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(format), width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(format), image.get_width(), image.get_height(),
+                     0, format, GL_UNSIGNED_BYTE, image.get_data());
         glGenerateMipmap(GL_TEXTURE_2D);
         glBindTexture(GL_TEXTURE_2D, 0);
     }
-    stbi_image_free(data);
 
     // return empty pointer on failure
     if (!success) {
@@ -73,28 +61,29 @@ std::shared_ptr<Texture2> Texture2::load(const std::string& texture_path)
         static const std::string rgb = "rgb";
         static const std::string rgba = "rgba";
 
+        const int bytes = image.get_bytes_per_pixel();
         const std::string* format_name;
-        if (bits == 1) {
+        if (bytes == 1) {
             format_name = &grayscale;
         }
-        else if (bits == 3) {
+        else if (bytes == 3) {
             format_name = &rgb;
         }
         else { // color + alpha
-            assert(bits == 4);
+            assert(bytes == 4);
             format_name = &rgba;
         }
 
-        log_trace << "Loaded " << width << "x" << height << " " << *format_name << " OpenGL texture with ID: " << id
-                  << " from: " << texture_path;
+        log_trace << "Loaded " << image.get_width() << "x" << image.get_height() << " " << *format_name
+                  << " OpenGL texture with ID: " << id << " from: " << texture_path;
 #endif
     }
 
     // return the loaded texture on success
     assert(id);
-    assert(width >= 0);
-    assert(height >= 0);
-    return std::make_shared<MakeSmartEnabler<Texture2>>(id, static_cast<GLuint>(width), static_cast<GLuint>(height));
+    assert(image.get_width() >= 0);
+    assert(image.get_height() >= 0);
+    return std::make_shared<MakeSmartEnabler<Texture2>>(id, static_cast<GLuint>(image.get_width()), static_cast<GLuint>(image.get_height()));
 }
 
 void Texture2::unbind()

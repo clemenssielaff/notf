@@ -66,7 +66,7 @@ std::shared_ptr<Texture2> ResourceManager::get_texture(const std::string& textur
     const std::string full_path = m_texture_directory + texture_path;
     std::shared_ptr<Texture2> texture = Texture2::load(full_path);
     if (!texture) {
-        throw std::runtime_error(string_format("Cannot load unknown Texture '%s'", texture_path));
+        throw std::runtime_error(string_format("Cannot load unknown Texture '%s'", texture_path.c_str()));
     }
 
     // store and return the texture
@@ -80,7 +80,7 @@ std::shared_ptr<Shader> ResourceManager::get_shader(const std::string& shader_na
         return m_shaders.at(shader_name);
     }
     else {
-        throw std::runtime_error(string_format("Cannot load unknown Shader named '%s'", shader_name));
+        throw std::runtime_error(string_format("Cannot load unknown Shader named '%s'", shader_name.c_str()));
     }
 }
 
@@ -104,8 +104,8 @@ std::shared_ptr<Shader> ResourceManager::build_shader(const std::string& shader_
             "Failed to build Shader '%s' from the folloing sources:\n"
             "\tvertex shader:   '%s'\n"
             "\tfragment shader: '%s'%s",
-            shader_name, vertex_shader_path, fragment_shader_path,
-            geometry_shader_path.empty() ? "" : string_format("\n\tgeometry shader: '%s'", geometry_shader_path)));
+            shader_name.c_str(), vertex_shader_path.c_str(), fragment_shader_path.c_str(),
+            geometry_shader_path.empty() ? "" : string_format("\n\tgeometry shader: '%s'", geometry_shader_path.c_str()).c_str()));
     }
 
     // store and return the texture
