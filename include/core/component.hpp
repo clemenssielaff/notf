@@ -25,10 +25,8 @@ public: // enums
     /// Acts as a unique identifier of each Component type and as index for the Widget components member.
     enum class KIND : unsigned char {
         INVALID = 0,
-        RENDER,
+        CANVAS,
         SHAPE,
-        TEXTURE,
-        COLOR,
         _count, // must always be the last entry
     };
 
@@ -68,10 +66,7 @@ private: // fields
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class RenderComponent;
 class ShapeComponent;
-class TextureComponent;
-class ColorComponent;
 
 /// @brief Returns the Component kind associated with a given Component subclass.
 /// There should be one class name per entry in Component::KIND (order doesn't matter).
@@ -81,17 +76,8 @@ template <typename T>
 constexpr Component::KIND get_kind()
 {
     Component::KIND kind = Component::KIND::INVALID;
-    if (std::is_base_of<RenderComponent, T>::value) {
-        kind = Component::KIND::RENDER;
-    }
-    else if (std::is_base_of<ShapeComponent, T>::value) {
+    if (std::is_base_of<ShapeComponent, T>::value) {
         kind = Component::KIND::SHAPE;
-    }
-    else if (std::is_base_of<TextureComponent, T>::value) {
-        kind = Component::KIND::TEXTURE;
-    }
-    else if (std::is_base_of<ColorComponent, T>::value) {
-        kind = Component::KIND::COLOR;
     }
     return kind;
 }

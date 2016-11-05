@@ -9,15 +9,11 @@ namespace py = pybind11;
 #include "common/string_utils.hpp"
 #include "common/vector2.hpp"
 #include "core/application.hpp"
-#include "core/components/texture_component.hpp"
 #include "core/layout_root.hpp"
 #include "core/resource_manager.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
 #include "dynamic/layout/stack_layout.hpp"
-#include "dynamic/render/sprite.hpp"
-#include "graphics/shader.hpp"
-#include "graphics/texture2.hpp"
 #include "utils/enum_to_number.hpp"
 using namespace notf;
 
@@ -40,47 +36,8 @@ PyObject* produce_pynotf_module()
         .value("RIGHT_TO_LEFT", STACK_DIRECTION::RIGHT_TO_LEFT)
         .value("BOTTOM_TO_TOP", STACK_DIRECTION::BOTTOM_TO_TOP);
 
-    // Shader
-    py::class_<Shader, std::shared_ptr<Shader>>(module, "_Shader");
-    {
-        module.def("Shader", [](const std::string& shader_name) -> std::shared_ptr<Shader> {
-            return Application::get_instance().get_resource_manager().get_shader(shader_name);
-        }, "Retrieves a previously built Shader by its name.", py::arg("shader_name"));
-
-        module.def("Shader", [](const std::string& shader_name,
-                                const std::string& vertex_shader_path,
-                                const std::string& fragment_shader_path) -> std::shared_ptr<Shader> {
-            return Application::get_instance().get_resource_manager().build_shader(shader_name, vertex_shader_path, fragment_shader_path);
-        }, "Loads several shader source files from disk and compiles a Shader from them.",
-        py::arg("shader_name"), py::arg("vertex_shader_path"), py::arg("fragment_shader_path"));
-    }
-
-    // Texture2
-    py::class_<Texture2, std::shared_ptr<Texture2>>(module, "_Texture2");
-    {
-        module.def("Texture2", [](const std::string& texture_path) -> std::shared_ptr<Texture2> {
-            return Application::get_instance().get_resource_manager().get_texture(texture_path);
-        }, "Retrieves a Texture2 by its path.", py::arg("texture_path"));
-    }
-
     // Component
     py::class_<Component, std::shared_ptr<Component>> Py_Component(module, "_Component");
-
-    // TextureComponent
-    py::class_<TextureComponent, std::shared_ptr<TextureComponent>>(module, "_TextureComponent", Py_Component);
-    {
-        module.def("TextureComponent", [](std::shared_ptr<Texture2> texture) -> std::shared_ptr<TextureComponent> {
-            return make_component<TextureComponent>(TextureChannels{{0, texture}});
-        }, "Creates a new TextureComponent.", py::arg("texture"));
-    }
-
-    // SpriteRenderer
-    py::class_<SpriteRenderer, std::shared_ptr<SpriteRenderer>>(module, "_SpriteRenderer", Py_Component);
-    {
-        module.def("SpriteRenderer", [](std::shared_ptr<Shader> shader) -> std::shared_ptr<SpriteRenderer> {
-            return make_component<SpriteRenderer>(shader);
-        }, "Creates a new SpriteRenderer.", py::arg("shader"));
-    }
 
     // LayoutItem
     py::class_<LayoutItem, std::shared_ptr<LayoutItem>> Py_LayoutItem(module, "_LayoutItem");

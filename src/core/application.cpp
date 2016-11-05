@@ -66,6 +66,7 @@ Application::Application(const ApplicationInfo info)
         exit(to_number(RETURN_CODE::GLFW_FAILURE));
     }
     log_info << "GLFW version: " << glfwGetVersionString();
+    glfwSetTime(0);
 
     // initialize Python
     m_interpreter = std::make_unique<PythonInterpreter>(m_info.argv);

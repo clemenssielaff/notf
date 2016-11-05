@@ -7,7 +7,7 @@ INCLUDEPATH *= thirdparty/ include/ test/
 
 # glfw
 LIBS *= -L/home/clemens/code/thirdparty/glfw-3.2.1/INSTALL/lib/
-LIBS *= -lglfw3 -lGL -ldl -lpthread -lX11 -lXrandr -lXcursor -lXinerama -lXxf86vm #-lXi
+LIBS *= -lglfw3 -lGL -lX11 -lXxf86vm -lpthread -ldl -lXcursor -lXrandr -lXinerama
 
 # python
 LIBS *= -L/home/clemens/code/thirdparty/Python-3.5.2/
@@ -51,37 +51,23 @@ else {
 SOURCES += \
     src/core/application.cpp \
     src/core/window.cpp \
-    thirdparty/glad/glad.c \
     src/core/component.cpp \
     src/core/widget.cpp \
     src/common/log.cpp \
     src/common/vector2.cpp \
     src/common/aabr.cpp \
-    thirdparty/stb_image/stb_image.cpp \
-    src/breakout.cpp \
-    src/breakout/game.cpp \
-    src/breakout/gameobject.cpp \
-    src/breakout/ballobject.cpp \
-    src/breakout/gamelevel.cpp \
-    src/graphics/shader.cpp \
-    src/graphics/texture2.cpp \
     src/core/resource_manager.cpp \
     src/common/real.cpp \
     src/common/system.cpp \
-    src/breakout/spriterenderer.cpp \
     src/core/render_manager.cpp \
     src/common/color.cpp \
-    src/core/components/render_component.cpp \
-    src/core/components/texture_component.cpp \
-    src/dynamic/render/sprite.cpp \
-    src/dynamic/color/singlecolor.cpp \
     src/common/transform2.cpp \
     src/dynamic/layout/flexbox_layout.cpp \
     src/core/components/shape_component.cpp \
     src/common/size2i.cpp \
     src/common/size2r.cpp \
     src/scratch2.cpp \
-    src/layout.cpp \
+    src/core/layout.cpp \
     src/core/layout_root.cpp \
     src/dynamic/layout/stack_layout.cpp \
     src/core/layout_item.cpp \
@@ -90,13 +76,13 @@ SOURCES += \
     src/python/interpreter.cpp \
     src/core/object.cpp \
     src/python/pynotf.cpp \
-    src/graphics/raw_image.cpp
+    src/graphics/raw_image.cpp \
+    thirdparty/nanovg/nanovg.c \
+    src/graphics/mytest.cpp
 
 HEADERS += \
     include/core/application.hpp \
     include/core/window.hpp \
-    thirdparty/glad/glad.h \
-    thirdparty/khr/khrplatform.h \
     include/core/component.hpp \
     include/common/signal.hpp \
     include/common/string_utils.hpp \
@@ -120,25 +106,13 @@ HEADERS += \
     include/common/system.hpp \
     include/graphics/gl_utils.hpp \
     include/graphics/gl_forwards.hpp \
-    thirdparty/stb_image/std_image.h \
-    include/breakout/game.hpp \
-    include/breakout/gameobject.hpp \
-    include/breakout/ballobject.hpp \
-    include/breakout/gamelevel.hpp \
-    include/graphics/shader.hpp \
-    include/graphics/texture2.hpp \
+    thirdparty/stb_image/stb_image.h \
     include/core/resource_manager.hpp \
-    include/breakout/spriterenderer.hpp \
     include/core/render_manager.hpp \
-    include/core/components/render_component.hpp \
     include/core/components/shape_component.hpp \
-    include/core/components/color_component.hpp \
     include/common/color.hpp \
     include/common/enummap.hpp \
-    include/core/components/texture_component.hpp \
     include/common/int_utils.hpp \
-    include/dynamic/render/sprite.hpp \
-    include/dynamic/color/singlecolor.hpp \
     include/common/transform2.hpp \
     include/dynamic/layout/flexbox_layout.hpp \
     include/utils/smart_enabler.hpp \
@@ -157,12 +131,12 @@ HEADERS += \
     include/core/object.hpp \
     include/python/pynotf.hpp \
     include/common/const.hpp \
-    include/graphics/raw_image.hpp
-
-DISTFILES += \
-    res/shaders/test01.vert \
-    res/shaders/test01.frag \
-    res/shaders/sprite.vert \
-    res/shaders/sprite.frag
+    include/graphics/raw_image.hpp \
+    thirdparty/nanovg/fontstash.h \
+    thirdparty/nanovg/nanovg_gl_utils.h \
+    thirdparty/nanovg/nanovg_gl.h \
+    thirdparty/nanovg/nanovg.h \
+    thirdparty/stb_truetype/stb_truetype.h \
+    include/graphics/mytest.hpp
 
 QMAKE_CXX = ccache g++

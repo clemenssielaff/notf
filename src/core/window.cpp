@@ -3,11 +3,16 @@
 #include <iostream>
 #include <utility>
 
+#include "core/glfw_wrapper.hpp"
+
+#define NANOVG_GLES3_IMPLEMENTATION
+#include <nanovg/nanovg.h>
+#include <nanovg/nanovg_gl.h>
+
 #include "common/handle.hpp"
 #include "common/log.hpp"
 #include "core/application.hpp"
 #include "core/events/key_event.hpp"
-#include "core/glfw_wrapper.hpp"
 #include "core/layout_root.hpp"
 #include "core/object_manager.hpp"
 #include "core/render_manager.hpp"
@@ -15,6 +20,7 @@
 #include "core/widget.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/raw_image.hpp"
+#include "graphics/mytest.hpp"
 
 namespace notf {
 
@@ -22,6 +28,13 @@ void window_deleter(GLFWwindow* glfw_window)
 {
     if (glfw_window) {
         glfwDestroyWindow(glfw_window);
+    }
+}
+
+void nanovg_deleter(NVGcontext* nvg_context)
+{
+    if(nvg_context){
+        nvgDeleteGLES3(nvg_context);
     }
 }
 
@@ -73,15 +86,37 @@ void Window::_update()
     // make the window current
     Application::get_instance()._set_current_window(shared_from_this());
 
-    // update the viewport buffer
-    int width, height;
-    glfwGetFramebufferSize(m_glfw_window.get(), &width, &height);
-    glViewport(0, 0, width, height);
+    // query window properties
+    int window_width, window_height;
+    glfwGetWindowSize(m_glfw_window.get(), &window_width, &window_height);
 
-    glClear(GL_COLOR_BUFFER_BIT);
+    int buffer_width, buffer_height;
+    glfwGetFramebufferSize(m_glfw_window.get(), &buffer_width, &buffer_height);
 
-    m_root_widget->_redraw();
-    m_render_manager->render(*this);
+    double mouse_x, mouse_y;
+    glfwGetCursorPos(m_glfw_window.get(), &mouse_x, &mouse_y);
+
+    const float pixel_ratio = window_width ? static_cast<float>(buffer_width) / static_cast<float>(window_width) : 0;
+
+    glViewport(0, 0, buffer_width, buffer_height);
+    // set clear color here
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST);
+
+    nvgBeginFrame(m_nvg_context.get(), window_width, window_height, pixel_ratio);
+    //        renderDemo(vg, static_cast<float>(mx), static_cast<float>(my),
+    //                   winWidth, winHeight, static_cast<float>(glfwGetTime()), 0, &data);
+    doit(m_nvg_context.get());
+    nvgEndFrame(m_nvg_context.get());
+
+    glEnable(GL_DEPTH_TEST);
+
+//    m_root_widget->_redraw();
+//    m_render_manager->render(*this);
     glfwSwapBuffers(m_glfw_window.get());
 }
 
@@ -113,6 +148,7 @@ std::shared_ptr<Window> Window::create(const WindowInfo& info)
 
 Window::Window(const WindowInfo& info)
     : m_glfw_window(nullptr, window_deleter)
+    , m_nvg_context(nullptr, nanovg_deleter)
     , m_title(info.title)
     , m_root_widget()
     , m_render_manager(std::make_unique<RenderManager>())
@@ -125,62 +161,38 @@ Window::Window(const WindowInfo& info)
             [this](const KeyEvent&) { close(); },
             [](const KeyEvent& event) { return event.key == KEY::ESCAPE; });
 
-    // set context variables before creating the window
-    if (info.opengl_version_major >= 0) {
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, info.opengl_version_major);
-    }
-
-    if (info.opengl_version_minor >= 0) {
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, info.opengl_version_minor);
-    }
-
-    if (info.opengl_remove_deprecated) {
-        if (info.opengl_version_major >= 3) {
-            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-        }
-        else {
-            log_warning << "Ignored WindowInfo flag 'opengl_remove_deprecated' "
-                        << "as it can only be used with OpenGL versions 3.0 or above.";
-        }
-    }
-
-    if (info.opengl_profile == WindowInfo::PROFILE::ANY) {
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
-    }
-    else {
-        if ((info.opengl_version_major < 3) || (info.opengl_version_minor < 2)) {
-            log_warning << "Ignored WindowInfo field 'opengl_profile' (set to "
-                        << (info.opengl_profile == WindowInfo::PROFILE::CORE ? "PROFILE::CORE" : "PROFILE::COMPAT")
-                        << ") as it can only be used with OpenGL versions 3.2 or above.";
-        }
-        else {
-            if (info.opengl_profile == WindowInfo::PROFILE::CORE) {
-                glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-            }
-            else {
-                assert(info.opengl_profile == WindowInfo::PROFILE::COMPAT);
-                glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
-            }
-        }
-    }
-
+    // NoTF uses OpenGL ES 3.0 for now
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     glfwWindowHint(GLFW_RESIZABLE, info.is_resizeable ? GL_TRUE : GL_FALSE);
-
-    glfwWindowHint(GLFW_SAMPLES, std::max(0, info.samples));
 
     // create the GLFW window
     m_glfw_window.reset(glfwCreateWindow(info.width, info.height, m_title.c_str(), nullptr, nullptr));
     if (!m_glfw_window) {
-        log_fatal << "Window or context creation failed for Window '" << get_title() << "'";
+        log_fatal << "Window or OpenGL context creation failed for Window '" << get_title() << "'";
         app._shutdown();
         exit(to_number(Application::RETURN_CODE::GLFW_FAILURE));
     }
 
-    // setup OpenGl
+    // create the NanoVG context
     glfwMakeContextCurrent(m_glfw_window.get());
-    gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
+    m_nvg_context.reset(nvgCreateGLES3(NVG_ANTIALIAS | NVG_STENCIL_STROKES
+#ifdef _DEBUG
+                                       | NVG_DEBUG
+#endif
+                                       ));
+    if (!m_nvg_context) {
+        log_fatal << "NanoVG context creation failed for Window '" << get_title() << "'";
+        app._shutdown();
+        exit(to_number(Application::RETURN_CODE::NANOVG_FAILURE));
+    }
+
+    // initial OpenGl setup
     glfwSwapInterval(info.enable_vsync ? 1 : 0);
     glClearColor(info.clear_color.r, info.clear_color.g, info.clear_color.b, info.clear_color.a);
+    // TODO: setting the clear color here will only apply until the next wndow is opened
+    // Instead, there should be a "background color" field of the Window - leading back to the question of a color class
 
     // apply the Window icon
     // In order to remove leftover icons on Ubuntu call:

@@ -9,6 +9,7 @@
 #include "common/size2i.hpp"
 
 struct GLFWwindow;
+struct NVGcontext;
 
 namespace notf {
 
@@ -19,7 +20,10 @@ class LayoutRoot;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// @brief Destroys a GLFW window.
-void window_deleter(GLFWwindow* glfwWindow);
+void window_deleter(GLFWwindow* glfw_window);
+
+/// @brief Destroys a NanoVG context.
+void nanovg_deleter(NVGcontext* nvg_context);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -40,25 +44,8 @@ struct WindowInfo {
     /// @brief Height of the window.
     int height = 480;
 
-    /// @brief Minimum required OpenGL minimum version number (-1 = no minimum)
-    int opengl_version_minor = -1;
-
-    /// @brief Minimum required OpenGL major version number (-1 = no minimum)
-    int opengl_version_major = -1;
-
-    /// @brief Profile of the created OpenGL context.
-    PROFILE opengl_profile = PROFILE::ANY;
-
-    /// @brief If set, requests that the OpenGL context should be forward-compatible,
-    /// meaning that deprecated functionality in the requested version of OpenGL is removed.
-    /// This option is ignored, if the requested OpenGL version is less than 3.0.
-    bool opengl_remove_deprecated = false;
-
     /// @brief If the Window is resizeable or not.
     bool is_resizeable = true;
-
-    /// @brief Number of samples for multisampling, <=0 disables multisampling
-    int samples = 2;
 
     /// @brief If vertical synchronization is turned on or off.
     bool enable_vsync = true;
@@ -145,6 +132,9 @@ private: // methods for Application
 private: // fields
     /// @brief The GLFW window managed by this Window.
     std::unique_ptr<GLFWwindow, decltype(&window_deleter)> m_glfw_window;
+
+    /// @brief The NanoVG used to draw into this Window.
+    std::unique_ptr<NVGcontext, decltype(&nanovg_deleter)> m_nvg_context;
 
     /// @brief The Window's title (is not accessible through GLFW).
     std::string m_title;

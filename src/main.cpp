@@ -19,22 +19,17 @@ int main(int argc, char* argv[])
     window_info.icon = "notf.png";
     window_info.width = 800;
     window_info.height = 600;
-    window_info.opengl_version_major = 3;
-    window_info.opengl_version_minor = 3;
-    window_info.opengl_remove_deprecated = true;
-    window_info.opengl_profile = WindowInfo::PROFILE::CORE;
     window_info.enable_vsync = false;
     std::shared_ptr<Window> window = Window::create(window_info);
 
-    window->on_token_key.connect(
-        [window, &app](const KeyEvent&) {
-            PythonInterpreter& python = app.get_python_interpreter();
-            python.parse_app();
-
-        },
-        [](const KeyEvent& event) -> bool {
-            return event.key == KEY::SPACE && event.action == KEY_ACTION::KEY_PRESS;
-        });
+//    window->on_token_key.connect(
+//        [window, &app](const KeyEvent&) {
+//            PythonInterpreter& python = app.get_python_interpreter();
+//            python.parse_app();
+//        },
+//        [](const KeyEvent& event) -> bool {
+//            return event.key == KEY::SPACE && event.action == KEY_ACTION::KEY_PRESS;
+//        });
 
     return app.exec();
 }

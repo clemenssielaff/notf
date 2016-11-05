@@ -75,7 +75,7 @@ void Widget::_redraw()
     }
 
     // if this Widget is renderable, register yourself to be rendered in the next frame
-    if (has_component_kind(Component::KIND::RENDER)) {
+    if (has_component_kind(Component::KIND::CANVAS)) {
         std::shared_ptr<Window> window = get_window();
         assert(window);
         window->get_render_manager().register_widget(get_handle());

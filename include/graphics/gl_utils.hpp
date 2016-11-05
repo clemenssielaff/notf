@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glad/glad.h>
+#include "core/glfw_wrapper.hpp"
 
 namespace notf {
 

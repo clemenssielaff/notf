@@ -51,6 +51,7 @@ public:
         UNINITIALIZED,
         GLFW_FAILURE,
         PYTHON_FAILURE,
+        NANOVG_FAILURE,
     };
 
 public: // methods

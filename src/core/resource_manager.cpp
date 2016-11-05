@@ -2,8 +2,6 @@
 
 #include "common/log.hpp"
 #include "common/string_utils.hpp"
-#include "graphics/shader.hpp"
-#include "graphics/texture2.hpp"
 
 namespace { // anonymous
 
@@ -55,75 +53,12 @@ void ResourceManager::set_shader_directory(std::string shader_directory)
     }
 }
 
-std::shared_ptr<Texture2> ResourceManager::get_texture(const std::string& texture_path)
-{
-    // return the existing texture, if it has already been loaded once
-    if (m_textures.count(texture_path)) {
-        return m_textures.at(texture_path);
-    }
-
-    // load the texture
-    const std::string full_path = m_texture_directory + texture_path;
-    std::shared_ptr<Texture2> texture = Texture2::load(full_path);
-    if (!texture) {
-        throw std::runtime_error(string_format("Cannot load unknown Texture '%s'", texture_path.c_str()));
-    }
-
-    // store and return the texture
-    m_textures.emplace(texture_path, texture);
-    return texture;
-}
-
-std::shared_ptr<Shader> ResourceManager::get_shader(const std::string& shader_name)
-{
-    if (m_shaders.count(shader_name)) {
-        return m_shaders.at(shader_name);
-    }
-    else {
-        throw std::runtime_error(string_format("Cannot load unknown Shader named '%s'", shader_name.c_str()));
-    }
-}
-
-std::shared_ptr<Shader> ResourceManager::build_shader(const std::string& shader_name,
-                                                      const std::string& vertex_shader_path,
-                                                      const std::string& fragment_shader_path,
-                                                      const std::string& geometry_shader_path)
-{
-    // if the name already identifies a shader, return that one instead
-    if (m_shaders.count(shader_name)) {
-        return m_shaders.at(shader_name);
-    }
-
-    // load the shader
-    const std::string full_vertex_path = m_shader_directory + vertex_shader_path;
-    const std::string full_fragment_path = m_shader_directory + fragment_shader_path;
-    const std::string full_geometry_path = geometry_shader_path.empty() ? "" : m_shader_directory + geometry_shader_path;
-    std::shared_ptr<Shader> shader = Shader::build(shader_name, full_vertex_path, full_fragment_path, full_geometry_path);
-    if (!shader) {
-        throw std::runtime_error(string_format(
-            "Failed to build Shader '%s' from the folloing sources:\n"
-            "\tvertex shader:   '%s'\n"
-            "\tfragment shader: '%s'%s",
-            shader_name.c_str(), vertex_shader_path.c_str(), fragment_shader_path.c_str(),
-            geometry_shader_path.empty() ? "" : string_format("\n\tgeometry shader: '%s'", geometry_shader_path.c_str()).c_str()));
-    }
-
-    // store and return the texture
-    log_info << "Compiled shader '" << shader_name << "'";
-    m_shaders.emplace(shader_name, shader);
-    return shader;
-}
-
 void ResourceManager::cleanup()
 {
-    remove_unused(m_textures);
-    remove_unused(m_shaders);
 }
 
 void ResourceManager::clear()
 {
-    m_textures.clear();
-    m_shaders.clear();
 }
 
 } // namespace notf

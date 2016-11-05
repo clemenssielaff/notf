@@ -1,8 +1,7 @@
 #pragma once
 
-#include <glad/glad.h>
-
 #include "common/log.hpp"
+#include "core/glfw_wrapper.hpp"
 
 namespace notf {
 

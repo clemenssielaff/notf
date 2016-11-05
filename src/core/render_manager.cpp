@@ -1,11 +1,9 @@
 #include "core/render_manager.hpp"
 
 #include "core/application.hpp"
-#include "core/components/render_component.hpp"
 #include "core/object_manager.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
-#include "graphics/shader.hpp"
 
 namespace notf {
 
@@ -23,22 +21,22 @@ void RenderManager::render(const Window& window)
     m_widgets.clear();
 
     // render all widgets
-    std::set<GLuint> configured_renderers;
-    for (const std::shared_ptr<Widget>& widget : widgets) {
-        auto renderer = widget->get_component<RenderComponent>();
-        assert(renderer);
+//    std::set<GLuint> configured_renderers;
+//    for (const std::shared_ptr<Widget>& widget : widgets) {
+//        auto renderer = widget->get_component<RenderComponent>();
+//        assert(renderer);
 
-        // perform the window setup, if this shader isn't set up yet
-        Shader& shader = renderer->get_shader();
-        if (!configured_renderers.count(shader.get_id())) {
-            shader.use();
-            renderer->setup_window(window);
-            configured_renderers.insert(shader.get_id());
-        }
+//        // perform the window setup, if this shader isn't set up yet
+//        Shader& shader = renderer->get_shader();
+//        if (!configured_renderers.count(shader.get_id())) {
+//            shader.use();
+//            renderer->setup_window(window);
+//            configured_renderers.insert(shader.get_id());
+//        }
 
-        // render the widget
-        renderer->render(*widget.get());
-    }
+//        // render the widget
+//        renderer->render(*widget.get());
+//    }
 }
 
 } // namespace notf
