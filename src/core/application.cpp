@@ -199,11 +199,11 @@ void Application::_unregister_window(std::shared_ptr<Window> window)
     m_windows.erase(iterator);
 }
 
-void Application::_set_current_window(std::shared_ptr<Window> window)
+void Application::_set_current_window(Window *window)
 {
-    if (m_current_window != window) {
+    if (m_current_window.get() != window) {
         glfwMakeContextCurrent(window->_glwf_window());
-        m_current_window = window;
+        m_current_window = window->shared_from_this();
     }
 }
 

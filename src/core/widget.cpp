@@ -69,16 +69,22 @@ std::shared_ptr<Widget> Widget::create(Handle handle)
 
 void Widget::_redraw()
 {
-    // don't draw invisible widgets
-    if (get_visibility() != VISIBILITY::VISIBLE) {
+    // Widgets without a canvas can never be drawn.
+    if (!has_component_kind(Component::KIND::CANVAS)) {
         return;
     }
 
-    // if this Widget is renderable, register yourself to be rendered in the next frame
-    if (has_component_kind(Component::KIND::CANVAS)) {
-        std::shared_ptr<Window> window = get_window();
-        assert(window);
-        window->get_render_manager().register_widget(get_handle());
+    std::shared_ptr<Window> window = get_window();
+    assert(window);
+    RenderManager& render_manager = window->get_render_manager();
+
+    // register yourself to be rendered in the next frame
+    if (get_visibility() == VISIBILITY::VISIBLE) {
+        render_manager.register_widget(get_handle());
+    }
+    // ... or unregister, if you have become invisible
+    else {
+        render_manager.unregister_widget(get_handle());
     }
 }
 

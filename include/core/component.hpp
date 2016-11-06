@@ -66,6 +66,7 @@ private: // fields
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+class CanvasComponent;
 class ShapeComponent;
 
 /// @brief Returns the Component kind associated with a given Component subclass.
@@ -79,6 +80,10 @@ constexpr Component::KIND get_kind()
     if (std::is_base_of<ShapeComponent, T>::value) {
         kind = Component::KIND::SHAPE;
     }
+    else if (std::is_base_of<CanvasComponent, T>::value) {
+        kind = Component::KIND::CANVAS;
+    }
+    assert(kind != Component::KIND::INVALID);
     return kind;
 }
 

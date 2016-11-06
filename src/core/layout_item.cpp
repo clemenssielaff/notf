@@ -66,8 +66,9 @@ void LayoutItem::_set_visible(const bool is_visible)
         _cascade_visibility(VISIBILITY::INVISIBLE);
     }
 
-    // redraw if the object just became visible
-    if (previous_visibility != m_visibility && m_visibility == VISIBILITY::VISIBLE) {
+    // redraw if the object just became visible or invisible
+    if (previous_visibility != m_visibility
+        && (m_visibility == VISIBILITY::VISIBLE || previous_visibility == VISIBILITY::VISIBLE)) {
         _redraw();
     }
 }

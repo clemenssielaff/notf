@@ -130,7 +130,7 @@ private: // methods for Window
     void _unregister_window(std::shared_ptr<Window> window);
 
     /// @brief Changes the current Window of the Application.
-    void _set_current_window(std::shared_ptr<Window> window);
+    void _set_current_window(Window* window);
 
 private: // methods
     /// @brief Static (private) function holding the actual Application instance.

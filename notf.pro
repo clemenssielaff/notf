@@ -17,6 +17,10 @@ INCLUDEPATH *= /home/clemens/code/thirdparty/Python-3.5.2/INSTALL/include/python
 CONFIG(release, debug|release) {
 #    message("Building in Release Mode.")
     DEFINES += "SIGNAL_LOG_LEVEL=4"
+    QMAKE_CXXFLAGS_RELEASE += -fvisibility=hidden
+    QMAKE_CXXFLAGS_RELEASE += -O3
+    QMAKE_LFLAGS_RELEASE += -fvisibility=hidden
+    QMAKE_LFLAGS_RELEASE += -O3
 }
 
 # debug
@@ -64,6 +68,7 @@ SOURCES += \
     src/common/transform2.cpp \
     src/dynamic/layout/flexbox_layout.cpp \
     src/core/components/shape_component.cpp \
+    src/core/components/canvas_component.cpp \
     src/common/size2i.cpp \
     src/common/size2r.cpp \
     src/scratch2.cpp \
@@ -78,7 +83,15 @@ SOURCES += \
     src/python/pynotf.cpp \
     src/graphics/raw_image.cpp \
     thirdparty/nanovg/nanovg.c \
-    src/graphics/mytest.cpp
+    src/python/pyvector2.cpp \
+    src/python/pycomponent.cpp \
+    src/python/pylayoutitem.cpp \
+    src/python/pywidget.cpp \
+    src/python/pystacklayout.cpp \
+    src/python/pylayoutroot.cpp \
+    src/python/pywindow.cpp \
+    src/python/pyglobal.cpp \
+    src/python/pycanvascomponent.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -110,6 +123,7 @@ HEADERS += \
     include/core/resource_manager.hpp \
     include/core/render_manager.hpp \
     include/core/components/shape_component.hpp \
+    include/core/components/canvas_component.hpp \
     include/common/color.hpp \
     include/common/enummap.hpp \
     include/common/int_utils.hpp \
@@ -137,6 +151,15 @@ HEADERS += \
     thirdparty/nanovg/nanovg_gl.h \
     thirdparty/nanovg/nanovg.h \
     thirdparty/stb_truetype/stb_truetype.h \
-    include/graphics/mytest.hpp
+    include/graphics/rendercontext.hpp \
+    include/python/pyvector2.hpp \
+    include/python/pycomponent.hpp \
+    include/python/pylayoutitem.hpp \
+    include/python/pywidget.hpp \
+    include/python/pystacklayout.hpp \
+    include/python/pyglobal.hpp \
+    include/python/pylayoutroot.hpp \
+    include/python/pywindow.hpp \
+    include/python/pycanvascomponent.hpp
 
 QMAKE_CXX = ccache g++

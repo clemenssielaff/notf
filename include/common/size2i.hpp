@@ -10,12 +10,15 @@ struct Size2i {
     //  FIELDS  ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @brief Width.
-    unsigned int width;
+    int width;
 
     /// @brief Height.
-    unsigned int height;
+    int height;
 
     //  OPERATORS  ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /// @brief Tests if this Size is valid (>=0) in both dimensions.
+    bool is_valid() const { return width >= 0 && height >= 0; }
 
     /// @brief Equal comparison with another Size2i.
     bool operator==(const Size2i& other) const { return (other.width == width && other.height == height); }

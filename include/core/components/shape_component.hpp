@@ -6,10 +6,9 @@ namespace notf {
 
 class Widget;
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/**********************************************************************************************************************/
 
-/// @brief Virtual base class for all Shape Components.
-///
+/** The Shape of a Widget, used to test against the cursor, for example. */
 class ShapeComponent : public Component {
 
 public: // methods

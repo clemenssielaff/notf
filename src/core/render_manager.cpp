@@ -1,13 +1,14 @@
 #include "core/render_manager.hpp"
 
 #include "core/application.hpp"
+#include "core/components/canvas_component.hpp"
 #include "core/object_manager.hpp"
 #include "core/widget.hpp"
-#include "core/window.hpp"
+#include "graphics/rendercontext.hpp"
 
 namespace notf {
 
-void RenderManager::render(const Window& window)
+void RenderManager::render(const RenderContext& context)
 {
     // lock all widgets for rendering
     std::vector<std::shared_ptr<Widget>> widgets;
@@ -20,23 +21,14 @@ void RenderManager::render(const Window& window)
     }
     m_widgets.clear();
 
-    // render all widgets
-//    std::set<GLuint> configured_renderers;
-//    for (const std::shared_ptr<Widget>& widget : widgets) {
-//        auto renderer = widget->get_component<RenderComponent>();
-//        assert(renderer);
+    // perform z-sorting here
 
-//        // perform the window setup, if this shader isn't set up yet
-//        Shader& shader = renderer->get_shader();
-//        if (!configured_renderers.count(shader.get_id())) {
-//            shader.use();
-//            renderer->setup_window(window);
-//            configured_renderers.insert(shader.get_id());
-//        }
-
-//        // render the widget
-//        renderer->render(*widget.get());
-//    }
+    // draw all widgets
+    for (const std::shared_ptr<Widget>& widget : widgets) {
+        std::shared_ptr<CanvasComponent> canvas = widget->get_component<CanvasComponent>();
+        assert(canvas);
+        canvas->render(*widget.get(), context);
+    }
 }
 
 } // namespace notf

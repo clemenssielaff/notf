@@ -78,11 +78,6 @@ void Layout::_cascade_visibility(const VISIBILITY visibility)
 
 void Layout::_redraw()
 {
-    // don't draw invisible objects
-    if (get_visibility() != VISIBILITY::VISIBLE) {
-        return;
-    }
-
     // redraw all children
     for (auto& it : m_children) {
         it.second->_redraw();

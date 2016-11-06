@@ -51,7 +51,7 @@ struct WindowInfo {
     bool enable_vsync = true;
 
     /// @brief Background color of the Window.
-    Color clear_color = {0.0f, 0.0f, 0.0f, 1.0f}; // black
+    Color clear_color = {0.3f, 0.3f, 0.32f, 1.0f};
 
     /// @brief Window title.
     std::string title = "NoTF";
@@ -89,8 +89,8 @@ public: // methods
     /// @brief Returns the size of the Window including decorators added by the OS in screen coordinates (not pixels).
     Size2i get_framed_window_size() const;
 
-    /// @brief Returns the size of the canvas displayed in this Window in pixels.
-    Size2i get_canvas_size() const;
+    /// @brief Returns the size of the Window's framebuffer in pixels.
+    Size2i get_buffer_size() const;
 
     /// @brief Closes this Window.
     void close();
@@ -144,6 +144,9 @@ private: // fields
 
     /// @brief The Window's render manager.
     std::unique_ptr<RenderManager> m_render_manager;
+
+    /// @brief The Window's background color.
+    Color m_background_color;
 };
 
 } // namespace notf

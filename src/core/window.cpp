@@ -1,11 +1,7 @@
 #include "core/window.hpp"
 
-#include <iostream>
-#include <utility>
-
-#include "core/glfw_wrapper.hpp"
-
 #define NANOVG_GLES3_IMPLEMENTATION
+#include "core/glfw_wrapper.hpp"
 #include <nanovg/nanovg.h>
 #include <nanovg/nanovg_gl.h>
 
@@ -14,13 +10,11 @@
 #include "core/application.hpp"
 #include "core/events/key_event.hpp"
 #include "core/layout_root.hpp"
-#include "core/object_manager.hpp"
 #include "core/render_manager.hpp"
 #include "core/resource_manager.hpp"
-#include "core/widget.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/raw_image.hpp"
-#include "graphics/mytest.hpp"
+#include "graphics/rendercontext.hpp"
 
 namespace notf {
 
@@ -33,7 +27,7 @@ void window_deleter(GLFWwindow* glfw_window)
 
 void nanovg_deleter(NVGcontext* nvg_context)
 {
-    if(nvg_context){
+    if (nvg_context) {
         nvgDeleteGLES3(nvg_context);
     }
 }
@@ -48,11 +42,10 @@ Size2i Window::get_window_size() const
     if (!m_glfw_window) {
         return {};
     }
-    int width, height;
-    glfwGetWindowSize(m_glfw_window.get(), &width, &height);
-    assert(width >= 0);
-    assert(height >= 0);
-    return {static_cast<uint>(width), static_cast<uint>(height)};
+    Size2i result;
+    glfwGetWindowSize(m_glfw_window.get(), &result.width, &result.height);
+    assert(result.is_valid());
+    return result;
 }
 
 Size2i Window::get_framed_window_size() const
@@ -62,61 +55,60 @@ Size2i Window::get_framed_window_size() const
     }
     int left, top, right, bottom;
     glfwGetWindowFrameSize(m_glfw_window.get(), &left, &top, &right, &bottom);
-    assert(right - left >= 0);
-    assert(bottom - top >= 0);
-    return {static_cast<uint>(right - left), static_cast<uint>(bottom - top)};
+    Size2i result = {right - left, bottom - top};
+    assert(result.is_valid());
+    return result;
 }
 
-Size2i Window::get_canvas_size() const
+Size2i Window::get_buffer_size() const
 {
     if (!m_glfw_window) {
         return {};
     }
-    int width, height;
-    glfwGetFramebufferSize(m_glfw_window.get(), &width, &height);
-    assert(width >= 0);
-    assert(height >= 0);
-    return {static_cast<uint>(width), static_cast<uint>(height)};
+    Size2i result;
+    glfwGetFramebufferSize(m_glfw_window.get(), &result.width, &result.height);
+    assert(result.is_valid());
+    return result;
 }
 
 void Window::_update()
 {
     assert(m_glfw_window);
 
+    // do nothing, if there are no Widgets in need to be redrawn
+    if (m_render_manager->is_clean()) {
+        return;
+    }
+
     // make the window current
-    Application::get_instance()._set_current_window(shared_from_this());
+    Application::get_instance()._set_current_window(this);
 
-    // query window properties
-    int window_width, window_height;
-    glfwGetWindowSize(m_glfw_window.get(), &window_width, &window_height);
-
-    int buffer_width, buffer_height;
-    glfwGetFramebufferSize(m_glfw_window.get(), &buffer_width, &buffer_height);
+    // build the render context
+    RenderContext ctx;
+    ctx.nanovg_context = m_nvg_context.get();
+    glfwGetWindowSize(m_glfw_window.get(), &ctx.window_size.width, &ctx.window_size.height);
+    glfwGetFramebufferSize(m_glfw_window.get(), &ctx.buffer_size.width, &ctx.buffer_size.height);
 
     double mouse_x, mouse_y;
     glfwGetCursorPos(m_glfw_window.get(), &mouse_x, &mouse_y);
+    ctx.mouse_pos = {static_cast<Real>(mouse_x), static_cast<Real>(mouse_y)};
 
-    const float pixel_ratio = window_width ? static_cast<float>(buffer_width) / static_cast<float>(window_width) : 0;
-
-    glViewport(0, 0, buffer_width, buffer_height);
-    // set clear color here
+    // prepare the viewport
+    glViewport(0, 0, ctx.buffer_size.width, ctx.buffer_size.height);
+    glClearColor(m_background_color.r, m_background_color.g, m_background_color.b, m_background_color.a);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
 
-    nvgBeginFrame(m_nvg_context.get(), window_width, window_height, pixel_ratio);
-    //        renderDemo(vg, static_cast<float>(mx), static_cast<float>(my),
-    //                   winWidth, winHeight, static_cast<float>(glfwGetTime()), 0, &data);
-    doit(m_nvg_context.get());
-    nvgEndFrame(m_nvg_context.get());
+    // render
+    nvgBeginFrame(ctx.nanovg_context, ctx.window_size.width, ctx.window_size.height, ctx.get_pixel_ratio());
+    m_render_manager->render(ctx);
+    nvgEndFrame(ctx.nanovg_context);
 
+    // post-render
     glEnable(GL_DEPTH_TEST);
-
-//    m_root_widget->_redraw();
-//    m_render_manager->render(*this);
     glfwSwapBuffers(m_glfw_window.get());
 }
 
@@ -152,6 +144,7 @@ Window::Window(const WindowInfo& info)
     , m_title(info.title)
     , m_root_widget()
     , m_render_manager(std::make_unique<RenderManager>())
+    , m_background_color(info.clear_color)
 {
     // always make sure that the Application is constructed first
     Application& app = Application::get_instance();
@@ -190,9 +183,6 @@ Window::Window(const WindowInfo& info)
 
     // initial OpenGl setup
     glfwSwapInterval(info.enable_vsync ? 1 : 0);
-    glClearColor(info.clear_color.r, info.clear_color.g, info.clear_color.b, info.clear_color.a);
-    // TODO: setting the clear color here will only apply until the next wndow is opened
-    // Instead, there should be a "background color" field of the Window - leading back to the question of a color class
 
     // apply the Window icon
     // In order to remove leftover icons on Ubuntu call:
