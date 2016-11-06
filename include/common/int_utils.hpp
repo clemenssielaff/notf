@@ -12,7 +12,7 @@ using ulong = unsigned long;
 using ulonglong = unsigned long long;
 
 /// @brief Counts the digits in a given integral number.
-template <typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
+template<class T, typename = std::enable_if_t<std::is_integral<T>::value> >
 constexpr ushort count_digits(T digits)
 {
     ushort counter = 1;
@@ -21,4 +21,11 @@ constexpr ushort count_digits(T digits)
     }
     return counter;
 }
+}
+
+/** Clamps an integer value into a given range. */
+template<class T, typename = std::enable_if_t<std::is_integral<T>::value> >
+constexpr T clamp(T value, T min, T max)
+{
+    return value > max ? max : (value < min ? min : value);
 }

@@ -6,6 +6,8 @@
 
 namespace notf {
 
+// TODO: maybe get rid of 'Reals' and just use floats? There is no type for int as well (and call this float_utils).
+
 #ifdef SIGNAL_DOUBLE_PRECISION
 using Real = double;
 #else

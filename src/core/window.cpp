@@ -104,8 +104,16 @@ void Window::_update()
 
     // render
     nvgBeginFrame(ctx.nanovg_context, ctx.window_size.width, ctx.window_size.height, ctx.get_pixel_ratio());
-    m_render_manager->render(ctx);
-    nvgEndFrame(ctx.nanovg_context);
+    try {
+        m_render_manager->render(ctx);
+        nvgEndFrame(ctx.nanovg_context);
+    }
+    // if an error bubbled all the way up here, something has gone horribly wrong
+    catch (std::runtime_error error) {
+        log_critical << "Rendering failed: \"" << error.what() << "\"";
+        nvgCancelFrame(ctx.nanovg_context);
+    }
+    // TODO: what happens when a Painter::paint() implementation throws in Python?
 
     // post-render
     glEnable(GL_DEPTH_TEST);
