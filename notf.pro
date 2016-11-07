@@ -92,7 +92,8 @@ SOURCES += \
     src/python/pywindow.cpp \
     src/python/pyglobal.cpp \
     src/python/pycanvascomponent.cpp \
-    src/graphics/painter.cpp
+    src/graphics/painter.cpp \
+    src/core/zhierarchy.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -162,6 +163,7 @@ HEADERS += \
     include/python/pylayoutroot.hpp \
     include/python/pywindow.hpp \
     include/python/pycanvascomponent.hpp \
-    include/graphics/painter.hpp
+    include/graphics/painter.hpp \
+    include/core/zhierarchy.hpp
 
 QMAKE_CXX = ccache g++

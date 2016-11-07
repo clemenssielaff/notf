@@ -5,7 +5,9 @@
 
 namespace { // anonymous
 
-notf::Real hue_to_rgb(float h, float m1, float m2)
+using notf::Real;
+
+Real hue_to_rgb(Real h, Real m1, Real m2)
 {
     if (h < 0) {
         h += 1;
@@ -14,15 +16,15 @@ notf::Real hue_to_rgb(float h, float m1, float m2)
         h -= 1;
     }
 
-    if (h < 1.0f / 6.0f) {
-        return m1 + (m2 - m1) * h * 6.0f;
+    if (h < Real(1) / Real(6)) {
+        return m1 + (m2 - m1) * h * 6;
     }
 
-    else if (h < 3.0f / 6.0f) {
+    else if (h < Real(2) / Real(6)) {
         return m2;
     }
-    else if (h < 4.0f / 6.0f) {
-        return m1 + (m2 - m1) * (2.0f / 3.0f - h) * 6.0f;
+    else if (h < Real(4) / Real(6)) {
+        return m1 + (m2 - m1) * (Real(2) / Real(3) - h) * 6;
     }
     return m1;
 }
@@ -43,9 +45,9 @@ Color Color::from_hsl(Real h, Real s, Real l, Real a)
     Real m1 = 2 * l - m2;
 
     Color result;
-    result.r = clamp(hue_to_rgb(h + Real(1)/Real(3), m1, m2), 0, 1);
+    result.r = clamp(hue_to_rgb(h + Real(1) / Real(3), m1, m2), 0, 1);
     result.g = clamp(hue_to_rgb(h, m1, m2), 0, 1);
-    result.b = clamp(hue_to_rgb(h - Real(1)/Real(3), m1, m2), 0, 1);
+    result.b = clamp(hue_to_rgb(h - Real(1) / Real(3), m1, m2), 0, 1);
     result.a = clamp(a, 0, 1);
     return result;
 }
