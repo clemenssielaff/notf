@@ -56,9 +56,9 @@ public: // methods
     bool has_parent() const { return !m_parent.expired(); }
 
     /// @brief Tests, if this LayoutItem is a descendant of the given `ancestor`.
-    /// @param ancestor Potential ancestor
+    /// @param ancestor Potential ancestor (non-onwing pointer is used for identification only).
     /// @return True iff `ancestor` is an ancestor of this LayoutItem, false otherwise.
-    bool has_ancestor(const std::shared_ptr<LayoutItem>& ancestor) const;
+    bool has_ancestor(const LayoutItem* ancestor) const;
 
     /// @brief Returns the parent LayoutItem containing this LayoutItem, may be invalid.
     std::shared_ptr<const Layout> get_parent() const { return m_parent.lock(); }

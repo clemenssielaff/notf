@@ -1,194 +1,105 @@
 #pragma once
 
-#include <algorithm>
-#include <assert.h>
-#include <memory>
+#include <stddef.h>
 #include <vector>
 
 namespace notf {
 
 class LayoutItem;
-using uint = unsigned int;
+class ZNode;
 
-struct ZNode final {
-    ZNode* parent;
-    std::vector<ZNode*> left_children;
-    std::vector<ZNode*> right_children;
-    LayoutItem* const layout_item;
-
-    /** Disconnects this ZNode before destruction.
-     * Try to destroy the root of the hierarchy first. This way the children can be unparented from their parent and we
-     * save a lot of time removing children from their parent.
-     */
-    ~ZNode()
-    {
-        // unparent yourself
-        if (parent) {
-            auto it = std::find(std::begin(parent->left_children), std::end(parent->left_children), this);
-            if (it == std::end(parent->left_children)) {
-                it = std::find(std::begin(parent->right_children), std::end(parent->right_children), this);
-                if (it == std::end(parent->left_children)) {
-                    assert(0);
-                }
-                else {
-                    parent->right_children.erase(it);
-                }
-            }
-            else {
-                parent->left_children.erase(it);
-            }
-        }
-
-        //  unparent your children
-        for (ZNode* child : left_children) {
-            child->parent = nullptr;
-        }
-        for (ZNode* child : right_children) {
-            child->parent = nullptr;
-        }
-    }
-};
-
-// TODO: continue here
-// All layoutItems should have a std::unique_ptr<ZNode>
+/**********************************************************************************************************************/
 
 /** Iterator over all ZNode%s in order from back to front. */
 class ZIterator {
-
-private: // types
-    enum DIRECTION {
-        left,
-        center,
-        right,
-    };
-
-    struct Index {
-        DIRECTION direction;
-        uint index;
-
-        Index(DIRECTION direction, uint index)
-            : direction(direction)
-            , index(index)
-        {}
-    };
 
 public: // methods
     /** The `root` agrument is a ZNode acting as the root of the traversal.
      * @param root     Root node of the traversal, is also traversed.
      */
-    ZIterator(ZNode* root)
-        : m_current(root)
-        , m_indices{{center, 0}}
-    {
-        // invalid
-        if (!m_current) {
-            return;
-        }
-
-        // start at the very left
-        dig_left();
-    }
+    ZIterator(ZNode* root);
 
     /** Advances the Iterator one step.
      * @return  The next ZNode in the traversal or nullptr when it finished.
      */
-    ZNode* next()
-    {
-        ZNode* result = m_current;
-
-        // if the iterator has finished, return early
-        if (!result) {
-            return result;
-        }
-
-        assert(!m_indices.empty());
-        Index& current_index = m_indices.back();
-
-        // root
-        if (current_index.direction == center) {
-            if (m_current->right_children.empty()) {
-                finish();
-            }
-            else {
-                step_right();
-            }
-        }
-        else {
-            assert(m_current->parent);
-
-            // left from parent
-            if (current_index.direction == left) {
-
-                // go to first child on the right
-                if (!m_current->right_children.empty()) {
-                    step_right();
-                }
-                else {
-                    // go to next sibling on the left of parent
-                    if (++current_index.index < m_current->parent->left_children.size()) {
-                        m_current = m_current->parent->left_children[current_index.index];
-                        dig_left();
-                    }
-                    // go to parent
-                    else {
-                        m_indices.pop_back();
-                        m_current = m_current->parent;
-                    }
-                }
-            }
-            // currently right from parent
-            else {
-
-                // go to first child on the right
-                if (!m_current->right_children.empty()) {
-                    step_right();
-                }
-                else {
-                    // go to next sibling on the right of parent
-                    if (++current_index.index < m_current->parent->right_children.size()) {
-                        m_current = m_current->parent->right_children[current_index.index];
-                        dig_left();
-                    }
-                    // right end
-                    else {
-                        finish();
-                    }
-                }
-            }
-        }
-
-        return result;
-    }
+    ZNode* next();
 
 private: // methods
-    void step_right()
-    {
-        assert(m_current);
-        assert(!m_current->right_children.empty());
-        m_indices.emplace_back(right, 0);
-        m_current = m_current->right_children.front();
-        dig_left();
-    }
-
-    void dig_left()
-    {
-        assert(m_current);
-        while (!m_current->left_children.empty()) {
-            m_indices.emplace_back(left, 0);
-            m_current = m_current->left_children.front();
-        }
-    }
-
-    void finish()
-    {
-        m_current = nullptr;
-        m_indices.clear();
-    }
+    /** "Digs" down to the furtherst child on the left from the current one. */
+    void dig_left();
 
 private: // fields
+    /** Current ZNode being traversed, is returned by next() and advanced to the next one.
+     * Is nullptr when the iteration finished.
+     */
     ZNode* m_current;
 
-    std::vector<Index> m_indices;
+    /** Root of the iteration. */
+    const ZNode* m_root;
 };
+
+/**********************************************************************************************************************/
+
+/** A ZNode is a node in the implicit Z-hierarchy of LayoutItems.
+ * Every LayoutItem owns a ZNode and is referred back from it.
+ */
+class ZNode final {
+
+    friend class ZIterator;
+
+    /** Denotes how the ZNode is related to its parent.
+     * Mainly used to see it is placed on the `left` or `right`, `center` only applies do the root of the hierarchy.
+     */
+    enum PLACEMENT : char {
+        left,
+        right,
+    };
+
+public: // methods
+    /** @param layout_item  The LayoutItem owning this ZNode, must outlive this instance. */
+    explicit ZNode(LayoutItem* layout_item);
+
+    /** Disconnects this ZNode before destruction.
+     * It is more efficient to delete the ZNode highest in the hierarchy first.
+     */
+    ~ZNode();
+
+private: // methods
+    /** Updates the `m_index` members of children after their vector has been modified. */
+    void update_indices(PLACEMENT placement, const int first_index);
+
+    /** Called by a child to update the number of descendants. */
+    void add_num_descendants(PLACEMENT placement, int delta);
+
+private: // fields
+    /** The LayoutItem owning this ZNode. */
+    LayoutItem* const m_layout_item;
+
+    /** The parent of this ZNode, is nullptr if this is the root. */
+    ZNode* m_parent;
+
+    /** Children on the left of this ZNode. */
+    std::vector<ZNode*> m_left_children;
+
+    /** Children on the right of this ZNode. */
+    std::vector<ZNode*> m_right_children;
+
+    /** Total number of all descendants on the left. */
+    unsigned int m_num_left_descendants;
+
+    /** Total number of all descendants on the right. */
+    unsigned int m_num_right_descendants;
+
+    /** Whether this ZNode is in the left or right children vector of the parent. */
+    PLACEMENT m_placement;
+
+    /** Index in the parent left or right children (which one depends on the `placement`). */
+    int m_index;
+};
+
+// TODO: continue here
+// All layoutItems should have a std::unique_ptr<ZNode> that refers back to it
+// When the LayoutItem is deleted, it must take care of moving all of its children that are ancestors in the Z-hierarchy
+// out into its parent Z-node (in place of itself)
 
 } // namespace notf

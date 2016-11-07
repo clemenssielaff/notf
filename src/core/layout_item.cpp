@@ -10,7 +10,7 @@ LayoutItem::~LayoutItem()
 {
 }
 
-bool LayoutItem::has_ancestor(const std::shared_ptr<LayoutItem>& ancestor) const
+bool LayoutItem::has_ancestor(const LayoutItem *ancestor) const
 {
     // invalid LayoutItem can never be an ancestor
     if (!ancestor) {
@@ -18,12 +18,12 @@ bool LayoutItem::has_ancestor(const std::shared_ptr<LayoutItem>& ancestor) const
     }
 
     // check all actual ancestors against the candidate
-    std::shared_ptr<const Layout> parent = get_parent();
+    const Layout* parent = get_parent().get();
     while (parent) {
         if (parent == ancestor) {
             return true;
         }
-        parent = parent->get_parent();
+        parent = parent->get_parent().get();
     }
 
     // if no ancestor matches, we have our answer
@@ -102,7 +102,7 @@ void LayoutItem::_set_parent(std::shared_ptr<Layout> parent)
     }
 
     // check for cyclic ancestry
-    if (has_ancestor(parent)) {
+    if (has_ancestor(parent.get())) {
         log_critical << "Cannot make " << parent->get_handle() << " the parent of " << get_handle()
                      << " because " << parent->get_handle() << " is already a child of " << get_handle();
         return;
