@@ -47,6 +47,7 @@ void blub(std::shared_ptr<Window> window)
 }
 
 int main(int argc, char* argv[])
+//int notmain(int argc, char* argv[])
 {
     ApplicationInfo app_info;
     app_info.argc = argc;

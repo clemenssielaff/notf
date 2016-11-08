@@ -42,7 +42,7 @@ CONFIG(test) {
         test/catch.hpp \
         test/catch_utils.hpp
 
-    DEFINES += _DEBUG
+    DEFINES += _DEBUG _TEST
     QMAKE_CXXFLAGS *= -fprofile-arcs -ftest-coverage
     QMAKE_LFLAGS *= -lgcov -coverage
 }
@@ -71,7 +71,6 @@ SOURCES += \
     src/core/components/canvas_component.cpp \
     src/common/size2i.cpp \
     src/common/size2r.cpp \
-    src/scratch2.cpp \
     src/core/layout.cpp \
     src/core/layout_root.cpp \
     src/dynamic/layout/stack_layout.cpp \

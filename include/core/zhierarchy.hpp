@@ -5,6 +5,9 @@
 
 namespace notf {
 
+using ushort = unsigned short;
+using uint = unsigned int;
+
 class LayoutItem;
 class ZNode;
 
@@ -48,7 +51,6 @@ class ZNode final {
     friend class ZIterator;
 
     /** Denotes how the ZNode is related to its parent.
-     * Mainly used to see it is placed on the `left` or `right`, `center` only applies do the root of the hierarchy.
      */
     enum PLACEMENT : char {
         left,
@@ -64,9 +66,27 @@ public: // methods
      */
     ~ZNode();
 
+    /** Calculates and returns the Z value of this ZNode. */
+    uint getZ() const;
+
+    /** Moves this ZNode to the top of the stack of the given parent node. */
+    void place_on_top_of(ZNode* parent);
+
+    /** Moves this ZNode to the bottom of the stack of the given parent node. */
+    void place_on_bottom_of(ZNode* parent);
+
+    /** Moves this ZNode under the same parent as `sibling`, one step in front of `sibiling`. */
+    void place_in_front_of(ZNode* sibling);
+
+    /** Moves this ZNode under the same parent as `sibling`, one step behind of `sibiling`. */
+    void place_behind(ZNode* sibling);
+
 private: // methods
+    /** Unparents this ZNode from its current parent. */
+    void unparent();
+
     /** Updates the `m_index` members of children after their vector has been modified. */
-    void update_indices(PLACEMENT placement, const int first_index);
+    void update_indices(PLACEMENT placement, const ushort first_index);
 
     /** Called by a child to update the number of descendants. */
     void add_num_descendants(PLACEMENT placement, int delta);
@@ -85,21 +105,17 @@ private: // fields
     std::vector<ZNode*> m_right_children;
 
     /** Total number of all descendants on the left. */
-    unsigned int m_num_left_descendants;
+    int m_num_left_descendants;
 
     /** Total number of all descendants on the right. */
-    unsigned int m_num_right_descendants;
+    int m_num_right_descendants;
 
     /** Whether this ZNode is in the left or right children vector of the parent. */
     PLACEMENT m_placement;
 
     /** Index in the parent left or right children (which one depends on the `placement`). */
-    int m_index;
+    ushort m_index;
+    // TODO: document the assumption that each LayoutItem and each ZNode only has maximal std::numeric_limits<short>::max() children
 };
-
-// TODO: continue here
-// All layoutItems should have a std::unique_ptr<ZNode> that refers back to it
-// When the LayoutItem is deleted, it must take care of moving all of its children that are ancestors in the Z-hierarchy
-// out into its parent Z-node (in place of itself)
 
 } // namespace notf

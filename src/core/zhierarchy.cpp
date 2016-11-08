@@ -54,13 +54,9 @@ ZNode* ZIterator::next()
                 dig_left();
             }
             else {
-                assert(m_current->m_index < std::numeric_limits<int>::max());
-                assert(m_current->m_index >= 0);
-                assert(m_current->m_parent->m_left_children.size() <= std::numeric_limits<int>::max());
-
                 // go to next sibling on the left of parent
-                if (m_current->m_index + 1 < static_cast<int>(m_current->m_parent->m_left_children.size())) {
-                    m_current = m_current->m_parent->m_left_children[static_cast<size_t>(m_current->m_index + 1)];
+                if (m_current->m_index + 1U < m_current->m_parent->m_left_children.size()) {
+                    m_current = m_current->m_parent->m_left_children[m_current->m_index + 1];
                     dig_left();
                 }
                 // go to parent
@@ -78,19 +74,13 @@ ZNode* ZIterator::next()
                 dig_left();
             }
             else {
-                assert(m_current->m_index < std::numeric_limits<int>::max());
-                assert(m_current->m_index >= 0);
-                assert(m_current->m_parent->m_right_children.size() <= std::numeric_limits<int>::max());
-
                 // go to next sibling on the right of parent
-                if (m_current->m_index + 1 < static_cast<int>(m_current->m_parent->m_right_children.size()))
-                {
-                    m_current = m_current->m_parent->m_right_children[static_cast<size_t>(m_current->m_index + 1)];
+                if (m_current->m_index + 1U < m_current->m_parent->m_right_children.size()) {
+                    m_current = m_current->m_parent->m_right_children[m_current->m_index + 1];
                     dig_left();
                 }
                 // right end
-                else
-                {
+                else {
                     m_current = nullptr;
                 }
             }
@@ -119,6 +109,9 @@ ZNode::ZNode(LayoutItem* layout_item)
     , m_placement(left)
     , m_index(0)
 {
+#ifndef _TEST
+    assert(m_layout_item); // during testing, ZNodes may not have a LayoutItem attached
+#endif
 }
 
 ZNode::~ZNode()
@@ -127,33 +120,32 @@ ZNode::~ZNode()
         // all ZNodes that are a descendant of this (in the Z hierarchy), but whose LayoutItem is not a descendant of
         // this one's LayoutItem (in the LayoutItem hierarchy) need to be moved above this node in the Z hierarchy
         // before this is removed
-        ZIterator it(this);
         std::vector<ZNode*> survivors; // survivors in order from back to front
-        while (ZNode* descendant = it.next()) {
-            if (!descendant->m_layout_item->has_ancestor(m_layout_item)) {
-                survivors.emplace_back(descendant);
+#ifdef _TEST
+        if(m_layout_item){
+#endif
+            ZIterator it(this);
+            while (ZNode* descendant = it.next()) {
+                if (!descendant->m_layout_item->has_ancestor(m_layout_item)) {
+                    survivors.emplace_back(descendant);
+                }
             }
+#ifdef _TEST
         }
-        if (!survivors.empty()) {
-            // place the survivors just right of this node in the parent
-            if (m_placement == left) {
-                m_parent->m_left_children.insert(m_parent->m_left_children.begin() + m_index + 1, survivors.begin(), survivors.end());
-            }
-            else {
-                m_parent->m_right_children.insert(m_parent->m_right_children.begin() + m_index + 1, survivors.begin(), survivors.end());
-            }
-        }
+#endif
 
         // unparent yourself
-        if (m_placement == left) {
-            m_parent->m_left_children.erase(m_parent->m_left_children.begin() + m_index);
-        }
-        else {
-            m_parent->m_right_children.erase(m_parent->m_right_children.begin() + m_index);
-        }
-        m_parent->update_indices(m_placement, m_index);
+        unparent();
 
-        m_parent->add_num_descendants(m_placement, static_cast<int>(survivors.size()) - 1);
+        // place the survivors starting at where this node used to be
+        if (!survivors.empty()) {
+            std::vector<ZNode*>& siblings = m_placement == left ? m_parent->m_left_children : m_parent->m_right_children;
+            siblings.insert(siblings.begin() + m_index, survivors.begin(), survivors.end());
+
+            assert(survivors.size() < std::numeric_limits<int>::max());
+            m_parent->add_num_descendants(m_placement, static_cast<int>(survivors.size()));
+        }
+
         m_parent = nullptr;
     }
 
@@ -169,30 +161,153 @@ ZNode::~ZNode()
     m_right_children.clear();
 }
 
-void ZNode::update_indices(PLACEMENT placement, const int first_index)
+uint ZNode::getZ() const
+{
+    assert(m_num_left_descendants >= 0);
+    uint result = static_cast<uint>(m_num_left_descendants);
+    const ZNode* it = this;
+    while (it->m_parent) {
+        if (m_placement == left) {
+            // visit sibiling on the left
+            if (it->m_index > 0) {
+                it = it->m_parent->m_left_children[it->m_index - 1];
+                result += static_cast<uint>(it->m_num_left_descendants + it->m_num_right_descendants + 1);
+            }
+            // climb up
+            else {
+                it = it->m_parent;
+            }
+        }
+        else {
+            // visit sibiling on the left
+            if (it->m_index > 0) {
+                it = it->m_parent->m_right_children[it->m_index - 1];
+                result += static_cast<uint>(it->m_num_left_descendants + it->m_num_right_descendants + 1);
+            }
+            // climb up
+            else {
+                it = it->m_parent;
+                result += static_cast<uint>(it->m_num_left_descendants + 1);
+            }
+        }
+    }
+    return result;
+}
+
+void ZNode::place_on_top_of(ZNode* parent)
+{
+    if (m_parent) {
+        unparent();
+    }
+
+    m_parent = parent;
+    m_parent->m_right_children.push_back(this);
+
+    const int descendant_count = m_num_left_descendants + m_num_right_descendants + 1;
+    assert(descendant_count > 0); // no wrap
+    m_parent->add_num_descendants(right, descendant_count);
+
+    m_placement = right;
+    assert(m_parent->m_right_children.size() < std::numeric_limits<ushort>::max());
+    m_index = static_cast<ushort>(m_parent->m_right_children.size() - 1);
+}
+
+void ZNode::place_on_bottom_of(ZNode* parent)
+{
+    if (m_parent) {
+        unparent();
+    }
+
+    m_parent = parent;
+    m_parent->m_left_children.emplace(m_parent->m_left_children.begin(), this);
+
+    const int descendant_count = m_num_left_descendants + m_num_right_descendants + 1;
+    assert(descendant_count > 0); // no wrap
+    m_parent->add_num_descendants(left, descendant_count);
+
+    m_placement = left;
+    assert(m_parent->m_left_children.size() < std::numeric_limits<ushort>::max());
+    m_parent->update_indices(left, 0);
+}
+
+void ZNode::place_in_front_of(ZNode* sibling)
+{
+    if (!sibling->m_parent) {
+        return place_on_top_of(sibling);
+    }
+
+    if (m_parent) {
+        unparent();
+    }
+
+    m_parent = sibling->m_parent;
+    m_placement = sibling->m_placement;
+
+    std::vector<ZNode*>& children = m_placement == left ? m_parent->m_left_children : m_parent->m_right_children;
+    children.emplace(children.begin() + sibling->m_index + 1, this);
+    assert(children.size() < std::numeric_limits<ushort>::max());
+    m_parent->update_indices(m_placement, sibling->m_index + 1);
+
+    const int descendant_count = m_num_left_descendants + m_num_right_descendants + 1;
+    assert(descendant_count > 0); // no wrap
+    m_parent->add_num_descendants(m_placement, descendant_count);
+}
+
+void ZNode::place_behind(ZNode* sibling)
+{
+    if (!sibling->m_parent) {
+        return place_on_bottom_of(sibling);
+    }
+
+    if (m_parent) {
+        unparent();
+    }
+
+    m_parent = sibling->m_parent;
+    m_placement = sibling->m_placement;
+
+    std::vector<ZNode*>& children = m_placement == left ? m_parent->m_left_children : m_parent->m_right_children;
+    children.emplace(children.begin() + sibling->m_index, this);
+    assert(children.size() < std::numeric_limits<ushort>::max());
+    m_parent->update_indices(m_placement, sibling->m_index);
+
+    const int descendant_count = m_num_left_descendants + m_num_right_descendants + 1;
+    assert(descendant_count > 0); // no wrap
+    m_parent->add_num_descendants(m_placement, descendant_count);
+}
+
+void ZNode::unparent()
+{
+    if (m_placement == left) {
+        m_parent->m_left_children.erase(m_parent->m_left_children.begin() + m_index);
+    }
+    else {
+        m_parent->m_right_children.erase(m_parent->m_right_children.begin() + m_index);
+    }
+
+    m_parent->update_indices(m_placement, m_index);
+
+    const int descendant_count = m_num_left_descendants + m_num_right_descendants + 1;
+    assert(descendant_count > 0); // no wrap
+    m_parent->add_num_descendants(m_placement, -descendant_count);
+}
+
+void ZNode::update_indices(PLACEMENT placement, const ushort first_index)
 {
     std::vector<ZNode*>& children = placement == left ? m_left_children : m_right_children;
-    assert(first_index >= 0);
-    assert(children.size() <= std::numeric_limits<int>::max());
-    for (size_t index = static_cast<size_t>(first_index); index < children.size(); ++index) {
-        children[static_cast<size_t>(index)]->m_index = static_cast<int>(index);
+    assert(children.size() < std::numeric_limits<ushort>::max());
+    for (ushort index = first_index; index < children.size(); ++index) {
+        children[index]->m_index = index;
     }
 }
 
 void ZNode::add_num_descendants(PLACEMENT placement, int delta)
 {
-    if(delta == 0){
-        return;
-    }
-
-    unsigned int& num_descendants = placement == left ? m_num_left_descendants : m_num_right_descendants;
-    unsigned int old_value = num_descendants;
-    if(delta > 0){
-        num_descendants += static_cast<unsigned int>(delta);
-        assert(num_descendants > old_value);
-    } else {
-        num_descendants = num_descendants - static_cast<unsigned int>(std::abs(delta));
-        assert(num_descendants < old_value);
+    int& num_descendants = placement == left ? m_num_left_descendants : m_num_right_descendants;
+    num_descendants += delta;
+    assert(num_descendants >= 0);
+    if (m_parent) {
+        m_parent->add_num_descendants(m_placement, delta);
     }
 }
 
