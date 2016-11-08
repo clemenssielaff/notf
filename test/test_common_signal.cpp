@@ -1,5 +1,4 @@
 #include "test/catch.hpp"
-#include "test/catch_utils.hpp"
 
 #include "common/signal.hpp"
 using notf::Signal;

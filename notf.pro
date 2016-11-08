@@ -39,8 +39,7 @@ CONFIG(test) {
         test/test_common_signal.cpp
 
     HEADERS += \
-        test/catch.hpp \
-        test/catch_utils.hpp
+        test/catch.hpp
 
     DEFINES += _DEBUG _TEST
     QMAKE_CXXFLAGS *= -fprofile-arcs -ftest-coverage
@@ -92,7 +91,8 @@ SOURCES += \
     src/python/pyglobal.cpp \
     src/python/pycanvascomponent.cpp \
     src/graphics/painter.cpp \
-    src/core/zhierarchy.cpp
+    src/core/zhierarchy.cpp \
+    test/test_core_zhierarchy.cpp
 
 HEADERS += \
     include/core/application.hpp \

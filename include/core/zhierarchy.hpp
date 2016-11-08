@@ -67,7 +67,7 @@ public: // methods
     ~ZNode();
 
     /** Calculates and returns the Z value of this ZNode. */
-    uint getZ() const;
+    size_t getZ() const;
 
     /** Moves this ZNode to the top of the stack of the given parent node. */
     void place_on_top_of(ZNode* parent);
@@ -81,15 +81,25 @@ public: // methods
     /** Moves this ZNode under the same parent as `sibling`, one step behind of `sibiling`. */
     void place_behind(ZNode* sibling);
 
+    /** Returns the flattened hierarchy below this node as a vector. */
+    std::vector<ZNode*> flatten() const;
+
 private: // methods
     /** Unparents this ZNode from its current parent. */
     void unparent();
 
     /** Updates the `m_index` members of children after their vector has been modified. */
-    void update_indices(PLACEMENT placement, const ushort first_index);
+    void update_indices(PLACEMENT placement, const size_t first_index);
 
-    /** Called by a child to update the number of descendants. */
-    void add_num_descendants(PLACEMENT placement, int delta);
+    /** Called by a child to add descendants.
+     * @throw std::runtime_error    If the new number of descendants would exceed the data types's limit.
+     */
+    void add_num_descendants(PLACEMENT placement, size_t delta);
+
+    /** Called by a child to subtract descendants.
+     * @throw std::runtime_error    If the new number of descendants would drop below 0.
+     */
+    void subtract_num_descendants(PLACEMENT placement, size_t delta);
 
 private: // fields
     /** The LayoutItem owning this ZNode. */
@@ -105,17 +115,16 @@ private: // fields
     std::vector<ZNode*> m_right_children;
 
     /** Total number of all descendants on the left. */
-    int m_num_left_descendants;
+    size_t m_num_left_descendants;
 
     /** Total number of all descendants on the right. */
-    int m_num_right_descendants;
+    size_t m_num_right_descendants;
 
     /** Whether this ZNode is in the left or right children vector of the parent. */
     PLACEMENT m_placement;
 
     /** Index in the parent left or right children (which one depends on the `placement`). */
-    ushort m_index;
-    // TODO: document the assumption that each LayoutItem and each ZNode only has maximal std::numeric_limits<short>::max() children
+    size_t m_index;
 };
 
 } // namespace notf

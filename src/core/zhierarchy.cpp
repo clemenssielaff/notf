@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <assert.h>
+#include <iterator>
 #include <limits>
 
 #include "core/layout_item.hpp"
@@ -55,7 +56,7 @@ ZNode* ZIterator::next()
             }
             else {
                 // go to next sibling on the left of parent
-                if (m_current->m_index + 1U < m_current->m_parent->m_left_children.size()) {
+                if (m_current->m_index + 1 < m_current->m_parent->m_left_children.size()) {
                     m_current = m_current->m_parent->m_left_children[m_current->m_index + 1];
                     dig_left();
                 }
@@ -75,7 +76,7 @@ ZNode* ZIterator::next()
             }
             else {
                 // go to next sibling on the right of parent
-                if (m_current->m_index + 1U < m_current->m_parent->m_right_children.size()) {
+                if (m_current->m_index + 1 < m_current->m_parent->m_right_children.size()) {
                     m_current = m_current->m_parent->m_right_children[m_current->m_index + 1];
                     dig_left();
                 }
@@ -122,7 +123,7 @@ ZNode::~ZNode()
         // before this is removed
         std::vector<ZNode*> survivors; // survivors in order from back to front
 #ifdef _TEST
-        if(m_layout_item){
+        if (m_layout_item) {
 #endif
             ZIterator it(this);
             while (ZNode* descendant = it.next()) {
@@ -140,10 +141,10 @@ ZNode::~ZNode()
         // place the survivors starting at where this node used to be
         if (!survivors.empty()) {
             std::vector<ZNode*>& siblings = m_placement == left ? m_parent->m_left_children : m_parent->m_right_children;
-            siblings.insert(siblings.begin() + m_index, survivors.begin(), survivors.end());
-
-            assert(survivors.size() < std::numeric_limits<int>::max());
-            m_parent->add_num_descendants(m_placement, static_cast<int>(survivors.size()));
+            auto it = siblings.begin();
+            std::advance(it, m_index);
+            siblings.insert(it, survivors.begin(), survivors.end());
+            m_parent->add_num_descendants(m_placement, survivors.size());
         }
 
         m_parent = nullptr;
@@ -161,17 +162,16 @@ ZNode::~ZNode()
     m_right_children.clear();
 }
 
-uint ZNode::getZ() const
+size_t ZNode::getZ() const
 {
-    assert(m_num_left_descendants >= 0);
-    uint result = static_cast<uint>(m_num_left_descendants);
+    size_t result = m_num_left_descendants;
     const ZNode* it = this;
     while (it->m_parent) {
         if (m_placement == left) {
             // visit sibiling on the left
             if (it->m_index > 0) {
                 it = it->m_parent->m_left_children[it->m_index - 1];
-                result += static_cast<uint>(it->m_num_left_descendants + it->m_num_right_descendants + 1);
+                result += it->m_num_left_descendants + it->m_num_right_descendants + 1;
             }
             // climb up
             else {
@@ -182,12 +182,12 @@ uint ZNode::getZ() const
             // visit sibiling on the left
             if (it->m_index > 0) {
                 it = it->m_parent->m_right_children[it->m_index - 1];
-                result += static_cast<uint>(it->m_num_left_descendants + it->m_num_right_descendants + 1);
+                result += it->m_num_left_descendants + it->m_num_right_descendants + 1;
             }
             // climb up
             else {
                 it = it->m_parent;
-                result += static_cast<uint>(it->m_num_left_descendants + 1);
+                result += it->m_num_left_descendants + 1;
             }
         }
     }
@@ -196,37 +196,31 @@ uint ZNode::getZ() const
 
 void ZNode::place_on_top_of(ZNode* parent)
 {
+    // in case of ancestry overflow, this call fails without changing the hierarchy
+    parent->add_num_descendants(right, m_num_left_descendants + m_num_right_descendants + 1);
+
     if (m_parent) {
         unparent();
     }
 
     m_parent = parent;
-    m_parent->m_right_children.push_back(this);
-
-    const int descendant_count = m_num_left_descendants + m_num_right_descendants + 1;
-    assert(descendant_count > 0); // no wrap
-    m_parent->add_num_descendants(right, descendant_count);
-
     m_placement = right;
-    assert(m_parent->m_right_children.size() < std::numeric_limits<ushort>::max());
-    m_index = static_cast<ushort>(m_parent->m_right_children.size() - 1);
+    m_parent->m_right_children.push_back(this);
+    m_index = m_parent->m_right_children.size() - 1;
 }
 
 void ZNode::place_on_bottom_of(ZNode* parent)
 {
+    // in case of ancestry overflow, this call fails without changing the hierarchy
+    parent->add_num_descendants(left, m_num_left_descendants + m_num_right_descendants + 1);
+
     if (m_parent) {
         unparent();
     }
 
     m_parent = parent;
-    m_parent->m_left_children.emplace(m_parent->m_left_children.begin(), this);
-
-    const int descendant_count = m_num_left_descendants + m_num_right_descendants + 1;
-    assert(descendant_count > 0); // no wrap
-    m_parent->add_num_descendants(left, descendant_count);
-
     m_placement = left;
-    assert(m_parent->m_left_children.size() < std::numeric_limits<ushort>::max());
+    m_parent->m_left_children.emplace(m_parent->m_left_children.begin(), this);
     m_parent->update_indices(left, 0);
 }
 
@@ -236,6 +230,9 @@ void ZNode::place_in_front_of(ZNode* sibling)
         return place_on_top_of(sibling);
     }
 
+    // in case of ancestry overflow, this call fails without changing the hierarchy
+    sibling->m_parent->add_num_descendants(sibling->m_placement, m_num_left_descendants + m_num_right_descendants + 1);
+
     if (m_parent) {
         unparent();
     }
@@ -244,13 +241,10 @@ void ZNode::place_in_front_of(ZNode* sibling)
     m_placement = sibling->m_placement;
 
     std::vector<ZNode*>& children = m_placement == left ? m_parent->m_left_children : m_parent->m_right_children;
-    children.emplace(children.begin() + sibling->m_index + 1, this);
-    assert(children.size() < std::numeric_limits<ushort>::max());
+    auto it = children.begin();
+    std::advance(it, sibling->m_index + 1);
+    children.emplace(it, this);
     m_parent->update_indices(m_placement, sibling->m_index + 1);
-
-    const int descendant_count = m_num_left_descendants + m_num_right_descendants + 1;
-    assert(descendant_count > 0); // no wrap
-    m_parent->add_num_descendants(m_placement, descendant_count);
 }
 
 void ZNode::place_behind(ZNode* sibling)
@@ -259,6 +253,9 @@ void ZNode::place_behind(ZNode* sibling)
         return place_on_bottom_of(sibling);
     }
 
+    // in case of ancestry overflow, this call fails without changing the hierarchy
+    sibling->m_parent->add_num_descendants(sibling->m_placement, m_num_left_descendants + m_num_right_descendants + 1);
+
     if (m_parent) {
         unparent();
     }
@@ -267,47 +264,77 @@ void ZNode::place_behind(ZNode* sibling)
     m_placement = sibling->m_placement;
 
     std::vector<ZNode*>& children = m_placement == left ? m_parent->m_left_children : m_parent->m_right_children;
-    children.emplace(children.begin() + sibling->m_index, this);
-    assert(children.size() < std::numeric_limits<ushort>::max());
+    auto it = children.begin();
+    std::advance(it, sibling->m_index);
+    children.emplace(it, this);
     m_parent->update_indices(m_placement, sibling->m_index);
+}
 
-    const int descendant_count = m_num_left_descendants + m_num_right_descendants + 1;
-    assert(descendant_count > 0); // no wrap
-    m_parent->add_num_descendants(m_placement, descendant_count);
+std::vector<ZNode*> ZNode::flatten() const
+{
+    // check for ancestry overflow with all the number of ancestors combined, should be impossible to overflow here
+    assert(m_num_left_descendants < std::numeric_limits<decltype(m_num_left_descendants)>::max()
+           && std::numeric_limits<decltype(m_num_left_descendants)>::max() - (m_num_left_descendants + 1) > m_num_right_descendants);
+
+    std::vector<ZNode*> result;
+    result.reserve(m_num_left_descendants + m_num_right_descendants + 1);
+    ZIterator it(const_cast<ZNode*>(this));
+    while (ZNode* current = it.next()) {
+        result.emplace_back(current);
+    }
+    return result;
 }
 
 void ZNode::unparent()
 {
     if (m_placement == left) {
-        m_parent->m_left_children.erase(m_parent->m_left_children.begin() + m_index);
+        auto it = m_parent->m_left_children.begin();
+        std::advance(it, m_index);
+        m_parent->m_left_children.erase(it);
     }
     else {
-        m_parent->m_right_children.erase(m_parent->m_right_children.begin() + m_index);
+        auto it = m_parent->m_right_children.begin();
+        std::advance(it, m_index);
+        m_parent->m_right_children.erase(it);
     }
 
     m_parent->update_indices(m_placement, m_index);
-
-    const int descendant_count = m_num_left_descendants + m_num_right_descendants + 1;
-    assert(descendant_count > 0); // no wrap
-    m_parent->add_num_descendants(m_placement, -descendant_count);
+    m_parent->subtract_num_descendants(m_placement, m_num_left_descendants + m_num_right_descendants + 1);
 }
 
-void ZNode::update_indices(PLACEMENT placement, const ushort first_index)
+void ZNode::update_indices(PLACEMENT placement, const size_t first_index)
 {
     std::vector<ZNode*>& children = placement == left ? m_left_children : m_right_children;
-    assert(children.size() < std::numeric_limits<ushort>::max());
-    for (ushort index = first_index; index < children.size(); ++index) {
+    for (auto index = first_index; index < children.size(); ++index) {
         children[index]->m_index = index;
     }
 }
 
-void ZNode::add_num_descendants(PLACEMENT placement, int delta)
+void ZNode::add_num_descendants(PLACEMENT placement, size_t delta)
 {
-    int& num_descendants = placement == left ? m_num_left_descendants : m_num_right_descendants;
+    // To ensure that the final z-value fits into a size_t, each of branch of the ancestry (left and right) may only
+    // contain at max: (size_t::max / 2) - 1 children.
+    // The -1 at the end is because the node itself counts as well and it is subtracted on both sides because it's
+    // easier than just from one (and the 1 missing child won't make a difference).
+    auto& num_descendants = placement == left ? m_num_left_descendants : m_num_right_descendants;
+    if ((std::numeric_limits<decltype(m_num_left_descendants)>::max() / 2) - 1 - num_descendants < delta) {
+        throw std::runtime_error("ZHierarchy ancestry overflow detected");
+    }
     num_descendants += delta;
-    assert(num_descendants >= 0);
     if (m_parent) {
         m_parent->add_num_descendants(m_placement, delta);
+    }
+}
+
+void ZNode::subtract_num_descendants(PLACEMENT placement, size_t delta)
+{
+    auto& num_descendants = placement == left ? m_num_left_descendants : m_num_right_descendants;
+    if (delta > num_descendants) {
+        throw std::runtime_error("ZHierarchy ancestry underflow detected");
+    }
+    num_descendants -= delta;
+    if (m_parent) {
+        m_parent->subtract_num_descendants(m_placement, delta);
     }
 }
 
