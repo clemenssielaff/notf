@@ -5,6 +5,12 @@
 
 namespace notf {
 
+#ifdef _TEST
+#define _private public
+#else
+#define _private private
+#endif
+
 using ushort = unsigned short;
 using uint = unsigned int;
 
@@ -27,11 +33,11 @@ public: // methods
      */
     ZNode* next();
 
-private: // methods
+_private: // methods
     /** "Digs" down to the furtherst child on the left from the current one. */
     void dig_left();
 
-private: // fields
+_private: // fields
     /** Current ZNode being traversed, is returned by next() and advanced to the next one.
      * Is nullptr when the iteration finished.
      */
@@ -50,6 +56,7 @@ class ZNode final {
 
     friend class ZIterator;
 
+_private:
     /** Denotes how the ZNode is related to its parent.
      */
     enum PLACEMENT : char {
@@ -69,22 +76,26 @@ public: // methods
     /** Calculates and returns the Z value of this ZNode. */
     size_t getZ() const;
 
-    /** Moves this ZNode to the top of the stack of the given parent node. */
-    void place_on_top_of(ZNode* parent);
+    /** Moves under `parent`, all the way in the front. */
+    void move_to_front_of(ZNode* parent);
 
-    /** Moves this ZNode to the bottom of the stack of the given parent node. */
-    void place_on_bottom_of(ZNode* parent);
+    /** Moves under `parent`, all the way in the back. */
+    void move_to_back_of(ZNode* parent);
 
-    /** Moves this ZNode under the same parent as `sibling`, one step in front of `sibiling`. */
-    void place_in_front_of(ZNode* sibling);
+    /** Moves under the same parent as `sibling`, one step above `sibiling`.
+     * If `sibling` has no parent, it moves this ZNode to be the leftmost right child of `sibling` instead.
+     */
+    void place_above(ZNode* sibling);
 
-    /** Moves this ZNode under the same parent as `sibling`, one step behind of `sibiling`. */
-    void place_behind(ZNode* sibling);
+    /** Moves under the same parent as `sibling`, one step below `sibiling`.
+     * If `sibling` has no parent, it moves this ZNode to be the rightmost left child of `sibling` instead.
+     */
+    void place_below(ZNode* sibling);
 
     /** Returns the flattened hierarchy below this node as a vector. */
     std::vector<ZNode*> flatten() const;
 
-private: // methods
+_private: // methods
     /** Unparents this ZNode from its current parent. */
     void unparent();
 
@@ -101,7 +112,7 @@ private: // methods
      */
     void subtract_num_descendants(PLACEMENT placement, size_t delta);
 
-private: // fields
+_private: // fields
     /** The LayoutItem owning this ZNode. */
     LayoutItem* const m_layout_item;
 
@@ -126,5 +137,7 @@ private: // fields
     /** Index in the parent left or right children (which one depends on the `placement`). */
     size_t m_index;
 };
+
+#undef _private
 
 } // namespace notf

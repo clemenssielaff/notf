@@ -5,6 +5,7 @@
 #include <iterator>
 #include <limits>
 
+#include "common/log.hpp"
 #include "core/layout_item.hpp"
 
 namespace notf {
@@ -194,8 +195,13 @@ size_t ZNode::getZ() const
     return result;
 }
 
-void ZNode::place_on_top_of(ZNode* parent)
+void ZNode::move_to_front_of(ZNode* parent)
 {
+    if(this == parent){
+        log_warning << "Cannot place a ZNode in front of itself";
+        return;
+    }
+
     // in case of ancestry overflow, this call fails without changing the hierarchy
     parent->add_num_descendants(right, m_num_left_descendants + m_num_right_descendants + 1);
 
@@ -209,8 +215,13 @@ void ZNode::place_on_top_of(ZNode* parent)
     m_index = m_parent->m_right_children.size() - 1;
 }
 
-void ZNode::place_on_bottom_of(ZNode* parent)
+void ZNode::move_to_back_of(ZNode* parent)
 {
+    if(this == parent){
+        log_warning << "Cannot place a ZNode in the back of itself";
+        return;
+    }
+
     // in case of ancestry overflow, this call fails without changing the hierarchy
     parent->add_num_descendants(left, m_num_left_descendants + m_num_right_descendants + 1);
 
@@ -224,10 +235,20 @@ void ZNode::place_on_bottom_of(ZNode* parent)
     m_parent->update_indices(left, 0);
 }
 
-void ZNode::place_in_front_of(ZNode* sibling)
+void ZNode::place_above(ZNode* sibling)
 {
+    if(this == sibling){
+        log_warning << "Cannot place a ZNode above itself";
+        return;
+    }
+
     if (!sibling->m_parent) {
-        return place_on_top_of(sibling);
+        if(sibling->m_right_children.empty()){
+            return move_to_front_of(sibling);
+        }
+        else {
+            return place_below(sibling->m_right_children[0]);
+        }
     }
 
     // in case of ancestry overflow, this call fails without changing the hierarchy
@@ -247,10 +268,20 @@ void ZNode::place_in_front_of(ZNode* sibling)
     m_parent->update_indices(m_placement, sibling->m_index + 1);
 }
 
-void ZNode::place_behind(ZNode* sibling)
+void ZNode::place_below(ZNode* sibling)
 {
+    if(this == sibling){
+        log_warning << "Cannot place a ZNode below itself";
+        return;
+    }
+
     if (!sibling->m_parent) {
-        return place_on_bottom_of(sibling);
+        if(sibling->m_left_children.empty()){
+            return move_to_back_of(sibling);
+        }
+        else {
+            return place_above(sibling->m_right_children.back());
+        }
     }
 
     // in case of ancestry overflow, this call fails without changing the hierarchy
