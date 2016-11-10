@@ -32,63 +32,35 @@ ZNode* ZIterator::next()
         return result;
     }
 
-    // root
-    if (m_current == m_root) {
-        // right end
-        if (m_current->m_right_children.empty()) {
-            m_current = nullptr;
-        }
-        // go to first child on the right
-        else {
-            m_current = m_current->m_right_children.front();
+    // go to first child on the right
+    if (!m_current->m_right_children.empty()) {
+        m_current = m_current->m_right_children.front();
+        dig_left();
+        return result;
+    }
+
+    while (m_current != m_root) {
+        std::vector<ZNode*>& siblings = m_current->m_placement == ZNode::left ? m_current->m_parent->m_left_children
+                                                                              : m_current->m_parent->m_right_children;
+        // go to next sibling
+        if (m_current->m_index + 1 < siblings.size()) {
+            m_current = siblings[m_current->m_index + 1];
             dig_left();
+            return result;
         }
-    }
-    else {
-        assert(m_current->m_parent);
 
-        // left from parent
+        // go to parent on the right
         if (m_current->m_placement == ZNode::left) {
-
-            // go to first child on the right
-            if (!m_current->m_right_children.empty()) {
-                m_current = m_current->m_right_children.front();
-                dig_left();
-            }
-            else {
-                // go to next sibling on the left of parent
-                if (m_current->m_index + 1 < m_current->m_parent->m_left_children.size()) {
-                    m_current = m_current->m_parent->m_left_children[m_current->m_index + 1];
-                    dig_left();
-                }
-                // go to parent
-                else {
-                    m_current = m_current->m_parent;
-                }
-            }
+            m_current = m_current->m_parent;
+            return result;
         }
-        // currently right from parent
-        else {
 
-            // go to first child on the right
-            if (!m_current->m_right_children.empty()) {
-                m_current = m_current->m_right_children.front();
-                dig_left();
-            }
-            else {
-                // go to next sibling on the right of parent
-                if (m_current->m_index + 1 < m_current->m_parent->m_right_children.size()) {
-                    m_current = m_current->m_parent->m_right_children[m_current->m_index + 1];
-                    dig_left();
-                }
-                // right end
-                else {
-                    m_current = nullptr;
-                }
-            }
-        }
+        // backtrack up the ancestry to the left until you find another node on the right or hit the root again
+        m_current = m_current->m_parent;
     }
 
+    // finished traversal
+    m_current = nullptr;
     return result;
 }
 
@@ -195,11 +167,14 @@ size_t ZNode::getZ() const
     return result;
 }
 
-void ZNode::move_to_front_of(ZNode* parent)
+void ZNode::place_on_top_of(ZNode* parent)
 {
-    if(this == parent){
-        log_warning << "Cannot place a ZNode in front of itself";
+    if (parent == this) {
         return;
+    }
+    else if (parent->is_descendant_of(this)) {
+        log_critical << "ZHierarchy cycle detected";
+        throw std::runtime_error("ZHierarchy cycle detected");
     }
 
     // in case of ancestry overflow, this call fails without changing the hierarchy
@@ -215,11 +190,14 @@ void ZNode::move_to_front_of(ZNode* parent)
     m_index = m_parent->m_right_children.size() - 1;
 }
 
-void ZNode::move_to_back_of(ZNode* parent)
+void ZNode::place_on_bottom_of(ZNode* parent)
 {
-    if(this == parent){
-        log_warning << "Cannot place a ZNode in the back of itself";
+    if (parent == this) {
         return;
+    }
+    else if (parent->is_descendant_of(this)) {
+        log_critical << "ZHierarchy cycle detected";
+        throw std::runtime_error("ZHierarchy cycle detected");
     }
 
     // in case of ancestry overflow, this call fails without changing the hierarchy
@@ -237,14 +215,17 @@ void ZNode::move_to_back_of(ZNode* parent)
 
 void ZNode::place_above(ZNode* sibling)
 {
-    if(this == sibling){
-        log_warning << "Cannot place a ZNode above itself";
+    if (sibling == this) {
         return;
+    }
+    else if (sibling->is_descendant_of(this)) {
+        log_critical << "ZHierarchy cycle detected";
+        throw std::runtime_error("ZHierarchy cycle detected");
     }
 
     if (!sibling->m_parent) {
-        if(sibling->m_right_children.empty()){
-            return move_to_front_of(sibling);
+        if (sibling->m_right_children.empty()) {
+            return place_on_top_of(sibling);
         }
         else {
             return place_below(sibling->m_right_children[0]);
@@ -270,17 +251,20 @@ void ZNode::place_above(ZNode* sibling)
 
 void ZNode::place_below(ZNode* sibling)
 {
-    if(this == sibling){
-        log_warning << "Cannot place a ZNode below itself";
+    if (sibling == this) {
         return;
+    }
+    else if (sibling->is_descendant_of(this)) {
+        log_critical << "ZHierarchy cycle detected";
+        throw std::runtime_error("ZHierarchy cycle detected");
     }
 
     if (!sibling->m_parent) {
-        if(sibling->m_left_children.empty()){
-            return move_to_back_of(sibling);
+        if (sibling->m_left_children.empty()) {
+            return place_on_bottom_of(sibling);
         }
         else {
-            return place_above(sibling->m_right_children.back());
+            return place_above(sibling->m_left_children.back());
         }
     }
 
@@ -301,7 +285,7 @@ void ZNode::place_below(ZNode* sibling)
     m_parent->update_indices(m_placement, sibling->m_index);
 }
 
-std::vector<ZNode*> ZNode::flatten() const
+std::vector<ZNode*> ZNode::flatten_hierarchy() const
 {
     // check for ancestry overflow with all the number of ancestors combined, should be impossible to overflow here
     assert(m_num_left_descendants < std::numeric_limits<decltype(m_num_left_descendants)>::max()
@@ -367,6 +351,18 @@ void ZNode::subtract_num_descendants(PLACEMENT placement, size_t delta)
     if (m_parent) {
         m_parent->subtract_num_descendants(m_placement, delta);
     }
+}
+
+bool ZNode::is_descendant_of(const ZNode* ancestor) const
+{
+    const ZNode* it = this;
+    while (it) {
+        if (ancestor == it) {
+            return true;
+        }
+        it = it->m_parent;
+    }
+    return false;
 }
 
 } // namespace notf

@@ -77,10 +77,10 @@ public: // methods
     size_t getZ() const;
 
     /** Moves under `parent`, all the way in the front. */
-    void move_to_front_of(ZNode* parent);
+    void place_on_top_of(ZNode* parent);
 
     /** Moves under `parent`, all the way in the back. */
-    void move_to_back_of(ZNode* parent);
+    void place_on_bottom_of(ZNode* parent);
 
     /** Moves under the same parent as `sibling`, one step above `sibiling`.
      * If `sibling` has no parent, it moves this ZNode to be the leftmost right child of `sibling` instead.
@@ -93,7 +93,7 @@ public: // methods
     void place_below(ZNode* sibling);
 
     /** Returns the flattened hierarchy below this node as a vector. */
-    std::vector<ZNode*> flatten() const;
+    std::vector<ZNode*> flatten_hierarchy() const;
 
 _private: // methods
     /** Unparents this ZNode from its current parent. */
@@ -111,6 +111,9 @@ _private: // methods
      * @throw std::runtime_error    If the new number of descendants would drop below 0.
      */
     void subtract_num_descendants(PLACEMENT placement, size_t delta);
+
+    /** Checks, if this Node is a descendant of the given (potential) ancestor. */
+    bool is_descendant_of(const ZNode *ancestor) const;
 
 _private: // fields
     /** The LayoutItem owning this ZNode. */

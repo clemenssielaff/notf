@@ -1,6 +1,8 @@
 #include "test/catch.hpp"
 
+#include <assert.h>
 #include <memory>
+#include <set>
 #include <vector>
 
 #include "common/log.hpp"
@@ -24,7 +26,7 @@ namespace { // anonymous
 std::vector<std::unique_ptr<ZNode>> produce_five_hierarchy()
 {
     std::vector<std::unique_ptr<ZNode>> result;
-    for(auto i = 0; i < 5; ++i){
+    for (auto i = 0; i < 5; ++i) {
         result.emplace_back(std::make_unique<ZNode>(nullptr));
     }
 
@@ -34,10 +36,10 @@ std::vector<std::unique_ptr<ZNode>> produce_five_hierarchy()
     ZNode* mid_right = result.at(3).get();
     ZNode* right = result.at(4).get();
 
-    left->place_below(mid_left);
-    mid_left->place_below(root);
-    mid_right->place_above(root);
-    right->place_above(mid_right);
+    left->place_on_bottom_of(mid_left);
+    mid_left->place_on_bottom_of(root);
+    mid_right->place_on_top_of(root);
+    right->place_on_top_of(mid_right);
 
     return result;
 }
@@ -47,7 +49,7 @@ std::vector<std::unique_ptr<ZNode>> produce_five_hierarchy()
 SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
 {
     auto& random_engine = get_random_engine();
-//    random_engine.seed();
+    //    random_engine.seed();
 
     WHEN("ZNodes are simply stacked in the order they are created")
     {
@@ -62,12 +64,12 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
         for (size_t i = 1; i < size; ++i) {
             owner.emplace_back(std::make_unique<ZNode>(nullptr));
             ZNode* node = owner.at(i).get();
-            node->move_to_front_of(root);
+            node->place_on_top_of(root);
         }
 
         THEN("flattening the hierarchy will result in the creation order")
         {
-            std::vector<ZNode*> flattened = root->flatten();
+            std::vector<ZNode*> flattened = root->flatten_hierarchy();
             REQUIRE(flattened.size() == size);
             for (size_t i = 0; i < size; ++i) {
                 REQUIRE(flattened[i] == owner[i].get());
@@ -88,15 +90,15 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
         for (size_t i = 1; i < size; ++i) {
             owner.emplace_back(std::make_unique<ZNode>(nullptr));
             ZNode* node = owner.at(i).get();
-            node->move_to_back_of(root);
+            node->place_on_bottom_of(root);
         }
 
         THEN("flattening the hierarchy will result in the reverse creation order")
         {
-            std::vector<ZNode*> flattened = root->flatten();
+            std::vector<ZNode*> flattened = root->flatten_hierarchy();
             REQUIRE(flattened.size() == size);
             for (size_t i = 0; i < size; ++i) {
-                REQUIRE(flattened[i] == owner[size-i-1].get());
+                REQUIRE(flattened[i] == owner[size - i - 1].get());
             }
         }
     }
@@ -108,21 +110,31 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
         std::unique_ptr<ZNode> right_owner1 = std::make_unique<ZNode>(nullptr);
         ZNode* left1 = left_owner1.get();
         ZNode* right1 = right_owner1.get();
-        left1->move_above(right1);
+        right1->place_above(left1);
 
         std::unique_ptr<ZNode> left_owner2 = std::make_unique<ZNode>(nullptr);
         std::unique_ptr<ZNode> right_owner2 = std::make_unique<ZNode>(nullptr);
         ZNode* left2 = left_owner2.get();
         ZNode* right2 = right_owner2.get();
-        left2->move_below(right2);
+        left2->place_below(right2);
 
-        THEN("nothing happens")
+        THEN("it is instead parented to the other node")
         {
+            REQUIRE(left1->m_left_children.empty());
+            REQUIRE(left1->m_right_children.size() == 1);
+            REQUIRE(left1->m_right_children.at(0) == right1);
+            REQUIRE(left1->m_num_left_descendants == 0);
+            REQUIRE(left1->m_num_right_descendants == 1);
+            REQUIRE(right1->m_parent == left1);
 
+            REQUIRE(right2->m_right_children.empty());
+            REQUIRE(right2->m_left_children.size() == 1);
+            REQUIRE(right2->m_left_children.at(0) == left2);
+            REQUIRE(right2->m_num_left_descendants == 1);
+            REQUIRE(right2->m_num_right_descendants == 0);
+            REQUIRE(left2->m_parent == right2);
         }
     }
-
-    WHEN("a ZNode tries to move above or below another ZNode that has no parent")
 
     WHEN("a simple 5-hierarchy is created")
     {
@@ -168,7 +180,7 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
             REQUIRE(mid_right->m_parent == root);
             REQUIRE(mid_right->m_left_children.empty());
             REQUIRE(mid_right->m_right_children.size() == 1);
-            REQUIRE(mid_right->m_left_children.at(0) == right);
+            REQUIRE(mid_right->m_right_children.at(0) == right);
             REQUIRE(mid_right->m_num_left_descendants == 0);
             REQUIRE(mid_right->m_num_right_descendants == 1);
             REQUIRE(mid_right->m_placement == ZNode::right);
@@ -196,22 +208,22 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
 
         bool append = true;
         for (size_t i = 1; i < size; ++i) {
-            if(append){
+            if (append) {
                 owner.emplace_back(std::make_unique<ZNode>(nullptr));
                 ZNode* node = owner.back().get();
-                node->move_to_front_of(root);
+                node->place_on_top_of(root);
             }
             else {
                 owner.emplace(owner.begin(), std::make_unique<ZNode>(nullptr));
                 ZNode* node = owner.front().get();
-                node->move_to_back_of(root);
+                node->place_on_bottom_of(root);
             }
             append = !append;
         }
 
         THEN("flattening the hierarchy will result in the correct order")
         {
-            std::vector<ZNode*> flattened = root->flatten();
+            std::vector<ZNode*> flattened = root->flatten_hierarchy();
             REQUIRE(flattened.size() == size);
             for (size_t i = 0; i < size; ++i) {
                 REQUIRE(flattened[i] == owner[i].get());
@@ -219,37 +231,45 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
         }
     }
 
-//    WHEN("a ZNode in a hierarchy is moved into the same position again")
-//    {
+    WHEN("a ZNode in a hierarchy is moved into the same position again")
+    {
+        std::vector<std::unique_ptr<ZNode>> hierarchy = produce_five_hierarchy();
+        ZNode* left = hierarchy.at(0).get();
+        ZNode* mid_left = hierarchy.at(1).get();
+        ZNode* root = hierarchy.at(2).get();
+        ZNode* mid_right = hierarchy.at(3).get();
+        ZNode* right = hierarchy.at(4).get();
 
+        left->place_below(mid_left);
+        left->place_on_bottom_of(mid_left);
+        mid_left->place_on_bottom_of(root);
+        mid_left->place_below(root);
 
-//        owner.emplace_back
-//        ZNode* root = owner.front().get();
+        mid_right->place_above(root);
+        mid_right->place_on_top_of(root);
+        right->place_on_top_of(mid_right);
+        right->place_above(mid_right);
 
-//        owner.emplace(owner.begin(), std::make_unique<ZNode>(nullptr));
-//        ZNode* node = owner.front().get();
-//        node->place_behind(root);
-//        node->place_behind(root);
-
-//        THEN("flattening the hierarchy will result in the correct order")
-//        {
-//            std::vector<ZNode*> flattened = root->flatten();
-//            for (size_t i = 0; i < 2; ++i) {
-//                REQUIRE(flattened[i] == owner[i].get());
-//            }
-//        }
-//    }
+        THEN("flattening the hierarchy will result in the correct order")
+        {
+            std::vector<ZNode*> flattened = root->flatten_hierarchy();
+            for (size_t i = 0; i < 5; ++i) {
+                REQUIRE(flattened[i] == hierarchy[i].get());
+            }
+        }
+    }
 
     WHEN("a ZNode is moved relative to itself")
     {
         auto root_owner = std::make_unique<ZNode>(nullptr);
         ZNode* root = root_owner.get();
-        root->move_above(root);
-        root->move_below(root);
-        root->move_to_front_of(root);
-        root->move_to_back_of(root);
 
-        THEN("it will simply do nothing")
+        root->place_above(root);
+        root->place_below(root);
+        root->place_on_top_of(root);
+        root->place_on_bottom_of(root);
+
+        THEN("nothing happens")
         {
             REQUIRE(root->m_parent == nullptr);
             REQUIRE(root->m_left_children.empty());
@@ -258,15 +278,6 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
             REQUIRE(root->m_num_right_descendants == 0);
             REQUIRE(root->m_placement == ZNode::left);
             REQUIRE(root->m_index == 0);
-        }
-    }
-
-    WHEN("a ZNode is placed into the hierarchy below itself")
-    {
-        // TODO
-        THEN("it will simply do nothing")
-        {
-
         }
     }
 
@@ -282,26 +293,99 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
 
         bool append = true;
         for (size_t i = 1; i < size; ++i) {
-            if(append){
-                owner.emplace(owner.begin() + static_cast<uint>(ceil(owner.size() / 2.)) - 1, std::make_unique<ZNode>(nullptr));
-                ZNode* node = owner.back().get();
-                node->place_in_front_of(root);
+            std::unique_ptr<ZNode> node_owner = std::make_unique<ZNode>(nullptr);
+            ZNode* node = node_owner.get();
+            auto it = owner.begin();
+            while (it->get() != root && it != owner.end()) {
+                ++it;
+            }
+            assert(it != owner.end());
+            if (append) {
+                node->place_above(root);
+                owner.emplace(++it, std::move(node_owner));
             }
             else {
-                owner.emplace(owner.begin() + static_cast<uint>(floor(owner.size() / 2.)) - 1, std::make_unique<ZNode>(nullptr));
-                ZNode* node = owner.front().get();
-                node->place_behind(root);
+                node->place_below(root);
+                owner.emplace(it, std::move(node_owner));
             }
             append = !append;
         }
 
         THEN("flattening the hierarchy will result in the correct order")
         {
-            std::vector<ZNode*> flattened = root->flatten();
+            std::vector<ZNode*> flattened = root->flatten_hierarchy();
             REQUIRE(flattened.size() == size);
             for (size_t i = 0; i < size; ++i) {
                 REQUIRE(flattened[i] == owner[i].get());
             }
+        }
+    }
+
+    WHEN("a ZNode is placed into the hierarchy below itself")
+    {
+        std::vector<std::unique_ptr<ZNode>> hierarchy = produce_five_hierarchy();
+        ZNode* left = hierarchy.at(0).get();
+        ZNode* mid_left = hierarchy.at(1).get();
+        ZNode* root = hierarchy.at(2).get();
+        ZNode* mid_right = hierarchy.at(3).get();
+        ZNode* right = hierarchy.at(4).get();
+
+        THEN("it will throw an error but keep in a consistent state")
+        {
+            REQUIRE_THROWS(root->place_above(mid_right));
+            REQUIRE_THROWS(mid_left->place_below(left));
+            REQUIRE_THROWS(mid_right->place_on_top_of(right));
+            REQUIRE_THROWS(root->place_on_bottom_of(mid_left));
+
+            std::vector<ZNode*> flattened = root->flatten_hierarchy();
+            for (size_t i = 0; i < 5; ++i) {
+                REQUIRE(flattened[i] == hierarchy[i].get());
+            }
+        }
+    }
+
+    WHEN("a ZHierarchy is randomly constructed")
+    {
+        const int size = random_engine.uniform(24, 1024);
+
+        std::vector<std::unique_ptr<ZNode>> owner;
+        owner.reserve(static_cast<size_t>(size));
+
+        owner.emplace_back(std::make_unique<ZNode>(nullptr));
+        ZNode* root = owner.front().get();
+
+        for (int i = 0; i < size - 1; ++i) {
+            const int pos = random_engine.uniform(0, i);
+            const int op = random_engine.uniform(0, 3);
+
+            std::unique_ptr<ZNode> node_owner = std::make_unique<ZNode>(nullptr);
+            ZNode* node = node_owner.get();
+            ZNode* other_node = owner.at(static_cast<size_t>(pos)).get();
+
+            switch (op) {
+            case 0:
+                node->place_above(other_node);
+                break;
+            case 1:
+                node->place_below(other_node);
+                break;
+            case 2:
+                node->place_on_bottom_of(other_node);
+                break;
+            case 3:
+                node->place_on_top_of(other_node);
+                break;
+            }
+            owner.emplace_back(std::move(node_owner));
+        }
+
+        THEN("flattening the hierarchy will account for all ZNodes")
+        {
+            std::vector<ZNode*> flattened = root->flatten_hierarchy();
+            std::set<ZNode*> flattened_set(flattened.begin(), flattened.end());
+            REQUIRE(flattened_set.size() == size);
+
+            REQUIRE(root->m_num_left_descendants + root->m_num_right_descendants + 1 == size);
         }
     }
 }
