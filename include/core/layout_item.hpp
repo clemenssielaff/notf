@@ -15,6 +15,7 @@ namespace notf {
 class Layout;
 class LayoutRoot;
 class Widget;
+class ZNode;
 
 /// @brief Visibility states, all but one mean that the LayoutItem is not visible, but all for different reasons.
 enum class VISIBILITY : unsigned char {
@@ -119,15 +120,7 @@ public: // signals
 protected: // methods
     /// @brief Value Constructor.
     /// @param handle   Application-unique Handle of this Item.
-    explicit LayoutItem(const Handle handle)
-        : Object(handle)
-        , m_parent()
-        , m_visibility(VISIBILITY::VISIBLE)
-        , m_claim()
-        , m_size()
-        , m_transform(Transform2::identity())
-    {
-    }
+    explicit LayoutItem(const Handle handle);
 
     /// @brief Shows (if possible) or hides this LayoutItem.
     void _set_visible(const bool is_visible);
@@ -191,6 +184,12 @@ protected: // static methods
         item->_relayout(size);
     }
 
+    /** Returns the ZNode of any LayoutItem (or subclass) instance. */
+    static ZNode* _get_znode(const LayoutItem* item)
+    {
+        return item->m_znode.get();
+    }
+
 private: // methods
     /// @brief Sets a new LayoutItem to contain this LayoutItem.
     void _set_parent(std::shared_ptr<Layout> parent);
@@ -213,6 +212,9 @@ private: // methods
 private: // fields
     /// @brief The parent LayoutItem, may be invalid.
     std::weak_ptr<Layout> m_parent;
+
+    /// @brief The ZNode of this LayoutItem, used to determine its render order (z-value).
+    std::unique_ptr<ZNode> m_znode;
 
     /// @brief Visibility state of this LayoutItem.
     VISIBILITY m_visibility;

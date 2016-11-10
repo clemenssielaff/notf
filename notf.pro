@@ -36,7 +36,8 @@ CONFIG(test) {
     SOURCES += \
         test/test_main.cpp \
         test/test_common_string_utils.cpp \
-        test/test_common_signal.cpp
+        test/test_common_signal.cpp \
+        test/test_core_zhierarchy.cpp
 
     HEADERS += \
         test/catch.hpp
@@ -91,8 +92,7 @@ SOURCES += \
     src/python/pyglobal.cpp \
     src/python/pycanvascomponent.cpp \
     src/graphics/painter.cpp \
-    src/core/zhierarchy.cpp \
-    test/test_core_zhierarchy.cpp
+    src/core/znode.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -163,6 +163,6 @@ HEADERS += \
     include/python/pywindow.hpp \
     include/python/pycanvascomponent.hpp \
     include/graphics/painter.hpp \
-    include/core/zhierarchy.hpp
+    include/core/znode.hpp
 
 QMAKE_CXX = ccache g++

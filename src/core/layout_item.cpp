@@ -3,6 +3,7 @@
 #include "common/log.hpp"
 #include "core/layout.hpp"
 #include "core/layout_root.hpp"
+#include "core/znode.hpp"
 
 namespace notf {
 
@@ -37,6 +38,17 @@ std::shared_ptr<const LayoutRoot> LayoutItem::get_root() const
         it = it->get_parent();
     }
     return std::dynamic_pointer_cast<const LayoutRoot>(it);
+}
+
+LayoutItem::LayoutItem(const Handle handle)
+    : Object(handle)
+    , m_parent()
+    , m_znode(std::make_unique<ZNode>(this))
+    , m_visibility(VISIBILITY::VISIBLE)
+    , m_claim()
+    , m_size()
+    , m_transform(Transform2::identity())
+{
 }
 
 void LayoutItem::_set_visible(const bool is_visible)
@@ -111,6 +123,11 @@ void LayoutItem::_set_parent(std::shared_ptr<Layout> parent)
     // update your parent
     if (old_parent) {
         old_parent->_remove_child(get_handle());
+    }
+
+    // if this is the first parent, place your ZNode as well
+    else if(!m_znode->get_parent()) {
+        m_znode->place_on_top_of(_get_znode(parent.get()));
     }
 
     m_parent = parent;

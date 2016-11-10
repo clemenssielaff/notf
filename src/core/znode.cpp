@@ -1,4 +1,4 @@
-#include "core/zhierarchy.hpp"
+#include "core/znode.hpp"
 
 #include <algorithm>
 #include <assert.h>
@@ -90,34 +90,38 @@ ZNode::ZNode(LayoutItem* layout_item)
 
 ZNode::~ZNode()
 {
+    std::vector<ZNode*> survivors; // survivors in order from back to front
+
     if (m_parent) {
         // all ZNodes that are a descendant of this (in the Z hierarchy), but whose LayoutItem is not a descendant of
         // this one's LayoutItem (in the LayoutItem hierarchy) need to be moved above this node in the Z hierarchy
         // before this is removed
-        std::vector<ZNode*> survivors; // survivors in order from back to front
-#ifdef _TEST
         if (m_layout_item) {
-#endif
             ZIterator it(this);
             while (ZNode* descendant = it.next()) {
-                if (!descendant->m_layout_item->has_ancestor(m_layout_item)) {
+                if (descendant != this
+                    && descendant->m_layout_item
+                    && !descendant->m_layout_item->has_ancestor(m_layout_item)) {
                     survivors.emplace_back(descendant);
                 }
             }
-#ifdef _TEST
         }
-#endif
 
         // unparent yourself
         unparent();
 
         // place the survivors starting at where this node used to be
         if (!survivors.empty()) {
+            for(ZNode* survivor : survivors){
+                survivor->m_parent = m_parent;
+                survivor->m_placement = m_placement;
+            }
             std::vector<ZNode*>& siblings = m_placement == left ? m_parent->m_left_children : m_parent->m_right_children;
             auto it = siblings.begin();
             std::advance(it, m_index);
             siblings.insert(it, survivors.begin(), survivors.end());
             m_parent->add_num_descendants(m_placement, survivors.size());
+            m_parent->update_indices(m_placement, m_index);
         }
 
         m_parent = nullptr;
@@ -125,17 +129,21 @@ ZNode::~ZNode()
 
     //  unparent your children
     for (ZNode* child : m_left_children) {
-        child->m_parent = nullptr;
+        if (std::find(survivors.begin(), survivors.end(), child) == survivors.end()) {
+            child->m_parent = nullptr;
+        }
     }
     m_left_children.clear();
 
     for (ZNode* child : m_right_children) {
-        child->m_parent = nullptr;
+        if (std::find(survivors.begin(), survivors.end(), child) == survivors.end()) {
+            child->m_parent = nullptr;
+        }
     }
     m_right_children.clear();
 }
 
-size_t ZNode::getZ() const
+size_t ZNode::get_z() const
 {
     size_t result = m_num_left_descendants;
     const ZNode* it = this;

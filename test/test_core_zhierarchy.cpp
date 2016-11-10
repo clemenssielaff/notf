@@ -5,11 +5,26 @@
 #include <set>
 #include <vector>
 
+#ifdef _TEST
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wkeyword-macro"
+#endif
+#define protected public
+#define private public
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+#endif
+
+#include "common/const.hpp"
 #include "common/log.hpp"
 #include "common/random.hpp"
+#include "core/znode.hpp"
+#include "dynamic/layout/stack_layout.hpp"
 using notf::get_random_engine;
-
-#include "core/zhierarchy.hpp"
+using notf::STACK_DIRECTION;
+using notf::StackLayout;
 using notf::ZIterator;
 using notf::ZNode;
 
@@ -346,16 +361,16 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
 
     WHEN("a ZHierarchy is randomly constructed")
     {
-        const int size = random_engine.uniform(24, 1024);
+        const size_t size = static_cast<size_t>(random_engine.uniform(24, 1024));
 
         std::vector<std::unique_ptr<ZNode>> owner;
-        owner.reserve(static_cast<size_t>(size));
+        owner.reserve(size);
 
         owner.emplace_back(std::make_unique<ZNode>(nullptr));
         ZNode* root = owner.front().get();
 
-        for (int i = 0; i < size - 1; ++i) {
-            const int pos = random_engine.uniform(0, i);
+        for (size_t i = 0; i < size - 1; ++i) {
+            const int pos = random_engine.uniform(0, static_cast<int>(i));
             const int op = random_engine.uniform(0, 3);
 
             std::unique_ptr<ZNode> node_owner = std::make_unique<ZNode>(nullptr);
@@ -386,6 +401,24 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
             REQUIRE(flattened_set.size() == size);
 
             REQUIRE(root->m_num_left_descendants + root->m_num_right_descendants + 1 == size);
+        }
+    }
+
+    WHEN("a ZNode is deleted because its LayoutItem is deleted")
+    {
+        std::shared_ptr<StackLayout> root = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> left = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+        root->add_item(left);
+        {
+            std::shared_ptr<StackLayout> mid = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+            mid->m_znode->place_below(root->m_znode.get());
+            left->m_znode->place_on_bottom_of(mid->m_znode.get()); // TODO: expose ZNode functions through LayoutItem
+            // TODO: some function to REMOVE LayoutItems from each other...
+        }
+
+        THEN("children that were not also children of the LayoutItem are moved into its place")
+        {
+            REQUIRE(left->m_znode->m_parent == root->m_znode.get());
         }
     }
 }
