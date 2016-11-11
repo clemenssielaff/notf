@@ -8,7 +8,12 @@ using namespace notf;
 int main(int argc, char* argv[])
 {
     set_log_level(LogMessage::LEVEL::NONE);
-    Application::initialize(argc, argv);
+
+    ApplicationInfo info;
+    info.argc = argc;
+    info.argv = argv;
+    info.enable_python = false;
+    Application::initialize(info);
 
     int result = Catch::Session().run(argc, argv);
 

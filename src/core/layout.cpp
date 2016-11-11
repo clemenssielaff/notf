@@ -49,11 +49,11 @@ void Layout::_remove_child(const Handle child_handle)
     auto it = m_children.find(child_handle);
     if (it == m_children.end()) {
         log_critical << "Failed to remove unknown child " << child_handle << " from LayoutItem " << get_handle();
+        return;
     }
-    else {
-        m_children.erase(it);
-        child_removed(child_handle);
-    }
+    _remove_item(child_handle);
+    m_children.erase(it);
+    child_removed(child_handle);
 }
 
 void Layout::_cascade_visibility(const VISIBILITY visibility)

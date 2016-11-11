@@ -3,12 +3,14 @@
 #include "common/log.hpp"
 #include "core/layout.hpp"
 #include "core/layout_root.hpp"
-#include "core/znode.hpp"
 
 namespace notf {
 
 LayoutItem::~LayoutItem()
 {
+    // delete the znode first, giving children in the z-hierarchy, that are not children in the layout item hierarchy
+    // the opportunity to bubble up (see ZNode::~ZNode() for details).
+    m_znode.reset();
 }
 
 bool LayoutItem::has_ancestor(const LayoutItem *ancestor) const
@@ -125,11 +127,6 @@ void LayoutItem::_set_parent(std::shared_ptr<Layout> parent)
         old_parent->_remove_child(get_handle());
     }
 
-    // if this is the first parent, place your ZNode as well
-    else if(!m_znode->get_parent()) {
-        m_znode->place_on_top_of(_get_znode(parent.get()));
-    }
-
     m_parent = parent;
     parent_changed(parent->get_handle());
 
@@ -149,6 +146,11 @@ void LayoutItem::_set_parent(std::shared_ptr<Layout> parent)
         else if (m_visibility != VISIBILITY::INVISIBLE) {
             _cascade_visibility(parent_visibility);
         }
+    }
+
+    // place your ZNode at the top of the parent
+    if(parent){
+        m_znode->place_on_top_of(_get_znode(parent.get()));
     }
 }
 

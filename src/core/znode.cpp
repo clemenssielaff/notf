@@ -8,7 +8,15 @@
 #include "common/log.hpp"
 #include "core/layout_item.hpp"
 
+#ifdef _DEBUG
+#define TRUE_IN_RELEASE(x) x
+#else
+#define TRUE_IN_RELEASE(x) true
+#endif
+
 namespace notf {
+
+/**********************************************************************************************************************/
 
 ZIterator::ZIterator(ZNode* root)
     : m_current(root)
@@ -40,6 +48,7 @@ ZNode* ZIterator::next()
     }
 
     while (m_current != m_root) {
+        assert(m_current->m_parent);
         std::vector<ZNode*>& siblings = m_current->m_placement == ZNode::left ? m_current->m_parent->m_left_children
                                                                               : m_current->m_parent->m_right_children;
         // go to next sibling
@@ -90,19 +99,38 @@ ZNode::ZNode(LayoutItem* layout_item)
 
 ZNode::~ZNode()
 {
-    std::vector<ZNode*> survivors; // survivors in order from back to front
-
     if (m_parent) {
+
         // all ZNodes that are a descendant of this (in the Z hierarchy), but whose LayoutItem is not a descendant of
         // this one's LayoutItem (in the LayoutItem hierarchy) need to be moved above this node in the Z hierarchy
         // before this is removed
-        if (m_layout_item) {
+        std::vector<ZNode*> all_survivors;
+        if (TRUE_IN_RELEASE(m_layout_item)) {
             ZIterator it(this);
             while (ZNode* descendant = it.next()) {
                 if (descendant != this
-                    && descendant->m_layout_item
+                    && TRUE_IN_RELEASE(descendant->m_layout_item)
                     && !descendant->m_layout_item->has_ancestor(m_layout_item)) {
-                    survivors.emplace_back(descendant);
+                    all_survivors.emplace_back(descendant);
+                }
+            }
+        }
+
+        // only move the closest descendants (not descendants of other survivors)
+        std::vector<ZNode*> top_survivors; // survivors in order from back to front
+        for (ZNode* top_survivor : all_survivors) {
+            if (TRUE_IN_RELEASE(top_survivor->m_layout_item)) {
+                bool is_top_survivor = true;
+                for (ZNode* potential_ancestor : all_survivors) {
+                    if (TRUE_IN_RELEASE(potential_ancestor->m_layout_item)) {
+                        if (top_survivor->m_layout_item->has_ancestor(potential_ancestor->m_layout_item)) {
+                            is_top_survivor = false;
+                            break;
+                        }
+                    }
+                }
+                if(is_top_survivor){
+                    top_survivors.emplace_back(top_survivor);
                 }
             }
         }
@@ -111,36 +139,33 @@ ZNode::~ZNode()
         unparent();
 
         // place the survivors starting at where this node used to be
-        if (!survivors.empty()) {
-            for(ZNode* survivor : survivors){
+        if (!top_survivors.empty()) {
+            size_t total_descendants = 0;
+            for (ZNode* survivor : top_survivors) {
                 survivor->m_parent = m_parent;
                 survivor->m_placement = m_placement;
+                total_descendants += survivor->m_num_left_descendants + survivor->m_num_right_descendants + 1;
             }
             std::vector<ZNode*>& siblings = m_placement == left ? m_parent->m_left_children : m_parent->m_right_children;
             auto it = siblings.begin();
             std::advance(it, m_index);
-            siblings.insert(it, survivors.begin(), survivors.end());
-            m_parent->add_num_descendants(m_placement, survivors.size());
+            siblings.insert(it, top_survivors.begin(), top_survivors.end());
+            m_parent->add_num_descendants(m_placement, total_descendants);
             m_parent->update_indices(m_placement, m_index);
         }
 
         m_parent = nullptr;
     }
-
-    //  unparent your children
-    for (ZNode* child : m_left_children) {
-        if (std::find(survivors.begin(), survivors.end(), child) == survivors.end()) {
+    else {
+        for (ZNode* child : m_left_children) {
             child->m_parent = nullptr;
         }
-    }
-    m_left_children.clear();
-
-    for (ZNode* child : m_right_children) {
-        if (std::find(survivors.begin(), survivors.end(), child) == survivors.end()) {
+        for (ZNode* child : m_right_children) {
             child->m_parent = nullptr;
         }
+        m_left_children.clear();
+        m_right_children.clear();
     }
-    m_right_children.clear();
 }
 
 size_t ZNode::get_z() const
@@ -173,6 +198,12 @@ size_t ZNode::get_z() const
         }
     }
     return result;
+}
+
+std::shared_ptr<LayoutItem> ZNode::get_layout_item() const
+{
+    assert(m_layout_item);
+    return std::static_pointer_cast<LayoutItem>(m_parent->m_layout_item->shared_from_this());
 }
 
 void ZNode::place_on_top_of(ZNode* parent)

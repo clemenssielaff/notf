@@ -2,6 +2,7 @@
 
 #include <assert.h>
 
+#include "common/log.hpp"
 #include "common/transform2.hpp"
 #include "common/vector_utils.hpp"
 #include "core/widget.hpp"
@@ -48,6 +49,16 @@ void StackLayout::_update_claim()
         }
     }
     _set_claim(new_claim);
+}
+
+void StackLayout::_remove_item(const Handle item_handle)
+{
+    auto it = std::find(m_items.begin(), m_items.end(), item_handle);
+    if (it == m_items.end()) {
+        log_critical << "Failed to remove unknown item " << item_handle << " from StackLayout " << get_handle();
+        return;
+    }
+    m_items.erase(it);
 }
 
 void StackLayout::_relayout(const Size2r size)

@@ -9,13 +9,13 @@
 #include "common/size2r.hpp"
 #include "common/transform2.hpp"
 #include "core/object.hpp"
+#include "core/znode.hpp"
 
 namespace notf {
 
 class Layout;
 class LayoutRoot;
 class Widget;
-class ZNode;
 
 /// @brief Visibility states, all but one mean that the LayoutItem is not visible, but all for different reasons.
 enum class VISIBILITY : unsigned char {
@@ -32,7 +32,7 @@ enum class SPACE : unsigned char {
     SCREEN, // returns transform in screen coordinates, relative to the screen origin
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/**********************************************************************************************************************/
 
 /**
  * @brief A LayoutItem is an abstraction of an item in the Layout hierarchy.
@@ -99,6 +99,34 @@ public: // methods
         }
         return result;
     }
+
+    /** Calculates and returns the Z value of this LayoutItem. */
+    size_t get_z() const { return m_znode->get_z(); }
+
+    /** The LayoutItem through which the Z-value of this one is determined. */
+    std::shared_ptr<LayoutItem> get_z_parent() const { return m_znode->get_parent()->get_layout_item(); }
+
+    /** Moves under `parent`, all the way in the front.
+     * @throw std::runtime_error    If `parent` is a child of this LayoutItem's ZNode.
+     */
+    void place_on_top_of(const std::shared_ptr<LayoutItem>& parent) { m_znode->place_on_top_of(parent->m_znode.get()); }
+
+    /** Moves under `parent`, all the way in the back.
+     * @throw std::runtime_error    If `parent` is a child of this LayoutItem's ZNode.
+     */
+    void place_on_bottom_of(const std::shared_ptr<LayoutItem>& parent) { m_znode->place_on_bottom_of(parent->m_znode.get()); }
+
+    /** Moves under the same parent as `sibling`, one step above `sibiling`.
+     * If `sibling` has no parent, it moves this ZNode to be the leftmost right child of `sibling` instead.
+     * @throw std::runtime_error    If `sibling` is a child of this LayoutItem's ZNode.
+     */
+    void place_above(const std::shared_ptr<LayoutItem>& sibling) { m_znode->place_above(sibling->m_znode.get()); }
+
+    /** Moves under the same parent as `sibling`, one step below `sibiling`.
+     * If `sibling` has no parent, it moves this ZNode to be the rightmost left child of `sibling` instead.
+     * @throw std::runtime_error    If `sibling` is a child of this LayoutItem's ZNode.
+     */
+    void place_below(const std::shared_ptr<LayoutItem>& sibling) { m_znode->place_below(sibling->m_znode.get()); }
 
 public: // signals
     /// @brief Emitted when this LayoutItem got a new parent.
@@ -185,13 +213,17 @@ protected: // static methods
     }
 
     /** Returns the ZNode of any LayoutItem (or subclass) instance. */
-    static ZNode* _get_znode(const LayoutItem* item)
+    static ZNode* _get_znode(LayoutItem* item)
     {
+        assert(item);
         return item->m_znode.get();
     }
 
 private: // methods
     /// @brief Sets a new LayoutItem to contain this LayoutItem.
+    /// Setting a new parent makes this LayoutItem appear on top of the new parent.
+    /// I chose to do this since it is expected behaviour and reparenting + changing the z-value is a more common
+    /// use-case than reparenting the LayoutItem without changing its depth.
     void _set_parent(std::shared_ptr<Layout> parent);
 
     /// @brief Removes the current parent of this LayoutItem.

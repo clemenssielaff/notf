@@ -72,6 +72,14 @@ protected: // methods
      */
     virtual void _update_claim() = 0;
 
+    /** Layout-specific removal a of child item.
+     * When a child is removed from the Layout, it calls _remove_child(), which takes care of the changes in the
+     * LayoutItem hierarchy.
+     * However, most Layouts have an additional data structure for sorted, easy access to their children and it is
+     * this methods's job to remove the child from there.
+     */
+    virtual void _remove_item(const Handle item_handle) = 0;
+
     virtual void _relayout(const Size2r size) override = 0;
 
 private: // fields

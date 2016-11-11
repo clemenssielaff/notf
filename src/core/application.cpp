@@ -69,7 +69,9 @@ Application::Application(const ApplicationInfo info)
     glfwSetTime(0);
 
     // initialize Python
-    m_interpreter = std::make_unique<PythonInterpreter>(m_info.argv);
+    if(info.enable_python){
+        m_interpreter = std::make_unique<PythonInterpreter>(m_info.argv);
+    }
 
     log_trace << "Started application";
 }

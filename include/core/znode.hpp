@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <stddef.h>
 #include <vector>
 
@@ -72,6 +73,9 @@ public: // methods
 
     /** Returns the parent node of this ZNode. */
     const ZNode* get_parent() const { return m_parent; }
+
+    /** Returns the LayoutItem of this ZNode. */
+    std::shared_ptr<LayoutItem> get_layout_item() const;
 
     /** Moves under `parent`, all the way in the front. */
     void place_on_top_of(ZNode* parent);

@@ -80,6 +80,8 @@ protected: // methods
 
     virtual void _update_claim() override;
 
+    virtual void _remove_item(const Handle item_handle) override;
+
     virtual void _relayout(const Size2r size) override;
 
 private: // fields

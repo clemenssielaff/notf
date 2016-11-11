@@ -20,13 +20,11 @@
 #include "common/const.hpp"
 #include "common/log.hpp"
 #include "common/random.hpp"
+#include "core/layout_root.hpp"
+#include "core/object_manager.hpp"
 #include "core/znode.hpp"
 #include "dynamic/layout/stack_layout.hpp"
-using notf::get_random_engine;
-using notf::STACK_DIRECTION;
-using notf::StackLayout;
-using notf::ZIterator;
-using notf::ZNode;
+using namespace notf;
 
 namespace { // anonymous
 
@@ -57,6 +55,92 @@ std::vector<std::unique_ptr<ZNode>> produce_five_hierarchy()
     right->place_on_top_of(mid_right);
 
     return result;
+}
+
+/*
+ *                               A
+ *                              /
+ *               +---+---+-----+
+ *              /    |    \     \
+ *             B     C     D     E
+ *            /     /       \     \
+ *           F     G         H     +---+---+
+ *          / \                     \   \   \
+ *         I   J                     K   L   M
+ */
+std::vector<std::shared_ptr<StackLayout>> produce_example_a()
+{
+    std::shared_ptr<StackLayout> a = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> b = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> c = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> d = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> e = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> f = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> g = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> h = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> i = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> j = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> k = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> l = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> m = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+
+    b->place_on_bottom_of(a);
+    c->place_above(b);
+    d->place_above(c);
+    e->place_above(d);
+    f->place_on_bottom_of(b);
+    g->place_on_bottom_of(c);
+    h->place_on_top_of(d);
+    i->place_on_bottom_of(f);
+    j->place_on_top_of(f);
+    k->place_on_top_of(e);
+    l->place_above(k);
+    m->place_on_top_of(e);
+
+    return {a, b, c, d, e, f, g, h, i, j, k, l, m};
+}
+
+/*
+ *             A
+ *              \
+ *               +---+---+-----+
+ *              /    |    \     \
+ *             B     C     D     E
+ *            /     /       \     \
+ *           F     G         H     +---+---+
+ *          / \                     \   \   \
+ *         I   J                     K   L   M
+ */
+std::vector<std::shared_ptr<StackLayout>> produce_example_b()
+{
+    std::shared_ptr<StackLayout> a = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> b = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> c = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> d = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> e = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> f = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> g = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> h = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> i = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> j = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> k = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> l = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> m = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+
+    b->place_above(a);
+    c->place_above(b);
+    d->place_above(c);
+    e->place_above(d);
+    f->place_on_bottom_of(b);
+    g->place_on_bottom_of(c);
+    h->place_on_top_of(d);
+    i->place_on_bottom_of(f);
+    j->place_on_top_of(f);
+    k->place_on_top_of(e);
+    l->place_above(k);
+    m->place_on_top_of(e);
+
+    return {a, b, c, d, e, f, g, h, i, j, k, l, m};
 }
 
 } // namespace anonymous
@@ -404,6 +488,168 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
         }
     }
 
+    WHEN("constructing example a")
+    {
+        std::vector<std::shared_ptr<StackLayout>> owner = produce_example_a();
+        assert(owner.size() == 13);
+
+        auto a = owner[0]->m_znode.get();
+        auto b = owner[1]->m_znode.get();
+        auto c = owner[2]->m_znode.get();
+        auto d = owner[3]->m_znode.get();
+        auto e = owner[4]->m_znode.get();
+        auto f = owner[5]->m_znode.get();
+        auto g = owner[6]->m_znode.get();
+        auto h = owner[7]->m_znode.get();
+        auto i = owner[8]->m_znode.get();
+        auto j = owner[9]->m_znode.get();
+        auto k = owner[10]->m_znode.get();
+        auto l = owner[11]->m_znode.get();
+        auto m = owner[12]->m_znode.get();
+
+        std::vector<ZNode*> expected = {i, f, j, b, g, c, d, h, e, k, l, m, a};
+
+        THEN("flattening it will produce the correct result")
+        {
+            std::vector<ZNode*> flattened = a->flatten_hierarchy();
+            REQUIRE(flattened.size() == expected.size());
+            for (size_t i = 0; i < flattened.size(); ++i) {
+                REQUIRE(flattened[i] == expected[i]);
+            }
+        }
+    }
+
+    WHEN("constructing example b")
+    {
+        std::vector<std::shared_ptr<StackLayout>> owner = produce_example_b();
+        assert(owner.size() == 13);
+
+        auto a = owner[0]->m_znode.get();
+        auto b = owner[1]->m_znode.get();
+        auto c = owner[2]->m_znode.get();
+        auto d = owner[3]->m_znode.get();
+        auto e = owner[4]->m_znode.get();
+        auto f = owner[5]->m_znode.get();
+        auto g = owner[6]->m_znode.get();
+        auto h = owner[7]->m_znode.get();
+        auto i = owner[8]->m_znode.get();
+        auto j = owner[9]->m_znode.get();
+        auto k = owner[10]->m_znode.get();
+        auto l = owner[11]->m_znode.get();
+        auto m = owner[12]->m_znode.get();
+
+        std::vector<ZNode*> expected = {a, i, f, j, b, g, c, d, h, e, k, l, m};
+
+        THEN("flattening it will produce the correct result")
+        {
+            std::vector<ZNode*> flattened = a->flatten_hierarchy();
+            REQUIRE(flattened.size() == expected.size());
+            for (size_t i = 0; i < flattened.size(); ++i) {
+                REQUIRE(flattened[i] == expected[i]);
+            }
+        }
+    }
+
+    /*
+     *            A
+     *             \
+     *              +--+--+
+     *              |  |  |
+     *              B  C  D
+     *                  \
+     *                   +--+
+     *                   |  |
+     *                   E  F
+     */
+    WHEN("LayoutItems are created and parented without regard to z values")
+    {
+        Handle root_handle = Application::get_instance().get_object_manager()._get_next_handle();
+        std::shared_ptr<LayoutRoot> root = LayoutRoot::create(root_handle, {});
+        std::shared_ptr<StackLayout> a = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> b = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> c = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> d = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> e = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> f = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+
+        root->set_item(a);
+        a->add_item(b);
+        a->add_item(c);
+        a->add_item(d);
+        c->add_item(e);
+        c->add_item(f);
+
+        std::vector<ZNode*> expected = {
+            a->m_znode.get(),
+            b->m_znode.get(),
+            c->m_znode.get(),
+            e->m_znode.get(),
+            f->m_znode.get(),
+            d->m_znode.get(),
+        };
+
+        THEN("all children just stack on top of each other")
+        {
+            std::vector<ZNode*> flattened = a->m_znode->flatten_hierarchy();
+            REQUIRE(flattened.size() == expected.size());
+            for (size_t i = 0; i < flattened.size(); ++i) {
+                REQUIRE(flattened[i] == expected[i]);
+            }
+        }
+    }
+
+    /*
+     *    A                    A
+     *     \                    \
+     *      +--+--+              +--+
+     *      |  |  |              |  |
+     *      B  C  D      =>      B  D
+     *          \                    \
+     *           +--+                 C
+     *           |  |                  \
+     *           E  F                   +--+
+     *                                  |  |
+     *                                  E  F
+     */
+    WHEN("A LayoutItem is moved within the LayoutItem hierarchy, its ZNode is moved on top of the new parent")
+    {
+        Handle root_handle = Application::get_instance().get_object_manager()._get_next_handle();
+        std::shared_ptr<LayoutRoot> root = LayoutRoot::create(root_handle, {});
+        std::shared_ptr<StackLayout> a = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> b = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> c = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> d = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> e = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> f = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+
+        root->set_item(a);
+        a->add_item(b);
+        a->add_item(c);
+        a->add_item(d);
+        c->add_item(e);
+        c->add_item(f);
+
+        d->add_item(c);
+
+        std::vector<ZNode*> expected = {
+            a->m_znode.get(),
+            b->m_znode.get(),
+            d->m_znode.get(),
+            c->m_znode.get(),
+            e->m_znode.get(),
+            f->m_znode.get(),
+        };
+
+        THEN("all children just stack on top of each other")
+        {
+            std::vector<ZNode*> flattened = a->m_znode->flatten_hierarchy();
+            REQUIRE(flattened.size() == expected.size());
+            for (size_t i = 0; i < flattened.size(); ++i) {
+                REQUIRE(flattened[i] == expected[i]);
+            }
+        }
+    }
+
     WHEN("a ZNode is deleted because its LayoutItem is deleted")
     {
         std::shared_ptr<StackLayout> root = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
@@ -411,14 +657,97 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
         root->add_item(left);
         {
             std::shared_ptr<StackLayout> mid = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-            mid->m_znode->place_below(root->m_znode.get());
-            left->m_znode->place_on_bottom_of(mid->m_znode.get()); // TODO: expose ZNode functions through LayoutItem
+            mid->place_below(root);
+            left->place_on_bottom_of(mid);
             // TODO: some function to REMOVE LayoutItems from each other...
         }
 
         THEN("children that were not also children of the LayoutItem are moved into its place")
         {
             REQUIRE(left->m_znode->m_parent == root->m_znode.get());
+        }
+    }
+
+    /*           A                               A
+     *            \                               \
+     *             +---+                           +---+---+
+     *              \   \                           \   \   \
+     *               B   C                           E   F   C
+     *                \              (del B) =>           \
+     *                 +--+--+                             G
+     *                  \  \  \
+     *                   D  E  F
+     *                          \
+     *                           G
+     */
+    WHEN("the parent of explicitly placed ZNodes is deleted because their LayoutItem is deleted")
+    {
+        std::shared_ptr<LayoutRoot> root;
+        std::vector<ZNode*> raw_pointers;
+        {
+            Handle root_handle = Application::get_instance().get_object_manager()._get_next_handle();
+            root = LayoutRoot::create(root_handle, {});
+            std::shared_ptr<StackLayout> a = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+            std::shared_ptr<StackLayout> b = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+            std::shared_ptr<StackLayout> c = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+            std::shared_ptr<StackLayout> d = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+            std::shared_ptr<StackLayout> e = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+            std::shared_ptr<StackLayout> f = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+            std::shared_ptr<StackLayout> g = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+
+            raw_pointers = {
+                a->m_znode.get(),
+                b->m_znode.get(),
+                c->m_znode.get(),
+                d->m_znode.get(),
+                e->m_znode.get(),
+                f->m_znode.get(),
+                g->m_znode.get(),
+            };
+
+            root->set_item(a);
+            a->add_item(b);
+            a->add_item(c);
+            b->add_item(d);
+            a->add_item(e);
+            a->add_item(f);
+            f->add_item(g);
+
+            e->place_above(d);
+            f->place_on_top_of(b);
+
+            std::vector<ZNode*> expected = {
+                raw_pointers[0], // a
+                raw_pointers[1], // b
+                raw_pointers[3], // d
+                raw_pointers[4], // e
+                raw_pointers[5], // f
+                raw_pointers[6], // g
+                raw_pointers[2], // c
+            };
+            std::vector<ZNode*> flattened = raw_pointers[0]->flatten_hierarchy();
+            REQUIRE(flattened.size() == expected.size());
+            for (size_t i = 0; i < flattened.size(); ++i) {
+                REQUIRE(flattened[i] == expected[i]);
+            }
+
+            a->_remove_child(b->get_handle());
+        }
+
+        THEN("the explicitly placed ZNodes moves into its place")
+        {
+            std::vector<ZNode*> expected = {
+                raw_pointers[0], // a
+                raw_pointers[4], // e
+                raw_pointers[5], // f
+                raw_pointers[6], // g
+                raw_pointers[2], // c
+            };
+            std::vector<ZNode*> flattened = raw_pointers[0]->flatten_hierarchy();
+            REQUIRE(flattened.size() == expected.size());
+            for (size_t i = 0; i < flattened.size(); ++i) {
+                REQUIRE(flattened[i] == expected[i]);
+            }
         }
     }
 }

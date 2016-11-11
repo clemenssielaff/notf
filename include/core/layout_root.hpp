@@ -35,6 +35,8 @@ protected: // methods
 
     virtual void _update_claim() override {}
 
+    virtual void _remove_item(const Handle) override {}
+
     virtual void _relayout(const Size2r size) override;
 
 private: // methods

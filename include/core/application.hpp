@@ -31,6 +31,9 @@ struct ApplicationInfo {
 
     /** System path to the shader directory, absolute or relative to the executable. */
     std::string shader_directory = "";
+
+    /** If set to false, the Application will not have a Python interpreter available. */
+    bool enable_python = true;
 };
 
 /**********************************************************************************************************************/
@@ -74,8 +77,9 @@ public: // methods
     /// @brief Returns the Application's Object Manager.
     ObjectManager& get_object_manager() { return *m_object_manager; }
 
-    /// @brief Returns the Application's Python interpreter wrapper.
-    PythonInterpreter& get_python_interpreter() { return *m_interpreter; }
+    /// @brief Returns the Application's Python interpreter wrapper
+    /// Might be nullptr, if the Application was initialized with flag `enable_python` set to false.
+    PythonInterpreter* get_python_interpreter() { return m_interpreter.get(); }
 
     /// @brief Returns the current Window.
     std::shared_ptr<Window> get_current_window() { return m_current_window; }
