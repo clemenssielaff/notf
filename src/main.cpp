@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
         [window, &app](const KeyEvent&) {
             PythonInterpreter* python = app.get_python_interpreter();
             python->parse_app();
-            blub(window);
+//            blub(window);
         },
         [](const KeyEvent& event) -> bool {
             return event.key == KEY::SPACE && event.action == KEY_ACTION::KEY_PRESS;

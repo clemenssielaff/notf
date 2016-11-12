@@ -183,6 +183,11 @@ void Application::_register_window(std::shared_ptr<Window> window)
     glfwSetWindowCloseCallback(glfw_window, _on_window_close);
     glfwSetKeyCallback(glfw_window, _on_token_key);
     glfwSetWindowSizeCallback(glfw_window, _on_window_reize);
+
+    // if this is the first Window, it is also the current one
+    if(!m_current_window){
+        m_current_window = window;
+    }
 }
 
 void Application::_unregister_window(std::shared_ptr<Window> window)

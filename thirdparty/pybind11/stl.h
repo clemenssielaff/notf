@@ -22,12 +22,27 @@
 #pragma warning(disable: 4127) // warning C4127: Conditional expression is constant
 #endif
 
+#ifdef __has_include
+// std::optional (but including it in c++14 mode isn't allowed)
+#  if defined(PYBIND11_CPP17) && __has_include(<optional>)
+#    include <optional>
+#    define PYBIND11_HAS_OPTIONAL 1
+#  endif
+// std::experimental::optional (but not allowed in c++11 mode)
+#  if defined(PYBIND11_CPP14) && __has_include(<experimental/optional>)
+#    include <experimental/optional>
+#    if __cpp_lib_experimental_optional  // just in case
+#      define PYBIND11_HAS_EXP_OPTIONAL 1
+#    endif
+#  endif
+#endif
+
 NAMESPACE_BEGIN(pybind11)
 NAMESPACE_BEGIN(detail)
 
 template <typename Type, typename Key> struct set_caster {
-    typedef Type type;
-    typedef type_caster<typename intrinsic_type<Key>::type> key_conv;
+    using type = Type;
+    using key_conv = make_caster<Key>;
 
     bool load(handle src, bool convert) {
         pybind11::set s(src, true);
@@ -53,13 +68,13 @@ template <typename Type, typename Key> struct set_caster {
         return s.release();
     }
 
-    PYBIND11_TYPE_CASTER(type, _("set<") + key_conv::name() + _(">"));
+    PYBIND11_TYPE_CASTER(type, _("Set[") + key_conv::name() + _("]"));
 };
 
 template <typename Type, typename Key, typename Value> struct map_caster {
-    typedef Type type;
-    typedef type_caster<typename intrinsic_type<Key>::type>   key_conv;
-    typedef type_caster<typename intrinsic_type<Value>::type> value_conv;
+    using type = Type;
+    using key_conv   = make_caster<Key>;
+    using value_conv = make_caster<Value>;
 
     bool load(handle src, bool convert) {
         dict d(src, true);
@@ -89,21 +104,21 @@ template <typename Type, typename Key, typename Value> struct map_caster {
         return d.release();
     }
 
-    PYBIND11_TYPE_CASTER(type, _("dict<") + key_conv::name() + _(", ") + value_conv::name() + _(">"));
+    PYBIND11_TYPE_CASTER(type, _("Dict[") + key_conv::name() + _(", ") + value_conv::name() + _("]"));
 };
 
 template <typename Type, typename Value> struct list_caster {
-    typedef Type type;
-    typedef type_caster<typename intrinsic_type<Value>::type> value_conv;
+    using type = Type;
+    using value_conv = make_caster<Value>;
 
     bool load(handle src, bool convert) {
-        list l(src, true);
-        if (!l.check())
+        sequence s(src, true);
+        if (!s.check())
             return false;
         value_conv conv;
         value.clear();
-        reserve_maybe(l, &value);
-        for (auto it : l) {
+        reserve_maybe(s, &value);
+        for (auto it : s) {
             if (!conv.load(it, convert))
                 return false;
             value.push_back((Value) conv);
@@ -112,9 +127,9 @@ template <typename Type, typename Value> struct list_caster {
     }
 
     template <typename T = Type,
-              typename std::enable_if<std::is_same<decltype(std::declval<T>().reserve(0)), void>::value, int>::type = 0>
-    void reserve_maybe(list l, Type *) { value.reserve(l.size()); }
-    void reserve_maybe(list, void *) { }
+              enable_if_t<std::is_same<decltype(std::declval<T>().reserve(0)), void>::value, int> = 0>
+    void reserve_maybe(sequence s, Type *) { value.reserve(s.size()); }
+    void reserve_maybe(sequence, void *) { }
 
     static handle cast(const Type &src, return_value_policy policy, handle parent) {
         list l(src.size());
@@ -128,7 +143,7 @@ template <typename Type, typename Value> struct list_caster {
         return l.release();
     }
 
-    PYBIND11_TYPE_CASTER(Type, _("list<") + value_conv::name() + _(">"));
+    PYBIND11_TYPE_CASTER(Type, _("List[") + value_conv::name() + _("]"));
 };
 
 template <typename Type, typename Alloc> struct type_caster<std::vector<Type, Alloc>>
@@ -138,8 +153,8 @@ template <typename Type, typename Alloc> struct type_caster<std::list<Type, Allo
  : list_caster<std::list<Type, Alloc>, Type> { };
 
 template <typename Type, size_t Size> struct type_caster<std::array<Type, Size>> {
-    typedef std::array<Type, Size> array_type;
-    typedef type_caster<typename intrinsic_type<Type>::type> value_conv;
+    using array_type = std::array<Type, Size>;
+    using value_conv = make_caster<Type>;
 
     bool load(handle src, bool convert) {
         list l(src, true);
@@ -168,7 +183,7 @@ template <typename Type, size_t Size> struct type_caster<std::array<Type, Size>>
         }
         return l.release();
     }
-    PYBIND11_TYPE_CASTER(array_type, _("list<") + value_conv::name() + _(">") + _("[") + _<Size>() + _("]"));
+    PYBIND11_TYPE_CASTER(array_type, _("List[") + value_conv::name() + _("[") + _<Size>() + _("]]"));
 };
 
 template <typename Key, typename Compare, typename Alloc> struct type_caster<std::set<Key, Compare, Alloc>>
@@ -182,6 +197,47 @@ template <typename Key, typename Value, typename Compare, typename Alloc> struct
 
 template <typename Key, typename Value, typename Hash, typename Equal, typename Alloc> struct type_caster<std::unordered_map<Key, Value, Hash, Equal, Alloc>>
   : map_caster<std::unordered_map<Key, Value, Hash, Equal, Alloc>, Key, Value> { };
+
+// This type caster is intended to be used for std::optional and std::experimental::optional
+template<typename T> struct optional_caster {
+    using value_type = typename intrinsic_type<typename T::value_type>::type;
+    using caster_type = type_caster<value_type>;
+
+    static handle cast(const T& src, return_value_policy policy, handle parent) {
+        if (!src)
+            return none();
+        return caster_type::cast(*src, policy, parent);
+    }
+
+    bool load(handle src, bool convert) {
+        if (!src) {
+            return false;
+        } else if (src.is_none()) {
+            value = {};  // nullopt
+            return true;
+        } else if (!inner.load(src, convert)) {
+            return false;
+        } else {
+            value.emplace(static_cast<const value_type&>(inner));
+            return true;
+        }
+    }
+
+    PYBIND11_TYPE_CASTER(T, _("Optional[") + caster_type::name() + _("]"));
+
+private:
+    caster_type inner;
+};
+
+#if PYBIND11_HAS_OPTIONAL
+template<typename T> struct type_caster<std::optional<T>>
+    : public optional_caster<std::optional<T>> {};
+#endif
+
+#if PYBIND11_HAS_EXP_OPTIONAL
+template<typename T> struct type_caster<std::experimental::optional<T>>
+    : public optional_caster<std::experimental::optional<T>> {};
+#endif
 
 NAMESPACE_END(detail)
 

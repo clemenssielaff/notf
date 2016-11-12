@@ -3,6 +3,8 @@
 #include <exception>
 #include <memory>
 
+
+
 #include <nanovg/nanovg.h>
 
 #include "common/aabr.hpp"
@@ -11,6 +13,8 @@
 #include "common/vector2.hpp"
 #include "graphics/rendercontext.hpp"
 #include "utils/enum_to_number.hpp"
+
+#include "common/log.hpp" // TODO: test only
 
 namespace notf {
 
@@ -86,11 +90,19 @@ public: // methods
 
     virtual ~Painter() = default;
 
-protected: // methods
+#ifndef NOTF_PYTHON_BINDING
+//protected: // methods
+#endif
     /** Actual paint method, must be implemented by subclasses.
      * @throw std::runtime_error    May throw an exception, which cancels the current frame
      */
-    virtual void paint() {}
+    virtual void paint() = 0; /*{
+        log_warning << "That's the wrong one!";
+    }*/
+
+    virtual void print_name() {
+        log_warning << "Painter c++ class";
+    }
 
     /* State Handling *************************************************************************************************/
 
@@ -274,6 +286,7 @@ private: // methods for CanvasComponent
     void _paint(const RenderContext& context)
     {
         m_context = &context;
+        set_fill(Color(255, 255, 255));
         paint();
         m_context = nullptr;
         // TODO: clear stack after each painting

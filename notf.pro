@@ -82,16 +82,16 @@ SOURCES += \
     src/python/pynotf.cpp \
     src/graphics/raw_image.cpp \
     thirdparty/nanovg/nanovg.c \
-    src/python/pyvector2.cpp \
-    src/python/pycomponent.cpp \
-    src/python/pylayoutitem.cpp \
-    src/python/pywidget.cpp \
-    src/python/pypainter.cpp \
-    src/python/pystacklayout.cpp \
-    src/python/pylayoutroot.cpp \
-    src/python/pywindow.cpp \
-    src/python/pyglobal.cpp \
-    src/python/pycanvascomponent.cpp \
+#    src/python/pyvector2.cpp \
+#    src/python/pycomponent.cpp \
+#    src/python/pylayoutitem.cpp \
+#    src/python/pywidget.cpp \
+#    src/python/pypainter.cpp \
+#    src/python/pystacklayout.cpp \
+#    src/python/pylayoutroot.cpp \
+#    src/python/pywindow.cpp \
+#    src/python/pyglobal.cpp \
+#    src/python/pycanvascomponent.cpp \
     src/core/znode.cpp
 
 HEADERS += \
@@ -153,18 +153,18 @@ HEADERS += \
     thirdparty/nanovg/nanovg.h \
     thirdparty/stb_truetype/stb_truetype.h \
     include/graphics/rendercontext.hpp \
-    include/python/pyvector2.hpp \
-    include/python/pycomponent.hpp \
-    include/python/pylayoutitem.hpp \
-    include/python/pywidget.hpp \
-    include/python/pypainter.hpp \
-    include/python/pystacklayout.hpp \
-    include/python/pyglobal.hpp \
-    include/python/pylayoutroot.hpp \
-    include/python/pywindow.hpp \
-    include/python/pycanvascomponent.hpp \
+#    include/python/pyvector2.hpp \
+#    include/python/pycomponent.hpp \
+#    include/python/pylayoutitem.hpp \
+#    include/python/pywidget.hpp \
+#    include/python/pypainter.hpp \
+#    include/python/pystacklayout.hpp \
+#    include/python/pyglobal.hpp \
+#    include/python/pylayoutroot.hpp \
+#    include/python/pywindow.hpp \
+#    include/python/pycanvascomponent.hpp \
     include/graphics/painter.hpp \
     include/core/znode.hpp \
     include/common/memory_utils.hpp
 
-QMAKE_CXX = ccache g++
+#QMAKE_CXX = ccache g++
