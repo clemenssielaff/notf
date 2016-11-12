@@ -16,6 +16,8 @@ py::class_<CanvasComponent, std::shared_ptr<CanvasComponent>> produce_canvas_com
         return make_component<CanvasComponent>();
     }, "Creates a new CanvasComponent.");
 
+    Py_CanvasComponent.def("set_painter", &CanvasComponent::set_painter, "Defines a new painter object to paint on this canvas.", py::arg("painter"));
+
     return Py_CanvasComponent;
 }
 

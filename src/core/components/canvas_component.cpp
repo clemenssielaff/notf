@@ -3,12 +3,21 @@
 #include <math.h>
 #include <nanovg/nanovg.h>
 
+#include "graphics/painter.hpp"
 #include "graphics/rendercontext.hpp"
 
 namespace notf {
 
 void CanvasComponent::render(const Widget& widget, const RenderContext& context)
 {
+    // TODO: pass the widget to the painter, so it knows the dimensions of the widget as well
+    m_painter->_paint(context);
+}
+
+} // namespace notf
+
+/*
+
     NVGcontext* vg_context = context.nanovg_context;
 
     float pos_x = 10;
@@ -81,6 +90,5 @@ void CanvasComponent::render(const Widget& widget, const RenderContext& context)
     nvgEllipse(vg_context, rx, ry, ex, ey);
     nvgFillPaint(vg_context, gloss);
     nvgFill(vg_context);
-}
 
-} // namespace notf
+ */

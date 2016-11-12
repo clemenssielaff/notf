@@ -1,6 +1,7 @@
 #pragma once
 
 #include <exception>
+#include <memory>
 
 #include <nanovg/nanovg.h>
 
@@ -22,7 +23,7 @@ struct RenderContext;
  * The main raison d'être is to provide a single object for which bindings can be created in Python.
  * Some of the docstrings are verbatim copies of their corresponding nvg documentation.
  */
-class Painter {
+class Painter : public std::enable_shared_from_this<Painter> {
 
     friend class CanvasComponent; // may call paint
 
@@ -275,6 +276,7 @@ private: // methods for CanvasComponent
         m_context = &context;
         paint();
         m_context = nullptr;
+        // TODO: clear stack after each painting
     }
 
 private: // methods

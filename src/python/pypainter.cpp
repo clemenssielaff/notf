@@ -11,17 +11,18 @@ using namespace notf;
 
 /** "Trampoline" painter specialization that can be subclassed from Python. */
 class PyPainter : public Painter {
-    friend py::class_<Painter, PyPainter> produce_painter(pybind11::module& module);
+    friend py::class_<Painter, std::shared_ptr<PyPainter>> produce_painter(pybind11::module& module);
 
 public:
     using Painter::Painter;
 
     PyPainter(Painter*&) {}
+    PyPainter(std::shared_ptr<Painter>) {}
 
     virtual void paint() override { PYBIND11_OVERLOAD(void, Painter, paint,); }
 };
 
-py::class_<Painter, PyPainter> produce_painter(pybind11::module& module)
+py::class_<Painter, std::shared_ptr<PyPainter>> produce_painter(pybind11::module& module)
 {
     py::class_<Painter, PyPainter> Py_Painter(module, "Painter");
 

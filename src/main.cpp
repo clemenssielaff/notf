@@ -9,13 +9,29 @@
 #include "core/layout_root.hpp"
 #include "core/widget.hpp"
 #include "dynamic/layout/stack_layout.hpp"
+#include "python/interpreter.hpp"
+#include "graphics/painter.hpp"
 
 using namespace notf;
+
+
+class TestPainter : public Painter {
+protected:
+    virtual void paint() override {
+        start_path();
+        set_fill(Color(1, 1, 1.f));
+        circle(50, 50, 50);
+        fill();
+    }
+};
+
 
 void blub(std::shared_ptr<Window> window)
 {
     // components
     std::shared_ptr<CanvasComponent> canvas_component = make_component<CanvasComponent>();
+    auto painter = std::make_shared<TestPainter>();
+    canvas_component->set_painter(painter);
 
     // background (blue)
     std::shared_ptr<Widget> background_widget = Widget::create();
@@ -66,8 +82,8 @@ int main(int argc, char* argv[])
 
     window->on_token_key.connect(
         [window, &app](const KeyEvent&) {
-//            PythonInterpreter& python = app.get_python_interpreter();
-//            python.parse_app();
+            PythonInterpreter* python = app.get_python_interpreter();
+            python->parse_app();
             blub(window);
         },
         [](const KeyEvent& event) -> bool {
