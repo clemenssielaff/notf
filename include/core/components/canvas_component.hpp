@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include "core/component.hpp"
 
 namespace notf {
@@ -14,22 +16,27 @@ struct RenderContext;
 class CanvasComponent : public Component {
 
 public: // methods
+    virtual ~CanvasComponent() override;
+
     /// @brief This Component's type.
     virtual KIND get_kind() const override { return KIND::CANVAS; }
 
     /** Draws this Canvas with the given Widget and Render context. */
     void render(const Widget& widget, const RenderContext& context);
 
-    /** Defines a new painter object to paint on this canvas. */
-    void set_painter(std::shared_ptr<Painter> painter) { m_painter = std::move(painter); }
+    /** Sets a new function for painting the canvas. */
+    void set_paint_function(std::function<void(Painter& painter)> func) { m_paint_func = func; }
 
 protected: // methods
     /// @brief Default Constructor.
-    explicit CanvasComponent() = default;
+    explicit CanvasComponent()
+        : m_paint_func()
+    {
+    }
 
 private: // fields
-    /** Painter object used to draw on the canvas. */
-    std::shared_ptr<Painter> m_painter;
+    /** Paint function. */
+    std::function<void(Painter& painter)> m_paint_func;
 };
 
 } // namespace notf

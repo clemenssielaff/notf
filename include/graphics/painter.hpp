@@ -1,10 +1,5 @@
 #pragma once
 
-#include <exception>
-#include <memory>
-
-
-
 #include <nanovg/nanovg.h>
 
 #include "common/aabr.hpp"
@@ -14,22 +9,18 @@
 #include "graphics/rendercontext.hpp"
 #include "utils/enum_to_number.hpp"
 
-#include "common/log.hpp" // TODO: test only
-
 namespace notf {
 
-struct RenderContext;
+class Widget;
 
 /** A Painter is an object that paints into a Widget's CanvasComponent.
- * To use it, subclass the Painter and implement the `paint()` method.
  *
  * This is a thin wrapper around C methods exposed from nanovg.h written by Mikko Mononen.
- * The main raison d'être is to provide a single object for which bindings can be created in Python.
  * Some of the docstrings are verbatim copies of their corresponding nvg documentation.
  */
-class Painter : public std::enable_shared_from_this<Painter> {
+class Painter final {
 
-    friend class CanvasComponent; // may call paint
+    friend class CanvasComponent; // may construct a Painter
 
 public: // enums
     enum class Winding {
@@ -85,24 +76,20 @@ public: // enums
         PREMULTIPLIED = NVG_IMAGE_PREMULTIPLIED,
     };
 
-public: // methods
-    explicit Painter() = default;
-
-    virtual ~Painter() = default;
-
-#ifndef NOTF_PYTHON_BINDING
-//protected: // methods
-#endif
-    /** Actual paint method, must be implemented by subclasses.
-     * @throw std::runtime_error    May throw an exception, which cancels the current frame
-     */
-    virtual void paint() = 0; /*{
-        log_warning << "That's the wrong one!";
-    }*/
-
-    virtual void print_name() {
-        log_warning << "Painter c++ class";
+protected: // methods for CanvasComponent
+    explicit Painter(const Widget* widget, const RenderContext* context)
+        : m_widget(widget)
+        , m_context(context)
+    {
     }
+
+public: // methods
+    ~Painter()
+    {
+        nvgClear(_get_context()); // TODO: check if this actually works (and if not calling it would affect subsequent renderers)
+    }
+
+    // TODO: inspection methods for the widget and render context
 
     /* State Handling *************************************************************************************************/
 
@@ -281,23 +268,17 @@ public: // methods
 
     // TODO: text rendering
 
-private: // methods for CanvasComponent
-    /** Paints into the given RenderContext. */
-    void _paint(const RenderContext& context)
-    {
-        m_context = &context;
-        set_fill(Color(255, 255, 255));
-        paint();
-        m_context = nullptr;
-        // TODO: clear stack after each painting
-    }
-
 private: // methods
+    /** Convenienct access to the NanoVG context. */
     NVGcontext* _get_context() { return m_context->nanovg_context; }
 
+    /** notf::Color -> NVGcolor. */
     static NVGcolor _to_nvg(const Color& color) { return {{{color.r, color.g, color.b, color.a}}}; }
 
 private: // fields
+    /** The Widget rendered into. */
+    const Widget* m_widget;
+
     /** The RenderContext used for painting. */
     const RenderContext* m_context;
 };

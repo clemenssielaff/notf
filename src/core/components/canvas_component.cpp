@@ -1,17 +1,29 @@
 #include "core/components/canvas_component.hpp"
 
-#include <math.h>
-#include <nanovg/nanovg.h>
+#include <exception>
 
+#include "common/log.hpp"
+#include "core/widget.hpp"
 #include "graphics/painter.hpp"
 #include "graphics/rendercontext.hpp"
 
 namespace notf {
 
+CanvasComponent::~CanvasComponent()
+{
+}
+
 void CanvasComponent::render(const Widget& widget, const RenderContext& context)
 {
-    // TODO: pass the widget to the painter, so it knows the dimensions of the widget as well
-    m_painter->_paint(context);
+    if (!m_paint_func) {
+        log_warning << "Could not render CanvasComponent of Widget " << widget.get_handle();
+    }
+    Painter painter(&widget, &context);
+    try {
+        m_paint_func(painter);
+    } catch (std::runtime_error error) {
+        log_warning << error.what();
+    }
 }
 
 } // namespace notf

@@ -3,7 +3,10 @@
 #include <cstdio>
 #include <iostream>
 
-#include "Python.h"
+#include "pybind11/functional.h"
+#include "pybind11/pybind11.h"
+namespace py = pybind11;
+using namespace pybind11::literals;
 
 #include "common/log.hpp"
 #include "core/application.hpp"
@@ -44,37 +47,35 @@ void PythonInterpreter::parse_app(const std::string& filename)
         return;
     }
 
-    PyObject* globals = build_globals();
-    if (!globals) {
+    py::object globals = build_globals();
+    if (!globals.check()) {
         log_critical << "Failed to build the globals dictionary!";
+        std::fclose(fp);
         return;
     }
 
-    PyObject* result = PyRun_FileEx(fp, filename.c_str(), Py_file_input, globals, globals, 1);
+    py::object _(PyRun_FileEx(fp, filename.c_str(), Py_file_input, globals.ptr(), globals.ptr(),
+                              1), // close the file stream before returning
+                 false); // the return object is a new reference
+
+
     if (PyErr_Occurred()) {
         log_critical << "Python error occured: ";
         PyErr_Print();
     }
 
-    Py_DecRef(result);
-    Py_DecRef(globals);
-
     log_trace << "Reparsed app code from: " << filename;
 }
 
-PyObject* PythonInterpreter::build_globals() const
+py::object PythonInterpreter::build_globals() const
 {
-    PyObject* globals = PyDict_New();
-    int result = PyDict_SetItemString(globals, "__builtins__", PyEval_GetBuiltins());
-    result += PyDict_SetItemString(globals, "__name__", PyUnicode_FromString("__main__"));
-    result += PyDict_SetItemString(globals, "__package__", Py_None);
-    result += PyDict_SetItemString(globals, "__doc__", Py_None);
-    result += PyDict_SetItemString(globals, "__spec__", Py_None);
-    result += PyDict_SetItemString(globals, "__loader__", Py_None);
-    if (result != 0) {
-        Py_DecRef(globals);
-        globals = nullptr;
-    }
+    py::dict globals = py::dict(
+        "__builtins__"_a = py::handle(PyEval_GetBuiltins()),
+        "__name__"_a = py::str("__main__"),
+        "__package__"_a = py::none(),
+        "__doc__"_a = py::none(),
+        "__spec__"_a = py::none(),
+        "__loader__"_a = py::none());
     return globals;
 }
 

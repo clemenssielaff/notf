@@ -2,8 +2,10 @@
 
 #include <string>
 
-struct _object;
-typedef _object PyObject;
+namespace pybind11 {
+class object;
+}
+namespace py = pybind11;
 
 namespace notf {
 
@@ -20,7 +22,7 @@ public: // methods
     void parse_app(const std::string& filename = "/home/clemens/code/notf/app/main.py");
 
 private: // methods
-    PyObject* build_globals() const;
+    py::object build_globals() const;
 
 private: // fields
     /// @brief Used by Pythonto find the run-time libraries relative to the interpreter executable.

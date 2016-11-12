@@ -2,15 +2,15 @@
 
 #include "pybind11/operators.h"
 #include "pybind11/pybind11.h"
+#include "pybind11/functional.h"
 namespace py = pybind11;
 
 PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
 
-#define NOTF_PYTHON_BINDING
-
 #include "common/string_utils.hpp"
 #include "common/vector2.hpp"
 #include "core/widget.hpp"
+#include "python/interpreter.hpp"
 #include "graphics/painter.hpp"
 #include "core/application.hpp"
 #include "core/window.hpp"
@@ -21,18 +21,6 @@ PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
 using namespace notf;
 
 const char* python_notf_module_name = "notf";
-
-/** "Trampoline" painter specialization that can be subclassed from Python. */
-class PyPainter : public Painter {
-
-
-public:
-    using Painter::Painter;
-
-    virtual void paint() override { PYBIND11_OVERLOAD_PURE(void, Painter, paint,); }
-    virtual void print_name() override { PYBIND11_OVERLOAD(void, Painter, print_name,); }
-};
-
 
 PyObject* produce_pynotf_module()
 {
@@ -149,7 +137,8 @@ PyObject* produce_pynotf_module()
             return make_component<CanvasComponent>();
         }, "Creates a new CanvasComponent.");
 
-        Py_CanvasComponent.def("set_painter", &CanvasComponent::set_painter, "Defines a new painter object to paint on this canvas.", py::arg("painter"));
+        // TODO: it would be nice if we could inspect the method here and see if it fits the signature
+        Py_CanvasComponent.def("set_paint_function", &CanvasComponent::set_paint_function, "Sets a new function for painting the canvas.", py::arg("paint_function"));
     }
 
 
@@ -200,7 +189,7 @@ PyObject* produce_pynotf_module()
 
     // painter
     {
-        py::class_<Painter, std::shared_ptr<Painter>, PyPainter> Py_Painter(module, "Painter");
+        py::class_<Painter> Py_Painter(module, "Painter");
 
         py::enum_<Painter::Winding>(Py_Painter, "Winding")
             .value("CCW", Painter::Winding::CCW)
@@ -245,10 +234,6 @@ PyObject* produce_pynotf_module()
             .value("FLIPY", Painter::ImageFlags::FLIPY)
             .value("PREMULTIPLIED", Painter::ImageFlags::PREMULTIPLIED);
 
-        Py_Painter.def(py::init<>());
-        Py_Painter.def("paint", &Painter::paint, "Paints the current Widget, must be implemented by subclasses.");
-        Py_Painter.def("print_name", &Painter::print_name);
-
         Py_Painter.def("save_state", &Painter::save_state, "Saves the current render state onto a stack.");
         Py_Painter.def("restore_state", &Painter::restore_state, "Pops and restores current render state.");
         Py_Painter.def("reset_state", &Painter::save_state, "Resets current render state to default values. Does not affect the render state stack.");
@@ -291,8 +276,6 @@ PyObject* produce_pynotf_module()
         Py_Painter.def("close_path", &Painter::close_path, "Closes current sub-path with a line segment.");
         Py_Painter.def("fill", &Painter::fill, "Fills the current path with current fill style.");
         Py_Painter.def("stroke", &Painter::stroke, "Fills the current path with current stroke style.");
-
-        module.def("name_painter", [](std::shared_ptr<Painter> painter){ painter->print_name();});
     }
 
     return module.ptr();

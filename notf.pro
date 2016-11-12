@@ -92,7 +92,8 @@ SOURCES += \
 #    src/python/pywindow.cpp \
 #    src/python/pyglobal.cpp \
 #    src/python/pycanvascomponent.cpp \
-    src/core/znode.cpp
+    src/core/znode.cpp \
+    src/graphics/painter.cpp
 
 HEADERS += \
     include/core/application.hpp \
