@@ -16,7 +16,7 @@ namespace notf {
 struct RenderContext;
 
 /** A Painter is an object that paints into a Widget's CanvasComponent.
- * To use it, subclass the Painter and implement the `_paint()` method.
+ * To use it, subclass the Painter and implement the `paint()` method.
  *
  * This is a thin wrapper around C methods exposed from nanovg.h written by Mikko Mononen.
  * The main raison d'être is to provide a single object for which bindings can be created in Python.
@@ -45,14 +45,14 @@ public: // enums
     };
 
     enum class Align {
-        ALIGN_LEFT = NVG_ALIGN_LEFT, // default
-        ALIGN_CENTER = NVG_ALIGN_CENTER,
-        ALIGN_RIGHT = NVG_ALIGN_RIGHT,
+        LEFT = NVG_ALIGN_LEFT, // default
+        CENTER = NVG_ALIGN_CENTER,
+        RIGHT = NVG_ALIGN_RIGHT,
 
-        ALIGN_TOP = NVG_ALIGN_TOP,
-        ALIGN_MIDDLE = NVG_ALIGN_MIDDLE,
-        ALIGN_BOTTOM = NVG_ALIGN_BOTTOM,
-        ALIGN_BASELINE = NVG_ALIGN_BASELINE, // default
+        TOP = NVG_ALIGN_TOP,
+        MIDDLE = NVG_ALIGN_MIDDLE,
+        BOTTOM = NVG_ALIGN_BOTTOM,
+        BASELINE = NVG_ALIGN_BASELINE, // default
     };
 
     /** Input for set_composite()
@@ -73,11 +73,11 @@ public: // enums
     };
 
     enum class ImageFlags {
-        IMAGE_GENERATE_MIPMAPS = NVG_IMAGE_GENERATE_MIPMAPS,
-        IMAGE_REPEATX = NVG_IMAGE_REPEATX,
-        IMAGE_REPEATY = NVG_IMAGE_REPEATY,
-        IMAGE_FLIPY = NVG_IMAGE_FLIPY,
-        IMAGE_PREMULTIPLIED = NVG_IMAGE_PREMULTIPLIED,
+        GENERATE_MIPMAPS = NVG_IMAGE_GENERATE_MIPMAPS,
+        REPEATX = NVG_IMAGE_REPEATX,
+        REPEATY = NVG_IMAGE_REPEATY,
+        FLIPY = NVG_IMAGE_FLIPY,
+        PREMULTIPLIED = NVG_IMAGE_PREMULTIPLIED,
     };
 
 public: // methods
@@ -89,7 +89,7 @@ protected: // methods
     /** Actual paint method, must be implemented by subclasses.
      * @throw std::runtime_error    May throw an exception, which cancels the current frame
      */
-    virtual void _paint(const RenderContext& context) = 0;
+    virtual void paint() {}
 
     /* State Handling *************************************************************************************************/
 
@@ -196,7 +196,7 @@ protected: // methods
     /** Clears the current path and sub-paths. */
     void start_path() { nvgBeginPath(_get_context()); }
 
-    /** Sets the current sub-path winding, see NVGwinding and NVGsolidity. */
+    /** Sets the current sub-path winding. */
     void set_winding(Winding winding) { nvgPathWinding(_get_context(), to_number(winding)); }
 
     /** Starts new sub-path with specified point as first point. */
@@ -237,9 +237,9 @@ protected: // methods
 
     /** Creates new rounded rectangle shaped sub-path. */
     void rounded_rect(float x, float y, float w, float h, float r) { nvgRoundedRect(_get_context(), x, y, w, h, r); }
-    void rounded_rect(float x, float y, float w, float h, float radTopLeft, float radTopRight, float radBottomRight, float radBottomLeft)
+    void rounded_rect(float x, float y, float w, float h, float rad_nw, float rad_ne, float rad_se, float rad_sw)
     {
-        nvgRoundedRectVarying(_get_context(), x, y, w, h, radTopLeft, radTopRight, radBottomRight, radBottomLeft);
+        nvgRoundedRectVarying(_get_context(), x, y, w, h, rad_nw, rad_ne, rad_se, rad_sw);
     }
     void rounded_rect(const Aabr& aabr, float radius) { nvgRoundedRect(_get_context(), aabr.left(), aabr.top(), aabr.width(), aabr.height(), radius); }
     void rounded_rect(const Aabr& aabr, float radTopLeft, float radTopRight, float radBottomRight, float radBottomLeft)
@@ -270,7 +270,12 @@ protected: // methods
 
 private: // methods for CanvasComponent
     /** Paints into the given RenderContext. */
-    void paint(const RenderContext& context);
+    void _paint(const RenderContext& context)
+    {
+        m_context = &context;
+        paint();
+        m_context = nullptr;
+    }
 
 private: // methods
     NVGcontext* _get_context() { return m_context->nanovg_context; }

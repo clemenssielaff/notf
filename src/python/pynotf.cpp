@@ -10,6 +10,7 @@ PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
 #include "python/pyglobal.hpp"
 #include "python/pylayoutitem.hpp"
 #include "python/pylayoutroot.hpp"
+#include "python/pypainter.hpp"
 #include "python/pystacklayout.hpp"
 #include "python/pyvector2.hpp"
 #include "python/pywidget.hpp"
@@ -36,6 +37,9 @@ PyObject* produce_pynotf_module()
     produce_widget(module, Py_LayoutItem);
     produce_layout_root(module, Py_LayoutItem);
     produce_stack_layout(module, Py_LayoutItem);
+
+    // graphics
+    produce_painter(module);
 
     return module.ptr();
 }

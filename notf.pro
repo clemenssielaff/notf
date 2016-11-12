@@ -86,12 +86,12 @@ SOURCES += \
     src/python/pycomponent.cpp \
     src/python/pylayoutitem.cpp \
     src/python/pywidget.cpp \
+    src/python/pypainter.cpp \
     src/python/pystacklayout.cpp \
     src/python/pylayoutroot.cpp \
     src/python/pywindow.cpp \
     src/python/pyglobal.cpp \
     src/python/pycanvascomponent.cpp \
-    src/graphics/painter.cpp \
     src/core/znode.cpp
 
 HEADERS += \
@@ -157,6 +157,7 @@ HEADERS += \
     include/python/pycomponent.hpp \
     include/python/pylayoutitem.hpp \
     include/python/pywidget.hpp \
+    include/python/pypainter.hpp \
     include/python/pystacklayout.hpp \
     include/python/pyglobal.hpp \
     include/python/pylayoutroot.hpp \
