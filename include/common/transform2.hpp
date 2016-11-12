@@ -154,6 +154,9 @@ public: // methods
     /// @brief Inequality operator.
     bool operator!=(const Transform2& other) const { return rows != other.rows; }
 
+    /** Allows direct memory (write) access to the Transform2's internal storage. */
+    Real* as_real_ptr() { return &rows[0][0]; }
+
 private: // methods
     /// @brief Write access to the Matrix.
     Row& operator[](unsigned char row)

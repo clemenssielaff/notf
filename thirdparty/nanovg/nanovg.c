@@ -2461,7 +2461,7 @@ float nvgText(NVGcontext* ctx, float x, float y, const char* string, const char*
 		}
 	}
 
-	// TODO: add back-end bit to do this just once per frame.
+    // _TODO: add back-end bit to do this just once per frame.
 	nvg__flushTextTexture(ctx);
 
 	nvg__renderText(ctx, verts, nverts);

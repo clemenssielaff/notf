@@ -3,8 +3,8 @@
 #include <iosfwd>
 #include <type_traits>
 
-#include "common/real.hpp"
 #include "int_utils.hpp"
+#include "real.hpp"
 
 namespace notf {
 
@@ -14,22 +14,22 @@ struct Color {
     //  FIELDS  ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @brief Red component in range [0, 1].
-    Real r;
+    float r;
 
     /// @brief Green component in range [0, 1].
-    Real g;
+    float g;
 
     /// @brief Blue component in range [0, 1].
-    Real b;
+    float b;
 
     /// @brief Alpha component in range [0, 1].
-    Real a;
+    float a;
 
     //  HOUSEHOLD  ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     Color() = default; // required so this class remains a POD
 
-    Color(Real r, Real g, Real b, Real a = 1)
+    Color(float r, float g, float b, float a = 1)
         : r(clamp(r, 0, 1))
         , g(clamp(g, 0, 1))
         , b(clamp(b, 0, 1))
@@ -38,23 +38,23 @@ struct Color {
     }
 
     /** Creates a color from integer RGB values.
-     * The parameters are clamped to range [0, 255] before cast to Real.
+     * The parameters are clamped to range [0, 255] before cast to float.
      */
     template <class T, typename = std::enable_if_t<std::is_integral<T>::value>>
     Color(T r, T g, T b, T a = 255)
-        : Color(static_cast<Real>(clamp(r, 0, 255)) / Real(255),
-                static_cast<Real>(clamp(g, 0, 255)) / Real(255),
-                static_cast<Real>(clamp(b, 0, 255)) / Real(255),
-                static_cast<Real>(clamp(a, 0, 255)) / Real(255))
+        : Color(static_cast<float>(clamp(r, 0, 255)) / 255.f,
+                static_cast<float>(clamp(g, 0, 255)) / 255.f,
+                static_cast<float>(clamp(b, 0, 255)) / 255.f,
+                static_cast<float>(clamp(a, 0, 255)) / 255.f)
     {
     }
 
-    static Color from_rgb(Real r, Real g, Real b, Real a = 1) { return Color(r, g, b, a); }
+    static Color from_rgb(float r, float g, float b, float a = 1) { return Color(r, g, b, a); }
 
     template <class T, typename = std::enable_if_t<std::is_integral<T>::value>>
     static Color from_rgb(T r, T g, T b, T a = 1) { return Color(r, g, b, a); }
 
-    static Color from_hsl(Real h, Real s, Real l, Real a = 1);
+    static Color from_hsl(float h, float s, float l, float a = 1);
 };
 
 //  FREE FUNCTIONS  ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,10 +73,10 @@ std::ostream& operator<<(std::ostream& out, const Color& color);
  * @param blend     Blend value, clamped to range [0, 1].
  * @return          Interpolated Color.
  */
-inline Color lerp(const Color& from, const Color& to, Real blend)
+inline Color lerp(const Color& from, const Color& to, float blend)
 {
     blend = clamp(blend, 0, 1);
-    const Real inv = Real(1.0) - blend;
+    const float inv = 1.f - blend;
     return Color{
         (from.r * inv) + (to.r * blend),
         (from.g * inv) + (to.g * blend),

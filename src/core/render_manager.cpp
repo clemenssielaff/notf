@@ -21,7 +21,7 @@ void RenderManager::render(const RenderContext& context)
     }
     m_widgets.clear();
 
-    // perform z-sorting here
+    // TODO: perform z-sorting here
 
     // draw all widgets
     for (const std::shared_ptr<Widget>& widget : widgets) {
