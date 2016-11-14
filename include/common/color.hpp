@@ -1,31 +1,41 @@
 #pragma once
 
+#include <array>
 #include <iosfwd>
-#include <type_traits>
 
+#include "float_utils.hpp"
 #include "int_utils.hpp"
-#include "real.hpp"
 
 namespace notf {
 
-/// @brief The Color class.
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
+#pragma clang diagnostic ignored "-Wnested-anon-types"
+#endif
+
+/** A Color. */
 struct Color {
 
-    //  FIELDS  ///////////////////////////////////////////////////////////////////////////////////////////////////////
+    // force contiguous memory layout (is that really necessary?)
+    union {
+        struct {
+            /** Red component in range [0, 1]. */
+            float r;
 
-    /// @brief Red component in range [0, 1].
-    float r;
+            /** Green component in range [0, 1]. */
+            float g;
 
-    /// @brief Green component in range [0, 1].
-    float g;
+            /** Blue component in range [0, 1]. */
+            float b;
 
-    /// @brief Blue component in range [0, 1].
-    float b;
+            /** Alpha component in range [0, 1]. */
+            float a;
+        };
+        std::array<float, 4> _array;
+    };
 
-    /// @brief Alpha component in range [0, 1].
-    float a;
-
-    //  HOUSEHOLD  ////////////////////////////////////////////////////////////////////////////////////////////////////
+    /* HOUSEHOLD ******************************************************************************************************/
 
     Color() = default; // required so this class remains a POD
 
@@ -55,16 +65,24 @@ struct Color {
     static Color from_rgb(T r, T g, T b, T a = 1) { return Color(r, g, b, a); }
 
     static Color from_hsl(float h, float s, float l, float a = 1);
+
+    /* MODIFICATIONS **************************************************************************************************/
+
+    /** Weighted conversion of this color to greyscale. */
+    Color to_greyscale() const;
+
+    /** Allows direct memory (read / write) access to the Color's internal storage. */
+    float* as_ptr() { return &_array[0]; }
+
 };
 
-//  FREE FUNCTIONS  ///////////////////////////////////////////////////////////////////////////////////////////////////
+/* FREE FUNCTIONS *****************************************************************************************************/
 
-/// @brief Prints the contents of this Color into a std::ostream.
-///
-/// @param os       Output stream, implicitly passed with the << operator.
-/// @param color    Color to print.
-///
-/// @return Output stream for further output.
+/** Prints the contents of this Color into a std::ostream.
+ * @param out   Output stream, implicitly passed with the << operator.
+ * @param color Color to print.
+ * @return      Output stream for further output.
+ */
 std::ostream& operator<<(std::ostream& out, const Color& color);
 
 /** Linear interpolation between two Color%s.
@@ -84,5 +102,9 @@ inline Color lerp(const Color& from, const Color& to, float blend)
         (from.a * inv) + (to.a * blend),
     };
 }
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 } // namespace notf

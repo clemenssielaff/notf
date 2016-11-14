@@ -166,6 +166,7 @@ HEADERS += \
 #    include/python/pycanvascomponent.hpp \
     include/graphics/painter.hpp \
     include/core/znode.hpp \
-    include/common/memory_utils.hpp
+    include/common/memory_utils.hpp \
+    include/common/float_utils.hpp
 
 #QMAKE_CXX = ccache g++

@@ -30,6 +30,12 @@ extern "C" {
 #pragma warning(disable: 4201)  // nonstandard extension used : nameless struct/union
 #endif
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
+#pragma clang diagnostic ignored "-Wnested-anon-types"
+#endif
+
 typedef struct NVGcontext NVGcontext;
 
 struct NVGcolor {
@@ -673,6 +679,10 @@ void nvgDebugDumpPathCache(NVGcontext* ctx);
 
 #ifdef _MSC_VER
 #pragma warning(pop)
+#endif
+
+#ifdef __clang__
+#pragma clang diagnostic pop
 #endif
 
 #define NVG_NOTUSED(v) for (;;) { (void)(1 ? (void)0 : ( (void)(v) ) ); break; }
