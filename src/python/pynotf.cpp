@@ -5,14 +5,16 @@ namespace py = pybind11;
 
 PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
 
-#include "core/layout_item.hpp"
 #include "core/component.hpp"
+#include "core/layout_item.hpp"
 using namespace notf;
 
 void produce_globals(pybind11::module& module);
 void produce_painter(pybind11::module& module);
 void produce_vector2(pybind11::module& module);
+void produce_aabr(pybind11::module& module);
 void produce_window(pybind11::module& module);
+void produce_color(pybind11::module& module);
 void produce_widget(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_canvas_component(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_layout_root(pybind11::module& module, py::detail::generic_type ancestor);
@@ -27,13 +29,15 @@ PyObject* produce_pynotf_module()
     py::module module(python_notf_module_name, "NoTF Python bindings");
     produce_globals(module);
     produce_vector2(module);
-    produce_window(module);
+    produce_aabr(module);
+    produce_color(module);
     produce_painter(module);
+    produce_window(module);
 
-    auto Py_Component = produce_component(module);
+    py::class_<Component, std::shared_ptr<Component>> Py_Component(module, "_Component");
     produce_canvas_component(module, Py_Component);
 
-    auto Py_LayoutItem = produce_layout_item(module);
+    py::class_<LayoutItem, std::shared_ptr<LayoutItem>> Py_LayoutItem(module, "_LayoutItem");
     produce_widget(module, Py_LayoutItem);
     produce_layout_root(module, Py_LayoutItem);
     produce_stack_layout(module, Py_LayoutItem);

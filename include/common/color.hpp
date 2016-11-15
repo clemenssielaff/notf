@@ -82,7 +82,7 @@ struct Color {
 
     /* MODIFICATIONS **************************************************************************************************/
 
-    /** Returns the Color as an RGB string value, */
+    /** Returns the Color as an RGB string value. */
     std::string to_string() const;
 
     /** Weighted conversion of this color to greyscale. */

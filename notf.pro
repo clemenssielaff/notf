@@ -95,15 +95,15 @@ SOURCES += \
     src/core/znode.cpp \
     src/graphics/painter.cpp \
     src/python/py_canvascomponent.cpp \
-    src/python/py_component.cpp \
     src/python/py_global.cpp \
-    src/python/py_layoutitem.cpp \
     src/python/py_layoutroot.cpp \
     src/python/py_painter.cpp \
     src/python/py_stacklayout.cpp \
     src/python/py_vector2.cpp \
     src/python/py_widget.cpp \
-    src/python/py_window.cpp
+    src/python/py_window.cpp \
+    src/python/py_color.cpp \
+    src/python/py_aabr.cpp
 
 HEADERS += \
     include/core/application.hpp \

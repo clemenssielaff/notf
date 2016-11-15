@@ -119,10 +119,14 @@ public: // methods
     /** Sets the current stroke style to a solid color. */
     void set_stroke(const Color& color) { nvgStrokeColor(_get_context(), _to_nvg(color)); }
 
+    /** Sets the current stroke style to a paint. */
+    void set_stroke(NVGpaint paint) { nvgStrokePaint(_get_context(), std::move(paint)); } // TODO: move set_* into fill / stroke (meaning, call fill(paint) instead of set_paint(paint); fill();)
+
     /** Sets the current fill style to a solid color. */
     void set_fill(const Color& color) { nvgFillColor(_get_context(), _to_nvg(color)); }
 
-    // TODO: gradients (and patterns?) for stroke and fill
+    /** Sets the current fill style to a paint. */
+    void set_fill(NVGpaint paint) { nvgFillPaint(_get_context(),  std::move(paint)); }
 
     /** Sets the width of the stroke. */
     void set_stroke_width(float width) { nvgStrokeWidth(_get_context(), width); }
@@ -135,6 +139,50 @@ public: // methods
 
     /** Sets the miter limit of the stroke. */
     void set_miter_limit(float limit) { nvgMiterLimit(_get_context(), limit); }
+
+    /* Paints *********************************************************************************************************/
+
+    /** Creates a linear gradient paint.
+     * Coordinates are applied in the transformed coordinate system current at painting.
+     */
+    NVGpaint LinearGradient(float sx, float sy, float ex, float ey, const Color& start_color, const Color& end_color)
+    {
+        return nvgLinearGradient(_get_context(), sx, sy, ex, ey, _to_nvg(start_color), _to_nvg(end_color));
+    }
+    NVGpaint LinearGradient(const Vector2& start_pos, const Vector2& end_pos, const Color& start_color, const Color& end_color)
+    {
+        return LinearGradient(start_pos.x, start_pos.y, end_pos.x, end_pos.y, start_color, end_color);
+    }
+
+    /** Creates a box gradient paint - a feathered, rounded rectangle; useful for example as drop shadows for boxes.
+     * Coordinates are applied in the transformed coordinate system current at painting.
+     * @param x             Top-left x of the box.
+     * @param y             Top-left y of the box.
+     * @param w             Width of the box.
+     * @param h             Height of the box.
+     * @param radius        Corner radius.
+     * @param feather       How blurry the border of the rectangle is drawn.
+     * @param inner_color   Color on the inside of the box.
+     * @param outer_color   Color on the outside of the box.
+     */
+    NVGpaint BoxGradient(float x, float y, float w, float h, float radius, float feather,
+                         const Color& inner_color, const Color& outer_color)
+    {
+        return nvgBoxGradient(_get_context(), x, y, w, h, radius, feather, _to_nvg(inner_color), _to_nvg(outer_color));
+    }
+    NVGpaint BoxGradient(const Aabr& box, float radius, float feather, const Color& inner_color, const Color& outer_color)
+    {
+        return nvgBoxGradient(_get_context(), box.left(), box.top(), box.width(), box.height(), radius, feather,
+                              _to_nvg(inner_color), _to_nvg(outer_color));
+    }
+
+    // TODO: circle class
+
+    /** Creates a radial gradient paint. */
+    NVGpaint RadialGradient(float cx, float cy, float inr, float outr, const Color& inner_color, const Color& outer_color)
+    {
+        return nvgRadialGradient(_get_context(), cx, cy, inr, outr, _to_nvg(inner_color), _to_nvg(outer_color));
+    }
 
     /* Transform ******************************************************************************************************/
 
@@ -151,7 +199,7 @@ public: // methods
     /** Scales the coordinate system uniformly in both x- and y. */
     void scale(float factor) { nvgScale(_get_context(), factor, factor); }
 
-    /** Scales the coorindate system in x- and y independently. */
+    /** Scales the coordinate system in x- and y independently. */
     void scale(float x, float y) { nvgScale(_get_context(), x, y); }
 
     /** Skews the coordinate system along x for `angle` radians. */

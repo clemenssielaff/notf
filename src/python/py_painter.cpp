@@ -12,6 +12,7 @@ using namespace notf;
 void produce_painter(pybind11::module& module)
 {
     py::class_<Painter> Py_Painter(module, "Painter");
+    py::class_<NVGpaint>(module, "Paint");
 
     py::enum_<Painter::Winding>(Py_Painter, "Winding")
         .value("CCW", Painter::Winding::CCW)
@@ -63,12 +64,20 @@ void produce_painter(pybind11::module& module)
     Py_Painter.def("set_composite", &Painter::set_composite, "Determines how incoming (source) pixels are combined with existing (destination) pixels.", py::arg("composite"));
     Py_Painter.def("set_alpha", &Painter::set_alpha, "Sets the global transparency of all rendered shapes.", py::arg("alpha"));
 
-    Py_Painter.def("set_stroke", &Painter::set_stroke, "Sets the current stroke style to a solid color.", py::arg("color"));
-    Py_Painter.def("set_fill", &Painter::set_fill, "Sets the current fill style to a solid color.", py::arg("color"));
+    Py_Painter.def("set_stroke", (void (Painter::*)(const Color&)) & Painter::set_stroke, "Sets the current stroke style to a solid color.", py::arg("color"));
+    Py_Painter.def("set_stroke", (void (Painter::*)(NVGpaint)) & Painter::set_stroke, "Sets the current stroke style to a paint.", py::arg("paint"));
+    Py_Painter.def("set_fill", (void (Painter::*)(const Color&)) & Painter::set_fill, "Sets the current fill style to a solid color.", py::arg("color"));
+    Py_Painter.def("set_fill", (void (Painter::*)(NVGpaint)) & Painter::set_fill, "Sets the current fill style to a paint.", py::arg("paint"));
     Py_Painter.def("set_stroke_width", &Painter::set_stroke_width, "Sets the width of the stroke.", py::arg("width"));
     Py_Painter.def("set_line_cap", &Painter::set_line_cap, "Sets how the end of the line (cap) is drawn - default is LineCap::BUTT.", py::arg("cap"));
     Py_Painter.def("set_line_join", &Painter::set_line_join, "Sets how sharp path corners are drawn - default is LineJoin::MITER.", py::arg("join"));
     Py_Painter.def("set_miter_limit", &Painter::set_miter_limit, "Sets the miter limit of the stroke.", py::arg("limit"));
+
+    Py_Painter.def("LinearGradient", (NVGpaint(Painter::*)(float, float, float, float, const Color&, const Color&)) & Painter::LinearGradient, "Creates a linear gradient paint.", py::arg("sx"), py::arg("sy"), py::arg("ex"), py::arg("ey"), py::arg("start_color"), py::arg("end_color"));
+    Py_Painter.def("LinearGradient", (NVGpaint(Painter::*)(const Vector2&, const Vector2&, const Color&, const Color&)) & Painter::LinearGradient, "Creates a linear gradient paint.", py::arg("start_pos"), py::arg("end_pos"), py::arg("start_color"), py::arg("end_color"));
+    Py_Painter.def("BoxGradient", (NVGpaint(Painter::*)(float, float, float, float, float, float, const Color&, const Color&)) & Painter::BoxGradient, "Creates a box gradient paint.", py::arg("x"), py::arg("y"), py::arg("w"), py::arg("h"), py::arg("radius"), py::arg("feather"), py::arg("inner_color"), py::arg("outer_color"));
+    Py_Painter.def("BoxGradient", (NVGpaint(Painter::*)(const Aabr&, float, float, const Color&, const Color&)) & Painter::BoxGradient, "Creates a box gradient paint.", py::arg("box"), py::arg("radius"), py::arg("feather"), py::arg("inner_color"), py::arg("outer_color"));
+    Py_Painter.def("RadialGradient", (NVGpaint(Painter::*)(float, float, float, float, const Color&, const Color&)) & Painter::RadialGradient, "Creates a radial gradient paint.", py::arg("cx"), py::arg("cy"), py::arg("inr"), py::arg("outr"), py::arg("inner_color"), py::arg("outer_color"));
 
     Py_Painter.def("reset_transform", &Painter::reset_transform, "Resets the coordinate system to its identity.");
     Py_Painter.def("translate", (void (Painter::*)(float, float)) & Painter::translate, "Translates the coordinate system.", py::arg("x"), py::arg("y"));
