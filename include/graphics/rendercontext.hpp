@@ -1,6 +1,5 @@
 #pragma once
 
-#include "common/real.hpp"
 #include "common/size2i.hpp"
 #include "common/vector2.hpp"
 
@@ -25,8 +24,8 @@ struct RenderContext {
     Vector2 mouse_pos;
 
     /** The pixel aspect ratio. */
-    Real get_pixel_ratio() const { return window_size.width ? static_cast<Real>(buffer_size.width) / static_cast<Real>(window_size.width)
-                                                            : 0; }
+    float get_pixel_ratio() const { return window_size.width ? static_cast<float>(buffer_size.width) / static_cast<float>(window_size.width)
+                                                             : 0.f; }
 };
 
 } // namespace notf

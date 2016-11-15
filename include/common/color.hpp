@@ -2,38 +2,27 @@
 
 #include <array>
 #include <iosfwd>
+#include <string>
 
 #include "float_utils.hpp"
 #include "int_utils.hpp"
 
 namespace notf {
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
-#pragma clang diagnostic ignored "-Wnested-anon-types"
-#endif
-
 /** A Color. */
 struct Color {
 
-    // force contiguous memory layout (is that really necessary?)
-    union {
-        struct {
-            /** Red component in range [0, 1]. */
-            float r;
+    /** Red component in range [0, 1]. */
+    float r;
 
-            /** Green component in range [0, 1]. */
-            float g;
+    /** Green component in range [0, 1]. */
+    float g;
 
-            /** Blue component in range [0, 1]. */
-            float b;
+    /** Blue component in range [0, 1]. */
+    float b;
 
-            /** Alpha component in range [0, 1]. */
-            float a;
-        };
-        std::array<float, 4> _array;
-    };
+    /** Alpha component in range [0, 1]. */
+    float a;
 
     /* HOUSEHOLD ******************************************************************************************************/
 
@@ -59,6 +48,12 @@ struct Color {
     {
     }
 
+    /** Creates a color from a color value string.
+     * Valid formattings are "#0099aa", "#0099aaff", "0099aa" or "0099aaff", string is parsed case-insensitive.
+     * @throws std::runtime_error   If the given string is not a valid value string.
+     */
+    Color(const std::string& value);
+
     static Color from_rgb(float r, float g, float b, float a = 1) { return Color(r, g, b, a); }
 
     template <class T, typename = std::enable_if_t<std::is_integral<T>::value>>
@@ -66,14 +61,35 @@ struct Color {
 
     static Color from_hsl(float h, float s, float l, float a = 1);
 
+    bool operator==(const Color& other) const
+    {
+        return (approx(r, other.r)
+                && approx(g, other.g)
+                && approx(b, other.b)
+                && approx(a, other.a));
+    }
+
+    bool operator!=(const Color& other) const
+    {
+        return (!approx(r, other.r)
+                || !approx(g, other.g)
+                || !approx(b, other.b)
+                || !approx(a, other.a));
+    }
+
+    /** Checks, if the given string is a valid color value that can be passed to the constructor. */
+    static bool is_color(const std::string& value);
+
     /* MODIFICATIONS **************************************************************************************************/
+
+    /** Returns the Color as an RGB string value, */
+    std::string to_string() const;
 
     /** Weighted conversion of this color to greyscale. */
     Color to_greyscale() const;
 
     /** Allows direct memory (read / write) access to the Color's internal storage. */
-    float* as_ptr() { return &_array[0]; }
-
+    float* as_ptr() { return &r; }
 };
 
 /* FREE FUNCTIONS *****************************************************************************************************/
@@ -102,9 +118,5 @@ inline Color lerp(const Color& from, const Color& to, float blend)
         (from.a * inv) + (to.a * blend),
     };
 }
-
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 
 } // namespace notf

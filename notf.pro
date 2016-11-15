@@ -37,7 +37,8 @@ CONFIG(test) {
         test/test_main.cpp \
         test/test_common_string_utils.cpp \
         test/test_common_signal.cpp \
-        test/test_core_zhierarchy.cpp
+        test/test_core_zhierarchy.cpp \
+        test/test_common_color.cpp
 
     HEADERS += \
         test/catch.hpp
@@ -61,7 +62,6 @@ SOURCES += \
     src/common/vector2.cpp \
     src/common/aabr.cpp \
     src/core/resource_manager.cpp \
-    src/common/real.cpp \
     src/common/system.cpp \
     src/core/render_manager.cpp \
     src/common/color.cpp \
@@ -93,7 +93,17 @@ SOURCES += \
 #    src/python/pyglobal.cpp \
 #    src/python/pycanvascomponent.cpp \
     src/core/znode.cpp \
-    src/graphics/painter.cpp
+    src/graphics/painter.cpp \
+    src/python/py_canvascomponent.cpp \
+    src/python/py_component.cpp \
+    src/python/py_global.cpp \
+    src/python/py_layoutitem.cpp \
+    src/python/py_layoutroot.cpp \
+    src/python/py_painter.cpp \
+    src/python/py_stacklayout.cpp \
+    src/python/py_vector2.cpp \
+    src/python/py_widget.cpp \
+    src/python/py_window.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -111,7 +121,6 @@ HEADERS += \
     include/common/vector2.hpp \
     include/common/math.hpp \
     include/common/aabr.hpp \
-    include/common/real.hpp \
     include/core/events/key_event.hpp \
     thirdparty/randutils/randutils.hpp \
     include/common/random.hpp \
@@ -169,4 +178,4 @@ HEADERS += \
     include/common/memory_utils.hpp \
     include/common/float_utils.hpp
 
-#QMAKE_CXX = ccache g++
+QMAKE_CXX = ccache g++

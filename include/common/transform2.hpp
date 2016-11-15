@@ -4,7 +4,7 @@
 #include <array>
 #include <iosfwd>
 
-#include "common/real.hpp"
+#include "common/float_utils.hpp"
 #include "common/vector2.hpp"
 
 namespace notf {
@@ -21,10 +21,10 @@ private: // class
 
         friend struct Transform2;
 
-        std::array<Real, 3> values;
+        std::array<float, 3> values;
 
         /// @brief Read-access to a value in the Row.
-        Real operator[](unsigned char col) const
+        float operator[](unsigned char col) const
         {
             assert(col < 3);
             return values[col];
@@ -38,7 +38,7 @@ private: // class
 
     private: // methods for Transform2
         /// @brief Write access to the Row's data.
-        Real& operator[](unsigned char col)
+        float& operator[](unsigned char col)
         {
             return values[col];
         }
@@ -77,17 +77,17 @@ public: // methods
 
     /// @brief A rotation matrix.
     /// @param radians  Counter-clockwise rotation in radians.
-    static Transform2 rotation(const Real radians)
+    static Transform2 rotation(const float radians)
     {
-        const Real sine = sin(radians);
-        const Real cosine = cos(radians);
+        const float sine = sin(radians);
+        const float cosine = cos(radians);
         return {{{{{{cosine, sine, 0}}},
                   {{{-sine, cosine, 0}}}}}};
     }
 
     /// @brief A uniform scale matrix.
     /// @param factor   Uniform scale factor.
-    static Transform2 scale(const Real factor)
+    static Transform2 scale(const float factor)
     {
         return {{{{{{factor, 0, 0}}},
                   {{{0, factor, 0}}}}}};
@@ -155,7 +155,7 @@ public: // methods
     bool operator!=(const Transform2& other) const { return rows != other.rows; }
 
     /** Allows direct memory (write) access to the Transform2's internal storage. */
-    Real* as_real_ptr() { return &rows[0][0]; }
+    float* as_ptr() { return &rows[0][0]; }
 
 private: // methods
     /// @brief Write access to the Matrix.

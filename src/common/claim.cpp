@@ -4,7 +4,7 @@
 
 namespace notf {
 
-void Claim::Direction::set_min(const Real min)
+void Claim::Direction::set_min(const float min)
 {
     if (!is_valid(min) || min < 0) {
         log_warning << "Invalid minimum Stretch value: " << min << " - using 0 instead.";
@@ -21,7 +21,7 @@ void Claim::Direction::set_min(const Real min)
     }
 }
 
-void Claim::Direction::set_max(const Real max)
+void Claim::Direction::set_max(const float max)
 {
     if (is_nan(max) || max < 0) {
         log_warning << "Invalid maximum Stretch value: " << max << " - using 0 instead.";
@@ -38,18 +38,18 @@ void Claim::Direction::set_max(const Real max)
     }
 }
 
-void Claim::Direction::add_offset(const Real offset)
+void Claim::Direction::add_offset(const float offset)
 {
     if (!is_valid(offset)) {
         log_warning << "Ignored invalid offset value: " << offset;
         return;
     }
-    m_min = max(Real(0), m_min + offset);
-    m_max = max(Real(0), m_max + offset);
-    m_preferred = max(Real(0), m_preferred + offset);
+    m_min = max(0.f, m_min + offset);
+    m_max = max(0.f, m_max + offset);
+    m_preferred = max(0.f, m_preferred + offset);
 }
 
-void Claim::Direction::set_preferred(const Real preferred)
+void Claim::Direction::set_preferred(const float preferred)
 {
     if (!is_valid(preferred) || preferred < 0) {
         log_warning << "Invalid preferred Stretch value: " << preferred << " - using 0 instead.";
@@ -66,7 +66,7 @@ void Claim::Direction::set_preferred(const Real preferred)
     }
 }
 
-void Claim::Direction::set_scale_factor(const Real factor)
+void Claim::Direction::set_scale_factor(const float factor)
 {
     if (!is_valid(factor) || factor < 0) {
         log_warning << "Invalid Stretch scale factor: " << factor << " - using 0 instead.";
@@ -77,7 +77,7 @@ void Claim::Direction::set_scale_factor(const Real factor)
     }
 }
 
-void Claim::set_height_for_width(const Real ratio_min, const Real ratio_max)
+void Claim::set_height_for_width(const float ratio_min, const float ratio_max)
 {
     if (!is_valid(ratio_min) || ratio_min < 0) {
         log_warning << "Invalid min ratio: " << ratio_min << " - using 0 instead.";

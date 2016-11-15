@@ -37,7 +37,7 @@ void LayoutRoot::_relayout(const Size2r /*size*/)
         return;
     }
     Size2i canvas_size = window->get_buffer_size();
-    _set_size({Real(canvas_size.width), Real(canvas_size.height)});
+    _set_size({static_cast<float>(canvas_size.width), static_cast<float>(canvas_size.height)});
     if (!is_empty()) {
         _update_item(_get_item(), get_size(), Transform2::identity());
     }

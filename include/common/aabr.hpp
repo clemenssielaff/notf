@@ -33,7 +33,7 @@ struct Aabr {
     /// @param position Position of the center of the Aabr
     /// @param width    Width of the Aabr.
     /// @param height   Height of the Aabr.
-    Aabr(const Vector2& position, Real width, Real height)
+    Aabr(const Vector2& position, float width, float height)
         : _min(position.x - (width / 2), position.y - (height / 2))
         , _max(position.x + (width / 2), position.y + (height / 2))
     {
@@ -43,7 +43,7 @@ struct Aabr {
     ///
     /// @param width    Width of the Aabr.
     /// @param height   Height of the Aabr.
-    Aabr(Real width, Real height)
+    Aabr(float width, float height)
         : _min(width / -2, height / -2)
         , _max(width / 2, height / 2)
     {
@@ -89,12 +89,12 @@ struct Aabr {
     /// @brief The x-coordinate of this Aabr's position.
     ///
     /// The Aabr's position is at its center.
-    Real x() const { return (_min.x + _max.x) / 2; }
+    float x() const { return (_min.x + _max.x) / 2; }
 
     /// @brief The y-coordinate of this Aabr's position.
     ///
     /// The Aabr's position is at its center.
-    Real y() const { return (_min.y + _max.y) / 2; }
+    float y() const { return (_min.y + _max.y) / 2; }
 
     /// @brief The position of this Aabr.
     ///
@@ -102,16 +102,16 @@ struct Aabr {
     Vector2 position() const { return {x(), y()}; }
 
     /// @brief X-coordinate of the left edge of this Aabr.
-    Real left() const { return _min.x; }
+    float left() const { return _min.x; }
 
     /// @brief X-coordinate of the right edge of this Aabr.
-    Real right() const { return _max.x; }
+    float right() const { return _max.x; }
 
     /// @brief Y-coordinate of the top edge of this Aabr.
-    Real top() const { return _max.y; }
+    float top() const { return _max.y; }
 
     /// @brief Y-coordinate of the bottom edge of this Aabr.
-    Real bottom() const { return _min.y; }
+    float bottom() const { return _min.y; }
 
     /// @brief The top left corner of this Aabr.
     Vector2 top_left() const { return {_min.x, _max.y}; }
@@ -126,13 +126,13 @@ struct Aabr {
     Vector2 bottom_right() const { return {_max.x, _min.y}; }
 
     /// @brief The width of this Aabr
-    Real width() const { return _max.x - _min.x; }
+    float width() const { return _max.x - _min.x; }
 
     /// @brief The height of this Aabr
-    Real height() const { return _max.y - _min.y; }
+    float height() const { return _max.y - _min.y; }
 
     /// @brief The area of this Aabr
-    Real area() const { return height() * width(); }
+    float area() const { return height() * width(); }
 
     /// @brief Test, if this Aabr is null.
     ///
@@ -180,8 +180,8 @@ struct Aabr {
     Vector2 closest_point_to(const Vector2& target) const
     {
         const Vector2 pos = position();
-        const Real half_width = width() / 2;
-        const Real half_height = height() / 2;
+        const float half_width = width() / 2;
+        const float half_height = height() / 2;
         return {pos.x + clamp(target.x - pos.x, -half_width, half_width),
                 pos.y + clamp(target.y - pos.y, -half_height, half_height)};
     }
@@ -193,9 +193,9 @@ struct Aabr {
     /// @param x    New x position.
     ///
     /// @return This Aabr after moving.
-    Aabr& set_x(Real x)
+    Aabr& set_x(float x)
     {
-        const Real half_width = width() / 2;
+        const float half_width = width() / 2;
         _min.x = x - half_width;
         _max.x = x + half_width;
         return *this;
@@ -206,9 +206,9 @@ struct Aabr {
     /// @param y    New y position.
     ///
     /// @return This Aabr after moving.
-    Aabr& set_y(Real y)
+    Aabr& set_y(float y)
     {
-        const Real half_height = height() / 2;
+        const float half_height = height() / 2;
         _min.y = y - half_height;
         _max.y = y + half_height;
         return *this;
@@ -233,7 +233,7 @@ struct Aabr {
     /// @param x    New x-coordinate of the left edge of the Aabr.
     ///
     /// @return This Aabr after the perfoming the operation.
-    Aabr& set_left(Real x)
+    Aabr& set_left(float x)
     {
         _min.x = x;
         _max.x = _min.x < _max.x ? _max.x : _min.x;
@@ -248,7 +248,7 @@ struct Aabr {
     /// @param x    New x-coordinate of the right edge of the Aabr.
     ///
     /// @return This Aabr after the perfoming the operation.
-    Aabr& set_right(Real x)
+    Aabr& set_right(float x)
     {
         _max.x = x;
         _min.x = _min.x < _max.x ? _min.x : _max.x;
@@ -263,7 +263,7 @@ struct Aabr {
     /// @param y    New y-coordinate of the top edge of the Aabr.
     ///
     /// @return This Aabr after the perfoming the operation.
-    Aabr& set_top(Real y)
+    Aabr& set_top(float y)
     {
         _max.y = y;
         _min.y = _min.y < _max.y ? _min.y : _max.y;
@@ -278,7 +278,7 @@ struct Aabr {
     /// @param y    New y-coordinate of the bottom edge of the Aabr.
     ///
     /// @return This Aabr after the perfoming the operation.
-    Aabr& set_bottom(Real y)
+    Aabr& set_bottom(float y)
     {
         _min.y = y;
         _max.y = _min.y < _max.y ? _max.y : _min.y;
@@ -345,10 +345,10 @@ struct Aabr {
     /// @param width    New Aabr width.
     ///
     /// @return This Aabr after the perfoming the operation.
-    Aabr& set_width(Real width)
+    Aabr& set_width(float width)
     {
-        const Real center = x();
-        const Real half_width = width / 2;
+        const float center = x();
+        const float half_width = width / 2;
         _min.x = center - half_width;
         _max.x = center + half_width;
         return *this;
@@ -362,10 +362,10 @@ struct Aabr {
     /// @param height   New Aabr height.
     ///
     /// @return This Aabr after the perfoming the operation.
-    Aabr& set_height(Real height)
+    Aabr& set_height(float height)
     {
-        const Real center = y();
-        const Real half_height = height / 2;
+        const float center = y();
+        const float half_height = height / 2;
         _min.y = center - half_height;
         _max.y = center + half_height;
         return *this;
@@ -390,7 +390,7 @@ struct Aabr {
     /// @param amount  Number of units to grow.
     ///
     /// @return This Aabr after the perfoming the operation.
-    Aabr& grow(Real amount)
+    Aabr& grow(float amount)
     {
         _min.x -= amount;
         _min.y -= amount;
@@ -407,7 +407,7 @@ struct Aabr {
     /// @param amount  Number of units to shrink.
     ///
     /// @return This Aabr after the perfoming the operation.
-    Aabr& shrink(Real amount) { return grow(-amount); }
+    Aabr& shrink(float amount) { return grow(-amount); }
 
     /// @brief Intersection of this Aabr with other.
     ///

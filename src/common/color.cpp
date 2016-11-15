@@ -5,9 +5,13 @@
  */
 
 #include <iostream>
+#include <regex>
+#include <sstream>
 #include <type_traits>
 
 #include "common/color.hpp"
+#include "common/log.hpp"
+#include "common/string_utils.hpp"
 
 namespace notf {
 
@@ -242,12 +246,63 @@ Color lab_to_rgb(const Lab& input)
     return (result);
 }
 
+Color::Color(const std::string& value)
+{
+    if (!is_color(value)) {
+        const std::string message = string_format("\"%s\" is not a valid color value", value.c_str());
+        log_critical << message;
+        throw std::runtime_error(std::move(message));
+    }
+
+    const size_t start_index = value.at(0) == '#' ? 1 : 0;
+    {
+        int val_r, val_g, val_b;
+        std::istringstream(value.substr(start_index, 2)) >> std::hex >> val_r;
+        std::istringstream(value.substr(start_index + 2, 2)) >> std::hex >> val_g;
+        std::istringstream(value.substr(start_index + 4, 2)) >> std::hex >> val_b;
+        r = static_cast<float>(val_r) / 255.f;
+        g = static_cast<float>(val_g) / 255.f;
+        b = static_cast<float>(val_b) / 255.f;
+    }
+
+    if (value.size() == start_index + 8) {
+        int val_a;
+        std::istringstream(value.substr(start_index + 6, 2)) >> std::hex >> val_a;
+        a = static_cast<float>(val_a) / 255.f;
+    }
+    else {
+        a = 1.f;
+    }
+}
+
+Color Color::from_hsl(float h, float s, float l, float a)
+{
+    return hsl_to_rgb({h, s, l, a});
+}
+
+bool Color::is_color(const std::string& value)
+{
+    static const std::regex rgb_regex("^#?(?:[0-9a-fA-F]{2}){3,4}$");
+    return std::regex_search(value, rgb_regex);
+}
+
+std::string Color::to_string() const
+{
+    std::ostringstream buffer;
+    buffer << "#" << std::hex
+           << static_cast<int>(roundf(r * 255.f))
+           << static_cast<int>(roundf(g * 255.f))
+           << static_cast<int>(roundf(b * 255.f))
+           << static_cast<int>(roundf(a * 255.f));
+    return buffer.str();
+}
+
 Color Color::to_greyscale() const
 {
     // values from:
     // https://en.wikipedia.org/wiki/Grayscale#Colorimetric_.28luminance-preserving.29_conversion_to_grayscale
     const float grey = (r * 0.2126f) + (g * 0.7152f) + (b * 0.0722f);
-    return { grey, grey, grey, a };
+    return {grey, grey, grey, a};
 }
 
 std::ostream& operator<<(std::ostream& out, const Color& color)

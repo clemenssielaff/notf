@@ -26,6 +26,7 @@ using std::sin;
 using std::cos;
 using std::tan;
 using std::atan2;
+using std::roundf;
 
 /** Tests, if a value is positive or negative.
  * @return  -1 if the value is negative, 1 if it is zero or above.

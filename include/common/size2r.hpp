@@ -2,7 +2,7 @@
 
 #include <iosfwd>
 
-#include "common/real.hpp"
+#include "common/float_utils.hpp"
 
 namespace notf {
 
@@ -12,10 +12,10 @@ struct Size2r {
     //  FIELDS  ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @brief Width.
-    Real width;
+    float width;
 
     /// @brief Height.
-    Real height;
+    float height;
 
     //  OPERATORS  ////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -2,7 +2,7 @@
 
 #include <iosfwd>
 
-#include "common/real.hpp"
+#include "common/float_utils.hpp"
 
 namespace notf {
 
@@ -12,10 +12,10 @@ struct Vector2 {
     //  FIELDS  ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @brief X coordinate.
-    Real x;
+    float x;
 
     /// @brief Y coordinate.
-    Real y;
+    float y;
 
     //  HOUSEHOLD  ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -29,7 +29,7 @@ struct Vector2 {
     ///
     /// @param x    X value.
     /// @param y    Y value.
-    Vector2(Real x, Real y)
+    Vector2(float x, float y)
         : x(x)
         , y(y)
     {
@@ -40,7 +40,7 @@ struct Vector2 {
     /// @brief Returns a Vector2 with both components set to the given value.
     ///
     /// @param value    Value to set the components to.
-    static Vector2 fill(Real value) { return Vector2(value, value); }
+    static Vector2 fill(float value) { return Vector2(value, value); }
 
     /// @brief Returns an unit Vector2 along the x-axis.
     static Vector2 x_axis() { return Vector2(1, 0); }
@@ -56,7 +56,7 @@ struct Vector2 {
     /// @brief Checks, if this Vector2 is approximately the zero vector.
     ///
     /// @param epsilon  A difference <= epsilon is considered equal.
-    bool is_zero(Real epsilon) const { return (approx(x, 0, epsilon) && approx(y, 0, epsilon)); }
+    bool is_zero(float epsilon) const { return (approx(x, 0, epsilon) && approx(y, 0, epsilon)); }
 
     /// @brief Checks whether this Vector2 is of unit magnitude.
     bool is_unit() const { return approx(magnitude_sq(), 1); }
@@ -79,16 +79,16 @@ struct Vector2 {
     ///
     /// The angle is positive for counter-clockwise angles (upper half-plane, y > 0),
     /// and negative for clockwise angles (lower half-plane, y < 0).
-    Real angle() const { return atan2(y, x); }
+    float angle() const { return atan2(y, x); }
 
     /// @brief Calculates the smallest angle between two Vector2s in radians.
     ///
     /// Returns zero, if one or both of the input Vector2%s are of zero magnitude.
     ///
     /// @param other    Vector2 to take the angle against.
-    Real angle_to(const Vector2& other) const
+    float angle_to(const Vector2& other) const
     {
-        const Real squaredMagnitudeProduct = magnitude_sq() * other.magnitude_sq();
+        const float squaredMagnitudeProduct = magnitude_sq() * other.magnitude_sq();
 
         // one or both are zero
         if (approx(squaredMagnitudeProduct, 0)) {
@@ -110,9 +110,9 @@ struct Vector2 {
     /// Returns zero, if one or both of the input Vector2s are of zero magnitude.
     ///
     /// @param other   Vector2 to compare against.
-    Real direction_to(const Vector2& other) const
+    float direction_to(const Vector2& other) const
     {
-        const Real squaredMagnitudeProduct = magnitude_sq() * other.magnitude_sq();
+        const float squaredMagnitudeProduct = magnitude_sq() * other.magnitude_sq();
 
         // one or both are zero
         if (approx(squaredMagnitudeProduct, 0)) {
@@ -151,7 +151,7 @@ struct Vector2 {
     /// @brief Returns the slope of this Vector2.
     ///
     /// If the vector is parallel to the y-axis, the slope is infinite.
-    Real slope() const
+    float slope() const
     {
         if (x == 0.) {
             return INFINITY;
@@ -162,16 +162,16 @@ struct Vector2 {
     /// @brief Returns the squared magnitude of this Vector2.
     ///
     /// The squared magnitude is much cheaper to compute than the actual.
-    Real magnitude_sq() const { return dot(*this); }
+    float magnitude_sq() const { return dot(*this); }
 
     /// @brief Returns the magnitude of this Vector2.
     ///
     /// For comparisons of Vector2 magnitude or testing for normalization, use magnitude_sq instead.
-    Real magnitude() const { return sqrt((x * x) + (y * y)); }
+    float magnitude() const { return sqrt((x * x) + (y * y)); }
 
-    /// @brief Checks, if this Vector2 contains only real, finite values.
+    /// @brief Checks, if this Vector2 contains only float, finite values.
     ///
-    /// INFINITY and NAN are not real numbers.
+    /// INFINITY and NAN are not float numbers.
     bool is_real() const { return is_valid(x) && is_valid(y); }
 
     /// @brief Checks, if any component of this Vector2 is a zero.
@@ -256,12 +256,12 @@ struct Vector2 {
     /// @brief Multiplication of a Vector2 with a scalar value.
     ///
     /// @param factor   Factor to multiply this Vector2 with.
-    Vector2 operator*(const Real factor) const { return Vector2(x * factor, y * factor); }
+    Vector2 operator*(const float factor) const { return Vector2(x * factor, y * factor); }
 
     /// @brief In-place multiplication of a Vector2 with a scalar value.
     ///
     /// @param factor   Factor to multiply this Vector2 with.
-    Vector2& operator*=(const Real factor)
+    Vector2& operator*=(const float factor)
     {
         x *= factor;
         y *= factor;
@@ -271,12 +271,12 @@ struct Vector2 {
     /// @brief Division of a Vector2 by a scalar value.
     ///
     /// @param factor   Factor to divide this Vector2 by.
-    Vector2 operator/(const Real divisor) const { return Vector2(x / divisor, y / divisor); }
+    Vector2 operator/(const float divisor) const { return Vector2(x / divisor, y / divisor); }
 
     /// @brief In-place division of a Vector2 by a scalar value.
     ///
     /// @param factor   Divisor to divide this Vector2 by.
-    Vector2& operator/=(const Real divisor)
+    Vector2& operator/=(const float divisor)
     {
         x /= divisor;
         y /= divisor;
@@ -316,7 +316,7 @@ struct Vector2 {
     /// Can be used to determine in which general direction a point lies in relation to another point.
     ///
     /// @param other    Vector2 to the right of the dot.
-    Real dot(const Vector2& other) const
+    float dot(const Vector2& other) const
     {
         return (x * other.x) + (y * other.y);
     }
@@ -324,7 +324,7 @@ struct Vector2 {
     /// @brief Returns a normalized copy of this Vector2.
     Vector2 normalized() const
     {
-        const Real squaredMagnitude = magnitude_sq();
+        const float squaredMagnitude = magnitude_sq();
 
         // is unit
         if (approx(squaredMagnitude, 1)) {
@@ -343,7 +343,7 @@ struct Vector2 {
     /// @brief In-place normalization of this Vector2.
     Vector2& normalize()
     {
-        const Real squaredMagnitude = magnitude_sq();
+        const float squaredMagnitude = magnitude_sq();
 
         // is unit
         if (approx(squaredMagnitude, 1)) {
@@ -395,7 +395,7 @@ struct Vector2 {
     /// @return Vector2 orthogonal to this one.
     Vector2& orthogonalize()
     {
-        const Real temp = -y;
+        const float temp = -y;
         y = x;
         x = temp;
         return *this;
@@ -408,10 +408,10 @@ struct Vector2 {
     /// @param angle    Angle to rotate in radians.
     ///
     /// @return A new, rotated Vector2.
-    Vector2 rotated(const Real angle) const
+    Vector2 rotated(const float angle) const
     {
-        const Real sinAngle = sin(angle);
-        const Real cosAngle = cos(angle);
+        const float sinAngle = sin(angle);
+        const float cosAngle = cos(angle);
         return Vector2(
             (x * cosAngle) - (y * sinAngle),
             (y * cosAngle) + (x * sinAngle));
@@ -424,12 +424,12 @@ struct Vector2 {
     /// @param angle    Angle to rotate in radians.
     ///
     /// @return This Vector2 rotated.
-    Vector2& rotate(const Real angle)
+    Vector2& rotate(const float angle)
     {
-        const Real sinAngle = sin(angle);
-        const Real cosAngle = cos(angle);
-        const Real tempX = (x * cosAngle) - (y * sinAngle);
-        const Real tempY = (y * cosAngle) + (x * sinAngle);
+        const float sinAngle = sin(angle);
+        const float cosAngle = cos(angle);
+        const float tempX = (x * cosAngle) - (y * sinAngle);
+        const float tempY = (y * cosAngle) + (x * sinAngle);
         x = tempX;
         y = tempY;
         return (*this);
@@ -447,7 +447,7 @@ struct Vector2 {
     int side_of(const Vector2& other) const
     {
         // equivalent to: (other - (*this)).orthogonalize().dot(*this);
-        const Real direction = (other.x * y) - (x * other.y);
+        const float direction = (other.x * y) - (x * other.y);
 
         // straight ahead or behind
         if (approx(direction, 0)) {
@@ -493,7 +493,7 @@ inline void orthonormal_basis(Vector2& a, Vector2& b)
 /// @param blend   Blend value, clamped to range [0, 1].
 ///
 /// @return Interpolated Vector2.
-inline Vector2 lerp(const Vector2& from, const Vector2& to, const Real blend)
+inline Vector2 lerp(const Vector2& from, const Vector2& to, const float blend)
 {
     return from + ((to - from) * clamp(blend, 0, 1));
 }
@@ -505,7 +505,7 @@ inline Vector2 lerp(const Vector2& from, const Vector2& to, const Real blend)
 /// @param blend   Blend value, clamped to [0 -> 1].
 ///
 /// @return Interpolated Vector3.
-inline Vector2 nlerp(const Vector2& from, const Vector2& to, const Real blend)
+inline Vector2 nlerp(const Vector2& from, const Vector2& to, const float blend)
 {
     return lerp(from, to, blend).normalize();
 }

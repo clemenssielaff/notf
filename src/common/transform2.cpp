@@ -16,7 +16,7 @@ std::ostream& operator<<(std::ostream& out, const Transform2& mat)
 /**
  * Compile-time sanity check.
  */
-static_assert(sizeof(Transform2) == sizeof(Real) * 6,
+static_assert(sizeof(Transform2) == sizeof(float) * 6,
               "This compiler seems to inject padding bits into the notf::Transform2 memory layout. "
               "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
 

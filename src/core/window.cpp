@@ -91,7 +91,7 @@ void Window::_update()
 
     double mouse_x, mouse_y;
     glfwGetCursorPos(m_glfw_window.get(), &mouse_x, &mouse_y);
-    ctx.mouse_pos = {static_cast<Real>(mouse_x), static_cast<Real>(mouse_y)};
+    ctx.mouse_pos = {static_cast<float>(mouse_x), static_cast<float>(mouse_y)};
 
     // prepare the viewport
     glViewport(0, 0, ctx.buffer_size.width, ctx.buffer_size.height);
@@ -216,7 +216,7 @@ Window::Window(const WindowInfo& info)
 
 void Window::_on_resize(int width, int height)
 {
-    m_root_widget->relayout({static_cast<Real>(width), static_cast<Real>(height)});
+    m_root_widget->relayout({static_cast<float>(width), static_cast<float>(height)});
 }
 
 } // namespace notf

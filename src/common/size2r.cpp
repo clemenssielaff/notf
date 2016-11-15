@@ -13,7 +13,7 @@ std::ostream& operator<<(std::ostream& out, const Size2r& size)
 /**
  * Compile-time sanity check.
  */
-static_assert(sizeof(Size2r) == sizeof(Real) * 2,
+static_assert(sizeof(Size2r) == sizeof(float) * 2,
               "This compiler seems to inject padding bits into the notf::Size2r memory layout. "
               "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
 

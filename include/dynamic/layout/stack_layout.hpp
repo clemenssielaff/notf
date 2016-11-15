@@ -88,7 +88,7 @@ private: // fields
     /// @brief Direction in which the StackLayout is stacked.
     STACK_DIRECTION m_direction;
 
-    Real m_spacing;
+    float m_spacing;
 
     /// @brief All items in this Layout in order.
     std::vector<Handle> m_items;

@@ -89,6 +89,8 @@ public: // methods
         nvgClear(_get_context()); // TODO: check if this actually works (and if not calling it would affect subsequent renderers)
     }
 
+    /* Context ********************************************************************************************************/
+
     // TODO: inspection methods for the widget and render context
 
     /* State Handling *************************************************************************************************/
@@ -162,7 +164,7 @@ public: // methods
     Transform2 get_transform()
     {
         Transform2 result;
-        nvgCurrentTransform(_get_context(), result.as_real_ptr());
+        nvgCurrentTransform(_get_context(), result.as_ptr());
         return result;
     }
 
