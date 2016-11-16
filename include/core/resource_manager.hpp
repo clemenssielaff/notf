@@ -4,71 +4,71 @@
 #include <string>
 #include <unordered_map>
 
+struct NVGcontext;
+
 namespace notf {
 
-// TODO: after the massacre, how do I integrate the ResourceManager?
+class Texture2;
 
-/**
- * @brief The Resource Manager owns all dynamically loaded resources.
- *
+/** The Resource Manager owns all dynamically loaded resources.
  * It is not a Singleton, even though each Application will most likely only have one.
  */
 class ResourceManager {
 
 public: // methods
-    /**
-     * @brief Default Constructor.
-     */
-    explicit ResourceManager() = default;
+    ResourceManager() = default;
 
     ResourceManager(const ResourceManager&) = delete; // no copy construction
     ResourceManager& operator=(const ResourceManager&) = delete; // no copy assignment
 
-    /**
-     * @brief The Graphic Manager's texture directory path, absolute or relative to the executable.
-     */
+    /** The Graphic Manager's texture directory path, absolute or relative to the executable. */
     const std::string& get_texture_directory() const { return m_texture_directory; }
 
-    /**
-     * @brief Sets a new texture directory.
+    /** Sets a new texture directory.
      * @param texture_directory     System path to the texture directory, absolute or relative to the executable.
      */
     void set_texture_directory(std::string texture_directory);
 
-    /**
-     * @brief The Graphic Manager's shader directory path, absolute or relative to the executable.
-     */
+    /** The Graphic Manager's shader directory path, absolute or relative to the executable. */
     const std::string& get_shader_directory() const { return m_shader_directory; }
 
-    /**
-     * @brief Sets a new shader directory.
+    /** Sets a new shader directory.
      * @param shader_directory      System path to the shader directory, absolute or relative to the executable.
      */
     void set_shader_directory(std::string shader_directory);
 
-    /**
-     * @brief Deletes all resources that are not currently being used.
+    /** Sets the NanoVG context into which to load the Textures. */
+    void set_nvg_context(NVGcontext* context); // TODO: Ressource management won't work with multiple contexts.
+
+    /** Retrieves a Texture2 by its path.
+     * This function either loads the texture from disk if this is the first time it has been requested,
+     * or reuses a cached texture, if it was already loaded.
+     * @param texture_path          Texture path, relative to the texture directory.
+     * @param flags                 Texture2::Flags used to load the texture.
+    *  @throw std::runtime_error    If loading a Texture from the given path failed.
      */
+    std::shared_ptr<Texture2> get_texture(const std::string& texture_path, int flags = 0);
+
+    /** Deletes all resources that are not currently being used. */
     void cleanup();
 
-    /**
-     * @brief Releases ownership of all managed resources
-     *
+    /** Releases ownership of all managed resources.
      * If a resource is not currently in use by another object owning a shared pointer to it, it is deleted.
      */
     void clear();
 
 private: // fields
-    /**
-     * @brief System path to the texture directory, absolute or relative to the executable.
-     */
+    /** System path to the texture directory, absolute or relative to the executable. */
     std::string m_texture_directory;
 
-    /**
-     * @brief System path to the shader directory, absolute or relative to the executable.
-     */
+    /** System path to the shader directory, absolute or relative to the executable. */
     std::string m_shader_directory;
 
+    /** All managed Textures - indexed by name relative to the texture directory. */
+    std::unordered_map<std::string, std::shared_ptr<Texture2>> m_textures;
+
+    /** NanoVG context in which the textures live. */
+    NVGcontext* m_context;
 };
 
 } // namespace notf

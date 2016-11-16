@@ -113,7 +113,6 @@ void Window::_update()
         log_critical << "Rendering failed: \"" << error.what() << "\"";
         nvgCancelFrame(ctx.nanovg_context);
     }
-    // TODO: what happens when a Painter::paint() implementation throws in Python?
 
     // post-render
     glEnable(GL_DEPTH_TEST);
@@ -188,6 +187,7 @@ Window::Window(const WindowInfo& info)
         app._shutdown();
         exit(to_number(Application::RETURN_CODE::NANOVG_FAILURE));
     }
+    app.get_resource_manager().set_nvg_context(m_nvg_context.get());
 
     // initial OpenGl setup
     glfwSwapInterval(info.enable_vsync ? 1 : 0);
@@ -198,7 +198,7 @@ Window::Window(const WindowInfo& info)
     if (!info.icon.empty()) {
         const std::string icon_path = app.get_resource_manager().get_texture_directory() + info.icon;
         try {
-            Image icon(icon_path);
+            RawImage icon(icon_path);
             if (icon.get_bytes_per_pixel() != 4) {
                 log_warning << "Icon file '" << icon_path
                             << "' does not provide the required 4 byte per pixel, but " << icon.get_bytes_per_pixel();

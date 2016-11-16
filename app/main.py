@@ -5,8 +5,7 @@ def paint(painter):
     painter.circle(50, 50, 50);
     painter.circle(100, 100, 20);
     paint = painter.LinearGradient(Vector2(0, 0), Vector2(100, 0), Color(128, 128, 255), Color(255,128,128))
-    painter.set_fill(paint)
-    painter.fill();
+    painter.fill(paint);
 
 def main():
     canvas = CanvasComponent()

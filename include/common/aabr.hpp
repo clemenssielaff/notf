@@ -11,7 +11,7 @@ namespace notf {
  * While this does mean that you need to change four instead of two values for repositioning the Aabr, other
  * calculations (like intersections) are faster; and they are usually more relevant.
  */
-struct Aabr { // TODO: Test Aabr
+struct Aabr {
 
     /** Top-left corner of the Aabr. */
     Vector2 _min;
@@ -19,7 +19,7 @@ struct Aabr { // TODO: Test Aabr
     /** Bottom-right corner of the Aabr. */
     Vector2 _max;
 
-    Aabr() = default; // so this data structure remains a POD.
+    Aabr() = default; // so this data structure remains a POD
 
     /**
      * @param position  Position of the center of the Aabr
@@ -94,22 +94,22 @@ struct Aabr { // TODO: Test Aabr
     float right() const { return _max.x; }
 
     /** Y-coordinate of the top edge of this Aabr. */
-    float top() const { return _max.y; }
+    float top() const { return _min.y; }
 
     /** Y-coordinate of the bottom edge of this Aabr. */
-    float bottom() const { return _min.y; }
+    float bottom() const { return _max.y; }
 
     /** The top left corner of this Aabr. */
-    Vector2 top_left() const { return {_min.x, _max.y}; }
+    Vector2 top_left() const { return _min; }
 
     /** The top right corner of this Aabr. */
-    Vector2 top_right() const { return _max; }
+    Vector2 top_right() const { return {_max.x, _min.y}; }
 
     /** The bottom left corner of this Aabr. */
-    Vector2 bottom_left() const { return _min; }
+    Vector2 bottom_left() const { return {_min.x, _max.y}; }
 
     /** The bottom right corner of this Aabr. */
-    Vector2 bottom_right() const { return {_max.x, _min.y}; }
+    Vector2 bottom_right() const { return _max; }
 
     /** The width of this Aabr */
     float width() const { return _max.x - _min.x; }
@@ -217,8 +217,8 @@ struct Aabr { // TODO: Test Aabr
      */
     Aabr& set_top(float y)
     {
-        _max.y = y;
-        _min.y = _min.y < _max.y ? _min.y : _max.y;
+        _min.y = y;
+        _max.y = _min.y < _max.y ? _max.y : _min.y;
         return *this;
     }
 
@@ -228,8 +228,8 @@ struct Aabr { // TODO: Test Aabr
      */
     Aabr& set_bottom(float y)
     {
-        _min.y = y;
-        _max.y = _min.y < _max.y ? _max.y : _min.y;
+        _max.y = y;
+        _min.y = _min.y < _max.y ? _min.y : _max.y;
         return *this;
     }
 
@@ -298,8 +298,8 @@ struct Aabr { // TODO: Test Aabr
     /** Sets this Aabr to null. */
     Aabr& set_null()
     {
-        _min.set_zero();
-        _max.set_zero();
+        _min.set_null();
+        _max.set_null();
         return *this;
     }
 

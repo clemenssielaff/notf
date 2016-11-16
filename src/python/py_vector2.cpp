@@ -66,7 +66,7 @@ void produce_vector2(pybind11::module& module)
     Py_Vector2.def(-py::self);
 
     // modifiers
-    Py_Vector2.def("set_zero", &Vector2::set_zero, "Sets all components of the Vector to zero.");
+    Py_Vector2.def("set_null", &Vector2::set_null, "Sets all components of the Vector to zero.");
     Py_Vector2.def("inverted", &Vector2::inverted, "Returns an inverted copy of this Vector2.");
     Py_Vector2.def("invert", &Vector2::invert, "Inverts this Vector2 in-place.");
     Py_Vector2.def("dot", &Vector2::dot, "Vector2 dot product.", py::arg("other"));

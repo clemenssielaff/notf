@@ -3,6 +3,7 @@
 #include <nanovg/nanovg.h>
 
 #include "common/aabr.hpp"
+#include "common/circle.hpp"
 #include "common/color.hpp"
 #include "common/transform2.hpp"
 #include "common/vector2.hpp"
@@ -68,14 +69,6 @@ public: // enums
         XOR = NVG_XOR,
     };
 
-    enum class ImageFlags {
-        GENERATE_MIPMAPS = NVG_IMAGE_GENERATE_MIPMAPS,
-        REPEATX = NVG_IMAGE_REPEATX,
-        REPEATY = NVG_IMAGE_REPEATY,
-        FLIPY = NVG_IMAGE_FLIPY,
-        PREMULTIPLIED = NVG_IMAGE_PREMULTIPLIED,
-    };
-
 protected: // methods for CanvasComponent
     explicit Painter(const Widget* widget, const RenderContext* context)
         : m_widget(widget)
@@ -116,18 +109,6 @@ public: // methods
 
     /* Style **********************************************************************************************************/
 
-    /** Sets the current stroke style to a solid color. */
-    void set_stroke(const Color& color) { nvgStrokeColor(_get_context(), _to_nvg(color)); }
-
-    /** Sets the current stroke style to a paint. */
-    void set_stroke(NVGpaint paint) { nvgStrokePaint(_get_context(), std::move(paint)); } // TODO: move set_* into fill / stroke (meaning, call fill(paint) instead of set_paint(paint); fill();)
-
-    /** Sets the current fill style to a solid color. */
-    void set_fill(const Color& color) { nvgFillColor(_get_context(), _to_nvg(color)); }
-
-    /** Sets the current fill style to a paint. */
-    void set_fill(NVGpaint paint) { nvgFillPaint(_get_context(),  std::move(paint)); }
-
     /** Sets the width of the stroke. */
     void set_stroke_width(float width) { nvgStrokeWidth(_get_context(), width); }
 
@@ -156,14 +137,6 @@ public: // methods
 
     /** Creates a box gradient paint - a feathered, rounded rectangle; useful for example as drop shadows for boxes.
      * Coordinates are applied in the transformed coordinate system current at painting.
-     * @param x             Top-left x of the box.
-     * @param y             Top-left y of the box.
-     * @param w             Width of the box.
-     * @param h             Height of the box.
-     * @param radius        Corner radius.
-     * @param feather       How blurry the border of the rectangle is drawn.
-     * @param inner_color   Color on the inside of the box.
-     * @param outer_color   Color on the outside of the box.
      */
     NVGpaint BoxGradient(float x, float y, float w, float h, float radius, float feather,
                          const Color& inner_color, const Color& outer_color)
@@ -176,13 +149,19 @@ public: // methods
                               _to_nvg(inner_color), _to_nvg(outer_color));
     }
 
-    // TODO: circle class
-
     /** Creates a radial gradient paint. */
     NVGpaint RadialGradient(float cx, float cy, float inr, float outr, const Color& inner_color, const Color& outer_color)
     {
         return nvgRadialGradient(_get_context(), cx, cy, inr, outr, _to_nvg(inner_color), _to_nvg(outer_color));
     }
+    NVGpaint RadialGradient(const Vector2& center, float inr, float outr, const Color& inner_color, const Color& outer_color)
+    {
+        return nvgRadialGradient(_get_context(), center.x, center.y, inr, outr, _to_nvg(inner_color), _to_nvg(outer_color));
+    }
+
+//    NVGpaint nvgImagePattern(NVGcontext* ctx, float ox, float oy, float ex, float ey,
+//                             float angle, int image, float alpha);
+    // TODO: continue here
 
     /* Transform ******************************************************************************************************/
 
@@ -223,10 +202,6 @@ public: // methods
                      transform[0][0], transform[0][1], transform[0][1],
                      transform[1][0], transform[1][1], transform[1][2]);
     }
-
-    /* Images *********************************************************************************************************/
-
-    // TODO: painter image handling (in combination with the resource manager)
 
     /* Scissoring *****************************************************************************************************/
 
@@ -280,6 +255,10 @@ public: // methods
     {
         nvgArc(_get_context(), pos.x, pos.y, radius, start_angle, end_angle, to_number(direction));
     }
+    void arc(const Circle& circle, float start_angle, float end_angle, Winding direction)
+    {
+        nvgArc(_get_context(), circle.center.x, circle.center.y, circle.radius, start_angle, end_angle, to_number(direction));
+    }
 
     /** Creates new rectangle shaped sub-path. */
     void rect(float x, float y, float w, float h) { nvgRect(_get_context(), x, y, w, h); }
@@ -304,15 +283,40 @@ public: // methods
     /** Creates new circle shaped sub-path. */
     void circle(float cx, float cy, float r) { nvgCircle(_get_context(), cx, cy, r); }
     void circle(const Vector2& pos, float radius) { nvgCircle(_get_context(), pos.x, pos.y, radius); }
+    void circle(const Circle& circle) { nvgCircle(_get_context(), circle.center.x, circle.center.y, circle.radius); }
 
     /** Closes current sub-path with a line segment. */
     void close_path() { nvgClosePath(_get_context()); }
 
-    /** Fills the current path with current fill style. */
-    void fill() { nvgFill(_get_context()); }
+    /* Paint **********************************************************************************************************/
 
-    /** Fills the current path with current stroke style. */
-    void stroke() { nvgStroke(_get_context()); }
+    /** Fills the current path with a solid color. */
+    void fill(const Color& color)
+    {
+        nvgFillColor(_get_context(), _to_nvg(color));
+        nvgFill(_get_context());
+    }
+
+    /** Fills the current path with a paint. */
+    void fill(NVGpaint paint)
+    {
+        nvgFillPaint(_get_context(), std::move(paint));
+        nvgFill(_get_context());
+    }
+
+    /** Fills the current path with a solid color. */
+    void stroke(const Color& color)
+    {
+        nvgStrokeColor(_get_context(), _to_nvg(color));
+        nvgStroke(_get_context());
+    }
+
+    /** Fills the current path with a paint. */
+    void stroke(NVGpaint paint)
+    {
+        nvgStrokePaint(_get_context(), std::move(paint));
+        nvgStroke(_get_context());
+    }
 
     /* Text ***********************************************************************************************************/
 

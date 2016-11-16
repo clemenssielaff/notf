@@ -46,7 +46,7 @@ void produce_aabr(pybind11::module& module)
     PyAabr.def("closest_point_to", &Aabr::closest_point_to, "Returns the closest point inside the Aabr to a given target point.", py::arg("target"));
 
     // modification
-    PyAabr.def("set_null", &Aabr::closest_point_to, "Returns the closest point inside the Aabr to a given target point.", py::arg("target"));
+    PyAabr.def("set_null", &Aabr::set_null, "Sets this Aabr to null.");
     PyAabr.def("grow", &Aabr::grow, "Moves each edge of the Aabr a given amount towards the outside.", py::arg("amount"));
     PyAabr.def("shrink", &Aabr::shrink, "Moves each edge of the Aabr a given amount towards the inside.", py::arg("amount"));
     PyAabr.def("shrink", &Aabr::shrink, "Moves each edge of the Aabr a given amount towards the inside.", py::arg("amount"));

@@ -13,8 +13,10 @@ void produce_globals(pybind11::module& module);
 void produce_painter(pybind11::module& module);
 void produce_vector2(pybind11::module& module);
 void produce_aabr(pybind11::module& module);
-void produce_window(pybind11::module& module);
 void produce_color(pybind11::module& module);
+void produce_circle(pybind11::module& module);
+void produce_texture2(pybind11::module& module);
+void produce_window(pybind11::module& module);
 void produce_widget(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_canvas_component(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_layout_root(pybind11::module& module, py::detail::generic_type ancestor);
@@ -30,7 +32,9 @@ PyObject* produce_pynotf_module()
     produce_globals(module);
     produce_vector2(module);
     produce_aabr(module);
+    produce_circle(module);
     produce_color(module);
+    produce_texture2(module);
     produce_painter(module);
     produce_window(module);
 

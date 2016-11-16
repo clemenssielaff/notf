@@ -13,16 +13,16 @@ using uchar = unsigned char;
  * Instead, they are usually loaded from disk, have their data copied into another object and are then destroyed again.
  * Use-cases include loading OpenGL textures and Window icons.
  */
-class Image final {
+class RawImage final {
 
 public: // methods
     /**
      * @param image_path            Absolute path to the Image file.
      * @throw std::runtime_error    If the Image fails to load.
      */
-    explicit Image(const std::string& image_path);
+    explicit RawImage(const std::string& image_path);
 
-    ~Image();
+    ~RawImage();
 
     /** Width of the Image in pixels. */
     int get_width() const { return m_width; }

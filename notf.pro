@@ -38,7 +38,9 @@ CONFIG(test) {
         test/test_common_string_utils.cpp \
         test/test_common_signal.cpp \
         test/test_core_zhierarchy.cpp \
-        test/test_common_color.cpp
+        test/test_common_color.cpp \
+        test/test_common_circle.cpp \
+        test/test_common_aabr.cpp
 
     HEADERS += \
         test/catch.hpp
@@ -81,17 +83,8 @@ SOURCES += \
     src/core/object.cpp \
     src/python/pynotf.cpp \
     src/graphics/raw_image.cpp \
+    src/graphics/texture2.cpp \
     thirdparty/nanovg/nanovg.c \
-#    src/python/pyvector2.cpp \
-#    src/python/pycomponent.cpp \
-#    src/python/pylayoutitem.cpp \
-#    src/python/pywidget.cpp \
-#    src/python/pypainter.cpp \
-#    src/python/pystacklayout.cpp \
-#    src/python/pylayoutroot.cpp \
-#    src/python/pywindow.cpp \
-#    src/python/pyglobal.cpp \
-#    src/python/pycanvascomponent.cpp \
     src/core/znode.cpp \
     src/graphics/painter.cpp \
     src/python/py_canvascomponent.cpp \
@@ -103,7 +96,10 @@ SOURCES += \
     src/python/py_widget.cpp \
     src/python/py_window.cpp \
     src/python/py_color.cpp \
-    src/python/py_aabr.cpp
+    src/python/py_aabr.cpp \
+    src/common/circle.cpp \
+    src/python/py_circle.cpp \
+    src/python/py_texture2.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -157,25 +153,17 @@ HEADERS += \
     include/python/pynotf.hpp \
     include/common/const.hpp \
     include/graphics/raw_image.hpp \
+    include/graphics/texture2.hpp \
     thirdparty/nanovg/fontstash.h \
     thirdparty/nanovg/nanovg_gl_utils.h \
     thirdparty/nanovg/nanovg_gl.h \
     thirdparty/nanovg/nanovg.h \
     thirdparty/stb_truetype/stb_truetype.h \
     include/graphics/rendercontext.hpp \
-#    include/python/pyvector2.hpp \
-#    include/python/pycomponent.hpp \
-#    include/python/pylayoutitem.hpp \
-#    include/python/pywidget.hpp \
-#    include/python/pypainter.hpp \
-#    include/python/pystacklayout.hpp \
-#    include/python/pyglobal.hpp \
-#    include/python/pylayoutroot.hpp \
-#    include/python/pywindow.hpp \
-#    include/python/pycanvascomponent.hpp \
     include/graphics/painter.hpp \
     include/core/znode.hpp \
     include/common/memory_utils.hpp \
-    include/common/float_utils.hpp
+    include/common/float_utils.hpp \
+    include/common/circle.hpp
 
 QMAKE_CXX = ccache g++

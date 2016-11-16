@@ -37,6 +37,9 @@ struct Vector2 {
 
     //  STATIC CONSTRUCTORS  //////////////////////////////////////////////////////////////////////////////////////////
 
+    /** Returns a zero Vector2. */
+    static Vector2 zero() { return Vector2(0, 0); }
+
     /// @brief Returns a Vector2 with both components set to the given value.
     ///
     /// @param value    Value to set the components to.
@@ -293,7 +296,7 @@ struct Vector2 {
     //
 
     /// @brief Sets all components of the Vector to zero.
-    Vector2& set_zero()
+    Vector2& set_null()
     {
         x = 0;
         y = 0;
@@ -352,7 +355,7 @@ struct Vector2 {
 
         // is zero
         if (approx(squaredMagnitude, 0)) {
-            return set_zero();
+            return set_null();
         }
 
         // default
