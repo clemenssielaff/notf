@@ -74,6 +74,7 @@ void produce_painter(pybind11::module& module)
     Py_Painter.def("RadialGradient", (NVGpaint(Painter::*)(const Vector2&, float, float, const Color&, const Color&)) & Painter::RadialGradient, "Creates a radial gradient paint.", py::arg("center"), py::arg("inr"), py::arg("outr"), py::arg("inner_color"), py::arg("outer_color"));
     Py_Painter.def("ImagePattern", (NVGpaint(Painter::*)(const std::shared_ptr<Texture2>&, float, float, float, float, float)) & Painter::ImagePattern, "Creates an image paint.", py::arg("texture"), py::arg("offset_x") = 0.f, py::arg("offset_y") = 0.f, py::arg("width") = -1.f, py::arg("height") = -1.f, py::arg("angle") = 0.f);
     Py_Painter.def("ImagePattern", (NVGpaint(Painter::*)(const std::shared_ptr<Texture2>&, const Vector2&, Size2f size, float)) & Painter::ImagePattern, "Creates an image paint.", py::arg("texture"), py::arg("offset") = Vector2::zero(), py::arg("size") = Size2f({0, 0}), py::arg("angle") = 0.f);
+    Py_Painter.def("ImagePattern", (NVGpaint(Painter::*)(const std::shared_ptr<Texture2>&, const Aabr&, float)) & Painter::ImagePattern, "Creates an image paint.", py::arg("texture"), py::arg("aabr"), py::arg("angle") = 0.f);
 
     Py_Painter.def("reset_transform", &Painter::reset_transform, "Resets the coordinate system to its identity.");
     Py_Painter.def("translate", (void (Painter::*)(float, float)) & Painter::translate, "Translates the coordinate system.", py::arg("x"), py::arg("y"));
@@ -98,6 +99,7 @@ void produce_painter(pybind11::module& module)
     Py_Painter.def("arc", (void (Painter::*)(const Vector2&, float, float, float, Painter::Winding)) & Painter::arc, "Creates new circle arc shaped sub-path.", py::arg("pos"), py::arg("r"), py::arg("a0"), py::arg("a1"), py::arg("winding"));
     Py_Painter.def("arc", (void (Painter::*)(const Circle&, float, float, Painter::Winding)) & Painter::arc, "Creates new circle arc shaped sub-path.", py::arg("circle"), py::arg("a0"), py::arg("a1"), py::arg("winding"));
     Py_Painter.def("rect", (void (Painter::*)(float, float, float, float)) & Painter::rect, "Creates new rectangle shaped sub-path.", py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"));
+    Py_Painter.def("rect", (void (Painter::*)(const Aabr&)) & Painter::rect, "Creates new rectangle shaped sub-path.", py::arg("aabr"));
     Py_Painter.def("rounded_rect", (void (Painter::*)(float, float, float, float, float, float, float, float)) & Painter::rounded_rect, "Creates new rounded rectangle shaped sub-path.", py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), py::arg("rad_nw"), py::arg("rad_ne"), py::arg("rad_se"), py::arg("rad_sw"));
     Py_Painter.def("rounded_rect", (void (Painter::*)(float, float, float, float, float)) & Painter::rounded_rect, "Creates new rounded rectangle shaped sub-path.", py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), py::arg("radius"));
     Py_Painter.def("ellipse", (void (Painter::*)(float, float, float, float)) & Painter::ellipse, "Creates new ellipse shaped sub-path.", py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"));

@@ -47,7 +47,7 @@ public: // methods
      * @param flags                 Texture2::Flags used to load the texture.
     *  @throw std::runtime_error    If loading a Texture from the given path failed.
      */
-    std::shared_ptr<Texture2> get_texture(const std::string& texture_path, int flags = 0);
+    std::shared_ptr<Texture2> get_texture(const std::string& texture_path, int flags);
 
     /** Deletes all resources that are not currently being used. */
     void cleanup();

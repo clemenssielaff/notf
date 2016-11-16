@@ -190,6 +190,10 @@ public: // methods
         }
         return nvgImagePattern(_get_context(), offset.x, offset.y, size.width, size.height, angle, texture->get_id(), 1.f); // alpha = 1
     }
+    NVGpaint ImagePattern(const std::shared_ptr<Texture2>& texture, const Aabr& aabr, float angle = 0.f)
+    {
+        return nvgImagePattern(_get_context(), aabr.left(), aabr.top(), aabr.width(), aabr.height(), angle, texture->get_id(), 1.f); // alpha = 1
+    }
 
     /* Transform ******************************************************************************************************/
 

@@ -10,7 +10,7 @@ void produce_texture2(pybind11::module& module)
 {
     py::class_<Texture2, std::shared_ptr<Texture2>> Py_Texture2(module, "_Texture2");
 
-    py::enum_<Texture2::Flags>(Py_Texture2, "Flags")
+    py::enum_<Texture2::Flags>(Py_Texture2, "Flags") // TODO: Texture2::Flags doesn't work in Python
         .value("GENERATE_MIPMAPS", Texture2::Flags::GENERATE_MIPMAPS)
         .value("REPEATX", Texture2::Flags::REPEATX)
         .value("REPEATY", Texture2::Flags::REPEATY)
