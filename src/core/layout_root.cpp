@@ -29,7 +29,7 @@ std::shared_ptr<Widget> LayoutRoot::get_widget_at(const Vector2& local_pos)
     return _get_item()->get_widget_at(local_pos);
 }
 
-void LayoutRoot::_relayout(const Size2r /*size*/)
+void LayoutRoot::_relayout(const Size2f /*size*/)
 {
     std::shared_ptr<Window> window = m_window.lock();
     if (!window) {

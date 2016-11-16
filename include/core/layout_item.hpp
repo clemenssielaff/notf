@@ -6,7 +6,7 @@
 
 #include "common/claim.hpp"
 #include "common/signal.hpp"
-#include "common/size2r.hpp"
+#include "common/size2f.hpp"
 #include "common/transform2.hpp"
 #include "core/object.hpp"
 #include "core/znode.hpp"
@@ -75,7 +75,7 @@ public: // methods
     VISIBILITY get_visibility() const { return m_visibility; }
 
     /// @brief Returns the unscaled size of this LayoutItem in pixels.
-    const Size2r& get_size() const { return m_size; }
+    const Size2f& get_size() const { return m_size; }
 
     /// @brief Returns this LayoutItem's transformation in the given space.
     Transform2 get_transform(const SPACE space) const
@@ -139,7 +139,7 @@ public: // signals
 
     /// @brief Emitted when this LayoutItem' size changed.
     /// @param New size.
-    Signal<Size2r> size_changed;
+    Signal<Size2f> size_changed;
 
     /// @brief Emitted when this LayoutItem' transformation changed.
     /// @param New local transformation.
@@ -154,7 +154,7 @@ protected: // methods
     void _set_visible(const bool is_visible);
 
     /// @brief Updates the size of this LayoutItem.
-    void _set_size(const Size2r size)
+    void _set_size(const Size2f size)
     {
         if (size != m_size) {
             m_size = size;
@@ -193,7 +193,7 @@ protected: // methods
     /// @brief Called by the parent Layout to let this Item know that its size has changed.
     /// Layout subclasses use this method to update their Layout and child items, if required.
     /// @param size     New size.
-    virtual void _relayout(const Size2r size) = 0;
+    virtual void _relayout(const Size2f size) = 0;
 
     /// @brief Tells this LayoutItem and all of its children to redraw.
     virtual void _redraw() = 0;
@@ -203,7 +203,7 @@ protected: // static methods
     /// @param item          LayoutItem to update.
     /// @param size          New size of the item.
     /// @param transform     New transform of the item.
-    static void _update_item(std::shared_ptr<LayoutItem> item, const Size2r size, const Transform2 transform)
+    static void _update_item(std::shared_ptr<LayoutItem> item, const Size2f size, const Transform2 transform)
     {
         assert(item);
         assert(size.is_valid());
@@ -255,7 +255,7 @@ private: // fields
     Claim m_claim;
 
     /// @brief Unscaled size of this LayoutItem in pixels.
-    Size2r m_size;
+    Size2f m_size;
 
     /// @brief 2D transformation of this LayoutItem in local space.
     Transform2 m_transform;

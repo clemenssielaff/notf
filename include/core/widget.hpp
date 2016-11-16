@@ -79,7 +79,7 @@ protected: // methods
 
     virtual void _redraw() override;
 
-    virtual void _relayout(const Size2r) override { _redraw(); }
+    virtual void _relayout(const Size2f) override { _redraw(); }
     // TODO: is there really a functional difference between _redraw and _relayout?
     // I mean, a Layout will ONLY relayout, while a Widget will ONLY redraw
 

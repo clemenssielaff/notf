@@ -21,7 +21,7 @@ public: // methods
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
 
     /// @brief Updates the LayoutRoot after the Window's size has changed.
-    void relayout(const Size2r size) { _relayout(std::move(size)); }
+    void relayout(const Size2f size) { _relayout(std::move(size)); }
 
 protected: // methods
     /// @brief Value Constructor.
@@ -37,7 +37,7 @@ protected: // methods
 
     virtual void _remove_item(const Handle) override {}
 
-    virtual void _relayout(const Size2r size) override;
+    virtual void _relayout(const Size2f size) override;
 
 private: // methods
     /// @brief Returns the Layout contained in this LayoutRoot, may be invalid.

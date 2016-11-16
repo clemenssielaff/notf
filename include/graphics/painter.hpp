@@ -5,9 +5,11 @@
 #include "common/aabr.hpp"
 #include "common/circle.hpp"
 #include "common/color.hpp"
+#include "common/size2f.hpp"
 #include "common/transform2.hpp"
 #include "common/vector2.hpp"
 #include "graphics/rendercontext.hpp"
+#include "graphics/texture2.hpp"
 #include "utils/enum_to_number.hpp"
 
 namespace notf {
@@ -109,6 +111,18 @@ public: // methods
 
     /* Style **********************************************************************************************************/
 
+    /** Sets the current stroke style to a solid color. */
+    void set_stroke(const Color& color) { nvgStrokeColor(_get_context(), _to_nvg(color)); }
+
+    /** Sets the current stroke style to a paint. */
+    void set_stroke(NVGpaint paint) { nvgStrokePaint(_get_context(), std::move(paint)); }
+
+    /** Sets the current fill style to a solid color. */
+    void set_fill(const Color& color) { nvgFillColor(_get_context(), _to_nvg(color)); }
+
+    /** Sets the current fill style to a paint. */
+    void set_fill(NVGpaint paint) { nvgFillPaint(_get_context(), std::move(paint)); }
+
     /** Sets the width of the stroke. */
     void set_stroke_width(float width) { nvgStrokeWidth(_get_context(), width); }
 
@@ -159,9 +173,23 @@ public: // methods
         return nvgRadialGradient(_get_context(), center.x, center.y, inr, outr, _to_nvg(inner_color), _to_nvg(outer_color));
     }
 
-//    NVGpaint nvgImagePattern(NVGcontext* ctx, float ox, float oy, float ex, float ey,
-//                             float angle, int image, float alpha);
-    // TODO: continue here
+    /** Creates an image paint. */
+    NVGpaint ImagePattern(const std::shared_ptr<Texture2>& texture, float offset_x = 0, float offset_y = 0, float width = -1, float height = -1, float angle = 0)
+    {
+        if (width < 0 || height < 0) {
+            const Size2i pixel_size = texture->get_size();
+            width = static_cast<float>(pixel_size.width);
+            height = static_cast<float>(pixel_size.height);
+        }
+        return nvgImagePattern(_get_context(), offset_x, offset_y, width, height, angle, texture->get_id(), 1.f); // alpha = 1
+    }
+    NVGpaint ImagePattern(const std::shared_ptr<Texture2>& texture, const Vector2& offset = {0, 0}, Size2f size = {NAN, NAN}, float angle = 0.f)
+    {
+        if (!size.is_valid()) {
+            size = Size2f::from_size2i(texture->get_size());
+        }
+        return nvgImagePattern(_get_context(), offset.x, offset.y, size.width, size.height, angle, texture->get_id(), 1.f); // alpha = 1
+    }
 
     /* Transform ******************************************************************************************************/
 
@@ -218,8 +246,8 @@ public: // methods
 
     /* Paths **********************************************************************************************************/
 
-    /** Clears the current path and sub-paths. */
-    void start_path() { nvgBeginPath(_get_context()); }
+    /** Clears the current path and sub-paths and begins a new one. */
+    void begin() { nvgBeginPath(_get_context()); }
 
     /** Sets the current sub-path winding. */
     void set_winding(Winding winding) { nvgPathWinding(_get_context(), to_number(winding)); }
@@ -286,37 +314,13 @@ public: // methods
     void circle(const Circle& circle) { nvgCircle(_get_context(), circle.center.x, circle.center.y, circle.radius); }
 
     /** Closes current sub-path with a line segment. */
-    void close_path() { nvgClosePath(_get_context()); }
+    void close() { nvgClosePath(_get_context()); }
 
-    /* Paint **********************************************************************************************************/
+    /** Fills the current path with current fill style. */
+    void fill() { nvgFill(_get_context()); }
 
-    /** Fills the current path with a solid color. */
-    void fill(const Color& color)
-    {
-        nvgFillColor(_get_context(), _to_nvg(color));
-        nvgFill(_get_context());
-    }
-
-    /** Fills the current path with a paint. */
-    void fill(NVGpaint paint)
-    {
-        nvgFillPaint(_get_context(), std::move(paint));
-        nvgFill(_get_context());
-    }
-
-    /** Fills the current path with a solid color. */
-    void stroke(const Color& color)
-    {
-        nvgStrokeColor(_get_context(), _to_nvg(color));
-        nvgStroke(_get_context());
-    }
-
-    /** Fills the current path with a paint. */
-    void stroke(NVGpaint paint)
-    {
-        nvgStrokePaint(_get_context(), std::move(paint));
-        nvgStroke(_get_context());
-    }
+    /** Fills the current path with current stroke style. */
+    void stroke() { nvgStroke(_get_context()); }
 
     /* Text ***********************************************************************************************************/
 

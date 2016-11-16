@@ -18,7 +18,7 @@ void produce_texture2(pybind11::module& module)
         .value("PREMULTIPLIED", Texture2::Flags::PREMULTIPLIED)
         .export_values();
 
-    module.def("Texture2", [](const std::string& texture_path, int flags = 0) -> std::shared_ptr<Texture2> {
+    module.def("Texture2", [](const std::string& texture_path, int flags = Texture2::Flags::GENERATE_MIPMAPS) -> std::shared_ptr<Texture2> {
         return Application::get_instance().get_resource_manager().get_texture(texture_path, flags);
-    }, "Retrieves a Texture2 by its path.", py::arg("texture_path"), py::arg("flags"));
+    }, "Retrieves a Texture2 by its path.", py::arg("texture_path"), py::arg("flags") = 1);
 }

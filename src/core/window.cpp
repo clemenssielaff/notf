@@ -216,7 +216,7 @@ Window::Window(const WindowInfo& info)
 
 void Window::_on_resize(int width, int height)
 {
-    m_root_widget->relayout({static_cast<float>(width), static_cast<float>(height)});
+    m_root_widget->relayout(Size2f::from_size2i({width, height}));
 }
 
 } // namespace notf

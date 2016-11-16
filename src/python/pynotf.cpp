@@ -12,6 +12,8 @@ using namespace notf;
 void produce_globals(pybind11::module& module);
 void produce_painter(pybind11::module& module);
 void produce_vector2(pybind11::module& module);
+void produce_size2i(pybind11::module& module);
+void produce_size2f(pybind11::module& module);
 void produce_aabr(pybind11::module& module);
 void produce_color(pybind11::module& module);
 void produce_circle(pybind11::module& module);
@@ -30,6 +32,8 @@ PyObject* produce_pynotf_module()
 {
     py::module module(python_notf_module_name, "NoTF Python bindings");
     produce_globals(module);
+    produce_size2i(module);
+    produce_size2f(module);
     produce_vector2(module);
     produce_aabr(module);
     produce_circle(module);

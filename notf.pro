@@ -72,7 +72,6 @@ SOURCES += \
     src/core/components/shape_component.cpp \
     src/core/components/canvas_component.cpp \
     src/common/size2i.cpp \
-    src/common/size2r.cpp \
     src/core/layout.cpp \
     src/core/layout_root.cpp \
     src/dynamic/layout/stack_layout.cpp \
@@ -99,7 +98,9 @@ SOURCES += \
     src/python/py_aabr.cpp \
     src/common/circle.cpp \
     src/python/py_circle.cpp \
-    src/python/py_texture2.cpp
+    src/python/py_texture2.cpp \
+    src/common/size2f.cpp \
+    src/python/py_size.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -140,7 +141,6 @@ HEADERS += \
     include/utils/enum_to_number.hpp \
     include/utils/unused.hpp \
     include/common/size2i.hpp \
-    include/common/size2r.hpp \
     include/core/layout.hpp \
     include/core/layout_root.hpp \
     include/dynamic/layout/stack_layout.hpp \
@@ -164,6 +164,7 @@ HEADERS += \
     include/core/znode.hpp \
     include/common/memory_utils.hpp \
     include/common/float_utils.hpp \
-    include/common/circle.hpp
+    include/common/circle.hpp \
+    include/common/size2f.hpp
 
 QMAKE_CXX = ccache g++

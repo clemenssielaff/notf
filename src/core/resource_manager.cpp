@@ -62,6 +62,7 @@ void ResourceManager::set_nvg_context(NVGcontext* context)
     m_context = context;
 }
 
+// TODO: load a new texture if the flags differ
 std::shared_ptr<Texture2> ResourceManager::get_texture(const std::string& texture_path, int flags)
 {
     // return the existing texture, if it has already been loaded once
@@ -80,10 +81,12 @@ std::shared_ptr<Texture2> ResourceManager::get_texture(const std::string& textur
 
 void ResourceManager::cleanup()
 {
+    remove_unused(m_textures);
 }
 
 void ResourceManager::clear()
 {
+    m_textures.clear();
 }
 
 } // namespace notf

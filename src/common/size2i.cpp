@@ -1,9 +1,19 @@
-#include "common/size2i.hpp"
-
 #include <iostream>
 #include <type_traits>
 
+#include "common/size2i.hpp"
+
+#include "common/float_utils.hpp"
+#include "common/size2f.hpp"
+
 namespace notf {
+
+Size2i Size2i::from_size2f(const Size2f& size2f)
+{
+    return {
+        static_cast<int>(roundf(size2f.width)),
+        static_cast<int>(roundf(size2f.height))};
+}
 
 std::ostream& operator<<(std::ostream& out, const Size2i& size)
 {

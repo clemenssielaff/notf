@@ -57,6 +57,10 @@ void produce_painter(pybind11::module& module)
     Py_Painter.def("set_composite", &Painter::set_composite, "Determines how incoming (source) pixels are combined with existing (destination) pixels.", py::arg("composite"));
     Py_Painter.def("set_alpha", &Painter::set_alpha, "Sets the global transparency of all rendered shapes.", py::arg("alpha"));
 
+    Py_Painter.def("set_stroke", (void (Painter::*)(const Color&)) & Painter::set_stroke, "Sets the current stroke style to a solid color.", py::arg("color"));
+    Py_Painter.def("set_stroke", (void (Painter::*)(NVGpaint)) & Painter::set_stroke, "Sets the current stroke style to a paint.", py::arg("paint"));
+    Py_Painter.def("set_fill", (void (Painter::*)(const Color&)) & Painter::set_fill, "Sets the current fill style to a solid color.", py::arg("color"));
+    Py_Painter.def("set_fill", (void (Painter::*)(NVGpaint)) & Painter::set_fill, "Sets the current fill style to a paint.", py::arg("paint"));
     Py_Painter.def("set_stroke_width", &Painter::set_stroke_width, "Sets the width of the stroke.", py::arg("width"));
     Py_Painter.def("set_line_cap", &Painter::set_line_cap, "Sets how the end of the line (cap) is drawn - default is LineCap::BUTT.", py::arg("cap"));
     Py_Painter.def("set_line_join", &Painter::set_line_join, "Sets how sharp path corners are drawn - default is LineJoin::MITER.", py::arg("join"));
@@ -68,6 +72,8 @@ void produce_painter(pybind11::module& module)
     Py_Painter.def("BoxGradient", (NVGpaint(Painter::*)(const Aabr&, float, float, const Color&, const Color&)) & Painter::BoxGradient, "Creates a box gradient paint.", py::arg("box"), py::arg("radius"), py::arg("feather"), py::arg("inner_color"), py::arg("outer_color"));
     Py_Painter.def("RadialGradient", (NVGpaint(Painter::*)(float, float, float, float, const Color&, const Color&)) & Painter::RadialGradient, "Creates a radial gradient paint.", py::arg("cx"), py::arg("cy"), py::arg("inr"), py::arg("outr"), py::arg("inner_color"), py::arg("outer_color"));
     Py_Painter.def("RadialGradient", (NVGpaint(Painter::*)(const Vector2&, float, float, const Color&, const Color&)) & Painter::RadialGradient, "Creates a radial gradient paint.", py::arg("center"), py::arg("inr"), py::arg("outr"), py::arg("inner_color"), py::arg("outer_color"));
+    Py_Painter.def("ImagePattern", (NVGpaint(Painter::*)(const std::shared_ptr<Texture2>&, float, float, float, float, float)) & Painter::ImagePattern, "Creates an image paint.", py::arg("texture"), py::arg("offset_x") = 0.f, py::arg("offset_y") = 0.f, py::arg("width") = -1.f, py::arg("height") = -1.f, py::arg("angle") = 0.f);
+    Py_Painter.def("ImagePattern", (NVGpaint(Painter::*)(const std::shared_ptr<Texture2>&, const Vector2&, Size2f size, float)) & Painter::ImagePattern, "Creates an image paint.", py::arg("texture"), py::arg("offset") = Vector2::zero(), py::arg("size") = Size2f({0, 0}), py::arg("angle") = 0.f);
 
     Py_Painter.def("reset_transform", &Painter::reset_transform, "Resets the coordinate system to its identity.");
     Py_Painter.def("translate", (void (Painter::*)(float, float)) & Painter::translate, "Translates the coordinate system.", py::arg("x"), py::arg("y"));
@@ -81,7 +87,7 @@ void produce_painter(pybind11::module& module)
     Py_Painter.def("intersect_scissor", (void (Painter::*)(float, float, float, float)) & Painter::intersect_scissor, "Intersects the current scissor with the given rectangle, both in the same (transformed) coordinate system.", py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"));
     Py_Painter.def("reset_scissor", &Painter::reset_scissor, "Resets the scissor rectangle and disables scissoring.");
 
-    Py_Painter.def("start_path", &Painter::start_path, "Clears the current path and sub-paths.");
+    Py_Painter.def("begin", &Painter::begin, "Clears the current path and sub-paths and begins a new one.");
     Py_Painter.def("set_winding", &Painter::set_winding, "Sets the current sub-path winding.", py::arg("winding"));
     Py_Painter.def("move_to", (void (Painter::*)(float, float)) & Painter::move_to, "Starts new sub-path with specified point as first point.", py::arg("x"), py::arg("x"));
     Py_Painter.def("line_to", (void (Painter::*)(float, float)) & Painter::line_to, "Adds line segment from the last point in the path to the specified point.", py::arg("x"), py::arg("x"));
@@ -98,12 +104,10 @@ void produce_painter(pybind11::module& module)
     Py_Painter.def("circle", (void (Painter::*)(float, float, float)) & Painter::circle, "Creates new circle shaped sub-path.", py::arg("x"), py::arg("y"), py::arg("radius"));
     Py_Painter.def("circle", (void (Painter::*)(const Vector2&, float)) & Painter::circle, "Creates new circle shaped sub-path.", py::arg("pos"), py::arg("radius"));
     Py_Painter.def("circle", (void (Painter::*)(const Circle&)) & Painter::circle, "Creates new circle shaped sub-path.", py::arg("circle"));
-    Py_Painter.def("close_path", &Painter::close_path, "Closes current sub-path with a line segment.");
 
-    Py_Painter.def("fill", (void (Painter::*)(const Color&)) & Painter::fill, "Fills the current path with a solid color.", py::arg("color"));
-    Py_Painter.def("fill", (void (Painter::*)(NVGpaint)) & Painter::fill, "Fills the current path with a paint.", py::arg("paint"));
-    Py_Painter.def("stroke", (void (Painter::*)(const Color&))&Painter::stroke, "Fills the current path with a solid color.", py::arg("color"));
-    Py_Painter.def("stroke", (void (Painter::*)(NVGpaint)) &Painter::stroke, "Fills the current path with a paint.", py::arg("paint"));
+    Py_Painter.def("close", &Painter::close, "Closes current sub-path with a line segment.");
+    Py_Painter.def("fill", &Painter::fill, "Fills the current path with current fill style.");
+    Py_Painter.def("stroke", &Painter::stroke, "Fills the current path with current stroke style.");
 }
 
 #ifdef __clang__

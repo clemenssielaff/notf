@@ -4,37 +4,47 @@
 
 namespace notf {
 
-/// @brief The Size2i class.
+struct Size2f;
+
+/** 2D size with integer values. */
 struct Size2i {
 
-    //  FIELDS  ///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    /// @brief Width.
+    /** Width */
     int width;
 
-    /// @brief Height.
+    /** Height */
     int height;
 
-    //  OPERATORS  ////////////////////////////////////////////////////////////////////////////////////////////////////
+    Size2i() = default;
 
-    /// @brief Tests if this Size is valid (>=0) in both dimensions.
+    Size2i(int width, int height)
+        : width(width)
+        , height(height)
+    {
+    }
+
+    static Size2i from_size2f(const Size2f& size2f);
+
+    /* Operators ******************************************************************************************************/
+
+    /** Tests if this Size is valid (>=0) in both dimensions. */
     bool is_valid() const { return width >= 0 && height >= 0; }
 
-    /// @brief Equal comparison with another Size2i.
+    /** Tests if this Size is null. */
+    bool is_null() const { return width == 0 && height == 0; }
+
     bool operator==(const Size2i& other) const { return (other.width == width && other.height == height); }
 
-    /// @brief Not-equal comparison with another Size2i.
     bool operator!=(const Size2i& other) const { return (other.width != width || other.height != height); }
 };
 
-//  FREE FUNCTIONS  ///////////////////////////////////////////////////////////////////////////////////////////////////
+/* Free Functions *****************************************************************************************************/
 
-/// @brief Prints the contents of this Size2i into a std::ostream.
-///
-/// @param os   Output stream, implicitly passed with the << operator.
-/// @param size Size2 to print.
-///
-/// @return Output stream for further output.
+/** Prints the contents of this Size2i into a std::ostream.
+ * @param out   Output stream, implicitly passed with the << operator.
+ * @param size  Size2i to print.
+ * @return      Output stream for further output.
+ */
 std::ostream& operator<<(std::ostream& out, const Size2i& size);
 
 } // namespace notf

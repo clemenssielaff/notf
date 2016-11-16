@@ -80,7 +80,7 @@ protected: // methods
      */
     virtual void _remove_item(const Handle item_handle) = 0;
 
-    virtual void _relayout(const Size2r size) override = 0;
+    virtual void _relayout(const Size2f size) override = 0;
 
 private: // fields
     /// @brief All children of this Layout.

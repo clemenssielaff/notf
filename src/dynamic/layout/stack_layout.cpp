@@ -61,7 +61,7 @@ void StackLayout::_remove_item(const Handle item_handle)
     m_items.erase(it);
 }
 
-void StackLayout::_relayout(const Size2r size)
+void StackLayout::_relayout(const Size2f size)
 {
     const size_t item_count = m_items.size();
     if (item_count == 0) {
@@ -69,7 +69,7 @@ void StackLayout::_relayout(const Size2r size)
     }
     if ((m_direction == STACK_DIRECTION::LEFT_TO_RIGHT) || (m_direction == STACK_DIRECTION::RIGHT_TO_LEFT)) { // horizontal
         const float width_per_item = size.width / item_count;
-        const Size2r item_size{width_per_item, size.height};
+        const Size2f item_size{width_per_item, size.height};
         float x_offset = 0.f;
         for (const Handle handle : m_items) {
             auto child = _get_child(handle);
@@ -79,7 +79,7 @@ void StackLayout::_relayout(const Size2r size)
     }
     else {
         const float height_per_item = size.height / item_count;
-        const Size2r item_size{size.width, height_per_item};
+        const Size2f item_size{size.width, height_per_item};
         float y_offset = 0.f;
         for (const Handle handle : m_items) {
             auto child = _get_child(handle);
