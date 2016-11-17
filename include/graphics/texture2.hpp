@@ -9,23 +9,22 @@ struct NVGcontext;
 
 namespace notf {
 
+/** Flags passed to Texture2::load(). */
+enum TextureFlags {
+    GENERATE_MIPMAPS = 1 << 0, // Generate mipmaps during creation of the image.
+    REPEATX = 1 << 1, // Repeat image in X direction.
+    REPEATY = 1 << 2, // Repeat image in Y direction.
+    FLIPY = 1 << 3, // Flips (inverses) image in Y direction when rendered.
+    PREMULTIPLIED = 1 << 4, // Image data has premultiplied alpha.
+};
+
 /** Manages the loading and setup of an OpenGL texture used in NanoVG. */
 class Texture2 {
 
-public: // enum
-    /** Flags passed to Texture2::load(). */
-    enum Flags {
-        GENERATE_MIPMAPS = 1 << 0, // Generate mipmaps during creation of the image.
-        REPEATX = 1 << 1, // Repeat image in X direction.
-        REPEATY = 1 << 2, // Repeat image in Y direction.
-        FLIPY = 1 << 3, // Flips (inverses) image in Y direction when rendered.
-        PREMULTIPLIED = 1 << 4, // Image data has premultiplied alpha.
-    };
-
 public: // static methods
     /** Loads a texture from a given file.
-    * @param nvg_context        NanoVG context of which this Texture is a part.
-    * @param texture_path       Path to a texture file.
+    * @param nvg_context        NanoVG context of which this Texture is a part of.
+    * @param texture_path       Absolute path to a texture file.
     * @param flags              Combination of `Texture::Flags`.
     * @throw std::runtime_error If the texture fails to load.
     */
@@ -56,8 +55,8 @@ protected: // methods
     }
 
 private: // fields
-    /** OpenGL ID of this Shader. */
-    int m_id;
+    /** OpenGL ID of this Texture. */
+    const int m_id;
 
     /** NanoVG context of which this Texture is a part. */
     NVGcontext* m_context;

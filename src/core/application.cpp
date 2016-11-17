@@ -7,6 +7,7 @@
 
 #include "common/keyboard.hpp"
 #include "common/log.hpp"
+#include "common/time.hpp"
 #include "core/events/key_event.hpp"
 #include "core/glfw_wrapper.hpp"
 #include "core/layout_item.hpp"
@@ -52,8 +53,8 @@ Application::Application(const ApplicationInfo info)
     if (!info.texture_directory.empty()) {
         m_resource_manager->set_texture_directory(info.texture_directory);
     }
-    if (!info.shader_directory.empty()) {
-        m_resource_manager->set_shader_directory(info.shader_directory);
+    if (!info.fonts_directory.empty()) {
+        m_resource_manager->set_font_directory(info.fonts_directory);
     }
 
     // set the error callback to catch all GLFW errors
@@ -66,10 +67,13 @@ Application::Application(const ApplicationInfo info)
         exit(to_number(RETURN_CODE::GLFW_FAILURE));
     }
     log_info << "GLFW version: " << glfwGetVersionString();
+
+    // initialize the time
+    Time::set_frequency(glfwGetTimerFrequency());
     glfwSetTime(0);
 
     // initialize Python
-    if(info.enable_python){
+    if (info.enable_python) {
         m_interpreter = std::make_unique<PythonInterpreter>(m_info.argv);
     }
 
@@ -185,7 +189,7 @@ void Application::_register_window(std::shared_ptr<Window> window)
     glfwSetWindowSizeCallback(glfw_window, _on_window_reize);
 
     // if this is the first Window, it is also the current one
-    if(!m_current_window){
+    if (!m_current_window) {
         m_current_window = window;
     }
 }
@@ -206,7 +210,7 @@ void Application::_unregister_window(std::shared_ptr<Window> window)
     m_windows.erase(iterator);
 }
 
-void Application::_set_current_window(Window *window)
+void Application::_set_current_window(Window* window)
 {
     if (m_current_window.get() != window) {
         glfwMakeContextCurrent(window->_glwf_window());

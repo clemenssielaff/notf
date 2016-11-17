@@ -318,7 +318,7 @@ static_assert(sizeof(Color) == sizeof(float) * 4,
               "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
 static_assert(std::is_pod<Color>::value,
-              "This compiler does not recognize the notf::Color as a POD.");
+              "This compiler does not recognize notf::Color as a POD.");
 
 #ifdef __clang__
 #pragma clang diagnostic pop

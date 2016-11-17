@@ -17,9 +17,9 @@ INCLUDEPATH *= /home/clemens/code/thirdparty/Python-3.5.2/INSTALL/include/python
 CONFIG(release, debug|release) {
 #    message("Building in Release Mode.")
     DEFINES += "SIGNAL_LOG_LEVEL=4"
-    QMAKE_CXXFLAGS_RELEASE += -fvisibility=hidden
+    QMAKE_CXXFLAGS_RELEASE += -fvisibility=hidden -s
     QMAKE_CXXFLAGS_RELEASE += -O3
-    QMAKE_LFLAGS_RELEASE += -fvisibility=hidden
+    QMAKE_LFLAGS_RELEASE += -fvisibility=hidden -s
     QMAKE_LFLAGS_RELEASE += -O3
 }
 
@@ -87,7 +87,6 @@ SOURCES += \
     src/core/znode.cpp \
     src/graphics/painter.cpp \
     src/python/py_canvascomponent.cpp \
-    src/python/py_global.cpp \
     src/python/py_layoutroot.cpp \
     src/python/py_painter.cpp \
     src/python/py_stacklayout.cpp \
@@ -100,7 +99,10 @@ SOURCES += \
     src/python/py_circle.cpp \
     src/python/py_texture2.cpp \
     src/common/size2f.cpp \
-    src/python/py_size.cpp
+    src/python/py_size.cpp \
+    src/common/time.cpp \
+    src/graphics/font.cpp \
+    src/python/py_resourcemanager.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -151,7 +153,6 @@ HEADERS += \
     include/python/interpreter.hpp \
     include/core/object.hpp \
     include/python/pynotf.hpp \
-    include/common/const.hpp \
     include/graphics/raw_image.hpp \
     include/graphics/texture2.hpp \
     thirdparty/nanovg/fontstash.h \
@@ -165,6 +166,9 @@ HEADERS += \
     include/common/memory_utils.hpp \
     include/common/float_utils.hpp \
     include/common/circle.hpp \
-    include/common/size2f.hpp
+    include/common/size2f.hpp \
+    include/common/hash_utils.hpp \
+    include/common/time.hpp \
+    include/graphics/font.hpp
 
 QMAKE_CXX = ccache g++

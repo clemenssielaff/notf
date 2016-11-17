@@ -1,7 +1,7 @@
-#include "graphics/texture2.hpp"
-
 #include "assert.h"
 #include <exception>
+
+#include "graphics/texture2.hpp"
 
 #include <nanovg/nanovg.h>
 
@@ -20,14 +20,14 @@ std::shared_ptr<Texture2> Texture2::load(NVGcontext* nvg_context, const std::str
     const int height = image.get_height();
     int id = nvgCreateImageRGBA(nvg_context, width, height, flags, image.get_data());
     if (id == 0) {
-        std::string message = string_format("Failed to load Texture2 from \"%s\"", texture_path.c_str());
+        std::string message = string_format("Failed to load Texture2 file: %s", texture_path.c_str());
         log_critical << message;
         throw std::runtime_error(std::move(message));
     }
 
     // log success
     {
-#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_TRACE
+#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_INFO
         static const std::string grayscale = "grayscale";
         static const std::string rgb = "rgb";
         static const std::string rgba = "rgba";
@@ -44,19 +44,18 @@ std::shared_ptr<Texture2> Texture2::load(NVGcontext* nvg_context, const std::str
             assert(bytes == 4);
             format_name = &rgba;
         }
-        log_trace << "Loaded " << image.get_width() << "x" << image.get_height() << " " << *format_name
+        log_info << "Loaded " << image.get_width() << "x" << image.get_height() << " " << *format_name
                   << " OpenGL texture with ID: " << id << " from: " << texture_path;
 #endif
     }
 
-    // return the loaded texture on success
     return std::make_shared<MakeSmartEnabler<Texture2>>(id, nvg_context);
 }
 
 Texture2::~Texture2()
 {
     nvgDeleteImage(m_context, m_id);
-    log_trace << "Deleted Texture2 with ID: " << m_id;
+    log_info << "Deleted Texture2 with ID: " << m_id;
 }
 
 Size2i Texture2::get_size() const

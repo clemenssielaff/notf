@@ -12,7 +12,7 @@ int main(int argc, char* argv[])
     app_info.argc = argc;
     app_info.argv = argv;
     app_info.texture_directory = "/home/clemens/code/notf/res/textures";
-    app_info.shader_directory = "/home/clemens/code/notf/res/shaders";
+    app_info.fonts_directory = "/home/clemens/code/notf/res/fonts";
     Application& app = Application::initialize(app_info);
 
     // window

@@ -9,7 +9,7 @@ def paint(painter):
     painter.fill()
 
     painter.begin()
-    tex = Texture2("notf.png", 1)
+    tex = Texture2("face.png", TextureFlags.GENERATE_MIPMAPS)
     img_rect = Aabr(128, 128)
     img_rect.center = Vector2(500, 400)
     img = painter.ImagePattern(tex, img_rect)

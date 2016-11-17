@@ -34,7 +34,7 @@ RawImage::~RawImage()
 {
     if (m_data) {
         stbi_image_free(m_data);
-        log_trace << "Destructed Image '" << m_filepath << "'";
+        log_trace << "Deleted Image '" << m_filepath << "'";
     }
 }
 

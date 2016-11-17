@@ -21,6 +21,6 @@ static_assert(sizeof(Transform2) == sizeof(float) * 6,
               "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
 static_assert(std::is_pod<Transform2>::value,
-              "This compiler does not recognize the notf::Transform2 as a POD.");
+              "This compiler does not recognize notf::Transform2 as a POD.");
 
 } // namespace notf

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/size2i.hpp"
+#include "common/time.hpp"
 #include "common/vector2.hpp"
 
 struct NVGcontext;
@@ -22,6 +23,9 @@ struct RenderContext {
 
     /** Position of the cursor, in screen coordinates, relative to the upper-left corner. */
     Vector2 mouse_pos;
+
+    /** Application time at the start of the frame. */
+    Time time;
 
     /** The pixel aspect ratio. */
     float get_pixel_ratio() const { return window_size.width ? static_cast<float>(buffer_size.width) / static_cast<float>(window_size.width)

@@ -17,7 +17,6 @@
 #endif
 #endif
 
-#include "common/const.hpp"
 #include "common/log.hpp"
 #include "common/random.hpp"
 #include "core/layout_root.hpp"
@@ -70,19 +69,19 @@ std::vector<std::unique_ptr<ZNode>> produce_five_hierarchy()
  */
 std::vector<std::shared_ptr<StackLayout>> produce_example_a()
 {
-    std::shared_ptr<StackLayout> a = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> b = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> c = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> d = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> e = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> f = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> g = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> h = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> i = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> j = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> k = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> l = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> m = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> a = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> b = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> c = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> d = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> e = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> f = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> g = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> h = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> i = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> j = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> k = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> l = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> m = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
 
     b->place_on_bottom_of(a);
     c->place_above(b);
@@ -113,19 +112,19 @@ std::vector<std::shared_ptr<StackLayout>> produce_example_a()
  */
 std::vector<std::shared_ptr<StackLayout>> produce_example_b()
 {
-    std::shared_ptr<StackLayout> a = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> b = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> c = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> d = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> e = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> f = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> g = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> h = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> i = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> j = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> k = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> l = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-    std::shared_ptr<StackLayout> m = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> a = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> b = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> c = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> d = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> e = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> f = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> g = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> h = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> i = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> j = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> k = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> l = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+    std::shared_ptr<StackLayout> m = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
 
     b->place_above(a);
     c->place_above(b);
@@ -565,12 +564,12 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
     {
         Handle root_handle = Application::get_instance().get_object_manager()._get_next_handle();
         std::shared_ptr<LayoutRoot> root = LayoutRoot::create(root_handle, {});
-        std::shared_ptr<StackLayout> a = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-        std::shared_ptr<StackLayout> b = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-        std::shared_ptr<StackLayout> c = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-        std::shared_ptr<StackLayout> d = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-        std::shared_ptr<StackLayout> e = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-        std::shared_ptr<StackLayout> f = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> a = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> b = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> c = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> d = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> e = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> f = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
 
         root->set_item(a);
         a->add_item(b);
@@ -615,12 +614,12 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
     {
         Handle root_handle = Application::get_instance().get_object_manager()._get_next_handle();
         std::shared_ptr<LayoutRoot> root = LayoutRoot::create(root_handle, {});
-        std::shared_ptr<StackLayout> a = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-        std::shared_ptr<StackLayout> b = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-        std::shared_ptr<StackLayout> c = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-        std::shared_ptr<StackLayout> d = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-        std::shared_ptr<StackLayout> e = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-        std::shared_ptr<StackLayout> f = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> a = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> b = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> c = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> d = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> e = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> f = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
 
         root->set_item(a);
         a->add_item(b);
@@ -652,11 +651,11 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
 
     WHEN("a ZNode is deleted because its LayoutItem is deleted")
     {
-        std::shared_ptr<StackLayout> root = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-        std::shared_ptr<StackLayout> left = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> root = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+        std::shared_ptr<StackLayout> left = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
         root->add_item(left);
         {
-            std::shared_ptr<StackLayout> mid = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+            std::shared_ptr<StackLayout> mid = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
             mid->place_below(root);
             left->place_on_bottom_of(mid);
             // TODO: some function to REMOVE LayoutItems from each other...
@@ -687,13 +686,13 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
         {
             Handle root_handle = Application::get_instance().get_object_manager()._get_next_handle();
             root = LayoutRoot::create(root_handle, {});
-            std::shared_ptr<StackLayout> a = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-            std::shared_ptr<StackLayout> b = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-            std::shared_ptr<StackLayout> c = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-            std::shared_ptr<StackLayout> d = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-            std::shared_ptr<StackLayout> e = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-            std::shared_ptr<StackLayout> f = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
-            std::shared_ptr<StackLayout> g = StackLayout::create(STACK_DIRECTION::LEFT_TO_RIGHT);
+            std::shared_ptr<StackLayout> a = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+            std::shared_ptr<StackLayout> b = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+            std::shared_ptr<StackLayout> c = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+            std::shared_ptr<StackLayout> d = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+            std::shared_ptr<StackLayout> e = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+            std::shared_ptr<StackLayout> f = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
+            std::shared_ptr<StackLayout> g = StackLayout::create(StackDirection::LEFT_TO_RIGHT);
 
             raw_pointers = {
                 a->m_znode.get(),

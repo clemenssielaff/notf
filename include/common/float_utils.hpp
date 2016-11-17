@@ -68,21 +68,4 @@ inline bool is_inf(const float value) { return std::isinf(value); }
 /** Tests whether a given value is a valid float value (not NAN, not INFINITY). */
 inline bool is_valid(const float value) { return !is_nan(value) && !is_inf(value); }
 
-/** Calculates a hash value from a supplied float. */
-inline size_t hash(const float value) { return std::hash<float>()(value); }
-
-/** Builds up a hash value from an existing hash and the supplied float.
- * Useful for building up hashes from several floats, like in a Vector2 - for example.
- *
- * @param value     float to hash.
- * @param seed      Existing hash value to build upon.
- * @return          New hash value.
- */
-inline size_t hash(float value, size_t seed)
-{
-    size_t result = seed;
-    result ^= hash(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    return result;
-}
-
 } // namespace notf

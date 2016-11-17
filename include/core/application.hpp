@@ -29,8 +29,8 @@ struct ApplicationInfo {
     /** System path to the texture directory, absolute or relative to the executable. */
     std::string texture_directory = "";
 
-    /** System path to the shader directory, absolute or relative to the executable. */
-    std::string shader_directory = "";
+    /** System path to the fonts directory, absolute or relative to the executable. */
+    std::string fonts_directory = "";
 
     /** If set to false, the Application will not have a Python interpreter available. */
     bool enable_python = true;

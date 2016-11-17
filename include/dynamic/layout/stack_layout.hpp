@@ -3,11 +3,18 @@
 #include <algorithm>
 #include <limits>
 
-#include "common/const.hpp"
 #include "common/index.hpp"
 #include "core/layout.hpp"
 
 namespace notf {
+
+/** Direction in which a visual stack can be stacked. */
+enum class StackDirection : unsigned char {
+    LEFT_TO_RIGHT,
+    TOP_TO_BOTTOM,
+    RIGHT_TO_LEFT,
+    BOTTOM_TO_TOP,
+};
 
 /**
  * @brief The StackLayout class
@@ -16,10 +23,10 @@ class StackLayout : public Layout {
 
 public: // methods
     /// @brief Direction in which the StackLayout is stacked.
-    STACK_DIRECTION get_direction() const { return m_direction; }
+    StackDirection get_direction() const { return m_direction; }
 
     /// @brief Updates the direction in which the StackLayout is stacked.
-    void set_direction(const STACK_DIRECTION direction)
+    void set_direction(const StackDirection direction)
     {
         if (m_direction == direction) {
             return;
@@ -63,7 +70,7 @@ public: // static methods
     /// @brief Factory function to create a new StackLayout.
     /// @param direction    Direction in which the StackLayout is stacked.
     /// @param handle       Handle of this Layout.
-    static std::shared_ptr<StackLayout> create(const STACK_DIRECTION direction, Handle handle = BAD_HANDLE)
+    static std::shared_ptr<StackLayout> create(const StackDirection direction, Handle handle = BAD_HANDLE)
     {
         return _create_object<StackLayout>(handle, direction);
     }
@@ -71,7 +78,7 @@ public: // static methods
 protected: // methods
     /// @brief Value Constructor.
     /// @param handle   Handle of this Layout.
-    explicit StackLayout(const Handle handle, const STACK_DIRECTION direction)
+    explicit StackLayout(const Handle handle, const StackDirection direction)
         : Layout(handle)
         , m_direction(direction)
         , m_items()
@@ -86,7 +93,7 @@ protected: // methods
 
 private: // fields
     /// @brief Direction in which the StackLayout is stacked.
-    STACK_DIRECTION m_direction;
+    StackDirection m_direction;
 
     float m_spacing;
 

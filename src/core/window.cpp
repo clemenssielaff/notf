@@ -88,6 +88,7 @@ void Window::_update()
     ctx.nanovg_context = m_nvg_context.get();
     glfwGetWindowSize(m_glfw_window.get(), &ctx.window_size.width, &ctx.window_size.height);
     glfwGetFramebufferSize(m_glfw_window.get(), &ctx.buffer_size.width, &ctx.buffer_size.height);
+    ctx.time = Time::now();
 
     double mouse_x, mouse_y;
     glfwGetCursorPos(m_glfw_window.get(), &mouse_x, &mouse_y);

@@ -19,7 +19,7 @@ static_assert(sizeof(Aabr) == sizeof(Vector2) * 2,
               "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
 static_assert(std::is_pod<Aabr>::value,
-              "This compiler does not recognize the notf::Aabr as a POD.");
+              "This compiler does not recognize notf::Aabr as a POD.");
 
 
 } // namespace notf
