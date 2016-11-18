@@ -78,6 +78,7 @@ void produce_painter(pybind11::module& module)
 
     Py_Painter.def("reset_transform", &Painter::reset_transform, "Resets the coordinate system to its identity.");
     Py_Painter.def("translate", (void (Painter::*)(float, float)) & Painter::translate, "Translates the coordinate system.", py::arg("x"), py::arg("y"));
+    Py_Painter.def("translate", (void (Painter::*)(const Vector2&)) & Painter::translate, "Translates the coordinate system.", py::arg("position"));
     Py_Painter.def("rotate", &Painter::rotate, "Rotates the coordinate system `angle` radians in a clockwise direction.", py::arg("angle"));
     Py_Painter.def("scale", (void (Painter::*)(float)) & Painter::scale, "Scales the coordinate system uniformly in both x- and y.", py::arg("factor"));
     Py_Painter.def("scale", (void (Painter::*)(float, float)) & Painter::scale, "Scales the coorindate system in x- and y independently.", py::arg("x"), py::arg("x"));
@@ -85,31 +86,59 @@ void produce_painter(pybind11::module& module)
     Py_Painter.def("skew_y", &Painter::skew_y, "Skews the coordinate system along y for `angle` radians.", py::arg("angle"));
 
     Py_Painter.def("set_scissor", (void (Painter::*)(float, float, float, float)) & Painter::set_scissor, "Limits all painting to the inside of the given (transformed) rectangle.", py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"));
+    Py_Painter.def("set_scissor", (void (Painter::*)(const Aabr&)) & Painter::set_scissor, "Limits all painting to the inside of the given (transformed) rectangle.", py::arg("aabr"));
     Py_Painter.def("intersect_scissor", (void (Painter::*)(float, float, float, float)) & Painter::intersect_scissor, "Intersects the current scissor with the given rectangle, both in the same (transformed) coordinate system.", py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"));
+    Py_Painter.def("intersect_scissor", (void (Painter::*)(const Aabr&)) & Painter::intersect_scissor, "Intersects the current scissor with the given rectangle, both in the same (transformed) coordinate system.", py::arg("aabr"));
     Py_Painter.def("reset_scissor", &Painter::reset_scissor, "Resets the scissor rectangle and disables scissoring.");
 
     Py_Painter.def("begin", &Painter::begin, "Clears the current path and sub-paths and begins a new one.");
     Py_Painter.def("set_winding", &Painter::set_winding, "Sets the current sub-path winding.", py::arg("winding"));
     Py_Painter.def("move_to", (void (Painter::*)(float, float)) & Painter::move_to, "Starts new sub-path with specified point as first point.", py::arg("x"), py::arg("x"));
+    Py_Painter.def("move_to", (void (Painter::*)(const Vector2&)) & Painter::move_to, "Starts new sub-path with specified point as first point.", py::arg("position"));
+    Py_Painter.def("close", &Painter::close, "Closes current sub-path with a line segment.");
+    Py_Painter.def("fill", &Painter::fill, "Fills the current path with current fill style.");
+    Py_Painter.def("stroke", &Painter::stroke, "Fills the current path with current stroke style.");
+
     Py_Painter.def("line_to", (void (Painter::*)(float, float)) & Painter::line_to, "Adds line segment from the last point in the path to the specified point.", py::arg("x"), py::arg("x"));
+    Py_Painter.def("line_to", (void (Painter::*)(const Vector2&)) & Painter::line_to, "Adds line segment from the last point in the path to the specified point.", py::arg("position"));
     Py_Painter.def("bezier_to", (void (Painter::*)(float, float, float, float, float, float)) & Painter::bezier_to, "Adds cubic bezier segment from last point in the path via two control points to the specified point.", py::arg("c1x"), py::arg("c1y"), py::arg("c2x"), py::arg("c2y"), py::arg("x"), py::arg("y"));
+    Py_Painter.def("bezier_to", (void (Painter::*)(const Vector2&, const Vector2&, const Vector2&)) & Painter::bezier_to, "Adds cubic bezier segment from last point in the path via two control points to the specified point.", py::arg("ctrl_1"), py::arg("ctrl_2"), py::arg("end"));
     Py_Painter.def("quad_to", (void (Painter::*)(float, float, float, float)) & Painter::quad_to, "Adds quadratic bezier segment from last point in the path via a control point to the specified point.", py::arg("c1x"), py::arg("c1y"), py::arg("x"), py::arg("y"));
+    Py_Painter.def("quad_to", (void (Painter::*)(const Vector2&, const Vector2&)) & Painter::quad_to, "Adds quadratic bezier segment from last point in the path via a control point to the specified point.", py::arg("ctrl"), py::arg("end"));
     Py_Painter.def("arc_to", (void (Painter::*)(float, float, float, float, float)) & Painter::arc_to, "Adds an arc segment at the corner defined by the last path point, and two specified points.", py::arg("x1"), py::arg("y1"), py::arg("x2"), py::arg("y2"), py::arg("radius"));
+    Py_Painter.def("arc_to", (void (Painter::*)(const Vector2&, const Vector2&, float)) & Painter::arc_to, "Adds an arc segment at the corner defined by the last path point, and two specified points.", py::arg("ctrl"), py::arg("end"), py::arg("radius"));
     Py_Painter.def("arc", (void (Painter::*)(float, float, float, float, float, Painter::Winding)) & Painter::arc, "Creates new circle arc shaped sub-path.", py::arg("cx"), py::arg("cy"), py::arg("r"), py::arg("a0"), py::arg("a1"), py::arg("winding"));
     Py_Painter.def("arc", (void (Painter::*)(const Vector2&, float, float, float, Painter::Winding)) & Painter::arc, "Creates new circle arc shaped sub-path.", py::arg("pos"), py::arg("r"), py::arg("a0"), py::arg("a1"), py::arg("winding"));
     Py_Painter.def("arc", (void (Painter::*)(const Circle&, float, float, Painter::Winding)) & Painter::arc, "Creates new circle arc shaped sub-path.", py::arg("circle"), py::arg("a0"), py::arg("a1"), py::arg("winding"));
     Py_Painter.def("rect", (void (Painter::*)(float, float, float, float)) & Painter::rect, "Creates new rectangle shaped sub-path.", py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"));
     Py_Painter.def("rect", (void (Painter::*)(const Aabr&)) & Painter::rect, "Creates new rectangle shaped sub-path.", py::arg("aabr"));
-    Py_Painter.def("rounded_rect", (void (Painter::*)(float, float, float, float, float, float, float, float)) & Painter::rounded_rect, "Creates new rounded rectangle shaped sub-path.", py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), py::arg("rad_nw"), py::arg("rad_ne"), py::arg("rad_se"), py::arg("rad_sw"));
     Py_Painter.def("rounded_rect", (void (Painter::*)(float, float, float, float, float)) & Painter::rounded_rect, "Creates new rounded rectangle shaped sub-path.", py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), py::arg("radius"));
+    Py_Painter.def("rounded_rect", (void (Painter::*)(float, float, float, float, float, float, float, float)) & Painter::rounded_rect, "Creates new rounded rectangle shaped sub-path.", py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"), py::arg("rad_nw"), py::arg("rad_ne"), py::arg("rad_se"), py::arg("rad_sw"));
+    Py_Painter.def("rounded_rect", (void (Painter::*)(const Aabr&, float)) & Painter::rounded_rect, "Creates new rounded rectangle shaped sub-path.", py::arg("aabr"), py::arg("radius"));
+    Py_Painter.def("rounded_rect", (void (Painter::*)(const Aabr&, float, float, float, float)) & Painter::rounded_rect, "Creates new rounded rectangle shaped sub-path.", py::arg("aabr"), py::arg("rad_nw"), py::arg("rad_ne"), py::arg("rad_se"), py::arg("rad_sw"));
     Py_Painter.def("ellipse", (void (Painter::*)(float, float, float, float)) & Painter::ellipse, "Creates new ellipse shaped sub-path.", py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"));
     Py_Painter.def("circle", (void (Painter::*)(float, float, float)) & Painter::circle, "Creates new circle shaped sub-path.", py::arg("x"), py::arg("y"), py::arg("radius"));
     Py_Painter.def("circle", (void (Painter::*)(const Vector2&, float)) & Painter::circle, "Creates new circle shaped sub-path.", py::arg("pos"), py::arg("radius"));
     Py_Painter.def("circle", (void (Painter::*)(const Circle&)) & Painter::circle, "Creates new circle shaped sub-path.", py::arg("circle"));
 
-    Py_Painter.def("close", &Painter::close, "Closes current sub-path with a line segment.");
-    Py_Painter.def("fill", &Painter::fill, "Fills the current path with current fill style.");
-    Py_Painter.def("stroke", &Painter::stroke, "Fills the current path with current stroke style.");
+    Py_Painter.def("set_font_size", &Painter::set_font_size, "Sets the font size of the current text style.", py::arg("size"));
+    Py_Painter.def("set_font_blur", &Painter::set_font_blur, "Sets the font blur of the current text style.", py::arg("blur"));
+    Py_Painter.def("set_letter_spacing", &Painter::set_letter_spacing, "Sets the letter spacing of the current text style.", py::arg("spacing"));
+    Py_Painter.def("set_line_height", &Painter::set_line_height, "Sets the proportional line height of the current text style.", py::arg("height"));
+    Py_Painter.def("set_text_align", &Painter::set_text_align, "Sets the text align of the current text style.", py::arg("align"));
+    Py_Painter.def("set_font", &Painter::set_font, "Sets the font of the current text style.", py::arg("font"));
+    Py_Painter.def("text", (float (Painter::*)(float, float, const std::string&, size_t)) & Painter::text, "Draws a text at the specified location up to `length` characters long.", py::arg("x"), py::arg("y"), py::arg("string"), py::arg("length") = 0);
+    Py_Painter.def("text", (float (Painter::*)(const Vector2&, const std::string&, size_t)) & Painter::text, "Draws a text at the specified location up to `length` characters long.", py::arg("position"), py::arg("string"), py::arg("length") = 0);
+    Py_Painter.def("text_box", (void (Painter::*)(float, float, float, const std::string&, size_t)) & Painter::text_box, "Draws a multi-line text box at the specified location, wrapped at `width`, up to `length` characters long.", py::arg("x"), py::arg("y"), py::arg("width"), py::arg("string"), py::arg("length") = 0);
+    Py_Painter.def("text_box", (void (Painter::*)(const Vector2&, float, const std::string&, size_t)) & Painter::text_box, "Draws a multi-line text box at the specified location, wrapped at `width`, up to `length` characters long.", py::arg("position"), py::arg("width"), py::arg("string"), py::arg("length") = 0);
+    Py_Painter.def("text_box", (void (Painter::*)(const Aabr&, const std::string&, size_t)) & Painter::text_box, "Draws a multi-line text box at the specified location, wrapped at `width`, up to `length` characters long.", py::arg("rect"), py::arg("string"), py::arg("length") = 0);
+    Py_Painter.def("text_bounds", (Aabr(Painter::*)(float, float, const std::string&, size_t)) & Painter::text_bounds, "Returns the bounding box of the specified text in local space.", py::arg("x"), py::arg("y"), py::arg("string"), py::arg("length") = 0);
+    Py_Painter.def("text_bounds", (Aabr(Painter::*)(const Vector2&, const std::string&, size_t)) & Painter::text_bounds, "Returns the bounding box of the specified text in local space.", py::arg("position"), py::arg("string"), py::arg("length") = 0);
+    Py_Painter.def("text_bounds", (Aabr(Painter::*)(const std::string&, size_t)) & Painter::text_bounds, "Returns the bounding box of the specified text in local space.", py::arg("string"), py::arg("length") = 0);
+    Py_Painter.def("text_box_bounds", (Aabr(Painter::*)(float, float, float, const std::string&, size_t)) & Painter::text_box_bounds, "Returns the bounding box of the specified text box in local space.", py::arg("x"), py::arg("y"), py::arg("width"), py::arg("string"), py::arg("length") = 0);
+    Py_Painter.def("text_box_bounds", (Aabr(Painter::*)(const Vector2&, float, const std::string&, size_t)) & Painter::text_box_bounds, "Returns the bounding box of the specified text box in local space.", py::arg("position"), py::arg("width"), py::arg("string"), py::arg("length") = 0);
+    Py_Painter.def("text_box_bounds", (Aabr(Painter::*)(const Aabr&, const std::string&, size_t)) & Painter::text_box_bounds, "Returns the bounding box of the specified text box in local space.", py::arg("rect"), py::arg("string"), py::arg("length") = 0);
+    Py_Painter.def("text_box_bounds", (Aabr(Painter::*)(float, const std::string&, size_t)) & Painter::text_box_bounds, "Returns the bounding box of the specified text box in local space.", py::arg("width"), py::arg("string"), py::arg("length") = 0);
 }
 
 #ifdef __clang__

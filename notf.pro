@@ -102,7 +102,8 @@ SOURCES += \
     src/python/py_size.cpp \
     src/common/time.cpp \
     src/graphics/font.cpp \
-    src/python/py_resourcemanager.cpp
+    src/python/py_resourcemanager.cpp \
+    src/python/py_font.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -169,6 +170,7 @@ HEADERS += \
     include/common/size2f.hpp \
     include/common/hash_utils.hpp \
     include/common/time.hpp \
-    include/graphics/font.hpp
+    include/graphics/font.hpp \
+    include/common/literals.hpp
 
 QMAKE_CXX = ccache g++

@@ -50,14 +50,75 @@ inline std::vector<std::string> tokenize(const char* input, const char delimiter
     return tokenize(std::string(input), delimiter);
 }
 
-/// @brief Tests if an input string starts with a given prefix.
-/// @param input    Input string.
-/// @param prefix   Prefix to test for.
-/// @return True iff the first n input string characters match the prefix of size n.
-///
+/** Tests if a string ends starts a given prefix.
+ * @param input     Input string.
+ * @param prefix    Prefix to test for.
+ * @return True if the first n input string characters match the prefix of size n.
+ */
 inline bool starts_with(const std::string& input, const std::string& prefix)
 {
     return (input.compare(0, prefix.size(), prefix) == 0);
+}
+
+/** Case insensitive test if a string starts with a given prefix.
+ * @param input     Input string.
+ * @param prefix    Prefix to test for.
+ * @return True iff the first n input string characters match the prefix of size n.
+ */
+inline bool istarts_with(const std::string& input, const std::string& prefix)
+{
+    const auto input_size = input.size();
+    const auto prefix_size = prefix.size();
+    if (prefix_size > input_size) {
+        return false;
+    }
+    std::string relevant_input = input.substr(0, prefix.length());
+    std::transform(relevant_input.begin(), relevant_input.end(), relevant_input.begin(), [](auto c) {
+        return std::tolower(c);
+    });
+    std::string prefix_lower = prefix;
+    std::transform(prefix_lower.begin(), prefix_lower.end(), prefix_lower.begin(), [](auto c) {
+        return std::tolower(c);
+    });
+    return relevant_input.compare(0, prefix.length(), prefix) == 0;
+}
+
+/** Tests if a string ends with a given postfix.
+ * @param input     Input string.
+ * @param postfix   Postfix to test for.
+ * @return True if the last n input string characters match the postfix of size n.
+ */
+inline bool ends_with(const std::string& input, const std::string& postfix)
+{
+    const auto input_size = input.size();
+    const auto postfix_size = postfix.size();
+    if (postfix_size > input_size) {
+        return false;
+    }
+    return (input.compare(input_size - postfix_size, postfix_size, postfix) == 0);
+}
+
+/** Case insensitive test if a string ends with a given postfix.
+ * @param input     Input string.
+ * @param postfix   Postfix to test for.
+ * @return True iff the last n input string characters match the postfix of size n.
+ */
+inline bool iends_with(const std::string& input, const std::string& postfix)
+{
+    const auto input_size = input.size();
+    const auto postfix_size = postfix.size();
+    if (postfix_size > input_size) {
+        return false;
+    }
+    std::string relevant_input = input.substr(input_size - postfix_size, input_size);
+    std::transform(relevant_input.begin(), relevant_input.end(), relevant_input.begin(), [](auto c) {
+        return std::tolower(c);
+    });
+    std::string postfix_lower = postfix;
+    std::transform(postfix_lower.begin(), postfix_lower.end(), postfix_lower.begin(), [](auto c) {
+        return std::tolower(c);
+    });
+    return (relevant_input.compare(0, postfix_size, postfix_lower) == 0);
 }
 
 /// @brief Case-insensitive string comparison.
@@ -73,20 +134,6 @@ inline bool icompare(const std::string& left, const std::string& right)
     else {
         return false;
     }
-}
-
-/// @brief Case-insensitive test, if the input string starts with a given prefix.
-/// @param input    Input string.
-/// @param prefix   Prefix to test for.
-/// @return True iff the first n input string characters match the prefix of size n.
-///
-inline bool istarts_with(const std::string& input, const std::string& prefix)
-{
-    std::string relevant_input = input.substr(0, prefix.length());
-    std::transform(relevant_input.begin(), relevant_input.end(), relevant_input.begin(), [](auto c) {
-        return std::tolower(c);
-    });
-    return relevant_input.compare(0, prefix.length(), prefix) == 0;
 }
 
 /// \brief String Formatting function using std::snprinftf.

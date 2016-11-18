@@ -61,23 +61,21 @@ void ResourceManager::set_nvg_context(NVGcontext* context)
     m_context = context;
 }
 
-void ResourceManager::load_font(const std::string& name, const std::string& font_path)
+std::shared_ptr<Font> ResourceManager::get_font(const std::string& name)
 {
-    const std::string full_path = m_font_directory + font_path;
-    std::shared_ptr<Font> font = Font::load(m_context, full_path, name);
-    const size_t hash_value = hash(name);
-    m_fonts.emplace(hash_value, font);
-}
-
-std::shared_ptr<Font> ResourceManager::get_font(const std::string& font_name)
-{
-    const size_t hash_value = hash(font_name);
-    if (m_fonts.count(hash_value) == 0) {
-        std::string message = string_format("Failed to retrieve unknown Font \"%s\"", font_name.c_str());
-        log_critical << message;
-        throw std::runtime_error(message);
+    std::string full_path = m_font_directory + name;
+    if(!iends_with(name, Font::file_extension)){
+        full_path.append(Font::file_extension);
     }
-    return m_fonts.at(hash_value);
+
+    const size_t hash_value = hash(full_path);
+    if (m_fonts.count(hash_value)) {
+        return m_fonts.at(hash_value);
+    }
+
+    std::shared_ptr<Font> font = Font::load(m_context, name, full_path);
+    m_fonts.emplace(hash_value, font);
+    return font;
 }
 
 std::shared_ptr<Texture2> ResourceManager::get_texture(const std::string& texture_path, int flags)

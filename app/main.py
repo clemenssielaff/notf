@@ -9,13 +9,17 @@ def paint(painter):
     painter.fill()
 
     painter.begin()
-    tex = Texture2("face.png", TextureFlags.GENERATE_MIPMAPS)
+    tex = Texture2("face.png", int(TextureFlags.GENERATE_MIPMAPS))
     img_rect = Aabr(128, 128)
     img_rect.center = Vector2(500, 400)
     img = painter.ImagePattern(tex, img_rect)
     painter.rect(img_rect)
     painter.set_fill(img)
     painter.fill()
+
+    font = Font("Roboto-Bold")
+    painter.set_font(font)
+    painter.text(200, 200, "This is very derbe")
 
 def main():
     canvas = CanvasComponent()
@@ -26,6 +30,9 @@ def main():
 
     window = Window()
     window.get_layout_root().set_item(circle)
+
+    resource_manager = ResourceManager()
+    resource_manager.cleanup()
 
 if __name__ == "__main__":
     main()

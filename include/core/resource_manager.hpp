@@ -41,19 +41,14 @@ public: // methods
     /** Sets the NanoVG context into which to load the Textures. */
     void set_nvg_context(NVGcontext* context); // TODO: Ressource management won't work with multiple contexts.
 
-    /** Loads a new Font from the given file and assigns it the given name.
-     * @param name                  Name of the font.
-     * @param font_path             Path of the font file, relative to the font directory.
-     * @throw std::runtime_error    If the Font cannot be loaded.
+    /** Retrieves a Font by its name in the font directory
+     * There is a 1:1 relationship between a font name and its .ttf file.
+     * This is also the reason why you can only load fonts from the font directory as we can guarantee that there will
+     * be no naming conflicts.
+     * @param font_name             Name of the Font and its file in the font directory (the *.ttf ending is optional).
+     * @throw std::runtime_error    If the requested Font cannot be loaded.
      */
-    void load_font(const std::string& name, const std::string& font_path);
-
-    /** Retrieves a Font by its name.
-     * Note that the Font must already been loaded using load_font.
-     * @param font_name             Name of the Font.
-    *  @throw std::runtime_error    If the requested Font is unknown.
-     */
-    std::shared_ptr<Font> get_font(const std::string& font_name);
+    std::shared_ptr<Font> get_font(const std::string& name);
 
     /** Retrieves a Texture2 by its path.
      * This function either loads the texture from disk if this is the first time it has been requested,

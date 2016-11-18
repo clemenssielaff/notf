@@ -2,6 +2,7 @@
 
 #include <iosfwd>
 
+#include "common/hash_utils.hpp"
 #include "common/vector2.hpp"
 
 namespace notf {
@@ -373,6 +374,9 @@ struct Aabr {
         return *this;
     }
     Aabr& operator|=(const Aabr& other) { return united(other); }
+
+    /** Allows direct memory (read / write) access to the Aabr's internal storage. */
+    float* as_ptr() { return &_min.x; }
 };
 
 /* Free Functions *****************************************************************************************************/
@@ -385,3 +389,14 @@ struct Aabr {
 std::ostream& operator<<(std::ostream& out, const Aabr& aabr);
 
 } // namespace notf
+
+/* std::hash **********************************************************************************************************/
+
+namespace std {
+
+/** std::hash specialization for notf::Aabr. */
+template <>
+struct hash<notf::Aabr> {
+    size_t operator()(const notf::Aabr& aabr) const { return notf::hash(aabr._min, aabr._max); }
+};
+}

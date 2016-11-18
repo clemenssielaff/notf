@@ -10,6 +10,8 @@
 
 namespace notf {
 
+const std::string Font::file_extension = ".ttf";
+
 std::shared_ptr<Font> Font::load(NVGcontext* nvg_context, const std::string& name, const std::string& font_path)
 {
     const int id = nvgCreateFont(nvg_context, name.c_str(), font_path.c_str());

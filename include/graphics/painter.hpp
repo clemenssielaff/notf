@@ -8,6 +8,7 @@
 #include "common/size2f.hpp"
 #include "common/transform2.hpp"
 #include "common/vector2.hpp"
+#include "graphics/font.hpp"
 #include "graphics/rendercontext.hpp"
 #include "graphics/texture2.hpp"
 #include "utils/enum_to_number.hpp"
@@ -43,7 +44,7 @@ public: // enums
         MITER = NVG_MITER, // default
     };
 
-    enum class Align {
+    enum Align {
         LEFT = NVG_ALIGN_LEFT, // default
         CENTER = NVG_ALIGN_CENTER,
         RIGHT = NVG_ALIGN_RIGHT,
@@ -57,7 +58,7 @@ public: // enums
     /** Input for set_composite()
      * Modelled after the HTML Canvas API as described in https://www.w3.org/TR/2dcontext/#compositing
      */
-    enum class Composite : int {
+    enum Composite : int {
         SOURCE_OVER = NVG_SOURCE_OVER,
         SOURCE_IN = NVG_SOURCE_IN,
         SOURCE_OUT = NVG_SOURCE_OUT,
@@ -104,7 +105,7 @@ public: // methods
     /* Composite ******************************************************************************************************/
 
     /** Determines how incoming (source) pixels are combined with existing (destination) pixels. */
-    void set_composite(Composite composite) { nvgGlobalCompositeOperation(_get_context(), to_number(composite)); }
+    void set_composite(Composite composite) { nvgGlobalCompositeOperation(_get_context(), composite); }
 
     /** Sets the global transparency of all rendered shapes. */
     void set_alpha(float alpha) { nvgGlobalAlpha(_get_context(), alpha); }
@@ -220,7 +221,7 @@ public: // methods
     void skew_y(float angle) { nvgSkewY(_get_context(), angle); }
 
     /** The transformation matrix of the coordinate system. */
-    Transform2 get_transform()
+    Transform2 get_transform() // TODO: python bindings for Transform2
     {
         Transform2 result;
         nvgCurrentTransform(_get_context(), result.as_ptr());
@@ -259,6 +260,17 @@ public: // methods
     /** Starts new sub-path with specified point as first point. */
     void move_to(float x, float y) { nvgMoveTo(_get_context(), x, y); }
     void move_to(const Vector2& pos) { nvgMoveTo(_get_context(), pos.x, pos.y); }
+
+    /** Closes current sub-path with a line segment. */
+    void close() { nvgClosePath(_get_context()); }
+
+    /** Fills the current path with current fill style. */
+    void fill() { nvgFill(_get_context()); }
+
+    /** Fills the current path with current stroke style. */
+    void stroke() { nvgStroke(_get_context()); }
+
+    /* Shapes *********************************************************************************************************/
 
     /** Adds line segment from the last point in the path to the specified point. */
     void line_to(float x, float y) { nvgLineTo(_get_context(), x, y); }
@@ -317,18 +329,102 @@ public: // methods
     void circle(const Vector2& pos, float radius) { nvgCircle(_get_context(), pos.x, pos.y, radius); }
     void circle(const Circle& circle) { nvgCircle(_get_context(), circle.center.x, circle.center.y, circle.radius); }
 
-    /** Closes current sub-path with a line segment. */
-    void close() { nvgClosePath(_get_context()); }
-
-    /** Fills the current path with current fill style. */
-    void fill() { nvgFill(_get_context()); }
-
-    /** Fills the current path with current stroke style. */
-    void stroke() { nvgStroke(_get_context()); }
-
     /* Text ***********************************************************************************************************/
 
-    // TODO: text rendering
+    /** Sets the font size of the current text style. */
+    void set_font_size(float size) { nvgFontSize(_get_context(), size); }
+
+    /** Sets the blur of the current text style. */
+    void set_font_blur(float blur) { nvgFontBlur(_get_context(), blur); }
+
+    /** Sets the letter spacing of the current text style. */
+    void set_letter_spacing(float spacing) { nvgTextLetterSpacing(_get_context(), spacing); }
+
+    /** Sets the proportional line height of the current text style.
+     * The line height is specified as multiple of font size.
+     */
+    void set_line_height(float height) { nvgTextLineHeight(_get_context(), height); }
+
+    /** Sets the text align of the current text style. */
+    void set_text_align(Align align) { nvgTextAlign(_get_context(), align); }
+
+    /** Sets the font of the current text style. */
+    void set_font(const std::shared_ptr<Font>& font) { nvgFontFaceId(_get_context(), font->get_id()); }
+
+    /** Draws a text at the specified location up to `length` characters long.
+     * @param x         X-coordinate.
+     * @param y         Y-coordinate.
+     * @param string    Text to draw.
+     * @param length    Number of characters to print (defaults to 0 = all).
+     * @return          The x-coordinate of a hypothetical next character in local space.
+     */
+    float text(float x, float y, const std::string& string, size_t length = 0)
+    {
+        return nvgText(_get_context(), x, y, string.c_str(), (length == 0) ? nullptr : string.c_str() + length);
+    }
+    float text(const Vector2& pos, const std::string& string, size_t length = 0)
+    {
+        return text(pos.x, pos.y, string, length);
+    }
+
+    /** Draws a multi-line text box at the specified location, wrapped at `width`, up to `length` characters long.
+     * White space is stripped at the beginning of the rows, the text is split at word boundaries or when new-line
+     * characters are encountered.
+     * Words longer than the max width are slit at nearest character (i.e. no hyphenation).
+     * @param x         X-coordinate.
+     * @param y         Y-coordinate.
+     * @param width     Maximal width of a line in the text box.
+     * @param string    Text to draw.
+     * @param length    Number of characters to print (defaults to 0 = all).
+     */
+    void text_box(float x, float y, float width, const std::string& string, size_t length = 0)
+    {
+        nvgTextBox(_get_context(), x, y, width, string.c_str(), (length == 0) ? nullptr : string.c_str() + length);
+    }
+    void text_box(const Vector2& pos, float width, const std::string& string, size_t length = 0)
+    {
+        text_box(pos.x, pos.y, width, string, length);
+    }
+    void text_box(const Aabr& rect, const std::string& string, size_t length = 0)
+    {
+        text_box(rect.left(), rect.top(), rect.width(), string, length);
+    }
+
+    /** Returns the bounding box of the specified text in local space. */
+    Aabr text_bounds(float x, float y, const std::string& string, size_t length = 0)
+    {
+        Aabr result;
+        nvgTextBounds(_get_context(), x, y, string.c_str(), (length == 0) ? nullptr : string.c_str() + length, result.as_ptr());
+        return result;
+    }
+    Aabr text_bounds(const Vector2& pos, const std::string& string, size_t length = 0)
+    {
+        return text_bounds(pos.x, pos.y, string, length);
+    }
+    Aabr text_bounds(const std::string& string, size_t length = 0)
+    {
+        return text_bounds(0.f, 0.f, string, length);
+    }
+
+    /** Returns the bounding box of the specified text box in local space. */
+    Aabr text_box_bounds(float x, float y, float width, const std::string& string, size_t length = 0)
+    {
+        Aabr result;
+        nvgTextBoxBounds(_get_context(), x, y, width, string.c_str(), (length == 0) ? nullptr : string.c_str() + length, result.as_ptr());
+        return result;
+    }
+    Aabr text_box_bounds(const Vector2& pos, float width, const std::string& string, size_t length = 0)
+    {
+        return text_box_bounds(pos.x, pos.y, width, string, length);
+    }
+    Aabr text_box_bounds(const Aabr& rect, const std::string& string, size_t length = 0)
+    {
+        return text_box_bounds(rect.left(), rect.top(), rect.width(), string, length);
+    }
+    Aabr text_box_bounds(float width, const std::string& string, size_t length = 0)
+    {
+        return text_box_bounds(0.f, 0.f, width, string, length);
+    }
 
 private: // methods
     /** Convenienct access to the NanoVG context. */

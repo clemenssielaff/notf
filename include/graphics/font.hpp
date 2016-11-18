@@ -16,7 +16,7 @@ class Font {
 public: // static methods
     /** Loads a texture from a given file.
     * @param nvg_context        NanoVG context of which this Font is a part of.
-    * @param name               Name given to the font.
+    * @param name               Name of the Font, is also the filename of the *.ttf file.
     * @param font_path          Absolute path to a Font file.
     * @throw std::runtime_error If the Font fails to load.
     */
@@ -35,6 +35,10 @@ protected: // methods
         : m_id(id)
     {
     }
+
+public: // static fields
+    /** The file extension associated with Font files (.ttf). */
+    static const std::string file_extension;
 
 private: // fields
     /** ID of this Font. */

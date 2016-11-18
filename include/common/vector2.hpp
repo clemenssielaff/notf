@@ -3,6 +3,7 @@
 #include <iosfwd>
 
 #include "common/float_utils.hpp"
+#include "common/hash_utils.hpp"
 
 namespace notf {
 
@@ -514,3 +515,14 @@ inline Vector2 nlerp(const Vector2& from, const Vector2& to, const float blend)
 }
 
 } // namespace notf
+
+/* std::hash **********************************************************************************************************/
+
+namespace std {
+
+/** std::hash specialization for notf::Vector2. */
+template <>
+struct hash<notf::Vector2> {
+    size_t operator()(const notf::Vector2& vector) const { return notf::hash(vector.x, vector.y); }
+};
+}
