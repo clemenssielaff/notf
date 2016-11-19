@@ -22,3 +22,5 @@ void produce_widget(pybind11::module& module, py::detail::generic_type ancestor)
 
     Py_Widget.def("add_component", &Widget::add_component, "Attaches a new Component to this Widget.", py::arg("component"));
 }
+
+// TODO: continue here by adding Python bindings to call Widget::set_claim

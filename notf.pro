@@ -174,6 +174,7 @@ HEADERS += \
     include/common/time.hpp \
     include/graphics/font.hpp \
     include/common/literals.hpp \
-    include/common/padding.hpp
+    include/common/padding.hpp \
+    include/utils/reverse_iterator.hpp
 
 QMAKE_CXX = ccache g++

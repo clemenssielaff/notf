@@ -6,6 +6,7 @@
 #include "common/transform2.hpp"
 #include "common/vector_utils.hpp"
 #include "core/widget.hpp"
+#include "utils/reverse_iterator.hpp"
 
 namespace notf {
 
@@ -87,24 +88,49 @@ void StackLayout::_relayout(const Size2f size)
     if (item_count == 0) {
         return;
     }
+
     if ((m_direction == StackDirection::LEFT_TO_RIGHT) || (m_direction == StackDirection::RIGHT_TO_LEFT)) { // horizontal
-        const float width_per_item = size.width / item_count;
-        const Size2f item_size{width_per_item, size.height};
-        float x_offset = 0.f;
-        for (const Handle handle : m_items) {
-            auto child = _get_child(handle);
-            _update_item(child, item_size, Transform2::translation({x_offset, 0}));
-            x_offset += width_per_item;
+        const float actual_width = max(0.f, size.width - m_padding.left - m_padding.right - (m_spacing * (item_count - 1)));
+        const float actual_height = max(0.f, size.height - m_padding.top - m_padding.bottom);
+        const float width_per_item = actual_width / item_count;
+        const Size2f item_size{width_per_item, actual_height};
+        const float step_size = width_per_item + m_spacing;
+        float x_offset = m_padding.left;
+        if (m_direction == StackDirection::LEFT_TO_RIGHT) {
+            for (const Handle handle : m_items) {
+                auto child = _get_child(handle);
+                _update_item(child, item_size, Transform2::translation({x_offset, m_padding.top}));
+                x_offset += step_size;
+            }
+        }
+        else {
+            for (const Handle handle : reverse(m_items)) {
+                auto child = _get_child(handle);
+                _update_item(child, item_size, Transform2::translation({x_offset, m_padding.top}));
+                x_offset += step_size;
+            }
         }
     }
     else {
-        const float height_per_item = size.height / item_count;
-        const Size2f item_size{size.width, height_per_item};
-        float y_offset = 0.f;
-        for (const Handle handle : m_items) {
-            auto child = _get_child(handle);
-            _update_item(child, item_size, Transform2::translation({0, y_offset}));
-            y_offset += height_per_item;
+        const float actual_width = max(0.f, size.width - m_padding.left - m_padding.right);
+        const float actual_height = max(0.f, size.height - m_padding.top - m_padding.bottom - (m_spacing * (item_count - 1)));
+        const float height_per_item = actual_height / item_count;
+        const Size2f item_size{actual_width, height_per_item};
+        const float step_size = height_per_item + m_spacing;
+        float y_offset = m_padding.top;
+        if (m_direction == StackDirection::TOP_TO_BOTTOM) {
+            for (const Handle handle : m_items) {
+                auto child = _get_child(handle);
+                _update_item(child, item_size, Transform2::translation({m_padding.left, y_offset}));
+                y_offset += step_size;
+            }
+        }
+        else {
+            for (const Handle handle : reverse(m_items)) {
+                auto child = _get_child(handle);
+                _update_item(child, item_size, Transform2::translation({m_padding.left, y_offset}));
+                y_offset += step_size;
+            }
         }
     }
 }

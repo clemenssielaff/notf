@@ -23,8 +23,13 @@ void RenderManager::render(const RenderContext& context)
 
     // TODO: perform z-sorting here
 
+
     // draw all widgets
     for (const std::shared_ptr<Widget>& widget : widgets) {
+        if(widget->get_size().is_zero()){
+            continue;
+        }
+
         std::shared_ptr<CanvasComponent> canvas = widget->get_component<CanvasComponent>();
         assert(canvas);
         canvas->render(*widget.get(), context);

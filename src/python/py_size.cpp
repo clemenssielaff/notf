@@ -28,7 +28,7 @@ void produce_size2f(pybind11::module& module)
     PySize2f.def_readwrite("height", &Size2f::height);
 
     // inspections
-    PySize2f.def("is_null", &Size2f::is_null, "Tests if this Size is null.");
+    PySize2f.def("is_zero", &Size2f::is_zero, "Tests if a rectangle of this Size had zero area.");
     PySize2f.def("is_valid", &Size2f::is_valid, "Tests if this Size is valid (>=0) in both dimensions.");
 
     // operators

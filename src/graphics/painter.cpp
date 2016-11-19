@@ -17,10 +17,8 @@ Painter::Painter(const Widget* widget, const RenderContext* context)
     save_state();
 
     // create a 'base' state that the user can not pop past
-    auto trans = m_widget->get_transform(Space::WINDOW);
-    auto scissor = m_widget->get_size();
-    set_transform(trans);
-//    set_scissor(scissor);
+    set_transform(m_widget->get_transform(Space::WINDOW));
+    set_scissor(m_widget->get_size()); // TODO: implement scissor hierarchy
     save_state();
 }
 
@@ -40,6 +38,16 @@ Size2f Painter::get_widget_size() const
 Vector2 Painter::get_mouse_pos() const
 {
     return m_context->mouse_pos - m_widget->get_transform(Space::WINDOW).get_translation();
+}
+
+void Painter::restore_state()
+{
+    if (m_state_count > 2) { // do not pop original or base-state (see constructor for details)
+        nvgRestore(_get_context());
+    }
+    else {
+        log_warning << "No states left to restore";
+    }
 }
 
 } // namespace notf

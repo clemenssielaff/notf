@@ -26,12 +26,11 @@ struct Size2f {
     {
     }
 
-    static Size2f from_size2i (const Size2i& size2i)
+    static Size2f from_size2i(const Size2i& size2i)
     {
         return {
             static_cast<float>(size2i.width),
-            static_cast<float>(size2i.height)
-        };
+            static_cast<float>(size2i.height)};
     }
 
     /* Operators ******************************************************************************************************/
@@ -39,8 +38,8 @@ struct Size2f {
     /** Tests if this Size is valid (>=0) in both dimensions. */
     bool is_valid() const { return width >= 0.f && height >= 0.f; } // !(NAN >= 0.f)
 
-    /** Tests if this Size is null. */
-    bool is_null() const { return width == 0.f && height == 0.f; }
+    /** Tests if a rectangle of this Size had zero area. */
+    bool is_zero() const { return width == 0.f || height == 0.f; }
 
     /// @brief Invalidates this Size.
     void invalidate()

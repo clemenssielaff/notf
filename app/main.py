@@ -29,19 +29,23 @@ def main():
     solid_blue = CanvasComponent()
     solid_blue.set_paint_function(fill_blue)
 
-    red_rect = Widget()
-    red_rect.add_component(solid_red)
+    stack_layout = StackLayout(StackDirection.RIGHT_TO_LEFT)
+    # stack_layout.set_spacing(50)
+    # stack_layout.set_padding(Padding(25, 200, 25, 200))
 
-    green_rect = Widget()
-    green_rect.add_component(solid_green)
+    for i in range(1):
+        red_rect = Widget()
+        red_rect.add_component(solid_red)
 
-    blue_rect = Widget()
-    blue_rect.add_component(solid_blue)
+        green_rect = Widget()
+        green_rect.add_component(solid_green)
 
-    stack_layout = StackLayout(StackDirection.LEFT_TO_RIGHT)
-    stack_layout.add_item(red_rect)
-    stack_layout.add_item(green_rect)
-    stack_layout.add_item(blue_rect)
+        blue_rect = Widget()
+        blue_rect.add_component(solid_blue)
+
+        stack_layout.add_item(green_rect)
+        stack_layout.add_item(red_rect)
+        stack_layout.add_item(blue_rect)
 
     window = Window()
     window.get_layout_root().set_item(stack_layout)

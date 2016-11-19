@@ -108,12 +108,7 @@ public: // methods
     }
 
     /** Pops and restores current render state. */
-    void restore_state()
-    {
-        if (m_state_count > 2) { // do not pop original or base-state (see constructor for details)
-            nvgRestore(_get_context());
-        }
-    }
+    void restore_state();
 
     /** Resets current render state to default values. Does not affect the render state stack. */
     void reset_state() { nvgReset(_get_context()); }
