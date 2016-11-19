@@ -9,6 +9,26 @@
 
 namespace notf {
 
+void StackLayout::set_spacing(float spacing)
+{
+    if (spacing < 0.f) {
+        log_warning << "Cannot set spacing to less than zero, using zero instead.";
+        spacing = 0.f;
+    }
+    m_spacing = spacing;
+    _update_parent_layout();
+}
+
+void StackLayout::set_padding(const Padding& padding)
+{
+    if (!padding.is_valid()) {
+        log_warning << "Ignoring invalid padding: " << padding;
+        return;
+    }
+    m_padding = padding;
+    _update_parent_layout();
+}
+
 void StackLayout::add_item(std::shared_ptr<LayoutItem> item)
 {
     // if the item is already child of this Layout, place it at the end

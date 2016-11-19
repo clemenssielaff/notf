@@ -26,7 +26,7 @@ enum class VISIBILITY : unsigned char {
 };
 
 /// @brief Coordinate Spaces to pass to get_transform().
-enum class SPACE : unsigned char {
+enum class Space : unsigned char {
     PARENT, // returns transform in local coordinates, relative to the parent LayoutItem
     WINDOW, // returns transform in global coordinates, relative to the Window
     SCREEN, // returns transform in screen coordinates, relative to the screen origin
@@ -78,19 +78,19 @@ public: // methods
     const Size2f& get_size() const { return m_size; }
 
     /// @brief Returns this LayoutItem's transformation in the given space.
-    Transform2 get_transform(const SPACE space) const
+    Transform2 get_transform(const Space space) const
     {
         Transform2 result = Transform2::identity();
         switch (space) {
-        case SPACE::WINDOW:
+        case Space::WINDOW:
             _get_window_transform(result);
             break;
 
-        case SPACE::SCREEN:
+        case Space::SCREEN:
             result = _get_screen_transform();
             break;
 
-        case SPACE::PARENT:
+        case Space::PARENT:
             result = _get_parent_transform();
             break;
 

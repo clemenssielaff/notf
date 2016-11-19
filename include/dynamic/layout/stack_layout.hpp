@@ -4,6 +4,7 @@
 #include <limits>
 
 #include "common/index.hpp"
+#include "common/padding.hpp"
 #include "core/layout.hpp"
 
 namespace notf {
@@ -38,7 +39,11 @@ public: // methods
         }
     }
 
-    //    void set_spacing();
+    /** Sets the spacing between items. */
+    void set_spacing(float spacing);
+
+    /** Sets the padding around the Layout's border. */
+    void set_padding(const Padding& padding);
 
     /// @brief Finds the Index of the LayoutItem in this Layout, might be invalid.
     Index find_index(const Handle handle) const
@@ -81,6 +86,8 @@ protected: // methods
     explicit StackLayout(const Handle handle, const StackDirection direction)
         : Layout(handle)
         , m_direction(direction)
+        , m_spacing(0.f)
+        , m_padding(Padding::none())
         , m_items()
     {
     }
@@ -95,7 +102,11 @@ private: // fields
     /// @brief Direction in which the StackLayout is stacked.
     StackDirection m_direction;
 
+    /** Spacing between items in the layout*/
     float m_spacing;
+
+    /** Padding of the Layout (not its individual items). */
+    Padding m_padding;
 
     /// @brief All items in this Layout in order.
     std::vector<Handle> m_items;

@@ -18,6 +18,7 @@ void produce_aabr(pybind11::module& module)
     // constructors
     PyAabr.def(py::init<>());
     PyAabr.def(py::init<float, float>());
+    PyAabr.def(py::init<float, float, float, float>());
     PyAabr.def(py::init<const Vector2&, float, float>());
     PyAabr.def(py::init<const Vector2&, const Vector2&>());
 

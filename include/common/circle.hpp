@@ -3,6 +3,7 @@
 #include <iosfwd>
 
 #include "common/float_utils.hpp"
+#include "common/hash_utils.hpp"
 #include "common/vector2.hpp"
 
 namespace notf {
@@ -102,3 +103,14 @@ struct Circle {
 std::ostream& operator<<(std::ostream& out, const Circle& circle);
 
 } // namespace notf
+
+/* std::hash **********************************************************************************************************/
+
+namespace std {
+
+/** std::hash specialization for notf::Circle. */
+template <>
+struct hash<notf::Circle> {
+    size_t operator()(const notf::Circle& circle) const { return notf::hash(circle.center, circle.radius); }
+};
+}

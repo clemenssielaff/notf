@@ -50,6 +50,11 @@ void produce_painter(pybind11::module& module)
         .value("COPY", Painter::Composite::COPY)
         .value("XOR", Painter::Composite::XOR);
 
+    Py_Painter.def("get_widget_size", &Painter::get_widget_size, "Returns the size of the Widget in local coordinates.");
+    Py_Painter.def("get_buffer_size", &Painter::get_buffer_size, "Returns the size of the Window's framebuffer in pixels.");
+    Py_Painter.def("get_mouse_pos", &Painter::get_mouse_pos, "Returns the mouse position in the Widget's coordinate system.");
+    Py_Painter.def("get_time", &Painter::get_time, "Returns the time since Application start in seconds.");
+
     Py_Painter.def("save_state", &Painter::save_state, "Saves the current render state onto a stack.");
     Py_Painter.def("restore_state", &Painter::restore_state, "Pops and restores current render state.");
     Py_Painter.def("reset_state", &Painter::save_state, "Resets current render state to default values. Does not affect the render state stack.");

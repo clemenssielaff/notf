@@ -10,7 +10,7 @@ std::ostream& operator<<(std::ostream& out, const Circle& circle)
     return out << "Circle([" << circle.center.x << ", " << circle.center.y << "], " << circle.radius << ")";
 }
 
-/**
+/*
  * Compile-time sanity check.
  */
 static_assert(sizeof(Circle) == sizeof(Vector2) + sizeof(float),

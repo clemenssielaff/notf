@@ -659,14 +659,6 @@ void nvgReset(NVGcontext* ctx)
 	state->fontId = 0;
 }
 
-void nvgClear(NVGcontext* ctx)
-{
-    if(ctx->nstates > 1){
-        ctx->nstates = 1;
-    }
-    nvgReset(ctx);
-}
-
 // State setting
 void nvgStrokeWidth(NVGcontext* ctx, float width)
 {

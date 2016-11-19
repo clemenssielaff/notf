@@ -1,38 +1,50 @@
 from notf import *
 
-def paint(painter):
+def fill_color(painter, color):
     painter.begin()
-    painter.circle(50, 50, 50);
-    painter.circle(100, 100, 20);
-    paint = painter.LinearGradient(Vector2(0, 0), Vector2(100, 0), Color(128, 128, 255), Color(255,128,128))
-    painter.set_fill(paint)
+    widget_size = painter.get_widget_size()
+    rect = Aabr(0, 0, widget_size.width, widget_size.height)
+    painter.rect(rect)
+    painter.set_fill(color)
     painter.fill()
 
-    painter.begin()
-    tex = Texture2("face.png", int(TextureFlags.GENERATE_MIPMAPS))
-    img_rect = Aabr(128, 128)
-    img_rect.center = Vector2(500, 400)
-    img = painter.ImagePattern(tex, img_rect)
-    painter.rect(img_rect)
-    painter.set_fill(img)
-    painter.fill()
+def fill_red(painter):
+    fill_color(painter, Color(255, 0, 0))
 
-    font = Font("Roboto-Bold")
-    painter.set_font(font)
-    painter.text(200, 200, "This is very derbe")
+def fill_green(painter):
+    fill_color(painter, Color(0, 255, 0))
+
+def fill_blue(painter):
+    fill_color(painter, Color(0, 0, 255))
+
 
 def main():
-    canvas = CanvasComponent()
-    canvas.set_paint_function(paint)
+    solid_red = CanvasComponent()
+    solid_red.set_paint_function(fill_red)
 
-    circle = Widget()
-    circle.add_component(canvas)
+    solid_green = CanvasComponent()
+    solid_green.set_paint_function(fill_green)
+
+    solid_blue = CanvasComponent()
+    solid_blue.set_paint_function(fill_blue)
+
+    red_rect = Widget()
+    red_rect.add_component(solid_red)
+
+    green_rect = Widget()
+    green_rect.add_component(solid_green)
+
+    blue_rect = Widget()
+    blue_rect.add_component(solid_blue)
+
+    stack_layout = StackLayout(StackDirection.LEFT_TO_RIGHT)
+    stack_layout.add_item(red_rect)
+    stack_layout.add_item(green_rect)
+    stack_layout.add_item(blue_rect)
+    #stack_layout.add_item(red_rect)
 
     window = Window()
-    window.get_layout_root().set_item(circle)
-
-    resource_manager = ResourceManager()
-    resource_manager.cleanup()
+    window.get_layout_root().set_item(stack_layout)
 
 if __name__ == "__main__":
     main()

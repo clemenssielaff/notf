@@ -103,7 +103,9 @@ SOURCES += \
     src/common/time.cpp \
     src/graphics/font.cpp \
     src/python/py_resourcemanager.cpp \
-    src/python/py_font.cpp
+    src/python/py_font.cpp \
+    src/common/padding.cpp \
+    src/python/py_padding.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -171,6 +173,7 @@ HEADERS += \
     include/common/hash_utils.hpp \
     include/common/time.hpp \
     include/graphics/font.hpp \
-    include/common/literals.hpp
+    include/common/literals.hpp \
+    include/common/padding.hpp
 
 QMAKE_CXX = ccache g++

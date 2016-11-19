@@ -9,6 +9,9 @@
 
 namespace notf {
 
+// TODO: maybe it is smarter to store the Transform2 column-wise?
+// This way we can store the transformation as Vector2 and it is compatible with NanoVG (see Painter::set_transform())
+
 /// @brief A 2D Transformation Matrix with 3x3 components.
 /// Only the first two rows are actually stored though, the last row is a static constant.
 ///
@@ -71,8 +74,8 @@ public: // methods
     /// @param vector   Translation vector.
     static Transform2 translation(const Vector2& vector)
     {
-        return {{{{{{0, 0, vector.x}}},
-                  {{{0, 0, vector.y}}}}}};
+        return {{{{{{1, 0, vector.x}}},
+                  {{{0, 1, vector.y}}}}}};
     }
 
     /// @brief A rotation matrix.

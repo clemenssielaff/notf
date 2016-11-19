@@ -53,6 +53,12 @@ protected: // static methods
         }
         return object;
     }
+    // TODO: maybe the idea of manually assigning handles is not that great ... (see below for discussion) .. or they might be
+    // The user needs a way to retrieve LayoutItems anyway, meaning each has a unique name (string)
+    // but I guess internally, they might have a Handle - but then again, weak_ptr would usually be preferrable
+    // since even though they might be more costly to copy, they will usually be created once and that's it
+    // handles may be cheap to copy, but looking them up will not be cheaper than seeing if a weak_ptr is still alive
+    // so, we might just get rid of handles for good then?
 
 private: // fields
     /// @brief Application-unique Handle.

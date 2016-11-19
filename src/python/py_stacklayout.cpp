@@ -6,7 +6,7 @@ using namespace notf;
 
 void produce_stack_layout(pybind11::module& module, py::detail::generic_type ancestor)
 {
-    py::enum_<StackDirection>(module, "STACK_DIRECTION")
+    py::enum_<StackDirection>(module, "StackDirection")
         .value("LEFT_TO_RIGHT", StackDirection::LEFT_TO_RIGHT)
         .value("TOP_TO_BOTTOM", StackDirection::TOP_TO_BOTTOM)
         .value("RIGHT_TO_LEFT", StackDirection::RIGHT_TO_LEFT)
@@ -22,5 +22,7 @@ void produce_stack_layout(pybind11::module& module, py::detail::generic_type anc
         return StackLayout::create(direction, handle);
     }, "Creates a new StackLayout with an explicitly assigned Handle.", py::arg("direction"), py::arg("handle"));
 
+    Py_StackLayout.def("set_spacing", &StackLayout::set_spacing, "Sets the spacing between items.", py::arg("spacing"));
+    Py_StackLayout.def("set_padding", &StackLayout::set_padding, "Sets the spacing between items.", py::arg("padding"));
     Py_StackLayout.def("add_item", &StackLayout::add_item, "Adds a new LayoutItem into the Layout.", py::arg("item"));
 }

@@ -73,31 +73,47 @@ public: // enums
     };
 
 protected: // methods for CanvasComponent
-    explicit Painter(const Widget* widget, const RenderContext* context)
-        : m_widget(widget)
-        , m_context(context)
-    {
-    }
+    /**
+     * @param widget    Drawn widget.
+     * @param context   Render context.
+     */
+    Painter(const Widget* widget, const RenderContext* context);
 
 public: // methods
-    ~Painter()
-    {
-        nvgClear(_get_context()); // TODO: check if this actually works (and if not calling it would affect subsequent renderers)
-    }
+    ~Painter();
 
     /* Context ********************************************************************************************************/
 
-    // TODO: inspection methods for the widget and render context
+    /** Returns the size of the Widget in local coordinates. */
+    Size2f get_widget_size() const;
+
+    /** Returns the size of the Window's framebuffer in pixels. */
+    Size2i get_buffer_size() const { return m_context->buffer_size; }
+
+    /** Returns the mouse position in the Widget's coordinate system. */
+    Vector2 get_mouse_pos() const;
+
+    /** Returns the time since Application start in seconds. */
+    double get_time() const { return m_context->time.in_seconds(); }
 
     /* State Handling *************************************************************************************************/
 
     /** Saves the current render state onto a stack.
      * A matching state_restore() must be used to restore the state.
      */
-    void save_state() { nvgSave(_get_context()); }
+    void save_state()
+    {
+        nvgSave(_get_context());
+        ++m_state_count;
+    }
 
     /** Pops and restores current render state. */
-    void restore_state() { nvgRestore(_get_context()); }
+    void restore_state()
+    {
+        if (m_state_count > 2) { // do not pop original or base-state (see constructor for details)
+            nvgRestore(_get_context());
+        }
+    }
 
     /** Resets current render state to default values. Does not affect the render state stack. */
     void reset_state() { nvgReset(_get_context()); }
@@ -232,8 +248,8 @@ public: // methods
     void set_transform(const Transform2& transform)
     {
         nvgTransform(_get_context(),
-                     transform[0][0], transform[0][1], transform[0][1],
-                     transform[1][0], transform[1][1], transform[1][2]);
+                     transform[0][0], transform[1][0], transform[0][1],
+                     transform[1][1], transform[0][2], transform[1][2]);
     }
 
     /* Scissoring *****************************************************************************************************/
@@ -439,6 +455,9 @@ private: // fields
 
     /** The RenderContext used for painting. */
     const RenderContext* m_context;
+
+    /** Height of the state stack created by this Painter. The first state is internal and may not be popped by the user. */
+    size_t m_state_count;
 };
 
 } // namespace notf
