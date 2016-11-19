@@ -105,7 +105,8 @@ SOURCES += \
     src/python/py_resourcemanager.cpp \
     src/python/py_font.cpp \
     src/common/padding.cpp \
-    src/python/py_padding.cpp
+    src/python/py_padding.cpp \
+    src/python/py_claim.cpp
 
 HEADERS += \
     include/core/application.hpp \

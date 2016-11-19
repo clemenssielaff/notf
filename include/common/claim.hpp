@@ -1,12 +1,13 @@
 #pragma once
 
+#include <iosfwd>
+
 #include "common/float_utils.hpp"
+#include "common/hash_utils.hpp"
 
 namespace notf {
 
-/**
- * @brief The Claim of a Widget determines how much space it will receive in its parent Layout.
- *
+/** The Claim of a Widget determines how much space it will receive in its parent Layout.
  * Widget Claims are not changed by the Layout, only by the Widget or User.
  * If the parent Layout cannot accompany the Items minimal size, then it must simply overflow the parent Layout.
  * Also has a min and max ratio betweeen horizontal and vertical.
@@ -21,18 +22,19 @@ namespace notf {
 class Claim {
 
 public: // class
-    /// @brief A Claim has two Directions: horizontal and vertical.
-    /// Both need to enforce constraints but both Directions are largely independent.
+    /** A Claim has two Directions: horizontal and vertical.
+     * Both need to enforce constraints but both Directions are largely independent.
+     */
     class Direction {
 
     public: // methods
-        /// @brief Default Constructor.
         explicit Direction() = default;
 
-        /// @brief Value Constructor.
-        /// @param preferred    Preferred size in local units, is limited to values >= 0.
-        /// @param min          (optional) Minimum size, is clamped to 0 <= value <= preferred, defaults to 'preferred'.
-        /// @param max          (optional) Maximum size, is clamped to preferred <= value, can be INFINITY, defaults to 'preferred'.
+        /**
+         * @param preferred    Preferred size in local units, is limited to values >= 0.
+         * @param min          (optional) Minimum size, is clamped to 0 <= value <= preferred, defaults to 'preferred'.
+         * @param max          (optional) Maximum size, is clamped to preferred <= value, can be INFINITY, defaults to 'preferred'.
+         */
         Direction(const float preferred, const float min = NAN, const float max = NAN)
             : m_preferred(is_valid(preferred) ? notf::max(preferred, 0.f) : 0.f)
             , m_min(is_valid(min) ? notf::min(std::max(0.f, min), m_preferred) : m_preferred)
@@ -42,51 +44,54 @@ public: // class
         {
         }
 
-        /// @brief Preferred size in local units, is >= 0.
+        /** Preferred size in local units, is >= 0. */
         float get_preferred() const { return m_preferred; }
 
-        /// @brief Minimum size in local units, is 0 <= min <= preferred.
+        /** Minimum size in local units, is 0 <= min <= preferred. */
         float get_min() const { return m_min; }
 
-        /// @brief Maximum size in local units, is >= preferred.
+        /** Maximum size in local units, is >= preferred. */
         float get_max() const { return m_max; }
 
-        /// @brief Tests if this Stretch is a fixed size where all 3 values are the same.
+        /** Tests if this Stretch is a fixed size where all 3 values are the same. */
         bool is_fixed() const { return approx(m_preferred, m_min) && approx(m_preferred, m_max); }
 
-        /// @brief Returns the scale factor of the LayoutItem in this direction.
+        /** Returns the scale factor of the LayoutItem in this direction. */
         float get_scale_factor() const { return m_scale_factor; }
 
-        /// @brief Returns the scale priority of the LayoutItem in this direction.
+        /** Returns the scale priority of the LayoutItem in this direction. */
         int get_priority() const { return m_priority; }
 
-        /// @brief Sets a new minimal size, accomodates both the preferred and max size if necessary.
-        /// @param min  Minimal size, must be 0 <= size < INFINITY.
-        void set_min(const float min);
-
-        /// @brief Sets a new minimal size, accomodates both the min and preferred size if necessary.
-        /// @param max  Maximal size, must be 0 <= size <= INFINITY.
-        void set_max(const float max);
-
-        /// @brief Adds an offset to the min, max and preferred value.
-        /// The offset can be negative.
-        /// Fields are truncated to be >= 0, invalid values are ignored.
-        /// Useful, for example, if you want to add a fixed "spacing" to the claim of a Layout.
-        void add_offset(const float offset);
-
-        /// @brief Sets a new preferred size, accomodates both the min and max size if necessary.
-        /// @param preferred    Preferred size, must be 0 <= size < INFINITY.
+        /** Sets a new preferred size, accomodates both the min and max size if necessary.
+         * @param preferred    Preferred size, must be 0 <= size < INFINITY.
+         */
         void set_preferred(const float preferred);
 
-        /// @brief Sets a new scale factor.
-        /// @param preferred    Preferred size, must be 0 <= size < INFINITY.
+        /** Sets a new minimal size, accomodates both the preferred and max size if necessary.
+         * @param min  Minimal size, must be 0 <= size < INFINITY.
+         */
+        void set_min(const float min);
+
+        /** Sets a new maximal size, accomodates both the min and preferred size if necessary.
+         * @param max  Maximal size, must be 0 <= size <= INFINITY.
+         */
+        void set_max(const float max);
+
+        /** Sets a new scale factor.
+         * @param factor    Scale factor, must be 0 <= factor < INFINITY.
+         */
         void set_scale_factor(const float factor);
 
-        /// @brief Sets a new scaling priority.
-        /// @param priority Scaling priority.
+        /** Sets a new scaling priority. */
         void set_priority(const int priority) { m_priority = priority; }
 
-        /// @brief Assignment operator.
+        /** Adds an offset to the min, max and preferred value.
+         * The offset can be negative.
+         * Fields are truncated to be >= 0, invalid values are ignored.
+         * Useful, for example, if you want to add a fixed "spacing" to the claim of a Layout.
+         */
+        void add_offset(const float offset);
+
         Direction& operator=(const Direction& other)
         {
             m_preferred = other.m_preferred;
@@ -97,7 +102,6 @@ public: // class
             return *this;
         }
 
-        /// @brief Equality operator.
         bool operator==(const Direction& other) const
         {
             return (approx(m_preferred, other.m_preferred)
@@ -107,13 +111,9 @@ public: // class
                     && m_priority == other.m_priority);
         }
 
-        /// @brief Inequality operator.
-        bool operator!=(const Direction& other) const
-        {
-            return !(*this == other);
-        }
+        bool operator!=(const Direction& other) const { return !(*this == other); }
 
-        /// @brief In-place addition operator for Directions.
+        /** In-place addition operator for Directions. */
         Direction& operator+=(const Direction& other)
         {
             m_preferred += other.m_preferred;
@@ -124,7 +124,7 @@ public: // class
             return *this;
         }
 
-        /// @brief In-place max operator for Directions.
+        /** In-place max operator for Directions. */
         Direction& maxed(const Direction& other)
         {
             m_preferred = max(m_preferred, other.m_preferred);
@@ -136,16 +136,16 @@ public: // class
         }
 
     private: // fields
-        /// @brief Preferred size, is: min <= size <= max.
+        /** Preferred size, is: min <= size <= max. */
         float m_preferred = 0;
 
-        /// @brief Minimal size, is: 0 <= size <= preferred.
+        /** Minimal size, is: 0 <= size <= preferred. */
         float m_min = 0;
 
-        /// @brief Maximal size, is: preferred <= size <= INFINITY.
+        /** Maximal size, is: preferred <= size <= INFINITY. */
         float m_max = INFINITY;
 
-        /// @brief Scale factor, 0 means no scaling, is: 0 <= factor < INFINITY
+        /** Scale factor, 0 means no scaling, is: 0 <= factor < INFINITY */
         float m_scale_factor = 1.;
 
         /// @brief Scaling priority, is INT_MIN <= priority <= INT_MAX.
@@ -153,18 +153,18 @@ public: // class
     };
 
 private: // class
-    /// @brief A height-for-width ratio constraint of the Claim.
-    /// Is its own class so two Ratios can be properly added.
+    /** A height-for-width ratio constraint of the Claim.
+     * Is its own class so two Ratios can be properly added.
+     */
     class Ratio {
 
     public: // methods
-        /// @brief Default Constructor.
         explicit Ratio() = default;
 
-        /// @brief Value Constructor.
-        /// Setting one or both values to zero, results in an invalid Ratio.
-        /// @param height   Height in continuous units, is 0 < height < INFINITY
-        /// @param width    Width in units, is 0 < width < INFINITY
+        /** Setting one or both values to zero, results in an invalid Ratio.
+         * @param height   Height in continuous units, is 0 < height < INFINITY
+         * @param width    Width in units, is 0 < width < INFINITY
+         */
         Ratio(const float height, const float width = 1)
             : m_width(height)
             , m_height(width)
@@ -175,10 +175,10 @@ private: // class
             }
         }
 
-        /// @brief Tests if this Ratio is valid.
+        /** Tests if this Ratio is valid. */
         bool is_valid() const { return !(approx(m_width, 0) || approx(m_height, 0)); }
 
-        /// @brief Returns the height-for-width ratio, is 0 if invalid.
+        /** Returns the height-for-width ratio, is 0 if invalid. */
         float get_height_for_width() const
         {
             if (!is_valid()) {
@@ -187,19 +187,14 @@ private: // class
             return m_height / m_width;
         }
 
-        /// @brief Equality operator.
         bool operator==(const Ratio& other) const
         {
             return (approx(m_width, other.m_width) && approx(m_height, other.m_height));
         }
 
-        /// @brief Inequality operator.
-        bool operator!=(const Ratio& other) const
-        {
-            return !(*this == other);
-        }
+        bool operator!=(const Ratio& other) const { return !(*this == other); }
 
-        /// @brief In-place, horizontal addition operator for Directions.
+        /** In-place, horizontal addition operator for Directions. */
         Ratio& add_horizontal(const Ratio& other)
         {
             m_width += other.m_width;
@@ -207,7 +202,7 @@ private: // class
             return *this;
         }
 
-        /// @brief In-place, vertical addition operator for Directions.
+        /** In-place, vertical addition operator for Directions. */
         Ratio& add_vertical(const Ratio& other)
         {
             m_width = max(m_width, other.m_width);
@@ -216,61 +211,33 @@ private: // class
         }
 
     private: // fields
-        /// @brief Width in discrete steps.
+        /** Width in discrete steps. */
         float m_width;
 
-        /// @brief Height in continuous units.
+        /** Height in continuous units. */
         float m_height;
     };
 
 public: // methods
-    /// @brief Default Constructor.
     explicit Claim() = default;
 
-    /// @brief Copy Constructor.
     Claim(const Claim& other) = default;
 
-    /// @brief Returns the horizontal part of this Claim.
+    /** Returns the horizontal part of this Claim. */
     Direction& get_horizontal() { return m_horizontal; }
+    const Direction& get_horizontal() const { return m_horizontal; }
 
-    /// @brief Returns the vertical part of this Claim.
+    /** Returns the vertical part of this Claim. */
     Direction& get_vertical() { return m_vertical; }
+    const Direction& get_vertical() const { return m_vertical; }
 
-    /// Returns the min and max ratio constraints, 0 means no constraint, is: 0 <= min <= max < INFINITY
-    std::pair<float, float> get_height_for_width() const
-    {
-        return {m_ratios.first.get_height_for_width(), m_ratios.second.get_height_for_width()};
-    }
+    /** Sets the horizontal direction of this Claim. */
+    void set_horizontal(const Direction& direction) { m_horizontal = direction; }
 
-    /// @brief Sets the ratio constraint.
-    /// @param ratio_min    Height for width (min/fixed value), is used as minimum value if the second parameter is set.
-    /// @param ratio_max    Height for width (max value), 'ratio_min' is use by default.
-    void set_height_for_width(const float ratio_min, const float ratio_max = NAN);
+    /** Sets the vertical direction of this Claim. */
+    void set_vertical(const Direction& direction) { m_vertical = direction; }
 
-    /// @brief Assignment operator
-    Claim& operator=(const Claim& other)
-    {
-        m_horizontal = other.m_horizontal;
-        m_vertical = other.m_vertical;
-        m_ratios = other.m_ratios;
-        return *this;
-    }
-
-    /// @brief Equality operator.
-    bool operator==(const Claim& other) const
-    {
-        return (m_horizontal == other.m_horizontal
-                && m_vertical == other.m_vertical
-                && m_ratios == other.m_ratios);
-    }
-
-    /// @brief Inequality operator.
-    bool operator!=(const Claim& other) const
-    {
-        return !(*this == other);
-    }
-
-    /// @brief In-place, horizontal addition operator for Claims.
+    /** In-place, horizontal addition operator for Claims. */
     Claim& add_horizontal(const Claim& other)
     {
         m_horizontal += other.m_horizontal;
@@ -282,7 +249,7 @@ public: // methods
         return *this;
     }
 
-    /// @brief In-place, vertical addition operator for Claims.
+    /** In-place, vertical addition operator for Claims. */
     Claim& add_vertical(const Claim& other)
     {
         m_horizontal.maxed(other.m_horizontal);
@@ -294,15 +261,94 @@ public: // methods
         return *this;
     }
 
+    /** Returns the min and max ratio constraints,
+     * 0 means no constraint, is: 0 <= min <= max < INFINITY
+     */
+    std::pair<float, float> get_height_for_width() const
+    {
+        return {m_ratios.first.get_height_for_width(), m_ratios.second.get_height_for_width()};
+    }
+
+    /** Sets the ratio constraint.
+     * @param ratio_min    Height for width (min/fixed value), is used as minimum value if the second parameter is set.
+     * @param ratio_max    Height for width (max value), 'ratio_min' is use by default.
+     */
+    void set_height_for_width(const float ratio_min, const float ratio_max = NAN);
+
+    Claim& operator=(const Claim& other)
+    {
+        m_horizontal = other.m_horizontal;
+        m_vertical = other.m_vertical;
+        m_ratios = other.m_ratios;
+        return *this;
+    }
+
+    bool operator==(const Claim& other) const
+    {
+        return (m_horizontal == other.m_horizontal
+                && m_vertical == other.m_vertical
+                && m_ratios == other.m_ratios);
+    }
+
+    bool operator!=(const Claim& other) const { return !(*this == other); }
+
 private: // members
-    /// @brief The vertical part of this Claim.
+    /** The vertical part of this Claim. */
     Direction m_horizontal;
 
-    /// @brief The horizontal part of this Claim.
+    /** The horizontal part of this Claim. */
     Direction m_vertical;
 
-    /// @brief Minimum and maximum ratio scaling constraint.
+    /** Minimum and maximum ratio scaling constraint. */
     std::pair<Ratio, Ratio> m_ratios;
 };
 
+/* Free Functions *****************************************************************************************************/
+
+/** Prints the contents of a Claim::Direction into a std::ostream.
+ * @param out       Output stream, implicitly passed with the << operator.
+ * @param direction Claim::Direction to print.
+ * @return          Output stream for further output.
+ */
+std::ostream& operator<<(std::ostream& out, const Claim::Direction& direction);
+
+/** Prints the contents of a Claim into a std::ostream.
+ * @param out   Output stream, implicitly passed with the << operator.
+ * @param claim Claim to print.
+ * @return      Output stream for further output.
+ */
+std::ostream& operator<<(std::ostream& out, const Claim& aabr);
+
 } // namespace notf
+
+/* std::hash **********************************************************************************************************/
+
+namespace std {
+
+/** std::hash specialization for notf::Claim::Direction. */
+template <>
+struct hash<notf::Claim::Direction> {
+    size_t operator()(const notf::Claim::Direction& direction) const
+    {
+        return notf::hash(
+            direction.get_preferred(),
+            direction.get_min(),
+            direction.get_max(),
+            direction.get_scale_factor(),
+            direction.get_priority());
+    }
+};
+
+/** std::hash specialization for notf::Claim. */
+template <>
+struct hash<notf::Claim> {
+    size_t operator()(const notf::Claim& claim) const
+    {
+        const std::pair<float, float> ratio = claim.get_height_for_width();
+        return notf::hash(
+            claim.get_horizontal(),
+            claim.get_horizontal(),
+            ratio.first, ratio.second);
+    }
+};
+}

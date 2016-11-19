@@ -21,6 +21,6 @@ void produce_widget(pybind11::module& module, py::detail::generic_type ancestor)
     }, "The Application-unique Handle of this Widget.");
 
     Py_Widget.def("add_component", &Widget::add_component, "Attaches a new Component to this Widget.", py::arg("component"));
-}
 
-// TODO: continue here by adding Python bindings to call Widget::set_claim
+    Py_Widget.def("set_claim", &Widget::set_claim, "Updates the Claim of this Widget.", py::arg("claim"));
+}

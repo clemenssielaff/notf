@@ -33,22 +33,30 @@ def main():
     # stack_layout.set_spacing(50)
     # stack_layout.set_padding(Padding(25, 200, 25, 200))
 
-    for i in range(1):
-        red_rect = Widget()
-        red_rect.add_component(solid_red)
+    # for i in range(1):
+    red_rect = Widget()
+    red_rect.add_component(solid_red)
 
-        green_rect = Widget()
-        green_rect.add_component(solid_green)
+    green_rect = Widget()
+    green_rect.add_component(solid_green)
 
-        blue_rect = Widget()
-        blue_rect.add_component(solid_blue)
+    blue_rect = Widget()
+    blue_rect.add_component(solid_blue)
 
-        stack_layout.add_item(green_rect)
-        stack_layout.add_item(red_rect)
-        stack_layout.add_item(blue_rect)
+    stack_layout.add_item(green_rect)
+    stack_layout.add_item(red_rect)
+    stack_layout.add_item(blue_rect)
 
     window = Window()
     window.get_layout_root().set_item(stack_layout)
+
+    claim = Claim()
+    direction = ClaimDirection()
+    direction.set_max(100)
+    print(direction)
+    claim.set_horizontal(direction)
+    red_rect.set_claim(claim)
+
 
 if __name__ == "__main__":
     main()
