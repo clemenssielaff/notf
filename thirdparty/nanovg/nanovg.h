@@ -234,6 +234,9 @@ void nvgRestore(NVGcontext* ctx);
 // Resets current render state to default values. Does not affect the render state stack.
 void nvgReset(NVGcontext* ctx);
 
+// Returns the number of states in the current context. Is always >= 1.
+int nvgNumStates(NVGcontext* ctx);
+
 //
 // Render styles
 //

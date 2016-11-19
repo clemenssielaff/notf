@@ -3,6 +3,7 @@ from notf import *
 def fill_color(painter, color):
     painter.begin()
     widget_size = painter.get_widget_size()
+    # widget_size.width -= 50
     rect = Aabr(0, 0, widget_size.width, widget_size.height)
     painter.rect(rect)
     painter.set_fill(color)
@@ -41,7 +42,6 @@ def main():
     stack_layout.add_item(red_rect)
     stack_layout.add_item(green_rect)
     stack_layout.add_item(blue_rect)
-    #stack_layout.add_item(red_rect)
 
     window = Window()
     window.get_layout_root().set_item(stack_layout)

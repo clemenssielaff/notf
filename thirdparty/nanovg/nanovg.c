@@ -659,6 +659,11 @@ void nvgReset(NVGcontext* ctx)
 	state->fontId = 0;
 }
 
+int nvgNumStates(NVGcontext* ctx)
+{
+    return ctx->nstates;
+}
+
 // State setting
 void nvgStrokeWidth(NVGcontext* ctx, float width)
 {
