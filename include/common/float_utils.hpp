@@ -28,6 +28,12 @@ using std::tan;
 using std::atan2;
 using std::roundf;
 
+/** Tests whether a given value is NAN. */
+inline bool is_nan(const float value) { return std::isnan(value); }
+
+/** Tests whether a given value is INFINITY. */
+inline bool is_inf(const float value) { return std::isinf(value); }
+
 /** Tests, if a value is positive or negative.
  * @return  -1 if the value is negative, 1 if it is zero or above.
  */
@@ -46,6 +52,9 @@ inline float clamp(const float value, const float min, const float max)
  */
 inline bool approx(const float a, const float b, const float epsilon = FLT_EPSILON)
 {
+    if (is_inf(a) || is_inf(b)) {
+        return false;
+    }
     return abs(a - b) <= max(abs(a), abs(b)) * epsilon;
 }
 
@@ -58,12 +67,6 @@ inline float asin(const float value) { return std::asin(clamp(value, -1, 1)); }
  * @param value     Input, is clamped to the range of [-1.0 ... 1.0], prior to the call to asin.
  */
 inline float acos(const float value) { return std::acos(clamp(value, -1, 1)); }
-
-/** Tests whether a given value is NAN. */
-inline bool is_nan(const float value) { return std::isnan(value); }
-
-/** Tests whether a given value is INFINITY. */
-inline bool is_inf(const float value) { return std::isinf(value); }
 
 /** Tests whether a given value is a valid float value (not NAN, not INFINITY). */
 inline bool is_valid(const float value) { return !is_nan(value) && !is_inf(value); }

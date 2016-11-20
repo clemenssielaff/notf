@@ -29,13 +29,20 @@ def main():
     solid_blue = CanvasComponent()
     solid_blue.set_paint_function(fill_blue)
 
-    stack_layout = StackLayout(StackDirection.RIGHT_TO_LEFT)
+    stack_layout = StackLayout(StackDirection.LEFT_TO_RIGHT)
     # stack_layout.set_spacing(50)
     # stack_layout.set_padding(Padding(25, 200, 25, 200))
 
     # for i in range(1):
     red_rect = Widget()
     red_rect.add_component(solid_red)
+
+    claim = Claim()
+    direction = ClaimDirection()
+    direction.set_preferred(100)
+    print(direction)
+    claim.set_horizontal(direction)
+    red_rect.set_claim(claim)
 
     green_rect = Widget()
     green_rect.add_component(solid_green)
@@ -49,14 +56,6 @@ def main():
 
     window = Window()
     window.get_layout_root().set_item(stack_layout)
-
-    claim = Claim()
-    direction = ClaimDirection()
-    direction.set_max(100)
-    print(direction)
-    claim.set_horizontal(direction)
-    red_rect.set_claim(claim)
-
 
 if __name__ == "__main__":
     main()

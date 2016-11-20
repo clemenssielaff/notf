@@ -96,7 +96,7 @@ protected: // methods
 
     virtual void _remove_item(const Handle item_handle) override;
 
-    virtual void _relayout(const Size2f size) override;
+    virtual void _relayout(const Size2f total_size) override;
 
 private: // fields
     /// @brief Direction in which the StackLayout is stacked.
