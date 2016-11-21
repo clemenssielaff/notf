@@ -37,15 +37,21 @@ def main():
     red_rect = Widget()
     red_rect.add_component(solid_red)
 
-    claim = Claim()
-    direction = ClaimDirection()
-    direction.set_preferred(100)
-    print(direction)
-    claim.set_horizontal(direction)
-    red_rect.set_claim(claim)
+    red_claim = Claim()
+    red_direction = ClaimDirection()
+    # direction.set_preferred(100)
+    red_claim.set_width_to_height(1/1, 1/1)
+    red_claim.set_horizontal(red_direction)
+    red_rect.set_claim(red_claim)
 
     green_rect = Widget()
     green_rect.add_component(solid_green)
+
+    green_direction = ClaimDirection()
+    green_direction.set_min(00)
+    green_claim = Claim()
+    green_claim.set_horizontal(green_direction)
+    green_rect.set_claim(green_claim)
 
     blue_rect = Widget()
     blue_rect.add_component(solid_blue)

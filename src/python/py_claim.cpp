@@ -66,14 +66,14 @@ void produce_claim(pybind11::module& module)
     // inspections
     PyClaim.def("get_horizontal", (Claim::Direction & (Claim::*)()) & Claim::get_horizontal, "Returns the horizontal part of this Claim.");
     PyClaim.def("get_vertical", (Claim::Direction & (Claim::*)()) & Claim::get_vertical, "Returns the vertical part of this Claim.");
-    PyClaim.def("get_height_for_width", &Claim::get_height_for_width, "Returns the min and max ratio constraints, 0 means no constraint, is: 0 <= min <= max < INFINITY");
+    PyClaim.def("get_width_to_height", &Claim::get_width_to_height, "Returns the min and max ratio constraints, 0 means no constraint, is: 0 <= min <= max < INFINITY");
 
     // modifications
     PyClaim.def("set_horizontal", &Claim::set_horizontal, "Sets the horizontal direction of this Claim.", py::arg("direction"));
     PyClaim.def("set_vertical", &Claim::set_vertical, "Sets the vertical direction of this Claim.", py::arg("direction"));
     PyClaim.def("add_horizontal", &Claim::add_horizontal, "In-place, horizontal addition operator for Claims.", py::arg("other"));
     PyClaim.def("add_vertical", &Claim::add_vertical, "In-place, vertical addition operator for Claims.", py::arg("other"));
-    PyClaim.def("set_height_for_width", &Claim::set_height_for_width, "Sets the ratio constraint.", py::arg("ratio_min"), py::arg("ratio_max") = NAN);
+    PyClaim.def("set_width_to_height", &Claim::set_width_to_height, "Sets the ratio constraint.", py::arg("ratio_min"), py::arg("ratio_max") = NAN);
 
     // operators
     PyClaim.def(py::self == py::self);
@@ -83,7 +83,7 @@ void produce_claim(pybind11::module& module)
     PyClaim.def("__repr__", [](const Claim& claim) {
         const Claim::Direction& horizontal = claim.get_horizontal();
         const Claim::Direction& vertical = claim.get_horizontal();
-        const std::pair<float, float> ratio = claim.get_height_for_width();
+        const std::pair<float, float> ratio = claim.get_width_to_height();
         return string_format(
             "notf.Claim(\n"
             "\thorizontal: [%f <= %f <=%f, factor: %f, priority %i]\n"

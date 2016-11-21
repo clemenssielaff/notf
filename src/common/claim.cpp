@@ -78,7 +78,7 @@ void Claim::Direction::add_offset(const float offset)
     m_preferred = max(0.f, m_preferred + offset);
 }
 
-void Claim::set_height_for_width(const float ratio_min, const float ratio_max)
+void Claim::set_width_to_height(const float ratio_min, const float ratio_max)
 {
     if (!is_valid(ratio_min) || ratio_min < 0) {
         log_warning << "Invalid min ratio: " << ratio_min << " - using 0 instead.";
@@ -126,7 +126,7 @@ std::ostream& operator<<(std::ostream& out, const Claim& claim)
 {
     const Claim::Direction& horizontal = claim.get_horizontal();
     const Claim::Direction& vertical = claim.get_horizontal();
-    const std::pair<float, float> ratio = claim.get_height_for_width();
+    const std::pair<float, float> ratio = claim.get_width_to_height();
     return out << string_format(
                "Claim(\n"
                "\thorizontal: [%f <= %f <=%f, factor: %f, priority %i]\n"

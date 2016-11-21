@@ -162,14 +162,14 @@ private: // class
         explicit Ratio() = default;
 
         /** Setting one or both values to zero, results in an invalid Ratio.
-         * @param height   Height in continuous units, is 0 < height < INFINITY
          * @param width    Width in units, is 0 < width < INFINITY
+         * @param height   Height in units, is 0 < height < INFINITY
          */
-        Ratio(const float height, const float width = 1)
+        Ratio(const float width, const float height = 1)
             : m_width(height)
             , m_height(width)
         {
-            if (!notf::is_valid(height) || !notf::is_valid(width) || height <= 0 || width <= 0) {
+            if (!notf::is_valid(width) || !notf::is_valid(height) || width <= 0 || height <= 0) {
                 m_width = 0;
                 m_height = 0;
             }
@@ -178,13 +178,13 @@ private: // class
         /** Tests if this Ratio is valid. */
         bool is_valid() const { return !(approx(m_width, 0) || approx(m_height, 0)); }
 
-        /** Returns the height-for-width ratio, is 0 if invalid. */
-        float get_height_for_width() const
+        /** Returns the ratio, is 0 if invalid. */
+        float get_width_to_height() const
         {
             if (!is_valid()) {
                 return 0;
             }
-            return m_height / m_width;
+            return  m_width / m_height;
         }
 
         bool operator==(const Ratio& other) const
@@ -261,19 +261,19 @@ public: // methods
         return *this;
     }
 
-    /** Returns the min and max ratio constraints,
+    /** Returns the min and max ratio constraints.
      * 0 means no constraint, is: 0 <= min <= max < INFINITY
      */
-    std::pair<float, float> get_height_for_width() const
+    std::pair<float, float> get_width_to_height() const
     {
-        return {m_ratios.first.get_height_for_width(), m_ratios.second.get_height_for_width()};
+        return {m_ratios.first.get_width_to_height(), m_ratios.second.get_width_to_height()};
     }
 
     /** Sets the ratio constraint.
-     * @param ratio_min    Height for width (min/fixed value), is used as minimum value if the second parameter is set.
-     * @param ratio_max    Height for width (max value), 'ratio_min' is use by default.
+     * @param ratio_min    Width to Height (min/fixed value), is used as minimum value if the second parameter is set.
+     * @param ratio_max    Width to Height (max value), 'ratio_min' is use by default.
      */
-    void set_height_for_width(const float ratio_min, const float ratio_max = NAN);
+    void set_width_to_height(const float ratio_min, const float ratio_max = NAN);
 
     Claim& operator=(const Claim& other)
     {
@@ -344,7 +344,7 @@ template <>
 struct hash<notf::Claim> {
     size_t operator()(const notf::Claim& claim) const
     {
-        const std::pair<float, float> ratio = claim.get_height_for_width();
+        const std::pair<float, float> ratio = claim.get_width_to_height();
         return notf::hash(
             claim.get_horizontal(),
             claim.get_horizontal(),
