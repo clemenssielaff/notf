@@ -31,30 +31,30 @@ public: // class
         explicit Direction() = default;
 
         /**
-         * @param preferred    Preferred size in local units, is limited to values >= 0.
-         * @param min          (optional) Minimum size, is clamped to 0 <= value <= preferred, defaults to 'preferred'.
-         * @param max          (optional) Maximum size, is clamped to preferred <= value, can be INFINITY, defaults to 'preferred'.
+         * @param base  Base size in local units, is limited to values >= 0.
+         * @param min   (optional) Minimum size, is clamped to `0 <= value <= max`, defaults to 0.
+         * @param max   (optional) Maximum size, is clamped to `min <= value`, can be `INFINITY`, defaults to 'INFINITY'.
          */
-        Direction(const float preferred, const float min = NAN, const float max = NAN)
-            : m_preferred(is_valid(preferred) ? notf::max(preferred, 0.f) : 0.f)
-            , m_min(is_valid(min) ? notf::min(std::max(0.f, min), m_preferred) : m_preferred)
-            , m_max(is_valid(preferred) ? (is_nan(max) ? m_preferred : notf::max(max, m_preferred)) : 0.f)
+        Direction(const float base, const float min = NAN, const float max = NAN)
+            : m_base(is_valid(base) ? notf::max(base, 0.f) : 0.f)
+            , m_min(is_valid(min) ? std::max(0.f, min) : 0.f)
+            , m_max(is_valid(max) ? notf::max(m_min, max) : INFINITY)
             , m_scale_factor(1.f)
             , m_priority(0.f)
         {
         }
 
-        /** Preferred size in local units, is >= 0. */
-        float get_preferred() const { return m_preferred; }
+        /** Base size in local units, is `0 <= base`. */
+        float get_base() const { return m_base; }
 
-        /** Minimum size in local units, is 0 <= min <= preferred. */
+        /** Minimum size in local units, is `0 <= min <= max`. */
         float get_min() const { return m_min; }
 
-        /** Maximum size in local units, is >= preferred. */
+        /** Maximum size in local units, is `min <= max`. */
         float get_max() const { return m_max; }
 
-        /** Tests if this Stretch is a fixed size where all 3 values are the same. */
-        bool is_fixed() const { return approx(m_preferred, m_min) && approx(m_preferred, m_max); }
+        /** Tests if this Direction is fixed, where both `min` and `max` are the same. */
+        bool is_fixed() const { return approx(m_min, m_max); }
 
         /** Returns the scale factor of the LayoutItem in this direction. */
         float get_scale_factor() const { return m_scale_factor; }
@@ -62,17 +62,15 @@ public: // class
         /** Returns the scale priority of the LayoutItem in this direction. */
         int get_priority() const { return m_priority; }
 
-        /** Sets a new preferred size, accomodates both the min and max size if necessary.
-         * @param preferred    Preferred size, must be 0 <= size < INFINITY.
-         */
-        void set_preferred(const float preferred);
+        /** Sets a new base size, does not interact with `min` or `max`, is `0 <= base`. */
+        void set_base(const float base);
 
-        /** Sets a new minimal size, accomodates both the preferred and max size if necessary.
+        /** Sets a new minimal size, accomodates `max` if necessary.
          * @param min  Minimal size, must be 0 <= size < INFINITY.
          */
         void set_min(const float min);
 
-        /** Sets a new maximal size, accomodates both the min and preferred size if necessary.
+        /** Sets a new maximal size, accomodates `min` if necessary.
          * @param max  Maximal size, must be 0 <= size <= INFINITY.
          */
         void set_max(const float max);
@@ -85,7 +83,7 @@ public: // class
         /** Sets a new scaling priority. */
         void set_priority(const int priority) { m_priority = priority; }
 
-        /** Adds an offset to the min, max and preferred value.
+        /** Adds an offset to the min, max and base value.
          * The offset can be negative.
          * Fields are truncated to be >= 0, invalid values are ignored.
          * Useful, for example, if you want to add a fixed "spacing" to the claim of a Layout.
@@ -94,7 +92,7 @@ public: // class
 
         Direction& operator=(const Direction& other)
         {
-            m_preferred = other.m_preferred;
+            m_base = other.m_base;
             m_min = other.m_min;
             m_max = other.m_max;
             m_scale_factor = other.m_scale_factor;
@@ -104,7 +102,7 @@ public: // class
 
         bool operator==(const Direction& other) const
         {
-            return (approx(m_preferred, other.m_preferred)
+            return (approx(m_base, other.m_base)
                     && approx(m_min, other.m_min)
                     && (approx(m_max, other.m_max) || (is_inf(m_max) && is_inf(other.m_max)))
                     && approx(m_scale_factor, other.m_scale_factor)
@@ -116,7 +114,7 @@ public: // class
         /** In-place addition operator for Directions. */
         Direction& operator+=(const Direction& other)
         {
-            m_preferred += other.m_preferred;
+            m_base += other.m_base;
             m_min += other.m_min;
             m_max += other.m_max;
             m_scale_factor += other.m_scale_factor;
@@ -127,7 +125,7 @@ public: // class
         /** In-place max operator for Directions. */
         Direction& maxed(const Direction& other)
         {
-            m_preferred = max(m_preferred, other.m_preferred);
+            m_base = max(m_base, other.m_base);
             m_min = max(m_min, other.m_min);
             m_max = max(m_max, other.m_max);
             m_scale_factor += max(m_scale_factor, other.m_scale_factor);
@@ -136,13 +134,13 @@ public: // class
         }
 
     private: // fields
-        /** Preferred size, is: min <= size <= max. */
-        float m_preferred = 0;
+        /** Base size, is: `min <= base <= max`. */
+        float m_base = 0;
 
-        /** Minimal size, is: 0 <= size <= preferred. */
+        /** Minimal size, is: `0 <= size <= max`. */
         float m_min = 0;
 
-        /** Maximal size, is: preferred <= size <= INFINITY. */
+        /** Maximal size, is: `min <= size <= INFINITY`. */
         float m_max = INFINITY;
 
         /** Scale factor, 0 means no scaling, is: 0 <= factor < INFINITY */
@@ -331,7 +329,7 @@ struct hash<notf::Claim::Direction> {
     size_t operator()(const notf::Claim::Direction& direction) const
     {
         return notf::hash(
-            direction.get_preferred(),
+            direction.get_base(),
             direction.get_min(),
             direction.get_max(),
             direction.get_scale_factor(),

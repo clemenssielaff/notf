@@ -21,11 +21,11 @@ using notf::approx;
  */
 struct ItemAdapter {
 
-    /** Mininum or maximum size (depending on usage). */
-    float limit;
+    float lower_bound;
+    float upper_bound;
 
-    /** Preferred size. */
-    float preferred;
+    /** Base size. */
+    float base;
 
     /** Scale factor. */
     float scale_factor;
@@ -34,97 +34,61 @@ struct ItemAdapter {
     float result;
 };
 
-void distribute_positive_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& batches)
+void distribute_positive_surplus(float remainder, std::map<int, std::set<ItemAdapter*>>& batches)
 {
     for (auto batch_it = batches.rbegin(); batch_it != batches.rend(); ++batch_it) {
         std::set<ItemAdapter*>& batch = batch_it->second;
         while (!batch.empty()) {
-            if (!approx(surplus, 0.f)) {
+            if (!approx(remainder, 0.f)) {
                 float total_scale_factor = 0.;
+                float total_base = 0.f;
                 for (const ItemAdapter* item : batch) {
                     assert(item->scale_factor > 0.f);
                     total_scale_factor += item->scale_factor;
+                    total_base += item->base;
                 }
+                float surplus = remainder - total_base;
                 assert(total_scale_factor > 0.f);
                 float surplus_per_scale_factor = surplus / total_scale_factor;
 
                 // if the size is higher than the max of any item, it's surplus must be distributed among the batch
                 bool surplus_fits_in_batch = true;
                 for (const ItemAdapter* item : batch) {
-                    if (item->limit < item->preferred + (item->scale_factor * surplus_per_scale_factor)) {
-                        surplus -= item->limit;
+                    const float base_offset = item->scale_factor * surplus_per_scale_factor;
+                    if (item->lower_bound > item->base + base_offset) {
+                        remainder -= item->lower_bound;
                         surplus_fits_in_batch = false;
                         auto mutable_item = const_cast<ItemAdapter*>(item);
                         batch.erase(mutable_item);
-                        mutable_item->result = item->limit;
+                        mutable_item->result = item->lower_bound;
+                    }
+                    else if (item->upper_bound < item->base + base_offset) {
+                        remainder -= item->upper_bound;
+                        surplus_fits_in_batch = false;
+                        auto mutable_item = const_cast<ItemAdapter*>(item);
+                        batch.erase(mutable_item);
+                        mutable_item->result = item->upper_bound;
                     }
                 }
 
                 // if all sizes fit, we can use up the surplus with this batch
                 if (surplus_fits_in_batch) {
                     for (const ItemAdapter* item : batch) {
+                        const float base_offset = item->scale_factor * surplus_per_scale_factor;
+
                         auto mutable_item = const_cast<ItemAdapter*>(item);
                         batch.erase(mutable_item);
-                        mutable_item->result = item->preferred + (item->scale_factor * surplus_per_scale_factor);
+                        mutable_item->result = item->base + base_offset;
                     }
                     assert(batch.empty());
-                    surplus = 0.f;
+                    remainder = 0.f;
                 }
             }
-            else { // no surplus means that all further items are assigned their preferred claim
+            else { // no surplus means that all further items are assigned their base claim
                 for (const ItemAdapter* item : batch) {
                     auto mutable_item = const_cast<ItemAdapter*>(item);
                     batch.erase(mutable_item);
-                    mutable_item->result = item->preferred;
-                }
-                assert(batch.empty());
-            }
-        }
-    }
-}
-
-void distribute_negative_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& batches)
-{
-    for (auto batch_it = batches.begin(); batch_it != batches.end(); ++batch_it) {
-        std::set<ItemAdapter*>& batch = batch_it->second;
-        while (!batch.empty()) {
-            if (!approx(surplus, 0.f)) {
-                float total_scale_factor = 0.;
-                for (const ItemAdapter* item : batch) {
-                    assert(item->scale_factor > 0.f);
-                    total_scale_factor += item->scale_factor;
-                }
-                assert(total_scale_factor > 0.f);
-                float surplus_per_scale_factor = surplus / total_scale_factor;
-
-                // if the size is smaller than the min of any item, it's surplus must be distributed among the batch
-                bool surplus_fits_in_batch = true;
-                for (const ItemAdapter* item : batch) {
-                    if (item->limit > item->preferred + (item->scale_factor * surplus_per_scale_factor)) {
-                        surplus += item->limit;
-                        surplus_fits_in_batch = false;
-                        auto mutable_item = const_cast<ItemAdapter*>(item);
-                        batch.erase(mutable_item);
-                        mutable_item->result = item->limit;
-                    }
-                }
-
-                // if all sizes fit, we can use up the surplus with this batch
-                if (surplus_fits_in_batch) {
-                    for (const ItemAdapter* item : batch) {
-                        auto mutable_item = const_cast<ItemAdapter*>(item);
-                        batch.erase(mutable_item);
-                        mutable_item->result = item->preferred + (item->scale_factor * surplus_per_scale_factor);
-                    }
-                    assert(batch.empty());
-                    surplus = 0.f;
-                }
-            }
-            else { // no surplus means that all further items are assigned their preferred claim
-                for (const ItemAdapter* item : batch) {
-                    auto mutable_item = const_cast<ItemAdapter*>(item);
-                    batch.erase(mutable_item);
-                    mutable_item->result = item->preferred;
+                    mutable_item->result = item->base;
                 }
                 assert(batch.empty());
             }
@@ -221,35 +185,77 @@ void StackLayout::_relayout(const Size2f total_size)
     // calculate spacial requirements
     const float available_width = max(0.f, total_size.width - m_padding.left - m_padding.right - (m_spacing * (item_count - 1)));
     const float available_height = max(0.f, total_size.height - m_padding.top - m_padding.bottom);
-    float total_preferred = m_padding.left + m_padding.right + (m_spacing * (item_count - 1));
+    float total_base = m_padding.left + m_padding.right + (m_spacing * (item_count - 1));
+    float total_min = total_base;
+    float total_max = total_base;
     for (size_t i = 0; i < m_items.size(); ++i) {
         const Claim::Direction& direction = _get_child(m_items[i])->get_claim().get_horizontal();
-        total_preferred += direction.get_preferred();
+        total_base += direction.get_base();
+        total_min += direction.get_min();
+        total_max += direction.get_max();
     }
-    const float surplus = available_width - total_preferred;
+
+    // hard requirements are easy
+    if(available_width <= total_min){
+
+        float x_offset = m_padding.left;
+        for(Handle handle : m_items){
+            std::shared_ptr<LayoutItem> child = _get_child(handle);
+            const Claim::Direction& direction = child->get_claim().get_horizontal();
+            const std::pair<float, float> width_to_height = child->get_claim().get_width_to_height();
+
+            float item_height;
+            if(width_to_height.first == 0.f){
+                item_height = available_height;
+            } else {
+                item_height = min(available_height, direction.get_min() / width_to_height.first);
+            }
+
+            Size2f item_size(direction.get_min(), item_height);
+            _update_item(child, item_size, Transform2::translation({x_offset, m_padding.top}));
+            x_offset += direction.get_min() + m_spacing;
+        }
+        return;
+    }
+
+    else if(available_width >= total_max){
+
+        float x_offset = m_padding.left;
+        for(Handle handle : m_items){
+            std::shared_ptr<LayoutItem> child = _get_child(handle);
+            const Claim::Direction& direction = child->get_claim().get_horizontal();
+            const std::pair<float, float> width_to_height = child->get_claim().get_width_to_height();
+
+            float item_height;
+            if(width_to_height.first == 0.f){
+                item_height = available_height;
+            } else {
+                item_height = min(available_height, direction.get_max() / width_to_height.first);
+            }
+
+            Size2f item_size(direction.get_max(), item_height);
+            _update_item(child, item_size, Transform2::translation({x_offset, m_padding.top}));
+            x_offset += direction.get_max() + m_spacing;
+        }
+        return;
+    }
+
+    const float surplus = available_width - total_min;
 
     std::vector<ItemAdapter> adapters(m_items.size());
     std::map<int, std::set<ItemAdapter*>> batches;
     for (size_t i = 0; i < m_items.size(); ++i) {
         const Claim& claim = _get_child(m_items[i])->get_claim();
         const Claim::Direction& direction = claim.get_horizontal();
-        total_preferred += direction.get_preferred();
         const std::pair<float, float> width_to_height = claim.get_width_to_height();
-        if(surplus >= 0.f){
-            if (width_to_height.first > 0.f) {
-                adapters[i].limit = min(direction.get_max(), available_height / width_to_height.second);
-            } else {
-                adapters[i].limit = direction.get_max();
-            }
+        if (width_to_height.first > 0.f) {
+            adapters[i].lower_bound = min(direction.get_min(), available_height / width_to_height.first);
+            adapters[i].upper_bound = min(direction.get_max(), available_height / width_to_height.second);
+        } else {
+            adapters[i].lower_bound = direction.get_min();
+            adapters[i].upper_bound = direction.get_max();
         }
-        else {
-            if (width_to_height.first > 0.f) {
-                adapters[i].limit = min(direction.get_min(), available_height / width_to_height.second);
-            } else {
-                adapters[i].limit = direction.get_min();
-            }
-        }
-        adapters[i].preferred = direction.get_preferred();
+        adapters[i].base = direction.get_base();
         adapters[i].scale_factor = direction.get_scale_factor();
 #ifdef _DEBUG
         adapters[i].result = -1.f;
@@ -258,12 +264,8 @@ void StackLayout::_relayout(const Size2f total_size)
     }
 
     // "solve" the layout
-    if (surplus >= 0) {
-        distribute_positive_surplus(surplus, batches);
-    }
-    else {
-        distribute_negative_surplus(surplus, batches);
-    }
+    assert(surplus >= 0);
+    distribute_positive_surplus(available_width, batches);
 
     float x_offset = m_padding.left;
     for (size_t i = 0; i < m_items.size(); ++i) {
@@ -281,8 +283,9 @@ void StackLayout::_relayout(const Size2f total_size)
         _update_item(child, item_size, Transform2::translation({x_offset, m_padding.top}));
         x_offset += adapter.result + m_spacing;
     }
+    if(!approx(x_offset, available_width - m_padding.right + m_spacing)){
+        log_critical << "SOFT ASSERT or whatever";
+    }
 }
-
-// TODO: there is a bug somewhere: when I set the min in green, it is always larger than the rest
 
 } // namespace notf
