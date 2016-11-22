@@ -20,23 +20,23 @@ void produce_claim(pybind11::module& module)
 
     // constructors
     PyClaimDirection.def(py::init<>());
-    PyClaimDirection.def(py::init<float, float, float>(), py::arg("base"), py::arg("min") = NAN, py::arg("max") = NAN);
+    PyClaimDirection.def(py::init<float, float, float>(), py::arg("preferred"), py::arg("min") = NAN, py::arg("max") = NAN);
 
     // inspections
-    PyClaimDirection.def("get_base", &Claim::Direction::get_base, "Base size in local units, is `0 <= base`.");
-    PyClaimDirection.def("get_min", &Claim::Direction::get_min, "Minimum size in local units, is `0 <= min <= max`.");
-    PyClaimDirection.def("get_max", &Claim::Direction::get_max, "Maximum size in local units, is `min <= max`.");
-    PyClaimDirection.def("is_fixed", &Claim::Direction::is_fixed, "Tests if this Direction is fixed, where both `min` and `max` are the same.");
+    PyClaimDirection.def("get_preferred", &Claim::Direction::get_preferred, "Preferred size in local units, is >= 0.");
+    PyClaimDirection.def("get_min", &Claim::Direction::get_min, "Minimum size in local units, is 0 <= min <= preferred.");
+    PyClaimDirection.def("get_max", &Claim::Direction::get_max, "Maximum size in local units, is >= preferred.");
+    PyClaimDirection.def("is_fixed", &Claim::Direction::is_fixed, "Tests if this Direction is a fixed size where all 3 values are the same.");
     PyClaimDirection.def("get_scale_factor", &Claim::Direction::get_scale_factor, "Returns the scale factor of the LayoutItem in this direction.");
     PyClaimDirection.def("get_priority", &Claim::Direction::get_priority, "Returns the scale priority of the LayoutItem in this direction.");
 
     // modifications
-    PyClaimDirection.def("set_base", &Claim::Direction::set_base, "Sets a new base size, does not interact with `min` or `max`, is `0 <= base`.", py::arg("base"));
-    PyClaimDirection.def("set_min", &Claim::Direction::set_min, "Sets a new minimal size, accomodates `max` if necessary.", py::arg("min"));
-    PyClaimDirection.def("set_max", &Claim::Direction::set_max, "Sets a new maximal size, accomodates `min` if necessary.", py::arg("max"));
+    PyClaimDirection.def("set_preferred", &Claim::Direction::set_preferred, "Sets a new preferred size, accomodates both the min and max size if necessary.", py::arg("preferred"));
+    PyClaimDirection.def("set_min", &Claim::Direction::set_min, "Sets a new minimal size, accomodates both the preferred and max size if necessary.", py::arg("min"));
+    PyClaimDirection.def("set_max", &Claim::Direction::set_max, "Sets a new maximal size, accomodates both the min and preferred size if necessary.", py::arg("max"));
     PyClaimDirection.def("set_scale_factor", &Claim::Direction::set_scale_factor, "Sets a new scale factor.", py::arg("factor"));
     PyClaimDirection.def("set_priority", &Claim::Direction::set_priority, "Sets a new scaling priority.", py::arg("priority"));
-    PyClaimDirection.def("add_offset", &Claim::Direction::add_offset, "Adds an offset to the min, max and base value.", py::arg("offset"));
+    PyClaimDirection.def("add_offset", &Claim::Direction::add_offset, "Adds an offset to the min, max and preferred value.", py::arg("offset"));
 
     // operators
     PyClaimDirection.def(py::self == py::self);
@@ -50,7 +50,7 @@ void produce_claim(pybind11::module& module)
         return string_format(
             "notf.Claim::Direction([%f <= %f <=%f, factor: %f, priority %i])",
             direction.get_min(),
-            direction.get_base(),
+            direction.get_preferred(),
             direction.get_max(),
             direction.get_scale_factor(),
             direction.get_priority());
@@ -86,16 +86,16 @@ void produce_claim(pybind11::module& module)
         const std::pair<float, float> ratio = claim.get_width_to_height();
         return string_format(
             "notf.Claim(\n"
-            "\thorizontal: [base: %f, limits: %f <=%f, factor: %f, priority %i]\n"
-            "\tvertical: [base: %f, limits: %f <=%f, factor: %f, priority %i]\n"
+            "\thorizontal: [%f <= %f <=%f, factor: %f, priority %i]\n"
+            "\tvertical: [%f <= %f <=%f, factor: %f, priority %i]\n"
             "\tratio: %f : %f)",
-            horizontal.get_base(),
             horizontal.get_min(),
+            horizontal.get_preferred(),
             horizontal.get_max(),
             horizontal.get_scale_factor(),
             horizontal.get_priority(),
-            vertical.get_base(),
             vertical.get_min(),
+            vertical.get_preferred(),
             vertical.get_max(),
             vertical.get_scale_factor(),
             vertical.get_priority(),

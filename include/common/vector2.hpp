@@ -176,7 +176,7 @@ struct Vector2 {
     /// @brief Checks, if this Vector2 contains only float, finite values.
     ///
     /// INFINITY and NAN are not float numbers.
-    bool is_real() const { return is_valid(x) && is_valid(y); }
+    bool is_real() const { return notf::is_real(x) && notf::is_real(y); }
 
     /// @brief Checks, if any component of this Vector2 is a zero.
     bool contains_zero() const { return approx(x, 0) || approx(y, 0); }

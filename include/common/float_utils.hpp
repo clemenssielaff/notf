@@ -69,6 +69,6 @@ inline float asin(const float value) { return std::asin(clamp(value, -1, 1)); }
 inline float acos(const float value) { return std::acos(clamp(value, -1, 1)); }
 
 /** Tests whether a given value is a valid float value (not NAN, not INFINITY). */
-inline bool is_valid(const float value) { return !is_nan(value) && !is_inf(value); }
+inline bool is_real(const float value) { return !is_nan(value) && !is_inf(value); }
 
 } // namespace notf
