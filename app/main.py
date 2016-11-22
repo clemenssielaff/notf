@@ -40,6 +40,7 @@ def main():
     red_claim = Claim()
     red_direction = ClaimDirection()
     red_direction.set_base(100)
+    red_direction.set_max(200)
     red_claim.set_width_to_height(1/1, 1/1)
     red_claim.set_horizontal(red_direction)
     red_rect.set_claim(red_claim)
@@ -50,7 +51,7 @@ def main():
     green_direction = ClaimDirection()
     green_direction.set_min(100)
     green_direction.set_base(100)
-    green_direction.set_max(400)
+    green_direction.set_max(200)
     green_direction.set_scale_factor(1)
     green_claim = Claim()
     green_claim.set_horizontal(green_direction)
@@ -58,6 +59,7 @@ def main():
 
     blue_direction = ClaimDirection()
     blue_direction.set_base(100)
+    blue_direction.set_max(200)
     blue_claim = Claim()
     blue_claim.set_horizontal(blue_direction)
 
