@@ -13,8 +13,7 @@
 
 namespace { // anonymous
 
-using notf::Claim;
-using notf::approx;
+using namespace notf;
 
 /**
  * Helper struct used to abstract away which claim-direction and stack-direction is used for layouting.
@@ -54,7 +53,7 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
                     }
                 }
                 if (total_deficit > 0.f) {
-                    total_deficit = notf::min(total_deficit, surplus);
+                    total_deficit = min(total_deficit, surplus);
                     assert(total_scale_factor > 0);
                     const float deficit_per_scale_factor = total_deficit / total_scale_factor;
                     for (ItemAdapter* item : batch) {
@@ -196,7 +195,6 @@ void StackLayout::_remove_item(const Handle item_handle)
     m_items.erase(it);
 }
 
-// TODO: adapt for other than left->right
 void StackLayout::_relayout(const Size2f total_size)
 {
     // calculate the actual, availabe size
@@ -204,24 +202,29 @@ void StackLayout::_relayout(const Size2f total_size)
     if (item_count == 0) {
         return;
     }
-    const float available_width = max(0.f, total_size.width - m_padding.left - m_padding.right - (m_spacing * (item_count - 1)));
-    const float available_height = max(0.f, total_size.height - m_padding.top - m_padding.bottom);
+
+    const bool horizontal = (m_direction == StackDirection::LEFT_TO_RIGHT) || (m_direction == StackDirection::RIGHT_TO_LEFT);
+    const float available_width = max(0.f, total_size.width - m_padding.width() - (horizontal ? m_spacing * (item_count - 1) : 0.f));
+    const float available_height = max(0.f, total_size.height - m_padding.height() - (horizontal ? 0.f : m_spacing * (item_count - 1)));
 
     // all elements get at least their minimum size
-    float total_min = m_padding.left + m_padding.right + (m_spacing * (item_count - 1));
+    float total_min = (horizontal ? m_padding.width() : m_padding.height()) + (m_spacing * (item_count - 1));
     std::vector<ItemAdapter> adapters(m_items.size());
     std::map<int, std::set<ItemAdapter*>> batches;
     for (size_t i = 0; i < m_items.size(); ++i) {
         const Claim& claim = _get_child(m_items[i])->get_claim();
-        const Claim::Direction& direction = claim.get_horizontal();
-        {
-            const std::pair<float, float> width_to_height = claim.get_width_to_height();
-            if (width_to_height.first > 0.f) {
-                adapters[i].upper_bound = min(direction.get_max(), available_height / width_to_height.second);
+        const Claim::Direction& direction = horizontal ? claim.get_horizontal() : claim.get_vertical();
+        const std::pair<float, float> width_to_height = claim.get_width_to_height();
+        if (width_to_height.first > 0.f) {
+            if (horizontal) {
+                adapters[i].upper_bound = min(direction.get_max(), available_height * width_to_height.second);
             }
             else {
-                adapters[i].upper_bound = direction.get_max();
+                adapters[i].upper_bound = min(direction.get_max(), available_width / width_to_height.first);
             }
+        }
+        else {
+            adapters[i].upper_bound = direction.get_max();
         }
         adapters[i].preferred = min(adapters[i].upper_bound, direction.get_preferred());
         adapters[i].scale_factor = direction.get_scale_factor();
@@ -231,26 +234,37 @@ void StackLayout::_relayout(const Size2f total_size)
     }
 
     // layouting is the process by which the surplus space in the layout is distributed
-    if (available_width > total_min) {
-        distribute_surplus(available_width - total_min, batches);
+    const float surplus = horizontal ? available_width - total_min : available_height - total_min;
+    if (surplus > 0) {
+        distribute_surplus(surplus, batches);
     }
 
     // apply the layout
-    float x_offset = m_padding.left;
-    for (size_t i = 0; i < m_items.size(); ++i) {
-        std::shared_ptr<LayoutItem> child = _get_child(m_items.at(i)); // TODO: this `handle` handling is tedious
-        const ItemAdapter& adapter = adapters[i];
-
+    const bool in_order = (m_direction == StackDirection::LEFT_TO_RIGHT) || (m_direction == StackDirection::TOP_TO_BOTTOM);
+    float offset = horizontal ? m_padding.left : m_padding.top;
+    for (size_t it = in_order ? 1 : m_items.size(); in_order ? it <= m_items.size() : it > 0; in_order ? ++it : --it) {
+        assert(it > 0);
+        const size_t index = it - 1;
+        std::shared_ptr<LayoutItem> child = _get_child(m_items.at(index)); // TODO: this `handle` handling is tedious
+        const ItemAdapter& adapter = adapters[index];
+        const std::pair<float, float> width_to_height = child->get_claim().get_width_to_height();
         assert(adapter.result >= 0.f);
         assert(adapter.result <= adapter.upper_bound);
-
-        const std::pair<float, float> width_to_height = child->get_claim().get_width_to_height();
-        Size2f item_size(adapter.result, available_height);
-        if (width_to_height.first > 0.f) {
-            item_size.height = min(available_height, adapter.result / width_to_height.first);
+        if (horizontal) {
+            Size2f item_size(adapter.result, available_height);
+            if (width_to_height.first > 0.f) {
+                item_size.height = min(available_height, adapter.result / width_to_height.first);
+            }
+            _update_item(child, item_size, Transform2::translation({offset, m_padding.top}));
         }
-        _update_item(child, item_size, Transform2::translation({x_offset, m_padding.top}));
-        x_offset += adapter.result + m_spacing;
+        else { // vertical
+            Size2f item_size(available_width, adapter.result);
+            if (width_to_height.first > 0.f) {
+                item_size.width = min(available_width, adapter.result * width_to_height.second);
+            }
+            _update_item(child, item_size, Transform2::translation({m_padding.left, offset}));
+        }
+        offset += adapter.result + m_spacing;
     }
 }
 

@@ -40,6 +40,12 @@ struct Padding {
 
     /** Checks if this Padding is valid (all sides have values >= 0). */
     bool is_valid() const { return top >= 0.f && right >= 0.f && bottom >= 0.f && left >= 0.f; }
+
+    /** Sum of the two horizontal padding sizes. */
+    float width() const { return left + right; }
+
+    /** Sum of the two vertical padding sizes. */
+    float height() const { return top + bottom; }
 };
 
 /* Free Functions *****************************************************************************************************/

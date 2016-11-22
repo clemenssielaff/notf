@@ -166,8 +166,8 @@ private: // class
          * @param height   Height in units, is 0 < height < INFINITY
          */
         Ratio(const float width, const float height = 1)
-            : m_width(height)
-            , m_height(width)
+            : m_width(width)
+            , m_height(height)
         {
             if (!notf::is_real(width) || !notf::is_real(height) || width <= 0 || height <= 0) {
                 m_width = 0;
