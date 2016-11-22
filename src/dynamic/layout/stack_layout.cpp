@@ -7,7 +7,6 @@
 #include "common/claim.hpp"
 #include "common/float_utils.hpp"
 #include "common/log.hpp"
-#include "common/set_utils.hpp"
 #include "common/transform2.hpp"
 #include "common/vector_utils.hpp"
 #include "core/widget.hpp"
@@ -21,16 +20,9 @@ using notf::approx;
  * Helper struct used to abstract away which claim-direction and stack-direction is used for layouting.
  */
 struct ItemAdapter {
-
     float upper_bound;
-
-    /** Base size. */
     float preferred;
-
-    /** Scale factor. */
     float scale_factor;
-
-    /** Calculated size. */
     float result;
 };
 
@@ -76,14 +68,18 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
                         }
                     }
                     if (!on_first_phase) {
-                        for (ItemAdapter* item : batch) {
+                        for (auto it = batch.begin(); it != batch.end();) {
+                            ItemAdapter* item = *it;
                             if (item->preferred - item->result > 0.f) {
                                 item->result += deficit_per_scale_factor * item->scale_factor;
                             }
+                            if (approx(item->result, item->upper_bound)) {
+                                it = batch.erase(it);
+                            }
+                            else {
+                                ++it;
+                            }
                         }
-                        notf::erase_conditional(batch, [](const ItemAdapter* item) -> bool {
-                            return approx(item->result, item->upper_bound);
-                        });
                         surplus -= total_deficit;
                     }
                 }
@@ -91,7 +87,6 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
 
             // in the second phase, distribute the remaining space
             else {
-                std::vector<ItemAdapter*> finished_items;
                 float total_scale_factor = 0.f;
                 for (ItemAdapter* item : batch) {
                     assert(item->upper_bound - item->result > 0);
@@ -100,12 +95,16 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
                 }
                 float surplus_per_scale_factor = surplus / total_scale_factor;
                 bool surplus_fits_in_batch = true;
-                for (ItemAdapter* item : batch) {
+                for (auto it = batch.begin(); it != batch.end();) {
+                    ItemAdapter* item = *it;
                     if (item->result + (item->scale_factor * surplus_per_scale_factor) > item->upper_bound) {
                         surplus_fits_in_batch = false;
                         surplus -= item->upper_bound - item->result;
                         item->result = item->upper_bound;
-                        finished_items.push_back(item);
+                        it = batch.erase(it);
+                    }
+                    else {
+                        ++it;
                     }
                 }
                 if (surplus_fits_in_batch) {
@@ -114,11 +113,6 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
                     }
                     batch.clear();
                     surplus = 0.f;
-                }
-                else {
-                    for (ItemAdapter* item : finished_items) {
-                        batch.erase(item);
-                    }
                 }
             }
         }
