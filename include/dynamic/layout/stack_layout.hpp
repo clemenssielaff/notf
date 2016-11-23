@@ -24,14 +24,14 @@ public: // methods
     /** Alignment of items in the cross direction. */
     Alignment get_cross_alignment() const { return m_cross_alignment; }
 
-    /** How items are wrapped. */
-    Wrap get_wrapping() const { return m_wrap; }
-
-    /** Spacing between items. */
-    float get_spacing() const { return m_spacing; }
+    /** True if overflowing lines are wrapped. */
+    bool is_wrapping() const { return m_is_wrapping; }
 
     /** Padding around the Layout's border. */
     const Padding& get_padding() const { return m_padding; }
+
+    /** Spacing between items. */
+    float get_spacing() const { return m_spacing; }
 
     /** Defines the direction in which the StackLayout is stacked. */
     void set_direction(const Direction direction);
@@ -42,14 +42,14 @@ public: // methods
     /** Defines the alignment of items in the cross direction. */
     void set_cross_alignment(const Alignment alignment);
 
-    /** Defines how items are wrapped. */
-    void set_wrapping(const Wrap) {}
-
-    /** Defines the spacing between items. */
-    void set_spacing(float spacing);
+    /** Defines if overflowing lines are wrapped. */
+    void set_wrapping(const bool wrap);
 
     /** Defines the padding around the Layout's border. */
     void set_padding(const Padding& padding);
+
+    /** Defines the spacing between items. */
+    void set_spacing(float spacing);
 
     /// @brief Finds the Index of the LayoutItem in this Layout, might be invalid.
     Index find_index(const Handle handle) const
@@ -94,9 +94,12 @@ protected: // methods
         , m_direction(direction)
         , m_main_alignment(Alignment::START)
         , m_cross_alignment(Alignment::START)
-        , m_wrap(Wrap::NONE)
-        , m_spacing(0.f)
+        , m_is_wrapping(false)
         , m_padding(Padding::none())
+        , m_spacing(0.f)
+        , m_cross_spacing(0.f)
+        , m_flex_alignment(Alignment::START)
+        , m_wrap_direction(Circular::CLOCKWISE)
         , m_items()
     {
     }
@@ -108,8 +111,11 @@ protected: // methods
     virtual void _relayout(const Size2f total_size) override;
 
 private: // methods
+    /** Performs the layout of a single row. */
+    void _layout_row(const std::vector<Handle>& row, const Size2f total_size);
+
     /** Calculates the cross offset to accomodate the cross alignment constraint. */
-    float cross_align_offset(const float item_size, const float available_size);
+    float _cross_align_offset(const float item_size, const float available_size);
 
 private: // fields
     /** Direction in which the StackLayout is stacked. */
@@ -122,13 +128,22 @@ private: // fields
     Alignment m_cross_alignment;
 
     /** How items in the Layout are wrapped. */
-    Wrap m_wrap;
-
-    /** Spacing between items in the layout*/
-    float m_spacing;
+    bool m_is_wrapping;
 
     /** Padding around the Layout's borders. */
     Padding m_padding;
+
+    /** Spacing between items in the Layout. */
+    float m_spacing;
+
+    /** Spacing between rows, if this Layout wraps. */
+    float m_cross_spacing;
+
+    /** Cross alignment of all rows if the Layout wraps. */
+    Alignment m_flex_alignment;
+
+    /** Defines in which circular direction the wrap occurs. */
+    Circular m_wrap_direction;
 
     /// @brief All items in this Layout in order.
     std::vector<Handle> m_items;

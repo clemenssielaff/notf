@@ -179,6 +179,15 @@ void StackLayout::set_cross_alignment(const Alignment alignment)
     _relayout(get_size());
 }
 
+void StackLayout::set_wrapping(const bool wrap)
+{
+    if (wrap == m_is_wrapping) {
+        return;
+    }
+    m_is_wrapping = wrap;
+    _relayout(get_size());
+}
+
 void StackLayout::add_item(std::shared_ptr<LayoutItem> item)
 {
     // if the item is already child of this Layout, place it at the end
@@ -233,8 +242,38 @@ void StackLayout::_remove_item(const Handle item_handle)
 
 void StackLayout::_relayout(const Size2f total_size)
 {
+    std::vector<std::vector<Handle>> rows;
+    if (m_is_wrapping) {
+        const bool horizontal = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
+        const float available_size = horizontal ? total_size.width : total_size.height;
+        std::vector<Handle> current_row;
+        float current_size = horizontal ? m_padding.width() : m_padding.height();
+        for (Handle item : m_items) {
+            const Claim& claim = _get_child(item)->get_claim();
+            const Claim::Stretch& stretch = horizontal ? claim.get_horizontal() : claim.get_vertical();
+            const float addition = stretch.get_preferred() + m_spacing;
+            if (current_size + addition > available_size) {
+                rows.emplace_back(std::move(current_row));
+                current_row.clear(); // re-using moved container, see http://stackoverflow.com/a/9168917/3444217
+                current_size = horizontal ? m_padding.width() : m_padding.height();
+            }
+            current_size += addition;
+            current_row.push_back(item);
+        }
+        rows.emplace_back(std::move(current_row));
+    }
+    else {
+        rows.push_back(m_items);
+    }
+    for (const std::vector<Handle>& row : rows) {
+        _layout_row(row, total_size);
+    }
+}
+
+void StackLayout::_layout_row(const std::vector<Handle>& row, const Size2f total_size)
+{
     // calculate the actual, availabe size
-    const size_t item_count = m_items.size();
+    const size_t item_count = row.size();
     if (item_count == 0) {
         return;
     }
@@ -245,10 +284,10 @@ void StackLayout::_relayout(const Size2f total_size)
 
     // all elements get at least their minimum size
     float total_min = 0.f;
-    std::vector<ItemAdapter> adapters(m_items.size());
+    std::vector<ItemAdapter> adapters(row.size());
     std::map<int, std::set<ItemAdapter*>> batches;
-    for (size_t i = 0; i < m_items.size(); ++i) {
-        const Claim& claim = _get_child(m_items[i])->get_claim();
+    for (size_t i = 0; i < row.size(); ++i) {
+        const Claim& claim = _get_child(row[i])->get_claim();
         const Claim::Stretch& stretch = horizontal ? claim.get_horizontal() : claim.get_vertical();
         const std::pair<float, float> width_to_height = claim.get_width_to_height();
         if (width_to_height.first > 0.f) {
@@ -276,38 +315,50 @@ void StackLayout::_relayout(const Size2f total_size)
     }
 
     // determine values for alignment along the primary axis
-    float alignment_start;
-    float alignment_spacing;
+    float alignment_start = 0.f;
+    float alignment_spacing = 0.f;
     switch (m_main_alignment) {
     case Alignment::START:
-        alignment_start = 0.f;
-        alignment_spacing = 0.f;
         break;
     case Alignment::END:
         alignment_start = surplus;
-        alignment_spacing = 0.f;
         break;
     case Alignment::CENTER:
         alignment_start = surplus * 0.5f;
-        alignment_spacing = 0.f;
         break;
     case Alignment::SPACE_BETWEEN:
-        alignment_start = 0.f;
         alignment_spacing = item_count > 1 ? surplus / static_cast<float>(item_count - 1) : 0.f;
         break;
     case Alignment::SPACE_AROUND:
         alignment_start = surplus / static_cast<float>(item_count * 2);
         alignment_spacing = alignment_start * 2.f;
         break;
+    case Alignment::SPACE_EQUAL:
+        alignment_start = surplus / static_cast<float>(item_count + 1);
+        alignment_spacing = alignment_start;
+        break;
     }
 
     // apply the layout
-    const bool in_order = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::TOP_TO_BOTTOM);
-    float offset = alignment_start + (horizontal ? m_padding.left : m_padding.top);
-    for (size_t it = in_order ? 1 : m_items.size(); in_order ? it <= m_items.size() : it > 0; in_order ? ++it : --it) {
-        assert(it > 0);
-        const size_t index = it - 1;
-        std::shared_ptr<LayoutItem> child = _get_child(m_items.at(index)); // TODO: this `handle` handling is tedious
+    float start_offset;
+    float step_factor;
+    const bool reverse = (m_direction == Direction::RIGHT_TO_LEFT) || (m_direction == Direction::BOTTOM_TO_TOP);
+    if (reverse) {
+        if (horizontal) {
+            start_offset = total_size.width - alignment_start - m_padding.right;
+        }
+        else {
+            start_offset = total_size.height - alignment_start - m_padding.bottom;
+        }
+        step_factor = -1.f;
+    }
+    else {
+        start_offset = alignment_start + (horizontal ? m_padding.left : m_padding.top);
+        step_factor = 1.f;
+    }
+    float current_offset = start_offset;
+    for (size_t index = 0; index < row.size(); ++index) {
+        std::shared_ptr<LayoutItem> child = _get_child(row.at(index)); // TODO: this `handle` handling is tedious
         const ItemAdapter& adapter = adapters[index];
         const std::pair<float, float> width_to_height = child->get_claim().get_width_to_height();
         assert(adapter.result >= 0.f);
@@ -319,8 +370,9 @@ void StackLayout::_relayout(const Size2f total_size)
                 item_size.height = min(item_size.height, adapter.result / width_to_height.first);
             }
             item_size.height = max(item_size.height, vertical.get_min());
-            const float cross_offset = cross_align_offset(item_size.height, available_height);
-            _update_item(child, item_size, Transform2::translation({offset, m_padding.top + cross_offset}));
+            const float cross_offset = _cross_align_offset(item_size.height, available_height);
+            const float applied_offset = reverse ? current_offset - item_size.width : current_offset;
+            _update_item(child, item_size, Transform2::translation({applied_offset, m_padding.top + cross_offset}));
         }
         else { // vertical
             const Claim::Stretch& horizontal = child->get_claim().get_horizontal();
@@ -329,14 +381,15 @@ void StackLayout::_relayout(const Size2f total_size)
                 item_size.width = min(item_size.width, adapter.result * width_to_height.second);
             }
             item_size.width = max(item_size.width, horizontal.get_min());
-            const float cross_offset = cross_align_offset(item_size.width, available_width);
-            _update_item(child, item_size, Transform2::translation({m_padding.left + cross_offset, offset}));
+            const float cross_offset = _cross_align_offset(item_size.width, available_width);
+            const float applied_offset = reverse ? current_offset - item_size.height : current_offset;
+            _update_item(child, item_size, Transform2::translation({m_padding.left + cross_offset, applied_offset}));
         }
-        offset += adapter.result + m_spacing + alignment_spacing;
+        current_offset += (adapter.result + m_spacing + alignment_spacing) * step_factor;
     }
 }
 
-float StackLayout::cross_align_offset(const float item_size, const float available_size)
+float StackLayout::_cross_align_offset(const float item_size, const float available_size)
 {
     if (available_size > item_size) {
         switch (m_cross_alignment) {
@@ -347,12 +400,16 @@ float StackLayout::cross_align_offset(const float item_size, const float availab
         case Alignment::CENTER:
         case Alignment::SPACE_BETWEEN:
         case Alignment::SPACE_AROUND:
+        case Alignment::SPACE_EQUAL:
             return (available_size - item_size) * 0.5f;
         }
     }
     return 0.f;
 }
 
-// TODO: I would expect the overflow of a StackLayout to occur to the left, if the direction is RIGHT_TO_LEFT (and to the top if BOTTOM_TO_TOP)
+// TODO: cross overflow is always happending to the south-east ... do I need a separate field for that? In a flex layout, I'd need it anyway...
+// make the field a boolean or use a new enum "clockwise" or "counter-clockwise" - those values will work regardless
+// what the main direction of the layout is and we won't need to enforce that only orthogonal cross directions can be set
+// ... and update them when the main widrection has been reset etc.
 
 } // namespace notf

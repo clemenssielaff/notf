@@ -23,19 +23,20 @@ def main():
     solid_blue = CanvasComponent()
     solid_blue.set_paint_function(fill_blue)
 
-    stack_layout = StackLayout(Layout.Direction.RIGHT_TO_LEFT)
+    stack_layout = StackLayout(Layout.Direction.LEFT_TO_RIGHT)
+    stack_layout.set_wrapping(True)
     stack_layout.set_spacing(5)
     stack_layout.set_padding(Padding.all(10))
-    stack_layout.set_alignment(Layout.Alignment.SPACE_BETWEEN)
-    stack_layout.set_cross_alignment(Layout.Alignment.CENTER)
+    stack_layout.set_alignment(Layout.Alignment.SPACE_AROUND)
+    #stack_layout.set_cross_alignment(Layout.Alignment.CENTER)
 
-    for i in range(5):
+    for i in range(50):
         widget = Widget()
         widget.add_component(solid_blue)
         stack_layout.add_item(widget)
 
         stretch = ClaimStretch()
-        stretch.set_fixed(100)
+        stretch.set_fixed(20)
         claim = Claim()
         claim.set_horizontal(stretch)
         claim.set_vertical(stretch)

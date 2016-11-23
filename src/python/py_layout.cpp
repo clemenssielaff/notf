@@ -30,9 +30,4 @@ void produce_layout(pybind11::module& module)
         .value("CENTER", Layout::Alignment::CENTER)
         .value("SPACE_BETWEEN", Layout::Alignment::SPACE_BETWEEN)
         .value("SPACE_AROUND", Layout::Alignment::SPACE_AROUND);
-
-    py::enum_<Layout::Wrap>(Py_LayoutNamespace, "Wrap")
-        .value("NONE", Layout::Wrap::NONE)
-        .value("WRAP", Layout::Wrap::WRAP)
-        .value("REVERSE", Layout::Wrap::REVERSE);
 }

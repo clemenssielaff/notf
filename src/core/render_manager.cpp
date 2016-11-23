@@ -1,5 +1,6 @@
 #include "core/render_manager.hpp"
 
+#include "common/log.hpp"
 #include "core/application.hpp"
 #include "core/components/canvas_component.hpp"
 #include "core/object_manager.hpp"
@@ -23,10 +24,9 @@ void RenderManager::render(const RenderContext& context)
 
     // TODO: perform z-sorting here
 
-
     // draw all widgets
     for (const std::shared_ptr<Widget>& widget : widgets) {
-        if(widget->get_size().is_zero()){
+        if (widget->get_size().is_zero()) {
             continue;
         }
 

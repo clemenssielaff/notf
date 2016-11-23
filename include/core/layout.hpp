@@ -24,18 +24,22 @@ public: // enums
 
     /** Alignment of items in a Layout along the main and cross axis. */
     enum class Alignment : unsigned char {
-        START,
-        END,
-        CENTER,
-        SPACE_BETWEEN,
-        SPACE_AROUND,
+        START, // items stacked towards the start of the parent, no additional spacing
+        END, // items stacked towards the end of the parent, no additional spacing
+        CENTER, // items centered in parent, no additional spacing
+        SPACE_BETWEEN, // equal spacing between items, no spacing between items and border
+        SPACE_AROUND, // single spacing between items and border, double spacing between items
+        SPACE_EQUAL, // equal spacing between the items and the border
     };
 
-    /** How a Layout wraps. */
-    enum class Wrap : unsigned char {
-        NONE,
-        WRAP,
-        REVERSE,
+    /** Direction of a cirular motion. */
+    enum class Circular : unsigned char {
+        CLOCKWISE,
+        COUNTERCLOCKWISE,
+        CW = CLOCKWISE,
+        CCW = COUNTERCLOCKWISE,
+        ANTICLOCKWISE = COUNTERCLOCKWISE,
+        ACW = COUNTERCLOCKWISE,
     };
 
 public: // methods
