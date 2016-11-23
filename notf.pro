@@ -68,7 +68,6 @@ SOURCES += \
     src/core/render_manager.cpp \
     src/common/color.cpp \
     src/common/transform2.cpp \
-    src/dynamic/layout/flexbox_layout.cpp \
     src/core/components/shape_component.cpp \
     src/core/components/canvas_component.cpp \
     src/common/size2i.cpp \
@@ -106,7 +105,8 @@ SOURCES += \
     src/python/py_font.cpp \
     src/common/padding.cpp \
     src/python/py_padding.cpp \
-    src/python/py_claim.cpp
+    src/python/py_claim.cpp \
+    src/python/py_layout.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -142,7 +142,6 @@ HEADERS += \
     include/common/enummap.hpp \
     include/common/int_utils.hpp \
     include/common/transform2.hpp \
-    include/dynamic/layout/flexbox_layout.hpp \
     include/utils/smart_enabler.hpp \
     include/utils/enum_to_number.hpp \
     include/utils/unused.hpp \

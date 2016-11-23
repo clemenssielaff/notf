@@ -13,6 +13,31 @@ class Layout : public LayoutItem {
 
     friend class LayoutItem;
 
+public: // enums
+    /** Direction in which items in a Layout can be stacked. */
+    enum class Direction : unsigned char {
+        LEFT_TO_RIGHT,
+        TOP_TO_BOTTOM,
+        RIGHT_TO_LEFT,
+        BOTTOM_TO_TOP,
+    };
+
+    /** Alignment of items in a Layout along the main and cross axis. */
+    enum class Alignment : unsigned char {
+        START,
+        END,
+        CENTER,
+        SPACE_BETWEEN,
+        SPACE_AROUND,
+    };
+
+    /** How a Layout wraps. */
+    enum class Wrap : unsigned char {
+        NONE,
+        WRAP,
+        REVERSE,
+    };
+
 public: // methods
     /// @brief Virtual Destructor
     virtual ~Layout() override;

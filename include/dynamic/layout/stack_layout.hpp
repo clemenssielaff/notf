@@ -9,40 +9,46 @@
 
 namespace notf {
 
-/** Direction in which a visual stack can be stacked. */
-enum class StackDirection : unsigned char {
-    LEFT_TO_RIGHT,
-    TOP_TO_BOTTOM,
-    RIGHT_TO_LEFT,
-    BOTTOM_TO_TOP,
-};
-
 /**
  * @brief The StackLayout class
  */
 class StackLayout : public Layout {
 
 public: // methods
-    /// @brief Direction in which the StackLayout is stacked.
-    StackDirection get_direction() const { return m_direction; }
+    /** Direction in which items are stacked. */
+    Direction get_direction() const { return m_direction; }
 
-    /// @brief Updates the direction in which the StackLayout is stacked.
-    void set_direction(const StackDirection direction)
-    {
-        if (m_direction == direction) {
-            return;
-        }
-        m_direction = direction;
-        _update_claim();
-        if (_is_dirty()) {
-            _update_parent_layout();
-        }
-    }
+    /** Alignment of items in the main direction. */
+    Alignment get_alignment() const { return m_main_alignment; }
 
-    /** Sets the spacing between items. */
+    /** Alignment of items in the cross direction. */
+    Alignment get_cross_alignment() const { return m_cross_alignment; }
+
+    /** How items are wrapped. */
+    Wrap get_wrapping() const { return m_wrap; }
+
+    /** Spacing between items. */
+    float get_spacing() const { return m_spacing; }
+
+    /** Padding around the Layout's border. */
+    const Padding& get_padding() const { return m_padding; }
+
+    /** Defines the direction in which the StackLayout is stacked. */
+    void set_direction(const Direction direction);
+
+    /** Defines the alignment of items in the main direction. */
+    void set_alignment(const Alignment alignment);
+
+    /** Defines the alignment of items in the cross direction. */
+    void set_cross_alignment(const Alignment alignment);
+
+    /** Defines how items are wrapped. */
+    void set_wrapping(const Wrap) {}
+
+    /** Defines the spacing between items. */
     void set_spacing(float spacing);
 
-    /** Sets the padding around the Layout's border. */
+    /** Defines the padding around the Layout's border. */
     void set_padding(const Padding& padding);
 
     /// @brief Finds the Index of the LayoutItem in this Layout, might be invalid.
@@ -75,7 +81,7 @@ public: // static methods
     /// @brief Factory function to create a new StackLayout.
     /// @param direction    Direction in which the StackLayout is stacked.
     /// @param handle       Handle of this Layout.
-    static std::shared_ptr<StackLayout> create(const StackDirection direction, Handle handle = BAD_HANDLE)
+    static std::shared_ptr<StackLayout> create(const Direction direction, Handle handle = BAD_HANDLE)
     {
         return _create_object<StackLayout>(handle, direction);
     }
@@ -83,9 +89,12 @@ public: // static methods
 protected: // methods
     /// @brief Value Constructor.
     /// @param handle   Handle of this Layout.
-    explicit StackLayout(const Handle handle, const StackDirection direction)
+    explicit StackLayout(const Handle handle, const Direction direction)
         : Layout(handle)
         , m_direction(direction)
+        , m_main_alignment(Alignment::START)
+        , m_cross_alignment(Alignment::START)
+        , m_wrap(Wrap::NONE)
         , m_spacing(0.f)
         , m_padding(Padding::none())
         , m_items()
@@ -98,14 +107,27 @@ protected: // methods
 
     virtual void _relayout(const Size2f total_size) override;
 
+private: // methods
+    /** Calculates the cross offset to accomodate the cross alignment constraint. */
+    float cross_align_offset(const float item_size, const float available_size);
+
 private: // fields
-    /// @brief Direction in which the StackLayout is stacked.
-    StackDirection m_direction;
+    /** Direction in which the StackLayout is stacked. */
+    Direction m_direction;
+
+    /** Alignment of items in the main direction. */
+    Alignment m_main_alignment;
+
+    /** Alignment of items in the cross direction. */
+    Alignment m_cross_alignment;
+
+    /** How items in the Layout are wrapped. */
+    Wrap m_wrap;
 
     /** Spacing between items in the layout*/
     float m_spacing;
 
-    /** Padding of the Layout (not its individual items). */
+    /** Padding around the Layout's borders. */
     Padding m_padding;
 
     /// @brief All items in this Layout in order.

@@ -20,63 +20,26 @@ def fill_blue(painter):
 
 
 def main():
-    solid_red = CanvasComponent()
-    solid_red.set_paint_function(fill_red)
-
-    solid_green = CanvasComponent()
-    solid_green.set_paint_function(fill_green)
-
     solid_blue = CanvasComponent()
     solid_blue.set_paint_function(fill_blue)
 
-    # stack_layout.set_spacing(50)
-    stack_layout = StackLayout(StackDirection.RIGHT_TO_LEFT)
-    #stack_layout = StackLayout(StackDirection.LEFT_TO_RIGHT)
-    #stack_layout = StackLayout(StackDirection.TOP_TO_BOTTOM)
-    # stack_layout.set_padding(Padding(25, 200, 25, 200))
+    stack_layout = StackLayout(Layout.Direction.RIGHT_TO_LEFT)
+    stack_layout.set_spacing(5)
+    stack_layout.set_padding(Padding.all(10))
+    stack_layout.set_alignment(Layout.Alignment.SPACE_BETWEEN)
+    stack_layout.set_cross_alignment(Layout.Alignment.CENTER)
 
-    for i in range(1):
-        red_rect = Widget()
-        red_rect.add_component(solid_red)
+    for i in range(5):
+        widget = Widget()
+        widget.add_component(solid_blue)
+        stack_layout.add_item(widget)
 
-        red_claim = Claim()
-        red_direction = ClaimDirection()
-        red_direction.set_preferred(100)
-        # red_direction.set_max(200)
-        red_claim.set_width_to_height(1/2, 2/1)
-        red_claim.set_horizontal(red_direction)
-        red_rect.set_claim(red_claim)
-
-        green_rect = Widget()
-        green_rect.add_component(solid_green)
-
-        green_direction = ClaimDirection()
-        # green_direction.set_min(100)
-        green_direction.set_min(50)
-        green_direction.set_preferred(100)
-        green_direction.set_max(200)
-        green_direction.set_scale_factor(1)
-        # green_direction.set_priority(1)
-        green_claim = Claim()
-        green_claim.set_horizontal(green_direction)
-        green_rect.set_claim(green_claim)
-
-        blue_direction = ClaimDirection()
-        # blue_direction.set_min(50)
-        blue_direction.set_preferred(100)
-        # blue_direction.set_max(200)
-        blue_direction.set_scale_factor(1)
-        # blue_direction.set_max(200)
-        blue_claim = Claim()
-        blue_claim.set_horizontal(blue_direction)
-
-        blue_rect = Widget()
-        blue_rect.add_component(solid_blue)
-        blue_rect.set_claim(blue_claim)
-
-        stack_layout.add_item(red_rect)
-        stack_layout.add_item(green_rect)
-        stack_layout.add_item(blue_rect)
+        stretch = ClaimStretch()
+        stretch.set_fixed(100)
+        claim = Claim()
+        claim.set_horizontal(stretch)
+        claim.set_vertical(stretch)
+        widget.set_claim(claim)
 
     window = Window()
     window.get_layout_root().set_item(stack_layout)

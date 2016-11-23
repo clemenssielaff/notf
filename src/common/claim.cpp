@@ -11,7 +11,7 @@ const float MIN_SCALE_FACTOR = 0.00001f;
 
 namespace notf {
 
-void Claim::Direction::set_preferred(const float preferred)
+void Claim::Stretch::set_preferred(const float preferred)
 {
     if (!is_real(preferred) || preferred < 0) {
         log_warning << "Invalid preferred Claim value: " << preferred << " - using 0 instead.";
@@ -28,7 +28,7 @@ void Claim::Direction::set_preferred(const float preferred)
     }
 }
 
-void Claim::Direction::set_min(const float min)
+void Claim::Stretch::set_min(const float min)
 {
     if (!is_real(min) || min < 0) {
         log_warning << "Invalid minimum Claim value: " << min << " - using 0 instead.";
@@ -45,7 +45,7 @@ void Claim::Direction::set_min(const float min)
     }
 }
 
-void Claim::Direction::set_max(const float max)
+void Claim::Stretch::set_max(const float max)
 {
     if (is_nan(max) || max < 0) {
         log_warning << "Invalid maximum Claim value: " << max << " - using 0 instead.";
@@ -62,7 +62,7 @@ void Claim::Direction::set_max(const float max)
     }
 }
 
-void Claim::Direction::set_scale_factor(const float factor)
+void Claim::Stretch::set_scale_factor(const float factor)
 {
     if (!is_real(factor) || factor <= 0) {
         log_warning << "Invalid scale factor: " << factor << " - using " << MIN_SCALE_FACTOR << " instead.";
@@ -73,7 +73,7 @@ void Claim::Direction::set_scale_factor(const float factor)
     }
 }
 
-void Claim::Direction::add_offset(const float offset)
+void Claim::Stretch::add_offset(const float offset)
 {
     if (!is_real(offset)) {
         log_warning << "Ignored invalid offset value: " << offset;
@@ -117,21 +117,21 @@ void Claim::set_width_to_height(const float ratio_min, const float ratio_max)
     m_ratios = std::make_pair(min_ratio, Ratio(ratio_max));
 }
 
-std::ostream& operator<<(std::ostream& out, const Claim::Direction& direction)
+std::ostream& operator<<(std::ostream& out, const Claim::Stretch& stretch)
 {
     return out << string_format(
-               "Claim::Direction([%f <= %f <=%f, factor: %f, priority %i])",
-               direction.get_min(),
-               direction.get_preferred(),
-               direction.get_max(),
-               direction.get_scale_factor(),
-               direction.get_priority());
+               "Claim::Stretch([%f <= %f <=%f, factor: %f, priority %i])",
+               stretch.get_min(),
+               stretch.get_preferred(),
+               stretch.get_max(),
+               stretch.get_scale_factor(),
+               stretch.get_priority());
 }
 
 std::ostream& operator<<(std::ostream& out, const Claim& claim)
 {
-    const Claim::Direction& horizontal = claim.get_horizontal();
-    const Claim::Direction& vertical = claim.get_horizontal();
+    const Claim::Stretch& horizontal = claim.get_horizontal();
+    const Claim::Stretch& vertical = claim.get_horizontal();
     const std::pair<float, float> ratio = claim.get_width_to_height();
     return out << string_format(
                "Claim(\n"

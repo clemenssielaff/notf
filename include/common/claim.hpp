@@ -22,20 +22,20 @@ namespace notf {
 class Claim {
 
 public: // class
-    /** A Claim has two Directions: horizontal and vertical.
-     * Both need to enforce constraints but both Directions are largely independent.
+    /** A Claim has two Stretches, one in each direction: horizontal and vertical.
+     * Both need to enforce constraints but both Stretches are largely independent.
      */
-    class Direction {
+    class Stretch {
 
     public: // methods
-        explicit Direction() = default;
+        explicit Stretch() = default;
 
         /**
          * @param preferred    Preferred size in local units, is limited to values >= 0.
          * @param min          (optional) Minimum size, is clamped to 0 <= value <= preferred, defaults to 'preferred'.
          * @param max          (optional) Maximum size, is clamped to preferred <= value, can be INFINITY, defaults to 'preferred'.
          */
-        Direction(const float preferred, const float min = NAN, const float max = NAN)
+        Stretch(const float preferred, const float min = NAN, const float max = NAN)
             : m_preferred(is_real(preferred) ? notf::max(preferred, 0.f) : 0.f)
             , m_min(is_real(min) ? notf::min(std::max(0.f, min), m_preferred) : m_preferred)
             , m_max(is_real(preferred) ? (is_nan(max) ? m_preferred : notf::max(max, m_preferred)) : 0.f)
@@ -56,10 +56,10 @@ public: // class
         /** Tests if this Stretch is a fixed size where all 3 values are the same. */
         bool is_fixed() const { return approx(m_preferred, m_min) && approx(m_preferred, m_max); }
 
-        /** Returns the scale factor of the LayoutItem in this direction. */
+        /** Returns the scale factor. */
         float get_scale_factor() const { return m_scale_factor; }
 
-        /** Returns the scale priority of the LayoutItem in this direction. */
+        /** Returns the scale priority. */
         int get_priority() const { return m_priority; }
 
         /** Sets a new preferred size, accomodates both the min and max size if necessary.
@@ -85,6 +85,9 @@ public: // class
         /** Sets a new scaling priority. */
         void set_priority(const int priority) { m_priority = priority; }
 
+        /** Sets a fixed size. */
+        void set_fixed(const float size) { m_min = m_max = m_preferred = size; }
+
         /** Adds an offset to the min, max and preferred value.
          * The offset can be negative.
          * Fields are truncated to be >= 0, invalid values are ignored.
@@ -92,7 +95,7 @@ public: // class
          */
         void add_offset(const float offset);
 
-        Direction& operator=(const Direction& other)
+        Stretch& operator=(const Stretch& other)
         {
             m_preferred = other.m_preferred;
             m_min = other.m_min;
@@ -102,7 +105,7 @@ public: // class
             return *this;
         }
 
-        bool operator==(const Direction& other) const
+        bool operator==(const Stretch& other) const
         {
             return (approx(m_preferred, other.m_preferred)
                     && approx(m_min, other.m_min)
@@ -111,10 +114,10 @@ public: // class
                     && m_priority == other.m_priority);
         }
 
-        bool operator!=(const Direction& other) const { return !(*this == other); }
+        bool operator!=(const Stretch& other) const { return !(*this == other); }
 
-        /** In-place addition operator for Directions. */
-        Direction& operator+=(const Direction& other)
+        /** In-place addition operator. */
+        Stretch& operator+=(const Stretch& other)
         {
             m_preferred += other.m_preferred;
             m_min += other.m_min;
@@ -124,8 +127,8 @@ public: // class
             return *this;
         }
 
-        /** In-place max operator for Directions. */
-        Direction& maxed(const Direction& other)
+        /** In-place max operator. */
+        Stretch& maxed(const Stretch& other)
         {
             m_preferred = max(m_preferred, other.m_preferred);
             m_min = max(m_min, other.m_min);
@@ -184,7 +187,7 @@ private: // class
             if (!is_valid()) {
                 return 0;
             }
-            return  m_width / m_height;
+            return m_width / m_height;
         }
 
         bool operator==(const Ratio& other) const
@@ -194,7 +197,7 @@ private: // class
 
         bool operator!=(const Ratio& other) const { return !(*this == other); }
 
-        /** In-place, horizontal addition operator for Directions. */
+        /** In-place, horizontal addition operator. */
         Ratio& add_horizontal(const Ratio& other)
         {
             m_width += other.m_width;
@@ -202,7 +205,7 @@ private: // class
             return *this;
         }
 
-        /** In-place, vertical addition operator for Directions. */
+        /** In-place, vertical addition operator. */
         Ratio& add_vertical(const Ratio& other)
         {
             m_width = max(m_width, other.m_width);
@@ -224,18 +227,18 @@ public: // methods
     Claim(const Claim& other) = default;
 
     /** Returns the horizontal part of this Claim. */
-    Direction& get_horizontal() { return m_horizontal; }
-    const Direction& get_horizontal() const { return m_horizontal; }
+    Stretch& get_horizontal() { return m_horizontal; }
+    const Stretch& get_horizontal() const { return m_horizontal; }
 
     /** Returns the vertical part of this Claim. */
-    Direction& get_vertical() { return m_vertical; }
-    const Direction& get_vertical() const { return m_vertical; }
+    Stretch& get_vertical() { return m_vertical; }
+    const Stretch& get_vertical() const { return m_vertical; }
 
-    /** Sets the horizontal direction of this Claim. */
-    void set_horizontal(const Direction& direction) { m_horizontal = direction; }
+    /** Sets the horizontal Stretch of this Claim. */
+    void set_horizontal(const Stretch& stretch) { m_horizontal = stretch; }
 
-    /** Sets the vertical direction of this Claim. */
-    void set_vertical(const Direction& direction) { m_vertical = direction; }
+    /** Sets the vertical Stretch of this Claim. */
+    void set_vertical(const Stretch& stretch) { m_vertical = stretch; }
 
     /** In-place, horizontal addition operator for Claims. */
     Claim& add_horizontal(const Claim& other)
@@ -294,10 +297,10 @@ public: // methods
 
 private: // members
     /** The vertical part of this Claim. */
-    Direction m_horizontal;
+    Stretch m_horizontal;
 
     /** The horizontal part of this Claim. */
-    Direction m_vertical;
+    Stretch m_vertical;
 
     /** Minimum and maximum ratio scaling constraint. */
     std::pair<Ratio, Ratio> m_ratios;
@@ -305,12 +308,12 @@ private: // members
 
 /* Free Functions *****************************************************************************************************/
 
-/** Prints the contents of a Claim::Direction into a std::ostream.
+/** Prints the contents of a Claim::Stretch into a std::ostream.
  * @param out       Output stream, implicitly passed with the << operator.
- * @param direction Claim::Direction to print.
+ * @param stretch   Claim::Stretch to print.
  * @return          Output stream for further output.
  */
-std::ostream& operator<<(std::ostream& out, const Claim::Direction& direction);
+std::ostream& operator<<(std::ostream& out, const Claim::Stretch& stretch);
 
 /** Prints the contents of a Claim into a std::ostream.
  * @param out   Output stream, implicitly passed with the << operator.
@@ -325,17 +328,17 @@ std::ostream& operator<<(std::ostream& out, const Claim& aabr);
 
 namespace std {
 
-/** std::hash specialization for notf::Claim::Direction. */
+/** std::hash specialization for notf::Claim::Stretch. */
 template <>
-struct hash<notf::Claim::Direction> {
-    size_t operator()(const notf::Claim::Direction& direction) const
+struct hash<notf::Claim::Stretch> {
+    size_t operator()(const notf::Claim::Stretch& stretch) const
     {
         return notf::hash(
-            direction.get_preferred(),
-            direction.get_min(),
-            direction.get_max(),
-            direction.get_scale_factor(),
-            direction.get_priority());
+            stretch.get_preferred(),
+            stretch.get_min(),
+            stretch.get_max(),
+            stretch.get_scale_factor(),
+            stretch.get_priority());
     }
 };
 

@@ -96,7 +96,6 @@ void LayoutItem::_update_parent_layout()
         // if the parent Layout's Claim changed, we also need to update its parent
         if (parent->_is_dirty()) {
             parent = parent->m_parent.lock();
-            assert(parent); // the only LayoutItem without a parent is the RootLayout - and that shouln't be dirty
         }
         // ... otherwise, we have reached the end of the propagation through the ancestry
         // and continue to relayout all children from the parent downwards
