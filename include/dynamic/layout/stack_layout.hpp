@@ -41,10 +41,10 @@ public: // methods
     /** Defines the direction in which the StackLayout is stacked. */
     void set_direction(const Direction direction);
 
-    /** Defines the alignment of items in the main direction. */
+    /** Defines the alignment of stack items in the main direction. */
     void set_alignment(const Alignment alignment);
 
-    /** Defines the alignment of items in the cross direction. */
+    /** Defines the alignment of stack items in the cross direction. */
     void set_cross_alignment(const Alignment alignment);
 
     /** Defines the cross alignment the entire content if the Layout wraps. */
@@ -87,7 +87,6 @@ protected: // methods
         , m_cross_alignment(Alignment::START)
         , m_content_alignment(Alignment::START)
         , m_wrap(Wrap::NO_WRAP)
-        , m_stretch_cross(false)
         , m_padding(Padding::none())
         , m_spacing(0.f)
         , m_cross_spacing(0.f)
@@ -110,9 +109,6 @@ private: // methods
      */
     void _layout_stack(const std::vector<Handle>& stack, const Size2f total_size, const float main_offset, const float cross_offset);
 
-    /** Calculates the cross offset to accomodate the cross alignment constraint. */
-    float _cross_align_offset(const float item_size, const float available_size);
-
 private: // fields
     /** Direction in which the StackLayout is stacked. */
     Direction m_direction;
@@ -128,9 +124,6 @@ private: // fields
 
     /** How items in the Layout are wrapped. */
     Wrap m_wrap; // TODO: reverse-wrap does nothing
-
-    /** Defines whether the stacks should stretch in the cross direction or keep to a minimal size. */
-    bool m_stretch_cross; // TODO: this cannot be changed yet
 
     /** Padding around the Layout's borders. */
     Padding m_padding;

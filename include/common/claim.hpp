@@ -88,16 +88,6 @@ public: // class
         /** Sets a fixed size. */
         void set_fixed(const float size) { m_min = m_max = m_preferred = size; }
 
-        /** Resets all values from this Stretch to their default. */
-        void reset()
-        {
-            m_preferred = 0.f;
-            m_min = 0.f;
-            m_max = INFINITY;
-            m_scale_factor = 1.f;
-            m_priority = 0.f;
-        }
-
         /** Adds an offset to the min, max and preferred value.
          * The offset can be negative.
          * Fields are truncated to be >= 0, invalid values are ignored.

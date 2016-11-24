@@ -125,6 +125,54 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
     return surplus;
 }
 
+/** Calculates the alignment variables for the main axis. */
+std::tuple<float, float> calculate_alignment(const Layout::Alignment alignment, const size_t item_count, const float surplus)
+{
+    float alignment_start = 0.f;
+    float alignment_spacing = 0.f;
+    switch (alignment) {
+    case Layout::Alignment::START:
+        break;
+    case Layout::Alignment::END:
+        alignment_start = surplus;
+        break;
+    case Layout::Alignment::CENTER:
+        alignment_start = surplus * 0.5f;
+        break;
+    case Layout::Alignment::SPACE_BETWEEN:
+        alignment_spacing += item_count > 1 ? surplus / static_cast<float>(item_count - 1) : 0.f;
+        break;
+    case Layout::Alignment::SPACE_AROUND:
+        alignment_start = surplus / static_cast<float>(item_count * 2);
+        alignment_spacing += alignment_start * 2.f;
+        break;
+    case Layout::Alignment::SPACE_EQUAL:
+        alignment_start = surplus / static_cast<float>(item_count + 1);
+        alignment_spacing += alignment_start;
+        break;
+    }
+    return {alignment_start, alignment_spacing};
+}
+
+/** Calculates the cross offset to accomodate the cross alignment constraint. */
+float cross_align_offset(const Layout::Alignment alignment, const float item_size, const float available_size)
+{
+    if (available_size > item_size) {
+        switch (alignment) {
+        case Layout::Alignment::START:
+            return 0;
+        case Layout::Alignment::END:
+            return available_size - item_size;
+        case Layout::Alignment::CENTER:
+        case Layout::Alignment::SPACE_BETWEEN:
+        case Layout::Alignment::SPACE_AROUND:
+        case Layout::Alignment::SPACE_EQUAL:
+            return (available_size - item_size) * 0.5f;
+        }
+    }
+    return 0.f;
+}
+
 } // namespace anonymous
 
 namespace notf {
@@ -300,7 +348,7 @@ void StackLayout::_relayout(const Size2f total_size)
     float used_cross_space = 0.f;
     {
         std::vector<Handle> current_stack;
-        Claim::Stretch current_cross_stretch;
+        Claim::Stretch current_cross_stretch = Claim::Stretch(0, 0, 0);
         float current_size = 0;
         for (Handle item : m_items) {
             const Claim& claim = _get_child(item)->get_claim();
@@ -310,7 +358,7 @@ void StackLayout::_relayout(const Size2f total_size)
                 cross_stretches.push_back(current_cross_stretch);
                 used_cross_space += current_cross_stretch.get_min();
                 current_stack.clear(); // re-using moved container, see http://stackoverflow.com/a/9168917/3444217
-                current_cross_stretch.reset();
+                current_cross_stretch = Claim::Stretch(0, 0, 0);
                 current_size = 0.f;
             }
             current_size += addition;
@@ -326,57 +374,31 @@ void StackLayout::_relayout(const Size2f total_size)
     used_cross_space += (stack_count - 1) * m_cross_spacing;
 
     // the cross layout of stacks is a regular stack layout in of itself
+    std::vector<ItemAdapter> adapters;
     float cross_surplus = max(0.f, available_cross - used_cross_space);
-    std::vector<ItemAdapter> adapters(stack_count);
-    std::map<int, std::set<ItemAdapter*>> batches;
-    for (size_t i = 0; i < stack_count; ++i) {
-        adapters[i].upper_bound = m_stretch_cross ? cross_stretches[i].get_max() : cross_stretches[i].get_min();
-        adapters[i].preferred = m_stretch_cross ? cross_stretches[i].get_preferred() : cross_stretches[i].get_min();
-        adapters[i].scale_factor = cross_stretches[i].get_scale_factor();
-        adapters[i].result = cross_stretches[i].get_min();
-        batches[cross_stretches[i].get_priority()].insert(&adapters[i]);
-    }
     if (cross_surplus > 0) {
+        adapters = std::vector<ItemAdapter>(stack_count);
+        std::map<int, std::set<ItemAdapter*>> batches;
+        for (size_t i = 0; i < stack_count; ++i) {
+            adapters[i].upper_bound = cross_stretches[i].get_max();
+            adapters[i].preferred = cross_stretches[i].get_preferred();
+            adapters[i].scale_factor = cross_stretches[i].get_scale_factor();
+            adapters[i].result = cross_stretches[i].get_min();
+            batches[cross_stretches[i].get_priority()].insert(&adapters[i]);
+        }
         cross_surplus = distribute_surplus(cross_surplus, batches);
     }
 
     // determine values for alignment along the cross axis
-    float alignment_start = 0.f; // TODO: code duplication
-    float alignment_spacing = m_cross_spacing;
-    switch (m_content_alignment) {
-    case Alignment::START:
-        break;
-    case Alignment::END:
-        alignment_start = cross_surplus;
-        break;
-    case Alignment::CENTER:
-        alignment_start = cross_surplus * 0.5f;
-        break;
-    case Alignment::SPACE_BETWEEN:
-        alignment_spacing += stack_count > 1 ? cross_surplus / static_cast<float>(stack_count - 1) : 0.f;
-        break;
-    case Alignment::SPACE_AROUND:
-        alignment_start = cross_surplus / static_cast<float>(stack_count * 2);
-        alignment_spacing += alignment_start * 2.f;
-        break;
-    case Alignment::SPACE_EQUAL:
-        alignment_start = cross_surplus / static_cast<float>(stack_count + 1);
-        alignment_spacing += alignment_start;
-        break;
-    }
-
+    float alignment_start, alignment_spacing;
+    std::tie(alignment_start, alignment_spacing) = calculate_alignment(m_content_alignment, stack_count, cross_surplus);
+    alignment_spacing += m_cross_spacing;
     cross_offset += alignment_start;
     for (size_t i = 0; i < stack_count; ++i) {
-        const std::vector<Handle>& stack = stacks[i];
-        Size2f stack_size;
-        if (horizontal) {
-            stack_size = {available_main, adapters[i].result};
-        }
-        else {
-            stack_size = {adapters[i].result, available_main};
-        }
-        _layout_stack(stack, stack_size, main_offset, cross_offset);
-        cross_offset += alignment_spacing + adapters[i].result;
+        const float stack_width = adapters.empty() ? cross_stretches[i].get_min() : adapters[i].result;
+        const Size2f stack_size = horizontal ? Size2f{available_main, stack_width} : Size2f{stack_width, available_main};
+        _layout_stack(stacks[i], stack_size, main_offset, cross_offset);
+        cross_offset += alignment_spacing + stack_width;
     }
 }
 
@@ -425,33 +447,12 @@ void StackLayout::_layout_stack(const std::vector<Handle>& stack, const Size2f t
     }
 
     // determine values for alignment along the primary axis
-    float alignment_start = 0.f;
-    float alignment_spacing = m_spacing;
-    switch (m_main_alignment) {
-    case Alignment::START:
-        break;
-    case Alignment::END:
-        alignment_start = surplus;
-        break;
-    case Alignment::CENTER:
-        alignment_start = surplus * 0.5f;
-        break;
-    case Alignment::SPACE_BETWEEN:
-        alignment_spacing += item_count > 1 ? surplus / static_cast<float>(item_count - 1) : 0.f;
-        break;
-    case Alignment::SPACE_AROUND:
-        alignment_start = surplus / static_cast<float>(item_count * 2);
-        alignment_spacing += alignment_start * 2.f;
-        break;
-    case Alignment::SPACE_EQUAL:
-        alignment_start = surplus / static_cast<float>(item_count + 1);
-        alignment_spacing += alignment_start;
-        break;
-    }
+    float alignment_start, alignment_spacing;
+    std::tie(alignment_start, alignment_spacing) = calculate_alignment(m_main_alignment, item_count, surplus);
+    alignment_spacing += m_spacing;
 
     // apply the layout
-    float start_offset;
-    float step_factor;
+    float start_offset, step_factor;
     const bool reverse = (m_direction == Direction::RIGHT_TO_LEFT) || (m_direction == Direction::BOTTOM_TO_TOP);
     if (reverse) {
         start_offset = (horizontal ? total_size.width : total_size.height) - alignment_start - main_offset;
@@ -475,7 +476,7 @@ void StackLayout::_layout_stack(const std::vector<Handle>& stack, const Size2f t
                 item_size.height = min(item_size.height, adapter.result / width_to_height.first);
             }
             item_size.height = max(item_size.height, vertical.get_min());
-            const float applied_cross_offset = _cross_align_offset(item_size.height, available_height);
+            const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.height, available_height);
             const float applied_offset = reverse ? current_offset - item_size.width : current_offset;
             _update_item(child, item_size, Transform2::translation({applied_offset, cross_offset + applied_cross_offset}));
         }
@@ -486,30 +487,12 @@ void StackLayout::_layout_stack(const std::vector<Handle>& stack, const Size2f t
                 item_size.width = min(item_size.width, adapter.result * width_to_height.second);
             }
             item_size.width = max(item_size.width, horizontal.get_min());
-            const float applied_cross_offset = _cross_align_offset(item_size.width, available_width);
+            const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.width, available_width);
             const float applied_offset = reverse ? current_offset - item_size.height : current_offset;
             _update_item(child, item_size, Transform2::translation({cross_offset + applied_cross_offset, applied_offset}));
         }
         current_offset += (adapter.result + alignment_spacing) * step_factor;
     }
-}
-
-float StackLayout::_cross_align_offset(const float item_size, const float available_size)
-{
-    if (available_size > item_size) {
-        switch (m_cross_alignment) {
-        case Alignment::START:
-            return 0;
-        case Alignment::END:
-            return available_size - item_size;
-        case Alignment::CENTER:
-        case Alignment::SPACE_BETWEEN:
-        case Alignment::SPACE_AROUND:
-        case Alignment::SPACE_EQUAL:
-            return (available_size - item_size) * 0.5f;
-        }
-    }
-    return 0.f;
 }
 
 } // namespace notf
