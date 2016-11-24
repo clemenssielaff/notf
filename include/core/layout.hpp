@@ -32,6 +32,13 @@ public: // enums
         SPACE_EQUAL, // equal spacing between the items and the border
     };
 
+    /** How a Layout wraps. */
+    enum class Wrap : unsigned char {
+        NO_WRAP, // no wrap
+        WRAP, // wraps towards the lower-right corner
+        WRAP_REVERSE, // wraps towards the upper-left corner
+    };
+
     /** Direction of a cirular motion. */
     enum class Circular : unsigned char {
         CLOCKWISE,

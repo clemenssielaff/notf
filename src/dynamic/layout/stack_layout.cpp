@@ -141,6 +141,16 @@ void StackLayout::set_direction(const Direction direction)
     }
 }
 
+void StackLayout::set_padding(const Padding& padding)
+{
+    if (!padding.is_valid()) {
+        log_warning << "Ignoring invalid padding: " << padding;
+        return;
+    }
+    m_padding = padding;
+    _update_parent_layout();
+}
+
 void StackLayout::set_spacing(float spacing)
 {
     if (spacing < 0.f) {
@@ -151,13 +161,13 @@ void StackLayout::set_spacing(float spacing)
     _update_parent_layout();
 }
 
-void StackLayout::set_padding(const Padding& padding)
+void StackLayout::set_cross_spacing(float spacing)
 {
-    if (!padding.is_valid()) {
-        log_warning << "Ignoring invalid padding: " << padding;
-        return;
+    if (spacing < 0.f) {
+        log_warning << "Cannot set cross spacing to less than zero, using zero instead.";
+        spacing = 0.f;
     }
-    m_padding = padding;
+    m_cross_spacing = spacing;
     _update_parent_layout();
 }
 
@@ -179,12 +189,21 @@ void StackLayout::set_cross_alignment(const Alignment alignment)
     _relayout(get_size());
 }
 
-void StackLayout::set_wrapping(const bool wrap)
+void StackLayout::set_content_alignment(const Alignment alignment)
 {
-    if (wrap == m_is_wrapping) {
+    if (alignment == m_content_alignment) {
         return;
     }
-    m_is_wrapping = wrap;
+    m_content_alignment = alignment;
+    _relayout(get_size());
+}
+
+void StackLayout::set_wrap(const Wrap wrap)
+{
+    if (wrap == m_wrap) {
+        return;
+    }
+    m_wrap = wrap;
     _relayout(get_size());
 }
 
@@ -242,52 +261,143 @@ void StackLayout::_remove_item(const Handle item_handle)
 
 void StackLayout::_relayout(const Size2f total_size)
 {
-    std::vector<std::vector<Handle>> rows;
-    if (m_is_wrapping) {
-        const bool horizontal = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
-        const float available_size = horizontal ? total_size.width : total_size.height;
-        std::vector<Handle> current_row;
-        float current_size = horizontal ? m_padding.width() : m_padding.height();
+    if (total_size.is_zero()) {
+        return;
+    }
+    Size2f available_size = {total_size.width - m_padding.width(), total_size.height - m_padding.height()};
+    float main_offset, cross_offset;
+    switch (m_direction) {
+    case Layout::Direction::LEFT_TO_RIGHT:
+        main_offset = m_padding.left;
+        cross_offset = (m_wrap == Layout::Wrap::WRAP ? m_padding.top : m_padding.bottom);
+        break;
+    case Layout::Direction::RIGHT_TO_LEFT:
+        main_offset = m_padding.right;
+        cross_offset = (m_wrap == Layout::Wrap::WRAP ? m_padding.bottom : m_padding.top);
+        break;
+    case Layout::Direction::TOP_TO_BOTTOM:
+        main_offset = m_padding.top;
+        cross_offset = (m_wrap == Layout::Wrap::WRAP ? m_padding.left : m_padding.right);
+        break;
+    case Layout::Direction::BOTTOM_TO_TOP:
+        main_offset = m_padding.bottom;
+        cross_offset = (m_wrap == Layout::Wrap::WRAP ? m_padding.right : m_padding.left);
+        break;
+    }
+
+    // layout all items in a single stack
+    if (!is_wrapping()) {
+        return _layout_stack(m_items, available_size, main_offset, cross_offset);
+    }
+
+    const bool horizontal = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
+    const float available_main = horizontal ? available_size.width : available_size.height;
+    const float available_cross = horizontal ? available_size.height : available_size.width;
+
+    // fill the items into stacks
+    std::vector<std::vector<Handle>> stacks;
+    std::vector<Claim::Stretch> cross_stretches;
+    float used_cross_space = 0.f;
+    {
+        std::vector<Handle> current_stack;
+        Claim::Stretch current_cross_stretch;
+        float current_size = 0;
         for (Handle item : m_items) {
             const Claim& claim = _get_child(item)->get_claim();
-            const Claim::Stretch& stretch = horizontal ? claim.get_horizontal() : claim.get_vertical();
-            const float addition = stretch.get_preferred() + m_spacing;
-            if (current_size + addition > available_size) {
-                rows.emplace_back(std::move(current_row));
-                current_row.clear(); // re-using moved container, see http://stackoverflow.com/a/9168917/3444217
-                current_size = horizontal ? m_padding.width() : m_padding.height();
+            const float addition = (horizontal ? claim.get_horizontal() : claim.get_vertical()).get_preferred() + m_spacing;
+            if (current_size + addition > available_main) {
+                stacks.emplace_back(std::move(current_stack));
+                cross_stretches.push_back(current_cross_stretch);
+                used_cross_space += current_cross_stretch.get_min();
+                current_stack.clear(); // re-using moved container, see http://stackoverflow.com/a/9168917/3444217
+                current_cross_stretch.reset();
+                current_size = 0.f;
             }
             current_size += addition;
-            current_row.push_back(item);
+            current_stack.push_back(item);
+            current_cross_stretch.maxed(horizontal ? claim.get_vertical() : claim.get_horizontal());
         }
-        rows.emplace_back(std::move(current_row));
+        stacks.emplace_back(std::move(current_stack));
+        cross_stretches.push_back(current_cross_stretch);
+        used_cross_space += current_cross_stretch.get_min();
     }
-    else {
-        rows.push_back(m_items);
+    const size_t stack_count = stacks.size();
+    assert(stack_count == cross_stretches.size());
+    used_cross_space += (stack_count - 1) * m_cross_spacing;
+
+    // the cross layout of stacks is a regular stack layout in of itself
+    float cross_surplus = max(0.f, available_cross - used_cross_space);
+    std::vector<ItemAdapter> adapters(stack_count);
+    std::map<int, std::set<ItemAdapter*>> batches;
+    for (size_t i = 0; i < stack_count; ++i) {
+        adapters[i].upper_bound = m_stretch_cross ? cross_stretches[i].get_max() : cross_stretches[i].get_min();
+        adapters[i].preferred = m_stretch_cross ? cross_stretches[i].get_preferred() : cross_stretches[i].get_min();
+        adapters[i].scale_factor = cross_stretches[i].get_scale_factor();
+        adapters[i].result = cross_stretches[i].get_min();
+        batches[cross_stretches[i].get_priority()].insert(&adapters[i]);
     }
-    for (const std::vector<Handle>& row : rows) {
-        _layout_row(row, total_size);
+    if (cross_surplus > 0) {
+        cross_surplus = distribute_surplus(cross_surplus, batches);
+    }
+
+    // determine values for alignment along the cross axis
+    float alignment_start = 0.f; // TODO: code duplication
+    float alignment_spacing = m_cross_spacing;
+    switch (m_content_alignment) {
+    case Alignment::START:
+        break;
+    case Alignment::END:
+        alignment_start = cross_surplus;
+        break;
+    case Alignment::CENTER:
+        alignment_start = cross_surplus * 0.5f;
+        break;
+    case Alignment::SPACE_BETWEEN:
+        alignment_spacing += stack_count > 1 ? cross_surplus / static_cast<float>(stack_count - 1) : 0.f;
+        break;
+    case Alignment::SPACE_AROUND:
+        alignment_start = cross_surplus / static_cast<float>(stack_count * 2);
+        alignment_spacing += alignment_start * 2.f;
+        break;
+    case Alignment::SPACE_EQUAL:
+        alignment_start = cross_surplus / static_cast<float>(stack_count + 1);
+        alignment_spacing += alignment_start;
+        break;
+    }
+
+    cross_offset += alignment_start;
+    for (size_t i = 0; i < stack_count; ++i) {
+        const std::vector<Handle>& stack = stacks[i];
+        Size2f stack_size;
+        if (horizontal) {
+            stack_size = {available_main, adapters[i].result};
+        }
+        else {
+            stack_size = {adapters[i].result, available_main};
+        }
+        _layout_stack(stack, stack_size, main_offset, cross_offset);
+        cross_offset += alignment_spacing + adapters[i].result;
     }
 }
 
-void StackLayout::_layout_row(const std::vector<Handle>& row, const Size2f total_size)
+void StackLayout::_layout_stack(const std::vector<Handle>& stack, const Size2f total_size, const float main_offset, const float cross_offset)
 {
     // calculate the actual, availabe size
-    const size_t item_count = row.size();
+    const size_t item_count = stack.size();
     if (item_count == 0) {
         return;
     }
 
     const bool horizontal = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
-    const float available_width = max(0.f, total_size.width - m_padding.width() - (horizontal ? m_spacing * (item_count - 1) : 0.f));
-    const float available_height = max(0.f, total_size.height - m_padding.height() - (horizontal ? 0.f : m_spacing * (item_count - 1)));
+    const float available_width = max(0.f, total_size.width - (horizontal ? m_spacing * (item_count - 1) : 0.f));
+    const float available_height = max(0.f, total_size.height - (horizontal ? 0.f : m_spacing * (item_count - 1)));
 
     // all elements get at least their minimum size
     float total_min = 0.f;
-    std::vector<ItemAdapter> adapters(row.size());
+    std::vector<ItemAdapter> adapters(stack.size());
     std::map<int, std::set<ItemAdapter*>> batches;
-    for (size_t i = 0; i < row.size(); ++i) {
-        const Claim& claim = _get_child(row[i])->get_claim();
+    for (size_t i = 0; i < stack.size(); ++i) {
+        const Claim& claim = _get_child(stack[i])->get_claim();
         const Claim::Stretch& stretch = horizontal ? claim.get_horizontal() : claim.get_vertical();
         const std::pair<float, float> width_to_height = claim.get_width_to_height();
         if (width_to_height.first > 0.f) {
@@ -316,7 +426,7 @@ void StackLayout::_layout_row(const std::vector<Handle>& row, const Size2f total
 
     // determine values for alignment along the primary axis
     float alignment_start = 0.f;
-    float alignment_spacing = 0.f;
+    float alignment_spacing = m_spacing;
     switch (m_main_alignment) {
     case Alignment::START:
         break;
@@ -327,15 +437,15 @@ void StackLayout::_layout_row(const std::vector<Handle>& row, const Size2f total
         alignment_start = surplus * 0.5f;
         break;
     case Alignment::SPACE_BETWEEN:
-        alignment_spacing = item_count > 1 ? surplus / static_cast<float>(item_count - 1) : 0.f;
+        alignment_spacing += item_count > 1 ? surplus / static_cast<float>(item_count - 1) : 0.f;
         break;
     case Alignment::SPACE_AROUND:
         alignment_start = surplus / static_cast<float>(item_count * 2);
-        alignment_spacing = alignment_start * 2.f;
+        alignment_spacing += alignment_start * 2.f;
         break;
     case Alignment::SPACE_EQUAL:
         alignment_start = surplus / static_cast<float>(item_count + 1);
-        alignment_spacing = alignment_start;
+        alignment_spacing += alignment_start;
         break;
     }
 
@@ -344,21 +454,16 @@ void StackLayout::_layout_row(const std::vector<Handle>& row, const Size2f total
     float step_factor;
     const bool reverse = (m_direction == Direction::RIGHT_TO_LEFT) || (m_direction == Direction::BOTTOM_TO_TOP);
     if (reverse) {
-        if (horizontal) {
-            start_offset = total_size.width - alignment_start - m_padding.right;
-        }
-        else {
-            start_offset = total_size.height - alignment_start - m_padding.bottom;
-        }
+        start_offset = (horizontal ? total_size.width : total_size.height) - alignment_start - main_offset;
         step_factor = -1.f;
     }
     else {
-        start_offset = alignment_start + (horizontal ? m_padding.left : m_padding.top);
+        start_offset = alignment_start + main_offset;
         step_factor = 1.f;
     }
     float current_offset = start_offset;
-    for (size_t index = 0; index < row.size(); ++index) {
-        std::shared_ptr<LayoutItem> child = _get_child(row.at(index)); // TODO: this `handle` handling is tedious
+    for (size_t index = 0; index < stack.size(); ++index) {
+        std::shared_ptr<LayoutItem> child = _get_child(stack.at(index)); // TODO: this `handle` handling is tedious
         const ItemAdapter& adapter = adapters[index];
         const std::pair<float, float> width_to_height = child->get_claim().get_width_to_height();
         assert(adapter.result >= 0.f);
@@ -370,9 +475,9 @@ void StackLayout::_layout_row(const std::vector<Handle>& row, const Size2f total
                 item_size.height = min(item_size.height, adapter.result / width_to_height.first);
             }
             item_size.height = max(item_size.height, vertical.get_min());
-            const float cross_offset = _cross_align_offset(item_size.height, available_height);
+            const float applied_cross_offset = _cross_align_offset(item_size.height, available_height);
             const float applied_offset = reverse ? current_offset - item_size.width : current_offset;
-            _update_item(child, item_size, Transform2::translation({applied_offset, m_padding.top + cross_offset}));
+            _update_item(child, item_size, Transform2::translation({applied_offset, cross_offset + applied_cross_offset}));
         }
         else { // vertical
             const Claim::Stretch& horizontal = child->get_claim().get_horizontal();
@@ -381,11 +486,11 @@ void StackLayout::_layout_row(const std::vector<Handle>& row, const Size2f total
                 item_size.width = min(item_size.width, adapter.result * width_to_height.second);
             }
             item_size.width = max(item_size.width, horizontal.get_min());
-            const float cross_offset = _cross_align_offset(item_size.width, available_width);
+            const float applied_cross_offset = _cross_align_offset(item_size.width, available_width);
             const float applied_offset = reverse ? current_offset - item_size.height : current_offset;
-            _update_item(child, item_size, Transform2::translation({m_padding.left + cross_offset, applied_offset}));
+            _update_item(child, item_size, Transform2::translation({cross_offset + applied_cross_offset, applied_offset}));
         }
-        current_offset += (adapter.result + m_spacing + alignment_spacing) * step_factor;
+        current_offset += (adapter.result + alignment_spacing) * step_factor;
     }
 }
 
@@ -406,10 +511,5 @@ float StackLayout::_cross_align_offset(const float item_size, const float availa
     }
     return 0.f;
 }
-
-// TODO: cross overflow is always happending to the south-east ... do I need a separate field for that? In a flex layout, I'd need it anyway...
-// make the field a boolean or use a new enum "clockwise" or "counter-clockwise" - those values will work regardless
-// what the main direction of the layout is and we won't need to enforce that only orthogonal cross directions can be set
-// ... and update them when the main widrection has been reset etc.
 
 } // namespace notf

@@ -24,11 +24,13 @@ def main():
     solid_blue.set_paint_function(fill_blue)
 
     stack_layout = StackLayout(Layout.Direction.LEFT_TO_RIGHT)
-    stack_layout.set_wrapping(True)
+    stack_layout.set_wrap(Layout.Wrap.WRAP)
     stack_layout.set_spacing(5)
+    stack_layout.set_cross_spacing(10)
     stack_layout.set_padding(Padding.all(10))
-    stack_layout.set_alignment(Layout.Alignment.SPACE_AROUND)
-    #stack_layout.set_cross_alignment(Layout.Alignment.CENTER)
+    stack_layout.set_alignment(Layout.Alignment.SPACE_BETWEEN)
+    stack_layout.set_cross_alignment(Layout.Alignment.END)
+    stack_layout.set_content_alignment(Layout.Alignment.SPACE_EQUAL)
 
     for i in range(50):
         widget = Widget()
