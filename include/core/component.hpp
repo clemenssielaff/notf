@@ -4,20 +4,20 @@
 #include <set>
 #include <type_traits>
 
-#include "common/handle.hpp"
 #include "common/signal.hpp"
 #include "utils/smart_enabler.hpp"
 
 namespace notf {
 
 class Widget;
+class State;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// @brief Virtual base class for all Components.
 class Component : public std::enable_shared_from_this<Component>, public Signaler<Component> {
 
-    friend class Widget;
+    friend class State;
 
 public: // enums
     /// @brief Component kind enum.
@@ -52,16 +52,16 @@ protected: // methods
     /// @brief Redraws all Widgets registered with this Component.
     void _redraw_widgets();
 
-private: // methods for Widget
+private: // methods for State
     // @brief Registers a new Widget to receive updates when this Component changes.
-    void _register_widget(Handle widget_handle);
+    void _register_widget(std::shared_ptr<Widget> widget);
 
     /// @brief Unregisters a Widget from receiving updates from this Component.
-    void _unregister_widget(Handle widget_handle);
+    void _unregister_widget(std::shared_ptr<Widget> widget);
 
 private: // fields
     /// @brief Handles of all Widgets that use this Component.
-    std::set<Handle> m_widgets;
+    std::set<std::weak_ptr<Widget>> m_widgets;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -106,7 +106,8 @@ SOURCES += \
     src/common/padding.cpp \
     src/python/py_padding.cpp \
     src/python/py_claim.cpp \
-    src/python/py_layout.cpp
+    src/python/py_layout.cpp \
+    src/core/state.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -176,6 +177,7 @@ HEADERS += \
     include/common/literals.hpp \
     include/common/padding.hpp \
     include/utils/reverse_iterator.hpp \
-    include/common/set_utils.hpp
+    include/common/set_utils.hpp \
+    include/core/state.hpp
 
 QMAKE_CXX = ccache g++

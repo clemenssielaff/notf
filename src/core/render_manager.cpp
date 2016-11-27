@@ -4,6 +4,7 @@
 #include "core/application.hpp"
 #include "core/components/canvas_component.hpp"
 #include "core/object_manager.hpp"
+#include "core/state.hpp"
 #include "core/widget.hpp"
 #include "graphics/rendercontext.hpp"
 
@@ -30,7 +31,7 @@ void RenderManager::render(const RenderContext& context)
             continue;
         }
 
-        std::shared_ptr<CanvasComponent> canvas = widget->get_component<CanvasComponent>();
+        std::shared_ptr<CanvasComponent> canvas = widget->get_current_state()->get_component<CanvasComponent>();
         assert(canvas);
         canvas->render(*widget.get(), context);
     }

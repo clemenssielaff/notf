@@ -6,6 +6,11 @@
 #include "common/enummap.hpp"
 #include "core/component.hpp"
 #include "core/layout_item.hpp"
+#include "core/state.hpp"
+
+#ifndef SIGNAL_LOG_LEVEL
+#define SIGNAL_LOG_LEVEL 0 // log all messages if no value for SIGNAL_LOG_LEVEL was given
+#endif
 
 namespace notf {
 
@@ -16,33 +21,15 @@ public: // methods
     /// @brief Returns the Window containing this Widget (can be nullptr).
     std::shared_ptr<Window> get_window() const;
 
-    /// @brief Checks if this Widget contains a Component of the given kind.
-    /// @param kind Component kind to check for.
-    bool has_component_kind(Component::KIND kind) const { return m_components.count(kind); }
-
-    /// @brief Requests the Component of a given kind from this Widget.
-    /// @return The requested Component, shared pointer is empty if this Widget has no Component of the requested kind.
-    template <typename COMPONENT>
-    std::shared_ptr<COMPONENT> get_component() const
+/** Returns the current State of this Widget (may be nullptr). */
+#if SIGNAL_LOG_LEVEL > 3 // SIGNAL_LOG_LEVEL_WARNING
+    const State* get_current_state() const
     {
-        auto it = m_components.find(get_kind<COMPONENT>());
-        if (it == m_components.end()) {
-            return {};
-        }
-        return std::static_pointer_cast<COMPONENT>(it->second);
+        return m_current_state;
     }
-
-    /// @brief Attaches a new Component to this Widget.
-    /// @param component    The Component to attach.
-    ///
-    /// Each Widget can only have one instance of each Component kind attached.
-    void add_component(std::shared_ptr<Component> component);
-
-    /// @brief Removes an existing Component of the given kind from this Widget.
-    /// @param kind Kind of the Component to remove.
-    ///
-    /// If the Widget doesn't have the given Component kind, the call is ignored.
-    void remove_component(Component::KIND kind);
+#else
+    const State* get_current_state() const;
+#endif
 
     /// @brief Updates the Claim of this Widget.
     void set_claim(const Claim claim)
@@ -74,6 +61,8 @@ protected: // methods
     explicit Widget(const Handle handle)
         : LayoutItem(handle)
         , m_components()
+        , m_state_machine()
+        , m_current_state(nullptr)
     {
     }
 
@@ -86,6 +75,12 @@ protected: // methods
 private: // fields
     /// @brief All components of this Widget.
     EnumMap<Component::KIND, std::shared_ptr<Component>> m_components;
+
+    /** The StateMachine attached to this Widget. */
+    std::shared_ptr<StateMachine> m_state_machine;
+
+    /** Current State of the Widget. */
+    const State* m_current_state;
 };
 
 } // namespace notf

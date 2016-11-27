@@ -331,6 +331,10 @@ void StackLayout::_relayout(const Size2f total_size)
         main_offset = m_padding.bottom;
         cross_offset = (m_wrap == Layout::Wrap::WRAP ? m_padding.right : m_padding.left);
         break;
+    default:
+        log_warning << "Unexpected Layout::Direction";
+        main_offset = 0.f;
+        cross_offset = 0.f;
     }
 
     // layout all items in a single stack

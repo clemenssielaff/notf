@@ -8,6 +8,16 @@
 
 namespace notf {
 
+#if SIGNAL_LOG_LEVEL <= 3 // SIGNAL_LOG_LEVEL_WARNING
+const State* Widget::get_current_state() const
+{
+    if(!m_current_state){
+        log_warning << "Requested invalid state for Widget " << get_handle();
+    }
+    return m_current_state;
+}
+#endif
+
 std::shared_ptr<Window> Widget::get_window() const
 {
     std::shared_ptr<const LayoutRoot> root_item = get_root();
@@ -18,32 +28,10 @@ std::shared_ptr<Window> Widget::get_window() const
     return root_item->get_window();
 }
 
-void Widget::add_component(std::shared_ptr<Component> component)
-{
-    if (!component) {
-        log_critical << "Cannot add invalid Component to Widget " << get_handle();
-        return;
-    }
-    remove_component(component->get_kind());
-    component->_register_widget(get_handle());
-    m_components[component->get_kind()] = std::move(component);
-}
-
-void Widget::remove_component(Component::KIND kind)
-{
-    if (!has_component_kind(kind)) {
-        return;
-    }
-    auto it = m_components.find(kind);
-    assert(it != m_components.end());
-    it->second->_unregister_widget(get_handle());
-    m_components.erase(it);
-}
-
 std::shared_ptr<Widget> Widget::get_widget_at(const Vector2& /*local_pos*/)
 {
     // if this Widget has no shape, you cannot find it at any location
-    if (!has_component_kind(Component::KIND::SHAPE)) {
+    if(m_current_state->has_component_kind(Component::KIND::SHAPE)){
         return {};
     }
 
@@ -70,7 +58,7 @@ std::shared_ptr<Widget> Widget::create(Handle handle)
 void Widget::_redraw()
 {
     // Widgets without a canvas can never be drawn.
-    if (!has_component_kind(Component::KIND::CANVAS)) {
+    if(m_current_state->has_component_kind(Component::KIND::CANVAS)){
         return;
     }
 
