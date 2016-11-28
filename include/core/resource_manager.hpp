@@ -48,7 +48,7 @@ public: // methods
      * @param font_name             Name of the Font and its file in the font directory (the *.ttf ending is optional).
      * @throw std::runtime_error    If the requested Font cannot be loaded.
      */
-    std::shared_ptr<Font> get_font(const std::string& name);
+    std::shared_ptr<Font> fetch_font(const std::string& name);
 
     /** Retrieves a Texture2 by its path.
      * This function either loads the texture from disk if this is the first time it has been requested,
@@ -57,7 +57,7 @@ public: // methods
      * @param flags                 Texture2::Flags used to load the texture.
     *  @throw std::runtime_error    If loading a Texture from the given path failed.
      */
-    std::shared_ptr<Texture2> get_texture(const std::string& texture_path, int flags);
+    std::shared_ptr<Texture2> fetch_texture(const std::string& texture_path, int flags);
 
     /** Deletes all resources that are not currently being used. */
     void cleanup();

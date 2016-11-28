@@ -19,7 +19,7 @@ public: // methods
 
     /// @brief (Re-)Parses the user app, completely clears out the global and local namespace.
     /// @param filename     Name of the app's `main` module.
-    void parse_app(const std::string& filename = "/home/clemens/code/notf/app/main.py");
+    void parse_app(const std::string& filename = "/home/clemens/code/notf/app/main.py"); // TODO: hard coded python main
 
 private: // methods
     py::object build_globals() const;

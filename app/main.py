@@ -1,6 +1,7 @@
 from random import randint
 from notf import *
 
+
 def fill_color(painter, color):
     painter.begin()
     widget_size = painter.get_widget_size()
@@ -9,6 +10,7 @@ def fill_color(painter, color):
     painter.rect(rect)
     painter.set_fill(color)
     painter.fill()
+
 
 def fill_orange(painter):
     fill_color(painter, Color("#c34200"))
@@ -40,12 +42,12 @@ def main():
         stack_layout.add_item(widget)
 
         h_stretch = ClaimStretch()
-        h_stretch.set_min(randint(0,MAX_MIN))
+        h_stretch.set_min(randint(0, MAX_MIN))
         h_stretch.set_max(randint(h_stretch.get_min(), MAX_MAX))
         h_stretch.set_preferred(randint(h_stretch.get_min(), h_stretch.get_max()))
 
         v_stretch = ClaimStretch()
-        v_stretch.set_min(randint(0,MAX_MIN))
+        v_stretch.set_min(randint(0, MAX_MIN))
         v_stretch.set_max(randint(v_stretch.get_min(), MAX_MAX))
         v_stretch.set_preferred(randint(v_stretch.get_min(), v_stretch.get_max()))
 
@@ -56,6 +58,16 @@ def main():
 
     window = Window()
     window.get_layout_root().set_item(stack_layout)
+
+
+def produce_notf():
+    import sys
+    import os
+    __file__ = "/home/clemens/code/notf/app/main.py"  # TODO: hard coded main.py
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    from build_notf import produce
+    produce()
+
 
 if __name__ == "__main__":
     main()

@@ -71,3 +71,5 @@ Thumbs.db
 # Python byte code
 *.pyc
 
+# NoTF specific
+app/notf.py

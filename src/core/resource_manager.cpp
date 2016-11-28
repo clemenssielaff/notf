@@ -61,7 +61,7 @@ void ResourceManager::set_nvg_context(NVGcontext* context)
     m_context = context;
 }
 
-std::shared_ptr<Font> ResourceManager::get_font(const std::string& name)
+std::shared_ptr<Font> ResourceManager::fetch_font(const std::string& name)
 {
     std::string full_path = m_font_directory + name;
     if(!iends_with(name, Font::file_extension)){
@@ -78,7 +78,7 @@ std::shared_ptr<Font> ResourceManager::get_font(const std::string& name)
     return font;
 }
 
-std::shared_ptr<Texture2> ResourceManager::get_texture(const std::string& texture_path, int flags)
+std::shared_ptr<Texture2> ResourceManager::fetch_texture(const std::string& texture_path, int flags)
 {
     const size_t hash_value = hash(texture_path, flags);
 
