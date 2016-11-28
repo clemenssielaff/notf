@@ -31,7 +31,7 @@ void RenderManager::render(const RenderContext& context)
             continue;
         }
 
-        std::shared_ptr<CanvasComponent> canvas = widget->get_current_state()->get_component<CanvasComponent>();
+        std::shared_ptr<CanvasComponent> canvas = widget->get_state()->get_component<CanvasComponent>();
         assert(canvas);
         canvas->render(*widget.get(), context);
     }

@@ -14,6 +14,14 @@ class State;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/*
+ * Checklist of what you need to do, when adding a new Component kind:
+ * 1.   Add it to the KIND enum
+ * 2.   Add its clear name to the `get_kind_name` static method
+ * 3.   Add its forward declaration above the free `get_kind` function.
+ * 4.   Append the new KIND return case to the free `get_kind` function.
+ */
+
 /// @brief Virtual base class for all Components.
 class Component : public std::enable_shared_from_this<Component>, public Signaler<Component> {
 
@@ -45,6 +53,10 @@ public: // methods
     /// @brief This Component's type.
     virtual KIND get_kind() const = 0;
 
+public: // static methods
+    /** Returns the name of a Component kind as a human readable string. */
+    static const std::string& get_kind_name(const KIND kind);
+
 protected: // methods
     /// @brief Default Constructor.
     explicit Component() = default;
@@ -61,7 +73,7 @@ private: // methods for State
 
 private: // fields
     /// @brief Handles of all Widgets that use this Component.
-    std::set<std::weak_ptr<Widget>> m_widgets;
+    std::set<std::weak_ptr<Widget>, std::owner_less<std::weak_ptr<Widget>>> m_widgets;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

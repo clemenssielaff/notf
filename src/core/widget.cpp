@@ -1,22 +1,12 @@
 #include "core/widget.hpp"
 
-#include "common/log.hpp"
 #include "common/string_utils.hpp"
 #include "core/layout_root.hpp"
 #include "core/render_manager.hpp"
+#include "core/state.hpp"
 #include "core/window.hpp"
 
 namespace notf {
-
-#if SIGNAL_LOG_LEVEL <= 3 // SIGNAL_LOG_LEVEL_WARNING
-const State* Widget::get_current_state() const
-{
-    if(!m_current_state){
-        log_warning << "Requested invalid state for Widget " << get_handle();
-    }
-    return m_current_state;
-}
-#endif
 
 std::shared_ptr<Window> Widget::get_window() const
 {
@@ -28,10 +18,17 @@ std::shared_ptr<Window> Widget::get_window() const
     return root_item->get_window();
 }
 
+void Widget::set_state_machine(std::shared_ptr<StateMachine> state_machine)
+{
+    m_state_machine = state_machine;
+    m_current_state = m_state_machine->get_start_state();
+    _update_parent_layout();
+}
+
 std::shared_ptr<Widget> Widget::get_widget_at(const Vector2& /*local_pos*/)
 {
     // if this Widget has no shape, you cannot find it at any location
-    if(m_current_state->has_component_kind(Component::KIND::SHAPE)){
+    if (m_current_state->has_component_kind(Component::KIND::SHAPE)) {
         return {};
     }
 
@@ -58,7 +55,7 @@ std::shared_ptr<Widget> Widget::create(Handle handle)
 void Widget::_redraw()
 {
     // Widgets without a canvas can never be drawn.
-    if(m_current_state->has_component_kind(Component::KIND::CANVAS)){
+    if (!m_current_state->has_component_kind(Component::KIND::CANVAS)) {
         return;
     }
 

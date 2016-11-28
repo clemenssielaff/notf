@@ -18,6 +18,11 @@ def main():
     solid_orange = CanvasComponent()
     solid_orange.set_paint_function(fill_orange)
 
+    factory = StateMachineFactory()
+    default_state = factory.add_state("default")
+    default_state.attach_component(solid_orange)
+    state_machine = factory.produce(default_state)
+
     stack_layout = StackLayout(Layout.Direction.LEFT_TO_RIGHT)
     stack_layout.set_wrap(Layout.Wrap.WRAP)
     stack_layout.set_spacing(5)
@@ -31,7 +36,7 @@ def main():
     MAX_MAX = 200
     for i in range(50):
         widget = Widget()
-        widget.add_component(solid_orange)
+        widget.set_state_machine(state_machine)
         stack_layout.add_item(widget)
 
         h_stretch = ClaimStretch()

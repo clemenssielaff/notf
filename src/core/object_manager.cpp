@@ -2,7 +2,6 @@
 
 #include <assert.h>
 
-#include "common/log.hpp"
 #include "core/object.hpp"
 
 namespace notf {
@@ -48,37 +47,5 @@ void ObjectManager::_release_object(const Handle handle)
         log_trace << "Releasing Object with handle " << handle;
     }
 }
-
-std::shared_ptr<Object> ObjectManager::_get_abstract_object(const Handle handle) const
-{
-    auto it = m_object.find(handle);
-    if (it == m_object.end()) {
-        log_warning << "Requested Object with unknown handle:" << handle;
-        return {};
-    }
-    std::shared_ptr<Object> result = it->second.lock();
-    if (!result) {
-        log_warning << "Encountered expired Object with handle:" << handle;
-    }
-    return result;
-}
-
-#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_WARNING
-void ObjectManager::_wrong_type_warning(const std::string& type_name, const Handle handle) const
-{
-
-    auto it = m_object.find(handle);
-    assert(it != m_object.end());
-    auto object = it->second.lock();
-    assert(object);
-
-    log_warning << "Requested handle " << handle << " as type \"" << type_name << "\" "
-                << "but the Object is a \"" << typeid(*object).name() << "\"";
-}
-#else
-void ObjectManager::_wrong_type_warning(const std::string&, const Handle) const
-{
-}
-#endif
 
 } // namespace notf

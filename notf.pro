@@ -107,7 +107,8 @@ SOURCES += \
     src/python/py_padding.cpp \
     src/python/py_claim.cpp \
     src/python/py_layout.cpp \
-    src/core/state.cpp
+    src/core/state.cpp \
+    src/python/py_state.cpp
 
 HEADERS += \
     include/core/application.hpp \

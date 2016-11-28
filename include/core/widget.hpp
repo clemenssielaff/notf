@@ -4,38 +4,38 @@
 #include <vector>
 
 #include "common/enummap.hpp"
-#include "core/component.hpp"
+#include "common/log.hpp"
 #include "core/layout_item.hpp"
-#include "core/state.hpp"
-
-#ifndef SIGNAL_LOG_LEVEL
-#define SIGNAL_LOG_LEVEL 0 // log all messages if no value for SIGNAL_LOG_LEVEL was given
-#endif
 
 namespace notf {
+
+class State;
+class StateMachine;
 
 /// @brief Something drawn on the screen, potentially able to interact with the user.
 class Widget : public LayoutItem {
 
 public: // methods
-    /// @brief Returns the Window containing this Widget (can be nullptr).
+    /// @brief Returns the Window containing this Widget (can be null).
     std::shared_ptr<Window> get_window() const;
 
-/** Returns the current State of this Widget (may be nullptr). */
-#if SIGNAL_LOG_LEVEL > 3 // SIGNAL_LOG_LEVEL_WARNING
-    const State* get_current_state() const
+    /** Returns the current State of this Widget (may be nullptr). */
+    const State* get_state() const
     {
+        if (!m_current_state) {
+            log_warning << "Requested invalid state for Widget " << get_handle();
+        }
         return m_current_state;
     }
-#else
-    const State* get_current_state() const;
-#endif
+
+    /** Sets the StateMachine of this Widget and applies the StateMachine's start State. */
+    void set_state_machine(std::shared_ptr<StateMachine> state_machine);
 
     /// @brief Updates the Claim of this Widget.
     void set_claim(const Claim claim)
     {
         _set_claim(std::move(claim));
-        if (_is_dirty()) {
+        if (_is_dirty()) { // TODO: let's rethink this `dirtying` ... I don't think that's relevant anymore
             _update_parent_layout();
         }
     }
@@ -60,7 +60,6 @@ protected: // methods
     /// @param handle   Handle of this Widget.
     explicit Widget(const Handle handle)
         : LayoutItem(handle)
-        , m_components()
         , m_state_machine()
         , m_current_state(nullptr)
     {
@@ -73,9 +72,6 @@ protected: // methods
     // I mean, a Layout will ONLY relayout, while a Widget will ONLY redraw
 
 private: // fields
-    /// @brief All components of this Widget.
-    EnumMap<Component::KIND, std::shared_ptr<Component>> m_components;
-
     /** The StateMachine attached to this Widget. */
     std::shared_ptr<StateMachine> m_state_machine;
 
