@@ -123,7 +123,7 @@ void LayoutItem::_set_parent(std::shared_ptr<Layout> parent)
 
     // update your parent
     if (old_parent) {
-        old_parent->_remove_child(get_handle());
+        old_parent->_remove_child(this);
     }
 
     m_parent = parent;

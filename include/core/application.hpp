@@ -2,7 +2,7 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
+#include <vector>
 
 struct GLFWwindow;
 
@@ -26,14 +26,17 @@ struct ApplicationInfo {
     /// @brief Number of strings in argv (first one is usually the name of the program).
     int argc = -1;
 
-    /** System path to the texture directory, absolute or relative to the executable. */
-    std::string texture_directory = "";
-
-    /** System path to the fonts directory, absolute or relative to the executable. */
-    std::string fonts_directory = "";
-
     /** If set to false, the Application will not have a Python interpreter available. */
     bool enable_python = true;
+
+    /** System path to the texture directory, absolute or relative to the executable. */
+    std::string texture_directory = "res/textures/";
+
+    /** System path to the fonts directory, absolute or relative to the executable. */
+    std::string fonts_directory = "res/fonts/";
+
+    /** System path to the application directory, absolute or relative to the executable. */
+    std::string app_directory = "app/";
 };
 
 /**********************************************************************************************************************/
@@ -88,8 +91,11 @@ public: // methods
     const ApplicationInfo& get_info() const { return m_info; }
 
 public: // static methods
-    // @brief Initializes the Application through an user-defined ApplicationInfo object.
-    static Application& initialize(const ApplicationInfo& info);
+    /** Initializes the Application through an user-defined ApplicationInfo object.
+     * Any relative path in the info (including the default paths) will be resolved after this method has been called,
+     * meaning for example, that you can use `info.app_directory` to generate absolute paths to python scripts.
+     */
+    static Application& initialize(ApplicationInfo &info);
 
     /// @brief Initializes the Application using only the Command line arguments passed by the OS.
     static Application& initialize(const int argc, char* argv[])
@@ -152,10 +158,6 @@ private: // methods
     /// Is called automatically, after the last Window has been closed.
     void _shutdown();
 
-    /// @brief Returns the Window instance associated with the given GLFW window.
-    /// @param glfw_window  The GLFW window to look for.
-    std::shared_ptr<Window> _get_window(GLFWwindow* glfw_window);
-
 private: // fields
     /// @brief The ApplicationInfo of this Application object.
     const ApplicationInfo m_info;
@@ -170,7 +172,7 @@ private: // fields
     std::unique_ptr<ObjectManager> m_object_manager;
 
     /// @brief All Windows known the the Application.
-    std::unordered_map<GLFWwindow*, std::shared_ptr<Window>> m_windows;
+    std::vector<std::shared_ptr<Window>> m_windows;
 
     /// @brief The Python Interpreter embedded in the Application.
     std::unique_ptr<PythonInterpreter> m_interpreter;

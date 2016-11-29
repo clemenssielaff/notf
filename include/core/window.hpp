@@ -119,7 +119,7 @@ protected: // methods
 
 private: // methods for Application
     /// @brief The wrapped GLFW window.
-    GLFWwindow* _glwf_window() { return m_glfw_window.get(); }
+    GLFWwindow* _get_glwf_window() { return m_glfw_window.get(); }
 
     /// @brief Called when the Window was resized.
     /// @param width        New width of the Window.

@@ -12,6 +12,5 @@ void produce_font(pybind11::module& module)
 
     Py_Font.def_static("fetch", [](const std::string& name) -> std::shared_ptr<Font> {
         return Application::get_instance().get_resource_manager().fetch_font(name);
-    },
-                       "Retrieves a Font by its name in the font directory.", py::arg("Name of the Font and its file in the font directory (the *.ttf ending is optional)."));
+    }, "Name of the Font and its file in the font directory (the *.ttf ending is optional).", py::arg("name"));
 }

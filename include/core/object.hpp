@@ -61,7 +61,7 @@ protected: // static methods
     // so, we might just get rid of handles for good then?
 
 private: // fields
-    /// @brief Application-unique Handle.
+    /** Application-unique Handle. */
     const Handle m_handle;
 };
 

@@ -82,17 +82,14 @@ protected: // methods
     {
     }
 
-    /// @brief Returns a child LayoutItem, is invalid if no child with the given Handle exists.
-    std::shared_ptr<LayoutItem> _get_child(const Handle child_handle) const;
-
     /// @brief Returns all children of this LayoutItem.
-    const std::unordered_map<Handle, std::shared_ptr<LayoutItem>>& _get_children() const { return m_children; }
+    const std::vector<std::shared_ptr<LayoutItem>>& _get_children() const { return m_children; }
 
     /// @brief Adds the given child to this LayoutItem.
-    void _add_child(std::shared_ptr<LayoutItem> child_object);
+    void _add_child(std::shared_ptr<LayoutItem> item);
 
-    /// @brief Removes the child with the given Handle.
-    void _remove_child(const Handle child_handle);
+    /// @brief Removes the given child LayoutItem.
+    void _remove_child(const LayoutItem* item);
 
     virtual void _cascade_visibility(const VISIBILITY visibility) override;
 
@@ -114,13 +111,13 @@ protected: // methods
      * However, most Layouts have an additional data structure for sorted, easy access to their children and it is
      * this methods's job to remove the child from there.
      */
-    virtual void _remove_item(const Handle item_handle) = 0;
+    virtual void _remove_item(const LayoutItem* item) = 0;
 
     virtual void _relayout(const Size2f size) override = 0;
 
 private: // fields
-    /// @brief All children of this Layout.
-    std::unordered_map<Handle, std::shared_ptr<LayoutItem>> m_children;
+    /** All child items contained in this Layout. */
+    std::vector<std::shared_ptr<LayoutItem>> m_children;
 };
 
 } // namespace notf

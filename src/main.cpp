@@ -11,8 +11,6 @@ int main(int argc, char* argv[])
     ApplicationInfo app_info;
     app_info.argc = argc;
     app_info.argv = argv;
-    app_info.texture_directory = "/home/clemens/code/notf/res/textures";
-    app_info.fonts_directory = "/home/clemens/code/notf/res/fonts";
     Application& app = Application::initialize(app_info);
 
     // window
@@ -27,7 +25,7 @@ int main(int argc, char* argv[])
     window->on_token_key.connect(
         [window, &app](const KeyEvent&) {
             if(PythonInterpreter* python = app.get_python_interpreter()){
-                python->parse_app();
+                python->parse_app("main.py");
             }
         },
         [](const KeyEvent& event) -> bool {

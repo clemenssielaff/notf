@@ -259,12 +259,12 @@ void StackLayout::add_item(std::shared_ptr<LayoutItem> item)
 {
     // if the item is already child of this Layout, place it at the end
     if (has_child(item)) {
-        remove_one_unordered(m_items, item->get_handle());
+        remove_one_unordered(m_items, item.get());
     }
     else {
         _add_child(item);
     }
-    m_items.emplace_back(std::move(item->get_handle()));
+    m_items.emplace_back(item.get());
     _update_parent_layout();
 }
 
@@ -278,8 +278,8 @@ void StackLayout::_update_claim()
     // construct the new claim
     Claim new_claim;
     if ((m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT)) { // horizontal
-        for (Handle handle : m_items) {
-            new_claim.add_horizontal(_get_child(handle)->get_claim());
+        for (const LayoutItem* item : m_items) {
+            new_claim.add_horizontal(item->get_claim());
         }
         if (!m_items.empty()) {
             new_claim.get_horizontal().add_offset((m_items.size() - 1) * m_spacing);
@@ -287,8 +287,8 @@ void StackLayout::_update_claim()
     }
     else {
         assert((m_direction == Direction::TOP_TO_BOTTOM) || (m_direction == Direction::BOTTOM_TO_TOP)); // vertical
-        for (Handle handle : m_items) {
-            new_claim.add_vertical(_get_child(handle)->get_claim());
+        for (const LayoutItem* item : m_items) {
+            new_claim.add_vertical(item->get_claim());
         }
         if (!m_items.empty()) {
             new_claim.get_vertical().add_offset((m_items.size() - 1) * m_spacing);
@@ -297,13 +297,10 @@ void StackLayout::_update_claim()
     _set_claim(new_claim);
 }
 
-void StackLayout::_remove_item(const Handle item_handle)
+void StackLayout::_remove_item(const LayoutItem *item)
 {
-    auto it = std::find(m_items.begin(), m_items.end(), item_handle);
-    if (it == m_items.end()) {
-        log_critical << "Failed to remove unknown item " << item_handle << " from StackLayout " << get_handle();
-        return;
-    }
+    auto it = std::find(m_items.begin(), m_items.end(), item);
+    assert(it != m_items.end());
     m_items.erase(it);
 }
 
@@ -347,15 +344,15 @@ void StackLayout::_relayout(const Size2f total_size)
     const float available_cross = horizontal ? available_size.height : available_size.width;
 
     // fill the items into stacks
-    std::vector<std::vector<Handle>> stacks;
+    std::vector<std::vector<LayoutItem*>> stacks;
     std::vector<Claim::Stretch> cross_stretches;
     float used_cross_space = 0.f;
     {
-        std::vector<Handle> current_stack;
+        std::vector<LayoutItem*> current_stack;
         Claim::Stretch current_cross_stretch = Claim::Stretch(0, 0, 0);
         float current_size = 0;
-        for (Handle item : m_items) {
-            const Claim& claim = _get_child(item)->get_claim();
+        for (LayoutItem* item : m_items) {
+            const Claim& claim = item->get_claim();
             const float addition = (horizontal ? claim.get_horizontal() : claim.get_vertical()).get_preferred() + m_spacing;
             if (current_size + addition > available_main) {
                 stacks.emplace_back(std::move(current_stack));
@@ -406,7 +403,7 @@ void StackLayout::_relayout(const Size2f total_size)
     }
 }
 
-void StackLayout::_layout_stack(const std::vector<Handle>& stack, const Size2f total_size, const float main_offset, const float cross_offset)
+void StackLayout::_layout_stack(const std::vector<LayoutItem*>& stack, const Size2f total_size, const float main_offset, const float cross_offset)
 {
     // calculate the actual, availabe size
     const size_t item_count = stack.size();
@@ -423,7 +420,7 @@ void StackLayout::_layout_stack(const std::vector<Handle>& stack, const Size2f t
     std::vector<ItemAdapter> adapters(stack.size());
     std::map<int, std::set<ItemAdapter*>> batches;
     for (size_t i = 0; i < stack.size(); ++i) {
-        const Claim& claim = _get_child(stack[i])->get_claim();
+        const Claim& claim = stack[i]->get_claim();
         const Claim::Stretch& stretch = horizontal ? claim.get_horizontal() : claim.get_vertical();
         const std::pair<float, float> width_to_height = claim.get_width_to_height();
         if (width_to_height.first > 0.f) {
@@ -468,7 +465,7 @@ void StackLayout::_layout_stack(const std::vector<Handle>& stack, const Size2f t
     }
     float current_offset = start_offset;
     for (size_t index = 0; index < stack.size(); ++index) {
-        std::shared_ptr<LayoutItem> child = _get_child(stack.at(index)); // TODO: this `handle` handling is tedious
+        LayoutItem* child = stack.at(index);
         const ItemAdapter& adapter = adapters[index];
         const std::pair<float, float> width_to_height = child->get_claim().get_width_to_height();
         assert(adapter.result >= 0.f);

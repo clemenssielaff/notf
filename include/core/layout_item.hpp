@@ -203,7 +203,7 @@ protected: // static methods
     /// @param item          LayoutItem to update.
     /// @param size          New size of the item.
     /// @param transform     New transform of the item.
-    static void _update_item(std::shared_ptr<LayoutItem> item, const Size2f size, const Transform2 transform)
+    static void _update_item(LayoutItem* item, const Size2f size, const Transform2 transform)
     {
         assert(item);
         assert(size.is_valid());

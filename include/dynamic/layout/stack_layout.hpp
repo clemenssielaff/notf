@@ -96,7 +96,7 @@ protected: // methods
 
     virtual void _update_claim() override;
 
-    virtual void _remove_item(const Handle item_handle) override;
+    virtual void _remove_item(const LayoutItem* item) override;
 
     virtual void _relayout(const Size2f total_size) override;
 
@@ -107,7 +107,7 @@ private: // methods
      * @param main_offset   Start offset of the first item in the main axis.
      * @param cross_offset  Start offset of the first item in the cross axis.
      */
-    void _layout_stack(const std::vector<Handle>& stack, const Size2f total_size, const float main_offset, const float cross_offset);
+    void _layout_stack(const std::vector<LayoutItem *> &stack, const Size2f total_size, const float main_offset, const float cross_offset);
 
 private: // fields
     /** Direction in which the StackLayout is stacked. */
@@ -135,7 +135,7 @@ private: // fields
     float m_cross_spacing;
 
     /// @brief All items in this Layout in order.
-    std::vector<Handle> m_items;
+    std::vector<LayoutItem*> m_items;
 };
 
 } // namespace notf

@@ -1,3 +1,4 @@
+from importlib import reload
 from random import randint
 from notf import *
 
@@ -34,21 +35,21 @@ def main():
     stack_layout.set_cross_alignment(Layout.Alignment.START)
     stack_layout.set_content_alignment(Layout.Alignment.START)
 
-    MAX_MIN = 100
-    MAX_MAX = 200
+    max_min = 100
+    max_max = 200
     for i in range(50):
         widget = Widget()
         widget.set_state_machine(state_machine)
         stack_layout.add_item(widget)
 
         h_stretch = ClaimStretch()
-        h_stretch.set_min(randint(0, MAX_MIN))
-        h_stretch.set_max(randint(h_stretch.get_min(), MAX_MAX))
+        h_stretch.set_min(randint(0, max_min))
+        h_stretch.set_max(randint(h_stretch.get_min(), max_max))
         h_stretch.set_preferred(randint(h_stretch.get_min(), h_stretch.get_max()))
 
         v_stretch = ClaimStretch()
-        v_stretch.set_min(randint(0, MAX_MIN))
-        v_stretch.set_max(randint(v_stretch.get_min(), MAX_MAX))
+        v_stretch.set_min(randint(0, max_min))
+        v_stretch.set_max(randint(v_stretch.get_min(), max_max))
         v_stretch.set_preferred(randint(v_stretch.get_min(), v_stretch.get_max()))
 
         claim = Claim()
@@ -61,12 +62,9 @@ def main():
 
 
 def produce_notf():
-    import sys
-    import os
-    __file__ = "/home/clemens/code/notf/app/main.py"  # TODO: hard coded main.py
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    from build_notf import produce
-    produce()
+    import build_notf
+    reload(build_notf)
+    build_notf.produce()
 
 
 if __name__ == "__main__":

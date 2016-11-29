@@ -15,7 +15,7 @@ void LayoutRoot::set_item(std::shared_ptr<LayoutItem> item)
     if (!is_empty()) {
         const auto& children = _get_children();
         assert(children.size() == 1);
-        _remove_child(children.begin()->first);
+        _remove_child(children.begin()->get());
     }
     _add_child(std::move(item));
     _relayout({});
@@ -43,14 +43,14 @@ void LayoutRoot::_relayout(const Size2f /*size*/)
     }
 }
 
-std::shared_ptr<LayoutItem> LayoutRoot::_get_item() const
+LayoutItem *LayoutRoot::_get_item() const
 {
     if (is_empty()) {
-        return {};
+        return nullptr;
     }
     const auto& children = _get_children();
     assert(children.size() == 1);
-    return children.begin()->second;
+    return children.begin()->get();
 }
 
 } // namespace notf

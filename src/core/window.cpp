@@ -175,6 +175,7 @@ Window::Window(const WindowInfo& info)
         app._shutdown();
         exit(to_number(Application::RETURN_CODE::GLFW_FAILURE));
     }
+    glfwSetWindowUserPointer(m_glfw_window.get(), this);
 
     // create the NanoVG context
     glfwMakeContextCurrent(m_glfw_window.get());

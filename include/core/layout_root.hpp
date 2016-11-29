@@ -35,13 +35,13 @@ protected: // methods
 
     virtual void _update_claim() override {}
 
-    virtual void _remove_item(const Handle) override {}
+    virtual void _remove_item(const LayoutItem*) override {}
 
     virtual void _relayout(const Size2f size) override;
 
 private: // methods
     /// @brief Returns the Layout contained in this LayoutRoot, may be invalid.
-    std::shared_ptr<LayoutItem> _get_item() const;
+    LayoutItem* _get_item() const;
 
 private: // static methods for Window
     /// @brief Factory function to create a new LayoutRoot.

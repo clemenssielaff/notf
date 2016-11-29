@@ -658,7 +658,6 @@ SCENARIO("ZNodes form a hierarchy that can be modified", "[core][zhierarchy]")
             std::shared_ptr<StackLayout> mid = StackLayout::create(StackLayout::Direction::LEFT_TO_RIGHT);
             mid->place_below(root);
             left->place_on_bottom_of(mid);
-            // TODO: some function to REMOVE LayoutItems from each other...
         }
 
         THEN("children that were not also children of the LayoutItem are moved into its place")

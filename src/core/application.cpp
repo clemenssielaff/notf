@@ -74,7 +74,7 @@ Application::Application(const ApplicationInfo info)
 
     // initialize Python
     if (info.enable_python) {
-        m_interpreter = std::make_unique<PythonInterpreter>(m_info.argv);
+        m_interpreter = std::make_unique<PythonInterpreter>(m_info.argv, m_info.app_directory);
     }
 
     log_trace << "Started application";
@@ -94,8 +94,8 @@ int Application::exec()
     while (m_windows.size() > 0) {
 
         // update all windows
-        for (const auto& windowItem : m_windows) {
-            windowItem.second->_update();
+        for (const std::shared_ptr<Window>& window : m_windows) {
+            window->_update();
         }
 
         // poll and process GLWF events
@@ -118,11 +118,24 @@ int Application::exec()
     return to_number(RETURN_CODE::SUCCESS);
 }
 
-Application& Application::initialize(const ApplicationInfo& info)
+Application& Application::initialize(ApplicationInfo& info)
 {
     if (info.argc == -1 || info.argv == nullptr) {
         log_fatal << "Cannot initialize an Application from a Info object with missing `argc` and `argv` fields";
         exit(to_number(RETURN_CODE::UNINITIALIZED));
+    }
+    const std::string exe_path = info.argv[0];
+    const std::string exe_dir = exe_path.substr(0, exe_path.find_last_of("/") + 1);
+
+    // replace relative (default) paths with absolute ones
+    if (info.texture_directory.empty() || info.texture_directory[0] != '/') {
+        info.texture_directory = exe_dir + info.texture_directory;
+    }
+    if (info.fonts_directory.empty() || info.fonts_directory[0] != '/') {
+        info.fonts_directory = exe_dir + info.fonts_directory;
+    }
+    if (info.app_directory.empty() || info.app_directory[0] != '/') {
+        info.app_directory = exe_dir + info.app_directory;
     }
     return _get_instance(info);
 }
@@ -134,8 +147,11 @@ void Application::_on_error(int error, const char* message)
 
 void Application::_on_token_key(GLFWwindow* glfw_window, int key, int scancode, int action, int modifiers)
 {
+    assert(glfw_window);
     UNUSED(scancode);
-    std::shared_ptr<Window> window = get_instance()._get_window(glfw_window);
+    Window* window_raw = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    assert(window_raw);
+    std::shared_ptr<Window> window = window_raw->shared_from_this();
     if (!window) {
         log_critical << "Received 'on_token_key' Callback for unknown GLFW window";
         return;
@@ -152,7 +168,10 @@ void Application::_on_token_key(GLFWwindow* glfw_window, int key, int scancode, 
 
 void Application::_on_window_close(GLFWwindow* glfw_window)
 {
-    std::shared_ptr<Window> window = get_instance()._get_window(glfw_window);
+    assert(glfw_window);
+    Window* window_raw = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    assert(window_raw);
+    std::shared_ptr<Window> window = window_raw->shared_from_this();
     if (!window) {
         log_critical << "Callback for unknown GLFW window";
         return;
@@ -162,7 +181,10 @@ void Application::_on_window_close(GLFWwindow* glfw_window)
 
 void Application::_on_window_reize(GLFWwindow* glfw_window, int width, int height)
 {
-    std::shared_ptr<Window> window = get_instance()._get_window(glfw_window);
+    assert(glfw_window);
+    Window* window_raw = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    assert(window_raw);
+    std::shared_ptr<Window> window = window_raw->shared_from_this();
     if (!window) {
         log_critical << "Callback for unknown GLFW window";
         return;
@@ -172,16 +194,17 @@ void Application::_on_window_reize(GLFWwindow* glfw_window, int width, int heigh
 
 void Application::_register_window(std::shared_ptr<Window> window)
 {
-    GLFWwindow* glfw_window = window->_glwf_window();
+    assert(window);
+    GLFWwindow* glfw_window = window->_get_glwf_window();
     if (!glfw_window) {
         log_fatal << "Window or context creation failed for window '" << window->get_title() << "'";
         _shutdown();
         exit(to_number(RETURN_CODE::GLFW_FAILURE));
     }
-    assert(m_windows.count(glfw_window) == 0);
+    assert(std::find(m_windows.begin(), m_windows.end(), window) == m_windows.end());
 
     // register the window
-    m_windows.emplace(glfw_window, window);
+    m_windows.push_back(window);
 
     // connect the window callbacks
     glfwSetWindowCloseCallback(glfw_window, _on_window_close);
@@ -197,11 +220,12 @@ void Application::_register_window(std::shared_ptr<Window> window)
 void Application::_unregister_window(std::shared_ptr<Window> window)
 {
     assert(window);
-    GLFWwindow* glfw_window = window->_glwf_window();
-    auto iterator = m_windows.find(glfw_window);
+    auto iterator = std::find(m_windows.begin(), m_windows.end(), window);
     assert(iterator != m_windows.end());
 
     // disconnect the window callbacks
+    GLFWwindow* glfw_window = window->_get_glwf_window();
+    assert(glfw_window);
     glfwSetWindowCloseCallback(glfw_window, nullptr);
     glfwSetKeyCallback(glfw_window, nullptr);
     glfwSetWindowSizeCallback(glfw_window, nullptr);
@@ -212,8 +236,9 @@ void Application::_unregister_window(std::shared_ptr<Window> window)
 
 void Application::_set_current_window(Window* window)
 {
+    assert(window);
     if (m_current_window.get() != window) {
-        glfwMakeContextCurrent(window->_glwf_window());
+        glfwMakeContextCurrent(window->_get_glwf_window());
         m_current_window = window->shared_from_this();
     }
 }
@@ -227,8 +252,8 @@ void Application::_shutdown()
     is_running = false;
 
     // close all remaining windows
-    for (auto it : m_windows) {
-        it.second->close();
+    for (std::shared_ptr<Window>& window : m_windows) {
+        window->close();
     }
 
     // release all resources and objects
@@ -244,15 +269,6 @@ void Application::_shutdown()
     log_info << "Application shutdown";
     m_log_handler->stop();
     m_log_handler->join();
-}
-
-std::shared_ptr<Window> Application::_get_window(GLFWwindow* glfw_window)
-{
-    auto iterator = m_windows.find(glfw_window);
-    if (iterator == m_windows.end()) {
-        return nullptr;
-    }
-    return iterator->second;
 }
 
 KEY from_glfw_key(int key)
