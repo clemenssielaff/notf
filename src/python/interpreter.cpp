@@ -33,8 +33,11 @@ PythonInterpreter::PythonInterpreter(char* argv[], const std::string& app_direct
     Py_Initialize();
     log_info << "Initialized Python interpreter " << Py_GetVersion();
 
-    // add the app directory to the PYTHONPATH
-    const std::string path_command = string_format("import sys; sys.path.append(\"\"\"%s\"\"\")", app_directory.c_str());
+    const std::string path_command = string_format(
+        "import sys;"
+        "sys.path.append(\"\"\"%s\"\"\");"
+        "sys._original_modules = sys.modules.copy();",
+        app_directory.c_str());
     PyRun_SimpleString(path_command.c_str());
 }
 
@@ -56,10 +59,19 @@ void PythonInterpreter::parse_app(const std::string& filename)
 
     py::object globals = _build_globals(absolute_path);
     if (!globals.check()) {
-        log_critical << "Failed to build the globals dictionary!";
+        log_critical << "Failed to build the 'globals' dictionary!";
         std::fclose(fp);
         return;
     }
+
+    static const std::string restore_original_modules_command =
+            "modules_to_remove = []\n"
+            "for module in sys.modules.keys():\n"
+            "    if not module in sys._original_modules:\n"
+            "        modules_to_remove.append(module)\n"
+            "for module in modules_to_remove:\n"
+            "    del(sys.modules[module])\n";
+    PyRun_SimpleString(restore_original_modules_command.c_str());
 
     py::object _(PyRun_FileEx(fp, absolute_path.c_str(), Py_file_input, globals.ptr(), globals.ptr(),
                               1), // close the file stream before returning
