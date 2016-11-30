@@ -9,12 +9,12 @@
 #include "common/size2f.hpp"
 #include "common/transform2.hpp"
 #include "core/object.hpp"
-#include "core/znode.hpp"
 
 namespace notf {
 
 class Layout;
 class LayoutRoot;
+class RenderLayer;
 class Widget;
 
 /// @brief Visibility states, all but one mean that the LayoutItem is not visible, but all for different reasons.
@@ -100,34 +100,6 @@ public: // methods
         return result;
     }
 
-    /** Calculates and returns the Z value of this LayoutItem. */
-    size_t get_z() const { return m_znode->get_z(); }
-
-    /** The LayoutItem through which the Z-value of this one is determined. */
-    std::shared_ptr<LayoutItem> get_z_parent() const { return m_znode->get_parent()->get_layout_item(); }
-
-    /** Moves under `parent`, all the way in the front.
-     * @throw std::runtime_error    If `parent` is a child of this LayoutItem's ZNode.
-     */
-    void place_on_top_of(const std::shared_ptr<LayoutItem>& parent) { m_znode->place_on_top_of(parent->m_znode.get()); }
-
-    /** Moves under `parent`, all the way in the back.
-     * @throw std::runtime_error    If `parent` is a child of this LayoutItem's ZNode.
-     */
-    void place_on_bottom_of(const std::shared_ptr<LayoutItem>& parent) { m_znode->place_on_bottom_of(parent->m_znode.get()); }
-
-    /** Moves under the same parent as `sibling`, one step above `sibiling`.
-     * If `sibling` has no parent, it moves this ZNode to be the leftmost right child of `sibling` instead.
-     * @throw std::runtime_error    If `sibling` is a child of this LayoutItem's ZNode.
-     */
-    void place_above(const std::shared_ptr<LayoutItem>& sibling) { m_znode->place_above(sibling->m_znode.get()); }
-
-    /** Moves under the same parent as `sibling`, one step below `sibiling`.
-     * If `sibling` has no parent, it moves this ZNode to be the rightmost left child of `sibling` instead.
-     * @throw std::runtime_error    If `sibling` is a child of this LayoutItem's ZNode.
-     */
-    void place_below(const std::shared_ptr<LayoutItem>& sibling) { m_znode->place_below(sibling->m_znode.get()); }
-
 public: // signals
     /// @brief Emitted when this LayoutItem got a new parent.
     /// @param Handle of the new parent.
@@ -190,6 +162,14 @@ protected: // methods
     /// Propagates up the Layout hierarchy to the first ancestor that doesn't need to change its Claim.
     void _update_parent_layout();
 
+    /** (Re-)sets the RenderLayer of this LayoutItem.
+     * Pass an empty shared_ptr to implicitly inherit the RenderLayer from the parent Layout.
+     */
+    void _set_render_layer(std::shared_ptr<RenderLayer> render_layer)
+    {
+        m_render_layer = std::move(render_layer);
+    }
+
     /// @brief Called by the parent Layout to let this Item know that its size has changed.
     /// Layout subclasses use this method to update their Layout and child items, if required.
     /// @param size     New size.
@@ -210,13 +190,6 @@ protected: // static methods
         item->_set_size(size);
         item->_set_transform(transform);
         item->_relayout(size);
-    }
-
-    /** Returns the ZNode of any LayoutItem (or subclass) instance. */
-    static ZNode* _get_znode(LayoutItem* item)
-    {
-        assert(item);
-        return item->m_znode.get();
     }
 
 private: // methods
@@ -245,9 +218,6 @@ private: // fields
     /// @brief The parent LayoutItem, may be invalid.
     std::weak_ptr<Layout> m_parent;
 
-    /// @brief The ZNode of this LayoutItem, used to determine its render order (z-value).
-    std::unique_ptr<ZNode> m_znode;
-
     /// @brief Visibility state of this LayoutItem.
     VISIBILITY m_visibility;
 
@@ -259,6 +229,11 @@ private: // fields
 
     /// @brief 2D transformation of this LayoutItem in local space.
     Transform2 m_transform;
+
+    /** The RenderLayer of this LayoutItem.
+     * An empty pointer means that this item inherits its render layer from its parent.
+     */
+    std::shared_ptr<RenderLayer> m_render_layer;
 };
 
 } // namespace notf

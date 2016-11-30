@@ -13,7 +13,7 @@ class LayoutRoot : public Layout {
 
 public: // methods
     /// @brief Returns the Window owning this LayoutRoot.
-    std::shared_ptr<Window> get_window() const { return m_window.lock(); }
+    std::shared_ptr<Window> get_window() const;
 
     /// @brief Sets a new Item at the LayoutRoot.
     void set_item(std::shared_ptr<LayoutItem> item);
@@ -23,15 +23,13 @@ public: // methods
     /// @brief Updates the LayoutRoot after the Window's size has changed.
     void relayout(const Size2f size) { _relayout(std::move(size)); }
 
+    virtual void set_render_layer(std::shared_ptr<RenderLayer>) override;
+
 protected: // methods
     /// @brief Value Constructor.
     /// @param handle   Handle of this Widget.
     /// @param window   Window owning this RootWidget.
-    explicit LayoutRoot(Handle handle, std::shared_ptr<Window> window)
-        : Layout(handle)
-        , m_window(window)
-    {
-    }
+    LayoutRoot(Handle handle, const std::shared_ptr<Window>& window);
 
     virtual void _update_claim() override {}
 
@@ -54,7 +52,7 @@ private: // static methods for Window
 
 private: // fields
     /// @brief The Window containing this LayoutRoot.
-    const std::weak_ptr<Window> m_window;
+    Window* m_window;
 };
 
 } // namespace notf

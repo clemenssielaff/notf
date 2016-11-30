@@ -28,6 +28,12 @@ public: // methods
         return m_current_state;
     }
 
+    /** Returns the Layout used to scissor this Widget.
+     * Returns an empty shared_ptr, if no explicit scissor Layout was set or the scissor Layout has since expired.
+     * In this case, the Widget is implicitly scissored by its parent Layout.
+     */
+    std::shared_ptr<Layout> get_scissor_layout() const { return m_scissor_layout.lock(); }
+
     /** Sets the StateMachine of this Widget and applies the StateMachine's start State. */
     void set_state_machine(std::shared_ptr<StateMachine> state_machine);
 
@@ -62,6 +68,7 @@ protected: // methods
         : LayoutItem(handle)
         , m_state_machine()
         , m_current_state(nullptr)
+        , m_scissor_layout() // empty by default
     {
     }
 
@@ -77,6 +84,13 @@ private: // fields
 
     /** Current State of the Widget. */
     const State* m_current_state;
+
+    /** Reference to a Layout used to 'scissor' this item.
+     * Example: a scroll area 'scissors' children that overflow its size.
+     * An empty pointer means that this item is scissored by its parent Layout.
+     * An expired weak_ptr is treated like an empty pointer.
+     */
+    std::weak_ptr<Layout> m_scissor_layout;
 };
 
 } // namespace notf

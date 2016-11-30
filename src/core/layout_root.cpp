@@ -5,9 +5,15 @@
 #include "common/log.hpp"
 #include "common/transform2.hpp"
 #include "core/layout_item.hpp"
+#include "core/render_manager.hpp"
 #include "core/window.hpp"
 
 namespace notf {
+
+std::shared_ptr<Window> LayoutRoot::get_window() const
+{
+    return m_window->shared_from_this();
+}
 
 void LayoutRoot::set_item(std::shared_ptr<LayoutItem> item)
 {
@@ -29,21 +35,29 @@ std::shared_ptr<Widget> LayoutRoot::get_widget_at(const Vector2& local_pos)
     return _get_item()->get_widget_at(local_pos);
 }
 
+void LayoutRoot::set_render_layer(std::shared_ptr<RenderLayer>)
+{
+    log_critical << "Cannot change the RenderLayer of the LayoutRoot.";
+}
+
+LayoutRoot::LayoutRoot(Handle handle, const std::shared_ptr<Window>& window)
+    : Layout(handle)
+    , m_window(window.get())
+{
+    // the layout_root is always in the default render layer
+    _set_render_layer(window->get_render_manager().get_default_layer());
+}
+
 void LayoutRoot::_relayout(const Size2f /*size*/)
 {
-    std::shared_ptr<Window> window = m_window.lock();
-    if (!window) {
-        log_critical << "Failed to relayout LayoutRoot " << get_handle() << " without a Window";
-        return;
-    }
-    Size2i canvas_size = window->get_buffer_size();
+    Size2i canvas_size = m_window->get_buffer_size();
     _set_size({static_cast<float>(canvas_size.width), static_cast<float>(canvas_size.height)});
     if (!is_empty()) {
         _update_item(_get_item(), get_size(), Transform2::identity());
     }
 }
 
-LayoutItem *LayoutRoot::_get_item() const
+LayoutItem* LayoutRoot::_get_item() const
 {
     if (is_empty()) {
         return nullptr;

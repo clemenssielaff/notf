@@ -65,11 +65,11 @@ void Widget::_redraw()
 
     // register yourself to be rendered in the next frame
     if (get_visibility() == VISIBILITY::VISIBLE) {
-        render_manager.register_widget(get_handle());
+        render_manager.register_dirty(get_handle());
     }
     // ... or unregister, if you have become invisible
     else {
-        render_manager.unregister_widget(get_handle());
+        render_manager.register_clean(get_handle());
     }
 }
 

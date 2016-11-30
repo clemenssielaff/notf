@@ -65,6 +65,11 @@ public: // methods
     /// @brief Shows (if possible) or hides this Layout.
     void set_visible(const bool is_visible) { _set_visible(is_visible); }
 
+    /** (Re-)sets the RenderLayer of this LayoutItem.
+     * Pass an empty shared_ptr to implicitly inherit the RenderLayer from the parent Layout.
+     */
+    virtual void set_render_layer(std::shared_ptr<RenderLayer> render_layer) { _set_render_layer(render_layer); }
+
 public: // signals
     /// @brief Emitted when a new child LayoutItem was added to this one.
     /// @param Handle of the new child.

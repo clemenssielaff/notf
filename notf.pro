@@ -37,7 +37,6 @@ CONFIG(test) {
         test/test_main.cpp \
         test/test_common_string_utils.cpp \
         test/test_common_signal.cpp \
-        test/test_core_zhierarchy.cpp \
         test/test_common_color.cpp \
         test/test_common_circle.cpp \
         test/test_common_aabr.cpp
@@ -83,7 +82,6 @@ SOURCES += \
     src/graphics/raw_image.cpp \
     src/graphics/texture2.cpp \
     thirdparty/nanovg/nanovg.c \
-    src/core/znode.cpp \
     src/graphics/painter.cpp \
     src/python/py_canvascomponent.cpp \
     src/python/py_layoutroot.cpp \
@@ -108,7 +106,7 @@ SOURCES += \
     src/python/py_claim.cpp \
     src/python/py_layout.cpp \
     src/core/state.cpp \
-    src/python/py_state.cpp
+    src/python/py_state.cpp \
 
 HEADERS += \
     include/core/application.hpp \
@@ -167,7 +165,6 @@ HEADERS += \
     thirdparty/stb_truetype/stb_truetype.h \
     include/graphics/rendercontext.hpp \
     include/graphics/painter.hpp \
-    include/core/znode.hpp \
     include/common/memory_utils.hpp \
     include/common/float_utils.hpp \
     include/common/circle.hpp \
@@ -179,6 +176,6 @@ HEADERS += \
     include/common/padding.hpp \
     include/utils/reverse_iterator.hpp \
     include/common/set_utils.hpp \
-    include/core/state.hpp
+    include/core/state.hpp \
 
 QMAKE_CXX = ccache g++
