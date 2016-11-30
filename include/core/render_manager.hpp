@@ -8,11 +8,16 @@
 
 namespace notf {
 
+class LayoutItem;
 struct RenderContext;
+class Widget;
 class Window;
 
 /**********************************************************************************************************************/
 
+/**
+ * @brief The RenderLayer class
+ */
 class RenderLayer {
 
     friend class RenderManager;
@@ -26,15 +31,22 @@ protected: // methods
 private: // fields
     /** Order of this RenderLayer relative to the default at 0. */
     int m_order;
+
+    /** Widgets ordered from back to front. */
+    std::vector<const Widget*> m_widgets;
 };
 
 /**********************************************************************************************************************/
 
+/**
+ * @brief The RenderManager class
+ */
 class RenderManager {
 
-public: // methods
-    RenderManager();
+protected: // methods
+    explicit RenderManager(const Window* window);
 
+public: // methods
     /** Checks, whether there are any LayoutItems that need to be redrawn. */
     bool is_clean() const { return m_dirty_widgets.empty(); }
 
@@ -70,7 +82,14 @@ public: // methods
      */
     void render(const RenderContext& context);
 
+private: // methods
+
+    void _iterate_layout_hierarchy(const LayoutItem *layout_item, RenderLayer* parent_layer);
+
 private: // fields
+    /** The Window owning this RenderManager. */
+    const Window* m_window;
+
     /** Widgets that registered themselves as being dirty. */
     std::set<Handle> m_dirty_widgets;
 
@@ -80,5 +99,8 @@ private: // fields
     /** Position of the default layer in `m_layers`. */
     int m_zero_pos;
 };
+
+// TODO: I don't think I need the RenderLayer order at all... that would greatly simplify inserting new Layers
+// TODO: also there is currently no way of removing old layers (even though they are really lightweigt we might want to do that every so often
 
 } // namespace notf

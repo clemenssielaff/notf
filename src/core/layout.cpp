@@ -14,7 +14,7 @@ Layout::~Layout()
     }
 }
 
-bool Layout::has_child(const std::shared_ptr<LayoutItem>& candidate) const
+bool Layout::has_item(const std::shared_ptr<LayoutItem>& candidate) const
 {
     for (const std::shared_ptr<LayoutItem>& child : m_children) {
         if (child == candidate) {

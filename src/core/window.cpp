@@ -151,7 +151,7 @@ Window::Window(const WindowInfo& info)
     , m_nvg_context(nullptr, nanovg_deleter)
     , m_title(info.title)
     , m_root_widget()
-    , m_render_manager(std::make_unique<RenderManager>())
+    , m_render_manager(std::make_unique<MakeSmartEnabler<RenderManager>>(this))
     , m_background_color(info.clear_color)
 {
     // always make sure that the Application is constructed first

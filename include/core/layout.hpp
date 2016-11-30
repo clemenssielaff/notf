@@ -6,6 +6,26 @@
 
 namespace notf {
 
+/**********************************************************************************************************************/
+
+/**
+ * @brief Abstact Iterator that goes through all items in a Layout in order, from back to front.
+ * Iterators must be used up immediately after creation as they might be invalidated by any operation on their Layout.
+ */
+class LayoutIterator {
+
+protected: // methods
+    LayoutIterator() = default;
+
+public: // methods
+    virtual ~LayoutIterator() = default;
+
+    /** Advances the Iterator one step, returns the next LayoutItem or nullptr if the iteration has finished. */
+    virtual const LayoutItem* next() = 0;
+};
+
+/**********************************************************************************************************************/
+
 /**
  * @brief Abstract Layout baseclass.
  */
@@ -50,50 +70,48 @@ public: // enums
     };
 
 public: // methods
-    /// @brief Virtual Destructor
     virtual ~Layout() override;
 
-    /// @brief Tests if a given LayoutItem is a child of this LayoutItem.
-    bool has_child(const std::shared_ptr<LayoutItem>& candidate) const;
+    /** Tests if a given LayoutItem is a child of this LayoutItem. */
+    bool has_item(const std::shared_ptr<LayoutItem>& candidate) const;
 
-    /// @brief Returns the number of items in this Layout.
-    size_t count_children() const { return _get_children().size(); }
+    /** Returns the number of items in this Layout. */
+    size_t get_item_count() const { return _get_children().size(); }
 
-    /// @brief Checks if this Layout is empty.
+    /** Checks if this Layout is empty. */
     bool is_empty() const { return m_children.empty(); }
 
-    /// @brief Shows (if possible) or hides this Layout.
+    /** Returns an iterator that goes over all items in this Layout in order from back to front. */
+    virtual std::unique_ptr<LayoutIterator> iter_items() const = 0;
+
+    /** Shows (if possible) or hides this Layout. */
     void set_visible(const bool is_visible) { _set_visible(is_visible); }
 
-    /** (Re-)sets the RenderLayer of this LayoutItem.
-     * Pass an empty shared_ptr to implicitly inherit the RenderLayer from the parent Layout.
-     */
-    virtual void set_render_layer(std::shared_ptr<RenderLayer> render_layer) { _set_render_layer(render_layer); }
-
 public: // signals
-    /// @brief Emitted when a new child LayoutItem was added to this one.
-    /// @param Handle of the new child.
+    /** Emitted when a new child LayoutItem was added to this one.
+     * @param Handle of the new child.
+     */
     Signal<Handle> child_added;
 
-    /// @brief Emitted when a child LayoutItem of this one was removed.
-    /// @param Handle of the removed child.
+    /** Emitted when a child LayoutItem of this one was removed.
+     * @param Handle of the removed child.
+     */
     Signal<Handle> child_removed;
 
 protected: // methods
-    /// @brief Value Constructor.
-    /// @param handle   Application-unique Handle of this Item.
+    /** @param handle   Application-unique Handle of this Item. */
     explicit Layout(const Handle handle)
         : LayoutItem(handle)
     {
     }
 
-    /// @brief Returns all children of this LayoutItem.
+    /** Returns all children of this LayoutItem. */
     const std::vector<std::shared_ptr<LayoutItem>>& _get_children() const { return m_children; }
 
-    /// @brief Adds the given child to this LayoutItem.
+    /** Adds the given child to this LayoutItem. */
     void _add_child(std::shared_ptr<LayoutItem> item);
 
-    /// @brief Removes the given child LayoutItem.
+    /** Removes the given child LayoutItem. */
     void _remove_child(const LayoutItem* item);
 
     virtual void _cascade_visibility(const VISIBILITY visibility) override;

@@ -100,6 +100,17 @@ public: // methods
         return result;
     }
 
+    /** Returns the current RenderLayer of this LayoutItem. Can be empty. */
+    const std::shared_ptr<RenderLayer>& get_render_layer() const { return m_render_layer; }
+
+    /** (Re-)sets the RenderLayer of this LayoutItem.
+     * Pass an empty shared_ptr to implicitly inherit the RenderLayer from the parent Layout.
+     */
+    virtual void set_render_layer(std::shared_ptr<RenderLayer> render_layer)
+    {
+        m_render_layer = std::move(render_layer);
+    }
+
 public: // signals
     /// @brief Emitted when this LayoutItem got a new parent.
     /// @param Handle of the new parent.
@@ -161,14 +172,6 @@ protected: // methods
     /// @brief Notifies the parent Layout that the Claim of this Item has changed.
     /// Propagates up the Layout hierarchy to the first ancestor that doesn't need to change its Claim.
     void _update_parent_layout();
-
-    /** (Re-)sets the RenderLayer of this LayoutItem.
-     * Pass an empty shared_ptr to implicitly inherit the RenderLayer from the parent Layout.
-     */
-    void _set_render_layer(std::shared_ptr<RenderLayer> render_layer)
-    {
-        m_render_layer = std::move(render_layer);
-    }
 
     /// @brief Called by the parent Layout to let this Item know that its size has changed.
     /// Layout subclasses use this method to update their Layout and child items, if required.

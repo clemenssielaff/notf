@@ -5,10 +5,47 @@
 
 namespace notf {
 
+class StackLayout;
+
+/**********************************************************************************************************************/
+
+/**
+ * @brief StackLayout Iterator that goes through all items in a Layout in order, from back to front.
+ * Iterators must be used up immediately after creation as they might be invalidated by any operation on their Layout.
+ */
+class StackLayoutIterator : public LayoutIterator {
+
+    friend class StackLayout;
+
+protected: // for LayoutRoot
+    StackLayoutIterator(const StackLayout* stack_layout)
+        : m_layout(stack_layout)
+        , m_index(0)
+    {
+    }
+
+public: // methods
+    virtual ~StackLayoutIterator() = default;
+
+    /** Advances the Iterator one step, returns the next LayoutItem or nullptr if the iteration has finished. */
+    virtual const LayoutItem* next() override;
+
+private: // fields
+    /** StackLayout that is iterated over. */
+    const StackLayout* m_layout;
+
+    /** Index of the next LayoutItem to return. */
+    size_t m_index;
+};
+
+/**********************************************************************************************************************/
+
 /**
  * @brief The StackLayout class
  */
 class StackLayout : public Layout {
+
+    friend class StackLayoutIterator;
 
 public: // methods
     /** Direction in which items are stacked. */
@@ -67,6 +104,8 @@ public: // methods
     void add_item(std::shared_ptr<LayoutItem> item);
 
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
+
+    virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
 public: // static methods
     /// @brief Factory function to create a new StackLayout.

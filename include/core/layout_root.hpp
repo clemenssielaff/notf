@@ -4,12 +4,44 @@
 
 namespace notf {
 
+class LayoutRoot;
+
+/**********************************************************************************************************************/
+
+/**
+ * @brief LayoutRoot Iterator that goes through all items in a Layout in order, from back to front.
+ * Iterators must be used up immediately after creation as they might be invalidated by any operation on their Layout.
+ */
+class LayoutRootIterator : public LayoutIterator {
+
+    friend class LayoutRoot;
+
+protected: // for LayoutRoot
+    LayoutRootIterator(const LayoutRoot* layout_root)
+        : m_layout(layout_root)
+    {
+    }
+
+public: // methods
+    virtual ~LayoutRootIterator() = default;
+
+    /** Advances the Iterator one step, returns the next LayoutItem or nullptr if the iteration has finished. */
+    virtual const LayoutItem* next() override;
+
+private: // fields
+    /** LayoutRoot that is iterated over, is set to nullptr when the iteration has finished. */
+    const LayoutRoot* m_layout;
+};
+
+/**********************************************************************************************************************/
+
 /*
  * @brief The Layout Root is owned by a Window and root of all LayoutItems displayed within the Window.
  */
 class LayoutRoot : public Layout {
 
     friend class Window;
+    friend class LayoutRootIterator;
 
 public: // methods
     /// @brief Returns the Window owning this LayoutRoot.
@@ -24,6 +56,8 @@ public: // methods
     void relayout(const Size2f size) { _relayout(std::move(size)); }
 
     virtual void set_render_layer(std::shared_ptr<RenderLayer>) override;
+
+    virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
 protected: // methods
     /// @brief Value Constructor.

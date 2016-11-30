@@ -10,6 +10,16 @@
 
 namespace notf {
 
+const LayoutItem* LayoutRootIterator::next()
+{
+    if (m_layout) {
+        const LayoutItem* result = m_layout->_get_item();
+        m_layout = nullptr;
+        return result;
+    }
+    return nullptr;
+}
+
 std::shared_ptr<Window> LayoutRoot::get_window() const
 {
     return m_window->shared_from_this();
@@ -40,12 +50,17 @@ void LayoutRoot::set_render_layer(std::shared_ptr<RenderLayer>)
     log_critical << "Cannot change the RenderLayer of the LayoutRoot.";
 }
 
+std::unique_ptr<LayoutIterator> LayoutRoot::iter_items() const
+{
+    return std::make_unique<MakeSmartEnabler<LayoutRootIterator>>(this);
+}
+
 LayoutRoot::LayoutRoot(Handle handle, const std::shared_ptr<Window>& window)
     : Layout(handle)
     , m_window(window.get())
 {
     // the layout_root is always in the default render layer
-    _set_render_layer(window->get_render_manager().get_default_layer());
+    Layout::set_render_layer(window->get_render_manager().get_default_layer());
 }
 
 void LayoutRoot::_relayout(const Size2f /*size*/)

@@ -177,6 +177,14 @@ float cross_align_offset(const Layout::Alignment alignment, const float item_siz
 
 namespace notf {
 
+const LayoutItem* StackLayoutIterator::next()
+{
+    if (m_index >= m_layout->m_items.size()) {
+        return nullptr;
+    }
+    return m_layout->m_items[m_index++];
+}
+
 void StackLayout::set_direction(const Direction direction)
 {
     if (m_direction == direction) {
@@ -258,7 +266,7 @@ void StackLayout::set_wrap(const Wrap wrap)
 void StackLayout::add_item(std::shared_ptr<LayoutItem> item)
 {
     // if the item is already child of this Layout, place it at the end
-    if (has_child(item)) {
+    if (has_item(item)) {
         remove_one_unordered(m_items, item.get());
     }
     else {
@@ -271,6 +279,11 @@ void StackLayout::add_item(std::shared_ptr<LayoutItem> item)
 std::shared_ptr<Widget> StackLayout::get_widget_at(const Vector2& /*local_pos*/)
 {
     return {};
+}
+
+std::unique_ptr<LayoutIterator> StackLayout::iter_items() const
+{
+    return std::make_unique<MakeSmartEnabler<StackLayoutIterator>>(this);
 }
 
 void StackLayout::_update_claim()
@@ -297,7 +310,7 @@ void StackLayout::_update_claim()
     _set_claim(new_claim);
 }
 
-void StackLayout::_remove_item(const LayoutItem *item)
+void StackLayout::_remove_item(const LayoutItem* item)
 {
     auto it = std::find(m_items.begin(), m_items.end(), item);
     assert(it != m_items.end());

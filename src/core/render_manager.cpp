@@ -6,16 +6,18 @@
 #include "common/log.hpp"
 #include "core/application.hpp"
 #include "core/components/canvas_component.hpp"
-#include "core/object_manager.hpp"
+#include "core/layout_root.hpp"
 #include "core/state.hpp"
 #include "core/widget.hpp"
+#include "core/window.hpp"
 #include "graphics/rendercontext.hpp"
 #include "utils/smart_enabler.hpp"
 
 namespace notf {
 
-RenderManager::RenderManager()
-    : m_dirty_widgets()
+RenderManager::RenderManager(const Window* window)
+    : m_window(window)
+    , m_dirty_widgets()
     , m_layers({std::make_shared<MakeSmartEnabler<RenderLayer>>(0)})
     , m_zero_pos(0)
 {
@@ -86,28 +88,58 @@ std::shared_ptr<RenderLayer> RenderManager::create_layer_below(const std::shared
 
 void RenderManager::render(const RenderContext& context)
 {
-    // lock all widgets for rendering
-    std::vector<std::shared_ptr<Widget>> widgets;
-    ObjectManager& item_manager = Application::get_instance().get_object_manager();
-    widgets.reserve(m_dirty_widgets.size());
-    for (const Handle widget_handle : m_dirty_widgets) {
-        if (std::shared_ptr<Widget> widget = item_manager.get_object<Widget>(widget_handle)) {
-            widgets.emplace_back(std::move(widget));
-        }
-    }
     m_dirty_widgets.clear();
 
-    // TODO: perform z-sorting here
+    // TODO: clear old RenderLayers here
+    for (std::shared_ptr<RenderLayer>& render_layer : m_layers) {
+        render_layer->m_widgets.clear();
+    }
+
+    LayoutRoot* layout_root = m_window->get_layout_root().get();
+    _iterate_layout_hierarchy(layout_root, layout_root->get_render_layer().get());
 
     // draw all widgets
-    for (const std::shared_ptr<Widget>& widget : widgets) {
-        if (widget->get_size().is_zero()) {
-            continue;
+    for (std::shared_ptr<RenderLayer>& render_layer : m_layers) {
+        for (const Widget* widget : render_layer->m_widgets) {
+            assert(widget->get_state());
+            std::shared_ptr<CanvasComponent> canvas = widget->get_state()->get_component<CanvasComponent>();
+            assert(canvas);
+            canvas->render(*widget, context);
         }
+    }
+}
 
-        std::shared_ptr<CanvasComponent> canvas = widget->get_state()->get_component<CanvasComponent>();
-        assert(canvas);
-        canvas->render(*widget.get(), context);
+void RenderManager::_iterate_layout_hierarchy(const LayoutItem* layout_item, RenderLayer* parent_layer)
+{
+    assert(layout_item);
+    assert(parent_layer);
+
+    // implicit use of the parent's render layer
+    RenderLayer* current_layer = layout_item->get_render_layer().get();
+    if (!current_layer) {
+        current_layer = parent_layer;
+    }
+
+    // if the item is a drawable widget, append it to the current render layer
+    if (const Widget* widget = dynamic_cast<const Widget*>(layout_item)) {
+        if (widget->get_size().is_zero()) {
+            return;
+        }
+        if (!widget->get_state() || !widget->get_state()->has_component_kind(Component::KIND::CANVAS)) {
+            return;
+        }
+        current_layer->m_widgets.push_back(widget);
+    }
+
+    // otherwise start a recursive iteration of the Layout
+    else if (const Layout* layout = dynamic_cast<const Layout*>(layout_item)) {
+        std::unique_ptr<LayoutIterator> it = layout->iter_items();
+        while (const LayoutItem* child_item = it->next()) {
+            _iterate_layout_hierarchy(child_item, current_layer);
+        }
+    }
+    else {
+        assert(0);
     }
 }
 
