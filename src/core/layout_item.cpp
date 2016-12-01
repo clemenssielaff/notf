@@ -3,6 +3,8 @@
 #include "common/log.hpp"
 #include "core/layout.hpp"
 #include "core/layout_root.hpp"
+#include "core/render_manager.hpp"
+#include "core/window.hpp"
 
 namespace notf {
 
@@ -30,13 +32,33 @@ bool LayoutItem::has_ancestor(const LayoutItem* ancestor) const
     return false;
 }
 
-std::shared_ptr<const LayoutRoot> LayoutItem::get_root() const
+std::shared_ptr<Window> LayoutItem::get_window() const
 {
     std::shared_ptr<const LayoutItem> it = std::static_pointer_cast<const LayoutItem>(shared_from_this());
     while (it->has_parent()) {
         it = it->get_parent();
     }
-    return std::dynamic_pointer_cast<const LayoutRoot>(it);
+    std::shared_ptr<const LayoutRoot> root_item = std::dynamic_pointer_cast<const LayoutRoot>(it);
+    if (!root_item) {
+        return {};
+    }
+    return root_item->get_window();
+}
+
+bool LayoutItem::_redraw()
+{
+    // do not request a redraw, if this item cannot be drawn anyway
+    if (!is_visible()) {
+        return false;
+    }
+    if (get_size().is_zero() && !get_size().is_valid()) {
+        return false;
+    }
+
+    if(std::shared_ptr<Window> window = get_window()){
+        window->get_render_manager().request_redraw();
+    }
+    return true;
 }
 
 LayoutItem::LayoutItem(const Handle handle)
@@ -78,9 +100,13 @@ void LayoutItem::_set_visible(const bool is_visible)
     }
 
     // redraw if the object just became visible or invisible
-    if (previous_visibility != m_visibility
-        && (m_visibility == VISIBILITY::VISIBLE || previous_visibility == VISIBILITY::VISIBLE)) {
-        _redraw();
+    if (previous_visibility != m_visibility) {
+        if (is_visible) {
+            _redraw();
+        }
+        else {
+            _update_parent_layout();
+        }
     }
 }
 
@@ -88,16 +114,14 @@ void LayoutItem::_update_parent_layout()
 {
     std::shared_ptr<Layout> parent = m_parent.lock();
     while (parent) {
-        parent->_update_claim();
-
         // if the parent Layout's Claim changed, we also need to update its parent
-        if (parent->_is_dirty()) {
+        if(parent->_update_claim()){
             parent = parent->m_parent.lock();
         }
         // ... otherwise, we have reached the end of the propagation through the ancestry
         // and continue to relayout all children from the parent downwards
         else {
-            parent->_relayout(parent->get_size());
+            parent->_relayout();
             parent.reset();
         }
     }
@@ -152,6 +176,7 @@ void LayoutItem::_cascade_visibility(const VISIBILITY visibility)
         return;
     }
     m_visibility = visibility;
+    _redraw();
     visibility_changed(m_visibility);
 }
 

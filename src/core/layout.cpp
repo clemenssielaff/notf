@@ -68,12 +68,13 @@ void Layout::_cascade_visibility(const VISIBILITY visibility)
     }
 }
 
-void Layout::_redraw()
+bool Layout::_set_size(const Size2f size)
 {
-    // redraw all children
-    for (std::shared_ptr<LayoutItem>& child : m_children) {
-        child->_redraw();
+    if(LayoutItem::_set_size(size)){
+        _relayout();
+        return true;
     }
+    return false;
 }
 
 } // namespace notf

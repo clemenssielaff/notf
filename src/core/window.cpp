@@ -15,6 +15,7 @@
 #include "graphics/gl_errors.hpp"
 #include "graphics/raw_image.hpp"
 #include "graphics/rendercontext.hpp"
+#include "utils/unused.hpp"
 
 namespace notf {
 
@@ -125,7 +126,7 @@ void Window::close()
     if (m_glfw_window) {
         log_trace << "Closing Window \"" << m_title << "\"";
         on_close(*this);
-        m_root_widget.reset();
+        m_root_layout.reset();
         Application::get_instance()._unregister_window(shared_from_this());
         m_glfw_window.reset(nullptr);
     }
@@ -141,7 +142,9 @@ std::shared_ptr<Window> Window::create(const WindowInfo& info)
 
     // inititalize the window
     Application::get_instance()._register_window(window);
-    window->m_root_widget = LayoutRoot::create(info.root_widget_handle, window);
+    window->m_root_layout = LayoutRoot::create(info.root_widget_handle, window);
+    window->m_root_layout->_set_size(Size2f::from_size2i(window->get_buffer_size()));
+    // TODO: why again is the LayoutRoot created outside the Window Constructor?
 
     return window;
 }
@@ -150,7 +153,7 @@ Window::Window(const WindowInfo& info)
     : m_glfw_window(nullptr, window_deleter)
     , m_nvg_context(nullptr, nanovg_deleter)
     , m_title(info.title)
-    , m_root_widget()
+    , m_root_layout()
     , m_render_manager(std::make_unique<MakeSmartEnabler<RenderManager>>(this))
     , m_background_color(info.clear_color)
 {
@@ -218,7 +221,9 @@ Window::Window(const WindowInfo& info)
 
 void Window::_on_resize(int width, int height)
 {
-    m_root_widget->relayout(Size2f::from_size2i({width, height}));
+    UNUSED(width);
+    UNUSED(height);
+    m_root_layout->_set_size(Size2f::from_size2i(get_buffer_size()));
 }
 
 } // namespace notf

@@ -99,8 +99,9 @@ public: // methods
     /** Defines the spacing between stacks of items if this Layout is wrapped. */
     void set_cross_spacing(float spacing);
 
-    /// @brief Adds a new LayoutItem into the Layout.
-    /// @param item     Item to place at the end of the Layout. If it is already a child, it is moved to last place.
+    /** Adds a new LayoutItem into the Layout.
+     * @param item  Item to place at the end of the Layout. If the item is already a child, it is moved.
+     */
     void add_item(std::shared_ptr<LayoutItem> item);
 
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
@@ -108,17 +109,20 @@ public: // methods
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
 public: // static methods
-    /// @brief Factory function to create a new StackLayout.
-    /// @param direction    Direction in which the StackLayout is stacked.
-    /// @param handle       Handle of this Layout.
+    /** Factory function to create a new Overlayout.
+     * @param direction    Direction in which the StackLayout is stacked.
+     * @param handle    Handle of this Layout.
+     */
     static std::shared_ptr<StackLayout> create(const Direction direction, Handle handle = BAD_HANDLE)
     {
         return _create_object<StackLayout>(handle, direction);
     }
 
 protected: // methods
-    /// @brief Value Constructor.
-    /// @param handle   Handle of this Layout.
+    /**
+     * @param handle    Handle of this Layout.
+     * @param direction Direction of the stack.
+     */
     explicit StackLayout(const Handle handle, const Direction direction)
         : Layout(handle)
         , m_direction(direction)
@@ -133,11 +137,11 @@ protected: // methods
     {
     }
 
-    virtual void _update_claim() override;
+    virtual bool _update_claim() override;
 
     virtual void _remove_item(const LayoutItem* item) override;
 
-    virtual void _relayout(const Size2f total_size) override;
+    virtual void _relayout() override;
 
 private: // methods
     /** Performs the layout of a single stack.
@@ -146,7 +150,7 @@ private: // methods
      * @param main_offset   Start offset of the first item in the main axis.
      * @param cross_offset  Start offset of the first item in the cross axis.
      */
-    void _layout_stack(const std::vector<LayoutItem *> &stack, const Size2f total_size, const float main_offset, const float cross_offset);
+    void _layout_stack(const std::vector<LayoutItem*>& stack, const Size2f total_size, const float main_offset, const float cross_offset);
 
 private: // fields
     /** Direction in which the StackLayout is stacked. */
@@ -173,7 +177,7 @@ private: // fields
     /** Spacing between stacks, if this Layout wraps. */
     float m_cross_spacing;
 
-    /// @brief All items in this Layout in order.
+    /** All items in this Layout in order. */
     std::vector<LayoutItem*> m_items;
 };
 

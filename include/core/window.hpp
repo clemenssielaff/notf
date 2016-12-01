@@ -78,7 +78,7 @@ public: // methods
     const std::string& get_title() const { return m_title; }
 
     /// @brief The invisible root Layout of this Window.
-    std::shared_ptr<LayoutRoot> get_layout_root() const { return m_root_widget; }
+    std::shared_ptr<LayoutRoot> get_layout_root() const { return m_root_layout; }
 
     /// @brief Returns the Application's Render Manager.
     RenderManager& get_render_manager() { return *m_render_manager; }
@@ -139,8 +139,8 @@ private: // fields
     /// @brief The Window's title (is not accessible through GLFW).
     std::string m_title;
 
-    /// @brief The invisible root widget of this Window.
-    std::shared_ptr<LayoutRoot> m_root_widget;
+    /// @brief The Root Layout of this Window.
+    std::shared_ptr<LayoutRoot> m_root_layout;
 
     /// @brief The Window's render manager.
     std::unique_ptr<RenderManager> m_render_manager;

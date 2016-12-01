@@ -28,6 +28,7 @@ void produce_widget(pybind11::module& module, py::detail::generic_type ancestor)
 void produce_canvas_component(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_layout_root(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_stack_layout(pybind11::module& module, py::detail::generic_type ancestor);
+void produce_overlayout(pybind11::module& module, py::detail::generic_type ancestor);
 py::class_<LayoutItem, std::shared_ptr<LayoutItem>> produce_layout_item(pybind11::module& module);
 py::class_<Component, std::shared_ptr<Component>> produce_component(pybind11::module& module);
 
@@ -59,6 +60,7 @@ PyObject* produce_pynotf_module()
     produce_widget(module, Py_LayoutItem);
     produce_layout_root(module, Py_LayoutItem);
     produce_stack_layout(module, Py_LayoutItem);
+    produce_overlayout(module, Py_LayoutItem);
 
     return module.ptr();
 }

@@ -41,13 +41,6 @@ struct Size2f {
     /** Tests if a rectangle of this Size had zero area. */
     bool is_zero() const { return width == 0.f || height == 0.f; }
 
-    /// @brief Invalidates this Size.
-    void invalidate()
-    {
-        width = NAN;
-        height = NAN;
-    }
-
     bool operator==(const Size2f& other) const { return approx(other.width, width) && approx(other.height, height); }
 
     bool operator!=(const Size2f& other) const { return !approx(other.width, width) || !approx(other.height, height); }

@@ -9,7 +9,6 @@
 #include "common/log.hpp"
 #include "common/transform2.hpp"
 #include "common/vector_utils.hpp"
-#include "core/widget.hpp"
 
 namespace { // anonymous
 
@@ -191,8 +190,7 @@ void StackLayout::set_direction(const Direction direction)
         return;
     }
     m_direction = direction;
-    _update_claim();
-    if (_is_dirty()) {
+    if (_update_claim()) {
         _update_parent_layout();
     }
 }
@@ -203,8 +201,11 @@ void StackLayout::set_padding(const Padding& padding)
         log_warning << "Ignoring invalid padding: " << padding;
         return;
     }
-    m_padding = padding;
-    _update_parent_layout();
+    if (padding != m_padding) {
+        m_padding = padding;
+        _update_claim();
+        _update_parent_layout();
+    }
 }
 
 void StackLayout::set_spacing(float spacing)
@@ -213,8 +214,11 @@ void StackLayout::set_spacing(float spacing)
         log_warning << "Cannot set spacing to less than zero, using zero instead.";
         spacing = 0.f;
     }
-    m_spacing = spacing;
-    _update_parent_layout();
+    if (!approx(spacing, m_spacing)) {
+        m_spacing = spacing;
+        _update_claim();
+        _update_parent_layout();
+    }
 }
 
 void StackLayout::set_cross_spacing(float spacing)
@@ -223,8 +227,12 @@ void StackLayout::set_cross_spacing(float spacing)
         log_warning << "Cannot set cross spacing to less than zero, using zero instead.";
         spacing = 0.f;
     }
-    m_cross_spacing = spacing;
-    _update_parent_layout();
+    if (!approx(spacing, m_cross_spacing)) {
+        m_cross_spacing = spacing;
+        if (_update_claim()) {
+            _update_parent_layout();
+        }
+    }
 }
 
 void StackLayout::set_alignment(const Alignment alignment)
@@ -233,7 +241,7 @@ void StackLayout::set_alignment(const Alignment alignment)
         return;
     }
     m_main_alignment = alignment;
-    _relayout(get_size());
+    _relayout();
 }
 
 void StackLayout::set_cross_alignment(const Alignment alignment)
@@ -242,7 +250,7 @@ void StackLayout::set_cross_alignment(const Alignment alignment)
         return;
     }
     m_cross_alignment = alignment;
-    _relayout(get_size());
+    _relayout();
 }
 
 void StackLayout::set_content_alignment(const Alignment alignment)
@@ -251,7 +259,7 @@ void StackLayout::set_content_alignment(const Alignment alignment)
         return;
     }
     m_content_alignment = alignment;
-    _relayout(get_size());
+    _relayout();
 }
 
 void StackLayout::set_wrap(const Wrap wrap)
@@ -260,7 +268,7 @@ void StackLayout::set_wrap(const Wrap wrap)
         return;
     }
     m_wrap = wrap;
-    _relayout(get_size());
+    _update_parent_layout();
 }
 
 void StackLayout::add_item(std::shared_ptr<LayoutItem> item)
@@ -273,7 +281,9 @@ void StackLayout::add_item(std::shared_ptr<LayoutItem> item)
         _add_child(item);
     }
     m_items.emplace_back(item.get());
-    _update_parent_layout();
+    if (_update_claim()) {
+        _update_parent_layout();
+    }
 }
 
 std::shared_ptr<Widget> StackLayout::get_widget_at(const Vector2& /*local_pos*/)
@@ -286,9 +296,8 @@ std::unique_ptr<LayoutIterator> StackLayout::iter_items() const
     return std::make_unique<MakeSmartEnabler<StackLayoutIterator>>(this);
 }
 
-void StackLayout::_update_claim()
+bool StackLayout::_update_claim()
 {
-    // construct the new claim
     Claim new_claim;
     if ((m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT)) { // horizontal
         for (const LayoutItem* item : m_items) {
@@ -307,7 +316,7 @@ void StackLayout::_update_claim()
             new_claim.get_vertical().add_offset((m_items.size() - 1) * m_spacing);
         }
     }
-    _set_claim(new_claim);
+    return _set_claim(new_claim);
 }
 
 void StackLayout::_remove_item(const LayoutItem* item)
@@ -317,11 +326,9 @@ void StackLayout::_remove_item(const LayoutItem* item)
     m_items.erase(it);
 }
 
-void StackLayout::_relayout(const Size2f total_size)
+void StackLayout::_relayout()
 {
-    if (total_size.is_zero()) {
-        return;
-    }
+    Size2f total_size = get_size();
     Size2f available_size = {total_size.width - m_padding.width(), total_size.height - m_padding.height()};
     float main_offset, cross_offset;
     switch (m_direction) {
@@ -492,7 +499,8 @@ void StackLayout::_layout_stack(const std::vector<LayoutItem*>& stack, const Siz
             item_size.height = max(item_size.height, vertical.get_min());
             const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.height, available_height);
             const float applied_offset = reverse ? current_offset - item_size.width : current_offset;
-            _update_item(child, item_size, Transform2::translation({applied_offset, cross_offset + applied_cross_offset}));
+            _set_item_transform(child, Transform2::translation({applied_offset, cross_offset + applied_cross_offset}));
+            _set_item_size(child, std::move(item_size));
         }
         else { // vertical
             const Claim::Stretch& horizontal = child->get_claim().get_horizontal();
@@ -503,7 +511,8 @@ void StackLayout::_layout_stack(const std::vector<LayoutItem*>& stack, const Siz
             item_size.width = max(item_size.width, horizontal.get_min());
             const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.width, available_width);
             const float applied_offset = reverse ? current_offset - item_size.height : current_offset;
-            _update_item(child, item_size, Transform2::translation({cross_offset + applied_cross_offset, applied_offset}));
+            _set_item_transform(child, Transform2::translation({cross_offset + applied_cross_offset, applied_offset}));
+            _set_item_size(child, std::move(item_size));
         }
         current_offset += (adapter.result + alignment_spacing) * step_factor;
     }

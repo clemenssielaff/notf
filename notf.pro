@@ -107,6 +107,8 @@ SOURCES += \
     src/python/py_layout.cpp \
     src/core/state.cpp \
     src/python/py_state.cpp \
+    src/dynamic/layout/overlayout.cpp \
+    src/python/py_overlayout.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -177,5 +179,7 @@ HEADERS += \
     include/utils/reverse_iterator.hpp \
     include/common/set_utils.hpp \
     include/core/state.hpp \
+    include/common/os_utils.hpp \
+    include/dynamic/layout/overlayout.hpp
 
 QMAKE_CXX = ccache g++

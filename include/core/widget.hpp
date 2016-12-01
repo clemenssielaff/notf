@@ -3,8 +3,6 @@
 #include <memory>
 #include <vector>
 
-#include "common/enummap.hpp"
-#include "common/log.hpp"
 #include "core/layout_item.hpp"
 
 namespace notf {
@@ -16,17 +14,8 @@ class StateMachine;
 class Widget : public LayoutItem {
 
 public: // methods
-    /// @brief Returns the Window containing this Widget (can be null).
-    std::shared_ptr<Window> get_window() const;
-
     /** Returns the current State of this Widget (may be nullptr). */
-    const State* get_state() const
-    {
-        if (!m_current_state) {
-            log_warning << "Requested invalid state for Widget " << get_handle();
-        }
-        return m_current_state;
-    }
+    const State* get_state() const;
 
     /** Returns the Layout used to scissor this Widget.
      * Returns an empty shared_ptr, if no explicit scissor Layout was set or the scissor Layout has since expired.
@@ -37,18 +26,13 @@ public: // methods
     /** Sets the StateMachine of this Widget and applies the StateMachine's start State. */
     void set_state_machine(std::shared_ptr<StateMachine> state_machine);
 
-    /// @brief Updates the Claim of this Widget.
-    void set_claim(const Claim claim)
-    {
-        _set_claim(std::move(claim));
-        if (_is_dirty()) { // TODO: let's rethink this `dirtying` ... I don't think that's relevant anymore
-            _update_parent_layout();
-        }
-    }
+    /** Sets the Claim of the Widget. */
+    void set_claim(const Claim claim) { _set_claim(std::move(claim)); }
+    // TODO: the Claim of a Widget should be determined by the State, right?
 
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
 
-    /// @brief Tells this Widget to redraw.
+    /** Tells the Window that its contents need to be redrawn. */
     void redraw() { _redraw(); }
 
 public: // static methods
@@ -72,11 +56,7 @@ protected: // methods
     {
     }
 
-    virtual void _redraw() override;
-
-    virtual void _relayout(const Size2f) override { _redraw(); }
-    // TODO: is there really a functional difference between _redraw and _relayout?
-    // I mean, a Layout will ONLY relayout, while a Widget will ONLY redraw
+    virtual bool _redraw() override;
 
 private: // fields
     /** The StateMachine attached to this Widget. */

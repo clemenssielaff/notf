@@ -34,7 +34,7 @@ void LayoutRoot::set_item(std::shared_ptr<LayoutItem> item)
         _remove_child(children.begin()->get());
     }
     _add_child(std::move(item));
-    _relayout({});
+    _relayout();
 }
 
 std::shared_ptr<Widget> LayoutRoot::get_widget_at(const Vector2& local_pos)
@@ -63,12 +63,10 @@ LayoutRoot::LayoutRoot(Handle handle, const std::shared_ptr<Window>& window)
     Layout::set_render_layer(window->get_render_manager().get_default_layer());
 }
 
-void LayoutRoot::_relayout(const Size2f /*size*/)
+void LayoutRoot::_relayout()
 {
-    Size2i canvas_size = m_window->get_buffer_size();
-    _set_size({static_cast<float>(canvas_size.width), static_cast<float>(canvas_size.height)});
     if (!is_empty()) {
-        _update_item(_get_item(), get_size(), Transform2::identity());
+        _set_item_size(_get_item(), get_size());
     }
 }
 

@@ -52,9 +52,6 @@ public: // methods
 
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
 
-    /// @brief Updates the LayoutRoot after the Window's size has changed.
-    void relayout(const Size2f size) { _relayout(std::move(size)); }
-
     virtual void set_render_layer(std::shared_ptr<RenderLayer>) override;
 
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
@@ -65,11 +62,11 @@ protected: // methods
     /// @param window   Window owning this RootWidget.
     LayoutRoot(Handle handle, const std::shared_ptr<Window>& window);
 
-    virtual void _update_claim() override {}
+    virtual bool _update_claim() override { return false; }
 
     virtual void _remove_item(const LayoutItem*) override {}
 
-    virtual void _relayout(const Size2f size) override;
+    virtual void _relayout() override;
 
 private: // methods
     /// @brief Returns the Layout contained in this LayoutRoot, may be invalid.

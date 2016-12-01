@@ -1,7 +1,5 @@
 #pragma once
 
-#include <type_traits>
-
 #include "core/layout_item.hpp"
 
 namespace notf {
@@ -116,17 +114,19 @@ protected: // methods
 
     virtual void _cascade_visibility(const VISIBILITY visibility) override;
 
-    virtual void _redraw() override;
+    virtual bool _set_size(const Size2f size) override;
 
-    /*
-     * @brief Tells this LayoutItem to update its Claim based on the combined Claims of its children.
+    /** Tells this LayoutItem to update its Claim based on the combined Claims of its children.
      *
      * Layouts and Widgets need to "negotiate" the Layout.
      * Whenever a Widget changes its Claim, the parent Layout has to see if it needs to update its Claim accordingly.
      * If its Claim changes, its respective parent might need to update as well - up to the first Layout that does not
      * update its Claim (at the latest, the LayoutRoot never updates its Claim).
      */
-    virtual void _update_claim() = 0;
+    virtual bool _update_claim() = 0;
+
+    /** Updates the layout of items in this Layout. */
+    virtual void _relayout() = 0;
 
     /** Layout-specific removal a of child item.
      * When a child is removed from the Layout, it calls _remove_child(), which takes care of the changes in the
@@ -135,8 +135,6 @@ protected: // methods
      * this methods's job to remove the child from there.
      */
     virtual void _remove_item(const LayoutItem* item) = 0;
-
-    virtual void _relayout(const Size2f size) override = 0;
 
 private: // fields
     /** All child items contained in this Layout. */

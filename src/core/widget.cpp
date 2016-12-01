@@ -1,21 +1,17 @@
 #include "core/widget.hpp"
 
+#include "common/log.hpp"
 #include "common/string_utils.hpp"
-#include "core/layout_root.hpp"
-#include "core/render_manager.hpp"
 #include "core/state.hpp"
-#include "core/window.hpp"
 
 namespace notf {
 
-std::shared_ptr<Window> Widget::get_window() const
+const State* Widget::get_state() const
 {
-    std::shared_ptr<const LayoutRoot> root_item = get_root();
-    if (!root_item) {
-        log_critical << "Cannot determine Window for unrooted Widget " << get_handle();
-        return {};
+    if (!m_current_state) {
+        log_warning << "Requested invalid state for Widget " << get_handle();
     }
-    return root_item->get_window();
+    return m_current_state;
 }
 
 void Widget::set_state_machine(std::shared_ptr<StateMachine> state_machine)
@@ -52,25 +48,14 @@ std::shared_ptr<Widget> Widget::create(Handle handle)
     throw std::runtime_error(message);
 }
 
-void Widget::_redraw()
+bool Widget::_redraw()
 {
-    // Widgets without a canvas can never be drawn.
+    // do not request a redraw, if this item cannot be drawn anyway
     if (!m_current_state->has_component_kind(Component::KIND::CANVAS)) {
-        return;
+        return false;
     }
 
-    std::shared_ptr<Window> window = get_window();
-    assert(window);
-    RenderManager& render_manager = window->get_render_manager();
-
-    // register yourself to be rendered in the next frame
-    if (get_visibility() == VISIBILITY::VISIBLE) {
-        render_manager.register_dirty(get_handle());
-    }
-    // ... or unregister, if you have become invisible
-    else {
-        render_manager.register_clean(get_handle());
-    }
+    return LayoutItem::_redraw();
 }
 
 } // namespace notf

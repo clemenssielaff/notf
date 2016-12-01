@@ -2,6 +2,7 @@
 
 #include <iosfwd>
 
+#include "common/float_utils.hpp"
 #include "common/hash_utils.hpp"
 
 namespace notf {
@@ -46,6 +47,20 @@ struct Padding {
 
     /** Sum of the two vertical padding sizes. */
     float height() const { return top + bottom; }
+
+    /** Operators *****************************************************************************************************/
+
+    bool operator==(const Padding& other) const
+    {
+        return (approx(other.top, top) && approx(other.right, right)
+                && approx(other.bottom, bottom) && approx(other.left, left));
+    }
+
+    bool operator!=(const Padding& other) const
+    {
+        return (!approx(other.top, top) || !approx(other.right, right)
+                || !approx(other.bottom, bottom) || !approx(other.left, left));
+    }
 };
 
 /* Free Functions *****************************************************************************************************/
