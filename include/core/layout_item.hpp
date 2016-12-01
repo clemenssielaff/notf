@@ -3,7 +3,6 @@
 #include <assert.h>
 #include <memory>
 
-#include "common/claim.hpp"
 #include "common/signal.hpp"
 #include "common/size2f.hpp"
 #include "common/transform2.hpp"
@@ -11,6 +10,7 @@
 
 namespace notf {
 
+class Claim;
 class Layout;
 class RenderLayer;
 class Widget;
@@ -38,6 +38,7 @@ enum class Space : unsigned char {
 class LayoutItem : public Object, public Signaler<LayoutItem> {
 
     friend class Layout;
+    friend class Widget;
 
 public: // abstract methods
     /// @brief Looks for a Widget at a given local position.
@@ -63,8 +64,8 @@ public: // methods
     /// @brief Returns the Window containing this Widget (can be null).
     std::shared_ptr<Window> get_window() const;
 
-    /// @brief The current Claim of this LayoutItem.
-    const Claim& get_claim() const { return m_claim; }
+    /** The current Claim of this LayoutItem. */
+    virtual const Claim& get_claim() const = 0;
 
     /** Check if this LayoutItem is visible or not. */
     bool is_visible() const { return m_visibility == VISIBILITY::VISIBLE; }
@@ -131,9 +132,6 @@ protected: // methods
     /// @param handle   Application-unique Handle of this Item.
     explicit LayoutItem(const Handle handle);
 
-    /** Tells the Window that its contents need to be redrawn. */
-    virtual bool _redraw();
-
     /// @brief Shows (if possible) or hides this LayoutItem.
     void _set_visible(const bool is_visible);
 
@@ -163,16 +161,6 @@ protected: // methods
         return false;
     }
 
-    /** Updates the Claim but does not trigger any layouting. */
-    bool _set_claim(const Claim claim)
-    {
-        if (claim != m_claim) {
-            m_claim = std::move(claim);
-            return true;
-        }
-        return false;
-    }
-
     /// @brief Notifies the parent Layout that the Claim of this Item has changed.
     /// Propagates up the Layout hierarchy to the first ancestor that doesn't need to change its Claim.
     void _update_parent_layout();
@@ -188,6 +176,9 @@ protected: // static methods
     }
 
 private: // methods
+    /** Tells the Window that its contents need to be redrawn. */
+    virtual bool _redraw();
+
     /// @brief Sets a new LayoutItem to contain this LayoutItem.
     /// Setting a new parent makes this LayoutItem appear on top of the new parent.
     /// I chose to do this since it is expected behaviour and reparenting + changing the z-value is a more common
@@ -215,9 +206,6 @@ private: // fields
 
     /// @brief Visibility state of this LayoutItem.
     VISIBILITY m_visibility;
-
-    /// @brief The Claim of a LayoutItem determines how much space it receives in the parent Layout.
-    Claim m_claim;
 
     /// @brief Unscaled size of this LayoutItem in pixels.
     Size2f m_size;

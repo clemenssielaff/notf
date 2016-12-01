@@ -6,19 +6,9 @@
 
 namespace notf {
 
-const State* Widget::get_state() const
+const Claim& Widget::get_claim() const
 {
-    if (!m_current_state) {
-        log_warning << "Requested invalid state for Widget " << get_handle();
-    }
-    return m_current_state;
-}
-
-void Widget::set_state_machine(std::shared_ptr<StateMachine> state_machine)
-{
-    m_state_machine = state_machine;
-    m_current_state = m_state_machine->get_start_state();
-    _update_parent_layout();
+    return m_current_state->get_claim();
 }
 
 std::shared_ptr<Widget> Widget::get_widget_at(const Vector2& /*local_pos*/)
@@ -32,9 +22,9 @@ std::shared_ptr<Widget> Widget::get_widget_at(const Vector2& /*local_pos*/)
     return std::static_pointer_cast<Widget>(shared_from_this());
 }
 
-std::shared_ptr<Widget> Widget::create(Handle handle)
+std::shared_ptr<Widget> Widget::create(std::shared_ptr<StateMachine> state_machine, Handle handle)
 {
-    if (std::shared_ptr<Widget> result = _create_object<Widget>(handle)) {
+    if (std::shared_ptr<Widget> result = _create_object<Widget>(handle, std::move(state_machine))) {
         return result;
     }
 
@@ -46,6 +36,14 @@ std::shared_ptr<Widget> Widget::create(Handle handle)
         message = "Failed to allocate new Handle for Widget";
     }
     throw std::runtime_error(message);
+}
+
+Widget::Widget(const Handle handle, std::shared_ptr<StateMachine> state_machine)
+    : LayoutItem(handle)
+    , m_state_machine(std::move(state_machine))
+    , m_current_state(m_state_machine->get_start_state())
+    , m_scissor_layout() // empty by default
+{
 }
 
 bool Widget::_redraw()

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/claim.hpp"
 #include "core/layout_item.hpp"
 
 namespace notf {
@@ -82,6 +83,8 @@ public: // methods
     /** Returns an iterator that goes over all items in this Layout in order from back to front. */
     virtual std::unique_ptr<LayoutIterator> iter_items() const = 0;
 
+    virtual const Claim& get_claim() const override { return m_claim; }
+
     /** Shows (if possible) or hides this Layout. */
     void set_visible(const bool is_visible) { _set_visible(is_visible); }
 
@@ -100,6 +103,7 @@ protected: // methods
     /** @param handle   Application-unique Handle of this Item. */
     explicit Layout(const Handle handle)
         : LayoutItem(handle)
+        , m_claim()
     {
     }
 
@@ -113,6 +117,16 @@ protected: // methods
     void _remove_child(const LayoutItem* item);
 
     virtual void _cascade_visibility(const VISIBILITY visibility) override;
+
+    /** Updates the Claim but does not trigger any layouting. */
+    bool _set_claim(const Claim claim)
+    {
+        if (claim != m_claim) {
+            m_claim = std::move(claim);
+            return true;
+        }
+        return false;
+    }
 
     virtual bool _set_size(const Size2f size) override;
 
@@ -139,6 +153,9 @@ protected: // methods
 private: // fields
     /** All child items contained in this Layout. */
     std::vector<std::shared_ptr<LayoutItem>> m_children;
+
+    /// @brief The Claim of a LayoutItem determines how much space it receives in the parent Layout.
+    Claim m_claim;
 };
 
 } // namespace notf

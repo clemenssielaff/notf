@@ -48,8 +48,7 @@ def main():
     max_min = 100
     max_max = 200
     for i in range(50):
-        widget = Widget()
-        widget.set_state_machine(orange_machine)
+        widget = Widget(orange_machine)
         stack_layout.add_item(widget)
 
         h_stretch = ClaimStretch()
@@ -68,8 +67,7 @@ def main():
         widget.set_claim(claim)
 
     # and the fill layout in the foreground
-    widget = Widget()
-    widget.set_state_machine(blue_machine)
+    widget = Widget(blue_machine)
     fill_layout = Overlayout()
     fill_layout.set_padding(Padding.all(50))
     fill_layout.add_item(widget)

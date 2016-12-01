@@ -31,6 +31,7 @@ void produce_state(pybind11::module& module)
     Py_StateStudy.def("remove_component", (void (StateStudy::*)(std::shared_ptr<Component>)) & StateStudy::remove_component, "Removes a certain Component from this state.", py::arg("component"));
     Py_StateStudy.def("remove_component", (void (StateStudy::*)(const Component::KIND)) & StateStudy::remove_component, "Removes the Component of a certain type from this state.", py::arg("kind"));
     Py_StateStudy.def("remove_all_components", &StateStudy::remove_all_components, "Removes all Components from this state.");
+    Py_StateStudy.def("set_claim", &StateStudy::set_claim, "Sets the Claim of this state.", py::arg("claim"));
 }
 
 #ifdef __clang__

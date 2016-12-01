@@ -45,27 +45,10 @@ std::shared_ptr<Window> LayoutItem::get_window() const
     return root_item->get_window();
 }
 
-bool LayoutItem::_redraw()
-{
-    // do not request a redraw, if this item cannot be drawn anyway
-    if (!is_visible()) {
-        return false;
-    }
-    if (get_size().is_zero() && !get_size().is_valid()) {
-        return false;
-    }
-
-    if(std::shared_ptr<Window> window = get_window()){
-        window->get_render_manager().request_redraw();
-    }
-    return true;
-}
-
 LayoutItem::LayoutItem(const Handle handle)
     : Object(handle)
     , m_parent()
     , m_visibility(VISIBILITY::VISIBLE)
-    , m_claim()
     , m_size()
     , m_transform(Transform2::identity())
     , m_render_layer() // empty by default
@@ -125,6 +108,22 @@ void LayoutItem::_update_parent_layout()
             parent.reset();
         }
     }
+}
+
+bool LayoutItem::_redraw()
+{
+    // do not request a redraw, if this item cannot be drawn anyway
+    if (!is_visible()) {
+        return false;
+    }
+    if (get_size().is_zero() && !get_size().is_valid()) {
+        return false;
+    }
+
+    if(std::shared_ptr<Window> window = get_window()){
+        window->get_render_manager().request_redraw();
+    }
+    return true;
 }
 
 void LayoutItem::_set_parent(std::shared_ptr<Layout> parent)

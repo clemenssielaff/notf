@@ -4,6 +4,7 @@
 #include <set>
 #include <string>
 
+#include "common/claim.hpp"
 #include "common/enummap.hpp"
 #include "core/component.hpp"
 
@@ -49,10 +50,14 @@ public: // class
         /** Removes all Components from this state. */
         void remove_all_components() { m_components.clear(); }
 
+        /** Sets the Claim of this state. */
+        void set_claim(const Claim claim) { m_claim = std::move(claim); }
+
     protected: // methods
         /** @param name  Name of this state, cannot be changed. */
         explicit StateStudy(const std::string& name)
             : m_name(name)
+            , m_claim()
             , m_transitions()
             , m_components()
         {
@@ -61,6 +66,9 @@ public: // class
     private: // fields
         /** The name of this state. */
         std::string m_name;
+
+        /** The Claim of this state. */
+        Claim m_claim;
 
         /** All Transitions out of this state. */
         std::set<std::shared_ptr<StateStudy>> m_transitions;
@@ -162,6 +170,9 @@ public: // methods
         return std::static_pointer_cast<COMPONENT>(it->second);
     }
 
+    /** Current Claim of this State. */
+    const Claim& get_claim() const { return m_claim; }
+
     /** Registers the Widgets to all of this State's Component%s. */
     void enter_state(std::shared_ptr<Widget> widget);
 
@@ -171,11 +182,13 @@ public: // methods
 protected: // methods for StateMachineFactory
     /**
      * @param state_machine The StateMachine that this State is a part of.
+     * @param claim         Current Claim of this State.
      * @param components    All Components of this State.
      */
-    State(const StateMachine* state_machine, EnumMap<Component::KIND, std::shared_ptr<Component>> components)
+    State(const StateMachine* state_machine, const Claim claim, EnumMap<Component::KIND, std::shared_ptr<Component>> components)
         : m_state_machine(state_machine)
         , m_transitions()
+        , m_claim(std::move(claim))
         , m_components(std::move(components))
     {
     }
@@ -186,6 +199,9 @@ private: // fields
 
     /** States to which you can transition from this one. */
     std::set<const State*> m_transitions;
+
+    /** Current Claim of this State. */
+    Claim m_claim;
 
     /** All Components of this State. */
     EnumMap<Component::KIND, std::shared_ptr<Component>> m_components;

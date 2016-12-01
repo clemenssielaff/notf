@@ -121,6 +121,7 @@ std::shared_ptr<StateMachine> StateMachineFactory::produce(std::shared_ptr<State
     std::shared_ptr<StateMachine> state_machine = std::make_shared<MakeSmartEnabler<StateMachine>>();
     for (StateStudy* state : reachable_states) {
         state_machine->m_states[state->m_name] = std::make_unique<MakeSmartEnabler<State>>(state_machine.get(),
+                                                                                           state->m_claim,
                                                                                            state->m_components);
     }
     state_machine->m_start_state = state_machine->m_states[start_state->m_name].get();

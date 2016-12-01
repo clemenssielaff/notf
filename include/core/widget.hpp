@@ -14,8 +14,11 @@ class StateMachine;
 class Widget : public LayoutItem {
 
 public: // methods
-    /** Returns the current State of this Widget (may be nullptr). */
-    const State* get_state() const;
+    /** Returns the current State of this Widget. Is always valid. */
+    const State* get_state() const { return m_current_state; }
+
+    /** Returns the StateMachine of this Widget. */
+    std::shared_ptr<StateMachine> get_state_machine() const { return m_state_machine; }
 
     /** Returns the Layout used to scissor this Widget.
      * Returns an empty shared_ptr, if no explicit scissor Layout was set or the scissor Layout has since expired.
@@ -23,12 +26,7 @@ public: // methods
      */
     std::shared_ptr<Layout> get_scissor_layout() const { return m_scissor_layout.lock(); }
 
-    /** Sets the StateMachine of this Widget and applies the StateMachine's start State. */
-    void set_state_machine(std::shared_ptr<StateMachine> state_machine);
-
-    /** Sets the Claim of the Widget. */
-    void set_claim(const Claim claim) { _set_claim(std::move(claim)); }
-    // TODO: the Claim of a Widget should be determined by the State, right?
+    virtual const Claim& get_claim() const override;
 
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
 
@@ -43,19 +41,16 @@ public: // static methods
     /// @param handle               [optional] Handle of the new widget.
     /// @throw std::runtime_error   If the Widget could not be created with the given Handle (or at all).
     /// @return The created Widget, pointer is empty on error.
-    static std::shared_ptr<Widget> create(Handle handle = BAD_HANDLE);
+    static std::shared_ptr<Widget> create(std::shared_ptr<StateMachine> state_machine, Handle handle = BAD_HANDLE);
 
 protected: // methods
-    /// @brief Value Constructor.
-    /// @param handle   Handle of this Widget.
-    explicit Widget(const Handle handle)
-        : LayoutItem(handle)
-        , m_state_machine()
-        , m_current_state(nullptr)
-        , m_scissor_layout() // empty by default
-    {
-    }
+    /**
+     * @param handle            Handle of this Widget.
+     * @param state_machine     StateMachine of this Widget. Applies the default state.
+     */
+    Widget(const Handle handle, std::shared_ptr<StateMachine> state_machine);
 
+private: // methods
     virtual bool _redraw() override;
 
 private: // fields
