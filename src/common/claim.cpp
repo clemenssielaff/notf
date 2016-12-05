@@ -1,5 +1,7 @@
 #include "common/claim.hpp"
 
+#include <iostream>
+
 #include "common/log.hpp"
 #include "common/string_utils.hpp"
 

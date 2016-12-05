@@ -108,7 +108,8 @@ SOURCES += \
     src/core/state.cpp \
     src/python/py_state.cpp \
     src/dynamic/layout/overlayout.cpp \
-    src/python/py_overlayout.cpp
+    src/python/py_overlayout.cpp \
+    src/core/property_impl.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -180,6 +181,8 @@ HEADERS += \
     include/common/set_utils.hpp \
     include/core/state.hpp \
     include/common/os_utils.hpp \
-    include/dynamic/layout/overlayout.hpp
+    include/dynamic/layout/overlayout.hpp \
+    include/core/property_impl.hpp \
+    include/core/property.hpp
 
 QMAKE_CXX = ccache g++

@@ -1,6 +1,7 @@
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
+#include "core/property_impl.hpp"
 #include "core/state.hpp"
 #include "core/widget.hpp"
 using namespace notf;
