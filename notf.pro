@@ -78,7 +78,6 @@ SOURCES += \
     src/common/claim.cpp \
     src/python/interpreter.cpp \
     src/core/object.cpp \
-    src/python/pynotf.cpp \
     src/graphics/raw_image.cpp \
     src/graphics/texture2.cpp \
     thirdparty/nanovg/nanovg.c \
@@ -109,7 +108,10 @@ SOURCES += \
     src/python/py_state.cpp \
     src/dynamic/layout/overlayout.cpp \
     src/python/py_overlayout.cpp \
-    src/core/property_impl.cpp
+    src/core/property_impl.cpp \
+    src/python/py_foo.cpp \
+    src/python/py_notf.cpp \
+    include/core/foo.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -158,7 +160,6 @@ HEADERS += \
     include/common/claim.hpp \
     include/python/interpreter.hpp \
     include/core/object.hpp \
-    include/python/pynotf.hpp \
     include/graphics/raw_image.hpp \
     include/graphics/texture2.hpp \
     thirdparty/nanovg/fontstash.h \
@@ -183,6 +184,8 @@ HEADERS += \
     include/common/os_utils.hpp \
     include/dynamic/layout/overlayout.hpp \
     include/core/property_impl.hpp \
-    include/core/property.hpp
+    include/core/property.hpp \
+    include/python/py_notf.hpp \
+    include/core/foo.hpp
 
 QMAKE_CXX = ccache g++

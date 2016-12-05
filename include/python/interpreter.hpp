@@ -1,10 +1,9 @@
 #pragma once
 
+#include <vector>
 #include <string>
 
-namespace pybind11 {
-class object;
-}
+#include "pybind11/pybind11.h"
 namespace py = pybind11;
 
 namespace notf {
@@ -37,6 +36,8 @@ private: // fields
 
     /** The application directory from which to parse the `main` module. */
     const std::string m_app_directory;
+
+    py::set m_object_cache;
 };
 
 } // namespace notf

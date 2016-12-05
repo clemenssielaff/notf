@@ -4,21 +4,21 @@
 #include <iostream>
 
 #include "pybind11/functional.h"
-#include "pybind11/pybind11.h"
-namespace py = pybind11;
 using namespace pybind11::literals;
 
 #include "common/log.hpp"
 #include "common/string_utils.hpp"
 #include "core/application.hpp"
-#include "python/pynotf.hpp"
+#include "python/py_notf.hpp"
 #include "utils/enum_to_number.hpp"
+#include "core/foo.hpp"
 
 namespace notf {
 
 PythonInterpreter::PythonInterpreter(char* argv[], const std::string& app_directory)
     : m_program(Py_DecodeLocale(argv[0], nullptr))
     , m_app_directory(app_directory)
+    , m_object_cache()
 {
     // prepare the interpreter
     if (!m_program) {
@@ -43,6 +43,7 @@ PythonInterpreter::PythonInterpreter(char* argv[], const std::string& app_direct
 
 PythonInterpreter::~PythonInterpreter()
 {
+    m_object_cache.release();
     Py_Finalize();
     PyMem_RawFree(m_program);
     log_trace << "Closed Python interpreter";
@@ -57,6 +58,8 @@ void PythonInterpreter::parse_app(const std::string& filename)
         return;
     }
 
+    m_object_cache.clear();
+    FooCollector::foos.clear();
     py::object globals = _build_globals(absolute_path);
     if (!globals.check()) {
         log_critical << "Failed to build the 'globals' dictionary!";
@@ -94,7 +97,8 @@ py::object PythonInterpreter::_build_globals(const std::string& filename) const
         "__doc__"_a = py::none(),
         "__spec__"_a = py::none(),
         "__loader__"_a = py::none(),
-        "__file__"_a = py::str(filename.c_str()));
+        "__file__"_a = py::str(filename.c_str()),
+        "__object_cache"_a = m_object_cache);
     return globals;
 }
 
