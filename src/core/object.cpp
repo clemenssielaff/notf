@@ -12,6 +12,9 @@ Object::Object()
     : m_handle(OBJECT_MANAGER._get_next_handle())
 {
     // TODO: the ObjectManager approach is seriously broken right now
+    // Remove the Object Manager and move the _next_handle as static member into Object
+    // Then move the PropertyMap from Widget to LayoutItem
+
     //OBJECT_MANAGER._register_object(shared_from_this());
 }
 

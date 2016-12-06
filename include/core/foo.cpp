@@ -4,7 +4,15 @@
 
 namespace notf {
 
-Foo::~Foo() {}
+Foo::~Foo()
+{
+    log_trace << "Removing Foo instance";
+}
+
+void Foo::do_foo() const
+{
+    log_warning << "Oh no! I'm a Foo";
+}
 
 void Bar::do_foo() const
 {

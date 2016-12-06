@@ -187,6 +187,7 @@ HEADERS += \
     include/python/py_notf.hpp \
     include/core/foo.hpp \
     include/utils/protected_except_for_bindings.hpp \
-    include/utils/make_smart_enabler.hpp
+    include/utils/make_smart_enabler.hpp \
+    include/python/python_ptr.hpp
 
 QMAKE_CXX = ccache g++

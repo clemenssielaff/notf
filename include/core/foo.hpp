@@ -9,7 +9,7 @@ class Foo : public std::enable_shared_from_this<Foo> {
 public:
     Foo() = default;
     virtual ~Foo();
-    virtual void do_foo() const = 0;
+    virtual void do_foo() const;
 };
 
 class Bar : public Foo {

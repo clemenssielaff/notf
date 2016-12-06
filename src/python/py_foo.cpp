@@ -1,11 +1,16 @@
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
-#include <memory>
 #include <vector>
 
 #include "core/foo.hpp"
+#include "python/python_ptr.hpp"
 using namespace notf;
+
+PYBIND11_DECLARE_HOLDER_TYPE(T, python_ptr<T>);
+
+#define TEST_PTR python_ptr
+
 
 class Python_Foo : public Foo {
 public:
@@ -25,12 +30,12 @@ public:
 
 void produce_foo(pybind11::module& module)
 {
-    py::class_<Foo, std::shared_ptr<Foo>, Python_Foo> Py_Foo(module, "Foo");
+    py::class_<Foo, TEST_PTR<Foo>, Python_Foo> Py_Foo(module, "Foo");
 
     Py_Foo.def(py::init<>());
     Py_Foo.def("do_foo", &Foo::do_foo);
 
-    py::class_<Bar, std::shared_ptr<Bar>>(module, "Bar", Py_Foo).def(py::init<>());
+    py::class_<Bar, TEST_PTR<Bar>>(module, "Bar", Py_Foo).def(py::init<>());
 
     module.def("add_foo", &add_foo, py::arg("foo"));
     module.def("do_the_foos", &do_the_foos);

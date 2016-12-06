@@ -3,8 +3,6 @@
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
-PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
-
 #include "core/component.hpp"
 #include "core/layout_item.hpp"
 using namespace notf;
