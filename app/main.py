@@ -13,7 +13,6 @@ def produce_foos():
     blub = Blub()
     add_foo(bar)
     add_foo(blub)
-    print(_object_cache)
 
 def main():
     produce_foos()

@@ -4,6 +4,7 @@
 
 #include "common/log.hpp"
 #include "common/vector_utils.hpp"
+#include "utils/make_smart_enabler.hpp"
 
 namespace notf {
 

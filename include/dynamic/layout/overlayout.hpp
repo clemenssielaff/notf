@@ -3,6 +3,8 @@
 #include "common/padding.hpp"
 #include "core/layout.hpp"
 
+#include "utils/protected_except_for_bindings.hpp"
+
 namespace notf {
 
 class Overlayout;
@@ -69,24 +71,15 @@ public: // methods
 
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
-public: // static methods
-    /** Factory function to create a new Overlayout.
-     * @param handle    Handle of this Layout.
-     */
-    static std::shared_ptr<Overlayout> create(Handle handle = BAD_HANDLE)
-    {
-        return _create_object<Overlayout>(handle);
-    }
-
-protected: // methods
-    /** @param handle   Handle of this Layout. */
-    explicit Overlayout(const Handle handle)
-        : Layout(handle)
+    protected_except_for_bindings : // methods
+                                    explicit Overlayout()
+        : Layout()
         , m_padding(Padding::none())
         , m_items()
     {
     }
 
+protected: // methods
     virtual bool _update_claim() override { return false; } // the Overlayout brings its own Claim to the table
 
     virtual void _remove_item(const LayoutItem* item) override;

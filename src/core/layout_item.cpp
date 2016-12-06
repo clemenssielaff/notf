@@ -45,8 +45,8 @@ std::shared_ptr<Window> LayoutItem::get_window() const
     return root_item->get_window();
 }
 
-LayoutItem::LayoutItem(const Handle handle)
-    : Object(handle)
+LayoutItem::LayoutItem()
+    : Object()
     , m_parent()
     , m_visibility(VISIBILITY::VISIBLE)
     , m_size()

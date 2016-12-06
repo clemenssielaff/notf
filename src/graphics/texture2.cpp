@@ -8,7 +8,7 @@
 #include "common/log.hpp"
 #include "common/string_utils.hpp"
 #include "graphics/raw_image.hpp"
-#include "utils/smart_enabler.hpp"
+#include "utils/make_smart_enabler.hpp"
 
 namespace notf {
 

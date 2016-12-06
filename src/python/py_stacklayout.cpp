@@ -1,20 +1,15 @@
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
+#define NOTF_BINDINGS
 #include "dynamic/layout/stack_layout.hpp"
 using namespace notf;
 
 void produce_stack_layout(pybind11::module& module, py::detail::generic_type ancestor)
 {
-    py::class_<StackLayout, std::shared_ptr<StackLayout>> Py_StackLayout(module, "_StackLayout", ancestor);
+    py::class_<StackLayout, std::shared_ptr<StackLayout>> Py_StackLayout(module, "StackLayout", ancestor);
 
-    module.def("StackLayout", [](const StackLayout::Direction direction) -> std::shared_ptr<StackLayout> {
-        return StackLayout::create(direction);
-    }, "Creates a new StackLayout with an automatically assigned Handle.", py::arg("direction"));
-
-    module.def("StackLayout", [](const StackLayout::Direction direction, const Handle handle) -> std::shared_ptr<StackLayout> {
-        return StackLayout::create(direction, handle);
-    }, "Creates a new StackLayout with an explicitly assigned Handle.", py::arg("direction"), py::arg("handle"));
+    Py_StackLayout.def(py::init<const StackLayout::Direction>());
 
     Py_StackLayout.def("get_direction", &StackLayout::get_direction, "Direction in which items are stacked.");
     Py_StackLayout.def("get_alignment", &StackLayout::get_alignment, "Alignment of items in the main direction.");

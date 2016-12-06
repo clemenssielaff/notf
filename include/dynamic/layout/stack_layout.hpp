@@ -3,6 +3,8 @@
 #include "common/padding.hpp"
 #include "core/layout.hpp"
 
+#include "utils/protected_except_for_bindings.hpp"
+
 namespace notf {
 
 class StackLayout;
@@ -108,23 +110,10 @@ public: // methods
 
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
-public: // static methods
-    /** Factory function to create a new Overlayout.
-     * @param direction    Direction in which the StackLayout is stacked.
-     * @param handle    Handle of this Layout.
-     */
-    static std::shared_ptr<StackLayout> create(const Direction direction, Handle handle = BAD_HANDLE)
-    {
-        return _create_object<StackLayout>(handle, direction);
-    }
-
-protected: // methods
-    /**
-     * @param handle    Handle of this Layout.
-     * @param direction Direction of the stack.
-     */
-    explicit StackLayout(const Handle handle, const Direction direction)
-        : Layout(handle)
+protected_except_for_bindings: // methods
+    /** @param direction Direction of the stack. */
+    explicit StackLayout(const Direction direction)
+        : Layout()
         , m_direction(direction)
         , m_main_alignment(Alignment::START)
         , m_cross_alignment(Alignment::START)
@@ -137,6 +126,7 @@ protected: // methods
     {
     }
 
+protected: // methods
     virtual bool _update_claim() override;
 
     virtual void _remove_item(const LayoutItem* item) override;

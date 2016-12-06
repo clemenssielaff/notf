@@ -11,7 +11,7 @@
 #include "core/widget.hpp"
 #include "core/window.hpp"
 #include "graphics/rendercontext.hpp"
-#include "utils/smart_enabler.hpp"
+#include "utils/make_smart_enabler.hpp"
 
 namespace notf {
 

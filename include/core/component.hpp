@@ -5,7 +5,7 @@
 #include <type_traits>
 
 #include "common/signal.hpp"
-#include "utils/smart_enabler.hpp"
+#include "utils/make_smart_enabler.hpp"
 
 namespace notf {
 

@@ -100,9 +100,8 @@ public: // signals
     Signal<Handle> child_removed;
 
 protected: // methods
-    /** @param handle   Application-unique Handle of this Item. */
-    explicit Layout(const Handle handle)
-        : LayoutItem(handle)
+    explicit Layout()
+        : LayoutItem()
         , m_claim()
     {
     }

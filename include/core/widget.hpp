@@ -7,6 +7,8 @@
 #include "core/layout_item.hpp"
 #include "core/property.hpp"
 
+#include "utils/protected_except_for_bindings.hpp"
+
 namespace notf {
 
 class State;
@@ -40,23 +42,11 @@ public: // methods
     /** Tells the Window that its contents need to be redrawn. */
     void redraw() { _redraw(); }
 
-public: // static methods
-    /// @brief Factory function to create a new Widget instance.
-    /// If an explicit handle is passed, it is assigned to the new Widget.
-    /// This function will throw if the existing Handle is already taken.
-    /// If no handle is passed, a new one is created.
-    /// @param handle               [optional] Handle of the new widget.
-    /// @throw std::runtime_error   If the Widget could not be created with the given Handle (or at all).
-    /// @return The created Widget, pointer is empty on error.
-    static std::shared_ptr<Widget> create(std::shared_ptr<StateMachine> state_machine, Handle handle = BAD_HANDLE);
+protected_except_for_bindings: // methods
+    /** @param state_machine     StateMachine of this Widget. Applies the default state. */
+    Widget(std::shared_ptr<StateMachine> state_machine);
 
 protected: // methods
-    /**
-     * @param handle            Handle of this Widget.
-     * @param state_machine     StateMachine of this Widget. Applies the default state.
-     */
-    Widget(const Handle handle, std::shared_ptr<StateMachine> state_machine);
-
     /** Adds a new Property to this Widget.
      * @param name      Name of the Property, must be unique in this Widget.
      * @param value     Value of the Property, must be of a type supported by AbstractProperty.

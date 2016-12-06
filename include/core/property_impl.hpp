@@ -17,7 +17,7 @@ namespace notf {
  *
  * In property_impl.hpp:
  *
- *  2. In Add a NOTF_PROPERTY_SPECIALIZATION with the name of the new Property subclass as first and the value type as
+ *  2. In Add a PROPERTY_SPECIALIZATION with the name of the new Property subclass as first and the value type as
  *      second argument.
  *
  * In property_impl.cpp
@@ -26,7 +26,8 @@ namespace notf {
  *  4. Add NOTF_ADD_PROPERTY specializations for all types from which your new Property subclass can be contructed.
  */
 
-#define NOTF_PROPERTY_SPECIALIZATION(NAME, TYPE)                     \
+#pragma push_macro("PROPERTY_SPECIALIZATION")
+#define PROPERTY_SPECIALIZATION(NAME, TYPE)                          \
     class NAME : public Property<TYPE> {                             \
     public:                                                          \
         NAME(const TYPE value, const PropertyMap::iterator iterator) \
@@ -36,13 +37,14 @@ namespace notf {
         virtual Type get_type() const override;                      \
     };
 
-NOTF_PROPERTY_SPECIALIZATION(BoolProperty, bool);
-NOTF_PROPERTY_SPECIALIZATION(FloatProperty, float);
-NOTF_PROPERTY_SPECIALIZATION(IntProperty, int);
-NOTF_PROPERTY_SPECIALIZATION(StringProperty, std::string);
-NOTF_PROPERTY_SPECIALIZATION(ClaimProperty, Claim);
+PROPERTY_SPECIALIZATION(BoolProperty, bool);
+PROPERTY_SPECIALIZATION(FloatProperty, float);
+PROPERTY_SPECIALIZATION(IntProperty, int);
+PROPERTY_SPECIALIZATION(StringProperty, std::string);
+PROPERTY_SPECIALIZATION(ClaimProperty, Claim);
 
-#undef NOTF_PROPERTY_SPECIALIZATION
+#undef PROPERTY_SPECIALIZATION
+#pragma pop_macro("PROPERTY_SPECIALIZATION")
 
 /**********************************************************************************************************************/
 
@@ -56,6 +58,5 @@ std::ostream& operator<<(std::ostream& out, const Property<T>& property)
 {
     return out << "Property \"" << property.get_name() << "\": " << property.get_value();
 }
-
 
 } // namespace notf

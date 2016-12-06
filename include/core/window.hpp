@@ -4,7 +4,6 @@
 #include <string>
 
 #include "common/color.hpp"
-#include "common/handle.hpp"
 #include "common/signal.hpp"
 #include "common/size2i.hpp"
 
@@ -58,9 +57,6 @@ struct WindowInfo {
 
     /// @brief File name of the Window's icon, relative to the Application's texture directory, empty means no icon.
     std::string icon = "";
-
-    /// @brief Handle of this Window's root Widget (BAD_HANDLE means that a new Handle is assigned).
-    Handle root_widget_handle = BAD_HANDLE;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -5,7 +5,7 @@
 #include "common/log.hpp"
 #include "core/widget.hpp"
 #include "utils/enum_to_number.hpp"
-#include "utils/smart_enabler.hpp"
+#include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
 

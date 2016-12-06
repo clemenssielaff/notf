@@ -5,6 +5,7 @@
 namespace notf {
 
 class LayoutRoot;
+class Window;
 
 /**********************************************************************************************************************/
 
@@ -57,10 +58,8 @@ public: // methods
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
 protected: // methods
-    /// @brief Value Constructor.
-    /// @param handle   Handle of this Widget.
-    /// @param window   Window owning this RootWidget.
-    LayoutRoot(Handle handle, const std::shared_ptr<Window>& window);
+    /** @param window   Window owning this RootWidget. */
+    explicit LayoutRoot(const std::shared_ptr<Window>& window);
 
     virtual bool _update_claim() override { return false; }
 
@@ -71,15 +70,6 @@ protected: // methods
 private: // methods
     /// @brief Returns the Layout contained in this LayoutRoot, may be invalid.
     LayoutItem* _get_item() const;
-
-private: // static methods for Window
-    /// @brief Factory function to create a new LayoutRoot.
-    /// @param handle   Handle of this LayoutRoot.
-    /// @param window   Window owning this LayoutRoot.
-    static std::shared_ptr<LayoutRoot> create(Handle handle, std::shared_ptr<Window> window)
-    {
-        return _create_object<LayoutRoot>(handle, std::move(window));
-    }
 
 private: // fields
     /// @brief The Window containing this LayoutRoot.

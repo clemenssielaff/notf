@@ -147,7 +147,6 @@ HEADERS += \
     include/common/enummap.hpp \
     include/common/int_utils.hpp \
     include/common/transform2.hpp \
-    include/utils/smart_enabler.hpp \
     include/utils/enum_to_number.hpp \
     include/utils/unused.hpp \
     include/common/size2i.hpp \
@@ -186,6 +185,8 @@ HEADERS += \
     include/core/property_impl.hpp \
     include/core/property.hpp \
     include/python/py_notf.hpp \
-    include/core/foo.hpp
+    include/core/foo.hpp \
+    include/utils/protected_except_for_bindings.hpp \
+    include/utils/make_smart_enabler.hpp
 
 QMAKE_CXX = ccache g++

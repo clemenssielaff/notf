@@ -7,6 +7,7 @@
 #include "core/layout_item.hpp"
 #include "core/render_manager.hpp"
 #include "core/window.hpp"
+#include "utils/make_smart_enabler.hpp"
 
 namespace notf {
 
@@ -55,8 +56,8 @@ std::unique_ptr<LayoutIterator> LayoutRoot::iter_items() const
     return std::make_unique<MakeSmartEnabler<LayoutRootIterator>>(this);
 }
 
-LayoutRoot::LayoutRoot(Handle handle, const std::shared_ptr<Window>& window)
-    : Layout(handle)
+LayoutRoot::LayoutRoot(const std::shared_ptr<Window>& window)
+    : Layout()
     , m_window(window.get())
 {
     // the layout_root is always in the default render layer

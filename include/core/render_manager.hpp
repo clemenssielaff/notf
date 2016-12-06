@@ -4,8 +4,6 @@
 #include <set>
 #include <vector>
 
-#include "common/handle.hpp"
-
 namespace notf {
 
 class LayoutItem;

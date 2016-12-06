@@ -14,6 +14,7 @@ class Claim;
 class Layout;
 class RenderLayer;
 class Widget;
+class Window;
 
 /// @brief Visibility states, all but one mean that the LayoutItem is not visible, but all for different reasons.
 enum class VISIBILITY : unsigned char {
@@ -128,9 +129,7 @@ public: // signals
     Signal<Transform2> transform_changed;
 
 protected: // methods
-    /// @brief Value Constructor.
-    /// @param handle   Application-unique Handle of this Item.
-    explicit LayoutItem(const Handle handle);
+    explicit LayoutItem();
 
     /// @brief Shows (if possible) or hides this LayoutItem.
     void _set_visible(const bool is_visible);

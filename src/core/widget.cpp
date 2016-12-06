@@ -5,6 +5,7 @@
 #include "common/log.hpp"
 #include "common/string_utils.hpp"
 #include "core/state.hpp"
+#include "utils/make_smart_enabler.hpp"
 
 namespace notf {
 
@@ -34,24 +35,8 @@ AbstractProperty* Widget::get_property(const std::string& name)
     return it->second.get();
 }
 
-std::shared_ptr<Widget> Widget::create(std::shared_ptr<StateMachine> state_machine, Handle handle)
-{
-    if (std::shared_ptr<Widget> result = _create_object<Widget>(handle, std::move(state_machine))) {
-        return result;
-    }
-
-    std::string message;
-    if (handle) {
-        message = string_format("Failed to create Widget with requested Handle %u", handle);
-    }
-    else {
-        message = "Failed to allocate new Handle for Widget";
-    }
-    throw std::runtime_error(message);
-}
-
-Widget::Widget(const Handle handle, std::shared_ptr<StateMachine> state_machine)
-    : LayoutItem(handle)
+Widget::Widget(std::shared_ptr<StateMachine> state_machine)
+    : LayoutItem()
     , m_state_machine(std::move(state_machine))
     , m_current_state(m_state_machine->get_start_state())
     , m_properties()

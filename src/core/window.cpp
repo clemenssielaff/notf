@@ -5,7 +5,6 @@
 #include <nanovg/nanovg.h>
 #include <nanovg/nanovg_gl.h>
 
-#include "common/handle.hpp"
 #include "common/log.hpp"
 #include "core/application.hpp"
 #include "core/events/key_event.hpp"
@@ -15,6 +14,7 @@
 #include "graphics/gl_errors.hpp"
 #include "graphics/raw_image.hpp"
 #include "graphics/rendercontext.hpp"
+#include "utils/make_smart_enabler.hpp"
 #include "utils/unused.hpp"
 
 namespace notf {
@@ -142,7 +142,7 @@ std::shared_ptr<Window> Window::create(const WindowInfo& info)
 
     // inititalize the window
     Application::get_instance()._register_window(window);
-    window->m_root_layout = LayoutRoot::create(info.root_widget_handle, window);
+    window->m_root_layout = std::make_shared<MakeSmartEnabler<LayoutRoot>>(window);
     window->m_root_layout->_set_size(Size2f::from_size2i(window->get_buffer_size()));
     // TODO: why again is the LayoutRoot created outside the Window Constructor?
 

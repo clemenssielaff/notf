@@ -6,7 +6,7 @@
 
 #include "common/log.hpp"
 #include "common/string_utils.hpp"
-#include "utils/smart_enabler.hpp"
+#include "utils/make_smart_enabler.hpp"
 
 namespace notf {
 

@@ -1,20 +1,15 @@
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
+#define NOTF_BINDINGS
 #include "dynamic/layout/overlayout.hpp"
 using namespace notf;
 
 void produce_overlayout(pybind11::module& module, py::detail::generic_type ancestor)
 {
-    py::class_<Overlayout, std::shared_ptr<Overlayout>> Py_Overlayout(module, "_Overlayout", ancestor);
+    py::class_<Overlayout, std::shared_ptr<Overlayout>> Py_Overlayout(module, "Overlayout", ancestor);
 
-    module.def("Overlayout", []() -> std::shared_ptr<Overlayout> {
-        return Overlayout::create();
-    }, "Creates a new Overlayout with an automatically assigned Handle.");
-
-    module.def("Overlayout", [](const Handle handle) -> std::shared_ptr<Overlayout> {
-        return Overlayout::create(handle);
-    }, "Creates a new Overlayout with an explicitly assigned Handle.", py::arg("handle"));
+    Py_Overlayout.def(py::init<>());
 
     Py_Overlayout.def("get_padding", &Overlayout::get_padding, "Padding around the Layout's border.");
     Py_Overlayout.def("get_claim", &Overlayout::get_claim, "The current Claim of this LayoutItem.");
