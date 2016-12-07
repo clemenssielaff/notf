@@ -623,7 +623,7 @@ class generic_type : public object {
     template <typename...> friend class class_;
 public:
     PYBIND11_OBJECT_DEFAULT(generic_type, object, PyType_Check)
-protected:
+//protected:
     void initialize(type_record *rec) {
         auto &internals = get_internals();
         auto tindex = std::type_index(*(rec->type));

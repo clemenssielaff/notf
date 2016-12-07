@@ -1,16 +1,12 @@
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
+#include <assert.h>
 #include <vector>
 
+#include "common/log.hpp"
 #include "core/foo.hpp"
-#include "python/python_ptr.hpp"
 using namespace notf;
-
-PYBIND11_DECLARE_HOLDER_TYPE(T, python_ptr<T>);
-
-#define TEST_PTR python_ptr
-
 
 class Python_Foo : public Foo {
 public:
@@ -28,14 +24,35 @@ public:
     }
 };
 
+namespace {
+
+static void (*foo_dealloc_orig)(PyObject*) = nullptr;
+static void foo_dealloc(PyObject* object)
+{
+    auto instance = reinterpret_cast<py::detail::instance<Foo, std::shared_ptr<Foo>>*>(object);
+    if (instance->holder.use_count() > 1) {
+        assert(!instance->value->py_object);
+        instance->value->py_object = py::object(object, true);
+        instance->holder.reset();
+    }
+    else {
+        assert(foo_dealloc_orig);
+        foo_dealloc_orig(object);
+    }
+}
+}
+
 void produce_foo(pybind11::module& module)
 {
-    py::class_<Foo, TEST_PTR<Foo>, Python_Foo> Py_Foo(module, "Foo");
+    py::class_<Foo, std::shared_ptr<Foo>, Python_Foo> Py_Foo(module, "Foo");
+    PyTypeObject* type = reinterpret_cast<PyTypeObject*>(Py_Foo.ptr());
+    foo_dealloc_orig = type->tp_dealloc;
+    type->tp_dealloc = foo_dealloc;
 
     Py_Foo.def(py::init<>());
     Py_Foo.def("do_foo", &Foo::do_foo);
 
-    py::class_<Bar, TEST_PTR<Bar>>(module, "Bar", Py_Foo).def(py::init<>());
+    py::class_<Bar, std::shared_ptr<Bar>>(module, "Bar", Py_Foo).def(py::init<>());
 
     module.def("add_foo", &add_foo, py::arg("foo"));
     module.def("do_the_foos", &do_the_foos);

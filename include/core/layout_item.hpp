@@ -8,6 +8,37 @@
 #include "common/transform2.hpp"
 #include "core/object.hpp"
 
+
+/*
+ * When it comes to the lifetime of items, the way that Python and NoTF work together poses an interesting challenge.
+ *
+ * Within NoTF's C++ codebase, items (Layouts, Widgets, Controllers) are usually owned by their parent item through a
+ * `shared_ptr`.
+ * There may be other `shared_ptr`s at any given time that keep an item alive but they are usually short-lived and only
+ * serve as a fail-save mechanism to ensure that the item stays valid between to function calls.
+ * When subclassing an item from Python, a `PyObject` is generated, whose lifetime is managed by Python.
+ * In order to have save access to the underlying item, the `PyObject` keeps a `shared_ptr` to it.
+ * So far so good.
+ *
+ * The difficulties arise, when Python execution of the app's `main.py` has finished.
+ * By that time, all `PyObject`s are deallocated and release their `shared_ptr`s.
+ * Items that are connected into the item hierarchy stay alive, items that are only referenced by a `PyObject` (and are
+ * not part of the Item hierarchy) are deleted.
+ * Usually that is what we would want, but in order to be able to call overridden virtual methods of item subclasses
+ * created in Python, we need to keep the `PyObject` alive for as long as the corresponding NoTF item is alive.
+ *
+ * To do that, items can keep a `PyObject` around, making sure that it is alive as long as they are.
+ * However, since the `PyObject` also has a `std::shared_ptr` to the item, they own each other and will therefore never
+ * be deleted.
+ * Something has to give.
+ * We cannot *not* keep a `PyObject` around, and we cannot allow the `PyObject` to have anything but a strong (owning)
+ * pointer to an item, because it would be destroyed immediately after creation from Python.
+ * Therefore, all Python bindings of `item` subclasses are outfitted with a custom deallocator function that
+ * automatically stores a fresh reference to the `PyObject` in the `item` instance, just as the `PyObject` would go out
+ * of scope, if (and only if) there is another shared owner of the `item` at the time of the `PyObjects` deallocation.
+ * Effectively, this switches the ownership of the two objects.
+ */
+
 namespace notf {
 
 class Claim;

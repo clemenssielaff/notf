@@ -59,7 +59,7 @@ void PythonInterpreter::parse_app(const std::string& filename)
     }
 
     m_object_cache.clear();
-    FooCollector::foos.clear();
+    FooCollector().clear_the_foos();
     py::object globals = _build_globals(absolute_path);
     if (!globals.check()) {
         log_critical << "Failed to build the 'globals' dictionary!";
