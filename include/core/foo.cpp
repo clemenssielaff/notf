@@ -2,16 +2,32 @@
 
 #include "common/log.hpp"
 
+#include "pybind11/pybind11.h"
+namespace py = pybind11;
+
 namespace notf {
+
+void decref_pyobject(PyObject* object)
+{
+    Py_XDECREF(object);
+}
+
+Foo::Foo()
+    : py_object(nullptr, decref_pyobject)
+{
+
+}
 
 Foo::~Foo()
 {
     log_trace << "Removing Foo instance";
 }
 
-void Foo::do_foo() const
+void Foo::set_pyobject(PyObject* object)
 {
-    log_warning << "Oh no! I'm a Foo";
+    assert(!py_object);
+    Py_XINCREF(object);
+    py_object.reset(std::move(object));
 }
 
 void Bar::do_foo() const

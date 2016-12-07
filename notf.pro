@@ -189,4 +189,4 @@ HEADERS += \
     include/utils/protected_except_for_bindings.hpp \
     include/utils/make_smart_enabler.hpp
 
-#QMAKE_CXX = ccache g++
+QMAKE_CXX = ccache g++

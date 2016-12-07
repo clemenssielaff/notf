@@ -31,8 +31,9 @@ static void foo_dealloc(PyObject* object)
 {
     auto instance = reinterpret_cast<py::detail::instance<Foo, std::shared_ptr<Foo>>*>(object);
     if (instance->holder.use_count() > 1) {
-        assert(!instance->value->py_object);
-        instance->value->py_object = py::object(object, true);
+
+        instance->value->set_pyobject(object);
+        assert(object->ob_refcnt == 1);
         instance->holder.reset();
     }
     else {

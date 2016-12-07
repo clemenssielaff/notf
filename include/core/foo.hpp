@@ -3,18 +3,22 @@
 #include <memory>
 #include <vector>
 
-#include "pybind11/pybind11.h"
-namespace py = pybind11;
+struct _object;
+using PyObject = _object;
 
 namespace notf {
 
+void decref_pyobject(PyObject* object);
+
 class Foo : public std::enable_shared_from_this<Foo> {
 public:
-    Foo() = default;
+    Foo();
     virtual ~Foo();
-    virtual void do_foo() const;
+    virtual void do_foo() const = 0;
 
-    py::object py_object; // TODO: this crashes obviously if Python objects are still alife after the interpreter shut down
+    void set_pyobject(PyObject* object);
+
+    std::unique_ptr<PyObject, decltype(&decref_pyobject)> py_object; // TODO: this crashes obviously if Python objects are still alife after the interpreter shut down
 };
 
 class Bar : public Foo {
@@ -23,7 +27,7 @@ public:
     virtual void do_foo() const override;
 };
 
-struct FooCollector{
+struct FooCollector {
     static std::vector<std::shared_ptr<Foo>> foos;
 
     void clear_the_foos()
@@ -33,12 +37,11 @@ struct FooCollector{
 
     void do_the_foos()
     {
-        for(const auto& foo : foos){
+        for (const auto& foo : foos) {
             foo->do_foo();
         }
     }
 };
-
 
 void add_foo(std::shared_ptr<Foo> foo);
 
