@@ -11,7 +11,6 @@ using namespace py::literals;
 #include "common/log.hpp"
 #include "common/string_utils.hpp"
 #include "core/application.hpp"
-#include "core/foo.hpp"
 #include "python/py_notf.hpp"
 #include "utils/enum_to_number.hpp"
 
@@ -51,6 +50,7 @@ PythonInterpreter::~PythonInterpreter()
 
 void PythonInterpreter::parse_app(const std::string& filename)
 {
+    // find and open the file to execute
     std::string absolute_path = m_app_directory + filename;
     FILE* fp = std::fopen(absolute_path.c_str(), "r");
     if (!fp) {
@@ -58,8 +58,7 @@ void PythonInterpreter::parse_app(const std::string& filename)
         return;
     }
 
-    FooCollector().clear_the_foos();
-
+    // build the globals dict
     py::object globals = py::dict(
         "__builtins__"_a = py::handle(PyEval_GetBuiltins()),
         "__name__"_a = py::str("__main__"),
@@ -74,6 +73,7 @@ void PythonInterpreter::parse_app(const std::string& filename)
         return;
     }
 
+    // resture the original modules (force-reload all custom ones)
     static const std::string restore_original_modules_command = "modules_to_remove = []\n"
                                                                 "for module in sys.modules.keys():\n"
                                                                 "    if not module in sys._original_modules:\n"
@@ -82,10 +82,12 @@ void PythonInterpreter::parse_app(const std::string& filename)
                                                                 "    del(sys.modules[module])\n";
     PyRun_SimpleString(restore_original_modules_command.c_str());
 
+    // run the script
     py::object _(PyRun_FileEx(fp, absolute_path.c_str(), Py_file_input, globals.ptr(), globals.ptr(),
                               1), // close the file stream before returning
                  false); // the return object is a new reference
 
+    // check for errors
     if (PyErr_Occurred()) {
         log_critical << "Python error occured: ";
         PyErr_Print();

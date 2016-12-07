@@ -3,8 +3,6 @@
 #include "core/window.hpp"
 #include "python/interpreter.hpp"
 
-#include "core/foo.hpp"
-
 using namespace notf;
 
 int main(int argc, char* argv[])
@@ -32,14 +30,6 @@ int main(int argc, char* argv[])
         },
         [](const KeyEvent& event) -> bool {
             return event.key == KEY::SPACE && event.action == KEY_ACTION::KEY_PRESS;
-        });
-
-    window->on_token_key.connect(
-        [window, &app](const KeyEvent&) {
-            do_the_foos();
-        },
-        [](const KeyEvent& event) -> bool {
-            return event.key == KEY::BACKSPACE && event.action == KEY_ACTION::KEY_PRESS;
         });
 
     return app.exec();

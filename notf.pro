@@ -106,10 +106,9 @@ SOURCES += \
     src/dynamic/layout/overlayout.cpp \
     src/python/py_overlayout.cpp \
     src/core/property_impl.cpp \
-    src/python/py_foo.cpp \
     src/python/py_notf.cpp \
-    include/core/foo.cpp \
-    src/core/item.cpp
+    src/core/item.cpp \
+    src/python/pyobject_wrapper.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -179,9 +178,9 @@ HEADERS += \
     include/core/property_impl.hpp \
     include/core/property.hpp \
     include/python/py_notf.hpp \
-    include/core/foo.hpp \
     include/utils/protected_except_for_bindings.hpp \
     include/utils/make_smart_enabler.hpp \
-    include/core/item.hpp
+    include/core/item.hpp \
+    include/python/pyobject_wrapper.hpp
 
 QMAKE_CXX = ccache g++

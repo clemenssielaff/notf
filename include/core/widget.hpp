@@ -46,6 +46,9 @@ protected_except_for_bindings: // methods
     /** @param state_machine     StateMachine of this Widget. Applies the default state. */
     Widget(std::shared_ptr<StateMachine> state_machine);
 
+    /** Stores the Python subclass object of this Widget, if it was created through Python. */
+    void set_pyobject(PyObject* object) { _set_pyobject(object); }
+
 protected: // methods
     /** Adds a new Property to this Widget.
      * @param name      Name of the Property, must be unique in this Widget.

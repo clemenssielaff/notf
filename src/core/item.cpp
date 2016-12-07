@@ -54,6 +54,7 @@ Item::Item()
     , m_size()
     , m_transform(Transform2::identity())
     , m_render_layer() // empty by default
+    , py_object(nullptr, py_decref)
 {
 }
 
@@ -100,7 +101,7 @@ void Item::_update_parent_layout()
     std::shared_ptr<Layout> parent = m_parent.lock();
     while (parent) {
         // if the parent Layout's Claim changed, we also need to update its parent
-        if(parent->_update_claim()){
+        if (parent->_update_claim()) {
             parent = parent->m_parent.lock();
         }
         // ... otherwise, we have reached the end of the propagation through the ancestry
@@ -110,6 +111,13 @@ void Item::_update_parent_layout()
             parent.reset();
         }
     }
+}
+
+void Item::_set_pyobject(PyObject* object)
+{
+    assert(!py_object); // you should only do this once
+    py_incref(object);
+    py_object.reset(std::move(object));
 }
 
 bool Item::_redraw()
@@ -122,7 +130,7 @@ bool Item::_redraw()
         return false;
     }
 
-    if(std::shared_ptr<Window> window = get_window()){
+    if (std::shared_ptr<Window> window = get_window()) {
         window->get_render_manager().request_redraw();
     }
     return true;

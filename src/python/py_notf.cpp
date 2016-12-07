@@ -29,7 +29,6 @@ void produce_stack_layout(pybind11::module& module, py::detail::generic_type anc
 void produce_overlayout(pybind11::module& module, py::detail::generic_type ancestor);
 py::class_<Item, std::shared_ptr<Item>> produce_layout_item(pybind11::module& module);
 py::class_<Component, std::shared_ptr<Component>> produce_component(pybind11::module& module);
-void produce_foo(pybind11::module& module); // TODO: test
 
 const char* python_notf_module_name = "notf";
 
@@ -51,7 +50,6 @@ PyObject* produce_pynotf_module()
     produce_painter(module);
     produce_window(module);
     produce_layout(module);
-    produce_foo(module);
 
     py::class_<Component, std::shared_ptr<Component>> Py_Component(module, "_Component");
     produce_canvas_component(module, Py_Component);

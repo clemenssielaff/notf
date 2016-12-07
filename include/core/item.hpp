@@ -7,7 +7,7 @@
 #include "common/signal.hpp"
 #include "common/size2f.hpp"
 #include "common/transform2.hpp"
-
+#include "python/pyobject_wrapper.hpp"
 
 /*
  * When it comes to the lifetime of items, the way that Python and NoTF work together poses an interesting challenge.
@@ -103,7 +103,7 @@ public: // methods
     /// @brief Returns the parent LayoutItem containing this LayoutItem, may be invalid.
     std::shared_ptr<const Layout> get_parent() const { return m_parent.lock(); }
 
-    /// @brief Returns the Window containing this Widget (can be null).
+    /** Returns the Window containing this Widget (can be null). */
     std::shared_ptr<Window> get_window() const;
 
     /** The current Claim of this LayoutItem. */
@@ -115,10 +115,10 @@ public: // methods
     /** The visibility of this LayoutItem. */
     VISIBILITY get_visibility() const { return m_visibility; }
 
-    /// @brief Returns the unscaled size of this LayoutItem in pixels.
+    /** Returns the unscaled size of this LayoutItem in pixels. */
     const Size2f& get_size() const { return m_size; }
 
-    /// @brief Returns this LayoutItem's transformation in the given space.
+    /** Returns this LayoutItem's transformation in the given space. */
     Transform2 get_transform(const Space space) const
     {
         Transform2 result = Transform2::identity();
@@ -201,9 +201,13 @@ protected: // methods
         return false;
     }
 
-    /// @brief Notifies the parent Layout that the Claim of this Item has changed.
-    /// Propagates up the Layout hierarchy to the first ancestor that doesn't need to change its Claim.
+    /** Notifies the parent Layout that the Claim of this Item has changed.
+     * Propagates up the Layout hierarchy to the first ancestor that doesn't need to change its Claim.
+     */
     void _update_parent_layout();
+
+    /** Stores the Python subclass object of this Item, if it was created through Python. */
+    void _set_pyobject(PyObject* object);
 
 protected: // static methods
     /** Allows any LayoutItem subclass to call _set_size on any other LayoutItem. */
@@ -266,6 +270,9 @@ private: // fields
      * An empty pointer means that this item inherits its render layer from its parent.
      */
     std::shared_ptr<RenderLayer> m_render_layer;
+
+    /** Python subclass object of this Item, if it was created through Python. */
+    std::unique_ptr<PyObject, decltype(&py_decref)> py_object;
 
 private: // static fields
     /** The next available Item ID, is ever-increasing. */
