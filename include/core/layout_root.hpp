@@ -27,7 +27,7 @@ public: // methods
     virtual ~LayoutRootIterator() = default;
 
     /** Advances the Iterator one step, returns the next LayoutItem or nullptr if the iteration has finished. */
-    virtual const LayoutItem* next() override;
+    virtual const Item* next() override;
 
 private: // fields
     /** LayoutRoot that is iterated over, is set to nullptr when the iteration has finished. */
@@ -49,7 +49,7 @@ public: // methods
     std::shared_ptr<Window> get_window() const;
 
     /// @brief Sets a new Item at the LayoutRoot.
-    void set_item(std::shared_ptr<LayoutItem> item);
+    void set_item(std::shared_ptr<Item> item);
 
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
 
@@ -63,13 +63,13 @@ protected: // methods
 
     virtual bool _update_claim() override { return false; }
 
-    virtual void _remove_item(const LayoutItem*) override {}
+    virtual void _remove_item(const Item*) override {}
 
     virtual void _relayout() override;
 
 private: // methods
     /// @brief Returns the Layout contained in this LayoutRoot, may be invalid.
-    LayoutItem* _get_item() const;
+    Item* _get_item() const;
 
 private: // fields
     /// @brief The Window containing this LayoutRoot.

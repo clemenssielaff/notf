@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 
-#include "core/layout_item.hpp"
+#include "core/item.hpp"
 #include "core/property.hpp"
 
 #include "utils/protected_except_for_bindings.hpp"
@@ -17,7 +17,7 @@ class StateMachine;
 /**********************************************************************************************************************/
 
 /// @brief Something drawn on the screen, potentially able to interact with the user.
-class Widget : public LayoutItem {
+class Widget : public Item {
 
 public: // methods
     /** Returns the current State of this Widget. Is always valid. */

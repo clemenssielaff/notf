@@ -8,7 +8,6 @@ struct GLFWwindow;
 
 namespace notf {
 
-class ObjectManager;
 class LogHandler;
 class PythonInterpreter;
 class ResourceManager;
@@ -76,9 +75,6 @@ public: // methods
 
     /// @brief Returns the Application's Resource Manager.
     ResourceManager& get_resource_manager() { return *m_resource_manager; }
-
-    /// @brief Returns the Application's Object Manager.
-    ObjectManager& get_object_manager() { return *m_object_manager; }
 
     /// @brief Returns the Application's Python interpreter wrapper
     /// Might be nullptr, if the Application was initialized with flag `enable_python` set to false.
@@ -167,9 +163,6 @@ private: // fields
 
     /// @brief The Application's resource manager.
     std::unique_ptr<ResourceManager> m_resource_manager;
-
-    /// @brief The Application's object manger.
-    std::unique_ptr<ObjectManager> m_object_manager;
 
     /// @brief All Windows known the the Application.
     std::vector<std::shared_ptr<Window>> m_windows;

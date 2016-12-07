@@ -7,7 +7,7 @@
 namespace notf {
 
 /// @brief Specialized type for Index into arrays, vectors or other indexeable things.
-/// This became necessary for the StackLayout class, where you could ask for an index of an object which might not be in
+/// This became necessary for the StackLayout class, where you could ask for an index of an Item which might not be in
 /// the Layout at all.
 /// In that case, the method should return an invalid index.
 /// However, zero is a valid index and every other 'invalid' value would put the burden on the programmer using the

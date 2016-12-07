@@ -36,7 +36,7 @@ AbstractProperty* Widget::get_property(const std::string& name)
 }
 
 Widget::Widget(std::shared_ptr<StateMachine> state_machine)
-    : LayoutItem()
+    : Item()
     , m_state_machine(std::move(state_machine))
     , m_current_state(m_state_machine->get_start_state())
     , m_properties()
@@ -51,7 +51,7 @@ bool Widget::_redraw()
         return false;
     }
 
-    return LayoutItem::_redraw();
+    return Item::_redraw();
 }
 
 } // namespace notf

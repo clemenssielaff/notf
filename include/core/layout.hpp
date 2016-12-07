@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/claim.hpp"
-#include "core/layout_item.hpp"
+#include "core/item.hpp"
 
 namespace notf {
 
@@ -20,7 +20,7 @@ public: // methods
     virtual ~LayoutIterator() = default;
 
     /** Advances the Iterator one step, returns the next LayoutItem or nullptr if the iteration has finished. */
-    virtual const LayoutItem* next() = 0;
+    virtual const Item* next() = 0;
 };
 
 /**********************************************************************************************************************/
@@ -28,9 +28,9 @@ public: // methods
 /**
  * @brief Abstract Layout baseclass.
  */
-class Layout : public LayoutItem {
+class Layout : public Item {
 
-    friend class LayoutItem;
+    friend class Item;
 
 public: // enums
     /** Direction in which items in a Layout can be stacked. */
@@ -72,7 +72,7 @@ public: // methods
     virtual ~Layout() override;
 
     /** Tests if a given LayoutItem is a child of this LayoutItem. */
-    bool has_item(const std::shared_ptr<LayoutItem>& candidate) const;
+    bool has_item(const std::shared_ptr<Item>& candidate) const;
 
     /** Returns the number of items in this Layout. */
     size_t get_item_count() const { return _get_children().size(); }
@@ -90,30 +90,30 @@ public: // methods
 
 public: // signals
     /** Emitted when a new child LayoutItem was added to this one.
-     * @param Handle of the new child.
+     * @param ItemID of the new child.
      */
-    Signal<Handle> child_added;
+    Signal<ItemID> child_added;
 
     /** Emitted when a child LayoutItem of this one was removed.
-     * @param Handle of the removed child.
+     * @param ItemID of the removed child.
      */
-    Signal<Handle> child_removed;
+    Signal<ItemID> child_removed;
 
 protected: // methods
     explicit Layout()
-        : LayoutItem()
+        : Item()
         , m_claim()
     {
     }
 
     /** Returns all children of this LayoutItem. */
-    const std::vector<std::shared_ptr<LayoutItem>>& _get_children() const { return m_children; }
+    const std::vector<std::shared_ptr<Item>>& _get_children() const { return m_children; }
 
     /** Adds the given child to this LayoutItem. */
-    void _add_child(std::shared_ptr<LayoutItem> item);
+    void _add_child(std::shared_ptr<Item> item);
 
     /** Removes the given child LayoutItem. */
-    void _remove_child(const LayoutItem* item);
+    void _remove_child(const Item* item);
 
     virtual void _cascade_visibility(const VISIBILITY visibility) override;
 
@@ -147,11 +147,11 @@ protected: // methods
      * However, most Layouts have an additional data structure for sorted, easy access to their children and it is
      * this methods's job to remove the child from there.
      */
-    virtual void _remove_item(const LayoutItem* item) = 0;
+    virtual void _remove_item(const Item* item) = 0;
 
 private: // fields
     /** All child items contained in this Layout. */
-    std::vector<std::shared_ptr<LayoutItem>> m_children;
+    std::vector<std::shared_ptr<Item>> m_children;
 
     /// @brief The Claim of a LayoutItem determines how much space it receives in the parent Layout.
     Claim m_claim;

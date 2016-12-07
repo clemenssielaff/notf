@@ -73,11 +73,8 @@ SOURCES += \
     src/core/layout.cpp \
     src/core/layout_root.cpp \
     src/dynamic/layout/stack_layout.cpp \
-    src/core/layout_item.cpp \
-    src/core/object_manager.cpp \
     src/common/claim.cpp \
     src/python/interpreter.cpp \
-    src/core/object.cpp \
     src/graphics/raw_image.cpp \
     src/graphics/texture2.cpp \
     thirdparty/nanovg/nanovg.c \
@@ -111,7 +108,8 @@ SOURCES += \
     src/core/property_impl.cpp \
     src/python/py_foo.cpp \
     src/python/py_notf.cpp \
-    include/core/foo.cpp
+    include/core/foo.cpp \
+    src/core/item.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -122,7 +120,6 @@ HEADERS += \
     include/core/glfw_wrapper.hpp \
     include/common/keyboard.hpp \
     include/core/widget.hpp \
-    include/common/handle.hpp \
     include/common/vector_utils.hpp \
     include/common/log.hpp \
     include/common/debug.hpp \
@@ -154,11 +151,8 @@ HEADERS += \
     include/core/layout_root.hpp \
     include/dynamic/layout/stack_layout.hpp \
     include/common/index.hpp \
-    include/core/layout_item.hpp \
-    include/core/object_manager.hpp \
     include/common/claim.hpp \
     include/python/interpreter.hpp \
-    include/core/object.hpp \
     include/graphics/raw_image.hpp \
     include/graphics/texture2.hpp \
     thirdparty/nanovg/fontstash.h \
@@ -187,6 +181,7 @@ HEADERS += \
     include/python/py_notf.hpp \
     include/core/foo.hpp \
     include/utils/protected_except_for_bindings.hpp \
-    include/utils/make_smart_enabler.hpp
+    include/utils/make_smart_enabler.hpp \
+    include/core/item.hpp
 
 QMAKE_CXX = ccache g++

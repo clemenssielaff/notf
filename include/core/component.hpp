@@ -72,7 +72,7 @@ private: // methods for State
     void _unregister_widget(std::shared_ptr<Widget> widget);
 
 private: // fields
-    /// @brief Handles of all Widgets that use this Component.
+    /// @brief All Widgets that use this Component.
     std::set<std::weak_ptr<Widget>, std::owner_less<std::weak_ptr<Widget>>> m_widgets;
 };
 

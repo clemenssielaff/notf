@@ -1,4 +1,4 @@
-#include "core/layout_item.hpp"
+#include "core/item.hpp"
 
 #include "common/log.hpp"
 #include "core/layout.hpp"
@@ -8,11 +8,13 @@
 
 namespace notf {
 
-LayoutItem::~LayoutItem()
+std::atomic<ItemID> Item::s_nextID(1);
+
+Item::~Item()
 {
 }
 
-bool LayoutItem::has_ancestor(const LayoutItem* ancestor) const
+bool Item::has_ancestor(const Item* ancestor) const
 {
     // invalid LayoutItem can never be an ancestor
     if (!ancestor) {
@@ -32,9 +34,9 @@ bool LayoutItem::has_ancestor(const LayoutItem* ancestor) const
     return false;
 }
 
-std::shared_ptr<Window> LayoutItem::get_window() const
+std::shared_ptr<Window> Item::get_window() const
 {
-    std::shared_ptr<const LayoutItem> it = std::static_pointer_cast<const LayoutItem>(shared_from_this());
+    std::shared_ptr<const Item> it = std::static_pointer_cast<const Item>(shared_from_this());
     while (it->has_parent()) {
         it = it->get_parent();
     }
@@ -45,8 +47,8 @@ std::shared_ptr<Window> LayoutItem::get_window() const
     return root_item->get_window();
 }
 
-LayoutItem::LayoutItem()
-    : Object()
+Item::Item()
+    : m_id(_get_next_id())
     , m_parent()
     , m_visibility(VISIBILITY::VISIBLE)
     , m_size()
@@ -55,7 +57,7 @@ LayoutItem::LayoutItem()
 {
 }
 
-void LayoutItem::_set_visible(const bool is_visible)
+void Item::_set_visible(const bool is_visible)
 {
     // ignore non-changes
     if ((is_visible && m_visibility == VISIBILITY::VISIBLE) || (!is_visible && m_visibility == VISIBILITY::INVISIBLE)) {
@@ -82,7 +84,7 @@ void LayoutItem::_set_visible(const bool is_visible)
         _cascade_visibility(VISIBILITY::INVISIBLE);
     }
 
-    // redraw if the object just became visible or invisible
+    // redraw if the item just became visible or invisible
     if (previous_visibility != m_visibility) {
         if (is_visible) {
             _redraw();
@@ -93,7 +95,7 @@ void LayoutItem::_set_visible(const bool is_visible)
     }
 }
 
-void LayoutItem::_update_parent_layout()
+void Item::_update_parent_layout()
 {
     std::shared_ptr<Layout> parent = m_parent.lock();
     while (parent) {
@@ -110,7 +112,7 @@ void LayoutItem::_update_parent_layout()
     }
 }
 
-bool LayoutItem::_redraw()
+bool Item::_redraw()
 {
     // do not request a redraw, if this item cannot be drawn anyway
     if (!is_visible()) {
@@ -126,7 +128,7 @@ bool LayoutItem::_redraw()
     return true;
 }
 
-void LayoutItem::_set_parent(std::shared_ptr<Layout> parent)
+void Item::_set_parent(std::shared_ptr<Layout> parent)
 {
     // do nothing if the new parent is the same as the old (or both are invalid)
     std::shared_ptr<Layout> old_parent = m_parent.lock();
@@ -136,8 +138,8 @@ void LayoutItem::_set_parent(std::shared_ptr<Layout> parent)
 
     // check for cyclic ancestry
     if (has_ancestor(parent.get())) {
-        log_critical << "Cannot make " << parent->get_handle() << " the parent of " << get_handle()
-                     << " because " << parent->get_handle() << " is already a child of " << get_handle();
+        log_critical << "Cannot make " << parent->get_id() << " the parent of " << get_id()
+                     << " because " << parent->get_id() << " is already a child of " << get_id();
         return;
     }
 
@@ -147,7 +149,7 @@ void LayoutItem::_set_parent(std::shared_ptr<Layout> parent)
     }
 
     m_parent = parent;
-    parent_changed(parent->get_handle());
+    parent_changed(parent->get_id());
 
     // update visibility
     if (!parent) {
@@ -168,7 +170,7 @@ void LayoutItem::_set_parent(std::shared_ptr<Layout> parent)
     }
 }
 
-void LayoutItem::_cascade_visibility(const VISIBILITY visibility)
+void Item::_cascade_visibility(const VISIBILITY visibility)
 {
     // update your own visibility
     if (visibility == m_visibility) {
@@ -179,7 +181,7 @@ void LayoutItem::_cascade_visibility(const VISIBILITY visibility)
     visibility_changed(m_visibility);
 }
 
-void LayoutItem::_get_window_transform(Transform2& result) const
+void Item::_get_window_transform(Transform2& result) const
 {
     if (std::shared_ptr<const Layout> parent = get_parent()) {
         parent->_get_window_transform(result);
@@ -187,10 +189,15 @@ void LayoutItem::_get_window_transform(Transform2& result) const
     result = m_transform * result;
 }
 
-Transform2 LayoutItem::_get_screen_transform() const
+Transform2 Item::_get_screen_transform() const
 {
     log_critical << "get_transform(SPACE::SCREEN) is not emplemented yet";
     return _get_parent_transform();
+}
+
+ItemID Item::_get_next_id()
+{
+    return s_nextID++;
 }
 
 } // namespace notf

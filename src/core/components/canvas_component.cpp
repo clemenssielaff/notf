@@ -16,7 +16,7 @@ CanvasComponent::~CanvasComponent()
 void CanvasComponent::render(const Widget& widget, const RenderContext& context)
 {
     if (!m_paint_func) {
-        log_warning << "Could not render CanvasComponent of Widget " << widget.get_handle();
+        log_warning << "Could not render CanvasComponent of Widget " << widget.get_id();
     }
     Painter painter(&widget, &context);
     try {

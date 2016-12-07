@@ -6,7 +6,7 @@
 
 namespace notf {
 
-class LayoutItem;
+class Item;
 struct RenderContext;
 class Widget;
 class Window;
@@ -67,7 +67,7 @@ public: // methods
     void render(const RenderContext& context);
 
 private: // methods
-    void _iterate_layout_hierarchy(const LayoutItem* layout_item, RenderLayer* parent_layer);
+    void _iterate_layout_hierarchy(const Item* layout_item, RenderLayer* parent_layer);
 
 private: // fields
     /** The Window owning this RenderManager. */

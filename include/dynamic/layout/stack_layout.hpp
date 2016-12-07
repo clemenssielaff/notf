@@ -30,7 +30,7 @@ public: // methods
     virtual ~StackLayoutIterator() = default;
 
     /** Advances the Iterator one step, returns the next LayoutItem or nullptr if the iteration has finished. */
-    virtual const LayoutItem* next() override;
+    virtual const Item* next() override;
 
 private: // fields
     /** StackLayout that is iterated over. */
@@ -104,7 +104,7 @@ public: // methods
     /** Adds a new LayoutItem into the Layout.
      * @param item  Item to place at the end of the Layout. If the item is already a child, it is moved.
      */
-    void add_item(std::shared_ptr<LayoutItem> item);
+    void add_item(std::shared_ptr<Item> item);
 
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
 
@@ -129,7 +129,7 @@ protected_except_for_bindings: // methods
 protected: // methods
     virtual bool _update_claim() override;
 
-    virtual void _remove_item(const LayoutItem* item) override;
+    virtual void _remove_item(const Item* item) override;
 
     virtual void _relayout() override;
 
@@ -140,7 +140,7 @@ private: // methods
      * @param main_offset   Start offset of the first item in the main axis.
      * @param cross_offset  Start offset of the first item in the cross axis.
      */
-    void _layout_stack(const std::vector<LayoutItem*>& stack, const Size2f total_size, const float main_offset, const float cross_offset);
+    void _layout_stack(const std::vector<Item*>& stack, const Size2f total_size, const float main_offset, const float cross_offset);
 
 private: // fields
     /** Direction in which the StackLayout is stacked. */
@@ -168,7 +168,7 @@ private: // fields
     float m_cross_spacing;
 
     /** All items in this Layout in order. */
-    std::vector<LayoutItem*> m_items;
+    std::vector<Item*> m_items;
 };
 
 } // namespace notf

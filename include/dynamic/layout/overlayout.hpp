@@ -30,7 +30,7 @@ public: // methods
     virtual ~OverlayoutIterator() = default;
 
     /** Advances the Iterator one step, returns the next LayoutItem or nullptr if the iteration has finished. */
-    virtual const LayoutItem* next() override;
+    virtual const Item* next() override;
 
 private: // fields
     /** Overlayout that is iterated over. */
@@ -65,7 +65,7 @@ public: // methods
     /** Adds a new LayoutItem into the Layout.
      * @param item     Item to place at the front end of the Layout. If the item is already a child, it is moved.
      */
-    void add_item(std::shared_ptr<LayoutItem> item);
+    void add_item(std::shared_ptr<Item> item);
 
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
 
@@ -82,7 +82,7 @@ public: // methods
 protected: // methods
     virtual bool _update_claim() override { return false; } // the Overlayout brings its own Claim to the table
 
-    virtual void _remove_item(const LayoutItem* item) override;
+    virtual void _remove_item(const Item* item) override;
 
     virtual void _relayout() override;
 
@@ -91,7 +91,7 @@ private: // fields
     Padding m_padding;
 
     /** All items in this Layout in order. */
-    std::vector<LayoutItem*> m_items;
+    std::vector<Item*> m_items;
 };
 
 } // namespace notf

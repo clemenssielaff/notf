@@ -9,14 +9,14 @@ namespace notf {
 Layout::~Layout()
 {
     // explicitly unparent all children so they can send the `parent_changed` signal
-    for (std::shared_ptr<LayoutItem>& child : m_children) {
+    for (std::shared_ptr<Item>& child : m_children) {
         child->_unparent();
     }
 }
 
-bool Layout::has_item(const std::shared_ptr<LayoutItem>& candidate) const
+bool Layout::has_item(const std::shared_ptr<Item>& candidate) const
 {
-    for (const std::shared_ptr<LayoutItem>& child : m_children) {
+    for (const std::shared_ptr<Item>& child : m_children) {
         if (child == candidate) {
             return true;
         }
@@ -24,28 +24,28 @@ bool Layout::has_item(const std::shared_ptr<LayoutItem>& candidate) const
     return false;
 }
 
-void Layout::_add_child(std::shared_ptr<LayoutItem> item)
+void Layout::_add_child(std::shared_ptr<Item> item)
 {
     if (std::find(m_children.begin(), m_children.end(), item) != m_children.end()) {
-        log_warning << "Did not add existing child " << item->get_handle() << " to LayoutItem " << get_handle();
+        log_warning << "Did not add existing child " << item->get_id() << " to LayoutItem " << get_id();
         return;
     }
     item->_set_parent(std::static_pointer_cast<Layout>(shared_from_this()));
-    const Handle child_handle = item->get_handle();
+    const ItemID child_id = item->get_id();
     m_children.emplace_back(std::move(item));
-    child_added(child_handle);
+    child_added(child_id);
 }
 
-void Layout::_remove_child(const LayoutItem* item)
+void Layout::_remove_child(const Item* item)
 {
     auto it = std::find(m_children.begin(), m_children.end(), item->shared_from_this());
     if (it == m_children.end()) {
-        log_critical << "Failed to remove unknown child " << item->get_handle() << " from LayoutItem " << get_handle();
+        log_critical << "Failed to remove unknown child " << item->get_id() << " from LayoutItem " << get_id();
         return;
     }
     _remove_item(item);
     m_children.erase(it);
-    child_removed(item->get_handle());
+    child_removed(item->get_id());
 }
 
 void Layout::_cascade_visibility(const VISIBILITY visibility)
@@ -53,10 +53,10 @@ void Layout::_cascade_visibility(const VISIBILITY visibility)
     if (visibility == get_visibility()) {
         return;
     }
-    LayoutItem::_cascade_visibility(visibility);
+    Item::_cascade_visibility(visibility);
 
     // update your children's visiblity
-    for (std::shared_ptr<LayoutItem>& child : m_children) {
+    for (std::shared_ptr<Item>& child : m_children) {
         if (child->get_visibility() != VISIBILITY::INVISIBLE) {
             if (get_visibility() == VISIBILITY::INVISIBLE) {
                 child->_cascade_visibility(VISIBILITY::HIDDEN);
@@ -70,7 +70,7 @@ void Layout::_cascade_visibility(const VISIBILITY visibility)
 
 bool Layout::_set_size(const Size2f size)
 {
-    if(LayoutItem::_set_size(size)){
+    if(Item::_set_size(size)){
         _relayout();
         return true;
     }

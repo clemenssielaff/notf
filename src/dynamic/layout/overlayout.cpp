@@ -8,7 +8,7 @@
 
 namespace notf {
 
-const LayoutItem* OverlayoutIterator::next()
+const Item* OverlayoutIterator::next()
 {
     if (m_index >= m_layout->m_items.size()) {
         return nullptr;
@@ -28,7 +28,7 @@ void Overlayout::set_padding(const Padding& padding)
     }
 }
 
-void Overlayout::add_item(std::shared_ptr<LayoutItem> item)
+void Overlayout::add_item(std::shared_ptr<Item> item)
 {
     // if the item is already child of this Layout, place it at the end
     if (has_item(item)) {
@@ -51,7 +51,7 @@ std::unique_ptr<LayoutIterator> Overlayout::iter_items() const
     return std::make_unique<MakeSmartEnabler<OverlayoutIterator>>(this);
 }
 
-void Overlayout::_remove_item(const LayoutItem* item)
+void Overlayout::_remove_item(const Item* item)
 {
     auto it = std::find(m_items.begin(), m_items.end(), item);
     assert(it != m_items.end());
@@ -62,7 +62,7 @@ void Overlayout::_relayout()
 {
     const Size2f total_size = get_size();
     const Size2f effective_size = {total_size.width - m_padding.width(), total_size.height - m_padding.height()};
-    for (LayoutItem* item : m_items) {
+    for (Item* item : m_items) {
         _set_item_transform(item, Transform2::translation({m_padding.left, m_padding.top}));
         _set_item_size(item, std::move(effective_size));
     }

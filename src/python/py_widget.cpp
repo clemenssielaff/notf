@@ -14,5 +14,5 @@ void produce_widget(pybind11::module& module, py::detail::generic_type ancestor)
 
     Py_Widget.def(py::init<std::shared_ptr<StateMachine>>());
 
-    Py_Widget.def("get_handle", &Widget::get_handle, "The Application-unique Handle of this Widget.");
+    Py_Widget.def("get_id", &Widget::get_id, "The application-unique ID of this Widget.");
 }

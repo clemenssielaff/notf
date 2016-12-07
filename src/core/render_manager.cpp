@@ -86,7 +86,7 @@ void RenderManager::render(const RenderContext& context)
     m_is_clean = true;
 }
 
-void RenderManager::_iterate_layout_hierarchy(const LayoutItem* layout_item, RenderLayer* parent_layer)
+void RenderManager::_iterate_layout_hierarchy(const Item* layout_item, RenderLayer* parent_layer)
 {
     assert(layout_item);
     assert(parent_layer);
@@ -111,7 +111,7 @@ void RenderManager::_iterate_layout_hierarchy(const LayoutItem* layout_item, Ren
     // otherwise start a recursive iteration of the Layout
     else if (const Layout* layout = dynamic_cast<const Layout*>(layout_item)) {
         std::unique_ptr<LayoutIterator> it = layout->iter_items();
-        while (const LayoutItem* child_item = it->next()) {
+        while (const Item* child_item = it->next()) {
             _iterate_layout_hierarchy(child_item, current_layer);
         }
     }

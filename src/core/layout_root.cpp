@@ -4,17 +4,17 @@
 
 #include "common/log.hpp"
 #include "common/transform2.hpp"
-#include "core/layout_item.hpp"
+#include "core/item.hpp"
 #include "core/render_manager.hpp"
 #include "core/window.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 namespace notf {
 
-const LayoutItem* LayoutRootIterator::next()
+const Item* LayoutRootIterator::next()
 {
     if (m_layout) {
-        const LayoutItem* result = m_layout->_get_item();
+        const Item* result = m_layout->_get_item();
         m_layout = nullptr;
         return result;
     }
@@ -26,7 +26,7 @@ std::shared_ptr<Window> LayoutRoot::get_window() const
     return m_window->shared_from_this();
 }
 
-void LayoutRoot::set_item(std::shared_ptr<LayoutItem> item)
+void LayoutRoot::set_item(std::shared_ptr<Item> item)
 {
     // remove the existing item first
     if (!is_empty()) {
@@ -71,7 +71,7 @@ void LayoutRoot::_relayout()
     }
 }
 
-LayoutItem* LayoutRoot::_get_item() const
+Item* LayoutRoot::_get_item() const
 {
     if (is_empty()) {
         return nullptr;

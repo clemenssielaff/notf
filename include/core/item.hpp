@@ -1,12 +1,12 @@
 #pragma once
 
 #include <assert.h>
+#include <atomic>
 #include <memory>
 
 #include "common/signal.hpp"
 #include "common/size2f.hpp"
 #include "common/transform2.hpp"
-#include "core/object.hpp"
 
 
 /*
@@ -62,12 +62,15 @@ enum class Space : unsigned char {
     SCREEN, // returns transform in screen coordinates, relative to the screen origin
 };
 
+/** Unqiue identification token of an Item. */
+using ItemID = size_t;
+
 /**********************************************************************************************************************/
 
 /** A LayoutItem is an abstraction of an item in the Layout hierarchy.
  * Both Widget and all Layout subclasses inherit from it.
  */
-class LayoutItem : public Object, public Signaler<LayoutItem> {
+class Item : public Signaler<Item>, public std::enable_shared_from_this<Item> {
 
     friend class Layout;
     friend class Widget;
@@ -79,8 +82,15 @@ public: // abstract methods
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) = 0;
 
 public: // methods
+    /// no copy / assignment
+    Item(const Item&) = delete;
+    Item& operator=(const Item&) = delete;
+
     /// @brief Virtual destructor.
-    virtual ~LayoutItem() override;
+    virtual ~Item();
+
+    /** Application-unique ID of this Item. */
+    ItemID get_id() const { return m_id; }
 
     /// @brief Returns true iff this LayoutItem has a parent
     bool has_parent() const { return !m_parent.expired(); }
@@ -88,7 +98,7 @@ public: // methods
     /// @brief Tests, if this LayoutItem is a descendant of the given `ancestor`.
     /// @param ancestor Potential ancestor (non-onwing pointer is used for identification only).
     /// @return True iff `ancestor` is an ancestor of this LayoutItem, false otherwise.
-    bool has_ancestor(const LayoutItem* ancestor) const;
+    bool has_ancestor(const Item* ancestor) const;
 
     /// @brief Returns the parent LayoutItem containing this LayoutItem, may be invalid.
     std::shared_ptr<const Layout> get_parent() const { return m_parent.lock(); }
@@ -144,8 +154,8 @@ public: // methods
 
 public: // signals
     /// @brief Emitted when this LayoutItem got a new parent.
-    /// @param Handle of the new parent.
-    Signal<Handle> parent_changed;
+    /// @param ItemID of the new parent.
+    Signal<ItemID> parent_changed;
 
     /// @brief Emitted, when the visibility of this LayoutItem has changed.
     /// @param New visiblity.
@@ -160,7 +170,7 @@ public: // signals
     Signal<Transform2> transform_changed;
 
 protected: // methods
-    explicit LayoutItem();
+    explicit Item();
 
     /// @brief Shows (if possible) or hides this LayoutItem.
     void _set_visible(const bool is_visible);
@@ -197,10 +207,10 @@ protected: // methods
 
 protected: // static methods
     /** Allows any LayoutItem subclass to call _set_size on any other LayoutItem. */
-    static void _set_item_size(LayoutItem* item, const Size2f size) { item->_set_size(std::move(size)); }
+    static void _set_item_size(Item* item, const Size2f size) { item->_set_size(std::move(size)); }
 
     /** Allows any LayoutItem subclass to call _set_item_transform on any other LayoutItem. */
-    static void _set_item_transform(LayoutItem* item, const Transform2 transform)
+    static void _set_item_transform(Item* item, const Transform2 transform)
     {
         item->_set_transform(std::move(transform));
     }
@@ -230,7 +240,16 @@ private: // methods
     /// @brief Returns the LayoutItem's transformation in parent space.
     Transform2 _get_parent_transform() const { return m_transform; }
 
+private: // static methods
+    /** Returns the next, free ItemID.
+     * Is thread-safe.
+     */
+    ItemID _get_next_id();
+
 private: // fields
+    /** Application-unique ID of this Item. */
+    const ItemID m_id;
+
     /// @brief The parent LayoutItem, may be invalid.
     std::weak_ptr<Layout> m_parent;
 
@@ -247,6 +266,10 @@ private: // fields
      * An empty pointer means that this item inherits its render layer from its parent.
      */
     std::shared_ptr<RenderLayer> m_render_layer;
+
+private: // static fields
+    /** The next available Item ID, is ever-increasing. */
+    static std::atomic<ItemID> s_nextID;
 };
 
 } // namespace notf

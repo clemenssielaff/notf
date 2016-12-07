@@ -4,21 +4,22 @@
 #include <iostream>
 
 #include "pybind11/functional.h"
-using namespace pybind11::literals;
+#include "pybind11/pybind11.h"
+namespace py = pybind11;
+using namespace py::literals;
 
 #include "common/log.hpp"
 #include "common/string_utils.hpp"
 #include "core/application.hpp"
+#include "core/foo.hpp"
 #include "python/py_notf.hpp"
 #include "utils/enum_to_number.hpp"
-#include "core/foo.hpp"
 
 namespace notf {
 
 PythonInterpreter::PythonInterpreter(char* argv[], const std::string& app_directory)
     : m_program(Py_DecodeLocale(argv[0], nullptr))
     , m_app_directory(app_directory)
-    , m_object_cache()
 {
     // prepare the interpreter
     if (!m_program) {
@@ -43,7 +44,6 @@ PythonInterpreter::PythonInterpreter(char* argv[], const std::string& app_direct
 
 PythonInterpreter::~PythonInterpreter()
 {
-    m_object_cache.release();
     Py_Finalize();
     PyMem_RawFree(m_program);
     log_trace << "Closed Python interpreter";
@@ -58,22 +58,28 @@ void PythonInterpreter::parse_app(const std::string& filename)
         return;
     }
 
-    m_object_cache.clear();
     FooCollector().clear_the_foos();
-    py::object globals = _build_globals(absolute_path);
+
+    py::object globals = py::dict(
+        "__builtins__"_a = py::handle(PyEval_GetBuiltins()),
+        "__name__"_a = py::str("__main__"),
+        "__package__"_a = py::none(),
+        "__doc__"_a = py::none(),
+        "__spec__"_a = py::none(),
+        "__loader__"_a = py::none(),
+        "__file__"_a = py::str(filename.c_str()));
     if (!globals.check()) {
         log_critical << "Failed to build the 'globals' dictionary!";
         std::fclose(fp);
         return;
     }
 
-    static const std::string restore_original_modules_command =
-            "modules_to_remove = []\n"
-            "for module in sys.modules.keys():\n"
-            "    if not module in sys._original_modules:\n"
-            "        modules_to_remove.append(module)\n"
-            "for module in modules_to_remove:\n"
-            "    del(sys.modules[module])\n";
+    static const std::string restore_original_modules_command = "modules_to_remove = []\n"
+                                                                "for module in sys.modules.keys():\n"
+                                                                "    if not module in sys._original_modules:\n"
+                                                                "        modules_to_remove.append(module)\n"
+                                                                "for module in modules_to_remove:\n"
+                                                                "    del(sys.modules[module])\n";
     PyRun_SimpleString(restore_original_modules_command.c_str());
 
     py::object _(PyRun_FileEx(fp, absolute_path.c_str(), Py_file_input, globals.ptr(), globals.ptr(),
@@ -86,20 +92,6 @@ void PythonInterpreter::parse_app(const std::string& filename)
     }
 
     log_trace << "Reparsed app code from: " << absolute_path;
-}
-
-py::object PythonInterpreter::_build_globals(const std::string& filename) const
-{
-    py::dict globals = py::dict(
-        "__builtins__"_a = py::handle(PyEval_GetBuiltins()),
-        "__name__"_a = py::str("__main__"),
-        "__package__"_a = py::none(),
-        "__doc__"_a = py::none(),
-        "__spec__"_a = py::none(),
-        "__loader__"_a = py::none(),
-        "__file__"_a = py::str(filename.c_str()),
-        "__object_cache"_a = m_object_cache);
-    return globals;
 }
 
 } // namespace notf
