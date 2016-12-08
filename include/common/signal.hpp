@@ -8,31 +8,29 @@
 
 namespace notf {
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/**********************************************************************************************************************/
 
-/// @brief A connection between a signal and a callback.
+/** A connection between a signal and a callback. */
 struct Connection {
 
     template <typename...>
     friend class Signal;
 
 private: //struct
-    /// @brief Data block shared by two Connection instances.
+    /** Data block shared by two Connection instances. */
     struct Data {
-        /// @brief Is the connection still active?
-        bool is_connected{true};
+        /** Is the connection still active? */
+        bool is_connected = true;
     };
 
 private: // methods for Signal
-    /// @brief Value constructor.
-    ///
-    /// @param data Shared Connection data block.
+    /** @param data Shared Connection data block. */
     Connection(std::shared_ptr<Data> data)
         : m_data(std::move(data))
     {
     }
 
-    /// @brief Creates a new, default constructed Connections object.
+    /** Creates a new, default constructed Connection object. */
     static Connection make_connection()
     {
         return Connection(std::make_shared<Data>());
@@ -44,14 +42,12 @@ public: // methods
     Connection(Connection&&) = default;
     Connection& operator=(Connection&&) = default;
 
-    /// @brief Check if the connection is alive.
-    ///
-    /// @return True if the connection is alive.
+    /** Check if the connection is alive. */
     bool is_connected() const { return m_data && m_data->is_connected; }
 
-    /// @brief Breaks this Connection.
-    ///
-    /// After calling this function, future signals will not be delivered.
+    /** Breaks this Connection.
+     * After calling this function, future signals will not be delivered.
+     */
     void disconnect()
     {
         if (!m_data) {
@@ -61,39 +57,34 @@ public: // methods
     }
 
 private: // fields
-    /// @brief Data block shared by two Connection instances.
+    /** Data block shared by two Connection instances. */
     std::shared_ptr<Data> m_data;
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/**********************************************************************************************************************/
 
-/// @brief Manager class owned by instances that have methods connected to Signals.
-///
-/// The Callback Manager tracks all Connections representing Signal Targets to a member function of an object,
-/// and disconnects them when that object goes out of scope.
-/// The Callback Manager member should be placed at the end of the class definition, so it is destructed before any other.
-/// This way, all data required for the last remaining calls to finish is still valid.
-/// If used within a class hierarchy, the most specialized class has the responsibility to disconnect all of its base
-/// class' Signals before destroying any other members.
+/** Manager object owned by objects that receive Signals.
+ * The CallbackManager tracks all incoming Connections to member functions of the owner and disconnects them, when the
+ * owner is destructed.
+ */
 class CallbackManager {
 
 public: // methods
-    /// @brief Default Constructor.
     CallbackManager() = default;
 
+    ~CallbackManager() { disconnect_all(); }
+
+    // no copy, move & -assignment
     CallbackManager(const CallbackManager&) = delete;
     CallbackManager& operator=(const CallbackManager&) = delete;
     CallbackManager(CallbackManager&&) = delete;
     CallbackManager& operator=(CallbackManager&&) = delete;
 
-    /// @brief Destructor.
-    ~CallbackManager() { disconnect_all(); }
-
-    /// @brief Creates and tracks a new Connection between the Signal and a lambda or free function.
-    ///
-    /// @brief signal       The Signal to connect to.
-    /// @brief lambda       Function object (lambda / free function) to call.
-    /// @brief test_func    (optional) Test function.
+    /** Creates and tracks a new Connection between the Signal and a lambda or free function.
+     * @brief signal       The Signal to connect to.
+     * @brief lambda       Function object (lambda / free function) to call.
+     * @brief test_func    (optional) Test function.
+     */
     template <typename SIGNAL, typename... ARGS>
     void connect(SIGNAL& signal, ARGS&&... args)
     {
@@ -101,7 +92,7 @@ public: // methods
         m_connections.emplace_back(std::move(connection));
     }
 
-    /// @brief Disconnects all tracked Connections.
+    /** Disconnects all tracked Connections. */
     void disconnect_all()
     {
         for (Connection& connection : m_connections) {
@@ -111,20 +102,20 @@ public: // methods
     }
 
 private: // fields
-    /// @brief All managed Connections.
+    /** All managed Connections. */
     std::vector<Connection> m_connections;
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/**********************************************************************************************************************/
 
-/// @brief An object capable of firing (emitting) signals to connected targets.
+/** An object capable of firing (emitting) signals to connected targets. */
 template <typename... SIGNATURE>
 class Signal {
 
     friend class CallbackManager;
 
 private: // struct
-    /// @brief Connection and target function pair.
+    /** Connection and target function pair. */
     struct Target {
         Target(Connection connection, std::function<void(SIGNATURE...)> function,
                std::function<bool(SIGNATURE...)> test_function = [](SIGNATURE...) { return true; })
@@ -134,66 +125,51 @@ private: // struct
         {
         }
 
-        /// @brief Connection through which the Callback is performed.
+        /** Connection through which the Callback is performed. */
         Connection connection;
 
-        /// @brief Callback function.
+        /** Callback function. */
         std::function<void(SIGNATURE...)> function;
 
-        /// @brief The signal is only passed over this Connection if this function evaluates to true.
+        /** The signal is only passed over this Connection if this function evaluates to true. */
         std::function<bool(SIGNATURE...)> test_function;
     };
 
 public: // methods
-    /// @brief Default constructor.
-    Signal()
-        : m_targets()
-    {
-    }
+    Signal() = default;
 
+    // no copy / assignment
     Signal(const Signal&) = delete;
     Signal& operator=(const Signal&) = delete;
 
-    /// @brief Destructor.
     ~Signal() { disconnect_all(); }
 
-    /// @brief Move Constructor.
-    ///
-    /// @param other
+    /** Move Constructor. */
     Signal(Signal&& other) noexcept
         : m_targets(std::move(other.m_targets))
     {
     }
 
-    /// @brief RValue assignment Operator.
-    ///
-    /// @param other
-    ///
-    /// @return This instance.
+    /** RValue assignment Operator. */
     Signal& operator=(Signal&& other) noexcept
     {
         m_targets = std::move(other.m_targets);
         return *this;
     }
 
-    /// @brief Connects a new target to this Signal.
-    ///
-    /// Existing but disconnected Connections are purged before the new target is connected.
-    ///
-    /// @param function     Target function.
-    /// @param test_func    (optional) Test function. Target is always called when empty.
-    ///
-    /// @return The created Connection.
+    /** Connects a new target to this Signal.
+     * Existing but disconnected Connections are removed before the new target is connected.
+     * @param function     Target function.
+     * @param test_func    (optional) Test function. Target is always called when empty.
+     * @return             The created Connection.
+     */
     Connection connect(std::function<void(SIGNATURE...)> function,
                        std::function<bool(SIGNATURE...)> test_func = {})
     {
         assert(function);
 
-        // create a new target vector (will be filled in with
-        // the existing and still active targets within the lock below)
+        // save existing and connected targets
         auto new_targets = std::vector<Target>();
-
-        // copy existing, connected targets
         new_targets.reserve(m_targets.size() + 1);
         for (const auto& target : m_targets) {
             if (target.connection.is_connected()) {
@@ -201,7 +177,7 @@ public: // methods
             }
         }
 
-        // add the new connection to the new vector
+        // add the new connection
         Connection connection = Connection::make_connection();
         if (test_func) {
             new_targets.emplace_back(connection, std::move(function), std::move(test_func));
@@ -210,26 +186,23 @@ public: // methods
             new_targets.emplace_back(connection, std::move(function));
         }
 
-        // replace the stored targets
         std::swap(m_targets, new_targets);
-
         return connection;
     }
 
-    /// @brief Disconnect all Connections from this Signal.
+    /** Disconnect all Connections from this Signal. */
     void disconnect_all()
     {
-        // disconnect all callbacks
         for (auto& target : m_targets) {
             target.connection.disconnect();
         }
     }
 
-    /// @brief Fires (emits) the signal.
-    ///
-    /// Arguments to this function are passed to the connected callbacks and must match the signature with which the
-    /// Signal instance was defined.
-    /// Build-in type casting works as expected (float -> int etc.).
+    /** Fires (emits) the signal.
+     * Arguments to this function are passed to the connected callbacks and must match the signature with which the
+     * Signal instance was defined.
+     * Build-in type casting works as expected (float -> int etc.).
+     */
     template <typename... ARGUMENTS>
     void operator()(ARGUMENTS&&... args) const
     {
@@ -241,14 +214,13 @@ public: // methods
         }
     }
 
-private: // methods for Connections
-    /// @brief Overload of connect() to connect to member functions.
-    ///
-    /// Creates and stores a lambda function to access the member.
-    ///
-    /// @param obj          Instance providing the callback.
-    /// @param method       Address of the method.
-    /// @param test_func    (optional) Test function. Callback is always called when empty.
+private: // methods for Connection
+    /** Overload of connect() to connect to member functions.
+     * Creates and stores a lambda function to access the member.
+     * @param obj          Instance providing the callback.
+     * @param method       Address of the method.
+     * @param test_func    (optional) Test function. Callback is always called when empty.
+     */
     template <typename OBJ>
     Connection connect(OBJ* obj, void (OBJ::*method)(SIGNATURE... args), std::function<bool(SIGNATURE...)>&& test_func = {})
     {
@@ -260,20 +232,22 @@ private: // methods for Connections
     }
 
 private: // fields
-    /// @brief All targets of this Signal.
+    /** All targets of this Signal. */
     std::vector<Target> m_targets;
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/**********************************************************************************************************************/
 
-/// @brief Full specialization for Signals that require no arguments.
+/** Full specialization for Signals that require no arguments.
+ * Since they don't have a test-function, emitting Signals without arguments is about 1/3 faster than those with args.
+ */
 template <>
 class Signal<> {
 
     friend class CallbackManager;
 
 private: // struct
-    /// @brief Connection and target function pair.
+    /** Connection and target function pair. */
     struct Target {
         Target(Connection connection, std::function<void()> function)
             : connection(std::move(connection))
@@ -281,64 +255,45 @@ private: // struct
         {
         }
 
-        /// @brief Connection through which the Callback is performed.
+        /** Connection through which the Callback is performed. */
         Connection connection;
 
-        /// @brief Callback function.
+        /** Callback function. */
         std::function<void()> function;
     };
 
 public: // methods
-    /// @brief Default constructor.
-    Signal()
-        : m_targets()
-    {
-    }
+    Signal() = default;
 
-    /// @brief Destructor.
-    ~Signal()
-    {
-        disconnect_all();
-    }
+    ~Signal() { disconnect_all(); }
 
     Signal(const Signal&) = delete;
     Signal& operator=(const Signal&) = delete;
 
-    /// @brief Move Constructor.
-    ///
-    /// @param other
+    /** Move Constructor. */
     Signal(Signal&& other) noexcept
         : m_targets(std::move(other.m_targets))
     {
     }
 
-    /// @brief RValue assignment Operator.
-    ///
-    /// @param other
-    ///
-    /// @return This instance.
+    /** RValue assignment Operator. */
     Signal& operator=(Signal&& other) noexcept
     {
         m_targets = std::move(other.m_targets);
         return *this;
     }
 
-    /// @brief Connects a new target to this Signal.
-    ///
-    /// Existing but disconnected Connections are purged before the new target is connected.
-    ///
-    /// @param function     Target function.
-    ///
-    /// @return The created Connection.
+    /** Connects a new target to this Signal.
+     * Existing but disconnected Connections are removed before the new target is connected.
+     * @param function     Target function.
+     * @return             The created Connection.
+     */
     Connection connect(std::function<void()> function)
     {
         assert(function);
 
-        // create a new target vector (will be filled in with
-        // the existing and still active targets within the lock below)
+        // save existing and connected targets
         auto new_targets = std::vector<Target>();
-
-        // copy existing, connected targets
         new_targets.reserve(m_targets.size() + 1);
         for (const auto& target : m_targets) {
             if (target.connection.is_connected()) {
@@ -346,26 +301,23 @@ public: // methods
             }
         }
 
-        // add the new connection to the new vector
+        // add the new connection
         Connection connection = Connection::make_connection();
         new_targets.emplace_back(connection, std::move(function));
 
-        // replace the stored targets
         std::swap(m_targets, new_targets);
-
         return connection;
     }
 
-    /// @brief Disconnect all Connections from this Signal.
+    /** Disconnect all Connections from this Signal. */
     void disconnect_all()
     {
-        // disconnect all callbacks
         for (auto& target : m_targets) {
             target.connection.disconnect();
         }
     }
 
-    /// @brief Fires (emits) the signal.
+    /** Fires (emits) the signal. */
     void operator()() const
     {
         for (auto& target : m_targets) {
@@ -376,14 +328,12 @@ public: // methods
         }
     }
 
-private: // methods for Connections
-    /// @brief Overload of connect() to connect to member functions.
-    ///
-    /// Creates and stores a lambda function to access the member.
-    ///
-    /// @param obj          Instance providing the callback.
-    /// @param method       Address of the method.
-    /// @param test_func    (optional) Test function. Callback is always called when empty.
+private: // methods for Connection
+    /** Overload of connect() to connect to member functions.
+     * Creates and stores a lambda function to access the member.
+     * @param obj          Instance providing the callback.
+     * @param method       Address of the method.
+     */
     template <typename OBJ>
     Connection connect(OBJ* obj, void (OBJ::*method)())
     {
@@ -393,119 +343,34 @@ private: // methods for Connections
     }
 
 private: // fields
-    /// @brief All targets of this Signal.
+    /** All targets of this Signal. */
     std::vector<Target> m_targets;
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/**********************************************************************************************************************/
 
-/// @brief Curiously recurring template pattern mixin class to provide Signals to SUBCLASS.
+/** Curiously recurring template pattern mixin class to provide Signals to SUBCLASS. */
 template <typename SUBCLASS>
 class Signaler {
 
 public: // methods
-    /// @brief Creates a connection managed by the object connecting the given signal to a function object.
+    /** Creates a connection managed by the object connecting the given signal to a function object. */
     template <typename SIGNAL, typename... ARGS>
     void connect(SIGNAL& signal, ARGS&&... args) { m_callback_manager.connect(signal, std::forward<ARGS>(args)...); }
 
-    /// @brief Creates a Connection connecting the given Signal to a member function of this Object.
+    /** Creates a Connection connecting the given Signal to a member function of this Object. */
     template <typename SIGNAL, typename... SIGNATURE, typename... TEST_FUNC>
     void connect(SIGNAL& signal, void (SUBCLASS::*method)(SIGNATURE...), TEST_FUNC&&... test_func)
     {
         m_callback_manager.connect(signal, this, std::forward<decltype(method)>(method), std::forward<TEST_FUNC>(test_func)...);
     }
 
-    /// @brief Disconnects all Signals from Connections managed by this object.
+    /** Disconnects all Signals from Connections managed by this object. */
     void disconnect_all() { m_callback_manager.disconnect_all(); }
 
 private: // fields
-    // @brief Callback manager owning one half of the Signals' Connections.
+    /** Callback manager owning one half of the Signals' Connections. */
     CallbackManager m_callback_manager;
 };
 
 } // namespace notf
-
-#if 0
-#include <chrono>
-#include <iostream>
-
-#include "signal.hpp"
-using namespace notf;
-
-using Clock = std::chrono::high_resolution_clock;
-using std::chrono::milliseconds;
-
-/// @brief Free signal receiver.
-/// @param value    Value to add
-void freeCallback(uint value)
-{
-    static ulong counter = 0;
-    counter += value;
-}
-
-void emptyCallback()
-{
-    static ulong counter = 0;
-    counter += 1;
-}
-
-/// @brief Free signal receiver for testing values.
-/// @param value    Value to print
-void freePrintCallback(uint value)
-{
-    std::cout << "Free print callback: " << value << "\n";
-}
-
-/// @brief Simple class with a signal.
-class Sender {
-public:
-    void setValue(uint value) { valueChanged(value); }
-    void fireEmpty() { emptySignal(); }
-    Signal<uint> valueChanged;
-    Signal<> emptySignal;
-};
-
-/// @brief Simple receiver class providing two slots.
-class Receiver : public Signaler<Receiver>{
-public:
-    void memberCallback(uint value) { counter += value; }
-    void memberPrintCallback(uint value) { std::cout << "valueChanged: " << value << "\n"; }
-    ulong counter = 0;
-};
-
-int main()
-{
-    ulong REPETITIONS = 10000000;
-
-    Sender sender;
-    //    sender.counterIncreased.connect(freeCallback);
-    sender.emptySignal.connect(emptyCallback);
-
-    Receiver receiver;
-    receiver.connect(sender.valueChanged, &Receiver::memberCallback);
-
-    Clock::time_point t0 = Clock::now();
-    for (uint i = 0; i < REPETITIONS; ++i) {
-        sender.setValue(1);
-        sender.fireEmpty();
-        emptyCallback();
-    }
-    Clock::time_point t1 = Clock::now();
-
-    milliseconds ms = std::chrono::duration_cast<milliseconds>(t1 - t0);
-    auto time_delta = ms.count();
-    if (time_delta == 0) {
-        time_delta = 1;
-    }
-    ulong throughput = REPETITIONS / static_cast<ulong>(time_delta);
-
-    std::cout << "Throughput with " << REPETITIONS << " repetitions: " << throughput << "/ms" << std::endl;
-    // throughput is <= 333333/ms on a release build with a single receiver and 10000000 repetitions, single-threaded, no arguments
-    // throughput is <= 200000/ms on a release build with a single receiver and 10000000 repetitions, single-threaded, argument
-    // throughput is <=  58850/ms on a release build with a single receiver and 10000000 repetitions, multi-threaded, no arguments
-    // throughput is <=  55555/ms on a release build with a single receiver and 10000000 repetitions, multi-threaded, argument
-
-    return 0;
-}
-
-#endif

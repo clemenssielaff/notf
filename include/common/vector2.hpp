@@ -55,15 +55,15 @@ struct Vector2 {
     //  INSPECTION  ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @brief Checks, if this Vector2 is the zero vector.
-    bool is_zero() const { return x == 0 && y == 0; }
+    bool is_zero() const { return x == approx(0, 0) && y == approx(0, 0); }
 
     /// @brief Checks, if this Vector2 is approximately the zero vector.
     ///
     /// @param epsilon  A difference <= epsilon is considered equal.
-    bool is_zero(float epsilon) const { return (approx(x, 0, epsilon) && approx(y, 0, epsilon)); }
+    bool is_zero(float epsilon) const { return x == approx(0, epsilon) && y == approx(0, epsilon); }
 
     /// @brief Checks whether this Vector2 is of unit magnitude.
-    bool is_unit() const { return approx(magnitude_sq(), 1); }
+    bool is_unit() const { return magnitude_sq() == approx(1); }
 
     /// @brief Checks whether this Vector2 is parallel to other.
     ///
@@ -77,7 +77,7 @@ struct Vector2 {
     /// The zero-Vector is orthogonal to every Vector2.
     ///
     /// @param other    Vector2 to test against.
-    bool is_orthogonal_to(const Vector2& other) const { return approx(dot(other), 0); }
+    bool is_orthogonal_to(const Vector2& other) const { return dot(other) == approx(0); }
 
     /// @brief The angle in radians between the positive x-axis and the point given by this Vector2.
     ///
@@ -95,12 +95,12 @@ struct Vector2 {
         const float squaredMagnitudeProduct = magnitude_sq() * other.magnitude_sq();
 
         // one or both are zero
-        if (approx(squaredMagnitudeProduct, 0)) {
+        if (squaredMagnitudeProduct == approx(0)) {
             return 0;
         }
 
         // both are unit
-        if (approx(squaredMagnitudeProduct, 1)) {
+        if (squaredMagnitudeProduct == approx(1)) {
             return acos(dot(other));
         }
 
@@ -119,12 +119,12 @@ struct Vector2 {
         const float squaredMagnitudeProduct = magnitude_sq() * other.magnitude_sq();
 
         // one or both are zero
-        if (approx(squaredMagnitudeProduct, 0)) {
+        if (squaredMagnitudeProduct == approx(0)) {
             return 0;
         }
 
         // both are unit
-        if (approx(squaredMagnitudeProduct, 1)) {
+        if (squaredMagnitudeProduct == approx(1)) {
             return clamp(dot(other), -1, 1);
         }
 
@@ -135,29 +135,29 @@ struct Vector2 {
     /// @brief Tests if this Vector2 is parallel to the x-axis.
     ///
     /// The zero vector is parallel to every Vector2.
-    bool is_horizontal() const { return approx(y, 0); }
+    bool is_horizontal() const { return y == approx(0); }
 
     /// @brief Tests if this Vector2 is parallel to the y-axis.
     ///
     /// The zero vector is parallel to every Vector2.
-    bool is_vertical() const { return approx(x, 0); }
+    bool is_vertical() const { return x == approx(0); }
 
     /// @brief Returns True, if other and self are approximately the same Vector2.
     ///
     /// @param other    Vector2 to test against.
-    bool is_approx(const Vector2& other) const { return (approx(x, other.x) && approx(y, other.y)); }
+    bool is_approx(const Vector2& other) const { return (x == approx(other.x) && y == approx(other.y)); }
 
     /// @brief Returns True, if other and self are NOT approximately the same Vector2.
     ///
     /// @param other    Vector2 to test against.
-    bool is_not_approx(const Vector2& other) const { return (!approx(x, other.x) || !approx(y, other.y)); }
+    bool is_not_approx(const Vector2& other) const { return (x != approx(other.x) || y != approx(other.y)); }
 
     /// @brief Returns the slope of this Vector2.
     ///
     /// If the vector is parallel to the y-axis, the slope is infinite.
     float slope() const
     {
-        if (x == 0.) {
+        if (x == approx(0, 0)) {
             return INFINITY;
         }
         return y / x;
@@ -179,7 +179,7 @@ struct Vector2 {
     bool is_real() const { return notf::is_real(x) && notf::is_real(y); }
 
     /// @brief Checks, if any component of this Vector2 is a zero.
-    bool contains_zero() const { return approx(x, 0) || approx(y, 0); }
+    bool contains_zero() const { return x == approx(0) || y == approx(0); }
 
     //  OPERATORS  ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -188,14 +188,14 @@ struct Vector2 {
     /// @param other    Other Vector2 to compare this one to.
     ///
     /// @return True, if the other Vector2 is equal to this one.
-    bool operator==(const Vector2& other) const { return (other.x == x && other.y == y); }
+    bool operator==(const Vector2& other) const { return other.x == approx(x, 0) && other.y == approx(y, 0); }
 
     /// @brief Not-equal comparison with another Vector2.
     ///
     /// @param other    Other Vector2 to compare this one to.
     ///
     /// @return True, if the other Vector2 is not equal to this one.
-    bool operator!=(const Vector2& other) const { return (other.x != x || other.y != y); }
+    bool operator!=(const Vector2& other) const { return other.x != approx(x, 0) || other.y != approx(y, 0); }
 
     /// @brief Addition with another Vector2.
     ///
@@ -331,12 +331,12 @@ struct Vector2 {
         const float squaredMagnitude = magnitude_sq();
 
         // is unit
-        if (approx(squaredMagnitude, 1)) {
+        if (squaredMagnitude == approx(1)) {
             return Vector2(*this);
         }
 
         // is zero
-        if (approx(squaredMagnitude, 0)) {
+        if (squaredMagnitude == approx(0)) {
             return Vector2();
         }
 
@@ -350,12 +350,12 @@ struct Vector2 {
         const float squaredMagnitude = magnitude_sq();
 
         // is unit
-        if (approx(squaredMagnitude, 1)) {
+        if (squaredMagnitude == approx(1)) {
             return (*this);
         }
 
         // is zero
-        if (approx(squaredMagnitude, 0)) {
+        if (squaredMagnitude == approx(0)) {
             return set_null();
         }
 
@@ -454,7 +454,7 @@ struct Vector2 {
         const float direction = (other.x * y) - (x * other.y);
 
         // straight ahead or behind
-        if (approx(direction, 0)) {
+        if (direction == approx(0)) {
             return 0;
         }
 

@@ -1,8 +1,10 @@
 #include "test/catch.hpp"
 
+#include "common/float_utils.hpp"
 #include "common/signal.hpp"
 using notf::Signal;
 using notf::CallbackManager;
+using notf::approx;
 
 namespace { // anonymous
 
@@ -86,7 +88,7 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         {
             REQUIRE(receiver.void_counter == 1);
             REQUIRE(receiver.int_counter == 123);
-            REQUIRE(receiver.float_counter == Approx(1.23f));
+            REQUIRE(receiver.float_counter == approx(1.23f));
             REQUIRE(receiver.two_bool_counter == 1);
         }
     }
@@ -114,7 +116,7 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         {
             REQUIRE(free_void_counter == 1);
             REQUIRE(free_int_counter == 123);
-            REQUIRE(free_float_counter == Approx(1.23f));
+            REQUIRE(free_float_counter == approx(1.23f));
             REQUIRE(free_two_bool_counter == 1);
         }
     }
@@ -142,7 +144,7 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         {
             REQUIRE(lambda_void_counter == 1);
             REQUIRE(lambda_int_counter == 123);
-            REQUIRE(lambda_float_counter == Approx(1.23f));
+            REQUIRE(lambda_float_counter == approx(1.23f));
             REQUIRE(lambda_two_bool_counter == 1);
         }
     }
@@ -166,7 +168,7 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         {
             REQUIRE(receiver.void_counter == 1);
             REQUIRE(receiver.int_counter == 123);
-            REQUIRE(receiver.float_counter == Approx(1.23f));
+            REQUIRE(receiver.float_counter == approx(1.23f));
             REQUIRE(receiver.two_bool_counter == 1);
         }
     }
@@ -194,7 +196,7 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         {
             REQUIRE(receiver.void_counter == 1);
             REQUIRE(receiver.int_counter == 123);
-            REQUIRE(receiver.float_counter == Approx(1.23f));
+            REQUIRE(receiver.float_counter == approx(1.23f));
             REQUIRE(receiver.two_bool_counter == 1);
         }
     }
@@ -223,7 +225,7 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         {
             REQUIRE(receiver.void_counter == 2);
             REQUIRE(receiver.int_counter == 246);
-            REQUIRE(receiver.float_counter == Approx(2.46f));
+            REQUIRE(receiver.float_counter == approx(2.46f));
             REQUIRE(receiver.two_bool_counter == 2);
         }
     }
@@ -253,12 +255,12 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         {
             REQUIRE(receiver1.void_counter == 1);
             REQUIRE(receiver1.int_counter == 123);
-            REQUIRE(receiver1.float_counter == Approx(1.23f));
+            REQUIRE(receiver1.float_counter == approx(1.23f));
             REQUIRE(receiver1.two_bool_counter == 1);
 
             REQUIRE(receiver2.void_counter == 1);
             REQUIRE(receiver2.int_counter == 123);
-            REQUIRE(receiver2.float_counter == Approx(1.23f));
+            REQUIRE(receiver2.float_counter == approx(1.23f));
             REQUIRE(receiver2.two_bool_counter == 1);
         }
     }
@@ -287,7 +289,7 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         {
             REQUIRE(receiver.void_counter == 1);
             REQUIRE(receiver.int_counter == 123);
-            REQUIRE(receiver.float_counter == Approx(1.23f));
+            REQUIRE(receiver.float_counter == approx(1.23f));
             REQUIRE(receiver.two_bool_counter == 1);
         }
     }
@@ -313,7 +315,7 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         {
             REQUIRE(receiver.void_counter == 0);
             REQUIRE(receiver.int_counter == 0);
-            REQUIRE(receiver.float_counter == Approx(0.f));
+            REQUIRE(receiver.float_counter == approx(0.f));
             REQUIRE(receiver.two_bool_counter == 0);
         }
     }
@@ -342,7 +344,7 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         {
             REQUIRE(receiver.void_counter == 0);
             REQUIRE(receiver.int_counter == 0);
-            REQUIRE(receiver.float_counter == Approx(0.f));
+            REQUIRE(receiver.float_counter == approx(0.f));
             REQUIRE(receiver.two_bool_counter == 0);
         }
     }
@@ -374,12 +376,12 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         {
             REQUIRE(receiver1.void_counter == 0);
             REQUIRE(receiver1.int_counter == 0);
-            REQUIRE(receiver1.float_counter == Approx(0.f));
+            REQUIRE(receiver1.float_counter == approx(0.f));
             REQUIRE(receiver1.two_bool_counter == 0);
 
             REQUIRE(receiver2.void_counter == 1);
             REQUIRE(receiver2.int_counter == 123);
-            REQUIRE(receiver2.float_counter == Approx(1.23f));
+            REQUIRE(receiver2.float_counter == approx(1.23f));
             REQUIRE(receiver2.two_bool_counter == 1);
         }
     }
@@ -411,7 +413,7 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         {
             REQUIRE(receiver1.void_counter == 1);
             REQUIRE(receiver1.int_counter == 123);
-            REQUIRE(receiver1.float_counter == Approx(1.23f));
+            REQUIRE(receiver1.float_counter == approx(1.23f));
             REQUIRE(receiver1.two_bool_counter == 1);
         }
     }
@@ -443,7 +445,7 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         {
             REQUIRE(receiver1->void_counter == 1);
             REQUIRE(receiver1->int_counter == 123);
-            REQUIRE(receiver1->float_counter == Approx(1.23f));
+            REQUIRE(receiver1->float_counter == approx(1.23f));
             REQUIRE(receiver1->two_bool_counter == 1);
         }
     }
@@ -468,7 +470,7 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         {
             REQUIRE(receiver.void_counter == 1);
             REQUIRE(receiver.int_counter == 123);
-            REQUIRE(receiver.float_counter == Approx(1.23f));
+            REQUIRE(receiver.float_counter == approx(1.23f));
             REQUIRE(receiver.two_bool_counter == 1);
         }
     }
@@ -503,7 +505,7 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         {
             REQUIRE(receiver.void_counter == 2);
             REQUIRE(receiver.int_counter == 246);
-            REQUIRE(receiver.float_counter == Approx(2.46f));
+            REQUIRE(receiver.float_counter == approx(2.46f));
             REQUIRE(receiver.two_bool_counter == 2);
         }
     }
@@ -541,7 +543,7 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         {
             REQUIRE(receiver.void_counter == 0);
             REQUIRE(receiver.int_counter == 1);
-            REQUIRE(receiver.float_counter == Approx(1.0f));
+            REQUIRE(receiver.float_counter == approx(1.0f));
             REQUIRE(receiver.two_bool_counter == 1);
         }
     }
@@ -568,7 +570,7 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         THEN("it is called just like any other callback")
         {
             REQUIRE(free_int_counter == 1);
-            REQUIRE(free_float_counter == Approx(1.f));
+            REQUIRE(free_float_counter == approx(1.f));
             REQUIRE(free_two_bool_counter == 1);
         }
     }
@@ -595,7 +597,7 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         THEN("it is called just like any other callback")
         {
             REQUIRE(lambda_int_counter == 1);
-            REQUIRE(lambda_float_counter == Approx(1.f));
+            REQUIRE(lambda_float_counter == approx(1.f));
             REQUIRE(lambda_two_bool_counter == 1);
         }
     }

@@ -33,7 +33,7 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
         while (!batch.empty()) {
 
             // do nothing, if the surplus has been depleted
-            if (approx(surplus, 0.f)) {
+            if (surplus == approx(0)) {
                 batch.clear();
                 continue;
             }
@@ -52,7 +52,7 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
                         total_scale_factor += item->scale_factor;
                         assert(item->scale_factor > 0);
                     }
-                    else if (approx(item->upper_bound - item->result, 0.f)) {
+                    else if (item->upper_bound - item->result == approx(0)) {
                         it = batch.erase(it);
                         continue;
                     }
@@ -78,7 +78,7 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
                             if (item->preferred - item->result > 0.f) {
                                 item->result += deficit_per_scale_factor * item->scale_factor;
                             }
-                            if (approx(item->result, item->upper_bound)) {
+                            if (item->result == approx(item->upper_bound)) {
                                 it = batch.erase(it);
                             }
                             else {
@@ -215,7 +215,7 @@ void StackLayout::set_spacing(float spacing)
         log_warning << "Cannot set spacing to less than zero, using zero instead.";
         spacing = 0.f;
     }
-    if (!approx(spacing, m_spacing)) {
+    if (spacing != approx(m_spacing)) {
         m_spacing = spacing;
         _update_claim();
         _update_parent_layout();
@@ -228,7 +228,7 @@ void StackLayout::set_cross_spacing(float spacing)
         log_warning << "Cannot set cross spacing to less than zero, using zero instead.";
         spacing = 0.f;
     }
-    if (!approx(spacing, m_cross_spacing)) {
+    if (spacing != approx(m_cross_spacing)) {
         m_cross_spacing = spacing;
         if (_update_claim()) {
             _update_parent_layout();

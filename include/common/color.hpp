@@ -63,18 +63,18 @@ struct Color {
 
     bool operator==(const Color& other) const
     {
-        return (approx(r, other.r)
-                && approx(g, other.g)
-                && approx(b, other.b)
-                && approx(a, other.a));
+        return (r == approx(other.r)
+                && g == approx(other.g)
+                && b == approx(other.b)
+                && a == approx(other.a));
     }
 
     bool operator!=(const Color& other) const
     {
-        return (!approx(r, other.r)
-                || !approx(g, other.g)
-                || !approx(b, other.b)
-                || !approx(a, other.a));
+        return (r != approx(other.r)
+                || g != approx(other.g)
+                || b != approx(other.b)
+                || a != approx(other.a));
     }
 
     /** Checks, if the given string is a valid color value that can be passed to the constructor. */

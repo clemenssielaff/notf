@@ -52,14 +52,14 @@ struct Padding {
 
     bool operator==(const Padding& other) const
     {
-        return (approx(other.top, top) && approx(other.right, right)
-                && approx(other.bottom, bottom) && approx(other.left, left));
+        return (other.top == approx(top) && other.right == approx(right)
+                && other.bottom == approx(bottom) && other.left == approx(left));
     }
 
     bool operator!=(const Padding& other) const
     {
-        return (!approx(other.top, top) || !approx(other.right, right)
-                || !approx(other.bottom, bottom) || !approx(other.left, left));
+        return (other.top != approx(top) || other.right != approx(right)
+                || other.bottom != approx(bottom) || other.left != approx(left));
     }
 };
 

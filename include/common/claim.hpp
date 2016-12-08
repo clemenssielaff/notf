@@ -54,7 +54,7 @@ public: // class
         float get_max() const { return m_max; }
 
         /** Tests if this Stretch is a fixed size where all 3 values are the same. */
-        bool is_fixed() const { return approx(m_preferred, m_min) && approx(m_preferred, m_max); }
+        bool is_fixed() const { return m_preferred == approx(m_min) && m_preferred == approx(m_max); }
 
         /** Returns the scale factor. */
         float get_scale_factor() const { return m_scale_factor; }
@@ -107,10 +107,10 @@ public: // class
 
         bool operator==(const Stretch& other) const
         {
-            return (approx(m_preferred, other.m_preferred)
-                    && approx(m_min, other.m_min)
-                    && (approx(m_max, other.m_max) || (is_inf(m_max) && is_inf(other.m_max)))
-                    && approx(m_scale_factor, other.m_scale_factor)
+            return (m_preferred == approx(other.m_preferred)
+                    && m_min == approx(other.m_min)
+                    && (m_max == approx(other.m_max) || (is_inf(m_max) && is_inf(other.m_max)))
+                    && m_scale_factor == approx(other.m_scale_factor)
                     && m_priority == other.m_priority);
         }
 
@@ -179,7 +179,7 @@ private: // class
         }
 
         /** Tests if this Ratio is valid. */
-        bool is_valid() const { return !(approx(m_width, 0) || approx(m_height, 0)); }
+        bool is_valid() const { return !(m_width == approx(0) || m_height == approx(0)); }
 
         /** Returns the ratio, is 0 if invalid. */
         float get_width_to_height() const
@@ -192,7 +192,7 @@ private: // class
 
         bool operator==(const Ratio& other) const
         {
-            return (approx(m_width, other.m_width) && approx(m_height, other.m_height));
+            return (m_width == approx(other.m_width) && m_height == approx(other.m_height));
         }
 
         bool operator!=(const Ratio& other) const { return !(*this == other); }

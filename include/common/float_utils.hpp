@@ -3,6 +3,7 @@
 #include <cfloat>
 #include <cmath>
 #include <functional>
+#include <limits>
 
 namespace notf {
 
@@ -34,6 +35,9 @@ inline bool is_nan(const float value) { return std::isnan(value); }
 /** Tests whether a given value is INFINITY. */
 inline bool is_inf(const float value) { return std::isinf(value); }
 
+/** Tests whether a given value is a valid float value (not NAN, not INFINITY). */
+inline bool is_real(const float value) { return !is_nan(value) && !is_inf(value); }
+
 /** Tests, if a value is positive or negative.
  * @return  -1 if the value is negative, 1 if it is zero or above.
  */
@@ -43,19 +47,6 @@ inline float sign(const float value) { return std::signbit(value) ? -1 : 1; }
 inline float clamp(const float value, const float min, const float max)
 {
     return value < min ? min : (value > max ? max : value);
-}
-
-/** Test if two Reals are approximately the same value.
- * From https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
- * approx() returns true also if the difference is exactly epsilon.
- * This behavior allows epsilon to be zero for exact comparison.
- */
-inline bool approx(const float a, const float b, const float epsilon = FLT_EPSILON)
-{
-    if (is_inf(a) || is_inf(b)) {
-        return false;
-    }
-    return abs(a - b) <= max(abs(a), abs(b)) * epsilon;
 }
 
 /** Save asin calculation.
@@ -68,7 +59,47 @@ inline float asin(const float value) { return std::asin(clamp(value, -1, 1)); }
  */
 inline float acos(const float value) { return std::acos(clamp(value, -1, 1)); }
 
-/** Tests whether a given value is a valid float value (not NAN, not INFINITY). */
-inline bool is_real(const float value) { return !is_nan(value) && !is_inf(value); }
+/** Test if two Reals are approximately the same value.
+ * Returns true also if the difference is exactly epsilon.
+ * This behavior allows epsilon to be zero for exact comparison.
+ *
+ * Example:
+ *
+ * ```
+ * bool is_approx = 1.1234 == approx(1.2345, 0.1);
+ * ```
+ *
+ * Comparison function from:
+ * From https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+ *
+ * approx-class idea from catch:
+ * https://github.com/philsquared/Catch/blob/master/include/catch.hpp
+ */
+class approx {
+public:
+    explicit approx(float value, float epsilon = std::numeric_limits<float>::epsilon() * 100)
+        : m_value(value)
+        , m_epsilon(epsilon)
+    {
+    }
+
+    friend bool operator==(float lhs, const approx& rhs)
+    {
+        if (!is_real(lhs) || !is_real(rhs.m_value)) {
+            return false;
+        }
+        return abs(lhs - rhs.m_value) <= max(abs(lhs), abs(rhs.m_value)) * rhs.m_epsilon;
+    }
+
+    friend bool operator==(const approx& lhs, float rhs) { return operator==(rhs, lhs); }
+
+    friend bool operator!=(float lhs, const approx& rhs) { return !operator==(lhs, rhs); }
+
+    friend bool operator!=(const approx& lhs, float rhs) { return !operator==(rhs, lhs); }
+
+private:
+    float m_value;
+    float m_epsilon;
+};
 
 } // namespace notf
