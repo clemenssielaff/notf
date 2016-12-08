@@ -3,9 +3,12 @@
 #include "common/padding.hpp"
 #include "core/layout.hpp"
 
-#include "utils/protected_except_for_bindings.hpp"
+#include "utils/private_except_for_bindings.hpp"
 
 namespace notf {
+
+template <typename T>
+class MakeSmartEnabler;
 
 class StackLayout;
 
@@ -17,10 +20,10 @@ class StackLayout;
  */
 class StackLayoutIterator : public LayoutIterator {
 
-    friend class StackLayout;
+    friend class MakeSmartEnabler<StackLayoutIterator>;
 
-protected: // for LayoutRoot
-    StackLayoutIterator(const StackLayout* stack_layout)
+private: // for MakeSmartEnabler<StackLayoutIterator>;
+    explicit StackLayoutIterator(const StackLayout* stack_layout)
         : m_layout(stack_layout)
         , m_index(0)
     {
@@ -47,6 +50,7 @@ private: // fields
  */
 class StackLayout : public Layout {
 
+    friend class MakeSmartEnabler<StackLayout>;
     friend class StackLayoutIterator;
 
 public: // methods
@@ -110,7 +114,8 @@ public: // methods
 
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
-protected_except_for_bindings: // methods
+    // clang-format off
+private_except_for_bindings: // methods for MakeSmartEnabler<StackLayout>
     /** @param direction Direction of the stack. */
     explicit StackLayout(const Direction direction)
         : Layout()
@@ -126,6 +131,7 @@ protected_except_for_bindings: // methods
     {
     }
 
+    // clang-format on
 protected: // methods
     virtual bool _update_claim() override;
 

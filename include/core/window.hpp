@@ -12,6 +12,9 @@ struct NVGcontext;
 
 namespace notf {
 
+template <typename T>
+class MakeSmartEnabler;
+
 struct KeyEvent;
 class RenderManager;
 class LayoutRoot;
@@ -65,6 +68,7 @@ struct WindowInfo {
 class Window : public std::enable_shared_from_this<Window>, public Signaler<Window> {
 
     friend class Application;
+    friend class MakeSmartEnabler<Window>;
 
 public: // methods
     /// @brief Destructor.
@@ -108,7 +112,7 @@ public: // signals
     /// @param This window.
     Signal<const Window&> on_close;
 
-protected: // methods
+private: // methods for MakeSmartEnabler<Window>
     /// @brief Value Constructor.
     /// @param info     WindowInfo providing initialization arguments.
     explicit Window(const WindowInfo& info);

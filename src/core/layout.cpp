@@ -48,26 +48,6 @@ void Layout::_remove_child(const Item* item)
     child_removed(item->get_id());
 }
 
-void Layout::_cascade_visibility(const VISIBILITY visibility)
-{
-    if (visibility == get_visibility()) {
-        return;
-    }
-    Item::_cascade_visibility(visibility);
-
-    // update your children's visiblity
-    for (std::shared_ptr<Item>& child : m_children) {
-        if (child->get_visibility() != VISIBILITY::INVISIBLE) {
-            if (get_visibility() == VISIBILITY::INVISIBLE) {
-                child->_cascade_visibility(VISIBILITY::HIDDEN);
-            }
-            else {
-                child->_cascade_visibility(visibility);
-            }
-        }
-    }
-}
-
 bool Layout::_set_size(const Size2f size)
 {
     if(Item::_set_size(size)){

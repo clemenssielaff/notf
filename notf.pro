@@ -178,9 +178,9 @@ HEADERS += \
     include/core/property_impl.hpp \
     include/core/property.hpp \
     include/python/py_notf.hpp \
-    include/utils/protected_except_for_bindings.hpp \
     include/utils/make_smart_enabler.hpp \
     include/core/item.hpp \
-    include/python/pyobject_wrapper.hpp
+    include/python/pyobject_wrapper.hpp \
+    include/utils/private_except_for_bindings.hpp
 
 QMAKE_CXX = ccache g++

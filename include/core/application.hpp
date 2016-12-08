@@ -175,3 +175,5 @@ private: // fields
 };
 
 } // namespace notf
+
+// TODO: Application::on_tick signal

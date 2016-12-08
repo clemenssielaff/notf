@@ -9,6 +9,9 @@ struct NVGcontext;
 
 namespace notf {
 
+template <typename T>
+class MakeSmartEnabler;
+
 /** Flags passed to Texture2::load(). */
 enum TextureFlags {
     GENERATE_MIPMAPS = 1 << 0, // Generate mipmaps during creation of the image.
@@ -20,6 +23,8 @@ enum TextureFlags {
 
 /** Manages the loading and setup of an OpenGL texture used in NanoVG. */
 class Texture2 {
+
+    friend class MakeSmartEnabler<Texture2>;
 
 public: // static methods
     /** Loads a texture from a given file.
@@ -43,7 +48,7 @@ public: // methods
     /** Size of the Texture2 in pixels. */
     Size2i get_size() const;
 
-protected: // methods
+private: // methods for MakeSmartEnabler<Texture2>
     /**
      * @param id            OpenGL texture ID.
      * @param nvg_context   NanoVG context of which this Texture is a part.

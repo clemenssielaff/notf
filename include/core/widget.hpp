@@ -1,31 +1,21 @@
 #pragma once
 
-#include <map>
-#include <memory>
-#include <vector>
-
 #include "core/item.hpp"
-#include "core/property.hpp"
-
-#include "utils/protected_except_for_bindings.hpp"
+#include "utils/private_except_for_bindings.hpp"
 
 namespace notf {
 
-class State;
-class StateMachine;
+template <typename T>
+class MakeSmartEnabler;
 
 /**********************************************************************************************************************/
 
 /// @brief Something drawn on the screen, potentially able to interact with the user.
 class Widget : public Item {
 
+    friend class MakeSmartEnabler<Widget>;
+
 public: // methods
-    /** Returns the current State of this Widget. Is always valid. */
-    const State* get_state() const { return m_current_state; }
-
-    /** Returns the StateMachine of this Widget. */
-    std::shared_ptr<StateMachine> get_state_machine() const { return m_state_machine; }
-
     /** Returns the Layout used to scissor this Widget.
      * Returns an empty shared_ptr, if no explicit scissor Layout was set or the scissor Layout has since expired.
      * In this case, the Widget is implicitly scissored by its parent Layout.
@@ -42,13 +32,16 @@ public: // methods
     /** Tells the Window that its contents need to be redrawn. */
     void redraw() { _redraw(); }
 
-protected_except_for_bindings: // methods
+    // clang-format off
+private_except_for_bindings: // methods for MakeSmartEnabler<Widget>;
     /** @param state_machine     StateMachine of this Widget. Applies the default state. */
-    Widget(std::shared_ptr<StateMachine> state_machine);
+    explicit Widget(std::shared_ptr<StateMachine> state_machine);
 
+private_except_for_bindings : // methods
     /** Stores the Python subclass object of this Widget, if it was created through Python. */
     void set_pyobject(PyObject* object) { _set_pyobject(object); }
 
+    // clang-format on
 protected: // methods
     /** Adds a new Property to this Widget.
      * @param name      Name of the Property, must be unique in this Widget.
@@ -66,15 +59,6 @@ private: // methods
     virtual bool _redraw() override;
 
 private: // fields
-    /** The StateMachine attached to this Widget. */
-    std::shared_ptr<StateMachine> m_state_machine;
-
-    /** Current State of the Widget. */
-    const State* m_current_state;
-
-    /** All Properties of this Widget. */
-    PropertyMap m_properties;
-
     /** Reference to a Layout used to 'scissor' this item.
      * Example: a scroll area 'scissors' children that overflow its size.
      * An empty pointer means that this item is scissored by its parent Layout.

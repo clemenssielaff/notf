@@ -3,9 +3,12 @@
 #include "common/padding.hpp"
 #include "core/layout.hpp"
 
-#include "utils/protected_except_for_bindings.hpp"
+#include "utils/private_except_for_bindings.hpp"
 
 namespace notf {
+
+template <typename T>
+class MakeSmartEnabler;
 
 class Overlayout;
 
@@ -17,9 +20,9 @@ class Overlayout;
  */
 class OverlayoutIterator : public LayoutIterator {
 
-    friend class StackLayout;
+    friend class MakeSmartEnabler<OverlayoutIterator>;
 
-protected: // for LayoutRoot
+private: // for MakeSmartEnabler<OverlayoutIterator>;
     OverlayoutIterator(const Overlayout* overlayout)
         : m_layout(overlayout)
         , m_index(0)
@@ -47,6 +50,7 @@ private: // fields
  */
 class Overlayout : public Layout {
 
+    friend class MakeSmartEnabler<Overlayout>;
     friend class OverlayoutIterator;
 
 public: // methods
@@ -71,14 +75,16 @@ public: // methods
 
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
-    protected_except_for_bindings : // methods
-                                    explicit Overlayout()
+    // clang-format off
+private_except_for_bindings: // methods for MakeSmartEnabler<Overlayout>
+    Overlayout()
         : Layout()
         , m_padding(Padding::none())
         , m_items()
     {
     }
 
+    // clang-format on
 protected: // methods
     virtual bool _update_claim() override { return false; } // the Overlayout brings its own Claim to the table
 

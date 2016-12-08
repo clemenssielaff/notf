@@ -56,19 +56,19 @@ std::unique_ptr<LayoutIterator> LayoutRoot::iter_items() const
     return std::make_unique<MakeSmartEnabler<LayoutRootIterator>>(this);
 }
 
+void LayoutRoot::_relayout()
+{
+    if (!is_empty()) {
+        _set_item_size(_get_item(), get_size());
+    }
+}
+
 LayoutRoot::LayoutRoot(const std::shared_ptr<Window>& window)
     : Layout()
     , m_window(window.get())
 {
     // the layout_root is always in the default render layer
     Layout::set_render_layer(window->get_render_manager().get_default_layer());
-}
-
-void LayoutRoot::_relayout()
-{
-    if (!is_empty()) {
-        _set_item_size(_get_item(), get_size());
-    }
 }
 
 Item* LayoutRoot::_get_item() const

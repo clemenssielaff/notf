@@ -19,26 +19,11 @@ using PropertyMap = std::map<std::string, std::unique_ptr<AbstractProperty>>;
  */
 class AbstractProperty : public Signaler<class AbstractProperty> {
 
-public: // enum
-    /** Type of this Property, corresponds to one of the Property<T> subclasses defined in property_impl.hpp . */
-    enum class Type {
-        BOOL,
-        FLOAT,
-        INT,
-        STRING,
-        CLAIM,
-    };
-
 public: // methods
     explicit AbstractProperty(const PropertyMap::iterator iterator)
         : m_it(iterator)
     {
     }
-
-    virtual ~AbstractProperty();
-
-    /** The type of this Property. */
-    virtual Type get_type() const = 0;
 
     /** The name of this Property. */
     const std::string& get_name() const { return m_it->first; }

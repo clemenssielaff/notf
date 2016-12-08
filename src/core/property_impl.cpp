@@ -26,17 +26,7 @@ PropertyMap::iterator add_property_helper(PropertyMap& propertyMap, std::string 
 
 namespace notf {
 
-AbstractProperty::~AbstractProperty()
-{
-}
-
-AbstractProperty::Type BoolProperty::get_type() const { return Type::BOOL; }
-AbstractProperty::Type FloatProperty::get_type() const { return Type::FLOAT; }
-AbstractProperty::Type IntProperty::get_type() const { return Type::INT; }
-AbstractProperty::Type StringProperty::get_type() const { return Type::STRING; }
-AbstractProperty::Type ClaimProperty::get_type() const { return Type::CLAIM; }
-
-#define NOTF_ADD_PROPERTY(TYPE, PROPERTY)                                                             \
+#define NOTF_ADD_PROPERTY(PROPERTY, TYPE)                                                             \
     template <>                                                                                       \
     PropertyMap::iterator add_property(PropertyMap& property_map, std::string name, const TYPE value) \
     {                                                                                                 \
@@ -45,11 +35,13 @@ AbstractProperty::Type ClaimProperty::get_type() const { return Type::CLAIM; }
         return it;                                                                                    \
     }
 
-NOTF_ADD_PROPERTY(bool, BoolProperty);
-NOTF_ADD_PROPERTY(float, FloatProperty);
-NOTF_ADD_PROPERTY(double, FloatProperty);
-NOTF_ADD_PROPERTY(int, IntProperty);
-NOTF_ADD_PROPERTY(std::string, StringProperty);
-NOTF_ADD_PROPERTY(Claim, ClaimProperty);
+NOTF_ADD_PROPERTY(BoolProperty, bool);
+NOTF_ADD_PROPERTY(FloatProperty, float);
+NOTF_ADD_PROPERTY(FloatProperty, double);
+NOTF_ADD_PROPERTY(IntProperty, int);
+NOTF_ADD_PROPERTY(StringProperty, std::string);
+NOTF_ADD_PROPERTY(ClaimProperty, Claim);
+NOTF_ADD_PROPERTY(Size2Property, Size2f);
+NOTF_ADD_PROPERTY(Transform2Property, Transform2);
 
 } // namespace notf

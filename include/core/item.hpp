@@ -7,6 +7,7 @@
 #include "common/signal.hpp"
 #include "common/size2f.hpp"
 #include "common/transform2.hpp"
+#include "core/property.hpp"
 #include "python/pyobject_wrapper.hpp"
 
 /*
@@ -44,16 +45,10 @@ namespace notf {
 class Claim;
 class Layout;
 class RenderLayer;
+class State;
+class StateMachine;
 class Widget;
 class Window;
-
-/// @brief Visibility states, all but one mean that the LayoutItem is not visible, but all for different reasons.
-enum class VISIBILITY : unsigned char {
-    INVISIBLE, // LayoutItem is not displayed
-    HIDDEN, // LayoutItem is not INVISIBLE but one of its parents is, so it cannot be displayed
-    UNROOTED, // LayoutItem and all ancestors are not INVISIBLE, but the Widget is not a child of a RootWidget
-    VISIBLE, // LayoutItem is displayed
-};
 
 /// @brief Coordinate Spaces to pass to get_transform().
 enum class Space : unsigned char {
@@ -75,32 +70,55 @@ class Item : public Signaler<Item>, public std::enable_shared_from_this<Item> {
     friend class Layout;
     friend class Widget;
 
-public: // abstract methods
-    /// @brief Looks for a Widget at a given local position.
-    /// @param local_pos    Local coordinates where to look for the Widget.
-    /// @return The Widget at a given local position or an empty shared_ptr if there is none.
-    virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) = 0;
-
 public: // methods
     /// no copy / assignment
     Item(const Item&) = delete;
     Item& operator=(const Item&) = delete;
 
-    /// @brief Virtual destructor.
     virtual ~Item();
 
     /** Application-unique ID of this Item. */
     ItemID get_id() const { return m_id; }
 
-    /// @brief Returns true iff this LayoutItem has a parent
+    /** Returns the StateMachine of this Item. */
+    std::shared_ptr<StateMachine> get_state_machine() const { return m_state_machine; }
+
+    /** Checks if this Item has a Property by name and type. */
+    template <typename T>
+    bool has_property(const std::string& name) const
+    {
+        auto it = m_properties.find(name);
+        return (it != m_properties.end()) && (nullptr != dynamic_cast<Property<T>*>(it->second.get()));
+    }
+
+    /** Returns the value of a Property of this Item.
+     * Method has no logging because I expect some Components to routinely request "optional" Properties from Items.
+     * @param name              Name of the Property.
+     * @param default_value     Default value to return in case of error.
+     * @return                  The default value, if no Property of the given name or type can be found.
+     */
+    template <typename T>
+    const T& get_property(const std::string& name, const T& default_value) const
+    {
+        auto it = m_properties.find(name);
+        if (it != m_properties.end()) {
+            if (Property<T>* property = dynamic_cast<Property<T>*>(it->second.get())) {
+                return property->get_value();
+            }
+        }
+        return default_value;
+    }
+
+    /** Returns true iff this LayoutItem has a parent. */
     bool has_parent() const { return !m_parent.expired(); }
 
-    /// @brief Tests, if this LayoutItem is a descendant of the given `ancestor`.
-    /// @param ancestor Potential ancestor (non-onwing pointer is used for identification only).
-    /// @return True iff `ancestor` is an ancestor of this LayoutItem, false otherwise.
+    /** Tests, if this LayoutItem is a descendant of the given `ancestor`.
+     * @param ancestor      Potential ancestor (non-onwing pointer is used for identification only).
+     * @return              True iff `ancestor` is an ancestor of this LayoutItem, false otherwise.
+     */
     bool has_ancestor(const Item* ancestor) const;
 
-    /// @brief Returns the parent LayoutItem containing this LayoutItem, may be invalid.
+    /** Returns the parent LayoutItem containing this LayoutItem, may be invalid. */
     std::shared_ptr<const Layout> get_parent() const { return m_parent.lock(); }
 
     /** Returns the Window containing this Widget (can be null). */
@@ -109,14 +127,8 @@ public: // methods
     /** The current Claim of this LayoutItem. */
     virtual const Claim& get_claim() const = 0;
 
-    /** Check if this LayoutItem is visible or not. */
-    bool is_visible() const { return m_visibility == VISIBILITY::VISIBLE; }
-
-    /** The visibility of this LayoutItem. */
-    VISIBILITY get_visibility() const { return m_visibility; }
-
     /** Returns the unscaled size of this LayoutItem in pixels. */
-    const Size2f& get_size() const { return m_size; }
+    virtual const Size2f& get_size() const = 0;
 
     /** Returns this LayoutItem's transformation in the given space. */
     Transform2 get_transform(const Space space) const
@@ -141,6 +153,12 @@ public: // methods
         return result;
     }
 
+    /** Looks for a Widget at a given position in parent space.
+     * @param local_pos     Local coordinates where to look for the Widget.
+     * @return              The Widget at a given local position or an empty shared_ptr if there is none.
+     */
+    virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) = 0;
+
     /** Returns the current RenderLayer of this LayoutItem. Can be empty. */
     const std::shared_ptr<RenderLayer>& get_render_layer() const { return m_render_layer; }
 
@@ -153,53 +171,31 @@ public: // methods
     }
 
 public: // signals
-    /// @brief Emitted when this LayoutItem got a new parent.
-    /// @param ItemID of the new parent.
+    /** Emitted when this LayoutItem got a new parent.
+     * @param ItemID of the new parent.
+     */
     Signal<ItemID> parent_changed;
 
-    /// @brief Emitted, when the visibility of this LayoutItem has changed.
-    /// @param New visiblity.
-    Signal<VISIBILITY> visibility_changed;
-
-    /// @brief Emitted when this LayoutItem' size changed.
-    /// @param New size.
-    Signal<Size2f> size_changed;
-
-    /// @brief Emitted when this LayoutItem' transformation changed.
-    /// @param New local transformation.
-    Signal<Transform2> transform_changed;
-
 protected: // methods
-    explicit Item();
+    explicit Item(PropertyMap&& properties, std::shared_ptr<StateMachine> state_machine);
 
-    /// @brief Shows (if possible) or hides this LayoutItem.
-    void _set_visible(const bool is_visible);
+    /** Switches the current State of this Item to the one with the given name.
+     * If the given name does not identify a valid State in the StateMachine, this function does nothing.
+     * The switch is instantaneous, the `leave` function of the current state and the `enter` function of the next are
+     * executed in direct succession.
+     */
+    void _switch_state(const std::string& state_name);
 
     /** Updates the size of this LayoutItem.
      * Is virtual, since Layouts use this function to update their items.
+     * @return      True iff the size has been modified.
      */
-    virtual bool _set_size(const Size2f size)
-    {
-        if (size != m_size) {
-            m_size = std::move(size);
-            size_changed(m_size);
-            _redraw();
-            return true;
-        }
-        return false;
-    }
+    virtual bool _set_size(const Size2f size) = 0;
 
-    /** Updates the transformation of this LayoutItem. */
-    bool _set_transform(const Transform2 transform)
-    {
-        if (transform != m_transform) {
-            m_transform = std::move(transform);
-            transform_changed(m_transform);
-            _redraw();
-            return true;
-        }
-        return false;
-    }
+    /** Updates the transformation of this LayoutItem.
+     * @return      True iff the transform has been modified.
+     */
+    virtual bool _set_transform(const Transform2 transform) = 0;
 
     /** Notifies the parent Layout that the Claim of this Item has changed.
      * Propagates up the Layout hierarchy to the first ancestor that doesn't need to change its Claim.
@@ -223,26 +219,24 @@ private: // methods
     /** Tells the Window that its contents need to be redrawn. */
     virtual bool _redraw();
 
-    /// @brief Sets a new LayoutItem to contain this LayoutItem.
-    /// Setting a new parent makes this LayoutItem appear on top of the new parent.
-    /// I chose to do this since it is expected behaviour and reparenting + changing the z-value is a more common
-    /// use-case than reparenting the LayoutItem without changing its depth.
+    /** Sets a new LayoutItem to contain this LayoutItem.
+     * Setting a new parent makes this LayoutItem appear on top of the new parent.
+     * I chose to do this since it is expected behaviour and reparenting + changing the z-value is a more common
+     * use-case than reparenting the LayoutItem without changing its depth.
+     */
     void _set_parent(std::shared_ptr<Layout> parent);
 
-    /// @brief Removes the current parent of this LayoutItem.
+    /** Removes the current parent of this LayoutItem. */
     void _unparent() { _set_parent({}); }
 
-    /// @brief Recursive function to let all children emit visibility_changed when the parent's visibility changed.
-    virtual void _cascade_visibility(const VISIBILITY visibility);
-
-    /// @brief Recursive implementation to produce the LayoutItem's transformation in window space.
+    /** Recursive implementation to produce the LayoutItem's transformation in window space. */
     void _get_window_transform(Transform2& result) const;
 
-    /// @brief Returns the LayoutItem's transformation in screen space.
+    /** Returns the LayoutItem's transformation in screen space. */
     Transform2 _get_screen_transform() const;
 
-    /// @brief Returns the LayoutItem's transformation in parent space.
-    Transform2 _get_parent_transform() const { return m_transform; }
+    /** Returns the LayoutItem's transformation in parent space. */
+    virtual Transform2 _get_parent_transform() const = 0;
 
 private: // static methods
     /** Returns the next, free ItemID.
@@ -254,17 +248,17 @@ private: // fields
     /** Application-unique ID of this Item. */
     const ItemID m_id;
 
-    /// @brief The parent LayoutItem, may be invalid.
+    /** The StateMachine attached to this Item. */
+    std::shared_ptr<StateMachine> m_state_machine;
+
+    /** The current State of this Item. */
+    const State* m_current_state;
+
+    /** All Properties of this Item. */
+    PropertyMap m_properties;
+
+    /** The parent LayoutItem, may be invalid. */
     std::weak_ptr<Layout> m_parent;
-
-    /// @brief Visibility state of this LayoutItem.
-    VISIBILITY m_visibility;
-
-    /// @brief Unscaled size of this LayoutItem in pixels.
-    Size2f m_size;
-
-    /// @brief 2D transformation of this LayoutItem in local space.
-    Transform2 m_transform;
 
     /** The RenderLayer of this LayoutItem.
      * An empty pointer means that this item inherits its render layer from its parent.

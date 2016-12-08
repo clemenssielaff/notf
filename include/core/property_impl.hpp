@@ -3,6 +3,8 @@
 #include <iostream>
 
 #include "common/claim.hpp"
+#include "common/size2f.hpp"
+#include "common/transform2.hpp"
 #include "core/property.hpp"
 
 namespace notf {
@@ -11,19 +13,14 @@ namespace notf {
 
 /* How to add a new Property - a checklist:
  *
- * In property.hpp
- *
- *  1. Add a new entry to the AbstractProperty::Type enum.
- *
  * In property_impl.hpp:
  *
- *  2. In Add a PROPERTY_SPECIALIZATION with the name of the new Property subclass as first and the value type as
+ *  1. In Add a PROPERTY_SPECIALIZATION with the name of the new Property subclass as first and the value type as
  *      second argument.
  *
  * In property_impl.cpp
  *
- *  3. Add a body for `AbstractProperty::Type SUBCLASS::get_type() const`, referencing the enum value from step 1.
- *  4. Add NOTF_ADD_PROPERTY specializations for all types from which your new Property subclass can be contructed.
+ *  2. Add NOTF_ADD_PROPERTY specializations for all types from which your new Property subclass can be contructed.
  */
 
 #pragma push_macro("PROPERTY_SPECIALIZATION")
@@ -34,7 +31,6 @@ namespace notf {
             : Property<TYPE>(std::move(value), std::move(iterator))  \
         {                                                            \
         }                                                            \
-        virtual Type get_type() const override;                      \
     };
 
 PROPERTY_SPECIALIZATION(BoolProperty, bool);
@@ -42,6 +38,8 @@ PROPERTY_SPECIALIZATION(FloatProperty, float);
 PROPERTY_SPECIALIZATION(IntProperty, int);
 PROPERTY_SPECIALIZATION(StringProperty, std::string);
 PROPERTY_SPECIALIZATION(ClaimProperty, Claim);
+PROPERTY_SPECIALIZATION(Size2Property, Size2f);
+PROPERTY_SPECIALIZATION(Transform2Property, Transform2);
 
 #undef PROPERTY_SPECIALIZATION
 #pragma pop_macro("PROPERTY_SPECIALIZATION")

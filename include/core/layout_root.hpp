@@ -4,6 +4,9 @@
 
 namespace notf {
 
+template <typename T>
+class MakeSmartEnabler;
+
 class LayoutRoot;
 class Window;
 
@@ -41,8 +44,9 @@ private: // fields
  */
 class LayoutRoot : public Layout {
 
-    friend class Window;
     friend class LayoutRootIterator;
+    friend class MakeSmartEnabler<LayoutRoot>;
+    friend class Window;
 
 public: // methods
     /// @brief Returns the Window owning this LayoutRoot.
@@ -58,14 +62,15 @@ public: // methods
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
 protected: // methods
-    /** @param window   Window owning this RootWidget. */
-    explicit LayoutRoot(const std::shared_ptr<Window>& window);
-
     virtual bool _update_claim() override { return false; }
 
     virtual void _remove_item(const Item*) override {}
 
     virtual void _relayout() override;
+
+private: // methods for MakeSmartEnabler<LayoutRoot>
+    /** @param window   Window owning this RootWidget. */
+    explicit LayoutRoot(const std::shared_ptr<Window>& window);
 
 private: // methods
     /// @brief Returns the Layout contained in this LayoutRoot, may be invalid.

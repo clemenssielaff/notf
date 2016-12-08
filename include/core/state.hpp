@@ -1,15 +1,12 @@
 #pragma once
 
 #include <memory>
-#include <set>
 #include <string>
-
-#include "common/claim.hpp"
-#include "common/enummap.hpp"
-#include "core/component.hpp"
+#include <map>
 
 namespace notf {
 
+class Item;
 class Widget;
 class StateMachine;
 
@@ -22,61 +19,6 @@ class StateMachine;
  */
 class StateMachineFactory {
 
-public: // class
-    /** Helper struct acting as a blueprint to build a State from. */
-    class StateStudy {
-
-        friend class StateMachineFactory;
-
-    public: // methods
-        /** Adds a Transition to another state. */
-        void transition_to(std::shared_ptr<StateStudy> state);
-
-        /** Removes the Transition to another state, if there is one. */
-        void remove_transition_to(std::shared_ptr<StateStudy> state);
-
-        /** Removes all Transitions out of this state. */
-        void remove_all_transitions() { m_transitions.clear(); }
-
-        /** Attaches a new Component to this state, replaces an old Component of the same kind. */
-        void attach_component(std::shared_ptr<Component> component);
-
-        /** Removes a certain Component from this state. */
-        void remove_component(std::shared_ptr<Component> component);
-
-        /** Removes the Component of a certain type from this state. */
-        void remove_component(const Component::KIND kind);
-
-        /** Removes all Components from this state. */
-        void remove_all_components() { m_components.clear(); }
-
-        /** Sets the Claim of this state. */
-        void set_claim(const Claim claim) { m_claim = std::move(claim); }
-
-    protected: // methods
-        /** @param name  Name of this state, cannot be changed. */
-        explicit StateStudy(const std::string& name)
-            : m_name(name)
-            , m_claim()
-            , m_transitions()
-            , m_components()
-        {
-        }
-
-    private: // fields
-        /** The name of this state. */
-        std::string m_name;
-
-        /** The Claim of this state. */
-        Claim m_claim;
-
-        /** All Transitions out of this state. */
-        std::set<std::shared_ptr<StateStudy>> m_transitions;
-
-        /** All Components of this state. */
-        EnumMap<Component::KIND, std::shared_ptr<Component>> m_components;
-    };
-
 public: // methods
     StateMachineFactory() = default;
 
@@ -84,12 +26,6 @@ public: // methods
      * @return The new state. If another state by the same name already exists, this function returns empty.
      */
     std::shared_ptr<StateStudy> add_state(const std::string& name);
-
-    /** Returns an existing state by name, returns empty if the name is unknown. */
-    std::shared_ptr<StateStudy> get_state(const std::string& name);
-
-    /** Removes all Transitions into a given state. */
-    void remove_all_transitions_to(std::shared_ptr<StateStudy> state);
 
     /** Produces a valid StateMachine instance.
      * @param start_state   The start state of the state machine.
@@ -115,6 +51,8 @@ public: // methods
     /** Returns the start state of this StateMachine. */
     const State* get_start_state() const { return m_start_state; }
 
+    bool has_state(const std::string& name) const;
+
     /** Returns a State in this StateMachine by name. */
     const State* get_state(const std::string& name) const
     {
@@ -126,7 +64,7 @@ public: // methods
     }
 
     /** All States of this State machine. */
-    const auto& all_states() const { return m_states; }
+//    const auto& all_states() const { return m_states; }
 
 protected: // methods
     StateMachine() = default;
@@ -170,14 +108,15 @@ public: // methods
         return std::static_pointer_cast<COMPONENT>(it->second);
     }
 
-    /** Current Claim of this State. */
-    const Claim& get_claim() const { return m_claim; }
-
     /** Registers the Widgets to all of this State's Component%s. */
     void enter_state(std::shared_ptr<Widget> widget);
 
     /** Unregisters the Widgets from all of this State's Component%s. */
     void leave_state(std::shared_ptr<Widget> widget);
+
+    void enter(Item* item) const;
+
+    void leave(Item* item) const;
 
 protected: // methods for StateMachineFactory
     /**
@@ -197,14 +136,6 @@ private: // fields
     /** The StateMachine that this State is a part of. */
     const StateMachine* m_state_machine;
 
-    /** States to which you can transition from this one. */
-    std::set<const State*> m_transitions;
-
-    /** Current Claim of this State. */
-    Claim m_claim;
-
-    /** All Components of this State. */
-    EnumMap<Component::KIND, std::shared_ptr<Component>> m_components;
 };
 
 } // namespace notf

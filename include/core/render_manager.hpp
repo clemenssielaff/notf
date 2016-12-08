@@ -6,6 +6,9 @@
 
 namespace notf {
 
+template <typename T>
+class MakeSmartEnabler;
+
 class Item;
 struct RenderContext;
 class Widget;
@@ -18,9 +21,10 @@ class Window;
  */
 class RenderLayer {
 
+    friend class MakeSmartEnabler<RenderLayer>;
     friend class RenderManager;
 
-protected: // methods
+private: // methods for MakeSmartEnabler<RenderLayer>
     RenderLayer() = default;
 
 private: // fields

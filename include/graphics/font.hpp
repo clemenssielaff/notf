@@ -7,11 +7,16 @@ struct NVGcontext;
 
 namespace notf {
 
+template <typename T>
+class MakeSmartEnabler;
+
 /** A text font.
  * All font handling is done by NanoVG or stb_truetype respectively, this class only acts as a convenience object to
  * access a particular font (and as jumping-off point, should we ever require better font-handling).
  */
 class Font {
+
+    friend class MakeSmartEnabler<Font>;
 
 public: // static methods
     /** Loads a texture from a given file.
@@ -30,8 +35,8 @@ public: // methods
     /** Returns the ID of this Font. */
     int get_id() const { return m_id; }
 
-protected: // methods
-    Font(const int id)
+private: // methods for MakeSmartEnabler<Font>
+    explicit Font(const int id)
         : m_id(id)
     {
     }

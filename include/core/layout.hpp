@@ -85,9 +85,6 @@ public: // methods
 
     virtual const Claim& get_claim() const override { return m_claim; }
 
-    /** Shows (if possible) or hides this Layout. */
-    void set_visible(const bool is_visible) { _set_visible(is_visible); }
-
 public: // signals
     /** Emitted when a new child LayoutItem was added to this one.
      * @param ItemID of the new child.
@@ -114,8 +111,6 @@ protected: // methods
 
     /** Removes the given child LayoutItem. */
     void _remove_child(const Item* item);
-
-    virtual void _cascade_visibility(const VISIBILITY visibility) override;
 
     /** Updates the Claim but does not trigger any layouting. */
     bool _set_claim(const Claim claim)

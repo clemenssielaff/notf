@@ -4,6 +4,7 @@
 #include "core/layout.hpp"
 #include "core/layout_root.hpp"
 #include "core/render_manager.hpp"
+#include "core/state.hpp"
 #include "core/window.hpp"
 
 namespace notf {
@@ -47,53 +48,29 @@ std::shared_ptr<Window> Item::get_window() const
     return root_item->get_window();
 }
 
-Item::Item()
+Item::Item(PropertyMap&& properties, std::shared_ptr<StateMachine> state_machine)
     : m_id(_get_next_id())
+    , m_state_machine(state_machine)
+    , m_current_state(m_state_machine->get_start_state())
+    , m_properties(std::move(properties))
     , m_parent()
-    , m_visibility(VISIBILITY::VISIBLE)
-    , m_size()
-    , m_transform(Transform2::identity())
     , m_render_layer() // empty by default
     , py_object(nullptr, py_decref)
 {
+    // initialize the Item with the State Machine's default stae
+    m_current_state->enter(this);
 }
 
-void Item::_set_visible(const bool is_visible)
+void Item::_switch_state(const std::string& state_name)
 {
-    // ignore non-changes
-    if ((is_visible && m_visibility == VISIBILITY::VISIBLE) || (!is_visible && m_visibility == VISIBILITY::INVISIBLE)) {
+    if(!m_state_machine->has_state(state_name)){
+        log_warning << "Could not switch Item " << get_id() << " to unkown state \"" << state_name << "\"";
         return;
     }
-
-    // update visibility
-    const VISIBILITY previous_visibility = m_visibility;
-    if (is_visible) {
-        if (std::shared_ptr<const Layout> parent = get_parent()) {
-            const VISIBILITY parent_visibility = parent->get_visibility();
-            if (parent_visibility == VISIBILITY::INVISIBLE) {
-                _cascade_visibility(VISIBILITY::HIDDEN);
-            }
-            else {
-                _cascade_visibility(parent_visibility);
-            }
-        }
-        else {
-            _cascade_visibility(VISIBILITY::UNROOTED);
-        }
-    }
-    else {
-        _cascade_visibility(VISIBILITY::INVISIBLE);
-    }
-
-    // redraw if the item just became visible or invisible
-    if (previous_visibility != m_visibility) {
-        if (is_visible) {
-            _redraw();
-        }
-        else {
-            _update_parent_layout();
-        }
-    }
+    m_current_state->leave(this);
+    m_current_state = m_state_machine->get_state(state_name);
+    assert(m_current_state);
+    m_current_state->enter(this);
 }
 
 void Item::_update_parent_layout()
@@ -123,12 +100,10 @@ void Item::_set_pyobject(PyObject* object)
 bool Item::_redraw()
 {
     // do not request a redraw, if this item cannot be drawn anyway
-    if (!is_visible()) {
-        return false;
-    }
     if (get_size().is_zero() && !get_size().is_valid()) {
         return false;
     }
+    // TODO: check opacity
 
     if (std::shared_ptr<Window> window = get_window()) {
         window->get_render_manager().request_redraw();
@@ -158,35 +133,6 @@ void Item::_set_parent(std::shared_ptr<Layout> parent)
 
     m_parent = parent;
     parent_changed(parent->get_id());
-
-    // update visibility
-    if (!parent) {
-        if (m_visibility != VISIBILITY::INVISIBLE) {
-            _cascade_visibility(VISIBILITY::UNROOTED);
-        }
-    }
-    else {
-        VISIBILITY parent_visibility = parent->get_visibility();
-        if (parent_visibility == VISIBILITY::INVISIBLE) {
-            if (m_visibility != VISIBILITY::INVISIBLE) {
-                _cascade_visibility(VISIBILITY::HIDDEN);
-            }
-        }
-        else if (m_visibility != VISIBILITY::INVISIBLE) {
-            _cascade_visibility(parent_visibility);
-        }
-    }
-}
-
-void Item::_cascade_visibility(const VISIBILITY visibility)
-{
-    // update your own visibility
-    if (visibility == m_visibility) {
-        return;
-    }
-    m_visibility = visibility;
-    _redraw();
-    visibility_changed(m_visibility);
 }
 
 void Item::_get_window_transform(Transform2& result) const
@@ -194,7 +140,7 @@ void Item::_get_window_transform(Transform2& result) const
     if (std::shared_ptr<const Layout> parent = get_parent()) {
         parent->_get_window_transform(result);
     }
-    result = m_transform * result;
+    result = get_transform(Space::PARENT) * result;
 }
 
 Transform2 Item::_get_screen_transform() const
