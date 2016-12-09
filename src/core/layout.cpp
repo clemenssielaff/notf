@@ -27,7 +27,7 @@ bool Layout::has_item(const std::shared_ptr<Item>& candidate) const
 void Layout::_add_child(std::shared_ptr<Item> item)
 {
     if (std::find(m_children.begin(), m_children.end(), item) != m_children.end()) {
-        log_warning << "Did not add existing child " << item->get_id() << " to LayoutItem " << get_id();
+        log_warning << "Did not add existing child " << item->get_id() << " to Item " << get_id();
         return;
     }
     item->_set_parent(std::static_pointer_cast<Layout>(shared_from_this()));
@@ -40,7 +40,7 @@ void Layout::_remove_child(const Item* item)
 {
     auto it = std::find(m_children.begin(), m_children.end(), item->shared_from_this());
     if (it == m_children.end()) {
-        log_critical << "Failed to remove unknown child " << item->get_id() << " from LayoutItem " << get_id();
+        log_critical << "Failed to remove unknown child " << item->get_id() << " from Item " << get_id();
         return;
     }
     _remove_item(item);
@@ -50,7 +50,7 @@ void Layout::_remove_child(const Item* item)
 
 bool Layout::_set_size(const Size2f size)
 {
-    if(Item::_set_size(size)){
+    if (LayoutItem::_set_size(size)) {
         _relayout();
         return true;
     }

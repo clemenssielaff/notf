@@ -30,5 +30,5 @@ void produce_stack_layout(pybind11::module& module, py::detail::generic_type anc
     Py_StackLayout.def("set_spacing", &StackLayout::set_spacing, "Sets the spacing between items.", py::arg("spacing"));
     Py_StackLayout.def("set_cross_spacing", &StackLayout::set_cross_spacing, "Defines the spacing between stacks of items if this Layout is wrapped.", py::arg("spacing"));
 
-    Py_StackLayout.def("add_item", &StackLayout::add_item, "Adds a new LayoutItem into the Layout.", py::arg("item"));
+    Py_StackLayout.def("add_item", &StackLayout::add_item, "Adds a new Item into the Layout.", py::arg("item"));
 }

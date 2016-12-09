@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/item.hpp"
+#include "core/layout_item.hpp"
 #include "utils/private_except_for_bindings.hpp"
 
 namespace notf {
@@ -11,7 +11,7 @@ class MakeSmartEnabler;
 /**********************************************************************************************************************/
 
 /// @brief Something drawn on the screen, potentially able to interact with the user.
-class Widget : public Item {
+class Widget : public LayoutItem {
 
     friend class MakeSmartEnabler<Widget>;
 
@@ -22,42 +22,25 @@ public: // methods
      */
     std::shared_ptr<Layout> get_scissor_layout() const { return m_scissor_layout.lock(); }
 
-    virtual const Claim& get_claim() const override;
-
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
 
-    /** Returns a requested Property by name or nullptr if the Widget has no Property by that name. */
-    AbstractProperty* get_property(const std::string& name);
+    /** Sets a new Claim for this Widget.
+     * @return  True, iff the currenct Claim was changed.
+     */
+    bool set_claim(const Claim claim);
 
     /** Tells the Window that its contents need to be redrawn. */
     void redraw() { _redraw(); }
 
     // clang-format off
 private_except_for_bindings: // methods for MakeSmartEnabler<Widget>;
-    /** @param state_machine     StateMachine of this Widget. Applies the default state. */
-    explicit Widget(std::shared_ptr<StateMachine> state_machine);
+    explicit Widget();
 
 private_except_for_bindings : // methods
     /** Stores the Python subclass object of this Widget, if it was created through Python. */
     void set_pyobject(PyObject* object) { _set_pyobject(object); }
 
     // clang-format on
-protected: // methods
-    /** Adds a new Property to this Widget.
-     * @param name      Name of the Property, must be unique in this Widget.
-     * @param value     Value of the Property, must be of a type supported by AbstractProperty.
-     * @return          Iterator to the new Property.
-     * @throw           std::runtime_error if the name is not unique.
-     */
-    template <typename T>
-    PropertyMap::iterator _add_property(std::string name, const T value)
-    {
-        return add_property(m_properties, std::move(name), std::move(value));
-    }
-
-private: // methods
-    virtual bool _redraw() override;
-
 private: // fields
     /** Reference to a Layout used to 'scissor' this item.
      * Example: a scroll area 'scissors' children that overflow its size.

@@ -1,7 +1,6 @@
 #pragma once
 
-#include "common/claim.hpp"
-#include "core/item.hpp"
+#include "core/layout_item.hpp"
 
 namespace notf {
 
@@ -19,7 +18,7 @@ protected: // methods
 public: // methods
     virtual ~LayoutIterator() = default;
 
-    /** Advances the Iterator one step, returns the next LayoutItem or nullptr if the iteration has finished. */
+    /** Advances the Iterator one step, returns the next Item or nullptr if the iteration has finished. */
     virtual const Item* next() = 0;
 };
 
@@ -28,7 +27,7 @@ public: // methods
 /**
  * @brief Abstract Layout baseclass.
  */
-class Layout : public Item {
+class Layout : public LayoutItem {
 
     friend class Item;
 
@@ -71,7 +70,7 @@ public: // enums
 public: // methods
     virtual ~Layout() override;
 
-    /** Tests if a given LayoutItem is a child of this LayoutItem. */
+    /** Tests if a given Item is a child of this Item. */
     bool has_item(const std::shared_ptr<Item>& candidate) const;
 
     /** Returns the number of items in this Layout. */
@@ -83,48 +82,35 @@ public: // methods
     /** Returns an iterator that goes over all items in this Layout in order from back to front. */
     virtual std::unique_ptr<LayoutIterator> iter_items() const = 0;
 
-    virtual const Claim& get_claim() const override { return m_claim; }
-
 public: // signals
-    /** Emitted when a new child LayoutItem was added to this one.
+    /** Emitted when a new child Item was added to this one.
      * @param ItemID of the new child.
      */
     Signal<ItemID> child_added;
 
-    /** Emitted when a child LayoutItem of this one was removed.
+    /** Emitted when a child Item of this one was removed.
      * @param ItemID of the removed child.
      */
     Signal<ItemID> child_removed;
 
 protected: // methods
     explicit Layout()
-        : Item()
-        , m_claim()
+        : LayoutItem()
     {
     }
 
-    /** Returns all children of this LayoutItem. */
+    /** Returns all children of this Item. */
     const std::vector<std::shared_ptr<Item>>& _get_children() const { return m_children; }
 
-    /** Adds the given child to this LayoutItem. */
+    /** Adds the given child to this Item. */
     void _add_child(std::shared_ptr<Item> item);
 
-    /** Removes the given child LayoutItem. */
+    /** Removes the given child Item. */
     void _remove_child(const Item* item);
-
-    /** Updates the Claim but does not trigger any layouting. */
-    bool _set_claim(const Claim claim)
-    {
-        if (claim != m_claim) {
-            m_claim = std::move(claim);
-            return true;
-        }
-        return false;
-    }
 
     virtual bool _set_size(const Size2f size) override;
 
-    /** Tells this LayoutItem to update its Claim based on the combined Claims of its children.
+    /** Tells this Item to update its Claim based on the combined Claims of its children.
      *
      * Layouts and Widgets need to "negotiate" the Layout.
      * Whenever a Widget changes its Claim, the parent Layout has to see if it needs to update its Claim accordingly.
@@ -138,7 +124,7 @@ protected: // methods
 
     /** Layout-specific removal a of child item.
      * When a child is removed from the Layout, it calls _remove_child(), which takes care of the changes in the
-     * LayoutItem hierarchy.
+     * Item hierarchy.
      * However, most Layouts have an additional data structure for sorted, easy access to their children and it is
      * this methods's job to remove the child from there.
      */
@@ -147,9 +133,6 @@ protected: // methods
 private: // fields
     /** All child items contained in this Layout. */
     std::vector<std::shared_ptr<Item>> m_children;
-
-    /// @brief The Claim of a LayoutItem determines how much space it receives in the parent Layout.
-    Claim m_claim;
 };
 
 } // namespace notf

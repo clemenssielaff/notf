@@ -32,14 +32,14 @@ private: // for MakeSmartEnabler<StackLayoutIterator>;
 public: // methods
     virtual ~StackLayoutIterator() = default;
 
-    /** Advances the Iterator one step, returns the next LayoutItem or nullptr if the iteration has finished. */
+    /** Advances the Iterator one step, returns the next Item or nullptr if the iteration has finished. */
     virtual const Item* next() override;
 
 private: // fields
     /** StackLayout that is iterated over. */
     const StackLayout* m_layout;
 
-    /** Index of the next LayoutItem to return. */
+    /** Index of the next Item to return. */
     size_t m_index;
 };
 
@@ -105,7 +105,7 @@ public: // methods
     /** Defines the spacing between stacks of items if this Layout is wrapped. */
     void set_cross_spacing(float spacing);
 
-    /** Adds a new LayoutItem into the Layout.
+    /** Adds a new Item into the Layout.
      * @param item  Item to place at the end of the Layout. If the item is already a child, it is moved.
      */
     void add_item(std::shared_ptr<Item> item);

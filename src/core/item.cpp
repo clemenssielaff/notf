@@ -4,7 +4,6 @@
 #include "core/layout.hpp"
 #include "core/layout_root.hpp"
 #include "core/render_manager.hpp"
-#include "core/state.hpp"
 #include "core/window.hpp"
 
 namespace notf {
@@ -17,7 +16,7 @@ Item::~Item()
 
 bool Item::has_ancestor(const Item* ancestor) const
 {
-    // invalid LayoutItem can never be an ancestor
+    // invalid Item can never be an ancestor
     if (!ancestor) {
         return false;
     }
@@ -48,29 +47,25 @@ std::shared_ptr<Window> Item::get_window() const
     return root_item->get_window();
 }
 
-Item::Item(PropertyMap&& properties, std::shared_ptr<StateMachine> state_machine)
+Item::Item()
     : m_id(_get_next_id())
-    , m_state_machine(state_machine)
-    , m_current_state(m_state_machine->get_start_state())
-    , m_properties(std::move(properties))
     , m_parent()
     , m_render_layer() // empty by default
     , py_object(nullptr, py_decref)
 {
-    // initialize the Item with the State Machine's default stae
-    m_current_state->enter(this);
 }
 
-void Item::_switch_state(const std::string& state_name)
+bool Item::_redraw()
 {
-    if(!m_state_machine->has_state(state_name)){
-        log_warning << "Could not switch Item " << get_id() << " to unkown state \"" << state_name << "\"";
-        return;
+    // do not request a redraw, if this item cannot be drawn anyway
+    if (!is_visible()) {
+        return false;
     }
-    m_current_state->leave(this);
-    m_current_state = m_state_machine->get_state(state_name);
-    assert(m_current_state);
-    m_current_state->enter(this);
+
+    if (std::shared_ptr<Window> window = get_window()) {
+        window->get_render_manager().request_redraw();
+    }
+    return true;
 }
 
 void Item::_update_parent_layout()
@@ -95,20 +90,6 @@ void Item::_set_pyobject(PyObject* object)
     assert(!py_object); // you should only do this once
     py_incref(object);
     py_object.reset(std::move(object));
-}
-
-bool Item::_redraw()
-{
-    // do not request a redraw, if this item cannot be drawn anyway
-    if (get_size().is_zero() && !get_size().is_valid()) {
-        return false;
-    }
-    // TODO: check opacity
-
-    if (std::shared_ptr<Window> window = get_window()) {
-        window->get_render_manager().request_redraw();
-    }
-    return true;
 }
 
 void Item::_set_parent(std::shared_ptr<Layout> parent)
@@ -140,13 +121,13 @@ void Item::_get_window_transform(Transform2& result) const
     if (std::shared_ptr<const Layout> parent = get_parent()) {
         parent->_get_window_transform(result);
     }
-    result = get_transform(Space::PARENT) * result;
+    result = _get_local_transform() * result;
 }
 
 Transform2 Item::_get_screen_transform() const
 {
     log_critical << "get_transform(SPACE::SCREEN) is not emplemented yet";
-    return _get_parent_transform();
+    return _get_local_transform();
 }
 
 ItemID Item::_get_next_id()

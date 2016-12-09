@@ -4,10 +4,10 @@
 #include <atomic>
 #include <memory>
 
+#include "common/claim.hpp"
 #include "common/signal.hpp"
 #include "common/size2f.hpp"
 #include "common/transform2.hpp"
-#include "core/property.hpp"
 #include "python/pyobject_wrapper.hpp"
 
 /*
@@ -42,17 +42,14 @@
 
 namespace notf {
 
-class Claim;
 class Layout;
 class RenderLayer;
-class State;
-class StateMachine;
 class Widget;
 class Window;
 
-/// @brief Coordinate Spaces to pass to get_transform().
+/** Coordinate Spaces to pass to get_transform(). */
 enum class Space : unsigned char {
-    PARENT, // returns transform in local coordinates, relative to the parent LayoutItem
+    LOCAL, // returns transform in local coordinates, relative to the parent Item
     WINDOW, // returns transform in global coordinates, relative to the Window
     SCREEN, // returns transform in screen coordinates, relative to the screen origin
 };
@@ -62,7 +59,7 @@ using ItemID = size_t;
 
 /**********************************************************************************************************************/
 
-/** A LayoutItem is an abstraction of an item in the Layout hierarchy.
+/** A Item is an abstraction of an item in the Layout hierarchy.
  * Both Widget and all Layout subclasses inherit from it.
  */
 class Item : public Signaler<Item>, public std::enable_shared_from_this<Item> {
@@ -71,7 +68,7 @@ class Item : public Signaler<Item>, public std::enable_shared_from_this<Item> {
     friend class Widget;
 
 public: // methods
-    /// no copy / assignment
+    // no copy / assignment
     Item(const Item&) = delete;
     Item& operator=(const Item&) = delete;
 
@@ -80,57 +77,27 @@ public: // methods
     /** Application-unique ID of this Item. */
     ItemID get_id() const { return m_id; }
 
-    /** Returns the StateMachine of this Item. */
-    std::shared_ptr<StateMachine> get_state_machine() const { return m_state_machine; }
-
-    /** Checks if this Item has a Property by name and type. */
-    template <typename T>
-    bool has_property(const std::string& name) const
-    {
-        auto it = m_properties.find(name);
-        return (it != m_properties.end()) && (nullptr != dynamic_cast<Property<T>*>(it->second.get()));
-    }
-
-    /** Returns the value of a Property of this Item.
-     * Method has no logging because I expect some Components to routinely request "optional" Properties from Items.
-     * @param name              Name of the Property.
-     * @param default_value     Default value to return in case of error.
-     * @return                  The default value, if no Property of the given name or type can be found.
-     */
-    template <typename T>
-    const T& get_property(const std::string& name, const T& default_value) const
-    {
-        auto it = m_properties.find(name);
-        if (it != m_properties.end()) {
-            if (Property<T>* property = dynamic_cast<Property<T>*>(it->second.get())) {
-                return property->get_value();
-            }
-        }
-        return default_value;
-    }
-
-    /** Returns true iff this LayoutItem has a parent. */
     bool has_parent() const { return !m_parent.expired(); }
 
-    /** Tests, if this LayoutItem is a descendant of the given `ancestor`.
+    /** Tests, if this Item is a descendant of the given `ancestor`.
      * @param ancestor      Potential ancestor (non-onwing pointer is used for identification only).
-     * @return              True iff `ancestor` is an ancestor of this LayoutItem, false otherwise.
+     * @return              True iff `ancestor` is an ancestor of this Item, false otherwise.
      */
     bool has_ancestor(const Item* ancestor) const;
 
-    /** Returns the parent LayoutItem containing this LayoutItem, may be invalid. */
+    /** Returns the parent Item containing this Item, may be invalid. */
     std::shared_ptr<const Layout> get_parent() const { return m_parent.lock(); }
 
     /** Returns the Window containing this Widget (can be null). */
     std::shared_ptr<Window> get_window() const;
 
-    /** The current Claim of this LayoutItem. */
-    virtual const Claim& get_claim() const = 0;
+    /** Returns the opacity of this Item in the range [0 -> 1]. */
+    virtual float get_opacity() const = 0;
 
-    /** Returns the unscaled size of this LayoutItem in pixels. */
+    /** Returns the unscaled size of this Item in pixels. */
     virtual const Size2f& get_size() const = 0;
 
-    /** Returns this LayoutItem's transformation in the given space. */
+    /** Returns this Item's transformation in the given space. */
     Transform2 get_transform(const Space space) const
     {
         Transform2 result = Transform2::identity();
@@ -143,8 +110,8 @@ public: // methods
             result = _get_screen_transform();
             break;
 
-        case Space::PARENT:
-            result = _get_parent_transform();
+        case Space::LOCAL:
+            result = _get_local_transform();
             break;
 
         default:
@@ -153,16 +120,28 @@ public: // methods
         return result;
     }
 
+    /** The current Claim of this Item. */
+    virtual const Claim& get_claim() const = 0;
+
+    /** Checks, if the Item is currently visible. */
+    bool is_visible() const
+    {
+        return !(false
+                 || get_size().is_zero()
+                 || !get_size().is_valid()
+                 || get_opacity() == approx(0));
+    }
+
     /** Looks for a Widget at a given position in parent space.
      * @param local_pos     Local coordinates where to look for the Widget.
      * @return              The Widget at a given local position or an empty shared_ptr if there is none.
      */
     virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) = 0;
 
-    /** Returns the current RenderLayer of this LayoutItem. Can be empty. */
+    /** Returns the current RenderLayer of this Item. Can be empty. */
     const std::shared_ptr<RenderLayer>& get_render_layer() const { return m_render_layer; }
 
-    /** (Re-)sets the RenderLayer of this LayoutItem.
+    /** (Re-)sets the RenderLayer of this Item.
      * Pass an empty shared_ptr to implicitly inherit the RenderLayer from the parent Layout.
      */
     virtual void set_render_layer(std::shared_ptr<RenderLayer> render_layer)
@@ -171,28 +150,44 @@ public: // methods
     }
 
 public: // signals
-    /** Emitted when this LayoutItem got a new parent.
+    /** Emitted when this Item got a new parent.
      * @param ItemID of the new parent.
      */
     Signal<ItemID> parent_changed;
 
-protected: // methods
-    explicit Item(PropertyMap&& properties, std::shared_ptr<StateMachine> state_machine);
-
-    /** Switches the current State of this Item to the one with the given name.
-     * If the given name does not identify a valid State in the StateMachine, this function does nothing.
-     * The switch is instantaneous, the `leave` function of the current state and the `enter` function of the next are
-     * executed in direct succession.
+    /** Emitted, when the opacity of this Item has changed.
+     * @param New visiblity.
      */
-    void _switch_state(const std::string& state_name);
+    Signal<float> opacity_changed;
 
-    /** Updates the size of this LayoutItem.
-     * Is virtual, since Layouts use this function to update their items.
+    /** Emitted, when the size of this Item has changed.
+     * @param New size.
+     */
+    Signal<Size2f> size_changed;
+
+    /** Emitted, when the transform of this Item has changed.
+     * @param New local transform.
+     */
+    Signal<Transform2> transform_changed;
+
+protected: // methods
+    explicit Item();
+
+    /** Tells the Window that its contents need to be redrawn. */
+    bool _redraw();
+
+    /** Sets the opacity of this Item.
+     * @return      True iff the opacity has been modified.
+     */
+    virtual bool _set_opacity(float opacity) = 0;
+
+    /** Updates the size of this Item.
+     * Layouts use this function to update their items.
      * @return      True iff the size has been modified.
      */
     virtual bool _set_size(const Size2f size) = 0;
 
-    /** Updates the transformation of this LayoutItem.
+    /** Updates the transformation of this Item.
      * @return      True iff the transform has been modified.
      */
     virtual bool _set_transform(const Transform2 transform) = 0;
@@ -206,37 +201,34 @@ protected: // methods
     void _set_pyobject(PyObject* object);
 
 protected: // static methods
-    /** Allows any LayoutItem subclass to call _set_size on any other LayoutItem. */
+    /** Allows any Item subclass to call _set_size on any other Item. */
     static void _set_item_size(Item* item, const Size2f size) { item->_set_size(std::move(size)); }
 
-    /** Allows any LayoutItem subclass to call _set_item_transform on any other LayoutItem. */
+    /** Allows any Item subclass to call _set_item_transform on any other Item. */
     static void _set_item_transform(Item* item, const Transform2 transform)
     {
         item->_set_transform(std::move(transform));
     }
 
 private: // methods
-    /** Tells the Window that its contents need to be redrawn. */
-    virtual bool _redraw();
-
-    /** Sets a new LayoutItem to contain this LayoutItem.
-     * Setting a new parent makes this LayoutItem appear on top of the new parent.
+    /** Sets a new Item to contain this Item.
+     * Setting a new parent makes this Item appear on top of the new parent.
      * I chose to do this since it is expected behaviour and reparenting + changing the z-value is a more common
-     * use-case than reparenting the LayoutItem without changing its depth.
+     * use-case than reparenting the Item without changing its depth.
      */
     void _set_parent(std::shared_ptr<Layout> parent);
 
-    /** Removes the current parent of this LayoutItem. */
+    /** Removes the current parent of this Item. */
     void _unparent() { _set_parent({}); }
 
-    /** Recursive implementation to produce the LayoutItem's transformation in window space. */
+    /** Recursive implementation to produce the Item's transformation in window space. */
     void _get_window_transform(Transform2& result) const;
 
-    /** Returns the LayoutItem's transformation in screen space. */
+    /** Returns the Item's transformation in screen space. */
     Transform2 _get_screen_transform() const;
 
-    /** Returns the LayoutItem's transformation in parent space. */
-    virtual Transform2 _get_parent_transform() const = 0;
+    /** Returns the Item's transformation in parent space. */
+    virtual Transform2 _get_local_transform() const = 0;
 
 private: // static methods
     /** Returns the next, free ItemID.
@@ -248,19 +240,10 @@ private: // fields
     /** Application-unique ID of this Item. */
     const ItemID m_id;
 
-    /** The StateMachine attached to this Item. */
-    std::shared_ptr<StateMachine> m_state_machine;
-
-    /** The current State of this Item. */
-    const State* m_current_state;
-
-    /** All Properties of this Item. */
-    PropertyMap m_properties;
-
-    /** The parent LayoutItem, may be invalid. */
+    /** The parent Item, may be invalid. */
     std::weak_ptr<Layout> m_parent;
 
-    /** The RenderLayer of this LayoutItem.
+    /** The RenderLayer of this Item.
      * An empty pointer means that this item inherits its render layer from its parent.
      */
     std::shared_ptr<RenderLayer> m_render_layer;

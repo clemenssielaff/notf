@@ -29,7 +29,7 @@ protected: // for LayoutRoot
 public: // methods
     virtual ~LayoutRootIterator() = default;
 
-    /** Advances the Iterator one step, returns the next LayoutItem or nullptr if the iteration has finished. */
+    /** Advances the Iterator one step, returns the next Item or nullptr if the iteration has finished. */
     virtual const Item* next() override;
 
 private: // fields

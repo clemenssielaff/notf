@@ -32,14 +32,14 @@ private: // for MakeSmartEnabler<OverlayoutIterator>;
 public: // methods
     virtual ~OverlayoutIterator() = default;
 
-    /** Advances the Iterator one step, returns the next LayoutItem or nullptr if the iteration has finished. */
+    /** Advances the Iterator one step, returns the next Item or nullptr if the iteration has finished. */
     virtual const Item* next() override;
 
 private: // fields
     /** Overlayout that is iterated over. */
     const Overlayout* m_layout;
 
-    /** Index of the next LayoutItem to return. */
+    /** Index of the next Item to return. */
     size_t m_index;
 };
 
@@ -66,7 +66,7 @@ public: // methods
      */
     void set_claim(Claim claim) { _set_claim(std::move(claim)); }
 
-    /** Adds a new LayoutItem into the Layout.
+    /** Adds a new Item into the Layout.
      * @param item     Item to place at the front end of the Layout. If the item is already a child, it is moved.
      */
     void add_item(std::shared_ptr<Item> item);

@@ -79,7 +79,6 @@ SOURCES += \
     src/graphics/texture2.cpp \
     thirdparty/nanovg/nanovg.c \
     src/graphics/painter.cpp \
-    src/python/py_canvascomponent.cpp \
     src/python/py_layoutroot.cpp \
     src/python/py_painter.cpp \
     src/python/py_stacklayout.cpp \
@@ -101,14 +100,12 @@ SOURCES += \
     src/python/py_padding.cpp \
     src/python/py_claim.cpp \
     src/python/py_layout.cpp \
-    src/core/state.cpp \
-    src/python/py_state.cpp \
     src/dynamic/layout/overlayout.cpp \
     src/python/py_overlayout.cpp \
-    src/core/property_impl.cpp \
     src/python/py_notf.cpp \
     src/core/item.cpp \
-    src/python/pyobject_wrapper.cpp
+    src/python/pyobject_wrapper.cpp \
+    src/core/layout_item.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -172,15 +169,13 @@ HEADERS += \
     include/common/padding.hpp \
     include/utils/reverse_iterator.hpp \
     include/common/set_utils.hpp \
-    include/core/state.hpp \
     include/common/os_utils.hpp \
     include/dynamic/layout/overlayout.hpp \
-    include/core/property_impl.hpp \
-    include/core/property.hpp \
     include/python/py_notf.hpp \
     include/utils/make_smart_enabler.hpp \
     include/core/item.hpp \
     include/python/pyobject_wrapper.hpp \
-    include/utils/private_except_for_bindings.hpp
+    include/utils/private_except_for_bindings.hpp \
+    include/core/layout_item.hpp
 
 QMAKE_CXX = ccache g++
