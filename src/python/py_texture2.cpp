@@ -4,6 +4,7 @@ namespace py = pybind11;
 #include "core/application.hpp"
 #include "core/resource_manager.hpp"
 #include "graphics/texture2.hpp"
+#include "python/docstr.hpp"
 using namespace notf;
 
 void produce_texture2(pybind11::module& module)
@@ -20,5 +21,5 @@ void produce_texture2(pybind11::module& module)
 
     Py_Texture2.def_static("fetch", [](const std::string& texture_path, int flags = TextureFlags::GENERATE_MIPMAPS) -> std::shared_ptr<Texture2> {
         return Application::get_instance().get_resource_manager().fetch_texture(texture_path, flags);
-    }, "Retrieves a Texture2 by its path.", py::arg("texture_path"), py::arg("flags") = 1);
+    }, DOCSTR("Retrieves a Texture2 by its path."), py::arg("texture_path"), py::arg("flags") = 1);
 }

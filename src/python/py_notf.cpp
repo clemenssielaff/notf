@@ -4,6 +4,7 @@
 namespace py = pybind11;
 
 #include "core/item.hpp"
+#include "python/docstr.hpp"
 using namespace notf;
 
 void produce_resource_manager(pybind11::module& module);
@@ -30,7 +31,7 @@ const char* python_notf_module_name = "notf";
 
 PyObject* produce_pynotf_module()
 {
-    py::module module(python_notf_module_name, "NoTF Python bindings");
+    py::module module(python_notf_module_name, DOCSTR("NoTF Python bindings"));
     produce_size2i(module);
     produce_size2f(module);
     produce_vector2(module);

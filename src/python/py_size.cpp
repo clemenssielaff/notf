@@ -5,6 +5,7 @@ namespace py = pybind11;
 #include "common/size2i.hpp"
 #include "common/size2f.hpp"
 #include "common/string_utils.hpp"
+#include "python/docstr.hpp"
 using namespace notf;
 
 #ifdef __clang__
@@ -28,8 +29,8 @@ void produce_size2f(pybind11::module& module)
     PySize2f.def_readwrite("height", &Size2f::height);
 
     // inspections
-    PySize2f.def("is_zero", &Size2f::is_zero, "Tests if a rectangle of this Size had zero area.");
-    PySize2f.def("is_valid", &Size2f::is_valid, "Tests if this Size is valid (>=0) in both dimensions.");
+    PySize2f.def("is_zero", &Size2f::is_zero, DOCSTR("Tests if a rectangle of this Size had zero area."));
+    PySize2f.def("is_valid", &Size2f::is_valid, DOCSTR("Tests if this Size is valid (>=0) in both dimensions."));
 
     // operators
     PySize2f.def(py::self == py::self);
@@ -57,8 +58,8 @@ void produce_size2i(pybind11::module& module)
     PySize2i.def_readwrite("height", &Size2i::height);
 
     // inspections
-    PySize2i.def("is_null", &Size2i::is_null, "Tests if this Size is null.");
-    PySize2i.def("is_valid", &Size2i::is_valid, "Tests if this Size is valid (>=0) in both dimensions.");
+    PySize2i.def("is_null", &Size2i::is_null, DOCSTR("Tests if this Size is null."));
+    PySize2i.def("is_valid", &Size2i::is_valid, DOCSTR("Tests if this Size is valid (>=0) in both dimensions."));
 
     // operators
     PySize2i.def(py::self == py::self);

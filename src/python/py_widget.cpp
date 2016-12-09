@@ -4,6 +4,8 @@ namespace py = pybind11;
 #define NOTF_BINDINGS
 #include "core/widget.hpp"
 #include "graphics/painter.hpp"
+#include "python/docstr.hpp"
+#include "python/pyobject_wrapper.hpp"
 using namespace notf;
 
 /* Trampoline Class ***************************************************************************************************/
@@ -39,7 +41,7 @@ static void py_widget_dealloc(PyObject* object)
         instance->holder.reset();
 
         // when we save the instance, we also need to incref the type so it doesn't die on us
-        ++object->ob_type->ob_base.ob_base.ob_refcnt;
+        py_incref(&(object->ob_type->ob_base.ob_base));
     }
     else {
         assert(py_widget_dealloc_orig);
@@ -58,21 +60,21 @@ void produce_widget(pybind11::module& module, py::detail::generic_type ancestor)
 
     Py_Widget.def(py::init<>());
 
-    Py_Widget.def("get_id", &Widget::get_id, "The application-unique ID of this Widget.");
-    Py_Widget.def("has_parent", &Widget::has_parent, "Checks if this Item currently has a parent Item or not.");
+    Py_Widget.def("get_id", &Widget::get_id, DOCSTR("The application-unique ID of this Widget."));
+    Py_Widget.def("has_parent", &Widget::has_parent, DOCSTR("Checks if this Item currently has a parent Item or not."));
 
-    Py_Widget.def("get_opacity", &Widget::get_opacity, "Returns the opacity of this Item in the range [0 -> 1].");
-    Py_Widget.def("get_size", &Widget::get_size, "Returns the unscaled size of this Item in pixels.");
-//    Py_Widget.def("get_transform", &Widget::get_transform, "Returns this Item's transformation in the given space.", py::arg("space"));
-    Py_Widget.def("get_claim", &Widget::get_claim, "The current Claim of this Widget.");
-    Py_Widget.def("get_scissor", &Widget::set_claim, "Returns the Layout used to scissor this Widget.");
-    Py_Widget.def("is_visible", &Widget::is_visible, "Checks, if the Item is currently visible.");
+    Py_Widget.def("get_opacity", &Widget::get_opacity, DOCSTR("Returns the opacity of this Item in the range [0 -> 1]."));
+    Py_Widget.def("get_size", &Widget::get_size, DOCSTR("Returns the unscaled size of this Item in pixels."));
+    //    Py_Widget.def("get_transform", &Widget::get_transform, "Returns this Item's transformation in the given space.", py::arg("space"));
+    Py_Widget.def("get_claim", &Widget::get_claim, DOCSTR("The current Claim of this Widget."));
+    Py_Widget.def("get_scissor", &Widget::set_claim, DOCSTR("Returns the Layout used to scissor this Widget."));
+    Py_Widget.def("is_visible", &Widget::is_visible, DOCSTR("Checks, if the Item is currently visible."));
 
     // TODO: complete Widget python bindings (RenderLayers)
 
-    Py_Widget.def("set_opacity", &Widget::set_opacity, "Sets the opacity of this Widget.", py::arg("opacity"));
-    Py_Widget.def("set_scissor", &Widget::set_claim, "Sets the new scissor Layout for this Widget.", py::arg("scissor"));
-    Py_Widget.def("set_claim", &Widget::set_claim, "Sets a new Claim for this Widget.", py::arg("claim"));
+    Py_Widget.def("set_opacity", &Widget::set_opacity, DOCSTR("Sets the opacity of this Widget."), py::arg("opacity"));
+    Py_Widget.def("set_scissor", &Widget::set_claim, DOCSTR("Sets the new scissor Layout for this Widget."), py::arg("scissor"));
+    Py_Widget.def("set_claim", &Widget::set_claim, DOCSTR("Sets a new Claim for this Widget."), py::arg("claim"));
 
-    Py_Widget.def("paint", &Widget::paint, "Paints this Widget onto the screen.", py::arg("painter"));
+    Py_Widget.def("paint", &Widget::paint, DOCSTR("Paints this Widget onto the screen."), py::arg("painter"));
 }

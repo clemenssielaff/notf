@@ -102,7 +102,8 @@ SOURCES += \
     src/python/py_notf.cpp \
     src/core/item.cpp \
     src/python/pyobject_wrapper.cpp \
-    src/core/layout_item.cpp
+    src/core/layout_item.cpp \
+    src/core/controller.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -170,6 +171,8 @@ HEADERS += \
     include/core/item.hpp \
     include/python/pyobject_wrapper.hpp \
     include/utils/private_except_for_bindings.hpp \
-    include/core/layout_item.hpp
+    include/core/layout_item.hpp \
+    include/python/docstr.hpp \
+    include/core/controller.hpp
 
 QMAKE_CXX = ccache g++

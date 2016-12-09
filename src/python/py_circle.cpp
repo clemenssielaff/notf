@@ -4,6 +4,7 @@ namespace py = pybind11;
 
 #include "common/circle.hpp"
 #include "common/string_utils.hpp"
+#include "python/docstr.hpp"
 using namespace notf;
 
 #ifdef __clang__
@@ -31,12 +32,12 @@ void produce_circle(pybind11::module& module)
     PyCircle.def_property_readonly("area", &Circle::area);
 
     // inspections
-    PyCircle.def("is_null", &Circle::is_null, "Test, if this Circle is null; The null Circle has no area.");
-    PyCircle.def("contains", &Circle::contains, "Checks if this Circle contains a given point.", py::arg("point"));
-    PyCircle.def("closest_point_to", &Circle::closest_point_to, "Returns the closest point inside the Circle to a given target point.", py::arg("target"));
+    PyCircle.def("is_null", &Circle::is_null, DOCSTR("Test, if this Circle is null; The null Circle has no area."));
+    PyCircle.def("contains", &Circle::contains, DOCSTR("Checks if this Circle contains a given point."), py::arg("point"));
+    PyCircle.def("closest_point_to", &Circle::closest_point_to, DOCSTR("Returns the closest point inside the Circle to a given target point."), py::arg("target"));
 
     // modification
-    PyCircle.def("set_null", &Circle::set_null, "Sets this Circle to null.");
+    PyCircle.def("set_null", &Circle::set_null, DOCSTR("Sets this Circle to null."));
 
     // operators
     PyCircle.def(py::self == py::self);

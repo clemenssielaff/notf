@@ -3,6 +3,7 @@ namespace py = pybind11;
 
 #include "common/padding.hpp"
 #include "common/string_utils.hpp"
+#include "python/docstr.hpp"
 using namespace notf;
 
 #ifdef __clang__
@@ -23,10 +24,10 @@ void produce_padding(pybind11::module& module)
     }, py::arg("top"), py::arg("right"), py::arg("bottom"), py::arg("left"));
 
     // static constructors
-    PyPadding.def_static("all", &Padding::all, "Even padding on all sides.", py::arg("padding"));
-    PyPadding.def_static("none", &Padding::none, "No padding.");
-    PyPadding.def_static("horizontal", &Padding::horizontal, "Horizontal padding, sets both `left` and `right`.", py::arg("padding"));
-    PyPadding.def_static("vertical", &Padding::vertical, "Vertical padding, sets both `top` and `bottom`.", py::arg("padding"));
+    PyPadding.def_static("all", &Padding::all, DOCSTR("Even padding on all sides."), py::arg("padding"));
+    PyPadding.def_static("none", &Padding::none, DOCSTR("No padding."));
+    PyPadding.def_static("horizontal", &Padding::horizontal, DOCSTR("Horizontal padding, sets both `left` and `right`."), py::arg("padding"));
+    PyPadding.def_static("vertical", &Padding::vertical, DOCSTR("Vertical padding, sets both `top` and `bottom`."), py::arg("padding"));
 
     // properties
     PyPadding.def_readonly("top", &Padding::top);
@@ -35,8 +36,8 @@ void produce_padding(pybind11::module& module)
     PyPadding.def_readonly("left", &Padding::left);
 
     // inspections
-    PyPadding.def("is_padding", &Padding::is_padding, "Checks if any of the sides is padding.");
-    PyPadding.def("is_valid", &Padding::is_valid, "Checks if this Padding is valid (all sides have values >= 0).");
+    PyPadding.def("is_padding", &Padding::is_padding, DOCSTR("Checks if any of the sides is padding."));
+    PyPadding.def("is_valid", &Padding::is_valid, DOCSTR("Checks if this Padding is valid (all sides have values >= 0)."));
 
     // representation
     PyPadding.def("__repr__", [](const Padding& padding) {

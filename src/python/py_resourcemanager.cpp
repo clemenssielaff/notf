@@ -3,6 +3,7 @@ namespace py = pybind11;
 
 #include "core/application.hpp"
 #include "core/resource_manager.hpp"
+#include "python/docstr.hpp"
 using namespace notf;
 
 namespace { // anonymous
@@ -18,5 +19,5 @@ void produce_resource_manager(pybind11::module& module)
     py::class_<ResourceManagerWrapper> Py_ResourceManager(module, "ResourceManager");
 
     Py_ResourceManager.def(py::init<>());
-    Py_ResourceManager.def("cleanup", &ResourceManagerWrapper::cleanup, "Deletes all resources that are not currently being used.");
+    Py_ResourceManager.def("cleanup", &ResourceManagerWrapper::cleanup, DOCSTR("Deletes all resources that are not currently being used."));
 }

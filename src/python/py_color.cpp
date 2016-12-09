@@ -5,6 +5,7 @@ namespace py = pybind11;
 #include "common/color.hpp"
 #include "common/string_utils.hpp"
 #include "common/float_utils.hpp"
+#include "python/docstr.hpp"
 using namespace notf;
 
 #ifdef __clang__
@@ -23,18 +24,18 @@ void produce_color(pybind11::module& module)
     PyColor.def(py::init<const std::string&>());
 
     // static helper
-    PyColor.def_static("is_color", &Color::is_color, "Checks, if the given string is a valid color value that can be passed to the constructor.", py::arg("value"));
+    PyColor.def_static("is_color", &Color::is_color, DOCSTR("Checks, if the given string is a valid color value that can be passed to the constructor."), py::arg("value"));
 
     // static constructors
     PyColor.def_static("from_rgb", [](float r, float g, float b, float a = 1) -> Color {
         return Color::from_rgb(r, g, b, a);
-    }, "Creates a Color from rgb(a) floats in the range [0, 1]", py::arg("r"), py::arg("g"), py::arg("b"), py::arg("a") = 1.f);
+    }, DOCSTR("Creates a Color from rgb(a) floats in the range [0, 1]"), py::arg("r"), py::arg("g"), py::arg("b"), py::arg("a") = 1.f);
     PyColor.def_static("from_rgb", [](int r, int g, int b, int a = 255) -> Color {
         return Color::from_rgb(r, g, b, a);
-    }, "Creates a Color from rgb(a) integers in the range [0, 255]", py::arg("r"), py::arg("g"), py::arg("b"), py::arg("a") = 255);
+    }, DOCSTR("Creates a Color from rgb(a) integers in the range [0, 255]"), py::arg("r"), py::arg("g"), py::arg("b"), py::arg("a") = 255);
     PyColor.def_static("from_hsl", [](float h, float s, float l, float a = 1) -> Color {
         return Color::from_hsl(h, s, l, a);
-    }, "Creates a Color from hsl(a) floats in the range [0, 1]", py::arg("h"), py::arg("s"), py::arg("l"), py::arg("a") = 1.f);
+    }, DOCSTR("Creates a Color from hsl(a) floats in the range [0, 1]"), py::arg("h"), py::arg("s"), py::arg("l"), py::arg("a") = 1.f);
 
     // properties
     PyColor.def_readonly("r", &Color::r);
@@ -43,8 +44,8 @@ void produce_color(pybind11::module& module)
     PyColor.def_readonly("a", &Color::a);
 
     // inspections
-    PyColor.def("to_string", &Color::to_string, "Returns the Color as an RGB string value.");
-    PyColor.def("to_greyscale", &Color::to_greyscale, "Weighted conversion of this color to greyscale.");
+    PyColor.def("to_string", &Color::to_string, DOCSTR("Returns the Color as an RGB string value."));
+    PyColor.def("to_greyscale", &Color::to_greyscale, DOCSTR("Weighted conversion of this color to greyscale."));
 
     // operators
     PyColor.def(py::self == py::self);
@@ -60,7 +61,7 @@ void produce_color(pybind11::module& module)
     });
 
     // free functions
-    module.def("lerp", (Color(*)(const Color&, const Color&, float)) &lerp, "Linear interpolation between two Colors.", py::arg("from"), py::arg("to"), py::arg("blend"));
+    module.def("lerp", (Color(*)(const Color&, const Color&, float)) &lerp, DOCSTR("Linear interpolation between two Colors."), py::arg("from"), py::arg("to"), py::arg("blend"));
 }
 
 #ifdef __clang__

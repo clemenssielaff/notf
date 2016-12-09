@@ -5,8 +5,8 @@
 
 using namespace notf;
 
-int main(int argc, char* argv[])
-//int notmain(int argc, char* argv[])
+//int main(int argc, char* argv[])
+int notmain(int argc, char* argv[])
 {
     ApplicationInfo app_info;
     app_info.argc = argc;

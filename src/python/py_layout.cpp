@@ -2,6 +2,7 @@
 namespace py = pybind11;
 
 #include "core/layout.hpp"
+#include "python/docstr.hpp"
 using namespace notf;
 
 namespace { // anonymous

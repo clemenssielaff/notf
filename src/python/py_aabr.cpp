@@ -4,6 +4,7 @@ namespace py = pybind11;
 
 #include "common/aabr.hpp"
 #include "common/string_utils.hpp"
+#include "python/docstr.hpp"
 using namespace notf;
 
 #ifdef __clang__
@@ -42,19 +43,19 @@ void produce_aabr(pybind11::module& module)
     PyAabr.def_property_readonly("area", &Aabr::area);
 
     // inspections
-    PyAabr.def("is_null", &Aabr::is_null, "Test, if this Aabr is null; The null Aabr has no area and is located at zero.");
-    PyAabr.def("contains", &Aabr::contains, "Checks if this Aabr contains a given point.", py::arg("point"));
-    PyAabr.def("closest_point_to", &Aabr::closest_point_to, "Returns the closest point inside the Aabr to a given target point.", py::arg("target"));
+    PyAabr.def("is_null", &Aabr::is_null, DOCSTR("Test, if this Aabr is null; The null Aabr has no area and is located at zero."));
+    PyAabr.def("contains", &Aabr::contains, DOCSTR("Checks if this Aabr contains a given point."), py::arg("point"));
+    PyAabr.def("closest_point_to", &Aabr::closest_point_to, DOCSTR("Returns the closest point inside the Aabr to a given target point."), py::arg("target"));
 
     // modification
-    PyAabr.def("set_null", &Aabr::set_null, "Sets this Aabr to null.");
-    PyAabr.def("grow", &Aabr::grow, "Moves each edge of the Aabr a given amount towards the outside.", py::arg("amount"));
-    PyAabr.def("shrink", &Aabr::shrink, "Moves each edge of the Aabr a given amount towards the inside.", py::arg("amount"));
-    PyAabr.def("shrink", &Aabr::shrink, "Moves each edge of the Aabr a given amount towards the inside.", py::arg("amount"));
-    PyAabr.def("intersection", &Aabr::intersection, "Intersection of this Aabr with `other`.", py::arg("other"));
-    PyAabr.def("intersected", &Aabr::intersected, "Intersection of this Aabr with `other` in-place.", py::arg("other"));
-    PyAabr.def("union", &Aabr::union_, "Creates the union of this Aabr with `other`.", py::arg("other"));
-    PyAabr.def("united", &Aabr::united, "Creates the union of this Aabr with `other` in-place.", py::arg("other"));
+    PyAabr.def("set_null", &Aabr::set_null, DOCSTR("Sets this Aabr to null."));
+    PyAabr.def("grow", &Aabr::grow, DOCSTR("Moves each edge of the Aabr a given amount towards the outside."), py::arg("amount"));
+    PyAabr.def("shrink", &Aabr::shrink, DOCSTR("Moves each edge of the Aabr a given amount towards the inside."), py::arg("amount"));
+    PyAabr.def("shrink", &Aabr::shrink, DOCSTR("Moves each edge of the Aabr a given amount towards the inside."), py::arg("amount"));
+    PyAabr.def("intersection", &Aabr::intersection, DOCSTR("Intersection of this Aabr with `other`."), py::arg("other"));
+    PyAabr.def("intersected", &Aabr::intersected, DOCSTR("Intersection of this Aabr with `other` in-place."), py::arg("other"));
+    PyAabr.def("union", &Aabr::union_, DOCSTR("Creates the union of this Aabr with `other`."), py::arg("other"));
+    PyAabr.def("united", &Aabr::united, DOCSTR("Creates the union of this Aabr with `other` in-place."), py::arg("other"));
 
     // operators
     PyAabr.def(py::self == py::self);
