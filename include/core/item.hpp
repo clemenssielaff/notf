@@ -77,6 +77,7 @@ public: // methods
     /** Application-unique ID of this Item. */
     ItemID get_id() const { return m_id; }
 
+    /** Checks if this Item currently has a parent Item or not. */
     bool has_parent() const { return !m_parent.expired(); }
 
     /** Tests, if this Item is a descendant of the given `ancestor`.
@@ -123,7 +124,10 @@ public: // methods
     /** The current Claim of this Item. */
     virtual const Claim& get_claim() const = 0;
 
-    /** Checks, if the Item is currently visible. */
+    /** Checks, if the Item is currently visible.
+     * This method does return false if the opacity is zero but also if there are any other factors that make this Item
+     * not visible, like a zero size for example.
+     */
     bool is_visible() const
     {
         return !(false

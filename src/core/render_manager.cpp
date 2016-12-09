@@ -1,14 +1,12 @@
 #include "core/render_manager.hpp"
 
 #include <algorithm>
-#include <assert.h>
 
 #include "common/log.hpp"
-#include "core/application.hpp"
-#include "core/components/canvas_component.hpp"
 #include "core/layout_root.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
+#include "graphics/painter.hpp"
 #include "graphics/rendercontext.hpp"
 #include "utils/make_smart_enabler.hpp"
 
@@ -74,8 +72,13 @@ void RenderManager::render(const RenderContext& context)
     // draw all widgets
     for (std::shared_ptr<RenderLayer>& render_layer : m_layers) {
         for (const Widget* widget : render_layer->m_widgets) {
-//            std::shared_ptr<CanvasComponent> canvas = widget->get_state()->get_component<CanvasComponent>();
-//            canvas->render(*widget, context);
+            Painter painter(widget, &context);
+            try {
+                widget->paint(painter);
+            }
+            catch (std::runtime_error error) {
+                log_warning << error.what();
+            }
         }
         render_layer->m_widgets.clear();
     }
@@ -89,7 +92,7 @@ void RenderManager::_iterate_layout_hierarchy(const Item* item, RenderLayer* par
     assert(parent_layer);
 
     // ignore invisible items
-    if(!item->is_visible()){
+    if (!item->is_visible()) {
         return;
     }
 

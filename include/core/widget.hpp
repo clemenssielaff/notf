@@ -8,21 +8,27 @@ namespace notf {
 template <typename T>
 class MakeSmartEnabler;
 
+class Painter;
+
 /**********************************************************************************************************************/
 
 /// @brief Something drawn on the screen, potentially able to interact with the user.
 class Widget : public LayoutItem {
 
     friend class MakeSmartEnabler<Widget>;
+    friend class RenderManager;
 
 public: // methods
+    virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
+
     /** Returns the Layout used to scissor this Widget.
      * Returns an empty shared_ptr, if no explicit scissor Layout was set or the scissor Layout has since expired.
      * In this case, the Widget is implicitly scissored by its parent Layout.
      */
-    std::shared_ptr<Layout> get_scissor_layout() const { return m_scissor_layout.lock(); }
+    std::shared_ptr<Layout> get_scissor() const { return m_scissor_layout.lock(); }
 
-    virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
+    /** Sets the new scissor Layout for this Widget. */
+    void set_scissor(const std::shared_ptr<Layout>& scissor) { m_scissor_layout = scissor; }
 
     /** Sets a new Claim for this Widget.
      * @return  True, iff the currenct Claim was changed.
@@ -36,7 +42,11 @@ public: // methods
 private_except_for_bindings: // methods for MakeSmartEnabler<Widget>;
     explicit Widget();
 
-private_except_for_bindings : // methods
+private_except_for_bindings: // methods for RenderManager
+    /** Paints this Widget onto the screen. */
+    virtual void paint(Painter& painter) const = 0;
+
+private_except_for_bindings : // methods    
     /** Stores the Python subclass object of this Widget, if it was created through Python. */
     void set_pyobject(PyObject* object) { _set_pyobject(object); }
 

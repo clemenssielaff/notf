@@ -12,6 +12,7 @@ std::atomic<ItemID> Item::s_nextID(1);
 
 Item::~Item()
 {
+    log_trace << "Destroying Item #" << m_id;
 }
 
 bool Item::has_ancestor(const Item* ancestor) const
@@ -53,6 +54,7 @@ Item::Item()
     , m_render_layer() // empty by default
     , py_object(nullptr, py_decref)
 {
+    log_trace << "Creating Item #" << m_id;
 }
 
 bool Item::_redraw()

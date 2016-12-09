@@ -18,6 +18,11 @@ public: // methods
 
     virtual const Claim& get_claim() const override { return m_claim; }
 
+    /** Sets the opacity of this LayoutItem.
+     * @param opacity   Is clamped to range [0 -> 1] with 0 => fully transparent and 1 => fully opaque.
+     */
+    void set_opacity(const float opacity) { _set_opacity(opacity); }
+
 protected: // methods
     explicit LayoutItem()
         : Item()

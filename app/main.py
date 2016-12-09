@@ -1,7 +1,5 @@
-from importlib import reload
 from random import randint
 from notf import *
-
 
 def fill_color(painter, color):
     painter.begin()
@@ -11,31 +9,15 @@ def fill_color(painter, color):
     painter.set_fill(color)
     painter.fill()
 
+class OrangeWidget(Widget):
+    def paint(self, painter):
+        fill_color(painter, Color("#c34200"))
 
-def fill_orange(painter):
-    fill_color(painter, Color("#c34200"))
-
-
-def fill_blue(painter):
-    fill_color(painter, Color("#2b60b8"))
-
+class BlueWidget(Widget):
+    def paint(self, painter):
+        fill_color(painter, Color("#2b60b8"))
 
 def main():
-    # produce the types that we are going to use in our glorious UI
-    solid_orange = CanvasComponent()
-    solid_orange.set_paint_function(fill_orange)
-    orange_factory = StateMachineFactory()
-    orange_state = orange_factory.add_state("orange")
-    orange_state.attach_component(solid_orange)
-    orange_machine = orange_factory.produce(orange_state)
-
-    solid_blue = CanvasComponent()
-    solid_blue.set_paint_function(fill_blue)
-    blue_factory = StateMachineFactory()
-    blue_state = blue_factory.add_state("blue")
-    blue_state.attach_component(solid_blue)
-    blue_machine = blue_factory.produce(blue_state)
-
     # produce the flex layout in the background
     stack_layout = StackLayout(Layout.Direction.LEFT_TO_RIGHT)
     stack_layout.set_wrap(Layout.Wrap.WRAP)
@@ -48,10 +30,6 @@ def main():
     max_min = 100
     max_max = 200
     for i in range(50):
-        widget = Widget()
-        widget.set_state_machine(orange_machine)
-        stack_layout.add_item(widget)
-
         h_stretch = ClaimStretch()
         h_stretch.set_min(randint(0, max_min))
         h_stretch.set_max(randint(h_stretch.get_min(), max_max))
@@ -65,14 +43,16 @@ def main():
         claim = Claim()
         claim.set_horizontal(h_stretch)
         claim.set_vertical(v_stretch)
-        widget.set_claim(claim)
+
+        orange_box = OrangeWidget()
+        orange_box.set_claim(claim)
+        stack_layout.add_item(orange_box)
 
     # and the fill layout in the foreground
-    widget = Widget()
-    widget.set_state_machine(blue_machine)
+    blue_box = BlueWidget()
     fill_layout = Overlayout()
     fill_layout.set_padding(Padding.all(50))
-    fill_layout.add_item(widget)
+    fill_layout.add_item(blue_box)
 
     window_layout = Overlayout()
     window_layout.add_item(stack_layout)
@@ -83,9 +63,9 @@ def main():
 
 def produce_notf():
     import build_notf
-    reload(build_notf)
     build_notf.produce()
 
 
 if __name__ == "__main__":
     main()
+    pass

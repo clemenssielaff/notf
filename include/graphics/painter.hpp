@@ -17,14 +17,14 @@ namespace notf {
 
 class Widget;
 
-/** A Painter is an object that paints into a Widget's CanvasComponent.
+/** A Painter is an object that paints a Widget into a Window's framebuffer.
  *
  * This is a thin wrapper around C methods exposed from nanovg.h written by Mikko Mononen.
  * Some of the docstrings are verbatim copies of their corresponding nvg documentation.
  */
 class Painter final {
 
-    friend class CanvasComponent; // may construct a Painter
+    friend class RenderManager; // may construct a Painter
 
 public: // enums
     enum class Winding {

@@ -57,7 +57,6 @@ else {
 SOURCES += \
     src/core/application.cpp \
     src/core/window.cpp \
-    src/core/component.cpp \
     src/core/widget.cpp \
     src/common/log.cpp \
     src/common/vector2.cpp \
@@ -67,8 +66,6 @@ SOURCES += \
     src/core/render_manager.cpp \
     src/common/color.cpp \
     src/common/transform2.cpp \
-    src/core/components/shape_component.cpp \
-    src/core/components/canvas_component.cpp \
     src/common/size2i.cpp \
     src/core/layout.cpp \
     src/core/layout_root.cpp \
@@ -110,7 +107,6 @@ SOURCES += \
 HEADERS += \
     include/core/application.hpp \
     include/core/window.hpp \
-    include/core/component.hpp \
     include/common/signal.hpp \
     include/common/string_utils.hpp \
     include/core/glfw_wrapper.hpp \
@@ -134,8 +130,6 @@ HEADERS += \
     thirdparty/stb_image/stb_image.h \
     include/core/resource_manager.hpp \
     include/core/render_manager.hpp \
-    include/core/components/shape_component.hpp \
-    include/core/components/canvas_component.hpp \
     include/common/color.hpp \
     include/common/enummap.hpp \
     include/common/int_utils.hpp \
