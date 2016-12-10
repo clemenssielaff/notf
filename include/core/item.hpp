@@ -8,7 +8,7 @@
 #include "common/signal.hpp"
 #include "common/size2f.hpp"
 #include "common/transform2.hpp"
-#include "python/pyobject_wrapper.hpp"
+#include "python/py_fwd.hpp"
 #include "utils/binding_accessors.hpp"
 
 /*

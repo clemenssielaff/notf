@@ -6,7 +6,8 @@ namespace py = pybind11;
 #define NOTF_BINDINGS
 #include "core/controller.hpp"
 #include "python/docstr.hpp"
-#include "python/pyobject_wrapper.hpp"
+#include "python/py_fwd.hpp"
+#include "python/type_patches.hpp"
 using namespace notf;
 
 /* Trampoline Class ***************************************************************************************************/
@@ -78,10 +79,10 @@ public: // methods
         }
         State& next = it->second;
         if (m_current_state) {
-//            m_current_state->leave(py::cast(this));
+            //            m_current_state->leave(py::cast(this));
         }
         m_current_state = &next;
-        m_current_state->enter();//py::cast(this));
+        m_current_state->enter(); //py::cast(this));
     }
 
 private: // fields
@@ -93,26 +94,6 @@ private: // fields
 };
 PyController::~PyController() {}
 
-/* Custom Deallocator *************************************************************************************************/
-
-static void (*py_controller_dealloc_orig)(PyObject*) = nullptr;
-static void py_controller_dealloc(PyObject* object)
-{
-    auto instance = reinterpret_cast<py::detail::instance<PyController, std::shared_ptr<PyController>>*>(object);
-    if (instance->holder.use_count() > 1) {
-        instance->value->_set_pyobject(object);
-        assert(object->ob_refcnt == 1);
-        instance->holder.reset();
-
-        // when we save the instance, we also need to incref the type so it doesn't die on us
-        py_incref(&(object->ob_type->ob_base.ob_base));
-    }
-    else {
-        assert(py_controller_dealloc_orig);
-        py_controller_dealloc_orig(object);
-    }
-}
-
 /* Bindings ***********************************************************************************************************/
 
 #ifdef __clang__
@@ -123,11 +104,7 @@ static void py_controller_dealloc(PyObject* object)
 void produce_controller(pybind11::module& module, py::detail::generic_type Py_Item)
 {
     py::class_<PyController, std::shared_ptr<PyController>> Py_Controller(module, "Controller", Py_Item);
-    {
-        PyTypeObject* py_controller_type = reinterpret_cast<PyTypeObject*>(Py_Controller.ptr());
-        py_controller_dealloc_orig = py_controller_type->tp_dealloc;
-        py_controller_type->tp_dealloc = py_controller_dealloc;
-    }
+    patch_type(Py_Controller.ptr());
 
     Py_Controller.def(py::init<std::shared_ptr<LayoutItem>>());
 

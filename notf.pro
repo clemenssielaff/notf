@@ -11,8 +11,8 @@ LIBS *= -lglfw3 -lGL -lX11 -lXxf86vm -lpthread -ldl -lXcursor -lXrandr -lXineram
 
 # python
 LIBS *= -L/home/clemens/code/thirdparty/Python-3.5.2/
-LIBS *= -lpython3.5m
-INCLUDEPATH *= /home/clemens/code/thirdparty/Python-3.5.2/INSTALL/include/python3.5m/
+LIBS *= -lpython3.5dm
+INCLUDEPATH *= /home/clemens/code/thirdparty/Python-3.5.2/INSTALL/include/python3.5dm/
 
 CONFIG(release, debug|release) {
 #    message("Building in Release Mode.")
@@ -101,10 +101,11 @@ SOURCES += \
     src/python/py_overlayout.cpp \
     src/python/py_notf.cpp \
     src/core/item.cpp \
-    src/python/pyobject_wrapper.cpp \
     src/core/layout_item.cpp \
     src/core/controller.cpp \
-    src/python/py_controller.cpp
+    src/python/py_controller.cpp \
+    src/python/type_patches.cpp \
+    src/python/py_fwd.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -170,12 +171,11 @@ HEADERS += \
     include/python/py_notf.hpp \
     include/utils/make_smart_enabler.hpp \
     include/core/item.hpp \
-    include/python/pyobject_wrapper.hpp \
     include/core/layout_item.hpp \
     include/python/docstr.hpp \
     include/core/controller.hpp \
-    include/utils/binding_accessors.hpp
+    include/utils/binding_accessors.hpp \
+    include/python/type_patches.hpp \
+    include/python/py_fwd.hpp
 
 QMAKE_CXX = ccache g++
-
-DISTFILES +=

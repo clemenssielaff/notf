@@ -3,6 +3,9 @@
 struct _object;
 using PyObject = _object;
 
+struct _typeobject;
+using PyTypeObject = _typeobject;
+
 namespace notf {
 
 /** Py_XINCREF wrapper. */

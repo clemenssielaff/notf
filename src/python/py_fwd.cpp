@@ -1,4 +1,4 @@
-#include "python/pyobject_wrapper.hpp"
+#include "python/py_fwd.hpp"
 
 #include <Python.h>
 

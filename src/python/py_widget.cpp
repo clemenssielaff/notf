@@ -5,7 +5,7 @@ namespace py = pybind11;
 #include "core/widget.hpp"
 #include "graphics/painter.hpp"
 #include "python/docstr.hpp"
-#include "python/pyobject_wrapper.hpp"
+#include "python/type_patches.hpp"
 using namespace notf;
 
 /* Trampoline Class ***************************************************************************************************/
@@ -29,34 +29,12 @@ public:
 };
 PyWidget::~PyWidget() {}
 
-/* Custom Deallocator *************************************************************************************************/
-
-static void (*py_widget_dealloc_orig)(PyObject*) = nullptr;
-static void py_widget_dealloc(PyObject* object)
-{
-    auto instance = reinterpret_cast<py::detail::instance<Widget, std::shared_ptr<Widget>>*>(object);
-    if (instance->holder.use_count() > 1) {
-        instance->value->_set_pyobject(object);
-        assert(object->ob_refcnt == 1);
-        instance->holder.reset();
-
-        // when we save the instance, we also need to incref the type so it doesn't die on us
-        py_incref(&(object->ob_type->ob_base.ob_base));
-    }
-    else {
-        assert(py_widget_dealloc_orig);
-        py_widget_dealloc_orig(object);
-    }
-}
-
 /* Bindings ***********************************************************************************************************/
 
 void produce_widget(pybind11::module& module, py::detail::generic_type Py_LayoutItem)
 {
     py::class_<Widget, std::shared_ptr<Widget>, PyWidget> Py_Widget(module, "Widget", Py_LayoutItem);
-    PyTypeObject* py_widget_type = reinterpret_cast<PyTypeObject*>(Py_Widget.ptr());
-    py_widget_dealloc_orig = py_widget_type->tp_dealloc;
-    py_widget_type->tp_dealloc = py_widget_dealloc;
+    patch_type(Py_Widget.ptr());
 
     Py_Widget.def(py::init<>());
 

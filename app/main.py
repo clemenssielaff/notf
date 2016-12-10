@@ -40,21 +40,20 @@ class ButtonController(Controller):
         self._widget = ButtonWidget()
         super().__init__(self._widget)
 
-        #self.add_state("orange", self._turn_orange, self._nothin)
+        self.add_state("orange", self._turn_orange, self._nothin)
         self.add_state("blue", self._turn_blue, self._nothin)
 
-        #self.transition_to("orange")
+        self.transition_to("blue")
 
     def _nothin(self):
         pass
 
     def _turn_orange(self):
-        pass
-        #self._widget._color = Color("#c34200")
+        self._widget.color = Color("#c34200")
 
     def _turn_blue(self):
-        pass
-        #self._widget._color = Color("#2b60b8")
+        self._widget.color = Color("#2b60b8")
+
 
 def main():
     # produce the flex layout in the background
@@ -67,7 +66,7 @@ def main():
     stack_layout.set_cross_alignment(Layout.Alignment.START)
     stack_layout.set_content_alignment(Layout.Alignment.START)
 
-    for i in range(0):
+    for i in range(100):
         stack_layout.add_item(ButtonController())
 
     # and the fill layout in the foreground
@@ -90,4 +89,5 @@ def produce_notf():
 
 if __name__ == "__main__":
     main()
+    ButtonWidget()
     pass
