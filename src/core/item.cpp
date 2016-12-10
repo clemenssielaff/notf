@@ -87,13 +87,6 @@ void Item::_update_parent_layout()
     }
 }
 
-void Item::_set_pyobject(PyObject* object)
-{
-    assert(!py_object); // you should only do this once
-    py_incref(object);
-    py_object.reset(std::move(object));
-}
-
 void Item::_set_parent(std::shared_ptr<Layout> parent)
 {
     // do nothing if the new parent is the same as the old (or both are invalid)
@@ -130,6 +123,13 @@ Transform2 Item::_get_screen_transform() const
 {
     log_critical << "get_transform(SPACE::SCREEN) is not emplemented yet";
     return _get_local_transform();
+}
+
+void Item::_set_pyobject(PyObject* object)
+{
+    assert(!py_object); // you should only do this once
+    py_incref(object);
+    py_object.reset(std::move(object));
 }
 
 ItemID Item::_get_next_id()

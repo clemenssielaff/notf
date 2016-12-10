@@ -2,4 +2,8 @@
 
 namespace notf {
 
+AbstractController::~AbstractController()
+{
+}
+
 } // namespace notf

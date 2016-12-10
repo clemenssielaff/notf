@@ -3,7 +3,7 @@
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
-#include "core/item.hpp"
+#include "core/layout_item.hpp"
 #include "python/docstr.hpp"
 using namespace notf;
 
@@ -25,7 +25,7 @@ void produce_widget(pybind11::module& module, py::detail::generic_type ancestor)
 void produce_layout_root(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_stack_layout(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_overlayout(pybind11::module& module, py::detail::generic_type ancestor);
-py::class_<Item, std::shared_ptr<Item>> produce_layout_item(pybind11::module& module);
+void produce_controller(pybind11::module& module, py::detail::generic_type Py_Item);
 
 const char* python_notf_module_name = "notf";
 
@@ -47,7 +47,10 @@ PyObject* produce_pynotf_module()
     produce_window(module);
     produce_layout(module);
 
-    py::class_<Item, std::shared_ptr<Item>> Py_LayoutItem(module, "_LayoutItem");
+    py::class_<Item, std::shared_ptr<Item>> Py_Item(module, "_Item");
+    produce_controller(module, Py_Item);
+
+    py::class_<LayoutItem, std::shared_ptr<LayoutItem>> Py_LayoutItem(module, "_LayoutItem", Py_Item);
     produce_widget(module, Py_LayoutItem);
     produce_layout_root(module, Py_LayoutItem);
     produce_stack_layout(module, Py_LayoutItem);

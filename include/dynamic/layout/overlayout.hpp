@@ -3,7 +3,7 @@
 #include "common/padding.hpp"
 #include "core/layout.hpp"
 
-#include "utils/private_except_for_bindings.hpp"
+#include "utils/binding_accessors.hpp"
 
 namespace notf {
 
@@ -76,7 +76,7 @@ public: // methods
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
     // clang-format off
-private_except_for_bindings: // methods for MakeSmartEnabler<Overlayout>
+protected_except_for_bindings: // methods for MakeSmartEnabler<Overlayout>
     Overlayout()
         : Layout()
         , m_padding(Padding::none())

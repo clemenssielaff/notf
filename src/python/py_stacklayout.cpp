@@ -6,9 +6,9 @@ namespace py = pybind11;
 #include "python/docstr.hpp"
 using namespace notf;
 
-void produce_stack_layout(pybind11::module& module, py::detail::generic_type ancestor)
+void produce_stack_layout(pybind11::module& module, py::detail::generic_type Py_LayoutItem)
 {
-    py::class_<StackLayout, std::shared_ptr<StackLayout>> Py_StackLayout(module, "StackLayout", ancestor);
+    py::class_<StackLayout, std::shared_ptr<StackLayout>> Py_StackLayout(module, "StackLayout", Py_LayoutItem);
 
     Py_StackLayout.def(py::init<const StackLayout::Direction>());
 

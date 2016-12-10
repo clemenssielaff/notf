@@ -37,4 +37,6 @@ void produce_layout(pybind11::module& module)
         .value("NO_WRAP", Layout::Wrap::NO_WRAP)
         .value("WRAP", Layout::Wrap::WRAP)
         .value("WRAP_REVERSE", Layout::Wrap::WRAP_REVERSE);
+
+    // TODO: now that I can use classes in Python, should I attach the enums to the classes that actually use them?
 }

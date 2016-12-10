@@ -6,9 +6,9 @@ namespace py = pybind11;
 #include "python/docstr.hpp"
 using namespace notf;
 
-void produce_overlayout(pybind11::module& module, py::detail::generic_type ancestor)
+void produce_overlayout(pybind11::module& module, py::detail::generic_type Py_LayoutItem)
 {
-    py::class_<Overlayout, std::shared_ptr<Overlayout>> Py_Overlayout(module, "Overlayout", ancestor);
+    py::class_<Overlayout, std::shared_ptr<Overlayout>> Py_Overlayout(module, "Overlayout", Py_LayoutItem);
 
     Py_Overlayout.def(py::init<>());
 

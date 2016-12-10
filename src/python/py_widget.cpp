@@ -36,7 +36,7 @@ static void py_widget_dealloc(PyObject* object)
 {
     auto instance = reinterpret_cast<py::detail::instance<Widget, std::shared_ptr<Widget>>*>(object);
     if (instance->holder.use_count() > 1) {
-        instance->value->set_pyobject(object);
+        instance->value->_set_pyobject(object);
         assert(object->ob_refcnt == 1);
         instance->holder.reset();
 
@@ -51,9 +51,9 @@ static void py_widget_dealloc(PyObject* object)
 
 /* Bindings ***********************************************************************************************************/
 
-void produce_widget(pybind11::module& module, py::detail::generic_type ancestor)
+void produce_widget(pybind11::module& module, py::detail::generic_type Py_LayoutItem)
 {
-    py::class_<Widget, std::shared_ptr<Widget>, PyWidget> Py_Widget(module, "Widget", ancestor);
+    py::class_<Widget, std::shared_ptr<Widget>, PyWidget> Py_Widget(module, "Widget", Py_LayoutItem);
     PyTypeObject* py_widget_type = reinterpret_cast<PyTypeObject*>(Py_Widget.ptr());
     py_widget_dealloc_orig = py_widget_type->tp_dealloc;
     py_widget_type->tp_dealloc = py_widget_dealloc;

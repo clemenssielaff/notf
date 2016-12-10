@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "common/log.hpp"
+#include "core/controller.hpp"
 #include "core/layout_root.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
@@ -110,15 +111,19 @@ void RenderManager::_iterate_layout_hierarchy(const Item* item, RenderLayer* par
         current_layer->m_widgets.push_back(widget);
     }
 
-    // otherwise start a recursive iteration of the Layout
+    // if it is a Layout, start a recursive iteration
     else if (const Layout* layout = dynamic_cast<const Layout*>(item)) {
         std::unique_ptr<LayoutIterator> it = layout->iter_items();
         while (const Item* child_item = it->next()) {
             _iterate_layout_hierarchy(child_item, current_layer);
         }
     }
+
+    // if it is a Controller, go to its root Item
     else {
-        assert(0);
+        const AbstractController* controller = dynamic_cast<const AbstractController*>(item);
+        assert(controller); // what else?
+        _iterate_layout_hierarchy(controller->get_root_item(), current_layer);
     }
 }
 

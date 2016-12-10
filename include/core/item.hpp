@@ -9,6 +9,7 @@
 #include "common/size2f.hpp"
 #include "common/transform2.hpp"
 #include "python/pyobject_wrapper.hpp"
+#include "utils/binding_accessors.hpp"
 
 /*
  * When it comes to the lifetime of items, the way that Python and NoTF work together poses an interesting challenge.
@@ -201,17 +202,14 @@ protected: // methods
      */
     void _update_parent_layout();
 
-    /** Stores the Python subclass object of this Item, if it was created through Python. */
-    void _set_pyobject(PyObject* object);
-
 protected: // static methods
     /** Allows any Item subclass to call _set_size on any other Item. */
-    static void _set_item_size(Item* item, const Size2f size) { item->_set_size(std::move(size)); }
+    static bool _set_item_size(Item* item, const Size2f size) { return item->_set_size(std::move(size)); }
 
     /** Allows any Item subclass to call _set_item_transform on any other Item. */
-    static void _set_item_transform(Item* item, const Transform2 transform)
+    static bool _set_item_transform(Item* item, const Transform2 transform)
     {
-        item->_set_transform(std::move(transform));
+        return item->_set_transform(std::move(transform));
     }
 
 private: // methods
@@ -234,6 +232,12 @@ private: // methods
     /** Returns the Item's transformation in parent space. */
     virtual Transform2 _get_local_transform() const = 0;
 
+    // clang-format off
+protected_except_for_bindings : // methods
+    /** Stores the Python subclass object of this Item, if it was created through Python. */
+    void _set_pyobject(PyObject* object);
+
+    // clang-format on
 private: // static methods
     /** Returns the next, free ItemID.
      * Is thread-safe.

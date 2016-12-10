@@ -20,8 +20,9 @@ public: // methods
 
     /** Sets the opacity of this LayoutItem.
      * @param opacity   Is clamped to range [0 -> 1] with 0 => fully transparent and 1 => fully opaque.
+     * @return          True if the opacity changed, false if the old value is the same as the new one.
      */
-    void set_opacity(const float opacity) { _set_opacity(opacity); }
+    bool set_opacity(const float opacity) { return _set_opacity(opacity); }
 
 protected: // methods
     explicit LayoutItem()

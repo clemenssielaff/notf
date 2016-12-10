@@ -2,12 +2,23 @@
 using namespace std;
 
 #include "core/controller.hpp"
+#include "core/widget.hpp"
+#include "utils/make_smart_enabler.hpp"
 using namespace notf;
+
+class BoomWidget : public Widget {
+public:
+    virtual void paint(Painter&) const override {}
+protected:
+    BoomWidget() : Widget() {}
+};
 
 class Dynamite : public Controller<Dynamite> {
 public:
     Dynamite()
-        : Controller<Dynamite>(init_state_machine())
+        : Controller<Dynamite>(
+              std::make_shared<MakeSmartEnabler<BoomWidget>>(),
+              init_state_machine())
     {
         transition_to(m_state_calm);
         cout << "Starting in State: " << get_current_state_name() << endl;
@@ -43,8 +54,8 @@ private:
     const State* m_state_boom;
 };
 
-int main()
-//int notmain()
+//int main()
+int notmain()
 {
     Dynamite stick;
     stick.go_boom();

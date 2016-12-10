@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/layout_item.hpp"
-#include "utils/private_except_for_bindings.hpp"
+#include "utils/binding_accessors.hpp"
 
 namespace notf {
 
@@ -39,16 +39,12 @@ public: // methods
     void redraw() { _redraw(); }
 
     // clang-format off
-private_except_for_bindings: // methods for MakeSmartEnabler<Widget>;
+protected_except_for_bindings: // methods for MakeSmartEnabler<Widget>;
     explicit Widget();
 
-private_except_for_bindings: // methods for RenderManager
+protected_except_for_bindings: // methods for RenderManager
     /** Paints this Widget onto the screen. */
     virtual void paint(Painter& painter) const = 0;
-
-private_except_for_bindings : // methods    
-    /** Stores the Python subclass object of this Widget, if it was created through Python. */
-    void set_pyobject(PyObject* object) { _set_pyobject(object); }
 
     // clang-format on
 private: // fields

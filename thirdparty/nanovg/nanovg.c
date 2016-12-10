@@ -24,8 +24,23 @@
 #include "nanovg.h"
 #define FONTSTASH_IMPLEMENTATION
 #include "fontstash.h"
+
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshift-negative-value"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshift-negative-value"
+#endif
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image/stb_image.h"
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 #ifdef _MSC_VER
 #pragma warning(disable: 4100)  // unreferenced formal parameter
@@ -206,7 +221,8 @@ static void nvg__setDevicePixelRatio(NVGcontext* ctx, float ratio)
 
 static NVGcompositeOperationState nvg__compositeOperationState(int op)
 {
-	int sfactor, dfactor;
+    int sfactor = 0;
+    int dfactor = 0;
 
 	if (op == NVG_SOURCE_OVER)
 	{
@@ -2622,12 +2638,12 @@ int nvgTextBreakLines(NVGcontext* ctx, const char* string, const char* end, floa
 				type = NVG_NEWLINE;
 				break;
 			default:
-				if (iter.codepoint >= 0x4E00 && iter.codepoint <= 0x9FFF ||
-					iter.codepoint >= 0x3000 && iter.codepoint <= 0x30FF ||
-					iter.codepoint >= 0xFF00 && iter.codepoint <= 0xFFEF ||
-					iter.codepoint >= 0x1100 && iter.codepoint <= 0x11FF ||
-					iter.codepoint >= 0x3130 && iter.codepoint <= 0x318F ||
-					iter.codepoint >= 0xAC00 && iter.codepoint <= 0xD7AF)
+                if ((iter.codepoint >= 0x4E00 && iter.codepoint <= 0x9FFF) ||
+                    (iter.codepoint >= 0x3000 && iter.codepoint <= 0x30FF) ||
+                    (iter.codepoint >= 0xFF00 && iter.codepoint <= 0xFFEF) ||
+                    (iter.codepoint >= 0x1100 && iter.codepoint <= 0x11FF) ||
+                    (iter.codepoint >= 0x3130 && iter.codepoint <= 0x318F) ||
+                    (iter.codepoint >= 0xAC00 && iter.codepoint <= 0xD7AF))
 					type = NVG_CJK_CHAR;
 				else
 					type = NVG_CHAR;
