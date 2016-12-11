@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <assert.h>
 #include <memory>
 #include <vector>
@@ -21,6 +22,9 @@ private: //struct
     struct Data {
         /** Is the connection still active? */
         bool is_connected = true;
+
+        /** Is the connection currently enabled? */
+        bool is_enabled = true;
     };
 
 private: // methods for Signal
@@ -31,7 +35,7 @@ private: // methods for Signal
     }
 
     /** Creates a new, default constructed Connection object. */
-    static Connection make_connection()
+    static Connection create()
     {
         return Connection(std::make_shared<Data>());
     }
@@ -45,6 +49,9 @@ public: // methods
     /** Check if the connection is alive. */
     bool is_connected() const { return m_data && m_data->is_connected; }
 
+    /** Checks if the Connection is currently enabled. */
+    bool is_enabled() const { return m_data && m_data->is_enabled; }
+
     /** Breaks this Connection.
      * After calling this function, future signals will not be delivered.
      */
@@ -54,6 +61,22 @@ public: // methods
             return;
         }
         m_data->is_connected = false;
+    }
+
+    /** Enables this Connection (does nothing when disconnected). */
+    void enable() const
+    {
+        if (m_data) {
+            m_data->is_enabled = true;
+        }
+    }
+
+    /** Disables this Connection (does nothing when disconnected). */
+    void disable() const
+    {
+        if (m_data) {
+            m_data->is_enabled = false;
+        }
     }
 
 private: // fields
@@ -92,6 +115,22 @@ public: // methods
         m_connections.emplace_back(std::move(connection));
     }
 
+    /** Temporarily disables all tracked Connections. */
+    void disable_all()
+    {
+        for (auto& connection : m_connections) {
+            connection.disable();
+        }
+    }
+
+    /** (Re-)Enables all tracked Connections. */
+    void enable_all()
+    {
+        for (auto& connection : m_connections) {
+            connection.enable();
+        }
+    }
+
     /** Disconnects all tracked Connections. */
     void disconnect_all()
     {
@@ -118,7 +157,7 @@ private: // struct
     /** Connection and target function pair. */
     struct Target {
         Target(Connection connection, std::function<void(SIGNATURE...)> function,
-               std::function<bool(SIGNATURE...)> test_function = [](SIGNATURE...) { return true; })
+               std::function<bool(SIGNATURE...)> test_function)
             : connection(std::move(connection))
             , function(std::move(function))
             , test_function(std::move(test_function))
@@ -142,7 +181,7 @@ public: // methods
     Signal(const Signal&) = delete;
     Signal& operator=(const Signal&) = delete;
 
-    ~Signal() { disconnect_all(); }
+    ~Signal() { disconnect(); }
 
     /** Move Constructor. */
     Signal(Signal&& other) noexcept
@@ -160,7 +199,7 @@ public: // methods
     /** Connects a new target to this Signal.
      * Existing but disconnected Connections are removed before the new target is connected.
      * @param function     Target function.
-     * @param test_func    (optional) Test function. Target is always called when empty.
+     * @param test_func    (optional) Test function. When null, the Target is always called.
      * @return             The created Connection.
      */
     Connection connect(std::function<void(SIGNATURE...)> function,
@@ -168,30 +207,41 @@ public: // methods
     {
         assert(function);
 
-        // save existing and connected targets
-        auto new_targets = std::vector<Target>();
-        new_targets.reserve(m_targets.size() + 1);
-        for (const auto& target : m_targets) {
-            if (target.connection.is_connected()) {
-                new_targets.push_back(target);
-            }
+        // default test succeeds always
+        if (!test_func) {
+            test_func = [](SIGNATURE...) { return true; };
         }
+
+        // remove disconnected targets
+        std::remove_if(m_targets.begin(), m_targets.end(), [](const Target& target) -> bool {
+            return !target.connection.is_connected();
+        });
 
         // add the new connection
-        Connection connection = Connection::make_connection();
-        if (test_func) {
-            new_targets.emplace_back(connection, std::move(function), std::move(test_func));
-        }
-        else {
-            new_targets.emplace_back(connection, std::move(function));
-        }
+        Connection connection = Connection::create();
+        m_targets.emplace_back(connection, std::move(function), std::move(test_func));
 
-        std::swap(m_targets, new_targets);
         return connection;
     }
 
+    /** Temporarily disables all Connections of this Signal. */
+    void disable()
+    {
+        for (auto& target : m_targets) {
+            target.connection.disable();
+        }
+    }
+
+    /** (Re-)Enables all Connections of this Signal. */
+    void enable()
+    {
+        for (auto& target : m_targets) {
+            target.connection.enable();
+        }
+    }
+
     /** Disconnect all Connections from this Signal. */
-    void disconnect_all()
+    void disconnect()
     {
         for (auto& target : m_targets) {
             target.connection.disconnect();
@@ -207,14 +257,16 @@ public: // methods
     void operator()(ARGUMENTS&&... args) const
     {
         for (auto& target : m_targets) {
-            if (!target.connection.is_connected() || !target.test_function(args...)) {
-                continue;
+            if (true
+                && target.connection.is_connected()
+                && target.connection.is_enabled()
+                && target.test_function(args...)) {
+                target.function(args...);
             }
-            target.function(args...);
         }
     }
 
-private: // methods for Connection
+private: // methods for CallbackManager
     /** Overload of connect() to connect to member functions.
      * Creates and stores a lambda function to access the member.
      * @param obj          Instance providing the callback.
@@ -265,7 +317,7 @@ private: // struct
 public: // methods
     Signal() = default;
 
-    ~Signal() { disconnect_all(); }
+    ~Signal() { disconnect(); }
 
     Signal(const Signal&) = delete;
     Signal& operator=(const Signal&) = delete;
@@ -292,25 +344,36 @@ public: // methods
     {
         assert(function);
 
-        // save existing and connected targets
-        auto new_targets = std::vector<Target>();
-        new_targets.reserve(m_targets.size() + 1);
-        for (const auto& target : m_targets) {
-            if (target.connection.is_connected()) {
-                new_targets.push_back(target);
-            }
-        }
+        // remove disconnected targets
+        std::remove_if(m_targets.begin(), m_targets.end(), [](const Target& target) -> bool {
+            return !target.connection.is_connected();
+        });
 
-        // add the new connection
-        Connection connection = Connection::make_connection();
-        new_targets.emplace_back(connection, std::move(function));
+        // create a new Connection
+        Connection connection = Connection::create();
+        m_targets.emplace_back(connection, std::move(function));
 
-        std::swap(m_targets, new_targets);
         return connection;
     }
 
+    /** Temporarily disables all Connections of this Signal. */
+    void disable()
+    {
+        for (auto& target : m_targets) {
+            target.connection.disable();
+        }
+    }
+
+    /** (Re-)Enables all Connections of this Signal. */
+    void enable()
+    {
+        for (auto& target : m_targets) {
+            target.connection.enable();
+        }
+    }
+
     /** Disconnect all Connections from this Signal. */
-    void disconnect_all()
+    void disconnect()
     {
         for (auto& target : m_targets) {
             target.connection.disconnect();
@@ -321,14 +384,15 @@ public: // methods
     void operator()() const
     {
         for (auto& target : m_targets) {
-            if (!target.connection.is_connected()) {
-                continue;
+            if (true
+                && target.connection.is_connected()
+                && target.connection.is_enabled()) {
+                target.function();
             }
-            target.function();
         }
     }
 
-private: // methods for Connection
+private: // methods for CallbackManager
     /** Overload of connect() to connect to member functions.
      * Creates and stores a lambda function to access the member.
      * @param obj          Instance providing the callback.
@@ -349,24 +413,33 @@ private: // fields
 
 /**********************************************************************************************************************/
 
-/** Curiously recurring template pattern mixin class to provide Signals to SUBCLASS. */
-template <typename SUBCLASS>
-class Signaler {
+/** Curiously recurring template pattern mixin class to be able to receive Signals to SUBCLASS. */
+template <typename Subclass>
+class provide_slots {
 
 public: // methods
-    /** Creates a connection managed by the object connecting the given signal to a function object. */
+    /** Creates a connection managed by this object, connecting the given signal to a function object. */
     template <typename SIGNAL, typename... ARGS>
-    void connect(SIGNAL& signal, ARGS&&... args) { m_callback_manager.connect(signal, std::forward<ARGS>(args)...); }
+    void connect_slot(SIGNAL& signal, ARGS&&... args) { m_callback_manager.connect(signal, std::forward<ARGS>(args)...); }
 
-    /** Creates a Connection connecting the given Signal to a member function of this Object. */
+    /** Creates a Connection connecting the given Signal to a member function of this object. */
     template <typename SIGNAL, typename... SIGNATURE, typename... TEST_FUNC>
-    void connect(SIGNAL& signal, void (SUBCLASS::*method)(SIGNATURE...), TEST_FUNC&&... test_func)
+    void connect_slot(SIGNAL& signal, void (Subclass::*method)(SIGNATURE...), TEST_FUNC&&... test_func)
     {
-        m_callback_manager.connect(signal, this, std::forward<decltype(method)>(method), std::forward<TEST_FUNC>(test_func)...);
+        m_callback_manager.connect(signal,
+                                   static_cast<Subclass*>(this),
+                                   std::forward<decltype(method)>(method),
+                                   std::forward<TEST_FUNC>(test_func)...);
     }
 
+    /** Temporarily disables all Connections into this object. */
+    void disable_all_slots() { m_callback_manager.disable_all(); }
+
+    /** (Re-)Enables all tracked Connections into this object. */
+    void enable_all_slots() { m_callback_manager.enable_all(); }
+
     /** Disconnects all Signals from Connections managed by this object. */
-    void disconnect_all() { m_callback_manager.disconnect_all(); }
+    void disconnect_all_slots() { m_callback_manager.disconnect_all(); }
 
 private: // fields
     /** Callback manager owning one half of the Signals' Connections. */
