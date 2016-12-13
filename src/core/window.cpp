@@ -161,9 +161,7 @@ Window::Window(const WindowInfo& info)
     Application& app = Application::get_instance();
 
     // close when the user presses ESC
-    connect_slot(on_token_key,
-                 [this](const KeyEvent&) { close(); },
-                 [](const KeyEvent& event) { return event.key == KEY::ESCAPE; });
+    connect_signal(on_token_key, &Window::close, [](const KeyEvent& event) { return event.key == KEY::ESCAPE; });
 
     // NoTF uses OpenGL ES 3.0 for now
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);

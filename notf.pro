@@ -35,11 +35,11 @@ CONFIG(test) {
 
     SOURCES += \
         test/test_main.cpp \
-        test/test_common_string_utils.cpp \
-        test/test_common_signal.cpp \
-        test/test_common_color.cpp \
-        test/test_common_circle.cpp \
-        test/test_common_aabr.cpp
+        test/test_string_utils.cpp \
+        test/test_signal.cpp \
+        test/test_color.cpp \
+        test/test_circle.cpp \
+        test/test_aabr.cpp
 
     HEADERS += \
         test/catch.hpp
