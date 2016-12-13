@@ -29,7 +29,7 @@ void produce_painter(pybind11::module& module)
         .value("BEVEL", Painter::LineJoin::BEVEL)
         .value("MITER", Painter::LineJoin::MITER);
 
-    py::enum_<Painter::Align>(Py_Painter, "Align")
+    py::enum_<Painter::Align>(Py_Painter, "Align") // TODO: Painter::Align cannot be combined with | in Python
         .value("LEFT", Painter::Align::LEFT)
         .value("CENTER", Painter::Align::CENTER)
         .value("RIGHT", Painter::Align::RIGHT)

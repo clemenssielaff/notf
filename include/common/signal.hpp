@@ -13,214 +13,218 @@ namespace notf {
 /** Every connection from a Signal has an application-unique ID. */
 using ConnectionID = size_t;
 
-/**********************************************************************************************************************/
+namespace detail {
 
-/** A connection between a signal and a callback. */
-struct Connection {
+    /******************************************************************************************************************/
 
-    template <typename...>
-    friend class Signal;
+    /** A connection between a signal and a callback. */
+    struct Connection {
 
-private: //struct
-    /** Data block shared by two Connection instances. */
-    struct Data {
-        Data(bool is_connected, bool is_enabled, ConnectionID id)
-            : is_connected(std::move(is_connected))
-            , is_enabled(std::move(is_enabled))
-            , id(std::move(id))
+        template <typename...>
+        friend class Signal;
+
+    private: //struct
+        /** Data block shared by two Connection instances. */
+        struct Data {
+            Data(bool is_connected, bool is_enabled, ConnectionID id)
+                : is_connected(std::move(is_connected))
+                , is_enabled(std::move(is_enabled))
+                , id(std::move(id))
+            {
+            }
+
+            /** Is the connection still active? */
+            bool is_connected;
+
+            /** Is the connection currently enabled? */
+            bool is_enabled;
+
+            /** ID of this connection, is application-unique. */
+            const ConnectionID id;
+        };
+
+    public: // methods
+        /** Creates a new, default constructed Connection object. */
+        static Connection create()
+        {
+            return Connection(std::make_shared<Data>(true, true, get_next_id()));
+        }
+
+        Connection(const Connection&) = default;
+        Connection& operator=(const Connection&) = default;
+        Connection(Connection&&) = default;
+        Connection& operator=(Connection&&) = default;
+
+        /** Check if the connection is alive. */
+        bool is_connected() const { return m_data && m_data->is_connected; }
+
+        /** Checks if the Connection is currently enabled. */
+        bool is_enabled() const { return m_data && m_data->is_enabled; }
+
+        /** Breaks this Connection.
+         * After calling this function, future signals will not be delivered.
+         */
+        void disconnect()
+        {
+            if (!m_data) {
+                return;
+            }
+            m_data->is_connected = false;
+        }
+
+        /** Enables this Connection (does nothing when disconnected). */
+        void enable() const
+        {
+            if (m_data) {
+                m_data->is_enabled = true;
+            }
+        }
+
+        /** Disables this Connection (does nothing when disconnected). */
+        void disable() const
+        {
+            if (m_data) {
+                m_data->is_enabled = false;
+            }
+        }
+
+        /** Returns the ID of this Connection or 0 when disconnected. */
+        ConnectionID get_id() const
+        {
+            if (m_data) {
+                return m_data->id;
+            }
+            return 0;
+        }
+
+    private: // methods
+        /** @param data Shared Connection data block. */
+        explicit Connection(std::shared_ptr<Data> data)
+            : m_data(std::move(data))
         {
         }
 
-        /** Is the connection still active? */
-        bool is_connected;
+        /** The next Connection ID. */
+        static ConnectionID get_next_id()
+        {
+            static ConnectionID next_id = 0;
+            return ++next_id; // leaving 0 as 'invalid'
+        }
 
-        /** Is the connection currently enabled? */
-        bool is_enabled;
-
-        /** ID of this connection, is application-unique. */
-        const ConnectionID id;
+    private: // fields
+        /** Data block shared by two Connection instances. */
+        std::shared_ptr<Data> m_data;
     };
 
-public: // methods
-    /** Creates a new, default constructed Connection object. */
-    static Connection create()
-    {
-        return Connection(std::make_shared<Data>(true, true, get_next_id()));
-    }
+    /******************************************************************************************************************/
 
-    Connection(const Connection&) = default;
-    Connection& operator=(const Connection&) = default;
-    Connection(Connection&&) = default;
-    Connection& operator=(Connection&&) = default;
-
-    /** Check if the connection is alive. */
-    bool is_connected() const { return m_data && m_data->is_connected; }
-
-    /** Checks if the Connection is currently enabled. */
-    bool is_enabled() const { return m_data && m_data->is_enabled; }
-
-    /** Breaks this Connection.
-     * After calling this function, future signals will not be delivered.
+    /** Manager object owned by objects that receive Signals.
+     * The CallbackManager tracks all incoming Connections to member functions of the owner and disconnects them, when
+     * the owner is destructed.
      */
-    void disconnect()
-    {
-        if (!m_data) {
-            return;
+    class CallbackManager {
+
+    public: // methods
+        CallbackManager() = default;
+
+        ~CallbackManager() { disconnect_all(); }
+
+        // no copy, move & -assignment
+        CallbackManager(const CallbackManager&) = delete;
+        CallbackManager& operator=(const CallbackManager&) = delete;
+        CallbackManager(CallbackManager&&) = delete;
+        CallbackManager& operator=(CallbackManager&&) = delete;
+
+        /** Creates and tracks a new Connection between the Signal and a lambda or free function.
+         * @brief signal       The Signal to connect to.
+         * @brief lambda       Function object (lambda / free function) to call.
+         * @brief test_func    (optional) Test function.
+         */
+        template <typename SIGNAL, typename... ARGS>
+        ConnectionID connect(SIGNAL& signal, ARGS&&... args)
+        {
+            Connection connection = signal.connect(std::forward<ARGS>(args)...);
+            ConnectionID id = connection.get_id();
+            m_connections.emplace_back(std::move(connection));
+            return id;
         }
-        m_data->is_connected = false;
-    }
 
-    /** Enables this Connection (does nothing when disconnected). */
-    void enable() const
-    {
-        if (m_data) {
-            m_data->is_enabled = true;
-        }
-    }
-
-    /** Disables this Connection (does nothing when disconnected). */
-    void disable() const
-    {
-        if (m_data) {
-            m_data->is_enabled = false;
-        }
-    }
-
-    /** Returns the ID of this Connection or 0 when disconnected. */
-    ConnectionID get_id() const
-    {
-        if (m_data) {
-            return m_data->id;
-        }
-        return 0;
-    }
-
-private: // methods
-    /** @param data Shared Connection data block. */
-    explicit Connection(std::shared_ptr<Data> data)
-        : m_data(std::move(data))
-    {
-    }
-
-    /** The next Connection ID. */
-    static ConnectionID get_next_id()
-    {
-        static ConnectionID next_id = 0;
-        return ++next_id; // leaving 0 as 'invalid'
-    }
-
-private: // fields
-    /** Data block shared by two Connection instances. */
-    std::shared_ptr<Data> m_data;
-};
-
-/**********************************************************************************************************************/
-
-/** Manager object owned by objects that receive Signals.
- * The CallbackManager tracks all incoming Connections to member functions of the owner and disconnects them, when the
- * owner is destructed.
- */
-class CallbackManager {
-
-public: // methods
-    CallbackManager() = default;
-
-    ~CallbackManager() { disconnect_all(); }
-
-    // no copy, move & -assignment
-    CallbackManager(const CallbackManager&) = delete;
-    CallbackManager& operator=(const CallbackManager&) = delete;
-    CallbackManager(CallbackManager&&) = delete;
-    CallbackManager& operator=(CallbackManager&&) = delete;
-
-    /** Creates and tracks a new Connection between the Signal and a lambda or free function.
-     * @brief signal       The Signal to connect to.
-     * @brief lambda       Function object (lambda / free function) to call.
-     * @brief test_func    (optional) Test function.
-     */
-    template <typename SIGNAL, typename... ARGS>
-    ConnectionID connect(SIGNAL& signal, ARGS&&... args)
-    {
-        Connection connection = signal.connect(std::forward<ARGS>(args)...);
-        ConnectionID id = connection.get_id();
-        m_connections.emplace_back(std::move(connection));
-        return id;
-    }
-
-    /** Temporarily disables all tracked Connections. */
-    void disable_all()
-    {
-        for (auto& connection : m_connections) {
-            connection.disable();
-        }
-    }
-
-    /** Disables a specific Connection into the managed object.
-     * @param connection            ID of the Connection.
-     * @throw std:runtime_error     If there is no Connection with the given ID connected.
-     */
-    void disable(const ConnectionID id)
-    {
-        for (auto& connection : m_connections) {
-            if (connection.get_id() == id) {
+        /** Temporarily disables all tracked Connections. */
+        void disable_all()
+        {
+            for (auto& connection : m_connections) {
                 connection.disable();
-                return;
             }
         }
-        throw std::runtime_error("Cannot disable unknown connection");
-    }
 
-    /** (Re-)Enables all tracked Connections. */
-    void enable_all()
-    {
-        for (auto& connection : m_connections) {
-            connection.enable();
+        /** Disables a specific Connection into the managed object.
+         * @param connection            ID of the Connection.
+         * @throw std:runtime_error     If there is no Connection with the given ID connected.
+         */
+        void disable(const ConnectionID id)
+        {
+            for (auto& connection : m_connections) {
+                if (connection.get_id() == id) {
+                    connection.disable();
+                    return;
+                }
+            }
+            throw std::runtime_error("Cannot disable unknown connection");
         }
-    }
 
-    /** Enables a specific Connection into the managed object.
-     * @param connection            ID of the Connection.
-     * @throw std:runtime_error     If there is no Connection with the given ID connected.
-     */
-    void enable(const ConnectionID id)
-    {
-        for (auto& connection : m_connections) {
-            if (connection.get_id() == id) {
+        /** (Re-)Enables all tracked Connections. */
+        void enable_all()
+        {
+            for (auto& connection : m_connections) {
                 connection.enable();
-                return;
             }
         }
-        throw std::runtime_error("Cannot enable unknown connection");
-    }
 
-    /** Disconnects all tracked Connections. */
-    void disconnect_all()
-    {
-        for (Connection& connection : m_connections) {
-            connection.disconnect();
+        /** Enables a specific Connection into the managed object.
+         * @param connection            ID of the Connection.
+         * @throw std:runtime_error     If there is no Connection with the given ID connected.
+         */
+        void enable(const ConnectionID id)
+        {
+            for (auto& connection : m_connections) {
+                if (connection.get_id() == id) {
+                    connection.enable();
+                    return;
+                }
+            }
+            throw std::runtime_error("Cannot enable unknown connection");
         }
-        m_connections.clear();
-    }
 
-    /** Disconnects a specific Connection into the managed object.
-     * @param connection            ID of the Connection.
-     * @throw std:runtime_error     If there is no Connection with the given ID connected.
-     */
-    void disconnect(const ConnectionID id)
-    {
-        for (auto& connection : m_connections) {
-            if (connection.get_id() == id) {
+        /** Disconnects all tracked Connections. */
+        void disconnect_all()
+        {
+            for (Connection& connection : m_connections) {
                 connection.disconnect();
-                return;
             }
+            m_connections.clear();
         }
-        throw std::runtime_error("Cannot diconnected unknown connection");
-    }
 
-private: // fields
-    /** All managed Connections. */
-    std::vector<Connection> m_connections;
-};
+        /** Disconnects a specific Connection into the managed object.
+         * @param connection            ID of the Connection.
+         * @throw std:runtime_error     If there is no Connection with the given ID connected.
+         */
+        void disconnect(const ConnectionID id)
+        {
+            for (auto& connection : m_connections) {
+                if (connection.get_id() == id) {
+                    connection.disconnect();
+                    return;
+                }
+            }
+            throw std::runtime_error("Cannot diconnected unknown connection");
+        }
+
+    private: // fields
+        /** All managed Connections. */
+        std::vector<Connection> m_connections;
+    };
+
+} // namespace detail
 
 /**********************************************************************************************************************/
 
@@ -228,15 +232,13 @@ private: // fields
 template <typename... SIGNATURE>
 class Signal {
 
-    friend class CallbackManager;
-
 public: // type
     using Signature = std::tuple<SIGNATURE...>;
 
 private: // struct
     /** Connection and target function pair. */
     struct Target {
-        Target(Connection connection, std::function<void(SIGNATURE...)> function,
+        Target(detail::Connection connection, std::function<void(SIGNATURE...)> function,
                std::function<bool(SIGNATURE...)> test_function)
             : connection(std::move(connection))
             , function(std::move(function))
@@ -245,7 +247,7 @@ private: // struct
         }
 
         /** Connection through which the Callback is performed. */
-        Connection connection;
+        detail::Connection connection;
 
         /** Callback function. */
         std::function<void(SIGNATURE...)> function;
@@ -282,8 +284,8 @@ public: // methods
      * @param test_func    (optional) Test function. When null, the Target is always called.
      * @return             The created Connection.
      */
-    Connection connect(std::function<void(SIGNATURE...)> function,
-                       std::function<bool(SIGNATURE...)> test_func = {})
+    detail::Connection connect(std::function<void(SIGNATURE...)> function,
+                               std::function<bool(SIGNATURE...)> test_func = {})
     {
         assert(function);
 
@@ -298,7 +300,7 @@ public: // methods
         });
 
         // add the new connection
-        Connection connection = Connection::create();
+        detail::Connection connection = detail::Connection::create();
         m_targets.emplace_back(connection, std::move(function), std::move(test_func));
 
         return connection;
@@ -392,24 +394,6 @@ public: // methods
         }
     }
 
-private: // methods for CallbackManager
-    /** Overload of connect() to connect to member functions.
-     * Creates and stores a lambda function to access the member.
-     * @param obj          Instance providing the callback.
-     * @param method       Address of the method.
-     * @param test_func    (optional) Test function. Callback is always called when empty.
-     */
-    template <typename OBJ>
-    Connection connect(OBJ* obj, void (OBJ::*method)(SIGNATURE... args),
-                       std::function<bool(SIGNATURE...)>&& test_func = {})
-    {
-        assert(obj);
-        assert(method);
-        return connect(
-            [obj, method](SIGNATURE... args) { (obj->*method)(args...); },
-            std::forward<std::function<bool(SIGNATURE...)>>(test_func));
-    }
-
 private: // fields
     /** All targets of this Signal. */
     std::vector<Target> m_targets;
@@ -418,12 +402,10 @@ private: // fields
 /**********************************************************************************************************************/
 
 /** Full specialization for Signals that require no arguments.
- * Since they don't have a test-function, emitting Signals without arguments is about 1/3 faster than those with args.
+ * Since they don't have a test-function, emitting Signals without arguments is 1.65x as fast than those with args.
  */
 template <>
 class Signal<> {
-
-    friend class CallbackManager;
 
 public: // type
     using Signature = std::tuple<>;
@@ -431,14 +413,14 @@ public: // type
 private: // struct
     /** Connection and target function pair. */
     struct Target {
-        Target(Connection connection, std::function<void()> function)
+        Target(detail::Connection connection, std::function<void()> function)
             : connection(std::move(connection))
             , function(std::move(function))
         {
         }
 
         /** Connection through which the Callback is performed. */
-        Connection connection;
+        detail::Connection connection;
 
         /** Callback function. */
         std::function<void()> function;
@@ -470,7 +452,7 @@ public: // methods
      * @param function     Target function.
      * @return             The created Connection.
      */
-    Connection connect(std::function<void()> function)
+    detail::Connection connect(std::function<void()> function)
     {
         assert(function);
 
@@ -480,7 +462,7 @@ public: // methods
         });
 
         // create a new Connection
-        Connection connection = Connection::create();
+        detail::Connection connection = detail::Connection::create();
         m_targets.emplace_back(connection, std::move(function));
 
         return connection;
@@ -568,20 +550,6 @@ public: // methods
         }
     }
 
-private: // methods for CallbackManager
-    /** Overload of connect() to connect to member functions.
-     * Creates and stores a lambda function to access the member.
-     * @param obj          Instance providing the callback.
-     * @param method       Address of the method.
-     */
-    template <typename OBJ>
-    Connection connect(OBJ* obj, void (OBJ::*method)())
-    {
-        assert(obj);
-        assert(method);
-        return connect([obj, method]() { (obj->*method)(); });
-    }
-
 private: // fields
     /** All targets of this Signal. */
     std::vector<Target> m_targets;
@@ -591,7 +559,7 @@ private: // fields
 
 /** Curiously recurring template pattern mixin class to be able to receive Signals to SUBCLASS. */
 template <typename SUBCLASS>
-class provide_slots {
+class receive_signals {
 
 public: // methods
     /** Creates a connection managed by this object, connecting the given signal to a function object. */
@@ -602,13 +570,12 @@ public: // methods
     }
 
     /** Creates a Connection connecting the given Signal to a member function of this object. */
-    template <typename SIGNAL, typename... SIGNATURE, typename... TEST_FUNC>
-    ConnectionID connect_signal(SIGNAL& signal, void (SUBCLASS::*method)(SIGNATURE...), TEST_FUNC&&... test_func)
+    template <typename SIGNAL, typename... SIGNATURE, typename... ARGS>
+    ConnectionID connect_signal(SIGNAL& signal, void (SUBCLASS::*method)(SIGNATURE...), ARGS&&... args)
     {
         return m_callback_manager.connect(signal,
-                                          static_cast<SUBCLASS*>(this),
-                                          std::forward<decltype(method)>(method),
-                                          std::forward<TEST_FUNC>(test_func)...);
+                                          [this, method](SIGNATURE... args) { (static_cast<SUBCLASS*>(this)->*method)(args...); },
+                                          std::forward<ARGS>(args)...);
     }
 
     /** Overload to connect any Signal to a member function without arguments.
@@ -666,7 +633,7 @@ private: // methods
 
 private: // fields
     /** Callback manager owning one half of the Signals' Connections. */
-    CallbackManager m_callback_manager;
+    detail::CallbackManager m_callback_manager;
 };
 
 } // namespace notf

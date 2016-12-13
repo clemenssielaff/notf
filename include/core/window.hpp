@@ -65,7 +65,7 @@ struct WindowInfo {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// @brief The Window is a OS window containing an OpenGL context.
-class Window : public provide_slots<Window>, public std::enable_shared_from_this<Window> {
+class Window : public receive_signals<Window>, public std::enable_shared_from_this<Window> {
 
     friend class Application;
     friend class MakeSmartEnabler<Window>;
