@@ -103,11 +103,9 @@ void RenderManager::_iterate_layout_hierarchy(const Item* item, RenderLayer* par
         current_layer = parent_layer;
     }
 
-    // if the item is a drawable widget, append it to the current render layer
+    // if the item is a visible widget, append it to the current render layer
     if (const Widget* widget = dynamic_cast<const Widget*>(item)) {
-        if (widget->get_size().is_zero()) {
-            return;
-        }
+        // TODO: dont' draw scissored widgets
         current_layer->m_widgets.push_back(widget);
     }
 

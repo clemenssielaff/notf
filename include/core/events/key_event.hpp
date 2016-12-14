@@ -1,27 +1,49 @@
 #pragma once
 
-#include <common/keyboard.hpp>
+#include "common/input.hpp"
 
 namespace notf {
 
-/// @brief A key event.
-///
-struct KeyEvent {
+class Window;
 
-    /// @brief The Window to which the event was sent.
+/** Event object generated when the Application notices a keyboard input. */
+class KeyEvent {
+public: // methods
+    KeyEvent(Window* window, Key key, KeyAction action, KeyModifiers modifiers, const KeyStateSet& stateset)
+        : window(window)
+        , key(key)
+        , action(action)
+        , modifiers(modifiers)
+        , stateset(stateset)
+        , m_was_handled(false)
+    {
+    }
+
+    /** Checks whether this event was already handled or not. */
+    bool was_handled() const { return m_was_handled; }
+
+    /** Called when some event handler handled this event. */
+    void set_handled() { m_was_handled = true; }
+
+public: // fields
+    /** The Window to which the event was sent. */
     const Window* window;
 
-    /// @brief The key that triggered this event.
-    const KEY key;
+    /** The key that triggered this event. */
+    const Key key;
 
-    /// @brief The action that triggered this event.
-    const KEY_ACTION action;
+    /** The action that triggered this event. */
+    const KeyAction action;
 
-    /// @brief Mask of all active modifiers for this event.
-    const KEY_MODIFIERS modifiers;
+    /** Mask of all active keyboard modifiers for this event. */
+    const KeyModifiers modifiers;
 
-    /// @brief The state of all keys.
-    const KeyStateSet stateset;
+    /** The state of all keys. */
+    const KeyStateSet& stateset;
+
+private: // fields
+    /** True iff this event was already handled. */
+    bool m_was_handled = false;
 };
 
 } // namespace notf

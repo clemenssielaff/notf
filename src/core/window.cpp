@@ -5,9 +5,11 @@
 #include <nanovg/nanovg.h>
 #include <nanovg/nanovg_gl.h>
 
+#include "common/debug.hpp"
 #include "common/log.hpp"
 #include "core/application.hpp"
 #include "core/events/key_event.hpp"
+#include "core/events/mouse_event.hpp"
 #include "core/layout_root.hpp"
 #include "core/render_manager.hpp"
 #include "core/resource_manager.hpp"
@@ -156,12 +158,13 @@ Window::Window(const WindowInfo& info)
     , m_root_layout()
     , m_render_manager(std::make_unique<MakeSmartEnabler<RenderManager>>(this))
     , m_background_color(info.clear_color)
+    , m_last_mouse_pos(NAN, NAN)
 {
     // always make sure that the Application is constructed first
     Application& app = Application::get_instance();
 
     // close when the user presses ESC
-    connect_signal(on_token_key, &Window::close, [](const KeyEvent& event) { return event.key == KEY::ESCAPE; });
+    connect_signal(on_token_key, &Window::close, [](const KeyEvent& event) { return event.key == Key::ESCAPE; });
 
     // NoTF uses OpenGL ES 3.0 for now
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
@@ -222,6 +225,14 @@ void Window::_on_resize(int width, int height)
     UNUSED(width);
     UNUSED(height);
     m_root_layout->_set_size(Size2f::from_size2i(get_buffer_size()));
+}
+
+void Window::_on_cursor_move(MouseEvent&& event)
+{
+//    DebugTimer timer("mouse event handling");
+    std::vector<Widget*> widgets;
+    m_root_layout->get_widgets_at(event.window_pos, widgets);
+    log_trace << "Found " << widgets.size() << " Widgets under the cursor.";
 }
 
 } // namespace notf

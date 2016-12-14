@@ -4,10 +4,11 @@
 
 namespace notf {
 
-std::shared_ptr<Widget> Widget::get_widget_at(const Vector2& /*local_pos*/)
+bool Widget::get_widgets_at(const Vector2 /*local_pos*/, std::vector<Widget*>& result)
 {
     // TODO: Widget::get_widget_at() should test if the given local_pos is loctated in its shape
-    return std::static_pointer_cast<Widget>(shared_from_this());
+    result.push_back(this);
+    return true;
 }
 
 bool Widget::set_claim(const Claim claim)

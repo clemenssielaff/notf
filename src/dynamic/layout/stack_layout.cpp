@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 
+#include "common/aabr.hpp"
 #include "common/claim.hpp"
 #include "common/float_utils.hpp"
 #include "common/log.hpp"
@@ -287,9 +288,17 @@ void StackLayout::add_item(std::shared_ptr<Item> item)
     }
 }
 
-std::shared_ptr<Widget> StackLayout::get_widget_at(const Vector2& /*local_pos*/)
+bool StackLayout::get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& result)
 {
-    return {};
+    // TODO: StackLayout::get_widget_at is brute-force and does not respect transform (only translate)
+    for (Item* item : m_items) {
+        const Vector2 item_pos =  local_pos - item->get_transform(Space::LOCAL).get_translation();
+        const Aabr item_rect(item->get_size());
+        if(item_rect.contains(item_pos)){
+            return item->get_widgets_at(item_pos, result);
+        }
+    }
+    return false;
 }
 
 std::unique_ptr<LayoutIterator> StackLayout::iter_items() const

@@ -53,9 +53,9 @@ public: // methods
     std::shared_ptr<Window> get_window() const;
 
     /// @brief Sets a new Item at the LayoutRoot.
-    void set_item(std::shared_ptr<Item> item);
+    void set_item(std::shared_ptr<Item> item); // TODO: the LayoutRoot must only accept a Controller as child
 
-    virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override;
+    virtual bool get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& result) override;
 
     virtual void set_render_layer(std::shared_ptr<RenderLayer>) override;
 

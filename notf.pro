@@ -9,11 +9,6 @@ INCLUDEPATH *= thirdparty/ include/ test/
 LIBS *= -L/home/clemens/code/thirdparty/glfw-3.2.1/INSTALL/lib/
 LIBS *= -lglfw3 -lGL -lX11 -lXxf86vm -lpthread -ldl -lXcursor -lXrandr -lXinerama
 
-# python
-LIBS *= -L/home/clemens/code/thirdparty/Python-3.5.2/
-LIBS *= -lpython3.5dm
-INCLUDEPATH *= /home/clemens/code/thirdparty/Python-3.5.2/INSTALL/include/python3.5dm/
-
 CONFIG(release, debug|release) {
 #    message("Building in Release Mode.")
     DEFINES += "SIGNAL_LOG_LEVEL=4"
@@ -21,12 +16,22 @@ CONFIG(release, debug|release) {
     QMAKE_CXXFLAGS_RELEASE += -O3
     QMAKE_LFLAGS_RELEASE += -fvisibility=hidden -s
     QMAKE_LFLAGS_RELEASE += -O3
+
+    # python
+    LIBS *= -L/home/clemens/code/thirdparty/Python-3.5.2/
+    LIBS *= -lpython3.5m
+    INCLUDEPATH *= /home/clemens/code/thirdparty/Python-3.5.2/INSTALL/include/python3.5m/
 }
 
 # debug
 CONFIG(debug, debug|release) {
 #    message("Building in Debug Mode.")
     DEFINES += _DEBUG
+
+    # python
+    LIBS *= -L/home/clemens/code/thirdparty/Python-3.5.2/
+    LIBS *= -lpython3.5dm
+    INCLUDEPATH *= /home/clemens/code/thirdparty/Python-3.5.2/INSTALL/include/python3.5dm/
 }
 
 # test
@@ -105,7 +110,8 @@ SOURCES += \
     src/core/controller.cpp \
     src/python/py_controller.cpp \
     src/python/type_patches.cpp \
-    src/python/py_fwd.cpp
+    src/python/py_fwd.cpp \
+    src/common/input.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -113,7 +119,6 @@ HEADERS += \
     include/common/signal.hpp \
     include/common/string_utils.hpp \
     include/core/glfw_wrapper.hpp \
-    include/common/keyboard.hpp \
     include/core/widget.hpp \
     include/common/vector_utils.hpp \
     include/common/log.hpp \
@@ -176,6 +181,8 @@ HEADERS += \
     include/core/controller.hpp \
     include/utils/binding_accessors.hpp \
     include/python/type_patches.hpp \
-    include/python/py_fwd.hpp
+    include/python/py_fwd.hpp \
+    include/core/events/mouse_event.hpp \
+    include/common/input.hpp
 
 QMAKE_CXX = ccache g++

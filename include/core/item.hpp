@@ -88,7 +88,7 @@ public: // methods
     bool has_ancestor(const Item* ancestor) const;
 
     /** Returns the parent Item containing this Item, may be invalid. */
-    std::shared_ptr<const Layout> get_parent() const { return m_parent.lock(); }
+    std::shared_ptr<const Layout> get_parent() const { return m_parent.lock(); } // TODO: the parent Item may be a Controller!
 
     /** Returns the Window containing this Widget (can be null). */
     std::shared_ptr<Window> get_window() const;
@@ -137,11 +137,12 @@ public: // methods
                  || get_opacity() == approx(0));
     }
 
-    /** Looks for a Widget at a given position in parent space.
-     * @param local_pos     Local coordinates where to look for the Widget.
-     * @return              The Widget at a given local position or an empty shared_ptr if there is none.
+    /** Looks for all Widgets at a given position in parent space.
+     * @param local_pos     Local coordinates where to look for a Widget.
+     * @param result        [out] All Widgets at the given coordinate, orderd from front to back.
+     * @return              True if any Widget was found, false otherwise.
      */
-    virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) = 0;
+    virtual bool get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& result) = 0;
 
     /** Returns the current RenderLayer of this Item. Can be empty. */
     const std::shared_ptr<RenderLayer>& get_render_layer() const { return m_render_layer; }

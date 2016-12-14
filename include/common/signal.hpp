@@ -149,6 +149,34 @@ namespace detail {
             return id;
         }
 
+        /** Checks if a particular Connection is managed by this manager. */
+        bool has_connection(const ConnectionID id) const
+        {
+            if (!id) {
+                return false;
+            }
+            for (const Connection& connection : m_connections) {
+                if (connection.get_id() == id) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /** Returns a vector of all managed (connected) Connections.*/
+        std::vector<ConnectionID> get_connections() const
+        {
+            std::vector<ConnectionID> result;
+            result.reserve(m_connections.size());
+            for (const Connection& connection : m_connections) {
+                ConnectionID id = connection.get_id();
+                if (id) {
+                    result.push_back(id);
+                }
+            }
+            return result;
+        }
+
         /** Temporarily disables all tracked Connections. */
         void disable_all()
         {
@@ -304,6 +332,34 @@ public: // methods
         m_targets.emplace_back(connection, std::move(function), std::move(test_func));
 
         return connection;
+    }
+
+    /** Checks if a particular Connection is connected to this Signal. */
+    bool has_connection(const ConnectionID id) const
+    {
+        if (!id) {
+            return false;
+        }
+        for (const Target& target : m_targets) {
+            if (target.connection.get_id() == id) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Returns a vector of all (connected) Connections.*/
+    std::vector<ConnectionID> get_connections() const
+    {
+        std::vector<ConnectionID> result;
+        result.reserve(m_targets.size());
+        for (const Target& target : m_targets) {
+            ConnectionID id = target.connection.get_id();
+            if (id) {
+                result.push_back(id);
+            }
+        }
+        return result;
     }
 
     /** Temporarily disables all Connections of this Signal. */
@@ -468,6 +524,34 @@ public: // methods
         return connection;
     }
 
+    /** Checks if a particular Connection is connected to this Signal. */
+    bool has_connection(const ConnectionID id) const
+    {
+        if (!id) {
+            return false;
+        }
+        for (const Target& target : m_targets) {
+            if (target.connection.get_id() == id) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Returns a vector of all (connected) Connections.*/
+    std::vector<ConnectionID> get_connections() const
+    {
+        std::vector<ConnectionID> result;
+        result.reserve(m_targets.size());
+        for (const Target& target : m_targets) {
+            ConnectionID id = target.connection.get_id();
+            if (id) {
+                result.push_back(id);
+            }
+        }
+        return result;
+    }
+
     /** Temporarily disables all Connections of this Signal. */
     void disable()
     {
@@ -591,6 +675,12 @@ public: // methods
                                           _connection_helper(signal, method, std::make_index_sequence<signal_size>{}),
                                           std::forward<TEST_FUNC>(test_func)...);
     }
+
+    /** Checks if a particular Connection is connected to this object. */
+    bool has_connection(const ConnectionID id) const { return m_callback_manager.has_connection(id); }
+
+    /** Returns a vector of all (connected) Connections to this object.*/
+    std::vector<ConnectionID> get_connections() const { return m_callback_manager.get_connections(); }
 
     /** Temporarily disables all Connections into this object. */
     void disable_all_connections() { m_callback_manager.disable_all(); }

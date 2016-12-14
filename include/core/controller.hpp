@@ -31,9 +31,9 @@ public: // methods
 
     virtual const Claim& get_claim() const override { return m_root_item->get_claim(); }
 
-    virtual std::shared_ptr<Widget> get_widget_at(const Vector2& local_pos) override
+    virtual bool get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& result) override
     {
-        return m_root_item->get_widget_at(local_pos);
+        return m_root_item->get_widgets_at(std::move(local_pos), result);
     }
 
 protected: // methods

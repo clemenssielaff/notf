@@ -38,12 +38,12 @@ void LayoutRoot::set_item(std::shared_ptr<Item> item)
     _relayout();
 }
 
-std::shared_ptr<Widget> LayoutRoot::get_widget_at(const Vector2& local_pos)
+bool LayoutRoot::get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& result)
 {
     if (is_empty()) {
-        return {};
+        return false;
     }
-    return _get_item()->get_widget_at(local_pos);
+    return _get_item()->get_widgets_at(std::move(local_pos), result);
 }
 
 void LayoutRoot::set_render_layer(std::shared_ptr<RenderLayer>)

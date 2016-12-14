@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "common/aabr.hpp"
 #include "common/log.hpp"
 #include "common/vector_utils.hpp"
 #include "utils/make_smart_enabler.hpp"
@@ -41,9 +42,18 @@ void Overlayout::add_item(std::shared_ptr<Item> item)
     _relayout();
 }
 
-std::shared_ptr<Widget> Overlayout::get_widget_at(const Vector2& /*local_pos*/)
+bool Overlayout::get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& result)
 {
-    return {};
+    bool found_any = false;
+    for (Item* item : m_items) {
+        // TODO: Overlayout::get_widget_at does not respect transform (only translate)
+        const Vector2 item_pos = local_pos - item->get_transform(Space::LOCAL).get_translation();
+        const Aabr item_rect(item->get_size());
+        if (item_rect.contains(item_pos)) {
+            found_any |= item->get_widgets_at(item_pos, result);
+        }
+    }
+    return found_any;
 }
 
 std::unique_ptr<LayoutIterator> Overlayout::iter_items() const
