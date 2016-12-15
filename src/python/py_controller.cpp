@@ -19,8 +19,8 @@ private: // struct
         using Map = std::map<std::string, State>;
 
         Map::const_iterator it;
-        py::function enter;
-        py::function leave;
+        py::weakref enter;
+        py::weakref leave;
     };
 
 public: // methods
@@ -30,6 +30,10 @@ public: // methods
         , m_current_state(nullptr)
     {
     }
+    // TODO: states, at the moment, cause a unbreakable self-reference loop of PyControllers
+    // which means every Controller that calls self.add_state() will never be deleted :(
+    // I think I can fix it using either weak references or a pure python implementation instead
+    // (there is no real advantage of having a c++ trampoline for something that is easier done in Python anyway)
 
     virtual ~PyController() override;
 
@@ -55,7 +59,9 @@ public: // methods
             log_critical << msg;
             throw std::runtime_error(msg);
         }
-        it->second = {it, enter, leave};
+        it->second.it = it;
+//        it->second.enter = py::weakref(enter.release()); // doesn't work
+//        it->second.leave = py::weakref(leave);
     }
 
     /** Checks if the Controller has a State with the given name. */
@@ -82,10 +88,10 @@ public: // methods
         }
         State& next = it->second;
         if (m_current_state) {
-            m_current_state->leave();
+//            m_current_state->leave();
         }
         m_current_state = &next;
-        m_current_state->enter();
+//        m_current_state->enter();
     }
 
 private: // fields

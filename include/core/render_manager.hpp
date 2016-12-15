@@ -9,7 +9,7 @@ namespace notf {
 template <typename T>
 class MakeSmartEnabler;
 
-class Item;
+class LayoutItem;
 struct RenderContext;
 class Widget;
 class Window;
@@ -83,7 +83,7 @@ public: // methods
     }
 
 private: // methods
-    void _iterate_layout_hierarchy(const Item* layout_item, RenderLayer* parent_layer);
+    void _iterate_layout_hierarchy(const LayoutItem* layout_item, RenderLayer* parent_layer);
 
 private: // fields
     /** The Window owning this RenderManager. */

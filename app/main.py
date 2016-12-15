@@ -1,6 +1,7 @@
 from random import randint
 from notf import *
 from notf import _Font
+import gc
 
 class ButtonWidget(Widget):
     def __init__(self, number):
@@ -10,13 +11,9 @@ class ButtonWidget(Widget):
         self.number = number
         self._font = _Font.fetch("Roboto-Regular")
 
-        min_min = 5
-        max_min = 10
-        max_max = 40
-
-        #min_min = 20
-        #max_min = 100
-        #max_max = 200
+        min_min = 20
+        max_min = 100
+        max_max = 200
 
         h_stretch = ClaimStretch()
         h_stretch.set_min(randint(min_min, max_min))
@@ -49,23 +46,26 @@ class ButtonController(Controller):
     def __init__(self, number):
         super().__init__()
 
-
         self._widget = ButtonWidget(number)
         self.set_root_item(self._widget)
 
-        self.add_state("orange", self._turn_orange, self._nothin)
-        self.add_state("blue", self._turn_blue, self._nothin)
+        self._widget.color = Color("#2b60b8")
 
-        self.transition_to("blue")
+        #self.add_state("orange", self._turn_orange, self._nothin)
+        #self.add_state("blue", self._turn_blue, self._nothin)
+
+        #self.transition_to("blue")
 
     def _nothin(self):
         pass
 
     def _turn_orange(self):
-        self._widget.color = Color("#c34200")
+        #self._widget.color = Color("#c34200")
+        pass
 
     def _turn_blue(self):
-        self._widget.color = Color("#2b60b8")
+        #self._widget.color = Color("#2b60b8")
+        pass
 
 
 class WindowController(Controller):
@@ -82,7 +82,7 @@ class WindowController(Controller):
         stack_layout.set_cross_alignment(Layout.Alignment.START)
         stack_layout.set_content_alignment(Layout.Alignment.START)
 
-        for i in range(1000):
+        for i in range(2):
             stack_layout.add_item(ButtonController(i))
 
         # and the fill layout in the foreground
@@ -111,4 +111,5 @@ def produce_notf():
 
 if __name__ == "__main__":
     main()
+    gc.collect()
     pass

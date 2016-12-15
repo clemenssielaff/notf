@@ -87,7 +87,7 @@ void RenderManager::render(const RenderContext& context)
     m_is_clean = true;
 }
 
-void RenderManager::_iterate_layout_hierarchy(const Item* item, RenderLayer* parent_layer)
+void RenderManager::_iterate_layout_hierarchy(const LayoutItem *item, RenderLayer* parent_layer)
 {
     assert(item);
     assert(parent_layer);
@@ -114,15 +114,14 @@ void RenderManager::_iterate_layout_hierarchy(const Item* item, RenderLayer* par
         }
         std::unique_ptr<LayoutIterator> it = layout->iter_items();
         while (const Item* child_item = it->next()) {
-            _iterate_layout_hierarchy(child_item, current_layer);
+            if(const LayoutItem* layout_item = child_item->get_layout_item()){
+                _iterate_layout_hierarchy(layout_item, current_layer);
+            }
         }
     }
 
-    // if it is a Controller, go to its root Item
     else {
-        const AbstractController* controller = dynamic_cast<const AbstractController*>(item);
-        assert(controller); // what else?
-        _iterate_layout_hierarchy(controller->get_layout_item(), current_layer);
+        assert(false);
     }
 }
 
