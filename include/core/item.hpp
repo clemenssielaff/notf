@@ -43,17 +43,12 @@
 
 namespace notf {
 
+class AbstractController;
 class Layout;
+class LayoutItem;
 class RenderLayer;
 class Widget;
 class Window;
-
-/** Coordinate Spaces to pass to get_transform(). */
-enum class Space : unsigned char {
-    LOCAL, // returns transform in local coordinates, relative to the parent Item
-    WINDOW, // returns transform in global coordinates, relative to the Window
-    SCREEN, // returns transform in screen coordinates, relative to the screen origin
-};
 
 /** Unqiue identification token of an Item. */
 using ItemID = size_t;
@@ -65,6 +60,7 @@ using ItemID = size_t;
  */
 class Item : public receive_signals<Item>, public std::enable_shared_from_this<Item> {
 
+    friend class AbstractController;
     friend class Layout;
     friend class Widget;
 
@@ -78,6 +74,12 @@ public: // methods
     /** Application-unique ID of this Item. */
     ItemID get_id() const { return m_id; }
 
+    /** Returns the LayoutItem associated with this Item.
+     * Items that are already LayoutItems return themselves, Controller return their root LayoutItem or nullptr.
+     */
+    virtual LayoutItem* get_layout_item() = 0;
+    virtual const LayoutItem* get_layout_item() const = 0;
+
     /** Checks if this Item currently has a parent Item or not. */
     bool has_parent() const { return !m_parent.expired(); }
 
@@ -88,61 +90,13 @@ public: // methods
     bool has_ancestor(const Item* ancestor) const;
 
     /** Returns the parent Item containing this Item, may be invalid. */
-    std::shared_ptr<const Layout> get_parent() const { return m_parent.lock(); } // TODO: the parent Item may be a Controller!
+    std::shared_ptr<const Item> get_parent() const { return m_parent.lock(); }
+
+    /** Returns the Controller managing this Item. */
+    std::shared_ptr<AbstractController> get_controller() const;
 
     /** Returns the Window containing this Widget (can be null). */
     std::shared_ptr<Window> get_window() const;
-
-    /** Returns the opacity of this Item in the range [0 -> 1]. */
-    virtual float get_opacity() const = 0;
-
-    /** Returns the unscaled size of this Item in pixels. */
-    virtual const Size2f& get_size() const = 0;
-
-    /** Returns this Item's transformation in the given space. */
-    Transform2 get_transform(const Space space) const
-    {
-        Transform2 result = Transform2::identity();
-        switch (space) {
-        case Space::WINDOW:
-            _get_window_transform(result);
-            break;
-
-        case Space::SCREEN:
-            result = _get_screen_transform();
-            break;
-
-        case Space::LOCAL:
-            result = _get_local_transform();
-            break;
-
-        default:
-            assert(0);
-        }
-        return result;
-    }
-
-    /** The current Claim of this Item. */
-    virtual const Claim& get_claim() const = 0;
-
-    /** Checks, if the Item is currently visible.
-     * This method does return false if the opacity is zero but also if there are any other factors that make this Item
-     * not visible, like a zero size for example.
-     */
-    bool is_visible() const
-    {
-        return !(false
-                 || get_size().is_zero()
-                 || !get_size().is_valid()
-                 || get_opacity() == approx(0));
-    }
-
-    /** Looks for all Widgets at a given position in parent space.
-     * @param local_pos     Local coordinates where to look for a Widget.
-     * @param result        [out] All Widgets at the given coordinate, orderd from front to back.
-     * @return              True if any Widget was found, false otherwise.
-     */
-    virtual bool get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& result) = 0;
 
     /** Returns the current RenderLayer of this Item. Can be empty. */
     const std::shared_ptr<RenderLayer>& get_render_layer() const { return m_render_layer; }
@@ -161,42 +115,12 @@ public: // signals
      */
     Signal<ItemID> parent_changed;
 
-    /** Emitted, when the opacity of this Item has changed.
-     * @param New visiblity.
-     */
-    Signal<float> opacity_changed;
-
-    /** Emitted, when the size of this Item has changed.
-     * @param New size.
-     */
-    Signal<Size2f> size_changed;
-
-    /** Emitted, when the transform of this Item has changed.
-     * @param New local transform.
-     */
-    Signal<Transform2> transform_changed;
-
 protected: // methods
     explicit Item();
 
-    /** Tells the Window that its contents need to be redrawn. */
-    bool _redraw();
-
-    /** Sets the opacity of this Item.
-     * @return      True iff the opacity has been modified.
-     */
-    virtual bool _set_opacity(float opacity) = 0;
-
-    /** Updates the size of this Item.
-     * Layouts use this function to update their items.
-     * @return      True iff the size has been modified.
-     */
-    virtual bool _set_size(const Size2f size) = 0;
-
-    /** Updates the transformation of this Item.
-     * @return      True iff the transform has been modified.
-     */
-    virtual bool _set_transform(const Transform2 transform) = 0;
+    /** Returns the first ancestor of this Item that has a specific type. */
+    template <typename T>
+    std::shared_ptr<T> _get_first_ancestor() const;
 
     /** Notifies the parent Layout that the Claim of this Item has changed.
      * Propagates up the Layout hierarchy to the first ancestor that doesn't need to change its Claim.
@@ -205,33 +129,17 @@ protected: // methods
 
 protected: // static methods
     /** Allows any Item subclass to call _set_size on any other Item. */
-    static bool _set_item_size(Item* item, const Size2f size) { return item->_set_size(std::move(size)); }
+    static bool _set_item_size(LayoutItem* layout_item, const Size2f size);
 
     /** Allows any Item subclass to call _set_item_transform on any other Item. */
-    static bool _set_item_transform(Item* item, const Transform2 transform)
-    {
-        return item->_set_transform(std::move(transform));
-    }
+    static bool _set_item_transform(LayoutItem* layout_item, const Transform2 transform);
 
 private: // methods
-    /** Sets a new Item to contain this Item.
-     * Setting a new parent makes this Item appear on top of the new parent.
-     * I chose to do this since it is expected behaviour and reparenting + changing the z-value is a more common
-     * use-case than reparenting the Item without changing its depth.
-     */
-    void _set_parent(std::shared_ptr<Layout> parent);
+    /** Sets a new Item to manage this Item. */
+    void _set_parent(std::shared_ptr<Item> parent);
 
     /** Removes the current parent of this Item. */
     void _unparent() { _set_parent({}); }
-
-    /** Recursive implementation to produce the Item's transformation in window space. */
-    void _get_window_transform(Transform2& result) const;
-
-    /** Returns the Item's transformation in screen space. */
-    Transform2 _get_screen_transform() const;
-
-    /** Returns the Item's transformation in parent space. */
-    virtual Transform2 _get_local_transform() const = 0;
 
     // clang-format off
 protected_except_for_bindings : // methods
@@ -250,7 +158,7 @@ private: // fields
     const ItemID m_id;
 
     /** The parent Item, may be invalid. */
-    std::weak_ptr<Layout> m_parent;
+    std::weak_ptr<Item> m_parent;
 
     /** The RenderLayer of this Item.
      * An empty pointer means that this item inherits its render layer from its parent.

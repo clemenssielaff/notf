@@ -24,13 +24,16 @@ private: // struct
     };
 
 public: // methods
-    PyController(std::shared_ptr<LayoutItem> root_item)
-        : AbstractController(root_item)
+    PyController()
+        : AbstractController()
         , m_states()
+        , m_current_state(nullptr)
     {
     }
 
     virtual ~PyController() override;
+
+    using AbstractController::_set_root_item;
 
     /** Adds a new State to the Controller's state machine.
      * @return                      The new State.
@@ -79,10 +82,10 @@ public: // methods
         }
         State& next = it->second;
         if (m_current_state) {
-            //            m_current_state->leave(py::cast(this));
+            m_current_state->leave();
         }
         m_current_state = &next;
-        m_current_state->enter(); //py::cast(this));
+        m_current_state->enter();
     }
 
 private: // fields
@@ -103,18 +106,15 @@ PyController::~PyController() {}
 
 void produce_controller(pybind11::module& module, py::detail::generic_type Py_Item)
 {
-    py::class_<PyController, std::shared_ptr<PyController>> Py_Controller(module, "Controller", Py_Item);
+    py::class_<AbstractController, std::shared_ptr<AbstractController>> Py_AbstractController(module, "_AbstractController", Py_Item);
+    py::class_<PyController, std::shared_ptr<PyController>> Py_Controller(module, "Controller", Py_AbstractController);
     patch_type(Py_Controller.ptr());
 
-    Py_Controller.def(py::init<std::shared_ptr<LayoutItem>>());
+    Py_Controller.def(py::init<>());
+    Py_Controller.def("set_root_item", &PyController::_set_root_item, DOCSTR("Sets the LayoutItem at the root of the branch managedby this Controller."));
 
     Py_Controller.def("get_id", &PyController::get_id, DOCSTR("The application-unique ID of this Controller."));
     Py_Controller.def("has_parent", &PyController::has_parent, DOCSTR("Checks if this Item currently has a parent Item or not."));
-    Py_Controller.def("get_opacity", &PyController::get_opacity, DOCSTR("Returns the opacity of this Item in the range [0 -> 1]."));
-    Py_Controller.def("get_size", &PyController::get_size, DOCSTR("Returns the unscaled size of this Item in pixels."));
-    //    Py_Widget.def("get_transform", &Widget::get_transform, "Returns this Item's transformation in the given space.", py::arg("space"));
-    Py_Controller.def("get_claim", &PyController::get_claim, DOCSTR("The current Claim of this Item."));
-    Py_Controller.def("is_visible", &PyController::is_visible, DOCSTR("Checks, if the Item is currently visible."));
     Py_Controller.def("get_current_state", &PyController::get_current_state, DOCSTR("Returns the name of the current State or an empty String, if the Controller doesn't have a State."));
 
     Py_Controller.def("add_state", &PyController::add_state, DOCSTR("Adds a new state to the Controller's state machine"), py::arg("name"), py::arg("enter_func"), py::arg("leave_func"));

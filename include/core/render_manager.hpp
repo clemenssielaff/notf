@@ -1,5 +1,6 @@
 #pragma once
 
+#include <assert.h>
 #include <memory>
 #include <vector>
 
@@ -68,6 +69,18 @@ public: // methods
      * @param context   The context into which to render.
      */
     void render(const RenderContext& context);
+
+    /** Returns the index of a given RenderLayer, starting at 1. Returns 0 on failure. */
+    size_t get_render_layer_index(const RenderLayer* render_layer)
+    {
+        assert(render_layer);
+        for (size_t i = 0; i < m_layers.size(); ++i) {
+            if (m_layers[i].get() == render_layer) {
+                return i + 1;
+            }
+        }
+        return 0;
+    }
 
 private: // methods
     void _iterate_layout_hierarchy(const Item* layout_item, RenderLayer* parent_layer);

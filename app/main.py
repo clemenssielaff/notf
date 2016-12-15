@@ -10,9 +10,13 @@ class ButtonWidget(Widget):
         self.number = number
         self._font = _Font.fetch("Roboto-Regular")
 
-        min_min = 20
-        max_min = 100
-        max_max = 200
+        min_min = 5
+        max_min = 10
+        max_max = 40
+
+        #min_min = 20
+        #max_min = 100
+        #max_max = 200
 
         h_stretch = ClaimStretch()
         h_stretch.set_min(randint(min_min, max_min))
@@ -43,9 +47,11 @@ class ButtonWidget(Widget):
 
 class ButtonController(Controller):
     def __init__(self, number):
+        super().__init__()
+
 
         self._widget = ButtonWidget(number)
-        super().__init__(self._widget)
+        self.set_root_item(self._widget)
 
         self.add_state("orange", self._turn_orange, self._nothin)
         self.add_state("blue", self._turn_blue, self._nothin)
@@ -62,31 +68,40 @@ class ButtonController(Controller):
         self._widget.color = Color("#2b60b8")
 
 
+class WindowController(Controller):
+    def __init__(self):
+        super().__init__()
+
+        # produce the flex layout in the background
+        stack_layout = StackLayout(Layout.Direction.LEFT_TO_RIGHT)
+        stack_layout.set_wrap(Layout.Wrap.WRAP)
+        stack_layout.set_spacing(5)
+        stack_layout.set_cross_spacing(10)
+        stack_layout.set_padding(Padding.all(10))
+        stack_layout.set_alignment(Layout.Alignment.START)
+        stack_layout.set_cross_alignment(Layout.Alignment.START)
+        stack_layout.set_content_alignment(Layout.Alignment.START)
+
+        for i in range(1000):
+            stack_layout.add_item(ButtonController(i))
+
+        # and the fill layout in the foreground
+        background_rect = ButtonWidget("")
+        fill_layout = Overlayout()
+        fill_layout.set_padding(Padding.all(50))
+        fill_layout.add_item(background_rect)
+
+        window_layout = Overlayout()
+        window_layout.add_item(fill_layout)
+        window_layout.add_item(stack_layout)
+
+        self.set_root_item(window_layout)
+
+
 def main():
-    # produce the flex layout in the background
-    stack_layout = StackLayout(Layout.Direction.LEFT_TO_RIGHT)
-    stack_layout.set_wrap(Layout.Wrap.WRAP)
-    stack_layout.set_spacing(5)
-    stack_layout.set_cross_spacing(10)
-    stack_layout.set_padding(Padding.all(10))
-    stack_layout.set_alignment(Layout.Alignment.START)
-    stack_layout.set_cross_alignment(Layout.Alignment.START)
-    stack_layout.set_content_alignment(Layout.Alignment.START)
-
-    for i in range(100):
-        stack_layout.add_item(ButtonController(i))
-
-    # and the fill layout in the foreground
-    background_rect = ButtonWidget("")
-    fill_layout = Overlayout()
-    fill_layout.set_padding(Padding.all(50))
-    fill_layout.add_item(background_rect)
-
-    window_layout = Overlayout()
-    window_layout.add_item(fill_layout)
-    window_layout.add_item(stack_layout)
     window = Window()
-    window.get_layout_root().set_item(window_layout)
+    window_controller = WindowController()
+    window.get_layout_root().set_item(window_controller)
 
 
 def produce_notf():

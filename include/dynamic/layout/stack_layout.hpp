@@ -146,7 +146,8 @@ private: // methods
      * @param main_offset   Start offset of the first item in the main axis.
      * @param cross_offset  Start offset of the first item in the cross axis.
      */
-    void _layout_stack(const std::vector<Item*>& stack, const Size2f total_size, const float main_offset, const float cross_offset);
+    void _layout_stack(const std::vector<LayoutItem *> &stack, const Size2f total_size,
+                       const float main_offset, const float cross_offset);
 
 private: // fields
     /** Direction in which the StackLayout is stacked. */

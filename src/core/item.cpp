@@ -1,10 +1,9 @@
 #include "core/item.hpp"
 
 #include "common/log.hpp"
+#include "core/controller.hpp"
 #include "core/layout.hpp"
 #include "core/layout_root.hpp"
-#include "core/render_manager.hpp"
-#include "core/window.hpp"
 
 namespace notf {
 
@@ -23,7 +22,7 @@ bool Item::has_ancestor(const Item* ancestor) const
     }
 
     // check all actual ancestors against the candidate
-    const Layout* parent = get_parent().get();
+    const Item* parent = get_parent().get();
     while (parent) {
         if (parent == ancestor) {
             return true;
@@ -33,6 +32,11 @@ bool Item::has_ancestor(const Item* ancestor) const
 
     // if no ancestor matches, we have our answer
     return false;
+}
+
+std::shared_ptr<AbstractController> Item::get_controller() const
+{
+    return _get_first_ancestor<AbstractController>();
 }
 
 std::shared_ptr<Window> Item::get_window() const
@@ -57,40 +61,50 @@ Item::Item()
     log_trace << "Creating Item #" << m_id;
 }
 
-bool Item::_redraw()
+template <typename T>
+std::shared_ptr<T> Item::_get_first_ancestor() const
 {
-    // do not request a redraw, if this item cannot be drawn anyway
-    if (!is_visible()) {
-        return false;
+    std::shared_ptr<Item> next = m_parent.lock();
+    while (next) {
+        if (std::shared_ptr<T> result = std::dynamic_pointer_cast<T>(next)) {
+            return result;
+        }
+        next = next->m_parent.lock();
     }
-
-    if (std::shared_ptr<Window> window = get_window()) {
-        window->get_render_manager().request_redraw();
-    }
-    return true;
+    return {};
 }
 
 void Item::_update_parent_layout()
 {
-    std::shared_ptr<Layout> parent = m_parent.lock();
-    while (parent) {
+    std::shared_ptr<Layout> parentLayout = _get_first_ancestor<Layout>();
+    while (parentLayout) {
         // if the parent Layout's Claim changed, we also need to update its parent
-        if (parent->_update_claim()) {
-            parent = parent->m_parent.lock();
+        if (parentLayout->_update_claim()) {
+            parentLayout = parentLayout->_get_first_ancestor<Layout>();
         }
         // ... otherwise, we have reached the end of the propagation through the ancestry
         // and continue to relayout all children from the parent downwards
         else {
-            parent->_relayout();
-            parent.reset();
+            parentLayout->_relayout();
+            parentLayout.reset();
         }
     }
 }
 
-void Item::_set_parent(std::shared_ptr<Layout> parent)
+bool Item::_set_item_size(LayoutItem* layout_item, const Size2f size)
+{
+    return layout_item->_set_size(std::move(size));
+}
+
+bool Item::_set_item_transform(LayoutItem* layout_item, const Transform2 transform)
+{
+    return layout_item->_set_transform(std::move(transform));
+}
+
+void Item::_set_parent(std::shared_ptr<Item> parent)
 {
     // do nothing if the new parent is the same as the old (or both are invalid)
-    std::shared_ptr<Layout> old_parent = m_parent.lock();
+    std::shared_ptr<Item> old_parent = m_parent.lock();
     if (parent == old_parent) {
         return;
     }
@@ -102,32 +116,18 @@ void Item::_set_parent(std::shared_ptr<Layout> parent)
         return;
     }
 
-    // update your parent
-    if (old_parent) {
-        old_parent->_remove_child(this);
+    // if the old parent was a Layout, remove yourself from the Layout explicitly
+    if (std::shared_ptr<Layout> old_layout = std::dynamic_pointer_cast<Layout>(old_parent)) {
+        old_layout->_remove_child(this);
     }
 
     m_parent = parent;
     parent_changed(parent->get_id());
 }
 
-void Item::_get_window_transform(Transform2& result) const
-{
-    if (std::shared_ptr<const Layout> parent = get_parent()) {
-        parent->_get_window_transform(result);
-    }
-    result = _get_local_transform() * result;
-}
-
-Transform2 Item::_get_screen_transform() const
-{
-    log_critical << "get_transform(SPACE::SCREEN) is not emplemented yet";
-    return _get_local_transform();
-}
-
 void Item::_set_pyobject(PyObject* object)
 {
-    assert(!py_object); // you should only do this once
+    assert(!py_object); // you should only have to do this once
     py_incref(object);
     py_object.reset(std::move(object));
 }

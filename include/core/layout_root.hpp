@@ -7,6 +7,7 @@ namespace notf {
 template <typename T>
 class MakeSmartEnabler;
 
+class AbstractController;
 class LayoutRoot;
 class Window;
 
@@ -53,7 +54,7 @@ public: // methods
     std::shared_ptr<Window> get_window() const;
 
     /// @brief Sets a new Item at the LayoutRoot.
-    void set_item(std::shared_ptr<Item> item); // TODO: the LayoutRoot must only accept a Controller as child
+    void set_item(std::shared_ptr<AbstractController> item);
 
     virtual bool get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& result) override;
 

@@ -292,10 +292,12 @@ bool StackLayout::get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& 
 {
     // TODO: StackLayout::get_widget_at is brute-force and does not respect transform (only translate)
     for (Item* item : m_items) {
-        const Vector2 item_pos =  local_pos - item->get_transform(Space::LOCAL).get_translation();
-        const Aabr item_rect(item->get_size());
-        if(item_rect.contains(item_pos)){
-            return item->get_widgets_at(item_pos, result);
+        if (LayoutItem* layout_item = item->get_layout_item()) {
+            const Vector2 item_pos = local_pos - layout_item->get_transform().get_translation();
+            const Aabr item_rect(layout_item->get_size());
+            if (item_rect.contains(item_pos)) {
+                return layout_item->get_widgets_at(item_pos, result);
+            }
         }
     }
     return false;
@@ -311,7 +313,9 @@ bool StackLayout::_update_claim()
     Claim new_claim;
     if ((m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT)) { // horizontal
         for (const Item* item : m_items) {
-            new_claim.add_horizontal(item->get_claim());
+            if (const LayoutItem* layout_item = item->get_layout_item()) {
+                new_claim.add_horizontal(layout_item->get_claim());
+            }
         }
         if (!m_items.empty()) {
             new_claim.get_horizontal().add_offset((m_items.size() - 1) * m_spacing);
@@ -320,7 +324,9 @@ bool StackLayout::_update_claim()
     else {
         assert((m_direction == Direction::TOP_TO_BOTTOM) || (m_direction == Direction::BOTTOM_TO_TOP)); // vertical
         for (const Item* item : m_items) {
-            new_claim.add_vertical(item->get_claim());
+            if (const LayoutItem* layout_item = item->get_layout_item()) {
+                new_claim.add_vertical(layout_item->get_claim());
+            }
         }
         if (!m_items.empty()) {
             new_claim.get_vertical().add_offset((m_items.size() - 1) * m_spacing);
@@ -366,7 +372,14 @@ void StackLayout::_relayout()
 
     // layout all items in a single stack
     if (!is_wrapping()) {
-        return _layout_stack(m_items, available_size, main_offset, cross_offset);
+        std::vector<LayoutItem*> layout_items;
+        layout_items.reserve(m_items.size());
+        for (Item* item : m_items) {
+            if (LayoutItem* layout_item = item->get_layout_item()) {
+                layout_items.emplace_back(std::move(layout_item));
+            }
+        }
+        return _layout_stack(layout_items, available_size, main_offset, cross_offset);
     }
 
     const bool horizontal = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
@@ -374,15 +387,19 @@ void StackLayout::_relayout()
     const float available_cross = horizontal ? available_size.height : available_size.width;
 
     // fill the items into stacks
-    std::vector<std::vector<Item*>> stacks;
+    std::vector<std::vector<LayoutItem*>> stacks;
     std::vector<Claim::Stretch> cross_stretches;
     float used_cross_space = 0.f;
     {
-        std::vector<Item*> current_stack;
+        std::vector<LayoutItem*> current_stack;
         Claim::Stretch current_cross_stretch = Claim::Stretch(0, 0, 0);
         float current_size = 0;
         for (Item* item : m_items) {
-            const Claim& claim = item->get_claim();
+            LayoutItem* layout_item = item->get_layout_item();
+            if (!layout_item) {
+                continue;
+            }
+            const Claim& claim = layout_item->get_claim();
             const float addition = (horizontal ? claim.get_horizontal() : claim.get_vertical()).get_preferred() + m_spacing;
             if (current_size + addition > available_main) {
                 stacks.emplace_back(std::move(current_stack));
@@ -393,7 +410,7 @@ void StackLayout::_relayout()
                 current_size = 0.f;
             }
             current_size += addition;
-            current_stack.push_back(item);
+            current_stack.push_back(layout_item);
             current_cross_stretch.maxed(horizontal ? claim.get_vertical() : claim.get_horizontal());
         }
         stacks.emplace_back(std::move(current_stack));
@@ -433,7 +450,8 @@ void StackLayout::_relayout()
     }
 }
 
-void StackLayout::_layout_stack(const std::vector<Item*>& stack, const Size2f total_size, const float main_offset, const float cross_offset)
+void StackLayout::_layout_stack(const std::vector<LayoutItem*>& stack, const Size2f total_size,
+                                const float main_offset, const float cross_offset)
 {
     // calculate the actual, availabe size
     const size_t item_count = stack.size();
@@ -495,7 +513,7 @@ void StackLayout::_layout_stack(const std::vector<Item*>& stack, const Size2f to
     }
     float current_offset = start_offset;
     for (size_t index = 0; index < stack.size(); ++index) {
-        Item* child = stack.at(index);
+        LayoutItem* child = stack.at(index);
         const ItemAdapter& adapter = adapters[index];
         const std::pair<float, float> width_to_height = child->get_claim().get_width_to_height();
         assert(adapter.result >= 0.f);

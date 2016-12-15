@@ -4,6 +4,7 @@
 
 #include "common/log.hpp"
 #include "common/transform2.hpp"
+#include "core/controller.hpp"
 #include "core/item.hpp"
 #include "core/render_manager.hpp"
 #include "core/window.hpp"
@@ -26,7 +27,7 @@ std::shared_ptr<Window> LayoutRoot::get_window() const
     return m_window->shared_from_this();
 }
 
-void LayoutRoot::set_item(std::shared_ptr<Item> item)
+void LayoutRoot::set_item(std::shared_ptr<AbstractController> item)
 {
     // remove the existing item first
     if (!is_empty()) {
@@ -36,6 +37,9 @@ void LayoutRoot::set_item(std::shared_ptr<Item> item)
     }
     _add_child(std::move(item));
     _relayout();
+
+    bool is_redrawn = _redraw();
+    assert(is_redrawn);
 }
 
 bool LayoutRoot::get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& result)
@@ -43,7 +47,7 @@ bool LayoutRoot::get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& r
     if (is_empty()) {
         return false;
     }
-    return _get_item()->get_widgets_at(std::move(local_pos), result);
+    return _get_item()->get_layout_item()->get_widgets_at(std::move(local_pos), result);
 }
 
 void LayoutRoot::set_render_layer(std::shared_ptr<RenderLayer>)
@@ -59,7 +63,7 @@ std::unique_ptr<LayoutIterator> LayoutRoot::iter_items() const
 void LayoutRoot::_relayout()
 {
     if (!is_empty()) {
-        _set_item_size(_get_item(), get_size());
+        _set_item_size(_get_item()->get_layout_item(), get_size());
     }
 }
 

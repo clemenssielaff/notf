@@ -92,11 +92,6 @@ void RenderManager::_iterate_layout_hierarchy(const Item* item, RenderLayer* par
     assert(item);
     assert(parent_layer);
 
-    // ignore invisible items
-    if (!item->is_visible()) {
-        return;
-    }
-
     // implicit use of the parent's render layer
     RenderLayer* current_layer = item->get_render_layer().get();
     if (!current_layer) {
@@ -106,11 +101,17 @@ void RenderManager::_iterate_layout_hierarchy(const Item* item, RenderLayer* par
     // if the item is a visible widget, append it to the current render layer
     if (const Widget* widget = dynamic_cast<const Widget*>(item)) {
         // TODO: dont' draw scissored widgets
+        if(!widget->is_visible()){
+            return;
+        }
         current_layer->m_widgets.push_back(widget);
     }
 
     // if it is a Layout, start a recursive iteration
     else if (const Layout* layout = dynamic_cast<const Layout*>(item)) {
+        if(!layout->is_visible()){
+            return;
+        }
         std::unique_ptr<LayoutIterator> it = layout->iter_items();
         while (const Item* child_item = it->next()) {
             _iterate_layout_hierarchy(child_item, current_layer);
@@ -121,7 +122,7 @@ void RenderManager::_iterate_layout_hierarchy(const Item* item, RenderLayer* par
     else {
         const AbstractController* controller = dynamic_cast<const AbstractController*>(item);
         assert(controller); // what else?
-        _iterate_layout_hierarchy(controller->get_root_item(), current_layer);
+        _iterate_layout_hierarchy(controller->get_layout_item(), current_layer);
     }
 }
 

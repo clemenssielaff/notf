@@ -1,6 +1,7 @@
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
+#include "core/controller.hpp"
 #include "core/layout_root.hpp"
 #include "python/docstr.hpp"
 using namespace notf;

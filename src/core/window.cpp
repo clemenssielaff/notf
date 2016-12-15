@@ -2,17 +2,22 @@
 
 #define NANOVG_GLES3_IMPLEMENTATION
 #include "core/glfw_wrapper.hpp"
+
 #include <nanovg/nanovg.h>
 #include <nanovg/nanovg_gl.h>
+
+#include <set>
 
 #include "common/debug.hpp"
 #include "common/log.hpp"
 #include "core/application.hpp"
+#include "core/controller.hpp"
 #include "core/events/key_event.hpp"
 #include "core/events/mouse_event.hpp"
 #include "core/layout_root.hpp"
 #include "core/render_manager.hpp"
 #include "core/resource_manager.hpp"
+#include "core/widget.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/raw_image.hpp"
 #include "graphics/rendercontext.hpp"
@@ -229,10 +234,49 @@ void Window::_on_resize(int width, int height)
 
 void Window::_on_cursor_move(MouseEvent&& event)
 {
-//    DebugTimer timer("mouse event handling");
+    // collect all Widgets in Layout-given order (no RenderLayers yet).
     std::vector<Widget*> widgets;
     m_root_layout->get_widgets_at(event.window_pos, widgets);
-    log_trace << "Found " << widgets.size() << " Widgets under the cursor.";
+
+    // extract Controllers in order, respecting RenderLayers
+    std::set<AbstractController*> known_controllers;
+    std::vector<std::vector<AbstractController*>> controllers_by_layer;
+    for (Widget* widget : widgets) {
+
+        // notify each Controller only once
+        AbstractController* controller = widget->get_controller().get();
+        if(known_controllers.count(controller)){
+            continue;
+        }
+        known_controllers.insert(controller);
+
+        // find the widgets's render layer
+        RenderLayer* render_layer = widget->get_render_layer().get();
+        if(!render_layer){
+            const Item* ancestor = widget->get_parent().get();
+            assert(ancestor);
+            while(!render_layer){
+                render_layer = ancestor->get_render_layer().get();
+                ancestor = ancestor->get_parent().get();
+                assert(ancestor || render_layer);
+            }
+        }
+
+        // sort them into RenderLayers
+        size_t layer_index = m_render_manager->get_render_layer_index(render_layer);
+        assert(layer_index > 0);
+        if (layer_index > controllers_by_layer.size()) {
+            controllers_by_layer.resize(layer_index);
+        }
+        controllers_by_layer[layer_index - 1].emplace_back(controller);
+    }
+
+    // call the event signals
+    for (const auto& layer : controllers_by_layer) {
+        for (const auto& controller : layer) {
+            log_trace << "Send mouse event to Controller " << controller->get_id();
+        }
+    }
 }
 
 } // namespace notf

@@ -22,38 +22,21 @@ class AbstractController : public Item {
 public: // methods
     virtual ~AbstractController() override;
 
-    /** Returns the root item managed by this Controller. */
-    const Item* get_root_item() const { return m_root_item.get(); }
+    virtual LayoutItem* get_layout_item() override { return m_root_item.get(); }
 
-    virtual float get_opacity() const override { return m_root_item->get_opacity(); }
-
-    virtual const Size2f& get_size() const override { return m_root_item->get_size(); }
-
-    virtual const Claim& get_claim() const override { return m_root_item->get_claim(); }
-
-    virtual bool get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& result) override
-    {
-        return m_root_item->get_widgets_at(std::move(local_pos), result);
-    }
+    virtual const LayoutItem* get_layout_item() const override { return m_root_item.get(); }
 
 protected: // methods
-    explicit AbstractController(std::shared_ptr<LayoutItem> root_item)
-        : Item()
-        , m_root_item(std::move(root_item))
+    AbstractController() = default;
+
+    /* Sets the LayoutItem at the root of the branch managedby this Controller. */
+    void _set_root_item(std::shared_ptr<LayoutItem> root_item)
     {
+        m_root_item.swap(root_item);
+        if(m_root_item){
+            m_root_item->_set_parent(shared_from_this());
+        }
     }
-
-    virtual bool _set_opacity(float opacity) override { return m_root_item->set_opacity(opacity); }
-
-    virtual bool _set_size(const Size2f size) override { return _set_item_size(m_root_item.get(), std::move(size)); }
-
-    virtual bool _set_transform(const Transform2 transform) override
-    {
-        return _set_item_transform(m_root_item.get(), std::move(transform));
-    }
-
-private: // methods
-    virtual Transform2 _get_local_transform() const override { return m_root_item->get_transform(Space::LOCAL); }
 
 private: // fields
     /** Item at the root of the Controller's Item hierarchy. */
@@ -63,7 +46,7 @@ private: // fields
 /**********************************************************************************************************************/
 
 /**
- * Controller baseclass, use a curiously recurring template.
+ * Controller baseclass, use as part of curiously recurring template.
  */
 template <typename T>
 class Controller : public AbstractController {
@@ -175,11 +158,10 @@ protected:
 
 protected: // methods
     /**
-     * @param root_item     Root item that this Controller manages.
      * @param state_machine StateMachine of this Controller, can only be created by the subclass.
      */
-    Controller(std::shared_ptr<LayoutItem> root_item, StateMachine&& state_machine)
-        : AbstractController(std::move(root_item))
+    Controller(StateMachine&& state_machine)
+        : AbstractController()
         , m_state_machine(std::move(state_machine))
         , m_current_state(nullptr)
     {

@@ -46,11 +46,13 @@ bool Overlayout::get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& r
 {
     bool found_any = false;
     for (Item* item : m_items) {
-        // TODO: Overlayout::get_widget_at does not respect transform (only translate)
-        const Vector2 item_pos = local_pos - item->get_transform(Space::LOCAL).get_translation();
-        const Aabr item_rect(item->get_size());
-        if (item_rect.contains(item_pos)) {
-            found_any |= item->get_widgets_at(item_pos, result);
+        if (LayoutItem* layout_item = item->get_layout_item()) {
+            // TODO: Overlayout::get_widget_at does not respect transform (only translate)
+            const Vector2 item_pos = local_pos - layout_item->get_transform().get_translation();
+            const Aabr item_rect(layout_item->get_size());
+            if (item_rect.contains(item_pos)) {
+                found_any |= layout_item->get_widgets_at(item_pos, result);
+            }
         }
     }
     return found_any;
@@ -73,8 +75,10 @@ void Overlayout::_relayout()
     const Size2f total_size = get_size();
     const Size2f effective_size = {total_size.width - m_padding.width(), total_size.height - m_padding.height()};
     for (Item* item : m_items) {
-        _set_item_transform(item, Transform2::translation({m_padding.left, m_padding.top}));
-        _set_item_size(item, std::move(effective_size));
+        if (LayoutItem* layout_item = item->get_layout_item()) {
+            _set_item_transform(layout_item, Transform2::translation({m_padding.left, m_padding.top}));
+            _set_item_size(layout_item, std::move(effective_size));
+        }
     }
 }
 
