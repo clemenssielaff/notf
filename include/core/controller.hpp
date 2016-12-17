@@ -26,6 +26,9 @@ public: // methods
 
     virtual const LayoutItem* get_layout_item() const override { return m_root_item.get(); }
 
+public: // signals
+    Signal<> on_mouse_event;
+
 protected: // methods
     AbstractController() = default;
 
@@ -202,3 +205,59 @@ private: // fields
 };
 
 } // namespace notf
+
+#if 0
+#include <iostream>
+using namespace std;
+
+#include "core/controller.hpp"
+using namespace notf;
+
+class Dynamite : public Controller<Dynamite> {
+public:
+    Dynamite()
+        : Controller<Dynamite>(init_state_machine())
+    {
+        cout << "Starting in State: " << get_current_state_name() << endl;
+        transition_to(m_state_calm);
+    }
+
+    void go_boom() { transition_to(m_state_boom); }
+private:
+    const std::string& get_explosive() const
+    {
+        static const std::string explosive = "dynamite";
+        return explosive;
+    }
+
+    StateMachine init_state_machine()
+    {
+        StateMachine state_machine;
+
+        m_state_calm = state_machine.add_state(
+            "calm",
+            [](Dynamite& self) { cout << "I'm loaded with " << self.get_explosive() << endl; }, // enter
+            [](Dynamite&) { cout << "Tick tick tick..." << endl; }); // leave
+
+        m_state_boom = state_machine.add_state(
+            "kaboom",
+            [](Dynamite&) { cout << "Kaboom" << endl; }, // enter
+            {}); // leave
+
+        return state_machine;
+    }
+
+private:
+    const State* m_state_calm;
+    const State* m_state_boom;
+};
+
+int main()
+//int notmain()
+{
+    Dynamite stick;
+    stick.go_boom();
+    return 0;
+}
+
+#endif

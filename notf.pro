@@ -111,7 +111,8 @@ SOURCES += \
     src/python/py_controller.cpp \
     src/python/type_patches.cpp \
     src/python/py_fwd.cpp \
-    src/common/input.cpp
+    src/common/input.cpp \
+    include/python/py_signal.hpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -183,6 +184,6 @@ HEADERS += \
     include/python/type_patches.hpp \
     include/python/py_fwd.hpp \
     include/core/events/mouse_event.hpp \
-    include/common/input.hpp
+    include/common/input.hpp 
 
 QMAKE_CXX = ccache g++

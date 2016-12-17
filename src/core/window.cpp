@@ -274,7 +274,7 @@ void Window::_on_cursor_move(MouseEvent&& event)
     // call the event signals
     for (const auto& layer : controllers_by_layer) {
         for (const auto& controller : layer) {
-//            log_trace << "Send mouse event to Controller " << controller->get_id();
+            controller->on_mouse_event(); //  TODO: send event object to on_mouse_event
         }
     }
 }

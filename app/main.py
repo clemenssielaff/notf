@@ -54,6 +54,8 @@ class ButtonController(Controller):
 
         self.transition_to("orange")
 
+        print(self.__dict__)
+
     def _nothin(self):
         pass
 

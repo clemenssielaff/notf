@@ -8,6 +8,7 @@ namespace py = pybind11;
 #include "python/docstr.hpp"
 #include "python/py_fwd.hpp"
 #include "python/type_patches.hpp"
+#include "python/py_signal.hpp"
 using namespace notf;
 
 /* Trampoline Class ***************************************************************************************************/
@@ -28,7 +29,9 @@ public: // methods
         : AbstractController()
         , m_states()
         , m_current_state(nullptr)
+        , py_mouse_event("on_mouse_event")
     {
+        connect_signal(on_mouse_event, [this](){py_mouse_event.fire();});
     }
 
     virtual ~PyController() override;
@@ -60,8 +63,9 @@ public: // methods
             it->second.it = it;
         }
 
+        // TODO: if storing python objects into self becomes a pattern, make a function out of it
         { // store the two methods into a cache in the object's __dict__ so they don't get lost
-            static const char* cache_name = "_notf_cache";
+            static const char* cache_name = "__notf_cache";
             int success = 0;
             py::object self = py::cast(this);
             py::object dict(PyObject_GenericGetDict(self.ptr(), nullptr), false);
@@ -78,7 +82,7 @@ public: // methods
             assert(success == 0);
         }
 
-        // ... but only keep weakrefs yourself, otherwise they will keep this object alive forever
+        // ... and only keep weakrefs yourself, otherwise they will keep this object alive forever
         it->second.enter.reset(PyWeakref_NewRef(enter.ptr(), nullptr));
         it->second.leave.reset(PyWeakref_NewRef(leave.ptr(), nullptr));
     }
@@ -131,6 +135,10 @@ private: // fields
 
     /** The current State of this Controller. */
     State* m_current_state;
+
+public: // signals
+
+    PySignal<> py_mouse_event;
 };
 PyController::~PyController() {}
 
