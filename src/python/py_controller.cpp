@@ -19,8 +19,8 @@ private: // struct
         using Map = std::map<std::string, State>;
 
         Map::const_iterator it;
-        py::weakref enter;
-        py::weakref leave;
+        std::unique_ptr<PyObject, decltype(&py_decref)> enter = {nullptr, py_decref};
+        std::unique_ptr<PyObject, decltype(&py_decref)> leave = {nullptr, py_decref};
     };
 
 public: // methods
@@ -30,10 +30,6 @@ public: // methods
         , m_current_state(nullptr)
     {
     }
-    // TODO: states, at the moment, cause a unbreakable self-reference loop of PyControllers
-    // which means every Controller that calls self.add_state() will never be deleted :(
-    // I think I can fix it using either weak references or a pure python implementation instead
-    // (there is no real advantage of having a c++ trampoline for something that is easier done in Python anyway)
 
     virtual ~PyController() override;
 
@@ -51,17 +47,40 @@ public: // methods
             throw std::runtime_error(msg);
         }
 
+        // create an empty state at first and store an iterator into itself for it to access its name
         State::Map::iterator it;
-        bool success;
-        std::tie(it, success) = m_states.emplace(std::make_pair(std::move(name), State()));
-        if (!success) {
-            std::string msg = string_format("Cannot replace existing State \"%s\" in StateMachine", name.c_str());
-            log_critical << msg;
-            throw std::runtime_error(msg);
+        {
+            bool success;
+            std::tie(it, success) = m_states.emplace(std::make_pair(std::move(name), State()));
+            if (!success) {
+                std::string msg = string_format("Cannot replace existing State \"%s\" in StateMachine", name.c_str());
+                log_critical << msg;
+                throw std::runtime_error(msg);
+            }
+            it->second.it = it;
         }
-        it->second.it = it;
-//        it->second.enter = py::weakref(enter.release()); // doesn't work
-//        it->second.leave = py::weakref(leave);
+
+        { // store the two methods into a cache in the object's __dict__ so they don't get lost
+            static const char* cache_name = "_notf_cache";
+            int success = 0;
+            py::object self = py::cast(this);
+            py::object dict(PyObject_GenericGetDict(self.ptr(), nullptr), false);
+            py::object cache(PyDict_GetItemString(dict.ptr(), cache_name), true);
+            if (!cache.check()) {
+                py::object new_cache(PySet_New(nullptr), false);
+                success += PyDict_SetItemString(dict.ptr(), cache_name, new_cache.ptr());
+                assert(success == 0);
+                cache = std::move(new_cache);
+            }
+            assert(cache.check());
+            success += PySet_Add(cache.ptr(), enter.ptr());
+            success += PySet_Add(cache.ptr(), leave.ptr());
+            assert(success == 0);
+        }
+
+        // ... but only keep weakrefs yourself, otherwise they will keep this object alive forever
+        it->second.enter.reset(PyWeakref_NewRef(enter.ptr(), nullptr));
+        it->second.leave.reset(PyWeakref_NewRef(leave.ptr(), nullptr));
     }
 
     /** Checks if the Controller has a State with the given name. */
@@ -88,10 +107,22 @@ public: // methods
         }
         State& next = it->second;
         if (m_current_state) {
-//            m_current_state->leave();
+            py::function leave_func(PyWeakref_GetObject(m_current_state->leave.get()), /* borrowed = */ true);
+            if (leave_func.check()) {
+                leave_func();
+            }
+            else {
+                log_critical << "Invalid weakref of `leave` function of state: \"" << state << "\"";
+            }
         }
         m_current_state = &next;
-//        m_current_state->enter();
+        py::function enter_func(PyWeakref_GetObject(m_current_state->enter.get()), /* borrowed = */ true);
+        if (enter_func.check()) {
+            enter_func();
+        }
+        else {
+            log_critical << "Invalid weakref of `enter` function of state: \"" << state << "\"";
+        }
     }
 
 private: // fields
@@ -130,5 +161,3 @@ void produce_controller(pybind11::module& module, py::detail::generic_type Py_It
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
-
-// TODO: finish PyController bindings

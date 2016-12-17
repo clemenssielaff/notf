@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
             }
         },
         [](const KeyEvent& event) -> bool {
-            return event.key == Key::SPACE && event.action == KeyAction::PRESS;
+            return event.key == Key::F5 && event.action == KeyAction::PRESS;
         });
 
     return app.exec();

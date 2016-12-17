@@ -7,7 +7,7 @@ class ButtonWidget(Widget):
     def __init__(self, number):
         super().__init__()
 
-        self.color = Color("#c34200")
+        self.color = Color("#000000")
         self.number = number
         self._font = _Font.fetch("Roboto-Regular")
 
@@ -49,23 +49,19 @@ class ButtonController(Controller):
         self._widget = ButtonWidget(number)
         self.set_root_item(self._widget)
 
-        self._widget.color = Color("#2b60b8")
+        self.add_state("orange", self._turn_orange, self._nothin)
+        self.add_state("blue", self._turn_blue, self._nothin)
 
-        #self.add_state("orange", self._turn_orange, self._nothin)
-        #self.add_state("blue", self._turn_blue, self._nothin)
-
-        #self.transition_to("blue")
+        self.transition_to("orange")
 
     def _nothin(self):
         pass
 
     def _turn_orange(self):
-        #self._widget.color = Color("#c34200")
-        pass
+        self._widget.color = Color("#c34200")
 
     def _turn_blue(self):
-        #self._widget.color = Color("#2b60b8")
-        pass
+        self._widget.color = Color("2b60b8")
 
 
 class WindowController(Controller):
@@ -111,5 +107,4 @@ def produce_notf():
 
 if __name__ == "__main__":
     main()
-    gc.collect()
     pass
