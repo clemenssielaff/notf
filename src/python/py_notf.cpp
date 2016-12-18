@@ -26,12 +26,16 @@ void produce_layout_root(pybind11::module& module, py::detail::generic_type ance
 void produce_stack_layout(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_overlayout(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_controller(pybind11::module& module, py::detail::generic_type Py_Item);
+void produce_globals(pybind11::module& module);
+void produce_events(pybind11::module& module);
 
 const char* python_notf_module_name = "notf";
 
 PyObject* produce_pynotf_module()
 {
     py::module module(python_notf_module_name, DOCSTR("NoTF Python bindings"));
+    produce_globals(module);
+    produce_events(module);
     produce_size2i(module);
     produce_size2f(module);
     produce_vector2(module);

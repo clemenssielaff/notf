@@ -274,7 +274,8 @@ void Window::_on_cursor_move(MouseEvent&& event)
     // call the event signals
     for (const auto& layer : controllers_by_layer) {
         for (const auto& controller : layer) {
-            controller->on_mouse_event(); //  TODO: send event object to on_mouse_event
+            MouseEvent event(this, {}, Button::INVALID, MouseAction::MOVE, KeyModifiers::NONE, {});
+            controller->on_mouse_event(event); //  TODO: send event object to on_mouse_event
         }
     }
 }

@@ -66,9 +66,9 @@ public: // methods
         }
     }
 
-    void fire(SIGNATURE&&... args)
+    void fire(SIGNATURE... args)
     {
-        auto arguments = std::make_tuple<SIGNATURE...>(args...);
+        auto arguments = std::make_tuple<SIGNATURE...>(std::move(args...));
         for (Target& target : m_targets) {
 
             // execute test function

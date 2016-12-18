@@ -29,7 +29,7 @@ public: // methods
     /** Checks whether this event was already handled or not. */
     bool was_handled() const { return m_was_handled; }
 
-    /** Called when some event handler handled this event. */
+    /** Must be called after a event handler handled this event. */
     void set_handled() { m_was_handled = true; }
 
 public: // fields

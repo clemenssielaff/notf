@@ -112,7 +112,9 @@ SOURCES += \
     src/python/type_patches.cpp \
     src/python/py_fwd.cpp \
     src/common/input.cpp \
-    include/python/py_signal.hpp
+    include/python/py_signal.hpp \
+    src/python/py_globals.cpp \
+    src/python/py_event.cpp
 
 HEADERS += \
     include/core/application.hpp \

@@ -7,9 +7,12 @@
 
 #include "common/log.hpp"
 #include "common/string_utils.hpp"
+#include "core/events/mouse_event.hpp"
 #include "core/layout_item.hpp"
 
 namespace notf {
+
+class MouseEvent;
 
 /**********************************************************************************************************************/
 
@@ -27,7 +30,7 @@ public: // methods
     virtual const LayoutItem* get_layout_item() const override { return m_root_item.get(); }
 
 public: // signals
-    Signal<> on_mouse_event;
+    Signal<MouseEvent> on_mouse_event;
 
 protected: // methods
     AbstractController() = default;
@@ -36,7 +39,7 @@ protected: // methods
     void _set_root_item(std::shared_ptr<LayoutItem> root_item)
     {
         m_root_item.swap(root_item);
-        if(m_root_item){
+        if (m_root_item) {
             m_root_item->_set_parent(shared_from_this());
         }
     }

@@ -5,10 +5,11 @@ namespace py = pybind11;
 
 #define NOTF_BINDINGS
 #include "core/controller.hpp"
+#include "core/events/mouse_event.hpp"
 #include "python/docstr.hpp"
 #include "python/py_fwd.hpp"
-#include "python/type_patches.hpp"
 #include "python/py_signal.hpp"
+#include "python/type_patches.hpp"
 using namespace notf;
 
 /* Trampoline Class ***************************************************************************************************/
@@ -31,7 +32,9 @@ public: // methods
         , m_current_state(nullptr)
         , py_mouse_event("on_mouse_event")
     {
-        connect_signal(on_mouse_event, [this](){py_mouse_event.fire();});
+        connect_signal(on_mouse_event, [this](MouseEvent event) { // TODO: obviously, event has to be a reference here
+            py_mouse_event.fire(event);
+        });
     }
 
     virtual ~PyController() override;
@@ -137,8 +140,7 @@ private: // fields
     State* m_current_state;
 
 public: // signals
-
-    PySignal<> py_mouse_event;
+    PySignal<MouseEvent> py_mouse_event;
 };
 PyController::~PyController() {}
 
