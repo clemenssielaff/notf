@@ -8,6 +8,7 @@
 #include "common/input.hpp"
 #include "common/log.hpp"
 #include "common/time.hpp"
+#include "common/vector2.hpp"
 #include "core/events/key_event.hpp"
 #include "core/events/mouse_event.hpp"
 #include "core/glfw_wrapper.hpp"
@@ -19,14 +20,19 @@
 
 namespace { // anonymous
 
+using namespace notf;
+
 /** The current state of all keyboard keys. */
-notf::KeyStateSet g_key_states;
+KeyStateSet g_key_states;
 
 /** Currently pressed key modifiers. */
-notf::KeyModifiers g_key_modifiers;
+KeyModifiers g_key_modifiers;
 
 /** The current state of all mouse buttons. */
-notf::ButtonStateSet g_button_states;
+ButtonStateSet g_button_states;
+
+/** Last recorded position of the mouse (relative to the last focused Window). */
+Vector2 g_mouse_pos = Vector2::zero();
 
 } // namespace anonymous
 
@@ -143,7 +149,7 @@ void Application::_on_token_key(GLFWwindow* glfw_window, int key, int scancode, 
         return;
     }
 
-    // update the key state
+    // update the global state
     Key notf_key = from_glfw_key(key);
     set_key(g_key_states, notf_key, action);
     g_key_modifiers = KeyModifiers(modifiers);
@@ -164,9 +170,37 @@ void Application::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
         return;
     }
 
-    MouseEvent mouse_event(window.get(), {static_cast<float>(x), static_cast<float>(y)},
-                           Button::INVALID, MouseAction::MOVE, g_key_modifiers, g_button_states);
-    window->_on_cursor_move(std::move(mouse_event));
+    // update the global state
+    g_mouse_pos = {static_cast<float>(x), static_cast<float>(y)};
+
+    // propagate the event
+    MouseEvent mouse_event(window.get(), g_mouse_pos, Button::NONE, MouseAction::MOVE, g_key_modifiers, g_button_states);
+    window->_propagate_mouse_event(std::move(mouse_event));
+}
+
+void Application::_on_mouse_button(GLFWwindow* glfw_window, int button, int action, int modifiers)
+{
+    assert(glfw_window);
+    Window* window_raw = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    assert(window_raw);
+    std::shared_ptr<Window> window = window_raw->shared_from_this();
+    if (!window) {
+        log_critical << "Received '_on_mouse_button' Callback for unknown GLFW window";
+        return;
+    }
+
+    // parse raw arguments
+    Button notf_button = static_cast<Button>(button);
+    MouseAction notf_action = static_cast<MouseAction>(action);
+    assert(notf_action != MouseAction::MOVE);
+
+    // update the global state
+    set_button(g_button_states, notf_button, action);
+    g_key_modifiers = KeyModifiers(modifiers);
+
+    // propagate the event
+    MouseEvent mouse_event(window.get(), g_mouse_pos, notf_button, notf_action, g_key_modifiers, g_button_states);
+    window->_propagate_mouse_event(std::move(mouse_event));
 }
 
 void Application::_on_window_close(GLFWwindow* glfw_window)
@@ -213,6 +247,7 @@ void Application::_register_window(std::shared_ptr<Window> window)
     glfwSetWindowCloseCallback(glfw_window, _on_window_close);
     glfwSetKeyCallback(glfw_window, _on_token_key);
     glfwSetCursorPosCallback(glfw_window, _on_cursor_move);
+    glfwSetMouseButtonCallback(glfw_window, _on_mouse_button);
     glfwSetWindowSizeCallback(glfw_window, _on_window_reize);
 
     // if this is the first Window, it is also the current one

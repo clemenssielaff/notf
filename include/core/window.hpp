@@ -123,8 +123,8 @@ private: // methods for Application
     /** Called when the Window was resized. */
     void _on_resize(int width, int height);
 
-    /** Called when the */
-    void _on_cursor_move(MouseEvent&& event);
+    /** Called when the Application receives a mouse event targeting this Window. */
+    void _propagate_mouse_event(MouseEvent&& event);
 
     /** Updates the contents of this Window. */
     void _update();

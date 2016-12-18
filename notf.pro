@@ -114,7 +114,8 @@ SOURCES += \
     src/common/input.cpp \
     include/python/py_signal.hpp \
     src/python/py_globals.cpp \
-    src/python/py_event.cpp
+    src/python/py_event.cpp \
+    src/python/py_signal.cpp
 
 HEADERS += \
     include/core/application.hpp \

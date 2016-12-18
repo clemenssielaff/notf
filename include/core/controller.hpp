@@ -30,7 +30,11 @@ public: // methods
     virtual const LayoutItem* get_layout_item() const override { return m_root_item.get(); }
 
 public: // signals
-    Signal<MouseEvent> on_mouse_event;
+    /** Signal invoked when this Controller is asked to handle a Mouse move event. */
+    Signal<MouseEvent&> on_mouse_move;
+
+    /** Signal invoked when this Controller is asked to handle a Mouse button event. */
+    Signal<MouseEvent&> on_mouse_button;
 
 protected: // methods
     AbstractController() = default;

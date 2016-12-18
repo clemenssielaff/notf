@@ -139,7 +139,7 @@ enum class Key : unsigned char {
 /** All mouse buttons recognized by GLFW.
  * Can be used as indices for a ButtonStateSet object.
  */
-enum class Button : unsigned char { // TODO: NONE value for Button
+enum class Button : unsigned char {
     __first = 0,
     BUTTON_1 = __first,
     BUTTON_2,
@@ -149,6 +149,7 @@ enum class Button : unsigned char { // TODO: NONE value for Button
     BUTTON_6,
     BUTTON_7,
     BUTTON_8,
+    NONE,
     LEFT = BUTTON_1,
     RIGHT = BUTTON_2,
     MIDDLE = BUTTON_3,
@@ -166,8 +167,8 @@ enum class KeyAction : unsigned char {
 /** Actions you can do with a mouse. */
 enum class MouseAction : unsigned char {
     RELEASE = 0,
-    MOVE,
     PRESS,
+    MOVE,
 };
 
 /** Modifier keys.

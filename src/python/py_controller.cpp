@@ -20,8 +20,13 @@ private: // struct
     struct State {
         using Map = std::map<std::string, State>;
 
+        /** Iterator used to query the name of this State. */
         Map::const_iterator it;
+
+        /** Weakref to the State's `enter` function. */
         std::unique_ptr<PyObject, decltype(&py_decref)> enter = {nullptr, py_decref};
+
+        /** Weakref to the State's `leave` function. */
         std::unique_ptr<PyObject, decltype(&py_decref)> leave = {nullptr, py_decref};
     };
 
@@ -30,10 +35,15 @@ public: // methods
         : AbstractController()
         , m_states()
         , m_current_state(nullptr)
-        , py_mouse_event("on_mouse_event")
+        , m_mouse_move(py::cast(this), "on_mouse_move")
+        , m_mouse_button(py::cast(this), "on_mouse_button")
     {
-        connect_signal(on_mouse_event, [this](MouseEvent event) { // TODO: obviously, event has to be a reference here
-            py_mouse_event.fire(event);
+        // connect Python signal translators
+        connect_signal(on_mouse_move, [this](MouseEvent& event) {
+            m_mouse_move.fire(event);
+        });
+        connect_signal(on_mouse_button, [this](MouseEvent& event) {
+            m_mouse_button.fire(event);
         });
     }
 
@@ -140,7 +150,11 @@ private: // fields
     State* m_current_state;
 
 public: // signals
-    PySignal<MouseEvent> py_mouse_event;
+    /** Signal translator fired when the Controller receives an `on_mouse_move` event. */
+    PySignal<MouseEvent&> m_mouse_move;
+
+    /** Signal translator fired when the Controller receives an `on_mouse_button` event. */
+    PySignal<MouseEvent&> m_mouse_button;
 };
 PyController::~PyController() {}
 
@@ -166,6 +180,9 @@ void produce_controller(pybind11::module& module, py::detail::generic_type Py_It
 
     Py_Controller.def("add_state", &PyController::add_state, DOCSTR("Adds a new state to the Controller's state machine"), py::arg("name"), py::arg("enter_func"), py::arg("leave_func"));
     Py_Controller.def("transition_to", &PyController::transition_to, DOCSTR("Changes the current State and executes the relevant leave and enter-functions."), py::arg("state"));
+
+    Py_Controller.def_readonly("on_mouse_move", &PyController::m_mouse_move);
+    Py_Controller.def_readonly("on_mouse_button", &PyController::m_mouse_button);
 }
 
 #ifdef __clang__

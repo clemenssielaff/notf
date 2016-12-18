@@ -232,7 +232,7 @@ void Window::_on_resize(int width, int height)
     m_root_layout->_set_size(Size2f::from_size2i(get_buffer_size()));
 }
 
-void Window::_on_cursor_move(MouseEvent&& event)
+void Window::_propagate_mouse_event(MouseEvent&& event)
 {
     // collect all Widgets in Layout-given order (no RenderLayers yet).
     std::vector<Widget*> widgets;
@@ -245,17 +245,17 @@ void Window::_on_cursor_move(MouseEvent&& event)
 
         // notify each Controller only once
         AbstractController* controller = widget->get_controller().get();
-        if(known_controllers.count(controller)){
+        if (known_controllers.count(controller)) {
             continue;
         }
         known_controllers.insert(controller);
 
         // find the widgets's render layer
         RenderLayer* render_layer = widget->get_render_layer().get();
-        if(!render_layer){
+        if (!render_layer) {
             const Item* ancestor = widget->get_parent().get();
             assert(ancestor);
-            while(!render_layer){
+            while (!render_layer) {
                 render_layer = ancestor->get_render_layer().get();
                 ancestor = ancestor->get_parent().get();
                 assert(ancestor || render_layer);
@@ -272,10 +272,18 @@ void Window::_on_cursor_move(MouseEvent&& event)
     }
 
     // call the event signals
-    for (const auto& layer : controllers_by_layer) {
-        for (const auto& controller : layer) {
-            MouseEvent event(this, {}, Button::INVALID, MouseAction::MOVE, KeyModifiers::NONE, {});
-            controller->on_mouse_event(event); //  TODO: send event object to on_mouse_event
+    if (event.action == MouseAction::MOVE) {
+        for (const auto& layer : controllers_by_layer) {
+            for (const auto& controller : layer) {
+                controller->on_mouse_move(event);
+            }
+        }
+    }
+    else {
+        for (const auto& layer : controllers_by_layer) {
+            for (const auto& controller : layer) {
+                controller->on_mouse_button(event);
+            }
         }
     }
 }

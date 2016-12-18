@@ -4,7 +4,8 @@ namespace py = pybind11;
 #include "common/log.hpp"
 #include "common/signal.hpp"
 #include "python/py_fwd.hpp"
-using namespace notf;
+
+namespace notf {
 
 template <typename... SIGNATURE>
 class PySignal {
@@ -16,7 +17,7 @@ private: // struct
     struct Target {
         Target(const py::object& function)
             : function(PyWeakref_NewRef(function.ptr(), nullptr), py_decref)
-            , test_function()
+            , test_function(nullptr, py_decref)
         {
         }
 
@@ -31,14 +32,30 @@ private: // struct
     };
 
 public: // methods
-    PySignal(std::string name)
-        : m_name(name)
+    PySignal(py::object host, std::string name)
+        : m_host(PyWeakref_NewRef(host.ptr(), nullptr), py_decref)
+        , m_name(name)
         , m_targets()
     {
     }
 
-    void connect(py::object host, py::object callback, py::object test_func = {})
+    // TODO: disconnect / disable functions for PySignal?
+
+    /** Connects a new target to this Signal.
+     * @param callback  Callback function that is excuted when this Signal is triggered.
+     * @param test      (optional) Test function, the `callback` is only executed if this function returns true.
+     * @throw std::runtime_error If PyController messed up to contruct this PySignal (should never happen...)
+     */
+    void connect(py::object callback, py::object test = {})
     {
+        py::object host(PyWeakref_GetObject(m_host.get()), /* borrowed = */ true);
+        if (!host.check()) {
+            std::string msg = "Invalid weakref of host in signal: \"" + m_name + "\"";
+            log_critical << msg;
+            throw std::runtime_error(msg);
+            return;
+        }
+
         { // store the callback into a cache in the object's __dict__ so it doesn't get lost
             int success = 0;
             const std::string cache_name = "__notf_signal_" + m_name;
@@ -52,14 +69,14 @@ public: // methods
             }
             assert(cache.check());
             success += PySet_Add(cache.ptr(), callback.ptr());
-            if (test_func.check()) {
-                success += PySet_Add(cache.ptr(), test_func.ptr());
+            if (test.check()) {
+                success += PySet_Add(cache.ptr(), test.ptr());
             }
             assert(success == 0);
         }
 
-        if (test_func.check()) {
-            m_targets.emplace_back(callback, test_func);
+        if (test.check()) {
+            m_targets.emplace_back(callback, test);
         }
         else {
             m_targets.emplace_back(callback);
@@ -68,37 +85,49 @@ public: // methods
 
     void fire(SIGNATURE... args)
     {
-        auto arguments = std::make_tuple<SIGNATURE...>(std::move(args...));
+        auto arguments = std::make_tuple<SIGNATURE...>(std::forward<SIGNATURE>(args)...);
         for (Target& target : m_targets) {
 
             // execute test function
             if (target.test_function) {
                 py::function test_func(PyWeakref_GetObject(target.test_function.get()), /* borrowed = */ true);
                 if (test_func.check()) {
-                    py::object result = test_func(arguments);
-                    if (PyObject_IsTrue(result.ptr()) != 1) {
+                    try {
+                        py::object result = test_func(arguments);
+                        if (PyObject_IsTrue(result.ptr()) != 1) {
+                            continue;
+                        }
+                    } catch (std::runtime_error error) {
+                        log_warning << error.what();
                         continue;
                     }
                 }
                 else {
-                    log_critical << "Invalid weakref of test function of in signal: \"" << m_name << "\"";
+                    log_critical << "Invalid weakref of test function in signal: \"" << m_name << "\"";
                 }
             }
 
             // execute callback function
             py::function callback(PyWeakref_GetObject(target.function.get()), /* borrowed = */ true);
             if (callback.check()) {
-                callback(arguments);
+                try {
+                    callback(arguments);
+                } catch (std::runtime_error error) {
+                    log_warning << error.what();
+                }
             }
             else {
-                log_critical << "Invalid weakref of callback function of in signal: \"" << m_name << "\"";
+                log_critical << "Invalid weakref of callback function in signal: \"" << m_name << "\"";
             }
         }
-        log_info << "SIGNAL FIRED"; // TODO: test only
     }
 
 private: // fields
+    std::unique_ptr<PyObject, decltype(&py_decref)> m_host;
+
     std::string m_name;
 
     std::vector<Target> m_targets;
 };
+
+} // namespace notf

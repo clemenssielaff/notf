@@ -115,7 +115,7 @@ public: // static methods
      * @param key           Modified key.
      * @param scancode      May hold additional information when key is set to KEY_UNKNOWN (platform dependent).
      * @param action        The action that triggered this callback.
-     * @param modifiers     Additional modifier key bitmask.
+     * @param modifiers     Modifier key bitmask.
      */
     static void _on_token_key(GLFWwindow* glfw_window, int key, int scancode, int action, int modifiers);
 
@@ -125,6 +125,14 @@ public: // static methods
      * @param y             Y coordinate of the cursor in Window coordinates.
      */
     static void _on_cursor_move(GLFWwindow* glfw_window, double x, double y);
+
+    /** Called when the user presses or releases a mouse button Window.
+     * @param glfw_window   The GLFWwindow targeted by the event.
+     * @param button        The mouse button triggering this callback.
+     * @param action        Mouse button action, is either PRESS or RELEASE.
+     * @param modifiers     Modifier key bitmask.
+     */
+    static void _on_mouse_button(GLFWwindow* glfw_window, int button, int action, int modifiers);
 
     /** Called by GLFW, if the user requested a window to be closed.
      * @param glfw_window  GLFW Window to close.

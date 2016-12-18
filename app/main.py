@@ -54,7 +54,19 @@ class ButtonController(Controller):
 
         self.transition_to("orange")
 
-        print(self.__dict__)
+        #self.on_mouse_move.connect(self._on_mouse_hover, self._return_true)
+        self.on_mouse_button.connect(self._on_mouse_button, self._return_true)
+
+    def _on_mouse_button(self, args):
+        event = args[0]
+        print(event.action)
+
+    def _on_mouse_hover(self, args):
+        event = args[0]
+        print(event.window_pos)
+
+    def _return_true(self, *args):
+        return True
 
     def _nothin(self):
         pass
