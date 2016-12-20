@@ -97,18 +97,19 @@ namespace detail {
             return 0;
         }
 
-    private: // methods
-        /** @param data Shared Connection data block. */
-        explicit Connection(std::shared_ptr<Data> data)
-            : m_data(std::move(data))
-        {
-        }
-
+    public: // static methods
         /** The next Connection ID. */
         static ConnectionID get_next_id()
         {
             static ConnectionID next_id = 0;
             return ++next_id; // leaving 0 as 'invalid'
+        }
+
+    private: // methods
+        /** @param data Shared Connection data block. */
+        explicit Connection(std::shared_ptr<Data> data)
+            : m_data(std::move(data))
+        {
         }
 
     private: // fields
@@ -405,7 +406,7 @@ public: // methods
                 return;
             }
         }
-        throw std::runtime_error("Cannot disable unknown connection");
+        throw std::runtime_error("Cannot enable unknown connection");
     }
 
     /** Disconnect all Connections from this Signal. */
@@ -727,3 +728,7 @@ private: // fields
 };
 
 } // namespace notf
+
+
+// TODO: connection object instead of connectionId so that you can say self.white_on_click.disable()
+// instead of self.on_mouse_button.disable(self._white_on_click) ... or maken't that sense?

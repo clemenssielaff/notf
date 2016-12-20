@@ -3,6 +3,7 @@ namespace py = pybind11;
 
 #include "common/log.hpp"
 #include "common/signal.hpp"
+#include "python/py_dict_utils.hpp"
 #include "python/py_fwd.hpp"
 
 namespace notf {
@@ -15,20 +16,35 @@ public: // type
 
 private: // struct
     struct Target {
-        Target(const py::object& function)
-            : function(PyWeakref_NewRef(function.ptr(), nullptr), py_decref)
-            , test_function(nullptr, py_decref)
+        /** Constructor without optional test function. */
+        Target(ConnectionID id, const py::object& function)
+            : id(id)
+            , callback(PyWeakref_NewRef(function.ptr(), nullptr), py_decref)
+            , test(nullptr, py_decref)
+            , is_enabled(true)
         {
         }
 
-        Target(const py::object& function, const py::object& test_func)
-            : function(PyWeakref_NewRef(function.ptr(), nullptr), py_decref)
-            , test_function(PyWeakref_NewRef(test_func.ptr(), nullptr), py_decref)
+        /** Constructor with test function. */
+        Target(ConnectionID id, const py::object& function, const py::object& test_func)
+            : id(id)
+            , callback(PyWeakref_NewRef(function.ptr(), nullptr), py_decref)
+            , test(PyWeakref_NewRef(test_func.ptr(), nullptr), py_decref)
+            , is_enabled(true)
         {
         }
 
-        std::unique_ptr<PyObject, decltype(&py_decref)> function;
-        std::unique_ptr<PyObject, decltype(&py_decref)> test_function;
+        /** ID of the Connection, is from the same pool as notf::detail::Connection IDs. */
+        ConnectionID id;
+
+        /** Weakref to the Python callback function for this Target. */
+        std::unique_ptr<PyObject, decltype(&py_decref)> callback;
+
+        /** Weakref to the Python test function for this Target. */
+        std::unique_ptr<PyObject, decltype(&py_decref)> test;
+
+        /** Is the Target currently enabled? */
+        bool is_enabled;
     };
 
 public: // methods
@@ -39,35 +55,26 @@ public: // methods
     {
     }
 
-    // TODO: disconnect / disable functions for PySignal?
-
     /** Connects a new target to this Signal.
      * @param callback  Callback function that is excuted when this Signal is triggered.
      * @param test      (optional) Test function, the `callback` is only executed if this function returns true.
      * @throw std::runtime_error If PyController messed up to contruct this PySignal (should never happen...)
      */
-    void connect(py::object callback, py::object test = {})
+    ConnectionID connect(py::object callback, py::object test = {})
     {
         py::object host(PyWeakref_GetObject(m_host.get()), /* borrowed = */ true);
         if (!host.check()) {
             std::string msg = "Invalid weakref of host in signal: \"" + m_name + "\"";
             log_critical << msg;
             throw std::runtime_error(msg);
-            return;
         }
 
-        { // store the callback into a cache in the object's __dict__ so it doesn't get lost
+        { // store the callback and test into a cache in the object's __dict__ so they don't get lost
+            static const char* cache_name = "signal_handlers";
+            py::object notf_cache = get_notf_cache(host);
+            py::object signal_cache_dict = get_dict(notf_cache, cache_name);
+            py::object cache = get_set(signal_cache_dict, m_name.c_str());
             int success = 0;
-            const std::string cache_name = "__notf_signal_" + m_name;
-            py::object dict(PyObject_GenericGetDict(host.ptr(), nullptr), false);
-            py::object cache(PyDict_GetItemString(dict.ptr(), cache_name.c_str()), true);
-            if (!cache.check()) {
-                py::object new_cache(PySet_New(nullptr), false);
-                success += PyDict_SetItemString(dict.ptr(), cache_name.c_str(), new_cache.ptr());
-                assert(success == 0);
-                cache = std::move(new_cache);
-            }
-            assert(cache.check());
             success += PySet_Add(cache.ptr(), callback.ptr());
             if (test.check()) {
                 success += PySet_Add(cache.ptr(), test.ptr());
@@ -75,29 +82,45 @@ public: // methods
             assert(success == 0);
         }
 
+        ConnectionID id = detail::Connection::get_next_id();
         if (test.check()) {
-            m_targets.emplace_back(callback, test);
+            m_targets.emplace_back(id, callback, test);
         }
         else {
-            m_targets.emplace_back(callback);
+            m_targets.emplace_back(id, callback);
         }
+        return id;
     }
 
+    /** Triggers the Signal to call all of its targets.
+     * @throw std::runtime_error    (one per target) In case the call fails,
+     */
     void fire(SIGNATURE... args)
     {
         auto arguments = std::make_tuple<SIGNATURE...>(std::forward<SIGNATURE>(args)...);
-        for (Target& target : m_targets) {
+
+        // we need to filter for all enabled targets before executing the callbacks
+        // since they might dis/enable other targets
+        std::vector<Target*> enabled_targets;
+        for (Target& target : m_targets){
+            if(target.is_enabled){
+                enabled_targets.push_back(&target);
+            }
+        }
+
+        for (Target* target : enabled_targets) {
 
             // execute test function
-            if (target.test_function) {
-                py::function test_func(PyWeakref_GetObject(target.test_function.get()), /* borrowed = */ true);
+            if (target->test) {
+                py::function test_func(PyWeakref_GetObject(target->test.get()), /* borrowed = */ true);
                 if (test_func.check()) {
                     try {
                         py::object result = test_func(arguments);
                         if (PyObject_IsTrue(result.ptr()) != 1) {
                             continue;
                         }
-                    } catch (std::runtime_error error) {
+                    }
+                    catch (std::runtime_error error) {
                         log_warning << error.what();
                         continue;
                     }
@@ -108,11 +131,12 @@ public: // methods
             }
 
             // execute callback function
-            py::function callback(PyWeakref_GetObject(target.function.get()), /* borrowed = */ true);
+            py::function callback(PyWeakref_GetObject(target->callback.get()), /* borrowed = */ true);
             if (callback.check()) {
                 try {
                     callback(arguments);
-                } catch (std::runtime_error error) {
+                }
+                catch (std::runtime_error error) {
                     log_warning << error.what();
                 }
             }
@@ -122,9 +146,109 @@ public: // methods
         }
     }
 
+    /** Checks if a particular Connection is connected to this Signal. */
+    bool has_connection(const ConnectionID id) const
+    {
+        if (!id) {
+            return false;
+        }
+        for (const Target& target : m_targets) {
+            if (target.id == id) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Returns all (connected) Connections.*/
+    std::vector<ConnectionID> get_connections() const
+    {
+        std::vector<ConnectionID> result;
+        result.reserve(m_targets.size());
+        for (const Target& target : m_targets) {
+            result.push_back(target.id);
+        }
+        return result;
+    }
+
+    /** Temporarily disables all Connections of this Signal. */
+    void disable()
+    {
+        for (Target& target : m_targets) {
+            target.is_enabled = false;
+        }
+    }
+
+    /** Disables a specific Connection of this Signal.
+     * @param connection            ID of the Connection.
+     * @throw std:runtime_error     If there is no Connection with the given ID connected to this Signal.
+     */
+    void disable(const ConnectionID id)
+    {
+        for (Target& target : m_targets) {
+            if (id == target.id) {
+                target.is_enabled = false;
+                return;
+            }
+        }
+        throw std::runtime_error("Cannot disable unknown connection");
+    }
+
+    /** (Re-)Enables all Connections of this Signal. */
+    void enable()
+    {
+        for (Target& target : m_targets) {
+            target.is_enabled = true;
+        }
+    }
+
+    /** Enables a specific Connection of this Signal.
+     * @param connection            ID of the Connection.
+     * @throw std:runtime_error     If there is no Connection with the given ID connected to this Signal.
+     */
+    void enable(const ConnectionID id)
+    {
+        for (Target& target : m_targets) {
+            if (id == target.id) {
+                target.is_enabled = true;
+                return;
+            }
+        }
+        throw std::runtime_error("Cannot enable unknown connection");
+    }
+
+    /** Disconnect all Connections from this Signal. */
+    void disconnect()
+    {
+        m_targets.clear();
+    }
+
+    /** Disconnects a specific Connection of this Signal.
+     * @param connection            ID of the Connection.
+     * @throw std:runtime_error     If there is no Connection with the given ID connected to this Signal.
+     */
+    void disconnect(const ConnectionID id)
+    {
+        using std::swap;
+        bool success = false;
+        for (Target& target : m_targets) {
+            if (id == target.id) {
+                swap(target, m_targets.back());
+                success = true;
+                return;
+            }
+        }
+        if (!success) {
+            throw std::runtime_error("Cannot disconnect unknown connection");
+        }
+        m_targets.pop_back();
+    }
+
 private: // fields
+    /** Weakref to the host providing the cache for the target functions (see `connect` for details). */
     std::unique_ptr<PyObject, decltype(&py_decref)> m_host;
 
+    /** Name of this signal, used to identify*/
     std::string m_name;
 
     std::vector<Target> m_targets;

@@ -8,6 +8,7 @@ namespace py = pybind11;
 #include "core/events/mouse_event.hpp"
 #include "python/docstr.hpp"
 #include "python/py_fwd.hpp"
+#include "python/py_dict_utils.hpp"
 #include "python/py_signal.hpp"
 #include "python/type_patches.hpp"
 using namespace notf;
@@ -76,20 +77,12 @@ public: // methods
             it->second.it = it;
         }
 
-        // TODO: if storing python objects into self becomes a pattern, make a function out of it
         { // store the two methods into a cache in the object's __dict__ so they don't get lost
-            static const char* cache_name = "__notf_cache";
-            int success = 0;
-            py::object self = py::cast(this);
-            py::object dict(PyObject_GenericGetDict(self.ptr(), nullptr), false);
-            py::object cache(PyDict_GetItemString(dict.ptr(), cache_name), true);
-            if (!cache.check()) {
-                py::object new_cache(PySet_New(nullptr), false);
-                success += PyDict_SetItemString(dict.ptr(), cache_name, new_cache.ptr());
-                assert(success == 0);
-                cache = std::move(new_cache);
-            }
+            static const char* cache_name = "state_handlers";
+            py::object notf_cache = get_notf_cache(py::cast(this));
+            py::object cache = get_set(notf_cache, cache_name);
             assert(cache.check());
+            int success = 0;
             success += PySet_Add(cache.ptr(), enter.ptr());
             success += PySet_Add(cache.ptr(), leave.ptr());
             assert(success == 0);

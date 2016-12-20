@@ -49,33 +49,47 @@ class ButtonController(Controller):
         self._widget = ButtonWidget(number)
         self.set_root_item(self._widget)
 
-        self.add_state("orange", self._turn_orange, self._nothin)
-        self.add_state("blue", self._turn_blue, self._nothin)
+        self.add_state("orange", self._turn_orange, self._disable_all)
+        self.add_state("blue", self._turn_blue, self._disable_all_2)
+
+        self._orange_connection = self.on_mouse_button.connect(self._state_orange, lambda event : event[0].action == notf.MouseAction.PRESS)
+        self._blue_connection = self.on_mouse_button.connect(self._state_blue, lambda event : event[0].action == notf.MouseAction.PRESS)
+        #self._orange_connection = self.on_mouse_button.connect(self._state_orange, self._test_press)
+        #self._blue_connection = self.on_mouse_button.connect(self._state_blue, self._test_press_2)
 
         self.transition_to("orange")
 
-        #self.on_mouse_move.connect(self._on_mouse_hover, self._return_true)
-        self.on_mouse_button.connect(self._on_mouse_button, self._return_true)
-
-    def _on_mouse_button(self, args):
+    def _test_press(self, args):
         event = args[0]
-        print(event.action)
+        return event.action == notf.MouseAction.PRESS
 
-    def _on_mouse_hover(self, args):
+    def _test_press_2(self, args):
         event = args[0]
-        print(event.window_pos)
+        return event.action == notf.MouseAction.PRESS
 
-    def _return_true(self, *args):
-        return True
+    def _disable_all(self):
+        self.on_mouse_button.disable()
 
-    def _nothin(self):
-        pass
+    def _disable_all_2(self):
+        self.on_mouse_button.disable()
+
+    def _state_orange(self, _ = None):
+        self.transition_to("orange")
+
+    def _state_blue(self, _ = None):
+        self.transition_to("blue")
 
     def _turn_orange(self):
+        self.on_mouse_button.disable()
+        self.on_mouse_button.enable(self._blue_connection)
         self._widget.color = Color("#c34200")
+        self._widget.redraw()
 
-    def _turn_blue(self):
+    def _turn_blue(self, _ = None):
+        self.on_mouse_button.disable()
+        self.on_mouse_button.enable(self._orange_connection)
         self._widget.color = Color("2b60b8")
+        self._widget.redraw()
 
 
 class WindowController(Controller):
@@ -92,7 +106,7 @@ class WindowController(Controller):
         stack_layout.set_cross_alignment(Layout.Alignment.START)
         stack_layout.set_content_alignment(Layout.Alignment.START)
 
-        for i in range(2):
+        for i in range(1):
             stack_layout.add_item(ButtonController(i))
 
         # and the fill layout in the foreground
@@ -107,7 +121,6 @@ class WindowController(Controller):
 
         self.set_root_item(window_layout)
 
-
 def main():
     window = Window()
     window_controller = WindowController()
@@ -121,4 +134,3 @@ def produce_notf():
 
 if __name__ == "__main__":
     main()
-    pass

@@ -1,7 +1,6 @@
 #pragma once
 
-struct _object;
-typedef _object PyObject;
+#include "python/py_fwd.hpp"
 
 extern const char* python_notf_module_name;
 
