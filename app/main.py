@@ -54,8 +54,9 @@ class ButtonController(Controller):
 
         self._orange_connection = self.on_mouse_button.connect(self._state_orange, lambda event : event[0].action == notf.MouseAction.PRESS)
         self._blue_connection = self.on_mouse_button.connect(self._state_blue, lambda event : event[0].action == notf.MouseAction.PRESS)
-        #self._orange_connection = self.on_mouse_button.connect(self._state_orange, self._test_press)
-        #self._blue_connection = self.on_mouse_button.connect(self._state_blue, self._test_press_2)
+        # self._orange_connection = self.on_mouse_button.connect(self._state_orange, self._test_press)
+        # self._blue_connection = self.on_mouse_button.connect(self._state_blue, self._test_press)
+        #self._green_connection = self.on_mouse_button.connect(lambda x : false, self._test_press)
 
         self.transition_to("orange")
 

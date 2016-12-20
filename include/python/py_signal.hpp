@@ -60,7 +60,7 @@ public: // methods
      * @param test      (optional) Test function, the `callback` is only executed if this function returns true.
      * @throw std::runtime_error If PyController messed up to contruct this PySignal (should never happen...)
      */
-    ConnectionID connect(py::object callback, py::object test = {})
+    ConnectionID connect(py::object callback, py::function test)
     {
         py::object host(PyWeakref_GetObject(m_host.get()), /* borrowed = */ true);
         if (!host.check()) {
@@ -73,11 +73,18 @@ public: // methods
             static const char* cache_name = "signal_handlers";
             py::object notf_cache = get_notf_cache(host);
             py::object signal_cache_dict = get_dict(notf_cache, cache_name);
-            py::object cache = get_set(signal_cache_dict, m_name.c_str());
+            py::object cache = get_list(signal_cache_dict, m_name.c_str());
             int success = 0;
-            success += PySet_Add(cache.ptr(), callback.ptr());
+            success += PyList_Append(cache.ptr(), callback.ptr());
             if (test.check()) {
-                success += PySet_Add(cache.ptr(), test.ptr());
+                success += PyList_Append(cache.ptr(), test.ptr());
+                // TODO: theoretically(!) you could fill up the cache by repeatedly connecting the same callback
+                // before I tried to put the callbacks into a set, but that won't work
+                // the set recognizes that the new callback is the same as the old one and won't insert it
+                // but the weakref still references the "new" callback, which goes out of scope after this function
+                // this could be fixed, if I can identify that a set already contains a callback and than explicitly
+                // "weakrefing" the old callback.
+                // there is a "contain" function for sets, but I haven't found a "find" or "iter" function yet
             }
             assert(success == 0);
         }

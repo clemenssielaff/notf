@@ -63,4 +63,23 @@ py::object get_set(py::object dict, const char* key)
     return item;
 }
 
+py::object get_list(py::object dict, const char* key)
+{
+    py::object item(PyDict_GetItemString(dict.ptr(), key), true);
+    if (!item.check()) {
+        py::object new_item(PyList_New(0), false);
+        int success = PyDict_SetItemString(dict.ptr(), key, new_item.ptr());
+        assert(success == 0);
+        item = std::move(new_item);
+    }
+    else if (!PyList_Check(item.ptr())) {
+        std::string msg = string_format("Requested notf cache item `%s` is not a list", key);
+        log_critical << msg;
+        throw std::runtime_error(msg);
+    }
+    assert(item.check());
+    assert(PyList_Check(item.ptr()));
+    return item;
+}
+
 } // namespace notf

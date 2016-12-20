@@ -80,11 +80,11 @@ public: // methods
         { // store the two methods into a cache in the object's __dict__ so they don't get lost
             static const char* cache_name = "state_handlers";
             py::object notf_cache = get_notf_cache(py::cast(this));
-            py::object cache = get_set(notf_cache, cache_name);
+            py::object cache = get_list(notf_cache, cache_name);
             assert(cache.check());
             int success = 0;
-            success += PySet_Add(cache.ptr(), enter.ptr());
-            success += PySet_Add(cache.ptr(), leave.ptr());
+            success += PyList_Append(cache.ptr(), enter.ptr());
+            success += PyList_Append(cache.ptr(), leave.ptr());
             assert(success == 0);
         }
 
