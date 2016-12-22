@@ -77,10 +77,14 @@ class ButtonController(Controller):
         self.on_mouse_button.disable()
 
     def _state_orange(self, _ = None):
-        self.transition_to("orange")
+        # self.transition_to("orange")
+        self._disable_all()
+        self._turn_orange()
 
     def _state_blue(self, _ = None):
-        self.transition_to("blue")
+        # self.transition_to("blue")
+        self._disable_all_2()
+        self._turn_blue()
 
     def _turn_orange(self):
         self.on_mouse_button.disable()
@@ -109,7 +113,7 @@ class WindowController(Controller):
         stack_layout.set_cross_alignment(Layout.Alignment.START)
         stack_layout.set_content_alignment(Layout.Alignment.START)
 
-        for i in range(1):
+        for i in range(64):
             stack_layout.add_item(ButtonController(i))
 
         # and the fill layout in the foreground

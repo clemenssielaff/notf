@@ -10,7 +10,7 @@ namespace notf {
  * @param host  The Python object containing the
  * @return The cache dict as a generic Python object.
  */
-py::object get_notf_cache(py::object host);
+py::dict get_notf_cache(py::object host);
 
 /** Returns a dictionary with a given name from a Python dictionary.
  * Creates a new dict, if the key does not yet name an item.
@@ -19,7 +19,7 @@ py::object get_notf_cache(py::object host);
  * @return      The requested item as raw Python object.
  * @throw       std::runtime_error if the requested item is not a dict.
  */
-py::object get_dict(py::object dict, const char* key);
+py::dict get_dict(py::object dict, const char* key);
 
 /** Returns a set with a given name from a Python dictionary.
  * Creates a new set, if the key does not yet name an item.
@@ -28,7 +28,7 @@ py::object get_dict(py::object dict, const char* key);
  * @return      The requested item as raw Python object.
  * @throw       std::runtime_error if the requested item is not a set.
  */
-py::object get_set(py::object dict, const char* key);
+py::set get_set(py::object dict, const char* key);
 
 /** Returns a list with a given name from a Python dictionary.
  * Creates a new list, if the key does not yet name an item.
@@ -37,6 +37,6 @@ py::object get_set(py::object dict, const char* key);
  * @return      The requested item as raw Python object.
  * @throw       std::runtime_error if the requested item is not a list.
  */
-py::object get_list(py::object dict, const char* key);
+py::list get_list(py::object dict, const char* key);
 
 } // namespace notf

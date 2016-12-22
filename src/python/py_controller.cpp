@@ -4,11 +4,12 @@
 namespace py = pybind11;
 
 #define NOTF_BINDINGS
+#include "common/log.hpp"
 #include "core/controller.hpp"
 #include "core/events/mouse_event.hpp"
 #include "python/docstr.hpp"
-#include "python/py_fwd.hpp"
 #include "python/py_dict_utils.hpp"
+#include "python/py_fwd.hpp"
 #include "python/py_signal.hpp"
 #include "python/type_patches.hpp"
 using namespace notf;
@@ -133,6 +134,15 @@ public: // methods
         else {
             log_critical << "Invalid weakref of `enter` function of state: \"" << state << "\"";
         }
+    }
+
+    virtual void _set_pyobject(PyObject* object) override
+    {
+        Item::_set_pyobject(object);
+
+        py::object host(object, /* borrowed = */ true);
+        m_mouse_move.restore(host);
+        m_mouse_button.restore(host);
     }
 
 private: // fields

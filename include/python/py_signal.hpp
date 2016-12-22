@@ -8,6 +8,10 @@ namespace py = pybind11;
 
 namespace notf {
 
+namespace detail {
+    extern const char* s_signal_cache_name;
+}
+
 template <typename... SIGNATURE>
 class PySignal {
 
@@ -17,20 +21,20 @@ public: // type
 private: // struct
     struct Target {
         /** Constructor without optional test function. */
-//        Target(ConnectionID id, const py::object& function)
-//            : id(id)
-//            , callback(PyWeakref_NewRef(function.ptr(), nullptr), py_decref)
-//            , test(nullptr, py_decref)
-//            , is_enabled(true)
-//        {
-//        }
+        Target(ConnectionID id, const py::object& function, bool is_enabled = true)
+            : id(id)
+            , callback(PyWeakref_NewRef(function.ptr(), nullptr), py_decref)
+            , test(nullptr, py_decref)
+            , is_enabled(is_enabled)
+        {
+        }
 
         /** Constructor with test function. */
-        Target(ConnectionID id, const py::object& function, const py::object& test_func)
+        Target(ConnectionID id, const py::object& function, const py::object& test_func, bool is_enabled = true)
             : id(id)
             , callback(PyWeakref_NewRef(function.ptr(), nullptr), py_decref)
             , test(PyWeakref_NewRef(test_func.ptr(), nullptr), py_decref)
-            , is_enabled(true)
+            , is_enabled(is_enabled)
         {
         }
 
@@ -70,32 +74,37 @@ public: // methods
         }
 
         { // store the callback and test into a cache in the object's __dict__ so they don't get lost
-            static const char* cache_name = "signal_handlers";
             py::object notf_cache = get_notf_cache(host);
-            py::object signal_cache_dict = get_dict(notf_cache, cache_name);
+            py::object signal_cache_dict = get_dict(notf_cache, detail::s_signal_cache_name);
             py::object cache = get_list(signal_cache_dict, m_name.c_str());
             int success = 0;
-            success += PyList_Append(cache.ptr(), callback.ptr());
+            PyObject* handler;
             if (test.check()) {
-                success += PyList_Append(cache.ptr(), test.ptr());
-                // TODO: theoretically(!) you could fill up the cache by repeatedly connecting the same callback
-                // before I tried to put the callbacks into a set, but that won't work
-                // the set recognizes that the new callback is the same as the old one and won't insert it
-                // but the weakref still references the "new" callback, which goes out of scope after this function
-                // this could be fixed, if I can identify that a set already contains a callback and than explicitly
-                // "weakrefing" the old callback.
-                // there is a "contain" function for sets, but I haven't found a "find" or "iter" function yet
+                handler = PyTuple_Pack(2, callback.ptr(), test.ptr());
             }
+            else {
+                handler = PyTuple_Pack(1, callback.ptr());
+            }
+            success += PyList_Append(cache.ptr(), handler);
+            py_decref(handler);
             assert(success == 0);
+
+            // TODO: theoretically(!) you could fill up the cache by repeatedly connecting the same callback
+            // before I tried to put the callbacks into a set, but that won't work
+            // the set recognizes that the new callback is the same as the old one and won't insert it
+            // but the weakref still references the "new" callback, which goes out of scope after this function
+            // this could be fixed, if I can identify that a set already contains a callback and than explicitly
+            // "weakrefing" the old callback.
+            // there is a "contain" function for sets, but I haven't found a "find" or "iter" function yet
         }
 
         ConnectionID id = detail::Connection::get_next_id();
-//        if (test.check()) {
+        if (test.check()) {
             m_targets.emplace_back(id, callback, test);
-//        }
-//        else {
-//            m_targets.emplace_back(id, callback);
-//        }
+        }
+        else {
+            m_targets.emplace_back(id, callback);
+        }
         return id;
     }
 
@@ -104,13 +113,13 @@ public: // methods
      */
     void fire(SIGNATURE... args)
     {
-        auto arguments = std::make_tuple<SIGNATURE...>(std::forward<SIGNATURE>(args)...);
+        auto arguments = std::make_tuple<SIGNATURE...>(std::forward<SIGNATURE>(args)...); // TODO: expand pysignals arguments tuple
 
         // we need to filter for all enabled targets before executing the callbacks
         // since they might dis/enable other targets
         std::vector<Target*> enabled_targets;
-        for (Target& target : m_targets){
-            if(target.is_enabled){
+        for (Target& target : m_targets) {
+            if (target.is_enabled) {
                 enabled_targets.push_back(&target);
             }
         }
@@ -249,6 +258,37 @@ public: // methods
             throw std::runtime_error("Cannot disconnect unknown connection");
         }
         m_targets.pop_back();
+    }
+
+    void restore(py::object host)
+    {
+        using std::swap;
+
+        // restore the host
+        m_host.reset(PyWeakref_NewRef(host.ptr(), nullptr));
+
+        // get the host's signal cache
+        py::dict notf_cache = get_notf_cache(host);
+        py::dict signal_cache_dict = get_dict(notf_cache, detail::s_signal_cache_name);
+        py::list cache = get_list(signal_cache_dict, m_name.c_str());
+        assert(cache.size() == m_targets.size());
+
+        // ... and use it to restore the targets
+        std::vector<Target> new_targets;
+        new_targets.reserve(m_targets.size());
+        for (size_t i = 0; i < m_targets.size(); ++i) {
+            const Target& target = m_targets[i];
+            py::tuple handler = py::object(cache[i]);
+            assert(handler.check());
+            if (handler.size() == 1) {
+                new_targets.emplace_back(target.id, py::object(handler[0]), target.is_enabled);
+            }
+            else {
+                assert(handler.size() == 2);
+                new_targets.emplace_back(target.id, py::object(handler[0]), py::object(handler[1]), target.is_enabled);
+            }
+        }
+        std::swap(m_targets, new_targets);
     }
 
 private: // fields

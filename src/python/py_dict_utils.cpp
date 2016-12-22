@@ -8,7 +8,7 @@ namespace py = pybind11;
 
 namespace notf {
 
-py::object get_notf_cache(py::object host)
+py::dict get_notf_cache(py::object host)
 {
     static const char* cache_name = "__notf_cache";
     int success = 0;
@@ -25,7 +25,7 @@ py::object get_notf_cache(py::object host)
     return notf_cache;
 }
 
-py::object get_dict(py::object dict, const char* key)
+pybind11::dict get_dict(py::object dict, const char* key)
 {
     py::object item(PyDict_GetItemString(dict.ptr(), key), true);
     if (!item.check()) {
@@ -44,7 +44,7 @@ py::object get_dict(py::object dict, const char* key)
     return item;
 }
 
-py::object get_set(py::object dict, const char* key)
+py::set get_set(py::object dict, const char* key)
 {
     py::object item(PyDict_GetItemString(dict.ptr(), key), true);
     if (!item.check()) {
@@ -63,7 +63,7 @@ py::object get_set(py::object dict, const char* key)
     return item;
 }
 
-py::object get_list(py::object dict, const char* key)
+py::list get_list(py::object dict, const char* key)
 {
     py::object item(PyDict_GetItemString(dict.ptr(), key), true);
     if (!item.check()) {

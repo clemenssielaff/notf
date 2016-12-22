@@ -144,7 +144,7 @@ private: // methods
     // clang-format off
 protected_except_for_bindings : // methods
     /** Stores the Python subclass object of this Item, if it was created through Python. */
-    void _set_pyobject(PyObject* object);
+    virtual void _set_pyobject(PyObject* object);
 
     // clang-format on
 private: // static methods

@@ -11,6 +11,12 @@ using namespace notf;
 #pragma clang diagnostic ignored "-Wold-style-cast"
 #endif
 
+namespace notf {
+namespace detail {
+    const char* s_signal_cache_name = "signal_handlers";
+}
+}
+
 void produce_signals(pybind11::module& module)
 {
     py::class_<PySignal<MouseEvent&>>(module, "_Signal_MouseEventRef")
