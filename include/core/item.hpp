@@ -166,7 +166,7 @@ private: // fields
     std::shared_ptr<RenderLayer> m_render_layer;
 
     /** Python subclass object of this Item, if it was created through Python. */
-    std::unique_ptr<PyObject, decltype(&py_decref)> py_object;
+    std::unique_ptr<PyObject, decltype(&py_decref)> m_py_object;
 
 private: // static fields
     /** The next available Item ID, is ever-increasing. */

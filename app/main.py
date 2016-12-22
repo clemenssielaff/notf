@@ -3,6 +3,7 @@ from notf import *
 from notf import _Font
 import gc
 
+
 class ButtonWidget(Widget):
     def __init__(self, number):
         super().__init__()
@@ -34,13 +35,14 @@ class ButtonWidget(Widget):
         painter.begin()
         widget_size = painter.get_widget_size()
         rect = Aabr(0, 0, widget_size.width, widget_size.height)
-        painter.rect(rect)
+        painter.rounded_rect(rect, 12.)
         painter.set_fill(self.color)
         painter.fill()
 
         painter.set_text_align(Painter.Align(int(Painter.Align.CENTER) | int(Painter.Align.MIDDLE)))
         painter.set_fill(Color("#ffffff"))
         painter.text(widget_size.width / 2, widget_size.height/2, str(self.number))
+
 
 class ButtonController(Controller):
     def __init__(self, number):

@@ -56,7 +56,7 @@ Item::Item()
     : m_id(_get_next_id())
     , m_parent()
     , m_render_layer() // empty by default
-    , py_object(nullptr, py_decref)
+    , m_py_object(nullptr, py_decref)
 {
     log_trace << "Creating Item #" << m_id;
 }
@@ -127,9 +127,9 @@ void Item::_set_parent(std::shared_ptr<Item> parent)
 
 void Item::_set_pyobject(PyObject* object)
 {
-    assert(!py_object); // you should only have to do this once
+    assert(!m_py_object); // you should only have to do this once
     py_incref(object);
-    py_object.reset(std::move(object));
+    m_py_object.reset(std::move(object));
 }
 
 ItemID Item::_get_next_id()

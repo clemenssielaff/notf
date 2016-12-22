@@ -17,13 +17,13 @@ public: // type
 private: // struct
     struct Target {
         /** Constructor without optional test function. */
-        Target(ConnectionID id, const py::object& function)
-            : id(id)
-            , callback(PyWeakref_NewRef(function.ptr(), nullptr), py_decref)
-            , test(nullptr, py_decref)
-            , is_enabled(true)
-        {
-        }
+//        Target(ConnectionID id, const py::object& function)
+//            : id(id)
+//            , callback(PyWeakref_NewRef(function.ptr(), nullptr), py_decref)
+//            , test(nullptr, py_decref)
+//            , is_enabled(true)
+//        {
+//        }
 
         /** Constructor with test function. */
         Target(ConnectionID id, const py::object& function, const py::object& test_func)
@@ -90,12 +90,12 @@ public: // methods
         }
 
         ConnectionID id = detail::Connection::get_next_id();
-        if (test.check()) {
+//        if (test.check()) {
             m_targets.emplace_back(id, callback, test);
-        }
-        else {
-            m_targets.emplace_back(id, callback);
-        }
+//        }
+//        else {
+//            m_targets.emplace_back(id, callback);
+//        }
         return id;
     }
 
