@@ -127,6 +127,15 @@ protected: // methods
      */
     void _update_parent_layout();
 
+    /** The Python object owned by this Item, is nullptr before the ownership is transferred from Python's __main__. */
+    PyObject* _get_py_object() const { return m_py_object.get(); }
+
+    // clang-format off
+protected_except_for_bindings : // methods
+    /** Stores the Python subclass object of this Item, if it was created through Python. */
+    virtual void _set_pyobject(PyObject* object);
+
+    // clang-format on
 protected: // static methods
     /** Allows any Item subclass to call _set_size on any other Item. */
     static bool _set_item_size(LayoutItem* layout_item, const Size2f size);
@@ -141,12 +150,6 @@ private: // methods
     /** Removes the current parent of this Item. */
     void _unparent() { _set_parent({}); }
 
-    // clang-format off
-protected_except_for_bindings : // methods
-    /** Stores the Python subclass object of this Item, if it was created through Python. */
-    virtual void _set_pyobject(PyObject* object);
-
-    // clang-format on
 private: // static methods
     /** Returns the next, free ItemID.
      * Is thread-safe.

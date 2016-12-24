@@ -278,14 +278,14 @@ public: // methods
         new_targets.reserve(m_targets.size());
         for (size_t i = 0; i < m_targets.size(); ++i) {
             const Target& target = m_targets[i];
-            py::tuple handler = py::object(cache[i]);
-            assert(handler.check());
-            if (handler.size() == 1) {
-                new_targets.emplace_back(target.id, py::object(handler[0]), target.is_enabled);
+            py::tuple handlers = py::object(cache[i]);
+            assert(handlers.check());
+            if (handlers.size() == 1) {
+                new_targets.emplace_back(target.id, py::object(handlers[0]), target.is_enabled);
             }
             else {
-                assert(handler.size() == 2);
-                new_targets.emplace_back(target.id, py::object(handler[0]), py::object(handler[1]), target.is_enabled);
+                assert(handlers.size() == 2);
+                new_targets.emplace_back(target.id, py::object(handlers[0]), py::object(handlers[1]), target.is_enabled);
             }
         }
         std::swap(m_targets, new_targets);

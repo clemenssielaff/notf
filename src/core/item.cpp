@@ -91,6 +91,13 @@ void Item::_update_parent_layout()
     }
 }
 
+void Item::_set_pyobject(PyObject* object)
+{
+    assert(!m_py_object); // you should only have to do this once
+    py_incref(object);
+    m_py_object.reset(std::move(object));
+}
+
 bool Item::_set_item_size(LayoutItem* layout_item, const Size2f size)
 {
     return layout_item->_set_size(std::move(size));
@@ -123,13 +130,6 @@ void Item::_set_parent(std::shared_ptr<Item> parent)
 
     m_parent = parent;
     parent_changed(parent->get_id());
-}
-
-void Item::_set_pyobject(PyObject* object)
-{
-    assert(!m_py_object); // you should only have to do this once
-    py_incref(object);
-    m_py_object.reset(std::move(object));
 }
 
 ItemID Item::_get_next_id()

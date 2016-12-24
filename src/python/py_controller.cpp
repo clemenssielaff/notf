@@ -69,7 +69,7 @@ public: // methods
         State::Map::iterator it;
         {
             bool success;
-            std::tie(it, success) = m_states.emplace(std::make_pair(std::move(name), State()));
+            std::tie(it, success) = m_states.emplace(std::make_pair(name, State()));
             if (!success) {
                 std::string msg = string_format("Cannot replace existing State \"%s\" in StateMachine", name.c_str());
                 log_critical << msg;
@@ -79,13 +79,11 @@ public: // methods
         }
 
         { // store the two methods into a cache in the object's __dict__ so they don't get lost
-            static const char* cache_name = "state_handlers";
-            py::object notf_cache = get_notf_cache(py::cast(this));
-            py::object cache = get_list(notf_cache, cache_name);
+            py::dict notf_cache = get_notf_cache(py::cast(this));
+            py::dict cache = get_dict(notf_cache, s_state_cache_name.c_str());
             assert(cache.check());
-            int success = 0;
-            success += PyList_Append(cache.ptr(), enter.ptr());
-            success += PyList_Append(cache.ptr(), leave.ptr());
+            py::tuple handlers(PyTuple_Pack(2, enter.ptr(), leave.ptr()), /* borrowed = */ false);
+            int success = PyDict_SetItemString(cache.ptr(), name.c_str(), handlers.ptr());
             assert(success == 0);
         }
 
@@ -140,9 +138,32 @@ public: // methods
     {
         Item::_set_pyobject(object);
 
+        // restore states and signals
+        _restore_states();
         py::object host(object, /* borrowed = */ true);
         m_mouse_move.restore(host);
         m_mouse_button.restore(host);
+    }
+
+private: // methods
+    /** Restores the states after the Python object has been finalized an all weakrefs have been destroyed. */
+    void _restore_states()
+    {
+        // get the state cache
+        PyObject* self = _get_py_object();
+        assert(self);
+        py::dict notf_cache = get_notf_cache(py::object(self, /* borrowed = */ true));
+        py::dict cache = get_dict(notf_cache, s_state_cache_name.c_str());
+        assert(cache.check());
+
+        // ... and use it to restore the targets
+        for (auto& it : m_states) {
+            py::tuple handlers(PyDict_GetItemString(cache.ptr(), it.first.c_str()), /* borrowed = */ true);
+            assert(handlers.check());
+            assert(handlers.size() == 2);
+            it.second.enter.reset(PyWeakref_NewRef(py::object(handlers[0]).ptr(), nullptr));
+            it.second.leave.reset(PyWeakref_NewRef(py::object(handlers[1]).ptr(), nullptr));
+        }
     }
 
 private: // fields
@@ -152,6 +173,10 @@ private: // fields
     /** The current State of this Controller. */
     State* m_current_state;
 
+private: // static fields
+    /** Name of the cache field used for storing states. */
+    static const std::string s_state_cache_name;
+
 public: // signals
     /** Signal translator fired when the Controller receives an `on_mouse_move` event. */
     PySignal<MouseEvent&> m_mouse_move;
@@ -160,6 +185,7 @@ public: // signals
     PySignal<MouseEvent&> m_mouse_button;
 };
 PyController::~PyController() {}
+const std::string PyController::s_state_cache_name = "state_handlers";
 
 /* Bindings ***********************************************************************************************************/
 

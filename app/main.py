@@ -52,48 +52,29 @@ class ButtonController(Controller):
         self.set_root_item(self._widget)
 
         self.add_state("orange", self._turn_orange, self._disable_all)
-        self.add_state("blue", self._turn_blue, self._disable_all_2)
+        self.add_state("blue", self._turn_blue, self._disable_all)
 
-        self._orange_connection = self.on_mouse_button.connect(self._state_orange, lambda event : event[0].action == notf.MouseAction.PRESS)
-        self._blue_connection = self.on_mouse_button.connect(self._state_blue, lambda event : event[0].action == notf.MouseAction.PRESS)
-        # self._orange_connection = self.on_mouse_button.connect(self._state_orange, self._test_press)
-        # self._blue_connection = self.on_mouse_button.connect(self._state_blue, self._test_press)
-        #self._green_connection = self.on_mouse_button.connect(lambda x : false, self._test_press)
+        self._orange_connection = self.on_mouse_button.connect(
+            lambda event: self.transition_to("orange"),
+            lambda event : event[0].action == notf.MouseAction.PRESS)
 
+        self._blue_connection = self.on_mouse_button.connect(
+            lambda event: self.transition_to("blue"),
+            lambda event : event[0].action == notf.MouseAction.PRESS)
+
+        self._disable_all()
         self.transition_to("orange")
 
-    def _test_press(self, args):
-        event = args[0]
-        return event.action == notf.MouseAction.PRESS
-
-    def _test_press_2(self, args):
-        event = args[0]
-        return event.action == notf.MouseAction.PRESS
-
     def _disable_all(self):
+        self.on_mouse_move.disable()
         self.on_mouse_button.disable()
-
-    def _disable_all_2(self):
-        self.on_mouse_button.disable()
-
-    def _state_orange(self, _ = None):
-        # self.transition_to("orange")
-        self._disable_all()
-        self._turn_orange()
-
-    def _state_blue(self, _ = None):
-        # self.transition_to("blue")
-        self._disable_all_2()
-        self._turn_blue()
 
     def _turn_orange(self):
-        self.on_mouse_button.disable()
         self.on_mouse_button.enable(self._blue_connection)
         self._widget.color = Color("#c34200")
         self._widget.redraw()
 
     def _turn_blue(self, _ = None):
-        self.on_mouse_button.disable()
         self.on_mouse_button.enable(self._orange_connection)
         self._widget.color = Color("2b60b8")
         self._widget.redraw()
