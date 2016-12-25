@@ -184,7 +184,9 @@ public: // signals
     /** Signal translator fired when the Controller receives an `on_mouse_button` event. */
     PySignal<MouseEvent&> m_mouse_button;
 };
+
 PyController::~PyController() {}
+
 const std::string PyController::s_state_cache_name = "state_handlers";
 
 /* Bindings ***********************************************************************************************************/

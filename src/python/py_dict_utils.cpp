@@ -8,6 +8,11 @@ namespace py = pybind11;
 
 namespace notf {
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#endif
+
 py::dict get_notf_cache(py::object host)
 {
     static const char* cache_name = "__notf_cache";
@@ -81,5 +86,9 @@ py::list get_list(py::object dict, const char* key)
     assert(PyList_Check(item.ptr()));
     return item;
 }
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 } // namespace notf

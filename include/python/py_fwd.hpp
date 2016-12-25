@@ -14,4 +14,7 @@ void py_incref(PyObject* object);
 /** Py_XDECREF wrapper. */
 void py_decref(PyObject* object);
 
+/** Returns the print() representation of the given Python object. */
+char* py_print(PyObject* object);
+
 } // namespace notf

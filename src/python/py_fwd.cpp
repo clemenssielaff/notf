@@ -19,6 +19,11 @@ void py_decref(PyObject* object)
     Py_XDECREF(object);
 }
 
+char* py_print(PyObject* object)
+{
+    return PyUnicode_AsUTF8(PyObject_Repr(object));
+}
+
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif

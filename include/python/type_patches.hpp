@@ -20,7 +20,7 @@ void finalize_py_item(PyObject* object);
  * some other function.
  * In order to bypass all Python funkyness, we wait until the first time a new instance of our custom type is created,
  * and then monkeypatch the type object.
- * Afterwards, the type object never calls this function again and everything works just fine.
+ * Afterwards, the type object never calls this function again and everything works just fine...
  */
 PyObject* new_py_item(PyTypeObject* type, PyObject* args, PyObject* kwds);
 

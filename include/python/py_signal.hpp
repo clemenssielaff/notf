@@ -1,3 +1,5 @@
+#pragma once
+
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
@@ -52,6 +54,10 @@ private: // struct
     };
 
 public: // methods
+    /**
+     * @param host  Python host object, providing the cache for storing the signal weakref targets.
+     * @param name  Name of this Signal, used to identify its cache.
+     */
     PySignal(py::object host, std::string name)
         : m_host(PyWeakref_NewRef(host.ptr(), nullptr), py_decref)
         , m_name(name)
@@ -98,6 +104,7 @@ public: // methods
             // there is a "contain" function for sets, but I haven't found a "find" or "iter" function yet
         }
 
+        // create the new target
         ConnectionID id = detail::Connection::get_next_id();
         if (test.check()) {
             m_targets.emplace_back(id, callback, test);
@@ -236,7 +243,7 @@ public: // methods
     /** Disconnect all Connections from this Signal. */
     void disconnect()
     {
-        m_targets.clear();
+        m_targets.clear(); // TODO: remove entries of the cache as well
     }
 
     /** Disconnects a specific Connection of this Signal.
@@ -260,6 +267,9 @@ public: // methods
         m_targets.pop_back();
     }
 
+    /** Restores the targets after the Python object has been finalized an all weakrefs have been destroyed.
+     * @param host  Python object providing the cache.
+     */
     void restore(py::object host)
     {
         using std::swap;
@@ -295,9 +305,10 @@ private: // fields
     /** Weakref to the host providing the cache for the target functions (see `connect` for details). */
     std::unique_ptr<PyObject, decltype(&py_decref)> m_host;
 
-    /** Name of this signal, used to identify*/
+    /** Name of this signal, used to identify its field in the cache. */
     std::string m_name;
 
+    /** All targets of this Signal. */
     std::vector<Target> m_targets;
 };
 
