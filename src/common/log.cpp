@@ -1,5 +1,7 @@
 #include "common/log.hpp"
 
+#include <assert.h>
+
 #include "common/int_utils.hpp"
 
 namespace { // anonymous
@@ -22,11 +24,12 @@ LogHandler::LogHandler(size_t initial_buffer, ulong flush_interval)
     , m_log_count(0)
     , m_flush_interval{flush_interval}
     , m_number_padding(2)
+    , m_color_format(46)
     , m_color_trace(242)
     , m_color_info(249)
     , m_color_warning(227)
-    , m_color_critical(196)
-    , m_color_fatal(13)
+    , m_color_critical(215)
+    , m_color_fatal(196)
 {
     m_write_buffer.reserve(initial_buffer);
     m_read_buffer.reserve(initial_buffer);
@@ -58,6 +61,10 @@ void LogHandler::join()
 void LogHandler::set_color(LogMessage::LEVEL level, u_char color)
 {
     switch (level) {
+    case LogMessage::LEVEL::FORMAT:
+        m_color_format = color;
+        break;
+
     case LogMessage::LEVEL::TRACE:
         m_color_trace = color;
         break;
@@ -79,6 +86,7 @@ void LogHandler::set_color(LogMessage::LEVEL level, u_char color)
         break;
 
     case LogMessage::LEVEL::ALL:
+        m_color_format = color;
         m_color_trace = color;
         m_color_info = color;
         m_color_warning = color;
@@ -121,7 +129,15 @@ void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
     static const std::string CRITICAL = "crit:  ";
     static const std::string FATAL = "fatal: ";
 
-    for (auto& log_message : buffer) {
+    for (const LogMessage& log_message : buffer) {
+
+        // formatting messages do not increate the counter, nor do they have additional info
+        if(log_message.level == LogMessage::LEVEL::FORMAT){
+            std::cout << color_prefix(m_color_format)
+                      << log_message.message
+                      << "\033[0m\n";
+            continue;
+        }
 
         // padding
         ++m_log_count;
@@ -131,6 +147,9 @@ void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
 
         // prefix
         switch (log_message.level) {
+        case LogMessage::LEVEL::FORMAT:
+            assert(0);
+            break;
         case LogMessage::LEVEL::ALL:
         case LogMessage::LEVEL::TRACE:
             std::cout << color_prefix(m_color_trace) << m_log_count << ". " << TRACE;

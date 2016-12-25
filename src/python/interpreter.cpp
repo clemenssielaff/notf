@@ -50,13 +50,20 @@ PythonInterpreter::~PythonInterpreter()
 
 void PythonInterpreter::parse_app(const std::string& filename)
 {
+    log_format << "";
+    log_format << "================================================================================";
+
     // find and open the file to execute
     std::string absolute_path = m_app_directory + filename;
     FILE* fp = std::fopen(absolute_path.c_str(), "r");
     if (!fp) {
         log_warning << "Could not parse empty source code read from " << absolute_path;
+        log_format << "================================================================================";
         return;
     }
+
+    log_format << " Parsing app code from: " << absolute_path;
+    log_format << "================================================================================";
 
     // build the globals dict
     py::object globals = py::dict(
@@ -92,8 +99,6 @@ void PythonInterpreter::parse_app(const std::string& filename)
         log_critical << "Python error occured: ";
         PyErr_Print();
     }
-
-    log_trace << "Reparsed app code from: " << absolute_path;
 }
 
 } // namespace notf

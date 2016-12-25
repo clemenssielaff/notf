@@ -59,6 +59,7 @@ struct LogMessage {
     /// @brief The level of a LogMessage indicates under what circumstance the message was created.
     enum class LEVEL : int {
         ALL = 0,
+        FORMAT, // formatting
         TRACE, // for development only
         INFO, // for documenting expected behavior
         WARNING, // for unexpected but valid behavior
@@ -243,6 +244,9 @@ private: // fields
     /// If '3', single digit numbers will be padded with two spaces to the left, double-digits with a single space.
     ushort m_number_padding;
 
+    // @brief Terminal color value of format log messages.
+    uchar m_color_format;
+
     // @brief Terminal color value of trace log messages.
     uchar m_color_trace;
 
@@ -337,6 +341,7 @@ struct _NullBuffer {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#define SIGNAL_LOG_LEVEL_ALL 0
 #define SIGNAL_LOG_LEVEL_TRACE 1
 #define SIGNAL_LOG_LEVEL_INFO 2
 #define SIGNAL_LOG_LEVEL_WARNING 3
@@ -344,7 +349,7 @@ struct _NullBuffer {
 #define SIGNAL_LOG_LEVEL_FATAL 5
 
 #ifndef SIGNAL_LOG_LEVEL
-#define SIGNAL_LOG_LEVEL 0 // log all messages if no value for SIGNAL_LOG_LEVEL was given
+#define SIGNAL_LOG_LEVEL SIGNAL_LOG_LEVEL_ALL
 #endif
 
 /// Define log_* macros.
@@ -355,6 +360,16 @@ struct _NullBuffer {
 ///     log_critical << "Caught unhandled error: " << error_object;
 ///
 /// The object provided by log_* is a std::stringstream or a _NullBuffer, which accepts all the same inputs.
+#ifndef log_format
+#if SIGNAL_LOG_LEVEL == SIGNAL_LOG_LEVEL_ALL
+#define log_format notf::LogMessageFactory(notf::LogMessage::LEVEL::FORMAT, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
+#else
+#define log_format notf::_NullBuffer()
+#endif
+#else
+#warning "Macro 'log_format' is already defined - Signal's log_format macro will remain disabled."
+#endif
+
 #ifndef log_trace
 #if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_TRACE
 #define log_trace notf::LogMessageFactory(notf::LogMessage::LEVEL::TRACE, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
