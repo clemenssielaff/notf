@@ -192,6 +192,7 @@ HEADERS += \
     include/python/py_signal.hpp \
     include/python/py_dict_utils.hpp \
     include/core/property.hpp \
-    include/core/property_impl.hpp
+    include/core/property_impl.hpp \
+    include/utils/macro_overload.hpp
 
 QMAKE_CXX = ccache g++
