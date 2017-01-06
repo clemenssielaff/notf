@@ -29,11 +29,15 @@ public: // methods
     template <typename NAME, typename TYPE>
     NAME* create_property(std::string name, const TYPE value);
 
+    /** Returns a Property by name and type.
+     * @param name          Name of the requested Property.
+     * @throw               std::out_of_range if the name is not known.
+     */
     template <typename PROPERTY_TYPE, typename KEY_TYPE,
               typename = std::enable_if_t<std::is_base_of<AbstractProperty, PROPERTY_TYPE>::value>>
     PROPERTY_TYPE* get(KEY_TYPE&& name)
     {
-        return static_cast<PROPERTY_TYPE*>(at(name).get());
+        return static_cast<PROPERTY_TYPE*>(at(name).get()); // TODO: PropertyName::get does not provide type checking!
     }
 };
 
@@ -42,7 +46,7 @@ public: // methods
 /** An abstract Property.
  * Is pretty useless by itself, you'll have to cast it to a subclass of Property<T> to get any functionality out of it.
  */
-class AbstractProperty : public receive_signals<class AbstractProperty> {
+class AbstractProperty : public receive_signals {
 
 public: // methods
     explicit AbstractProperty(const PropertyMap::iterator iterator)
@@ -143,7 +147,7 @@ namespace detail {
     constexpr void connect_property_signals(Property<TARGET_TYPE>* target, Property<SOURCE_TYPE>* source, ARGS&&... args)
     {
         // connect the value_changed signal of all Property arguments
-        target->connect_signal(source->value_changed, [target](SOURCE_TYPE) { target->_update_expression(); });
+        target->connect_signal(source->value_changed, &Property<TARGET_TYPE>::_update_expression);
         return connect_property_signals(target, std::forward<ARGS>(args)...);
     }
 

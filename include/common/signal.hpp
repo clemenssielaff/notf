@@ -642,8 +642,7 @@ private: // fields
 
 /**********************************************************************************************************************/
 
-/** Curiously recurring template pattern mixin class to be able to receive Signals to SUBCLASS. */
-template <typename SUBCLASS>
+/** Mixin class to be able to receive Signals. */
 class receive_signals {
 
 public: // methods
@@ -655,21 +654,23 @@ public: // methods
     }
 
     /** Creates a Connection connecting the given Signal to a member function of this object. */
-    template <typename SIGNAL, typename... SIGNATURE, typename... ARGS>
-    ConnectionID connect_signal(SIGNAL& signal, void (SUBCLASS::*method)(SIGNATURE...), ARGS&&... args)
+    template <typename SIGNAL, typename RECEIVER, typename... SIGNATURE, typename... ARGS,
+              typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value == sizeof... (SIGNATURE))>>
+    ConnectionID connect_signal(SIGNAL& signal, void (RECEIVER::*method)(SIGNATURE...), ARGS&&... args)
     {
-        return m_callback_manager.connect(signal,
-                                          [this, method](SIGNATURE... args) { (static_cast<SUBCLASS*>(this)->*method)(args...); },
-                                          std::forward<ARGS>(args)...);
+        return m_callback_manager.connect(
+            signal,
+            [this, method](SIGNATURE... args) { (static_cast<RECEIVER*>(this)->*method)(args...); },
+            std::forward<ARGS>(args)...);
     }
 
     /** Overload to connect any Signal to a member function without arguments.
      * This way, you can connect a `Signal<int>` to a function `foo()` without having to manually wrap the function
      * call in a lambda that discards the additional arguments.
      */
-    template <typename SIGNAL, typename... TEST_FUNC,
+    template <typename SIGNAL, typename RECEIVER, typename... TEST_FUNC,
               typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value > 0)>>
-    ConnectionID connect_signal(SIGNAL& signal, void (SUBCLASS::*method)(void), TEST_FUNC&&... test_func)
+    ConnectionID connect_signal(SIGNAL& signal, void (RECEIVER::*method)(void), TEST_FUNC&&... test_func)
     {
         constexpr auto signal_size = std::tuple_size<typename std::decay<typename SIGNAL::Signature>::type>::value;
         return m_callback_manager.connect(signal,
@@ -714,11 +715,11 @@ private: // methods
     /** Helper function for the third overload of `connect_signal`.
      * Returns a lambda wrapping a call from any Signal to a method of this object that takes no arguments.
      */
-    template <typename SIGNAL, std::size_t... index>
-    decltype(auto) _connection_helper(SIGNAL&, void (SUBCLASS::*method)(void), std::index_sequence<index...>)
+    template <typename SIGNAL, typename RECEIVER, std::size_t... index>
+    decltype(auto) _connection_helper(SIGNAL&, void (RECEIVER::*method)(void), std::index_sequence<index...>)
     {
         return [this, method](typename std::tuple_element<index, typename SIGNAL::Signature>::type...) {
-            (static_cast<SUBCLASS*>(this)->*method)();
+            (static_cast<RECEIVER*>(this)->*method)();
         };
     }
 
@@ -728,7 +729,6 @@ private: // fields
 };
 
 } // namespace notf
-
 
 // TODO: connection object instead of connectionId so that you can say self.white_on_click.disable()
 // instead of self.on_mouse_button.disable(self._white_on_click) ... or maken't that sense?

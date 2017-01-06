@@ -13,7 +13,7 @@ struct Sender {
     Signal<bool, bool> two_bool_signal;
 };
 
-struct Receiver : public receive_signals<Receiver> {
+struct Receiver : public receive_signals {
     void on_void_signal() { ++void_counter; }
     void on_int_signal(int v) { int_counter += v; }
     void on_float_signal(float v) { float_counter += v; }

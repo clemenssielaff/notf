@@ -58,7 +58,7 @@ using ItemID = size_t;
 /** A Item is an abstraction of an item in the Layout hierarchy.
  * Both Widget and all Layout subclasses inherit from it.
  */
-class Item : public receive_signals<Item>, public std::enable_shared_from_this<Item> {
+class Item : public receive_signals, public std::enable_shared_from_this<Item> {
 
     friend class AbstractController;
     friend class Layout;
