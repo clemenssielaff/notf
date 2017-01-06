@@ -11,47 +11,65 @@ namespace notf {
 
 /**********************************************************************************************************************/
 
-/* How to add a new Property - a checklist:
- *
- * In property_impl.hpp:
- *
- *  1. Add a PROPERTY_SPECIALIZATION with the name of the new Property subclass as first and the value type as
- *     second argument.
- *     If the Property can be initialized with more than one type (float and double, for example) add another
- *     declaration below to silent unnecessary warnings.
- *
- * In property_impl.cpp
- *
- *  2. Add NOTF_ADD_PROPERTY specializations for all types from which your new Property subclass can be contructed.
- */
+/* In order to add a new Property class, add a new DEFINE_PROPERTY and one or more CREATE_PROPERTY_IMPL (see below). */
 
-#pragma push_macro("PROPERTY_SPECIALIZATION")
-#define PROPERTY_SPECIALIZATION(NAME, TYPE)                          \
+#pragma push_macro("DEFINE_PROPERTY")
+#define DEFINE_PROPERTY(NAME, TYPE)                                  \
     class NAME : public Property<TYPE> {                             \
     public:                                                          \
         NAME(const TYPE value, const PropertyMap::iterator iterator) \
             : Property<TYPE>(std::move(value), std::move(iterator))  \
         {                                                            \
         }                                                            \
-    };                                                               \
-    template <>                                                      \
-    NAME* add_property<NAME>(PropertyMap&, std::string, const TYPE);
+    };
 
-PROPERTY_SPECIALIZATION(BoolProperty, bool);
-PROPERTY_SPECIALIZATION(FloatProperty, float);
-PROPERTY_SPECIALIZATION(IntProperty, int);
-PROPERTY_SPECIALIZATION(StringProperty, std::string);
-PROPERTY_SPECIALIZATION(ClaimProperty, Claim);
-PROPERTY_SPECIALIZATION(Size2Property, Size2f);
-PROPERTY_SPECIALIZATION(Transform2Property, Transform2);
+DEFINE_PROPERTY(BoolProperty, bool);
+DEFINE_PROPERTY(FloatProperty, float);
+DEFINE_PROPERTY(IntProperty, int);
+DEFINE_PROPERTY(StringProperty, std::string);
+DEFINE_PROPERTY(ClaimProperty, Claim);
+DEFINE_PROPERTY(Size2Property, Size2f);
+DEFINE_PROPERTY(Transform2Property, Transform2);
 
-#undef PROPERTY_SPECIALIZATION
-#pragma pop_macro("PROPERTY_SPECIALIZATION")
+#undef DEFINE_PROPERTY
+#pragma pop_macro("DEFINE_PROPERTY")
 
-/* Additional declarations to silent warnings *************************************************************************/
+/**********************************************************************************************************************/
+#pragma push_macro("CREATE_PROPERTY_IMPL")
 
-template <>
-FloatProperty* add_property<FloatProperty>(PropertyMap&, std::string, const double);
+#ifdef NOTF_PROPERTY_IMPL
+#define CREATE_PROPERTY_IMPL(NAME, TYPE)                                                                                             \
+    template <>                                                                                                                      \
+    NAME* PropertyMap::create_property(std::string name, const TYPE value)                                                           \
+    {                                                                                                                                \
+        iterator it;                                                                                                                 \
+        bool is_unique;                                                                                                              \
+        std::tie(it, is_unique) = emplace(std::make_pair<std::string, std::unique_ptr<AbstractProperty>>(std::move(name), {}));      \
+        if (!is_unique) {                                                                                                            \
+            const std::string message = string_format("Failed to add Property \"%s\" - the name is not unique.", it->first.c_str()); \
+            log_critical << message;                                                                                                 \
+            throw(std::runtime_error(std::move(message)));                                                                           \
+        }                                                                                                                            \
+        it->second = std::make_unique<NAME>(static_cast<TYPE>(value), it);                                                           \
+        return reinterpret_cast<NAME*>(it->second.get());                                                                            \
+    }
+#else
+#define CREATE_PROPERTY_IMPL(NAME, TYPE) \
+    template <>                          \
+    NAME* PropertyMap::create_property(std::string name, const TYPE value);
+#endif
+
+CREATE_PROPERTY_IMPL(BoolProperty, bool);
+CREATE_PROPERTY_IMPL(FloatProperty, float);
+CREATE_PROPERTY_IMPL(FloatProperty, double);
+CREATE_PROPERTY_IMPL(IntProperty, int);
+CREATE_PROPERTY_IMPL(StringProperty, std::string);
+CREATE_PROPERTY_IMPL(ClaimProperty, Claim);
+CREATE_PROPERTY_IMPL(Size2Property, Size2f);
+CREATE_PROPERTY_IMPL(Transform2Property, Transform2);
+
+#undef CREATE_PROPERTY_IMPL
+#pragma pop_macro("CREATE_PROPERTY_IMPL")
 
 /**********************************************************************************************************************/
 

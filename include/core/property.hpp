@@ -11,7 +11,31 @@ namespace notf {
 
 class AbstractProperty;
 
-using PropertyMap = std::map<std::string, std::unique_ptr<AbstractProperty>>;
+/**********************************************************************************************************************/
+
+/** Special map providing a templated method to create Properties.
+ * Subclassing std containers is generally frowned upon but should be okay in this case, since we don't add any fields.
+ * See http://stackoverflow.com/a/2034936/3444217
+ */
+class PropertyMap : public std::map<std::string, std::unique_ptr<AbstractProperty>> {
+
+public: // methods
+    /** Adds a new Property.
+     * @param name          Name of the Property, must be unique in the map.
+     * @param value         Value of the Property, must be of a type supported by AbstractProperty.
+     * @return              Pointer to the correct subtype of the new Property in the map.
+     * @throw               std::runtime_error if the name is not unique.
+     */
+    template <typename NAME, typename TYPE>
+    NAME* create_property(std::string name, const TYPE value);
+
+    template <typename PROPERTY_TYPE, typename KEY_TYPE,
+              typename = std::enable_if_t<std::is_base_of<AbstractProperty, PROPERTY_TYPE>::value>>
+    PROPERTY_TYPE* get(KEY_TYPE&& name)
+    {
+        return static_cast<PROPERTY_TYPE*>(at(name).get());
+    }
+};
 
 /**********************************************************************************************************************/
 
@@ -99,18 +123,6 @@ private: // fields
 
 /**********************************************************************************************************************/
 
-/** Adds a new Property to the given PropertyMap.
- * @param property_map  Map to which to add the Property.
- * @param name          Name of the Property, must be unique in the map.
- * @param value         Value of the Property, must be of a type supported by AbstractProperty.
- * @return              Pointer to the correct subtype of the new Property in the map.
- * @throw               std::runtime_error if the name is not unique.
- */
-template <typename NAME, typename TYPE>
-NAME* add_property(PropertyMap& property_map, std::string name, const TYPE value);
-
-/**********************************************************************************************************************/
-
 namespace detail {
 
     template <typename TARGET_TYPE>
@@ -155,7 +167,7 @@ namespace detail {
 #define _notf_variadic_capture15(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j, &k = k, &l = l, &m = m, &n = n, &o = o
 #define _notf_variadic_capture16(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j, &k = k, &l = l, &m = m, &n = n, &o = o, &p = p
 
-#define property_expression(TARGET, LAMBDA, ...)                              \
+#define property_expression(TARGET, LAMBDA, ...)                           \
     TARGET->_set_expression([_notf_variadic_capture(__VA_ARGS__)] LAMBDA); \
     notf::detail::connect_property_signals(TARGET, __VA_ARGS__)
 
