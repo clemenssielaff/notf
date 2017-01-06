@@ -9,10 +9,15 @@
  *     #define MY_MACRO2(x, y) <implementation>
  *     #define MY_MACRO3(x, y, z) <implementation>
  *
+ * If you need more than 16, just append the numbers to `_notf_arg_pattern_match`
+ * and prepend them in reverse to `_notf_count_args`.
+ *
  * From http://stackoverflow.com/a/30566098/3444217
  */
+#define NOTF_OVERLOADED_MACRO(macro_name, ...) _notf_overload(macro_name, _notf_count_args(__VA_ARGS__))(__VA_ARGS__)
+
 #define _notf_overload_expand(macro_name, number_of_args) macro_name##number_of_args
 #define _notf_overload(macro_name, number_of_args) _notf_overload_expand(macro_name, number_of_args)
 #define _notf_arg_pattern_match(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, n, ...) n
 #define _notf_count_args(...) _notf_arg_pattern_match(__VA_ARGS__, 16, 15, 14, 13, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
-#define NOTF_OVERLOADED_MACRO(macro_name, ...) _notf_overload(macro_name, _notf_count_args(__VA_ARGS__))(__VA_ARGS__)
+ 

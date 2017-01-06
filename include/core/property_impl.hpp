@@ -15,8 +15,8 @@ namespace notf {
  *
  * In property_impl.hpp:
  *
- *  1. In Add a PROPERTY_SPECIALIZATION with the name of the new Property subclass as first and the value type as
- *      second argument.
+ *  1. Add a PROPERTY_SPECIALIZATION with the name of the new Property subclass as first and the value type as
+ *     second argument.
  *
  * In property_impl.cpp
  *
@@ -31,7 +31,9 @@ namespace notf {
             : Property<TYPE>(std::move(value), std::move(iterator))  \
         {                                                            \
         }                                                            \
-    };
+    };                                                               \
+    template <>                                                      \
+    PropertyMap::iterator add_property(PropertyMap& property_map, std::string name, const int value);
 
 PROPERTY_SPECIALIZATION(BoolProperty, bool);
 PROPERTY_SPECIALIZATION(FloatProperty, float);
