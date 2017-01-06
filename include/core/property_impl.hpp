@@ -17,6 +17,8 @@ namespace notf {
  *
  *  1. Add a PROPERTY_SPECIALIZATION with the name of the new Property subclass as first and the value type as
  *     second argument.
+ *     If the Property can be initialized with more than one type (float and double, for example) add another
+ *     declaration below to silent unnecessary warnings.
  *
  * In property_impl.cpp
  *
@@ -33,7 +35,7 @@ namespace notf {
         }                                                            \
     };                                                               \
     template <>                                                      \
-    PropertyMap::iterator add_property(PropertyMap& property_map, std::string name, const int value);
+    NAME* add_property<NAME>(PropertyMap&, std::string, const TYPE);
 
 PROPERTY_SPECIALIZATION(BoolProperty, bool);
 PROPERTY_SPECIALIZATION(FloatProperty, float);
@@ -45,6 +47,11 @@ PROPERTY_SPECIALIZATION(Transform2Property, Transform2);
 
 #undef PROPERTY_SPECIALIZATION
 #pragma pop_macro("PROPERTY_SPECIALIZATION")
+
+/* Additional declarations to silent warnings *************************************************************************/
+
+template <>
+FloatProperty* add_property<FloatProperty>(PropertyMap&, std::string, const double);
 
 /**********************************************************************************************************************/
 

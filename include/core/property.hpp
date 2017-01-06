@@ -103,61 +103,60 @@ private: // fields
  * @param property_map  Map to which to add the Property.
  * @param name          Name of the Property, must be unique in the map.
  * @param value         Value of the Property, must be of a type supported by AbstractProperty.
- * @return              Iterator to the new Property in the map.
+ * @return              Pointer to the correct subtype of the new Property in the map.
  * @throw               std::runtime_error if the name is not unique.
  */
-template <typename T>
-PropertyMap::iterator add_property(PropertyMap& property_map, std::string name, const T value);
+template <typename NAME, typename TYPE>
+NAME* add_property(PropertyMap& property_map, std::string name, const TYPE value);
 
 /**********************************************************************************************************************/
 
 namespace detail {
 
-    template <typename TARGET>
-    constexpr void connect_property_signals(Property<TARGET>&)
+    template <typename TARGET_TYPE>
+    constexpr void connect_property_signals(Property<TARGET_TYPE>*)
     {
         // stop recursion
     }
 
-    template <typename TARGET, typename T, typename... ARGS,
-              std::enable_if_t<!std::is_base_of<AbstractProperty, std::decay_t<T>>::value, std::nullptr_t> = nullptr>
-    constexpr void connect_property_signals(Property<TARGET>&, T&&, ARGS&&... args)
+    template <typename TARGET_TYPE, typename T, typename... ARGS,
+              typename = std::enable_if_t<!std::is_base_of<AbstractProperty, std::remove_pointer_t<std::decay_t<T>>>::value>>
+    constexpr void connect_property_signals(Property<TARGET_TYPE>* target, T&&, ARGS&&... args)
     {
         // ignore non-Property `T`s
-        return connect_property_signals(std::forward<ARGS>(args)...);
+        return connect_property_signals(target, std::forward<ARGS>(args)...);
     }
 
-    template <typename TARGET, typename T, typename... ARGS,
-              std::enable_if_t<std::is_base_of<AbstractProperty, std::decay_t<T>>::value, std::nullptr_t> = nullptr>
-    constexpr void connect_property_signals(Property<TARGET>& target, Property<T>& property, ARGS&&... args)
+    template <typename TARGET_TYPE, typename SOURCE_TYPE, typename... ARGS>
+    constexpr void connect_property_signals(Property<TARGET_TYPE>* target, Property<SOURCE_TYPE>* source, ARGS&&... args)
     {
         // connect the value_changed signal of all Property arguments
-        target.connect_signal(property.value_changed, &Property<TARGET>::_update_expression);
-        return connect_property_signals(std::forward<ARGS>(args)...);
+        target->connect_signal(source->value_changed, [target](SOURCE_TYPE) { target->_update_expression(); });
+        return connect_property_signals(target, std::forward<ARGS>(args)...);
     }
 
 } // namespace detail
 
 #define _notf_variadic_capture(...) NOTF_OVERLOADED_MACRO(_notf_variadic_capture, __VA_ARGS__)
-#define _notf_variadic_capture1(a) &#a = a
+#define _notf_variadic_capture1(a) &a = a
 #define _notf_variadic_capture2(a, b) &a = a, &b = b
-#define _notf_variadic_capture3(a, b, c) &#a = a, &#b = b, &#c = c
-#define _notf_variadic_capture4(a, b, c, d) &#a = a, &#b = b, &#c = c, &#d = d
-#define _notf_variadic_capture5(a, b, c, d, e) &#a = a, &#b = b, &#c = c, &#d = d, &#e = e
-#define _notf_variadic_capture6(a, b, c, d, e, f) &#a = a, &#b = b, &#c = c, &#d = d, &#e = e, &#f = f
-#define _notf_variadic_capture7(a, b, c, d, e, f, g) &#a = a, &#b = b, &#c = c, &#d = d, &#e = e, &#f = f, &#g = g
-#define _notf_variadic_capture8(a, b, c, d, e, f, g, h) &#a = a, &#b = b, &#c = c, &#d = d, &#e = e, &#f = f, &#g = g, &#h = h
-#define _notf_variadic_capture9(a, b, c, d, e, f, g, h, i) &#a = a, &#b = b, &#c = c, &#d = d, &#e = e, &#f = f, &#g = g, &#h = h, &#i = i
-#define _notf_variadic_capture10(a, b, c, d, e, f, g, h, i, j) &#a = a, &#b = b, &#c = c, &#d = d, &#e = e, &#f = f, &#g = g, &#h = h, &#i = i, &#j = j
-#define _notf_variadic_capture11(a, b, c, d, e, f, g, h, i, j, k) &#a = a, &#b = b, &#c = c, &#d = d, &#e = e, &#f = f, &#g = g, &#h = h, &#i = i, &#j = j, &#k = k
-#define _notf_variadic_capture12(a, b, c, d, e, f, g, h, i, j, k, l) &#a = a, &#b = b, &#c = c, &#d = d, &#e = e, &#f = f, &#g = g, &#h = h, &#i = i, &#j = j, &#k = k, &#l = l
-#define _notf_variadic_capture13(a, b, c, d, e, f, g, h, i, j, k, l, m) &#a = a, &#b = b, &#c = c, &#d = d, &#e = e, &#f = f, &#g = g, &#h = h, &#i = i, &#j = j, &#k = k, &#l = l, &#m = m
-#define _notf_variadic_capture14(a, b, c, d, e, f, g, h, i, j, k, l, m, n) &#a = a, &#b = b, &#c = c, &#d = d, &#e = e, &#f = f, &#g = g, &#h = h, &#i = i, &#j = j, &#k = k, &#l = l, &#m = m, &#n = n
-#define _notf_variadic_capture15(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) &#a = a, &#b = b, &#c = c, &#d = d, &#e = e, &#f = f, &#g = g, &#h = h, &#i = i, &#j = j, &#k = k, &#l = l, &#m = m, &#n = n, &#o = o
-#define _notf_variadic_capture16(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p) &#a = a, &#b = b, &#c = c, &#d = d, &#e = e, &#f = f, &#g = g, &#h = h, &#i = i, &#j = j, &#k = k, &#l = l, &#m = m, &#n = n, &#o = o, &#p = p
+#define _notf_variadic_capture3(a, b, c) &a = a, &b = b, &c = c
+#define _notf_variadic_capture4(a, b, c, d) &a = a, &b = b, &c = c, &d = d
+#define _notf_variadic_capture5(a, b, c, d, e) &a = a, &b = b, &c = c, &d = d, &e = e
+#define _notf_variadic_capture6(a, b, c, d, e, f) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f
+#define _notf_variadic_capture7(a, b, c, d, e, f, g) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g
+#define _notf_variadic_capture8(a, b, c, d, e, f, g, h) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h
+#define _notf_variadic_capture9(a, b, c, d, e, f, g, h, i) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i
+#define _notf_variadic_capture10(a, b, c, d, e, f, g, h, i, j) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j
+#define _notf_variadic_capture11(a, b, c, d, e, f, g, h, i, j, k) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j, &k = k
+#define _notf_variadic_capture12(a, b, c, d, e, f, g, h, i, j, k, l) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j, &k = k, &l = l
+#define _notf_variadic_capture13(a, b, c, d, e, f, g, h, i, j, k, l, m) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j, &k = k, &l = l, &m = m
+#define _notf_variadic_capture14(a, b, c, d, e, f, g, h, i, j, k, l, m, n) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j, &k = k, &l = l, &m = m, &n = n
+#define _notf_variadic_capture15(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j, &k = k, &l = l, &m = m, &n = n, &o = o
+#define _notf_variadic_capture16(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j, &k = k, &l = l, &m = m, &n = n, &o = o, &p = p
 
-#define define_expression(TARGET, LAMBDA, ...)                              \
-    TARGET._set_expression([_notf_variadic_capture(__VA_ARGS__)]()LAMBDA); \
-    notf::detail::connect_property_signals(__VA_ARGS__)
+#define property_expression(TARGET, LAMBDA, ...)                              \
+    TARGET->_set_expression([_notf_variadic_capture(__VA_ARGS__)] LAMBDA); \
+    notf::detail::connect_property_signals(TARGET, __VA_ARGS__)
 
 } // namespace notf

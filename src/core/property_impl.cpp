@@ -26,13 +26,13 @@ PropertyMap::iterator add_property_helper(PropertyMap& propertyMap, std::string 
 
 namespace notf {
 
-#define NOTF_ADD_PROPERTY(PROPERTY, TYPE)                                                             \
-    template <>                                                                                       \
-    PropertyMap::iterator add_property(PropertyMap& property_map, std::string name, const TYPE value) \
-    {                                                                                                 \
-        PropertyMap::iterator it = add_property_helper(property_map, std::move(name));                \
-        it->second = std::make_unique<PROPERTY>(static_cast<TYPE>(value), it);                        \
-        return it;                                                                                    \
+#define NOTF_ADD_PROPERTY(NAME, TYPE)                                                        \
+    template <>                                                                              \
+    NAME* add_property<NAME>(PropertyMap & property_map, std::string name, const TYPE value) \
+    {                                                                                        \
+        PropertyMap::iterator it = add_property_helper(property_map, std::move(name));       \
+        it->second = std::make_unique<NAME>(static_cast<TYPE>(value), it);                   \
+        return reinterpret_cast<NAME*>(it->second.get());                                    \
     }
 
 NOTF_ADD_PROPERTY(BoolProperty, bool);
