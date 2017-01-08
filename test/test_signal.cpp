@@ -18,11 +18,13 @@ struct Receiver : public receive_signals {
     void on_int_signal(int v) { int_counter += v; }
     void on_float_signal(float v) { float_counter += v; }
     void on_two_bool_signal(bool, bool) { ++two_bool_counter; }
+    void on_const_signal() const { ++const_counter; }
 
     int void_counter = 0;
     int int_counter = 0;
     float float_counter = 0.f;
     uint two_bool_counter = 0;
+    mutable int const_counter = 0;
 };
 
 int free_void_counter = 0;
@@ -74,6 +76,20 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
             REQUIRE(receiver.int_counter == 123);
             REQUIRE(receiver.float_counter == approx(1.23f));
             REQUIRE(receiver.two_bool_counter == 1);
+        }
+    }
+
+    WHEN("you connect a signal to a member function that is const")
+    {
+        Sender sender;
+        Receiver receiver;
+
+        receiver.connect_signal(sender.void_signal, &Receiver::on_const_signal);
+        sender.void_signal();
+
+        THEN("it woks as well (should, if compiles)")
+        {
+            REQUIRE(receiver.const_counter == 1);
         }
     }
 
@@ -691,8 +707,8 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         Sender sender;
         Receiver receiver;
 
-        ConnectionID a = receiver.connect_signal(sender.int_signal, &Receiver::on_int_signal, [](int i){return i == 3;});
-        ConnectionID b = receiver.connect_signal(sender.int_signal, &Receiver::on_int_signal, [](int i){return i == 5;});
+        ConnectionID a = receiver.connect_signal(sender.int_signal, &Receiver::on_int_signal, [](int i) { return i == 3; });
+        ConnectionID b = receiver.connect_signal(sender.int_signal, &Receiver::on_int_signal, [](int i) { return i == 5; });
 
         THEN("only the enabled connections are used")
         {
@@ -732,8 +748,8 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         Sender sender;
         Receiver receiver;
 
-        ConnectionID a = receiver.connect_signal(sender.int_signal, &Receiver::on_int_signal, [](int i){return i == 3;});
-        ConnectionID b = receiver.connect_signal(sender.int_signal, &Receiver::on_int_signal, [](int i){return i == 5;});
+        ConnectionID a = receiver.connect_signal(sender.int_signal, &Receiver::on_int_signal, [](int i) { return i == 3; });
+        ConnectionID b = receiver.connect_signal(sender.int_signal, &Receiver::on_int_signal, [](int i) { return i == 5; });
 
         THEN("only the enabled connections are used")
         {

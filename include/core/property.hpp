@@ -5,6 +5,7 @@
 #include <string>
 
 #include "common/signal.hpp"
+#include "common/string_utils.hpp"
 #include "utils/macro_overload.hpp"
 
 namespace notf {
@@ -31,13 +32,19 @@ public: // methods
 
     /** Returns a Property by name and type.
      * @param name          Name of the requested Property.
-     * @throw               std::out_of_range if the name is not known.
+     * @throw               std::out_of_range if the name is not known / std::runtime_error if the type does not match.
      */
     template <typename PROPERTY_TYPE, typename KEY_TYPE,
               typename = std::enable_if_t<std::is_base_of<AbstractProperty, PROPERTY_TYPE>::value>>
     PROPERTY_TYPE* get(KEY_TYPE&& name)
     {
-        return static_cast<PROPERTY_TYPE*>(at(name).get()); // TODO: PropertyName::get does not provide type checking!
+        auto result = dynamic_cast<PROPERTY_TYPE*>(at(name).get());
+        if (!result) {
+            // TODO: stringify real and requested property types in error message
+            throw std::runtime_error(string_format("Requested wrong Property type for Property named \"%s\"",
+                                                   std::string(std::move(name)).c_str()));
+        }
+        return result;
     }
 };
 
@@ -53,6 +60,9 @@ public: // methods
         : m_it(iterator)
     {
     }
+
+    /** Virtual destructor to force this Properties to be polymorphic (allows `dynamic_cast`ing them). */
+    virtual ~AbstractProperty();
 
     /** The name of this Property. */
     const std::string& get_name() const { return m_it->first; }

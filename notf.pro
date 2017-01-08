@@ -116,7 +116,8 @@ SOURCES += \
     src/python/py_event.cpp \
     src/python/py_signal.cpp \
     src/python/py_dict_utils.cpp \
-    src/core/property_impl.cpp
+    src/core/property_impl.cpp \
+    src/core/property.cpp
 
 HEADERS += \
     include/core/application.hpp \

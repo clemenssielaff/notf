@@ -664,6 +664,17 @@ public: // methods
             std::forward<ARGS>(args)...);
     }
 
+    /** Creates a Connection connecting the given Signal to a const member function of this object. */
+    template <typename SIGNAL, typename RECEIVER, typename... SIGNATURE, typename... ARGS,
+              typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value == sizeof... (SIGNATURE))>>
+    ConnectionID connect_signal(SIGNAL& signal, void (RECEIVER::*method)(SIGNATURE...) const, ARGS&&... args)
+    {
+        return m_callback_manager.connect(
+                    signal,
+                    [this, method](SIGNATURE... args) { (static_cast<RECEIVER*>(this)->*method)(args...); },
+        std::forward<ARGS>(args)...);
+    }
+
     /** Overload to connect any Signal to a member function without arguments.
      * This way, you can connect a `Signal<int>` to a function `foo()` without having to manually wrap the function
      * call in a lambda that discards the additional arguments.
@@ -676,6 +687,17 @@ public: // methods
         return m_callback_manager.connect(signal,
                                           _connection_helper(signal, method, std::make_index_sequence<signal_size>{}),
                                           std::forward<TEST_FUNC>(test_func)...);
+    }
+
+    /** Argument-ignoring overload for const functions (see overload above). */
+    template <typename SIGNAL, typename RECEIVER, typename... TEST_FUNC,
+              typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value > 0)>>
+    ConnectionID connect_signal(SIGNAL& signal, void (RECEIVER::*method)(void) const, TEST_FUNC&&... test_func)
+    {
+    constexpr auto signal_size = std::tuple_size<typename std::decay<typename SIGNAL::Signature>::type>::value;
+    return m_callback_manager.connect(signal,
+                                      _connection_helper(signal, method, std::make_index_sequence<signal_size>{}),
+                                      std::forward<TEST_FUNC>(test_func)...);
     }
 
     /** Checks if a particular Connection is connected to this object. */
