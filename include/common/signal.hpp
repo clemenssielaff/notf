@@ -17,7 +17,7 @@ namespace detail {
 
     /******************************************************************************************************************/
 
-    /** A connection between a signal and a callback. */
+    /** A connection between a Signal and a Callback. */
     struct Connection {
 
         template <typename...>
@@ -253,6 +253,24 @@ namespace detail {
         std::vector<Connection> m_connections;
     };
 
+    /******************************************************************************************************************/
+
+    /** Guard struct to make sure that the `is_firing` flag is always unset when a Signal has finished firing. */
+    struct FlagGuard {
+        explicit FlagGuard(bool& flag)
+            : m_flag(flag)
+        {
+            m_flag = true;
+        }
+
+        ~FlagGuard()
+        {
+            m_flag = false;
+        }
+
+        bool& m_flag;
+    };
+
 } // namespace detail
 
 /**********************************************************************************************************************/
@@ -437,10 +455,16 @@ public: // methods
      * Arguments to this function are passed to the connected callbacks and must match the signature with which the
      * Signal instance was defined.
      * Build-in type casting works as expected (float -> int etc.).
+     * @throw   std::runtime_error if the Signal is part of a cyclic connection.
      */
     template <typename... ARGUMENTS>
     void operator()(ARGUMENTS&&... args) const
     {
+        if (m_is_firing) {
+            throw std::runtime_error("Cyclic connection detected!");
+        }
+        detail::FlagGuard _(m_is_firing);
+
         for (auto& target : m_targets) {
             if (true
                 && target.connection.is_connected()
@@ -454,6 +478,9 @@ public: // methods
 private: // fields
     /** All targets of this Signal. */
     std::vector<Target> m_targets;
+
+    /** Flag to identify circular connections of Signals. */
+    mutable bool m_is_firing = false;
 };
 
 /**********************************************************************************************************************/
@@ -623,9 +650,16 @@ public: // methods
         throw std::runtime_error("Cannot disconnect unknown connection");
     }
 
-    /** Fires (emits) the signal. */
+    /** Fires (emits) the signal.
+     * @throw   std::runtime_error if the Signal is part of a cyclic connection.
+     */
     void operator()() const
     {
+        if (m_is_firing) {
+            throw std::runtime_error("Cyclic connection detected!");
+        }
+        detail::FlagGuard _(m_is_firing);
+
         for (auto& target : m_targets) {
             if (true
                 && target.connection.is_connected()
@@ -638,6 +672,9 @@ public: // methods
 private: // fields
     /** All targets of this Signal. */
     std::vector<Target> m_targets;
+
+    /** Flag to identify circular connections of Signals. */
+    mutable bool m_is_firing = false;
 };
 
 /**********************************************************************************************************************/
@@ -655,7 +692,7 @@ public: // methods
 
     /** Creates a Connection connecting the given Signal to a member function of this object. */
     template <typename SIGNAL, typename RECEIVER, typename... SIGNATURE, typename... ARGS,
-              typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value == sizeof... (SIGNATURE))>>
+              typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value == sizeof...(SIGNATURE))>>
     ConnectionID connect_signal(SIGNAL& signal, void (RECEIVER::*method)(SIGNATURE...), ARGS&&... args)
     {
         return m_callback_manager.connect(
@@ -666,13 +703,13 @@ public: // methods
 
     /** Creates a Connection connecting the given Signal to a const member function of this object. */
     template <typename SIGNAL, typename RECEIVER, typename... SIGNATURE, typename... ARGS,
-              typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value == sizeof... (SIGNATURE))>>
+              typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value == sizeof...(SIGNATURE))>>
     ConnectionID connect_signal(SIGNAL& signal, void (RECEIVER::*method)(SIGNATURE...) const, ARGS&&... args)
     {
         return m_callback_manager.connect(
-                    signal,
-                    [this, method](SIGNATURE... args) { (static_cast<RECEIVER*>(this)->*method)(args...); },
-        std::forward<ARGS>(args)...);
+            signal,
+            [this, method](SIGNATURE... args) { (static_cast<RECEIVER*>(this)->*method)(args...); },
+            std::forward<ARGS>(args)...);
     }
 
     /** Overload to connect any Signal to a member function without arguments.
@@ -694,10 +731,10 @@ public: // methods
               typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value > 0)>>
     ConnectionID connect_signal(SIGNAL& signal, void (RECEIVER::*method)(void) const, TEST_FUNC&&... test_func)
     {
-    constexpr auto signal_size = std::tuple_size<typename std::decay<typename SIGNAL::Signature>::type>::value;
-    return m_callback_manager.connect(signal,
-                                      _connection_helper(signal, method, std::make_index_sequence<signal_size>{}),
-                                      std::forward<TEST_FUNC>(test_func)...);
+        constexpr auto signal_size = std::tuple_size<typename std::decay<typename SIGNAL::Signature>::type>::value;
+        return m_callback_manager.connect(signal,
+                                          _connection_helper(signal, method, std::make_index_sequence<signal_size>{}),
+                                          std::forward<TEST_FUNC>(test_func)...);
     }
 
     /** Checks if a particular Connection is connected to this object. */
