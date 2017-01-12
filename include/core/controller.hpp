@@ -7,6 +7,7 @@
 
 #include "common/log.hpp"
 #include "common/string_utils.hpp"
+#include "core/abstract_property.hpp"
 #include "core/events/mouse_event.hpp"
 #include "core/layout_item.hpp"
 
@@ -170,9 +171,10 @@ protected: // methods
     /**
      * @param state_machine StateMachine of this Controller, can only be created by the subclass.
      */
-    Controller(StateMachine&& state_machine)
+    Controller(StateMachine&& state_machine, PropertyMap&& property_map)
         : AbstractController()
         , m_state_machine(std::move(state_machine))
+        , m_property_map(std::move(property_map))
         , m_current_state(nullptr)
     {
     }
@@ -194,7 +196,15 @@ protected: // methods
         m_current_state = const_cast<State*>(next); // Controller subclasses may only have const States, we need mutable
         m_current_state->enter(static_cast<T&>(*this));
     }
-    void transition_to(const std::string& state) { transition_to(m_state_machine.get_state(state)); }
+
+    /** Overload to transition to a new State by name.
+     * @param state                 Name of the State to transition to.
+     * @throw std::runtime_error    If a State by the given name could not be found.
+     */
+    void transition_to(const std::string& state)
+    {
+        transition_to(m_state_machine.get_state(state));
+    }
 
     /** Returns the name of the current State or an empty String, if the Controller doesn't have a State. */
     const std::string& get_current_state_name() const
@@ -206,6 +216,9 @@ protected: // methods
 private: // fields
     /** The Controller's StateMachine. */
     const StateMachine m_state_machine;
+
+    /** Map of all the Properties of this Controller. */
+    const PropertyMap m_property_map;
 
     /** State that the Controller is currently in. */
     State* m_current_state;

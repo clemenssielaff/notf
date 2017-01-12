@@ -44,7 +44,8 @@ CONFIG(test) {
         test/test_signal.cpp \
         test/test_color.cpp \
         test/test_circle.cpp \
-        test/test_aabr.cpp
+        test/test_aabr.cpp \
+        test/test_property.cpp
 
     HEADERS += \
         test/catch.hpp

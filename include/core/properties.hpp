@@ -28,14 +28,14 @@ namespace notf {
             static const std::string type_name = #NAME;              \
             return type_name;                                        \
         }                                                            \
-    }
+    };
 
 #ifdef NOTF_PROPERTY_IMPL
 #define DEFINE_PROPERTY(NAME, TYPE)                                       \
     _notf_DEFINE_PROPERTY(NAME, TYPE);                                    \
     NAME::~NAME() {}                                                      \
     template <>                                                           \
-    NAME* PropertyMap::get<NAME>(const std::string& name)                 \
+    NAME* PropertyMap::get<NAME>(const std::string& name) const           \
     {                                                                     \
         auto value = at(name).get();                                      \
         auto result = dynamic_cast<NAME*>(value);                         \
@@ -48,7 +48,10 @@ namespace notf {
         return result;                                                    \
     }
 #else
-#define DEFINE_PROPERTY(NAME, TYPE) _notf_DEFINE_PROPERTY(NAME, TYPE);
+#define DEFINE_PROPERTY(NAME, TYPE)    \
+    _notf_DEFINE_PROPERTY(NAME, TYPE); \
+    template <>                        \
+    NAME* PropertyMap::get<NAME>(const std::string& name) const;
 #endif
 
 DEFINE_PROPERTY(BoolProperty, bool);

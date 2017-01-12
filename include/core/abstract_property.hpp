@@ -35,7 +35,7 @@ public: // methods
      */
     template <typename PROPERTY_TYPE,
               typename = std::enable_if_t<std::is_base_of<AbstractProperty, PROPERTY_TYPE>::value>>
-    PROPERTY_TYPE* get(const std::string& name);
+    PROPERTY_TYPE* get(const std::string& name) const;
 };
 
 /**********************************************************************************************************************/
