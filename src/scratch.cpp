@@ -1,55 +1,76 @@
 #include <iostream>
 #include <string>
 
-#include "common/signal.hpp"
+#include "core/abstract_property.hpp"
+#include "core/properties.hpp"
 
 using namespace notf;
 
-struct Emitter : public receive_signals {
-    Emitter() = default;
-    Signal<> signal;
-    uint count = 1;
-    void slot()
+struct Bar {
+    Bar()
+        : map()
     {
-        std::cout << "Emitter " << count++ << std::endl;
-        signal();
+        map.create_property<IntProperty>("bar_prop", 123);
     }
+    PropertyMap map;
 };
 
-struct Step : public receive_signals {
-    Step() = default;
-    Signal<> signal;
-    uint count = 1;
-    void slot()
-    {
-        std::cout << "Step " << count++ << std::endl;
-        signal();
-    }
-};
+struct Foo {
 
-struct Closer : public receive_signals {
-    Closer() = default;
-    Signal<> signal;
-    uint count = 1;
-    void slot()
+    Foo(Bar& bar)
+        : m_map()
     {
-        std::cout << "Closer " << count++ << std::endl;
-        signal();
+        auto prop = m_map.create_property<IntProperty>("foo_prop", 0);
+        auto other = bar.map.get<IntProperty>("bar_prop");
+        property_expression(prop, {return other->get_value(); }, other);
     }
+
+    PropertyMap m_map;
 };
 
 //int notmain()
 int main()
 {
-    Emitter emitter;
-    Step step;
-    Closer closer;
+    PropertyMap map;
 
-    step.connect_signal(emitter.signal, &Step::slot);
-    closer.connect_signal(step.signal, &Closer::slot);
-    emitter.connect_signal(closer.signal, &Emitter::slot);
+    FloatProperty* one = map.create_property<FloatProperty>("one", 1.2);
+    IntProperty* two = map.create_property<IntProperty>("two", 2);
+    IntProperty* three = map.create_property<IntProperty>("three", 3);
+    int four = 4;
 
-    emitter.signal();
+    std::cout << one->get_value() << std::endl;
+    std::cout << two->get_value() << std::endl;
+    std::cout << three->get_value() << std::endl;
+
+    property_expression(one, {
+        return two->get_value() + three->get_value() + four;
+    }, two, three, four);
+
+    std::cout << "--------------" << std::endl;
+    std::cout << one->get_value() << std::endl;
+    std::cout << two->get_value() << std::endl;
+    std::cout << three->get_value() << std::endl;
+
+    two->set_value(12);
+
+    std::cout << "--------------" << std::endl;
+    std::cout << one->get_value() << std::endl;
+    std::cout << two->get_value() << std::endl;
+    std::cout << three->get_value() << std::endl;
+
+//    property_expression(two, {
+//        return one->get_value();
+//    }, one);
+
+    std::cout << "--------------" << std::endl;
+    std::cout << one->get_value() << std::endl;
+    std::cout << two->get_value() << std::endl;
+    std::cout << three->get_value() << std::endl;
+
+    Bar bar;
+    Foo foo(bar);
+    std::cout << "--------------" << std::endl;
+    std::cout << foo.m_map.get<FloatProperty>("foo_prop")->get_value() << std::endl;
 
     return 0;
 }

@@ -1,4 +1,4 @@
-#include "core/property.hpp"
+#include "core/abstract_property.hpp"
 
 namespace notf {
 

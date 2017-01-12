@@ -5,7 +5,6 @@
 #include <string>
 
 #include "common/signal.hpp"
-#include "common/string_utils.hpp"
 #include "utils/macro_overload.hpp"
 
 namespace notf {
@@ -34,18 +33,9 @@ public: // methods
      * @param name          Name of the requested Property.
      * @throw               std::out_of_range if the name is not known / std::runtime_error if the type does not match.
      */
-    template <typename PROPERTY_TYPE, typename KEY_TYPE,
+    template <typename PROPERTY_TYPE,
               typename = std::enable_if_t<std::is_base_of<AbstractProperty, PROPERTY_TYPE>::value>>
-    PROPERTY_TYPE* get(KEY_TYPE&& name)
-    {
-        auto result = dynamic_cast<PROPERTY_TYPE*>(at(name).get());
-        if (!result) {
-            // TODO: stringify real and requested property types in error message
-            throw std::runtime_error(string_format("Requested wrong Property type for Property named \"%s\"",
-                                                   std::string(std::move(name)).c_str()));
-        }
-        return result;
-    }
+    PROPERTY_TYPE* get(const std::string& name);
 };
 
 /**********************************************************************************************************************/
@@ -66,6 +56,9 @@ public: // methods
 
     /** The name of this Property. */
     const std::string& get_name() const { return m_it->first; }
+
+    /** The printable type of this Property. */
+    virtual const std::string& get_type() const = 0;
 
 private: // fields
     /** Iterator to the item in the PropertyMap containing this Property.
@@ -181,8 +174,8 @@ namespace detail {
 #define _notf_variadic_capture15(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j, &k = k, &l = l, &m = m, &n = n, &o = o
 #define _notf_variadic_capture16(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j, &k = k, &l = l, &m = m, &n = n, &o = o, &p = p
 
-#define property_expression(TARGET, LAMBDA, ...)                           \
-    TARGET->_set_expression([_notf_variadic_capture(__VA_ARGS__)] LAMBDA); \
-    notf::detail::connect_property_signals(TARGET, __VA_ARGS__)
+#define property_expression(TARGET, LAMBDA, ...)                 \
+    notf::detail::connect_property_signals(TARGET, __VA_ARGS__); \
+    TARGET->_set_expression([_notf_variadic_capture(__VA_ARGS__)] LAMBDA)
 
 } // namespace notf

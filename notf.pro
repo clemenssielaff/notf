@@ -116,8 +116,8 @@ SOURCES += \
     src/python/py_event.cpp \
     src/python/py_signal.cpp \
     src/python/py_dict_utils.cpp \
-    src/core/property_impl.cpp \
-    src/core/property.cpp
+    src/core/abstract_property.cpp \
+    src/core/properties.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -192,8 +192,8 @@ HEADERS += \
     include/common/input.hpp \  
     include/python/py_signal.hpp \
     include/python/py_dict_utils.hpp \
-    include/core/property.hpp \
-    include/core/property_impl.hpp \
-    include/utils/macro_overload.hpp
+    include/utils/macro_overload.hpp \
+    include/core/abstract_property.hpp \
+    include/core/properties.hpp
 
 QMAKE_CXX = ccache g++

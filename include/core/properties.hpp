@@ -5,7 +5,7 @@
 #include "common/claim.hpp"
 #include "common/size2f.hpp"
 #include "common/transform2.hpp"
-#include "core/property.hpp"
+#include "core/abstract_property.hpp"
 
 namespace notf {
 
@@ -14,14 +14,42 @@ namespace notf {
 /* In order to add a new Property class, add a new DEFINE_PROPERTY and one or more CREATE_PROPERTY_IMPL (see below). */
 
 #pragma push_macro("DEFINE_PROPERTY")
-#define DEFINE_PROPERTY(NAME, TYPE)                                  \
+
+#define _notf_DEFINE_PROPERTY(NAME, TYPE)                            \
     class NAME : public Property<TYPE> {                             \
     public:                                                          \
         NAME(const TYPE value, const PropertyMap::iterator iterator) \
             : Property<TYPE>(std::move(value), std::move(iterator))  \
         {                                                            \
         }                                                            \
-    };
+        virtual ~NAME() override;                                    \
+        virtual const std::string& get_type() const override         \
+        {                                                            \
+            static const std::string type_name = #NAME;              \
+            return type_name;                                        \
+        }                                                            \
+    }
+
+#ifdef NOTF_PROPERTY_IMPL
+#define DEFINE_PROPERTY(NAME, TYPE)                                       \
+    _notf_DEFINE_PROPERTY(NAME, TYPE);                                    \
+    NAME::~NAME() {}                                                      \
+    template <>                                                           \
+    NAME* PropertyMap::get<NAME>(const std::string& name)                 \
+    {                                                                     \
+        auto value = at(name).get();                                      \
+        auto result = dynamic_cast<NAME*>(value);                         \
+        if (!result) {                                                    \
+            throw std::runtime_error(string_format(                       \
+                "Requested wrong type \"" #NAME "\" for Property \"%s\" " \
+                "which is of type \"%s\"",                                \
+                name.c_str(), value->get_type().c_str()));                \
+        }                                                                 \
+        return result;                                                    \
+    }
+#else
+#define DEFINE_PROPERTY(NAME, TYPE) _notf_DEFINE_PROPERTY(NAME, TYPE);
+#endif
 
 DEFINE_PROPERTY(BoolProperty, bool);
 DEFINE_PROPERTY(FloatProperty, float);
@@ -31,6 +59,7 @@ DEFINE_PROPERTY(ClaimProperty, Claim);
 DEFINE_PROPERTY(Size2Property, Size2f);
 DEFINE_PROPERTY(Transform2Property, Transform2);
 
+#undef _notf_DEFINE_PROPERTY
 #undef DEFINE_PROPERTY
 #pragma pop_macro("DEFINE_PROPERTY")
 

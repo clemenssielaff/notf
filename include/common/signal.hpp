@@ -299,7 +299,7 @@ private: // struct
         /** Callback function. */
         std::function<void(SIGNATURE...)> function;
 
-        /** The signal is only passed over this Connection if this function evaluates to true. */
+        /** The signal is only passed over this Connection if this function evaluates to true (or is empty). */
         std::function<bool(SIGNATURE...)> test_function;
     };
 
@@ -335,11 +335,6 @@ public: // methods
                                std::function<bool(SIGNATURE...)> test_func = {})
     {
         assert(function);
-
-        // default test succeeds always
-        if (!test_func) {
-            test_func = [](SIGNATURE...) { return true; };
-        }
 
         // remove disconnected targets
         std::remove_if(m_targets.begin(), m_targets.end(), [](const Target& target) -> bool {
@@ -469,7 +464,7 @@ public: // methods
             if (true
                 && target.connection.is_connected()
                 && target.connection.is_enabled()
-                && target.test_function(args...)) {
+                && (!target.test_function || target.test_function(args...))) {
                 target.function(args...);
             }
         }
