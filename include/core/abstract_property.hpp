@@ -10,6 +10,44 @@
 namespace notf {
 
 class AbstractProperty;
+template <typename T>
+class Property;
+
+/**********************************************************************************************************************/
+
+namespace detail {
+
+    template <typename TARGET_TYPE>
+    constexpr void connect_property_signals(Property<TARGET_TYPE>*)
+    {
+        // stop recursion
+    }
+
+    template <typename TARGET_TYPE, typename T, typename... ARGS,
+              typename = std::enable_if_t<!std::is_base_of<AbstractProperty, std::remove_pointer_t<std::decay_t<T>>>::value>>
+    constexpr void connect_property_signals(Property<TARGET_TYPE>* target, T&&, ARGS&&... args)
+    {
+        // ignore non-Property `T`s
+        return connect_property_signals(target, std::forward<ARGS>(args)...);
+    }
+
+    template <typename TARGET_TYPE, typename SOURCE_TYPE, typename... ARGS>
+    constexpr void connect_property_signals(Property<TARGET_TYPE>* target, Property<SOURCE_TYPE>* source, ARGS&&... args)
+    {
+        // connect the signals of all Property arguments
+        target->connect_signal(source->value_changed, &Property<TARGET_TYPE>::_update_expression);
+        target->connect_signal(source->on_deletion, &Property<TARGET_TYPE>::_drop_expression);
+        return connect_property_signals(target, std::forward<ARGS>(args)...);
+    }
+
+    /** Accessor function allowing `_set_expression` of Property<T> to be private. */
+    template <typename TARGET_TYPE, typename... ARGS>
+    void constexpr set_expression(Property<TARGET_TYPE>* target, ARGS&&... args)
+    {
+        target->_set_expression(std::forward<ARGS>(args)...);
+    }
+
+} // namespace detail
 
 /**********************************************************************************************************************/
 
@@ -51,7 +89,6 @@ public: // methods
     {
     }
 
-    /** Virtual destructor to force this Properties to be polymorphic (allows `dynamic_cast`ing them). */
     virtual ~AbstractProperty();
 
     /** The name of this Property. */
@@ -74,6 +111,12 @@ private: // fields
 template <typename T>
 class Property : public AbstractProperty {
 
+    template <typename TARGET_TYPE, typename SOURCE_TYPE, typename... ARGS>
+    friend constexpr void detail::connect_property_signals(Property<TARGET_TYPE>*, Property<SOURCE_TYPE>*, ARGS&&...);
+
+    template <typename TARGET_TYPE, typename... ARGS>
+    friend constexpr void detail::set_expression(Property<TARGET_TYPE>*, ARGS&&...);
+
 public: // methods
     Property(const T value, const PropertyMap::iterator iterator)
         : AbstractProperty(std::move(iterator))
@@ -82,8 +125,13 @@ public: // methods
     {
     }
 
+    virtual ~Property() override { on_deletion(); }
+
     /** Returns the current value of this Property. */
     const T& get_value() const { return m_value; }
+
+    /** Tests whether this Property is currently defined by an Expression. */
+    bool has_expression() const { return static_cast<bool>(m_expression); }
 
     /** Updates the value of this Property.
      * If the Property is defined through an expression, manually setting the value will remove the expression.
@@ -91,10 +139,18 @@ public: // methods
     void set_value(T value)
     {
         m_value = std::move(value);
-        m_expression = nullptr;
+        _drop_expression();
         value_changed(m_value);
     }
 
+public: // signals
+    /** Emitted when the value of this Property has changed. */
+    Signal<const T&> value_changed;
+
+    /** Emitted, when the Property is being deleted. */
+    Signal<> on_deletion;
+
+private: // methods for property_expression
     /** Assigns a new expression to this Property.
      * If the given expression is not empty, it is executed immediately and its result stored in the Property's value.
      */
@@ -116,9 +172,12 @@ public: // methods
         }
     }
 
-public: // signals
-    /** Emitted when the value of this Property has changed. */
-    Signal<const T&> value_changed;
+    /** Removes the current expression defining this Property without modifying its value. */
+    void _drop_expression()
+    {
+        m_expression = nullptr;
+        disconnect_all_connections();
+    }
 
 private: // fields
     /** Value of this Property. */
@@ -129,32 +188,6 @@ private: // fields
 };
 
 /**********************************************************************************************************************/
-
-namespace detail {
-
-    template <typename TARGET_TYPE>
-    constexpr void connect_property_signals(Property<TARGET_TYPE>*)
-    {
-        // stop recursion
-    }
-
-    template <typename TARGET_TYPE, typename T, typename... ARGS,
-              typename = std::enable_if_t<!std::is_base_of<AbstractProperty, std::remove_pointer_t<std::decay_t<T>>>::value>>
-    constexpr void connect_property_signals(Property<TARGET_TYPE>* target, T&&, ARGS&&... args)
-    {
-        // ignore non-Property `T`s
-        return connect_property_signals(target, std::forward<ARGS>(args)...);
-    }
-
-    template <typename TARGET_TYPE, typename SOURCE_TYPE, typename... ARGS>
-    constexpr void connect_property_signals(Property<TARGET_TYPE>* target, Property<SOURCE_TYPE>* source, ARGS&&... args)
-    {
-        // connect the value_changed signal of all Property arguments
-        target->connect_signal(source->value_changed, &Property<TARGET_TYPE>::_update_expression);
-        return connect_property_signals(target, std::forward<ARGS>(args)...);
-    }
-
-} // namespace detail
 
 #define _notf_variadic_capture(...) NOTF_OVERLOADED_MACRO(_notf_variadic_capture, __VA_ARGS__)
 #define _notf_variadic_capture1(a) &a = a
@@ -176,6 +209,6 @@ namespace detail {
 
 #define property_expression(TARGET, LAMBDA, ...)                 \
     notf::detail::connect_property_signals(TARGET, __VA_ARGS__); \
-    TARGET->_set_expression([_notf_variadic_capture(__VA_ARGS__)] LAMBDA)
+    notf::detail::set_expression(TARGET, [_notf_variadic_capture(__VA_ARGS__)] LAMBDA)
 
 } // namespace notf
