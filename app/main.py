@@ -56,11 +56,11 @@ class ButtonController(Controller):
 
         self._orange_connection = self.on_mouse_button.connect(
             lambda event: self.transition_to("orange"),
-            lambda event : event[0].action == notf.MouseAction.PRESS)
+            lambda event : event.action == notf.MouseAction.PRESS)
 
         self._blue_connection = self.on_mouse_button.connect(
             lambda event: self.transition_to("blue"),
-            lambda event : event[0].action == notf.MouseAction.PRESS)
+            lambda event : event.action == notf.MouseAction.PRESS)
 
         self._disable_all()
         self.transition_to("orange")

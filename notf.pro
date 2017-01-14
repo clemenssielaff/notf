@@ -118,7 +118,8 @@ SOURCES += \
     src/python/py_signal.cpp \
     src/python/py_dict_utils.cpp \
     src/core/abstract_property.cpp \
-    src/core/properties.cpp
+    src/core/properties.cpp \
+    src/python/py_property.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -195,6 +196,10 @@ HEADERS += \
     include/python/py_dict_utils.hpp \
     include/utils/macro_overload.hpp \
     include/core/abstract_property.hpp \
-    include/core/properties.hpp
+    include/core/properties.hpp \
+    include/utils/apply_tuple.hpp
 
 QMAKE_CXX = ccache g++
+
+DISTFILES += \
+    app/main.py

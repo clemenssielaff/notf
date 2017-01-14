@@ -78,6 +78,25 @@ SCENARIO("Properties within a single PropertyMap", "[core][properties]")
             }
         }
     }
+
+    WHEN("a pair of expressions would create a race condition")
+    {
+        property_expression(one, {
+            return two->get_value() + three->get_value();
+        }, two, three);
+
+        property_expression(two, {
+            return three->get_value() + 1;
+        }, three);
+
+        THEN("it is resolved correctly")
+        {
+            three->set_value(4);
+
+            REQUIRE(two->get_value() == 5);
+            REQUIRE(one->get_value() == approx(9)); // would be 6 if expression "one" wouldn't wait for expression "two"
+        }
+    }
 }
 
 SCENARIO("Properties in two different PropertyMaps", "[core][properties]")

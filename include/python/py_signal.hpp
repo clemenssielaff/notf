@@ -7,6 +7,7 @@ namespace py = pybind11;
 #include "common/signal.hpp"
 #include "python/py_dict_utils.hpp"
 #include "python/py_fwd.hpp"
+#include "utils/apply_tuple.hpp"
 
 namespace notf {
 
@@ -14,6 +15,9 @@ namespace detail {
     extern const char* s_signal_cache_name;
 }
 
+/** Python implementation of the notf Signal object.
+ * All specializations of this class must be explicitly created in `py_signal.cpp` using the `define_pysignal` macro.
+ */
 template <typename... SIGNATURE>
 class PySignal {
 
@@ -80,28 +84,30 @@ public: // methods
         }
 
         { // store the callback and test into a cache in the object's __dict__ so they don't get lost
-            py::object notf_cache = get_notf_cache(host);
-            py::object signal_cache_dict = get_dict(notf_cache, detail::s_signal_cache_name);
-            py::object cache = get_list(signal_cache_dict, m_name.c_str());
-            int success = 0;
-            PyObject* handler;
+            py::dict notf_cache = get_notf_cache(host);
+            py::dict signal_cache_dict = get_dict(notf_cache, detail::s_signal_cache_name);
+            py::list cache = get_list(signal_cache_dict, m_name.c_str());
+            py::object handler;
             if (test.check()) {
-                handler = PyTuple_Pack(2, callback.ptr(), test.ptr());
+                handler = py::object(PyTuple_Pack(2, callback.ptr(), test.ptr()), /* borrowed = */ false);
             }
             else {
-                handler = PyTuple_Pack(1, callback.ptr());
+                handler = py::object(PyTuple_Pack(1, callback.ptr()), /* borrowed = */ false);
             }
-            success += PyList_Append(cache.ptr(), handler);
-            py_decref(handler);
-            assert(success == 0);
 
-            // TODO: theoretically(!) you could fill up the cache by repeatedly connecting the same callback
-            // before I tried to put the callbacks into a set, but that won't work
-            // the set recognizes that the new callback is the same as the old one and won't insert it
-            // but the weakref still references the "new" callback, which goes out of scope after this function
-            // this could be fixed, if I can identify that a set already contains a callback and than explicitly
-            // "weakrefing" the old callback.
-            // there is a "contain" function for sets, but I haven't found a "find" or "iter" function yet
+            // if the handler is an exact copy of one that is already known, return that one instead
+            for (size_t i = 0; i < cache.size(); ++i) {
+                int result = PyObject_RichCompareBool(
+                    handler.ptr(), PyList_GetItem(cache.ptr(), static_cast<Py_ssize_t>(i)), Py_EQ);
+                assert(result != -1);
+                if (result == 1) {
+                    assert(i < m_targets.size());
+                    return m_targets[i].id;
+                }
+            }
+
+            int success = PyList_Append(cache.ptr(), handler.ptr());
+            assert(success == 0);
         }
 
         // create the new target
@@ -120,8 +126,6 @@ public: // methods
      */
     void fire(SIGNATURE... args)
     {
-        auto arguments = std::make_tuple<SIGNATURE...>(std::forward<SIGNATURE>(args)...); // TODO: expand pysignals arguments tuple
-
         // we need to filter for all enabled targets before executing the callbacks
         // since they might dis/enable other targets
         std::vector<Target*> enabled_targets;
@@ -131,6 +135,8 @@ public: // methods
             }
         }
 
+        auto arguments = std::make_tuple<SIGNATURE...>(std::forward<SIGNATURE>(args)...);
+
         for (Target* target : enabled_targets) {
 
             // execute test function
@@ -138,7 +144,7 @@ public: // methods
                 py::function test_func(PyWeakref_GetObject(target->test.get()), /* borrowed = */ true);
                 if (test_func.check()) {
                     try {
-                        py::object result = test_func(arguments);
+                        py::object result = apply(test_func, arguments);
                         if (PyObject_IsTrue(result.ptr()) != 1) {
                             continue;
                         }
@@ -157,7 +163,7 @@ public: // methods
             py::function callback(PyWeakref_GetObject(target->callback.get()), /* borrowed = */ true);
             if (callback.check()) {
                 try {
-                    callback(arguments);
+                    apply(callback, arguments);
                 }
                 catch (std::runtime_error error) {
                     log_warning << error.what();
@@ -167,6 +173,12 @@ public: // methods
                 log_critical << "Invalid weakref of callback function in signal: \"" << m_name << "\"";
             }
         }
+    }
+
+    /** Operator overload for `fire`. */
+    void operator()(SIGNATURE... args)
+    {
+        fire(std::forward<SIGNATURE>(args)...);
     }
 
     /** Checks if a particular Connection is connected to this Signal. */
@@ -243,7 +255,15 @@ public: // methods
     /** Disconnect all Connections from this Signal. */
     void disconnect()
     {
-        m_targets.clear(); // TODO: remove entries of the cache as well
+        m_targets.clear();
+
+        // clear the cache as well
+        py::object host(PyWeakref_GetObject(m_host.get()), /* borrowed = */ true);
+        py::dict notf_cache = get_notf_cache(host);
+        py::dict signal_cache_dict = get_dict(notf_cache, detail::s_signal_cache_name);
+        py::list cache = get_list(signal_cache_dict, m_name.c_str());
+        PySequence_DelSlice(cache.ptr(), 0, PySequence_Length(cache.ptr()));
+        assert(PySequence_Length(cache.ptr()) == 0);
     }
 
     /** Disconnects a specific Connection of this Signal.
@@ -254,17 +274,28 @@ public: // methods
     {
         using std::swap;
         bool success = false;
+        Py_ssize_t cache_index = 0;
         for (Target& target : m_targets) {
             if (id == target.id) {
                 swap(target, m_targets.back());
                 success = true;
-                return;
+            }
+            else {
+                ++cache_index;
             }
         }
         if (!success) {
             throw std::runtime_error("Cannot disconnect unknown connection");
         }
         m_targets.pop_back();
+
+        // delete the target from the cache as well
+        py::object host(PyWeakref_GetObject(m_host.get()), /* borrowed = */ true);
+        py::dict notf_cache = get_notf_cache(host);
+        py::dict signal_cache_dict = get_dict(notf_cache, detail::s_signal_cache_name);
+        py::list cache = get_list(signal_cache_dict, m_name.c_str());
+        assert(cache_index < PyList_Size(cache.ptr()));
+        PySequence_DelSlice(cache.ptr(), cache_index, cache_index + 1);
     }
 
     /** Restores the targets after the Python object has been finalized an all weakrefs have been destroyed.

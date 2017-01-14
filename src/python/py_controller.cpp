@@ -91,6 +91,7 @@ public: // methods
         it->second.enter.reset(PyWeakref_NewRef(enter.ptr(), nullptr));
         it->second.leave.reset(PyWeakref_NewRef(leave.ptr(), nullptr));
     }
+    // TODO: replace with c++11 py::weakref
 
     /** Checks if the Controller has a State with the given name. */
     bool has_state(const std::string& name) const { return m_states.find(name) != m_states.end(); }

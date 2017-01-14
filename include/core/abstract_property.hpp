@@ -80,6 +80,13 @@ public: // methods
 
 /** An abstract Property.
  * Is pretty useless by itself, you'll have to cast it to a subclass of Property<T> to get any functionality out of it.
+ *
+ * NoTFs property model is extremely simple and lightweight with only the bare minimum of "magic".
+ * You can define expressions for a Property to be dependent on another Property, but trying to create any kind of
+ * cyclic evaluation will raise a runtime error.
+ * That means `F = m * a` on it's own is okay, but adding `m = F / a' will cause an error since setting `a` will cause
+ * `F` to update, which updates `m`, which causes `F` to update again etc.
+ * This is not a constraint solver!
  */
 class AbstractProperty : public receive_signals {
 
@@ -138,22 +145,20 @@ public: // methods
      */
     void set_value(T value)
     {
-        m_value = std::move(value);
         _drop_expression();
-        value_changed(m_value);
+        m_value = std::move(value);
+        value_changed();
     }
 
 public: // signals
     /** Emitted when the value of this Property has changed. */
-    Signal<const T&> value_changed;
+    Signal<> value_changed;
 
     /** Emitted, when the Property is being deleted. */
     Signal<> on_deletion;
 
 private: // methods for property_expression
-    /** Assigns a new expression to this Property.
-     * If the given expression is not empty, it is executed immediately and its result stored in the Property's value.
-     */
+    /** Assigns a new expression to this Property and executes it immediately. */
     void _set_expression(std::function<T()> expression)
     {
         using std::swap;
@@ -161,14 +166,15 @@ private: // methods for property_expression
         _update_expression();
     }
 
-    /** Updates the value of this Property through its expression.
-     * Is ignored, if no expression is set.
-     */
+    /** Updates the value of this Property through its expression. */
     void _update_expression()
     {
-        if (m_expression) {
+        if (has_expression()) {
+            const auto cache = m_value;
             m_value = m_expression();
-            value_changed(m_value);
+            if(cache != m_value){
+                value_changed();
+            }
         }
     }
 
