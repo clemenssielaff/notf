@@ -171,7 +171,7 @@ public: // methods
     }
 
     /** Takes any kind of parameter list, extracts only the Properties and adds dependencies to each one of them.
-     * @return  Number of recognized, unique dependencies.
+     * @return  Number of recognized, new dependencies.
      */
     template <typename... ARGS>
     uint add_dependencies(ARGS&&... args)
@@ -198,7 +198,7 @@ private: // signals
     /** Emitted, right after `_signal_dirty` signalling all dependent Properties to clean up. */
     Signal<> _signal_clean;
 
-private: // methods for property_expression
+private: // methods
     /** Called when the user requests a change of this Property's value. */
     void _change_value(const T value)
     {

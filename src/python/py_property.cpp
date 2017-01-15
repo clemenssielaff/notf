@@ -1,6 +1,7 @@
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
+#include <functional>
 #include <set>
 #include <string>
 
@@ -8,22 +9,42 @@ namespace py = pybind11;
 #include "python/py_signal.hpp"
 using namespace notf;
 
-class PyProperty {
+namespace std {
+
+/** `less` specialization for py::weakref, used by std::set<py::weakref>. */
+template <>
+struct less<py::weakref> {
+    bool operator()(const py::weakref& lhs, const py::weakref& rhs) const
+    {
+        return PyObject_RichCompareBool(lhs.ptr(), rhs.ptr(), Py_EQ) == 1;
+    }
+};
+
+} // namespace  anonymous
+
+class PyProperty : public receive_signals {
 public:
     PyProperty(py::object value, std::string name)
         : m_name(std::move(name))
         , m_value(std::move(value))
+        , m_is_dirty(false)
         , m_expression()
         , m_dependencies()
         , value_changed(py::cast(this), "value_changed")
-        , on_deletion(py::cast(this), "on_deletion")
     {
     }
 
-    ~PyProperty() { on_deletion(); }
+    ~PyProperty() { _on_deletion(); }
 
-    /** Returns the current value of this Property. */
-    const py::object& get_value() const { return m_value; }
+    /** The name of this Property. */
+    const std::string& get_name() const { return m_name; }
+
+    /** The current value of this Property. */
+    const py::object& get_value()
+    {
+        _make_clean();
+        return m_value;
+    }
 
     /** Tests whether this Property is currently defined by an Expression. */
     bool has_expression() const { return m_expression.ptr() != nullptr; }
@@ -34,28 +55,102 @@ public:
     void set_value(py::object value)
     {
         _drop_expression();
-        m_value = std::move(value);
-        value_changed();
+        _change_value(std::move(value));
     }
 
     /** Assigns a new expression to this Property and executes it immediately. */
     void set_expression(py::function expression)
     {
-        m_expression = std::move(expression);
-        // TODO: identify other Properties, connect their signals and store their dependencies
-        _update_expression();
+        _drop_expression();
+        m_expression = expression; // TODO: identify other Properties, connect their signals and store their dependencies
+        _change_value(m_expression());
+    }
+
+    /** Adds a new dependency to this Property.
+     * Every time a dependency Property is updated, this Property will try to re-evaluate its expression.
+     * Always make sure that all Properties that this Property's expression depends on are registered as dependencies.
+     * Existing dependencies are ignored.
+     * @return  True if a dependency was added, false if it is already known.
+     * @throw   std::runtime_error if the given Python object is not a PyProperty.
+     */
+    bool add_dependency(py::object dependency)
+    {
+        PyProperty* other = dependency.cast<PyProperty*>();
+        if (!other) {
+            throw std::runtime_error("`add_dependency` requires a Property as argument");
+        }
+
+        // make sure that each dependency is unique
+        py::weakref weak_dep(dependency);
+        if (m_dependencies.count(weak_dep) == 0) {
+            m_dependencies.insert(weak_dep);
+        }
+        else {
+            return false;
+        }
+
+        // connect all relevant signals
+        connect_signal(other->_signal_test, [this]() { this->_signal_test(); });
+        connect_signal(other->_signal_dirty, &PyProperty::_make_dirty);
+        connect_signal(other->_signal_clean, &PyProperty::_make_clean);
+        connect_signal(other->_on_deletion, &PyProperty::_drop_expression);
+        return true;
+    }
+
+    /** Adds a dependency to each given Property.
+     * @return  Number of new dependencies.
+     */
+    uint add_dependencies(py::tuple args)
+    {
+        // check if all arguments are of the correct type before adding them
+        for (size_t i = 0; i < args.size(); ++i) {
+            if (!args[i].cast<PyProperty*>()) {
+                throw std::runtime_error("`add_dependencies` takes only Properties as argument");
+            }
+        }
+
+        // count all new dependencies
+        uint count = 0;
+        for (size_t i = 0; i < args.size(); ++i) {
+            if (add_dependency(args[i])) {
+                ++count;
+            }
+        }
+        return count;
     }
 
 private: // methods
-    /** Updates the value of this Property through its expression. */
-    void _update_expression()
+    /** Called when the user requests a change of this Property's value. */
+    void _change_value(py::object value)
     {
-        if (has_expression()) {
-            const py::object cache = m_value;
+        if (value != m_value) {
+            m_value = value;
+            _signal_test();
+            _signal_dirty();
+            _signal_clean();
+            value_changed();
+        }
+    }
+
+    /** Dirty propagation callback. */
+    void _make_dirty()
+    {
+        if (!m_is_dirty && has_expression()) {
+            m_is_dirty = true;
+            _signal_dirty();
+        }
+    }
+
+    /** Updates the value of this Property through its expression. */
+    void _make_clean()
+    {
+        if (m_is_dirty) {
+            assert(has_expression());
+            const auto cache = m_value;
             m_value = m_expression();
-            int result = PyObject_RichCompareBool(cache.ptr(), m_value.ptr(), Py_EQ);
-            assert(result != -1);
-            if (result == 0) {
+            m_is_dirty = false;
+            _signal_clean();
+            if (cache != m_value) {
                 value_changed();
             }
         }
@@ -64,41 +159,44 @@ private: // methods
     /** Removes the current expression defining this Property without modifying its value. */
     void _drop_expression()
     {
-        m_expression = py::function();
-
-        // disconnect from all dependencies
-        for (const auto& dependency : m_dependencies) {
-            const py::weakref& signal_weakref = dependency.first;
-            py::object signal_obj(PyWeakref_GetObject(signal_weakref.ptr()), /* borrowed = */ true);
-            try {
-                PySignal<>* signal = signal_obj.cast<PySignal<>*>();
-                signal->disconnect(dependency.second);
-            }
-            catch (py::cast_error) {
-                log_critical << "Invalid weakref of dependent PyProperty's `value_changed` Signal in Property : \""
-                             << m_name << "\"";
-            }
+        assert(!m_is_dirty);
+        if (has_expression()) {
+            m_expression = py::function();
+            disconnect_all_connections();
+            m_dependencies.clear();
         }
-        m_dependencies.clear();
     }
 
 private: // fields
     /** The name of this Property. */
     std::string m_name;
 
-    /** Returns the current value of this Property. */
+    /** The current value of this Property. */
     py::object m_value;
+
+    /** Dirty flag, used to avoid redundant expression evaluations. */
+    bool m_is_dirty;
 
     /** Expression defining this Property (can be empty). */
     py::function m_expression;
 
-    /** PyProperties that are dependent on the value of this one. */
-    std::set<std::pair<py::weakref, ConnectionID>> m_dependencies;
+    /** All Properties that this one dependends on through its expression. */
+    std::set<py::weakref> m_dependencies;
 
 public: // signals
     /** Emitted when the value of this Property has changed. */
     PySignal<> value_changed;
 
+private: // signals
     /** Emitted, when the Property is being deleted. */
-    PySignal<> on_deletion;
+    Signal<> _on_deletion;
+
+    /** Test signal emitted first to check for cyclic dependencies without changing any state. */
+    Signal<> _signal_test;
+
+    /** Emitted, when the Property's value was changed by the user (directly or indirectly). */
+    Signal<> _signal_dirty;
+
+    /** Emitted, right after `_signal_dirty` signalling all dependent Properties to clean up. */
+    Signal<> _signal_clean;
 };
