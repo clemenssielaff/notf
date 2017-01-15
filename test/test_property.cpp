@@ -132,3 +132,53 @@ SCENARIO("Properties in two different PropertyMaps", "[core][properties]")
         }
     }
 }
+
+SCENARIO("Properties Expressions are guaranteed to be re-evaluated only once for each change", "[core][properties]")
+{
+    /*   b - c
+     *  / \
+     * a   \
+     *  \   \
+     *   + - d - e
+     */
+    PropertyMap map;
+    IntProperty* a = map.create_property<IntProperty>("a", 0);
+    IntProperty* b = map.create_property<IntProperty>("b", 0);
+    IntProperty* c = map.create_property<IntProperty>("c", 0);
+    IntProperty* d = map.create_property<IntProperty>("d", 0);
+    IntProperty* e = map.create_property<IntProperty>("e", 0);
+    int counter = 0;
+
+    WHEN("an expression net would cause a Property expression to be evaluated more than once")
+    {
+        property_expression(b, {
+            return a->get_value();
+        }, a);
+
+        property_expression(c, {
+            return b->get_value();
+        }, b);
+
+        property_expression(d, {
+            counter++;
+            return a->get_value() + b->get_value();
+        }, a, b, counter);
+
+        property_expression(e, {
+            return d->get_value();
+        }, d);
+
+        counter = 0;
+        a->set_value(1);
+
+        THEN("it will still be just evaluated once and all the values will be correct regardless")
+        {
+            REQUIRE(a->get_value() == 1);
+            REQUIRE(b->get_value() == 1);
+            REQUIRE(c->get_value() == 1);
+            REQUIRE(d->get_value() == 2);
+            REQUIRE(e->get_value() == 2);
+            REQUIRE(counter == 1);
+        }
+    }
+}
