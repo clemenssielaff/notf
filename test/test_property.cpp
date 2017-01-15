@@ -182,3 +182,24 @@ SCENARIO("Properties Expressions are guaranteed to be re-evaluated only once for
         }
     }
 }
+
+SCENARIO("The `property_expression` macro creates simple expressions", "[core][properties]")
+{
+    PropertyMap map;
+    IntProperty* a = map.create_property<IntProperty>("a", 0);
+    IntProperty* b = map.create_property<IntProperty>("b", 0);
+    IntProperty* c = map.create_property<IntProperty>("c", 0);
+    int x = 0;
+
+    WHEN("it is used")
+    {
+        auto dep_count = property_expression(a, {
+            return b->get_value() + c->get_value() + x;
+        }, b, c, x);
+
+        THEN("its return value indicates the number of recognized dependencies")
+        {
+            REQUIRE(dep_count == 2);
+        }
+    }
+}
