@@ -1,7 +1,6 @@
 from random import randint
 from notf import *
 from notf import _Font
-import gc
 
 
 class ButtonWidget(Widget):
@@ -47,6 +46,17 @@ class ButtonWidget(Widget):
 class ButtonController(Controller):
     def __init__(self, number):
         super().__init__()
+
+        self.prop_a = Property(1, "propA")
+        self.prop_b = Property(2, "propB")
+        self.prop_c = Property(0, "propC")
+
+        self.prop_c.set_expression(lambda : self.prop_a.get_value() + self.prop_b.get_value())
+        self.prop_c.add_dependencies((self.prop_a, self.prop_b))
+
+        # print(self.prop_c.get_value())
+        self.prop_a.set_value(2)
+        # print(self.prop_c.get_value())
 
         self._widget = ButtonWidget(number)
         self.set_root_item(self._widget)
@@ -94,7 +104,7 @@ class WindowController(Controller):
         stack_layout.set_cross_alignment(Layout.Alignment.START)
         stack_layout.set_content_alignment(Layout.Alignment.START)
 
-        for i in range(64):
+        for i in range(1):
             stack_layout.add_item(ButtonController(i))
 
         # and the fill layout in the foreground

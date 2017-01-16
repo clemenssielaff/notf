@@ -6,6 +6,7 @@ namespace py = pybind11;
 #include <string>
 
 #define NOTF_BINDINGS
+#include "python/docstr.hpp"
 #include "python/py_signal.hpp"
 using namespace notf;
 
@@ -49,7 +50,7 @@ public:
     /** Tests whether this Property is currently defined by an Expression. */
     bool has_expression() const { return m_expression.ptr() != nullptr; }
 
-    /** Updates the value of this Property.
+    /** Sets this Property to a ground value.
      * If the Property is defined through an expression, manually setting the value will remove the expression.
      */
     void set_value(py::object value)
@@ -58,7 +59,7 @@ public:
         _change_value(std::move(value));
     }
 
-    /** Assigns a new expression to this Property and executes it immediately. */
+    /** Assign a new expression to this Property and execute it immediately. */
     void set_expression(py::function expression)
     {
         _drop_expression();
@@ -84,8 +85,7 @@ public:
         py::weakref weak_dep(dependency);
         if (m_dependencies.count(weak_dep) == 0) {
             m_dependencies.insert(weak_dep);
-        }
-        else {
+        } else {
             return false;
         }
 
@@ -95,28 +95,6 @@ public:
         connect_signal(other->_signal_clean, &PyProperty::_make_clean);
         connect_signal(other->_on_deletion, &PyProperty::_drop_expression);
         return true;
-    }
-
-    /** Adds a dependency to each given Property.
-     * @return  Number of new dependencies.
-     */
-    uint add_dependencies(py::tuple args)
-    {
-        // check if all arguments are of the correct type before adding them
-        for (size_t i = 0; i < args.size(); ++i) {
-            if (!args[i].cast<PyProperty*>()) {
-                throw std::runtime_error("`add_dependencies` takes only Properties as argument");
-            }
-        }
-
-        // count all new dependencies
-        uint count = 0;
-        for (size_t i = 0; i < args.size(); ++i) {
-            if (add_dependency(args[i])) {
-                ++count;
-            }
-        }
-        return count;
     }
 
 private: // methods
@@ -200,3 +178,15 @@ private: // signals
     /** Emitted, right after `_signal_dirty` signalling all dependent Properties to clean up. */
     Signal<> _signal_clean;
 };
+
+void produce_properties(pybind11::module& module)
+{
+    py::class_<PyProperty>(module, "Property")
+        .def(py::init<py::object, std::string>())
+        .def("get_name", &PyProperty::get_name, DOCSTR("The name of this Property."))
+        .def("get_value", &PyProperty::get_value, DOCSTR("The current value of this Property."))
+        .def("has_expression", &PyProperty::has_expression, DOCSTR("Tests whether this Property is currently defined by an Expression."))
+        .def("set_value", &PyProperty::set_value, DOCSTR("Sets this Property to a ground value."), py::arg("value"))
+        .def("set_expression", &PyProperty::set_expression, DOCSTR("Assign a new expression to this Property and execute it immediately."), py::arg("expression"))
+        .def("add_dependency", &PyProperty::add_dependency, DOCSTR("Adds a new dependency to this Property."), py::arg("dependency"));
+}

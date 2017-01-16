@@ -29,6 +29,7 @@ void produce_controller(pybind11::module& module, py::detail::generic_type Py_It
 void produce_globals(pybind11::module& module);
 void produce_events(pybind11::module& module);
 void produce_signals(pybind11::module& module);
+void produce_properties(pybind11::module& module);
 
 const char* python_notf_module_name = "notf";
 
@@ -52,6 +53,7 @@ PyObject* produce_pynotf_module()
     produce_window(module);
     produce_layout(module);
     produce_signals(module);
+    produce_properties(module);
 
     py::class_<Item, std::shared_ptr<Item>> Py_Item(module, "_Item");
     produce_controller(module, Py_Item);
