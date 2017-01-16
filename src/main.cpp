@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
 
     window->on_token_key.connect(
         [window, &app](const KeyEvent&) {
-            if(PythonInterpreter* python = app.get_python_interpreter()){
+            if (PythonInterpreter* python = app.get_python_interpreter()) {
                 python->parse_app("main.py");
             }
         },

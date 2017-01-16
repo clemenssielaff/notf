@@ -11,6 +11,24 @@
 namespace notf {
 
 class AbstractProperty;
+template <typename>
+class Property;
+
+/**********************************************************************************************************************/
+
+namespace detail {
+
+    /** Access for function to create a Property expression (see `property_expression`-macro below). */
+    template <typename TYPE, typename EXPR, typename... ARGS>
+    void _create_property_expression(Property<TYPE>* property, EXPR&& expression, ARGS&&... dependencies)
+    {
+        // order is important here, we need the dependencies in place when the expression is assigned and evaluated
+        property->_drop_expression();
+        property->_add_dependencies(std::forward<ARGS>(dependencies)...);
+        property->_set_expression(std::forward<EXPR>(expression));
+    }
+
+} // namespace detail
 
 /**********************************************************************************************************************/
 
@@ -104,6 +122,9 @@ class Property : public AbstractProperty {
     template <typename>
     friend class Property;
 
+    template <typename TYPE, typename EXPR, typename... ARGS>
+    friend void detail::_create_property_expression(Property<TYPE>*, EXPR&&, ARGS&&...);
+
 public: // methods
     Property(const T value, const PropertyMap::iterator iterator)
         : AbstractProperty(std::move(iterator))
@@ -135,52 +156,6 @@ public: // methods
         _change_value(std::move(value));
     }
 
-    /** Assigns a new expression to this Property and executes it immediately. */
-    void set_expression(std::function<T()> expression)
-    {
-        _drop_expression();
-        m_expression = expression;
-        _change_value(m_expression());
-    }
-
-    /** Adds a new dependency to this Property.
-     * Every time a dependency Property is updated, this Property will try to re-evaluate its expression.
-     * Always make sure that all Properties that this Property's expression depends on are registered as dependencies.
-     * Existing dependencies are ignored.
-     * @return  True if a dependency was added, false if it is already known.
-     */
-    template <typename OTHER>
-    bool add_dependency(Property<OTHER>* dependency)
-    {
-        { // make sure that each dependency is unique
-            AbstractProperty* abstract_dependency = static_cast<AbstractProperty*>(dependency);
-            if (m_dependencies.count(abstract_dependency) == 0) {
-                m_dependencies.insert(abstract_dependency);
-            }
-            else {
-                return false;
-            }
-        }
-
-        // connect all relevant signals
-        connect_signal(dependency->_signal_test, [this]() { this->_signal_test(); });
-        connect_signal(dependency->_signal_dirty, &Property::_make_dirty);
-        connect_signal(dependency->_signal_clean, &Property::_make_clean);
-        connect_signal(dependency->on_deletion, &Property::_drop_expression);
-        return true;
-    }
-
-    /** Takes any kind of parameter list, extracts only the Properties and adds dependencies to each one of them.
-     * @return  Number of recognized, new dependencies.
-     */
-    template <typename... ARGS>
-    uint add_dependencies(ARGS&&... args)
-    {
-        uint count = 0;
-        _extract_dependencies(count, std::forward<ARGS>(args)...);
-        return count;
-    }
-
 public: // signals
     /** Emitted when the value of this Property has changed. */
     Signal<> value_changed;
@@ -199,6 +174,13 @@ private: // signals
     Signal<> _signal_clean;
 
 private: // methods
+    /** Assigns a new expression to this Property and executes it immediately. */
+    void _set_expression(std::function<T()> expression)
+    {
+        m_expression = expression;
+        _change_value(m_expression());
+    }
+
     /** Called when the user requests a change of this Property's value. */
     void _change_value(const T value)
     {
@@ -246,22 +228,36 @@ private: // methods
         }
     }
 
-    /** Private overloaded template function to extract Property dependencies from a mixed types parameter list. */
-    template <typename TYPE, typename... ARGS>
-    void _extract_dependencies(uint& count, Property<TYPE>* dependency, ARGS&&... args)
+    /** Adds a new dependency to this Property.
+     * Every time a dependency Property is updated, this Property will try to re-evaluate its expression.
+     * Always make sure that all Properties that this Property's expression depends on are registered as dependencies.
+     * Existing dependencies are ignored.
+     */
+    template <typename OTHER>
+    void _add_dependency(Property<OTHER>* dependency)
     {
-        if (add_dependency(dependency)) {
-            ++count;
+        { // make sure that each dependency is unique
+            AbstractProperty* abstract_dependency = static_cast<AbstractProperty*>(dependency);
+            if (m_dependencies.count(abstract_dependency) == 0) {
+                m_dependencies.insert(abstract_dependency);
+            }
         }
-        return _extract_dependencies(count, std::forward<ARGS>(args)...);
+
+        // connect all relevant signals
+        connect_signal(dependency->_signal_test, [this]() { this->_signal_test(); });
+        connect_signal(dependency->_signal_dirty, &Property::_make_dirty);
+        connect_signal(dependency->_signal_clean, &Property::_make_clean);
+        connect_signal(dependency->on_deletion, &Property::_drop_expression);
     }
-    template <typename ARG, typename... ARGS,
-              typename = std::enable_if_t<!std::is_base_of<AbstractProperty, std::remove_pointer_t<std::decay_t<ARG>>>::value>>
-    void _extract_dependencies(uint& count, ARG&&, ARGS&&... args)
+
+    /** Takes any kind of parameter list, extracts only the Properties and adds dependencies to each one of them. */
+    template <typename TYPE, typename... ARGS>
+    void _add_dependencies(Property<TYPE>* dependency, ARGS&&... args)
     {
-        return _extract_dependencies(count, std::forward<ARGS>(args)...); // ignore non-Property `ARG`
+        _add_dependency(dependency);
+        return _add_dependencies(std::forward<ARGS>(args)...);
     }
-    void _extract_dependencies(uint&) {} // stop recursion
+    void _add_dependencies() {} // stop recursion
 
 private: // fields
     /** Value of this Property. */
@@ -279,32 +275,8 @@ private: // fields
 
 /**********************************************************************************************************************/
 
-#define _notf_variadic_capture(...) NOTF_OVERLOADED_MACRO(_notf_variadic_capture, __VA_ARGS__)
-#define _notf_variadic_capture1(a) &a = a
-#define _notf_variadic_capture2(a, b) &a = a, &b = b
-#define _notf_variadic_capture3(a, b, c) &a = a, &b = b, &c = c
-#define _notf_variadic_capture4(a, b, c, d) &a = a, &b = b, &c = c, &d = d
-#define _notf_variadic_capture5(a, b, c, d, e) &a = a, &b = b, &c = c, &d = d, &e = e
-#define _notf_variadic_capture6(a, b, c, d, e, f) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f
-#define _notf_variadic_capture7(a, b, c, d, e, f, g) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g
-#define _notf_variadic_capture8(a, b, c, d, e, f, g, h) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h
-#define _notf_variadic_capture9(a, b, c, d, e, f, g, h, i) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i
-#define _notf_variadic_capture10(a, b, c, d, e, f, g, h, i, j) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j
-#define _notf_variadic_capture11(a, b, c, d, e, f, g, h, i, j, k) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j, &k = k
-#define _notf_variadic_capture12(a, b, c, d, e, f, g, h, i, j, k, l) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j, &k = k, &l = l
-#define _notf_variadic_capture13(a, b, c, d, e, f, g, h, i, j, k, l, m) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j, &k = k, &l = l, &m = m
-#define _notf_variadic_capture14(a, b, c, d, e, f, g, h, i, j, k, l, m, n) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j, &k = k, &l = l, &m = m, &n = n
-#define _notf_variadic_capture15(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j, &k = k, &l = l, &m = m, &n = n, &o = o
-#define _notf_variadic_capture16(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p) &a = a, &b = b, &c = c, &d = d, &e = e, &f = f, &g = g, &h = h, &i = i, &j = j, &k = k, &l = l, &m = m, &n = n, &o = o, &p = p
-
-/** Convenience macro to create a Property expression lambda and add all of its dependencies in one go.
- * It is about the same amount of code as if you were to write it out by hand.
- * However, failing to include an explicit dependency in the captures list does cause a compiler error, which helps with
- * finding bugs early one.
- * You can use the macro's return value to check the number of recognized, unique dependencies.
- */
-#define property_expression(TARGET, LAMBDA, ...) \
-    TARGET->add_dependencies(__VA_ARGS__);       \
-    TARGET->set_expression([_notf_variadic_capture(__VA_ARGS__)] LAMBDA)
-
 } // namespace notf
+
+/** Convenience macro to create a Property expression lambda and add all of its dependencies in one go. */
+#define property_expression(TARGET, LAMBDA, ...) \
+    notf::detail::_create_property_expression(TARGET, [__VA_ARGS__] LAMBDA, __VA_ARGS__)

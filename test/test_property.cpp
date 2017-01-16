@@ -11,7 +11,6 @@ SCENARIO("Properties within a single PropertyMap", "[core][properties]")
     FloatProperty* one = map.create_property<FloatProperty>("one", 1.2);
     IntProperty* two = map.create_property<IntProperty>("two", 2);
     IntProperty* three = map.create_property<IntProperty>("three", 3);
-    int four = 4;
 
     WHEN("a Property is created with a value")
     {
@@ -43,16 +42,17 @@ SCENARIO("Properties within a single PropertyMap", "[core][properties]")
 
     WHEN("an expression is created")
     {
-        property_expression(one, {
-            return two->get_value() + three->get_value() + four;
-        }, two, three, four);
+        property_expression(
+            one, {
+                return two->get_value() + three->get_value() + 4;
+            },
+            two, three);
 
         THEN("it is evaluated immediately")
         {
             REQUIRE(one->get_value() == approx(9));
             REQUIRE(two->get_value() == 2);
             REQUIRE(three->get_value() == 3);
-            REQUIRE(four == 4);
         }
 
         AND_WHEN("one of the dependent properties change")
@@ -64,7 +64,6 @@ SCENARIO("Properties within a single PropertyMap", "[core][properties]")
                 REQUIRE(one->get_value() == approx(19));
                 REQUIRE(two->get_value() == 12);
                 REQUIRE(three->get_value() == 3);
-                REQUIRE(four == 4);
             }
         }
 
@@ -72,22 +71,30 @@ SCENARIO("Properties within a single PropertyMap", "[core][properties]")
         {
             THEN("an std::runtime_error is thrown immediately")
             {
-                REQUIRE_THROWS_AS(property_expression(two, {
-                    return one->get_value();
-                }, one), std::runtime_error);
+                REQUIRE_THROWS_AS(
+                    property_expression(
+                        two, {
+                            return one->get_value();
+                        },
+                        one),
+                    std::runtime_error);
             }
         }
     }
 
     WHEN("a pair of expressions would create a race condition")
     {
-        property_expression(one, {
-            return two->get_value() + three->get_value();
-        }, two, three);
+        property_expression(
+            one, {
+                return two->get_value() + three->get_value();
+            },
+            two, three);
 
-        property_expression(two, {
-            return three->get_value() + 1;
-        }, three);
+        property_expression(
+            two, {
+                return three->get_value() + 1;
+            },
+            three);
 
         THEN("it is resolved correctly")
         {
@@ -112,7 +119,8 @@ SCENARIO("Properties in two different PropertyMaps", "[core][properties]")
     {
         property_expression(left_a, {
             return left_b->get_value() + right_a->get_value() + right_b->get_value();
-        }, left_b, right_a, right_b);
+        },
+                            left_b, right_a, right_b);
 
         THEN("it will work just fine")
         {
@@ -133,6 +141,10 @@ SCENARIO("Properties in two different PropertyMaps", "[core][properties]")
     }
 }
 
+namespace {
+int g_counter;
+}
+
 SCENARIO("Properties Expressions are guaranteed to be re-evaluated only once for each change", "[core][properties]")
 {
     /*   b - c
@@ -147,28 +159,36 @@ SCENARIO("Properties Expressions are guaranteed to be re-evaluated only once for
     IntProperty* c = map.create_property<IntProperty>("c", 0);
     IntProperty* d = map.create_property<IntProperty>("d", 0);
     IntProperty* e = map.create_property<IntProperty>("e", 0);
-    int counter = 0;
 
     WHEN("an expression net would cause a Property expression to be evaluated more than once")
     {
-        property_expression(b, {
-            return a->get_value();
-        }, a);
+        property_expression(
+            b, {
+                return a->get_value();
+            },
+            a);
 
-        property_expression(c, {
-            return b->get_value();
-        }, b);
+        property_expression(
+            c, {
+                return b->get_value();
+            },
+            b);
 
-        property_expression(d, {
-            counter++;
-            return a->get_value() + b->get_value();
-        }, a, b, counter);
+        property_expression(
+            d,
+            {
+                g_counter++;
+                return a->get_value() + b->get_value();
+            },
+            a, b);
 
-        property_expression(e, {
-            return d->get_value();
-        }, d);
+        property_expression(
+            e, {
+                return d->get_value();
+            },
+            d);
 
-        counter = 0;
+        g_counter = 0;
         a->set_value(1);
 
         THEN("it will still be just evaluated once and all the values will be correct regardless")
@@ -178,28 +198,7 @@ SCENARIO("Properties Expressions are guaranteed to be re-evaluated only once for
             REQUIRE(c->get_value() == 1);
             REQUIRE(d->get_value() == 2);
             REQUIRE(e->get_value() == 2);
-            REQUIRE(counter == 1);
-        }
-    }
-}
-
-SCENARIO("The `property_expression` macro creates simple expressions", "[core][properties]")
-{
-    PropertyMap map;
-    IntProperty* a = map.create_property<IntProperty>("a", 0);
-    IntProperty* b = map.create_property<IntProperty>("b", 0);
-    IntProperty* c = map.create_property<IntProperty>("c", 0);
-    int x = 0;
-
-    WHEN("it is used")
-    {
-        auto dep_count = property_expression(a, {
-            return b->get_value() + c->get_value() + x;
-        }, b, c, x);
-
-        THEN("its return value indicates the number of recognized dependencies")
-        {
-            REQUIRE(dep_count == 2);
+            REQUIRE(g_counter == 1);
         }
     }
 }
