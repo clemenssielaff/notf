@@ -6,6 +6,7 @@
 #include "common/size2f.hpp"
 #include "common/transform2.hpp"
 #include "core/abstract_property.hpp"
+#include "utils/make_smart_enabler.hpp"
 
 namespace notf {
 
@@ -17,17 +18,25 @@ namespace notf {
 
 #define _notf_DEFINE_PROPERTY(NAME, TYPE)                            \
     class NAME : public Property<TYPE> {                             \
-    public:                                                          \
+    protected:                                                       \
         NAME(const TYPE value, const PropertyMap::iterator iterator) \
             : Property<TYPE>(std::move(value), std::move(iterator))  \
         {                                                            \
         }                                                            \
+                                                                     \
+    public:                                                          \
         virtual ~NAME() override;                                    \
         virtual const std::string& get_type() const override         \
         {                                                            \
             static const std::string type_name = #NAME;              \
             return type_name;                                        \
         }                                                            \
+        NAME& operator=(const TYPE value)                            \
+        {                                                            \
+            _set_value(std::move(value));                            \
+            return *this;                                            \
+        }                                                            \
+        operator TYPE() const { return get_value(); }                \
     };
 
 #ifdef NOTF_PROPERTY_IMPL
@@ -82,7 +91,7 @@ DEFINE_PROPERTY(Transform2Property, Transform2);
             log_critical << message;                                                                                                 \
             throw(std::runtime_error(std::move(message)));                                                                           \
         }                                                                                                                            \
-        it->second = std::make_unique<NAME>(static_cast<TYPE>(value), it);                                                           \
+        it->second = std::make_unique<MakeSmartEnabler<NAME>>(static_cast<TYPE>(value), it);                                         \
         return reinterpret_cast<NAME*>(it->second.get());                                                                            \
     }
 #else

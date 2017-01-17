@@ -117,10 +117,12 @@ SCENARIO("Properties in two different PropertyMaps", "[core][properties]")
 
     WHEN("an expression contains Properties of different PropertyMaps")
     {
-        property_expression(left_a, {
-            return left_b->get_value() + right_a->get_value() + right_b->get_value();
-        },
-                            left_b, right_a, right_b);
+        property_expression(
+            left_a,
+            {
+                return left_b->get_value() + right_a->get_value() + right_b->get_value();
+            },
+            left_b, right_a, right_b);
 
         THEN("it will work just fine")
         {
@@ -193,11 +195,11 @@ SCENARIO("Properties Expressions are guaranteed to be re-evaluated only once for
 
         THEN("it will still be just evaluated once and all the values will be correct regardless")
         {
-            REQUIRE(a->get_value() == 1);
-            REQUIRE(b->get_value() == 1);
-            REQUIRE(c->get_value() == 1);
-            REQUIRE(d->get_value() == 2);
-            REQUIRE(e->get_value() == 2);
+            REQUIRE(*a == 1);
+            REQUIRE(*b == 1);
+            REQUIRE(*c == 1);
+            REQUIRE(*d == 2);
+            REQUIRE(*e == 2);
             REQUIRE(g_counter == 1);
         }
     }

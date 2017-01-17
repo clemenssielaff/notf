@@ -64,12 +64,13 @@ public: // methods
  */
 class AbstractProperty : public receive_signals {
 
-public: // methods
+protected: // methods
     explicit AbstractProperty(const PropertyMap::iterator iterator)
         : m_it(iterator)
     {
     }
 
+public: // methods
     virtual ~AbstractProperty();
 
     /** The name of this Property. */
@@ -125,7 +126,7 @@ class Property : public AbstractProperty {
     template <typename TYPE, typename EXPR, typename... ARGS>
     friend void detail::_create_property_expression(Property<TYPE>*, EXPR&&, ARGS&&...);
 
-public: // methods
+protected: // methods
     Property(const T value, const PropertyMap::iterator iterator)
         : AbstractProperty(std::move(iterator))
         , m_value(std::move(value))
@@ -135,10 +136,11 @@ public: // methods
     {
     }
 
+public: // methods
     virtual ~Property() override { on_deletion(); }
 
     /** Returns the current value of this Property. */
-    const T& get_value()
+    const T& get_value() const
     {
         _make_clean();
         return m_value;
@@ -147,10 +149,11 @@ public: // methods
     /** Tests whether this Property is currently defined by an Expression. */
     bool has_expression() const { return static_cast<bool>(m_expression); }
 
+protected: // methods
     /** Updates the value of this Property.
      * If the Property is defined through an expression, manually setting the value will remove the expression.
      */
-    void set_value(const T value)
+    void _set_value(const T value)
     {
         _drop_expression();
         _change_value(std::move(value));
@@ -203,7 +206,7 @@ private: // methods
     }
 
     /** Updates the value of this Property through its expression. */
-    void _make_clean()
+    void _make_clean() const
     {
         if (m_is_dirty) {
             assert(has_expression());
@@ -261,10 +264,10 @@ private: // methods
 
 private: // fields
     /** Value of this Property. */
-    T m_value;
+    mutable T m_value;
 
     /** Dirty flag, used to avoid redundant expression evaluations. */
-    bool m_is_dirty;
+    mutable bool m_is_dirty;
 
     /** Expression defining this Property (can be empty). */
     std::function<T()> m_expression;
