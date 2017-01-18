@@ -83,6 +83,7 @@ class Button(Controller):
             self.is_pressed.set_value(False)
 
         def turn_blue_down():
+
             self.on_mouse_button.enable(self.can_turn_red)
             self.is_pressed.set_value(True)
 

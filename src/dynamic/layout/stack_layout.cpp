@@ -127,27 +127,27 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
 }
 
 /** Calculates the alignment variables for the main axis. */
-std::tuple<float, float> calculate_alignment(const Layout::Alignment alignment, const size_t item_count, const float surplus)
+std::tuple<float, float> calculate_alignment(const StackLayout::Alignment alignment, const size_t item_count, const float surplus)
 {
     float alignment_start = 0.f;
     float alignment_spacing = 0.f;
     switch (alignment) {
-    case Layout::Alignment::START:
+    case StackLayout::Alignment::START:
         break;
-    case Layout::Alignment::END:
+    case StackLayout::Alignment::END:
         alignment_start = surplus;
         break;
-    case Layout::Alignment::CENTER:
+    case StackLayout::Alignment::CENTER:
         alignment_start = surplus * 0.5f;
         break;
-    case Layout::Alignment::SPACE_BETWEEN:
+    case StackLayout::Alignment::SPACE_BETWEEN:
         alignment_spacing += item_count > 1 ? surplus / static_cast<float>(item_count - 1) : 0.f;
         break;
-    case Layout::Alignment::SPACE_AROUND:
+    case StackLayout::Alignment::SPACE_AROUND:
         alignment_start = surplus / static_cast<float>(item_count * 2);
         alignment_spacing += alignment_start * 2.f;
         break;
-    case Layout::Alignment::SPACE_EQUAL:
+    case StackLayout::Alignment::SPACE_EQUAL:
         alignment_start = surplus / static_cast<float>(item_count + 1);
         alignment_spacing += alignment_start;
         break;
@@ -156,18 +156,18 @@ std::tuple<float, float> calculate_alignment(const Layout::Alignment alignment, 
 }
 
 /** Calculates the cross offset to accomodate the cross alignment constraint. */
-float cross_align_offset(const Layout::Alignment alignment, const float item_size, const float available_size)
+float cross_align_offset(const StackLayout::Alignment alignment, const float item_size, const float available_size)
 {
     if (available_size > item_size) {
         switch (alignment) {
-        case Layout::Alignment::START:
+        case StackLayout::Alignment::START:
             return 0;
-        case Layout::Alignment::END:
+        case StackLayout::Alignment::END:
             return available_size - item_size;
-        case Layout::Alignment::CENTER:
-        case Layout::Alignment::SPACE_BETWEEN:
-        case Layout::Alignment::SPACE_AROUND:
-        case Layout::Alignment::SPACE_EQUAL:
+        case StackLayout::Alignment::CENTER:
+        case StackLayout::Alignment::SPACE_BETWEEN:
+        case StackLayout::Alignment::SPACE_AROUND:
+        case StackLayout::Alignment::SPACE_EQUAL:
             return (available_size - item_size) * 0.5f;
         }
     }
@@ -348,24 +348,24 @@ void StackLayout::_relayout()
     Size2f available_size = {total_size.width - m_padding.width(), total_size.height - m_padding.height()};
     float main_offset, cross_offset;
     switch (m_direction) {
-    case Layout::Direction::LEFT_TO_RIGHT:
+    case StackLayout::Direction::LEFT_TO_RIGHT:
         main_offset = m_padding.left;
-        cross_offset = (m_wrap == Layout::Wrap::WRAP ? m_padding.top : m_padding.bottom);
+        cross_offset = (m_wrap == StackLayout::Wrap::WRAP ? m_padding.top : m_padding.bottom);
         break;
-    case Layout::Direction::RIGHT_TO_LEFT:
+    case StackLayout::Direction::RIGHT_TO_LEFT:
         main_offset = m_padding.right;
-        cross_offset = (m_wrap == Layout::Wrap::WRAP ? m_padding.bottom : m_padding.top);
+        cross_offset = (m_wrap == StackLayout::Wrap::WRAP ? m_padding.bottom : m_padding.top);
         break;
-    case Layout::Direction::TOP_TO_BOTTOM:
+    case StackLayout::Direction::TOP_TO_BOTTOM:
         main_offset = m_padding.top;
-        cross_offset = (m_wrap == Layout::Wrap::WRAP ? m_padding.left : m_padding.right);
+        cross_offset = (m_wrap == StackLayout::Wrap::WRAP ? m_padding.left : m_padding.right);
         break;
-    case Layout::Direction::BOTTOM_TO_TOP:
+    case StackLayout::Direction::BOTTOM_TO_TOP:
         main_offset = m_padding.bottom;
-        cross_offset = (m_wrap == Layout::Wrap::WRAP ? m_padding.right : m_padding.left);
+        cross_offset = (m_wrap == StackLayout::Wrap::WRAP ? m_padding.right : m_padding.left);
         break;
     default:
-        log_warning << "Unexpected Layout::Direction";
+        log_warning << "Unexpected StackLayout::Direction";
         main_offset = 0.f;
         cross_offset = 0.f;
     }

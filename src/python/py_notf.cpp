@@ -19,7 +19,6 @@ void produce_circle(pybind11::module& module);
 void produce_claim(pybind11::module& module);
 void produce_font(pybind11::module& module);
 void produce_texture2(pybind11::module& module);
-void produce_layout(pybind11::module& module);
 void produce_window(pybind11::module& module);
 void produce_widget(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_layout_root(pybind11::module& module, py::detail::generic_type ancestor);
@@ -51,7 +50,6 @@ PyObject* produce_pynotf_module()
     produce_font(module);
     produce_painter(module);
     produce_window(module);
-    produce_layout(module);
     produce_signals(module);
     produce_properties(module);
 

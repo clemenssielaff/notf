@@ -53,12 +53,35 @@ class Overlayout : public Layout {
     friend class MakeSmartEnabler<Overlayout>;
     friend class OverlayoutIterator;
 
+public: // enums
+    /** How each item is aligned in the Layout. */
+    enum Alignment {
+        LEFT    = 1u << 0,
+        RIGHT   = 1u << 1,
+        HCENTER = 1u << 2,
+        TOP     = 1u << 3,
+        BOTTOM  = 1u << 4,
+        VCENTER = 1u << 5,
+        CENTER  = HCENTER | VCENTER,
+    };
+
 public: // methods
     /** Padding around the Layout's border. */
     const Padding& get_padding() const { return m_padding; }
 
-    /** Defines the padding around the Layout's border. */
+    /** Defines the padding around the Layout's border.
+     * @throw   std::runtime_error if the padding is invalid.
+     */
     void set_padding(const Padding& padding);
+
+    /** How each item is aligned in the Layout. */
+    Alignment get_alignment() const { return m_alignment; }
+
+    /** Defines the alignment of each Item in the Layout.
+     * Unset directions default to TOP | LEFT.
+     * @throw   std::runtime_error if the Alignment combination is illegal (LEFT | RIGHT for example).
+     */
+    void set_alignment(Alignment alignment);
 
     /** Sets an explicit Claim for this Layout.
      * The default Claim makes use of all available space but doesn't take any as long as there are others more greedy
@@ -80,13 +103,17 @@ protected_except_for_bindings: // methods for MakeSmartEnabler<Overlayout>
     Overlayout()
         : Layout()
         , m_padding(Padding::none())
+        , m_alignment(static_cast<Alignment>(Alignment::TOP | Alignment::LEFT))
         , m_items()
     {
     }
 
     // clang-format on
 protected: // methods
-    virtual bool _update_claim() override { return false; } // the Overlayout brings its own Claim to the table
+    virtual bool _update_claim() override
+    {
+        return false; // the Overlayout brings its own Claim to the table
+    }
 
     virtual void _remove_item(const Item* item) override;
 
@@ -95,6 +122,9 @@ protected: // methods
 private: // fields
     /** Padding around the Layout's borders. */
     Padding m_padding;
+
+    /** How each item is aligned in the Layout. */
+    Alignment m_alignment;
 
     /** All items in this Layout in order. */
     std::vector<Item*> m_items;

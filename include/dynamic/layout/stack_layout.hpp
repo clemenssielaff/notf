@@ -53,6 +53,42 @@ class StackLayout : public Layout {
     friend class MakeSmartEnabler<StackLayout>;
     friend class StackLayoutIterator;
 
+public: // enums
+    /** Direction in which items in a Layout can be stacked. */
+    enum class Direction : unsigned char {
+        LEFT_TO_RIGHT,
+        TOP_TO_BOTTOM,
+        RIGHT_TO_LEFT,
+        BOTTOM_TO_TOP,
+    };
+
+    /** Alignment of items in a Layout along the main and cross axis. */
+    enum class Alignment : unsigned char {
+        START, // items stacked towards the start of the parent, no additional spacing
+        END, // items stacked towards the end of the parent, no additional spacing
+        CENTER, // items centered in parent, no additional spacing
+        SPACE_BETWEEN, // equal spacing between items, no spacing between items and border
+        SPACE_AROUND, // single spacing between items and border, double spacing between items
+        SPACE_EQUAL, // equal spacing between the items and the border
+    };
+
+    /** How a Layout wraps. */
+    enum class Wrap : unsigned char {
+        NO_WRAP, // no wrap
+        WRAP, // wraps towards the lower-right corner
+        WRAP_REVERSE, // wraps towards the upper-left corner
+    };
+
+    /** Direction of a cirular motion. */
+    enum class Circular : unsigned char {
+        CLOCKWISE,
+        COUNTERCLOCKWISE,
+        CW = CLOCKWISE,
+        CCW = COUNTERCLOCKWISE,
+        ANTICLOCKWISE = COUNTERCLOCKWISE,
+        ACW = COUNTERCLOCKWISE,
+    };
+
 public: // methods
     /** Direction in which items are stacked. */
     Direction get_direction() const { return m_direction; }

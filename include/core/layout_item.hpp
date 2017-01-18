@@ -104,12 +104,15 @@ protected: // methods
 
     /** Updates the size of this Item.
      * Is virtual because Layouts can use this function to update their items.
+     * Note that the size is independent of the Claim, meaning the layout can set any size that it wants if it chooses
+     * to ignore the Claim of the LayoutItem.
      * @return      True iff the size has been modified.
      */
     virtual bool _set_size(const Size2f size)
     {
         if (size != m_size) {
             m_size = std::move(size);
+
             size_changed(m_size);
             _redraw();
             return true;

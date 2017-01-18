@@ -32,4 +32,23 @@ void produce_stack_layout(pybind11::module& module, py::detail::generic_type Py_
     Py_StackLayout.def("set_cross_spacing", &StackLayout::set_cross_spacing, DOCSTR("Defines the spacing between stacks of items if this Layout is wrapped."), py::arg("spacing"));
 
     Py_StackLayout.def("add_item", &StackLayout::add_item, DOCSTR("Adds a new Item into the Layout."), py::arg("item"));
+
+    py::enum_<StackLayout::Direction>(Py_StackLayout, "Direction")
+        .value("LEFT_TO_RIGHT", StackLayout::Direction::LEFT_TO_RIGHT)
+        .value("TOP_TO_BOTTOM", StackLayout::Direction::TOP_TO_BOTTOM)
+        .value("RIGHT_TO_LEFT", StackLayout::Direction::RIGHT_TO_LEFT)
+        .value("BOTTOM_TO_TOP", StackLayout::Direction::BOTTOM_TO_TOP);
+
+    py::enum_<StackLayout::Alignment>(Py_StackLayout, "Alignment")
+        .value("START", StackLayout::Alignment::START)
+        .value("END", StackLayout::Alignment::END)
+        .value("CENTER", StackLayout::Alignment::CENTER)
+        .value("SPACE_BETWEEN", StackLayout::Alignment::SPACE_BETWEEN)
+        .value("SPACE_AROUND", StackLayout::Alignment::SPACE_AROUND)
+        .value("SPACE_EQUAL", StackLayout::Alignment::SPACE_EQUAL);
+
+    py::enum_<StackLayout::Wrap>(Py_StackLayout, "Wrap")
+        .value("NO_WRAP", StackLayout::Wrap::NO_WRAP)
+        .value("WRAP", StackLayout::Wrap::WRAP)
+        .value("WRAP_REVERSE", StackLayout::Wrap::WRAP_REVERSE);
 }

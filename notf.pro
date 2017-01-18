@@ -102,7 +102,6 @@ SOURCES += \
     src/common/padding.cpp \
     src/python/py_padding.cpp \
     src/python/py_claim.cpp \
-    src/python/py_layout.cpp \
     src/dynamic/layout/overlayout.cpp \
     src/python/py_overlayout.cpp \
     src/python/py_notf.cpp \
