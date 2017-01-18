@@ -7,7 +7,7 @@
 
 #include "common/log.hpp"
 #include "common/string_utils.hpp"
-#include "core/abstract_property.hpp"
+#include "core/property.hpp"
 #include "core/events/mouse_event.hpp"
 #include "core/layout_item.hpp"
 

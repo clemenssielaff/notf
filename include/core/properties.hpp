@@ -5,7 +5,7 @@
 #include "common/claim.hpp"
 #include "common/size2f.hpp"
 #include "common/transform2.hpp"
-#include "core/abstract_property.hpp"
+#include "core/property.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 namespace notf {

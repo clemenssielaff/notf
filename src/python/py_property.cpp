@@ -31,7 +31,7 @@ public:
         , m_is_dirty(false)
         , m_expression()
         , m_dependencies()
-        , value_changed(py::cast(this), "value_changed")
+        , on_value_change(py::cast(this), "value_changed")
     {
     }
 
@@ -106,7 +106,7 @@ private: // methods
             _signal_test();
             _signal_dirty();
             _signal_clean();
-            value_changed();
+            on_value_change();
         }
     }
 
@@ -129,7 +129,7 @@ private: // methods
             m_is_dirty = false;
             _signal_clean();
             if (cache != m_value) {
-                value_changed();
+                on_value_change();
             }
         }
     }
@@ -163,7 +163,7 @@ private: // fields
 
 public: // signals
     /** Emitted when the value of this Property has changed. */
-    PySignal<> value_changed;
+    PySignal<> on_value_change;
 
 private: // signals
     /** Emitted, when the Property is being deleted. */
@@ -181,12 +181,13 @@ private: // signals
 
 void produce_properties(pybind11::module& module)
 {
-    py::class_<PyProperty>(module, "Property")
+    py::class_<PyProperty>(module, "Property", py::dynamic_attr())
         .def(py::init<py::object, std::string>())
         .def("get_name", &PyProperty::get_name, DOCSTR("The name of this Property."))
         .def("get_value", &PyProperty::get_value, DOCSTR("The current value of this Property."))
         .def("has_expression", &PyProperty::has_expression, DOCSTR("Tests whether this Property is currently defined by an Expression."))
         .def("set_value", &PyProperty::set_value, DOCSTR("Sets this Property to a ground value."), py::arg("value"))
         .def("set_expression", &PyProperty::set_expression, DOCSTR("Assign a new expression to this Property and execute it immediately."), py::arg("expression"))
-        .def("add_dependency", &PyProperty::add_dependency, DOCSTR("Adds a new dependency to this Property."), py::arg("dependency"));
+        .def("add_dependency", &PyProperty::add_dependency, DOCSTR("Adds a new dependency to this Property."), py::arg("dependency"))
+        .def_readonly("on_value_change", &PyProperty::on_value_change, DOCSTR("Signal emitted when the value of this Property has changed."));
 }

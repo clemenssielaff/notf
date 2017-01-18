@@ -18,9 +18,9 @@ class Property;
 
 namespace detail {
 
-    /** Access for function to create a Property expression (see `property_expression`-macro below). */
+    /** Access for function to create a Property expression (see `PropertyExpression`-macro below). */
     template <typename TYPE, typename EXPR, typename... ARGS>
-    void _create_property_expression(Property<TYPE>* property, EXPR&& expression, ARGS&&... dependencies)
+    void create_property_expression(Property<TYPE>* property, EXPR&& expression, ARGS&&... dependencies)
     {
         // order is important here, we need the dependencies in place when the expression is assigned and evaluated
         property->_drop_expression();
@@ -94,11 +94,7 @@ private: // fields
  *
  * When setting a Property expression is is mandatory to add all dependencies (Properties that are used within that
  * expression) as well.
- * Sadly, there is no way to automatically find all Properties used in an expression, at least not one that is
- * guaranteed to work in all circumstances.
- * For simple, lambda-based expressions, you can use the `property_expression` macro, but you need to explicitly list
- * all dependency Properties as well for it to work.
- * No capturing [this], if you then use it to access individual member Properties or other high jinks!
+ * To ensure that if a Property expression compiles, it also works, use the `PropertyExpression` macro.
  *
  * NoTFs property model is extremely simple and lightweight with only the bare minimum of "magic".
  * You can define expressions for a Property to be dependent on another Property, but trying to create any kind of
@@ -124,7 +120,7 @@ class Property : public AbstractProperty {
     friend class Property;
 
     template <typename TYPE, typename EXPR, typename... ARGS>
-    friend void detail::_create_property_expression(Property<TYPE>*, EXPR&&, ARGS&&...);
+    friend void detail::create_property_expression(Property<TYPE>*, EXPR&&, ARGS&&...);
 
 protected: // methods
     Property(const T value, const PropertyMap::iterator iterator)
@@ -281,5 +277,30 @@ private: // fields
 } // namespace notf
 
 /** Convenience macro to create a Property expression lambda and add all of its dependencies in one go. */
-#define property_expression(TARGET, LAMBDA, ...) \
-    notf::detail::_create_property_expression(TARGET, [__VA_ARGS__] LAMBDA, __VA_ARGS__)
+#define PropertyExpression(TARGET, LAMBDA, ...) \
+    notf::detail::create_property_expression(TARGET, [__VA_ARGS__] LAMBDA, __VA_ARGS__)
+
+/* TODO: Property overhaul (hopefully for the last time).
+ * There are a few things that I want.
+ * 1.   Make `Property` a private class.
+ *      This is de-facto the case already, with a protected Constructor and an argument that can only be supplied when
+ *      you have access to a PropertyMap.
+ *      But should we move it into the "detail" namespace in favor of a notf::Property class which is the accessor?
+ * 2.   The PropertyMap should return not a raw pointer to a Property, but a Property accessor.
+ *      The accessor can be assigned a `T` and an Expression via the `=` operator.
+ *      It can also be dereferenced via '*' operator to return a const T&.
+ *      Internally, it is just a wrapper for a raw Property pointer.
+ *      Expression lambdas take Property accessors as captures.
+ * 3.   Expressions.
+ *      There should be a type of expressions that can be assigned to a Property accessor via the `=` operator.
+ * 4.   Can we get rid of some of the macros in properties.hpp?
+ * 5.   Inside a Property expression, the properties should be unpacked to their values.
+ *      What I mean is that I want to write:
+ *          PropertyExpression(
+ *              target,
+ *              {
+ *                  return a + b;
+ *              },
+ *              a, b);
+ *      and not the same code with "a->get_value() + b->get_value()".
+ */

@@ -9,6 +9,7 @@ namespace notf {
  * If the cache does not yet exist, it is created.
  * @param host  The Python object containing the
  * @return The cache dict as a generic Python object.
+ * @throw std::runtime_error, if the given object does not have a __dict__.
  */
 py::dict get_notf_cache(py::object host);
 

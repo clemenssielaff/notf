@@ -42,7 +42,7 @@ SCENARIO("Properties within a single PropertyMap", "[core][properties]")
 
     WHEN("an expression is created")
     {
-        property_expression(
+        PropertyExpression(
             one, {
                 return two->get_value() + three->get_value() + 4;
             },
@@ -57,7 +57,7 @@ SCENARIO("Properties within a single PropertyMap", "[core][properties]")
 
         AND_WHEN("one of the dependent properties change")
         {
-            two->set_value(12);
+            *two = 12;
 
             THEN("the target will update")
             {
@@ -72,7 +72,7 @@ SCENARIO("Properties within a single PropertyMap", "[core][properties]")
             THEN("an std::runtime_error is thrown immediately")
             {
                 REQUIRE_THROWS_AS(
-                    property_expression(
+                    PropertyExpression(
                         two, {
                             return one->get_value();
                         },
@@ -84,13 +84,13 @@ SCENARIO("Properties within a single PropertyMap", "[core][properties]")
 
     WHEN("a pair of expressions would create a race condition")
     {
-        property_expression(
+        PropertyExpression(
             one, {
                 return two->get_value() + three->get_value();
             },
             two, three);
 
-        property_expression(
+        PropertyExpression(
             two, {
                 return three->get_value() + 1;
             },
@@ -98,7 +98,7 @@ SCENARIO("Properties within a single PropertyMap", "[core][properties]")
 
         THEN("it is resolved correctly")
         {
-            three->set_value(4);
+            *three = 4;
 
             REQUIRE(two->get_value() == 5);
             REQUIRE(one->get_value() == approx(9)); // would be 6 if expression "one" wouldn't wait for expression "two"
@@ -117,7 +117,7 @@ SCENARIO("Properties in two different PropertyMaps", "[core][properties]")
 
     WHEN("an expression contains Properties of different PropertyMaps")
     {
-        property_expression(
+        PropertyExpression(
             left_a,
             {
                 return left_b->get_value() + right_a->get_value() + right_b->get_value();
@@ -164,19 +164,19 @@ SCENARIO("Properties Expressions are guaranteed to be re-evaluated only once for
 
     WHEN("an expression net would cause a Property expression to be evaluated more than once")
     {
-        property_expression(
+        PropertyExpression(
             b, {
                 return a->get_value();
             },
             a);
 
-        property_expression(
+        PropertyExpression(
             c, {
                 return b->get_value();
             },
             b);
 
-        property_expression(
+        PropertyExpression(
             d,
             {
                 g_counter++;
@@ -184,14 +184,14 @@ SCENARIO("Properties Expressions are guaranteed to be re-evaluated only once for
             },
             a, b);
 
-        property_expression(
+        PropertyExpression(
             e, {
                 return d->get_value();
             },
             d);
 
         g_counter = 0;
-        a->set_value(1);
+        *a = 1;
 
         THEN("it will still be just evaluated once and all the values will be correct regardless")
         {

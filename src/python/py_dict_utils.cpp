@@ -5,6 +5,7 @@ namespace py = pybind11;
 
 #include "common/log.hpp"
 #include "common/string_utils.hpp"
+#include "python/py_fwd.hpp"
 
 namespace notf {
 
@@ -18,6 +19,11 @@ py::dict get_notf_cache(py::object host)
     static const char* cache_name = "__notf_cache";
     int success = 0;
     py::object dict(PyObject_GenericGetDict(host.ptr(), nullptr), false);
+    if(!dict.check()){
+        PyErr_Print();
+        std::string msg = string_format("Python object has no __dict__: %s", py_print(host.ptr()));
+        throw std::runtime_error(msg);
+    }
     py::object notf_cache(PyDict_GetItemString(dict.ptr(), cache_name), true);
     if (!notf_cache.check()) {
         py::object new_cache(PyDict_New(), false);
