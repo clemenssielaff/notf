@@ -86,6 +86,9 @@ Application::Application(const ApplicationInfo info)
         m_interpreter = std::make_unique<PythonInterpreter>(m_info.argv, m_info.app_directory);
     }
 
+    // vanity plate
+    print_notf();
+
     log_trace << "Started application";
 }
 
@@ -96,9 +99,6 @@ Application::~Application()
 
 int Application::exec()
 {
-    // vanity plate
-    print_notf();
-
     // loop until there are no more windows open
     while (m_windows.size() > 0) {
 

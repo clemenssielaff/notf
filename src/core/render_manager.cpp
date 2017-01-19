@@ -79,6 +79,7 @@ void RenderManager::render(const RenderContext& context)
             }
             catch (std::runtime_error error) {
                 log_warning << error.what();
+                // TODO: print Python stack trace here IF the item uses a Python object to draw itself
             }
         }
         render_layer->m_widgets.clear();

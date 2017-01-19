@@ -8,10 +8,10 @@ class WindowController(Controller):
     def __init__(self):
         super().__init__()
         window_layout = Overlayout()
-        window_layout.set_alignment(Overlayout.Horizontal.RIGHT, Overlayout.Vertical.BOTTOM)
+        window_layout.set_alignment(Overlayout.Horizontal.CENTER, Overlayout.Vertical.CENTER)
         self.set_root_item(window_layout)
 
-        window_layout.add_item(Button("derbness"))
+        window_layout.add_item(Button("For derbness, press here"))
 
 
 def main():

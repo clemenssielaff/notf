@@ -342,6 +342,8 @@ public: // methods
 
     /* Text ***********************************************************************************************************/
 
+    // TODO: I need a way to figure out the text bounds WITHOUT a painter (outside paint())
+
     /** Sets the font size of the current text style. */
     void set_font_size(float size) { nvgFontSize(_get_context(), size); }
 

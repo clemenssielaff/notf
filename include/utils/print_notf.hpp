@@ -40,6 +40,7 @@ void print_notf()
     std::cout << "                                                                                                                       \n";
     std::cout << "                                                                                                                       ";
     std::cout << std::endl;
+    std::cout.flush();
 }
 
 } // namespace notf
