@@ -528,7 +528,7 @@ void StackLayout::_layout_stack(const std::vector<LayoutItem*>& stack, const Siz
             const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.height, available_height);
             const float applied_offset = reverse ? current_offset - item_size.width : current_offset;
             _set_item_transform(child, Transform2::translation({applied_offset, cross_offset + applied_cross_offset}));
-            _set_item_size(child, std::move(item_size));
+            _set_item_size(child, item_size);
         }
         else { // vertical
             const Claim::Stretch& horizontal = child->get_claim().get_horizontal();
@@ -540,7 +540,7 @@ void StackLayout::_layout_stack(const std::vector<LayoutItem*>& stack, const Siz
             const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.width, available_width);
             const float applied_offset = reverse ? current_offset - item_size.height : current_offset;
             _set_item_transform(child, Transform2::translation({cross_offset + applied_cross_offset, applied_offset}));
-            _set_item_size(child, std::move(item_size));
+            _set_item_size(child, item_size);
         }
         current_offset += (adapter.result + alignment_spacing) * step_factor;
     }

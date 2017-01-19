@@ -2,7 +2,6 @@
 
 #include "common/padding.hpp"
 #include "core/layout.hpp"
-
 #include "utils/binding_accessors.hpp"
 
 namespace notf {
@@ -54,15 +53,18 @@ class Overlayout : public Layout {
     friend class OverlayoutIterator;
 
 public: // enums
-    /** How each item is aligned in the Layout. */
-    enum Alignment {
-        LEFT    = 1u << 0,
-        RIGHT   = 1u << 1,
-        HCENTER = 1u << 2,
-        TOP     = 1u << 3,
-        BOTTOM  = 1u << 4,
-        VCENTER = 1u << 5,
-        CENTER  = HCENTER | VCENTER,
+    /** Horizontal alignment of all items in the Layout. */
+    enum class Horizontal : unsigned char {
+        LEFT,
+        CENTER,
+        RIGHT,
+    };
+
+    /** Vertical alignment of all items in the Layout. */
+    enum class Vertical : unsigned char {
+        TOP,
+        CENTER,
+        BOTTOM,
     };
 
 public: // methods
@@ -74,14 +76,19 @@ public: // methods
      */
     void set_padding(const Padding& padding);
 
-    /** How each item is aligned in the Layout. */
-    Alignment get_alignment() const { return m_alignment; }
+    /** Horizontal alignment of all items in the Layout. */
+    Horizontal get_horizontal_alignment() const { return m_horizontal_alignment; }
 
-    /** Defines the alignment of each Item in the Layout.
-     * Unset directions default to TOP | LEFT.
-     * @throw   std::runtime_error if the Alignment combination is illegal (LEFT | RIGHT for example).
-     */
-    void set_alignment(Alignment alignment);
+    /** Vertical alignment of all items in the Layout. */
+    Vertical get_vertical_alignment() const { return m_vertical_alignment; }
+
+    /** Defines the alignment of each Item in the Layout. */
+    void set_alignment(const Horizontal horizontal, const Vertical vertical)
+    {
+        m_horizontal_alignment = std::move(horizontal);
+        m_vertical_alignment   = std::move(vertical);
+        _relayout();
+    }
 
     /** Sets an explicit Claim for this Layout.
      * The default Claim makes use of all available space but doesn't take any as long as there are others more greedy
@@ -103,7 +110,8 @@ protected_except_for_bindings: // methods for MakeSmartEnabler<Overlayout>
     Overlayout()
         : Layout()
         , m_padding(Padding::none())
-        , m_alignment(static_cast<Alignment>(Alignment::TOP | Alignment::LEFT))
+        , m_horizontal_alignment(Horizontal::CENTER)
+        , m_vertical_alignment(Vertical::CENTER)
         , m_items()
     {
     }
@@ -123,8 +131,11 @@ private: // fields
     /** Padding around the Layout's borders. */
     Padding m_padding;
 
-    /** How each item is aligned in the Layout. */
-    Alignment m_alignment;
+    /** Horizontal alignment of all items in the Layout. */
+    Horizontal m_horizontal_alignment;
+
+    /** Vertical alignment of all items in the Layout. */
+    Vertical m_vertical_alignment;
 
     /** All items in this Layout in order. */
     std::vector<Item*> m_items;

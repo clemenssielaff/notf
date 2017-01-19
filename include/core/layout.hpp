@@ -72,7 +72,7 @@ protected: // methods
     /** Removes the given child Item. */
     void _remove_child(const Item* item);
 
-    virtual bool _set_size(const Size2f size) override;
+    virtual bool _set_size(const Size2f& size) override;
 
     /** Tells this Item to update its Claim based on the combined Claims of its children.
      *

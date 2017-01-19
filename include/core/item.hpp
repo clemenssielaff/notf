@@ -138,7 +138,7 @@ protected_except_for_bindings : // methods
     // clang-format on
 protected: // static methods
     /** Allows any Item subclass to call _set_size on any other Item. */
-    static bool _set_item_size(LayoutItem* layout_item, const Size2f size);
+    static bool _set_item_size(LayoutItem* layout_item, const Size2f& size);
 
     /** Allows any Item subclass to call _set_item_transform on any other Item. */
     static bool _set_item_transform(LayoutItem* layout_item, const Transform2 transform);

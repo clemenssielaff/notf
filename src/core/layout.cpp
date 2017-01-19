@@ -48,7 +48,7 @@ void Layout::_remove_child(const Item* item)
     child_removed(item->get_id());
 }
 
-bool Layout::_set_size(const Size2f size)
+bool Layout::_set_size(const Size2f& size)
 {
     if (LayoutItem::_set_size(size)) {
         _relayout();

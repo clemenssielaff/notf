@@ -98,9 +98,9 @@ void Item::_set_pyobject(PyObject* object)
     m_py_object.reset(std::move(object));
 }
 
-bool Item::_set_item_size(LayoutItem* layout_item, const Size2f size)
+bool Item::_set_item_size(LayoutItem* layout_item, const Size2f& size)
 {
-    return layout_item->_set_size(std::move(size));
+    return layout_item->_set_size(size);
 }
 
 bool Item::_set_item_transform(LayoutItem* layout_item, const Transform2 transform)

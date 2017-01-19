@@ -196,7 +196,8 @@ HEADERS += \
     include/utils/macro_overload.hpp \
     include/core/properties.hpp \
     include/utils/apply_tuple.hpp \
-    include/core/property.hpp
+    include/core/property.hpp \
+    include/utils/print_notf.hpp
 
 QMAKE_CXX = ccache g++
 

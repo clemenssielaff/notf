@@ -16,6 +16,7 @@
 #include "core/resource_manager.hpp"
 #include "core/window.hpp"
 #include "python/interpreter.hpp"
+#include "utils/print_notf.hpp"
 #include "utils/unused.hpp"
 
 namespace { // anonymous
@@ -95,6 +96,9 @@ Application::~Application()
 
 int Application::exec()
 {
+    // vanity plate
+    print_notf();
+
     // loop until there are no more windows open
     while (m_windows.size() > 0) {
 
@@ -117,7 +121,7 @@ Application& Application::initialize(ApplicationInfo& info)
         exit(to_number(RETURN_CODE::UNINITIALIZED));
     }
     const std::string exe_path = info.argv[0];
-    const std::string exe_dir = exe_path.substr(0, exe_path.find_last_of("/") + 1);
+    const std::string exe_dir  = exe_path.substr(0, exe_path.find_last_of("/") + 1);
 
     // replace relative (default) paths with absolute ones
     if (info.texture_directory.empty() || info.texture_directory[0] != '/') {
@@ -190,7 +194,7 @@ void Application::_on_mouse_button(GLFWwindow* glfw_window, int button, int acti
     }
 
     // parse raw arguments
-    Button notf_button = static_cast<Button>(button);
+    Button notf_button      = static_cast<Button>(button);
     MouseAction notf_action = static_cast<MouseAction>(action);
     assert(notf_action != MouseAction::MOVE);
 
