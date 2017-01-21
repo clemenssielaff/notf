@@ -11,7 +11,7 @@ LIBS *= -lglfw3 -lGL -lX11 -lXxf86vm -lpthread -ldl -lXcursor -lXrandr -lXineram
 
 CONFIG(release, debug|release) {
 #    message("Building in Release Mode.")
-    DEFINES += "SIGNAL_LOG_LEVEL=4"
+    DEFINES += "SIGNAL_LOG_LEVEL=4" "NDEBUG"
     QMAKE_CXXFLAGS_RELEASE += -fvisibility=hidden -s
     QMAKE_CXXFLAGS_RELEASE += -O3
     QMAKE_LFLAGS_RELEASE += -fvisibility=hidden -s

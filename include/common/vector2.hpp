@@ -1,5 +1,6 @@
 #pragma once
 
+#include <assert.h>
 #include <iosfwd>
 
 #include "common/float_utils.hpp"
@@ -21,9 +22,9 @@ struct Vector2 {
     //  HOUSEHOLD  ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// Do not implement the default methods, so this data structure remains a POD.
-    Vector2() = default; // Default Constructor.
-    ~Vector2() = default; // Destructor.
-    Vector2(const Vector2& other) = default; // Copy Constructor.
+    Vector2()                     = default;            // Default Constructor.
+    ~Vector2()                    = default;            // Destructor.
+    Vector2(const Vector2& other) = default;            // Copy Constructor.
     Vector2& operator=(const Vector2& other) = default; // Assignment Operator.
 
     /// @brief Creates a Vector2 with the given components.
@@ -180,6 +181,22 @@ struct Vector2 {
 
     /// @brief Checks, if any component of this Vector2 is a zero.
     bool contains_zero() const { return x == approx(0) || y == approx(0); }
+
+    /** Direct read-only memory access to the Vector. */
+    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
+    const float& operator[](T&& row) const
+    {
+        assert(0 <= row && row <= 1);
+        return *(&x + row);
+    }
+
+    /** Direct read/write memory access to the Vector. */
+    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
+    float& operator[](T&& row)
+    {
+        assert(0 <= row && row <= 1);
+        return *(&x + row);
+    }
 
     //  OPERATORS  ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -400,8 +417,8 @@ struct Vector2 {
     Vector2& orthogonalize()
     {
         const float temp = -y;
-        y = x;
-        x = temp;
+        y                = x;
+        x                = temp;
         return *this;
     }
 
@@ -432,10 +449,10 @@ struct Vector2 {
     {
         const float sinAngle = sin(angle);
         const float cosAngle = cos(angle);
-        const float tempX = (x * cosAngle) - (y * sinAngle);
-        const float tempY = (y * cosAngle) + (x * sinAngle);
-        x = tempX;
-        y = tempY;
+        const float tempX    = (x * cosAngle) - (y * sinAngle);
+        const float tempY    = (y * cosAngle) + (x * sinAngle);
+        x                    = tempX;
+        y                    = tempY;
         return (*this);
     }
 

@@ -29,12 +29,12 @@ class Painter final {
 public: // enums
     enum class Winding {
         CCW = NVG_CCW,
-        CW = NVG_CW,
+        CW  = NVG_CW,
     };
 
     enum class LineCap : int {
-        BUTT = NVG_BUTT, // default
-        ROUND = NVG_ROUND,
+        BUTT   = NVG_BUTT, // default
+        ROUND  = NVG_ROUND,
         SQUARE = NVG_SQUARE,
     };
 
@@ -45,13 +45,13 @@ public: // enums
     };
 
     enum Align {
-        LEFT = NVG_ALIGN_LEFT, // default
+        LEFT   = NVG_ALIGN_LEFT, // default
         CENTER = NVG_ALIGN_CENTER,
-        RIGHT = NVG_ALIGN_RIGHT,
+        RIGHT  = NVG_ALIGN_RIGHT,
 
-        TOP = NVG_ALIGN_TOP,
-        MIDDLE = NVG_ALIGN_MIDDLE,
-        BOTTOM = NVG_ALIGN_BOTTOM,
+        TOP      = NVG_ALIGN_TOP,
+        MIDDLE   = NVG_ALIGN_MIDDLE,
+        BOTTOM   = NVG_ALIGN_BOTTOM,
         BASELINE = NVG_ALIGN_BASELINE, // default
     };
 
@@ -59,17 +59,17 @@ public: // enums
      * Modelled after the HTML Canvas API as described in https://www.w3.org/TR/2dcontext/#compositing
      */
     enum Composite : int {
-        SOURCE_OVER = NVG_SOURCE_OVER,
-        SOURCE_IN = NVG_SOURCE_IN,
-        SOURCE_OUT = NVG_SOURCE_OUT,
-        ATOP = NVG_ATOP,
+        SOURCE_OVER      = NVG_SOURCE_OVER,
+        SOURCE_IN        = NVG_SOURCE_IN,
+        SOURCE_OUT       = NVG_SOURCE_OUT,
+        ATOP             = NVG_ATOP,
         DESTINATION_OVER = NVG_DESTINATION_OVER,
-        DESTINATION_IN = NVG_DESTINATION_IN,
-        DESTINATION_OUT = NVG_DESTINATION_OUT,
+        DESTINATION_IN   = NVG_DESTINATION_IN,
+        DESTINATION_OUT  = NVG_DESTINATION_OUT,
         DESTINATION_ATOP = NVG_DESTINATION_ATOP,
-        LIGHTER = NVG_LIGHTER,
-        COPY = NVG_COPY,
-        XOR = NVG_XOR,
+        LIGHTER          = NVG_LIGHTER,
+        COPY             = NVG_COPY,
+        XOR              = NVG_XOR,
     };
 
 protected: // methods for CanvasComponent
@@ -190,8 +190,8 @@ public: // methods
     {
         if (width < 0 || height < 0) {
             const Size2i pixel_size = texture->get_size();
-            width = static_cast<float>(pixel_size.width);
-            height = static_cast<float>(pixel_size.height);
+            width                   = static_cast<float>(pixel_size.width);
+            height                  = static_cast<float>(pixel_size.height);
         }
         return nvgImagePattern(_get_context(), offset_x, offset_y, width, height, angle, texture->get_id(), 1.f); // alpha = 1
     }
@@ -243,8 +243,9 @@ public: // methods
     void set_transform(const Transform2& transform)
     {
         nvgTransform(_get_context(),
-                     transform[0][0], transform[1][0], transform[0][1],
-                     transform[1][1], transform[0][2], transform[1][2]);
+                     transform[0][0], transform[0][1],
+                     transform[1][0], transform[1][1],
+                     transform[2][0], transform[2][1]);
     }
 
     /* Scissoring *****************************************************************************************************/
