@@ -173,6 +173,7 @@ struct Vector2 {
     ///
     /// For comparisons of Vector2 magnitude or testing for normalization, use magnitude_sq instead.
     float magnitude() const { return sqrt((x * x) + (y * y)); }
+    // TODO: Vector2 code style update ... get_magnitude instead of magnitue? Or no get_* ...?
 
     /// @brief Checks, if this Vector2 contains only float, finite values.
     ///

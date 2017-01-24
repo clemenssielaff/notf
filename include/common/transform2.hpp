@@ -100,6 +100,14 @@ struct Transform2 {
         return rows[row];
     }
 
+    /** Direct read-write access to the Matrix' memory. */
+    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
+    Vector2& operator[](T&& row)
+    {
+        assert(0 <= row && row <= 2);
+        return rows[row];
+    }
+
     /// @brief Matrix multiplication of this Matrix with another.
     Transform2 operator*(const Transform2& other) const
     {
@@ -143,7 +151,7 @@ struct Transform2 {
     Transform2& invert(); // TODO: test Transform2::invert
 
     /** Returns a transformed Vector2. */
-    Vector2 transform(const Vector2& vector)
+    Vector2 transform(const Vector2& vector) const
     {
         return {
             vector.x * rows[0][0] + vector.y * rows[1][0] + rows[2][0],

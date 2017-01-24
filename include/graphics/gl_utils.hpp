@@ -4,9 +4,7 @@
 
 namespace notf {
 
-/**
- * @brief Nicer way to provide a buffer offset to glVertexAttribPointer.
- *
+/** Nicer way to provide a buffer offset to glVertexAttribPointer.
  * @param offset    Buffer offset.
  */
 template <typename T>

@@ -44,6 +44,10 @@ struct Size2f {
     bool operator==(const Size2f& other) const { return other.width == approx(width) && other.height == approx(height); }
 
     bool operator!=(const Size2f& other) const { return other.width != approx(width) || other.height != approx(height); }
+
+    Size2f operator*(const float factor) const { return {width * factor, height * factor}; }
+
+    Size2f operator/(const float divisor) const { return {width / divisor, height / divisor}; }
 };
 
 /* Free Functions *****************************************************************************************************/

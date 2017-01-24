@@ -8,6 +8,7 @@ namespace py = pybind11;
 #include "python/py_dict_utils.hpp"
 #include "python/py_fwd.hpp"
 #include "utils/apply_tuple.hpp"
+#include "utils/unused.hpp"
 
 namespace notf {
 
@@ -108,6 +109,7 @@ public: // methods
 
             int success = PyList_Append(cache.ptr(), handler.ptr());
             assert(success == 0);
+            UNUSED(success);
         }
 
         // create the new target

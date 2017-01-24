@@ -181,12 +181,15 @@ struct Aabr {
      */
     Vector2 closest_point_to(const Vector2& target) const
     {
-        const Vector2 pos = center();
-        const float half_width = width() / 2;
+        const Vector2 pos       = center();
+        const float half_width  = width() / 2;
         const float half_height = height() / 2;
         return {pos.x + clamp(target.x - pos.x, -half_width, half_width),
                 pos.y + clamp(target.y - pos.y, -half_height, half_height)};
     }
+
+    /** Returns the extend of this Aabr. */
+    Size2f extend() const { return {width(), height()}; }
 
     /** Operators *****************************************************************************************************/
 
@@ -200,8 +203,8 @@ struct Aabr {
     Aabr& set_x(float x)
     {
         const float half_width = width() / 2;
-        _min.x = x - half_width;
-        _max.x = x + half_width;
+        _min.x                 = x - half_width;
+        _max.x                 = x + half_width;
         return *this;
     }
 
@@ -209,8 +212,8 @@ struct Aabr {
     Aabr& set_y(float y)
     {
         const float half_height = height() / 2;
-        _min.y = y - half_height;
-        _max.y = y + half_height;
+        _min.y                  = y - half_height;
+        _max.y                  = y + half_height;
         return *this;
     }
 
@@ -307,10 +310,10 @@ struct Aabr {
      */
     Aabr& set_width(float width)
     {
-        const float center = x();
+        const float center     = x();
         const float half_width = width / 2;
-        _min.x = center - half_width;
-        _max.x = center + half_width;
+        _min.x                 = center - half_width;
+        _max.x                 = center + half_width;
         return *this;
     }
 
@@ -320,10 +323,10 @@ struct Aabr {
      */
     Aabr& set_height(float height)
     {
-        const float center = y();
+        const float center      = y();
         const float half_height = height / 2;
-        _min.y = center - half_height;
-        _max.y = center + half_height;
+        _min.y                  = center - half_height;
+        _max.y                  = center + half_height;
         return *this;
     }
 

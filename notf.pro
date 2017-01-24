@@ -118,7 +118,11 @@ SOURCES += \
     src/python/py_dict_utils.cpp \
     src/core/properties.cpp \
     src/python/py_property.cpp \
-    src/core/property.cpp
+    src/core/property.cpp \
+    src/common/line2.cpp \
+    src/graphics2/backend_gl.cpp \
+    src/render_main.cpp \
+    src/graphics2/shader.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -197,7 +201,11 @@ HEADERS += \
     include/core/properties.hpp \
     include/utils/apply_tuple.hpp \
     include/core/property.hpp \
-    include/utils/print_notf.hpp
+    include/utils/print_notf.hpp \
+    include/graphics2/backend_gl.hpp \
+    include/common/line2.hpp \
+    include/graphics2/backend.hpp \
+    include/graphics2/shader.hpp
 
 QMAKE_CXX = ccache g++
 

@@ -1,19 +1,23 @@
 //#include <iostream>
 //using namespace std;
 
-//#include "common/transform2.hpp"
+//#include "common/vector2.hpp"
 //using namespace notf;
 
 //int main()
 //{
-//    Vector2 v;
+//    float array[] = {1, 2, 3, 4};
 
-//    Transform2 t1 = Transform2::translation({1, 0});
-//    Transform2 t2 = Transform2::rotation( static_cast<float>(PI) / 2.f);
-//    Transform2 t3 = Transform2::scale(2);
+//    for(size_t i = 0; i < 4; ++i)
+//        cout << array[i] << endl;
 
-//    t1 *= t2;
-//    t1 *= t3;
-//    auto v2 = t1.transform(v);
-//    cout << v2 << endl;
+////    Vector2& a = *reinterpret_cast<Vector2*>(&array[0]);
+////    Vector2& b = *reinterpret_cast<Vector2*>(&array[2]);
+////    a += b;
+//    array[0] += array[2];
+//    array[1] += array[3];
+
+//    cout << "============" << endl;
+//    for(size_t i = 0; i < 4; ++i)
+//        cout << array[i] << endl;
 //}

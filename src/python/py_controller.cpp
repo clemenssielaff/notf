@@ -85,6 +85,7 @@ public: // methods
             py::tuple handlers(PyTuple_Pack(2, enter.ptr(), leave.ptr()), /* borrowed = */ false);
             int success = PyDict_SetItemString(cache.ptr(), name.c_str(), handlers.ptr());
             assert(success == 0);
+            UNUSED(success)
         }
 
         // ... and only keep weakrefs yourself, otherwise they will keep this object alive forever
