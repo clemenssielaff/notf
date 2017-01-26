@@ -3,7 +3,7 @@ TEMPLATE = app
 CONFIG += console c++14
 CONFIG -= app_bundle qt
 
-INCLUDEPATH *= thirdparty/ include/ test/
+INCLUDEPATH *= thirdparty/ include/ test/ res/
 
 # glfw
 LIBS *= -L/home/clemens/code/thirdparty/glfw-3.2.1/INSTALL/lib/
@@ -120,9 +120,11 @@ SOURCES += \
     src/python/py_property.cpp \
     src/core/property.cpp \
     src/common/line2.cpp \
-    src/graphics2/backend_gl.cpp \
     src/render_main.cpp \
-    src/graphics2/shader.cpp
+    src/graphics2/shader.cpp \
+    src/graphics2/hud_shader.cpp \
+    src/graphics2/backend.cpp \
+    src/graphics2/hud_layer.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -202,12 +204,15 @@ HEADERS += \
     include/utils/apply_tuple.hpp \
     include/core/property.hpp \
     include/utils/print_notf.hpp \
-    include/graphics2/backend_gl.hpp \
     include/common/line2.hpp \
+    include/graphics2/shader.hpp \
+    include/graphics2/hud_shader.hpp \
     include/graphics2/backend.hpp \
-    include/graphics2/shader.hpp
+    include/graphics2/hud_layer.hpp
 
 QMAKE_CXX = ccache g++
 
 DISTFILES += \
-    app/main.py
+    app/main.py \
+    res/shader/hud.frag \
+    res/shader/hud.vert

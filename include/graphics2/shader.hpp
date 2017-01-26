@@ -9,9 +9,9 @@ namespace notf {
 /**
  * /brief Manages the compilation, runtime functionality and resources of an OpenGL shader program.
  */
-class Shader {
+class Shader final {
 
-public: // enums
+private: // enums
     /**
      * @brief Shader stages.
      */
@@ -27,7 +27,7 @@ public: // enums
      * @param stage Requested stage.
      * @return Name of the requested stage.
      */
-    static const std::string& stage_name(const STAGE stage);
+    static const std::string& _stage_name(const STAGE stage);
 
 public: // static methods
     /**
@@ -44,6 +44,13 @@ public: // static methods
                         const std::string& geometry_shader_source = "");
 
 public: // methods
+    /** Default constructor, in case something goes wrong in `build`. */
+    Shader()
+        : m_name("UNINITIALIZED")
+        , m_id(0)
+    {
+    }
+
     /** Move Constructor*/
     Shader(Shader&& other)
         : m_name(std::move(other.m_name))
@@ -52,28 +59,32 @@ public: // methods
         other.m_id   = 0;
     }
 
+    /** Move assignment. */
+    Shader& operator=(Shader&& other)
+    {
+        m_name = std::move(other.m_name);
+        m_id = other.m_id;
+        other.m_id = 0;
+        return *this;
+    }
+
     // no copy or assignment
     Shader(const Shader&) = delete;
-    Shader& operator=(Shader&&) = delete;
     Shader& operator=(const Shader&) = delete;
 
     /** Destructor */
-    virtual ~Shader();
+    ~Shader();
 
     /** The name of this Shader. */
     const std::string& get_name() const { return m_name; }
+
+    /** The OpenGL ID of the Shader program. */
+    GLuint get_id() const { return m_id; }
 
     /** Checks if the Shader is valid. */
     bool is_valid() const { return m_id != 0; }
 
 protected: // methods
-    /** Default constructor, in case something goes wrong in `build`. */
-    Shader()
-        : m_name("UNINITIALIZED")
-        , m_id(0)
-    {
-    }
-
     Shader(const std::string name, const GLuint id)
         : m_name(std::move(name))
         , m_id(id)

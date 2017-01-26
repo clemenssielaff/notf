@@ -85,8 +85,17 @@ struct Color {
     /** Returns the Color as an RGB string value. */
     std::string to_string() const;
 
-    /** Weighted conversion of this color to greyscale. */
+    /** Weighted conversion of this Color to greyscale. */
     Color to_greyscale() const;
+
+    /** Premultiplied copy of this Color. */
+    Color premultiplied() const
+    {
+        return {r * a,
+                g * a,
+                b * a,
+                a};
+    }
 
     /** Allows direct memory (read / write) access to the Color's internal storage. */
     float* as_ptr() { return &r; }
@@ -109,7 +118,7 @@ std::ostream& operator<<(std::ostream& out, const Color& color);
  */
 inline Color lerp(const Color& from, const Color& to, float blend)
 {
-    blend = clamp(blend, 0, 1);
+    blend           = clamp(blend, 0, 1);
     const float inv = 1.f - blend;
     return Color{
         (from.r * inv) + (to.r * blend),

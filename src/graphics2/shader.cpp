@@ -37,7 +37,7 @@ private:
 
 namespace notf {
 
-const std::string& Shader::stage_name(const STAGE stage)
+const std::string& Shader::_stage_name(const STAGE stage)
 {
     static const std::string invalid  = "invalid";
     static const std::string vertex   = "vertex";
@@ -162,7 +162,7 @@ GLuint Shader::_compile(STAGE stage, const std::string& name, const std::string&
 #endif
     case STAGE::INVALID:
     default:
-        log_critical << "Cannot compile " << stage_name(stage) << " shader for program \"" << name << "\"";
+        log_critical << "Cannot compile " << _stage_name(stage) << " shader for program \"" << name << "\"";
         return 0;
     }
     assert(shader);
@@ -183,7 +183,7 @@ GLuint Shader::_compile(STAGE stage, const std::string& name, const std::string&
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &error_size);
         std::vector<char> error_message(static_cast<size_t>(error_size));
         glGetShaderInfoLog(shader, error_size, nullptr, &error_message[0]);
-        log_critical << "Failed to compile " << stage_name(stage) << " shader for program \""
+        log_critical << "Failed to compile " << _stage_name(stage) << " shader for program \""
                      << name << "\"\n\t"
                      << error_message.data();
         glDeleteShader(shader);
