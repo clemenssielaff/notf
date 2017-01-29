@@ -66,4 +66,12 @@ std::vector<VALUE> values(const MAP<KEY, VALUE>& map)
     return result;
 }
 
+/** Appends a vector to another one of the same type. */
+template <typename T>
+std::vector<T>& append(std::vector<T>& target, const std::vector<T>& source)
+{
+    target.insert(std::end(target), std::cbegin(source), std::cend(source));
+    return target;
+}
+
 } // namespace notf

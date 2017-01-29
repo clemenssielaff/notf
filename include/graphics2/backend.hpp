@@ -18,7 +18,7 @@ namespace notf {
  *        The RenderLayer handles the drawing to OpenGL.
  *        Holds frame-specifc state, like window size.
  *
- *     4. Canvas
+ *     4. Canvas (or Patch)
  *        An intermediate object owned by Widgets to store the widget state.
  *        Defines how to draw the Widget onto the layer.
  *        This way, we can define the canvas once (from Python) and render the Widget multiple times without the need
@@ -51,7 +51,7 @@ public: // methods
     }
 
 public: // fields
-    /** Flag indicating whether or not OpenGL renders with multi-sample antialiasing enabled or not.
+    /** Flag indicating whether OpenGL renders with multi-sample antialiasing enabled or not.
      * This determines, whether the HUDShader will provide geometric antialiasing for its 2D shapes or not.
      * In a purely 2D application, this flag should be set to `false` since geometric antialiasing is cheaper than
      * full blown multisampling and looks just as good.

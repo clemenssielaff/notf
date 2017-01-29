@@ -124,7 +124,8 @@ SOURCES += \
     src/graphics2/shader.cpp \
     src/graphics2/hud_shader.cpp \
     src/graphics2/backend.cpp \
-    src/graphics2/hud_layer.cpp
+    src/graphics2/hud_layer.cpp \
+    src/graphics2/hud_canvas.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -208,7 +209,10 @@ HEADERS += \
     include/graphics2/shader.hpp \
     include/graphics2/hud_shader.hpp \
     include/graphics2/backend.hpp \
-    include/graphics2/hud_layer.hpp
+    include/graphics2/hud_layer.hpp \
+    include/graphics2/hud_primitives.hpp \
+    include/graphics2/hud_canvas.hpp \
+    include/graphics2/hud_painter.hpp
 
 QMAKE_CXX = ccache g++
 
