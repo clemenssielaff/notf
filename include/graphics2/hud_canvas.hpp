@@ -108,16 +108,12 @@ private: // class
     };
 
 public: // methods
-    HUDCanvas(Size2i window_size, float pixel_ratio = 1)
-        : m_window_size(std::move(window_size))
-        , m_pixel_ratio(1)
-//        , m_backend()
-        , m_states()
+    HUDCanvas()
+        : m_states()
         , m_commands(256)
         , m_current_command(0)
         , m_pos(Vector2::zero())
     {
-        set_pixel_ratio(std::move(pixel_ratio));
     }
 
     FrameGuard begin_frame()
@@ -150,14 +146,6 @@ public: // methods
     {
         assert(!m_states.empty());
         return m_states.back();
-    }
-
-    void set_pixel_ratio(float ratio)
-    {
-        tessTol       = 0.25f / ratio;
-        distTol       = 0.01f / ratio;
-        fringeWidth   = 1.0f / ratio;
-        m_pixel_ratio = std::move(ratio);
     }
 
     void set_stroke_width(const float width) { _get_current_state().stroke_width = std::move(width); }
@@ -349,9 +337,6 @@ private: //
     }
 
 private: // fields
-    Size2i m_window_size;
-    float m_pixel_ratio;
-//    RenderBackend m_backend;
     std::vector<RenderState> m_states;
 
     /** Bytecode-like instructions, separated by COMMAND values. */
@@ -363,15 +348,9 @@ private: // fields
     /** Current position of the 'stylus', as the last Command left it. */
     Vector2 m_pos; // actually I think it should go into the state
 
-    //    float* commands; // buffer containing command ids (as int) and arguments (as floats)
-    //    int ccommands;   // maximal command id?
-    //    int ncommands;   // current command id?
-
     //    float commandx, commandy;
     PathCache m_paths;
-    float tessTol;
-    float distTol;
-    float fringeWidth;
+
 };
 
 } // namespace notf

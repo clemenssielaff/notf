@@ -4,7 +4,6 @@ R"=====(
     precision highp float;
 #endif
 
-#ifdef OPENGL_3
     layout(std140) uniform frag {
         mat3 scissorMat;
         mat3 paintMat;
@@ -24,25 +23,7 @@ R"=====(
     in vec2 ftcoord;
     in vec2 fpos;
     out vec4 outColor;
-#else
-    uniform vec4 frag[UNIFORMARRAY_SIZE];
-    uniform sampler2D tex;
-    varying vec2 ftcoord;
-    varying vec2 fpos;
-    #define scissorMat mat3(frag[0].xyz, frag[1].xyz, frag[2].xyz)
-    #define paintMat mat3(frag[3].xyz, frag[4].xyz, frag[5].xyz)
-    #define innerCol frag[6]
-    #define outerCol frag[7]
-    #define scissorExt frag[8].xy
-    #define scissorScale frag[8].zw
-    #define extent frag[9].xy
-    #define radius frag[9].z
-    #define feather frag[9].w
-    #define strokeMult frag[10].x
-    #define strokeThr frag[10].y
-    #define texType int(frag[10].z)
-    #define type int(frag[10].w)
-#endif
+
 
 float sdroundrect(vec2 pt, vec2 ext, float rad) {
     vec2 ext2 = ext - vec2(rad,rad);

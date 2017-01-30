@@ -10,12 +10,16 @@ namespace notf {
 
 HUDShader HUDLayer::s_shader = {}; // invalid by default
 
-HUDLayer::HUDLayer(const RenderBackend& backend)
+HUDLayer::HUDLayer(const RenderBackend& backend, const float pixel_ratio)
     : m_backend(backend)
     , m_viewport_size(Size2f(0, 0))
+    , m_pixel_ratio(pixel_ratio)
     , m_stencil_mask(0xffffffff)
     , m_stencil_func(StencilFunc::ALWAYS)
     , m_calls()
+    , m_paths()
+    , m_vertices()
+    , m_frag_uniforms()
 {
     if (!s_shader.is_valid()) {
         s_shader = HUDShader(backend);
@@ -23,6 +27,8 @@ HUDLayer::HUDLayer(const RenderBackend& backend)
             log_critical << "Failed to construct the HUD shader!";
         }
     }
+
+    set_pixel_ratio(m_pixel_ratio);
 }
 
 void HUDLayer::begin_frame(const int width, const int height) // called from "beginFrame"
@@ -42,7 +48,7 @@ void HUDLayer::abort_frame()
     //	gl->nuniforms = 0;
 }
 
-void end_frame()
+void HUDLayer::end_frame()
 {
 }
 
@@ -101,7 +107,23 @@ void HUDLayer::add_fill_call(const Paint& paint, const Scissor& scissor, float f
     m_vertices.emplace_back(bounds.right(), bounds.top(), .5f, 1.f);
     m_vertices.emplace_back(bounds.left(), bounds.top(), .5f, 1.f);
 
+    call.uniformOffset = m_frag_uniforms.size();
+    if (call.type == HUDCall::Type::FILL) {
+        // create an additional uniform buffer for a simple shader for the stencil
+        m_frag_uniforms.push_back({});
+        FragmentUniforms& stencil_uniforms = m_frag_uniforms.back();
+        stencil_uniforms.strokeThr         = -1;
+        stencil_uniforms.type              = FragmentUniforms::Type::SIMPLE;
+    }
 
+    m_frag_uniforms.push_back({});
+    FragmentUniforms& fill_uniforms = m_frag_uniforms.back();
+    convertPaint(fill_uniforms, paint, scissor, fringe, fringe, -1.0f);
+}
+
+void HUDLayer::add_stroke_call(const Paint& paint, const Scissor& scissor, float fringe, float strokeWidth,
+                               const std::vector<Path>& paths)
+{
 }
 
 void HUDLayer::set_stencil_mask(const GLuint mask)

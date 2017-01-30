@@ -24,29 +24,21 @@ HUDShader::HUDShader(const RenderBackend& backend)
     , m_shader(Shader::build("HUDShader", m_sources.vertex, m_sources.fragment))
     , m_loc_viewsize(glGetUniformLocation(m_shader.get_id(), "viewSize"))
     , m_loc_texture(glGetUniformLocation(m_shader.get_id(), "tex"))
-#ifdef NOTF_OPENGL3
     , m_loc_buffer(glGetUniformBlockIndex(m_shader.get_id(), "frag"))
     , m_fragment_buffer(0)
     , m_vertex_array(0)
-#else
-    , m_loc_buffer(glGetUniformLocation(m_shader.get_id(), "frag"))
-#endif
     , m_vertex_buffer(0)
-    , m_frag_size(0)
+//    , m_frag_size(0)
 {
-//  create dynamic vertex arrays
-#ifdef NOTF_OPENGL3
+    //  create dynamic vertex arrays
     glGenVertexArrays(1, &m_vertex_array);
-#endif
     glGenBuffers(1, &m_vertex_buffer);
 
-#ifdef NOTF_OPENGL3
     int align = 4;
     // create UBOs
     glUniformBlockBinding(m_shader.get_id(), m_loc_buffer, 0);
     glGenBuffers(1, &m_fragment_buffer);
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &align);
-#endif
     //    m_frag_size = sizeof(GLNVGfragUniforms) + align - sizeof(GLNVGfragUniforms) % align;
 
     glFinish();
@@ -58,53 +50,45 @@ HUDShader::HUDShader(HUDShader&& other)
     , m_loc_viewsize(other.m_loc_viewsize)
     , m_loc_texture(other.m_loc_texture)
     , m_loc_buffer(other.m_loc_buffer)
-#ifdef NOTF_OPENGL3
     , m_fragment_buffer(other.m_fragment_buffer)
     , m_vertex_array(other.m_vertex_array)
-#endif
     , m_vertex_buffer(other.m_vertex_buffer)
-    , m_frag_size(other.m_frag_size)
+//    , m_frag_size(other.m_frag_size)
 {
-#ifdef NOTF_OPENGL3
     other.m_fragment_buffer = 0;
-    other.m_vertex_array = 0;
-#endif
-    other.m_vertex_buffer = 0;
+    other.m_vertex_array    = 0;
+    other.m_vertex_buffer   = 0;
 }
 
 HUDShader& HUDShader::operator=(HUDShader&& other)
 {
-    m_sources = std::move(other.m_sources);
-    m_shader = std::move(other.m_shader);
-    m_loc_viewsize = other.m_loc_viewsize;
-    m_loc_texture = other.m_loc_texture;
-    m_loc_buffer = other.m_loc_buffer;
+    m_sources       = std::move(other.m_sources);
+    m_shader        = std::move(other.m_shader);
+    m_loc_viewsize  = other.m_loc_viewsize;
+    m_loc_texture   = other.m_loc_texture;
+    m_loc_buffer    = other.m_loc_buffer;
     m_vertex_buffer = other.m_vertex_buffer;
-    m_frag_size = other.m_frag_size;
+//    m_frag_size     = other.m_frag_size;
 
     other.m_vertex_buffer = 0;
 
-#ifdef NOTF_OPENGL3
     m_fragment_buffer = other.m_fragment_buffer;
-    m_vertex_array = other.m_vertex_array;
+    m_vertex_array    = other.m_vertex_array;
 
     other.m_fragment_buffer = 0;
-    other.m_vertex_array = 0;
-#endif
+    other.m_vertex_array    = 0;
 
     return *this;
 }
 
 HUDShader::~HUDShader()
 {
-#ifdef NOTF_OPENGL3
     if (m_fragment_buffer != 0) {
         glDeleteBuffers(1, &m_fragment_buffer);
     }
     if (m_vertex_array != 0) {
         glDeleteVertexArrays(1, &m_vertex_array);
     }
-#endif
     if (m_vertex_buffer != 0) {
         glDeleteBuffers(1, &m_vertex_buffer);
     }
@@ -115,16 +99,9 @@ HUDShader::Sources HUDShader::_create_source(const RenderBackend& backend)
     // create the header
     std::string header;
     switch (backend.type) {
-    case RenderBackend::Type::OPENGL_2:
-        header += "#define OPENGL_2 1";
-        break;
     case RenderBackend::Type::OPENGL_3:
         header += "#version 150 core\n";
         header += "#define OPENGL_3 1";
-        break;
-    case RenderBackend::Type::GLES_2:
-        header += "#version 100\n";
-        header += "#define GLES_2 1";
         break;
     case RenderBackend::Type::GLES_3:
         header += "#version 300 es\n";

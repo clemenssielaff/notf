@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "common/aabr.hpp"
+#include "common/color.hpp"
 #include "graphics/gl_forwards.hpp"
 #include "graphics2/hud_primitives.hpp"
 
@@ -61,6 +62,44 @@ class HUDLayer {
         size_t strokeCount;
     };
 
+    struct FragmentUniforms {
+        enum class Type : unsigned char {
+            GRADIENT,
+            SIMPLE,
+        };
+
+        FragmentUniforms() // we'll see if we need this initialization to zero at all
+            : scissorMat{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+              paintMat{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+              innerCol{0},
+              outerCol{0},
+              scissorExt{0, 0},
+              scissorScale{0, 0},
+              extent{0, 0},
+              radius{0},
+              feather{0},
+              strokeMult{0},
+              strokeThr{0},
+              texType{0},
+              type{Type::SIMPLE}
+        {
+        }
+
+        float scissorMat[12]; // matrices are actually 3 vec4s
+        float paintMat[12];
+        Color innerCol;
+        Color outerCol;
+        float scissorExt[2];
+        float scissorScale[2];
+        float extent[2];
+        float radius;
+        float feather;
+        float strokeMult;
+        float strokeThr;
+        int texType;
+        Type type;
+    };
+
 public: // enum
     enum class StencilFunc : unsigned char {
         ALWAYS,
@@ -75,7 +114,7 @@ public: // enum
 
 public:
     /** Constructor. */
-    HUDLayer(const RenderBackend& backend);
+    HUDLayer(const RenderBackend& backend, const float pixel_ratio = 1);
 
     void begin_frame(const int width, const int height); // called from "beginFrame"
 
@@ -83,9 +122,20 @@ public:
 
     void end_frame();
 
+    void set_pixel_ratio(float ratio) // another reason to combine HUD_Shader and HUD_Layer
+    {
+        tessTol       = 0.25f / ratio;
+        distTol       = 0.01f / ratio;
+        fringeWidth   = 1.0f / ratio;
+        m_pixel_ratio = std::move(ratio);
+    }
+
 private: // methods for HUDPainter
     void add_fill_call(const Paint& paint, const Scissor& scissor, float fringe, const Aabr& bounds,
                        const std::vector<Path>& paths);
+
+    void add_stroke_call(const Paint& paint, const Scissor& scissor, float fringe, float strokeWidth,
+                         const std::vector<Path>& paths);
 
     void set_stencil_mask(const GLuint mask);
 
@@ -95,6 +145,8 @@ private: // fields
     const RenderBackend& m_backend;
 
     Size2f m_viewport_size;
+
+    float m_pixel_ratio;
 
     /* Cached stencil mask to avoid unnecessary rebindings. */
     GLuint m_stencil_mask;
@@ -110,6 +162,15 @@ private: // fields
 
     /** Vertices (global, not path specific?) */
     std::vector<Vertex> m_vertices;
+
+    /** Fragment uniform buffers. */
+    std::vector<FragmentUniforms> m_frag_uniforms;
+
+    float tessTol;
+    float distTol;
+    float fringeWidth;
+
+    // there is a `flags` member in a Nanovg context, I think I'll put that into several variables in the Backend
 
 private: // static fields
     static HUDShader s_shader;

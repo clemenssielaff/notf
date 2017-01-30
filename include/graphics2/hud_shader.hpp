@@ -9,6 +9,8 @@ namespace notf {
 
 class RenderBackend;
 
+// TODO: I don't know if the separation between HUD_Layer and HUD_Shader really makes sense
+// in Nanovg everything is put together into a "Context"
 class HUDShader {
 
 private: // struct
@@ -45,20 +47,15 @@ private: // fields
 
     GLint m_loc_viewsize;
     GLint m_loc_texture;
-#ifdef NOTF_OPENGL3
-    GLuint m_loc_buffer;
-#else
-    GLint m_loc_buffer;
-#endif
 
-#ifdef NOTF_OPENGL3
+    GLuint m_loc_buffer;
+
     GLuint m_fragment_buffer;
     GLuint m_vertex_array;
-#endif
 
     GLuint m_vertex_buffer;
 
-    int m_frag_size;
+//    int m_frag_size; // don't need this because I only support FragmentUniform
 };
 
 } // namespace notf
