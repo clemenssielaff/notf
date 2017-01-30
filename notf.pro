@@ -125,7 +125,8 @@ SOURCES += \
     src/graphics2/hud_shader.cpp \
     src/graphics2/backend.cpp \
     src/graphics2/hud_layer.cpp \
-    src/graphics2/hud_canvas.cpp
+    src/graphics2/hud_canvas.cpp \
+    src/graphics2/hud_primitives.cpp
 
 HEADERS += \
     include/core/application.hpp \

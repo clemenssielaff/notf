@@ -5,6 +5,7 @@
 #include "common/color.hpp"
 #include "common/size2f.hpp"
 #include "common/transform2.hpp"
+#include "graphics/gl_forwards.hpp"
 
 namespace notf {
 
@@ -90,6 +91,13 @@ struct BlendMode {
         XOR,
     };
 
+    struct Arguments {
+        GLenum rgb_sfactor;
+        GLenum rgb_dfactor;
+        GLenum alpha_sfactor;
+        GLenum alpha_dfactor;
+    };
+
     BlendMode()
         : rgb(SOURCE_OVER)
         , alpha(SOURCE_OVER)
@@ -107,6 +115,8 @@ struct BlendMode {
         , alpha(std::move(alpha))
     {
     }
+
+    Arguments get_arguments() const;
 
     Mode rgb;
     Mode alpha;

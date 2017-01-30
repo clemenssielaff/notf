@@ -15,21 +15,36 @@ Transform2& Transform2::invert()
          static_cast<double>(rows[1][1]),
          static_cast<double>(rows[2][0]),
          static_cast<double>(rows[2][1])}};
-    double det = t[0] * t[3] - t[2] * t[1];
+    const double det = t[0] * t[3] - t[2] * t[1];
     if (det > -1e-6 && det < 1e-6) {
         *this = Transform2::identity();
     }
-    else {
-        double invdet     = 1.0 / det;
-        float* this_array = &rows[0][0];
-        this_array[0]     = static_cast<float>(t[3] * invdet);
-        this_array[2]     = static_cast<float>(-t[2] * invdet);
-        this_array[4]     = static_cast<float>((t[2] * t[5] - t[3] * t[4]) * invdet);
-        this_array[1]     = static_cast<float>(-t[1] * invdet);
-        this_array[3]     = static_cast<float>(t[0] * invdet);
-        this_array[5]     = static_cast<float>((t[1] * t[4] - t[0] * t[5]) * invdet);
-    }
+    const double invdet = 1.0 / det;
+    float* this_array   = &rows[0][0];
+    this_array[0]       = static_cast<float>(t[3] * invdet);
+    this_array[2]       = static_cast<float>(-t[2] * invdet);
+    this_array[4]       = static_cast<float>((t[2] * t[5] - t[3] * t[4]) * invdet);
+    this_array[1]       = static_cast<float>(-t[1] * invdet);
+    this_array[3]       = static_cast<float>(t[0] * invdet);
+    this_array[5]       = static_cast<float>((t[1] * t[4] - t[0] * t[5]) * invdet);
     return *this;
+}
+
+Transform2 Transform2::inverse() const
+{
+    const float det = rows[0][0] * rows[1][1] - rows[1][0] * rows[0][1];
+    if (det > -1e-6f && det < 1e-6f) {
+        return Transform2::identity();
+    }
+    const float invdet = 1.f / det;
+    Transform2 result;
+    result[0][0] = rows[1][1] * invdet;
+    result[1][0] = -rows[1][0] * invdet;
+    result[2][0] = (rows[1][0] * rows[2][1] - rows[1][1] * rows[2][0]) * invdet;
+    result[0][1] = -rows[0][1] * invdet;
+    result[1][1] = rows[0][0] * invdet;
+    result[2][1] = (rows[0][1] * rows[2][0] - rows[0][0] * rows[2][1]) * invdet;
+    return result;
 }
 
 std::ostream& operator<<(std::ostream& out, const Transform2& mat)

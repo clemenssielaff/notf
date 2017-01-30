@@ -37,6 +37,9 @@ public: // methods
     /** Checks if the Shader is valid. */
     bool is_valid() const { return m_shader.is_valid(); }
 
+    /** The OpenGL ID of the Shader program. */
+    GLuint get_id() const { return m_shader.get_id(); }
+
 private: // methods
     static Sources _create_source(const RenderBackend& render_backend);
 

@@ -62,7 +62,7 @@ class HUDLayer {
         size_t strokeCount;
     };
 
-    struct FragmentUniforms {
+    struct FragmentUniforms { //  TODO: replace more of the float[]s with explicit types
         enum class Type : unsigned char {
             GRADIENT,
             SIMPLE,
@@ -140,6 +140,12 @@ private: // methods for HUDPainter
     void set_stencil_mask(const GLuint mask);
 
     void set_stencil_func(const StencilFunc func);
+
+private: // methods
+    void _paint_to_frag(FragmentUniforms& frag, const Paint& paint, const Scissor& scissor,
+                       const float stroke_width, const float fringe, const float stroke_threshold);
+
+    void _render_flush(BlendMode blend_mode);
 
 private: // fields
     const RenderBackend& m_backend;

@@ -150,6 +150,9 @@ struct Transform2 {
     /** Inverts this Transform2 in-place. */
     Transform2& invert(); // TODO: test Transform2::invert
 
+    /** Returns the inverse of this Transform2. */
+    Transform2 inverse() const;
+
     /** Returns a transformed Vector2. */
     Vector2 transform(const Vector2& vector) const
     {
