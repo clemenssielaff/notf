@@ -3,7 +3,7 @@
 #include <string>
 
 #include "graphics/gl_forwards.hpp"
-#include "graphics2/shader.hpp"
+#include "graphics/shader.hpp"
 
 namespace notf {
 

@@ -1,10 +1,10 @@
-#include "graphics2/hud_layer.hpp"
+#include "graphics/hud_layer.hpp"
 
 #include "common/log.hpp"
 #include "common/vector_utils.hpp"
 #include "core/glfw_wrapper.hpp"
-#include "graphics2/backend.hpp"
-#include "graphics2/hud_shader.hpp"
+#include "graphics/render_backend.hpp"
+#include "graphics/hud_shader.hpp"
 
 namespace { // anonymous
 
@@ -34,7 +34,7 @@ HUDShader HUDLayer::s_shader = {}; // invalid by default
 
 HUDLayer::HUDLayer(const RenderBackend& backend, const float pixel_ratio)
     : m_backend(backend)
-    , m_viewport_size(Size2f(0, 0))
+    , m_buffer_size(Size2f(0, 0))
     , m_pixel_ratio(pixel_ratio)
     , m_stencil_mask(0xffffffff)
     , m_stencil_func(StencilFunc::ALWAYS)
@@ -58,8 +58,8 @@ void HUDLayer::begin_frame(const int width, const int height) // called from "be
     m_calls.clear();
     m_paths.clear();
 
-    m_viewport_size.width  = static_cast<float>(width);
-    m_viewport_size.height = static_cast<float>(height);
+    m_buffer_size.width  = static_cast<float>(width);
+    m_buffer_size.height = static_cast<float>(height);
 }
 
 void HUDLayer::abort_frame()
@@ -253,7 +253,7 @@ void HUDLayer::_render_flush(const BlendMode blend_mode)
 
         // Set view and texture just once per frame.
         glUniform1i(s_shader.m_loc_texture, 0);
-        glUniform2fv(s_shader.m_loc_viewsize, 1, m_viewport_size.as_float_ptr());
+        glUniform2fv(s_shader.m_loc_viewsize, 1, m_buffer_size.as_float_ptr());
         glBindBuffer(GL_UNIFORM_BUFFER, s_shader.m_fragment_buffer);
 
         // perform the render calls

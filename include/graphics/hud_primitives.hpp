@@ -40,9 +40,9 @@ struct Vertex {
     float x,y,u,v;
 };
 
-// TODO: hud namespace for hud-related classes
+// TODO: CONTINUE HERE by sorting the primitives to their respective classes: canvas / layer / painter
 
-struct Path {
+struct Path { // belongs to Canvas
     int first;
     int count;
     unsigned char closed;
@@ -151,7 +151,7 @@ struct Paint {
     int image;
 };
 
-struct Scissor {
+struct Scissor { // belongs to Canvas
     void reset()
     {
         xform  = Transform2::identity();

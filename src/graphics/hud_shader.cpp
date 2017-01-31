@@ -1,7 +1,7 @@
-#include "graphics2/hud_shader.hpp"
+#include "graphics/hud_shader.hpp"
 
 #include "core/glfw_wrapper.hpp"
-#include "graphics2/backend.hpp"
+#include "graphics/render_backend.hpp"
 
 namespace { // anonymous
 // clang-format off

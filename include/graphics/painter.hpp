@@ -1,14 +1,12 @@
 #pragma once
 
-#include <nanovg/nanovg.h>
-
 #include "common/aabr.hpp"
 #include "common/circle.hpp"
 #include "common/color.hpp"
 #include "common/size2f.hpp"
 #include "common/transform2.hpp"
 #include "common/vector2.hpp"
-#include "graphics/font.hpp"
+//#include "graphics/font.hpp"
 #include "graphics/rendercontext.hpp"
 #include "graphics/texture2.hpp"
 #include "utils/enum_to_number.hpp"

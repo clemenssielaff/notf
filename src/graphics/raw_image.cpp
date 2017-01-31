@@ -20,7 +20,7 @@ RawImage::RawImage(const std::string& image_path)
     // load the image from file
     stbi_set_unpremultiply_on_load(1);
     stbi_convert_iphone_png_to_rgb(1);
-    m_data = stbi_load(m_filepath.c_str(), &m_width, &m_height, &m_bytes, 4); // nanovg only works with 4 bytes/pixel
+    m_data = stbi_load(m_filepath.c_str(), &m_width, &m_height, &m_bytes, 4); // OpenGL requires 4 bytes/pixel
     if (!m_data) {
         const std::string message = string_format("Failed to load image from '%s'", m_filepath.c_str());
         log_critical << message;

@@ -1,4 +1,4 @@
-#include "graphics2/hud_primitives.hpp"
+#include "graphics/hud_primitives.hpp"
 
 #include "core/glfw_wrapper.hpp"
 

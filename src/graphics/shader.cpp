@@ -1,4 +1,4 @@
-#include "graphics2/shader.hpp"
+#include "graphics/shader.hpp"
 
 #include <assert.h>
 
@@ -151,7 +151,7 @@ GLuint Shader::_compile(STAGE stage, const std::string& name, const std::string&
         shader = glCreateShader(GL_FRAGMENT_SHADER);
         break;
     case STAGE::GEOMETRY:
-#ifdef GL_GEOMETRY_SHADER
+#ifdef NOTF_OPENGL3
         shader = glCreateShader(GL_GEOMETRY_SHADER);
         break;
 #else

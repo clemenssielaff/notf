@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/vector2.hpp"
-#include "graphics2/hud_primitives.hpp"
+#include "graphics/hud_primitives.hpp"
 
 namespace notf {
 

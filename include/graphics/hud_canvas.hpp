@@ -2,13 +2,13 @@
 
 #include <vector>
 
-#include "backend.hpp"
+#include "render_backend.hpp"
 #include "common/aabr.hpp"
 #include "common/float_utils.hpp"
 #include "common/size2i.hpp"
 #include "common/transform2.hpp"
-#include "graphics2/hud_primitives.hpp"
-#include "graphics2/hud_painter.hpp"
+#include "graphics/hud_primitives.hpp"
+#include "graphics/hud_painter.hpp"
 #include "utils/enum_to_number.hpp"
 
 namespace notf {

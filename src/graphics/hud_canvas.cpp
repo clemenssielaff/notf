@@ -1,4 +1,4 @@
-#include "graphics2/hud_canvas.hpp"
+#include "graphics/hud_canvas.hpp"
 
 namespace { // anonymous
 using namespace notf;

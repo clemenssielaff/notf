@@ -4,8 +4,11 @@
 
 #include "common/aabr.hpp"
 #include "common/color.hpp"
+#include "common/size2i.hpp"
+#include "common/time.hpp"
+#include "common/vector2.hpp"
 #include "graphics/gl_forwards.hpp"
-#include "graphics2/hud_primitives.hpp"
+#include "graphics/hud_primitives.hpp"
 
 namespace notf {
 
@@ -148,7 +151,7 @@ private: // methods for HUDPainter
 
 private: // methods
     void _paint_to_frag(FragmentUniforms& frag, const Paint& paint, const Scissor& scissor,
-                       const float stroke_width, const float fringe, const float stroke_threshold);
+                        const float stroke_width, const float fringe, const float stroke_threshold);
 
     void _render_flush(BlendMode blend_mode);
 
@@ -161,7 +164,11 @@ private: // methods
 private: // fields
     const RenderBackend& m_backend;
 
-    Size2f m_viewport_size;
+    /** Size of the Window in screen coordinates (not pixels). */
+    Size2i window_size;
+
+    /** Returns the size of the Window's framebuffer in pixels. */
+    Size2f m_buffer_size;
 
     float m_pixel_ratio;
 

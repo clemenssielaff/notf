@@ -79,7 +79,6 @@ SOURCES += \
     src/common/claim.cpp \
     src/python/interpreter.cpp \
     src/graphics/raw_image.cpp \
-    src/graphics/texture2.cpp \
     src/graphics/painter.cpp \
     src/python/py_layoutroot.cpp \
     src/python/py_painter.cpp \
@@ -95,7 +94,6 @@ SOURCES += \
     src/common/size2f.cpp \
     src/python/py_size.cpp \
     src/common/time.cpp \
-    src/graphics/font.cpp \
     src/python/py_resourcemanager.cpp \
     src/python/py_font.cpp \
     src/common/padding.cpp \
@@ -120,12 +118,12 @@ SOURCES += \
     src/core/property.cpp \
     src/common/line2.cpp \
     src/render_main.cpp \
-    src/graphics2/shader.cpp \
-    src/graphics2/hud_shader.cpp \
-    src/graphics2/backend.cpp \
-    src/graphics2/hud_layer.cpp \
-    src/graphics2/hud_canvas.cpp \
-    src/graphics2/hud_primitives.cpp
+    src/graphics/shader.cpp \
+    src/graphics/hud_shader.cpp \
+    src/graphics/hud_layer.cpp \
+    src/graphics/hud_canvas.cpp \
+    src/graphics/hud_primitives.cpp \
+    src/graphics/render_backend.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -147,7 +145,6 @@ HEADERS += \
     thirdparty/glfw/glfw3native.h \
     include/graphics/gl_errors.hpp \
     include/common/system.hpp \
-    include/graphics/gl_utils.hpp \
     include/graphics/gl_forwards.hpp \
     thirdparty/stb_image/stb_image.h \
     include/core/resource_manager.hpp \
@@ -166,9 +163,7 @@ HEADERS += \
     include/common/claim.hpp \
     include/python/interpreter.hpp \
     include/graphics/raw_image.hpp \
-    include/graphics/texture2.hpp \
     thirdparty/stb_truetype/stb_truetype.h \
-    include/graphics/rendercontext.hpp \
     include/graphics/painter.hpp \
     include/common/memory_utils.hpp \
     include/common/float_utils.hpp \
@@ -176,7 +171,6 @@ HEADERS += \
     include/common/size2f.hpp \
     include/common/hash_utils.hpp \
     include/common/time.hpp \
-    include/graphics/font.hpp \
     include/common/literals.hpp \
     include/common/padding.hpp \
     include/utils/reverse_iterator.hpp \
@@ -202,13 +196,13 @@ HEADERS += \
     include/core/property.hpp \
     include/utils/print_notf.hpp \
     include/common/line2.hpp \
-    include/graphics2/shader.hpp \
-    include/graphics2/hud_shader.hpp \
-    include/graphics2/backend.hpp \
-    include/graphics2/hud_layer.hpp \
-    include/graphics2/hud_primitives.hpp \
-    include/graphics2/hud_canvas.hpp \
-    include/graphics2/hud_painter.hpp
+    include/graphics/shader.hpp \
+    include/graphics/hud_shader.hpp \
+    include/graphics/hud_layer.hpp \
+    include/graphics/hud_primitives.hpp \
+    include/graphics/hud_canvas.hpp \
+    include/graphics/hud_painter.hpp \
+    include/graphics/render_backend.hpp
 
 QMAKE_CXX = ccache g++
 
