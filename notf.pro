@@ -119,11 +119,10 @@ SOURCES += \
     src/common/line2.cpp \
     src/render_main.cpp \
     src/graphics/shader.cpp \
-    src/graphics/hud_shader.cpp \
     src/graphics/hud_layer.cpp \
     src/graphics/hud_canvas.cpp \
-    src/graphics/hud_primitives.cpp \
-    src/graphics/render_backend.cpp
+    src/graphics/render_backend.cpp \
+    src/graphics/blend_mode.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -197,12 +196,12 @@ HEADERS += \
     include/utils/print_notf.hpp \
     include/common/line2.hpp \
     include/graphics/shader.hpp \
-    include/graphics/hud_shader.hpp \
     include/graphics/hud_layer.hpp \
-    include/graphics/hud_primitives.hpp \
     include/graphics/hud_canvas.hpp \
     include/graphics/hud_painter.hpp \
-    include/graphics/render_backend.hpp
+    include/graphics/render_backend.hpp \
+    include/graphics/vertex.hpp \
+    include/graphics/blend_mode.hpp
 
 QMAKE_CXX = ccache g++
 

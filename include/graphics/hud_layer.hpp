@@ -7,8 +7,11 @@
 #include "common/size2i.hpp"
 #include "common/time.hpp"
 #include "common/vector2.hpp"
+#include "graphics/blend_mode.hpp"
 #include "graphics/gl_forwards.hpp"
-#include "graphics/hud_primitives.hpp"
+#include "graphics/hud_canvas.hpp"
+#include "graphics/shader.hpp"
+#include "graphics/vertex.hpp"
 
 namespace notf {
 
@@ -48,9 +51,9 @@ class HUDLayer {
         GLintptr uniformOffset;
     };
 
-    struct HUDPath {
+    struct PathIndex {
 
-        HUDPath() // we'll see if we need this initialization to zero at all
+        PathIndex() // we'll see if we need this initialization to zero at all
             : fillOffset(0),
               fillCount(0),
               strokeOffset(0),
@@ -65,7 +68,7 @@ class HUDLayer {
     };
 
     struct FragmentUniforms { //  TODO: replace more of the float[]s with explicit types
-        enum class Type : unsigned char {
+        enum class Type : GLint {
             GRADIENT,
             SIMPLE,
         };
@@ -104,9 +107,14 @@ class HUDLayer {
 
     constexpr GLintptr fragSize()
     {
-        const GLintptr align = 4;
+        constexpr GLintptr align = sizeof(float);
         return sizeof(FragmentUniforms) + align - sizeof(FragmentUniforms) % align;
     }
+
+    struct Sources {
+        std::string vertex;
+        std::string fragment;
+    };
 
 public: // enum
     enum class StencilFunc : unsigned char {
@@ -124,26 +132,22 @@ public:
     /** Constructor. */
     HUDLayer(const RenderBackend& backend, const float pixel_ratio = 1);
 
+    ~HUDLayer();
+
     void begin_frame(const int width, const int height); // called from "beginFrame"
 
     void abort_frame();
 
     void end_frame();
 
-    void set_pixel_ratio(float ratio) // another reason to combine HUD_Shader and HUD_Layer
-    {
-        tessTol       = 0.25f / ratio;
-        distTol       = 0.01f / ratio;
-        fringeWidth   = 1.0f / ratio;
-        m_pixel_ratio = std::move(ratio);
-    }
+    float get_pixel_ratio() const { return m_pixel_ratio; }
 
 private: // methods for HUDPainter
     void add_fill_call(const Paint& paint, const Scissor& scissor, float fringe, const Aabr& bounds,
-                       const std::vector<Path>& paths);
+                       const std::vector<HUDCanvas::Path>& paths);
 
     void add_stroke_call(const Paint& paint, const Scissor& scissor, float fringe, float strokeWidth,
-                         const std::vector<Path>& paths);
+                         const std::vector<HUDCanvas::Path>& paths);
 
     void set_stencil_mask(const GLuint mask);
 
@@ -160,6 +164,9 @@ private: // methods
     void _convex_fill(const HUDCall& call);
 
     void _stroke(const HUDCall& call);
+
+private: // methods
+    static Sources _create_shader_sources(const RenderBackend& render_backend);
 
 private: // fields
     const RenderBackend& m_backend;
@@ -181,8 +188,8 @@ private: // fields
     /** All Calls that were collected during during the frame. */
     std::vector<HUDCall> m_calls;
 
-    /** All Paths drawn during the frame. */
-    std::vector<HUDPath> m_paths;
+    /** Indices of `m_vertices` of all Paths drawn during the frame. */
+    std::vector<PathIndex> m_paths;
 
     /** Vertices (global, not path specific?) */
     std::vector<Vertex> m_vertices;
@@ -190,14 +197,21 @@ private: // fields
     /** Fragment uniform buffers. */
     std::vector<FragmentUniforms> m_frag_uniforms;
 
-    float tessTol;
-    float distTol;
-    float fringeWidth;
+    // Shader variables
 
-    // there is a `flags` member in a Nanovg context, I think I'll put that into several variables in the Backend
+    Sources m_sources;
 
-private: // static fields
-    static HUDShader s_shader;
+    Shader m_shader;
+
+    GLint m_loc_viewsize;
+    GLint m_loc_texture;
+
+    GLuint m_loc_buffer;
+
+    GLuint m_fragment_buffer;
+    GLuint m_vertex_array;
+
+    GLuint m_vertex_buffer;
 };
 
 } // namespace notf

@@ -1,5 +1,7 @@
 #include "graphics/hud_canvas.hpp"
 
+#include "graphics/hud_layer.hpp"
+
 namespace { // anonymous
 using namespace notf;
 void transform_command_point(const Transform2& xform, std::vector<float>& commands, size_t index)
@@ -12,6 +14,19 @@ void transform_command_point(const Transform2& xform, std::vector<float>& comman
 } // namespace anonymous
 
 namespace notf {
+
+HUDCanvas::FrameGuard HUDCanvas::begin_frame(const HUDLayer& layer)
+{
+    m_states.clear();
+    m_states.emplace_back(RenderState());
+
+    const float pixel_ratio = layer.get_pixel_ratio();
+    m_tesselation_tolerance = 0.25f / pixel_ratio;
+    m_distance_tolerance    = 0.01f / pixel_ratio;
+    m_fringe_width          = 1.0f / pixel_ratio;
+
+    return FrameGuard(this);
+}
 
 void HUDCanvas::_append_commands(std::vector<float>&& commands)
 {

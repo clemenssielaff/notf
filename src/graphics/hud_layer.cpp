@@ -4,7 +4,6 @@
 #include "common/vector_utils.hpp"
 #include "core/glfw_wrapper.hpp"
 #include "graphics/render_backend.hpp"
-#include "graphics/hud_shader.hpp"
 
 namespace { // anonymous
 
@@ -26,11 +25,20 @@ void xformToMat3x4(float* m3, notf::Transform2 t)
 
 GLuint FRAG_BINDING = 0;
 
+// clang-format off
+
+// vertex shader source, read from file as described in: http://stackoverflow.com/a/25021520
+const char* hud_vertex_shader =
+#include "shader/hud.vert"
+
+// fragment shader source
+const char* hud_fragment_shader =
+#include "shader/hud.frag"
+
+// clang-format on
 } // namespace anonymous
 
 namespace notf {
-
-HUDShader HUDLayer::s_shader = {}; // invalid by default
 
 HUDLayer::HUDLayer(const RenderBackend& backend, const float pixel_ratio)
     : m_backend(backend)
@@ -42,15 +50,39 @@ HUDLayer::HUDLayer(const RenderBackend& backend, const float pixel_ratio)
     , m_paths()
     , m_vertices()
     , m_frag_uniforms()
+    , m_sources(_create_shader_sources(backend))
+    , m_shader(Shader::build("HUDShader", m_sources.vertex, m_sources.fragment))
+    , m_loc_viewsize(glGetUniformLocation(m_shader.get_id(), "viewSize"))
+    , m_loc_texture(glGetUniformLocation(m_shader.get_id(), "tex"))
+    , m_loc_buffer(glGetUniformBlockIndex(m_shader.get_id(), "frag"))
+    , m_fragment_buffer(0)
+    , m_vertex_array(0)
+    , m_vertex_buffer(0)
 {
-    if (!s_shader.is_valid()) {
-        s_shader = HUDShader(backend);
-        if (!s_shader.is_valid()) {
-            log_critical << "Failed to construct the HUD shader!";
-        }
-    }
+    //  create dynamic vertex arrays
+    glGenVertexArrays(1, &m_vertex_array);
+    glGenBuffers(1, &m_vertex_buffer);
 
-    set_pixel_ratio(m_pixel_ratio);
+    // create UBOs
+    glUniformBlockBinding(m_shader.get_id(), m_loc_buffer, 0);
+    glGenBuffers(1, &m_fragment_buffer);
+    GLint align = sizeof(float);
+    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &align);
+
+    glFinish();
+}
+
+HUDLayer::~HUDLayer()
+{
+    if (m_fragment_buffer != 0) {
+        glDeleteBuffers(1, &m_fragment_buffer);
+    }
+    if (m_vertex_array != 0) {
+        glDeleteVertexArrays(1, &m_vertex_array);
+    }
+    if (m_vertex_buffer != 0) {
+        glDeleteBuffers(1, &m_vertex_buffer);
+    }
 }
 
 void HUDLayer::begin_frame(const int width, const int height) // called from "beginFrame"
@@ -75,7 +107,7 @@ void HUDLayer::end_frame()
 }
 
 void HUDLayer::add_fill_call(const Paint& paint, const Scissor& scissor, float fringe, const Aabr& bounds,
-                             const std::vector<Path>& paths)
+                             const std::vector<HUDCanvas::Path>& paths)
 {
     m_calls.emplace_back();
     HUDCall& call   = m_calls.back();
@@ -90,7 +122,7 @@ void HUDLayer::add_fill_call(const Paint& paint, const Scissor& scissor, float f
 
     //  this block is its own function in nanovg, called maxVertCount
     size_t new_vertex_count = 6; // + 6 for the quad that we construct further down
-    for (const Path& path : paths) {
+    for (const HUDCanvas::Path& path : paths) {
         new_vertex_count += path.fill.size();
         new_vertex_count += path.stroke.size();
     }
@@ -100,17 +132,17 @@ void HUDLayer::add_fill_call(const Paint& paint, const Scissor& scissor, float f
     m_vertices.reserve(m_vertices.size() + new_vertex_count);
     m_paths.reserve(m_paths.size() + paths.size());
 
-    for (const Path& path : paths) {
-        HUDPath hud_path;
+    for (const HUDCanvas::Path& path : paths) {
+        PathIndex hud_path;
         if (!path.fill.empty()) {
-            hud_path.fillOffset = offset;
-            hud_path.fillCount  = path.fill.size();
+            hud_path.fillOffset = static_cast<GLint>(offset);
+            hud_path.fillCount  = static_cast<GLsizei>(path.fill.size());
             append(m_vertices, path.fill);
             offset += path.fill.size();
         }
         if (!path.stroke.empty()) {
-            hud_path.strokeOffset = offset;
-            hud_path.strokeCount  = path.stroke.size();
+            hud_path.strokeOffset = static_cast<GLint>(offset);
+            hud_path.strokeCount  = static_cast<GLsizei>(path.stroke.size());
             append(m_vertices, path.stroke);
             offset += path.stroke.size();
         }
@@ -119,7 +151,7 @@ void HUDLayer::add_fill_call(const Paint& paint, const Scissor& scissor, float f
 
     // create a quad around the bounds of the filled area
     assert(offset == m_vertices.size() - 6);
-    call.triangleOffset = offset;
+    call.triangleOffset = static_cast<GLint>(offset);
     call.triangleCount  = 6;
     m_vertices.emplace_back(bounds.left(), bounds.bottom(), .5f, 1.f);
     m_vertices.emplace_back(bounds.right(), bounds.bottom(), .5f, 1.f);
@@ -144,7 +176,7 @@ void HUDLayer::add_fill_call(const Paint& paint, const Scissor& scissor, float f
 }
 
 void HUDLayer::add_stroke_call(const Paint& paint, const Scissor& scissor, float fringe, float strokeWidth,
-                               const std::vector<Path>& paths)
+                               const std::vector<HUDCanvas::Path>& paths)
 {
     m_calls.emplace_back();
     HUDCall& call   = m_calls.back();
@@ -153,7 +185,7 @@ void HUDLayer::add_stroke_call(const Paint& paint, const Scissor& scissor, float
     call.pathCount  = paths.size();
 
     size_t new_vertex_count = 0;
-    for (const Path& path : paths) {
+    for (const HUDCanvas::Path& path : paths) {
         new_vertex_count += path.fill.size();
         new_vertex_count += path.stroke.size();
     }
@@ -162,11 +194,11 @@ void HUDLayer::add_stroke_call(const Paint& paint, const Scissor& scissor, float
     m_vertices.reserve(m_vertices.size() + new_vertex_count);
     m_paths.reserve(m_paths.size() + paths.size());
 
-    for (const Path& path : paths) {
-        HUDPath hud_path;
+    for (const HUDCanvas::Path& path : paths) {
+        PathIndex hud_path;
         if (!path.stroke.empty()) {
-            hud_path.strokeOffset = offset;
-            hud_path.strokeCount  = path.stroke.size();
+            hud_path.strokeOffset = static_cast<GLint>(offset);
+            hud_path.strokeCount  = static_cast<GLsizei>(path.stroke.size());
             append(m_vertices, path.stroke);
             offset += path.stroke.size();
         }
@@ -222,9 +254,8 @@ void HUDLayer::_render_flush(const BlendMode blend_mode)
         m_stencil_func = StencilFunc::ALWAYS;
 
         // setup GL state
-        glUseProgram(s_shader.get_id());
-        BlendMode::Arguments blendArgs = blend_mode.get_arguments();
-        glBlendFuncSeparate(blendArgs.rgb_sfactor, blendArgs.rgb_dfactor, blendArgs.alpha_sfactor, blendArgs.alpha_dfactor);
+        glUseProgram(m_shader.get_id());
+        blend_mode.apply();
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
         glFrontFace(GL_CCW);
@@ -239,12 +270,12 @@ void HUDLayer::_render_flush(const BlendMode blend_mode)
         glBindTexture(GL_TEXTURE_2D, 0);
 
         // Upload ubo for frag shaders
-        glBindBuffer(GL_UNIFORM_BUFFER, s_shader.m_fragment_buffer); // this is where the shader / layer separation breaks apart
+        glBindBuffer(GL_UNIFORM_BUFFER, m_fragment_buffer); // this is where the shader / layer separation breaks apart
         glBufferData(GL_UNIFORM_BUFFER, static_cast<GLsizeiptr>(m_frag_uniforms.size()) * fragSize(), &m_frag_uniforms.front(), GL_STREAM_DRAW);
 
         // upload vertex data
-        glBindVertexArray(s_shader.m_vertex_array);
-        glBindBuffer(GL_ARRAY_BUFFER, s_shader.m_vertex_buffer);
+        glBindVertexArray(m_vertex_array);
+        glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
         glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(m_vertices.size() * sizeof(Vertex)), &m_vertices.front(), GL_STREAM_DRAW);
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
@@ -252,9 +283,9 @@ void HUDLayer::_render_flush(const BlendMode blend_mode)
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)(2 * sizeof(float)));
 
         // Set view and texture just once per frame.
-        glUniform1i(s_shader.m_loc_texture, 0);
-        glUniform2fv(s_shader.m_loc_viewsize, 1, m_buffer_size.as_float_ptr());
-        glBindBuffer(GL_UNIFORM_BUFFER, s_shader.m_fragment_buffer);
+        glUniform1i(m_loc_texture, 0);
+        glUniform2fv(m_loc_viewsize, 1, m_buffer_size.as_float_ptr());
+        glBindBuffer(GL_UNIFORM_BUFFER, m_fragment_buffer);
 
         // perform the render calls
         for (const HUDCall& call : m_calls) {
@@ -296,25 +327,25 @@ void HUDLayer::_fill(const HUDCall& call)
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
     // set bindpoint for solid loc
-    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, s_shader.m_fragment_buffer, call.uniformOffset, sizeof(FragmentUniforms));
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset, sizeof(FragmentUniforms));
 
     glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP);
     glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP);
     glDisable(GL_CULL_FACE);
-    for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i){
+    for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
         glDrawArrays(GL_TRIANGLE_FAN, m_paths[i].fillOffset, m_paths[i].fillCount);
     }
     glEnable(GL_CULL_FACE);
 
     // Draw anti-aliased pixels
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, s_shader.m_fragment_buffer, call.uniformOffset + fragSize(), sizeof(FragmentUniforms));
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset + fragSize(), sizeof(FragmentUniforms));
 
     if (m_backend.has_msaa) {
         set_stencil_func(StencilFunc::EQUAL);
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         // Draw fringes
-        for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i){
+        for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
             glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
         }
     }
@@ -329,7 +360,7 @@ void HUDLayer::_fill(const HUDCall& call)
 
 void HUDLayer::_convex_fill(const HUDCall& call)
 {
-    glBindBufferRange(GL_UNIFORM_BUFFER, 0, s_shader.m_fragment_buffer, call.uniformOffset, sizeof(FragmentUniforms));
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, m_fragment_buffer, call.uniformOffset, sizeof(FragmentUniforms));
 
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
         // draw fill
@@ -351,14 +382,14 @@ void HUDLayer::_stroke(const HUDCall& call)
     // Fill the stroke base without overlap
     set_stencil_func(StencilFunc::EQUAL);
     glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
-    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, s_shader.m_fragment_buffer,
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer,
                       call.uniformOffset + fragSize(), sizeof(FragmentUniforms));
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
         glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
     }
 
     // Draw anti-aliased pixels.
-    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, s_shader.m_fragment_buffer, call.uniformOffset, sizeof(FragmentUniforms));
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset, sizeof(FragmentUniforms));
     set_stencil_func(StencilFunc::EQUAL);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
@@ -416,6 +447,35 @@ void HUDLayer::set_stencil_func(const StencilFunc func)
         glStencilFunc(GL_NOTEQUAL, 0x00, 0xff);
         break;
     }
+}
+
+HUDLayer::Sources HUDLayer::_create_shader_sources(const RenderBackend& backend)
+{
+    // create the header
+    std::string header;
+    switch (backend.type) {
+    case RenderBackend::Type::OPENGL_3:
+        header += "#version 150 core\n";
+        header += "#define OPENGL_3 1";
+        break;
+    case RenderBackend::Type::GLES_3:
+        header += "#version 300 es\n";
+        header += "#define GLES_3 1";
+        break;
+    }
+    if (backend.type != RenderBackend::Type::OPENGL_3) {
+        header += "#define UNIFORMARRAY_SIZE 11\n";
+    }
+    if (!backend.has_msaa) {
+        header += "#define GEOMETRY_AA 1\n";
+    }
+    header += "\n";
+
+    // TODO: building the shader is wasteful (but it only happens once...)
+
+    // attach the header to the source files
+    return {header + hud_vertex_shader,
+            header + hud_fragment_shader};
 }
 
 } // namespace notf

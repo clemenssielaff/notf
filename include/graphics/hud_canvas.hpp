@@ -2,16 +2,63 @@
 
 #include <vector>
 
-#include "render_backend.hpp"
 #include "common/aabr.hpp"
+#include "common/color.hpp"
 #include "common/float_utils.hpp"
 #include "common/size2i.hpp"
 #include "common/transform2.hpp"
-#include "graphics/hud_primitives.hpp"
+#include "graphics/blend_mode.hpp"
 #include "graphics/hud_painter.hpp"
+#include "graphics/vertex.hpp"
+#include "render_backend.hpp"
 #include "utils/enum_to_number.hpp"
 
 namespace notf {
+
+class HUDLayer;
+
+struct Paint {
+    Paint() = default;
+
+    Paint(Color color)
+        : xform(Transform2::identity())
+        , extent()
+        , radius(0)
+        , feather(1)
+        , innerColor(std::move(color))
+        , outerColor(innerColor)
+    {
+    }
+
+    void set_color(const Color color)
+    {
+        innerColor = std::move(color);
+        outerColor = innerColor;
+    }
+
+    Transform2 xform;
+    Size2f extent;
+    float radius;
+    float feather;
+    Color innerColor;
+    Color outerColor;
+};
+
+struct Scissor {
+    void reset()
+    {
+        xform  = Transform2::identity();
+        extend = {-1, -1};
+    }
+
+    /** Scissors have their own transformation. */
+    Transform2 xform;
+
+    /** Extend around the center of the Transform.
+     * That means that the Scissor's width is extend.width * 2.
+     */
+    Size2f extend;
+};
 
 class HUDCanvas {
 
@@ -23,6 +70,62 @@ public: // enum
         BEZIER,
         WINDING,
         CLOSE,
+    };
+
+    enum class LineCap : unsigned char {
+        BUTT,
+        ROUND,
+        SQUARE,
+    };
+
+    enum class LineJoin : unsigned char {
+        MITER,
+        ROUND,
+        BEVEL,
+    };
+
+    enum class Winding : unsigned char {
+        CCW,
+        CW,
+        SOLID = CCW,
+        HOLES = CW,
+    };
+
+    struct Path { // belongs to Canvas
+        int first;
+        int count;
+        unsigned char closed;
+        int nbevel;
+        std::vector<Vertex> fill;
+        std::vector<Vertex> stroke;
+        Winding winding;
+        bool is_convex;
+    };
+
+    struct Point {
+        float x, y;
+        float dx, dy;
+        float len;
+        float dmx, dmy;
+        unsigned char flags;
+    };
+
+    struct PathCache {
+        Point* points;
+        int npoints;
+        int cpoints;
+        Path* paths;
+        int npaths;
+        int cpaths;
+        Vertex* verts;
+        int nverts;
+        int cverts;
+        float bounds[4];
+
+        void clear()
+        {
+            npoints = npaths = 0;
+        }
     };
 
 private: // class
@@ -116,15 +219,7 @@ public: // methods
     {
     }
 
-    FrameGuard begin_frame()
-    {
-        m_states.clear();
-        m_states.emplace_back(RenderState());
-
-//        m_backend.renderViewport(*this);
-
-        return FrameGuard(this);
-    }
+    FrameGuard begin_frame(const HUDLayer& layer);
 
     size_t push_state()
     {
@@ -326,9 +421,9 @@ public: // methods
 private: //
     void _append_commands(std::vector<float>&& commands);
 
-    void _abort_frame() { /*m_backend.renderCancel();*/ }
+    void _abort_frame() { /*m_backend.renderCancel();*/}
 
-    void _end_frame() { /*m_backend.renderFlush(*this);*/ }
+    void _end_frame() { /*m_backend.renderFlush(*this);*/}
 
     RenderState& _get_current_state()
     {
@@ -351,6 +446,9 @@ private: // fields
     //    float commandx, commandy;
     PathCache m_paths;
 
+    float m_tesselation_tolerance;
+    float m_distance_tolerance;
+    float m_fringe_width;
 };
 
 } // namespace notf
