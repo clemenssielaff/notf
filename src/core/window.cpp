@@ -3,9 +3,6 @@
 #define NANOVG_GLES3_IMPLEMENTATION
 #include "core/glfw_wrapper.hpp"
 
-#include <nanovg/nanovg.h>
-#include <nanovg/nanovg_gl.h>
-
 #include <set>
 
 #include "common/debug.hpp"

@@ -12,21 +12,23 @@
 
 // no namespace
 
-using GLenum = unsigned int;
-using GLboolean = unsigned char;
+using GLenum     = unsigned int;
+using GLboolean  = unsigned char;
 using GLbitfield = unsigned int;
-using GLvoid = void;
-using GLbyte = signed char;
-using GLshort = short;
-using GLint = int;
-using GLclampx = int;
-using GLubyte = unsigned char;
-using GLushort = unsigned short;
-using GLuint = unsigned int;
-using GLsizei = int;
-using GLfloat = float;
-using GLclampf = float;
-using GLdouble = double;
-using GLclampd = double;
-using GLchar = char;
-using GLcharARB = char;
+using GLvoid     = void;
+using GLbyte     = signed char;
+using GLshort    = short;
+using GLint      = int;
+using GLintptr   = long int; // this should differ on Windows
+using GLclampx   = int;
+using GLubyte    = unsigned char;
+using GLushort   = unsigned short;
+using GLuint     = unsigned int;
+using GLsizei    = int;
+using GLsizeiptr = long int;
+using GLfloat    = float;
+using GLclampf   = float;
+using GLdouble   = double;
+using GLclampd   = double;
+using GLchar     = char;
+using GLcharARB  = char;

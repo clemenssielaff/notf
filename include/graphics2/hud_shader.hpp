@@ -43,7 +43,7 @@ public: // methods
 private: // methods
     static Sources _create_source(const RenderBackend& render_backend);
 
-private: // fields
+public: // fields
     Sources m_sources;
 
     Shader m_shader;

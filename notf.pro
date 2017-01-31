@@ -80,7 +80,6 @@ SOURCES += \
     src/python/interpreter.cpp \
     src/graphics/raw_image.cpp \
     src/graphics/texture2.cpp \
-    thirdparty/nanovg/nanovg.c \
     src/graphics/painter.cpp \
     src/python/py_layoutroot.cpp \
     src/python/py_painter.cpp \
@@ -168,10 +167,6 @@ HEADERS += \
     include/python/interpreter.hpp \
     include/graphics/raw_image.hpp \
     include/graphics/texture2.hpp \
-    thirdparty/nanovg/fontstash.h \
-    thirdparty/nanovg/nanovg_gl_utils.h \
-    thirdparty/nanovg/nanovg_gl.h \
-    thirdparty/nanovg/nanovg.h \
     thirdparty/stb_truetype/stb_truetype.h \
     include/graphics/rendercontext.hpp \
     include/graphics/painter.hpp \

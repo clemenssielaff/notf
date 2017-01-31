@@ -24,6 +24,8 @@ void xformToMat3x4(float* m3, notf::Transform2 t)
     m3[11] = 0.0f;
 }
 
+GLuint FRAG_BINDING = 0;
+
 } // namespace anonymous
 
 namespace notf {
@@ -127,7 +129,7 @@ void HUDLayer::add_fill_call(const Paint& paint, const Scissor& scissor, float f
     m_vertices.emplace_back(bounds.right(), bounds.top(), .5f, 1.f);
     m_vertices.emplace_back(bounds.left(), bounds.top(), .5f, 1.f);
 
-    call.uniformOffset = m_frag_uniforms.size();
+    call.uniformOffset = static_cast<GLintptr>(m_frag_uniforms.size());
     if (call.type == HUDCall::Type::FILL) {
         // create an additional uniform buffer for a simple shader for the stencil
         m_frag_uniforms.push_back({});
@@ -204,16 +206,16 @@ void HUDLayer::_paint_to_frag(FragmentUniforms& frag, const Paint& paint, const 
     frag.extent[0]  = paint.extent.width;
     frag.extent[1]  = paint.extent.height;
     frag.strokeMult = (stroke_width * 0.5f + fringe * 0.5f) / fringe;
-    frag.strokeThr = stroke_threshold;
-    frag.type = FragmentUniforms::Type::GRADIENT;
-    frag.radius = paint.radius;
-    frag.feather = paint.feather;
+    frag.strokeThr  = stroke_threshold;
+    frag.type       = FragmentUniforms::Type::GRADIENT;
+    frag.radius     = paint.radius;
+    frag.feather    = paint.feather;
     xformToMat3x4(frag.paintMat, paint.xform.inverse());
 }
 
 void HUDLayer::_render_flush(const BlendMode blend_mode)
 {
-    if(!m_calls.empty()){
+    if (!m_calls.empty()) {
 
         // reset cache
         m_stencil_mask = 0xffffffff;
@@ -237,10 +239,45 @@ void HUDLayer::_render_flush(const BlendMode blend_mode)
         glBindTexture(GL_TEXTURE_2D, 0);
 
         // Upload ubo for frag shaders
-        const int align = 4;
-        int fragSize = sizeof(FragmentUniforms) + align - sizeof(FragmentUniforms) % align; // this is terrible
         glBindBuffer(GL_UNIFORM_BUFFER, s_shader.m_fragment_buffer); // this is where the shader / layer separation breaks apart
-        glBufferData(GL_UNIFORM_BUFFER, static_cast<int>(m_frag_uniforms.size()) * fragSize, &m_frag_uniforms.front(), GL_STREAM_DRAW);
+        glBufferData(GL_UNIFORM_BUFFER, static_cast<GLsizeiptr>(m_frag_uniforms.size()) * fragSize(), &m_frag_uniforms.front(), GL_STREAM_DRAW);
+
+        // upload vertex data
+        glBindVertexArray(s_shader.m_vertex_array);
+        glBindBuffer(GL_ARRAY_BUFFER, s_shader.m_vertex_buffer);
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(m_vertices.size() * sizeof(Vertex)), &m_vertices.front(), GL_STREAM_DRAW);
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), nullptr);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)(2 * sizeof(float)));
+
+        // Set view and texture just once per frame.
+        glUniform1i(s_shader.m_loc_texture, 0);
+        glUniform2fv(s_shader.m_loc_viewsize, 1, m_viewport_size.as_float_ptr());
+        glBindBuffer(GL_UNIFORM_BUFFER, s_shader.m_fragment_buffer);
+
+        // perform the render calls
+        for (const HUDCall& call : m_calls) {
+            switch (call.type) {
+            case HUDCall::Type::FILL:
+                _fill(call);
+                break;
+            case HUDCall::Type::CONVEX_FILL:
+                _convex_fill(call);
+                break;
+            case HUDCall::Type::STROKE:
+                _stroke(call);
+                break;
+            }
+        }
+
+        // teardown GL state
+        glDisableVertexAttribArray(0);
+        glDisableVertexAttribArray(1);
+        glBindVertexArray(0);
+        glDisable(GL_CULL_FACE);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glUseProgram(0);
     }
 
     // reset layer state
@@ -248,6 +285,96 @@ void HUDLayer::_render_flush(const BlendMode blend_mode)
     m_paths.clear();
     m_calls.clear();
     m_frag_uniforms.clear();
+}
+
+void HUDLayer::_fill(const HUDCall& call)
+{
+    // Draw shapes
+    glEnable(GL_STENCIL_TEST);
+    set_stencil_mask(0xff);
+    set_stencil_func(StencilFunc::ALWAYS);
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+    // set bindpoint for solid loc
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, s_shader.m_fragment_buffer, call.uniformOffset, sizeof(FragmentUniforms));
+
+    glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP);
+    glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP);
+    glDisable(GL_CULL_FACE);
+    for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i){
+        glDrawArrays(GL_TRIANGLE_FAN, m_paths[i].fillOffset, m_paths[i].fillCount);
+    }
+    glEnable(GL_CULL_FACE);
+
+    // Draw anti-aliased pixels
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, s_shader.m_fragment_buffer, call.uniformOffset + fragSize(), sizeof(FragmentUniforms));
+
+    if (m_backend.has_msaa) {
+        set_stencil_func(StencilFunc::EQUAL);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+        // Draw fringes
+        for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i){
+            glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
+        }
+    }
+
+    // Draw fill
+    set_stencil_func(StencilFunc::NOTEQUAL);
+    glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO);
+    glDrawArrays(GL_TRIANGLES, call.triangleOffset, call.triangleCount);
+
+    glDisable(GL_STENCIL_TEST);
+}
+
+void HUDLayer::_convex_fill(const HUDCall& call)
+{
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, s_shader.m_fragment_buffer, call.uniformOffset, sizeof(FragmentUniforms));
+
+    for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
+        // draw fill
+        glDrawArrays(GL_TRIANGLE_FAN, m_paths[i].fillOffset, m_paths[i].fillCount);
+    }
+    if (m_backend.has_msaa) {
+        // draw fringes
+        for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
+            glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
+        }
+    }
+}
+
+void HUDLayer::_stroke(const HUDCall& call)
+{
+    glEnable(GL_STENCIL_TEST);
+    set_stencil_mask(0xff);
+
+    // Fill the stroke base without overlap
+    set_stencil_func(StencilFunc::EQUAL);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, s_shader.m_fragment_buffer,
+                      call.uniformOffset + fragSize(), sizeof(FragmentUniforms));
+    for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
+        glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
+    }
+
+    // Draw anti-aliased pixels.
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, s_shader.m_fragment_buffer, call.uniformOffset, sizeof(FragmentUniforms));
+    set_stencil_func(StencilFunc::EQUAL);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
+        glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
+    }
+
+    // Clear stencil buffer.
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    set_stencil_func(StencilFunc::ALWAYS);
+    glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO);
+    for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
+        glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
+    }
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+    glDisable(GL_STENCIL_TEST);
 }
 
 void HUDLayer::set_stencil_mask(const GLuint mask)

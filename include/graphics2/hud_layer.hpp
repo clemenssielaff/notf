@@ -25,7 +25,6 @@ class HUDLayer {
             FILL,
             CONVEX_FILL,
             STROKE,
-            TRIANGLES,
         };
 
         HUDCall() // we'll see if we need this initialization to zero at all
@@ -41,9 +40,9 @@ class HUDLayer {
         Type type;
         size_t pathOffset;
         size_t pathCount;
-        size_t triangleOffset;
-        size_t triangleCount;
-        size_t uniformOffset;
+        GLint triangleOffset;
+        GLsizei triangleCount;
+        GLintptr uniformOffset;
     };
 
     struct HUDPath {
@@ -56,10 +55,10 @@ class HUDLayer {
         {
         }
 
-        size_t fillOffset;
-        size_t fillCount;
-        size_t strokeOffset;
-        size_t strokeCount;
+        GLint fillOffset;
+        GLsizei fillCount;
+        GLint strokeOffset;
+        GLsizei strokeCount;
     };
 
     struct FragmentUniforms { //  TODO: replace more of the float[]s with explicit types
@@ -99,6 +98,12 @@ class HUDLayer {
         int texType;
         Type type;
     };
+
+    constexpr GLintptr fragSize()
+    {
+        const GLintptr align = 4;
+        return sizeof(FragmentUniforms) + align - sizeof(FragmentUniforms) % align;
+    }
 
 public: // enum
     enum class StencilFunc : unsigned char {
@@ -146,6 +151,12 @@ private: // methods
                        const float stroke_width, const float fringe, const float stroke_threshold);
 
     void _render_flush(BlendMode blend_mode);
+
+    void _fill(const HUDCall& call);
+
+    void _convex_fill(const HUDCall& call);
+
+    void _stroke(const HUDCall& call);
 
 private: // fields
     const RenderBackend& m_backend;

@@ -48,6 +48,8 @@ struct Size2f {
     Size2f operator*(const float factor) const { return {width * factor, height * factor}; }
 
     Size2f operator/(const float divisor) const { return {width / divisor, height / divisor}; }
+
+    const float* as_float_ptr() const { return &width; }
 };
 
 /* Free Functions *****************************************************************************************************/
