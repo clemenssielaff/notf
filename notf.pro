@@ -79,7 +79,6 @@ SOURCES += \
     src/common/claim.cpp \
     src/python/interpreter.cpp \
     src/graphics/raw_image.cpp \
-    src/graphics/painter.cpp \
     src/python/py_layoutroot.cpp \
     src/python/py_painter.cpp \
     src/python/py_stacklayout.cpp \
@@ -119,10 +118,11 @@ SOURCES += \
     src/common/line2.cpp \
     src/render_main.cpp \
     src/graphics/shader.cpp \
-    src/graphics/hud_layer.cpp \
-    src/graphics/hud_canvas.cpp \
     src/graphics/render_backend.cpp \
-    src/graphics/blend_mode.cpp
+    src/graphics/blend_mode.cpp \
+    src/graphics/canvas_layer.cpp \
+    src/graphics/canvas_cell.cpp \
+    src/graphics/canvas_painter.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -163,7 +163,6 @@ HEADERS += \
     include/python/interpreter.hpp \
     include/graphics/raw_image.hpp \
     thirdparty/stb_truetype/stb_truetype.h \
-    include/graphics/painter.hpp \
     include/common/memory_utils.hpp \
     include/common/float_utils.hpp \
     include/common/circle.hpp \
@@ -196,12 +195,12 @@ HEADERS += \
     include/utils/print_notf.hpp \
     include/common/line2.hpp \
     include/graphics/shader.hpp \
-    include/graphics/hud_layer.hpp \
-    include/graphics/hud_canvas.hpp \
-    include/graphics/hud_painter.hpp \
     include/graphics/render_backend.hpp \
     include/graphics/vertex.hpp \
-    include/graphics/blend_mode.hpp
+    include/graphics/blend_mode.hpp \
+    include/graphics/canvas_layer.hpp \
+    include/graphics/canvas_cell.hpp \
+    include/graphics/canvas_painter.hpp
 
 QMAKE_CXX = ccache g++
 

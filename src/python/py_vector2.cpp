@@ -42,7 +42,6 @@ void produce_vector2(pybind11::module& module)
     Py_Vector2.def("is_horizontal", &Vector2::is_horizontal, DOCSTR("Tests if this Vector2 is parallel to the x-axis."));
     Py_Vector2.def("is_vertical", &Vector2::is_vertical, DOCSTR("Tests if this Vector2 is parallel to the y-axis."));
     Py_Vector2.def("is_approx", &Vector2::is_approx, DOCSTR("Returns True, if other and self are approximately the same Vector2."), py::arg("other"));
-    Py_Vector2.def("is_not_approx", &Vector2::is_not_approx, DOCSTR("Returns True, if other and self are NOT approximately the same Vector2."), py::arg("other"));
     Py_Vector2.def("slope", &Vector2::slope, DOCSTR("Returns the slope of this Vector2."));
     Py_Vector2.def("magnitude_sq", &Vector2::magnitude_sq, DOCSTR("Returns the squared magnitude of this Vector2."));
     Py_Vector2.def("magnitude", &Vector2::magnitude, DOCSTR("Returns the magnitude of this Vector2."));

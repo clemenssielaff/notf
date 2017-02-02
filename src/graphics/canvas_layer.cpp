@@ -1,4 +1,4 @@
-#include "graphics/hud_layer.hpp"
+#include "graphics/canvas_layer.hpp"
 
 #include "common/log.hpp"
 #include "common/vector_utils.hpp"
@@ -40,7 +40,7 @@ const char* hud_fragment_shader =
 
 namespace notf {
 
-HUDLayer::HUDLayer(const RenderBackend& backend, const float pixel_ratio)
+CanvasLayer::CanvasLayer(const RenderBackend& backend, const float pixel_ratio)
     : m_backend(backend)
     , m_buffer_size(Size2f(0, 0))
     , m_pixel_ratio(pixel_ratio)
@@ -72,7 +72,7 @@ HUDLayer::HUDLayer(const RenderBackend& backend, const float pixel_ratio)
     glFinish();
 }
 
-HUDLayer::~HUDLayer()
+CanvasLayer::~CanvasLayer()
 {
     if (m_fragment_buffer != 0) {
         glDeleteBuffers(1, &m_fragment_buffer);
@@ -85,29 +85,31 @@ HUDLayer::~HUDLayer()
     }
 }
 
-void HUDLayer::begin_frame(const int width, const int height) // called from "beginFrame"
+CanvasLayer::FrameGuard CanvasLayer::begin_frame(const int width, const int height) // called from "beginFrame"
 {
     m_calls.clear();
     m_paths.clear();
 
     m_buffer_size.width  = static_cast<float>(width);
     m_buffer_size.height = static_cast<float>(height);
+
+    return FrameGuard(this);
 }
 
-void HUDLayer::abort_frame()
+void CanvasLayer::_abort_frame()
 {
     m_calls.clear();
     m_paths.clear();
-    //  gl->nverts = 0;
-    //	gl->nuniforms = 0;
+    m_vertices.clear();
+    m_frag_uniforms.clear();
 }
 
-void HUDLayer::end_frame()
+void CanvasLayer::_end_frame()
 {
 }
 
-void HUDLayer::add_fill_call(const Paint& paint, const Scissor& scissor, float fringe, const Aabr& bounds,
-                             const std::vector<HUDCanvas::Path>& paths)
+void CanvasLayer::add_fill_call(const Paint& paint, const Scissor& scissor, float fringe, const Aabr& bounds,
+                                const std::vector<Cell::Path>& paths)
 {
     m_calls.emplace_back();
     HUDCall& call   = m_calls.back();
@@ -122,7 +124,7 @@ void HUDLayer::add_fill_call(const Paint& paint, const Scissor& scissor, float f
 
     //  this block is its own function in nanovg, called maxVertCount
     size_t new_vertex_count = 6; // + 6 for the quad that we construct further down
-    for (const HUDCanvas::Path& path : paths) {
+    for (const Cell::Path& path : paths) {
         new_vertex_count += path.fill.size();
         new_vertex_count += path.stroke.size();
     }
@@ -132,7 +134,7 @@ void HUDLayer::add_fill_call(const Paint& paint, const Scissor& scissor, float f
     m_vertices.reserve(m_vertices.size() + new_vertex_count);
     m_paths.reserve(m_paths.size() + paths.size());
 
-    for (const HUDCanvas::Path& path : paths) {
+    for (const Cell::Path& path : paths) {
         PathIndex hud_path;
         if (!path.fill.empty()) {
             hud_path.fillOffset = static_cast<GLint>(offset);
@@ -175,8 +177,8 @@ void HUDLayer::add_fill_call(const Paint& paint, const Scissor& scissor, float f
     _paint_to_frag(fill_uniforms, paint, scissor, fringe, fringe, -1.0f);
 }
 
-void HUDLayer::add_stroke_call(const Paint& paint, const Scissor& scissor, float fringe, float strokeWidth,
-                               const std::vector<HUDCanvas::Path>& paths)
+void CanvasLayer::add_stroke_call(const Paint& paint, const Scissor& scissor, float fringe, float strokeWidth,
+                                  const std::vector<Cell::Path>& paths)
 {
     m_calls.emplace_back();
     HUDCall& call   = m_calls.back();
@@ -185,7 +187,7 @@ void HUDLayer::add_stroke_call(const Paint& paint, const Scissor& scissor, float
     call.pathCount  = paths.size();
 
     size_t new_vertex_count = 0;
-    for (const HUDCanvas::Path& path : paths) {
+    for (const Cell::Path& path : paths) {
         new_vertex_count += path.fill.size();
         new_vertex_count += path.stroke.size();
     }
@@ -194,7 +196,7 @@ void HUDLayer::add_stroke_call(const Paint& paint, const Scissor& scissor, float
     m_vertices.reserve(m_vertices.size() + new_vertex_count);
     m_paths.reserve(m_paths.size() + paths.size());
 
-    for (const HUDCanvas::Path& path : paths) {
+    for (const Cell::Path& path : paths) {
         PathIndex hud_path;
         if (!path.stroke.empty()) {
             hud_path.strokeOffset = static_cast<GLint>(offset);
@@ -215,8 +217,8 @@ void HUDLayer::add_stroke_call(const Paint& paint, const Scissor& scissor, float
     // TODO: nanovg checks for allocation errors while I just resize the vectors .. is that reasonable?
 }
 
-void HUDLayer::_paint_to_frag(FragmentUniforms& frag, const Paint& paint, const Scissor& scissor,
-                              const float stroke_width, const float fringe, const float stroke_threshold)
+void CanvasLayer::_paint_to_frag(FragmentUniforms& frag, const Paint& paint, const Scissor& scissor,
+                                 const float stroke_width, const float fringe, const float stroke_threshold)
 {
     assert(fringe > 0);
 
@@ -245,7 +247,7 @@ void HUDLayer::_paint_to_frag(FragmentUniforms& frag, const Paint& paint, const 
     xformToMat3x4(frag.paintMat, paint.xform.inverse());
 }
 
-void HUDLayer::_render_flush(const BlendMode blend_mode)
+void CanvasLayer::_render_flush(const BlendMode blend_mode)
 {
     if (!m_calls.empty()) {
 
@@ -318,7 +320,7 @@ void HUDLayer::_render_flush(const BlendMode blend_mode)
     m_frag_uniforms.clear();
 }
 
-void HUDLayer::_fill(const HUDCall& call)
+void CanvasLayer::_fill(const HUDCall& call)
 {
     // Draw shapes
     glEnable(GL_STENCIL_TEST);
@@ -358,7 +360,7 @@ void HUDLayer::_fill(const HUDCall& call)
     glDisable(GL_STENCIL_TEST);
 }
 
-void HUDLayer::_convex_fill(const HUDCall& call)
+void CanvasLayer::_convex_fill(const HUDCall& call)
 {
     glBindBufferRange(GL_UNIFORM_BUFFER, 0, m_fragment_buffer, call.uniformOffset, sizeof(FragmentUniforms));
 
@@ -374,7 +376,7 @@ void HUDLayer::_convex_fill(const HUDCall& call)
     }
 }
 
-void HUDLayer::_stroke(const HUDCall& call)
+void CanvasLayer::_stroke(const HUDCall& call)
 {
     glEnable(GL_STENCIL_TEST);
     set_stencil_mask(0xff);
@@ -408,7 +410,7 @@ void HUDLayer::_stroke(const HUDCall& call)
     glDisable(GL_STENCIL_TEST);
 }
 
-void HUDLayer::set_stencil_mask(const GLuint mask)
+void CanvasLayer::set_stencil_mask(const GLuint mask)
 {
     if (mask != m_stencil_mask) {
         m_stencil_mask = mask;
@@ -416,7 +418,7 @@ void HUDLayer::set_stencil_mask(const GLuint mask)
     }
 }
 
-void HUDLayer::set_stencil_func(const StencilFunc func)
+void CanvasLayer::set_stencil_func(const StencilFunc func)
 {
     if (func == m_stencil_func) {
         return;
@@ -449,7 +451,7 @@ void HUDLayer::set_stencil_func(const StencilFunc func)
     }
 }
 
-HUDLayer::Sources HUDLayer::_create_shader_sources(const RenderBackend& backend)
+CanvasLayer::Sources CanvasLayer::_create_shader_sources(const RenderBackend& backend)
 {
     // create the header
     std::string header;

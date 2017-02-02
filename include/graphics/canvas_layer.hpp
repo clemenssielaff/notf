@@ -9,7 +9,7 @@
 #include "common/vector2.hpp"
 #include "graphics/blend_mode.hpp"
 #include "graphics/gl_forwards.hpp"
-#include "graphics/hud_canvas.hpp"
+#include "graphics/canvas_cell.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/vertex.hpp"
 
@@ -20,11 +20,13 @@ class RenderBackend;
 
 /**********************************************************************************************************************/
 
-/** The HUDLayer is a RenderLayer specialized in rendering dynamic, 2D Widgets.
- * At the moment, the HUDLayer is the only reder layer in NoTF, however, I can easily imagine a 3D Layer, for example.
+/** The CanvasLayer is a RenderLayer specialized in rendering dynamic, 2D Widgets.
+ * At the moment, the CanvasLayer is the only reder layer in NoTF, however, I can easily imagine a 3D Layer, for example.
  * In that case, add an abstract parent class and implement the relevant virtual functions.
  */
-class HUDLayer {
+class CanvasLayer {
+
+    friend class FrameGuard;
 
     struct HUDCall {
         enum class Type : unsigned char {
@@ -116,6 +118,58 @@ class HUDLayer {
         std::string fragment;
     };
 
+    /******************************************************************************************************************/
+    /** The FrameGuard makes sure that for each call to `CanvasLayer::begin_frame` there is a corresponding call to
+     * either `CanvasLayer::end_frame` on success or `CanvasLayer::abort_frame` in case of an error.
+     *
+     * It is returned by `CanvasLayer::begin_frame` and must remain on the stack until the rendering has finished.
+     * Then, you need to call `FrameGuard::end()` to cleanly end the frame.
+     * If the FrameGuard is destroyed before `FrameGuard::end()` is called, the CanvasLayer is instructed to abort the
+     * currently drawn frame.
+     */
+    class FrameGuard {
+
+    public: // methods
+        /** Constructor. */
+        FrameGuard(CanvasLayer* context)
+            : m_canvas(context) {}
+
+        // no copy/assignment
+        FrameGuard(const FrameGuard&) = delete;
+        FrameGuard& operator=(const FrameGuard&) = default;
+
+        /** Move Constructor. */
+        FrameGuard(FrameGuard&& other)
+            : m_canvas(other.m_canvas)
+        {
+            other.m_canvas = nullptr;
+        }
+
+        /** Destructor.
+         * If the object is destroyed before FrameGuard::end() is called, the CanvasLayer's frame is cancelled.
+         */
+        ~FrameGuard()
+        {
+            if (m_canvas) {
+                m_canvas->_abort_frame();
+            }
+        }
+
+        /** Cleanly ends the HUDCanvas's current frame. */
+        void end()
+        {
+            if (m_canvas) {
+                m_canvas->_end_frame();
+                m_canvas = nullptr;
+            }
+        }
+
+    private: // fields
+        /** CanvasLayer currently drawing a frame.*/
+        CanvasLayer* m_canvas;
+    };
+
+
 public: // enum
     enum class StencilFunc : unsigned char {
         ALWAYS,
@@ -130,24 +184,26 @@ public: // enum
 
 public:
     /** Constructor. */
-    HUDLayer(const RenderBackend& backend, const float pixel_ratio = 1);
+    CanvasLayer(const RenderBackend& backend, const float pixel_ratio = 1);
 
-    ~HUDLayer();
+    ~CanvasLayer();
 
-    void begin_frame(const int width, const int height); // called from "beginFrame"
-
-    void abort_frame();
-
-    void end_frame();
+    FrameGuard begin_frame(const int width, const int height); // called from "beginFrame"
 
     float get_pixel_ratio() const { return m_pixel_ratio; }
 
+private: // methods for FrameGuard
+
+    void _abort_frame();
+
+    void _end_frame();
+
 private: // methods for HUDPainter
     void add_fill_call(const Paint& paint, const Scissor& scissor, float fringe, const Aabr& bounds,
-                       const std::vector<HUDCanvas::Path>& paths);
+                       const std::vector<Cell::Path>& paths);
 
     void add_stroke_call(const Paint& paint, const Scissor& scissor, float fringe, float strokeWidth,
-                         const std::vector<HUDCanvas::Path>& paths);
+                         const std::vector<Cell::Path>& paths);
 
     void set_stencil_mask(const GLuint mask);
 

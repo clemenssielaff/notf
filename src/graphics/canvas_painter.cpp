@@ -1,6 +1,6 @@
 #include <assert.h>
 
-#include "graphics/painter.hpp"
+#include "graphics/canvas_painter.hpp"
 
 #include "common/log.hpp"
 #include "core/widget.hpp"

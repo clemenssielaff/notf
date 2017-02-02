@@ -1,7 +1,7 @@
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
-#include "graphics/painter.hpp"
+#include "graphics/canvas_painter.hpp"
 #include "python/docstr.hpp"
 using namespace notf;
 

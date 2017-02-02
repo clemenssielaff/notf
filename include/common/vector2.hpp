@@ -143,15 +143,22 @@ struct Vector2 {
     /// The zero vector is parallel to every Vector2.
     bool is_vertical() const { return x == approx(0); }
 
-    /// @brief Returns True, if other and self are approximately the same Vector2.
-    ///
-    /// @param other    Vector2 to test against.
-    bool is_approx(const Vector2& other) const { return (x == approx(other.x) && y == approx(other.y)); }
+    /** Returns True, if other and self are approximately the same Vector2.
+     * @param other     Vector2 to test against.
+     */
+    bool is_approx(const Vector2& other) const
+    {
+        return (*this - other).magnitude_sq() == approx(0);
+    }
 
-    /// @brief Returns True, if other and self are NOT approximately the same Vector2.
-    ///
-    /// @param other    Vector2 to test against.
-    bool is_not_approx(const Vector2& other) const { return (x != approx(other.x) || y != approx(other.y)); }
+    /** Returns True, if other and self are approximately the same Vector2.
+     * @param other     Vector2 to test against.
+     * @param epsilon   Maximal allowed distance between the two Vectors.
+     */
+    bool is_approx(const Vector2& other, const float epsilon) const
+    {
+        return (*this - other).magnitude_sq() == approx(0, epsilon);
+    }
 
     /// @brief Returns the slope of this Vector2.
     ///

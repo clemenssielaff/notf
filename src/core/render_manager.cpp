@@ -7,7 +7,7 @@
 #include "core/layout_root.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
-#include "graphics/painter.hpp"
+#include "graphics/canvas_painter.hpp"
 #include "graphics/rendercontext.hpp"
 #include "utils/make_smart_enabler.hpp"
 
