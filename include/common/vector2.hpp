@@ -350,6 +350,15 @@ struct Vector2 {
         return (x * other.x) + (y * other.y);
     }
 
+    /** Vector2 cross product (as defined at http://mathworld.wolfram.com/CrossProduct.html)
+     * @param other Vector2 on the right.
+     * @return      Cross product.
+     */
+    float cross(const Vector2 other) const
+    {
+        return (x * other.y) - (y * other.x);
+    }
+
     /// @brief Returns a normalized copy of this Vector2.
     Vector2 normalized() const
     {

@@ -88,6 +88,8 @@ public: // enum
     enum class Winding : unsigned char {
         CCW,
         CW,
+        COUNTERCLOCKWISE = CCW,
+        CLOCKWISE = CW,
         SOLID = CCW,
         HOLES = CW,
     };
@@ -252,7 +254,22 @@ public: // methods
     void add_rounded_rect(const float x, const float y, const float w, const float h,
                           const float rtl, const float rtr, const float rbr, const float rbl);
 
-    // nanovg has two additional methods: `nvgArc` and `nvgArcTo`, which are quite large so I ignore them for now
+    void arc_to(const Vector2 tangent, const Vector2 end, const float radius);
+
+    /** Create an arc between two tangents on the canvas.
+     * @param x1        X-coordinate of the first tangent.
+     * @param y1        Y-coordinate of the first tangent.
+     * @param x2        X-coordinate of the second tangent.
+     * @param y2        Y-coordinate of the second tangent.
+     * @param radius    Radius of the arc.
+     * @see             http://www.w3schools.com/tags/canvas_arcto.asp
+     */
+    void arc_to(const float x1, const float y1, const float x2, const float y2, const float radius)
+    {
+        arc_to({x1, y1}, {x2, y2}, radius);
+    }
+
+    void arc(float cx, float cy, float r, float a0, float a1, Winding dir);
 
     void set_winding(const Winding winding);
 
@@ -278,6 +295,9 @@ private: // methods
         assert(!m_states.empty());
         return m_states.back();
     }
+
+    /** Replaces the current path */
+    void _flatten_paths();
 
 private: // fields
     std::vector<RenderState> m_states;

@@ -1,5 +1,6 @@
 #include "graphics/canvas_cell.hpp"
 
+#include "common/line2.hpp"
 #include "graphics/canvas_layer.hpp"
 
 namespace { // anonymous
@@ -104,22 +105,16 @@ void Cell::_append_commands(std::vector<float>&& commands)
     }
     m_commands.reserve(m_commands.size() + commands.size());
 
-    // extract the last position of the stylus
-    Command command = static_cast<Command>(m_commands[0]);
-    if (command != Command::WINDING && command != Command::CLOSE) {
-        assert(commands.size() >= 3);
-        m_stylus = *reinterpret_cast<Vector2*>(&commands[commands.size() - 2]);
-    }
-
     // commands operate in the context's current transformation space, but we need them in global space
     const Transform2& xform = _get_current_state().xform;
     for (size_t i = 0; i < commands.size();) {
-        command = static_cast<Command>(m_commands[i]);
+        Command command = static_cast<Command>(m_commands[i]);
         switch (command) {
 
         case Command::MOVE:
         case Command::LINE: {
             transform_command_point(xform, commands, i + 1);
+            m_stylus = *reinterpret_cast<Vector2*>(&commands[i + 1]);
             i += 3;
         } break;
 
@@ -127,6 +122,7 @@ void Cell::_append_commands(std::vector<float>&& commands)
             transform_command_point(xform, commands, i + 1);
             transform_command_point(xform, commands, i + 3);
             transform_command_point(xform, commands, i + 5);
+            m_stylus = *reinterpret_cast<Vector2*>(&commands[i + 5]);
             i += 7;
         } break;
 
@@ -170,6 +166,114 @@ void Cell::add_rounded_rect(const float x, const float y, const float w, const f
                       to_float(Command::LINE), x + rxTL, y,
                       to_float(Command::BEZIER), x + rxTL * (1 - KAPPA), y, x, y + ryTL * (1 - KAPPA), x, y + ryTL,
                       to_float(Command::CLOSE)});
+}
+
+void Cell::arc_to(const Vector2 tangent, const Vector2 end, const float radius)
+{
+    // handle degenerate cases
+    if (radius < m_distance_tolerance
+        || m_stylus.is_approx(tangent, m_distance_tolerance)
+        || tangent.is_approx(end, m_distance_tolerance)
+        || Line2::from_points(m_stylus, end).closest_point(tangent).magnitude_sq() < (m_distance_tolerance * m_distance_tolerance)) {
+        return line_to(end);
+    }
+
+    // calculate tangential circle to lines (stylus -> tangent) and (tangent -> end)
+    const Vector2 delta1 = (m_stylus - tangent).normalize();
+    const Vector2 delta2 = (tangent - end).normalize();
+    const float a        = acos(delta1.dot(delta2)) / 2;
+    if (a == approx(0)) {
+        return line_to(end);
+    }
+    const float d = radius / tan(a);
+    if (d > 10000.0f) { // I guess any large number would do
+        return line_to(end);
+    }
+
+    // prepare the call to `arc` from the known arguments
+    float cx, cy, a0, a1;
+    Winding dir;
+    if (delta1.cross(delta2) < 0) {
+        cx  = tangent.x + delta1.x * d + delta1.y * radius;
+        cy  = tangent.y + delta1.y * d + -delta1.x * radius;
+        a0  = atan2(delta1.x, -delta1.y);
+        a1  = atan2(-delta2.x, delta2.y);
+        dir = Winding::CLOCKWISE;
+    }
+    else {
+        cx  = tangent.x + delta1.x * d + -delta1.y * radius;
+        cy  = tangent.y + delta1.y * d + delta1.x * radius;
+        a0  = atan2(-delta1.x, delta1.y);
+        a1  = atan2(delta2.x, -delta2.y);
+        dir = Winding::COUNTERCLOCKWISE;
+    }
+
+    arc(cx, cy, radius, a0, a1, dir);
+}
+
+void Cell::arc(float cx, float cy, float r, float a0, float a1, Winding dir)
+{
+    // clamp angles
+    float da = a1 - a0;
+    if (dir == Winding::CLOCKWISE) {
+        if (abs(da) >= TWO_PI) {
+            da = TWO_PI;
+        }
+        else {
+            while (da < 0) {
+                da += TWO_PI;
+            }
+        }
+    }
+    else {
+        if (abs(da) <= -TWO_PI) {
+            da = -TWO_PI;
+        }
+        else {
+            while (da > 0) {
+                da -= TWO_PI;
+            }
+        }
+    }
+
+    // split the arc into <= 90deg segments
+    const float ndivs = max(1.f, min(ceilf(abs(da) / HALF_PI), 5.f));
+    const float hda   = (da / ndivs) / 2;
+    const float kappa = abs(4.0f / 3.0f * (1.0f - cos(hda)) / sin(hda)) * (dir == Winding::CLOCKWISE ? 1 : -1);
+
+    // create individual commands
+    std::vector<float> commands((static_cast<size_t>(ceilf(ndivs)) - 1) * 7 + 3);
+    size_t command_index = 0;
+    float px = 0, py = 0, ptanx = 0, ptany = 0;
+    for (float i = 0; i <= ndivs; i++) {
+        const float a    = a0 + da * (i / ndivs);
+        const float dx   = cos(a);
+        const float dy   = sin(a);
+        const float x    = cx + dx * r;
+        const float y    = cy + dy * r;
+        const float tanx = -dy * r * kappa;
+        const float tany = dx * r * kappa;
+        if (command_index == 0) {
+            commands[command_index++] = to_float(m_commands.empty() ? Command::MOVE : Command::LINE);
+            commands[command_index++] = x;
+            commands[command_index++] = y;
+        }
+        else {
+            commands[command_index++] = to_float(Command::BEZIER);
+            commands[command_index++] = px + ptanx;
+            commands[command_index++] = py + ptany;
+            commands[command_index++] = x - tanx;
+            commands[command_index++] = y - tany;
+            commands[command_index++] = x;
+            commands[command_index++] = y;
+        }
+        px    = x;
+        py    = y;
+        ptanx = tanx;
+        ptany = tany;
+    }
+
+    _append_commands(std::move(commands));
 }
 
 void Cell::bezier_to(const float c1x, const float c1y, const float c2x, const float c2y, const float tx, const float ty)
