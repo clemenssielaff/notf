@@ -71,6 +71,10 @@ public: // enum
         BEZIER,
         WINDING,
         CLOSE,
+        // NOOP,
+        // FILL,
+        // STROKE,
+        // BEGIN,
     };
 
     enum class LineCap : unsigned char {
@@ -89,24 +93,42 @@ public: // enum
         CCW,
         CW,
         COUNTERCLOCKWISE = CCW,
-        CLOCKWISE = CW,
-        SOLID = CCW,
-        HOLES = CW,
+        CLOCKWISE        = CW,
+        SOLID            = CCW,
+        HOLES            = CW,
     };
 
-    struct Path { // belongs to Canvas
-        int first;
-        int count;
-        unsigned char closed;
-        int nbevel;
-        std::vector<Vertex> fill;
-        std::vector<Vertex> stroke;
+    // The vertices of the Path are stored in Cell while this struct only stores offsets and sizes.
+    struct Path {
+        size_t offset;
+        size_t point_count;
+        bool is_closed;
+        size_t nbevel;
+        size_t fill_offset;
+        size_t fill_size;
+        size_t stroke_offset;
+        size_t stroke_size;
         Winding winding;
         bool is_convex;
+
+        Path(size_t first)
+            : offset(std::move(first))
+            , point_count(0)
+            , is_closed(false)
+            , nbevel(0)
+            , fill_offset(0)
+            , fill_size(0)
+            , stroke_offset(0)
+            , stroke_size(0)
+            , winding(Winding::COUNTERCLOCKWISE)
+            , is_convex(false)
+        {
+        }
     };
 
     struct Point {
-        enum Flag {
+        enum Flags : unsigned char {
+            NONE       = 0,
             CORNER     = 1u << 1,
             LEFT       = 1u << 2,
             BEVEL      = 1u << 3,
@@ -123,7 +145,7 @@ public: // enum
         Vector2 dm; // TODO: what is Point::dm?
 
         /** Additional information about this Point. */
-        Flag flags;
+        Flags flags;
     };
 
 private: // class
@@ -275,6 +297,19 @@ public: // methods
 
     void close_path();
 
+    void fill(CanvasLayer& layer);
+
+    void stroke(CanvasLayer& layer);
+
+public: // getter
+    const std::vector<Path>& get_paths() const { return m_paths; }
+
+    const std::vector<Vertex>& get_vertices() const { return m_vertices; }
+
+    const Aabr& get_bounds() const { return m_bounds; }
+
+    float get_fringe_width() const { return m_fringe_width; }
+
 public: // static methods
     static Paint create_linear_gradient(const Vector2& start_pos, const Vector2& end_pos,
                                         const Color start_color, const Color end_color);
@@ -296,8 +331,18 @@ private: // methods
         return m_states.back();
     }
 
-    /** Replaces the current path */
     void _flatten_paths();
+
+    void _calculate_joins(const float fringe, const LineJoin join, const float miter_limit);
+
+    void _expand_fill(const bool draw_antialiased);
+
+    void _expand_stroke(const float stroke_width);
+
+    /** Creates a new Point, but only if the position significantly differs from the last one. */
+    void _add_point(const Vector2 position, const Point::Flags flags);
+
+    void _tesselate_bezier(size_t offset);
 
 private: // fields
     std::vector<RenderState> m_states;

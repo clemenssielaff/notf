@@ -1,7 +1,9 @@
 #include "graphics/canvas_cell.hpp"
 
+#include "common/float_utils.hpp"
 #include "common/line2.hpp"
 #include "graphics/canvas_layer.hpp"
+#include "graphics/render_backend.hpp"
 
 namespace { // anonymous
 using namespace notf;
@@ -13,7 +15,20 @@ void transform_command_point(const Transform2& xform, std::vector<float>& comman
     point          = xform.transform(point);
 }
 
+/** Transforms a Command to a float value that can be stored in the Command buffer. */
 float to_float(const Cell::Command command) { return static_cast<float>(to_number(command)); }
+
+float poly_area(const std::vector<Cell::Point>& points, const size_t offset, const size_t count)
+{
+    float area           = 0;
+    const Cell::Point& a = points[0];
+    for (size_t index = offset + 2; index < offset + count; ++index) {
+        const Cell::Point& b = points[index - 1];
+        const Cell::Point& c = points[index];
+        area += (c.pos.x - a.pos.x) * (b.pos.y - a.pos.y) - (b.pos.x - a.pos.x) * (c.pos.y - a.pos.y);
+    }
+    return area;
+}
 
 } // namespace anonymous
 
@@ -328,6 +343,280 @@ void Cell::close_path()
     _append_commands({to_float(Command::CLOSE)});
 }
 
+void Cell::fill(CanvasLayer& layer)
+{
+    const RenderState& state = _get_current_state();
+    Paint fill_paint         = state.fill;
+
+    // apply global alpha
+    fill_paint.innerColor.a *= state.alpha;
+    fill_paint.outerColor.a *= state.alpha;
+
+    _flatten_paths();
+    _expand_fill(layer.backend.has_msaa);
+    layer.add_fill_call(fill_paint, *this);
+}
+
+void Cell::stroke(CanvasLayer& layer)
+{
+    const RenderState& state = _get_current_state();
+    Paint stroke_paint       = state.stroke;
+
+    // sanity check the stroke width
+    const float scale  = (state.xform.get_scale_x() + state.xform.get_scale_y()) / 2;
+    float stroke_width = clamp(state.stroke_width * scale, 0, 200); // 200 is arbitrary
+    if (stroke_width < m_fringe_width) {
+        // if the stroke width is less than pixel size, use alpha to emulate coverage.
+        const float alpha = clamp(stroke_width / m_fringe_width, 0.0f, 1.0f);
+        stroke_paint.innerColor.a *= alpha * alpha; // since coverage is area, scale by alpha*alpha
+        stroke_paint.outerColor.a *= alpha * alpha;
+        stroke_width = m_fringe_width;
+    }
+
+    // apply global alpha
+    stroke_paint.innerColor.a *= state.alpha;
+    stroke_paint.outerColor.a *= state.alpha;
+
+    _flatten_paths();
+    if (layer.backend.has_msaa) {
+        _expand_stroke((stroke_width / 2) + (m_fringe_width / 2));
+    } else {
+        _expand_stroke(stroke_width / 2);
+    }
+    layer.add_stroke_call(stroke_paint, stroke_width, *this);
+}
+
+void Cell::_flatten_paths()
+{
+    if (!m_paths.empty()) {
+        return; // This feels weird and I will change it in the rework discussed at the end of the file
+    }
+
+    // parse the command buffer
+    for (size_t index = 0; index < m_commands.size();) {
+        switch (static_cast<Command>(m_commands[index])) {
+
+        case Command::MOVE:
+            m_paths.emplace_back(m_paths.size());
+            [[clang::fallthrough]];
+
+        case Command::LINE:
+            _add_point(*reinterpret_cast<Vector2*>(&m_commands[index + 1]), Point::Flags::CORNER);
+            index += 3;
+            break;
+
+        case Command::BEZIER:
+            _tesselate_bezier(index + 1);
+            index += 7;
+            break;
+
+        case Command::CLOSE:
+            if (!m_paths.empty()) {
+                m_paths.back().is_closed = true;
+            }
+            ++index;
+            break;
+
+        case Command::WINDING:
+            if (!m_paths.empty()) {
+                m_paths.back().winding = static_cast<Winding>(m_commands[index + 1]);
+            }
+            index += 2;
+            break;
+
+        default: // should never happen
+            assert(0);
+            ++index;
+        }
+    }
+
+    m_bounds = Aabr::wrongest();
+    for (Path& path : m_paths) {
+        assert(path.point_count > 0); // TODO: I can be sure that there is no path without a point ... right?
+
+        { // if the first and last points are the same, remove the last one and mark the path as closed
+            const Point& first = m_points[path.offset];
+            const Point& last  = m_points[path.offset + path.point_count - 1];
+            if (first.pos.is_approx(last.pos, m_distance_tolerance)) {
+                --path.point_count; // this could in theory produce a Path without points (if we started with one point)
+                path.is_closed = true;
+            }
+        }
+
+        // enforce winding
+        if (path.point_count > 2) {
+            const float area = poly_area(m_points, path.offset, path.point_count);
+            if ((path.winding == Winding::CCW && area < 0)
+                || (path.winding == Winding::CW && area > 0)) {
+                for (size_t i = path.fill_offset, j = path.fill_offset + path.point_count - 1; i < j; ++i, --j) {
+                    std::swap(m_points[i], m_points[j]);
+                }
+            }
+        }
+
+        for (size_t point_index = path.offset;
+             point_index < path.offset + path.point_count - (path.is_closed ? 0 : 1);
+             ++point_index) {
+
+            Point& current = m_points[point_index];
+            Point& next    = m_points[point_index + 1];
+
+            // calculate segment delta
+            current.delta = next.pos - current.pos;
+
+            // update bounds
+            m_bounds._min.x = min(m_bounds._min.x, current.pos.x);
+            m_bounds._min.y = min(m_bounds._min.y, current.pos.y);
+            m_bounds._max.x = max(m_bounds._max.x, current.pos.x);
+            m_bounds._max.y = max(m_bounds._max.y, current.pos.y);
+        }
+    }
+}
+
+void Cell::_expand_fill(const bool draw_antialiased)
+{
+    const float fringe = draw_antialiased ? m_fringe_width : 0;
+    _calculate_joins(fringe, LineJoin::MITER, 2.4f);
+
+    { // reserve new vertices
+        size_t new_vertex_count = 0;
+        for (const Path& path : m_paths) {
+            new_vertex_count += path.point_count + path.nbevel + 1;
+            if (fringe > 0) {
+                new_vertex_count += (path.point_count + path.nbevel * 5 + 1) * 2; // plus one for loop
+            }
+        }
+        m_vertices.reserve(m_vertices.size() + new_vertex_count);
+    }
+
+    const float woff = fringe / 2;
+    for (Path& path : m_paths) {
+        path.fill_offset = m_vertices.size();
+    }
+
+    // NOT FINISHED
+}
+
+void Cell::_expand_stroke(const float stroke_width)
+{
+}
+
+void Cell::_add_point(const Vector2 position, const Point::Flags flags)
+{
+    // if the point is not significantly different, use the last one instead.
+    if (!m_points.empty()) {
+        Point& last_point = m_points.back();
+        if (position.is_approx(last_point.pos, m_distance_tolerance)) {
+            last_point.flags = static_cast<Point::Flags>(last_point.flags | flags);
+            return;
+        }
+    }
+
+    // otherwise create a new point
+    m_points.emplace_back(std::move(position), Vector2::zero(), Vector2::zero(), flags);
+
+    // and append it to the last path
+    assert(!m_paths.empty());
+    m_paths.back().point_count++;
+}
+
+/* Note that I am using the (experimental) improvement on the standard nanovg tesselation algorithm here,
+ * as found at: https://github.com/memononen/nanovg/issues/328
+ * If there seems to be an issue with the tesselation, revert back to the "official" implementation
+ */
+void Cell::_tesselate_bezier(size_t offset)
+{
+    static const int one = 1 << 10;
+
+    // To avoid unnecessary copies, we just ingest values straight out of the Command buffer
+    assert(m_commands.size() > offset + 7);
+    const float x1 = m_commands[offset + 0];
+    const float y1 = m_commands[offset + 1];
+    const float x2 = m_commands[offset + 2];
+    const float y2 = m_commands[offset + 3];
+    const float x3 = m_commands[offset + 4];
+    const float y3 = m_commands[offset + 5];
+    const float x4 = m_commands[offset + 6];
+    const float y4 = m_commands[offset + 7];
+
+    // Power basis.
+    const float ax = -x1 + 3 * x2 - 3 * x3 + x4;
+    const float ay = -y1 + 3 * y2 - 3 * y3 + y4;
+    const float bx = 3 * x1 - 6 * x2 + 3 * x3;
+    const float by = 3 * y1 - 6 * y2 + 3 * y3;
+    const float cx = -3 * x1 + 3 * x2;
+    const float cy = -3 * y1 + 3 * y2;
+
+    // Transform to forward difference basis (stepsize 1)
+    float px   = x1;
+    float py   = y1;
+    float dx   = ax + bx + cx;
+    float dy   = ay + by + cy;
+    float ddx  = 6 * ax + 2 * bx;
+    float ddy  = 6 * ay + 2 * by;
+    float dddx = 6 * ax;
+    float dddy = 6 * ay;
+
+    int t           = 0;
+    int dt          = one;
+    const float tol = m_tesselation_tolerance * 4.f;
+
+    while (t < one) {
+
+        // flatness measure (guessed)
+        float d = ddx * ddx + ddy * ddy + dddx * dddx + dddy * dddy;
+
+        // go to higher resolution if we're moving a lot, or overshooting the end.
+        while ((d > tol && dt > 1) || (t + dt > one)) {
+
+            // apply L to the curve. Increase curve resolution.
+            dx   = .5f * dx - (1.f / 8.f) * ddx + (1.f / 16.f) * dddx;
+            dy   = .5f * dy - (1.f / 8.f) * ddy + (1.f / 16.f) * dddy;
+            ddx  = (1.f / 4.f) * ddx - (1.f / 8.f) * dddx;
+            ddy  = (1.f / 4.f) * ddy - (1.f / 8.f) * dddy;
+            dddx = (1.f / 8.f) * dddx;
+            dddy = (1.f / 8.f) * dddy;
+
+            // half the stepsize.
+            dt >>= 1;
+
+            d = ddx * ddx + ddy * ddy + dddx * dddx + dddy * dddy;
+        }
+
+        // go to lower resolution if we're really flat and we aren't going to overshoot the end.
+        // tol/32 is just a guess for when we are too flat.
+        while ((d > 0 && d < tol / 32.f && dt < one) && (t + 2 * dt <= one)) {
+
+            // apply L^(-1) to the curve. Decrease curve resolution.
+            dx   = 2 * dx + ddx;
+            dy   = 2 * dy + ddy;
+            ddx  = 4 * ddx + 4 * dddx;
+            ddy  = 4 * ddy + 4 * dddy;
+            dddx = 8 * dddx;
+            dddy = 8 * dddy;
+
+            // double the stepsize.
+            dt <<= 1;
+
+            d = ddx * ddx + ddy * ddy + dddx * dddx + dddy * dddy;
+        }
+
+        // forward differencing.
+        px += dx;
+        py += dy;
+        dx += ddx;
+        dy += ddy;
+        ddx += dddx;
+        ddy += dddy;
+
+        _add_point({px, py}, (t > 0 ? Point::Flags::CORNER : Point::Flags::NONE));
+
+        // advance along the curve.
+        t += dt;
+        assert(t <= one);
+    }
+}
+
 Paint Cell::create_linear_gradient(const Vector2& start_pos, const Vector2& end_pos,
                                    const Color start_color, const Color end_color)
 {
@@ -398,3 +687,21 @@ static_assert(sizeof(Cell::Command) == sizeof(float),
               "Adjust the type of the underlying type of CommandBuffer::Command to fit your particular system.");
 
 } // namespace notf
+
+/*
+ * Unlike NanovVG, which must be very general by design, I want the NoTF canvas layer to be optimized for drawing
+ * Widgets from Python.
+ * Therefore, I propose the following:
+ *  1. Every time a Cell is redrawn, it clears all of its Commands and paths
+ *  2. The draw calls, that are exposed to Python, ONLY append to the Command buffer which should be pretty fast
+ *     Unlike NanoVG, calling `fill` or `stroke` only inserts a new Command, as does `begin_path`
+ *  3. After the Cell is finished redrawing, the Command buffer is optimized.
+ *     If a Path is created, then filled, then the path is added (not the old one not removed) and then filled again,
+ *     the first fill command is transformed in a NOOP Command which will be ignored - same goes for stroke
+ *  3a)... or we keep track of the last `fill` and `stroke` Commands and reset them every time a new one is added
+ *     and whenever a `begin_path` Command is given, the two trackers are reset to an invalid value
+ *  4. Finally, the Commands are executed and the resulting "paths" (or buffers or whatever) stored in the Cell.
+ *  5. Whenever the Widget's Cell is drawn on screen, the Cell's buffers are simply copied to OpenGL.
+ *     This way, we only update the Cell's buffers whenever there is something to update and have as little computation
+ *     in Python as possible.
+ */

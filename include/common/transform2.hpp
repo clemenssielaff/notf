@@ -92,6 +92,12 @@ struct Transform2 {
     /// @brief Returns the translation part of this Transform.
     Vector2 get_translation() const { return rows[2]; }
 
+    /** Scale factor along the x-axis. */
+    float get_scale_x() const { return sqrt(rows[0][0] * rows[0][0] + rows[1][0] * rows[1][0]); }
+
+    /** Scale factor along the y-axis. */
+    float get_scale_y() const { return sqrt(rows[0][1] * rows[0][1] + rows[1][1] * rows[1][1]); }
+
     /** Direct read-only access to the Matrix' memory. */
     template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
     const Vector2& operator[](T&& row) const
@@ -119,7 +125,7 @@ struct Transform2 {
     /** Applies the other Transform to this one in-place. */
     Transform2& operator*=(const Transform2& other)
     {
-        float* this_array        = &rows[0][0];
+        float* this_array        = this->as_ptr();
         const float* other_array = other.as_ptr();
         float t0                 = this_array[0] * other_array[0] + this_array[1] * other_array[2];
         float t2                 = this_array[2] * other_array[0] + this_array[3] * other_array[2];

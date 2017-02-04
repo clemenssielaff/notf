@@ -41,7 +41,7 @@ const char* hud_fragment_shader =
 namespace notf {
 
 CanvasLayer::CanvasLayer(const RenderBackend& backend, const float pixel_ratio)
-    : m_backend(backend)
+    : backend(backend)
     , m_buffer_size(Size2f(0, 0))
     , m_pixel_ratio(pixel_ratio)
     , m_stencil_mask(0xffffffff)
@@ -108,14 +108,13 @@ void CanvasLayer::_end_frame()
 {
 }
 
-void CanvasLayer::add_fill_call(const Paint& paint, const Scissor& scissor, float fringe, const Aabr& bounds,
-                                const std::vector<Cell::Path>& paths)
+void CanvasLayer::add_fill_call(const Paint& paint, const Cell& cell)
 {
     m_calls.emplace_back();
     HUDCall& call   = m_calls.back();
     call.pathOffset = m_paths.size();
-    call.pathCount  = paths.size();
-    if (paths.size() == 1 && paths[0].is_convex) {
+    call.pathCount  = cell.get_paths().size();
+    if (call.pathCount == 1 && cell.get_paths().front().is_convex) {
         call.type = HUDCall::Type::CONVEX_FILL;
     }
     else {
@@ -124,29 +123,33 @@ void CanvasLayer::add_fill_call(const Paint& paint, const Scissor& scissor, floa
 
     //  this block is its own function in nanovg, called maxVertCount
     size_t new_vertex_count = 6; // + 6 for the quad that we construct further down
-    for (const Cell::Path& path : paths) {
-        new_vertex_count += path.fill.size();
-        new_vertex_count += path.stroke.size();
+    for (const Cell::Path& path : cell.get_paths()) {
+        new_vertex_count += path.fill_size;
+        new_vertex_count += path.stroke_size;
     }
     //
 
     size_t offset = m_vertices.size();
     m_vertices.reserve(m_vertices.size() + new_vertex_count);
-    m_paths.reserve(m_paths.size() + paths.size());
+    m_paths.reserve(m_paths.size() + cell.get_paths().size());
 
-    for (const Cell::Path& path : paths) {
+    for (const Cell::Path& path : cell.get_paths()) {
         PathIndex hud_path;
-        if (!path.fill.empty()) {
+        if (path.fill_size != 0) {
             hud_path.fillOffset = static_cast<GLint>(offset);
-            hud_path.fillCount  = static_cast<GLsizei>(path.fill.size());
-            append(m_vertices, path.fill);
-            offset += path.fill.size();
+            hud_path.fillCount  = static_cast<GLsizei>(path.fill_size);
+            m_vertices.insert(
+                std::end(m_vertices), cell.get_vertices().begin() + path.fill_offset,
+                cell.get_vertices().begin() + path.fill_offset + static_cast<Cell::Path::offset_t>(path.fill_size));
+            offset += path.fill_size;
         }
-        if (!path.stroke.empty()) {
+        if (path.stroke_size != 0) {
             hud_path.strokeOffset = static_cast<GLint>(offset);
-            hud_path.strokeCount  = static_cast<GLsizei>(path.stroke.size());
-            append(m_vertices, path.stroke);
-            offset += path.stroke.size();
+            hud_path.strokeCount  = static_cast<GLsizei>(path.stroke_size);
+            m_vertices.insert(
+                std::end(m_vertices), cell.get_vertices().begin() + path.stroke_offset,
+                cell.get_vertices().begin() + path.stroke_offset + static_cast<Cell::Path::offset_t>(path.stroke_size));
+            offset += path.stroke_size;
         }
         m_paths.emplace_back(std::move(hud_path));
     }
@@ -155,6 +158,7 @@ void CanvasLayer::add_fill_call(const Paint& paint, const Scissor& scissor, floa
     assert(offset == m_vertices.size() - 6);
     call.triangleOffset = static_cast<GLint>(offset);
     call.triangleCount  = 6;
+    const Aabr& bounds  = cell.get_bounds();
     m_vertices.emplace_back(bounds.left(), bounds.bottom(), .5f, 1.f);
     m_vertices.emplace_back(bounds.right(), bounds.bottom(), .5f, 1.f);
     m_vertices.emplace_back(bounds.right(), bounds.top(), .5f, 1.f);
@@ -174,45 +178,50 @@ void CanvasLayer::add_fill_call(const Paint& paint, const Scissor& scissor, floa
 
     m_frag_uniforms.push_back({});
     FragmentUniforms& fill_uniforms = m_frag_uniforms.back();
-    _paint_to_frag(fill_uniforms, paint, scissor, fringe, fringe, -1.0f);
+    _paint_to_frag(fill_uniforms, paint, cell.get_current_state().scissor,
+                   cell.get_fringe_width(), cell.get_fringe_width(), -1.0f);
 }
 
-void CanvasLayer::add_stroke_call(const Paint& paint, const Scissor& scissor, float fringe, float strokeWidth,
-                                  const std::vector<Cell::Path>& paths)
+void CanvasLayer::add_stroke_call(const Paint& paint, const float stroke_width, const Cell& cell)
 {
     m_calls.emplace_back();
     HUDCall& call   = m_calls.back();
     call.type       = HUDCall::Type::STROKE;
     call.pathOffset = m_paths.size();
-    call.pathCount  = paths.size();
+    call.pathCount  = cell.get_paths().size();
 
     size_t new_vertex_count = 0;
-    for (const Cell::Path& path : paths) {
-        new_vertex_count += path.fill.size();
-        new_vertex_count += path.stroke.size();
+    for (const Cell::Path& path : cell.get_paths()) {
+        new_vertex_count += path.fill_size;
+        new_vertex_count += path.stroke_size;
     }
 
     size_t offset = m_vertices.size();
     m_vertices.reserve(m_vertices.size() + new_vertex_count);
-    m_paths.reserve(m_paths.size() + paths.size());
+    m_paths.reserve(m_paths.size() + cell.get_paths().size());
 
-    for (const Cell::Path& path : paths) {
+    for (const Cell::Path& path : cell.get_paths()) {
         PathIndex hud_path;
-        if (!path.stroke.empty()) {
+        if (path.stroke_size != 0) {
             hud_path.strokeOffset = static_cast<GLint>(offset);
-            hud_path.strokeCount  = static_cast<GLsizei>(path.stroke.size());
-            append(m_vertices, path.stroke);
-            offset += path.stroke.size();
+            hud_path.strokeCount  = static_cast<GLsizei>(path.stroke_size);
+            m_vertices.insert(
+                std::end(m_vertices), cell.get_vertices().begin() + path.stroke_offset,
+                cell.get_vertices().begin() + path.stroke_offset + path.stroke_size);
+            offset += path.stroke_size;
         }
     }
 
+    const Scissor& scissor = cell.get_current_state().scissor;
+    const float fringe = cell.get_fringe_width();
+
     m_frag_uniforms.push_back({});
     FragmentUniforms& stencil_uniforms = m_frag_uniforms.back(); // I think that's what it is
-    _paint_to_frag(stencil_uniforms, paint, scissor, strokeWidth, fringe, -1.0f);
+    _paint_to_frag(stencil_uniforms, paint, scissor, stroke_width, fringe, -1.0f);
 
     m_frag_uniforms.push_back({});
     FragmentUniforms& stroke_uniforms = m_frag_uniforms.back();
-    _paint_to_frag(stroke_uniforms, paint, scissor, strokeWidth, fringe, 1.0f - 0.5f / 255.0f);
+    _paint_to_frag(stroke_uniforms, paint, scissor, stroke_width, fringe, 1.0f - 0.5f / 255.0f);
 
     // TODO: nanovg checks for allocation errors while I just resize the vectors .. is that reasonable?
 }
@@ -343,7 +352,7 @@ void CanvasLayer::_fill(const HUDCall& call)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset + fragSize(), sizeof(FragmentUniforms));
 
-    if (m_backend.has_msaa) {
+    if (backend.has_msaa) {
         set_stencil_func(StencilFunc::EQUAL);
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         // Draw fringes
@@ -368,7 +377,7 @@ void CanvasLayer::_convex_fill(const HUDCall& call)
         // draw fill
         glDrawArrays(GL_TRIANGLE_FAN, m_paths[i].fillOffset, m_paths[i].fillCount);
     }
-    if (m_backend.has_msaa) {
+    if (backend.has_msaa) {
         // draw fringes
         for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
             glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);

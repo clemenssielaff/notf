@@ -8,8 +8,8 @@
 #include "common/time.hpp"
 #include "common/vector2.hpp"
 #include "graphics/blend_mode.hpp"
-#include "graphics/gl_forwards.hpp"
 #include "graphics/canvas_cell.hpp"
+#include "graphics/gl_forwards.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/vertex.hpp"
 
@@ -27,6 +27,7 @@ class RenderBackend;
 class CanvasLayer {
 
     friend class FrameGuard;
+    friend class Cell;
 
     struct HUDCall {
         enum class Type : unsigned char {
@@ -169,7 +170,6 @@ class CanvasLayer {
         CanvasLayer* m_canvas;
     };
 
-
 public: // enum
     enum class StencilFunc : unsigned char {
         ALWAYS,
@@ -192,22 +192,19 @@ public:
 
     float get_pixel_ratio() const { return m_pixel_ratio; }
 
-private: // methods for FrameGuard
+private: // methods for Cell
+    void add_fill_call(const Paint& paint, const Cell& cell);
 
-    void _abort_frame();
-
-    void _end_frame();
-
-private: // methods for HUDPainter
-    void add_fill_call(const Paint& paint, const Scissor& scissor, float fringe, const Aabr& bounds,
-                       const std::vector<Cell::Path>& paths);
-
-    void add_stroke_call(const Paint& paint, const Scissor& scissor, float fringe, float strokeWidth,
-                         const std::vector<Cell::Path>& paths);
+    void add_stroke_call(const Paint& paint, const float stroke_width, const Cell& cell);
 
     void set_stencil_mask(const GLuint mask);
 
     void set_stencil_func(const StencilFunc func);
+
+private: // methods for FrameGuard
+    void _abort_frame();
+
+    void _end_frame();
 
 private: // methods
     void _paint_to_frag(FragmentUniforms& frag, const Paint& paint, const Scissor& scissor,
@@ -224,9 +221,10 @@ private: // methods
 private: // methods
     static Sources _create_shader_sources(const RenderBackend& render_backend);
 
-private: // fields
-    const RenderBackend& m_backend;
+public: // fields
+    const RenderBackend& backend;
 
+private: // fields
     /** Size of the Window in screen coordinates (not pixels). */
     Size2i window_size;
 
@@ -260,11 +258,13 @@ private: // fields
     Shader m_shader;
 
     GLint m_loc_viewsize;
+
     GLint m_loc_texture;
 
     GLuint m_loc_buffer;
 
     GLuint m_fragment_buffer;
+
     GLuint m_vertex_array;
 
     GLuint m_vertex_buffer;

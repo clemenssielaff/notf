@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iosfwd>
+#include <limits>
 
 #include "common/hash_utils.hpp"
 #include "common/size2f.hpp"
@@ -109,6 +110,22 @@ struct Aabr {
     /** The null Aabr. */
     static Aabr null() { return Aabr({0, 0, 0, 0}); }
 
+    /** The largest representable Aabr. */
+    static Aabr huge()
+    {
+        return Aabr({std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(),
+                     std::numeric_limits<float>::max(), std::numeric_limits<float>::max()});
+    }
+
+    /** The "most wrong" Aabr.
+     * Is useful as the starting point for defining an Aabr from a set of points.
+     */
+    static Aabr wrongest()
+    {
+        return Aabr({std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),
+                     std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()});
+    }
+
     /*  Inspection  ***************************************************************************************************/
 
     /** X-coordinate of the center point. */
@@ -152,6 +169,9 @@ struct Aabr {
 
     /** The area of this Aabr */
     float area() const { return height() * width(); }
+
+    /** A valid Aabr has a width and height >= 0. */
+    bool is_valid() const { return _min.x <= _max.x && _min.y <= _max.y; }
 
     /** Test, if this Aabr is null.
      * The null Aabr has no area and is located at zero.
