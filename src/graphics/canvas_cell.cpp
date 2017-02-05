@@ -380,7 +380,8 @@ void Cell::stroke(CanvasLayer& layer)
     _flatten_paths();
     if (layer.backend.has_msaa) {
         _expand_stroke((stroke_width / 2) + (m_fringe_width / 2));
-    } else {
+    }
+    else {
         _expand_stroke(stroke_width / 2);
     }
     layer.add_stroke_call(stroke_paint, stroke_width, *this);
@@ -435,8 +436,8 @@ void Cell::_flatten_paths()
         assert(path.point_count > 0); // TODO: I can be sure that there is no path without a point ... right?
 
         { // if the first and last points are the same, remove the last one and mark the path as closed
-            const Point& first = m_points[path.offset];
-            const Point& last  = m_points[path.offset + path.point_count - 1];
+            const Point& first = m_points[path.point_offset];
+            const Point& last  = m_points[path.point_offset + path.point_count - 1];
             if (first.pos.is_approx(last.pos, m_distance_tolerance)) {
                 --path.point_count; // this could in theory produce a Path without points (if we started with one point)
                 path.is_closed = true;
@@ -445,17 +446,17 @@ void Cell::_flatten_paths()
 
         // enforce winding
         if (path.point_count > 2) {
-            const float area = poly_area(m_points, path.offset, path.point_count);
+            const float area = poly_area(m_points, path.point_offset, path.point_count);
             if ((path.winding == Winding::CCW && area < 0)
                 || (path.winding == Winding::CW && area > 0)) {
-                for (size_t i = path.fill_offset, j = path.fill_offset + path.point_count - 1; i < j; ++i, --j) {
+                for (size_t i = path.point_offset, j = path.point_offset + path.point_count - 1; i < j; ++i, --j) {
                     std::swap(m_points[i], m_points[j]);
                 }
             }
         }
 
-        for (size_t point_index = path.offset;
-             point_index < path.offset + path.point_count - (path.is_closed ? 0 : 1);
+        for (size_t point_index = path.point_offset;
+             point_index < path.point_offset + path.point_count - (path.is_closed ? 0 : 1);
              ++point_index) {
 
             Point& current = m_points[point_index];
@@ -476,6 +477,8 @@ void Cell::_flatten_paths()
 void Cell::_expand_fill(const bool draw_antialiased)
 {
     const float fringe = draw_antialiased ? m_fringe_width : 0;
+    assert(fringe >= 0);
+
     _calculate_joins(fringe, LineJoin::MITER, 2.4f);
 
     { // reserve new vertices
@@ -491,10 +494,87 @@ void Cell::_expand_fill(const bool draw_antialiased)
 
     const float woff = fringe / 2;
     for (Path& path : m_paths) {
-        path.fill_offset = m_vertices.size();
-    }
+        const size_t last_point_offset = path.point_offset + path.point_count - 1;
+        assert(last_point_offset < m_points.size());
 
-    // NOT FINISHED
+        // create the fill vertices
+        path.fill_offset = m_vertices.size();
+        if (fringe > 0) {
+            // create a loop
+            for (size_t current_offset = path.point_offset, previous_offset = last_point_offset;
+                 current_offset <= last_point_offset;
+                 previous_offset = current_offset++) {
+                const Point& previous_point = m_points[previous_offset];
+                const Point& current_point  = m_points[current_offset];
+
+                // no bevel
+                if (!(current_point.flags & Point::Flags::BEVEL) || current_point.flags & Point::Flags::LEFT) {
+                    m_vertices.emplace_back(current_point.pos + (current_point.dm * woff), Vector2{.5f, 1});
+                }
+
+                // beveling requires an extra vertex
+                else {
+                    m_vertices.emplace_back(Vector2{current_point.pos.x + previous_point.delta.y * woff,
+                                                    current_point.pos.y - previous_point.delta.x * woff},
+                                            Vector2{.5f, 1});
+                    m_vertices.emplace_back(Vector2{current_point.pos.x + current_point.delta.y * woff,
+                                                    current_point.pos.y - current_point.delta.x * woff},
+                                            Vector2{.5f, 1});
+                }
+            }
+        }
+        // no fringe = no antialiasing
+        else {
+            for (size_t point_offset = path.point_offset; point_offset <= last_point_offset; ++point_offset) {
+                m_vertices.emplace_back(m_points[point_offset].pos, Vector2{.5f, 1});
+            }
+        }
+        path.fill_count = m_vertices.size() - path.fill_offset;
+
+        // create stroke vertices, if we draw this shape antialiased
+        if (fringe > 0) {
+            path.stroke_offset = m_vertices.size();
+
+            float left_w        = fringe + woff;
+            float left_u        = 0;
+            const float right_w = fringe - woff;
+            const float right_u = 1;
+
+            { // create only half a fringe for convex shapes so that the shape can be rendered without stenciling
+                const bool is_convex = m_paths.size() == 1 && m_paths.front().is_convex;
+                if (is_convex) {
+                    left_w = woff; // this should generate the same vertex as fill inset above
+                    left_u = 0.5f; // set outline fade at middle
+                }
+            }
+
+            // create a loop
+            for (size_t current_offset = path.point_offset, previous_offset = last_point_offset;
+                 current_offset <= last_point_offset;
+                 previous_offset = current_offset++) {
+                const Point& previous_point = m_points[previous_offset];
+                const Point& current_point  = m_points[current_offset];
+
+                if (current_point.flags & (Point::Flags::BEVEL | Point::Flags::INNERBEVEL)) {
+                    bevel_join(previous_point, current_point, left_w, right_w, left_u, right_u, fringe);
+                }
+                else {
+                    m_vertices.emplace_back(Vector2{current_point.pos.x + current_point.dm.x * left_w,
+                                                    current_point.pos.y + current_point.dm.y * left_w},
+                                            Vector2{left_u, 1});
+                    m_vertices.emplace_back(Vector2{current_point.pos.x + current_point.dm.x * right_w,
+                                                    current_point.pos.y - current_point.dm.y * right_w},
+                                            Vector2{right_u, 1});
+                }
+            }
+
+            // copy the first two vertices from the beginning to form a cohesive loop
+            m_vertices.emplace_back(m_vertices[path.stroke_offset + 0].pos, Vector2{left_u, 1});
+            m_vertices.emplace_back(m_vertices[path.stroke_offset + 1].pos, Vector2{right_u, 1});
+
+            path.stroke_count = m_vertices.size() - path.stroke_offset;
+        }
+    }
 }
 
 void Cell::_expand_stroke(const float stroke_width)

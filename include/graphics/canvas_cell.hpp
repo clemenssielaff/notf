@@ -100,26 +100,26 @@ public: // enum
 
     // The vertices of the Path are stored in Cell while this struct only stores offsets and sizes.
     struct Path {
-        size_t offset;
+        size_t point_offset; // points
         size_t point_count;
         bool is_closed;
         size_t nbevel;
-        size_t fill_offset;
-        size_t fill_size;
-        size_t stroke_offset;
-        size_t stroke_size;
+        size_t fill_offset; // vertices
+        size_t fill_count;
+        size_t stroke_offset; // vertices
+        size_t stroke_count;
         Winding winding;
         bool is_convex;
 
         Path(size_t first)
-            : offset(std::move(first))
+            : point_offset(std::move(first))
             , point_count(0)
             , is_closed(false)
             , nbevel(0)
             , fill_offset(0)
-            , fill_size(0)
+            , fill_count(0)
             , stroke_offset(0)
-            , stroke_size(0)
+            , stroke_count(0)
             , winding(Winding::COUNTERCLOCKWISE)
             , is_convex(false)
         {

@@ -124,8 +124,8 @@ void CanvasLayer::add_fill_call(const Paint& paint, const Cell& cell)
     //  this block is its own function in nanovg, called maxVertCount
     size_t new_vertex_count = 6; // + 6 for the quad that we construct further down
     for (const Cell::Path& path : cell.get_paths()) {
-        new_vertex_count += path.fill_size;
-        new_vertex_count += path.stroke_size;
+        new_vertex_count += path.fill_count;
+        new_vertex_count += path.stroke_count;
     }
     //
 
@@ -135,21 +135,21 @@ void CanvasLayer::add_fill_call(const Paint& paint, const Cell& cell)
 
     for (const Cell::Path& path : cell.get_paths()) {
         PathIndex hud_path;
-        if (path.fill_size != 0) {
+        if (path.fill_count != 0) {
             hud_path.fillOffset = static_cast<GLint>(offset);
-            hud_path.fillCount  = static_cast<GLsizei>(path.fill_size);
+            hud_path.fillCount  = static_cast<GLsizei>(path.fill_count);
             m_vertices.insert(
                 std::end(m_vertices), cell.get_vertices().begin() + path.fill_offset,
-                cell.get_vertices().begin() + path.fill_offset + static_cast<Cell::Path::offset_t>(path.fill_size));
-            offset += path.fill_size;
+                cell.get_vertices().begin() + path.fill_offset + path.fill_count);
+            offset += path.fill_count;
         }
-        if (path.stroke_size != 0) {
+        if (path.stroke_count != 0) {
             hud_path.strokeOffset = static_cast<GLint>(offset);
-            hud_path.strokeCount  = static_cast<GLsizei>(path.stroke_size);
+            hud_path.strokeCount  = static_cast<GLsizei>(path.stroke_count);
             m_vertices.insert(
                 std::end(m_vertices), cell.get_vertices().begin() + path.stroke_offset,
-                cell.get_vertices().begin() + path.stroke_offset + static_cast<Cell::Path::offset_t>(path.stroke_size));
-            offset += path.stroke_size;
+                cell.get_vertices().begin() + path.stroke_offset + path.stroke_count);
+            offset += path.stroke_count;
         }
         m_paths.emplace_back(std::move(hud_path));
     }
@@ -192,8 +192,8 @@ void CanvasLayer::add_stroke_call(const Paint& paint, const float stroke_width, 
 
     size_t new_vertex_count = 0;
     for (const Cell::Path& path : cell.get_paths()) {
-        new_vertex_count += path.fill_size;
-        new_vertex_count += path.stroke_size;
+        new_vertex_count += path.fill_count;
+        new_vertex_count += path.stroke_count;
     }
 
     size_t offset = m_vertices.size();
@@ -202,13 +202,13 @@ void CanvasLayer::add_stroke_call(const Paint& paint, const float stroke_width, 
 
     for (const Cell::Path& path : cell.get_paths()) {
         PathIndex hud_path;
-        if (path.stroke_size != 0) {
+        if (path.stroke_count != 0) {
             hud_path.strokeOffset = static_cast<GLint>(offset);
-            hud_path.strokeCount  = static_cast<GLsizei>(path.stroke_size);
+            hud_path.strokeCount  = static_cast<GLsizei>(path.stroke_count);
             m_vertices.insert(
                 std::end(m_vertices), cell.get_vertices().begin() + path.stroke_offset,
-                cell.get_vertices().begin() + path.stroke_offset + path.stroke_size);
-            offset += path.stroke_size;
+                cell.get_vertices().begin() + path.stroke_offset + path.stroke_count);
+            offset += path.stroke_count;
         }
     }
 
