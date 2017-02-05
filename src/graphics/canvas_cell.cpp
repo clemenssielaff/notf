@@ -579,6 +579,36 @@ void Cell::_expand_fill(const bool draw_antialiased)
 
 void Cell::_expand_stroke(const float stroke_width)
 {
+    size_t cap_count;
+    { // calculate divisions per half circle
+        float da  = acos(stroke_width / (stroke_width + m_tesselation_tolerance)) * 2;
+        cap_count = max(size_t(2), static_cast<size_t>(ceilf(PI / da)));
+    }
+
+    const LineJoin line_join = get_current_state().line_join;
+    const LineCap line_cap   = get_current_state().line_cap;
+    _calculate_joins(stroke_width, line_join, get_current_state().miter_limit);
+
+    { // reserve new vertices
+        size_t new_vertex_count = 0;
+        for (const Path& path : m_paths) {
+            if (line_join == LineJoin::ROUND) {
+                new_vertex_count += (path.point_count + path.nbevel * (cap_count + 2) + 1) * 2; // plus one for loop
+            }
+            else {
+                new_vertex_count += (path.point_count + path.nbevel * 5 + 1) * 2; // plus one for loop
+            }
+            if (!path.is_closed) {
+                if (line_cap == LineCap::ROUND) {
+                    new_vertex_count += (cap_count * 2 + 2) * 2;
+                }
+                else {
+                    new_vertex_count += (3 + 3) * 2;
+                }
+            }
+        }
+        m_vertices.reserve(m_vertices.size() + new_vertex_count);
+    }
 }
 
 void Cell::_add_point(const Vector2 position, const Point::Flags flags)

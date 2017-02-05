@@ -103,7 +103,7 @@ public: // enum
         size_t point_offset; // points
         size_t point_count;
         bool is_closed;
-        size_t nbevel;
+        size_t nbevel; // rename to bevel_count
         size_t fill_offset; // vertices
         size_t fill_count;
         size_t stroke_offset; // vertices
