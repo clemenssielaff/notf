@@ -3,6 +3,7 @@
 #include "common/log.hpp"
 #include "common/vector_utils.hpp"
 #include "core/glfw_wrapper.hpp"
+#include "graphics/gl_utils.hpp"
 #include "graphics/render_backend.hpp"
 
 namespace { // anonymous
@@ -138,17 +139,17 @@ void CanvasLayer::add_fill_call(const Paint& paint, const Cell& cell)
         if (path.fill_count != 0) {
             hud_path.fillOffset = static_cast<GLint>(offset);
             hud_path.fillCount  = static_cast<GLsizei>(path.fill_count);
-            m_vertices.insert(
-                std::end(m_vertices), cell.get_vertices().begin() + path.fill_offset,
-                cell.get_vertices().begin() + path.fill_offset + path.fill_count);
+            m_vertices.insert(std::end(m_vertices),
+                              iterator_at(cell.get_vertices(), path.fill_offset),
+                              iterator_at(cell.get_vertices(), path.fill_offset + path.fill_count));
             offset += path.fill_count;
         }
         if (path.stroke_count != 0) {
             hud_path.strokeOffset = static_cast<GLint>(offset);
             hud_path.strokeCount  = static_cast<GLsizei>(path.stroke_count);
-            m_vertices.insert(
-                std::end(m_vertices), cell.get_vertices().begin() + path.stroke_offset,
-                cell.get_vertices().begin() + path.stroke_offset + path.stroke_count);
+            m_vertices.insert(std::end(m_vertices),
+                              iterator_at(cell.get_vertices(), path.stroke_offset),
+                              iterator_at(cell.get_vertices(), path.stroke_offset + path.stroke_count));
             offset += path.stroke_count;
         }
         m_paths.emplace_back(std::move(hud_path));
@@ -205,15 +206,15 @@ void CanvasLayer::add_stroke_call(const Paint& paint, const float stroke_width, 
         if (path.stroke_count != 0) {
             hud_path.strokeOffset = static_cast<GLint>(offset);
             hud_path.strokeCount  = static_cast<GLsizei>(path.stroke_count);
-            m_vertices.insert(
-                std::end(m_vertices), cell.get_vertices().begin() + path.stroke_offset,
-                cell.get_vertices().begin() + path.stroke_offset + path.stroke_count);
+            m_vertices.insert(std::end(m_vertices),
+                              iterator_at(cell.get_vertices(), path.stroke_offset),
+                              iterator_at(cell.get_vertices(), path.stroke_offset + path.stroke_count));
             offset += path.stroke_count;
         }
     }
 
     const Scissor& scissor = cell.get_current_state().scissor;
-    const float fringe = cell.get_fringe_width();
+    const float fringe     = cell.get_fringe_width();
 
     m_frag_uniforms.push_back({});
     FragmentUniforms& stencil_uniforms = m_frag_uniforms.back(); // I think that's what it is
@@ -291,7 +292,7 @@ void CanvasLayer::_render_flush(const BlendMode blend_mode)
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), nullptr);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)(2 * sizeof(float)));
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), gl_buffer_offset(2 * sizeof(float)));
 
         // Set view and texture just once per frame.
         glUniform1i(m_loc_texture, 0);

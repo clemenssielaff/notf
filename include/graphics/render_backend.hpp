@@ -32,8 +32,7 @@ namespace notf {
  */
 
 /** The RenderBackend is constructed once per session and is used to configure the RenderLayers.
- * Unlike Nanovg, NoTF has no support for OpenGL2 but instead requires 3.3+ because by the time NoTF hits big,
- * OpenGl 3.3 will be over 8 years old and I just cannot be bothered.
+ * NoTF requires OpenGL 3.3+
  */
 class RenderBackend {
 

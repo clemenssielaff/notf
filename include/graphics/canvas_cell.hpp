@@ -103,7 +103,7 @@ public: // enum
         size_t point_offset; // points
         size_t point_count;
         bool is_closed;
-        size_t nbevel; // rename to bevel_count
+        size_t bevel_count;
         size_t fill_offset; // vertices
         size_t fill_count;
         size_t stroke_offset; // vertices
@@ -115,7 +115,7 @@ public: // enum
             : point_offset(std::move(first))
             , point_count(0)
             , is_closed(false)
-            , nbevel(0)
+            , bevel_count(0)
             , fill_offset(0)
             , fill_count(0)
             , stroke_offset(0)
@@ -343,6 +343,19 @@ private: // methods
     void _add_point(const Vector2 position, const Point::Flags flags);
 
     void _tesselate_bezier(size_t offset);
+
+    void _butt_cap_start(const Point& point, const Vector2& delta, const float stroke_width, const float d);
+
+    void _butt_cap_end(const Point& point, const Vector2& delta, const float stroke_width, const float d);
+
+    void _round_cap_start(const Point& point, const Vector2& delta, const float stroke_width, const size_t cap_count);
+
+    void _round_cap_end(const Point& point, const Vector2& delta, const float stroke_width, const size_t cap_count);
+
+    void _bevel_join(const Point& previous_point, const Point& current_point, const float left_w, const float right_w,
+                     const float left_u, const float right_u);
+
+    void _round_join(const Point& previous_point, const Point& current_point, const float stroke_width, const size_t ncap);
 
 private: // fields
     std::vector<RenderState> m_states;

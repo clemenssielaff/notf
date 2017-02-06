@@ -200,7 +200,8 @@ HEADERS += \
     include/graphics/blend_mode.hpp \
     include/graphics/canvas_layer.hpp \
     include/graphics/canvas_cell.hpp \
-    include/graphics/canvas_painter.hpp
+    include/graphics/canvas_painter.hpp \
+    include/graphics/gl_utils.hpp
 
 QMAKE_CXX = ccache g++
 

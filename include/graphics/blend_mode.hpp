@@ -6,6 +6,7 @@ namespace notf {
 
 /** HTML5 canvas-like approach to blending the results of multiple OpenGL drawings.
  * Supports all canvas modes, except "darken" for now.
+ * Modelled after the HTML Canvas API as described in https://www.w3.org/TR/2dcontext/#compositing
  */
 struct BlendMode {
     enum Mode : unsigned char {

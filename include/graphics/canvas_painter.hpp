@@ -6,8 +6,6 @@
 #include "common/size2f.hpp"
 #include "common/transform2.hpp"
 #include "common/vector2.hpp"
-//#include "graphics/font.hpp"
-#include "graphics/rendercontext.hpp"
 #include "graphics/texture2.hpp"
 #include "utils/enum_to_number.hpp"
 
@@ -26,48 +24,31 @@ class Painter final {
 
 public: // enums
     enum class Winding {
-        CCW = NVG_CCW,
-        CW  = NVG_CW,
+        CCW,
+        CW,
     };
 
     enum class LineCap : int {
-        BUTT   = NVG_BUTT, // default
-        ROUND  = NVG_ROUND,
-        SQUARE = NVG_SQUARE,
+        BUTT, // default
+        ROUND,
+        SQUARE,
     };
 
     enum class LineJoin : int {
-        ROUND = NVG_ROUND,
-        BEVEL = NVG_BEVEL,
-        MITER = NVG_MITER, // default
+        ROUND,
+        BEVEL,
+        MITER, // default
     };
 
     enum Align {
-        LEFT   = NVG_ALIGN_LEFT, // default
-        CENTER = NVG_ALIGN_CENTER,
-        RIGHT  = NVG_ALIGN_RIGHT,
+        LEFT, // default
+        CENTER,
+        RIGHT,
 
-        TOP      = NVG_ALIGN_TOP,
-        MIDDLE   = NVG_ALIGN_MIDDLE,
-        BOTTOM   = NVG_ALIGN_BOTTOM,
-        BASELINE = NVG_ALIGN_BASELINE, // default
-    };
-
-    /** Input for set_composite()
-     * Modelled after the HTML Canvas API as described in https://www.w3.org/TR/2dcontext/#compositing
-     */
-    enum Composite : int {
-        SOURCE_OVER      = NVG_SOURCE_OVER,
-        SOURCE_IN        = NVG_SOURCE_IN,
-        SOURCE_OUT       = NVG_SOURCE_OUT,
-        ATOP             = NVG_ATOP,
-        DESTINATION_OVER = NVG_DESTINATION_OVER,
-        DESTINATION_IN   = NVG_DESTINATION_IN,
-        DESTINATION_OUT  = NVG_DESTINATION_OUT,
-        DESTINATION_ATOP = NVG_DESTINATION_ATOP,
-        LIGHTER          = NVG_LIGHTER,
-        COPY             = NVG_COPY,
-        XOR              = NVG_XOR,
+        TOP,
+        MIDDLE,
+        BOTTOM,
+        BASELINE, // default
     };
 
 protected: // methods for CanvasComponent
