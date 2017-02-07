@@ -1,3 +1,4 @@
+#if 0
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
@@ -149,4 +150,6 @@ void produce_painter(pybind11::module& module)
 
 #ifdef __clang__
 #pragma clang diagnostic pop
+#endif
+
 #endif

@@ -46,7 +46,7 @@ inline bool is_real(REAL&& value) { return !is_nan(std::forward<REAL>(value)) &&
  * @return  -1 if the value is negative, 1 if it is zero or above.
  */
 template <typename REAL>
-inline REAL sign(REAL&& value) { return std::signbit(std::forward<REAL>(value)) ? -1 : 1; }
+inline int sign(REAL&& value) { return std::signbit(std::forward<REAL>(value)) ? -1 : 1; }
 
 /** Clamps an input value to a given range. */
 template <typename VALUE, typename MIN, typename MAX>

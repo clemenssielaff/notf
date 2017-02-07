@@ -9,12 +9,11 @@
 #include "common/transform2.hpp"
 #include "graphics/blend_mode.hpp"
 #include "graphics/vertex.hpp"
-#include "render_backend.hpp"
 #include "utils/enum_to_number.hpp"
 
 namespace notf {
 
-class CanvasLayer;
+class RenderContext;
 
 struct Paint {
     Paint() = default;
@@ -182,7 +181,7 @@ private: // class
 public: // methods
     Cell();
 
-    void reset(const CanvasLayer& layer);
+    void reset(const RenderContext& layer);
 
     size_t push_state();
 
@@ -297,9 +296,9 @@ public: // methods
 
     void close_path();
 
-    void fill(CanvasLayer& layer);
+    void fill(RenderContext& context);
 
-    void stroke(CanvasLayer& layer);
+    void stroke(RenderContext& context);
 
 public: // getter
     const std::vector<Path>& get_paths() const { return m_paths; }

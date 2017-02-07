@@ -38,9 +38,6 @@ public: // methods
      */
     void set_font_directory(std::string font_directory);
 
-    /** Sets the NanoVG context into which to load the Textures. */
-    void set_nvg_context(NVGcontext* context); // TODO: Ressource management won't work with multiple contexts.
-
     /** Retrieves a Font by its name in the font directory
      * There is a 1:1 relationship between a font name and its .ttf file.
      * This is also the reason why you can only load fonts from the font directory as we can guarantee that there will

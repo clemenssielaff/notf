@@ -1,10 +1,9 @@
-#include "graphics/canvas_layer.hpp"
+#include "graphics/render_context.hpp"
 
 #include "common/log.hpp"
 #include "common/vector_utils.hpp"
 #include "core/glfw_wrapper.hpp"
 #include "graphics/gl_utils.hpp"
-#include "graphics/render_backend.hpp"
 
 namespace { // anonymous
 
@@ -26,6 +25,12 @@ void xformToMat3x4(float* m3, notf::Transform2 t)
 
 GLuint FRAG_BINDING = 0;
 
+constexpr GLintptr fragSize()
+{
+    constexpr GLintptr align = sizeof(float);
+    return sizeof(notf::RenderContext::FragmentUniforms) + align - sizeof(notf::RenderContext::FragmentUniforms) % align;
+}
+
 // clang-format off
 
 // vertex shader source, read from file as described in: http://stackoverflow.com/a/25021520
@@ -41,17 +46,17 @@ const char* hud_fragment_shader =
 
 namespace notf {
 
-CanvasLayer::CanvasLayer(const RenderBackend& backend, const float pixel_ratio)
-    : backend(backend)
+RenderContext::RenderContext(const RenderContextArguments args)
+    : m_args(std::move(args))
     , m_buffer_size(Size2f(0, 0))
-    , m_pixel_ratio(pixel_ratio)
+    , m_time()
     , m_stencil_mask(0xffffffff)
     , m_stencil_func(StencilFunc::ALWAYS)
     , m_calls()
     , m_paths()
     , m_vertices()
     , m_frag_uniforms()
-    , m_sources(_create_shader_sources(backend))
+    , m_sources(_create_shader_sources(*this))
     , m_shader(Shader::build("HUDShader", m_sources.vertex, m_sources.fragment))
     , m_loc_viewsize(glGetUniformLocation(m_shader.get_id(), "viewSize"))
     , m_loc_texture(glGetUniformLocation(m_shader.get_id(), "tex"))
@@ -73,7 +78,7 @@ CanvasLayer::CanvasLayer(const RenderBackend& backend, const float pixel_ratio)
     glFinish();
 }
 
-CanvasLayer::~CanvasLayer()
+RenderContext::~RenderContext()
 {
     if (m_fragment_buffer != 0) {
         glDeleteBuffers(1, &m_fragment_buffer);
@@ -86,18 +91,20 @@ CanvasLayer::~CanvasLayer()
     }
 }
 
-CanvasLayer::FrameGuard CanvasLayer::begin_frame(const int width, const int height) // called from "beginFrame"
+RenderContext::FrameGuard RenderContext::begin_frame(const Size2i buffer_size)
 {
     m_calls.clear();
     m_paths.clear();
 
-    m_buffer_size.width  = static_cast<float>(width);
-    m_buffer_size.height = static_cast<float>(height);
+    m_buffer_size.width  = static_cast<float>(buffer_size.width);
+    m_buffer_size.height = static_cast<float>(buffer_size.height);
+
+    m_time = Time::now();
 
     return FrameGuard(this);
 }
 
-void CanvasLayer::_abort_frame()
+void RenderContext::_abort_frame()
 {
     m_calls.clear();
     m_paths.clear();
@@ -105,21 +112,21 @@ void CanvasLayer::_abort_frame()
     m_frag_uniforms.clear();
 }
 
-void CanvasLayer::_end_frame()
+void RenderContext::_end_frame()
 {
 }
 
-void CanvasLayer::add_fill_call(const Paint& paint, const Cell& cell)
+void RenderContext::add_fill_call(const Paint& paint, const Cell& cell)
 {
     m_calls.emplace_back();
-    HUDCall& call   = m_calls.back();
-    call.pathOffset = m_paths.size();
-    call.pathCount  = cell.get_paths().size();
+    CanvasCall& call = m_calls.back();
+    call.pathOffset  = m_paths.size();
+    call.pathCount   = cell.get_paths().size();
     if (call.pathCount == 1 && cell.get_paths().front().is_convex) {
-        call.type = HUDCall::Type::CONVEX_FILL;
+        call.type = CanvasCall::Type::CONVEX_FILL;
     }
     else {
-        call.type = HUDCall::Type::FILL;
+        call.type = CanvasCall::Type::FILL;
     }
 
     //  this block is its own function in nanovg, called maxVertCount
@@ -160,16 +167,16 @@ void CanvasLayer::add_fill_call(const Paint& paint, const Cell& cell)
     call.triangleOffset = static_cast<GLint>(offset);
     call.triangleCount  = 6;
     const Aabr& bounds  = cell.get_bounds();
-    m_vertices.emplace_back(bounds.left(), bounds.bottom(), .5f, 1.f);
-    m_vertices.emplace_back(bounds.right(), bounds.bottom(), .5f, 1.f);
-    m_vertices.emplace_back(bounds.right(), bounds.top(), .5f, 1.f);
+    m_vertices.emplace_back(Vertex{Vector2{bounds.left(), bounds.bottom()}, Vector2{.5f, 1.f}});
+    m_vertices.emplace_back(Vertex{Vector2{bounds.right(), bounds.bottom()}, Vector2{.5f, 1.f}});
+    m_vertices.emplace_back(Vertex{Vector2{bounds.right(), bounds.top()}, Vector2{.5f, 1.f}});
 
-    m_vertices.emplace_back(bounds.left(), bounds.bottom(), .5f, 1.f);
-    m_vertices.emplace_back(bounds.right(), bounds.top(), .5f, 1.f);
-    m_vertices.emplace_back(bounds.left(), bounds.top(), .5f, 1.f);
+    m_vertices.emplace_back(Vertex{Vector2{bounds.left(), bounds.bottom()}, Vector2{.5f, 1.f}});
+    m_vertices.emplace_back(Vertex{Vector2{bounds.right(), bounds.top()}, Vector2{.5f, 1.f}});
+    m_vertices.emplace_back(Vertex{Vector2{bounds.left(), bounds.top()}, Vector2{.5f, 1.f}});
 
     call.uniformOffset = static_cast<GLintptr>(m_frag_uniforms.size());
-    if (call.type == HUDCall::Type::FILL) {
+    if (call.type == CanvasCall::Type::FILL) {
         // create an additional uniform buffer for a simple shader for the stencil
         m_frag_uniforms.push_back({});
         FragmentUniforms& stencil_uniforms = m_frag_uniforms.back();
@@ -183,13 +190,13 @@ void CanvasLayer::add_fill_call(const Paint& paint, const Cell& cell)
                    cell.get_fringe_width(), cell.get_fringe_width(), -1.0f);
 }
 
-void CanvasLayer::add_stroke_call(const Paint& paint, const float stroke_width, const Cell& cell)
+void RenderContext::add_stroke_call(const Paint& paint, const float stroke_width, const Cell& cell)
 {
     m_calls.emplace_back();
-    HUDCall& call   = m_calls.back();
-    call.type       = HUDCall::Type::STROKE;
-    call.pathOffset = m_paths.size();
-    call.pathCount  = cell.get_paths().size();
+    CanvasCall& call = m_calls.back();
+    call.type        = CanvasCall::Type::STROKE;
+    call.pathOffset  = m_paths.size();
+    call.pathCount   = cell.get_paths().size();
 
     size_t new_vertex_count = 0;
     for (const Cell::Path& path : cell.get_paths()) {
@@ -227,8 +234,8 @@ void CanvasLayer::add_stroke_call(const Paint& paint, const float stroke_width, 
     // TODO: nanovg checks for allocation errors while I just resize the vectors .. is that reasonable?
 }
 
-void CanvasLayer::_paint_to_frag(FragmentUniforms& frag, const Paint& paint, const Scissor& scissor,
-                                 const float stroke_width, const float fringe, const float stroke_threshold)
+void RenderContext::_paint_to_frag(FragmentUniforms& frag, const Paint& paint, const Scissor& scissor,
+                                   const float stroke_width, const float fringe, const float stroke_threshold)
 {
     assert(fringe > 0);
 
@@ -257,7 +264,7 @@ void CanvasLayer::_paint_to_frag(FragmentUniforms& frag, const Paint& paint, con
     xformToMat3x4(frag.paintMat, paint.xform.inverse());
 }
 
-void CanvasLayer::_render_flush(const BlendMode blend_mode)
+void RenderContext::_render_flush(const BlendMode blend_mode)
 {
     if (!m_calls.empty()) {
 
@@ -300,15 +307,15 @@ void CanvasLayer::_render_flush(const BlendMode blend_mode)
         glBindBuffer(GL_UNIFORM_BUFFER, m_fragment_buffer);
 
         // perform the render calls
-        for (const HUDCall& call : m_calls) {
+        for (const CanvasCall& call : m_calls) {
             switch (call.type) {
-            case HUDCall::Type::FILL:
+            case CanvasCall::Type::FILL:
                 _fill(call);
                 break;
-            case HUDCall::Type::CONVEX_FILL:
+            case CanvasCall::Type::CONVEX_FILL:
                 _convex_fill(call);
                 break;
-            case HUDCall::Type::STROKE:
+            case CanvasCall::Type::STROKE:
                 _stroke(call);
                 break;
             }
@@ -330,7 +337,7 @@ void CanvasLayer::_render_flush(const BlendMode blend_mode)
     m_frag_uniforms.clear();
 }
 
-void CanvasLayer::_fill(const HUDCall& call)
+void RenderContext::_fill(const CanvasCall& call)
 {
     // Draw shapes
     glEnable(GL_STENCIL_TEST);
@@ -353,7 +360,7 @@ void CanvasLayer::_fill(const HUDCall& call)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset + fragSize(), sizeof(FragmentUniforms));
 
-    if (backend.has_msaa) {
+    if (m_args.enable_geometric_aa) {
         set_stencil_func(StencilFunc::EQUAL);
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         // Draw fringes
@@ -370,7 +377,7 @@ void CanvasLayer::_fill(const HUDCall& call)
     glDisable(GL_STENCIL_TEST);
 }
 
-void CanvasLayer::_convex_fill(const HUDCall& call)
+void RenderContext::_convex_fill(const CanvasCall& call)
 {
     glBindBufferRange(GL_UNIFORM_BUFFER, 0, m_fragment_buffer, call.uniformOffset, sizeof(FragmentUniforms));
 
@@ -378,7 +385,7 @@ void CanvasLayer::_convex_fill(const HUDCall& call)
         // draw fill
         glDrawArrays(GL_TRIANGLE_FAN, m_paths[i].fillOffset, m_paths[i].fillCount);
     }
-    if (backend.has_msaa) {
+    if (m_args.enable_geometric_aa) {
         // draw fringes
         for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
             glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
@@ -386,7 +393,7 @@ void CanvasLayer::_convex_fill(const HUDCall& call)
     }
 }
 
-void CanvasLayer::_stroke(const HUDCall& call)
+void RenderContext::_stroke(const CanvasCall& call)
 {
     glEnable(GL_STENCIL_TEST);
     set_stencil_mask(0xff);
@@ -420,7 +427,7 @@ void CanvasLayer::_stroke(const HUDCall& call)
     glDisable(GL_STENCIL_TEST);
 }
 
-void CanvasLayer::set_stencil_mask(const GLuint mask)
+void RenderContext::set_stencil_mask(const GLuint mask)
 {
     if (mask != m_stencil_mask) {
         m_stencil_mask = mask;
@@ -428,7 +435,7 @@ void CanvasLayer::set_stencil_mask(const GLuint mask)
     }
 }
 
-void CanvasLayer::set_stencil_func(const StencilFunc func)
+void RenderContext::set_stencil_func(const StencilFunc func)
 {
     if (func == m_stencil_func) {
         return;
@@ -461,24 +468,22 @@ void CanvasLayer::set_stencil_func(const StencilFunc func)
     }
 }
 
-CanvasLayer::Sources CanvasLayer::_create_shader_sources(const RenderBackend& backend)
+RenderContext::Sources RenderContext::_create_shader_sources(const RenderContext& context)
 {
     // create the header
     std::string header;
-    switch (backend.type) {
-    case RenderBackend::Type::OPENGL_3:
+    switch (context.m_args.version) {
+    case OpenGLVersion::OPENGL_3:
         header += "#version 150 core\n";
         header += "#define OPENGL_3 1";
         break;
-    case RenderBackend::Type::GLES_3:
+    case OpenGLVersion::GLES_3:
         header += "#version 300 es\n";
         header += "#define GLES_3 1";
+        header += "#define UNIFORMARRAY_SIZE 11\n";
         break;
     }
-    if (backend.type != RenderBackend::Type::OPENGL_3) {
-        header += "#define UNIFORMARRAY_SIZE 11\n";
-    }
-    if (!backend.has_msaa) {
+    if (context.provides_geometric_aa()) {
         header += "#define GEOMETRY_AA 1\n";
     }
     header += "\n";
@@ -491,3 +496,32 @@ CanvasLayer::Sources CanvasLayer::_create_shader_sources(const RenderBackend& ba
 }
 
 } // namespace notf
+
+/* Short design discussion.
+ * The graphics module in NoTF consists of a stack of abstractions.
+ * They are (in reverse order, meaning the first is the lowest):
+ *
+ *     1. OpenGL
+ *        In all its glory.
+ *
+ *     2. RenderBackend
+ *        Holds application constant state, like the version of OpenGL used or if multisampling was enabled.
+ *        Doesn't do anything itself, except rendering RenderLayers.
+ *
+ *     3. RenderLayer
+ *        One Layer per render setup, most UIs (2D, canvas-style drawings) can probably do with just one layer.
+ *        The RenderLayer handles the drawing to OpenGL.
+ *        Holds frame-specifc state, like window size.
+ *
+ *     4. Canvas (or Patch)
+ *        An intermediate object owned by Widgets to store the widget state.
+ *        Defines how to draw the Widget onto the layer.
+ *        This way, we can define the canvas once (from Python) and render the Widget multiple times without the need
+ *        to repeat the (potentially) expensive redefinition.
+ *        Only when the Widget's contents have actually changed, must the canvas be updated.
+ *
+ *     5. Painter
+ *        Is created by the Canvas, passed to the Widget's `paint` function and discarded after return.
+ *        Holds only rudimentary state, whatever is needed to update the Canvas.
+ *        This is the thing that the user interacts with when subclassing Widgets.
+ */

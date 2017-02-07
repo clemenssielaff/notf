@@ -1,9 +1,10 @@
+#if 0
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
 #define NOTF_BINDINGS
 #include "core/widget.hpp"
-#include "graphics/canvas_painter.hpp"
+//#include "graphics/canvas_painter.hpp"
 #include "python/docstr.hpp"
 #include "python/type_patches.hpp"
 using namespace notf;
@@ -57,3 +58,4 @@ void produce_widget(pybind11::module& module, py::detail::generic_type Py_Layout
     Py_Widget.def("redraw", &Widget::redraw, DOCSTR("Tells the Window that its contents need to be redrawn."));
     Py_Widget.def("paint", &Widget::paint, DOCSTR("Paints this Widget onto the screen."), py::arg("painter"));
 }
+#endif

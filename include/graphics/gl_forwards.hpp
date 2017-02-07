@@ -32,3 +32,13 @@ using GLdouble   = double;
 using GLclampd   = double;
 using GLchar     = char;
 using GLcharARB  = char;
+
+namespace notf {
+
+/** Version of OpenGL in use. */
+enum class OpenGLVersion : unsigned char {
+    OPENGL_3,
+    GLES_3,
+};
+
+} // namespace notf

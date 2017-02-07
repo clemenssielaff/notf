@@ -5,8 +5,7 @@
 #include "common/hash_utils.hpp"
 #include "common/log.hpp"
 #include "common/string_utils.hpp"
-#include "graphics/font.hpp"
-#include "graphics/texture2.hpp"
+#include "utils/unused.hpp"
 
 namespace { // anonymous
 
@@ -55,51 +54,49 @@ void ResourceManager::set_font_directory(std::string font_directory)
     }
 }
 
-void ResourceManager::set_nvg_context(NVGcontext* context)
-{
-    assert(!m_context);
-    m_context = context;
-}
-
 std::shared_ptr<Font> ResourceManager::fetch_font(const std::string& name)
 {
-    std::string full_path = m_font_directory + name;
-    if(!iends_with(name, Font::file_extension)){
-        full_path.append(Font::file_extension);
-    }
+    UNUSED(name);
+    return {};
+//    std::string full_path = m_font_directory + name;
+//    if(!iends_with(name, Font::file_extension)){
+//        full_path.append(Font::file_extension);
+//    }
 
-    const size_t hash_value = hash(full_path);
-    if (m_fonts.count(hash_value)) {
-        return m_fonts.at(hash_value);
-    }
+//    const size_t hash_value = hash(full_path);
+//    if (m_fonts.count(hash_value)) {
+//        return m_fonts.at(hash_value);
+//    }
 
-    std::shared_ptr<Font> font = Font::load(m_context, name, full_path);
-    m_fonts.emplace(hash_value, font);
-    return font;
+//    std::shared_ptr<Font> font = Font::load(m_context, name, full_path);
+//    m_fonts.emplace(hash_value, font);
+//    return font;
 }
 
 std::shared_ptr<Texture2> ResourceManager::fetch_texture(const std::string& texture_path, int flags)
 {
-    const size_t hash_value = hash(texture_path, flags);
+    UNUSED(texture_path);
+    UNUSED(flags);
+    return {};
+//    const size_t hash_value = hash(texture_path, flags);
 
-    // return the existing texture, if it has already been loaded once
-    if (m_textures.count(hash_value)) {
-        return m_textures.at(hash_value);
-    }
+//    // return the existing texture, if it has already been loaded once
+//    if (m_textures.count(hash_value)) {
+//        return m_textures.at(hash_value);
+//    }
 
-    // load the texture
-    const std::string full_path = m_texture_directory + texture_path;
-    std::shared_ptr<Texture2> texture = Texture2::load(m_context, full_path, flags);
+//    // load the texture
+//    const std::string full_path = m_texture_directory + texture_path;
+//    std::shared_ptr<Texture2> texture = Texture2::load(m_context, full_path, flags);
 
-    // store and return the texture
-    m_textures.emplace(hash_value, texture);
-    return texture;
+//    // store and return the texture
+//    m_textures.emplace(hash_value, texture);
+//    return texture;
 }
 
 void ResourceManager::cleanup()
 {
     remove_unused(m_textures);
-    // at the moment, fonts cannot be removed from NanoVG...
 }
 
 void ResourceManager::clear()

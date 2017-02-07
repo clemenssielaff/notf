@@ -15,28 +15,48 @@
 
 namespace notf {
 
-class HUDShader;
-class RenderBackend;
+struct RenderContextArguments;
 
 /**********************************************************************************************************************/
 
-/** The CanvasLayer is a RenderLayer specialized in rendering dynamic, 2D Widgets.
- * At the moment, the CanvasLayer is the only reder layer in NoTF, however, I can easily imagine a 3D Layer, for example.
- * In that case, add an abstract parent class and implement the relevant virtual functions.
- */
-class CanvasLayer {
+struct RenderContextArguments {
+
+    /** Flag indicating whether the RenderContext will provide geometric antialiasing for its 2D shapes or not.
+     * In a purely 2D application, this flag should be set to `true` since geometric antialiasing is cheaper than
+     * full blown multisampling and looks just as good.
+     * However, in a 3D application, you will most likely require true multisampling anyway, in which case we don't
+     * need the redundant geometrical antialiasing on top.
+     */
+    bool enable_geometric_aa = true;
+
+    /** Default to GLES_3, because it's the fastest, newest version that works on my machine.
+     * (obviously, that's not at very good reason, but we'll see what happens).
+     */
+    OpenGLVersion version = OpenGLVersion::GLES_3;
+
+    /** Pixel ratio of the RenderContext.
+     * 1.0 means square pixels.
+     */
+    float pixel_ratio = 1.f; // TODO: I actually don't know if pixel_ratio is width/height or the other way around...
+};
+
+/**********************************************************************************************************************/
+
+/** The RenderContext. */
+class RenderContext {
 
     friend class FrameGuard;
     friend class Cell;
 
-    struct HUDCall {
+public:
+    struct CanvasCall {
         enum class Type : unsigned char {
             FILL,
             CONVEX_FILL,
             STROKE,
         };
 
-        HUDCall() // we'll see if we need this initialization to zero at all
+        CanvasCall() // we'll see if we need this initialization to zero at all
             : type(Type::FILL),
               pathOffset(0),
               pathCount(0),
@@ -108,31 +128,26 @@ class CanvasLayer {
         Type type;
     };
 
-    constexpr GLintptr fragSize()
-    {
-        constexpr GLintptr align = sizeof(float);
-        return sizeof(FragmentUniforms) + align - sizeof(FragmentUniforms) % align;
-    }
-
     struct Sources {
         std::string vertex;
         std::string fragment;
     };
 
+public: // classes
     /******************************************************************************************************************/
-    /** The FrameGuard makes sure that for each call to `CanvasLayer::begin_frame` there is a corresponding call to
-     * either `CanvasLayer::end_frame` on success or `CanvasLayer::abort_frame` in case of an error.
+    /** The FrameGuard makes sure that for each call to `CanvasContext::begin_frame` there is a corresponding call to
+     * either `CanvasContext::end_frame` on success or `CanvasContext::abort_frame` in case of an error.
      *
-     * It is returned by `CanvasLayer::begin_frame` and must remain on the stack until the rendering has finished.
+     * It is returned by `CanvasContext::begin_frame` and must remain on the stack until the rendering has finished.
      * Then, you need to call `FrameGuard::end()` to cleanly end the frame.
-     * If the FrameGuard is destroyed before `FrameGuard::end()` is called, the CanvasLayer is instructed to abort the
+     * If the FrameGuard is destroyed before `FrameGuard::end()` is called, the CanvasContext is instructed to abort the
      * currently drawn frame.
      */
     class FrameGuard {
 
     public: // methods
         /** Constructor. */
-        FrameGuard(CanvasLayer* context)
+        FrameGuard(RenderContext* context)
             : m_canvas(context) {}
 
         // no copy/assignment
@@ -147,7 +162,7 @@ class CanvasLayer {
         }
 
         /** Destructor.
-         * If the object is destroyed before FrameGuard::end() is called, the CanvasLayer's frame is cancelled.
+         * If the object is destroyed before FrameGuard::end() is called, the CanvasContext's frame is cancelled.
          */
         ~FrameGuard()
         {
@@ -156,7 +171,7 @@ class CanvasLayer {
             }
         }
 
-        /** Cleanly ends the HUDCanvas's current frame. */
+        /** Cleanly ends the current frame. */
         void end()
         {
             if (m_canvas) {
@@ -166,8 +181,8 @@ class CanvasLayer {
         }
 
     private: // fields
-        /** CanvasLayer currently drawing a frame.*/
-        CanvasLayer* m_canvas;
+        /** CanvasContext currently drawing a frame.*/
+        RenderContext* m_canvas;
     };
 
 public: // enum
@@ -184,13 +199,15 @@ public: // enum
 
 public:
     /** Constructor. */
-    CanvasLayer(const RenderBackend& backend, const float pixel_ratio = 1);
+    RenderContext(const RenderContextArguments args);
 
-    ~CanvasLayer();
+    ~RenderContext();
 
-    FrameGuard begin_frame(const int width, const int height); // called from "beginFrame"
+    FrameGuard begin_frame(const Size2i buffer_size);
 
-    float get_pixel_ratio() const { return m_pixel_ratio; }
+    float get_pixel_ratio() const { return m_args.pixel_ratio; }
+
+    bool provides_geometric_aa() const { return m_args.enable_geometric_aa; }
 
 private: // methods for Cell
     void add_fill_call(const Paint& paint, const Cell& cell);
@@ -212,26 +229,27 @@ private: // methods
 
     void _render_flush(BlendMode blend_mode);
 
-    void _fill(const HUDCall& call);
+    void _fill(const CanvasCall& call);
 
-    void _convex_fill(const HUDCall& call);
+    void _convex_fill(const CanvasCall& call);
 
-    void _stroke(const HUDCall& call);
+    void _stroke(const CanvasCall& call);
 
-private: // methods
-    static Sources _create_shader_sources(const RenderBackend& render_backend);
-
-public: // fields
-    const RenderBackend& backend;
+private: // static methods
+    static Sources _create_shader_sources(const RenderContext &context);
 
 private: // fields
+    /** Argument struct to initialize the RenderContext. */
+    const RenderContextArguments m_args;
+
     /** Size of the Window in screen coordinates (not pixels). */
-    Size2i window_size;
+    Size2i m_window_size;
 
     /** Returns the size of the Window's framebuffer in pixels. */
     Size2f m_buffer_size;
 
-    float m_pixel_ratio;
+    /** Time at the beginning of the current frame. */
+    Time m_time;
 
     /* Cached stencil mask to avoid unnecessary rebindings. */
     GLuint m_stencil_mask;
@@ -240,7 +258,7 @@ private: // fields
     StencilFunc m_stencil_func;
 
     /** All Calls that were collected during during the frame. */
-    std::vector<HUDCall> m_calls;
+    std::vector<CanvasCall> m_calls;
 
     /** Indices of `m_vertices` of all Paths drawn during the frame. */
     std::vector<PathIndex> m_paths;

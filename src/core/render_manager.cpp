@@ -7,8 +7,7 @@
 #include "core/layout_root.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
-#include "graphics/canvas_painter.hpp"
-#include "graphics/rendercontext.hpp"
+#include "graphics/render_context.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 namespace notf {
@@ -59,7 +58,7 @@ std::shared_ptr<RenderLayer> RenderManager::create_layer_below(const std::shared
     return result;
 }
 
-void RenderManager::render(const RenderContext& context)
+void RenderManager::render(const RenderContext& /*context*/)
 {
     // remove unused layers
     std::remove_if(m_layers.begin(), m_layers.end(), [](std::shared_ptr<RenderLayer>& layer) -> bool {
@@ -72,16 +71,16 @@ void RenderManager::render(const RenderContext& context)
 
     // draw all widgets
     for (std::shared_ptr<RenderLayer>& render_layer : m_layers) {
-        for (const Widget* widget : render_layer->m_widgets) {
-            Painter painter(widget, &context);
-            try {
-                widget->paint(painter);
-            }
-            catch (std::runtime_error error) {
-                log_warning << error.what();
-                // TODO: print Python stack trace here IF the item uses a Python object to draw itself
-            }
-        }
+//        for (const Widget* widget : render_layer->m_widgets) {
+//            Painter painter(widget, &context);
+//            try {
+//                widget->paint(painter);
+//            }
+//            catch (std::runtime_error error) {
+//                log_warning << error.what();
+//                // TODO: print Python stack trace here IF the item uses a Python object to draw itself
+//            }
+//        }
         render_layer->m_widgets.clear();
     }
 

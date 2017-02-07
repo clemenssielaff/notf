@@ -9,7 +9,6 @@
 #include "common/vector2.hpp"
 
 struct GLFWwindow;
-struct NVGcontext;
 
 namespace notf {
 
@@ -19,15 +18,13 @@ class MakeSmartEnabler;
 struct KeyEvent;
 class MouseEvent;
 class RenderManager;
+class RenderContext;
 class LayoutRoot;
 
 /**********************************************************************************************************************/
 
 /** Destroys a GLFW window. */
 void window_deleter(GLFWwindow* glfw_window);
-
-/** Destroys a NanoVG context. */
-void nanovg_deleter(NVGcontext* nvg_context);
 
 /**********************************************************************************************************************/
 
@@ -133,8 +130,8 @@ private: // fields
     /** The GLFW window managed by this Window. */
     std::unique_ptr<GLFWwindow, decltype(&window_deleter)> m_glfw_window;
 
-    /** The NanoVG used to draw into this Window. */
-    std::unique_ptr<NVGcontext, decltype(&nanovg_deleter)> m_nvg_context;
+    /** The RenderContext used to draw into this Window. */
+    std::unique_ptr<RenderContext> m_render_context;
 
     /** The Window's title (is not accessible through GLFW). */
     std::string m_title;

@@ -78,7 +78,7 @@ inline int _check_gl_error(uint line, const char* file, const char* function)
 }
 #define check_gl_error() _check_gl_error(__LINE__, notf::basename(__FILE__), __FUNCTION__)
 #else
-#define check_gl_error() (void)0
+#define check_gl_error() (0)
 #endif
 
 } // namespace notf

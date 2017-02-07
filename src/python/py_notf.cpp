@@ -8,7 +8,7 @@ namespace py = pybind11;
 using namespace notf;
 
 void produce_resource_manager(pybind11::module& module);
-void produce_painter(pybind11::module& module);
+//void produce_painter(pybind11::module& module);
 void produce_vector2(pybind11::module& module);
 void produce_size2i(pybind11::module& module);
 void produce_size2f(pybind11::module& module);
@@ -17,10 +17,10 @@ void produce_padding(pybind11::module& module);
 void produce_color(pybind11::module& module);
 void produce_circle(pybind11::module& module);
 void produce_claim(pybind11::module& module);
-void produce_font(pybind11::module& module);
-void produce_texture2(pybind11::module& module);
+//void produce_font(pybind11::module& module);
+//void produce_texture2(pybind11::module& module);
 void produce_window(pybind11::module& module);
-void produce_widget(pybind11::module& module, py::detail::generic_type ancestor);
+//void produce_widget(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_layout_root(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_stack_layout(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_overlayout(pybind11::module& module, py::detail::generic_type ancestor);
@@ -46,9 +46,9 @@ PyObject* produce_pynotf_module()
     produce_claim(module);
     produce_color(module);
     produce_resource_manager(module);
-    produce_texture2(module);
-    produce_font(module);
-    produce_painter(module);
+//    produce_texture2(module);
+//    produce_font(module);
+//    produce_painter(module);
     produce_window(module);
     produce_signals(module);
     produce_properties(module);
@@ -57,7 +57,7 @@ PyObject* produce_pynotf_module()
     produce_controller(module, Py_Item);
 
     py::class_<LayoutItem, std::shared_ptr<LayoutItem>> Py_LayoutItem(module, "_LayoutItem", Py_Item);
-    produce_widget(module, Py_LayoutItem);
+//    produce_widget(module, Py_LayoutItem);
     produce_layout_root(module, Py_LayoutItem);
     produce_stack_layout(module, Py_LayoutItem);
     produce_overlayout(module, Py_LayoutItem);
