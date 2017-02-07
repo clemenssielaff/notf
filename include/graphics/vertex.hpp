@@ -12,6 +12,7 @@ struct Vertex {
 
     /** UV-coordinates of the Vertex. */
     Vector2 uv;
+
 };
 
 } // namespace notf

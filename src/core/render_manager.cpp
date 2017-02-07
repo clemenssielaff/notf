@@ -1,13 +1,9 @@
 #include "core/render_manager.hpp"
 
-#include <algorithm>
-
 #include "common/log.hpp"
-#include "core/controller.hpp"
 #include "core/layout_root.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
-#include "graphics/render_context.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 namespace notf {
@@ -58,7 +54,7 @@ std::shared_ptr<RenderLayer> RenderManager::create_layer_below(const std::shared
     return result;
 }
 
-void RenderManager::render(const RenderContext& /*context*/)
+void RenderManager::render(RenderContext& context)
 {
     // remove unused layers
     std::remove_if(m_layers.begin(), m_layers.end(), [](std::shared_ptr<RenderLayer>& layer) -> bool {
@@ -71,23 +67,16 @@ void RenderManager::render(const RenderContext& /*context*/)
 
     // draw all widgets
     for (std::shared_ptr<RenderLayer>& render_layer : m_layers) {
-//        for (const Widget* widget : render_layer->m_widgets) {
-//            Painter painter(widget, &context);
-//            try {
-//                widget->paint(painter);
-//            }
-//            catch (std::runtime_error error) {
-//                log_warning << error.what();
-//                // TODO: print Python stack trace here IF the item uses a Python object to draw itself
-//            }
-//        }
+        for (const Widget* widget : render_layer->m_widgets) {
+            widget->paint(context);
+        }
         render_layer->m_widgets.clear();
     }
 
     m_is_clean = true;
 }
 
-void RenderManager::_iterate_layout_hierarchy(const LayoutItem *item, RenderLayer* parent_layer)
+void RenderManager::_iterate_layout_hierarchy(const LayoutItem* item, RenderLayer* parent_layer)
 {
     assert(item);
     assert(parent_layer);
@@ -101,7 +90,7 @@ void RenderManager::_iterate_layout_hierarchy(const LayoutItem *item, RenderLaye
     // if the item is a visible widget, append it to the current render layer
     if (const Widget* widget = dynamic_cast<const Widget*>(item)) {
         // TODO: dont' draw scissored widgets
-        if(!widget->is_visible()){
+        if (!widget->is_visible()) {
             return;
         }
         current_layer->m_widgets.push_back(widget);
@@ -109,12 +98,12 @@ void RenderManager::_iterate_layout_hierarchy(const LayoutItem *item, RenderLaye
 
     // if it is a Layout, start a recursive iteration
     else if (const Layout* layout = dynamic_cast<const Layout*>(item)) {
-        if(!layout->is_visible()){
+        if (!layout->is_visible()) {
             return;
         }
         std::unique_ptr<LayoutIterator> it = layout->iter_items();
         while (const Item* child_item = it->next()) {
-            if(const LayoutItem* layout_item = child_item->get_layout_item()){
+            if (const LayoutItem* layout_item = child_item->get_layout_item()) {
                 _iterate_layout_hierarchy(layout_item, current_layer);
             }
         }

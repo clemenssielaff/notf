@@ -16,9 +16,7 @@ class Window;
 
 /**********************************************************************************************************************/
 
-/**
- * @brief The RenderLayer class
- */
+/** The RenderLayer class */
 class RenderLayer {
 
     friend class MakeSmartEnabler<RenderLayer>;
@@ -34,9 +32,7 @@ private: // fields
 
 /**********************************************************************************************************************/
 
-/**
- * @brief The RenderManager class
- */
+/** The RenderManager class */
 class RenderManager {
 
 protected: // methods
@@ -68,7 +64,7 @@ public: // methods
      * Cleans the RenderManager and doesn't render if clean to begin with.
      * @param context   The context into which to render.
      */
-    void render(const RenderContext& context);
+    void render(RenderContext &context);
 
     /** Returns the index of a given RenderLayer, starting at 1. Returns 0 on failure. */
     size_t get_render_layer_index(const RenderLayer* render_layer)

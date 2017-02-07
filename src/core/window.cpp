@@ -89,7 +89,7 @@ void Window::_update()
 
     double mouse_x, mouse_y;
     glfwGetCursorPos(m_glfw_window.get(), &mouse_x, &mouse_y);
-    //    ctx.mouse_pos = {static_cast<float>(mouse_x), static_cast<float>(mouse_y)};
+    m_render_context->set_mouse_pos(Vector2(static_cast<float>(mouse_x), static_cast<float>(mouse_y)));
 
     // prepare the viewport
     glViewport(0, 0, buffer_size.width, buffer_size.height);
@@ -146,7 +146,7 @@ std::shared_ptr<Window> Window::create(const WindowInfo& info)
 
 Window::Window(const WindowInfo& info)
     : m_glfw_window(nullptr, window_deleter)
-    , m_render_context(std::make_unique<RenderContext>(RenderContextArguments()))
+    , m_render_context(nullptr)
     , m_title(info.title)
     , m_root_layout()
     , m_render_manager(std::make_unique<MakeSmartEnabler<RenderManager>>(this))
@@ -173,10 +173,11 @@ Window::Window(const WindowInfo& info)
         exit(to_number(Application::RETURN_CODE::GLFW_FAILURE));
     }
     glfwSetWindowUserPointer(m_glfw_window.get(), this);
-    glfwMakeContextCurrent(m_glfw_window.get());
 
-    // initial OpenGl setup
+    // setup OpenGL and create the render context
+    glfwMakeContextCurrent(m_glfw_window.get());
     glfwSwapInterval(info.enable_vsync ? 1 : 0);
+    m_render_context = std::make_unique<RenderContext>(RenderContextArguments());
 
     // apply the Window icon
     // In order to remove leftover icons on Ubuntu call:

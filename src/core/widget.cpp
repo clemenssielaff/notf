@@ -1,6 +1,9 @@
 #include "core/widget.hpp"
 
 #include "common/log.hpp"
+#include "core/window.hpp"
+#include "graphics/canvas_painter.hpp"
+#include "graphics/render_context.hpp"
 
 namespace notf {
 
@@ -23,7 +26,26 @@ bool Widget::set_claim(const Claim claim)
 Widget::Widget()
     : LayoutItem()
     , m_scissor_layout() // empty by default
+    , m_cell(Cell())
 {
+}
+
+void Widget::paint(RenderContext &context) const
+{
+    // update the cell if dirty
+    if (m_cell.is_dirty()) {
+        m_cell.reset(context);
+        Painter painter(m_cell);
+        try {
+            _paint(painter);
+        }
+        catch (std::runtime_error error) {
+            log_warning << error.what();
+            // TODO: print Python stack trace here IF the item uses a Python object to draw itself
+        }
+    }
+
+    // TODO: Cell::draw_to(RenderContext&)
 }
 
 } // namespace notf

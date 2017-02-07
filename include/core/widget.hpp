@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/layout_item.hpp"
+#include "graphics/canvas_cell.hpp"
 #include "utils/binding_accessors.hpp"
 
 namespace notf {
@@ -9,6 +10,7 @@ template <typename T>
 class MakeSmartEnabler;
 
 class Painter;
+class RenderContext;
 
 /**********************************************************************************************************************/
 
@@ -36,15 +38,24 @@ public: // methods
     bool set_claim(const Claim claim);
 
     /** Tells the Window that its contents need to be redrawn. */
-    void redraw() { _redraw(); }
+    void redraw()
+    {
+        m_cell.set_dirty();
+        _redraw();
+    }
 
     // clang-format off
 protected_except_for_bindings: // methods for MakeSmartEnabler<Widget>;
     explicit Widget();
 
 protected_except_for_bindings: // methods for RenderManager
-    /** Paints this Widget onto the screen. */
-    virtual void paint(Painter& painter) const = 0;
+    /** Draws the Widget's Cell onto the screen.
+     * Either uses the cached Cell or updates it first, using _paint().
+     */
+    void paint(RenderContext &context) const;
+
+    /** Redraws the Cell with the Widget's current state. */
+    virtual void _paint(Painter& painter) const = 0;
 
     // clang-format on
 private: // fields
@@ -54,6 +65,18 @@ private: // fields
      * An expired weak_ptr is treated like an empty pointer.
      */
     std::weak_ptr<Layout> m_scissor_layout;
+
+    /** Cell to draw this Widget into. */
+    mutable Cell m_cell;
 };
 
 } // namespace notf
+
+/* Draw / Redraw procedure:
+ * A LayoutItem changes a Property
+ * This results in the RenderManager getting a request to redraw the frame
+ * The RenderManager then collects all Widgets, sorts them calls Widget::paint() on them
+ * Widget::paint() checks if it needs to update its Cell
+ *  if so, it creates a Painter object and calls the pure virtual function Widget::_paint(Painter&) which does the actual work
+ *
+ */

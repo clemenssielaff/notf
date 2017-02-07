@@ -116,10 +116,10 @@ SOURCES += \
     src/python/py_property.cpp \
     src/core/property.cpp \
     src/common/line2.cpp \
-    src/render_main.cpp \
     src/graphics/shader.cpp \
     src/graphics/blend_mode.cpp \
     src/graphics/canvas_cell.cpp \
+    src/graphics/canvas_painter.cpp \
     src/graphics/render_context.cpp
 
 HEADERS += \
@@ -196,6 +196,7 @@ HEADERS += \
     include/graphics/vertex.hpp \
     include/graphics/blend_mode.hpp \
     include/graphics/canvas_cell.hpp \
+    include/graphics/canvas_painter.hpp \
     include/graphics/gl_utils.hpp \
     include/graphics/render_context.hpp
 

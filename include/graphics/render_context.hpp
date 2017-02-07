@@ -47,6 +47,7 @@ class RenderContext {
 
     friend class FrameGuard;
     friend class Cell;
+    friend class Window;
 
 public:
     struct CanvasCall {
@@ -209,6 +210,11 @@ public:
 
     bool provides_geometric_aa() const { return m_args.enable_geometric_aa; }
 
+    const Vector2& get_mouse_pos() const { return m_mouse_pos; }
+
+private: // methods for Window
+    void set_mouse_pos(Vector2 pos) { m_mouse_pos = std::move(pos); }
+
 private: // methods for Cell
     void add_fill_call(const Paint& paint, const Cell& cell);
 
@@ -268,6 +274,9 @@ private: // fields
 
     /** Fragment uniform buffers. */
     std::vector<FragmentUniforms> m_frag_uniforms;
+
+    /** Position of the mouse relative to the Window. */
+    Vector2 m_mouse_pos;
 
     // Shader variables
 

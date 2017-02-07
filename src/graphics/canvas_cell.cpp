@@ -59,6 +59,7 @@ Cell::Cell()
     , m_commands(256)
     , m_current_command(0)
     , m_stylus(Vector2::zero())
+    , m_is_dirty(false)
 {
 }
 
@@ -66,6 +67,8 @@ void Cell::reset(const RenderContext& layer)
 {
     m_states.clear();
     m_states.emplace_back(RenderState());
+
+    m_is_dirty = false;
 
     const float pixel_ratio = layer.get_pixel_ratio();
     m_tesselation_tolerance = 0.25f / pixel_ratio;

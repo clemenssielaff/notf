@@ -181,6 +181,10 @@ private: // class
 public: // methods
     Cell();
 
+    bool is_dirty() const { return m_is_dirty; }
+
+    void set_dirty() { m_is_dirty = true; }
+
     void reset(const RenderContext& layer);
 
     size_t push_state();
@@ -374,11 +378,14 @@ private: // fields
 
     std::vector<Vertex> m_vertices;
 
-    Aabr m_bounds;
+    Aabr m_bounds; // TODO: Cell::m_bounds may be redundant when stored inside a Widget
 
     float m_tesselation_tolerance;
     float m_distance_tolerance;
     float m_fringe_width;
+
+    bool m_is_dirty;
 };
+
 
 } // namespace notf
