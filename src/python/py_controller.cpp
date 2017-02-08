@@ -51,7 +51,7 @@ public: // methods
 
     virtual ~PyController() override;
 
-    using AbstractController::_set_root_item;
+    using AbstractController::set_root_item;
 
     /** Adds a new State to the Controller's state machine.
      * @return                      The new State.
@@ -205,7 +205,7 @@ void produce_controller(pybind11::module& module, py::detail::generic_type Py_It
     patch_type(Py_Controller.ptr());
 
     Py_Controller.def(py::init<>());
-    Py_Controller.def("set_root_item", &PyController::_set_root_item, DOCSTR("Sets the LayoutItem at the root of the branch managedby this Controller."));
+    Py_Controller.def("set_root_item", &PyController::set_root_item, DOCSTR("Sets the LayoutItem at the root of the branch managedby this Controller."));
 
     Py_Controller.def("get_id", &PyController::get_id, DOCSTR("The application-unique ID of this Controller."));
     Py_Controller.def("has_parent", &PyController::has_parent, DOCSTR("Checks if this Item currently has a parent Item or not."));

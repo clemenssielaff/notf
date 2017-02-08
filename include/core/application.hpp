@@ -57,7 +57,6 @@ public:
         UNINITIALIZED,
         GLFW_FAILURE,
         PYTHON_FAILURE,
-        NANOVG_FAILURE,
     };
 
 public: // methods
@@ -144,7 +143,7 @@ public: // static methods
      * @param width         New width of the Window.
      * @param height        New height of the Window.
      */
-    static void _on_window_reize(GLFWwindow* glfw_window, int width, int height);
+    static void _on_window_resize(GLFWwindow* glfw_window, int width, int height);
 
 private: // methods for Window
     /** Registers a new Window in this Application. */

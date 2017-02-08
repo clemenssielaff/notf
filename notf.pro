@@ -118,9 +118,9 @@ SOURCES += \
     src/common/line2.cpp \
     src/graphics/shader.cpp \
     src/graphics/blend_mode.cpp \
-    src/graphics/canvas_cell.cpp \
-    src/graphics/canvas_painter.cpp \
-    src/graphics/render_context.cpp
+    src/graphics/render_context.cpp \
+    src/graphics/cell.cpp \
+    src/graphics/painter.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -195,10 +195,10 @@ HEADERS += \
     include/graphics/shader.hpp \
     include/graphics/vertex.hpp \
     include/graphics/blend_mode.hpp \
-    include/graphics/canvas_cell.hpp \
-    include/graphics/canvas_painter.hpp \
     include/graphics/gl_utils.hpp \
-    include/graphics/render_context.hpp
+    include/graphics/render_context.hpp \
+    include/graphics/painter.hpp \
+    include/graphics/cell.hpp
 
 QMAKE_CXX = ccache g++
 

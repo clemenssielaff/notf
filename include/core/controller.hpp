@@ -30,6 +30,16 @@ public: // methods
 
     virtual const LayoutItem* get_layout_item() const override { return m_root_item.get(); }
 
+    /* Sets the LayoutItem at the root of the branch managed by this Controller. */
+    void set_root_item(std::shared_ptr<LayoutItem> root_item)
+    {
+        m_root_item.swap(root_item);
+        if (m_root_item) {
+            m_root_item->_set_parent(shared_from_this());
+        }
+    }
+    // TODO: you cannot create new Items in the constructor of Controller (no "shared_from_this"), but building them outside is also not that great...
+
 public: // signals
     /** Signal invoked when this Controller is asked to handle a Mouse move event. */
     Signal<MouseEvent&> on_mouse_move;
@@ -39,15 +49,6 @@ public: // signals
 
 protected: // methods
     AbstractController() = default;
-
-    /* Sets the LayoutItem at the root of the branch managedby this Controller. */
-    void _set_root_item(std::shared_ptr<LayoutItem> root_item)
-    {
-        m_root_item.swap(root_item);
-        if (m_root_item) {
-            m_root_item->_set_parent(shared_from_this());
-        }
-    }
 
 private: // fields
     /** Item at the root of the Controller's Item hierarchy. */

@@ -140,7 +140,7 @@ private: // fields
     std::shared_ptr<LayoutRoot> m_root_layout;
 
     /** The Window's render manager. */
-    std::unique_ptr<RenderManager> m_render_manager;
+    std::unique_ptr<RenderManager> m_render_manager; // TODO: do I need a separate RenderManager and RenderContext?
 
     /** The Window's background color. */
     Color m_background_color;

@@ -18,7 +18,7 @@ void xformToMat3x4(float* m3, notf::Transform2 t)
     m3[6]  = 0.0f;
     m3[7]  = 0.0f;
     m3[8]  = t[2][0];
-    m3[9]  = t[2][2];
+    m3[9]  = t[2][1];
     m3[10] = 1.0f;
     m3[11] = 0.0f;
 }
@@ -114,6 +114,7 @@ void RenderContext::_abort_frame()
 
 void RenderContext::_end_frame()
 {
+    _render_flush(BlendMode::SOURCE_OVER);
 }
 
 void RenderContext::add_fill_call(const Paint& paint, const Cell& cell)
@@ -163,7 +164,6 @@ void RenderContext::add_fill_call(const Paint& paint, const Cell& cell)
     }
 
     // create a quad around the bounds of the filled area
-    assert(offset == m_vertices.size() - 6);
     call.triangleOffset = static_cast<GLint>(offset);
     call.triangleCount  = 6;
     const Aabr& bounds  = cell.get_bounds();
@@ -475,11 +475,9 @@ RenderContext::Sources RenderContext::_create_shader_sources(const RenderContext
     switch (context.m_args.version) {
     case OpenGLVersion::OPENGL_3:
         header += "#version 150 core\n";
-        header += "#define OPENGL_3 1";
         break;
     case OpenGLVersion::GLES_3:
         header += "#version 300 es\n";
-        header += "#define GLES_3 1";
         header += "#define UNIFORMARRAY_SIZE 11\n";
         break;
     }

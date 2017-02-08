@@ -69,11 +69,7 @@ void main(void) {
     else if (type == 1) {
         // Calculate color from texture
         vec2 pt = (paintMat * vec3(fpos,1.0)).xy / extent;
-#ifdef OPENGL_3
         vec4 color = texture(tex, pt);
-#else
-        vec4 color = texture2D(tex, pt);
-#endif
         if (texType == 1) {
             color = vec4(color.xyz*color.w,color.w);
         }
@@ -96,11 +92,7 @@ void main(void) {
 
     // Textured tris
     else if (type == 3) {
-#ifdef OPENGL_3
         vec4 color = texture(tex, ftcoord);
-#else
-        vec4 color = texture2D(tex, ftcoord);
-#endif
         if (texType == 1){
             color = vec4(color.xyz*color.w,color.w);
         }
@@ -118,10 +110,6 @@ void main(void) {
 #endif
 
     // return result
-#ifdef OPENGL_3
     outColor = result;
-#else
-    gl_FragColor = result;
-#endif
-};
+}
 //)====="; // footer, required to read the file into NoTF at compile time

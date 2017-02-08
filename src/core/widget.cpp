@@ -2,7 +2,7 @@
 
 #include "common/log.hpp"
 #include "core/window.hpp"
-#include "graphics/canvas_painter.hpp"
+#include "graphics/painter.hpp"
 #include "graphics/render_context.hpp"
 
 namespace notf {
@@ -28,6 +28,7 @@ Widget::Widget()
     , m_scissor_layout() // empty by default
     , m_cell(Cell())
 {
+    m_cell.set_dirty();
 }
 
 void Widget::paint(RenderContext &context) const
@@ -35,7 +36,7 @@ void Widget::paint(RenderContext &context) const
     // update the cell if dirty
     if (m_cell.is_dirty()) {
         m_cell.reset(context);
-        Painter painter(m_cell);
+        Painter painter(m_cell, context);
         try {
             _paint(painter);
         }

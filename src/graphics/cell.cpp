@@ -1,4 +1,4 @@
-#include "graphics/canvas_cell.hpp"
+#include "graphics/cell.hpp"
 
 #include <tuple>
 
@@ -146,7 +146,7 @@ void Cell::_append_commands(std::vector<float>&& commands)
     // commands operate in the context's current transformation space, but we need them in global space
     const Transform2& xform = _get_current_state().xform;
     for (size_t i = 0; i < commands.size();) {
-        Command command = static_cast<Command>(m_commands[i]);
+        Command command = static_cast<Command>(commands[i]);
         switch (command) {
 
         case Command::MOVE:

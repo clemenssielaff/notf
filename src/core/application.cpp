@@ -220,7 +220,7 @@ void Application::_on_window_close(GLFWwindow* glfw_window)
     window->close();
 }
 
-void Application::_on_window_reize(GLFWwindow* glfw_window, int width, int height)
+void Application::_on_window_resize(GLFWwindow* glfw_window, int width, int height)
 {
     assert(glfw_window);
     Window* window_raw = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
@@ -252,7 +252,7 @@ void Application::_register_window(std::shared_ptr<Window> window)
     glfwSetKeyCallback(glfw_window, _on_token_key);
     glfwSetCursorPosCallback(glfw_window, _on_cursor_move);
     glfwSetMouseButtonCallback(glfw_window, _on_mouse_button);
-    glfwSetWindowSizeCallback(glfw_window, _on_window_reize);
+    glfwSetWindowSizeCallback(glfw_window, _on_window_resize);
 
     // if this is the first Window, it is also the current one
     if (!m_current_window) {

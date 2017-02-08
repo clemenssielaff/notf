@@ -8,7 +8,7 @@
 #include "common/time.hpp"
 #include "common/vector2.hpp"
 #include "graphics/blend_mode.hpp"
-#include "graphics/canvas_cell.hpp"
+#include "graphics/cell.hpp"
 #include "graphics/gl_forwards.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/vertex.hpp"
@@ -97,22 +97,22 @@ public:
             SIMPLE,
         };
 
-        FragmentUniforms() // we'll see if we need this initialization to zero at all
-            : scissorMat{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-              paintMat{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-              innerCol{0},
-              outerCol{0},
-              scissorExt{0, 0},
-              scissorScale{0, 0},
-              extent{0, 0},
-              radius{0},
-              feather{0},
-              strokeMult{0},
-              strokeThr{0},
-              texType{0},
-              type{Type::SIMPLE}
-        {
-        }
+//        FragmentUniforms() // we'll see if we need this initialization to zero at all
+//            : scissorMat{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+//            , paintMat{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+//            , innerCol(0)
+//            , outerCol(0)
+//            , scissorExt{0, 0}
+//            , scissorScale{0, 0}
+//            , extent{0, 0}
+//            , radius{0}
+//            , feather{0}
+//            , strokeMult{0}
+//            , strokeThr{0}
+//            , texType{0}
+//            , type(Type::SIMPLE)
+//        {
+//        }
 
         float scissorMat[12]; // matrices are actually 3 vec4s
         float paintMat[12];
@@ -214,6 +214,10 @@ public:
 
 private: // methods for Window
     void set_mouse_pos(Vector2 pos) { m_mouse_pos = std::move(pos); }
+
+    void set_buffer_size(Size2f buffer) { m_buffer_size = std::move(buffer); }
+
+    void set_window_size(Size2i window_size) { m_window_size = std::move(window_size); }
 
 private: // methods for Cell
     void add_fill_call(const Paint& paint, const Cell& cell);

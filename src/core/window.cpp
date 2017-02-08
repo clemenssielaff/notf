@@ -84,8 +84,11 @@ void Window::_update()
     // build the render context
     Size2i window_size;
     glfwGetWindowSize(m_glfw_window.get(), &window_size.width, &window_size.height);
+    m_render_context->set_window_size(window_size);
+
     Size2i buffer_size;
     glfwGetFramebufferSize(m_glfw_window.get(), &buffer_size.width, &buffer_size.height);
+    m_render_context->set_buffer_size(Size2f::from_size2i(buffer_size));
 
     double mouse_x, mouse_y;
     glfwGetCursorPos(m_glfw_window.get(), &mouse_x, &mouse_y);
