@@ -113,8 +113,10 @@ struct Aabr {
     /** The largest representable Aabr. */
     static Aabr huge()
     {
-        return Aabr({std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(),
-                     std::numeric_limits<float>::max(), std::numeric_limits<float>::max()});
+        Aabr result;
+        result._min = Vector2::fill(std::numeric_limits<float>::lowest());
+        result._max = Vector2::fill(std::numeric_limits<float>::max());
+        return result;
     }
 
     /** The "most wrong" Aabr.
@@ -122,8 +124,10 @@ struct Aabr {
      */
     static Aabr wrongest()
     {
-        return Aabr({std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),
-                     std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()});
+        Aabr result;
+        result._min = Vector2::fill(std::numeric_limits<float>::max());
+        result._max = Vector2::fill(std::numeric_limits<float>::lowest());
+        return result;
     }
 
     /*  Inspection  ***************************************************************************************************/

@@ -28,7 +28,7 @@ float poly_area(const std::vector<Cell::Point>& points, const size_t offset, con
         const Cell::Point& c = points[index];
         area += (c.pos.x - a.pos.x) * (b.pos.y - a.pos.y) - (b.pos.x - a.pos.x) * (c.pos.y - a.pos.y);
     }
-    return area;
+    return area / 2;
 }
 
 std::tuple<float, float, float, float>
@@ -56,7 +56,7 @@ namespace notf {
 
 Cell::Cell()
     : m_states()
-    , m_commands(256)
+    , m_commands() // TODO: make command buffer static (initialize with 256 entries and only grow)?
     , m_current_command(0)
     , m_stylus(Vector2::zero())
     , m_is_dirty(false)
@@ -481,21 +481,21 @@ void Cell::_flatten_paths()
             }
         }
 
-        for (size_t point_index = path.point_offset;
-             point_index < path.point_offset + path.point_count - (path.is_closed ? 0 : 1);
-             ++point_index) {
-
-            Point& current = m_points[point_index];
-            Point& next    = m_points[point_index + 1];
+        const size_t last_point_offset = path.point_offset + path.point_count - 1;
+        for (size_t next_offset = path.point_offset, current_offset = last_point_offset;
+             next_offset <= last_point_offset;
+             current_offset = next_offset++) {
+            Point& current_point = m_points[current_offset];
+            Point& next_point    = m_points[next_offset];
 
             // calculate segment delta
-            current.delta = next.pos - current.pos;
+            current_point.delta = next_point.pos - current_point.pos;
 
             // update bounds
-            m_bounds._min.x = min(m_bounds._min.x, current.pos.x);
-            m_bounds._min.y = min(m_bounds._min.y, current.pos.y);
-            m_bounds._max.x = max(m_bounds._max.x, current.pos.x);
-            m_bounds._max.y = max(m_bounds._max.y, current.pos.y);
+            m_bounds._min.x = min(m_bounds._min.x, current_point.pos.x);
+            m_bounds._min.y = min(m_bounds._min.y, current_point.pos.y);
+            m_bounds._max.x = max(m_bounds._max.x, current_point.pos.x);
+            m_bounds._max.y = max(m_bounds._max.y, current_point.pos.y);
         }
     }
 }
