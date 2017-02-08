@@ -243,7 +243,7 @@ public: // methods
 
     void bezier_to(const float c1x, const float c1y, const float c2x, const float c2y, const float tx, const float ty);
 
-    void add_rect(const Aabr& rect) { add_rect(rect.x(), rect.y(), rect.width(), rect.height()); }
+    void add_rect(const Aabr& rect) { add_rect(rect.left(), rect.top(), rect.width(), rect.height()); }
 
     void add_rect(const float x, const float y, const float w, const float h);
 
@@ -345,7 +345,8 @@ private: // methods
     /** Creates a new Point, but only if the position significantly differs from the last one. */
     void _add_point(const Vector2 position, const Point::Flags flags);
 
-    void _tesselate_bezier(size_t offset);
+    void _tesselate_bezier(const float x1, const float y1, const float x2, const float y2,
+                           const float x3, const float y3, const float x4, const float y4);
 
     void _butt_cap_start(const Point& point, const Vector2& delta, const float stroke_width, const float d);
 
@@ -386,6 +387,5 @@ private: // fields
 
     bool m_is_dirty;
 };
-
 
 } // namespace notf

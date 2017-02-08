@@ -34,9 +34,9 @@ Widget::Widget()
 void Widget::paint(RenderContext &context) const
 {
     // update the cell if dirty
-    if (m_cell.is_dirty()) {
+//    if (m_cell.is_dirty()) { TODO: currently _set_size does not dirty the Widget's Cell
         m_cell.reset(context);
-        Painter painter(m_cell, context);
+        Painter painter(*this, m_cell, context);
         try {
             _paint(painter);
         }
@@ -44,9 +44,7 @@ void Widget::paint(RenderContext &context) const
             log_warning << error.what();
             // TODO: print Python stack trace here IF the item uses a Python object to draw itself
         }
-    }
-
-    // TODO: Cell::draw_to(RenderContext&)
+//    }
 }
 
 } // namespace notf

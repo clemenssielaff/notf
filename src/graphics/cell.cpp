@@ -124,6 +124,7 @@ void Cell::begin_path()
 {
     m_commands.clear();
     m_paths.clear();
+    m_points.clear();
 }
 
 void Cell::move_to(const float x, const float y)
@@ -429,7 +430,10 @@ void Cell::_flatten_paths()
             break;
 
         case Command::BEZIER:
-            _tesselate_bezier(index + 1);
+            _tesselate_bezier(m_points.back().pos.x, m_points.back().pos.y, // TODO: this is ugly and doesn't work if no point exists
+                              m_commands[index + 1], m_commands[index + 2],
+                              m_commands[index + 3], m_commands[index + 4],
+                              m_commands[index + 5], m_commands[index + 6]);
             index += 7;
             break;
 
@@ -807,20 +811,11 @@ void Cell::_add_point(const Vector2 position, const Point::Flags flags)
  * as found at: https://github.com/memononen/nanovg/issues/328
  * If there seems to be an issue with the tesselation, revert back to the "official" implementation
  */
-void Cell::_tesselate_bezier(size_t offset)
+//void Cell::_tesselate_bezier(size_t offset)
+void Cell::_tesselate_bezier(const float x1, const float y1, const float x2, const float y2,
+                             const float x3, const float y3, const float x4, const float y4)
 {
     static const int one = 1 << 10;
-
-    // To avoid unnecessary copies, we just ingest values straight out of the Command buffer
-    assert(m_commands.size() > offset + 7);
-    const float x1 = m_commands[offset + 0];
-    const float y1 = m_commands[offset + 1];
-    const float x2 = m_commands[offset + 2];
-    const float y2 = m_commands[offset + 3];
-    const float x3 = m_commands[offset + 4];
-    const float y3 = m_commands[offset + 5];
-    const float x4 = m_commands[offset + 6];
-    const float y4 = m_commands[offset + 7];
 
     // Power basis.
     const float ax = -x1 + 3 * x2 - 3 * x3 + x4;
@@ -922,7 +917,7 @@ Paint Cell::create_linear_gradient(const Vector2& start_pos, const Vector2& end_
     paint.xform[1][0]   = delta.x;
     paint.xform[1][1]   = delta.y;
     paint.xform[2][0]   = start_pos.x - (delta.x * large_number);
-    paint.xform[2][2]   = start_pos.y - (delta.y * large_number);
+    paint.xform[2][1]   = start_pos.y - (delta.y * large_number);
     paint.radius        = 0.0f;
     paint.feather       = max(1.0f, mag);
     paint.extent.width  = large_number;

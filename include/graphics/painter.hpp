@@ -3,13 +3,15 @@
 namespace notf {
 
 class Cell;
+class Widget;
 class RenderContext;
 
 class Painter {
 
 public: // methods
-    Painter(Cell& cell, RenderContext& context)
-        : m_cell(cell)
+    Painter(const Widget& widget, Cell& cell, RenderContext& context)
+        : m_widget(widget)
+        , m_cell(cell)
         , m_context(context)
     {
     }
@@ -17,6 +19,8 @@ public: // methods
     void test();
 
 private: // fields
+    const Widget& m_widget;
+
     Cell& m_cell;
 
     RenderContext& m_context;
