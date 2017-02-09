@@ -27,8 +27,7 @@ GLuint FRAG_BINDING = 0;
 
 constexpr GLintptr fragSize()
 {
-    constexpr GLintptr align = sizeof(float);
-    return sizeof(notf::RenderContext::FragmentUniforms) + align - sizeof(notf::RenderContext::FragmentUniforms) % align;
+    return sizeof(notf::RenderContext::FragmentUniforms);
 }
 
 // clang-format off
@@ -241,7 +240,7 @@ void RenderContext::_paint_to_frag(FragmentUniforms& frag, const Paint& paint, c
 
     frag.innerCol = paint.innerColor.premultiplied();
     frag.outerCol = paint.outerColor.premultiplied();
-    if (scissor.extend.width < -0.5f || scissor.extend.height < -0.5f) { // what's with the magic -0.5 here?
+    if (scissor.extend.width < -0.5f || scissor.extend.height < -0.5f) { // extend cannot be less than a pixel
         frag.scissorExt[0]   = 1.0f;
         frag.scissorExt[1]   = 1.0f;
         frag.scissorScale[0] = 1.0f;
@@ -304,7 +303,7 @@ void RenderContext::_render_flush(const BlendMode blend_mode)
         // Set view and texture just once per frame.
         glUniform1i(m_loc_texture, 0);
         glUniform2fv(m_loc_viewsize, 1, m_buffer_size.as_float_ptr());
-        glBindBuffer(GL_UNIFORM_BUFFER, m_fragment_buffer);
+        //glBindBuffer(GL_UNIFORM_BUFFER, m_fragment_buffer);
 
         // perform the render calls
         for (const CanvasCall& call : m_calls) {
@@ -346,7 +345,7 @@ void RenderContext::_fill(const CanvasCall& call)
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
     // set bindpoint for solid loc
-    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset, sizeof(FragmentUniforms));
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset * fragSize(), fragSize());
 
     glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP);
     glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP);
@@ -358,7 +357,7 @@ void RenderContext::_fill(const CanvasCall& call)
 
     // Draw anti-aliased pixels
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset + fragSize(), sizeof(FragmentUniforms));
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, (call.uniformOffset + 1) * fragSize(), fragSize());
 
     if (m_args.enable_geometric_aa) {
         set_stencil_func(StencilFunc::EQUAL);
@@ -379,7 +378,7 @@ void RenderContext::_fill(const CanvasCall& call)
 
 void RenderContext::_convex_fill(const CanvasCall& call)
 {
-    glBindBufferRange(GL_UNIFORM_BUFFER, 0, m_fragment_buffer, call.uniformOffset, sizeof(FragmentUniforms));
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, m_fragment_buffer, call.uniformOffset * fragSize(), fragSize());
 
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
         // draw fill
@@ -398,17 +397,16 @@ void RenderContext::_stroke(const CanvasCall& call)
     glEnable(GL_STENCIL_TEST);
     set_stencil_mask(0xff);
 
-    // Fill the stroke base without overlap
+    // fill the stroke base without overlap
     set_stencil_func(StencilFunc::EQUAL);
     glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
-    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer,
-                      call.uniformOffset + fragSize(), sizeof(FragmentUniforms));
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, (call.uniformOffset + 1) * fragSize(), fragSize());
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
         glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
     }
 
-    // Draw anti-aliased pixels.
-    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset, sizeof(FragmentUniforms));
+    // draw anti-aliased pixels.
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset * fragSize(), fragSize());
     set_stencil_func(StencilFunc::EQUAL);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
