@@ -273,7 +273,7 @@ public: // methods
 
     void add_rounded_rect(const Aabr& rect, const float radius)
     {
-        add_rounded_rect(rect.x(), rect.y(), rect.width(), rect.height(), radius, radius, radius, radius);
+        add_rounded_rect(rect.left(), rect.top(), rect.width(), rect.height(), radius, radius, radius, radius);
     }
 
     void add_rounded_rect(const float x, const float y, const float w, const float h,

@@ -157,7 +157,7 @@ struct Vector2 {
      */
     bool is_approx(const Vector2& other, const float epsilon) const
     {
-        return (*this - other).magnitude_sq() == approx(0, epsilon);
+        return (*this - other).magnitude_sq() == approx(0, epsilon * epsilon);
     }
 
     /// @brief Returns the slope of this Vector2.

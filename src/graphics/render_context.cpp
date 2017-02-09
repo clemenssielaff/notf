@@ -289,7 +289,7 @@ void RenderContext::_render_flush(const BlendMode blend_mode)
         glBindTexture(GL_TEXTURE_2D, 0);
 
         // Upload ubo for frag shaders
-        glBindBuffer(GL_UNIFORM_BUFFER, m_fragment_buffer); // this is where the shader / layer separation breaks apart
+        glBindBuffer(GL_UNIFORM_BUFFER, m_fragment_buffer);
         glBufferData(GL_UNIFORM_BUFFER, static_cast<GLsizeiptr>(m_frag_uniforms.size()) * fragSize(), &m_frag_uniforms.front(), GL_STREAM_DRAW);
 
         // upload vertex data

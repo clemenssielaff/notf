@@ -85,17 +85,14 @@ inline REAL rad_to_deg(REAL&& radians) { return radians * (180. / PI); }
  * bool is_approx = 1.1234 == approx(1.2345, 0.1);
  * ```
  *
- * Comparison function from:
- * From https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
- *
- * approx-class idea from catch:
+ * Approx-class idea from catch:
  * https://github.com/philsquared/Catch/blob/master/include/catch.hpp
  */
 class approx {
 public:
     explicit approx(float value, float epsilon = std::numeric_limits<float>::epsilon() * 100)
         : m_value(value)
-        , m_epsilon(epsilon)
+        , m_epsilon(abs(epsilon))
     {
     }
 
@@ -104,7 +101,7 @@ public:
         if (!is_real(lhs) || !is_real(rhs.m_value)) {
             return false;
         }
-        return abs(lhs - rhs.m_value) <= max(abs(lhs), abs(rhs.m_value)) * rhs.m_epsilon;
+        return abs(lhs - rhs.m_value) <= rhs.m_epsilon;
     }
 
     friend bool operator==(const approx& lhs, float rhs) { return operator==(rhs, lhs); }

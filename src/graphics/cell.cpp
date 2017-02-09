@@ -513,7 +513,7 @@ void Cell::_calculate_joins(const float fringe, const LineJoin join, const float
             const Point& previous_point = m_points[previous_offset];
             Point& current_point        = m_points[current_offset];
 
-            // clear all flags except the corner
+            // clear all flags except the corner // TODO: this is bullshit, either the points had the chance to collect flags or not, but don't just remove them!
             current_point.flags = (current_point.flags & Point::Flags::CORNER) ? Point::Flags::CORNER : Point::Flags::NONE;
 
             // keep track of left turns
@@ -535,7 +535,7 @@ void Cell::_calculate_joins(const float fringe, const LineJoin join, const float
             const float limit      = max(
                 1.01f,
                 inv_fringe * min(previous_point.delta.magnitude(), current_point.delta.magnitude()));
-            if ((dm_mag_sq * limit * limit) < 1.0f) {
+            if ((dm_mag_sq * limit * limit) < 1.f) {
                 current_point.flags = static_cast<Point::Flags>(current_point.flags | Point::Flags::INNERBEVEL);
             }
 
