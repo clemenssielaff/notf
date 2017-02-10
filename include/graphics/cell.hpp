@@ -94,7 +94,7 @@ public: // enum
         COUNTERCLOCKWISE = CCW,
         CLOCKWISE        = CW,
         SOLID            = CCW,
-        HOLES            = CW,
+        HOLE             = CW,
     };
 
     // The vertices of the Path are stored in Cell while this struct only stores offsets and sizes.
@@ -231,6 +231,9 @@ public: // methods
     void move_to(const Vector2 pos) { move_to(std::move(pos.x), std::move(pos.y)); }
 
     void move_to(const float x, const float y);
+
+    /** Rotates the current state the given amount of radians in a counter-clockwise direction. */
+    void rotate(const float angle);
 
     void line_to(const Vector2 pos) { line_to(std::move(pos.x), std::move(pos.y)); }
 

@@ -25,7 +25,7 @@ void xformToMat3x4(float* m3, notf::Transform2 t)
 
 GLuint FRAG_BINDING = 0;
 
-constexpr GLintptr fragSize()
+constexpr GLintptr fragmentSize()
 {
     return sizeof(notf::RenderContext::FragmentUniforms);
 }
@@ -33,12 +33,12 @@ constexpr GLintptr fragSize()
 // clang-format off
 
 // vertex shader source, read from file as described in: http://stackoverflow.com/a/25021520
-const char* hud_vertex_shader =
-#include "shader/hud.vert"
+const char* cell_vertex_shader =
+#include "shader/cell.vert"
 
 // fragment shader source
-const char* hud_fragment_shader =
-#include "shader/hud.frag"
+const char* cell_fragment_shader =
+#include "shader/cell.frag"
 
 // clang-format on
 } // namespace anonymous
@@ -56,7 +56,7 @@ RenderContext::RenderContext(const RenderContextArguments args)
     , m_vertices()
     , m_frag_uniforms()
     , m_sources(_create_shader_sources(*this))
-    , m_shader(Shader::build("HUDShader", m_sources.vertex, m_sources.fragment))
+    , m_shader(Shader::build("CellShader", m_sources.vertex, m_sources.fragment))
     , m_loc_viewsize(glGetUniformLocation(m_shader.get_id(), "viewSize"))
     , m_loc_texture(glGetUniformLocation(m_shader.get_id(), "tex"))
     , m_loc_buffer(glGetUniformBlockIndex(m_shader.get_id(), "frag"))
@@ -142,24 +142,24 @@ void RenderContext::add_fill_call(const Paint& paint, const Cell& cell)
     m_paths.reserve(m_paths.size() + cell.get_paths().size());
 
     for (const Cell::Path& path : cell.get_paths()) {
-        PathIndex hud_path;
+        PathIndex cell_path;
         if (path.fill_count != 0) {
-            hud_path.fillOffset = static_cast<GLint>(offset);
-            hud_path.fillCount  = static_cast<GLsizei>(path.fill_count);
+            cell_path.fillOffset = static_cast<GLint>(offset);
+            cell_path.fillCount  = static_cast<GLsizei>(path.fill_count);
             m_vertices.insert(std::end(m_vertices),
                               iterator_at(cell.get_vertices(), path.fill_offset),
                               iterator_at(cell.get_vertices(), path.fill_offset + path.fill_count));
             offset += path.fill_count;
         }
         if (path.stroke_count != 0) {
-            hud_path.strokeOffset = static_cast<GLint>(offset);
-            hud_path.strokeCount  = static_cast<GLsizei>(path.stroke_count);
+            cell_path.strokeOffset = static_cast<GLint>(offset);
+            cell_path.strokeCount  = static_cast<GLsizei>(path.stroke_count);
             m_vertices.insert(std::end(m_vertices),
                               iterator_at(cell.get_vertices(), path.stroke_offset),
                               iterator_at(cell.get_vertices(), path.stroke_offset + path.stroke_count));
             offset += path.stroke_count;
         }
-        m_paths.emplace_back(std::move(hud_path));
+        m_paths.emplace_back(std::move(cell_path));
     }
 
     // create a quad around the bounds of the filled area
@@ -174,10 +174,10 @@ void RenderContext::add_fill_call(const Paint& paint, const Cell& cell)
     m_vertices.emplace_back(Vertex{Vector2{bounds.right(), bounds.top()}, Vector2{.5f, 1.f}});
     m_vertices.emplace_back(Vertex{Vector2{bounds.left(), bounds.top()}, Vector2{.5f, 1.f}});
 
-    call.uniformOffset = static_cast<GLintptr>(m_frag_uniforms.size());
+    call.uniformOffset = static_cast<GLintptr>(m_frag_uniforms.size()) * fragmentSize();
     if (call.type == CanvasCall::Type::FILL) {
         // create an additional uniform buffer for a simple shader for the stencil
-        m_frag_uniforms.push_back({});
+        m_frag_uniforms.emplace_back(FragmentUniforms());
         FragmentUniforms& stencil_uniforms = m_frag_uniforms.back();
         stencil_uniforms.strokeThr         = -1;
         stencil_uniforms.type              = FragmentUniforms::Type::SIMPLE;
@@ -208,10 +208,10 @@ void RenderContext::add_stroke_call(const Paint& paint, const float stroke_width
     m_paths.reserve(m_paths.size() + cell.get_paths().size());
 
     for (const Cell::Path& path : cell.get_paths()) {
-        PathIndex hud_path;
+        PathIndex cell_path;
         if (path.stroke_count != 0) {
-            hud_path.strokeOffset = static_cast<GLint>(offset);
-            hud_path.strokeCount  = static_cast<GLsizei>(path.stroke_count);
+            cell_path.strokeOffset = static_cast<GLint>(offset);
+            cell_path.strokeCount  = static_cast<GLsizei>(path.stroke_count);
             m_vertices.insert(std::end(m_vertices),
                               iterator_at(cell.get_vertices(), path.stroke_offset),
                               iterator_at(cell.get_vertices(), path.stroke_offset + path.stroke_count));
@@ -289,7 +289,7 @@ void RenderContext::_render_flush(const BlendMode blend_mode)
 
         // Upload ubo for frag shaders
         glBindBuffer(GL_UNIFORM_BUFFER, m_fragment_buffer);
-        glBufferData(GL_UNIFORM_BUFFER, static_cast<GLsizeiptr>(m_frag_uniforms.size()) * fragSize(), &m_frag_uniforms.front(), GL_STREAM_DRAW);
+        glBufferData(GL_UNIFORM_BUFFER, static_cast<GLsizeiptr>(m_frag_uniforms.size()) * fragmentSize(), &m_frag_uniforms.front(), GL_STREAM_DRAW);
 
         // upload vertex data
         glBindVertexArray(m_vertex_array);
@@ -344,7 +344,7 @@ void RenderContext::_fill(const CanvasCall& call)
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
     // set bindpoint for solid loc
-    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset * fragSize(), fragSize());
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset, fragmentSize());
 
     glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP);
     glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP);
@@ -356,7 +356,7 @@ void RenderContext::_fill(const CanvasCall& call)
 
     // Draw anti-aliased pixels
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, (call.uniformOffset + 1) * fragSize(), fragSize());
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset + fragmentSize(), fragmentSize());
 
     if (m_args.enable_geometric_aa) {
         set_stencil_func(StencilFunc::EQUAL);
@@ -377,7 +377,7 @@ void RenderContext::_fill(const CanvasCall& call)
 
 void RenderContext::_convex_fill(const CanvasCall& call)
 {
-    glBindBufferRange(GL_UNIFORM_BUFFER, 0, m_fragment_buffer, call.uniformOffset * fragSize(), fragSize());
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, m_fragment_buffer, call.uniformOffset, fragmentSize());
 
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
         // draw fill
@@ -399,13 +399,13 @@ void RenderContext::_stroke(const CanvasCall& call)
     // fill the stroke base without overlap
     set_stencil_func(StencilFunc::EQUAL);
     glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
-    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, (call.uniformOffset + 1) * fragSize(), fragSize());
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset + fragmentSize(), fragmentSize());
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
         glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
     }
 
     // draw anti-aliased pixels.
-    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset * fragSize(), fragSize());
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset, fragmentSize());
     set_stencil_func(StencilFunc::EQUAL);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
@@ -437,7 +437,8 @@ void RenderContext::set_stencil_func(const StencilFunc func)
     if (func == m_stencil_func) {
         return;
     }
-    switch (func) {
+    m_stencil_func = func;
+    switch (m_stencil_func) {
     case StencilFunc::ALWAYS:
         glStencilFunc(GL_ALWAYS, 0x00, 0xff);
         break;
@@ -486,8 +487,8 @@ RenderContext::Sources RenderContext::_create_shader_sources(const RenderContext
     // TODO: building the shader is wasteful (but it only happens once...)
 
     // attach the header to the source files
-    return {header + hud_vertex_shader,
-            header + hud_fragment_shader};
+    return {header + cell_vertex_shader,
+            header + cell_fragment_shader};
 }
 
 } // namespace notf

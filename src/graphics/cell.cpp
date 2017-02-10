@@ -132,6 +132,11 @@ void Cell::move_to(const float x, const float y)
     _append_commands({to_float(Command::MOVE), std::move(x), std::move(y)});
 }
 
+void Cell::rotate(const float angle)
+{
+    _get_current_state().xform *= Transform2::rotation(angle);
+}
+
 void Cell::line_to(const float x, const float y)
 {
     _append_commands({to_float(Command::LINE), std::move(x), std::move(y)});
@@ -281,10 +286,11 @@ void Cell::arc(float cx, float cy, float r, float a0, float a1, Winding dir)
     const float kappa = abs(4.0f / 3.0f * (1.0f - cos(hda)) / sin(hda)) * (dir == Winding::CLOCKWISE ? 1 : -1);
 
     // create individual commands
-    std::vector<float> commands((static_cast<size_t>(ceilf(ndivs)) - 1) * 7 + 3);
+    std::vector<float> commands((static_cast<size_t>(ceilf(ndivs))) * 7 + 3);
     size_t command_index = 0;
     float px = 0, py = 0, ptanx = 0, ptany = 0;
     for (float i = 0; i <= ndivs; i++) {
+        assert(command_index < commands.size());
         const float a    = a0 + da * (i / ndivs);
         const float dx   = cos(a);
         const float dy   = sin(a);

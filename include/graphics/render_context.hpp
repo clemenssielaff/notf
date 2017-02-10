@@ -97,22 +97,26 @@ public:
             SIMPLE,
         };
 
-//        FragmentUniforms() // we'll see if we need this initialization to zero at all
-//            : scissorMat{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-//            , paintMat{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-//            , innerCol(0)
-//            , outerCol(0)
-//            , scissorExt{0, 0}
-//            , scissorScale{0, 0}
-//            , extent{0, 0}
-//            , radius{0}
-//            , feather{0}
-//            , strokeMult{0}
-//            , strokeThr{0}
-//            , texType{0}
-//            , type(Type::SIMPLE)
-//        {
-//        }
+        FragmentUniforms() // we'll see if we need this initialization to zero at all
+            : innerCol()
+            , outerCol()
+            , radius{0}
+            , feather{0}
+            , strokeMult{0}
+            , strokeThr{0}
+            , texType{0}
+            , type{Type::SIMPLE}
+        {
+            for(auto i = 0; i < 12; ++i){
+                scissorMat[i] = 0;
+                paintMat[i] = 0;
+            }
+            for(auto i = 0; i < 2; ++i){
+                scissorExt[i] = 0;
+                scissorScale[i] = 0;
+                extent[i] = 0;
+            }
+        }
 
         float scissorMat[12]; // matrices are actually 3 vec4s
         float paintMat[12];

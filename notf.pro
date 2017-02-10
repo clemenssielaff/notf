@@ -204,5 +204,5 @@ QMAKE_CXX = ccache g++
 
 DISTFILES += \
     app/main.py \
-    res/shader/hud.frag \
-    res/shader/hud.vert
+    res/shader/cell.frag \
+    res/shader/cell.vert

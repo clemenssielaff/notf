@@ -215,6 +215,22 @@ struct Aabr {
     /** Returns the extend of this Aabr. */
     Size2f extend() const { return {width(), height()}; }
 
+    /** Returns the length of the longer side of this Aabr. */
+    float longer_size() const
+    {
+        const float width = this->width();
+        const float height = this->height();
+        return width > height ? width : height;
+    }
+
+    /** Returns the length of the shorter side of this Aabr. */
+    float shorter_size() const
+    {
+        const float width = this->width();
+        const float height = this->height();
+        return width < height ? width : height;
+    }
+
     /** Operators *****************************************************************************************************/
 
     bool operator==(const Aabr& other) const { return (other._min == _min && other._max == _max); }

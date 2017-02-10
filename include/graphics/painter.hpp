@@ -2,11 +2,14 @@
 
 namespace notf {
 
+class Aabr;
 class Cell;
 class Widget;
 class RenderContext;
 
 class Painter {
+
+
 
 public: // methods
     Painter(const Widget& widget, Cell& cell, RenderContext& context)
@@ -17,6 +20,8 @@ public: // methods
     }
 
     void test();
+
+    void drawColorwheel(const Aabr& rect, float t);
 
 private: // fields
     const Widget& m_widget;
