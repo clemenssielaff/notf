@@ -73,7 +73,7 @@ void Cell::reset(const RenderContext& layer)
     const float pixel_ratio = layer.get_pixel_ratio();
     m_tesselation_tolerance = 0.25f / pixel_ratio;
     m_distance_tolerance    = 0.01f / pixel_ratio;
-    m_fringe_width          = 1.0f / pixel_ratio;
+    m_fringe_width          = 1.f / pixel_ratio;
 }
 
 size_t Cell::push_state()
@@ -649,7 +649,7 @@ void Cell::_expand_fill(const bool draw_antialiased)
                                 current_point.pos.y + current_point.dm.y * left_w},
                         Vector2{left_u, 1}});
                     m_vertices.emplace_back(Vertex{
-                        Vector2{current_point.pos.x + current_point.dm.x * right_w,
+                        Vector2{current_point.pos.x - current_point.dm.x * right_w,
                                 current_point.pos.y - current_point.dm.y * right_w},
                         Vector2{right_u, 1}});
                 }

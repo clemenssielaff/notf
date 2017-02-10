@@ -303,7 +303,6 @@ void RenderContext::_render_flush(const BlendMode blend_mode)
         // Set view and texture just once per frame.
         glUniform1i(m_loc_texture, 0);
         glUniform2fv(m_loc_viewsize, 1, m_buffer_size.as_float_ptr());
-        //glBindBuffer(GL_UNIFORM_BUFFER, m_fragment_buffer);
 
         // perform the render calls
         for (const CanvasCall& call : m_calls) {

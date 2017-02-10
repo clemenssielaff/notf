@@ -9,7 +9,7 @@ namespace notf {
 
 void Painter::test()
 {
-    const float corner_radius = 20;
+    const float corner_radius = 200;
     const Size2f widget_size  = m_widget.get_size();
     const float margin        = 20;
     const Aabr base           = Aabr(margin, margin, widget_size.width - 2 * margin, widget_size.height - 2 * margin);
@@ -26,6 +26,8 @@ void Painter::test()
     m_cell.add_rounded_rect(base, corner_radius - 1);
     m_cell.set_fill_paint(gradient);
     m_cell.fill(m_context);
+
+    // TODO: store the uniform buffer offset correctly instead of multiplying it with fragSize() all the time
 }
 
 } // namespace notf
