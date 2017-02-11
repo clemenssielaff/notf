@@ -216,6 +216,8 @@ public:
 
     const Vector2& get_mouse_pos() const { return m_mouse_pos; }
 
+    Time get_time() const { return m_time ; }
+
 private: // methods for Window
     void set_mouse_pos(Vector2 pos) { m_mouse_pos = std::move(pos); }
 

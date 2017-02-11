@@ -74,9 +74,9 @@ void Window::_update()
     assert(m_glfw_window);
 
     // do nothing, if there are no Widgets in need to be redrawn
-    if (m_render_manager->is_clean()) {
-        return;
-    }
+//    if (m_render_manager->is_clean()) {
+//        return;
+//    }
 
     // make the window current
     Application::get_instance()._set_current_window(this);

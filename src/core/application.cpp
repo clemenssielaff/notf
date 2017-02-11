@@ -107,7 +107,8 @@ int Application::exec()
             window->_update();
         }
 
-        glfwWaitEvents();
+//        glfwWaitEvents();
+        glfwPollEvents();
     }
 
     _shutdown();

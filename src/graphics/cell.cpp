@@ -523,14 +523,35 @@ void Cell::_calculate_joins(const float fringe, const LineJoin join, const float
                 current_point.flags = static_cast<Point::Flags>(current_point.flags | Point::Flags::LEFT);
             }
 
+            // TODO: this is what NanoVG uses, but it makes no sense... (and doesn't work?)
+            //            float dlx0 = previous_point.delta.y;
+            //            float dly0 = -previous_point.delta.x;
+            //            float dlx1 = current_point.delta.y;
+            //            float dly1 = -current_point.delta.x;
+            //            // Calculate extrusions
+            //            current_point.dm.x = (dlx0 + dlx1) * 0.5f;
+            //            current_point.dm.y = (dly0 + dly1) * 0.5f;
+            //            float dm_mag_sq = current_point.dm.x*current_point.dm.x + current_point.dm.y*current_point.dm.y;
+            //            if (dm_mag_sq > 0.000001f) {
+            //                float scale = 1.0f / dm_mag_sq;
+            //                if (scale > 600.0f) {
+            //                    scale = 600.0f;
+            //                }
+            //                current_point.dm.x *= scale;
+            //                current_point.dm.y *= scale;
+            //            }
+
             // calculate extrusions
-            current_point.dm.x    = (previous_point.delta.y + current_point.delta.y) / 2.f;
-            current_point.dm.y    = (previous_point.delta.x + current_point.delta.x) / -2.f;
-            const float dm_mag_sq = current_point.dm.magnitude_sq();
-            current_point.dm.normalize();
-//            if (dm_mag_sq > 0.000001f) { // TODO: this is what NanoVG uses, but it makes no sense... (and doesn't work?)
-//                current_point.dm *= min(600.f, 1.f / dm_mag_sq); // why 600?
-//            }
+            const Vector2 directionBack = previous_point.delta.normalized(); // TODO: do we need to store deltas at all?
+            const Vector2 directionForward = current_point.delta.normalized();
+            const Vector2 average = ((directionBack + directionForward) * 0.5).normalize();
+            const Vector2 miter_direction = average.orthogonal();
+            current_point.dm = -miter_direction;
+            const float dm_mag_sq = 200; // TODO: miters won't work like this, but they didn't really work before either
+//            current_point.dm.x    = (previous_point.delta.y + current_point.delta.y) / 2.f;
+//            current_point.dm.y    = (previous_point.delta.x + current_point.delta.x) / -2.f;
+//            const float dm_mag_sq = current_point.dm.magnitude_sq();
+//            current_point.dm.normalize();
 
             // calculate if we should use bevel or miter for an inner join
             const float inv_fringe = fringe > 0 ? 1.f / fringe : 0;
@@ -702,10 +723,10 @@ void Cell::_expand_stroke(const float stroke_width)
     }
 
     for (Path& path : m_paths) {
-//        assert(path.fill_offset == 0);
-//        assert(path.fill_count == 0);
+        //        assert(path.fill_offset == 0);
+        //        assert(path.fill_count == 0);
 
-        path.fill_count = 0; // TODO: this destroys the path's fill capacity, once it is stroked ... what?
+        path.fill_count  = 0; // TODO: this destroys the path's fill capacity, once it is stroked ... what?
         path.fill_offset = 0;
 
         if (path.point_count < 2) {

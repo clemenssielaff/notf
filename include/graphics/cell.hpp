@@ -213,10 +213,13 @@ public: // methods
 
     void set_blend_mode(const BlendMode mode) { _get_current_state().blend_mode = std::move(mode); }
 
+    void translate(const float x, const float y) { translate(Vector2{x, y}); }
+
     void translate(const Vector2 delta) { _get_current_state().xform *= Transform2::translation(std::move(delta)); }
 
     /** Rotates the current state the given amount of radians in a counter-clockwise direction. */
-    void rotate(const float angle) { _get_current_state().xform *= Transform2::rotation(angle); }
+    void rotate(const float angle) { _get_current_state().xform = Transform2::rotation(angle) * _get_current_state().xform; }
+    // TODO: Transform2::premultiply
 
     void transform(const Transform2& transform) { _get_current_state().xform *= transform; }
 
