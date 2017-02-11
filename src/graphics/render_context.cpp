@@ -142,24 +142,24 @@ void RenderContext::add_fill_call(const Paint& paint, const Cell& cell)
     m_paths.reserve(m_paths.size() + cell.get_paths().size());
 
     for (const Cell::Path& path : cell.get_paths()) {
-        PathIndex cell_path;
+        PathIndex path_index;
         if (path.fill_count != 0) {
-            cell_path.fillOffset = static_cast<GLint>(offset);
-            cell_path.fillCount  = static_cast<GLsizei>(path.fill_count);
+            path_index.fillOffset = static_cast<GLint>(offset);
+            path_index.fillCount  = static_cast<GLsizei>(path.fill_count);
             m_vertices.insert(std::end(m_vertices),
                               iterator_at(cell.get_vertices(), path.fill_offset),
                               iterator_at(cell.get_vertices(), path.fill_offset + path.fill_count));
             offset += path.fill_count;
         }
         if (path.stroke_count != 0) {
-            cell_path.strokeOffset = static_cast<GLint>(offset);
-            cell_path.strokeCount  = static_cast<GLsizei>(path.stroke_count);
+            path_index.strokeOffset = static_cast<GLint>(offset);
+            path_index.strokeCount  = static_cast<GLsizei>(path.stroke_count);
             m_vertices.insert(std::end(m_vertices),
                               iterator_at(cell.get_vertices(), path.stroke_offset),
                               iterator_at(cell.get_vertices(), path.stroke_offset + path.stroke_count));
             offset += path.stroke_count;
         }
-        m_paths.emplace_back(std::move(cell_path));
+        m_paths.emplace_back(std::move(path_index));
     }
 
     // create a quad around the bounds of the filled area
@@ -192,10 +192,11 @@ void RenderContext::add_fill_call(const Paint& paint, const Cell& cell)
 void RenderContext::add_stroke_call(const Paint& paint, const float stroke_width, const Cell& cell)
 {
     m_calls.emplace_back();
-    CanvasCall& call = m_calls.back();
-    call.type        = CanvasCall::Type::STROKE;
-    call.pathOffset  = m_paths.size();
-    call.pathCount   = cell.get_paths().size();
+    CanvasCall& call   = m_calls.back();
+    call.type          = CanvasCall::Type::STROKE;
+    call.pathOffset    = m_paths.size();
+    call.pathCount     = cell.get_paths().size();
+    call.uniformOffset = static_cast<GLintptr>(m_frag_uniforms.size()) * fragmentSize();
 
     size_t new_vertex_count = 0;
     for (const Cell::Path& path : cell.get_paths()) {
@@ -208,15 +209,16 @@ void RenderContext::add_stroke_call(const Paint& paint, const float stroke_width
     m_paths.reserve(m_paths.size() + cell.get_paths().size());
 
     for (const Cell::Path& path : cell.get_paths()) {
-        PathIndex cell_path;
+        PathIndex path_index;
         if (path.stroke_count != 0) {
-            cell_path.strokeOffset = static_cast<GLint>(offset);
-            cell_path.strokeCount  = static_cast<GLsizei>(path.stroke_count);
+            path_index.strokeOffset = static_cast<GLint>(offset);
+            path_index.strokeCount  = static_cast<GLsizei>(path.stroke_count);
             m_vertices.insert(std::end(m_vertices),
                               iterator_at(cell.get_vertices(), path.stroke_offset),
                               iterator_at(cell.get_vertices(), path.stroke_offset + path.stroke_count));
             offset += path.stroke_count;
         }
+        m_paths.emplace_back(std::move(path_index));
     }
 
     const Scissor& scissor = cell.get_current_state().scissor;
@@ -337,6 +339,9 @@ void RenderContext::_render_flush(const BlendMode blend_mode)
 
 void RenderContext::_fill(const CanvasCall& call)
 {
+    assert(call.pathOffset + call.pathCount <= m_paths.size());
+    assert(static_cast<size_t>(call.uniformOffset) <= max(size_t(0), m_frag_uniforms.size() - 1) * fragmentSize());
+
     // Draw shapes
     glEnable(GL_STENCIL_TEST);
     set_stencil_mask(0xff);
@@ -350,6 +355,7 @@ void RenderContext::_fill(const CanvasCall& call)
     glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP);
     glDisable(GL_CULL_FACE);
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
+        assert(static_cast<size_t>(m_paths[i].fillOffset + m_paths[i].fillCount) <= m_vertices.size());
         glDrawArrays(GL_TRIANGLE_FAN, m_paths[i].fillOffset, m_paths[i].fillCount);
     }
     glEnable(GL_CULL_FACE);
@@ -363,6 +369,7 @@ void RenderContext::_fill(const CanvasCall& call)
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         // Draw fringes
         for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
+            assert(static_cast<size_t>(m_paths[i].strokeOffset + m_paths[i].strokeCount) <= m_vertices.size());
             glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
         }
     }
@@ -377,15 +384,19 @@ void RenderContext::_fill(const CanvasCall& call)
 
 void RenderContext::_convex_fill(const CanvasCall& call)
 {
-    glBindBufferRange(GL_UNIFORM_BUFFER, 0, m_fragment_buffer, call.uniformOffset, fragmentSize());
+    assert(call.pathOffset + call.pathCount <= m_paths.size());
+
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset, fragmentSize());
 
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
         // draw fill
+        assert(static_cast<size_t>(m_paths[i].fillOffset + m_paths[i].fillCount) <= m_vertices.size());
         glDrawArrays(GL_TRIANGLE_FAN, m_paths[i].fillOffset, m_paths[i].fillCount);
     }
     if (m_args.enable_geometric_aa) {
         // draw fringes
         for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
+            assert(static_cast<size_t>(m_paths[i].strokeOffset + m_paths[i].strokeCount) <= m_vertices.size());
             glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
         }
     }
@@ -393,6 +404,9 @@ void RenderContext::_convex_fill(const CanvasCall& call)
 
 void RenderContext::_stroke(const CanvasCall& call)
 {
+    assert(call.pathOffset + call.pathCount <= m_paths.size());
+    assert(static_cast<size_t>(call.uniformOffset) <= max(size_t(0), m_frag_uniforms.size() - 1) * fragmentSize());
+
     glEnable(GL_STENCIL_TEST);
     set_stencil_mask(0xff);
 
@@ -401,22 +415,25 @@ void RenderContext::_stroke(const CanvasCall& call)
     glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset + fragmentSize(), fragmentSize());
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
+        assert(static_cast<size_t>(m_paths[i].strokeOffset + m_paths[i].strokeCount) <= m_vertices.size());
         glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
     }
 
-    // draw anti-aliased pixels.
+    // draw anti-aliased pixels
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset, fragmentSize());
     set_stencil_func(StencilFunc::EQUAL);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
+        assert(static_cast<size_t>(m_paths[i].strokeOffset + m_paths[i].strokeCount) <= m_vertices.size());
         glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
     }
 
-    // Clear stencil buffer.
+    // clear stencil buffer
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
     set_stencil_func(StencilFunc::ALWAYS);
     glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO);
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
+        assert(static_cast<size_t>(m_paths[i].strokeOffset + m_paths[i].strokeCount) <= m_vertices.size());
         glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
     }
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);

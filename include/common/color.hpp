@@ -59,7 +59,13 @@ struct Color {
     template <class T, typename = std::enable_if_t<std::is_integral<T>::value>>
     static Color from_rgb(T r, T g, T b, T a = 1) { return Color(r, g, b, a); }
 
-    static Color from_hsl(float h, float s, float l, float a = 1);
+    /** Creates a new Color from HSL values.
+     * @param h     Hue in degrees, in the range [0, 360]
+     * @param s     Saturation in the range [0, 1]
+     * @param l     Lightness in the range [0, 1]
+     * @param a     Alpha in the range [0, 1]
+     */
+    static Color from_hsl(float h, float s, float l, float a = 1); // TODO: Color::from_hsl should take the hue in radians
 
     bool operator==(const Color& other) const
     {

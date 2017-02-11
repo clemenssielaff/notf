@@ -111,7 +111,7 @@ public: // enum
         bool is_convex;
 
         Path(size_t first)
-            : point_offset(std::move(first))
+            : point_offset(first)
             , point_count(0)
             , is_closed(false)
             , bevel_count(0)
@@ -193,15 +193,15 @@ public: // methods
 
     const RenderState& get_current_state() const;
 
-    void set_stroke_width(const float width) { _get_current_state().stroke_width = std::move(width); }
+    void set_stroke_width(const float width) { _get_current_state().stroke_width = width; }
 
-    void set_miter_limit(const float limit) { _get_current_state().miter_limit = std::move(limit); }
+    void set_miter_limit(const float limit) { _get_current_state().miter_limit = limit; }
 
-    void set_line_cap(const LineCap cap) { _get_current_state().line_cap = std::move(cap); }
+    void set_line_cap(const LineCap cap) { _get_current_state().line_cap = cap; }
 
-    void set_line_join(const LineJoin join) { _get_current_state().line_join = std::move(join); }
+    void set_line_join(const LineJoin join) { _get_current_state().line_join = join; }
 
-    void set_alpha(const float alpha) { _get_current_state().alpha = std::move(alpha); }
+    void set_alpha(const float alpha) { _get_current_state().alpha = alpha; }
 
     void set_stroke_color(const Color color) { _get_current_state().stroke.set_color(std::move(color)); }
 
@@ -212,6 +212,11 @@ public: // methods
     void set_fill_paint(Paint paint);
 
     void set_blend_mode(const BlendMode mode) { _get_current_state().blend_mode = std::move(mode); }
+
+    void translate(const Vector2 delta) { _get_current_state().xform *= Transform2::translation(std::move(delta)); }
+
+    /** Rotates the current state the given amount of radians in a counter-clockwise direction. */
+    void rotate(const float angle) { _get_current_state().xform *= Transform2::rotation(angle); }
 
     void transform(const Transform2& transform) { _get_current_state().xform *= transform; }
 
@@ -228,20 +233,17 @@ public: // methods
 
     void begin_path();
 
-    void move_to(const Vector2 pos) { move_to(std::move(pos.x), std::move(pos.y)); }
+    void move_to(const Vector2 pos) { move_to(pos.x, pos.y); }
 
     void move_to(const float x, const float y);
 
-    /** Rotates the current state the given amount of radians in a counter-clockwise direction. */
-    void rotate(const float angle);
-
-    void line_to(const Vector2 pos) { line_to(std::move(pos.x), std::move(pos.y)); }
+    void line_to(const Vector2 pos) { line_to(pos.x, pos.y); }
 
     void line_to(const float x, const float y);
 
     void bezier_to(const Vector2 ctrl1, const Vector2 ctrl2, const Vector2 end)
     {
-        bezier_to(std::move(ctrl1.x), std::move(ctrl1.y), std::move(ctrl2.x), std::move(ctrl2.y), std::move(end.x), std::move(end.y));
+        bezier_to(ctrl1.x, ctrl1.y, ctrl2.x, ctrl2.y, end.x, end.y);
     }
 
     void bezier_to(const float c1x, const float c1y, const float c2x, const float c2y, const float tx, const float ty);
@@ -252,24 +254,24 @@ public: // methods
 
     void add_ellipse(const Vector2 center, const Size2f extend)
     {
-        add_ellipse(std::move(center.x), std::move(center.y), std::move(extend.width), std::move(extend.height));
+        add_ellipse(center.x, center.y, extend.width, extend.height);
     }
 
     void add_ellipse(const float cx, const float cy, const float rx, const float ry);
 
     void add_circle(const float cx, const float cy, const float radius)
     {
-        add_ellipse(std::move(cx), std::move(cy), radius, radius);
+        add_ellipse(cx, cy, radius, radius);
     }
 
     void add_circle(const Vector2 center, const float radius)
     {
-        add_ellipse(std::move(center.x), std::move(center.y), radius, radius);
+        add_ellipse(center.x, center.y, radius, radius);
     }
 
     void quad_to(const Vector2 ctrl, const Vector2 end)
     {
-        quad_to(std::move(ctrl.x), std::move(ctrl.y), std::move(end.x), std::move(end.y));
+        quad_to(ctrl.x, ctrl.y, end.x, end.y);
     }
 
     void quad_to(const float cx, const float cy, const float tx, const float ty);

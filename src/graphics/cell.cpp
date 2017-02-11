@@ -132,11 +132,6 @@ void Cell::move_to(const float x, const float y)
     _append_commands({to_float(Command::MOVE), std::move(x), std::move(y)});
 }
 
-void Cell::rotate(const float angle)
-{
-    _get_current_state().xform *= Transform2::rotation(angle);
-}
-
 void Cell::line_to(const float x, const float y)
 {
     _append_commands({to_float(Command::LINE), std::move(x), std::move(y)});
@@ -409,10 +404,10 @@ void Cell::stroke(RenderContext& context)
 
     _flatten_paths();
     if (context.provides_geometric_aa()) {
-        _expand_stroke((stroke_width / 2) + (m_fringe_width / 2));
+        _expand_stroke((stroke_width / 2.f) + (m_fringe_width / 2.f));
     }
     else {
-        _expand_stroke(stroke_width / 2);
+        _expand_stroke(stroke_width / 2.f);
     }
     context.add_stroke_call(stroke_paint, stroke_width, *this);
 }
@@ -428,10 +423,10 @@ void Cell::_flatten_paths()
         switch (static_cast<Command>(m_commands[index])) {
 
         case Command::MOVE:
-            m_paths.emplace_back(m_paths.size());
+            m_paths.emplace_back(m_points.size());
 
         case Command::LINE:
-            _add_point(*reinterpret_cast<Vector2*>(&m_commands[index + 1]), Point::Flags::CORNER);
+            _add_point(*reinterpret_cast<Vector2*>(&m_commands[index + 1]), Point::Flags::CORNER); // TODO: this should be a member function on Cell::Path
             index += 3;
             break;
 
@@ -529,12 +524,13 @@ void Cell::_calculate_joins(const float fringe, const LineJoin join, const float
             }
 
             // calculate extrusions
-            current_point.dm.x    = (previous_point.delta.y + current_point.delta.y) / 2;
-            current_point.dm.y    = (previous_point.delta.x + current_point.delta.x) / -2;
+            current_point.dm.x    = (previous_point.delta.y + current_point.delta.y) / 2.f;
+            current_point.dm.y    = (previous_point.delta.x + current_point.delta.x) / -2.f;
             const float dm_mag_sq = current_point.dm.magnitude_sq();
-            if (dm_mag_sq > 0.000001f) {
-                current_point.dm *= min(600.f, 1.f / dm_mag_sq); // why 600?
-            }
+            current_point.dm.normalize();
+//            if (dm_mag_sq > 0.000001f) { // TODO: this is what NanoVG uses, but it makes no sense... (and doesn't work?)
+//                current_point.dm *= min(600.f, 1.f / dm_mag_sq); // why 600?
+//            }
 
             // calculate if we should use bevel or miter for an inner join
             const float inv_fringe = fringe > 0 ? 1.f / fringe : 0;
@@ -706,8 +702,11 @@ void Cell::_expand_stroke(const float stroke_width)
     }
 
     for (Path& path : m_paths) {
-        assert(path.fill_offset == 0);
-        assert(path.fill_count == 0);
+//        assert(path.fill_offset == 0);
+//        assert(path.fill_count == 0);
+
+        path.fill_count = 0; // TODO: this destroys the path's fill capacity, once it is stroked ... what?
+        path.fill_offset = 0;
 
         if (path.point_count < 2) {
             continue;
@@ -746,7 +745,7 @@ void Cell::_expand_stroke(const float stroke_width)
             }
         }
 
-        for (; current_offset < last_point_offset - (path.is_closed ? 0 : 1);
+        for (; current_offset <= last_point_offset - (path.is_closed ? 0 : 1);
              previous_offset = current_offset++) {
             const Point& previous_point = m_points[previous_offset];
             const Point& current_point  = m_points[current_offset];
@@ -767,10 +766,8 @@ void Cell::_expand_stroke(const float stroke_width)
 
         if (path.is_closed) {
             // loop it
-            m_vertices.emplace_back(Vertex{
-                m_vertices[path.stroke_offset + 0].pos, Vector2{0, 1}});
-            m_vertices.emplace_back(Vertex{
-                m_vertices[path.stroke_offset + 1].pos, Vector2{1, 1}});
+            m_vertices.emplace_back(Vertex{m_vertices[path.stroke_offset + 0].pos, Vector2{0, 1}});
+            m_vertices.emplace_back(Vertex{m_vertices[path.stroke_offset + 1].pos, Vector2{1, 1}});
         }
         else {
             // add cap
