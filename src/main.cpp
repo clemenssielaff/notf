@@ -50,6 +50,7 @@ int main(int argc, char* argv[])
     ApplicationInfo app_info;
     app_info.argc    = argc;
     app_info.argv    = argv;
+    app_info.enable_python = false;
     Application& app = Application::initialize(app_info);
 
     // window

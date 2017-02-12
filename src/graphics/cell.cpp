@@ -55,7 +55,7 @@ choose_bevel(bool is_beveling, const Cell::Point& prev_point, const Cell::Point&
 namespace notf {
 
 Cell::Cell()
-    : m_states()
+    : m_states({RenderState()})
     , m_commands() // TODO: make command buffer static (initialize with 256 entries and only grow)?
     , m_current_command(0)
     , m_stylus(Vector2::zero())
@@ -125,6 +125,7 @@ void Cell::begin_path()
     m_commands.clear();
     m_paths.clear();
     m_points.clear();
+    m_vertices.clear(); // TODO: I haven't yet made up my mind about vertices, but right now I got to delete them somewhere
 }
 
 void Cell::move_to(const float x, const float y)
@@ -368,7 +369,7 @@ void Cell::close_path()
     _append_commands({to_float(Command::CLOSE)});
 }
 
-void Cell::fill(RenderContext& context)
+void Cell::fill(RenderContext& context) // TODO: the cell is already "seeded" with the Context since you have to call Cell::reset(context) at the beginning
 {
     const RenderState& state = _get_current_state();
     Paint fill_paint         = state.fill;

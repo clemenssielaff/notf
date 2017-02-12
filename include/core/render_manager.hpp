@@ -11,6 +11,7 @@ class MakeSmartEnabler;
 
 class LayoutItem;
 struct RenderContext;
+class RenderStats;
 class Widget;
 class Window;
 
@@ -39,6 +40,9 @@ protected: // methods
     explicit RenderManager(const Window* window);
 
 public: // methods
+    /** Destructor. */
+    ~RenderManager();
+
     /** Checks, whether there are any LayoutItems that need to be redrawn. */
     bool is_clean() const { return m_is_clean; }
 
@@ -93,6 +97,9 @@ private: // fields
 
     /** Whether the RenderManager needs to update. */
     bool m_is_clean;
+
+    /** Render statistics debug display. */
+    std::unique_ptr<RenderStats> m_stats;
 };
 
 } // namespace notf

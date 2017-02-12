@@ -1,9 +1,11 @@
 #include "core/render_manager.hpp"
 
 #include "common/log.hpp"
+#include "common/time.hpp"
 #include "core/layout_root.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
+#include "graphics/stats.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 namespace notf {
@@ -13,8 +15,12 @@ RenderManager::RenderManager(const Window* window)
     , m_default_layer(std::make_shared<MakeSmartEnabler<RenderLayer>>())
     , m_layers({m_default_layer})
     , m_is_clean(false)
+    , m_stats()
 {
+    m_stats = std::make_unique<RenderStats>(120);
 }
+
+RenderManager::~RenderManager() = default; // without this, the forward declared unique_ptr to RenderStats wouldn't work
 
 std::shared_ptr<RenderLayer> RenderManager::create_front_layer()
 {
@@ -56,6 +62,8 @@ std::shared_ptr<RenderLayer> RenderManager::create_layer_below(const std::shared
 
 void RenderManager::render(RenderContext& context)
 {
+    Time time_at_start = Time::now();
+
     // remove unused layers
     std::remove_if(m_layers.begin(), m_layers.end(), [](std::shared_ptr<RenderLayer>& layer) -> bool {
         return layer.unique();
@@ -72,8 +80,14 @@ void RenderManager::render(RenderContext& context)
         }
         render_layer->m_widgets.clear();
     }
-
     m_is_clean = true;
+
+    // draw the render stats on top
+    if (m_stats) {
+        double time_elapsed = (Time::now().since(time_at_start)).in_seconds();
+        m_stats->update(static_cast<float>(time_elapsed));
+        m_stats->render_stats(context);
+    }
 }
 
 void RenderManager::_iterate_layout_hierarchy(const LayoutItem* item, RenderLayer* parent_layer)

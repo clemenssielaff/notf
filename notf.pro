@@ -120,6 +120,7 @@ SOURCES += \
     src/graphics/blend_mode.cpp \
     src/graphics/render_context.cpp \
     src/graphics/cell.cpp \
+    src/graphics/stats.cpp \
     src/graphics/painter.cpp
 
 HEADERS += \
@@ -198,6 +199,7 @@ HEADERS += \
     include/graphics/gl_utils.hpp \
     include/graphics/render_context.hpp \
     include/graphics/painter.hpp \
+    include/graphics/stats.hpp \
     include/graphics/cell.hpp
 
 QMAKE_CXX = ccache g++

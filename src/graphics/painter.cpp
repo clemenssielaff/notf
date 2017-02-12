@@ -7,6 +7,7 @@
 
 #include "common/aabr.hpp"
 #include "common/vector2.hpp"
+#include "graphics/stats.hpp"
 
 namespace notf {
 
