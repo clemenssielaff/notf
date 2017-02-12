@@ -6,6 +6,7 @@ class Aabr;
 class Cell;
 class Widget;
 class RenderContext;
+class Vector2;
 
 class Painter {
 
@@ -21,7 +22,14 @@ public: // methods
 
     void test();
 
+    void drawSlider(const Aabr& rect, float pos);
+
+    void drawButton(const Aabr& rect);
+    void drawCheckBox(const Aabr& rect);
     void drawColorwheel(const Aabr& rect, float t);
+    void drawEyes(Aabr& rect, Vector2& target, float t);
+    void drawGraph(const Aabr& rect, float t);
+    void drawSpinner(const Vector2& center, const float radius, float t);
 
 private: // fields
     const Widget& m_widget;

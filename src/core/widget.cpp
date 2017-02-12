@@ -45,6 +45,7 @@ void Widget::paint(RenderContext &context) const
             // TODO: print Python stack trace here IF the item uses a Python object to draw itself
         }
 //    }
+        // TODO: clear all m_cell states after painting
 }
 
 } // namespace notf

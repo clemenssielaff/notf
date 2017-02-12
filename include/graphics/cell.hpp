@@ -284,6 +284,11 @@ public: // methods
         add_rounded_rect(rect.left(), rect.top(), rect.width(), rect.height(), radius, radius, radius, radius);
     }
 
+    void add_rounded_rect(const float x, const float y, const float w, const float h, const float radius)
+    {
+        add_rounded_rect(x, y, w, h, radius, radius, radius, radius);
+    }
+
     void add_rounded_rect(const float x, const float y, const float w, const float h,
                           const float rtl, const float rtr, const float rbr, const float rbl);
 
