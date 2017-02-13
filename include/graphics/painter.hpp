@@ -27,9 +27,11 @@ public: // methods
     void drawButton(const Aabr& rect);
     void drawCheckBox(const Aabr& rect);
     void drawColorwheel(const Aabr& rect, float t);
-    void drawEyes(Aabr& rect, Vector2& target, float t);
+    void drawEyes(const Aabr &rect, const Vector2 &target, float t);
     void drawGraph(const Aabr& rect, float t);
     void drawSpinner(const Vector2& center, const float radius, float t);
+    void drawCaps(const Vector2& pos, const float width);
+    void drawJoins(const Aabr& rect, const float time);
 
 private: // fields
     const Widget& m_widget;

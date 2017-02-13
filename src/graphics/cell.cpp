@@ -461,13 +461,18 @@ void Cell::_flatten_paths()
 
     m_bounds = Aabr::wrongest();
     for (Path& path : m_paths) {
-        assert(path.point_count > 0); // TODO: I can be sure that there is no path without a point ... right?
+        if (path.point_count < 2) {
+            continue; // TODO: make sure that all paths with point_count < 2 are ignored, always
+        }
 
         { // if the first and last points are the same, remove the last one and mark the path as closed
             const Point& first = m_points[path.point_offset];
             const Point& last  = m_points[path.point_offset + path.point_count - 1];
             if (first.pos.is_approx(last.pos, m_distance_tolerance)) {
                 --path.point_count; // this could in theory produce a Path without points (if we started with one point)
+                if (path.point_count < 2) {
+                    continue;
+                }
                 path.is_closed = true;
             }
         }
@@ -1052,23 +1057,16 @@ void Cell::_round_cap_start(const Point& point, const Vector2& delta, const floa
 void Cell::_round_cap_end(const Point& point, const Vector2& delta, const float stroke_width, const size_t cap_count)
 {
     m_vertices.emplace_back(Vertex{
-        Vector2{point.pos.x + delta.y * stroke_width,
-                point.pos.y - delta.x * stroke_width},
-        Vector2{0, 1}});
+        Vector2{point.pos.x + delta.y * stroke_width, point.pos.y - delta.x * stroke_width}, Vector2{0, 1}});
     m_vertices.emplace_back(Vertex{
-        Vector2{point.pos.x - delta.y * stroke_width,
-                point.pos.y + delta.x * stroke_width},
-        Vector2{1, 1}});
-    for (size_t i = 0; i < cap_count; i++) {
+        Vector2{point.pos.x - delta.y * stroke_width, point.pos.y + delta.x * stroke_width}, Vector2{1, 1}});
+    for (size_t i = 0; i < cap_count; ++i) {
         const float a  = i / static_cast<float>(cap_count - 1) * PI;
         const float ax = cos(a) * stroke_width;
         const float ay = sin(a) * stroke_width;
+        m_vertices.emplace_back(Vertex{point.pos, Vector2{.5f, 1.f}});
         m_vertices.emplace_back(Vertex{
-            point.pos, Vector2{.5f, 1.f}});
-        m_vertices.emplace_back(Vertex{
-            Vector2{point.pos.x - delta.y * ax - delta.x * ay,
-                    point.pos.y + delta.x * ax - delta.y * ay},
-            Vector2{0, 1}});
+            Vector2{point.pos.x - delta.y * ax + delta.x * ay, point.pos.y + delta.x * ax + delta.y * ay}, Vector2{0, 1}});
     }
 }
 

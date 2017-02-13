@@ -382,7 +382,7 @@ struct Aabr {
      * Meaning, the width/height of the Aabr will grow by 2*amount.
      * @param amount    Number of units to move each edge.
      */
-    Aabr& grow(float amount)
+    Aabr& grow(const float amount)
     {
         _min.x -= amount;
         _min.y -= amount;
@@ -391,12 +391,28 @@ struct Aabr {
         return *this;
     }
 
+    /** Returns a grown copy of this Aabr. */
+    Aabr grown(const float amount) const
+    {
+        Aabr result(*this);
+        result.grow(amount);
+        return result;
+    }
+
     /** Moves each edge of the Aabr a given amount towards the inside.
      *  Meaning, the width/height of the Aabr will shrink by 2*amount.
      * You cannot shrink the Aabr to negative width or height values.
      * @param amount    Number of units to move each edge.
      */
-    Aabr& shrink(float amount) { return grow(-amount); }
+    Aabr& shrink(const float amount) { return grow(-amount); }
+
+    /** Returns a shrunken copy of this Aabr. */
+    Aabr shrunken(const float amount) const
+    {
+        Aabr result(*this);
+        result.grow(-amount);
+        return result;
+    }
 
     /** Intersection of this Aabr with `other`.
      * Intersecting with another Aabr that does not intersect results in the null Aabr.
