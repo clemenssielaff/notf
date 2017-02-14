@@ -17,26 +17,25 @@ void Painter::test()
     const Size2f widget_size = m_widget.get_size();
     const Aabr base(widget_size);
     const float margin = 20;
-
     const float time = static_cast<float>(m_context.get_time().in_seconds());
 
-    drawGraph(base, time);
+//    drawGraph(base, time);
 
-    drawColorwheel(base.shrunken(margin), time);
+//    drawColorwheel(base.shrunken(margin), time);
 
-    drawCheckBox(Aabr{10, 100, 20, 20});
+//    drawCheckBox(Aabr{10, 100, 20, 20});
 
-    drawButton(Aabr{10, 130, 150, 30});
+//    drawButton(Aabr{10, 130, 150, 30});
 
-    drawSlider(Aabr{10, 170, 150, 30}, 0.4f);
+//    drawSlider(Aabr{10, 170, 150, 30}, 0.4f);
 
-    drawCaps(Vector2{10, 200}, 30);
+//    drawCaps(Vector2{10, 200}, 30);
 
-    drawEyes(Aabr{600, 20, 80, 60}, m_context.get_mouse_pos(), time);
+//    drawEyes(Aabr{600, 20, 80, 60}, m_context.get_mouse_pos(), time);
 
-    drawSpinner(base.center(), 100, time);
+//    drawSpinner(base.center(), 100, time);
 
-    drawJoins(Aabr{100, 500, 400, 100}, time);
+    drawJoins(Aabr{120, widget_size.height-50, 600, 50}, time);
 }
 
 void Painter::drawSlider(const Aabr& rect, float pos)
@@ -457,7 +456,7 @@ void Painter::drawJoins(const Aabr& rect, const float time)
             m_cell.move_to(fx + pts[0], fy + pts[1]);
             m_cell.line_to(fx + pts[2], fy + pts[3]);
             m_cell.line_to(fx + pts[4], fy + pts[5]);
-            m_cell.line_to(fx + pts[6], fy + pts[7]);
+//            m_cell.line_to(fx + pts[6], fy + pts[7]);
             m_cell.stroke(m_context);
         }
     }

@@ -27,7 +27,7 @@ struct RenderContextArguments {
      * However, in a 3D application, you will most likely require true multisampling anyway, in which case we don't
      * need the redundant geometrical antialiasing on top.
      */
-    bool enable_geometric_aa = true;
+    bool enable_geometric_aa = false;
 
     /** Default to GLES_3, because it's the fastest, newest version that works on my machine.
      * (obviously, that's not at very good reason, but we'll see what happens).
