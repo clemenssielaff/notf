@@ -19,21 +19,21 @@ void Painter::test()
     const float margin = 20;
     const float time = static_cast<float>(m_context.get_time().in_seconds());
 
-//    drawGraph(base, time);
+    drawGraph(base, time);
 
-//    drawColorwheel(base.shrunken(margin), time);
+    drawColorwheel(base.shrunken(margin), time);
 
-//    drawCheckBox(Aabr{10, 100, 20, 20});
+    drawCheckBox(Aabr{10, 100, 20, 20});
 
-//    drawButton(Aabr{10, 130, 150, 30});
+    drawButton(Aabr{10, 130, 150, 30});
 
-//    drawSlider(Aabr{10, 170, 150, 30}, 0.4f);
+    drawSlider(Aabr{10, 170, 150, 30}, 0.4f);
 
-//    drawCaps(Vector2{10, 200}, 30);
+    drawCaps(Vector2{10, 200}, 30);
 
-//    drawEyes(Aabr{600, 20, 80, 60}, m_context.get_mouse_pos(), time);
+    drawEyes(Aabr{600, 20, 80, 60}, m_context.get_mouse_pos(), time);
 
-//    drawSpinner(base.center(), 100, time);
+    drawSpinner(base.center(), 100, time);
 
     drawJoins(Aabr{120, widget_size.height-50, 600, 50}, time);
 }
@@ -430,22 +430,38 @@ void Painter::drawJoins(const Aabr& rect, const float time)
     pts[6] = s * 0.25f + cosf(-time * 0.3f) * s * 0.5f;
     pts[7] = sinf(-time * 0.3f) * s * 0.5f;
 
-    for (int i = 0; i < 1; i++) {
-        for (int j = 0; j < 1; j++) {
+//    float x = 100;
+//    float y = 100;
+//    float w = 20;
+//    float h = 30;
+
+//    pts[0] = x;
+//    pts[1] = y+h*2;
+//    pts[2] = x;
+//    pts[3] = y+h;
+//    pts[4] = x+w;
+//    pts[5] = y+h;
+//    pts[6] = x+w;
+//    pts[7] = y;
+
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
             const float fx = rect.left() + s * 0.5f + (i * 3 + j) / 9.0f * rect.width() + pad;
             const float fy = rect.top() - s * 0.5f + pad;
+//            float fx = 0;
+//            float fy = 0;
 
-//            m_cell.set_line_cap(caps[i]);
-//            m_cell.set_line_join(joins[j]);
+            m_cell.set_line_cap(caps[i]);
+            m_cell.set_line_join(joins[j]);
 
-//            m_cell.set_stroke_width(s * 0.3f);
-//            m_cell.set_stroke_color(Color(0, 0, 0, 160));
-//            m_cell.begin_path();
-//            m_cell.move_to(fx + pts[0], fy + pts[1]);
-//            m_cell.line_to(fx + pts[2], fy + pts[3]);
-//            m_cell.line_to(fx + pts[4], fy + pts[5]);
-//            m_cell.line_to(fx + pts[6], fy + pts[7]);
-//            m_cell.stroke(m_context);
+            m_cell.set_stroke_width(s * 0.3f);
+            m_cell.set_stroke_color(Color(0, 0, 0, 160));
+            m_cell.begin_path();
+            m_cell.move_to(fx + pts[0], fy + pts[1]);
+            m_cell.line_to(fx + pts[2], fy + pts[3]);
+            m_cell.line_to(fx + pts[4], fy + pts[5]);
+            m_cell.line_to(fx + pts[6], fy + pts[7]);
+            m_cell.stroke(m_context);
 
             m_cell.set_line_cap(Cell::LineCap::BUTT);
             m_cell.set_line_join(Cell::LineJoin::BEVEL);
@@ -456,7 +472,7 @@ void Painter::drawJoins(const Aabr& rect, const float time)
             m_cell.move_to(fx + pts[0], fy + pts[1]);
             m_cell.line_to(fx + pts[2], fy + pts[3]);
             m_cell.line_to(fx + pts[4], fy + pts[5]);
-//            m_cell.line_to(fx + pts[6], fy + pts[7]);
+            m_cell.line_to(fx + pts[6], fy + pts[7]);
             m_cell.stroke(m_context);
         }
     }

@@ -137,11 +137,14 @@ public: // enum
         /** Position of the Point. */
         Vector2 pos;
 
-        /** Vector to the next Point. */
-        Vector2 delta;
+        /** Direction to the next Point. */
+        Vector2 forward;
 
         /** Something with miter...? */
         Vector2 dm; // TODO: what is Point::dm?
+
+        /** Distance to the next point forward. */
+        float length;
 
         /** Additional information about this Point. */
         Flags flags;
@@ -361,7 +364,7 @@ private: // methods
     void _tesselate_bezier(const float x1, const float y1, const float x2, const float y2,
                            const float x3, const float y3, const float x4, const float y4);
 
-    void _butt_cap_start(const Point& point, const Vector2& delta, const float stroke_width, const float d);
+    void _butt_cap_start(const Point& point, const Vector2& direction, const float stroke_width, const float d);
 
     void _butt_cap_end(const Point& point, const Vector2& delta, const float stroke_width, const float d);
 

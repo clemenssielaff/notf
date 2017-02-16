@@ -17,7 +17,7 @@ RenderManager::RenderManager(const Window* window)
     , m_is_clean(false)
     , m_stats()
 {
-    //m_stats = std::make_unique<RenderStats>(120);
+    m_stats = std::make_unique<RenderStats>(120);
 }
 
 RenderManager::~RenderManager() = default; // without this, the forward declared unique_ptr to RenderStats wouldn't work
