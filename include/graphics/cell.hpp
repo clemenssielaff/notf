@@ -8,6 +8,7 @@
 #include "common/size2i.hpp"
 #include "common/transform2.hpp"
 #include "graphics/blend_mode.hpp"
+#include "graphics/texture2.hpp"
 #include "graphics/vertex.hpp"
 #include "utils/enum_to_number.hpp"
 
@@ -23,26 +24,27 @@ struct Paint {
         , extent()
         , radius(0)
         , feather(1)
-        , innerColor(std::move(color))
-        , outerColor(innerColor)
+        , inner_color(std::move(color))
+        , outer_color(inner_color)
     {
     }
 
     void set_color(const Color color)
     {
-        xform      = Transform2::identity();
-        radius     = 0;
-        feather    = 1;
-        innerColor = std::move(color);
-        outerColor = innerColor;
+        xform       = Transform2::identity();
+        radius      = 0;
+        feather     = 1;
+        inner_color = std::move(color);
+        outer_color = inner_color;
     }
 
     Transform2 xform;
     Size2f extent;
     float radius;
     float feather;
-    Color innerColor;
-    Color outerColor;
+    Color inner_color;
+    Color outer_color;
+    std::shared_ptr<Texture2> texture;
 };
 
 struct Scissor {
@@ -70,10 +72,6 @@ public: // enum
         BEZIER,
         WINDING,
         CLOSE,
-        // NOOP,
-        // FILL,
-        // STROKE,
-        // BEGIN,
     };
 
     enum class LineCap : unsigned char {
@@ -330,7 +328,7 @@ public: // getter
     float get_fringe_width() const { return m_fringe_width; }
 
 public: // static methods
-    static Paint create_linear_gradient(const Vector2& start_pos, const Vector2& end_pos,
+    static Paint create_linear_gradient(const Vector2& start_pos, const Vector2& end_pos, // TODO: these should be member of Paint
                                         const Color start_color, const Color end_color);
 
     static Paint create_radial_gradient(const Vector2& center,
@@ -340,6 +338,10 @@ public: // static methods
     static Paint create_box_gradient(const Vector2& center, const Size2f& extend,
                                      const float radius, const float feather,
                                      const Color inner_color, const Color outer_color);
+
+    static Paint create_texture_pattern(const Vector2& top_left, const Size2f& extend,
+                                        std::shared_ptr<Texture2> texture,
+                                        const float angle, const float alpha);
 
 private: // methods
     void _append_commands(std::vector<float>&& commands);

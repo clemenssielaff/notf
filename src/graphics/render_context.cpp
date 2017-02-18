@@ -4,6 +4,7 @@
 #include "common/vector_utils.hpp"
 #include "core/glfw_wrapper.hpp"
 #include "graphics/gl_utils.hpp"
+#include "graphics/texture2.hpp"
 
 namespace { // anonymous
 
@@ -50,6 +51,7 @@ RenderContext::RenderContext(const RenderContextArguments args)
     , m_buffer_size(Size2f(0, 0))
     , m_time()
     , m_stencil_mask(0xffffffff)
+    , m_bound_texture(0)
     , m_stencil_func(StencilFunc::ALWAYS)
     , m_calls()
     , m_paths()
@@ -122,6 +124,7 @@ void RenderContext::add_fill_call(const Paint& paint, const Cell& cell)
     CanvasCall& call = m_calls.back();
     call.pathOffset  = m_paths.size();
     call.pathCount   = cell.get_paths().size();
+    call.texture     = paint.texture;
     if (call.pathCount == 1 && cell.get_paths().front().is_convex) {
         call.type = CanvasCall::Type::CONVEX_FILL;
     }
@@ -197,6 +200,7 @@ void RenderContext::add_stroke_call(const Paint& paint, const float stroke_width
     call.pathOffset    = m_paths.size();
     call.pathCount     = cell.get_paths().size();
     call.uniformOffset = static_cast<GLintptr>(m_frag_uniforms.size()) * fragmentSize();
+    call.texture       = paint.texture;
 
     size_t new_vertex_count = 0;
     for (const Cell::Path& path : cell.get_paths()) {
@@ -240,8 +244,8 @@ void RenderContext::_paint_to_frag(FragmentUniforms& frag, const Paint& paint, c
 {
     assert(fringe > 0);
 
-    frag.innerCol = paint.innerColor.premultiplied();
-    frag.outerCol = paint.outerColor.premultiplied();
+    frag.innerCol = paint.inner_color.premultiplied();
+    frag.outerCol = paint.outer_color.premultiplied();
     if (scissor.extend.width < -0.5f || scissor.extend.height < -0.5f) { // extend cannot be less than a pixel
         frag.scissorExt[0]   = 1.0f;
         frag.scissorExt[1]   = 1.0f;
@@ -259,9 +263,16 @@ void RenderContext::_paint_to_frag(FragmentUniforms& frag, const Paint& paint, c
     frag.extent[1]  = paint.extent.height;
     frag.strokeMult = (stroke_width * 0.5f + fringe * 0.5f) / fringe;
     frag.strokeThr  = stroke_threshold;
-    frag.type       = FragmentUniforms::Type::GRADIENT;
-    frag.radius     = paint.radius;
-    frag.feather    = paint.feather;
+
+    if (paint.texture) {
+        frag.type    = FragmentUniforms::Type::IMAGE;
+        frag.texType = paint.texture->get_format() == Texture2::Format::GRAYSCALE ? 2 : 0; // TODO: change the 'texType' uniform in the shader to something more meaningful
+    }
+    else { // no image
+        frag.type    = FragmentUniforms::Type::GRADIENT;
+        frag.radius  = paint.radius;
+        frag.feather = paint.feather;
+    }
     xformToMat3x4(frag.paintMat, paint.xform.inverse());
 }
 
@@ -270,8 +281,9 @@ void RenderContext::_render_flush(const BlendMode blend_mode)
     if (!m_calls.empty()) {
 
         // reset cache
-        m_stencil_mask = 0xffffffff;
-        m_stencil_func = StencilFunc::ALWAYS;
+        m_stencil_mask  = 0xffffffff;
+        m_bound_texture = 0;
+        m_stencil_func  = StencilFunc::ALWAYS;
 
         // setup GL state
         glUseProgram(m_shader.get_id());
@@ -363,6 +375,7 @@ void RenderContext::_fill(const CanvasCall& call)
     // Draw anti-aliased pixels
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset + fragmentSize(), fragmentSize());
+    bind_texture(call);
 
     if (m_args.enable_geometric_aa) {
         set_stencil_func(StencilFunc::EQUAL);
@@ -387,6 +400,7 @@ void RenderContext::_convex_fill(const CanvasCall& call)
     assert(call.pathOffset + call.pathCount <= m_paths.size());
 
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset, fragmentSize());
+    bind_texture(call);
 
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
         // draw fill
@@ -414,6 +428,7 @@ void RenderContext::_stroke(const CanvasCall& call)
     set_stencil_func(StencilFunc::EQUAL);
     glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset + fragmentSize(), fragmentSize());
+    bind_texture(call);
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
         assert(static_cast<size_t>(m_paths[i].strokeOffset + m_paths[i].strokeCount) <= m_vertices.size());
         glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
@@ -421,6 +436,7 @@ void RenderContext::_stroke(const CanvasCall& call)
 
     // draw anti-aliased pixels
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset, fragmentSize());
+    bind_texture(call);
     set_stencil_func(StencilFunc::EQUAL);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
@@ -439,6 +455,17 @@ void RenderContext::_stroke(const CanvasCall& call)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
     glDisable(GL_STENCIL_TEST);
+}
+
+void RenderContext::bind_texture(const CanvasCall& call)
+{
+    if (!call.texture) {
+        return;
+    }
+    if (call.texture->get_id() != m_bound_texture) {
+        m_bound_texture = call.texture->get_id();
+        call.texture->bind();
+    }
 }
 
 void RenderContext::set_stencil_mask(const GLuint mask)

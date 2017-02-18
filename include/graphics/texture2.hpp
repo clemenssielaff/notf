@@ -1,0 +1,132 @@
+#pragma once
+
+#include <memory>
+#include <string>
+
+#include "graphics/gl_forwards.hpp"
+
+namespace notf {
+
+/** Manages the loading and setup of an OpenGL texture. */
+class Texture2 {
+
+public: // enums
+    enum class Format : unsigned char {
+        GRAYSCALE, //* one byte per pixel (grayscale)
+        RGB,       //* 3 bytes per pixel (color)
+        RGBA,      //* 4 bytes per pixel (color + alpha)
+    };
+
+    enum class MinFilter : unsigned char {
+        NEAREST,                //* Nearest (in Manhattan distance) value to the center of the pixel
+        LINEAR,                 //* Weighted average of the four texels closest to the center of the pixel
+        NEAREST_MIPMAP_NEAREST, //* Gets the nearest (s.a.) texel from the closest mipmap
+        NEAREST_MIPMAP_LINEAR,  //* Gets the linearly interpolated (s.a.) texel from the closest mipmap
+        LINEAR_MIPMAP_NEAREST,  //* Weighted blend of the nearest (s.a.) texels of the two closest mipmaps
+        LINEAR_MIPMAP_LINEAR,   //* Weighted blend of the linearly interpolated (s.a.) texels of the two closest mipmaps
+    };
+
+    enum class MagFilter : unsigned char {
+        NEAREST, //* Nearest (in Manhattan distance) value to the center of the pixel
+        LINEAR,  //* Weighted average of the four texels closest to the center of the pixel
+    };
+
+    /** How a coordinate (c) outside the texture size (n) in a given direcion is handled. */
+    enum class Wrap : unsigned char {
+        REPEAT,               //* Only uses the fractional part of c, creating a repeating pattern (default)
+        CLAMP_TO_EDGE,        //* Clamps c to [1/2n,  1 - 1/2n]
+        MIRRORED_REPEAT,      //* Like REPEAT when the integer part of c is even, 1 - frac(c) when c is odd
+    };
+
+public: // static methods
+    /** Loads a texture from a given file. * @param texture_path  Path to a texture file.
+     * @return Texture2 instance, is empty if the texture could not be loaded.
+     */
+    static std::shared_ptr<Texture2> load(const std::string& texture_path);
+
+    /** Unbinds any current active GL_TEXTURE_2D. */
+    static void unbind();
+
+public: // methods
+    /// no copy / assignment
+    Texture2(const Texture2&) = delete;
+    Texture2& operator=(const Texture2&) = delete;
+
+    /** Destructor. */
+    ~Texture2();
+
+    /** The OpenGL ID of this Texture2. */
+    GLuint get_id() const { return m_id; }
+
+    /** Width of the loaded image in pixels. */
+    GLuint get_width() const { return m_width; }
+
+    /** Height of the loaded image in pixels. */
+    GLuint get_height() const { return m_height; }
+
+    /** The format of this Texture. */
+    Format get_format() const { return m_format; }
+
+    /** Returns the filter mode when the texture pixels are smaller than scren pixels. */
+    MinFilter get_filter_min() const { return m_min_filter; }
+
+    /** Returns the filter mode when the texture pixels are larger than scren pixels. */
+    MagFilter get_filter_mag() const { return m_mag_filter; }
+
+    /** Returns the horizonal wrap mode. */
+    Wrap get_wrap_x() const { return m_wrap_x; }
+
+    /** Returns the vertical wrap mode. */
+    Wrap get_wrap_y() const { return m_wrap_y; }
+
+    /** Binds this Texture2 as the current active GL_TEXTURE_2D. */
+    void bind() const;
+
+    /** Sets a new filter mode when the texture pixels are smaller than scren pixels. */
+    void set_min_filter(const MinFilter filter);
+
+    /** Sets a new filter mode when the texture pixels are larger than scren pixels. */
+    void set_mag_filter(const MagFilter filter);
+
+    /** Sets a new horizonal wrap mode. */
+    void set_wrap_x(const Wrap wrap);
+
+    /** Sets a new vertical wrap mode. */
+    void set_wrap_y(const Wrap wrap);
+
+protected: // methods
+    /**
+     * @param id        OpenGL texture ID.
+     * @param width     Width of the loaded image in pixels.
+     * @param height    Height of the loaded image in pixels.
+     * @param format    Texture format.
+     */
+    Texture2(const GLuint id, const GLuint width, const GLuint height, const Format format);
+
+private: // fields
+    /** OpenGL ID of this Shader. */
+    const GLuint m_id;
+
+    /** Width of the loaded image in pixels. */
+    const GLuint m_width;
+
+    /** Height of the loaded image in pixels. */
+    const GLuint m_height;
+
+    /** Texture format. */
+    const Format m_format;
+
+    /** Filter mode when the texture pixels are smaller than scren pixels. */
+    MinFilter m_min_filter;
+
+    /** Filter mode when the texture pixels are larger than scren pixels. */
+    MagFilter m_mag_filter;
+
+    /** The horizontal wrap mode. */
+    Wrap m_wrap_x;
+
+    /** The vertical wrap mode. */
+    Wrap m_wrap_y;
+};
+
+} // namespace notf

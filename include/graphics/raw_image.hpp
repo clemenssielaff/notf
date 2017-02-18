@@ -18,9 +18,10 @@ class RawImage final {
 public: // methods
     /**
      * @param image_path            Absolute path to the Image file.
+     * @param force_format          Number of bytes per pixel, default is 0 (use defined in file).
      * @throw std::runtime_error    If the Image fails to load.
      */
-    explicit RawImage(const std::string& image_path);
+    explicit RawImage(const std::string& image_path, int force_format = 0);
 
     ~RawImage();
 

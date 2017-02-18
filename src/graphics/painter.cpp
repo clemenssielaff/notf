@@ -12,12 +12,14 @@
 
 namespace notf {
 
+std::shared_ptr<Texture2> Painter::test_texture = {};
+
 void Painter::test()
 {
     const Size2f widget_size = m_widget.get_size();
     const Aabr base(widget_size);
     const float margin = 20;
-    const float time = static_cast<float>(m_context.get_time().in_seconds());
+    const float time   = static_cast<float>(m_context.get_time().in_seconds());
 
     drawGraph(base, time);
 
@@ -35,7 +37,9 @@ void Painter::test()
 
     drawSpinner(base.center(), 100, time);
 
-    drawJoins(Aabr{120, widget_size.height-50, 600, 50}, time);
+    drawJoins(Aabr{120, widget_size.height - 50, 600, 50}, time);
+
+    drawTexture(Aabr{400, 100, 200, 200});
 }
 
 void Painter::drawSlider(const Aabr& rect, float pos)
@@ -430,26 +434,10 @@ void Painter::drawJoins(const Aabr& rect, const float time)
     pts[6] = s * 0.25f + cosf(-time * 0.3f) * s * 0.5f;
     pts[7] = sinf(-time * 0.3f) * s * 0.5f;
 
-//    float x = 100;
-//    float y = 100;
-//    float w = 20;
-//    float h = 30;
-
-//    pts[0] = x;
-//    pts[1] = y+h*2;
-//    pts[2] = x;
-//    pts[3] = y+h;
-//    pts[4] = x+w;
-//    pts[5] = y+h;
-//    pts[6] = x+w;
-//    pts[7] = y;
-
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
             const float fx = rect.left() + s * 0.5f + (i * 3 + j) / 9.0f * rect.width() + pad;
             const float fy = rect.top() - s * 0.5f + pad;
-//            float fx = 0;
-//            float fy = 0;
 
             m_cell.set_line_cap(caps[i]);
             m_cell.set_line_join(joins[j]);
@@ -478,6 +466,22 @@ void Painter::drawJoins(const Aabr& rect, const float time)
     }
 
     m_cell.pop_state();
+}
+
+void Painter::drawTexture(const Aabr& rect)
+{
+    if (!test_texture) {
+        test_texture = Texture2::load("/home/clemens/code/notf/res/textures/face.png");
+    }
+
+    Paint pattern = m_cell.create_texture_pattern(rect.top_left(), rect.extend(), test_texture, 0, 1);
+
+    const float corner_radius = 10;
+
+    m_cell.begin_path();
+    m_cell.set_fill_paint(pattern);
+    m_cell.add_rounded_rect(rect, corner_radius);
+    m_cell.fill(m_context);
 }
 
 } // namespace notf

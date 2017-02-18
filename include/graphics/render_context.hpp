@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <vector>
 
 #include "common/aabr.hpp"
@@ -11,11 +12,13 @@
 #include "graphics/cell.hpp"
 #include "graphics/gl_forwards.hpp"
 #include "graphics/shader.hpp"
+#include "graphics/texture2.hpp"
 #include "graphics/vertex.hpp"
 
 namespace notf {
 
 struct RenderContextArguments;
+class Texture2;
 
 /**********************************************************************************************************************/
 
@@ -73,6 +76,7 @@ public:
         GLint triangleOffset;
         GLsizei triangleCount;
         GLintptr uniformOffset;
+        std::shared_ptr<Texture2> texture;
     };
 
     struct PathIndex {
@@ -94,27 +98,28 @@ public:
     struct FragmentUniforms { //  TODO: replace more of the float[]s with explicit types
         enum class Type : GLint {
             GRADIENT,
+            IMAGE,
             SIMPLE,
         };
 
         FragmentUniforms() // we'll see if we need this initialization to zero at all
-            : innerCol()
-            , outerCol()
-            , radius{0}
-            , feather{0}
-            , strokeMult{0}
-            , strokeThr{0}
-            , texType{0}
-            , type{Type::SIMPLE}
+            : innerCol(),
+              outerCol(),
+              radius{0},
+              feather{0},
+              strokeMult{0},
+              strokeThr{0},
+              texType{0},
+              type{Type::SIMPLE}
         {
-            for(auto i = 0; i < 12; ++i){
+            for (auto i = 0; i < 12; ++i) {
                 scissorMat[i] = 0;
-                paintMat[i] = 0;
+                paintMat[i]   = 0;
             }
-            for(auto i = 0; i < 2; ++i){
-                scissorExt[i] = 0;
+            for (auto i = 0; i < 2; ++i) {
+                scissorExt[i]   = 0;
                 scissorScale[i] = 0;
-                extent[i] = 0;
+                extent[i]       = 0;
             }
         }
 
@@ -216,7 +221,7 @@ public:
 
     const Vector2& get_mouse_pos() const { return m_mouse_pos; }
 
-    Time get_time() const { return m_time ; }
+    Time get_time() const { return m_time; }
 
 private: // methods for Window
     void set_mouse_pos(Vector2 pos) { m_mouse_pos = std::move(pos); }
@@ -251,8 +256,10 @@ private: // methods
 
     void _stroke(const CanvasCall& call);
 
+    void bind_texture(const CanvasCall& call);
+
 private: // static methods
-    static Sources _create_shader_sources(const RenderContext &context);
+    static Sources _create_shader_sources(const RenderContext& context);
 
 private: // fields
     /** Argument struct to initialize the RenderContext. */
@@ -269,6 +276,9 @@ private: // fields
 
     /* Cached stencil mask to avoid unnecessary rebindings. */
     GLuint m_stencil_mask;
+
+    /* Cache the currently bound texture in order to avoid unnecessary rebindings. */
+    GLuint m_bound_texture;
 
     /** Cached stencil func to avoid unnecessary rebindings. */
     StencilFunc m_stencil_func;

@@ -1,6 +1,5 @@
 #include "core/window.hpp"
 
-#define NANOVG_GLES3_IMPLEMENTATION
 #include "core/glfw_wrapper.hpp"
 
 #include <set>

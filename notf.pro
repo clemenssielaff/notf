@@ -79,6 +79,7 @@ SOURCES += \
     src/common/claim.cpp \
     src/python/interpreter.cpp \
     src/graphics/raw_image.cpp \
+    src/graphics/texture2.cpp \
     src/python/py_layoutroot.cpp \
     src/python/py_painter.cpp \
     src/python/py_stacklayout.cpp \
@@ -190,6 +191,7 @@ HEADERS += \
     include/utils/macro_overload.hpp \
     include/core/properties.hpp \
     include/utils/apply_tuple.hpp \
+    include/graphics/texture2.hpp \
     include/core/property.hpp \
     include/utils/print_notf.hpp \
     include/common/line2.hpp \

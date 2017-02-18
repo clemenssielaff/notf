@@ -375,8 +375,8 @@ void Cell::fill(RenderContext& context) // TODO: the cell is already "seeded" wi
     Paint fill_paint         = state.fill;
 
     // apply global alpha
-    fill_paint.innerColor.a *= state.alpha;
-    fill_paint.outerColor.a *= state.alpha;
+    fill_paint.inner_color.a *= state.alpha;
+    fill_paint.outer_color.a *= state.alpha;
 
     _flatten_paths();
     _expand_fill(context.provides_geometric_aa());
@@ -394,14 +394,14 @@ void Cell::stroke(RenderContext& context)
     if (stroke_width < m_fringe_width) {
         // if the stroke width is less than pixel size, use alpha to emulate coverage.
         const float alpha = clamp(stroke_width / m_fringe_width, 0.0f, 1.0f);
-        stroke_paint.innerColor.a *= alpha * alpha; // since coverage is area, scale by alpha*alpha
-        stroke_paint.outerColor.a *= alpha * alpha;
+        stroke_paint.inner_color.a *= alpha * alpha; // since coverage is area, scale by alpha*alpha
+        stroke_paint.outer_color.a *= alpha * alpha;
         stroke_width = m_fringe_width;
     }
 
     // apply global alpha
-    stroke_paint.innerColor.a *= state.alpha;
-    stroke_paint.outerColor.a *= state.alpha;
+    stroke_paint.inner_color.a *= state.alpha;
+    stroke_paint.outer_color.a *= state.alpha;
 
     _flatten_paths();
     if (context.provides_geometric_aa()) {
@@ -939,8 +939,8 @@ Paint Cell::create_linear_gradient(const Vector2& start_pos, const Vector2& end_
     paint.feather       = max(1.0f, mag);
     paint.extent.width  = large_number;
     paint.extent.height = large_number + (mag / 2);
-    paint.innerColor    = std::move(start_color);
-    paint.outerColor    = std::move(end_color);
+    paint.inner_color   = std::move(start_color);
+    paint.outer_color   = std::move(end_color);
     return paint;
 }
 
@@ -954,8 +954,8 @@ Paint Cell::create_radial_gradient(const Vector2& center,
     paint.feather       = max(1.f, outer_radius - inner_radius);
     paint.extent.width  = paint.radius;
     paint.extent.height = paint.radius;
-    paint.innerColor    = std::move(inner_color);
-    paint.outerColor    = std::move(outer_color);
+    paint.inner_color   = std::move(inner_color);
+    paint.outer_color   = std::move(outer_color);
     return paint;
 }
 
@@ -969,8 +969,24 @@ Paint Cell::create_box_gradient(const Vector2& center, const Size2f& extend,
     paint.feather       = max(1.f, feather);
     paint.extent.width  = extend.width / 2;
     paint.extent.height = extend.height / 2;
-    paint.innerColor    = std::move(inner_color);
-    paint.outerColor    = std::move(outer_color);
+    paint.inner_color   = std::move(inner_color);
+    paint.outer_color   = std::move(outer_color);
+    return paint;
+}
+
+Paint Cell::create_texture_pattern(const Vector2& top_left, const Size2f& extend,
+                                   std::shared_ptr<Texture2> texture,
+                                   const float angle, const float alpha)
+{
+    Paint paint;
+    paint.xform         = Transform2::rotation(angle);
+    paint.xform[2][0]   = top_left.x;
+    paint.xform[2][1]   = top_left.y;
+    paint.extent.width  = extend.width;
+    paint.extent.height = extend.height;
+    paint.texture       = texture;
+    paint.inner_color   = Color(1, 1, 1, alpha);
+    paint.outer_color   = Color(1, 1, 1, alpha);
     return paint;
 }
 
