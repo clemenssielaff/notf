@@ -5,6 +5,22 @@
 
 namespace notf {
 
+Transform2& Transform2::operator*=(const Transform2& other)
+{
+    float* this_array        = this->as_ptr();
+    const float* other_array = other.as_ptr();
+    float t0                 = this_array[0] * other_array[0] + this_array[1] * other_array[2];
+    float t2                 = this_array[2] * other_array[0] + this_array[3] * other_array[2];
+    float t4                 = this_array[4] * other_array[0] + this_array[5] * other_array[2] + other_array[4];
+    this_array[1]            = this_array[0] * other_array[1] + this_array[1] * other_array[3];
+    this_array[3]            = this_array[2] * other_array[1] + this_array[3] * other_array[3];
+    this_array[5]            = this_array[4] * other_array[1] + this_array[5] * other_array[3] + other_array[5];
+    this_array[0]            = t0;
+    this_array[2]            = t2;
+    this_array[4]            = t4;
+    return *this;
+}
+
 Transform2& Transform2::invert()
 {
     // calculate the inverse with double precision

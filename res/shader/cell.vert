@@ -1,5 +1,11 @@
 // header, required to read the file into NoTF at compile time (you can comment it out while working on the file though)
 R"=====(
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+
 uniform vec2 viewSize;
 in vec2 vertex;
 in vec2 tcoord;

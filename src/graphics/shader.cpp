@@ -139,6 +139,15 @@ Shader::~Shader()
     log_trace << "Deleted Shader Program \"" << m_name << "\"";
 }
 
+void Shader::use()
+{
+    if(!is_valid()){
+        log_critical << "Cannot use invalid Shader \"" << m_name << "\"";
+        return;
+    }
+    glUseProgram(m_id);
+}
+
 GLuint Shader::_compile(STAGE stage, const std::string& name, const std::string& source)
 {
     // create the OpenGL shader

@@ -1,28 +1,30 @@
 // header, required to read the file into NoTF at compile time (you can comment it out while working on the file though)
 R"=====(
 #ifdef GL_FRAGMENT_PRECISION_HIGH
-    precision highp float;
+precision highp float;
+#else
+precision mediump float;
 #endif
 
-    layout(std140) uniform frag {
-        mat3 scissorMat;
-        mat3 paintMat;
-        vec4 innerCol;
-        vec4 outerCol;
-        vec2 scissorExt;
-        vec2 scissorScale;
-        vec2 extent;
-        float radius;
-        float feather;
-        float strokeMult;
-        float strokeThr;
-        int texType;
-        int type;
-    };
-    uniform sampler2D tex;
-    in vec2 ftcoord;
-    in vec2 fpos;
-    out vec4 outColor;
+layout(std140) uniform frag {
+    mat3 scissorMat;
+    mat3 paintMat;
+    vec4 innerCol;
+    vec4 outerCol;
+    vec2 scissorExt;
+    vec2 scissorScale;
+    vec2 extent;
+    float radius;
+    float feather;
+    float strokeMult;
+    float strokeThr;
+    int texType;
+    int type;
+};
+uniform sampler2D tex;
+in vec2 ftcoord;
+in vec2 fpos;
+out vec4 outColor;
 
 
 float sdroundrect(vec2 pt, vec2 ext, float rad) {

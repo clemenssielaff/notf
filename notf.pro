@@ -66,6 +66,7 @@ SOURCES += \
     src/core/widget.cpp \
     src/common/log.cpp \
     src/common/vector2.cpp \
+    src/common/vector3.cpp \
     src/common/aabr.cpp \
     src/core/resource_manager.cpp \
     src/common/system.cpp \
@@ -122,7 +123,8 @@ SOURCES += \
     src/graphics/render_context.cpp \
     src/graphics/cell.cpp \
     src/graphics/stats.cpp \
-    src/graphics/painter.cpp
+    src/graphics/painter.cpp \
+    src/common/transform3.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -135,6 +137,7 @@ HEADERS += \
     include/common/log.hpp \
     include/common/debug.hpp \
     include/common/vector2.hpp \
+    include/common/vector3.hpp \
     include/common/math.hpp \
     include/common/aabr.hpp \
     include/core/events/key_event.hpp \
@@ -202,7 +205,8 @@ HEADERS += \
     include/graphics/render_context.hpp \
     include/graphics/painter.hpp \
     include/graphics/stats.hpp \
-    include/graphics/cell.hpp
+    include/graphics/cell.hpp \
+    include/common/transform3.hpp
 
 QMAKE_CXX = ccache g++
 

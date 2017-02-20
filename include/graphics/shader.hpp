@@ -84,6 +84,9 @@ public: // methods
     /** Checks if the Shader is valid. */
     bool is_valid() const { return m_id != 0; }
 
+    /** Tells OpenGL to use this Shader. */
+    void use();
+
 protected: // methods
     Shader(const std::string name, const GLuint id)
         : m_name(std::move(name))

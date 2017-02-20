@@ -44,8 +44,8 @@ void app_main(Window& window)
     window.get_layout_root()->set_item(controller);
 }
 
-int main(int argc, char* argv[])
-//int notmain(int argc, char* argv[])
+//int main(int argc, char* argv[])
+int notmain(int argc, char* argv[])
 {
     ApplicationInfo app_info;
     app_info.argc    = argc;

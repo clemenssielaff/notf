@@ -11,9 +11,9 @@ namespace notf {
 
 /// @brief A 2D Transformation Matrix with 3x3 components.
 /// Only the first two columns are actually stored though, the last column is implicit.
-/// [[a, b]
-///  [c, d]
-///  [e, f]]
+/// [[a, b, 0]
+///  [c, d, 0]
+///  [e, f, 1]]
 ///
 struct Transform2 {
 
@@ -32,7 +32,7 @@ struct Transform2 {
 
     //  STATIC CONSTRUCTORS  //////////////////////////////////////////////////////////////////////////////////////////
 
-    /// @brief The identity matrix.
+    /** The identity matrix. */
     static Transform2 identity()
     {
         return Transform2{{{{1, 0},
@@ -40,13 +40,12 @@ struct Transform2 {
                             {0, 0}}}};
     }
 
-    /// @brief A translation matrix.
-    /// @param vector   Translation vector.
-    static Transform2 translation(const Vector2 vec)
+    /** A translation matrix. */
+    static Transform2 translation(Vector2 translation)
     {
         return Transform2{{{{1, 0},
                             {0, 1},
-                            std::move(vec)}}};
+                            std::move(translation)}}};
     }
 
     /// @brief A rotation matrix.
@@ -114,31 +113,6 @@ struct Transform2 {
         return rows[row];
     }
 
-    /// @brief Matrix multiplication of this Matrix with another.
-    Transform2 operator*(const Transform2& other) const
-    {
-        Transform2 result = *this;
-        result *= other;
-        return result;
-    }
-
-    /** Applies the other Transform to this one in-place. */
-    Transform2& operator*=(const Transform2& other)
-    {
-        float* this_array        = this->as_ptr();
-        const float* other_array = other.as_ptr();
-        float t0                 = this_array[0] * other_array[0] + this_array[1] * other_array[2];
-        float t2                 = this_array[2] * other_array[0] + this_array[3] * other_array[2];
-        float t4                 = this_array[4] * other_array[0] + this_array[5] * other_array[2] + other_array[4];
-        this_array[1]            = this_array[0] * other_array[1] + this_array[1] * other_array[3];
-        this_array[3]            = this_array[2] * other_array[1] + this_array[3] * other_array[3];
-        this_array[5]            = this_array[4] * other_array[1] + this_array[5] * other_array[3] + other_array[5];
-        this_array[0]            = t0;
-        this_array[2]            = t2;
-        this_array[4]            = t4;
-        return *this;
-    }
-
     /// @brief Equality operator.
     bool operator==(const Transform2& other) const { return rows == other.rows; }
 
@@ -152,6 +126,17 @@ struct Transform2 {
     float* as_ptr() { return &rows[0][0]; }
 
     //  MODIFICATION ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /// @brief Matrix multiplication of this Matrix with another.
+    Transform2 operator*(const Transform2& other) const
+    {
+        Transform2 result = *this;
+        result *= other;
+        return result;
+    }
+
+    /** Applies the other Transform to this one in-place. */
+    Transform2& operator*=(const Transform2& other);
 
     /** Inverts this Transform2 in-place. */
     Transform2& invert(); // TODO: test Transform2::invert
