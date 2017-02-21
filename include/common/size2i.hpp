@@ -36,6 +36,9 @@ struct Size2i {
     bool operator==(const Size2i& other) const { return (other.width == width && other.height == height); }
 
     bool operator!=(const Size2i& other) const { return (other.width != width || other.height != height); }
+
+    /** Returns the area of a rectangle of this Size or 0, if the size is invalid. */
+    unsigned int get_area() const { return static_cast<unsigned int>((width * height) < 0 ? 0 : (width * height)); }
 };
 
 /* Free Functions *****************************************************************************************************/

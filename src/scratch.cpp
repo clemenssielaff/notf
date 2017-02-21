@@ -358,7 +358,7 @@ struct Example {
     void render(float dt)
     {
         glViewport(0, 0, canvasWidth, canvasHeight);
-        glClearColor(0, 0.5f, 0.6f, 1);
+        glClearColor(0, 0.0f, 0.0f, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Setting some state
@@ -374,8 +374,8 @@ struct Example {
         glUniformMatrix4fv(program.uniforms.viewProjMatrix, 1, GL_FALSE, viewProjMatrix.as_ptr());
 
         glBindTexture(GL_TEXTURE_2D, font.texture);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         //        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 8);
@@ -479,7 +479,7 @@ int main(void)
         Time delta        = current_time.since(last_time);
         last_time         = current_time;
 
-        example.render(delta.in_seconds());
+        example.render(0); //delta.in_seconds());
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);

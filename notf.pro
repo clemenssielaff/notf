@@ -119,6 +119,7 @@ SOURCES += \
     src/core/property.cpp \
     src/common/line2.cpp \
     src/graphics/shader.cpp \
+    src/graphics/font.cpp \
     src/graphics/blend_mode.cpp \
     src/graphics/render_context.cpp \
     src/graphics/cell.cpp \
@@ -199,6 +200,7 @@ HEADERS += \
     include/utils/print_notf.hpp \
     include/common/line2.hpp \
     include/graphics/shader.hpp \
+    include/graphics/font.hpp \
     include/graphics/vertex.hpp \
     include/graphics/blend_mode.hpp \
     include/graphics/gl_utils.hpp \
