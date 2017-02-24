@@ -1,9 +1,9 @@
 // header, required to read the file into NoTF at compile time (you can comment it out while working on the file though)
 R"=====(
 #ifdef GL_FRAGMENT_PRECISION_HIGH
-precision highp float;
+    precision highp float;
 #else
-precision mediump float;
+    precision mediump float;
 #endif
 
 layout(std140) uniform frag {

@@ -1,3 +1,4 @@
+#if 0
 #include "graphics/font.hpp"
 
 //#define STB_TRUETYPE_IMPLEMENTATION
@@ -79,3 +80,5 @@ Font::~Font()
  * Or I can supply my own packer like NanoVG does.
  * Or I achieve blur using a shader effect (which would also allow stuff like "pulsing" or other animated blurs).
  */
+
+#endif

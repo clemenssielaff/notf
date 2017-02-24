@@ -1,3 +1,4 @@
+#if 0
 #pragma once
 
 #include <string>
@@ -86,3 +87,5 @@ private: // fields
 };
 
 } // namespace notf
+
+#endif

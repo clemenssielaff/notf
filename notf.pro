@@ -9,13 +9,18 @@ INCLUDEPATH *= thirdparty/ include/ test/ res/
 LIBS *= -L/home/clemens/code/thirdparty/glfw-3.2.1/INSTALL/lib/
 LIBS *= -lglfw3 -lGL -lX11 -lXxf86vm -lpthread -ldl -lXcursor -lXrandr -lXinerama
 
+# freetype
+LIBS *= -L/home/clemens/code/thirdparty/freetype-2.7/INSTALL/lib/
+LIBS *= -lfreetype
+INCLUDEPATH *= /home/clemens/code/thirdparty/freetype-2.7/INSTALL/include/freetype2/
+
 CONFIG(release, debug|release) {
 #    message("Building in Release Mode.")
     DEFINES += "SIGNAL_LOG_LEVEL=4" "NDEBUG"
     QMAKE_CXXFLAGS_RELEASE += -fvisibility=hidden -s
-    QMAKE_CXXFLAGS_RELEASE += -O3
+    QMAKE_CXXFLAGS_RELEASE += -O3 #-Os
     QMAKE_LFLAGS_RELEASE += -fvisibility=hidden -s
-    QMAKE_LFLAGS_RELEASE += -O3
+    QMAKE_LFLAGS_RELEASE += -O3 #-Os
 
     # python
     LIBS *= -L/home/clemens/code/thirdparty/Python-3.5.2/
@@ -215,4 +220,6 @@ QMAKE_CXX = ccache g++
 DISTFILES += \
     app/main.py \
     res/shader/cell.frag \
-    res/shader/cell.vert
+    res/shader/cell.vert \
+    res/shader/font.frag \
+    res/shader/font.vert
