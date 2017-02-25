@@ -1,6 +1,13 @@
 #include "common/vector3.hpp"
 
+#include <iostream>
+
 namespace notf {
+
+std::ostream& operator<<(std::ostream& out, const Vector3& vec)
+{
+    return out << "Vector3(" << vec.x << ", " << vec.y <<  ", " << vec.z << ")";
+}
 
 /**
  * Compile-time sanity check.

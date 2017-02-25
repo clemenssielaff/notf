@@ -91,12 +91,17 @@ struct Transform3 {
      */
     static Transform3 perspective(const float fov, const float aspectRatio, const float znear, const float zfar);
 
+    static Transform3 orthographic(const float width, const float height, const float znear, const float zfar);
+
     //  INSPECTION  ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    /** Allows direct read-only access to the Transform2's internal storage. */
+    /** Returns the translation component of this Transform3. */
+    const Vector3& get_translation() const { return *reinterpret_cast<Vector3*>(&matrix[12]); }
+
+    /** Allows direct read-only access to the Transform3's internal storage. */
     const float* as_ptr() const { return &matrix[0]; }
 
-    /** Allows direct read/write access to the Transform2's internal storage. */
+    /** Allows direct read/write access to the Transform3's internal storage. */
     float* as_ptr() { return &matrix[0]; }
 
     //  MODIFICATION ///////////////////////////////////////////////////////////////////////////////////////////////////

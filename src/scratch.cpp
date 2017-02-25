@@ -3,8 +3,9 @@
 
 #include "core/glfw_wrapper.hpp"
 
-#include "common/size2i.hpp"
 #include "common/log.hpp"
+#include "common/size2i.hpp"
+#include "common/transform3.hpp"
 #include "graphics/shader.hpp"
 
 using namespace notf;
@@ -28,47 +29,60 @@ FT_GlyphSlot glyph;
 
 GLint uniform_color;
 GLint uniform_tex;
+GLint uniform_view_proj_matrix;
+GLint uniform_world_matrix;
 GLint attribute_coord = 0;
+float canvas_width, canvas_height;
 
-void render_text(const char *text, float x, float y, float sx, float sy) {
-  const char *p;
+void render_text(const char* text, const float x, const float y)
+{
+    const char* p;
 
-  for(p = text; *p; p++) {
-    if(FT_Load_Char(face, *p, FT_LOAD_RENDER))
-        continue;
+    float pencil_x = x;
+    float pencil_y = canvas_height - y;
 
-    glTexImage2D(
-      GL_TEXTURE_2D,
-      0,
-      GL_R8,
-      glyph->bitmap.width,
-      glyph->bitmap.rows,
-      0,
-      GL_RED,
-      GL_UNSIGNED_BYTE,
-      glyph->bitmap.buffer
-    );
+    for (p = text; *p; p++) {
+        if (FT_Load_Char(face, *p, FT_LOAD_RENDER))
+            continue; /* ignore errors */
 
-    float x2 = x + glyph->bitmap_left * sx;
-    float y2 = -y - glyph->bitmap_top * sy;
-    float w = glyph->bitmap.width * sx;
-    float h = glyph->bitmap.rows * sy;
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_R8,
+            glyph->bitmap.width,
+            glyph->bitmap.rows,
+            0,
+            GL_RED,
+            GL_UNSIGNED_BYTE,
+            glyph->bitmap.buffer);
 
-    GLfloat box[4][4] = {
-        {x2,     -y2    , 0, 0},
-        {x2 + w, -y2    , 1, 0},
-        {x2,     -y2 - h, 0, 1},
-        {x2 + w, -y2 - h, 1, 1},
-    };
+        auto worldMatrix          = Transform3::translation(Vector3{0, 0, -10});
+        auto viewMatrix           = Transform3::identity();
+        auto projectionMatrix     = Transform3::orthographic(canvas_width, canvas_height, 0.05f, 100.0f);
+        Transform3 viewProjMatrix = projectionMatrix * viewMatrix;
 
-    glBufferData(GL_ARRAY_BUFFER, sizeof box, box, GL_DYNAMIC_DRAW);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glUniformMatrix4fv(uniform_world_matrix, 1, GL_FALSE, worldMatrix.as_ptr());
+        glUniformMatrix4fv(uniform_view_proj_matrix, 1, GL_FALSE, viewProjMatrix.as_ptr());
 
-    x += (glyph->advance.x/64) * sx;
-    y += (glyph->advance.y/64) * sy;
-  }
+        const float guad_x      = (canvas_width / -2.f) + (pencil_x + glyph->bitmap_left);
+        const float quad_y      = (canvas_height / -2.f) + (pencil_y + glyph->bitmap_top);
+        const float quad_width  = static_cast<float>(glyph->bitmap.width);
+        const float quad_height = static_cast<float>(glyph->bitmap.rows);
+
+        GLfloat box[4][4] = {
+            {guad_x, quad_y, 0, 0},
+            {guad_x, quad_y - quad_height, 0, 1},
+            {guad_x + quad_width, quad_y, 1, 0},
+            {guad_x + quad_width, quad_y - quad_height, 1, 1},
+        };
+
+        glBufferData(GL_ARRAY_BUFFER, sizeof(box), box, GL_DYNAMIC_DRAW);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        pencil_x += (glyph->advance.x / 64);
+        pencil_y += (glyph->advance.y / 64);
+    }
 }
-
 
 int main(void)
 {
@@ -98,27 +112,29 @@ int main(void)
         return -1;
     }
     shader.use();
-    uniform_color = glGetUniformLocation(shader.get_id(), "color");
-    uniform_tex = glGetUniformLocation(shader.get_id(), "tex");
+    uniform_color            = glGetUniformLocation(shader.get_id(), "color");
+    uniform_tex              = glGetUniformLocation(shader.get_id(), "tex");
+    uniform_view_proj_matrix = glGetUniformLocation(shader.get_id(), "view_proj_matrix");
+    uniform_world_matrix     = glGetUniformLocation(shader.get_id(), "world_matrix");
 
     ///
 
-
-    if(FT_Init_FreeType(&ft)) {
-      fprintf(stderr, "Could not init freetype library\n");
-      return 1;
+    if (FT_Init_FreeType(&ft)) {
+        fprintf(stderr, "Could not init freetype library\n");
+        return 1;
     }
 
-
-    if(FT_New_Face(ft, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 0, &face)) {
-      fprintf(stderr, "Could not open font\n");
-      return 1;
+    if (FT_New_Face(ft, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 0, &face)) {
+        fprintf(stderr, "Could not open font\n");
+        return 1;
     }
     FT_Set_Pixel_Sizes(face, 0, 48);
     glyph = face->glyph;
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_CULL_FACE);
+    glfwSwapInterval(1);
 
     GLuint tex;
     glActiveTexture(GL_TEXTURE0);
@@ -142,6 +158,10 @@ int main(void)
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window)) {
 
+        Size2i buffer_size;
+        glfwGetWindowSize(window, &buffer_size.width, &buffer_size.height);
+        glViewport(0, 0, buffer_size.width, buffer_size.height);
+
         glClearColor(1, 1, 1, 1);
         glClear(GL_COLOR_BUFFER_BIT);
 
@@ -150,46 +170,30 @@ int main(void)
         GLfloat black[4] = {0, 0, 0, 1};
         glUniform4fv(uniform_color, 1, black);
 
-        Size2i buffer_size;
-        glfwGetWindowSize(window, &buffer_size.width, &buffer_size.height);
-        float sx = 2.f / static_cast<float>(buffer_size.width);
-        float sy = 2.f / static_cast<float>(buffer_size.height);
+        canvas_width  = static_cast<float>(buffer_size.width);
+        canvas_height = static_cast<float>(buffer_size.height);
 
-        render_text("The Quick Brown Fox Jumps Over The Lazy Dog",
-                    -1 + 8 * sx,   1 - 50 * sy,    sx, sy);
-        render_text("The Misaligned Fox Jumps Over The Lazy Dog",
-                    -1 + 8.5 * sx, 1 - 100.5 * sy, sx, sy);
+        render_text("The Quick Brown Fox Jumps Over The Lazy Dog", 8, 50);
+        render_text("The Misaligned Fox Jumps Over The Lazy Dog", 8.5, 100.5);
 
-        FT_Set_Pixel_Sizes(face, 0, 48);
-        render_text("The Small Texture Scaled Fox Jumps Over The Lazy Dog",
-                    -1 + 8 * sx,   1 - 175 * sy,   sx * 0.5, sy * 0.5);
         FT_Set_Pixel_Sizes(face, 0, 24);
-        render_text("The Small Font Sized Fox Jumps Over The Lazy Dog",
-                    -1 + 8 * sx,   1 - 200 * sy,   sx, sy);
-        FT_Set_Pixel_Sizes(face, 0, 48);
-        render_text("The Tiny Texture Scaled Fox Jumps Over The Lazy Dog",
-                    -1 + 8 * sx,   1 - 235 * sy,   sx * 0.25, sy * 0.25);
+        render_text("The Small Font Sized Fox Jumps Over The Lazy Dog", 8, 200);
+
         FT_Set_Pixel_Sizes(face, 0, 12);
-        render_text("The Tiny Font Sized Fox Jumps Over The Lazy Dog",
-                    -1 + 8 * sx,   1 - 250 * sy,   sx, sy);
+        render_text("The Tiny Font Sized Fox Jumps Over The Lazy Dog", 8, 250);
 
         FT_Set_Pixel_Sizes(face, 0, 48);
-        render_text("The Solid Black Fox Jumps Over The Lazy Dog",
-                    -1 + 8 * sx,   1 - 430 * sy,   sx, sy);
+        render_text("The Solid Black Fox Jumps Over The Lazy Dog", 8, 430);
 
         GLfloat red[4] = {1, 0, 0, 1};
         glUniform4fv(uniform_color, 1, red);
-        render_text("The Solid Red Fox Jumps Over The Lazy Dog",
-                    -1 + 8 * sx,   1 - 330 * sy,   sx, sy);
-        render_text("The Solid Red Fox Jumps Over The Lazy Dog",
-                    -1 + 28 * sx,  1 - 450 * sy,   sx, sy);
+        render_text("The Solid Red Fox Jumps Over The Lazy Dog", 8, 330);
+        render_text("The Solid Red Fox Jumps Over The Lazy Dog", 28, 450);
 
         GLfloat transparent_green[4] = {0, 1, 0, 0.5};
         glUniform4fv(uniform_color, 1, transparent_green);
-        render_text("The Transparent Green Fox Jumps Over The Lazy Dog",
-                    -1 + 8 * sx,   1 - 380 * sy,   sx, sy);
-        render_text("The Transparent Green Fox Jumps Over The Lazy Dog",
-                    -1 + 18 * sx,  1 - 440 * sy,   sx, sy);
+        render_text("The Transparent Green Fox Jumps Over The Lazy Dog", 8, 380);
+        render_text("The Transparent Green Fox Jumps Over The Lazy Dog", 18, 440);
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);

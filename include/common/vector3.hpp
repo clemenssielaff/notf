@@ -1,6 +1,7 @@
 #pragma once
 
 #include <assert.h>
+#include <iosfwd>
 
 #include "common/float_utils.hpp"
 
@@ -30,5 +31,16 @@ struct Vector3 { // TODO: real Vector3 class
         return *(&x + row);
     }
 };
+
+//  FREE FUNCTIONS  ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// @brief Prints the contents of this Vector3 into a std::ostream.
+///
+/// @param os   Output stream, implicitly passed with the << operator.
+/// @param vec  Vector3 to print.
+///
+/// @return Output stream for further output.
+std::ostream& operator<<(std::ostream& out, const Vector3& vec);
+
 
 } // namespace notf

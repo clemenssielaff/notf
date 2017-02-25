@@ -16,6 +16,20 @@ Transform3 Transform3::perspective(const float fov, const float aspectRatio, con
     return result;
 }
 
+Transform3 Transform3::orthographic(const float width, const float height, const float znear, const float zfar)
+{
+    Transform3 result = Transform3::identity();
+    if (width <= 0 || height <= 0 || znear == approx(zfar)) {
+        return result;
+    }
+
+    result.matrix[0]  = 2.f / width;
+    result.matrix[5]  = 2.f / height;
+    result.matrix[10] = -2.f / (zfar - znear);
+    result.matrix[14] = -(zfar + znear) / (zfar - znear);
+    return result;
+}
+
 Transform3& Transform3::operator*=(const Transform3& other)
 {
     *this = {{{matrix[0] * other.matrix[0] + matrix[4] * other.matrix[1] + matrix[8] * other.matrix[2] + matrix[12] * other.matrix[3],
