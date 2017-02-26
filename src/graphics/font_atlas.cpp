@@ -2,27 +2,34 @@
 
 #include <assert.h>
 #include <limits>
-#include <vector>
 
 #include "common/float_utils.hpp"
 #include "common/log.hpp"
 #include "common/vector_utils.hpp"
 #include "core/glfw_wrapper.hpp"
 
-namespace anonymous {
-
-/** Checks if a SkylineNode index is valid. */
-bool is_valid_index(const size_t index) { return index != std::numeric_limits<size_t>::max(); }
-
-} // namespace anonymous
-
 namespace notf {
 
 void FontAtlas::WasteMap::initialize(const coord_t width, const coord_t height)
 {
     // start with a single big free rectangle, that spans the whole bin
-    m_free_rects.clear();
-    m_free_rects.emplace_back(0, 0, width, height);
+    m_waste_rects.clear();
+    m_waste_rects.emplace_back(0, 0, width, height);
+}
+
+void FontAtlas::WasteMap::add_waste(Rect rect)
+{
+    m_waste_rects.emplace_back(std::move(rect));
+}
+
+FontAtlas::Rect FontAtlas::WasteMap::reclaim_rect(const coord_t width, const coord_t height)
+{
+    return Rect(0, 0, 0, 0); // TODO
+}
+
+void FontAtlas::WasteMap::_consolidate()
+{
+    // TODO
 }
 
 FontAtlas::FontAtlas(const coord_t width, const coord_t height)
@@ -64,10 +71,36 @@ void FontAtlas::reset()
     glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, m_width, m_height, 0, GL_RED, GL_UNSIGNED_BYTE, &zeros[0]);
 }
 
+FontAtlas::Rect FontAtlas::insert_rect(const coord_t width, const coord_t height)
+{
+    { // try to fit the rectangle into the waste areas first...
+        const Rect rect = m_waste.reclaim_rect(width, height);
+        if (rect.height != 0) {
+            assert(rect.width != 0);
+            m_used_area += rect.width * rect.height;
+            return rect;
+        }
+    }
+
+    // ... otherwise add it to the skyline
+    ScoredRect result = _get_rect(width, height);
+    if (result.rect.width == 0) {
+        assert(result.rect.height == 0);
+        log_warning << "Failed to fit new rectangle of size " << width << "x" << height << " into FontAtlas";
+    }
+    else {
+        assert(result.rect.height != 0);
+        _add_node(result.best_index, result.rect);
+        m_used_area += result.rect.width * result.rect.height;
+    }
+
+    return result.rect;
+}
+
 FontAtlas::ScoredRect FontAtlas::_get_rect(const coord_t width, const coord_t height) const
 {
     ScoredRect result;
-    result.rect        = {0, 0, width, height};
+    result.rect        = {0, 0, 0, 0};
     result.best_index  = std::numeric_limits<size_t>::max();
     result.best_width  = std::numeric_limits<coord_t>::max();
     result.best_height = std::numeric_limits<coord_t>::max();
@@ -111,47 +144,57 @@ FontAtlas::ScoredRect FontAtlas::_get_rect(const coord_t width, const coord_t he
         }
     }
 
+    // if we were able to fit the rect, make the return value valid
+    if (result.best_index != std::numeric_limits<size_t>::max()) {
+        result.rect.width  = width;
+        result.rect.height = height;
+    }
+
     return result;
 }
 
 void FontAtlas::_add_node(const size_t node_index, const Rect& rect)
 {
-    // First track all wasted areas and mark them into the waste map if we're using one.
-    //	AddWasteMapArea(skylineNodeIndex, rect.width, rect.height, rect.y);
+    const coord_t rect_right = rect.x + rect.width;
+    assert(rect_right < m_width);
+    assert(rect.y + rect.height < m_height);
 
-    { // create and insert the new node
-        SkylineNode new_node;
-        new_node.x     = rect.x;
-        new_node.y     = rect.y + rect.height;
-        new_node.width = rect.width;
-
-        assert(new_node.x + new_node.width <= m_width);
-        assert(new_node.y <= m_height);
-
-        m_nodes.emplace(iterator_at(m_nodes, node_index), std::move(new_node));
+    // identify and store generated waste
+    for (size_t i = node_index; i < m_nodes.size(); ++i) {
+        const SkylineNode& current_node = m_nodes[i];
+        assert(rect.y >= current_node.y);
+        // unused area underneath the new node is waste
+        if (current_node.x < rect_right) {
+            const coord_t current_right = min(static_cast<coord_t>(current_node.x + current_node.width), rect_right);
+            m_waste.add_waste(Rect(current_node.x, current_node.y, current_right - current_node.x, rect.y - current_node.y));
+        }
+        else {
+            break;
+        }
     }
 
+    // create the new node
+    const SkylineNode& new_node = *(m_nodes.emplace(iterator_at(m_nodes, node_index),
+                                                    rect.x, rect.y + rect.height, rect.width));
+
     // adjust all affected nodes to the right
-    const SkylineNode& new_node = m_nodes[node_index];
-    const coord_t frontier      = new_node.x + new_node.width;
     for (size_t i = node_index + 1; i < m_nodes.size(); ++i) {
         SkylineNode& current_node = m_nodes[i];
         assert(new_node.x <= current_node.x);
-        if (current_node.x < frontier) {
+        if (current_node.x < rect_right) {
             // delete the current node if it was subsumed by the new one, and continue to the next node on the right
-            if (current_node.x + current_node.width <= frontier) {
+            if (current_node.x + current_node.width <= rect_right) {
                 m_nodes.erase(iterator_at(m_nodes, i));
                 --i;
             }
-            // ... or shrink the current node if a part of it overlaps the new node ...
+            // ... or shrink the current node and stop if a part of it overlaps the new node ...
             else {
-                current_node.width -= frontier - current_node.x;
-                current_node.x = frontier;
+                current_node.width -= rect_right - current_node.x;
+                current_node.x = rect_right;
                 break;
             }
         }
-
-        // ... or do nothing if the current node is not affected
+        // ... or stop adjusting right away if the current node is not affected
         else {
             break;
         }

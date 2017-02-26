@@ -3,6 +3,7 @@
 struct FT_LibraryRec_;
 typedef struct FT_LibraryRec_* FT_Library;
 
+#include "graphics/font_atlas.hpp"
 #include "graphics/shader.hpp"
 
 namespace notf {
@@ -19,7 +20,7 @@ public: // methods
     /** Destructor. */
     ~FontManager();
 
-    FontManager(const FontManager&) = delete; // no copy construction
+    FontManager(const FontManager&) = delete;            // no copy construction
     FontManager& operator=(const FontManager&) = delete; // no copy assignment
 
 private: // fields
@@ -42,6 +43,27 @@ private: // fields
 
     /** World matrix uniform of the rendered text, is a matrix4f value. */
     GLint m_world_matrix_uniform;
+};
+
+/**
+ * A Glyph contains information about how to render a single character from a font atlas.
+ */
+struct Glyph {
+
+    /** Rectangle of the FontAtlas that contains the texture of this Glyph. */
+    FontAtlas::Rect rect;
+
+    /** Distance to the left side of the Glyph from the origin in pixels. */
+    FontAtlas::coord_t left;
+
+    /** Distance to the top of the Glyph from the baseline in pixels. */
+    FontAtlas::coord_t top;
+
+    /** How far to advance the origin horizontal. */
+    FontAtlas::coord_t advance_x;
+
+    /** How far to advance the origin vertically. */
+    FontAtlas::coord_t advance_y;
 };
 
 } // namespace notf

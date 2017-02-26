@@ -32,17 +32,24 @@ public: // types
 public: // struct
     /** Rectangular area inside the Atlas. */
     struct Rect {
-        /** X-coordinate of the Glyph in the atlas. */
+        /** X-coordinate of the rectangle in the atlas. */
         coord_t x;
 
-        /** Y-coordinate of the Glyph in the atlas. */
+        /** Y-coordinate of the rectangle in the atlas. */
         coord_t y;
 
-        /** Width of the glyph in pixels. */
+        /** Width of the rectangle in pixels. */
         coord_t width;
 
-        /** Height of the glyph in pixels. */
+        /** Height of the rectangle in pixels. */
         coord_t height;
+
+        /** Default Constructor. */
+        Rect() = default;
+
+        /** Value Constructor. */
+        Rect(coord_t x, coord_t y, coord_t width, coord_t height)
+            : x(x), y(y), width(width), height(height) {}
     };
 
 private: // classes
@@ -55,8 +62,21 @@ private: // classes
         /** (Re-)initializes the WasteMap. */
         void initialize(const coord_t width, const coord_t height);
 
+        /** Registers a new rectangle as "waste" */
+        void add_waste(Rect rect);
+
+        /** Tries to reclaim a rectangle of the given size from waste.
+         * The returned rectangle has zero width and height if reclaiming failed.
+         */
+        Rect reclaim_rect(const coord_t width, const coord_t height);
+
+    private: // methods
+        /** Try to merge waste rectangles. */
+        void _consolidate();
+
     private: // fields
-        std::vector<Rect> m_free_rects;
+        /** Disjoint rectangles of free space that are located below the skyline in the Atlas. */
+        std::vector<Rect> m_waste_rects;
     };
 
     /** A single level (a horizontal line) of the skyline envelope*/
@@ -69,6 +89,13 @@ private: // classes
 
         /** Width of the line from x going right.*/
         coord_t width;
+
+        /** Default Constructor. */
+        SkylineNode() = default;
+
+        /** Value Constructor. */
+        SkylineNode(coord_t x, coord_t y, coord_t width)
+            : x(x), y(y), width(width) {}
     };
 
     /** Return value of '_place_rect()'. */
@@ -84,6 +111,8 @@ private: // classes
 
         /** Height of the space used when inserting rect at the best position. */
         coord_t best_height;
+
+        ScoredRect() = default;
     };
 
 public: // methods
@@ -102,9 +131,13 @@ public: // methods
     /** Computes the ratio of used atlas area (from 0 -> 1). */
     float get_occupancy() const { return static_cast<float>(m_used_area) / (m_width * m_height); }
 
+    /** Places and returns a single rectangle into the Atlas.
+     * If you want to insert multiple known rects, calling `insert_rects` will probably yield a tighter result than
+     * multiple calls to `insert_rect`.
+     */
+    Rect insert_rect(const coord_t width, const coord_t height);
+
 private: // methods
-
-
     /** Finds and returns a free rectangle in the Atlas of the requested size
      * Also returns information about the generated waste allowing the 'insert' functions to optimize the order in which
      * new Glyphs are created.
@@ -132,27 +165,6 @@ private: //
 
     /** Separate data structure to keep track of waste undereath the skyline. */
     WasteMap m_waste;
-};
-
-/**
- * A Glyph contains information about how to render a single character from a font atlas.
- */
-struct Glyph {
-
-    /** Rectangle of the FontAtlas that contains the texture of this Glyph. */
-    FontAtlas::Rect rect;
-
-    /** Distance to the left side of the Glyph from the origin in pixels. */
-    FontAtlas::coord_t left;
-
-    /** Distance to the top of the Glyph from the baseline in pixels. */
-    FontAtlas::coord_t top;
-
-    /** How far to advance the origin horizontal. */
-    FontAtlas::coord_t advance_x;
-
-    /** How far to advance the origin vertically. */
-    FontAtlas::coord_t advance_y;
 };
 
 } // namespace notf

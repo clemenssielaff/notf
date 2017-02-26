@@ -126,7 +126,6 @@ SOURCES += \
     src/graphics/shader.cpp \
     src/graphics/font.cpp \
     src/graphics/font_atlas.cpp \
-    src/graphics/font_glyph.cpp \
     src/graphics/blend_mode.cpp \
     src/graphics/render_context.cpp \
     src/graphics/cell.cpp \
