@@ -23,7 +23,7 @@ const char* font_fragment_shader =
 // clang-format on
 } // namespace anonymous
 
-FT_Library ft;
+FT_Library freetype_library;
 FT_Face face;
 FT_GlyphSlot glyph;
 
@@ -119,12 +119,12 @@ int main(void)
 
     ///
 
-    if (FT_Init_FreeType(&ft)) {
+    if (FT_Init_FreeType(&freetype_library)) {
         fprintf(stderr, "Could not init freetype library\n");
         return 1;
     }
 
-    if (FT_New_Face(ft, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 0, &face)) {
+    if (FT_New_Face(freetype_library, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 0, &face)) {
         fprintf(stderr, "Could not open font\n");
         return 1;
     }
@@ -205,6 +205,9 @@ int main(void)
     /* Shutdown */
     log_handler->stop();
     log_handler->join();
+
+    FT_Done_FreeType(freetype_library);
+
     glfwTerminate();
     return 0;
 }

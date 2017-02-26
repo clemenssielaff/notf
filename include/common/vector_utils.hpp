@@ -74,11 +74,16 @@ std::vector<T>& append(std::vector<T>& target, const std::vector<T>& source)
     return target;
 }
 
-/** Convenience function to get a const iterator to an item at a given index in a vector. */
+/** Convenience function to get an iterator to an item at a given index in a vector. */
 template <typename T>
 constexpr typename std::vector<T>::const_iterator iterator_at(const std::vector<T>& vector, size_t offset)
 {
     return vector.cbegin() + static_cast<typename std::vector<T>::difference_type>(offset);
+}
+template <typename T>
+constexpr typename std::vector<T>::iterator iterator_at(std::vector<T>& vector, size_t offset)
+{
+    return vector.begin() + static_cast<typename std::vector<T>::difference_type>(offset);
 }
 
 } // namespace notf
