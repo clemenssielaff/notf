@@ -8,6 +8,8 @@
 
 namespace notf {
 
+using codepoint_t = uint16_t; // TODO: move to somewhere more central
+
 /** A texture atlas is a texture that is filled with Glyphs.
  *
  * Internally, it uses the SKYLINE-BL-WM-BNF pack algorithm as described in:
@@ -15,9 +17,8 @@ namespace notf {
  * and code adapted from:
  *     http://clb.demon.fi/files/RectangleBinPack/
  *
- * Does not rotate the Glyphs, because I assume that the added complexity, overhead, branching (and potential OpenGL
- * blurryness?) is not worth the trouble.
- * However, the implementation above does include rotation, so if you want, implement it and see if it makes a
+ * Does not rotate the Glyphs, because I assume that the added complexity and overhead is not worth the trouble.
+ * However, the reference implementation above does include rotation, so if you want, implement it and see if it makes a
  * difference.
  */
 class FontAtlas {
@@ -52,6 +53,25 @@ public: // struct
             : x(x), y(y), width(width), height(height) {}
     };
 
+    struct NamedRect {
+        codepoint_t code_point;
+        Rect rect;
+
+        NamedRect() = default;
+        NamedRect(codepoint_t code_point, Rect rect)
+            : code_point(code_point), rect(std::move(rect)) {}
+    };
+
+    struct NamedExtend {
+        codepoint_t code_point;
+        coord_t width;
+        coord_t height;
+
+        NamedExtend() = default;
+        NamedExtend(codepoint_t code_point, coord_t width, coord_t height)
+            : code_point(code_point), width(width), height(height) {}
+    };
+
 private: // classes
     /** Helper data structure to keep track of the free space of the bin where rectangles may be placed. */
     class WasteMap {
@@ -70,13 +90,9 @@ private: // classes
          */
         Rect reclaim_rect(const coord_t width, const coord_t height);
 
-    private: // methods
-        /** Try to merge waste rectangles. */
-        void _consolidate();
-
     private: // fields
         /** Disjoint rectangles of free space that are located below the skyline in the Atlas. */
-        std::vector<Rect> m_waste_rects;
+        std::vector<Rect> m_free_rects;
     };
 
     /** A single level (a horizontal line) of the skyline envelope*/
@@ -104,13 +120,13 @@ private: // classes
         Rect rect;
 
         /** Index of the best node to insert rect, is max(size_t) if invalid. */
-        size_t best_index;
+        size_t node_index;
 
         /** Width of the space used when inserting rect at the best position. */
-        coord_t best_width;
+        coord_t node_width;
 
         /** Height of the space used when inserting rect at the best position. */
-        coord_t best_height;
+        coord_t new_height;
 
         ScoredRect() = default;
     };
@@ -136,6 +152,11 @@ public: // methods
      * multiple calls to `insert_rect`.
      */
     Rect insert_rect(const coord_t width, const coord_t height);
+
+    /** Places and returns multiple rectangles into the Atlas.
+     * Produces a better fit than multiple calls to `insert_rect`.
+     */
+    std::vector<NamedRect> insert_rects(std::vector<NamedExtend> named_extends);
 
 private: // methods
     /** Finds and returns a free rectangle in the Atlas of the requested size

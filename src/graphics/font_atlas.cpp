@@ -8,28 +8,104 @@
 #include "common/vector_utils.hpp"
 #include "core/glfw_wrapper.hpp"
 
+#define INVALID_SIZE_T (std::numeric_limits<size_t>::max())
+
 namespace notf {
 
 void FontAtlas::WasteMap::initialize(const coord_t width, const coord_t height)
 {
     // start with a single big free rectangle, that spans the whole bin
-    m_waste_rects.clear();
-    m_waste_rects.emplace_back(0, 0, width, height);
+    m_free_rects.clear();
+    m_free_rects.emplace_back(0, 0, width, height);
 }
 
 void FontAtlas::WasteMap::add_waste(Rect rect)
 {
-    m_waste_rects.emplace_back(std::move(rect));
+    m_free_rects.emplace_back(std::move(rect));
 }
 
 FontAtlas::Rect FontAtlas::WasteMap::reclaim_rect(const coord_t width, const coord_t height)
 {
-    return Rect(0, 0, 0, 0); // TODO
-}
+    Rect result(0, 0, 0, 0);
+    size_t best_node_index = INVALID_SIZE_T;
 
-void FontAtlas::WasteMap::_consolidate()
-{
-    // TODO
+    { // try all free rects to find the best one for placement
+        area_t least_waste = std::numeric_limits<area_t>::max();
+        for (size_t node_index = 0; node_index < m_free_rects.size(); ++node_index) {
+            const Rect& rect = m_free_rects[node_index];
+            if (width == rect.width && height == rect.height) {
+                // return early on a perfect fit
+                result.x      = rect.x;
+                result.y      = rect.y;
+                result.width  = width;
+                result.height = height;
+                goto return_success;
+            }
+            if (width < rect.width && height < rect.height) {
+                // possible fit
+                const area_t waste = min(static_cast<area_t>(rect.width - width), static_cast<area_t>(rect.height - height));
+                if (waste < least_waste) {
+                    least_waste     = waste;
+                    result.x        = rect.x;
+                    result.y        = rect.y;
+                    best_node_index = node_index;
+                }
+            }
+        }
+
+        // return the empty rect, if you cannot fit the requested size
+        if (best_node_index == INVALID_SIZE_T) {
+            return result;
+        }
+
+        result.width  = width;
+        result.height = height;
+    }
+
+    { // keep track of the one or two generated smaller rects of free space
+        const Rect& free_rect = m_free_rects[best_node_index];
+
+        Rect vertical;
+        vertical.x     = free_rect.x + width;
+        vertical.y     = free_rect.y;
+        vertical.width = free_rect.width - width;
+
+        Rect horizontal;
+        horizontal.x      = free_rect.x;
+        horizontal.y      = free_rect.y + height;
+        horizontal.height = free_rect.height - height;
+
+        if (width * horizontal.height <= vertical.width * height) {
+            // split horizontally
+            horizontal.width = free_rect.width;
+            vertical.height  = height;
+        }
+        else {
+            // split vertically
+            horizontal.width = width;
+            vertical.height  = free_rect.height;
+        }
+
+        // add the new rectangles to the pool, but only if they are not degenerate
+        if (horizontal.width > 0 && horizontal.height > 0) {
+            m_free_rects.emplace_back(std::move(horizontal));
+        }
+        if (vertical.width > 0 && vertical.height > 0) {
+            m_free_rects.emplace_back(std::move(vertical));
+        }
+    }
+
+    // TODO: we can theoretically try to merge the free rects, although I don't know how much difference it would make
+    // For that, consider creating 1 or 3 free rectangles, 1 if either one is degenerate and three if both would have
+    // an area. In that case, create a third rectangle for the overlapping area.
+    // Then, in a separate process, go through all rectangles and try to fit larger rectangles through any combination
+    // of them, making use of the most available space.
+    // However ... this is probably a wasted effort as the chance of this actually generating a free rect that can be
+    // used for another character is rather slim (I'd assume) and the cost of even an unsuccessful merge is quite high.
+
+return_success:
+    m_free_rects.erase(iterator_at(m_free_rects, best_node_index));
+    return result;
 }
 
 FontAtlas::FontAtlas(const coord_t width, const coord_t height)
@@ -90,20 +166,68 @@ FontAtlas::Rect FontAtlas::insert_rect(const coord_t width, const coord_t height
     }
     else {
         assert(result.rect.height != 0);
-        _add_node(result.best_index, result.rect);
+        _add_node(result.node_index, result.rect);
         m_used_area += result.rect.width * result.rect.height;
     }
 
     return result.rect;
 }
 
+std::vector<FontAtlas::NamedRect> FontAtlas::insert_rects(std::vector<NamedExtend> named_extends)
+{
+    std::vector<NamedRect> result;
+
+    // repeatedly go through all named extends, find the best one to insert and remove it
+    while (!named_extends.empty()) {
+        Rect best_rect;
+        size_t best_node_index   = INVALID_SIZE_T;
+        size_t best_extend_index = 0;
+        coord_t best_node_width  = std::numeric_limits<coord_t>::max();
+        coord_t best_new_height  = std::numeric_limits<coord_t>::max();
+        codepoint_t best_code_point;
+
+        // find the best fit
+        for (size_t named_size_index = 0; named_size_index < named_extends.size(); ++named_size_index) {
+            const NamedExtend& extend = named_extends[named_size_index];
+            const ScoredRect scored   = _get_rect(extend.width, extend.height);
+            if (scored.rect.height == 0) {
+                continue;
+            }
+            if (scored.new_height < best_new_height
+                || (scored.new_height == best_new_height && scored.node_width < best_node_width)) {
+                best_rect         = scored.rect;
+                best_node_index   = scored.node_index;
+                best_extend_index = named_size_index;
+                best_node_width   = scored.node_width;
+                best_new_height   = scored.new_height;
+                best_code_point   = extend.code_point;
+            }
+        }
+
+        // return what you got if you cannot fit anymore
+        if (best_node_index == INVALID_SIZE_T) {
+            log_critical << "Could not fit new rects into the font atlas";
+            break;
+        }
+        assert(best_extend_index);
+
+        // insert the new node into the atlas and add the resulting Rect to the results
+        _add_node(best_node_index, best_rect);
+        m_used_area += best_rect.width * best_rect.height;
+        named_extends.erase(iterator_at(named_extends, best_extend_index));
+        result.emplace_back(best_code_point, std::move(best_rect));
+    }
+
+    return result;
+}
+
 FontAtlas::ScoredRect FontAtlas::_get_rect(const coord_t width, const coord_t height) const
 {
     ScoredRect result;
-    result.rect        = {0, 0, 0, 0};
-    result.best_index  = std::numeric_limits<size_t>::max();
-    result.best_width  = std::numeric_limits<coord_t>::max();
-    result.best_height = std::numeric_limits<coord_t>::max();
+    result.rect       = {0, 0, 0, 0};
+    result.node_index = INVALID_SIZE_T;
+    result.node_width = std::numeric_limits<coord_t>::max();
+    result.new_height = std::numeric_limits<coord_t>::max();
 
     for (size_t node_index = 0; node_index < m_nodes.size(); ++node_index) {
         const SkylineNode& currrent_node = m_nodes[node_index];
@@ -134,18 +258,19 @@ FontAtlas::ScoredRect FontAtlas::_get_rect(const coord_t width, const coord_t he
         }
 
         // if the rectangle fits, check if it is a better fit than the last one and update the result if it is
-        if (y + height < result.best_height
-            || (y + height == result.best_height && currrent_node.width < result.best_width)) {
-            result.rect.x      = currrent_node.x;
-            result.rect.y      = y;
-            result.best_index  = node_index;
-            result.best_width  = currrent_node.width;
-            result.best_height = y + height;
+        const coord_t new_height = y + height;
+        if (new_height < result.new_height
+            || (new_height == result.new_height && currrent_node.width < result.node_width)) {
+            result.rect.x     = currrent_node.x;
+            result.rect.y     = y;
+            result.node_index = node_index;
+            result.node_width = currrent_node.width;
+            result.new_height = new_height;
         }
     }
 
     // if we were able to fit the rect, make the return value valid
-    if (result.best_index != std::numeric_limits<size_t>::max()) {
+    if (result.node_index != INVALID_SIZE_T) {
         result.rect.width  = width;
         result.rect.height = height;
     }
