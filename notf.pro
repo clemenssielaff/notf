@@ -124,15 +124,15 @@ SOURCES += \
     src/core/property.cpp \
     src/common/line2.cpp \
     src/graphics/shader.cpp \
-    src/graphics/font.cpp \
-    src/graphics/font_atlas.cpp \
+    src/graphics/text/font.cpp \
+    src/graphics/text/font_atlas.cpp \
     src/graphics/blend_mode.cpp \
     src/graphics/render_context.cpp \
     src/graphics/cell.cpp \
     src/graphics/stats.cpp \
     src/graphics/painter.cpp \
     src/common/transform3.cpp \
-    src/graphics/font_manager.cpp
+    src/graphics/text/font_manager.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -207,8 +207,8 @@ HEADERS += \
     include/utils/print_notf.hpp \
     include/common/line2.hpp \
     include/graphics/shader.hpp \
-    include/graphics/font.hpp \
-    include/graphics/font_atlas.hpp \
+    include/graphics/text/font.hpp \
+    include/graphics/text/font_atlas.hpp \
     include/graphics/vertex.hpp \
     include/graphics/blend_mode.hpp \
     include/graphics/gl_utils.hpp \
@@ -217,8 +217,9 @@ HEADERS += \
     include/graphics/stats.hpp \
     include/graphics/cell.hpp \
     include/common/transform3.hpp \
-    include/graphics/font_manager.hpp \
-    thirdparty/stb_truetype/stb_rect_pack.h
+    include/graphics/text/font_manager.hpp \
+    thirdparty/stb_truetype/stb_rect_pack.h \
+    include/graphics/text/freetype.hpp
 
 QMAKE_CXX = ccache g++
 

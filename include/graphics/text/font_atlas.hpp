@@ -8,7 +8,10 @@
 
 namespace notf {
 
-using codepoint_t = uint16_t; // TODO: move to somewhere more central
+using uchar = unsigned char;
+
+/** Data type to identify a single Glyph. */
+using codepoint_t = unsigned long;
 
 /** A texture atlas is a texture that is filled with Glyphs.
  *
@@ -157,6 +160,11 @@ public: // methods
      * Produces a better fit than multiple calls to `insert_rect`.
      */
     std::vector<NamedRect> insert_rects(std::vector<NamedExtend> named_extends);
+
+    /** Fills a rect in the Atlas with the given data.
+     * Does not check whether the rect corresponds to a node in the atlas, I trust you know what you are doing.
+     */
+    void fill_rect(const Rect& rect, const uchar* data);
 
 private: // methods
     /** Finds and returns a free rectangle in the Atlas of the requested size
