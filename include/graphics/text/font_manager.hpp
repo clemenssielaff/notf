@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "common/color.hpp"
 #include "common/size2i.hpp"
 #include "common/vector2.hpp"
 #include "graphics/shader.hpp"
@@ -14,15 +15,6 @@ typedef struct FT_LibraryRec_* FT_Library;
 
 namespace notf {
 
-/** To allow other objects to keep references to a Font without handing them volatile pointers or split ownership with
- * shared pointers, everyone can request a `FontID` from the manager.
- * The FontId corresponds to an index in a vector in the FontManager, meaning lookup of the actual Font object given its
- * ID is trivial.
- * ID zero is reserved as INVALID_FONT.
- */
-using FontID              = size_t;
-const FontID INVALID_FONT = 0;
-
 class FontAtlas;
 
 /**********************************************************************************************************************/
@@ -32,7 +24,7 @@ class FontAtlas;
  */
 class FontManager {
 
-    friend Font::Font(FontManager*, std::string, ushort);
+    friend Font::Font(FontManager*, FontID, std::string, std::string, ushort);
 
 public: // methods
     /** Default constructor. */
@@ -47,7 +39,7 @@ public: // methods
     /** Loads a new Font and returns its FontID.
      * If another Font by the same name is already loaded, it is returned instead an no load is performed.
      */
-    FontID load_font(std::string name, std::string filepath);
+    FontID load_font(std::string name, std::string filepath, ushort pixel_size);
 
     /** Returns the FontID of a loaded font, or INVALID_FONT if no Font by the name is known. */
     FontID get_font(const std::string& name) const
@@ -65,10 +57,15 @@ public: // methods
      */
     void set_window_size(Size2i size) { m_window_size = std::move(size); }
 
+    /** Sets the Color used to render the text. */
+    void set_color(Color color) { m_color = std::move(color); }
+
     /** Remders a text at the given screen coordinate.
      * The position corresponts to the start of the text's baseline.
      */
     void render_text(const std::string& text, ushort x, ushort y, const FontID font_id);
+
+    void render_atlas();
 
 private: // for Font
     /** The Freetype library used by the Manager. */
@@ -96,7 +93,11 @@ private: // fields
     /** Current size of the Window into which text is rendered. */
     Size2i m_window_size;
 
-    // Shader and -related //
+    /** Color to render the text. */
+    Color m_color; // TODO: should Color be a per-render parameter?
+
+    /** OpenGL vertex buffer object. */
+    GLuint m_vbo;
 
     /** The Shader program used to render the font. */
     Shader m_font_shader;

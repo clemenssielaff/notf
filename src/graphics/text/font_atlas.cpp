@@ -7,6 +7,7 @@
 #include "common/log.hpp"
 #include "common/vector_utils.hpp"
 #include "core/glfw_wrapper.hpp"
+#include "graphics/gl_errors.hpp"
 
 #define INVALID_SIZE_T (std::numeric_limits<size_t>::max())
 
@@ -117,8 +118,14 @@ FontAtlas::FontAtlas(const coord_t width, const coord_t height)
     , m_waste()
 {
     // create the atlas texture
-    glActiveTexture(GL_TEXTURE0);
     glGenTextures(1, &m_texture_id);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, m_texture_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     // initialize
     reset();
@@ -142,9 +149,11 @@ void FontAtlas::reset()
 
     // fill the atlas with zeros
     const std::vector<uchar> zeros(static_cast<size_t>(m_width * m_height), 0);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_texture_id);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, m_width, m_height, 0, GL_RED, GL_UNSIGNED_BYTE, &zeros[0]);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    check_gl_error();
 }
 
 FontAtlas::Rect FontAtlas::insert_rect(const coord_t width, const coord_t height)
@@ -179,9 +188,9 @@ std::vector<FontAtlas::NamedRect> FontAtlas::insert_rects(std::vector<NamedExten
 
     // repeatedly go through all named extends, find the best one to insert and remove it
     while (!named_extends.empty()) {
-        Rect best_rect;
+        Rect best_rect           = {0, 0, 0, 0};
         size_t best_node_index   = INVALID_SIZE_T;
-        size_t best_extend_index = 0;
+        size_t best_extend_index = INVALID_SIZE_T;
         coord_t best_node_width  = std::numeric_limits<coord_t>::max();
         coord_t best_new_height  = std::numeric_limits<coord_t>::max();
         codepoint_t best_code_point;
@@ -191,6 +200,9 @@ std::vector<FontAtlas::NamedRect> FontAtlas::insert_rects(std::vector<NamedExten
             const NamedExtend& extend = named_extends[named_size_index];
             const ScoredRect scored   = _get_rect(extend.width, extend.height);
             if (scored.rect.height == 0) {
+                named_extends.erase(iterator_at(named_extends, named_size_index));
+                result.emplace_back(best_code_point, best_rect);
+                --named_size_index;
                 continue;
             }
             if (scored.new_height < best_new_height
@@ -209,7 +221,7 @@ std::vector<FontAtlas::NamedRect> FontAtlas::insert_rects(std::vector<NamedExten
             log_critical << "Could not fit new rects into the font atlas";
             break;
         }
-        assert(best_extend_index);
+        assert(best_extend_index != INVALID_SIZE_T);
 
         // insert the new node into the atlas and add the resulting Rect to the results
         _add_node(best_node_index, best_rect);
@@ -223,9 +235,11 @@ std::vector<FontAtlas::NamedRect> FontAtlas::insert_rects(std::vector<NamedExten
 
 void FontAtlas::fill_rect(const Rect& rect, const uchar* data)
 {
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_texture_id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexSubImage2D(GL_TEXTURE_2D, /* level = */ 0, rect.x, rect.y, rect.width, rect.height, GL_RED, GL_UNSIGNED_BYTE, data);
+    check_gl_error();
 }
 
 FontAtlas::ScoredRect FontAtlas::_get_rect(const coord_t width, const coord_t height) const
@@ -294,9 +308,9 @@ void FontAtlas::_add_node(const size_t node_index, const Rect& rect)
     // identify and store generated waste
     for (size_t i = node_index; i < m_nodes.size(); ++i) {
         const SkylineNode& current_node = m_nodes[i];
-        assert(rect.y >= current_node.y);
         // unused area underneath the new node is waste
         if (current_node.x < rect_right) {
+            assert(rect.y >= current_node.y);
             const coord_t current_right = min(static_cast<coord_t>(current_node.x + current_node.width), rect_right);
             m_waste.add_waste(Rect(current_node.x, current_node.y, current_right - current_node.x, rect.y - current_node.y));
         }

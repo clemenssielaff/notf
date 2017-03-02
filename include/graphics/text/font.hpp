@@ -10,6 +10,15 @@ typedef struct FT_FaceRec_* FT_Face;
 
 namespace notf {
 
+/** To allow other objects to keep references to a Font without handing them volatile pointers or split ownership with
+ * shared pointers, everyone can request a `FontID` from the manager.
+ * The FontId corresponds to an index in a vector in the FontManager, meaning lookup of the actual Font object given its
+ * ID is trivial.
+ * ID zero is reserved as INVALID_FONT.
+ */
+using FontID              = size_t;
+const FontID INVALID_FONT = 0;
+
 class FontManager;
 
 using fontpos_t = int;
@@ -43,24 +52,21 @@ class Font {
 
 public: // methods
     /** Constructor. */
-    Font(FontManager* manager, std::string filename, ushort pixel_size);
+    Font(FontManager* manager, FontID id, std::string name, std::string filename, ushort pixel_size);
 
     /** Returns true if this Font is valid. */
     bool is_valid() const { return m_face; }
 
     /** Returns the FontID of a loaded font, or INVALID_FONT if no Font by the name is known. */
-    const Glyph& get_glyph(const codepoint_t codepoint) const
-    {
-        static Glyph error_glyph = {{0, 0, 0, 0}, 0, 0, 0, 0};
-
-        const auto& it = m_glyphs.find(codepoint);
-        if (it != std::end(m_glyphs)) {
-            return it->second;
-        }
-        return error_glyph;
-    }
+    const Glyph& get_glyph(const codepoint_t codepoint) const;
 
 private: // members
+    /** Id of this Font. */
+    const FontID m_id;
+
+    /** Given name of the Font. */
+    const std::string m_name;
+
     /** Filename of the loaded Font. */
     const std::string m_filename;
 

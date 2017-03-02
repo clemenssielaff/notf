@@ -15,6 +15,7 @@ out vec4 frag_color;
 void main()
 {
     frag_color = vec4(1, 1, 1, texture2D(tex, tex_coord).r) * color;
+//    frag_color = vec4(0, 0, 0, 1 );
 }
 
 //)====="; // footer, required to read the file into NoTF at compile time

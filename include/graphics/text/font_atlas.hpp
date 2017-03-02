@@ -23,6 +23,8 @@ using codepoint_t = unsigned long;
  * Does not rotate the Glyphs, because I assume that the added complexity and overhead is not worth the trouble.
  * However, the reference implementation above does include rotation, so if you want, implement it and see if it makes a
  * difference.
+ *
+ * Note that in the Atlas, just as with any other OpenGL texture, y grows up.
  */
 class FontAtlas {
 
@@ -146,6 +148,9 @@ public: // methods
 
     /** Resets the Texture Atlas without changing its size. */
     void reset();
+
+    /** OpenGL texture ID of the Atlas. */
+    GLuint get_texture_id() const { return m_texture_id; }
 
     /** Computes the ratio of used atlas area (from 0 -> 1). */
     float get_occupancy() const { return static_cast<float>(m_used_area) / (m_width * m_height); }

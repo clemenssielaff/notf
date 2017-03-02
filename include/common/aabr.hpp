@@ -218,7 +218,7 @@ struct Aabr {
     /** Returns the length of the longer side of this Aabr. */
     float longer_size() const
     {
-        const float width = this->width();
+        const float width  = this->width();
         const float height = this->height();
         return width > height ? width : height;
     }
@@ -226,7 +226,7 @@ struct Aabr {
     /** Returns the length of the shorter side of this Aabr. */
     float shorter_size() const
     {
-        const float width = this->width();
+        const float width  = this->width();
         const float height = this->height();
         return width < height ? width : height;
     }
@@ -236,6 +236,10 @@ struct Aabr {
     bool operator==(const Aabr& other) const { return (other._min == _min && other._max == _max); }
 
     bool operator!=(const Aabr& other) const { return (other._min != _min || other._max != _max); }
+
+    Aabr operator*(const float factor) { return {_min * factor, _max * factor}; }
+
+    Aabr operator+(const Vector2& offset) { return {_min + offset, _max + offset}; }
 
     /** Modifications *************************************************************************************************/
 
@@ -262,6 +266,14 @@ struct Aabr {
     {
         set_x(pos.x);
         return set_y(pos.y);
+    }
+
+    /** Moves this Aabr by a relative amount. */
+    Aabr& move_by(const Vector2& pos)
+    {
+        _min += pos;
+        _max += pos;
+        return *this;
     }
 
     /** Sets the x-coordinate of this Aabr's left edge.

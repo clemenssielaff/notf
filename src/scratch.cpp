@@ -7,6 +7,7 @@
 #include "common/size2i.hpp"
 #include "common/transform3.hpp"
 #include "graphics/shader.hpp"
+#include "graphics/text/font_manager.hpp"
 
 using namespace notf;
 
@@ -133,12 +134,21 @@ int main(void)
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_CULL_FACE);
+    //    glEnable(GL_CULL_FACE);
     glfwSwapInterval(1);
 
+    FontManager font_manager;
+//    FontID font12 = font_manager.load_font("Roboto12", "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 12);
+//    FontID font16 = font_manager.load_font("Roboto16", "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 16);
+//    FontID font24 = font_manager.load_font("Roboto24", "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 24);
+//    FontID font32 = font_manager.load_font("Roboto32", "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 32);
+    FontID font48 = font_manager.load_font("Roboto48", "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 48);
+    // TODO: void notf::FontAtlas::_add_node(size_t, const notf::FontAtlas::Rect&): Assertion `rect_right < m_width' failed.
+
     GLuint tex;
-    glActiveTexture(GL_TEXTURE0);
+
     glGenTextures(1, &tex);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -166,35 +176,45 @@ int main(void)
         glClearColor(1, 1, 1, 1);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        shader.use();
-
         GLfloat black[4] = {0, 0, 0, 1};
         glUniform4fv(uniform_color, 1, black);
 
         canvas_width  = static_cast<float>(buffer_size.width);
         canvas_height = static_cast<float>(buffer_size.height);
 
-        render_text("The Quick Brown Fox Jumps Over The Lazy Dog", 8, 50);
-        render_text("The Misaligned Fox Jumps Over The Lazy Dog", 8.5, 100.5);
+        font_manager.set_window_size(buffer_size);
+        font_manager.render_text("The Quick Brown Fox Jumps Over The Lazy Dog", 8, 50, font48);
 
-        FT_Set_Pixel_Sizes(face, 0, 24);
-        render_text("The Small Font Sized Fox Jumps Over The Lazy Dog", 8, 200);
+        font_manager.render_atlas();
 
-        FT_Set_Pixel_Sizes(face, 0, 12);
-        render_text("The Tiny Font Sized Fox Jumps Over The Lazy Dog", 8, 250);
+        shader.use();
 
-        FT_Set_Pixel_Sizes(face, 0, 48);
-        render_text("The Solid Black Fox Jumps Over The Lazy Dog", 8, 430);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tex);
 
-        GLfloat red[4] = {1, 0, 0, 1};
-        glUniform4fv(uniform_color, 1, red);
-        render_text("The Solid Red Fox Jumps Over The Lazy Dog", 8, 330);
-        render_text("The Solid Red Fox Jumps Over The Lazy Dog", 28, 450);
+        render_text("The Quick Brown Fox Jumps Over The Lazy Dog", 8, 100);
 
-        GLfloat transparent_green[4] = {0, 1, 0, 0.5};
-        glUniform4fv(uniform_color, 1, transparent_green);
-        render_text("The Transparent Green Fox Jumps Over The Lazy Dog", 8, 380);
-        render_text("The Transparent Green Fox Jumps Over The Lazy Dog", 18, 440);
+        //        render_text("The Quick Brown Fox Jumps Over The Lazy Dog", 8, 50);
+        //        render_text("The Misaligned Fox Jumps Over The Lazy Dog", 8.5, 100.5);
+
+        //        FT_Set_Pixel_Sizes(face, 0, 24);
+        //        render_text("The Small Font Sized Fox Jumps Over The Lazy Dog", 8, 200);
+
+        //        FT_Set_Pixel_Sizes(face, 0, 12);
+        //        render_text("The Tiny Font Sized Fox Jumps Over The Lazy Dog", 8, 250);
+
+        //        FT_Set_Pixel_Sizes(face, 0, 48);
+        //        render_text("The Solid Black Fox Jumps Over The Lazy Dog", 8, 430);
+
+        //        GLfloat red[4] = {1, 0, 0, 1};
+        //        glUniform4fv(uniform_color, 1, red);
+        //        render_text("The Solid Red Fox Jumps Over The Lazy Dog", 8, 330);
+        //        render_text("The Solid Red Fox Jumps Over The Lazy Dog", 28, 450);
+
+        //        GLfloat transparent_green[4] = {0, 1, 0, 0.5};
+        //        glUniform4fv(uniform_color, 1, transparent_green);
+        //        render_text("The Transparent Green Fox Jumps Over The Lazy Dog", 8, 380);
+        //        render_text("The Transparent Green Fox Jumps Over The Lazy Dog", 18, 440);
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
