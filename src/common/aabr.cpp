@@ -14,7 +14,7 @@ std::ostream& operator<<(std::ostream& out, const Aabr& aabr)
 /**
  * Compile-time sanity check.
  */
-static_assert(sizeof(Aabr) == sizeof(Vector2) * 2,
+static_assert(sizeof(Aabr) == sizeof(Vector2f) * 2,
               "This compiler seems to inject padding bits into the notf::Aabr memory layout. "
               "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
 

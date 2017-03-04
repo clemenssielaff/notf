@@ -46,13 +46,13 @@ void Overlayout::add_item(std::shared_ptr<Item> item)
     _relayout();
 }
 
-bool Overlayout::get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& result)
+bool Overlayout::get_widgets_at(const Vector2f local_pos, std::vector<Widget*>& result)
 {
     bool found_any = false;
     for (Item* item : m_items) {
         if (LayoutItem* layout_item = item->get_layout_item()) {
             // TODO: Overlayout::get_widget_at does not respect transform (only translate)
-            const Vector2 item_pos = local_pos - layout_item->get_transform().get_translation();
+            const Vector2f item_pos = local_pos - layout_item->get_transform().get_translation();
             const Aabr item_rect(layout_item->get_size());
             if (item_rect.contains(item_pos)) {
                 found_any |= layout_item->get_widgets_at(item_pos, result);

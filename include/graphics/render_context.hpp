@@ -219,12 +219,12 @@ public:
 
     bool provides_geometric_aa() const { return m_args.enable_geometric_aa; }
 
-    const Vector2& get_mouse_pos() const { return m_mouse_pos; }
+    const Vector2f& get_mouse_pos() const { return m_mouse_pos; }
 
     Time get_time() const { return m_time; }
 
 private: // methods for Window
-    void set_mouse_pos(Vector2 pos) { m_mouse_pos = std::move(pos); }
+    void set_mouse_pos(Vector2f pos) { m_mouse_pos = std::move(pos); }
 
     void set_buffer_size(Size2f buffer) { m_buffer_size = std::move(buffer); }
 
@@ -296,7 +296,7 @@ private: // fields
     std::vector<FragmentUniforms> m_frag_uniforms;
 
     /** Position of the mouse relative to the Window. */
-    Vector2 m_mouse_pos;
+    Vector2f m_mouse_pos;
 
     // Shader variables
 

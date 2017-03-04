@@ -1,0 +1,2 @@
+no mandatory get_* methods
+  the rationale here is that enforcing a get_* before every getter is exposing the internals in the interface

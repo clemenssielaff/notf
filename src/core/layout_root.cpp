@@ -42,7 +42,7 @@ void LayoutRoot::set_item(std::shared_ptr<AbstractController> item)
     assert(is_redrawn);
 }
 
-bool LayoutRoot::get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& result)
+bool LayoutRoot::get_widgets_at(const Vector2f local_pos, std::vector<Widget*>& result)
 {
     if (is_empty()) {
         return false;

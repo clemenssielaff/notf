@@ -34,7 +34,7 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
         while (!batch.empty()) {
 
             // do nothing, if the surplus has been depleted
-            if (surplus == approx(0)) {
+            if (surplus == approx(0.)) {
                 batch.clear();
                 continue;
             }
@@ -53,7 +53,7 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
                         total_scale_factor += item->scale_factor;
                         assert(item->scale_factor > 0);
                     }
-                    else if (item->upper_bound - item->result == approx(0)) {
+                    else if (item->upper_bound - item->result == approx(0.)) {
                         it = batch.erase(it);
                         continue;
                     }
@@ -288,12 +288,12 @@ void StackLayout::add_item(std::shared_ptr<Item> item)
     }
 }
 
-bool StackLayout::get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& result)
+bool StackLayout::get_widgets_at(const Vector2f local_pos, std::vector<Widget*>& result)
 {
     // TODO: StackLayout::get_widget_at is brute-force and does not respect transform (only translate)
     for (Item* item : m_items) {
         if (LayoutItem* layout_item = item->get_layout_item()) {
-            const Vector2 item_pos = local_pos - layout_item->get_transform().get_translation();
+            const Vector2f item_pos = local_pos - layout_item->get_transform().get_translation();
             const Aabr item_rect(layout_item->get_size());
             if (item_rect.contains(item_pos)) {
                 return layout_item->get_widgets_at(item_pos, result);

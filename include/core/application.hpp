@@ -9,9 +9,12 @@ struct GLFWwindow;
 namespace notf {
 
 class LogHandler;
-class PythonInterpreter;
 class ResourceManager;
 class Window;
+
+#ifdef NOTF_PYTHON
+class PythonInterpreter;
+#endif
 
 /**********************************************************************************************************************/
 
@@ -25,9 +28,6 @@ struct ApplicationInfo {
 
     /** Number of strings in argv (first one is usually the name of the program). */
     int argc = -1;
-
-    /** If set to false, the Application will not have a Python interpreter available. */
-    bool enable_python = true;
 
     /** System path to the texture directory, absolute or relative to the executable. */
     std::string texture_directory = "res/textures/";
@@ -74,9 +74,11 @@ public: // methods
     /** Returns the Application's Resource Manager. */
     ResourceManager& get_resource_manager() { return *m_resource_manager; }
 
+#ifdef NOTF_PYTHON
     /** Returns the Application's Python interpreter wrapper */
     /// Might be nullptr, if the Application was initialized with flag `enable_python` set to false.
     PythonInterpreter* get_python_interpreter() { return m_interpreter.get(); }
+#endif
 
     /** Returns the current Window. */
     std::shared_ptr<Window> get_current_window() { return m_current_window; }
@@ -184,11 +186,13 @@ private: // fields
     /** All Windows known the the Application. */
     std::vector<std::shared_ptr<Window>> m_windows;
 
-    /** The Python Interpreter embedded in the Application. */
-    std::unique_ptr<PythonInterpreter> m_interpreter;
-
     /** The Window with the current OpenGL context. */
     std::shared_ptr<Window> m_current_window;
+
+#ifdef NOTF_PYTHON
+    /** The Python Interpreter embedded in the Application. */
+    std::unique_ptr<PythonInterpreter> m_interpreter;
+#endif
 };
 
 } // namespace notf

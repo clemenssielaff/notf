@@ -43,6 +43,10 @@ CONFIG(debug, debug|release) {
 CONFIG(test) {
 #    message("Building in Test Mode.")
 
+    DEFINES += _DEBUG _TEST
+    QMAKE_CXXFLAGS *= -fprofile-arcs -ftest-coverage
+    QMAKE_LFLAGS *= -lgcov -coverage
+
     SOURCES += \
         test/test_main.cpp \
         test/test_string_utils.cpp \
@@ -50,19 +54,60 @@ CONFIG(test) {
         test/test_color.cpp \
         test/test_circle.cpp \
         test/test_aabr.cpp \
-        test/test_property.cpp
+        test/test_property.cpp \
+        test/test_vector2.cpp
 
     HEADERS += \
         test/catch.hpp
-
-    DEFINES += _DEBUG _TEST
-    QMAKE_CXXFLAGS *= -fprofile-arcs -ftest-coverage
-    QMAKE_LFLAGS *= -lgcov -coverage
 }
 else {
     SOURCES += \
         src/main.cpp \
         src/scratch.cpp \
+}
+
+# python
+CONFIG(python) {
+    message("Building with Python support enabled.")
+
+    DEFINES += NOTF_PYTHON
+
+    SOURCES += \
+        src/python/interpreter.cpp \
+        src/python/py_layoutroot.cpp \
+        src/python/py_painter.cpp \
+        src/python/py_stacklayout.cpp \
+        src/python/py_vector2.cpp \
+        src/python/py_widget.cpp \
+        src/python/py_window.cpp \
+        src/python/py_color.cpp \
+        src/python/py_aabr.cpp \
+        src/python/py_circle.cpp \
+        src/python/py_texture2.cpp \
+        src/python/py_size.cpp \
+        src/python/py_resourcemanager.cpp \
+        src/python/py_font.cpp \
+        src/python/py_padding.cpp \
+        src/python/py_claim.cpp \
+        src/python/py_overlayout.cpp \
+        src/python/py_notf.cpp \
+        src/python/py_controller.cpp \
+        src/python/type_patches.cpp \
+        src/python/py_fwd.cpp \
+        src/python/py_globals.cpp \
+        src/python/py_event.cpp \
+        src/python/py_signal.cpp \
+        src/python/py_dict_utils.cpp \
+        src/python/py_property.cpp
+
+    HEADERS += \
+        include/python/interpreter.hpp \
+        include/python/py_notf.hpp \
+        include/python/docstr.hpp \
+        include/python/type_patches.hpp \
+        include/python/py_fwd.hpp \
+        include/python/py_signal.hpp \
+        include/python/py_dict_utils.hpp
 }
 
 SOURCES += \
@@ -83,44 +128,18 @@ SOURCES += \
     src/core/layout_root.cpp \
     src/dynamic/layout/stack_layout.cpp \
     src/common/claim.cpp \
-    src/python/interpreter.cpp \
     src/graphics/raw_image.cpp \
     src/graphics/texture2.cpp \
-    src/python/py_layoutroot.cpp \
-    src/python/py_painter.cpp \
-    src/python/py_stacklayout.cpp \
-    src/python/py_vector2.cpp \
-    src/python/py_widget.cpp \
-    src/python/py_window.cpp \
-    src/python/py_color.cpp \
-    src/python/py_aabr.cpp \
     src/common/circle.cpp \
-    src/python/py_circle.cpp \
-    src/python/py_texture2.cpp \
     src/common/size2f.cpp \
-    src/python/py_size.cpp \
     src/common/time.cpp \
-    src/python/py_resourcemanager.cpp \
-    src/python/py_font.cpp \
     src/common/padding.cpp \
-    src/python/py_padding.cpp \
-    src/python/py_claim.cpp \
     src/dynamic/layout/overlayout.cpp \
-    src/python/py_overlayout.cpp \
-    src/python/py_notf.cpp \
     src/core/item.cpp \
     src/core/layout_item.cpp \
     src/core/controller.cpp \
-    src/python/py_controller.cpp \
-    src/python/type_patches.cpp \
-    src/python/py_fwd.cpp \
     src/common/input.cpp \
-    src/python/py_globals.cpp \
-    src/python/py_event.cpp \
-    src/python/py_signal.cpp \
-    src/python/py_dict_utils.cpp \
     src/core/properties.cpp \
-    src/python/py_property.cpp \
     src/core/property.cpp \
     src/common/line2.cpp \
     src/graphics/shader.cpp \
@@ -132,7 +151,9 @@ SOURCES += \
     src/graphics/stats.cpp \
     src/graphics/painter.cpp \
     src/common/transform3.cpp \
-    src/graphics/text/font_manager.cpp
+    src/graphics/text/font_manager.cpp \
+    src/common/random.cpp \
+    src/common/float_utils.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -171,9 +192,7 @@ HEADERS += \
     include/dynamic/layout/stack_layout.hpp \
     include/common/index.hpp \
     include/common/claim.hpp \
-    include/python/interpreter.hpp \
     include/graphics/raw_image.hpp \
-    thirdparty/stb_truetype/stb_truetype.h \
     include/common/memory_utils.hpp \
     include/common/float_utils.hpp \
     include/common/circle.hpp \
@@ -186,19 +205,13 @@ HEADERS += \
     include/common/set_utils.hpp \
     include/common/os_utils.hpp \
     include/dynamic/layout/overlayout.hpp \
-    include/python/py_notf.hpp \
     include/utils/make_smart_enabler.hpp \
     include/core/item.hpp \
     include/core/layout_item.hpp \
-    include/python/docstr.hpp \
     include/core/controller.hpp \
     include/utils/binding_accessors.hpp \
-    include/python/type_patches.hpp \
-    include/python/py_fwd.hpp \
     include/core/events/mouse_event.hpp \
     include/common/input.hpp \  
-    include/python/py_signal.hpp \
-    include/python/py_dict_utils.hpp \
     include/utils/macro_overload.hpp \
     include/core/properties.hpp \
     include/utils/apply_tuple.hpp \
@@ -218,8 +231,8 @@ HEADERS += \
     include/graphics/cell.hpp \
     include/common/transform3.hpp \
     include/graphics/text/font_manager.hpp \
-    thirdparty/stb_truetype/stb_rect_pack.h \
-    include/graphics/text/freetype.hpp
+    include/graphics/text/freetype.hpp \
+    include/utils/sfinae.hpp
 
 QMAKE_CXX = ccache g++
 

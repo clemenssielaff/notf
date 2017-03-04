@@ -5,9 +5,9 @@
 
 using namespace notf;
 
+#include "core/controller.hpp"
 #include "core/layout_root.hpp"
 #include "core/widget.hpp"
-#include "core/controller.hpp"
 #include "graphics/painter.hpp"
 
 class MyWidget : public Widget {
@@ -44,14 +44,13 @@ void app_main(Window& window)
     window.get_layout_root()->set_item(controller);
 }
 
-//int main(int argc, char* argv[])
-int notmain(int argc, char* argv[])
+int main(int argc, char* argv[])
+//int notmain(int argc, char* argv[])
 {
     ApplicationInfo app_info;
-    app_info.argc    = argc;
-    app_info.argv    = argv;
-    app_info.enable_python = false;
-    Application& app = Application::initialize(app_info);
+    app_info.argc          = argc;
+    app_info.argv          = argv;
+    Application& app       = Application::initialize(app_info);
 
     // window
     WindowInfo window_info;

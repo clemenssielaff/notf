@@ -1,3 +1,4 @@
+#if 0
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
@@ -232,3 +233,4 @@ int main(void)
     glfwTerminate();
     return 0;
 }
+#endif

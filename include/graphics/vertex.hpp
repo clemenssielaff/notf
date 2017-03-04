@@ -8,10 +8,10 @@ namespace notf {
 struct Vertex {
 
     /** Position of the Vertex. */
-    Vector2 pos;
+    Vector2f pos;
 
     /** UV-coordinates of the Vertex. */
-    Vector2 uv;
+    Vector2f uv;
 
 };
 

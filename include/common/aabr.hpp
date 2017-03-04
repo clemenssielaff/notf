@@ -17,10 +17,12 @@ namespace notf {
 struct Aabr {
 
     /** Top-left corner of the Aabr. */
-    Vector2 _min;
+    Vector2f _min;
 
     /** Bottom-right corner of the Aabr. */
-    Vector2 _max;
+    Vector2f _max;
+
+    /* Constructors ***************************************************************************************************/
 
     Aabr() = default; // so this data structure remains a POD
 
@@ -41,7 +43,7 @@ struct Aabr {
      * @param width     Width of the Aabr.
      * @param height    Height of the Aabr.
      */
-    Aabr(const Vector2& position, float width, float height)
+    Aabr(const Vector2f& position, float width, float height)
         : _min(position)
         , _max(position.x + width, position.y + height)
     {
@@ -51,7 +53,7 @@ struct Aabr {
      * @param position  Position of the Aabr's top-left corner.
      * @param size      Size of the Aabr.
      */
-    Aabr(const Vector2& position, const Size2f& size)
+    Aabr(const Vector2f& position, const Size2f& size)
         : _min(position)
         , _max(size.width, size.height)
     {
@@ -81,7 +83,7 @@ struct Aabr {
      * @param a    One corner point of the Aabr.
      * @param b    Opposite corner point of the Aabr.
      */
-    Aabr(const Vector2& a, const Vector2& b)
+    Aabr(const Vector2f& a, const Vector2f& b)
     {
         if (a.x < b.x) {
             if (a.y < b.y) {
@@ -114,8 +116,8 @@ struct Aabr {
     static Aabr huge()
     {
         Aabr result;
-        result._min = Vector2::fill(std::numeric_limits<float>::lowest());
-        result._max = Vector2::fill(std::numeric_limits<float>::max());
+        result._min = Vector2f::fill(std::numeric_limits<float>::lowest());
+        result._max = Vector2f::fill(std::numeric_limits<float>::max());
         return result;
     }
 
@@ -125,8 +127,8 @@ struct Aabr {
     static Aabr wrongest()
     {
         Aabr result;
-        result._min = Vector2::fill(std::numeric_limits<float>::max());
-        result._max = Vector2::fill(std::numeric_limits<float>::lowest());
+        result._min = Vector2f::fill(std::numeric_limits<float>::max());
+        result._max = Vector2f::fill(std::numeric_limits<float>::lowest());
         return result;
     }
 
@@ -139,7 +141,7 @@ struct Aabr {
     float y() const { return (_min.y + _max.y) / 2; }
 
     /** The center of the Aabr. */
-    Vector2 center() const { return {x(), y()}; }
+    Vector2f center() const { return {x(), y()}; }
 
     /** X-coordinate of the left edge of this Aabr. */
     float left() const { return _min.x; }
@@ -154,16 +156,16 @@ struct Aabr {
     float bottom() const { return _max.y; }
 
     /** The top left corner of this Aabr. */
-    Vector2 top_left() const { return _min; }
+    Vector2f top_left() const { return _min; }
 
     /** The top right corner of this Aabr. */
-    Vector2 top_right() const { return {_max.x, _min.y}; }
+    Vector2f top_right() const { return {_max.x, _min.y}; }
 
     /** The bottom left corner of this Aabr. */
-    Vector2 bottom_left() const { return {_min.x, _max.y}; }
+    Vector2f bottom_left() const { return {_min.x, _max.y}; }
 
     /** The bottom right corner of this Aabr. */
-    Vector2 bottom_right() const { return _max; }
+    Vector2f bottom_right() const { return _max; }
 
     /** The width of this Aabr */
     float width() const { return _max.x - _min.x; }
@@ -183,7 +185,7 @@ struct Aabr {
     bool is_null() const { return _min.is_zero() && _max.is_zero(); }
 
     /** Checks if this Aabr contains a given point. */
-    bool contains(const Vector2& point) const
+    bool contains(const Vector2f& point) const
     {
         return ((point.x > _min.x) && (point.x < _max.x) && (point.y > _min.y) && (point.y < _max.y));
     }
@@ -203,9 +205,9 @@ struct Aabr {
      * @param target    Target point.
      * @return          Closest point inside the Aabr to the target point.
      */
-    Vector2 closest_point_to(const Vector2& target) const
+    Vector2f closest_point_to(const Vector2f& target) const
     {
-        const Vector2 pos       = center();
+        const Vector2f pos       = center();
         const float half_width  = width() / 2;
         const float half_height = height() / 2;
         return {pos.x + clamp(target.x - pos.x, -half_width, half_width),
@@ -233,15 +235,19 @@ struct Aabr {
 
     /** Operators *****************************************************************************************************/
 
+    /** Tests whether two Aabrs are equal. */
     bool operator==(const Aabr& other) const { return (other._min == _min && other._max == _max); }
 
+    /** Tests whether two Aabrs are not equal. */
     bool operator!=(const Aabr& other) const { return (other._min != _min || other._max != _max); }
 
+    /** Multiplication with a scalar scales the Aabr in relation to local zero. */
     Aabr operator*(const float factor) { return {_min * factor, _max * factor}; }
 
-    Aabr operator+(const Vector2& offset) { return {_min + offset, _max + offset}; }
+    /** Adding a Vector2 to an Aabr moves the Aabr relative to its previous position. */
+    Aabr operator+(const Vector2f& offset) { return {_min + offset, _max + offset}; }
 
-    /** Modifications *************************************************************************************************/
+    /** Modifiers *****************************************************************************************************/
 
     /** Moves this Aabr vertically to the given x-coordinate. */
     Aabr& set_x(float x)
@@ -262,14 +268,14 @@ struct Aabr {
     }
 
     /** Moves this Aabr to a new center position. */
-    Aabr& set_center(const Vector2& pos)
+    Aabr& set_center(const Vector2f& pos)
     {
         set_x(pos.x);
         return set_y(pos.y);
     }
 
     /** Moves this Aabr by a relative amount. */
-    Aabr& move_by(const Vector2& pos)
+    Aabr& move_by(const Vector2f& pos)
     {
         _min += pos;
         _max += pos;
@@ -323,7 +329,7 @@ struct Aabr {
     /** Sets a new top-left corner of this Aabr.
     * See set_left and set_top for details.
     */
-    Aabr& set_top_left(const Vector2& point)
+    Aabr& set_top_left(const Vector2f& point)
     {
         set_left(point.x);
         return set_top(point.y);
@@ -332,7 +338,7 @@ struct Aabr {
     /** Sets a new top-right corner of this Aabr.
      * See set_right and set_top for details.
      */
-    Aabr& set_top_right(const Vector2& point)
+    Aabr& set_top_right(const Vector2f& point)
     {
         set_right(point.x);
         return set_top(point.y);
@@ -341,7 +347,7 @@ struct Aabr {
     /** Sets a new bottom-left corner of this Aabr.
      * See set_left and set_bottom for details.
      */
-    Aabr& set_bottom_left(const Vector2& point)
+    Aabr& set_bottom_left(const Vector2f& point)
     {
         set_left(point.x);
         return set_bottom(point.y);
@@ -350,7 +356,7 @@ struct Aabr {
     /** Sets a new bottom-right corner of this Aabr.
      * See set_right and set_bottom for details.
      */
-    Aabr& set_bottom_right(const Vector2& point)
+    Aabr& set_bottom_right(const Vector2f& point)
     {
         set_right(point.x);
         return set_bottom(point.y);
@@ -385,8 +391,8 @@ struct Aabr {
     /** Sets this Aabr to null. */
     Aabr& set_null()
     {
-        _min.set_null();
-        _max.set_null();
+        _min.set_zero();
+        _max.set_zero();
         return *this;
     }
 
@@ -436,8 +442,8 @@ struct Aabr {
             return Aabr::null();
         }
         return Aabr(
-            Vector2{_min.x > other._min.x ? _min.x : other._min.x, _min.y > other._min.y ? _min.y : other._min.y},
-            Vector2{_max.x < other._max.x ? _max.x : other._max.x, _max.y < other._max.y ? _max.y : other._max.y});
+            Vector2f{_min.x > other._min.x ? _min.x : other._min.x, _min.y > other._min.y ? _min.y : other._min.y},
+            Vector2f{_max.x < other._max.x ? _max.x : other._max.x, _max.y < other._max.y ? _max.y : other._max.y});
     }
     Aabr operator&(const Aabr& other) const { return intersection(other); }
 
@@ -461,8 +467,8 @@ struct Aabr {
     Aabr union_(const Aabr& other) const
     {
         return Aabr(
-            Vector2{_min.x < other._min.x ? _min.x : other._min.x, _min.y < other._min.y ? _min.y : other._min.y},
-            Vector2{_max.x > other._max.x ? _max.x : other._max.x, _max.y > other._max.y ? _max.y : other._max.y});
+            Vector2f{_min.x < other._min.x ? _min.x : other._min.x, _min.y < other._min.y ? _min.y : other._min.y},
+            Vector2f{_max.x > other._max.x ? _max.x : other._max.x, _max.y > other._max.y ? _max.y : other._max.y});
     }
     Aabr operator|(const Aabr& other) const { return union_(other); }
 

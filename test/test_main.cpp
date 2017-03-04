@@ -12,7 +12,6 @@ int main(int argc, char* argv[])
     ApplicationInfo info;
     info.argc = argc;
     info.argv = argv;
-    info.enable_python = false;
     Application::initialize(info);
 
     int result = Catch::Session().run(argc, argv);

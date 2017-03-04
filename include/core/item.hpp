@@ -8,8 +8,11 @@
 #include "common/signal.hpp"
 #include "common/size2f.hpp"
 #include "common/transform2.hpp"
-#include "python/py_fwd.hpp"
 #include "utils/binding_accessors.hpp"
+
+#ifdef NOTF_PYTHON
+#include "python/py_fwd.hpp"
+#endif
 
 /*
  * When it comes to the lifetime of items, the way that Python and NoTF work together poses an interesting challenge.
@@ -77,7 +80,7 @@ public: // methods
     /** Returns the LayoutItem associated with this Item.
      * Items that are already LayoutItems return themselves, Controller return their root LayoutItem or nullptr.
      */
-    virtual LayoutItem* get_layout_item() = 0;
+    virtual LayoutItem* get_layout_item()             = 0;
     virtual const LayoutItem* get_layout_item() const = 0;
 
     /** Checks if this Item currently has a parent Item or not. */
@@ -127,6 +130,7 @@ protected: // methods
      */
     void _update_parent_layout();
 
+#ifdef NOTF_PYTHON
     /** The Python object owned by this Item, is nullptr before the ownership is transferred from Python's __main__. */
     PyObject* _get_py_object() const { return m_py_object.get(); }
 
@@ -134,6 +138,7 @@ protected: // methods
 protected_except_for_bindings : // methods
     /** Stores the Python subclass object of this Item, if it was created through Python. */
     virtual void _set_pyobject(PyObject* object);
+#endif
 
     // clang-format on
 protected: // static methods
@@ -168,8 +173,10 @@ private: // fields
      */
     std::shared_ptr<RenderLayer> m_render_layer;
 
+#ifdef NOTF_PYTHON
     /** Python subclass object of this Item, if it was created through Python. */
     std::unique_ptr<PyObject, decltype(&py_decref)> m_py_object;
+#endif
 
 private: // static fields
     /** The next available Item ID, is ever-increasing. */

@@ -5,10 +5,10 @@
 
 namespace notf {
 
-Vector2 Line2::closest_point(const Vector2& point, bool inside) const
+Vector2f Line2::closest_point(const Vector2f& point, bool inside) const
 {
     const float length_sq = _delta.magnitude_sq();
-    if (length_sq == approx(0)) {
+    if (length_sq == approx(0.)) {
         return _start;
     }
     const float dot = (point - _start).dot(_delta);
@@ -19,7 +19,7 @@ Vector2 Line2::closest_point(const Vector2& point, bool inside) const
     return _start + (_delta * t);
 }
 
-bool Line2::intersect(Vector2& intersection, const Line2& other,
+bool Line2::intersect(Vector2f& intersection, const Line2& other,
                       const bool in_self, const bool in_other) const
 {
     // fail if either line segment is zero-length or if the two lines are parallel
@@ -84,8 +84,8 @@ bool Line2::intersect(Vector2& intersection, const Line2& other,
 
 std::ostream& operator<<(std::ostream& out, const Line2& line)
 {
-    const Vector2& start = line._start;
-    const Vector2 end    = line.end();
+    const Vector2f& start = line._start;
+    const Vector2f end    = line.end();
 
     return out << "Line2(["
                << start.x << ", " << start.y << "], ["

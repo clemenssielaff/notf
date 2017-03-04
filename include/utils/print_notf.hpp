@@ -25,7 +25,7 @@ void print_notf()
     std::cout << "      'MMMMMMMMMMMMMMMM;     0MMMMMMMMMMMMO;                           'xWMMMMMMMx        oMMMMMMMMMMMMMMMMMMMMMMMW.   \n";
     std::cout << "      'MMMMMMMMMMMMMMMX      dMMMMMMMMMMX,                               .OMMMMMMx        oMMMMMMMMMMMMMMMMMMMMMMMW.   \n";
     std::cout << "      'MMMMMMMMMMMMMMMX      dMMMMMMMMMO.                                  dMMMMMk        oWWMMMMMMMMMMMMMMMMMWWWWW.   \n";
-    std::cout << "      'MMMMMMMMMMMMMMMX      dMMMMMMMMK                ;lol;                xMMMMWc.   .     0MMMMMMMMMMMMMMMc         \n";
+    std::cout << "      'MMMMMMMMMMMMMMMX      dMMMMMMMMK                ;lAl;                xMMMMWc.   .     0MMMMMMMMMMMMMMMc         \n";
     std::cout << "      'MMMMMMMMMMMMMMMX      dMMMMMMMM,              .XMMMMMW;              .NMMMMMMWNWMl    OMMMMMMMMMMMMMMM:         \n";
     std::cout << "      'MMMMMMMMMMMMMMMX      dMMMMMMMK               kMMMMMMMX               dMMMMMMMMMMl    OMMMMMMMMMMMMMMM:         \n";
     std::cout << "    cokMMMMMMMMMMMMMMMWoo:   dMMMMMMMk               XMMMMMMMM'              cMMMMMMMMMMl    OMMMMMMMMMMMMMMM:         \n";

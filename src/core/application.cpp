@@ -33,7 +33,7 @@ KeyModifiers g_key_modifiers;
 ButtonStateSet g_button_states;
 
 /** Last recorded position of the mouse (relative to the last focused Window). */
-Vector2 g_mouse_pos = Vector2::zero();
+Vector2f g_mouse_pos = Vector2f::zero();
 
 } // namespace anonymous
 
@@ -44,8 +44,10 @@ Application::Application(const ApplicationInfo info)
     , m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
     , m_resource_manager(std::make_unique<ResourceManager>())
     , m_windows()
-    , m_interpreter(nullptr)
     , m_current_window()
+#ifdef NOTF_PYTHON
+    , m_interpreter(nullptr)
+#endif
 {
     // install the log handler first, to catch errors right away
     install_log_message_handler(std::bind(&LogHandler::push_log, m_log_handler.get(), std::placeholders::_1));
@@ -81,13 +83,13 @@ Application::Application(const ApplicationInfo info)
     Time::set_frequency(glfwGetTimerFrequency());
     glfwSetTime(0);
 
+#ifdef NOTF_PYTHON
     // initialize Python
-    if (info.enable_python) {
-        m_interpreter = std::make_unique<PythonInterpreter>(m_info.argv, m_info.app_directory);
-    }
+    m_interpreter = std::make_unique<PythonInterpreter>(m_info.argv, m_info.app_directory);
+#endif
 
     // vanity plate
-    print_notf();
+//    print_notf();
 
     log_trace << "Started application";
 }
@@ -306,8 +308,10 @@ void Application::_shutdown()
     // stop the event loop
     glfwTerminate();
 
+#ifdef NOTF_PYTHON
     // kill the interpreter
     m_interpreter.reset();
+#endif
 
     // stop the logger
     log_info << "Application shutdown";

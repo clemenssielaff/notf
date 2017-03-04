@@ -19,7 +19,7 @@ void produce_circle(pybind11::module& module)
     // constructors
     PyCircle.def(py::init<>());
     PyCircle.def(py::init<float>());
-    PyCircle.def(py::init<const Vector2&, float>());
+    PyCircle.def(py::init<const Vector2f&, float>());
 
     // static constructors
     PyCircle.def_static("null", &Circle::null, "The null Circle.");

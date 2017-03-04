@@ -31,7 +31,7 @@ void Painter::test()
 
     drawSlider(Aabr{10, 170, 150, 30}, 0.4f);
 
-    drawCaps(Vector2{10, 200}, 30);
+    drawCaps(Vector2f{10, 200}, 30);
 
     drawEyes(Aabr{600, 20, 80, 60}, m_context.get_mouse_pos(), time);
 
@@ -49,7 +49,7 @@ void Painter::drawSlider(const Aabr& rect, float pos)
     m_cell.push_state();
 
     // Slot
-    Paint bg = Cell::create_box_gradient(Vector2{rect.left(), rect.y() - 2 + 1},
+    Paint bg = Cell::create_box_gradient(Vector2f{rect.left(), rect.y() - 2 + 1},
                                          Size2f{rect.width(), 4}, 2, 2, Color(0, 0, 0, 32), Color(0, 0, 0, 128));
     m_cell.begin_path();
     m_cell.add_rounded_rect(rect.left(), rect.y() - 2, rect.width(), 4, 2);
@@ -57,7 +57,7 @@ void Painter::drawSlider(const Aabr& rect, float pos)
     m_cell.fill(m_context);
 
     // Knob Shadow
-    bg = Cell::create_radial_gradient(Vector2{rect.left() + (int)(pos * rect.width()), rect.y() + 1},
+    bg = Cell::create_radial_gradient(Vector2f{rect.left() + (int)(pos * rect.width()), rect.y() + 1},
                                       kr - 3, kr + 3, Color(0, 0, 0, 64), Color(0, 0, 0, 0));
     m_cell.begin_path();
     m_cell.add_rect(rect.left() + (int)(pos * rect.width()) - kr - 5, rect.y() - kr - 5, kr * 2 + 5 + 5, kr * 2 + 5 + 5 + 3);
@@ -67,8 +67,8 @@ void Painter::drawSlider(const Aabr& rect, float pos)
     m_cell.fill(m_context);
 
     // Knob
-    Paint knob = Cell::create_linear_gradient(Vector2{rect.left(), rect.y() - kr},
-                                              Vector2{rect.left(), rect.y() + kr},
+    Paint knob = Cell::create_linear_gradient(Vector2f{rect.left(), rect.y() - kr},
+                                              Vector2f{rect.left(), rect.y() + kr},
                                               Color(255, 255, 255, 16), Color(0, 0, 0, 16));
     m_cell.begin_path();
     m_cell.add_circle(rect.left() + (int)(pos * rect.width()), rect.y(), kr - 1);
@@ -104,7 +104,7 @@ void Painter::drawButton(const Aabr& rect)
 
 void Painter::drawCheckBox(const Aabr& rect)
 {
-    Paint gradient = Cell::create_box_gradient(Vector2{rect.left() + 1, rect.y() - 8},
+    Paint gradient = Cell::create_box_gradient(Vector2f{rect.left() + 1, rect.y() - 8},
                                                Size2f{18, 18}, 3, 3, Color(0, 0, 0, 32), Color(0, 0, 0, 92));
     m_cell.begin_path();
     m_cell.add_rounded_rect(rect.left() + 1, rect.y() - 9, 18, 18, 3);
@@ -131,8 +131,8 @@ void Painter::drawColorwheel(const Aabr& rect, float t)
         m_cell.arc(rect.x(), rect.y(), outer_radius, a1, a0, Cell::Winding::COUNTERCLOCKWISE);
         m_cell.close_path();
 
-        const Vector2 start_pos{rect.x() + cosf(a0) * (inner_radius + outer_radius) * 0.5f, rect.y() + sinf(a0) * (inner_radius + outer_radius) * 0.5f};
-        const Vector2 end_pos{rect.x() + cosf(a1) * (inner_radius + outer_radius) * 0.5f, rect.y() + sinf(a1) * (inner_radius + outer_radius) * 0.5f};
+        const Vector2f start_pos{rect.x() + cosf(a0) * (inner_radius + outer_radius) * 0.5f, rect.y() + sinf(a0) * (inner_radius + outer_radius) * 0.5f};
+        const Vector2f end_pos{rect.x() + cosf(a1) * (inner_radius + outer_radius) * 0.5f, rect.y() + sinf(a1) * (inner_radius + outer_radius) * 0.5f};
         const Color start_color = Color::from_hsl(360.f * a0 / (PI * 2), 1.0f, 0.55f, 1);
         const Color end_color   = Color::from_hsl(360.f * a1 / (PI * 2), 1.0f, 0.55f, 1);
         m_cell.set_fill_paint(Cell::create_linear_gradient(start_pos, end_pos, start_color, end_color));
@@ -163,7 +163,7 @@ void Painter::drawColorwheel(const Aabr& rect, float t)
     m_cell.add_rect(inner_radius - 2 - 10, -4 - 10, outer_radius - inner_radius + 4 + 20, 8 + 20);
     m_cell.add_rect(inner_radius - 2, -4, outer_radius - inner_radius + 4, 8);
     m_cell.set_winding(Cell::Winding::HOLE);
-    const Vector2 center{inner_radius - 3, -5};
+    const Vector2f center{inner_radius - 3, -5};
     const Size2f extend{outer_radius - inner_radius + 6, 10};
     m_cell.set_fill_paint(Cell::create_box_gradient(center, extend, 2, 4, Color(0, 0, 0, .5), Color(0, 0, 0, 0)));
     m_cell.fill(m_context);
@@ -182,15 +182,15 @@ void Painter::drawColorwheel(const Aabr& rect, float t)
         m_cell.line_to(bx, by);
         m_cell.close_path();
 
-        Vector2 start_pos{r, 0};
-        Vector2 end_pos{ax, ay};
+        Vector2f start_pos{r, 0};
+        Vector2f end_pos{ax, ay};
         Color start_color = Color::from_hsl(fmod(360.f * (hue + 1), 360.f), 1.0f, 0.5f, 1);
         Color end_color   = Color(1, 1, 1, 1.);
         m_cell.set_fill_paint(Cell::create_linear_gradient(start_pos, end_pos, start_color, end_color));
         m_cell.fill(m_context);
 
-        start_pos   = Vector2{(r + ax) * 0.5f, (0 + ay) * 0.5f};
-        end_pos     = Vector2{bx, by};
+        start_pos   = Vector2f{(r + ax) * 0.5f, (0 + ay) * 0.5f};
+        end_pos     = Vector2f{bx, by};
         start_color = Color(0, 0, 0, 0.);
         end_color   = Color(0, 0, 0, 1.);
         m_cell.set_fill_paint(Cell::create_linear_gradient(start_pos, end_pos, start_color, end_color));
@@ -212,7 +212,7 @@ void Painter::drawColorwheel(const Aabr& rect, float t)
     m_cell.add_rect(ax - 20, ay - 20, 40, 40);
     m_cell.add_circle(ax, ay, 7);
     m_cell.set_winding(Cell::Winding::HOLE);
-    m_cell.set_fill_paint(Cell::create_radial_gradient(Vector2{ax, ay}, 7, 9, Color(0, 0, 0, 64), Color(0, 0, 0, 0)));
+    m_cell.set_fill_paint(Cell::create_radial_gradient(Vector2f{ax, ay}, 7, 9, Color(0, 0, 0, 64), Color(0, 0, 0, 0)));
     m_cell.fill(m_context);
 
     m_cell.pop_state();
@@ -220,7 +220,7 @@ void Painter::drawColorwheel(const Aabr& rect, float t)
     m_cell.pop_state();
 }
 
-void Painter::drawEyes(const Aabr& rect, const Vector2& target, float t)
+void Painter::drawEyes(const Aabr& rect, const Vector2f& target, float t)
 {
     float ex = rect.width() * 0.23f;
     float ey = rect.height() * 0.5f;
@@ -232,8 +232,8 @@ void Painter::drawEyes(const Aabr& rect, const Vector2& target, float t)
     float br    = (ex < ey ? ex : ey) * 0.5f;
     float blink = 1 - pow(sinf(t * 0.5f), 200) * 0.8f;
 
-    Paint bg = Cell::create_linear_gradient(Vector2{rect.left(), rect.top() + rect.height() * 0.5f},
-                                            Vector2{rect.left() + rect.width() * 0.1f, rect.top() + rect.height()},
+    Paint bg = Cell::create_linear_gradient(Vector2f{rect.left(), rect.top() + rect.height() * 0.5f},
+                                            Vector2f{rect.left() + rect.width() * 0.1f, rect.top() + rect.height()},
                                             Color(0, 0, 0, 32), Color(0, 0, 0, 16));
     m_cell.begin_path();
     m_cell.add_ellipse(lx + 3.0f, ly + 16.0f, ex, ey);
@@ -277,13 +277,13 @@ void Painter::drawEyes(const Aabr& rect, const Vector2& target, float t)
     m_cell.set_fill_color(Color(32, 32, 32, 255));
     m_cell.fill(m_context);
 
-    Paint gloss = Cell::create_radial_gradient(Vector2{lx - ex * 0.25f, ly - ey * 0.5f}, ex * 0.1f, ex * 0.75f, Color(255, 255, 255, 128), Color(255, 255, 255, 0));
+    Paint gloss = Cell::create_radial_gradient(Vector2f{lx - ex * 0.25f, ly - ey * 0.5f}, ex * 0.1f, ex * 0.75f, Color(255, 255, 255, 128), Color(255, 255, 255, 0));
     m_cell.begin_path();
     m_cell.add_ellipse(lx, ly, ex, ey);
     m_cell.set_fill_paint(gloss);
     m_cell.fill(m_context);
 
-    gloss = Cell::create_radial_gradient(Vector2{rx - ex * 0.25f, ry - ey * 0.5f}, ex * 0.1f, ex * 0.75f, Color(255, 255, 255, 128), Color(255, 255, 255, 0));
+    gloss = Cell::create_radial_gradient(Vector2f{rx - ex * 0.25f, ry - ey * 0.5f}, ex * 0.1f, ex * 0.75f, Color(255, 255, 255, 128), Color(255, 255, 255, 0));
     m_cell.begin_path();
     m_cell.add_ellipse(rx, ry, ex, ey);
     m_cell.set_fill_paint(gloss);
@@ -339,7 +339,7 @@ void Painter::drawGraph(const Aabr& rect, float t)
 
     // Graph sample pos
     for (i = 0; i < 6; i++) {
-        bg = Cell::create_radial_gradient(Vector2{sx[i], sy[i] + 2}, 3.0f, 8.0f, Color(0, 0, 0, 32), Color(0, 0, 0, 0));
+        bg = Cell::create_radial_gradient(Vector2f{sx[i], sy[i] + 2}, 3.0f, 8.0f, Color(0, 0, 0, 32), Color(0, 0, 0, 0));
         m_cell.begin_path();
         m_cell.add_rect(sx[i] - 10, sy[i] - 10 + 2, 20, 20);
         m_cell.set_fill_paint(bg);
@@ -360,7 +360,7 @@ void Painter::drawGraph(const Aabr& rect, float t)
     m_cell.set_stroke_width(1.0f);
 }
 
-void Painter::drawSpinner(const Vector2& center, const float radius, float t)
+void Painter::drawSpinner(const Vector2f& center, const float radius, float t)
 {
     float a0 = 0.0f + t * 6;
     float a1 = PI + t * 6;
@@ -385,7 +385,7 @@ void Painter::drawSpinner(const Vector2& center, const float radius, float t)
     m_cell.pop_state();
 }
 
-void Painter::drawCaps(const Vector2& pos, const float width)
+void Painter::drawCaps(const Vector2f& pos, const float width)
 {
     Cell::LineCap caps[3] = {Cell::LineCap::BUTT, Cell::LineCap::ROUND, Cell::LineCap::SQUARE};
     float lineWidth       = 8.0f;

@@ -20,7 +20,7 @@ struct Transform2 {
     //  FIELDS  ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @brief Matrix values.
-    mutable std::array<Vector2, 3> rows;
+    mutable std::array<Vector2f, 3> rows;
 
     //  HOUSEHOLD  ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -41,7 +41,7 @@ struct Transform2 {
     }
 
     /** A translation matrix. */
-    static Transform2 translation(Vector2 translation)
+    static Transform2 translation(Vector2f translation)
     {
         return Transform2{{{{1, 0},
                             {0, 1},
@@ -70,7 +70,7 @@ struct Transform2 {
 
     /// @brief A non-uniform scale matrix.
     /// @param vector   Non-uniform scale vector.
-    static Transform2 scale(const Vector2& vec)
+    static Transform2 scale(const Vector2f& vec)
     {
         return Transform2{{{{vec.x, 0},
                             {0, vec.y},
@@ -79,7 +79,7 @@ struct Transform2 {
 
     /// @brief A non-uniform skew matrix.
     /// @param vector   Non-uniform skew vector.
-    static Transform2 skew(const Vector2& vec)
+    static Transform2 skew(const Vector2f& vec)
     {
         return Transform2{{{{1, tan(vec.y)},
                             {tan(vec.x), 1},
@@ -89,7 +89,7 @@ struct Transform2 {
     //  INSPECTION  ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// @brief Returns the translation part of this Transform.
-    Vector2 get_translation() const { return rows[2]; }
+    Vector2f get_translation() const { return rows[2]; }
 
     /** Scale factor along the x-axis. */
     float get_scale_x() const { return sqrt(rows[0][0] * rows[0][0] + rows[1][0] * rows[1][0]); }
@@ -99,7 +99,7 @@ struct Transform2 {
 
     /** Direct read-only access to the Matrix' memory. */
     template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
-    const Vector2& operator[](T&& row) const
+    const Vector2f& operator[](T&& row) const
     {
         assert(0 <= row && row <= 2);
         return rows[row];
@@ -107,7 +107,7 @@ struct Transform2 {
 
     /** Direct read-write access to the Matrix' memory. */
     template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
-    Vector2& operator[](T&& row)
+    Vector2f& operator[](T&& row)
     {
         assert(0 <= row && row <= 2);
         return rows[row];
@@ -145,7 +145,7 @@ struct Transform2 {
     Transform2 inverse() const;
 
     /** Returns a transformed Vector2. */
-    Vector2 transform(const Vector2& vector) const
+    Vector2f transform(const Vector2f& vector) const
     {
         return {
             vector.x * rows[0][0] + vector.y * rows[1][0] + rows[2][0],

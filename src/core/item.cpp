@@ -56,7 +56,9 @@ Item::Item()
     : m_id(_get_next_id())
     , m_parent()
     , m_render_layer() // empty by default
+#ifdef NOTF_PYTHON
     , m_py_object(nullptr, py_decref)
+#endif
 {
     log_trace << "Creating Item #" << m_id;
 }
@@ -91,12 +93,14 @@ void Item::_update_parent_layout()
     }
 }
 
+#ifdef NOTF_PYTHON
 void Item::_set_pyobject(PyObject* object)
 {
     assert(!m_py_object); // you should only have to do this once
     py_incref(object);
     m_py_object.reset(std::move(object));
 }
+#endif
 
 bool Item::_set_item_size(LayoutItem* layout_item, const Size2f& size)
 {

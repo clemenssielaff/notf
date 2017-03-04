@@ -3,21 +3,46 @@
 #include <iostream>
 #include <type_traits>
 
-namespace notf {
+using namespace notf;
 
-std::ostream& operator<<(std::ostream& out, const Vector2& vec)
+/* Vector2f ***********************************************************************************************************/
+
+std::ostream& operator<<(std::ostream& out, const Vector2f& vec)
 {
-    return out << "Vector2(" << vec.x << ", " << vec.y << ")";
+    return out << "Vector2f(" << vec.x << ", " << vec.y << ")";
 }
 
-/**
- * Compile-time sanity check.
- */
-static_assert(sizeof(Vector2) == sizeof(float) * 2,
-              "This compiler seems to inject padding bits into the notf::Vector2 memory layout. "
+static_assert(sizeof(Vector2f) == sizeof(float) * 2,
+              "This compiler seems to inject padding bits into the notf::Vector2f memory layout. "
               "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
-static_assert(std::is_pod<Vector2>::value,
-              "This compiler does not recognize notf::Vector2 as a POD.");
+static_assert(std::is_pod<Vector2f>::value,
+              "This compiler does not recognize notf::Vector2f as a POD.");
 
-} // namespace notf
+/* Vector2d ***********************************************************************************************************/
+
+std::ostream& operator<<(std::ostream& out, const Vector2d& vec)
+{
+    return out << "Vector2d(" << vec.x << ", " << vec.y << ")";
+}
+
+static_assert(sizeof(Vector2d) == sizeof(double) * 2,
+              "This compiler seems to inject padding bits into the notf::Vector2d memory layout. "
+              "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
+
+static_assert(std::is_pod<Vector2d>::value,
+              "This compiler does not recognize notf::Vector2d as a POD.");
+
+/* Vector2i ***********************************************************************************************************/
+
+std::ostream& operator<<(std::ostream& out, const Vector2i& vec)
+{
+    return out << "Vector2i(" << vec.x << ", " << vec.y << ")";
+}
+
+static_assert(sizeof(Vector2i) == sizeof(int) * 2,
+              "This compiler seems to inject padding bits into the notf::Vector2i memory layout. "
+              "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
+
+static_assert(std::is_pod<Vector2i>::value,
+              "This compiler does not recognize notf::Vector2i as a POD.");

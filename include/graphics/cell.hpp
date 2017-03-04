@@ -133,13 +133,13 @@ public: // enum
         };
 
         /** Position of the Point. */
-        Vector2 pos;
+        Vector2f pos;
 
         /** Direction to the next Point. */
-        Vector2 forward;
+        Vector2f forward;
 
         /** Something with miter...? */
-        Vector2 dm; // TODO: what is Point::dm?
+        Vector2f dm; // TODO: what is Point::dm?
 
         /** Distance to the next point forward. */
         float length;
@@ -214,9 +214,9 @@ public: // methods
 
     void set_blend_mode(const BlendMode mode) { _get_current_state().blend_mode = std::move(mode); }
 
-    void translate(const float x, const float y) { translate(Vector2{x, y}); }
+    void translate(const float x, const float y) { translate(Vector2f{x, y}); }
 
-    void translate(const Vector2 delta) { _get_current_state().xform *= Transform2::translation(std::move(delta)); }
+    void translate(const Vector2f delta) { _get_current_state().xform *= Transform2::translation(std::move(delta)); }
 
     /** Rotates the current state the given amount of radians in a counter-clockwise direction. */
     void rotate(const float angle) { _get_current_state().xform = Transform2::rotation(angle) * _get_current_state().xform; }
@@ -237,15 +237,15 @@ public: // methods
 
     void begin_path();
 
-    void move_to(const Vector2 pos) { move_to(pos.x, pos.y); }
+    void move_to(const Vector2f pos) { move_to(pos.x, pos.y); }
 
     void move_to(const float x, const float y);
 
-    void line_to(const Vector2 pos) { line_to(pos.x, pos.y); }
+    void line_to(const Vector2f pos) { line_to(pos.x, pos.y); }
 
     void line_to(const float x, const float y);
 
-    void bezier_to(const Vector2 ctrl1, const Vector2 ctrl2, const Vector2 end)
+    void bezier_to(const Vector2f ctrl1, const Vector2f ctrl2, const Vector2f end)
     {
         bezier_to(ctrl1.x, ctrl1.y, ctrl2.x, ctrl2.y, end.x, end.y);
     }
@@ -256,7 +256,7 @@ public: // methods
 
     void add_rect(const float x, const float y, const float w, const float h);
 
-    void add_ellipse(const Vector2 center, const Size2f extend)
+    void add_ellipse(const Vector2f center, const Size2f extend)
     {
         add_ellipse(center.x, center.y, extend.width, extend.height);
     }
@@ -268,12 +268,12 @@ public: // methods
         add_ellipse(cx, cy, radius, radius);
     }
 
-    void add_circle(const Vector2 center, const float radius)
+    void add_circle(const Vector2f center, const float radius)
     {
         add_ellipse(center.x, center.y, radius, radius);
     }
 
-    void quad_to(const Vector2 ctrl, const Vector2 end)
+    void quad_to(const Vector2f ctrl, const Vector2f end)
     {
         quad_to(ctrl.x, ctrl.y, end.x, end.y);
     }
@@ -293,7 +293,7 @@ public: // methods
     void add_rounded_rect(const float x, const float y, const float w, const float h,
                           const float rtl, const float rtr, const float rbr, const float rbl);
 
-    void arc_to(const Vector2 tangent, const Vector2 end, const float radius);
+    void arc_to(const Vector2f tangent, const Vector2f end, const float radius);
 
     /** Create an arc between two tangents on the canvas.
      * @param x1        X-coordinate of the first tangent.
@@ -328,18 +328,18 @@ public: // getter
     float get_fringe_width() const { return m_fringe_width; }
 
 public: // static methods
-    static Paint create_linear_gradient(const Vector2& start_pos, const Vector2& end_pos, // TODO: these should be member of Paint
+    static Paint create_linear_gradient(const Vector2f& start_pos, const Vector2f& end_pos, // TODO: these should be member of Paint
                                         const Color start_color, const Color end_color);
 
-    static Paint create_radial_gradient(const Vector2& center,
+    static Paint create_radial_gradient(const Vector2f& center,
                                         const float inner_radius, const float outer_radius,
                                         const Color inner_color, const Color outer_color);
 
-    static Paint create_box_gradient(const Vector2& center, const Size2f& extend,
+    static Paint create_box_gradient(const Vector2f& center, const Size2f& extend,
                                      const float radius, const float feather,
                                      const Color inner_color, const Color outer_color);
 
-    static Paint create_texture_pattern(const Vector2& top_left, const Size2f& extend,
+    static Paint create_texture_pattern(const Vector2f& top_left, const Size2f& extend,
                                         std::shared_ptr<Texture2> texture,
                                         const float angle, const float alpha);
 
@@ -361,18 +361,18 @@ private: // methods
     void _expand_stroke(const float stroke_width);
 
     /** Creates a new Point, but only if the position significantly differs from the last one. */
-    void _add_point(const Vector2 position, const Point::Flags flags);
+    void _add_point(const Vector2f position, const Point::Flags flags);
 
     void _tesselate_bezier(const float x1, const float y1, const float x2, const float y2,
                            const float x3, const float y3, const float x4, const float y4);
 
-    void _butt_cap_start(const Point& point, const Vector2& direction, const float stroke_width, const float d);
+    void _butt_cap_start(const Point& point, const Vector2f& direction, const float stroke_width, const float d);
 
-    void _butt_cap_end(const Point& point, const Vector2& delta, const float stroke_width, const float d);
+    void _butt_cap_end(const Point& point, const Vector2f& delta, const float stroke_width, const float d);
 
-    void _round_cap_start(const Point& point, const Vector2& delta, const float stroke_width, const size_t cap_count);
+    void _round_cap_start(const Point& point, const Vector2f& delta, const float stroke_width, const size_t cap_count);
 
-    void _round_cap_end(const Point& point, const Vector2& delta, const float stroke_width, const size_t cap_count);
+    void _round_cap_end(const Point& point, const Vector2f& delta, const float stroke_width, const size_t cap_count);
 
     void _bevel_join(const Point& previous_point, const Point& current_point, const float left_w, const float right_w,
                      const float left_u, const float right_u);
@@ -389,7 +389,7 @@ private: // fields
     size_t m_current_command;
 
     /** Current position of the 'stylus', as the last Command left it. */
-    Vector2 m_stylus;
+    Vector2f m_stylus;
 
     std::vector<Point> m_points;
 

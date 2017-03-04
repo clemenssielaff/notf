@@ -169,13 +169,13 @@ void RenderContext::add_fill_call(const Paint& paint, const Cell& cell)
     call.triangleOffset = static_cast<GLint>(offset);
     call.triangleCount  = 6;
     const Aabr& bounds  = cell.get_bounds();
-    m_vertices.emplace_back(Vertex{Vector2{bounds.left(), bounds.bottom()}, Vector2{.5f, 1.f}});
-    m_vertices.emplace_back(Vertex{Vector2{bounds.right(), bounds.bottom()}, Vector2{.5f, 1.f}});
-    m_vertices.emplace_back(Vertex{Vector2{bounds.right(), bounds.top()}, Vector2{.5f, 1.f}});
+    m_vertices.emplace_back(Vertex{Vector2f{bounds.left(), bounds.bottom()}, Vector2f{.5f, 1.f}});
+    m_vertices.emplace_back(Vertex{Vector2f{bounds.right(), bounds.bottom()}, Vector2f{.5f, 1.f}});
+    m_vertices.emplace_back(Vertex{Vector2f{bounds.right(), bounds.top()}, Vector2f{.5f, 1.f}});
 
-    m_vertices.emplace_back(Vertex{Vector2{bounds.left(), bounds.bottom()}, Vector2{.5f, 1.f}});
-    m_vertices.emplace_back(Vertex{Vector2{bounds.right(), bounds.top()}, Vector2{.5f, 1.f}});
-    m_vertices.emplace_back(Vertex{Vector2{bounds.left(), bounds.top()}, Vector2{.5f, 1.f}});
+    m_vertices.emplace_back(Vertex{Vector2f{bounds.left(), bounds.bottom()}, Vector2f{.5f, 1.f}});
+    m_vertices.emplace_back(Vertex{Vector2f{bounds.right(), bounds.top()}, Vector2f{.5f, 1.f}});
+    m_vertices.emplace_back(Vertex{Vector2f{bounds.left(), bounds.top()}, Vector2f{.5f, 1.f}});
 
     call.uniformOffset = static_cast<GLintptr>(m_frag_uniforms.size()) * fragmentSize();
     if (call.type == CanvasCall::Type::FILL) {

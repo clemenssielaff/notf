@@ -91,7 +91,7 @@ void Window::_update()
 
     double mouse_x, mouse_y;
     glfwGetCursorPos(m_glfw_window.get(), &mouse_x, &mouse_y);
-    m_render_context->set_mouse_pos(Vector2(static_cast<float>(mouse_x), static_cast<float>(mouse_y)));
+    m_render_context->set_mouse_pos(Vector2f(static_cast<float>(mouse_x), static_cast<float>(mouse_y)));
 
     // prepare the viewport
     glViewport(0, 0, buffer_size.width, buffer_size.height);

@@ -20,8 +20,8 @@ void produce_aabr(pybind11::module& module)
     PyAabr.def(py::init<>());
     PyAabr.def(py::init<float, float>());
     PyAabr.def(py::init<float, float, float, float>());
-    PyAabr.def(py::init<const Vector2&, float, float>());
-    PyAabr.def(py::init<const Vector2&, const Vector2&>());
+    PyAabr.def(py::init<const Vector2f&, float, float>());
+    PyAabr.def(py::init<const Vector2f&, const Vector2f&>());
 
     // static constructors
     PyAabr.def_static("null", &Aabr::null, "The null Aabr.");

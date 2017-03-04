@@ -10,10 +10,10 @@ namespace notf {
 struct Line2 {
 
     /** Start point of the Line2. */
-    Vector2 _start;
+    Vector2f _start;
 
     /** Vector from the start of the Line2 to its end point. */
-    Vector2 _delta;
+    Vector2f _delta;
 
     /* Do not implement the default methods, so this data structure remains a POD. */
     Line2()                   = default;            // Default Constructor.
@@ -22,20 +22,20 @@ struct Line2 {
     Line2& operator=(const Line2& other) = default; // Assignment Operator.
 
     /** Creates a Line from a start- and an end-point. */
-    static Line2 from_points(const Vector2 start, const Vector2& end)
+    static Line2 from_points(const Vector2f start, const Vector2f& end)
     {
-        const Vector2 delta = end - start;
+        const Vector2f delta = end - start;
         return {std::move(start), std::move(delta)};
     }
 
     /** Start point of the Line2. */
-    const Vector2& start() const { return _start; }
+    const Vector2f& start() const { return _start; }
 
     /** Difference between the end and start point of the Line2. */
-    const Vector2& delta() const { return _delta; }
+    const Vector2f& delta() const { return _delta; }
 
     /** End point of the Line2. */
-    Vector2 end() const { return _start + _delta; }
+    Vector2f end() const { return _start + _delta; }
 
     /** The length of this Line2. */
     float length() const { return _delta.magnitude(); }
@@ -52,9 +52,9 @@ struct Line2 {
     /** Sets a new start point for this Line2.
      * Updates the complete Line2 - if you have a choice, favor setting the end point rather than the start point.
      */
-    Line2& set_start(const Vector2 start)
+    Line2& set_start(const Vector2f start)
     {
-        const Vector2 _end = end();
+        const Vector2f _end = end();
 
         _start = std::move(start);
         _delta = _end - _start;
@@ -62,7 +62,7 @@ struct Line2 {
     }
 
     /** Sets a new end point for this Line2. */
-    Line2& set_end(const Vector2& end)
+    Line2& set_end(const Vector2f& end)
     {
         _delta = end - _start;
         return *this;
@@ -108,7 +108,7 @@ struct Line2 {
      * @param point     Position to find the closest point on this Line2 to.
      * @param inside    If true, the closest point has to lie within this Line2's segment (between start and end).
      */
-    Vector2 closest_point(const Vector2& point, bool inside = true) const;
+    Vector2f closest_point(const Vector2f& point, bool inside = true) const;
 
     /** Calculates the intersection of this line with another ... IF they intersect.
      * @param intersection  Out argument, is filled wil the intersection point if an intersection was found.
@@ -118,7 +118,7 @@ struct Line2 {
      * @return  False if the lines do not intersect.
      *          If true, the intersection point ist written into the `intersection` argument.
      */
-    bool intersect(Vector2& intersection, const Line2& other, const bool in_self = true, const bool in_other = true) const;
+    bool intersect(Vector2f& intersection, const Line2& other, const bool in_self = true, const bool in_other = true) const;
 };
 
 /* FREE FUNCTIONS *****************************************************************************************************/

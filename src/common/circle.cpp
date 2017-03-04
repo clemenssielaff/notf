@@ -13,7 +13,7 @@ std::ostream& operator<<(std::ostream& out, const Circle& circle)
 /*
  * Compile-time sanity check.
  */
-static_assert(sizeof(Circle) == sizeof(Vector2) + sizeof(float),
+static_assert(sizeof(Circle) == sizeof(Vector2f) + sizeof(float),
               "This compiler seems to inject padding bits into the notf::Aabr memory layout. "
               "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
 

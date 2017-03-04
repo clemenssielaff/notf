@@ -14,21 +14,21 @@ namespace notf {
 struct Circle {
 
     /** Center position of the Circle. */
-    Vector2 center;
+    Vector2f center;
 
     /** Radius of the Circle. */
     float radius;
 
     Circle() = default; // so this data structure remains a POD
 
-    Circle(const Vector2 center, const float radius)
+    Circle(const Vector2f center, const float radius)
         : center(std::move(center))
         , radius(radius)
     {
     }
 
     explicit Circle(const float radius)
-        : center(Vector2::zero())
+        : center(Vector2f::zero())
         , radius(radius)
     {
     }
@@ -51,7 +51,7 @@ struct Circle {
     float area() const { return PI * radius * radius; }
 
     /** Checks, if the given point is contained within (or on the border of) this Circle. */
-    bool contains(const Vector2& point) const
+    bool contains(const Vector2f& point) const
     {
         return (point - center).magnitude_sq() <= (radius * radius);
     }
@@ -64,9 +64,9 @@ struct Circle {
     }
 
     /** Returns the closest point inside this Circle to the given target point. */
-    Vector2 closest_point_to(const Vector2& target) const
+    Vector2f closest_point_to(const Vector2f& target) const
     {
-        const Vector2 delta = target - center;
+        const Vector2f delta = target - center;
         const float mag_sq = delta.magnitude_sq();
         if (mag_sq <= (radius * radius)) {
             return target;
@@ -88,7 +88,7 @@ struct Circle {
     /** Sets this Circle to null. */
     void set_null()
     {
-        center.set_null();
+        center.set_zero();
         radius = 0.f;
     }
 };

@@ -21,7 +21,7 @@ class Widget : public LayoutItem {
     friend class RenderManager;
 
 public: // methods
-    virtual bool get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& result) override;
+    virtual bool get_widgets_at(const Vector2f local_pos, std::vector<Widget*>& result) override;
 
     /** Returns the Layout used to scissor this Widget.
      * Returns an empty shared_ptr, if no explicit scissor Layout was set or the scissor Layout has since expired.

@@ -36,7 +36,7 @@ public: // methods
         return !(false
                  || get_size().is_zero()
                  || !get_size().is_valid()
-                 || get_opacity() == approx(0));
+                 || get_opacity() == approx(0.));
     }
 
     /** Sets the opacity of this LayoutItem.
@@ -71,7 +71,7 @@ public: // methods
      * @param result        [out] All Widgets at the given coordinate, orderd from front to back.
      * @return              True if any Widget was found, false otherwise.
      */
-    virtual bool get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& result) = 0;
+    virtual bool get_widgets_at(const Vector2f local_pos, std::vector<Widget*>& result) = 0;
 
 public: // signals
     /** Emitted, when the opacity of this Item has changed.

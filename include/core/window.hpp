@@ -146,7 +146,7 @@ private: // fields
     Color m_background_color;
 
     /** Last mouse position in this Window. */
-    Vector2 m_last_mouse_pos;
+    Vector2f m_last_mouse_pos;
 };
 
 } // namespace notf

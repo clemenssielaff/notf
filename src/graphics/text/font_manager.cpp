@@ -115,19 +115,19 @@ void FontManager::render_text(const std::string& text, ushort x, ushort y, const
             quad_rect.move_by({0, static_cast<float>(-glyph.rect.height)});
 
             // create the quad (2*3 vertices) to render the character
-            vertices.emplace_back(Vertex{Vector2{quad_rect.left(), quad_rect.bottom()},
-                                         Vector2{glyph_rect.left(), glyph_rect.top()}});
-            vertices.emplace_back(Vertex{Vector2{quad_rect.left(), quad_rect.top()},
-                                         Vector2{glyph_rect.left(), glyph_rect.bottom()}});
-            vertices.emplace_back(Vertex{Vector2{quad_rect.right(), quad_rect.bottom()},
-                                         Vector2{glyph_rect.right(), glyph_rect.top()}});
+            vertices.emplace_back(Vertex{Vector2f{quad_rect.left(), quad_rect.bottom()},
+                                         Vector2f{glyph_rect.left(), glyph_rect.top()}});
+            vertices.emplace_back(Vertex{Vector2f{quad_rect.left(), quad_rect.top()},
+                                         Vector2f{glyph_rect.left(), glyph_rect.bottom()}});
+            vertices.emplace_back(Vertex{Vector2f{quad_rect.right(), quad_rect.bottom()},
+                                         Vector2f{glyph_rect.right(), glyph_rect.top()}});
 
-            vertices.emplace_back(Vertex{Vector2{quad_rect.right(), quad_rect.bottom()},
-                                         Vector2{glyph_rect.right(), glyph_rect.top()}});
-            vertices.emplace_back(Vertex{Vector2{quad_rect.left(), quad_rect.top()},
-                                         Vector2{glyph_rect.left(), glyph_rect.bottom()}});
-            vertices.emplace_back(Vertex{Vector2{quad_rect.right(), quad_rect.top()},
-                                         Vector2{glyph_rect.right(), glyph_rect.bottom()}});
+            vertices.emplace_back(Vertex{Vector2f{quad_rect.right(), quad_rect.bottom()},
+                                         Vector2f{glyph_rect.right(), glyph_rect.top()}});
+            vertices.emplace_back(Vertex{Vector2f{quad_rect.left(), quad_rect.top()},
+                                         Vector2f{glyph_rect.left(), glyph_rect.bottom()}});
+            vertices.emplace_back(Vertex{Vector2f{quad_rect.right(), quad_rect.top()},
+                                         Vector2f{glyph_rect.right(), glyph_rect.bottom()}});
         }
 
         // advance to the next character position

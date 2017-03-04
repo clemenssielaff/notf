@@ -7,7 +7,7 @@
 
 namespace notf {
 
-bool Widget::get_widgets_at(const Vector2 /*local_pos*/, std::vector<Widget*>& result)
+bool Widget::get_widgets_at(const Vector2f /*local_pos*/, std::vector<Widget*>& result)
 {
     // TODO: Widget::get_widget_at() should test if the given local_pos is loctated in its shape
     result.push_back(this);

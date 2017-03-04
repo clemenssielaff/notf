@@ -13,11 +13,11 @@ class MouseEvent {
     friend class Window;
 
 public: // methods
-    MouseEvent(Window* window, Vector2 window_pos, Button button,
+    MouseEvent(Window* window, Vector2f window_pos, Button button,
                MouseAction action, KeyModifiers modifiers, const ButtonStateSet& stateset)
         : window(window)
         , window_pos(std::move(window_pos))
-        , window_delta(Vector2::zero()) // TODO: some means to set the MouseEvent delta on a per-window basis
+        , window_delta(Vector2f::zero()) // TODO: some means to set the MouseEvent delta on a per-window basis
         , button(button)
         , action(action)
         , modifiers(modifiers)
@@ -37,10 +37,10 @@ public: // fields
     const Window* window;
 
     /** Position of the mouse cursor relative to the top-left corner of `window`. */
-    const Vector2 window_pos;
+    const Vector2f window_pos;
 
     /** Delta of the mouse cursor since the last event, in window coordinates. */
-    const Vector2 window_delta;
+    const Vector2f window_delta;
 
     /** The mouse button that triggered this event, is set to Button::INVALID when this is a "move" event. */
     const Button button;

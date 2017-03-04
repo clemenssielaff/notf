@@ -1,6 +1,7 @@
 #pragma once
 
 #include "graphics/texture2.hpp"
+#include "common/vector2.hpp"
 
 namespace notf {
 
@@ -8,7 +9,7 @@ class Aabr;
 class Cell;
 class Widget;
 class RenderContext;
-class Vector2;
+
 
 class Painter {
 
@@ -27,10 +28,10 @@ public: // methods
     void drawButton(const Aabr& rect);
     void drawCheckBox(const Aabr& rect);
     void drawColorwheel(const Aabr& rect, float t);
-    void drawEyes(const Aabr& rect, const Vector2& target, float t);
+    void drawEyes(const Aabr& rect, const Vector2f& target, float t);
     void drawGraph(const Aabr& rect, float t);
-    void drawSpinner(const Vector2& center, const float radius, float t);
-    void drawCaps(const Vector2& pos, const float width);
+    void drawSpinner(const Vector2f& center, const float radius, float t);
+    void drawCaps(const Vector2f& pos, const float width);
     void drawJoins(const Aabr& rect, const float time);
     void drawTexture(const Aabr& rect);
 

@@ -56,7 +56,7 @@ public: // methods
     /// @brief Sets a new Item at the LayoutRoot.
     void set_item(std::shared_ptr<AbstractController> item);
 
-    virtual bool get_widgets_at(const Vector2 local_pos, std::vector<Widget*>& result) override;
+    virtual bool get_widgets_at(const Vector2f local_pos, std::vector<Widget*>& result) override;
 
     virtual void set_render_layer(std::shared_ptr<RenderLayer>) override;
 
