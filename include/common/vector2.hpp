@@ -9,7 +9,7 @@
 
 namespace notf {
 
-/**********************************************************************************************************************/
+//*********************************************************************************************************************/
 
 /** 2-dimensional mathematical Vector2 containing real numbers. */
 template <typename Real, ENABLE_IF_REAL(Real)>
@@ -22,7 +22,6 @@ struct _RealVector2 {
     Real y;
 
     /* Constructors ***************************************************************************************************/
-
     _RealVector2() = default; // so this data structure remains a POD
 
     /** Creates a Vector2 with the given components.
@@ -48,27 +47,45 @@ struct _RealVector2 {
 
     /*  Inspection  ***************************************************************************************************/
 
-    /** Returns true if both coordinates are (approximately) zero using the default epsilon.  */
-    bool is_zero() const { return x == approx(0, 0) && y == approx(0, 0); }
-
     /** Returns true if both coordinates are (approximately) zero.
      * @param epsilon   Largest difference that is still considered to be zero.
      */
-    bool is_zero(Real epsilon) const { return x == approx(0, epsilon) && y == approx(0, epsilon); }
+    bool is_zero(const Real epsilon = precision_high<Real>()) const { return abs(x) <= epsilon && abs(y) <= epsilon; }
 
     /** Checks whether this Vector2 is of unit magnitude. */
-    bool is_unit() const { return magnitude_sq() == approx(1); }
+    bool is_unit() const { return abs(magnitude_sq() - 1) <= precision_high<Real>(); }
 
     /** Checks whether this Vector2's direction is parallel to the other.
      * @param other     Vector2 to test against.
      */
-    bool is_parallel_to(const _RealVector2& other) const { return side_of(other) == 0; }
+    bool is_parallel_to(const _RealVector2& other) const
+    {
+        if (abs(y) <= precision_high<Real>()) {
+            return abs(other.y) <= precision_high<Real>();
+        }
+        else if (abs(other.y) <= precision_high<Real>()) {
+            return false;
+        }
+        return abs((x / y) - (other.x / other.y)) <= precision_low<Real>();
+    }
 
     /** Checks whether this Vector2 is orthogonal to the other.
      * The zero Vector2 is orthogonal to every other Vector2.
      * @param other     Vector2 to test against.
      */
-    bool is_orthogonal_to(const _RealVector2& other) const { return dot(other) == approx(0); }
+    bool is_orthogonal_to(const _RealVector2& other) const
+    {
+        // divide the vectors by square magnitude to compensate for large absolute differences in length
+        const Real mag_sq = magnitude_sq();
+        if (mag_sq <= precision_high<Real>()) {
+            return true;
+        }
+        const Real other_mag_sq = other.magnitude_sq();
+        if (other_mag_sq <= precision_high<Real>()) {
+            return true;
+        }
+        return abs((*this / mag_sq).dot(other / other_mag_sq)) <= precision_high<Real>();
+    }
 
     /** Returns the angle (in radians) between the positive x-axis and this Vector2.
      * The angle is positive for counter-clockwise angles (upper half-plane, y > 0),
@@ -82,14 +99,14 @@ struct _RealVector2 {
      */
     Real angle_to(const _RealVector2& other) const
     {
-        const Real squaredMagnitudeProduct = magnitude_sq() * other.magnitude_sq();
-        if (squaredMagnitudeProduct == approx(0)) {
+        const Real mag_sq_product = magnitude_sq() * other.magnitude_sq();
+        if (mag_sq_product <= precision_high<Real>()) {
             return 0; // one or both are zero
         }
-        if (squaredMagnitudeProduct == approx(1)) {
+        if (abs(mag_sq_product - 1) <= precision_high<Real>()) {
             return acos(dot(other)); // both are unit
         }
-        return acos(dot(other) / sqrt(squaredMagnitudeProduct));
+        return acos(dot(other) / sqrt(mag_sq_product));
     }
 
     /** Tests if the other Vector2 is collinear (1), orthogonal(0), opposite (-1) or something in between.
@@ -99,41 +116,33 @@ struct _RealVector2 {
      */
     Real direction_to(const _RealVector2& other) const
     {
-        const Real squaredMagnitudeProduct = magnitude_sq() * other.magnitude_sq();
-        if (squaredMagnitudeProduct == approx(0)) {
+        const Real mag_sq_product = magnitude_sq() * other.magnitude_sq();
+        if (mag_sq_product <= precision_high<Real>()) {
             return 0; // one or both are zero
         }
-        if (squaredMagnitudeProduct == approx(1)) {
+        if (abs(mag_sq_product - 1) <= precision_high<Real>()) {
             return clamp(dot(other), -1, 1); // both are unit
         }
-        return clamp(dot(other) / sqrt(squaredMagnitudeProduct), -1, 1);
+        return clamp(dot(other) / sqrt(mag_sq_product), -1, 1);
     }
 
     /** Tests if this Vector2 is parallel to the X-axis.
      * The zero Vector2 is parallel to every Vector2.
      */
-    bool is_horizontal() const { return y == approx(0); }
+    bool is_horizontal() const { return abs(y) <= precision_high<Real>(); }
 
     /** Tests if this Vector2 is parallel to the Y-axis.
      * The zero Vector2 is parallel to every Vector2.
      */
-    bool is_vertical() const { return x == approx(0); }
-
-    /** Returns True, if other and self are approximately the same Vector2.
-     * @param other     Vector2 to test against.
-     */
-    bool is_approx(const _RealVector2& other) const
-    {
-        return (*this - other).magnitude_sq() == approx(0);
-    }
+    bool is_vertical() const { return abs(x) <= precision_high<Real>(); }
 
     /** Returns True, if other and self are approximately the same Vector2.
      * @param other     Vector2 to test against.
      * @param epsilon   Maximal allowed distance between the two Vectors.
      */
-    bool is_approx(const _RealVector2& other, const Real epsilon) const
+    bool is_approx(const _RealVector2& other, const Real epsilon = precision_high<Real>()) const
     {
-        return (*this - other).magnitude_sq() == approx(0, epsilon * epsilon);
+        return (*this - other).magnitude_sq() <= epsilon * epsilon;
     }
 
     /** Returns the slope of this Vector2.
@@ -141,7 +150,7 @@ struct _RealVector2 {
      */
     Real slope() const
     {
-        if (x == approx(0, 0)) {
+        if (abs(x) <= precision_high<Real>()) {
             return INFINITY;
         }
         return y / x;
@@ -159,7 +168,7 @@ struct _RealVector2 {
     bool is_real() const { return notf::is_real(x) && notf::is_real(y); }
 
     /** Checks, if any component of this Vector2 is a zero. */
-    bool contains_zero() const { return x == approx(0) || y == approx(0); }
+    bool contains_zero() const { return abs(x) <= precision_high<Real>() || abs(y) <= precision_high<Real>(); }
 
     /** Direct read-only memory access to the Vector2. */
     template <typename Index, ENABLE_IF_INT(Index)>
@@ -180,10 +189,10 @@ struct _RealVector2 {
     /** Operators *****************************************************************************************************/
 
     /** Tests whether two Vector2s are equal. */
-    bool operator==(const _RealVector2& other) const { return other.x == approx(x, 0) && other.y == approx(y, 0); }
+    bool operator==(const _RealVector2& other) const { return (*this - other).is_zero(); }
 
     /** Tests whether two Vector2s not are equal. */
-    bool operator!=(const _RealVector2& other) const { return other.x != approx(x, 0) || other.y != approx(y, 0); }
+    bool operator!=(const _RealVector2& other) const { return !(*this == other); }
 
     /** Adding another Vector2 moves this Vector2 relative to its previous position. */
     _RealVector2 operator+(const _RealVector2& other) const { return _RealVector2(x + other.x, y + other.y); }
@@ -224,8 +233,8 @@ struct _RealVector2 {
     /** In-place component-wise division of a Vector2 by another Vector2. */
     _RealVector2& operator/=(const _RealVector2& other)
     {
-        assert(other.x != approx(0, 0));
-        assert(other.y != approx(0, 0));
+        assert(abs(other.x) > precision_high<Real>());
+        assert(abs(other.y) > precision_high<Real>());
         x /= other.x;
         y /= other.y;
         return *this;
@@ -245,14 +254,14 @@ struct _RealVector2 {
     /** Division by a scalar inversely scales this Vector2's length. */
     _RealVector2 operator/(const Real divisor) const
     {
-        assert(divisor != approx(0, 0));
+        assert(abs(divisor) > precision_high<Real>());
         return _RealVector2(x / divisor, y / divisor);
     }
 
     /** In-place division by a scalar value. */
     _RealVector2& operator/=(const Real divisor)
     {
-        assert(divisor != approx(0, 0));
+        assert(abs(divisor) > precision_high<Real>());
         x /= divisor;
         y /= divisor;
         return *this;
@@ -291,32 +300,35 @@ struct _RealVector2 {
      * As defined at http://mathworld.wolfram.com/CrossProduct.html
      * @param other     Vector2 to the right.
      */
-    Real cross(const _RealVector2 other) const { return (x * other.y) - (y * other.x); }
+    Real cross(const _RealVector2 other) const
+    {
+        return (x * other.y) - (y * other.x);
+    }
 
     /** Returns a normalized copy of this Vector2. */
     _RealVector2 normalized() const
     {
-        const Real squaredMagnitude = magnitude_sq();
-        if (squaredMagnitude == approx(1)) {
+        const Real mag_sq = magnitude_sq();
+        if (abs(mag_sq - 1) <= precision_high<Real>()) {
             return _RealVector2(*this); // is unit
         }
-        if (squaredMagnitude == approx(0)) {
+        if (abs(mag_sq) <= precision_high<Real>()) {
             return _RealVector2(); // is zero
         }
-        return (*this) / sqrt(squaredMagnitude);
+        return (*this) / sqrt(mag_sq);
     }
 
     /** In-place normalization of this Vector2. */
     _RealVector2& normalize()
     {
-        const Real squaredMagnitude = magnitude_sq();
-        if (squaredMagnitude == approx(1)) {
+        const Real mag_sq = magnitude_sq();
+        if (abs(mag_sq - 1) <= precision_high<Real>()) {
             return (*this); // is unit
         }
-        if (squaredMagnitude == approx(0)) {
+        if (abs(mag_sq) <= precision_high<Real>()) {
             return set_zero(); // is zero
         }
-        return (*this) /= sqrt(squaredMagnitude);
+        return (*this) /= sqrt(mag_sq);
     }
 
     /** Creates a projection of this Vector2 onto an infinite line whose direction is specified by other.
@@ -350,22 +362,22 @@ struct _RealVector2 {
     /** Returns a copy of this 2D Vector, rotated counter-clockwise by a given angle (in radians). */
     _RealVector2 rotated(const Real angle) const
     {
-        const Real sinAngle = sin(angle);
-        const Real cosAngle = cos(angle);
+        const Real sin_angle = sin(angle);
+        const Real cos_angle = cos(angle);
         return _RealVector2(
-            (x * cosAngle) - (y * sinAngle),
-            (y * cosAngle) + (x * sinAngle));
+            (x * cos_angle) - (y * sin_angle),
+            (y * cos_angle) + (x * sin_angle));
     }
 
     /** Rotates this 2D Vector counter-clockwise by a given angle (in radians). */
     _RealVector2& rotate(const Real angle)
     {
-        const Real sinAngle = sin(angle);
-        const Real cosAngle = cos(angle);
-        const Real tempX    = (x * cosAngle) - (y * sinAngle);
-        const Real tempY    = (y * cosAngle) + (x * sinAngle);
-        x                   = tempX;
-        y                   = tempY;
+        const Real sin_angle = sin(angle);
+        const Real cos_angle = cos(angle);
+        const Real temp_x    = (x * cos_angle) - (y * sin_angle);
+        const Real temp_y    = (y * cos_angle) + (x * sin_angle);
+        x                    = temp_x;
+        y                    = temp_y;
         return (*this);
     }
 
@@ -375,15 +387,14 @@ struct _RealVector2 {
     Real side_of(const _RealVector2& other) const
     {
         const Real direction = cross(other);
-        if (direction == approx(0)) {
+        if (abs(direction) <= precision_high<Real>()) {
             return 0;
         }
-        const Real result = sign(direction);
-        return result;
+        return sign(direction);
     }
 };
 
-/**********************************************************************************************************************/
+//*********************************************************************************************************************/
 
 /** 2-dimensional mathematical Vector2 containing integers. */
 template <typename Integer, ENABLE_IF_INT(Integer)>
@@ -422,7 +433,7 @@ struct _IntVector2 {
 
     /*  Inspection  ***************************************************************************************************/
 
-    /** Returns true if both coordinates are (approximately) zero using the default epsilon.  */
+    /** Returns true if both coordinates are zero.  */
     bool is_zero() const { return x == 0 && y == 0; }
 
     /** Tests if this Vector2 is parallel to the X-axis.
@@ -545,7 +556,7 @@ struct _IntVector2 {
     }
 };
 
-/**********************************************************************************************************************/
+//*********************************************************************************************************************/
 
 using Vector2f = _RealVector2<float>;
 using Vector2d = _RealVector2<double>;

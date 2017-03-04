@@ -7,6 +7,7 @@ using namespace notf;
 
 SCENARIO("Vector2s can be constructed", "[common][vector2]")
 {
+
     WHEN("from two values")
     {
         const float fa = random_number<float>(-10, 10);
@@ -211,6 +212,64 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
             REQUIRE(mutable_random_i[1] == y_i + 2);
         }
     }
+
+    WHEN("you need check if two vector2s are parallel")
+    {
+        const Vector2f vecf = Vector2f(random_number<float>(-10000, 10000), random_number<float>(-10000, 10000));
+        const Vector2d vecd = Vector2d(random_number<double>(-10, 10), random_number<double>(-10, 10));
+
+        THEN("it will work correctly")
+        {
+            REQUIRE(vecf.is_parallel_to(vecf));
+            REQUIRE(vecf.is_parallel_to(vecf * random_number<float>(0.1f, 2)));
+            REQUIRE(vecf.is_parallel_to(vecf * random_number<float>(-0.1f, -2)));
+            REQUIRE(vecf.is_parallel_to(vecf.inverse()));
+
+            REQUIRE(!vecf.is_parallel_to(Vector2f::zero()));
+            REQUIRE(!vecf.is_parallel_to(vecf.orthogonal()));
+            REQUIRE(!vecf.is_parallel_to(Vector2f(random_number<float>(-10, 10), random_number<float>(-10, 10))));
+
+            REQUIRE(vecd.is_parallel_to(vecd));
+            REQUIRE(vecd.is_parallel_to(vecd * random_number<double>(0.1, 2)));
+            REQUIRE(vecd.is_parallel_to(vecd * random_number<double>(-0.1, -2)));
+            REQUIRE(vecd.is_parallel_to(vecd.inverse()));
+
+            REQUIRE(!vecd.is_parallel_to(Vector2d::zero()));
+            REQUIRE(!vecd.is_parallel_to(Vector2d(random_number<double>(-10, 10), random_number<double>(-10, 10))));
+            REQUIRE(!vecd.is_parallel_to(vecd.orthogonal()));
+        }
+    }
+
+    WHEN("you need check if two vector2s are orthogonal")
+    {
+        const Vector2f vecf = Vector2f(random_number<float>(-10, 10), random_number<float>(-10, 10));
+        const Vector2d vecd = Vector2d(random_number<double>(-10000, 10000), random_number<double>(-10000, 10000));
+
+        THEN("it will work correctly")
+        {
+            REQUIRE(vecf.is_orthogonal_to(Vector2f::zero()));
+            REQUIRE(vecf.is_orthogonal_to(vecf.orthogonal()));
+            REQUIRE(vecf.is_orthogonal_to(vecf.orthogonal().invert()));
+            REQUIRE(vecf.is_orthogonal_to(vecf.orthogonal() * random_number<float>(0.1f, 2)));
+
+            REQUIRE(!vecf.is_orthogonal_to(vecf));
+            REQUIRE(!vecf.is_orthogonal_to(Vector2f(random_number<float>(-10, 10), random_number<float>(-10, 10))));
+            REQUIRE(!vecf.is_orthogonal_to(vecf * random_number<float>(0.1f, 2)));
+            REQUIRE(!vecf.is_orthogonal_to(vecf * random_number<float>(-0.1f, -2)));
+            REQUIRE(!vecf.is_orthogonal_to(vecf.inverse()));
+
+            REQUIRE(vecd.is_orthogonal_to(Vector2d::zero()));
+            REQUIRE(vecd.is_orthogonal_to(vecd.orthogonal()));
+            REQUIRE(vecd.is_orthogonal_to(vecd.orthogonal().invert()));
+            REQUIRE(vecd.is_orthogonal_to(vecd.orthogonal() * random_number<double>(0.1, 2)));
+
+            REQUIRE(!vecd.is_orthogonal_to(vecd));
+            REQUIRE(!vecd.is_orthogonal_to(Vector2d(random_number<double>(-10, 10), random_number<double>(-10, 10))));
+            REQUIRE(!vecd.is_orthogonal_to(vecd * random_number<double>(0.1, 2)));
+            REQUIRE(!vecd.is_orthogonal_to(vecd * random_number<double>(-0.1, -2)));
+            REQUIRE(!vecd.is_orthogonal_to(vecd.inverse()));
+        }
+    }
 }
 
 SCENARIO("Vector2s can be modified", "[common][vector2]")
@@ -282,7 +341,7 @@ SCENARIO("Vector2s can be modified", "[common][vector2]")
 
         THEN("vector2s will be rotated 90degrees counter-clockwise")
         {
-            REQUIRE(norm_angle(random_f.angle() + static_cast<float>(HALF_PI)) == approx(ortho_random_f.angle()));
+            REQUIRE(norm_angle(random_f.angle() + static_cast<float>(HALF_PI)) == approx(ortho_random_f.angle(), precision_low<float>()));
 
             REQUIRE(ortho_random_i.x == -random_i.y);
             REQUIRE(ortho_random_i.y == random_i.x);

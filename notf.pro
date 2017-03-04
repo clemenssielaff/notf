@@ -152,8 +152,7 @@ SOURCES += \
     src/graphics/painter.cpp \
     src/common/transform3.cpp \
     src/graphics/text/font_manager.cpp \
-    src/common/random.cpp \
-    src/common/float_utils.cpp
+    src/common/random.cpp
 
 HEADERS += \
     include/core/application.hpp \

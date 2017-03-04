@@ -3,7 +3,6 @@
 #include <cfloat>
 #include <cmath>
 #include <functional>
-#include <iosfwd>
 #include <limits>
 
 #include "utils/sfinae.hpp"
@@ -73,11 +72,11 @@ inline Real acos(Real&& value) { return std::acos(clamp(std::forward<Real>(value
 
 /** Degree to Radians. */
 template <typename Real>
-inline Real deg_to_rad(Real&& degrees) { return degrees * (PI / 180.); }
+inline Real deg_to_rad(Real&& degrees) { return degrees * (PI / 180.l); }
 
 /** Degree to Radians. */
 template <typename Real>
-inline Real rad_to_deg(Real&& radians) { return radians * (180. / PI); }
+inline Real rad_to_deg(Real&& radians) { return radians * (180.l / PI); }
 
 /** Normalize Radians to a value within [-pi, pi). */
 template <typename Real>
@@ -89,11 +88,36 @@ inline Real norm_angle(Real alpha)
     return fmod(alpha + PI, TWO_PI) - PI;
 }
 
-/* approx *************************************************************************************************************/
+// precision **********************************************************************************************************/
+
+/** Type dependent constant for low-precision approximation (useful for use in "noisy" functions).
+ * Don't be fooled by the name though, "low" precision is still pretty precise on a human scale.
+ */
+template <typename Type>
+constexpr Type precision_low();
+
+template <>
+constexpr float precision_low<float>() { return std::numeric_limits<float>::epsilon() * 100; }
+
+template <>
+constexpr double precision_low<double>() { return std::numeric_limits<double>::epsilon() * 100; }
+
+/** Type dependent constant for high-precision approximation. */
+template <typename Type>
+constexpr Type precision_high();
+
+template <>
+constexpr float precision_high<float>() { return std::numeric_limits<float>::epsilon(); }
+
+template <>
+constexpr double precision_high<double>() { return std::numeric_limits<double>::epsilon(); }
+
+// approx *************************************************************************************************************/
 
 /** Test if two Reals are approximately the same value.
- * Returns true also if the difference is exactly epsilon.
- * This behavior allows epsilon to be zero for exact comparison.
+ * Returns true also if the difference is exactly epsilon, which allows epsilon to be zero for exact comparison.
+ * Note that, regardless of the signature, comparison to an _approx object is destructive and definetly NOT const.
+ * Use only as directed and don't keep it around for multiple comparisons.
  *
  * Example:
  *
@@ -103,60 +127,85 @@ inline Real norm_angle(Real alpha)
  *
  * Approx-class idea from catch:
  * https://github.com/philsquared/Catch/blob/master/include/catch.hpp
+ *
+ * Floating point comparison from:
+ * https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
  */
 template <typename Real, ENABLE_IF_REAL(Real)>
 struct _approx {
 
     /** Value to compare against. */
-    Real value;
+    mutable Real value;
 
     /** Smallest difference which is still considered equal. */
-    Real epsilon;
+    mutable Real epsilon;
 
-    _approx(const Real value, const Real epsilon)
+    _approx(Real value, Real epsilon)
         : value(value), epsilon(abs(epsilon)) {}
 
     template <typename Other, ENABLE_IF_REAL(Other)>
-    friend bool operator==(const Other lhs, const _approx& rhs)
+    friend bool operator==(Other b, const _approx& a)
     {
-        if (!is_real(lhs) || !is_real(rhs.value)) {
+        if (!is_real(a.value) || !is_real(b)) {
             return false;
         }
-        return abs(lhs - rhs.value) <= rhs.epsilon;
+
+        a.epsilon = max(static_cast<Other>(a.epsilon), std::numeric_limits<Other>::epsilon());
+
+        // if the numbers are really small, use the absolute epsilon
+        const Real diff = abs(a.value - b);
+        if (diff <= a.epsilon) {
+            return true;
+        }
+
+        // use a relative epsilon if the numbers are larger
+        a.value = abs(a.value);
+        b       = abs(b);
+        if (diff <= ((a.value > b) ? a.value : b) * a.epsilon) {
+            return true;
+        }
+
+        return false;
     }
 
     template <typename Other, ENABLE_IF_REAL(Other)>
-    friend bool operator==(const _approx& lhs, const Other rhs) { return operator==(rhs, lhs); }
+    friend bool operator==(const _approx& lhs, Other rhs) { return operator==(rhs, lhs); }
 
     template <typename Other, ENABLE_IF_REAL(Other)>
-    friend bool operator!=(const Other lhs, const _approx& rhs) { return !operator==(lhs, rhs); }
+    friend bool operator!=(Other lhs, const _approx& rhs) { return !operator==(lhs, rhs); }
 
     template <typename Other, ENABLE_IF_REAL(Other)>
-    friend bool operator!=(const _approx& lhs, const Other rhs) { return !operator==(rhs, lhs); }
+    friend bool operator!=(const _approx& lhs, Other rhs) { return !operator==(rhs, lhs); }
 };
 
 template <typename Real, ENABLE_IF_REAL(Real)>
-auto approx(const Real value, const Real epsilon = std::numeric_limits<Real>::epsilon() * 100)
+auto approx(const Real value)
+{
+    return _approx<Real>(value, precision_high<Real>());
+}
+
+template <typename Real, ENABLE_IF_REAL(Real)>
+auto approx(const Real value, const Real epsilon)
 {
     return _approx<Real>(value, epsilon);
 }
 
-template <typename Real, typename Other, DISABLE_IF_INT(Real)>
-auto approx(const Real value, const Other epsilon)
+template <typename Integer, ENABLE_IF_INT(Integer), DISABLE_IF_REAL(Integer)>
+auto approx(const Integer value)
+{
+    return _approx<double>(static_cast<double>(value), precision_high<double>());
+}
+
+template <typename Real, typename Integer, ENABLE_IF_REAL(Real), ENABLE_IF_INT(Integer)>
+auto approx(const Real value, const Integer epsilon)
 {
     return _approx<Real>(value, static_cast<Real>(epsilon));
 }
 
-template <typename Real, typename Other, DISABLE_IF_INT(Real)>
-auto approx(const Other value, const Real epsilon)
+template <typename Real, typename Integer, ENABLE_IF_REAL(Real), ENABLE_IF_INT(Integer)>
+auto approx(const Integer value, const Real epsilon)
 {
     return _approx<Real>(static_cast<Real>(value), epsilon);
-}
-
-template <typename Integer, ENABLE_IF_INT(Integer)>
-auto approx(const Integer value)
-{
-    return _approx<double>(static_cast<double>(value), std::numeric_limits<double>::epsilon() * 100);
 }
 
 template <typename Integer, ENABLE_IF_INT(Integer), DISABLE_IF_REAL(Integer)>
@@ -166,13 +215,3 @@ auto approx(const Integer value, const Integer epsilon)
 }
 
 } // namespace notf
-
-/* Free Functions *****************************************************************************************************/
-
-/** Prints the contents of a Vector2 into a std::ostream.
- * @param os   Output stream, implicitly passed with the << operator.
- * @param vec  Vector2 to print.
- * @return Output stream for further output.
- */
-template <typename Real>
-std::ostream& operator<<(std::ostream& out, const notf::_approx<Real>& approx);
