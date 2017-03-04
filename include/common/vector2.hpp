@@ -56,6 +56,7 @@ struct _RealVector2 {
     bool is_unit() const { return abs(magnitude_sq() - 1) <= precision_high<Real>(); }
 
     /** Checks whether this Vector2's direction is parallel to the other.
+     * The zero Vector2 is parallel to every other Vector2.
      * @param other     Vector2 to test against.
      */
     bool is_parallel_to(const _RealVector2& other) const
@@ -64,7 +65,7 @@ struct _RealVector2 {
             return abs(other.y) <= precision_high<Real>();
         }
         else if (abs(other.y) <= precision_high<Real>()) {
-            return false;
+            return abs(other.x) <= precision_high<Real>();
         }
         return abs((x / y) - (other.x / other.y)) <= precision_low<Real>();
     }
@@ -75,16 +76,8 @@ struct _RealVector2 {
      */
     bool is_orthogonal_to(const _RealVector2& other) const
     {
-        // divide the vectors by square magnitude to compensate for large absolute differences in length
-        const Real mag_sq = magnitude_sq();
-        if (mag_sq <= precision_high<Real>()) {
-            return true;
-        }
-        const Real other_mag_sq = other.magnitude_sq();
-        if (other_mag_sq <= precision_high<Real>()) {
-            return true;
-        }
-        return abs((*this / mag_sq).dot(other / other_mag_sq)) <= precision_high<Real>();
+        // normalization required for large absolute differences in vector lengths
+        return abs(normalized().dot(other.normalized())) <= precision_high<Real>();
     }
 
     /** Returns the angle (in radians) between the positive x-axis and this Vector2.

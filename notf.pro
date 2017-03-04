@@ -58,7 +58,8 @@ CONFIG(test) {
         test/test_vector2.cpp
 
     HEADERS += \
-        test/catch.hpp
+        test/catch.hpp \
+        test/test_utils.hpp
 }
 else {
     SOURCES += \

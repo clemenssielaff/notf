@@ -16,7 +16,7 @@ decltype(randutils::default_rng()) & get_random_engine();
  * @param to        Highest possible number (defaults to highest representable number)
  */
 template <typename Type>
-Type random_number(const Type from = 0, const Type to = std::numeric_limits<Type>::max())
+Type random_number(const Type from, const Type to)
 {
     return get_random_engine().uniform(from, to);
 }
