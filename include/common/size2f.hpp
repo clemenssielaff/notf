@@ -2,7 +2,7 @@
 
 #include <iosfwd>
 
-#include "common/float_utils.hpp"
+#include "common/floating_point.hpp"
 #include "common/size2i.hpp"
 
 namespace notf {

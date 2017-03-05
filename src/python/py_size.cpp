@@ -4,7 +4,7 @@ namespace py = pybind11;
 
 #include "common/size2i.hpp"
 #include "common/size2f.hpp"
-#include "common/string_utils.hpp"
+#include "common/string.hpp"
 #include "python/docstr.hpp"
 using namespace notf;
 

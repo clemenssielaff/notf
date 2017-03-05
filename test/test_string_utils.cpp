@@ -1,6 +1,6 @@
 #include "test/catch.hpp"
 
-#include "common/string_utils.hpp"
+#include "common/string.hpp"
 using notf::tokenize;
 
 SCENARIO("strings can be tokenized", "[common][string]")

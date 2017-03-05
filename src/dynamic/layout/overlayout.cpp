@@ -5,7 +5,7 @@
 
 #include "common/aabr.hpp"
 #include "common/log.hpp"
-#include "common/vector_utils.hpp"
+#include "common/vector.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 namespace notf {
@@ -53,7 +53,7 @@ bool Overlayout::get_widgets_at(const Vector2f local_pos, std::vector<Widget*>& 
         if (LayoutItem* layout_item = item->get_layout_item()) {
             // TODO: Overlayout::get_widget_at does not respect transform (only translate)
             const Vector2f item_pos = local_pos - layout_item->get_transform().get_translation();
-            const Aabr item_rect(layout_item->get_size());
+            const Aabrf item_rect(layout_item->get_size());
             if (item_rect.contains(item_pos)) {
                 found_any |= layout_item->get_widgets_at(item_pos, result);
             }

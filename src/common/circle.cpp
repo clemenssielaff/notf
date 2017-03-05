@@ -3,22 +3,18 @@
 
 #include "common/circle.hpp"
 
-namespace notf {
+using namespace notf;
 
-std::ostream& operator<<(std::ostream& out, const Circle& circle)
+/* Circlef ************************************************************************************************************/
+
+std::ostream& operator<<(std::ostream& out, const Circlef& circle)
 {
-    return out << "Circle([" << circle.center.x << ", " << circle.center.y << "], " << circle.radius << ")";
+    return out << "Circlef([" << circle.center.x << ", " << circle.center.y << "], " << circle.radius << ")";
 }
 
-/*
- * Compile-time sanity check.
- */
-static_assert(sizeof(Circle) == sizeof(Vector2f) + sizeof(float),
-              "This compiler seems to inject padding bits into the notf::Aabr memory layout. "
+static_assert(sizeof(Circlef) == sizeof(Vector2f) + sizeof(float),
+              "This compiler seems to inject padding bits into the notf::Circlef memory layout. "
               "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
-static_assert(std::is_pod<Circle>::value,
-              "This compiler does not recognize notf::Aabr as a POD.");
-
-
-} // namespace notf
+static_assert(std::is_pod<Circlef>::value,
+              "This compiler does not recognize notf::Circlef as a POD.");

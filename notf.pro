@@ -159,15 +159,12 @@ HEADERS += \
     include/core/application.hpp \
     include/core/window.hpp \
     include/common/signal.hpp \
-    include/common/string_utils.hpp \
     include/core/glfw_wrapper.hpp \
     include/core/widget.hpp \
-    include/common/vector_utils.hpp \
     include/common/log.hpp \
-    include/common/debug.hpp \
+    include/utils/debug.hpp \
     include/common/vector2.hpp \
     include/common/vector3.hpp \
-    include/common/math.hpp \
     include/common/aabr.hpp \
     include/core/events/key_event.hpp \
     thirdparty/randutils/randutils.hpp \
@@ -181,8 +178,7 @@ HEADERS += \
     include/core/resource_manager.hpp \
     include/core/render_manager.hpp \
     include/common/color.hpp \
-    include/common/enummap.hpp \
-    include/common/int_utils.hpp \
+    include/utils/enummap.hpp \
     include/common/transform2.hpp \
     include/utils/enum_to_number.hpp \
     include/utils/unused.hpp \
@@ -190,20 +186,14 @@ HEADERS += \
     include/core/layout.hpp \
     include/core/layout_root.hpp \
     include/dynamic/layout/stack_layout.hpp \
-    include/common/index.hpp \
     include/common/claim.hpp \
     include/graphics/raw_image.hpp \
-    include/common/memory_utils.hpp \
-    include/common/float_utils.hpp \
     include/common/circle.hpp \
     include/common/size2f.hpp \
-    include/common/hash_utils.hpp \
     include/common/time.hpp \
-    include/common/literals.hpp \
+    include/utils/literals.hpp \
     include/common/padding.hpp \
     include/utils/reverse_iterator.hpp \
-    include/common/set_utils.hpp \
-    include/common/os_utils.hpp \
     include/dynamic/layout/overlayout.hpp \
     include/utils/make_smart_enabler.hpp \
     include/core/item.hpp \
@@ -232,7 +222,13 @@ HEADERS += \
     include/common/transform3.hpp \
     include/graphics/text/font_manager.hpp \
     include/graphics/text/freetype.hpp \
-    include/utils/sfinae.hpp
+    include/utils/sfinae.hpp \
+    include/common/hash.hpp \
+    include/common/integer.hpp \
+    include/common/set.hpp \
+    include/common/string.hpp \
+    include/common/vector.hpp \
+    include/common/float.hpp
 
 QMAKE_CXX = ccache g++
 

@@ -2,7 +2,7 @@
 
 #include <tuple>
 
-#include "common/float_utils.hpp"
+#include "common/float.hpp"
 #include "common/line2.hpp"
 #include "graphics/render_context.hpp"
 
@@ -114,7 +114,7 @@ void Cell::set_fill_paint(Paint paint)
     current_state.fill = std::move(paint);
 }
 
-void Cell::set_scissor(const Aabr& aabr)
+void Cell::set_scissor(const Aabrf& aabr)
 {
     RenderState& current_state  = _get_current_state();
     current_state.scissor.xform = Transform2::translation(aabr.center());
@@ -461,7 +461,7 @@ void Cell::_flatten_paths()
         }
     }
 
-    m_bounds = Aabr::wrongest();
+    m_bounds = Aabrf::wrongest();
     for (Path& path : m_paths) {
         if (path.point_count < 2) {
             continue; // TODO: make sure that all paths with point_count < 2 are ignored, always

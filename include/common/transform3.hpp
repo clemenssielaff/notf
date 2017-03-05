@@ -3,7 +3,7 @@
 #include <array>
 #include <iosfwd>
 
-#include "common/float_utils.hpp"
+#include "common/float.hpp"
 #include "common/vector3.hpp"
 
 namespace notf {

@@ -3,7 +3,7 @@
 #include <iostream>
 
 #include "common/log.hpp"
-#include "common/string_utils.hpp"
+#include "common/string.hpp"
 
 namespace { // anonymous
 
@@ -11,7 +11,7 @@ const float MIN_SCALE_FACTOR = 0.00001f;
 
 } // namespace anonymous
 
-namespace notf {
+using namespace notf;
 
 void Claim::Stretch::set_preferred(const float preferred)
 {
@@ -81,8 +81,8 @@ void Claim::Stretch::add_offset(const float offset)
         log_warning << "Ignored invalid offset value: " << offset;
         return;
     }
-    m_min = max(0.f, m_min + offset);
-    m_max = max(0.f, m_max + offset);
+    m_min       = max(0.f, m_min + offset);
+    m_max       = max(0.f, m_max + offset);
     m_preferred = max(0.f, m_preferred + offset);
 }
 
@@ -133,7 +133,7 @@ std::ostream& operator<<(std::ostream& out, const Claim::Stretch& stretch)
 std::ostream& operator<<(std::ostream& out, const Claim& claim)
 {
     const Claim::Stretch& horizontal = claim.get_horizontal();
-    const Claim::Stretch& vertical = claim.get_horizontal();
+    const Claim::Stretch& vertical   = claim.get_horizontal();
     const std::pair<float, float> ratio = claim.get_width_to_height();
     return out << string_format(
                "Claim(\n"
@@ -153,5 +153,3 @@ std::ostream& operator<<(std::ostream& out, const Claim& claim)
                ratio.first,
                ratio.second);
 }
-
-} // namespace notf

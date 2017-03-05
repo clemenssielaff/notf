@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/float_utils.hpp"
+#include "common/float.hpp"
 #include "common/random.hpp"
 #include "common/random.hpp"
 #include "common/vector2.hpp"

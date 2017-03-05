@@ -37,7 +37,7 @@ private: // fields
     float m_max_frame_time;
 
     /** Rectangle into which the stats are drawn. */
-    Aabr m_aabr;
+    Aabrf m_aabr;
 
     /** Cell to draw the Stats into. */
     Cell m_cell;

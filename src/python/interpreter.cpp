@@ -9,7 +9,7 @@ namespace py = pybind11;
 using namespace py::literals;
 
 #include "common/log.hpp"
-#include "common/string_utils.hpp"
+#include "common/string.hpp"
 #include "core/application.hpp"
 #include "python/py_notf.hpp"
 #include "utils/enum_to_number.hpp"

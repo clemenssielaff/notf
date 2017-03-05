@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <iosfwd>
 
-#include "common/float_utils.hpp"
+#include "common/float.hpp"
 
 namespace notf {
 

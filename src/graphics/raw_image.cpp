@@ -7,7 +7,7 @@
 #include <stb_image/stb_image.h>
 
 #include "common/log.hpp"
-#include "common/string_utils.hpp"
+#include "common/string.hpp"
 
 namespace notf {
 

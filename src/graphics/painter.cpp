@@ -17,7 +17,7 @@ std::shared_ptr<Texture2> Painter::test_texture = {};
 void Painter::test()
 {
     const Size2f widget_size = m_widget.get_size();
-    const Aabr base(widget_size);
+    const Aabrf base(widget_size);
     const float margin = 20;
     const float time   = static_cast<float>(m_context.get_time().in_seconds());
 
@@ -25,24 +25,24 @@ void Painter::test()
 
     drawColorwheel(base.shrunken(margin), time);
 
-    drawCheckBox(Aabr{10, 100, 20, 20});
+    drawCheckBox(Aabrf{10, 100, 20, 20});
 
-    drawButton(Aabr{10, 130, 150, 30});
+    drawButton(Aabrf{10, 130, 150, 30});
 
-    drawSlider(Aabr{10, 170, 150, 30}, 0.4f);
+    drawSlider(Aabrf{10, 170, 150, 30}, 0.4f);
 
     drawCaps(Vector2f{10, 200}, 30);
 
-    drawEyes(Aabr{600, 20, 80, 60}, m_context.get_mouse_pos(), time);
+    drawEyes(Aabrf{600, 20, 80, 60}, m_context.get_mouse_pos(), time);
 
     drawSpinner(base.center(), 100, time);
 
-    drawJoins(Aabr{120, widget_size.height - 50, 600, 50}, time);
+    drawJoins(Aabrf{120, widget_size.height - 50, 600, 50}, time);
 
-    drawTexture(Aabr{400, 100, 200, 200});
+    drawTexture(Aabrf{400, 100, 200, 200});
 }
 
-void Painter::drawSlider(const Aabr& rect, float pos)
+void Painter::drawSlider(const Aabrf& rect, float pos)
 {
     float kr = (int)(rect.height() * 0.25f);
 
@@ -85,7 +85,7 @@ void Painter::drawSlider(const Aabr& rect, float pos)
     m_cell.pop_state();
 }
 
-void Painter::drawButton(const Aabr& rect)
+void Painter::drawButton(const Aabrf& rect)
 {
     const float corner_radius = 4;
     Paint gradient            = m_cell.create_linear_gradient(rect.top_left(), rect.bottom_left(),
@@ -102,7 +102,7 @@ void Painter::drawButton(const Aabr& rect)
     m_cell.fill(m_context);
 }
 
-void Painter::drawCheckBox(const Aabr& rect)
+void Painter::drawCheckBox(const Aabrf& rect)
 {
     Paint gradient = Cell::create_box_gradient(Vector2f{rect.left() + 1, rect.y() - 8},
                                                Size2f{18, 18}, 3, 3, Color(0, 0, 0, 32), Color(0, 0, 0, 92));
@@ -112,7 +112,7 @@ void Painter::drawCheckBox(const Aabr& rect)
     m_cell.fill(m_context);
 }
 
-void Painter::drawColorwheel(const Aabr& rect, float t)
+void Painter::drawColorwheel(const Aabrf& rect, float t)
 {
     float hue = sinf(t * 0.12f);
 
@@ -220,7 +220,7 @@ void Painter::drawColorwheel(const Aabr& rect, float t)
     m_cell.pop_state();
 }
 
-void Painter::drawEyes(const Aabr& rect, const Vector2f& target, float t)
+void Painter::drawEyes(const Aabrf& rect, const Vector2f& target, float t)
 {
     float ex = rect.width() * 0.23f;
     float ey = rect.height() * 0.5f;
@@ -290,7 +290,7 @@ void Painter::drawEyes(const Aabr& rect, const Vector2f& target, float t)
     m_cell.fill(m_context);
 }
 
-void Painter::drawGraph(const Aabr& rect, float t)
+void Painter::drawGraph(const Aabrf& rect, float t)
 {
     float samples[6];
     float sx[6], sy[6];
@@ -415,7 +415,7 @@ void Painter::drawCaps(const Vector2f& pos, const float width)
     m_cell.pop_state();
 }
 
-void Painter::drawJoins(const Aabr& rect, const float time)
+void Painter::drawJoins(const Aabrf& rect, const float time)
 {
     Cell::LineJoin joins[3] = {Cell::LineJoin::MITER, Cell::LineJoin::ROUND, Cell::LineJoin::BEVEL};
     Cell::LineCap caps[3]   = {Cell::LineCap::BUTT, Cell::LineCap::ROUND, Cell::LineCap::SQUARE};
@@ -468,7 +468,7 @@ void Painter::drawJoins(const Aabr& rect, const float time)
     m_cell.pop_state();
 }
 
-void Painter::drawTexture(const Aabr& rect)
+void Painter::drawTexture(const Aabrf& rect)
 {
     if (!test_texture) {
         test_texture = Texture2::load("/home/clemens/code/notf/res/textures/face.png");

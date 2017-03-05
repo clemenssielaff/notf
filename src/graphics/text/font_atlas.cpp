@@ -3,9 +3,9 @@
 #include <assert.h>
 #include <limits>
 
-#include "common/float_utils.hpp"
+#include "common/float.hpp"
 #include "common/log.hpp"
-#include "common/vector_utils.hpp"
+#include "common/vector.hpp"
 #include "core/glfw_wrapper.hpp"
 #include "graphics/gl_errors.hpp"
 

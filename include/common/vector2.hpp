@@ -3,8 +3,8 @@
 #include <assert.h>
 #include <iosfwd>
 
-#include "common/float_utils.hpp"
-#include "common/hash_utils.hpp"
+#include "common/floating_point.hpp"
+#include "common/hash.hpp"
 #include "utils/sfinae.hpp"
 
 namespace notf {
@@ -15,6 +15,12 @@ namespace notf {
 template <typename Real, ENABLE_IF_REAL(Real)>
 struct _RealVector2 {
 
+    /* Types **********************************************************************************************************/
+
+    using Value_t = Real;
+
+    /* Fields *********************************************************************************************************/
+
     /** X-coordinate. */
     Real x;
 
@@ -22,6 +28,7 @@ struct _RealVector2 {
     Real y;
 
     /* Constructors ***************************************************************************************************/
+
     _RealVector2() = default; // so this data structure remains a POD
 
     /** Creates a Vector2 with the given components.

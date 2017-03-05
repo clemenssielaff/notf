@@ -2,8 +2,8 @@
 
 #include <iosfwd>
 
-#include "common/float_utils.hpp"
-#include "common/hash_utils.hpp"
+#include "common/floating_point.hpp"
+#include "common/hash.hpp"
 
 namespace notf {
 

@@ -1,7 +1,7 @@
 #include "graphics/render_context.hpp"
 
 #include "common/log.hpp"
-#include "common/vector_utils.hpp"
+#include "common/vector.hpp"
 #include "core/glfw_wrapper.hpp"
 #include "graphics/gl_utils.hpp"
 #include "graphics/texture2.hpp"
@@ -168,7 +168,7 @@ void RenderContext::add_fill_call(const Paint& paint, const Cell& cell)
     // create a quad around the bounds of the filled area
     call.triangleOffset = static_cast<GLint>(offset);
     call.triangleCount  = 6;
-    const Aabr& bounds  = cell.get_bounds();
+    const Aabrf& bounds  = cell.get_bounds();
     m_vertices.emplace_back(Vertex{Vector2f{bounds.left(), bounds.bottom()}, Vector2f{.5f, 1.f}});
     m_vertices.emplace_back(Vertex{Vector2f{bounds.right(), bounds.bottom()}, Vector2f{.5f, 1.f}});
     m_vertices.emplace_back(Vertex{Vector2f{bounds.right(), bounds.top()}, Vector2f{.5f, 1.f}});

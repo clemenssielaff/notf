@@ -2,7 +2,7 @@
 
 #include <assert.h>
 
-#include "common/int_utils.hpp"
+#include "common/integer.hpp"
 
 namespace { // anonymous
 

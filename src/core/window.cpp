@@ -4,7 +4,6 @@
 
 #include <set>
 
-#include "common/debug.hpp"
 #include "common/log.hpp"
 #include "core/application.hpp"
 #include "core/controller.hpp"

@@ -2,9 +2,9 @@
 
 #include <assert.h>
 
-#include "common/hash_utils.hpp"
+#include "common/hash.hpp"
 #include "common/log.hpp"
-#include "common/string_utils.hpp"
+#include "common/string.hpp"
 #include "utils/unused.hpp"
 
 namespace { // anonymous

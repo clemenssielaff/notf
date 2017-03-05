@@ -3,7 +3,7 @@
 namespace py = pybind11;
 
 #include "common/circle.hpp"
-#include "common/string_utils.hpp"
+#include "common/string.hpp"
 #include "python/docstr.hpp"
 using namespace notf;
 
@@ -14,7 +14,7 @@ using namespace notf;
 
 void produce_circle(pybind11::module& module)
 {
-    py::class_<Circle> PyCircle(module, "Circle");
+    py::class_<Circlef> PyCircle(module, "Circle");
 
     // constructors
     PyCircle.def(py::init<>());
@@ -22,29 +22,29 @@ void produce_circle(pybind11::module& module)
     PyCircle.def(py::init<const Vector2f&, float>());
 
     // static constructors
-    PyCircle.def_static("null", &Circle::null, "The null Circle.");
+    PyCircle.def_static("null", &Circlef::null, "The null Circle.");
 
     // properties
-    PyCircle.def_readwrite("center", &Circle::center);
-    PyCircle.def_readwrite("radius", &Circle::radius);
-    PyCircle.def_property_readonly("diameter", &Circle::diameter);
-    PyCircle.def_property_readonly("circumfence", &Circle::circumfence);
-    PyCircle.def_property_readonly("area", &Circle::area);
+    PyCircle.def_readwrite("center", &Circlef::center);
+    PyCircle.def_readwrite("radius", &Circlef::radius);
+    PyCircle.def_property_readonly("diameter", &Circlef::diameter);
+    PyCircle.def_property_readonly("circumfence", &Circlef::circumfence);
+    PyCircle.def_property_readonly("area", &Circlef::area);
 
     // inspections
-    PyCircle.def("is_null", &Circle::is_null, DOCSTR("Test, if this Circle is null; The null Circle has no area."));
-    PyCircle.def("contains", &Circle::contains, DOCSTR("Checks if this Circle contains a given point."), py::arg("point"));
-    PyCircle.def("closest_point_to", &Circle::closest_point_to, DOCSTR("Returns the closest point inside the Circle to a given target point."), py::arg("target"));
+    PyCircle.def("is_null", &Circlef::is_null, DOCSTR("Test, if this Circle is null; The null Circle has no area."));
+    PyCircle.def("contains", &Circlef::contains, DOCSTR("Checks if this Circle contains a given point."), py::arg("point"));
+    PyCircle.def("closest_point_to", &Circlef::closest_point_to, DOCSTR("Returns the closest point inside the Circle to a given target point."), py::arg("target"));
 
     // modification
-    PyCircle.def("set_null", &Circle::set_null, DOCSTR("Sets this Circle to null."));
+    PyCircle.def("set_null", &Circlef::set_null, DOCSTR("Sets this Circle to null."));
 
     // operators
     PyCircle.def(py::self == py::self);
     PyCircle.def(py::self != py::self);
 
     // representation
-    PyCircle.def("__repr__", [](const Circle& circle) {
+    PyCircle.def("__repr__", [](const Circlef& circle) {
         return string_format("notf.Circle([%f, %f], %f)", circle.center.x, circle.center.y, circle.radius);
     });
 }

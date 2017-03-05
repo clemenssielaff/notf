@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "common/float_utils.hpp"
+#include "common/floating_point.hpp"
 #include "randutils/randutils.hpp"
 #include "utils/sfinae.hpp"
 

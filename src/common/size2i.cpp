@@ -3,7 +3,7 @@
 
 #include "common/size2i.hpp"
 
-#include "common/float_utils.hpp"
+#include "common/float.hpp"
 #include "common/size2f.hpp"
 
 namespace notf {

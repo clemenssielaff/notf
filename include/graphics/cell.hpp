@@ -4,7 +4,7 @@
 
 #include "common/aabr.hpp"
 #include "common/color.hpp"
-#include "common/float_utils.hpp"
+#include "common/float.hpp"
 #include "common/size2i.hpp"
 #include "common/transform2.hpp"
 #include "graphics/blend_mode.hpp"
@@ -228,7 +228,7 @@ public: // methods
 
     const Transform2& get_transform() const { return get_current_state().xform; }
 
-    void set_scissor(const Aabr& aabr);
+    void set_scissor(const Aabrf& aabr);
 
     void reset_scissor() { _get_current_state().scissor = {Transform2::identity(), {-1, -1}}; }
 
@@ -252,7 +252,7 @@ public: // methods
 
     void bezier_to(const float c1x, const float c1y, const float c2x, const float c2y, const float tx, const float ty);
 
-    void add_rect(const Aabr& rect) { add_rect(rect.left(), rect.top(), rect.width(), rect.height()); }
+    void add_rect(const Aabrf& rect) { add_rect(rect.left(), rect.top(), rect.width(), rect.height()); }
 
     void add_rect(const float x, const float y, const float w, const float h);
 
@@ -280,7 +280,7 @@ public: // methods
 
     void quad_to(const float cx, const float cy, const float tx, const float ty);
 
-    void add_rounded_rect(const Aabr& rect, const float radius)
+    void add_rounded_rect(const Aabrf& rect, const float radius)
     {
         add_rounded_rect(rect.left(), rect.top(), rect.width(), rect.height(), radius, radius, radius, radius);
     }
@@ -323,7 +323,7 @@ public: // getter
 
     const std::vector<Vertex>& get_vertices() const { return m_vertices; }
 
-    const Aabr& get_bounds() const { return m_bounds; }
+    const Aabrf& get_bounds() const { return m_bounds; }
 
     float get_fringe_width() const { return m_fringe_width; }
 
@@ -397,7 +397,7 @@ private: // fields
 
     std::vector<Vertex> m_vertices;
 
-    Aabr m_bounds; // TODO: Cell::m_bounds may be redundant when stored inside a Widget
+    Aabrf m_bounds; // TODO: Cell::m_bounds may be redundant when stored inside a Widget
 
     float m_tesselation_tolerance;
     float m_distance_tolerance;

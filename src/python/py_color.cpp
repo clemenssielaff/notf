@@ -3,8 +3,8 @@
 namespace py = pybind11;
 
 #include "common/color.hpp"
-#include "common/string_utils.hpp"
-#include "common/float_utils.hpp"
+#include "common/string.hpp"
+#include "common/float.hpp"
 #include "python/docstr.hpp"
 using namespace notf;
 

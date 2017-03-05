@@ -1,7 +1,7 @@
 #include "graphics/text/font.hpp"
 
 #include "common/log.hpp"
-#include "common/string_utils.hpp"
+#include "common/string.hpp"
 #include "common/system.hpp"
 #include "graphics/text/font_manager.hpp"
 #include "graphics/text/freetype.hpp"

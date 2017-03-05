@@ -47,7 +47,7 @@ struct Line2 {
     bool is_zero() const { return _delta.is_zero(); }
 
     /** The AABR of this Line2. */
-    Aabr bounding_rect() const { return {_start, std::move(end())}; }
+    Aabrf bounding_rect() const { return {_start, std::move(end())}; }
 
     /** Sets a new start point for this Line2.
      * Updates the complete Line2 - if you have a choice, favor setting the end point rather than the start point.

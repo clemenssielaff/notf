@@ -101,13 +101,13 @@ void FontManager::render_text(const std::string& text, ushort x, ushort y, const
         // skip glyphs wihout pixels
         if (glyph.rect.width && glyph.rect.height) {
 
-            Aabr glyph_rect(static_cast<float>(glyph.rect.x),
+            Aabrf glyph_rect(static_cast<float>(glyph.rect.x),
                             static_cast<float>(glyph.rect.y),
                             static_cast<float>(glyph.rect.width),
                             static_cast<float>(glyph.rect.height));
             glyph_rect = glyph_rect * (1 / 512.f); // TODO: MAGIC NUMBER!!!!!!!!!!!!!!
 
-            Aabr quad_rect(
+            Aabrf quad_rect(
                 (m_window_size.width / -2.f) + (x + glyph.left),
                 (m_window_size.height / -2.f) + (y + glyph.top),
                 static_cast<float>(glyph.rect.width),

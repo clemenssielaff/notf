@@ -11,9 +11,9 @@
 
 #include "common/color.hpp"
 #include "common/log.hpp"
-#include "common/string_utils.hpp"
+#include "common/string.hpp"
 
-namespace notf {
+using namespace notf;
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -323,5 +323,3 @@ static_assert(std::is_pod<Color>::value,
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
-
-} // namespace notf

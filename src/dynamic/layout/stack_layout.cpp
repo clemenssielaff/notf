@@ -6,7 +6,7 @@
 
 #include "common/aabr.hpp"
 #include "common/claim.hpp"
-#include "common/float_utils.hpp"
+#include "common/floating_point.hpp"
 #include "common/log.hpp"
 #include "common/transform2.hpp"
 #include "common/vector_utils.hpp"
@@ -294,7 +294,7 @@ bool StackLayout::get_widgets_at(const Vector2f local_pos, std::vector<Widget*>&
     for (Item* item : m_items) {
         if (LayoutItem* layout_item = item->get_layout_item()) {
             const Vector2f item_pos = local_pos - layout_item->get_transform().get_translation();
-            const Aabr item_rect(layout_item->get_size());
+            const Aabrf item_rect(layout_item->get_size());
             if (item_rect.contains(item_pos)) {
                 return layout_item->get_widgets_at(item_pos, result);
             }
