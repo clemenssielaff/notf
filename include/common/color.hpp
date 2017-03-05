@@ -4,7 +4,7 @@
 #include <iosfwd>
 #include <string>
 
-#include "common/floating_point.hpp"
+#include "common/float.hpp"
 #include "common/integer.hpp"
 #include "utils/sfinae.hpp"
 

@@ -2,7 +2,7 @@
 
 #include <iosfwd>
 
-#include "common/floating_point.hpp"
+#include "common/float.hpp"
 #include "common/hash.hpp"
 #include "common/vector2.hpp"
 #include "utils/sfinae.hpp"

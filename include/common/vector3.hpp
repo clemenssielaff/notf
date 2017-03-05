@@ -42,5 +42,4 @@ struct Vector3 { // TODO: real Vector3 class
 /// @return Output stream for further output.
 std::ostream& operator<<(std::ostream& out, const Vector3& vec);
 
-
 } // namespace notf

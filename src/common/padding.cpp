@@ -3,7 +3,7 @@
 
 #include "common/padding.hpp"
 
-using namespace notf;
+namespace notf {
 
 std::ostream& operator<<(std::ostream& out, const Padding& padding)
 {
@@ -20,3 +20,5 @@ static_assert(sizeof(Padding) == sizeof(float) * 4,
 
 static_assert(std::is_pod<Padding>::value,
               "This compiler does not recognize notf::Padding as a POD.");
+
+} // namespace notf

@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <iosfwd>
 
-#include "common/floating_point.hpp"
+#include "common/float.hpp"
 #include "common/hash.hpp"
 #include "utils/sfinae.hpp"
 
@@ -575,8 +575,6 @@ inline _RealVector2<Real> lerp(const _RealVector2<Real>& from, const _RealVector
     return ((to - from) *= clamp(blend, 0, 1)) += from;
 }
 
-} // namespace notf
-
 /** Prints the contents of a Vector2 into a std::ostream.
  * @param os   Output stream, implicitly passed with the << operator.
  * @param vec  Vector2 to print.
@@ -592,6 +590,8 @@ std::ostream& operator<<(std::ostream& out, const notf::_RealVector2<Real>& vec)
  */
 template <typename Integer>
 std::ostream& operator<<(std::ostream& out, const notf::_IntVector2<Integer>& vec);
+
+} // namespace notf
 
 /* std::hash **********************************************************************************************************/
 

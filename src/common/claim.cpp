@@ -11,7 +11,7 @@ const float MIN_SCALE_FACTOR = 0.00001f;
 
 } // namespace anonymous
 
-using namespace notf;
+namespace notf {
 
 void Claim::Stretch::set_preferred(const float preferred)
 {
@@ -153,3 +153,5 @@ std::ostream& operator<<(std::ostream& out, const Claim& claim)
                ratio.first,
                ratio.second);
 }
+
+} // namespace notf

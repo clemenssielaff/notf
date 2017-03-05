@@ -3,11 +3,12 @@
 
 #include "common/circle.hpp"
 
-using namespace notf;
+namespace notf {
 
 /* Circlef ************************************************************************************************************/
 
-std::ostream& operator<<(std::ostream& out, const Circlef& circle)
+template <>
+std::ostream& operator<<(std::ostream& out, const notf::_Circle<float>& circle)
 {
     return out << "Circlef([" << circle.center.x << ", " << circle.center.y << "], " << circle.radius << ")";
 }
@@ -18,3 +19,5 @@ static_assert(sizeof(Circlef) == sizeof(Vector2f) + sizeof(float),
 
 static_assert(std::is_pod<Circlef>::value,
               "This compiler does not recognize notf::Circlef as a POD.");
+
+} // namespace notf

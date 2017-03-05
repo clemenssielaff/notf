@@ -3,11 +3,12 @@
 #include <iostream>
 #include <type_traits>
 
-using namespace notf;
+namespace notf {
 
 /* Vector2f ***********************************************************************************************************/
 
-std::ostream& operator<<(std::ostream& out, const Vector2f& vec)
+template <>
+std::ostream& operator<<(std::ostream& out, const notf::_RealVector2<float>& vec)
 {
     return out << "Vector2f(" << vec.x << ", " << vec.y << ")";
 }
@@ -21,7 +22,8 @@ static_assert(std::is_pod<Vector2f>::value,
 
 /* Vector2d ***********************************************************************************************************/
 
-std::ostream& operator<<(std::ostream& out, const Vector2d& vec)
+template <>
+std::ostream& operator<<(std::ostream& out, const notf::_RealVector2<double>& vec)
 {
     return out << "Vector2d(" << vec.x << ", " << vec.y << ")";
 }
@@ -35,7 +37,8 @@ static_assert(std::is_pod<Vector2d>::value,
 
 /* Vector2i ***********************************************************************************************************/
 
-std::ostream& operator<<(std::ostream& out, const Vector2i& vec)
+template <>
+std::ostream& operator<<(std::ostream& out, const notf::_IntVector2<int>& vec)
 {
     return out << "Vector2i(" << vec.x << ", " << vec.y << ")";
 }
@@ -46,3 +49,5 @@ static_assert(sizeof(Vector2i) == sizeof(int) * 2,
 
 static_assert(std::is_pod<Vector2i>::value,
               "This compiler does not recognize notf::Vector2i as a POD.");
+
+} // namespace notf

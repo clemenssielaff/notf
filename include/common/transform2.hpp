@@ -4,7 +4,7 @@
 #include <array>
 #include <iosfwd>
 
-#include "common/floating_point.hpp"
+#include "common/float.hpp"
 #include "common/vector2.hpp"
 
 namespace notf {

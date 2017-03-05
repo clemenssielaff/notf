@@ -6,10 +6,10 @@
 
 #include "common/aabr.hpp"
 #include "common/claim.hpp"
-#include "common/floating_point.hpp"
+#include "common/float.hpp"
 #include "common/log.hpp"
 #include "common/transform2.hpp"
-#include "common/vector_utils.hpp"
+#include "common/vector.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous

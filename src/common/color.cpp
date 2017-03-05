@@ -13,7 +13,7 @@
 #include "common/log.hpp"
 #include "common/string.hpp"
 
-using namespace notf;
+namespace notf {
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -41,9 +41,9 @@ Hsl rgb_to_hsl(const Color& input)
     float themin, themax, delta;
     Hsl result;
 
-    themin = std::min(input.r, std::min(input.g, input.b));
-    themax = std::max(input.r, std::max(input.g, input.b));
-    delta = themax - themin;
+    themin   = std::min(input.r, std::min(input.g, input.b));
+    themax   = std::max(input.r, std::max(input.g, input.b));
+    delta    = themax - themin;
     result.l = (themin + themax) / 2;
     result.s = 0;
     if (result.l > 0 && result.l < 1) {
@@ -171,9 +171,9 @@ Lab rgb_to_lab(const Color& input)
     }
 
     Lab result;
-    result.l = max(0.f, (116.f * var_Y) - 16);
-    result.a = max(-128.f, min(127.f, 500.f * (var_X - var_Y)));
-    result.b = max(-128.f, min(127.f, 200.f * (var_Y - var_Z)));
+    result.l     = max(0.f, (116.f * var_Y) - 16);
+    result.a     = max(-128.f, min(127.f, 500.f * (var_X - var_Y)));
+    result.b     = max(-128.f, min(127.f, 200.f * (var_Y - var_Z)));
     result.alpha = input.a;
     return result;
 }
@@ -323,3 +323,5 @@ static_assert(std::is_pod<Color>::value,
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
+
+} // namespace notf
