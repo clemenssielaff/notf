@@ -9,7 +9,7 @@
 namespace { // anonymous
 using namespace notf;
 
-void transform_command_point(const Transform2& xform, std::vector<float>& commands, size_t index)
+void transform_command_point(const Xform2f& xform, std::vector<float>& commands, size_t index)
 {
     assert(commands.size() >= index + 2);
     Vector2f& point = *reinterpret_cast<Vector2f*>(&commands[index]);
@@ -117,9 +117,9 @@ void Cell::set_fill_paint(Paint paint)
 void Cell::set_scissor(const Aabrf& aabr)
 {
     RenderState& current_state  = _get_current_state();
-    current_state.scissor.xform = Transform2::translation(aabr.center());
+    current_state.scissor.xform = Xform2f::translation(aabr.center());
     current_state.scissor.xform *= current_state.xform;
-    current_state.scissor.extend = aabr.extend() / 2;
+    current_state.scissor.extend = aabr.extend() * 0.5f;
 }
 
 void Cell::begin_path()
@@ -148,7 +148,7 @@ void Cell::_append_commands(std::vector<float>&& commands)
     m_commands.reserve(m_commands.size() + commands.size());
 
     // commands operate in the context's current transformation space, but we need them in global space
-    const Transform2& xform = _get_current_state().xform;
+    const Xform2f& xform = _get_current_state().xform;
     for (size_t i = 0; i < commands.size();) {
         Command command = static_cast<Command>(commands[i]);
         switch (command) {
@@ -951,7 +951,7 @@ Paint Cell::create_radial_gradient(const Vector2f& center,
                                    const Color inner_color, const Color outer_color)
 {
     Paint paint;
-    paint.xform         = Transform2::translation(center);
+    paint.xform         = Xform2f::translation(center);
     paint.radius        = (inner_radius + outer_radius) * 0.5f;
     paint.feather       = max(1.f, outer_radius - inner_radius);
     paint.extent.width  = paint.radius;
@@ -966,7 +966,7 @@ Paint Cell::create_box_gradient(const Vector2f& center, const Size2f& extend,
                                 const Color inner_color, const Color outer_color)
 {
     Paint paint;
-    paint.xform         = Transform2::translation({center.x + extend.width / 2, center.y + extend.height / 2});
+    paint.xform         = Xform2f::translation({center.x + extend.width / 2, center.y + extend.height / 2});
     paint.radius        = radius;
     paint.feather       = max(1.f, feather);
     paint.extent.width  = extend.width / 2;
@@ -981,7 +981,7 @@ Paint Cell::create_texture_pattern(const Vector2f& top_left, const Size2f& exten
                                    const float angle, const float alpha)
 {
     Paint paint;
-    paint.xform         = Transform2::rotation(angle);
+    paint.xform         = Xform2f::rotation(angle);
     paint.xform[2][0]   = top_left.x;
     paint.xform[2][1]   = top_left.y;
     paint.extent.width  = extend.width;

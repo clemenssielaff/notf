@@ -23,7 +23,7 @@ bool LayoutItem::_redraw()
     return true;
 }
 
-void LayoutItem::_get_window_transform(Transform2& result) const
+void LayoutItem::_get_window_transform(Xform2f& result) const
 {
     std::shared_ptr<const Item> parent_item = get_parent();
     if (!parent_item) {

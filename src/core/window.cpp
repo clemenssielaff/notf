@@ -86,7 +86,7 @@ void Window::_update()
 
     Size2i buffer_size;
     glfwGetFramebufferSize(m_glfw_window.get(), &buffer_size.width, &buffer_size.height);
-    m_render_context->set_buffer_size(Size2f::from_size2i(buffer_size));
+    m_render_context->set_buffer_size(buffer_size);
 
     double mouse_x, mouse_y;
     glfwGetCursorPos(m_glfw_window.get(), &mouse_x, &mouse_y);
@@ -139,7 +139,7 @@ std::shared_ptr<Window> Window::create(const WindowInfo& info)
     // inititalize the window
     Application::get_instance()._register_window(window);
     window->m_root_layout = std::make_shared<MakeSmartEnabler<LayoutRoot>>(window);
-    window->m_root_layout->_set_size(Size2f::from_size2i(window->get_buffer_size()));
+    window->m_root_layout->_set_size(window->get_buffer_size());
     // TODO: why again is the LayoutRoot created outside the Window Constructor?
 
     return window;
@@ -205,7 +205,7 @@ void Window::_on_resize(int width, int height)
 {
     UNUSED(width);
     UNUSED(height);
-    m_root_layout->_set_size(Size2f::from_size2i(get_buffer_size()));
+    m_root_layout->_set_size(get_buffer_size());
 }
 
 void Window::_propagate_mouse_event(MouseEvent&& event)

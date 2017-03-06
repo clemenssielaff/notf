@@ -102,6 +102,9 @@ constexpr float precision_low<float>() { return std::numeric_limits<float>::epsi
 template <>
 constexpr double precision_low<double>() { return std::numeric_limits<double>::epsilon() * 100; }
 
+template <>
+constexpr int precision_low<int>() { return 0; }
+
 /** Type dependent constant for high-precision approximation. */
 template <typename Type>
 constexpr Type precision_high();
@@ -111,6 +114,9 @@ constexpr float precision_high<float>() { return std::numeric_limits<float>::eps
 
 template <>
 constexpr double precision_high<double>() { return std::numeric_limits<double>::epsilon(); }
+
+template <>
+constexpr int precision_high<int>() { return 0; }
 
 // approx *************************************************************************************************************/
 

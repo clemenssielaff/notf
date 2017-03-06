@@ -107,7 +107,7 @@ bool Item::_set_item_size(LayoutItem* layout_item, const Size2f& size)
     return layout_item->_set_size(size);
 }
 
-bool Item::_set_item_transform(LayoutItem* layout_item, const Transform2 transform)
+bool Item::_set_item_transform(LayoutItem* layout_item, const Xform2f transform)
 {
     return layout_item->_set_transform(std::move(transform));
 }

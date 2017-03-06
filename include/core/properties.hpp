@@ -3,8 +3,8 @@
 #include <iostream>
 
 #include "common/claim.hpp"
-#include "common/size2f.hpp"
-#include "common/transform2.hpp"
+#include "common/size2.hpp"
+#include "common/xform2.hpp"
 #include "core/property.hpp"
 #include "utils/make_smart_enabler.hpp"
 
@@ -46,7 +46,7 @@ namespace notf {
     template <>                                                           \
     NAME* PropertyMap::get<NAME>(const std::string& name) const           \
     {                                                                     \
-        auto value = at(name).get();                                      \
+        auto value  = at(name).get();                                     \
         auto result = dynamic_cast<NAME*>(value);                         \
         if (!result) {                                                    \
             throw std::runtime_error(string_format(                       \
@@ -69,7 +69,7 @@ DEFINE_PROPERTY(IntProperty, int);
 DEFINE_PROPERTY(StringProperty, std::string);
 DEFINE_PROPERTY(ClaimProperty, Claim);
 DEFINE_PROPERTY(Size2Property, Size2f);
-DEFINE_PROPERTY(Transform2Property, Transform2);
+DEFINE_PROPERTY(Transform2Property, Xform2f);
 
 #undef _notf_DEFINE_PROPERTY
 #undef DEFINE_PROPERTY
@@ -107,7 +107,7 @@ CREATE_PROPERTY_IMPL(IntProperty, int);
 CREATE_PROPERTY_IMPL(StringProperty, std::string);
 CREATE_PROPERTY_IMPL(ClaimProperty, Claim);
 CREATE_PROPERTY_IMPL(Size2Property, Size2f);
-CREATE_PROPERTY_IMPL(Transform2Property, Transform2);
+CREATE_PROPERTY_IMPL(Transform2Property, Xform2f);
 
 #undef CREATE_PROPERTY_IMPL
 #pragma pop_macro("CREATE_PROPERTY_IMPL")

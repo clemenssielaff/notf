@@ -56,15 +56,15 @@ public: // methods
     }
 
     /** Recursive implementation to produce the Item's transformation in window space. */
-    Transform2 get_window_transform() const
+    Xform2f get_window_transform() const
     {
-        Transform2 result = Transform2::identity();
+        Xform2f result = Xform2f::identity();
         _get_window_transform(result);
         return result;
     }
 
     /** Returns the Item's transformation in parent space. */
-    const Transform2& get_transform() const { return m_transform; }
+    const Xform2f& get_transform() const { return m_transform; }
 
     /** Looks for all Widgets at a given position in parent space.
      * @param local_pos     Local coordinates where to look for a Widget.
@@ -87,14 +87,14 @@ public: // signals
     /** Emitted, when the transform of this Item has changed.
      * @param New local transform.
      */
-    Signal<Transform2> transform_changed;
+    Signal<Xform2f> transform_changed;
 
 protected: // methods
     explicit LayoutItem()
         : Item()
         , m_opacity(1)
         , m_size()
-        , m_transform(Transform2::identity())
+        , m_transform(Xform2f::identity())
         , m_claim()
     {
     }
@@ -125,7 +125,7 @@ protected: // methods
     /** Updates the transformation of this LayoutItem.
      * @return      True iff the transform has been modified.
      */
-    bool _set_transform(const Transform2 transform)
+    bool _set_transform(const Xform2f transform)
     {
         if (transform != m_transform) {
             m_transform = std::move(transform);
@@ -150,7 +150,7 @@ protected: // methods
 
 private: // methods
     /** Calculates the transformation of this LayoutItem relative to its Window. */
-    void _get_window_transform(Transform2& result) const;
+    void _get_window_transform(Xform2f& result) const;
 
 private: // fields
     /** Opacity of this Item in the range [0 -> 1]. */
@@ -160,7 +160,7 @@ private: // fields
     Size2f m_size;
 
     /** 2D transformation of this Item in local space. */
-    Transform2 m_transform;
+    Xform2f m_transform;
 
     /** The Claim of a LayoutItem determines how much space it receives in the parent Layout. */
     Claim m_claim;

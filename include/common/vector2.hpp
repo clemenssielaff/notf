@@ -29,7 +29,8 @@ struct _RealVector2 {
 
     /* Constructors ***************************************************************************************************/
 
-    _RealVector2() = default; // so this data structure remains a POD
+    /** Default (non-initializing) constructor so this struct remains a POD */
+    _RealVector2() = default;
 
     /** Creates a Vector2 with the given components.
      * @param x     X-coordinate.
@@ -408,7 +409,8 @@ struct _IntVector2 {
 
     /* Constructors ***************************************************************************************************/
 
-    _IntVector2() = default; // so this data structure remains a POD
+    /** Default (non-initializing) constructor so this struct remains a POD */
+    _IntVector2() = default;
 
     /** Creates a Vector2 with the given components.
      * @param x     X-coordinate.
@@ -608,4 +610,5 @@ template <typename Integer>
 struct hash<notf::_IntVector2<Integer>> {
     size_t operator()(const notf::_IntVector2<Integer>& vector) const { return notf::hash(vector.x, vector.y); }
 };
-}
+
+} // namespace std

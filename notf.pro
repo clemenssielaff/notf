@@ -123,8 +123,6 @@ SOURCES += \
     src/common/system.cpp \
     src/core/render_manager.cpp \
     src/common/color.cpp \
-    src/common/transform2.cpp \
-    src/common/size2i.cpp \
     src/core/layout.cpp \
     src/core/layout_root.cpp \
     src/dynamic/layout/stack_layout.cpp \
@@ -132,7 +130,6 @@ SOURCES += \
     src/graphics/raw_image.cpp \
     src/graphics/texture2.cpp \
     src/common/circle.cpp \
-    src/common/size2f.cpp \
     src/common/time.cpp \
     src/common/padding.cpp \
     src/dynamic/layout/overlayout.cpp \
@@ -151,9 +148,11 @@ SOURCES += \
     src/graphics/cell.cpp \
     src/graphics/stats.cpp \
     src/graphics/painter.cpp \
-    src/common/transform3.cpp \
     src/graphics/text/font_manager.cpp \
-    src/common/random.cpp
+    src/common/random.cpp \
+    src/common/size2.cpp \
+    src/common/xform2.cpp \
+    src/common/xform3.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -179,17 +178,14 @@ HEADERS += \
     include/core/render_manager.hpp \
     include/common/color.hpp \
     include/utils/enummap.hpp \
-    include/common/transform2.hpp \
     include/utils/enum_to_number.hpp \
     include/utils/unused.hpp \
-    include/common/size2i.hpp \
     include/core/layout.hpp \
     include/core/layout_root.hpp \
     include/dynamic/layout/stack_layout.hpp \
     include/common/claim.hpp \
     include/graphics/raw_image.hpp \
     include/common/circle.hpp \
-    include/common/size2f.hpp \
     include/common/time.hpp \
     include/utils/literals.hpp \
     include/common/padding.hpp \
@@ -219,7 +215,6 @@ HEADERS += \
     include/graphics/painter.hpp \
     include/graphics/stats.hpp \
     include/graphics/cell.hpp \
-    include/common/transform3.hpp \
     include/graphics/text/font_manager.hpp \
     include/graphics/text/freetype.hpp \
     include/utils/sfinae.hpp \
@@ -228,7 +223,10 @@ HEADERS += \
     include/common/set.hpp \
     include/common/string.hpp \
     include/common/vector.hpp \
-    include/common/float.hpp
+    include/common/float.hpp \
+    include/common/size2.hpp \
+    include/common/xform2.hpp \
+    include/common/xform3.hpp
 
 QMAKE_CXX = ccache g++
 

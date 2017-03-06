@@ -8,7 +8,7 @@
 
 namespace { // anonymous
 
-void xformToMat3x4(float* m3, notf::Transform2 t)
+void xformToMat3x4(float* m3, notf::Xform2f t)
 {
     m3[0]  = t[0][0];
     m3[1]  = t[0][1];
@@ -316,7 +316,7 @@ void RenderContext::_render_flush(const BlendMode blend_mode)
 
         // Set view and texture just once per frame.
         glUniform1i(m_loc_texture, 0);
-        glUniform2fv(m_loc_viewsize, 1, m_buffer_size.as_float_ptr());
+        glUniform2fv(m_loc_viewsize, 1, m_buffer_size.as_ptr());
 
         // perform the render calls
         for (const CanvasCall& call : m_calls) {

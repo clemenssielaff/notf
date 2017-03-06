@@ -5,7 +5,7 @@
 
 #include "common/color.hpp"
 #include "common/signal.hpp"
-#include "common/size2i.hpp"
+#include "common/size2.hpp"
 #include "common/vector2.hpp"
 
 struct GLFWwindow;

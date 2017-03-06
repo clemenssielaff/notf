@@ -6,8 +6,8 @@
 
 #include "common/claim.hpp"
 #include "common/signal.hpp"
-#include "common/size2f.hpp"
-#include "common/transform2.hpp"
+#include "common/size2.hpp"
+#include "common/xform2.hpp"
 #include "utils/binding_accessors.hpp"
 
 #ifdef NOTF_PYTHON
@@ -146,7 +146,7 @@ protected: // static methods
     static bool _set_item_size(LayoutItem* layout_item, const Size2f& size);
 
     /** Allows any Item subclass to call _set_item_transform on any other Item. */
-    static bool _set_item_transform(LayoutItem* layout_item, const Transform2 transform);
+    static bool _set_item_transform(LayoutItem* layout_item, const Xform2f transform);
 
 private: // methods
     /** Sets a new Item to manage this Item. */

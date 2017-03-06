@@ -4,7 +4,7 @@
 #include <unordered_map>
 
 #include "common/color.hpp"
-#include "common/size2i.hpp"
+#include "common/size2.hpp"
 #include "common/vector2.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/text/font.hpp"

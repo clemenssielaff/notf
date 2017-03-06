@@ -3,8 +3,9 @@
 #include <iosfwd>
 #include <limits>
 
+#include "common/float.hpp"
 #include "common/hash.hpp"
-#include "common/size2f.hpp"
+#include "common/size2.hpp"
 #include "common/vector2.hpp"
 #include "utils/sfinae.hpp"
 
@@ -41,7 +42,8 @@ struct _Aabr {
 
     /* Constructors ***************************************************************************************************/
 
-    _Aabr() = default; // so this data structure remains a POD
+    /** Default (non-initializing) constructor so this struct remains a POD */
+    _Aabr() = default;
 
     /** Constructs an Aabr of the given width and height, with the top-left corner at the given `x` and `y` coordinates.
      * @param x         X-coordinate of the top-left corner.
@@ -89,7 +91,7 @@ struct _Aabr {
     /** Constructs an Aabr of the given size with the top-left corner at zero.
      * @param size  Size of the Aabr.
      */
-    _Aabr(const Size2f& size)
+    _Aabr(const _Size2<Value_t>& size)
         : _min(0, 0)
         , _max(size.width, size.height)
     {
@@ -224,7 +226,7 @@ struct _Aabr {
      */
     Vector_t closest_point_to(const Vector_t& target) const
     {
-        const Vector_t pos         = center();
+        const Vector_t pos        = center();
         const Value_t half_width  = width() / 2;
         const Value_t half_height = height() / 2;
         return {pos.x + clamp(target.x - pos.x, -half_width, half_width),

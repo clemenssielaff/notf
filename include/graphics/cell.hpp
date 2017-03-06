@@ -5,8 +5,8 @@
 #include "common/aabr.hpp"
 #include "common/color.hpp"
 #include "common/float.hpp"
-#include "common/size2i.hpp"
-#include "common/transform2.hpp"
+#include "common/size2.hpp"
+#include "common/xform2.hpp"
 #include "graphics/blend_mode.hpp"
 #include "graphics/texture2.hpp"
 #include "graphics/vertex.hpp"
@@ -20,7 +20,7 @@ struct Paint {
     Paint() = default;
 
     Paint(Color color)
-        : xform(Transform2::identity())
+        : xform(Xform2f::identity())
         , extent()
         , radius(0)
         , feather(1)
@@ -31,14 +31,14 @@ struct Paint {
 
     void set_color(const Color color)
     {
-        xform       = Transform2::identity();
+        xform       = Xform2f::identity();
         radius      = 0;
         feather     = 1;
         inner_color = std::move(color);
         outer_color = inner_color;
     }
 
-    Transform2 xform;
+    Xform2f xform;
     Size2f extent;
     float radius;
     float feather;
@@ -49,7 +49,7 @@ struct Paint {
 
 struct Scissor {
     /** Scissors have their own transformation. */
-    Transform2 xform;
+    Xform2f xform;
 
     /** Extend around the center of the Transform.
      * That means that the Scissor's width is extend.width * 2.
@@ -155,13 +155,13 @@ private: // class
             : stroke_width(1)
             , miter_limit(10)
             , alpha(1)
-            , xform(Transform2::identity())
+            , xform(Xform2f::identity())
             , blend_mode(BlendMode::SOURCE_OVER)
             , line_cap(LineCap::BUTT)
             , line_join(LineJoin::MITER)
             , fill(Color(255, 255, 255))
             , stroke(Color(0, 0, 0))
-            , scissor({Transform2::identity(), {-1, -1}})
+            , scissor({Xform2f::identity(), {-1, -1}})
         {
         }
 
@@ -170,7 +170,7 @@ private: // class
         float stroke_width;
         float miter_limit;
         float alpha;
-        Transform2 xform;
+        Xform2f xform;
         BlendMode blend_mode;
         LineCap line_cap;
         LineJoin line_join;
@@ -216,21 +216,21 @@ public: // methods
 
     void translate(const float x, const float y) { translate(Vector2f{x, y}); }
 
-    void translate(const Vector2f delta) { _get_current_state().xform *= Transform2::translation(std::move(delta)); }
+    void translate(const Vector2f delta) { _get_current_state().xform *= Xform2f::translation(std::move(delta)); }
 
     /** Rotates the current state the given amount of radians in a counter-clockwise direction. */
-    void rotate(const float angle) { _get_current_state().xform = Transform2::rotation(angle) * _get_current_state().xform; }
+    void rotate(const float angle) { _get_current_state().xform = Xform2f::rotation(angle) * _get_current_state().xform; }
     // TODO: Transform2::premultiply
 
-    void transform(const Transform2& transform) { _get_current_state().xform *= transform; }
+    void transform(const Xform2f& transform) { _get_current_state().xform *= transform; }
 
-    void reset_transform() { _get_current_state().xform = Transform2::identity(); }
+    void reset_transform() { _get_current_state().xform = Xform2f::identity(); }
 
-    const Transform2& get_transform() const { return get_current_state().xform; }
+    const Xform2f& get_transform() const { return get_current_state().xform; }
 
     void set_scissor(const Aabrf& aabr);
 
-    void reset_scissor() { _get_current_state().scissor = {Transform2::identity(), {-1, -1}}; }
+    void reset_scissor() { _get_current_state().scissor = {Xform2f::identity(), {-1, -1}}; }
 
     // nanovg has a function `nvgIntersectScissor` that tries to approximate the intersection of two (not aligned)
     // rectangles ... I leave that out for now
@@ -327,7 +327,7 @@ public: // getter
 
     float get_fringe_width() const { return m_fringe_width; }
 
-public: // static methods
+public:                                                                                     // static methods
     static Paint create_linear_gradient(const Vector2f& start_pos, const Vector2f& end_pos, // TODO: these should be member of Paint
                                         const Color start_color, const Color end_color);
 

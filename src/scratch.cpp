@@ -5,7 +5,7 @@
 #include "core/glfw_wrapper.hpp"
 
 #include "common/log.hpp"
-#include "common/size2i.hpp"
+#include "common/size2.hpp"
 #include "common/transform3.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/text/font_manager.hpp"

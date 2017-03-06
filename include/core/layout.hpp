@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/size2.hpp"
 #include "core/layout_item.hpp"
 
 namespace notf {

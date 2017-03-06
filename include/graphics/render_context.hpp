@@ -5,7 +5,7 @@
 
 #include "common/aabr.hpp"
 #include "common/color.hpp"
-#include "common/size2i.hpp"
+#include "common/size2.hpp"
 #include "common/time.hpp"
 #include "common/vector2.hpp"
 #include "graphics/blend_mode.hpp"

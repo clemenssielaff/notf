@@ -109,7 +109,7 @@ void Overlayout::_relayout()
                 assert(m_vertical_alignment == Vertical::BOTTOM);
                 y = total_size.height - m_padding.bottom - item_size.height;
             }
-            _set_item_transform(layout_item, Transform2::translation({x, y}));
+            _set_item_transform(layout_item, Xform2f::translation({x, y}));
         }
     }
 }
