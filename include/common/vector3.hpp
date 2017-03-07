@@ -1,9 +1,10 @@
 #pragma once
 
-#include <assert.h>
 #include <iosfwd>
 
 #include "common/float.hpp"
+#include "common/hash.hpp"
+#include "utils/sfinae.hpp"
 
 namespace notf {
 //*********************************************************************************************************************/
@@ -426,3 +427,15 @@ template <typename Real>
 std::ostream& operator<<(std::ostream& out, const notf::_RealVector3<Real>& vec);
 
 } // namespace notf
+
+/* std::hash **********************************************************************************************************/
+
+namespace std {
+
+/** std::hash specialization for notf::_RealVector3. */
+template <typename Real>
+struct hash<notf::_RealVector3<Real>> {
+    size_t operator()(const notf::_RealVector3<Real>& vector) const { return notf::hash(vector.x, vector.y, vector.z); }
+};
+
+} // namespace std

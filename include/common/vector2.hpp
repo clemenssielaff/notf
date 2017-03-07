@@ -1,6 +1,5 @@
 #pragma once
 
-#include <assert.h>
 #include <iosfwd>
 
 #include "common/float.hpp"
