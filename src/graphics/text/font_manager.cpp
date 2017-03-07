@@ -141,7 +141,7 @@ void FontManager::render_text(const std::string& text, ushort x, ushort y, const
     const Transform3 proj_matrix = Transform3::orthographic(m_window_size.width, m_window_size.height, 0.05f, 100.0f);
     glUniformMatrix4fv(m_view_proj_matrix_uniform, 1, GL_FALSE, proj_matrix.as_ptr());
 
-    const Transform3 world_matrix = Transform3::translation(Vector3{0, 0, -10});
+    const Transform3 world_matrix = Transform3::translation(Vector3f{0, 0, -10});
     glUniformMatrix4fv(m_world_matrix_uniform, 1, GL_FALSE, world_matrix.as_ptr());
 
     glUniform4fv(m_color_uniform, 1, m_color.as_ptr());
@@ -181,7 +181,7 @@ void FontManager::render_atlas() // TODO: MAGIC NUMBERS!!!!!!!!!!!!!!
     GLfloat black[4] = {0, 0, 0, 1};
     glUniform4fv(m_color_uniform, 1, black);
 
-    auto worldMatrix          = Transform3::translation(Vector3{0, 0, -10});
+    auto worldMatrix          = Transform3::translation(Vector3f{0, 0, -10});
     auto viewMatrix           = Transform3::identity();
     auto projectionMatrix     = Transform3::orthographic(m_window_size.width, m_window_size.height, 0.05f, 100.0f);
     Transform3 viewProjMatrix = projectionMatrix * viewMatrix;

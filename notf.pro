@@ -18,9 +18,9 @@ CONFIG(release, debug|release) {
 #    message("Building in Release Mode.")
     DEFINES += "SIGNAL_LOG_LEVEL=4" "NDEBUG"
     QMAKE_CXXFLAGS_RELEASE += -fvisibility=hidden -s
-    QMAKE_CXXFLAGS_RELEASE += -O3 #-Os
+    QMAKE_CXXFLAGS_RELEASE += -O3 -flto #-Os
     QMAKE_LFLAGS_RELEASE += -fvisibility=hidden -s
-    QMAKE_LFLAGS_RELEASE += -O3 #-Os
+    QMAKE_LFLAGS_RELEASE += -O3 -flto #-Os
 
     # python
     LIBS *= -L/home/clemens/code/thirdparty/Python-3.5.2/
@@ -152,7 +152,8 @@ SOURCES += \
     src/common/random.cpp \
     src/common/size2.cpp \
     src/common/xform2.cpp \
-    src/common/xform3.cpp
+    src/common/xform3.cpp \
+    src/common/exception.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -226,7 +227,8 @@ HEADERS += \
     include/common/float.hpp \
     include/common/size2.hpp \
     include/common/xform2.hpp \
-    include/common/xform3.hpp
+    include/common/xform3.hpp \
+    include/common/exception.hpp
 
 QMAKE_CXX = ccache g++
 

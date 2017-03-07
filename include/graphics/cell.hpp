@@ -139,7 +139,7 @@ public: // enum
         Vector2f forward;
 
         /** Something with miter...? */
-        Vector2f dm; // TODO: what is Point::dm?
+        Vector2f dm;
 
         /** Distance to the next point forward. */
         float length;

@@ -68,41 +68,46 @@ Hsl rgb_to_hsl(const Color& input)
 
 Color hsl_to_rgb(const Hsl& input)
 {
-    Color sat;
-    if (input.h < 120) {
-        sat.r = (120 - input.h) / 60.f;
-        sat.g = input.h / 60.f;
-        sat.b = 0;
+    static const float _60deg  = static_cast<float>(PI / 3.l);
+    static const float _120deg = static_cast<float>(TWO_PI * (1.l / 3.l));
+    static const float _240deg = static_cast<float>(TWO_PI * (2.l / 3.l));
+    static const float _360deg = static_cast<float>(TWO_PI);
+
+    float r, g, b;
+    if (input.h < _120deg) {
+        r = (_120deg - input.h) / _60deg;
+        g = input.h / _60deg;
+        b = 0;
     }
-    else if (input.h < 240) {
-        sat.r = 0;
-        sat.g = (240 - input.h) / 60.f;
-        sat.b = (input.h - 120) / 60.f;
+    else if (input.h < _240deg) {
+        r = 0;
+        g = (_240deg - input.h) / _60deg;
+        b = (input.h - _120deg) / _60deg;
     }
     else {
-        sat.r = (input.h - 240) / 60.f;
-        sat.g = 0;
-        sat.b = (360 - input.h) / 60.f;
+        r = (input.h - _240deg) / _60deg;
+        g = 0;
+        b = (_360deg - input.h) / _60deg;
     }
-    sat.r = std::min(sat.r, 1.f);
-    sat.g = std::min(sat.g, 1.f);
-    sat.b = std::min(sat.b, 1.f);
 
-    Color ctmp;
-    ctmp.r = 2 * input.s * sat.r + (1 - input.s);
-    ctmp.g = 2 * input.s * sat.g + (1 - input.s);
-    ctmp.b = 2 * input.s * sat.b + (1 - input.s);
+    r = std::min(r, 1.f);
+    g = std::min(g, 1.f);
+    b = std::min(b, 1.f);
+
+    r = 2 * input.s * r + (1 - input.s);
+    g = 2 * input.s * g + (1 - input.s);
+    b = 2 * input.s * b + (1 - input.s);
 
     Color result;
     if (input.l < .5f) {
-        result.r = input.l * ctmp.r;
-        result.g = input.l * ctmp.g;
-        result.b = input.l * ctmp.b;
+        result.r = input.l * r;
+        result.g = input.l * g;
+        result.b = input.l * b;
     }
     else {
-        result.r = (1 - input.l) * ctmp.r + 2 * input.l - 1;
-        result.g = (1 - input.l) * ctmp.g + 2 * input.l - 1;
-        result.b = (1 - input.l) * ctmp.b + 2 * input.l - 1;
+        result.r = (1 - input.l) * r + 2 * input.l - 1;
+        result.g = (1 - input.l) * g + 2 * input.l - 1;
+        result.b = (1 - input.l) * b + 2 * input.l - 1;
     }
     result.a = input.alpha;
 
@@ -275,9 +280,9 @@ Color::Color(const std::string& value)
     }
 }
 
-Color Color::from_hsl(float h, float s, float l, float a)
+Color Color::from_hsl(const float h, const float s, const float l, const float a)
 {
-    return hsl_to_rgb({h, s, l, a});
+    return hsl_to_rgb({norm_angle(h - static_cast<float>(PI)) + static_cast<float>(PI), s, l, a});
 }
 
 bool Color::is_color(const std::string& value)

@@ -11,7 +11,7 @@ namespace notf {
 
 //*********************************************************************************************************************/
 
-/** 2-dimensional mathematical Vector2 containing real numbers. */
+/** 2-dimensional mathematical Vector containing real numbers. */
 template <typename Real, ENABLE_IF_REAL(Real)>
 struct _RealVector2 {
 
@@ -22,10 +22,10 @@ struct _RealVector2 {
     /* Fields *********************************************************************************************************/
 
     /** X-coordinate. */
-    Real x;
+    Value_t x;
 
     /** Y-coordinate */
-    Real y;
+    Value_t y;
 
     /* Constructors ***************************************************************************************************/
 
@@ -36,7 +36,7 @@ struct _RealVector2 {
      * @param x     X-coordinate.
      * @param y     Y-coordinate.
      */
-    _RealVector2(Real x, Real y)
+    _RealVector2(const Value_t x, const Value_t y)
         : x(x), y(y) {}
 
     /* Static Constructors ********************************************************************************************/
@@ -45,7 +45,7 @@ struct _RealVector2 {
     static _RealVector2 zero() { return _RealVector2(0, 0); }
 
     /** Constructs a Vector2 with both coordinates set to the given value. */
-    static _RealVector2 fill(Real value) { return _RealVector2(value, value); }
+    static _RealVector2 fill(const Value_t value) { return _RealVector2(value, value); }
 
     /** Unit Vector2 along the X-axis. */
     static _RealVector2 x_axis() { return _RealVector2(1, 0); }
@@ -55,13 +55,19 @@ struct _RealVector2 {
 
     /*  Inspection  ***************************************************************************************************/
 
+    /** Checks, if this Vector2 contains only real, finite values (no INFINITY or NAN). */
+    bool is_real() const { return is_real(x) && is_real(y); }
+
     /** Returns true if both coordinates are (approximately) zero.
      * @param epsilon   Largest difference that is still considered to be zero.
      */
-    bool is_zero(const Real epsilon = precision_high<Real>()) const { return abs(x) <= epsilon && abs(y) <= epsilon; }
+    bool is_zero(const Value_t epsilon = precision_high<Value_t>()) const { return abs(x) <= epsilon && abs(y) <= epsilon; }
+
+    /** Checks, if any component of this Vector2 is a zero. */
+    bool contains_zero() const { return abs(x) <= precision_high<Value_t>() || abs(y) <= precision_high<Value_t>(); }
 
     /** Checks whether this Vector2 is of unit magnitude. */
-    bool is_unit() const { return abs(magnitude_sq() - 1) <= precision_high<Real>(); }
+    bool is_unit() const { return abs(magnitude_sq() - 1) <= precision_high<Value_t>(); }
 
     /** Checks whether this Vector2's direction is parallel to the other.
      * The zero Vector2 is parallel to every other Vector2.
@@ -69,13 +75,13 @@ struct _RealVector2 {
      */
     bool is_parallel_to(const _RealVector2& other) const
     {
-        if (abs(y) <= precision_high<Real>()) {
-            return abs(other.y) <= precision_high<Real>();
+        if (abs(y) <= precision_high<Value_t>()) {
+            return abs(other.y) <= precision_high<Value_t>();
         }
-        else if (abs(other.y) <= precision_high<Real>()) {
-            return abs(other.x) <= precision_high<Real>();
+        else if (abs(other.y) <= precision_high<Value_t>()) {
+            return abs(other.x) <= precision_high<Value_t>();
         }
-        return abs((x / y) - (other.x / other.y)) <= precision_low<Real>();
+        return abs((x / y) - (other.x / other.y)) <= precision_low<Value_t>();
     }
 
     /** Checks whether this Vector2 is orthogonal to the other.
@@ -85,26 +91,26 @@ struct _RealVector2 {
     bool is_orthogonal_to(const _RealVector2& other) const
     {
         // normalization required for large absolute differences in vector lengths
-        return abs(normalized().dot(other.normalized())) <= precision_high<Real>();
+        return abs(normalized().dot(other.normalized())) <= precision_high<Value_t>();
     }
 
     /** Returns the angle (in radians) between the positive x-axis and this Vector2.
      * The angle is positive for counter-clockwise angles (upper half-plane, y > 0),
      * and negative for clockwise angles (lower half-plane, y < 0).
      */
-    Real angle() const { return atan2(y, x); }
+    Value_t angle() const { return atan2(y, x); }
 
     /** Returns the smallest angle (in radians) to the other Vector2.
      * Always returns zero, if one or both of the input Vector2s are of zero magnitude.
      * @param other     Vector2 to test against.
      */
-    Real angle_to(const _RealVector2& other) const
+    Value_t angle_to(const _RealVector2& other) const
     {
-        const Real mag_sq_product = magnitude_sq() * other.magnitude_sq();
-        if (mag_sq_product <= precision_high<Real>()) {
+        const Value_t mag_sq_product = magnitude_sq() * other.magnitude_sq();
+        if (mag_sq_product <= precision_high<Value_t>()) {
             return 0; // one or both are zero
         }
-        if (abs(mag_sq_product - 1) <= precision_high<Real>()) {
+        if (abs(mag_sq_product - 1) <= precision_high<Value_t>()) {
             return acos(dot(other)); // both are unit
         }
         return acos(dot(other) / sqrt(mag_sq_product));
@@ -115,13 +121,13 @@ struct _RealVector2 {
      * Returns zero, if one or both of the input Vector2s are of zero magnitude.
      * @param other     Vector2 to test against.
      */
-    Real direction_to(const _RealVector2& other) const
+    Value_t direction_to(const _RealVector2& other) const
     {
-        const Real mag_sq_product = magnitude_sq() * other.magnitude_sq();
-        if (mag_sq_product <= precision_high<Real>()) {
+        const Value_t mag_sq_product = magnitude_sq() * other.magnitude_sq();
+        if (mag_sq_product <= precision_high<Value_t>()) {
             return 0; // one or both are zero
         }
-        if (abs(mag_sq_product - 1) <= precision_high<Real>()) {
+        if (abs(mag_sq_product - 1) <= precision_high<Value_t>()) {
             return clamp(dot(other), -1, 1); // both are unit
         }
         return clamp(dot(other) / sqrt(mag_sq_product), -1, 1);
@@ -130,18 +136,18 @@ struct _RealVector2 {
     /** Tests if this Vector2 is parallel to the X-axis.
      * The zero Vector2 is parallel to every Vector2.
      */
-    bool is_horizontal() const { return abs(y) <= precision_high<Real>(); }
+    bool is_horizontal() const { return abs(y) <= precision_high<Value_t>(); }
 
     /** Tests if this Vector2 is parallel to the Y-axis.
      * The zero Vector2 is parallel to every Vector2.
      */
-    bool is_vertical() const { return abs(x) <= precision_high<Real>(); }
+    bool is_vertical() const { return abs(x) <= precision_high<Value_t>(); }
 
     /** Returns True, if other and self are approximately the same Vector2.
      * @param other     Vector2 to test against.
      * @param epsilon   Maximal allowed distance between the two Vectors.
      */
-    bool is_approx(const _RealVector2& other, const Real epsilon = precision_high<Real>()) const
+    bool is_approx(const _RealVector2& other, const Value_t epsilon = precision_high<Value_t>()) const
     {
         return (*this - other).magnitude_sq() <= epsilon * epsilon;
     }
@@ -149,9 +155,9 @@ struct _RealVector2 {
     /** Returns the slope of this Vector2.
      * If the Vector2 is parallel to the y-axis, the slope is infinite.
      */
-    Real slope() const
+    Value_t slope() const
     {
-        if (abs(x) <= precision_high<Real>()) {
+        if (abs(x) <= precision_high<Value_t>()) {
             return INFINITY;
         }
         return y / x;
@@ -160,32 +166,10 @@ struct _RealVector2 {
     /** Returns the squared magnitude of this Vector2.
      * The squared magnitude is much cheaper to compute than the actual.
      */
-    Real magnitude_sq() const { return dot(*this); }
+    Value_t magnitude_sq() const { return dot(*this); }
 
     /** Returns the magnitude of this Vector2. */
-    Real magnitude() const { return sqrt((x * x) + (y * y)); }
-
-    /** Checks, if this Vector2 contains only real, finite values (no INFINITY or NAN). */
-    bool is_real() const { return notf::is_real(x) && notf::is_real(y); }
-
-    /** Checks, if any component of this Vector2 is a zero. */
-    bool contains_zero() const { return abs(x) <= precision_high<Real>() || abs(y) <= precision_high<Real>(); }
-
-    /** Direct read-only memory access to the Vector2. */
-    template <typename Index, ENABLE_IF_INT(Index)>
-    const Real& operator[](Index&& row) const
-    {
-        assert(0 <= row && row <= 1);
-        return *(&x + row);
-    }
-
-    /** Direct read/write memory access to the Vector2. */
-    template <typename Index, ENABLE_IF_INT(Index)>
-    Real& operator[](Index&& row)
-    {
-        assert(0 <= row && row <= 1);
-        return *(&x + row);
-    }
+    Value_t magnitude() const { return sqrt(dot(*this)); }
 
     /** Operators *****************************************************************************************************/
 
@@ -229,40 +213,46 @@ struct _RealVector2 {
     }
 
     /** Component-wise division of a Vector2 by another Vector2. */
-    _RealVector2 operator/(const _RealVector2& other) const { return {x / other.x, y / other.y}; }
+    _RealVector2 operator/(const _RealVector2& other) const { return {save_div(x, other.x), save_div(y, other.y)}; }
 
     /** In-place component-wise division of a Vector2 by another Vector2. */
     _RealVector2& operator/=(const _RealVector2& other)
     {
-        assert(abs(other.x) > precision_high<Real>());
-        assert(abs(other.y) > precision_high<Real>());
-        x /= other.x;
-        y /= other.y;
+        x = save_div(x, other.x);
+        y = save_div(y, other.y);
         return *this;
     }
 
     /** Multiplication with a scalar scales this Vector2's length. */
-    _RealVector2 operator*(const Real factor) const { return _RealVector2(x * factor, y * factor); }
+    _RealVector2 operator*(const Value_t factor) const { return _RealVector2(x * factor, y * factor); }
 
     /** In-place multiplication with a scalar. */
-    _RealVector2& operator*=(const Real factor)
+    _RealVector2& operator*=(const Value_t factor)
     {
         x *= factor;
         y *= factor;
         return *this;
     }
 
-    /** Division by a scalar inversely scales this Vector2's length. */
-    _RealVector2 operator/(const Real divisor) const
+    /** Division by a scalar inversely scales this Vector3's length.
+     * If you know that divisor cannot be zero, calling `vector *= 1/divisor` will save you a 'division-by-zero' test.
+     */
+    _RealVector2 operator/(const Value_t divisor) const
     {
-        assert(abs(divisor) > precision_high<Real>());
+        if (divisor == 0) {
+            throw division_by_zero();
+        }
         return _RealVector2(x / divisor, y / divisor);
     }
 
-    /** In-place division by a scalar value. */
-    _RealVector2& operator/=(const Real divisor)
+    /** In-place division by a scalar value.
+     * If you know that divisor cannot be zero, calling `vector *= 1/divisor` will save you a 'division-by-zero' test.
+     */
+    _RealVector2& operator/=(const Value_t divisor)
     {
-        assert(abs(divisor) > precision_high<Real>());
+        if (divisor == 0) {
+            throw division_by_zero();
+        }
         x /= divisor;
         y /= divisor;
         return *this;
@@ -271,13 +261,38 @@ struct _RealVector2 {
     /** Returns an inverted copy of this Vector2. */
     _RealVector2 operator-() const { return inverse(); }
 
+    /** Read-only reference to an entry of the Vector2's internal storage. */
+    template <typename Index, ENABLE_IF_INT(Index)>
+    const Value_t& operator[](const Index index) const
+    {
+        if (0 > index || index > 1) {
+            throw std::range_error("Index requested via Vector2 [] operator is out of bounds");
+        }
+        return *(&x + index);
+    }
+
+    /** Read-write reference to an entry of the Vector2's internal storage. */
+    template <typename Index, ENABLE_IF_INT(Index)>
+    Value_t& operator[](const Index index)
+    {
+        if (0 > index || index > 1) {
+            throw std::range_error("Index requested via Vector2 [] operator is out of bounds");
+        }
+        return *(&x + index);
+    }
+
+    /** Read-only pointer to the Vector2's internal storage. */
+    const Value_t* as_ptr() const { return &x; }
+
+    /** Read-write pointer to the Vector2's internal storage. */
+    Value_t* as_ptr() { return &x; }
+
     /** Modifiers *****************************************************************************************************/
 
     /** Sets all components to zero. */
     _RealVector2& set_zero()
     {
-        x = 0;
-        y = 0;
+        x = y = 0;
         return *this;
     }
 
@@ -295,13 +310,13 @@ struct _RealVector2 {
     /** Returns the dot product of this Vector2 and another.
      * @param other     Vector2 to the right.
      */
-    Real dot(const _RealVector2& other) const { return (x * other.x) + (y * other.y); }
+    Value_t dot(const _RealVector2& other) const { return (x * other.x) + (y * other.y); }
 
     /** Returns the cross product of this Vector2 and another.
      * As defined at http://mathworld.wolfram.com/CrossProduct.html
      * @param other     Vector2 to the right.
      */
-    Real cross(const _RealVector2 other) const
+    Value_t cross(const _RealVector2 other) const
     {
         return (x * other.y) - (y * other.x);
     }
@@ -309,27 +324,27 @@ struct _RealVector2 {
     /** Returns a normalized copy of this Vector2. */
     _RealVector2 normalized() const
     {
-        const Real mag_sq = magnitude_sq();
-        if (abs(mag_sq - 1) <= precision_high<Real>()) {
+        const Value_t mag_sq = magnitude_sq();
+        if (abs(mag_sq - 1) <= precision_high<Value_t>()) {
             return _RealVector2(*this); // is unit
         }
-        if (abs(mag_sq) <= precision_high<Real>()) {
+        if (abs(mag_sq) <= precision_high<Value_t>()) {
             return _RealVector2(); // is zero
         }
-        return (*this) / sqrt(mag_sq);
+        return (*this) * (1 / sqrt(mag_sq));
     }
 
     /** In-place normalization of this Vector2. */
     _RealVector2& normalize()
     {
-        const Real mag_sq = magnitude_sq();
-        if (abs(mag_sq - 1) <= precision_high<Real>()) {
+        const Value_t mag_sq = magnitude_sq();
+        if (abs(mag_sq - 1) <= precision_high<Value_t>()) {
             return (*this); // is unit
         }
-        if (abs(mag_sq) <= precision_high<Real>()) {
+        if (abs(mag_sq) <= precision_high<Value_t>()) {
             return set_zero(); // is zero
         }
-        return (*this) /= sqrt(mag_sq);
+        return (*this) *= (1 / sqrt(mag_sq));
     }
 
     /** Creates a projection of this Vector2 onto an infinite line whose direction is specified by other.
@@ -354,41 +369,41 @@ struct _RealVector2 {
     /** Rotates this Vector2 90 degree counter-clockwise. */
     _RealVector2& orthogonalize()
     {
-        const Real temp = -y;
-        y               = x;
-        x               = temp;
+        const Value_t temp = -y;
+        y                  = x;
+        x                  = temp;
         return *this;
     }
 
     /** Returns a copy of this 2D Vector, rotated counter-clockwise by a given angle (in radians). */
-    _RealVector2 rotated(const Real angle) const
+    _RealVector2 rotated(const Value_t angle) const
     {
-        const Real sin_angle = sin(angle);
-        const Real cos_angle = cos(angle);
+        const Value_t sin_angle = sin(angle);
+        const Value_t cos_angle = cos(angle);
         return _RealVector2(
             (x * cos_angle) - (y * sin_angle),
             (y * cos_angle) + (x * sin_angle));
     }
 
     /** Rotates this 2D Vector counter-clockwise by a given angle (in radians). */
-    _RealVector2& rotate(const Real angle)
+    _RealVector2& rotate(const Value_t angle)
     {
-        const Real sin_angle = sin(angle);
-        const Real cos_angle = cos(angle);
-        const Real temp_x    = (x * cos_angle) - (y * sin_angle);
-        const Real temp_y    = (y * cos_angle) + (x * sin_angle);
-        x                    = temp_x;
-        y                    = temp_y;
+        const Value_t sin_angle = sin(angle);
+        const Value_t cos_angle = cos(angle);
+        const Value_t temp_x    = (x * cos_angle) - (y * sin_angle);
+        const Value_t temp_y    = (y * cos_angle) + (x * sin_angle);
+        x                       = temp_x;
+        y                       = temp_y;
         return (*this);
     }
 
     /** Returns the side on which the other Vector2 points to, relative to the direction of this Vector2.
      * @return +1 when other is on the left, -1 when on the right and 0 when it is straight ahead or behind.
      */
-    Real side_of(const _RealVector2& other) const
+    Value_t side_of(const _RealVector2& other) const
     {
-        const Real direction = cross(other);
-        if (abs(direction) <= precision_high<Real>()) {
+        const Value_t direction = cross(other);
+        if (abs(direction) <= precision_high<Value_t>()) {
             return 0;
         }
         return sign(direction);
@@ -453,18 +468,22 @@ struct _IntVector2 {
 
     /** Direct read-only memory access to the Vector2. */
     template <typename Index, ENABLE_IF_INT(Index)>
-    const Integer& operator[](Index&& row) const
+    const Integer& operator[](const Index index) const
     {
-        assert(0 <= row && row <= 1);
-        return *(&x + row);
+        if (0 > index || index > 1) {
+            throw std::range_error("Index requested via Vector2 [] operator is out of bounds");
+        }
+        return *(&x + index);
     }
 
     /** Direct read/write memory access to the Vector2. */
     template <typename Index, ENABLE_IF_INT(Index)>
-    Integer& operator[](Index&& row)
+    Integer& operator[](const Index index)
     {
-        assert(0 <= row && row <= 1);
-        return *(&x + row);
+        if (0 > index || index > 1) {
+            throw std::range_error("Index requested via Vector2 [] operator is out of bounds");
+        }
+        return *(&x + index);
     }
 
     /** Operators *****************************************************************************************************/

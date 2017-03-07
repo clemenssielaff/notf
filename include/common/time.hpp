@@ -50,8 +50,7 @@ struct Time {
         return {ticks >= rhs.ticks ? ticks - rhs.ticks : rhs.ticks - ticks};
     }
 
-//private: // static methods
-public: // static methods // TODO: revert to private after the font test is done
+private: // static methods
     /** Set the global frequency value. */
     static void set_frequency(Ticks ticks);
 

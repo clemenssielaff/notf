@@ -1,16 +1,16 @@
 #include "test/catch.hpp"
 
 #include "common/color.hpp"
-using notf::Color;
+using namespace notf;
 
 SCENARIO("Colors can be constructed from strings", "[common][color][string]")
 {
     WHEN("a valid string is passed")
     {
-        std::string str_1 = "2db223"; // rgb(45, 178,  35, 255)
-        std::string str_2 = "#2f0333"; // rgb(47,   3,  51, 255)
-        std::string str_3 = "#C0D9DB"; // rgb(192, 217, 219, 255)
-        std::string str_4 = "#1c1B0d"; // rgb(28,  27,  13, 255)
+        std::string str_1 = "2db223";    // rgb(45, 178,  35, 255)
+        std::string str_2 = "#2f0333";   // rgb(47,   3,  51, 255)
+        std::string str_3 = "#C0D9DB";   // rgb(192, 217, 219, 255)
+        std::string str_4 = "#1c1B0d";   // rgb(28,  27,  13, 255)
         std::string str_5 = "#adadad80"; // rgb(173, 173, 173, 128)
         std::string str_6 = "#3062a355"; // rgb(48,  98, 163,  85)
 
@@ -33,7 +33,6 @@ SCENARIO("Colors can be constructed from strings", "[common][color][string]")
         std::string wrong_4 = "c0d9db1";
         std::string wrong_5 = "#2f0x33";
 
-
         THEN("Color(string) will throw an error")
         {
             Color _;
@@ -50,7 +49,7 @@ SCENARIO("Colors can be constructed from HSL values", "[common][color]")
 {
     WHEN("a color is constructed from HSL value")
     {
-        Color hsl_1 = Color::from_hsl(45.f, 0.33f, 0.71f);
+        Color hsl_1 = Color::from_hsl(static_cast<float>(QUARTER_PI), 0.33f, 0.71f);
 
         THEN("it has the correct RGB value")
         {

@@ -49,7 +49,7 @@ struct Transform3 {
                   0, 0, 0, 1}}};
     }
 
-    static Transform3 translation(const Vector3& t)
+    static Transform3 translation(const Vector3f& t)
     {
         return {{{1, 0, 0, 0,
                   0, 1, 0, 0,
@@ -75,7 +75,7 @@ struct Transform3 {
                   0, 0, 0, 1}}};
     }
 
-    static Transform3 scale(const Vector3& scale)
+    static Transform3 scale(const Vector3f& scale)
     {
         return {{{scale.x, 0, 0, 0,
                   0, scale.y, 0, 0,
@@ -96,7 +96,7 @@ struct Transform3 {
     //  INSPECTION  ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     /** Returns the translation component of this Transform3. */
-    const Vector3& get_translation() const { return *reinterpret_cast<Vector3*>(&matrix[12]); }
+    const Vector3f& get_translation() const { return *reinterpret_cast<Vector3f*>(&matrix[12]); }
 
     /** Allows direct read-only access to the Transform3's internal storage. */
     const float* as_ptr() const { return &matrix[0]; }

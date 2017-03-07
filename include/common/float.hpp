@@ -2,9 +2,11 @@
 
 #include <cfloat>
 #include <cmath>
+
 #include <functional>
 #include <limits>
 
+#include "common/exception.hpp"
 #include "utils/sfinae.hpp"
 
 namespace notf {
@@ -14,10 +16,11 @@ namespace notf {
 #pragma clang diagnostic ignored "-Wunused-variable"
 #pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
 #endif
-const long double HALF_PI = 1.570796326794896619231321691639751442098584699687552910487l;
-const long double PI      = 3.141592653589793238462643383279502884197169399375105820975l;
-const long double TWO_PI  = 6.283185307179586476925286766559005768394338798750211641949l;
-const long double KAPPA   = 0.552284749830793398402251632279597438092895833835930764235l;
+const long double QUARTER_PI = 0.785398163397448309615660845819875721049292349843776455243l;
+const long double HALF_PI    = 1.570796326794896619231321691639751442098584699687552910487l;
+const long double PI         = 3.141592653589793238462643383279502884197169399375105820975l;
+const long double TWO_PI     = 6.283185307179586476925286766559005768394338798750211641949l;
+const long double KAPPA      = 0.552284749830793398402251632279597438092895833835930764235l;
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
@@ -88,6 +91,16 @@ inline Real norm_angle(Real alpha)
     return fmod(alpha + PI, TWO_PI) - PI;
 }
 
+/** Save division, throws a std::logic_error if the divisor is 0. */
+template <typename Real>
+inline Real save_div(const Real divident, const Real divisor)
+{
+    if (divisor == 0) {
+        throw division_by_zero();
+    }
+    return divident / divisor;
+}
+
 // precision **********************************************************************************************************/
 
 /** Type dependent constant for low-precision approximation (useful for use in "noisy" functions).
@@ -110,10 +123,10 @@ template <typename Type>
 constexpr Type precision_high();
 
 template <>
-constexpr float precision_high<float>() { return std::numeric_limits<float>::epsilon(); }
+constexpr float precision_high<float>() { return std::numeric_limits<float>::epsilon() * 3; }
 
 template <>
-constexpr double precision_high<double>() { return std::numeric_limits<double>::epsilon(); }
+constexpr double precision_high<double>() { return std::numeric_limits<double>::epsilon() * 3; }
 
 template <>
 constexpr int precision_high<int>() { return 0; }

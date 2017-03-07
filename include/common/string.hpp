@@ -146,7 +146,6 @@ std::string string_format(const std::string& format, Args... args)
     std::snprintf(buffer.get(), size, format.c_str(), args...);
     return std::string(buffer.get(), buffer.get() + size - 1); // We don't want the '\0' inside
 }
-// TODO: maybe retire `string_format` in favor of std::stringstream?
 
 /** Levenshtein "string distance" algorithm.
  *

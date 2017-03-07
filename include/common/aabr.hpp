@@ -252,6 +252,9 @@ struct _Aabr {
         return width < height ? width : height;
     }
 
+    /** Read-only pointer to the Aabr's internal storage. */
+    const Value_t* as_ptr() const { return &_min.x; }
+
     /** Operators *****************************************************************************************************/
 
     /** Tests whether two Aabrs are equal. */
@@ -502,7 +505,7 @@ struct _Aabr {
     }
     _Aabr& operator|=(const _Aabr& other) { return united(other); }
 
-    /** Allows direct memory (read / write) access to the Aabr's internal storage. */
+    /** Read-write pointer to the Aabr's internal storage. */
     Value_t* as_ptr() { return &_min.x; }
 };
 

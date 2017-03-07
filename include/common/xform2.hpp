@@ -110,10 +110,12 @@ struct _Xform2 {
     Value_t get_scale_y() const { return sqrt(rows[0][1] * rows[0][1] + rows[1][1] * rows[1][1]); }
 
     /** Read-only reference to a row of the Xform2's internal matrix. */
-    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
-    const Vector_t& operator[](T&& row) const
+    template <typename Row, ENABLE_IF_INT(Row)>
+    const Vector_t& operator[](const Row row) const
     {
-        assert(0 <= row && row <= 2);
+        if (0 > row || row > 2) {
+            throw std::range_error("Index requested via Xform2 [] operator is out of bounds");
+        }
         return rows[row];
     }
 
@@ -185,10 +187,12 @@ struct _Xform2 {
     }
 
     /** Read-write reference to a row of the Xform2's internal matrix. */
-    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
-    Vector_t& operator[](T&& row)
+    template <typename Row, ENABLE_IF_INT(Row)>
+    Vector_t& operator[](const Row row)
     {
-        assert(0 <= row && row <= 2);
+        if (0 > row || row > 2) {
+            throw std::range_error("Index requested via Xform2 [] operator is out of bounds");
+        }
         return rows[row];
     }
 

@@ -311,35 +311,37 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
     {
         THEN("it will work correctly")
         {
-            REQUIRE(Vector2f::x_axis().is_unit());
-            REQUIRE(Vector2f::y_axis().is_unit());
-            REQUIRE(Vector2d::x_axis().is_unit());
-            REQUIRE(Vector2d::y_axis().is_unit());
+            for (auto i = 0; i < 10000; ++i) {
+                REQUIRE(Vector2f::x_axis().is_unit());
+                REQUIRE(Vector2f::y_axis().is_unit());
+                REQUIRE(Vector2d::x_axis().is_unit());
+                REQUIRE(Vector2d::y_axis().is_unit());
 
-            REQUIRE(!Vector2f::zero().is_unit());
-            REQUIRE(!Vector2d::zero().is_unit());
+                REQUIRE(!Vector2f::zero().is_unit());
+                REQUIRE(!Vector2d::zero().is_unit());
 
-            REQUIRE(!random_vector<float>().is_unit());
-            REQUIRE(!random_vector<double>().is_unit());
+                REQUIRE(!random_vector<float>().is_unit());
+                REQUIRE(!random_vector<double>().is_unit());
 
-            REQUIRE(random_vector<float>().normalized().is_unit());
-            REQUIRE(random_vector<double>().normalized().is_unit());
-            REQUIRE(random_vector<float>().normalize().is_unit());
-            REQUIRE(random_vector<double>().normalize().is_unit());
+                REQUIRE(random_vector<float>().normalized().is_unit());
+                REQUIRE(random_vector<double>().normalized().is_unit());
+                REQUIRE(random_vector<float>().normalize().is_unit());
+                REQUIRE(random_vector<double>().normalize().is_unit());
 
-            REQUIRE(!lowest_vector<float>().is_unit());
-            REQUIRE(lowest_vector<float>().normalize().is_unit());
-            REQUIRE(lowest_vector<float>().normalized().is_unit());
-            REQUIRE(!lowest_vector<double>().is_unit());
-            REQUIRE(lowest_vector<double>().normalize().is_unit());
-            REQUIRE(lowest_vector<double>().normalized().is_unit());
+                REQUIRE(!lowest_vector<float>().is_unit());
+                REQUIRE(lowest_vector<float>().normalize().is_unit());
+                REQUIRE(lowest_vector<float>().normalized().is_unit());
+                REQUIRE(!lowest_vector<double>().is_unit());
+                REQUIRE(lowest_vector<double>().normalize().is_unit());
+                REQUIRE(lowest_vector<double>().normalized().is_unit());
 
-            REQUIRE(!highest_vector<float>().is_unit());
-            REQUIRE(highest_vector<float>().normalize().is_unit());
-            REQUIRE(highest_vector<float>().normalized().is_unit());
-            REQUIRE(!highest_vector<double>().is_unit());
-            REQUIRE(highest_vector<double>().normalize().is_unit());
-            REQUIRE(highest_vector<double>().normalized().is_unit());
+                REQUIRE(!highest_vector<float>().is_unit());
+                REQUIRE(highest_vector<float>().normalize().is_unit());
+                REQUIRE(highest_vector<float>().normalized().is_unit());
+                REQUIRE(!highest_vector<double>().is_unit());
+                REQUIRE(highest_vector<double>().normalize().is_unit());
+                REQUIRE(highest_vector<double>().normalized().is_unit());
+            }
         }
     }
 
@@ -363,7 +365,7 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
 
     WHEN("you need the magnitude of a vector2")
     {
-        const float factor_f = random_number<float>(-1, 1);
+        const float factor_f  = random_number<float>(-1, 1);
         const double factor_d = random_number<double>(-1, 1);
 
         THEN("it will work correctly")

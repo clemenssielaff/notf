@@ -35,7 +35,7 @@ struct Color {
 
     Color() = default; // required so this class remains a POD
 
-    Color(float r, float g, float b, float a = 1)
+    Color(const float r, const float g, const float b, const float a = 1)
         : r(clamp(r, 0, 1))
         , g(clamp(g, 0, 1))
         , b(clamp(b, 0, 1))
@@ -47,7 +47,7 @@ struct Color {
      * The parameters are clamped to range [0, 255] before cast to float.
      */
     template <class Integer, ENABLE_IF_INT(Integer)>
-    Color(Integer r, Integer g, Integer b, Integer a = 255)
+    Color(const Integer r, const Integer g, const Integer b, const Integer a = 255)
         : Color(static_cast<float>(clamp(r, 0, 255)) / 255.f,
                 static_cast<float>(clamp(g, 0, 255)) / 255.f,
                 static_cast<float>(clamp(b, 0, 255)) / 255.f,
@@ -64,19 +64,19 @@ struct Color {
     /* Static Constructors ********************************************************************************************/
 
     /** Creates a Color from floating-point RGB(A) values in the range [0, 1]. */
-    static Color from_rgb(float r, float g, float b, float a = 1) { return Color(r, g, b, a); }
+    static Color from_rgb(const float r, const float g, const float b, const float a = 1) { return Color(r, g, b, a); }
 
     /** Creates a Color from integer RGB(A) values in the range [0, 255]. */
     template <class Integer, ENABLE_IF_INT(Integer)>
-    static Color from_rgb(Integer r, Integer g, Integer b, Integer a = 255) { return Color(r, g, b, a); }
+    static Color from_rgb(const Integer r, const Integer g, const Integer b, const Integer a = 255) { return Color(r, g, b, a); }
 
     /** Creates a new Color from HSL values.
-     * @param h     Hue in degrees, in the range [0, 360]
+     * @param h     Hue in radians, in the range [0, 2*pi)
      * @param s     Saturation in the range [0, 1]
      * @param l     Lightness in the range [0, 1]
      * @param a     Alpha in the range [0, 1]
      */
-    static Color from_hsl(float h, float s, float l, float a = 1); // TODO: Color::from_hsl should take the hue in radians
+    static Color from_hsl(const float h, const float s, const float l, const float a = 1);
 
     /*  Inspection  ***************************************************************************************************/
 
