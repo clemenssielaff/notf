@@ -8,7 +8,7 @@
 
 namespace notf {
 
-Time::Ticks Time::frequency = {0};
+Time::Ticks Time::s_frequency = {0};
 
 Time Time::now()
 {
@@ -37,9 +37,10 @@ Time Time::until(const Time& then)
 
 void Time::set_frequency(Ticks ticks)
 {
-    assert(frequency == 0); // should only be called once
+    assert(s_frequency == 0); // should only be called once
     assert(ticks != 0);
-    frequency = ticks;
+    s_frequency = ticks;
+    log_info << "Setting Time::frequency to: " << s_frequency;
 }
 
 static_assert(std::is_pod<Time>::value, "This compiler does not recognize notf::Time as a POD.");

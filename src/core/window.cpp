@@ -177,7 +177,7 @@ Window::Window(const WindowInfo& info)
 
     // setup OpenGL and create the render context
     glfwMakeContextCurrent(m_glfw_window.get());
-    glfwSwapInterval(info.enable_vsync ? 1 : 0);
+    glfwSwapInterval(app.get_info().enable_vsync ? 1 : 0);
     m_render_context = std::make_unique<RenderContext>(RenderContextArguments());
 
     // apply the Window icon

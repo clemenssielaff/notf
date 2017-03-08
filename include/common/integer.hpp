@@ -41,4 +41,20 @@ constexpr Integer wrap_mod(const Integer n, const Integer M)
 {
     return ((n % M) + M) % M;
 }
+
+/** Returns the next interval from a given value.
+ * For example, with an interval of 60 we would get the following results:
+ *     value = 0   => interval =  60
+ *     value = 1   => interval =  60
+ *     value = 59  => interval =  60
+ *     value = 60  => interval = 120
+ *     value = 61  => interval = 120
+ *     ...
+ */
+template <class Integer, ENABLE_IF_INT(Integer)>
+constexpr Integer next_interval(Integer value, const Integer interval)
+{
+    value += interval;
+    return value - (value % interval);
+}
 }

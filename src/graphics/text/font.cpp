@@ -1,5 +1,7 @@
 #include "graphics/text/font.hpp"
 
+#include <assert.h>
+
 #include "common/log.hpp"
 #include "common/string.hpp"
 #include "common/system.hpp"

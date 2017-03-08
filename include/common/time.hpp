@@ -12,11 +12,16 @@ struct Time {
     /** Ticks since the start of the Application. */
     Ticks ticks;
 
+    Time() = default;
+
+    Time(const Ticks ticks)
+        : ticks(ticks) {}
+
     /** Seconds since the start of the Application. */
     double in_seconds() const
     {
-        assert(frequency);
-        return static_cast<double>(ticks) / static_cast<double>(frequency);
+        assert(s_frequency);
+        return static_cast<double>(ticks) / static_cast<double>(s_frequency);
     }
 
     /** The current time. */
@@ -32,7 +37,22 @@ struct Time {
      */
     static Time until(const Time& then);
 
+    /** Number of Ticks in a second. */
+    static Ticks frequency() { return s_frequency; }
+
     /* Operators ******************************************************************************************************/
+
+    Time& operator+=(const Time& rhs)
+    {
+        ticks += rhs.ticks;
+        return *this;
+    }
+
+    Time& operator-=(const Time& rhs)
+    {
+        ticks = rhs.ticks <= ticks ? ticks - rhs.ticks : 0;
+        return *this;
+    }
 
     bool operator==(const Time& rhs) const { return ticks == rhs.ticks; }
     bool operator!=(const Time& rhs) const { return ticks != rhs.ticks; }
@@ -56,7 +76,7 @@ private: // static methods
 
 private: // fields
     /** Ticks per second. */
-    static Ticks frequency;
+    static Ticks s_frequency;
 };
 
 } // namespace notf

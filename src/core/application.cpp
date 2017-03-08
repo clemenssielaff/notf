@@ -6,6 +6,7 @@
 #include <sstream>
 
 #include "common/input.hpp"
+#include "common/integer.hpp"
 #include "common/log.hpp"
 #include "common/time.hpp"
 #include "common/vector2.hpp"
@@ -89,7 +90,7 @@ Application::Application(const ApplicationInfo info)
 #endif
 
     // vanity plate
-//    print_notf();
+    //    print_notf();
 
     log_trace << "Started application";
 }
@@ -101,16 +102,41 @@ Application::~Application()
 
 int Application::exec()
 {
+    Time last_frame    = Time::now();
+    Time time_counter  = 0;
+    uint frame_counter = 0; // actual number of frames in the last second
+    uint anim_counter  = 0; // times the `on_frame` signal was fired in the last second
+
+    const Time::Ticks ticks_per_frame = Time::frequency() / static_cast<Time::Ticks>(m_info.fps);
+    Time::Ticks next_frame            = next_interval(Time::now().ticks, ticks_per_frame);
+
     // loop until there are no more windows open
     while (m_windows.size() > 0) {
+        ++frame_counter;
 
         // update all windows
         for (const std::shared_ptr<Window>& window : m_windows) {
             window->_update();
         }
 
-//        glfwWaitEvents();
-        glfwPollEvents();
+        const Time now = Time::now();
+        if (now.ticks >= next_frame) {
+            on_frame();
+            ++anim_counter;
+        }
+
+        // print debug stats
+        time_counter += now.since(last_frame);
+        last_frame = now;
+        if (time_counter >= Time::frequency()) {
+            log_trace << frame_counter << "fps / " << anim_counter << " animation frames";
+            frame_counter = 0;
+            anim_counter  = 0;
+            time_counter -= Time::frequency();
+        }
+
+        next_frame = next_interval(now.ticks, ticks_per_frame);
+        glfwWaitEventsTimeout((next_frame > now.ticks ? next_frame - now.ticks : 0) / static_cast<double>(Time::frequency()));
     }
 
     _shutdown();

@@ -47,9 +47,6 @@ struct WindowInfo {
     /** If the Window is resizeable or not. */
     bool is_resizeable = true;
 
-    /** If vertical synchronization is turned on or off. */
-    bool enable_vsync = true;
-
     /** Background color of the Window. */
     Color clear_color = {0.3f, 0.3f, 0.32f, 1.0f};
 

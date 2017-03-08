@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "common/signal.hpp"
+
 struct GLFWwindow;
 
 namespace notf {
@@ -29,6 +31,19 @@ struct ApplicationInfo {
     /** Number of strings in argv (first one is usually the name of the program). */
     int argc = -1;
 
+    /** Number of frames per seconds for animations.
+     * Note that the number of redraws might be higher, as user interactions can trigger redraws at any time.
+     * However, the Application::on_frame signal will fire around `fps` times per second.
+     * Also see `enable_vsync`.
+     */
+    ushort fps = 60;
+
+    /** If vertical synchronization is turned on or off.
+     * If enabled, the effective application frame rate will be: min(fps, vsync-rate).
+     * Usually the vsync-rate is 60 fps.
+     */
+    bool enable_vsync = true;
+
     /** System path to the texture directory, absolute or relative to the executable. */
     std::string texture_directory = "res/textures/";
 
@@ -42,8 +57,7 @@ struct ApplicationInfo {
 /**********************************************************************************************************************/
 
 /** The Application class.
- * Is a singleton, available everywhere with Application::instance();
- * Does not own any Windows (that is left to the client), but propagates events to all that are alive.
+ * Is a singleton, available everywhere with `Application::instance()`,
  * It also manages the lifetime of the LogHandler.
  */
 class Application {
@@ -88,7 +102,8 @@ public: // methods
 
 public: // static methods
     /** Initializes the Application through an user-defined ApplicationInfo object.
-     * Any relative path in the info (including the default paths) will be resolved after this method has been called,
+     * The default ApplicationInfo contains default paths to resource folders, relative to the executable.
+     * After passing the ApplicationInfo object to this method, these paths will be replaced by their absolute path,
      * meaning for example, that you can use `info.app_directory` to generate absolute paths to python scripts.
      */
     static Application& initialize(ApplicationInfo& info);
@@ -102,9 +117,17 @@ public: // static methods
         return _get_instance(std::move(info));
     }
 
-    /** The singleton Application instance. */
+    /** The singleton Application instance.
+     * If you call this method before calling Application::initialize(), the program will exit with:
+     *     RETURN_CODE::UNINITIALIZED
+     */
     static Application& get_instance() { return _get_instance(); }
 
+public: // signals
+    /** Emitted info.fps times per seconds for Animations to update. */
+    Signal<> on_frame;
+
+private: // static methods
     /** Called by GLFW in case of an error.
      * @param error    Error ID.
      * @param message  Error message;
@@ -158,15 +181,17 @@ private: // methods for Window
     void _set_current_window(Window* window);
 
 private: // methods
+    /** Constructor.
+     * param info     ApplicationInfo providing initialization arguments.
+     */
+    explicit Application(const ApplicationInfo info);
+
     /** Static (private) function holding the actual Application instance. */
     static Application& _get_instance(const ApplicationInfo& info = ApplicationInfo())
     {
         static Application instance(info);
         return instance;
     }
-
-    /** param info     ApplicationInfo providing initialization arguments. */
-    explicit Application(const ApplicationInfo info);
 
     /** Shuts down the application.
      * Is called automatically, after the last Window has been closed.
@@ -196,5 +221,3 @@ private: // fields
 };
 
 } // namespace notf
-
-// TODO: Application::on_tick signal

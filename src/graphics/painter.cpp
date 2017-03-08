@@ -114,7 +114,7 @@ void Painter::drawCheckBox(const Aabrf& rect)
 
 void Painter::drawColorwheel(const Aabrf& rect, float t)
 {
-    float hue = sinf(t * 0.12f);
+    float hue = sin(t * 0.12f);
 
     m_cell.push_state();
 
@@ -124,8 +124,8 @@ void Painter::drawColorwheel(const Aabrf& rect, float t)
 
     // hue circle
     for (int i = 0; i < 6; i++) {
-        float a0 = static_cast<float>(i) / 6.0f * PI * 2.0f - aeps;
-        float a1 = static_cast<float>(i + 1) / 6.0f * PI * 2.0f + aeps;
+        float a0 = static_cast<float>(i) / 6.0f * TWO_PI - aeps;
+        float a1 = static_cast<float>(i + 1) / 6.0f * TWO_PI + aeps;
         m_cell.begin_path();
         m_cell.arc(rect.x(), rect.y(), inner_radius, a0, a1, Cell::Winding::CLOCKWISE);
         m_cell.arc(rect.x(), rect.y(), outer_radius, a1, a0, Cell::Winding::COUNTERCLOCKWISE);
@@ -133,8 +133,8 @@ void Painter::drawColorwheel(const Aabrf& rect, float t)
 
         const Vector2f start_pos{rect.x() + cosf(a0) * (inner_radius + outer_radius) * 0.5f, rect.y() + sinf(a0) * (inner_radius + outer_radius) * 0.5f};
         const Vector2f end_pos{rect.x() + cosf(a1) * (inner_radius + outer_radius) * 0.5f, rect.y() + sinf(a1) * (inner_radius + outer_radius) * 0.5f};
-        const Color start_color = Color::from_hsl(360.f * a0 / (PI * 2), 1.0f, 0.55f, 1);
-        const Color end_color   = Color::from_hsl(360.f * a1 / (PI * 2), 1.0f, 0.55f, 1);
+        const Color start_color = Color::from_hsl(a0, 1.0f, 0.55f, 1);
+        const Color end_color   = Color::from_hsl(a1, 1.0f, 0.55f, 1);
         m_cell.set_fill_paint(Cell::create_linear_gradient(start_pos, end_pos, start_color, end_color));
         m_cell.fill(m_context);
     }
@@ -150,7 +150,7 @@ void Painter::drawColorwheel(const Aabrf& rect, float t)
     // Selector
     m_cell.push_state();
     m_cell.translate(rect.center());
-    m_cell.rotate(hue * PI * 2);
+    m_cell.rotate(hue * TWO_PI);
 
     // marker on circle
     m_cell.begin_path();
@@ -184,7 +184,7 @@ void Painter::drawColorwheel(const Aabrf& rect, float t)
 
         Vector2f start_pos{r, 0};
         Vector2f end_pos{ax, ay};
-        Color start_color = Color::from_hsl(fmod(360.f * (hue + 1), 360.f), 1.0f, 0.5f, 1);
+        Color start_color = Color::from_hsl(hue * TWO_PI, 1.0f, 0.5f, 1);
         Color end_color   = Color(1, 1, 1, 1.);
         m_cell.set_fill_paint(Cell::create_linear_gradient(start_pos, end_pos, start_color, end_color));
         m_cell.fill(m_context);

@@ -16,7 +16,7 @@ INCLUDEPATH *= /home/clemens/code/thirdparty/freetype-2.7/INSTALL/include/freety
 
 CONFIG(release, debug|release) {
 #    message("Building in Release Mode.")
-    DEFINES += "SIGNAL_LOG_LEVEL=4" "NDEBUG"
+    DEFINES += "NDEBUG" "SIGNAL_LOG_LEVEL=4"
     QMAKE_CXXFLAGS_RELEASE += -fvisibility=hidden -s
     QMAKE_CXXFLAGS_RELEASE += -O3 -flto #-Os
     QMAKE_LFLAGS_RELEASE += -fvisibility=hidden -s

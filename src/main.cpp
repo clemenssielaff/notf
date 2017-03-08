@@ -58,7 +58,6 @@ int main(int argc, char* argv[])
     window_info.width              = 800;
     window_info.height             = 600;
     window_info.clear_color        = Color("#262a32");
-    window_info.enable_vsync       = true;
     window_info.is_resizeable      = true;
     std::shared_ptr<Window> window = Window::create(window_info);
 
