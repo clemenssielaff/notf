@@ -32,7 +32,7 @@ Vector2f g_mouse_pos = Vector2f::zero();
 
 namespace notf {
 
-Application::Application(const ApplicationInfo info)
+Application::Application(ApplicationInfo info)
     : m_info(std::move(info))
     , m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
     , m_resource_manager(std::make_unique<ResourceManager>())
@@ -51,6 +51,19 @@ Application::Application(const ApplicationInfo info)
         log_fatal << "Cannot start an uninitialized Application!\n"
                   << "Make sure to call `Application::initialize()` in `main()` before creating the first NoTF object";
         exit(to_number(RETURN_CODE::UNINITIALIZED));
+    }
+
+    // replace relative (default) paths with absolute ones
+    const std::string exe_path = info.argv[0];
+    const std::string exe_dir  = exe_path.substr(0, exe_path.find_last_of("/") + 1);
+    if (info.texture_directory.empty() || info.texture_directory[0] != '/') {
+        info.texture_directory = exe_dir + info.texture_directory;
+    }
+    if (info.fonts_directory.empty() || info.fonts_directory[0] != '/') {
+        info.fonts_directory = exe_dir + info.fonts_directory;
+    }
+    if (info.app_directory.empty() || info.app_directory[0] != '/') {
+        info.app_directory = exe_dir + info.app_directory;
     }
 
     // set resource directories
@@ -83,11 +96,6 @@ Application::Application(const ApplicationInfo info)
 
     // vanity plate
     // print_notf();
-}
-
-Application::~Application()
-{
-    _shutdown();
 }
 
 int Application::exec()
@@ -148,28 +156,6 @@ int Application::exec()
 
     _shutdown();
     return to_number(RETURN_CODE::SUCCESS);
-}
-
-Application& Application::initialize(ApplicationInfo info)
-{
-    if (info.argc == -1 || info.argv == nullptr) {
-        log_fatal << "Cannot initialize an Application from a Info object with missing `argc` and `argv` fields";
-        exit(to_number(RETURN_CODE::UNINITIALIZED));
-    }
-    const std::string exe_path = info.argv[0];
-    const std::string exe_dir  = exe_path.substr(0, exe_path.find_last_of("/") + 1);
-
-    // replace relative (default) paths with absolute ones
-    if (info.texture_directory.empty() || info.texture_directory[0] != '/') {
-        info.texture_directory = exe_dir + info.texture_directory;
-    }
-    if (info.fonts_directory.empty() || info.fonts_directory[0] != '/') {
-        info.fonts_directory = exe_dir + info.fonts_directory;
-    }
-    if (info.app_directory.empty() || info.app_directory[0] != '/') {
-        info.app_directory = exe_dir + info.app_directory;
-    }
-    return _get_instance(std::move(info));
 }
 
 void Application::_on_error(int error, const char* message)

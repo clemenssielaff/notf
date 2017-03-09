@@ -88,13 +88,32 @@ public: // enum
         PYTHON_FAILURE,
     };
 
+public: // static methods
+    /** Initializes the Application through an user-defined ApplicationInfo object. */
+    static Application& initialize(const ApplicationInfo& info) { return _get_instance(info); }
+
+    /** Initializes the Application using only the Command line arguments passed by the OS. */
+    static Application& initialize(const int argc, char* argv[])
+    {
+        ApplicationInfo info;
+        info.argc = argc;
+        info.argv = argv;
+        return _get_instance(info);
+    }
+
+    /** The singleton Application instance.
+     * If you call this method before calling Application::initialize(), the program will exit with:
+     *     RETURN_CODE::UNINITIALIZED
+     */
+    static Application& get_instance() { return _get_instance(); }
+
 public: // methods
     // no copy / assignment
     Application(const Application&) = delete;
     Application& operator=(Application) = delete;
 
     /** Desctructor */
-    ~Application();
+    ~Application() { _shutdown(); }
 
     /** Starts the application's main loop.
      * @return  The application's return value.
@@ -115,25 +134,6 @@ public: // methods
     /// Might be nullptr, if the Application was initialized with flag `enable_python` set to false.
     PythonInterpreter* get_python_interpreter() { return m_interpreter.get(); }
 #endif
-
-public: // static methods
-    /** Initializes the Application through an user-defined ApplicationInfo object. */
-    static Application& initialize(ApplicationInfo info);
-
-    /** Initializes the Application using only the Command line arguments passed by the OS. */
-    static Application& initialize(const int argc, char* argv[])
-    {
-        ApplicationInfo info;
-        info.argc = argc;
-        info.argv = argv;
-        return _get_instance(std::move(info));
-    }
-
-    /** The singleton Application instance.
-     * If you call this method before calling Application::initialize(), the program will exit with:
-     *     RETURN_CODE::UNINITIALIZED
-     */
-    static Application& get_instance() { return _get_instance(); }
 
 public: // signals
     /** Emitted info.fps times per seconds for Animations to update. */
@@ -196,10 +196,10 @@ private: // methods
     /** Constructor.
      * param info     ApplicationInfo providing initialization arguments.
      */
-    explicit Application(const ApplicationInfo info);
+    explicit Application(ApplicationInfo info);
 
     /** Static (private) function holding the actual Application instance. */
-    static Application& _get_instance(const ApplicationInfo info = ApplicationInfo())
+    static Application& _get_instance(const ApplicationInfo& info = ApplicationInfo())
     {
         static Application instance(info);
         return instance;
@@ -212,7 +212,7 @@ private: // methods
 
 private: // fields
     /** The ApplicationInfo of this Application object. */
-    const ApplicationInfo m_info;
+    ApplicationInfo m_info;
 
     /** The log handler thread used to format and print out log messages in a thread-safe manner. */
     std::unique_ptr<LogHandler> m_log_handler;
