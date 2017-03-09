@@ -21,7 +21,20 @@ class PythonInterpreter;
 /**********************************************************************************************************************/
 
 /** Information for the Application.
+ *
+ * argv and arc
+ * ============
  * To initialize the Application we require the `argv` and `argc` fields to be set and valid.
+ *
+ * Framerate
+ * =========
+ * The default values for `fps` and `enable_sync` will result in the most reliable 60fps refresh rate.
+ * By setting the manual fps to something higher than 60, we let the hardware limit the framerate down to 60, which
+ * gives a more stable 60fps than one that I can manually achieve by modifying the wait timeout in `Application::exec`.
+ *
+ * Folders
+ * =======
+ * The default ApplicationInfo contains default paths to resource folders, relative to the executable.
  */
 struct ApplicationInfo {
 
@@ -36,13 +49,15 @@ struct ApplicationInfo {
      * However, the Application::on_frame signal will fire around `fps` times per second.
      * Also see `enable_vsync`.
      */
-    ushort fps = 60;
+    ushort fps = 100;
 
     /** If vertical synchronization is turned on or off.
      * If enabled, the effective application frame rate will be: min(fps, vsync-rate).
      * Usually the vsync-rate is 60 fps.
      */
     bool enable_vsync = true;
+
+    bool _; // padding
 
     /** System path to the texture directory, absolute or relative to the executable. */
     std::string texture_directory = "res/textures/";
@@ -57,14 +72,14 @@ struct ApplicationInfo {
 /**********************************************************************************************************************/
 
 /** The Application class.
- * Is a singleton, available everywhere with `Application::instance()`,
+ * After initialization, the Application singleton is available everywhere with `Application::instance()`.
  * It also manages the lifetime of the LogHandler.
  */
 class Application {
 
     friend class Window;
 
-public:
+public: // enum
     /** Return codes of the Application's exec() function. */
     enum class RETURN_CODE : int {
         SUCCESS = 0,
@@ -78,6 +93,7 @@ public: // methods
     Application(const Application&) = delete;
     Application& operator=(Application) = delete;
 
+    /** Desctructor */
     ~Application();
 
     /** Starts the application's main loop.
@@ -88,25 +104,21 @@ public: // methods
     /** Returns the Application's Resource Manager. */
     ResourceManager& get_resource_manager() { return *m_resource_manager; }
 
-#ifdef NOTF_PYTHON
-    /** Returns the Application's Python interpreter wrapper */
-    /// Might be nullptr, if the Application was initialized with flag `enable_python` set to false.
-    PythonInterpreter* get_python_interpreter() { return m_interpreter.get(); }
-#endif
-
     /** Returns the current Window. */
     std::shared_ptr<Window> get_current_window() { return m_current_window; }
 
     /** Returns the Application's Info. */
     const ApplicationInfo& get_info() const { return m_info; }
 
+#ifdef NOTF_PYTHON
+    /** Returns the Application's Python interpreter wrapper */
+    /// Might be nullptr, if the Application was initialized with flag `enable_python` set to false.
+    PythonInterpreter* get_python_interpreter() { return m_interpreter.get(); }
+#endif
+
 public: // static methods
-    /** Initializes the Application through an user-defined ApplicationInfo object.
-     * The default ApplicationInfo contains default paths to resource folders, relative to the executable.
-     * After passing the ApplicationInfo object to this method, these paths will be replaced by their absolute path,
-     * meaning for example, that you can use `info.app_directory` to generate absolute paths to python scripts.
-     */
-    static Application& initialize(ApplicationInfo& info);
+    /** Initializes the Application through an user-defined ApplicationInfo object. */
+    static Application& initialize(ApplicationInfo info);
 
     /** Initializes the Application using only the Command line arguments passed by the OS. */
     static Application& initialize(const int argc, char* argv[])
@@ -187,7 +199,7 @@ private: // methods
     explicit Application(const ApplicationInfo info);
 
     /** Static (private) function holding the actual Application instance. */
-    static Application& _get_instance(const ApplicationInfo& info = ApplicationInfo())
+    static Application& _get_instance(const ApplicationInfo info = ApplicationInfo())
     {
         static Application instance(info);
         return instance;

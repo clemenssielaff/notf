@@ -54,7 +54,12 @@ constexpr Integer wrap_mod(const Integer n, const Integer M)
 template <class Integer, ENABLE_IF_INT(Integer)>
 constexpr Integer next_interval(Integer value, const Integer interval)
 {
-    value += interval;
-    return value - (value % interval);
+    if (!interval) {
+        return value;
+    }
+    else {
+        value += interval;
+        return value - (value % interval);
+    }
 }
 }

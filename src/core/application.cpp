@@ -1,19 +1,11 @@
 #include "core/application.hpp"
 
-#include <algorithm>
-#include <assert.h>
-#include <iostream>
-#include <sstream>
-
-#include "common/input.hpp"
-#include "common/integer.hpp"
 #include "common/log.hpp"
 #include "common/time.hpp"
 #include "common/vector2.hpp"
 #include "core/events/key_event.hpp"
 #include "core/events/mouse_event.hpp"
 #include "core/glfw_wrapper.hpp"
-#include "core/item.hpp"
 #include "core/resource_manager.hpp"
 #include "core/window.hpp"
 #include "python/interpreter.hpp"
@@ -90,9 +82,7 @@ Application::Application(const ApplicationInfo info)
 #endif
 
     // vanity plate
-    //    print_notf();
-
-    log_trace << "Started application";
+    // print_notf();
 }
 
 Application::~Application()
@@ -102,48 +92,65 @@ Application::~Application()
 
 int Application::exec()
 {
-    Time last_frame    = Time::now();
-    Time time_counter  = 0;
-    uint frame_counter = 0; // actual number of frames in the last second
-    uint anim_counter  = 0; // times the `on_frame` signal was fired in the last second
-
-    const Time::Ticks ticks_per_frame = Time::frequency() / static_cast<Time::Ticks>(m_info.fps);
+    const Time::Ticks ticks_per_frame = m_info.fps > 0 ? (Time::frequency() / static_cast<Time::Ticks>(m_info.fps)) : 0;
     Time::Ticks next_frame            = next_interval(Time::now().ticks, ticks_per_frame);
+    bool fire_animation               = false;
 
     // loop until there are no more windows open
     while (m_windows.size() > 0) {
-        ++frame_counter;
+
+        // fire the animation signal before redrawing the windows
+        if (fire_animation) {
+            on_frame();
+            fire_animation = false;
+        }
 
         // update all windows
         for (const std::shared_ptr<Window>& window : m_windows) {
             window->_update();
         }
 
+        // find out if you need to fire an animation frame on the next cycle
         const Time now = Time::now();
-        if (now.ticks >= next_frame) {
-            on_frame();
-            ++anim_counter;
+        if (m_info.fps > 0 && now.ticks >= next_frame) {
+            fire_animation = true;
+            next_frame     = next_interval(now.ticks, ticks_per_frame);
         }
 
-        // print debug stats
-        time_counter += now.since(last_frame);
-        last_frame = now;
-        if (time_counter >= Time::frequency()) {
-            log_trace << frame_counter << "fps / " << anim_counter << " animation frames";
-            frame_counter = 0;
-            anim_counter  = 0;
-            time_counter -= Time::frequency();
-        }
+#ifdef _DEBUG
+        { // print debug stats
+            static Time last_frame    = Time::now();
+            static Time time_counter  = 0;
+            static uint frame_counter = 0; // actual number of frames in the last second
+            static uint anim_counter  = 0; // times the `on_frame` signal was fired in the last second
 
-        next_frame = next_interval(now.ticks, ticks_per_frame);
-        glfwWaitEventsTimeout((next_frame > now.ticks ? next_frame - now.ticks : 0) / static_cast<double>(Time::frequency()));
+            time_counter += now.since(last_frame);
+            last_frame = now;
+            ++frame_counter;
+            anim_counter += fire_animation ? 1 : 0;
+            if (time_counter >= Time::frequency()) {
+                log_trace << frame_counter << "fps / " << anim_counter << " animation frames";
+                frame_counter = 0;
+                anim_counter  = 0;
+                time_counter -= Time::frequency();
+            }
+        }
+#endif
+
+        // wait for the next event or the next time to fire an animation frame
+        if (m_info.fps == 0) {
+            glfwWaitEvents();
+        }
+        else {
+            glfwWaitEventsTimeout((next_frame > now.ticks ? next_frame - now.ticks : 0) / static_cast<double>(Time::frequency()));
+        }
     }
 
     _shutdown();
     return to_number(RETURN_CODE::SUCCESS);
 }
 
-Application& Application::initialize(ApplicationInfo& info)
+Application& Application::initialize(ApplicationInfo info)
 {
     if (info.argc == -1 || info.argv == nullptr) {
         log_fatal << "Cannot initialize an Application from a Info object with missing `argc` and `argv` fields";
@@ -162,12 +169,12 @@ Application& Application::initialize(ApplicationInfo& info)
     if (info.app_directory.empty() || info.app_directory[0] != '/') {
         info.app_directory = exe_dir + info.app_directory;
     }
-    return _get_instance(info);
+    return _get_instance(std::move(info));
 }
 
 void Application::_on_error(int error, const char* message)
 {
-    std::cerr << "GLFW Error " << error << ": '" << message << "'" << std::endl;
+    log_critical << "GLFW Error " << error << ": '" << message << "'";
 }
 
 void Application::_on_token_key(GLFWwindow* glfw_window, int key, int scancode, int action, int modifiers)
@@ -328,11 +335,11 @@ void Application::_shutdown()
         window->close();
     }
 
-    // release all resources and objects
-    m_resource_manager->clear();
-
     // stop the event loop
     glfwTerminate();
+
+    // release all resources and objects
+    m_resource_manager->clear();
 
 #ifdef NOTF_PYTHON
     // kill the interpreter
