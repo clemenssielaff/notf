@@ -4,7 +4,7 @@
 #include <type_traits>
 
 #include "common/log.hpp"
-#include "core/glfw_wrapper.hpp"
+#include "core/glfw.hpp"
 
 namespace notf {
 

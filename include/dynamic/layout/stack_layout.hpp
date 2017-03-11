@@ -146,8 +146,6 @@ public: // methods
      */
     void add_item(std::shared_ptr<Item> item);
 
-    virtual bool get_widgets_at(const Vector2f local_pos, std::vector<Widget*>& result) override;
-
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
     // clang-format off
@@ -184,6 +182,8 @@ private: // methods
      */
     void _layout_stack(const std::vector<LayoutItem *> &stack, const Size2f total_size,
                        const float main_offset, const float cross_offset);
+
+    virtual void _widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) override;
 
 private: // fields
     /** Direction in which the StackLayout is stacked. */

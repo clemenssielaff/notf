@@ -51,14 +51,10 @@ class LayoutRoot : public Layout {
 
 public: // methods
     /// @brief Returns the Window owning this LayoutRoot.
-    std::shared_ptr<Window> get_window() const;
+    std::shared_ptr<Window> window() const;
 
     /// @brief Sets a new Item at the LayoutRoot.
     void set_item(std::shared_ptr<AbstractController> item);
-
-    virtual bool get_widgets_at(const Vector2f local_pos, std::vector<Widget*>& result) override;
-
-    virtual void set_render_layer(std::shared_ptr<RenderLayer>) override;
 
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
@@ -76,6 +72,8 @@ private: // methods for MakeSmartEnabler<LayoutRoot>
 private: // methods
     /// @brief Returns the Layout contained in this LayoutRoot, may be invalid.
     Item* _get_item() const;
+
+    virtual void _widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) override;
 
 private: // fields
     /// @brief The Window containing this LayoutRoot.

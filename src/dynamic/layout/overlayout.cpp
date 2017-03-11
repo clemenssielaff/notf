@@ -46,20 +46,16 @@ void Overlayout::add_item(std::shared_ptr<Item> item)
     _relayout();
 }
 
-bool Overlayout::get_widgets_at(const Vector2f local_pos, std::vector<Widget*>& result)
+void Overlayout::_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result)
 {
-    bool found_any = false;
     for (Item* item : m_items) {
-        if (LayoutItem* layout_item = item->get_layout_item()) {
-            // TODO: Overlayout::get_widget_at does not respect transform (only translate)
-            const Vector2f item_pos = local_pos - layout_item->get_transform().get_translation();
-            const Aabrf item_rect(layout_item->get_size());
-            if (item_rect.contains(item_pos)) {
-                found_any |= layout_item->get_widgets_at(item_pos, result);
-            }
+        // TODO: Overlayout::get_widget_at does not respect transform (only translate)
+        const Vector2f item_pos = local_pos - item->transform().translation();
+        const Aabrf item_rect(item->size());
+        if (item_rect.contains(item_pos)) {
+            _widgets_at_item_pos(item, local_pos, result);
         }
     }
-    return found_any;
 }
 
 std::unique_ptr<LayoutIterator> Overlayout::iter_items() const
@@ -76,7 +72,7 @@ void Overlayout::_remove_item(const Item* item)
 
 void Overlayout::_relayout()
 {
-    const Size2f total_size     = get_size();
+    const Size2f total_size     = size();
     const Size2f available_size = {total_size.width - m_padding.width(), total_size.height - m_padding.height()};
     for (Item* item : m_items) {
         if (LayoutItem* layout_item = item->get_layout_item()) {

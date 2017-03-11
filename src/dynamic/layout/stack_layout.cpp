@@ -288,19 +288,16 @@ void StackLayout::add_item(std::shared_ptr<Item> item)
     }
 }
 
-bool StackLayout::get_widgets_at(const Vector2f local_pos, std::vector<Widget*>& result)
+void StackLayout::_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result)
 {
     // TODO: StackLayout::get_widget_at is brute-force and does not respect transform (only translate)
     for (Item* item : m_items) {
-        if (LayoutItem* layout_item = item->get_layout_item()) {
-            const Vector2f item_pos = local_pos - layout_item->get_transform().get_translation();
-            const Aabrf item_rect(layout_item->get_size());
-            if (item_rect.contains(item_pos)) {
-                return layout_item->get_widgets_at(item_pos, result);
-            }
+        const Vector2f item_pos = local_pos - item->transform().translation();
+        const Aabrf item_rect(item->size());
+        if (item_rect.contains(item_pos)) {
+            _widgets_at_item_pos(item, local_pos, result);
         }
     }
-    return false;
 }
 
 std::unique_ptr<LayoutIterator> StackLayout::iter_items() const
@@ -344,7 +341,7 @@ void StackLayout::_remove_item(const Item* item)
 
 void StackLayout::_relayout()
 {
-    Size2f total_size = get_size();
+    Size2f total_size = size();
     Size2f available_size = {total_size.width - m_padding.width(), total_size.height - m_padding.height()};
     float main_offset, cross_offset;
     switch (m_direction) {

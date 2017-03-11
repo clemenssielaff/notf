@@ -1,22 +1,23 @@
 #pragma once
 
 #include "common/size2.hpp"
-#include "core/layout_item.hpp"
+#include "core/item.hpp"
 
 namespace notf {
 
 /**********************************************************************************************************************/
 
-/**
- * @brief Abstact Iterator that goes through all items in a Layout in order, from back to front.
+/** Abstact Iterator that goes through all items in a Layout in order, from back to front.
  * Iterators must be used up immediately after creation as they might be invalidated by any operation on their Layout.
  */
 class LayoutIterator {
 
 protected: // methods
+    /** Default Constructor. */
     LayoutIterator() = default;
 
 public: // methods
+    /** Destructor. */
     virtual ~LayoutIterator() = default;
 
     /** Advances the Iterator one step, returns the next Item or nullptr if the iteration has finished. */
@@ -25,10 +26,8 @@ public: // methods
 
 /**********************************************************************************************************************/
 
-/**
- * @brief Abstract Layout baseclass.
- */
-class Layout : public LayoutItem {
+/** Abstract Layout baseclass. */
+class Layout : public Item {
 
     friend class Item;
 
@@ -60,9 +59,7 @@ public: // signals
 
 protected: // methods
     explicit Layout()
-        : LayoutItem()
-    {
-    }
+        : Item() {}
 
     /** Returns all children of this Item. */
     const std::vector<std::shared_ptr<Item>>& _get_children() const { return m_children; }

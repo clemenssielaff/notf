@@ -101,8 +101,6 @@ public: // methods
      */
     void add_item(std::shared_ptr<Item> item);
 
-    virtual bool get_widgets_at(const Vector2f local_pos, std::vector<Widget*>& result) override;
-
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
     // clang-format off
@@ -126,6 +124,9 @@ protected: // methods
     virtual void _remove_item(const Item* item) override;
 
     virtual void _relayout() override;
+
+private: // methods
+    virtual void _widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) override;
 
 private: // fields
     /** Padding around the Layout's borders. */

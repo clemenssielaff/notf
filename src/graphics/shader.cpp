@@ -3,7 +3,7 @@
 #include <assert.h>
 
 #include "common/log.hpp"
-#include "core/glfw_wrapper.hpp"
+#include "core/opengl.hpp"
 namespace { // anonymous
 
 /** Helper class to make sure that shaders are properly detached / removed.

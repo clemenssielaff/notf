@@ -1,6 +1,6 @@
 #include "core/window.hpp"
 
-#include "core/glfw_wrapper.hpp"
+#include "core/glfw.hpp"
 
 #include <set>
 
@@ -211,8 +211,7 @@ void Window::_on_resize(int width, int height)
 void Window::_propagate_mouse_event(MouseEvent&& event)
 {
     // collect all Widgets in Layout-given order (no RenderLayers yet).
-    std::vector<Widget*> widgets;
-    m_root_layout->get_widgets_at(event.window_pos, widgets);
+    std::vector<Widget*> widgets = m_root_layout->widgets_at(event.window_pos);
 
     // extract Controllers in order, respecting RenderLayers
     std::set<AbstractController*> known_controllers;
@@ -232,8 +231,8 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
             const Item* ancestor = widget->get_parent().get();
             assert(ancestor);
             while (!render_layer) {
-                render_layer = ancestor->get_render_layer().get();
-                ancestor     = ancestor->get_parent().get();
+                render_layer = ancestor->render_layer().get();
+                ancestor     = ancestor->parent().get();
                 assert(ancestor || render_layer);
             }
         }

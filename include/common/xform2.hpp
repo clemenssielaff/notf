@@ -101,13 +101,13 @@ struct _Xform2 {
     /*  Inspection  ***************************************************************************************************/
 
     /** Returns the translation part of this Xform. */
-    Vector_t get_translation() const { return rows[2]; }
+    Vector_t translation() const { return rows[2]; }
 
     /** Scale factor along the x-axis. */
-    Value_t get_scale_x() const { return sqrt(rows[0][0] * rows[0][0] + rows[1][0] * rows[1][0]); }
+    Value_t scale_factor_x() const { return sqrt(rows[0][0] * rows[0][0] + rows[1][0] * rows[1][0]); }
 
     /** Scale factor along the y-axis. */
-    Value_t get_scale_y() const { return sqrt(rows[0][1] * rows[0][1] + rows[1][1] * rows[1][1]); }
+    Value_t scale_factor_y() const { return sqrt(rows[0][1] * rows[0][1] + rows[1][1] * rows[1][1]); }
 
     /** Read-only reference to a row of the Xform2's internal matrix. */
     template <typename Row, ENABLE_IF_INT(Row)>

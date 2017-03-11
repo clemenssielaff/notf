@@ -391,7 +391,7 @@ void Cell::stroke(RenderContext& context)
     Paint stroke_paint       = state.stroke;
 
     // sanity check the stroke width
-    const float scale  = (state.xform.get_scale_x() + state.xform.get_scale_y()) / 2;
+    const float scale  = (state.xform.scale_factor_x() + state.xform.scale_factor_y()) / 2;
     float stroke_width = clamp(state.stroke_width * scale, 0, 200); // 200 is arbitrary
     if (stroke_width < m_fringe_width) {
         // if the stroke width is less than pixel size, use alpha to emulate coverage.

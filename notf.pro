@@ -134,7 +134,6 @@ SOURCES += \
     src/common/padding.cpp \
     src/dynamic/layout/overlayout.cpp \
     src/core/item.cpp \
-    src/core/layout_item.cpp \
     src/core/controller.cpp \
     src/common/input.cpp \
     src/core/properties.cpp \
@@ -159,7 +158,6 @@ HEADERS += \
     include/core/application.hpp \
     include/core/window.hpp \
     include/common/signal.hpp \
-    include/core/glfw_wrapper.hpp \
     include/core/widget.hpp \
     include/common/log.hpp \
     include/utils/debug.hpp \
@@ -194,7 +192,6 @@ HEADERS += \
     include/dynamic/layout/overlayout.hpp \
     include/utils/make_smart_enabler.hpp \
     include/core/item.hpp \
-    include/core/layout_item.hpp \
     include/core/controller.hpp \
     include/utils/binding_accessors.hpp \
     include/core/events/mouse_event.hpp \
@@ -228,7 +225,9 @@ HEADERS += \
     include/common/size2.hpp \
     include/common/xform2.hpp \
     include/common/xform3.hpp \
-    include/common/exception.hpp
+    include/common/exception.hpp \
+    include/core/opengl.hpp \
+    include/core/glfw.hpp
 
 QMAKE_CXX = ccache g++
 

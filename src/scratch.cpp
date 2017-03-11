@@ -2,7 +2,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-#include "core/glfw_wrapper.hpp"
+#include "core/glfw.hpp"
 
 #include "common/log.hpp"
 #include "common/size2.hpp"

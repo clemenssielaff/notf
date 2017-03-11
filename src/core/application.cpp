@@ -5,7 +5,7 @@
 #include "common/vector2.hpp"
 #include "core/events/key_event.hpp"
 #include "core/events/mouse_event.hpp"
-#include "core/glfw_wrapper.hpp"
+#include "core/glfw.hpp"
 #include "core/resource_manager.hpp"
 #include "core/window.hpp"
 #include "python/interpreter.hpp"
@@ -96,6 +96,11 @@ Application::Application(ApplicationInfo info)
 
     // vanity plate
     // print_notf();
+}
+
+Application::~Application()
+{
+    _shutdown();
 }
 
 int Application::exec()

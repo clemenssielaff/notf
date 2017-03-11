@@ -71,7 +71,7 @@ void RenderManager::render(RenderContext& context)
 
     // register all drawable widgets with their render layers
     LayoutRoot* layout_root = m_window->get_layout_root().get();
-    _iterate_layout_hierarchy(layout_root, layout_root->get_render_layer().get());
+    _iterate_layout_hierarchy(layout_root, layout_root->render_layer().get());
 
     // draw all widgets
     for (std::shared_ptr<RenderLayer>& render_layer : m_layers) {

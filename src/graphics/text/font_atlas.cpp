@@ -6,7 +6,7 @@
 #include "common/float.hpp"
 #include "common/log.hpp"
 #include "common/vector.hpp"
-#include "core/glfw_wrapper.hpp"
+#include "core/opengl.hpp"
 #include "graphics/gl_errors.hpp"
 
 #define INVALID_SIZE_T (std::numeric_limits<size_t>::max())

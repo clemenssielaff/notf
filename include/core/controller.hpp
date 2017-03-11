@@ -9,7 +9,6 @@
 #include "common/string.hpp"
 #include "core/property.hpp"
 #include "core/events/mouse_event.hpp"
-#include "core/layout_item.hpp"
 
 namespace notf {
 

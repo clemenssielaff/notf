@@ -2,9 +2,8 @@
 
 #include "assert.h"
 
-#include "core/glfw_wrapper.hpp"
-
 #include "common/log.hpp"
+#include "core/opengl.hpp"
 #include "graphics/raw_image.hpp"
 #include "utils/make_smart_enabler.hpp"
 

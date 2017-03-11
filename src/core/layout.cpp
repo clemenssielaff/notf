@@ -27,11 +27,11 @@ bool Layout::has_item(const std::shared_ptr<Item>& candidate) const
 void Layout::_add_child(std::shared_ptr<Item> item)
 {
     if (std::find(m_children.begin(), m_children.end(), item) != m_children.end()) {
-        log_warning << "Did not add existing child " << item->get_id() << " to Item " << get_id();
+        log_warning << "Did not add existing child " << item->id() << " to Item " << id();
         return;
     }
     item->_set_parent(std::static_pointer_cast<Layout>(shared_from_this()));
-    const ItemID child_id = item->get_id();
+    const ItemID child_id = item->id();
     m_children.emplace_back(std::move(item));
     child_added(child_id);
 }
@@ -40,12 +40,12 @@ void Layout::_remove_child(const Item* item)
 {
     auto it = std::find(m_children.begin(), m_children.end(), item->shared_from_this());
     if (it == m_children.end()) {
-        log_critical << "Failed to remove unknown child " << item->get_id() << " from Item " << get_id();
+        log_critical << "Failed to remove unknown child " << item->id() << " from Item " << id();
         return;
     }
     _remove_item(item);
     m_children.erase(it);
-    child_removed(item->get_id());
+    child_removed(item->id());
 }
 
 bool Layout::_set_size(const Size2f& size)

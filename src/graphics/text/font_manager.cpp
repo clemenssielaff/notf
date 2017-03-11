@@ -4,7 +4,7 @@
 #include "common/log.hpp"
 #include "common/system.hpp"
 #include "common/xform3.hpp"
-#include "core/glfw_wrapper.hpp"
+#include "core/opengl.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/text/font_atlas.hpp"
 #include "graphics/text/freetype.hpp"

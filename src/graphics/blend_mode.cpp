@@ -1,6 +1,6 @@
 #include "graphics/blend_mode.hpp"
 
-#include "core/glfw_wrapper.hpp"
+#include "core/opengl.hpp"
 
 namespace notf {
 

@@ -22,7 +22,7 @@ const Item* LayoutRootIterator::next()
     return nullptr;
 }
 
-std::shared_ptr<Window> LayoutRoot::get_window() const
+std::shared_ptr<Window> LayoutRoot::window() const
 {
     return m_window->shared_from_this();
 }
@@ -37,22 +37,15 @@ void LayoutRoot::set_item(std::shared_ptr<AbstractController> item)
     }
     _add_child(std::move(item));
     _relayout();
-
-    bool is_redrawn = _redraw();
-    assert(is_redrawn);
+    _redraw();
 }
 
-bool LayoutRoot::get_widgets_at(const Vector2f local_pos, std::vector<Widget*>& result)
+void LayoutRoot::_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result)
 {
     if (is_empty()) {
-        return false;
+        return;
     }
-    return _get_item()->get_layout_item()->get_widgets_at(std::move(local_pos), result);
-}
-
-void LayoutRoot::set_render_layer(std::shared_ptr<RenderLayer>)
-{
-    log_critical << "Cannot change the RenderLayer of the LayoutRoot.";
+    _widgets_at_item_pos(_get_item(), local_pos, result);
 }
 
 std::unique_ptr<LayoutIterator> LayoutRoot::iter_items() const
@@ -63,7 +56,7 @@ std::unique_ptr<LayoutIterator> LayoutRoot::iter_items() const
 void LayoutRoot::_relayout()
 {
     if (!is_empty()) {
-        _set_item_size(_get_item()->get_layout_item(), get_size());
+        _set_item_size(_get_item()->get_layout_item(), size());
     }
 }
 

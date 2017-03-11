@@ -107,13 +107,17 @@ public: // static methods
      */
     static Application& get_instance() { return _get_instance(); }
 
+private: // constructor
+    /** @param info     ApplicationInfo providing initialization arguments. */
+    explicit Application(ApplicationInfo info);
+
 public: // methods
     // no copy / assignment
     Application(const Application&) = delete;
     Application& operator=(Application) = delete;
 
     /** Desctructor */
-    ~Application() { _shutdown(); }
+    ~Application();
 
     /** Starts the application's main loop.
      * @return  The application's return value.
@@ -193,11 +197,6 @@ private: // methods for Window
     void _set_current_window(Window* window);
 
 private: // methods
-    /** Constructor.
-     * param info     ApplicationInfo providing initialization arguments.
-     */
-    explicit Application(ApplicationInfo info);
-
     /** Static (private) function holding the actual Application instance. */
     static Application& _get_instance(const ApplicationInfo& info = ApplicationInfo())
     {
