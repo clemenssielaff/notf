@@ -1,7 +1,7 @@
 #pragma once
 
 /*! @file log.hpp
- * @brief Signal UI logging mechanism.
+ * @brief NoTF logging mechanism.
  *
  * A very powerful, header-only logging library printing out log messages to std::out.
  *
@@ -12,7 +12,7 @@
  * One important feature is the support compile-time switches to disable log messages under a certain level.
  * Setting those flags will cause all calls to log_* be compiled away (limitations see below).
  * This way, you are free to plaster your code with log_trace messages and be sure that they won't negatively affect
- * runtime performance, if you compile with -DSIGNAL_LOG_LEVEL=2.
+ * runtime performance, if you compile with -DNOTF_LOG_LEVEL=2.
  * Note that this optimization is only true for 'constexpr' log messages, so either string literals like:
  *
  * @code
@@ -202,7 +202,7 @@ public: // methods
     /// @param level    Log message level to color.
     /// @param color    Which color to use, see description for details.
     ///
-    /// Signal UI can color log messages with up to 256 colors.
+    /// NoTF can color log messages with up to 256 colors.
     /// See http://misc.flogisoft.com/bash/tip_colors_and_formatting#colors1
     ///
     void set_color(LogMessage::LEVEL level, u_char color);
@@ -307,12 +307,11 @@ inline void set_log_level(LogMessage::LEVEL level)
     LogMessageFactory::s_log_level = level;
 }
 
-/// @brief Extracts the last part of a pathname at compile time.
-///
-/// @param input        Path to investigate.
-/// @param delimiter    Delimiter used to separate path elements.
-///
-/// @return Only the last part of the path, e.g. basename("/path/to/some/file.cpp", '/') would return "file.cpp".
+/** Extracts the last part of a pathname at compile time.
+ * @param input     Path to investigate.
+ * @param delimiter Delimiter used to separate path elements.
+ * @return          Only the last part of the path, e.g. basename("/path/to/some/file.cpp", '/') would return "file.cpp".
+ */
 constexpr const char* basename(const char* input, const char delimiter = '/')
 {
     size_t last_occurrence = 0;
@@ -328,7 +327,7 @@ constexpr const char* basename(const char* input, const char delimiter = '/')
 ///
 /// It is used instead of a LogMessageFactory as target for logging strings when the code was compiled with flags to
 /// ignore certain levels of logging calls.
-/// For example, if the code was compiled using SIGNAL_LOG_LEVEL = 3 (warnings and errors only), all log_info and
+/// For example, if the code was compiled using NOTF_LOG_LEVEL = 3 (warnings and errors only), all log_info and
 /// log_trace calls target a _NullBuffer.
 /// The _NullBuffer class provides a '<<' operator for all types of inputs but just ignores the argument.
 /// This way, input into a _NullBuffer is simply optimized out of existence.
@@ -341,15 +340,15 @@ struct _NullBuffer {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define SIGNAL_LOG_LEVEL_ALL 0
-#define SIGNAL_LOG_LEVEL_TRACE 1
-#define SIGNAL_LOG_LEVEL_INFO 2
-#define SIGNAL_LOG_LEVEL_WARNING 3
-#define SIGNAL_LOG_LEVEL_CRITICAL 4
-#define SIGNAL_LOG_LEVEL_FATAL 5
+#define NOTF_LOG_LEVEL_ALL 0
+#define NOTF_LOG_LEVEL_TRACE 1
+#define NOTF_LOG_LEVEL_INFO 2
+#define NOTF_LOG_LEVEL_WARNING 3
+#define NOTF_LOG_LEVEL_CRITICAL 4
+#define NOTF_LOG_LEVEL_FATAL 5
 
-#ifndef SIGNAL_LOG_LEVEL
-#define SIGNAL_LOG_LEVEL SIGNAL_LOG_LEVEL_ALL
+#ifndef NOTF_LOG_LEVEL
+#define NOTF_LOG_LEVEL NOTF_LOG_LEVEL_ALL
 #endif
 
 /// Define log_* macros.
@@ -361,61 +360,61 @@ struct _NullBuffer {
 ///
 /// The object provided by log_* is a std::stringstream or a _NullBuffer, which accepts all the same inputs.
 #ifndef log_format
-#if SIGNAL_LOG_LEVEL == SIGNAL_LOG_LEVEL_ALL
+#if NOTF_LOG_LEVEL == NOTF_LOG_LEVEL_ALL
 #define log_format notf::LogMessageFactory(notf::LogMessage::LEVEL::FORMAT, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_format notf::_NullBuffer()
 #endif
 #else
-#warning "Macro 'log_format' is already defined - Signal's log_format macro will remain disabled."
+#warning "Macro 'log_format' is already defined - NoTF's log_format macro will remain disabled."
 #endif
 
 #ifndef log_trace
-#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_TRACE
+#if NOTF_LOG_LEVEL <= NOTF_LOG_LEVEL_TRACE
 #define log_trace notf::LogMessageFactory(notf::LogMessage::LEVEL::TRACE, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_trace notf::_NullBuffer()
 #endif
 #else
-#warning "Macro 'log_trace' is already defined - Signal's log_trace macro will remain disabled."
+#warning "Macro 'log_trace' is already defined - NoTF's log_trace macro will remain disabled."
 #endif
 
 #ifndef log_info
-#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_INFO
+#if NOTF_LOG_LEVEL <= NOTF_LOG_LEVEL_INFO
 #define log_info notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_info notf::_NullBuffer()
 #endif
 #else
-#warning "Macro 'log_info' is already defined - Signal's log_info macro will remain disabled."
+#warning "Macro 'log_info' is already defined - NoTF's log_info macro will remain disabled."
 #endif
 
 #ifndef log_warning
-#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_WARNING
+#if NOTF_LOG_LEVEL <= NOTF_LOG_LEVEL_WARNING
 #define log_warning notf::LogMessageFactory(notf::LogMessage::LEVEL::WARNING, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_warning notf::_NullBuffer()
 #endif
 #else
-#warning "Macro 'log_warning' is already defined - Signal's log_warning macro will remain disabled."
+#warning "Macro 'log_warning' is already defined - NoTF's log_warning macro will remain disabled."
 #endif
 
 #ifndef log_critical
-#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_CRITICAL
+#if NOTF_LOG_LEVEL <= NOTF_LOG_LEVEL_CRITICAL
 #define log_critical notf::LogMessageFactory(notf::LogMessage::LEVEL::CRITICAL, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_critical notf::_NullBuffer()
 #endif
 #else
-#warning "Macro 'log_critical' is already defined - Signal's log_critical macro will remain disabled."
+#warning "Macro 'log_critical' is already defined - NoTF's log_critical macro will remain disabled."
 #endif
 
 #ifndef log_fatal
-#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_FATAL
+#if NOTF_LOG_LEVEL <= NOTF_LOG_LEVEL_FATAL
 #define log_fatal notf::LogMessageFactory(notf::LogMessage::LEVEL::FATAL, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_fatal notf::_NullBuffer()
 #endif
 #else
-#warning "Macro 'log_fatal' is already defined - Signal's log_fatal macro will remain disabled."
+#warning "Macro 'log_fatal' is already defined - NoTF's log_fatal macro will remain disabled."
 #endif

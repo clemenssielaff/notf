@@ -8,8 +8,8 @@
 #include "common/claim.hpp"
 #include "common/float.hpp"
 #include "common/log.hpp"
-#include "common/xform2.hpp"
 #include "common/vector.hpp"
+#include "common/xform2.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
@@ -30,7 +30,7 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
 {
     for (auto batch_it = batches.rbegin(); batch_it != batches.rend(); ++batch_it) {
         std::set<ItemAdapter*>& batch = batch_it->second;
-        bool on_first_phase = true;
+        bool on_first_phase           = true;
         while (!batch.empty()) {
 
             // do nothing, if the surplus has been depleted
@@ -41,11 +41,11 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
 
             // first, supply space to all items that are smaller than their preferred size
             if (on_first_phase) {
-                on_first_phase = false;
-                float total_deficit = 0.f;
+                on_first_phase           = false;
+                float total_deficit      = 0.f;
                 float total_scale_factor = 0.f;
                 for (auto it = batch.begin(); it != batch.end();) {
-                    ItemAdapter* item = *it;
+                    ItemAdapter* item  = *it;
                     float item_deficit = item->preferred - item->result;
                     assert(item_deficit >= 0);
                     if (item_deficit > 0) {
@@ -68,7 +68,7 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
                         if (item_deficit > 0.f) {
                             if (item_deficit < deficit_per_scale_factor * item->scale_factor) {
                                 surplus -= item->preferred - item->result;
-                                item->result = item->preferred;
+                                item->result   = item->preferred;
                                 on_first_phase = true;
                             }
                         }
@@ -100,14 +100,14 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
                     total_scale_factor += item->scale_factor;
                 }
                 float surplus_per_scale_factor = surplus / total_scale_factor;
-                bool surplus_fits_in_batch = true;
+                bool surplus_fits_in_batch     = true;
                 for (auto it = batch.begin(); it != batch.end();) {
                     ItemAdapter* item = *it;
                     if (item->result + (item->scale_factor * surplus_per_scale_factor) > item->upper_bound) {
                         surplus_fits_in_batch = false;
                         surplus -= item->upper_bound - item->result;
                         item->result = item->upper_bound;
-                        it = batch.erase(it);
+                        it           = batch.erase(it);
                     }
                     else {
                         ++it;
@@ -129,7 +129,7 @@ float distribute_surplus(float surplus, std::map<int, std::set<ItemAdapter*>>& b
 /** Calculates the alignment variables for the main axis. */
 std::tuple<float, float> calculate_alignment(const StackLayout::Alignment alignment, const size_t item_count, const float surplus)
 {
-    float alignment_start = 0.f;
+    float alignment_start   = 0.f;
     float alignment_spacing = 0.f;
     switch (alignment) {
     case StackLayout::Alignment::START:
@@ -288,7 +288,7 @@ void StackLayout::add_item(std::shared_ptr<Item> item)
     }
 }
 
-void StackLayout::_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result)
+void StackLayout::_widgets_at(const Vector2f& local_pos, std::vector<AbstractWidget*>& result)
 {
     // TODO: StackLayout::get_widget_at is brute-force and does not respect transform (only translate)
     for (Item* item : m_items) {
@@ -341,29 +341,29 @@ void StackLayout::_remove_item(const Item* item)
 
 void StackLayout::_relayout()
 {
-    Size2f total_size = size();
+    Size2f total_size     = size();
     Size2f available_size = {total_size.width - m_padding.width(), total_size.height - m_padding.height()};
     float main_offset, cross_offset;
     switch (m_direction) {
     case StackLayout::Direction::LEFT_TO_RIGHT:
-        main_offset = m_padding.left;
+        main_offset  = m_padding.left;
         cross_offset = (m_wrap == StackLayout::Wrap::WRAP ? m_padding.top : m_padding.bottom);
         break;
     case StackLayout::Direction::RIGHT_TO_LEFT:
-        main_offset = m_padding.right;
+        main_offset  = m_padding.right;
         cross_offset = (m_wrap == StackLayout::Wrap::WRAP ? m_padding.bottom : m_padding.top);
         break;
     case StackLayout::Direction::TOP_TO_BOTTOM:
-        main_offset = m_padding.top;
+        main_offset  = m_padding.top;
         cross_offset = (m_wrap == StackLayout::Wrap::WRAP ? m_padding.left : m_padding.right);
         break;
     case StackLayout::Direction::BOTTOM_TO_TOP:
-        main_offset = m_padding.bottom;
+        main_offset  = m_padding.bottom;
         cross_offset = (m_wrap == StackLayout::Wrap::WRAP ? m_padding.right : m_padding.left);
         break;
     default:
         log_warning << "Unexpected StackLayout::Direction";
-        main_offset = 0.f;
+        main_offset  = 0.f;
         cross_offset = 0.f;
     }
 
@@ -379,8 +379,8 @@ void StackLayout::_relayout()
         return _layout_stack(layout_items, available_size, main_offset, cross_offset);
     }
 
-    const bool horizontal = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
-    const float available_main = horizontal ? available_size.width : available_size.height;
+    const bool horizontal       = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
+    const float available_main  = horizontal ? available_size.width : available_size.height;
     const float available_cross = horizontal ? available_size.height : available_size.width;
 
     // fill the items into stacks
@@ -390,13 +390,13 @@ void StackLayout::_relayout()
     {
         std::vector<LayoutItem*> current_stack;
         Claim::Stretch current_cross_stretch = Claim::Stretch(0, 0, 0);
-        float current_size = 0;
+        float current_size                   = 0;
         for (Item* item : m_items) {
             LayoutItem* layout_item = item->get_layout_item();
             if (!layout_item) {
                 continue;
             }
-            const Claim& claim = layout_item->get_claim();
+            const Claim& claim   = layout_item->get_claim();
             const float addition = (horizontal ? claim.get_horizontal() : claim.get_vertical()).get_preferred() + m_spacing;
             if (current_size + addition > available_main) {
                 stacks.emplace_back(std::move(current_stack));
@@ -404,7 +404,7 @@ void StackLayout::_relayout()
                 used_cross_space += current_cross_stretch.get_min();
                 current_stack.clear(); // re-using moved container, see http://stackoverflow.com/a/9168917/3444217
                 current_cross_stretch = Claim::Stretch(0, 0, 0);
-                current_size = 0.f;
+                current_size          = 0.f;
             }
             current_size += addition;
             current_stack.push_back(layout_item);
@@ -425,10 +425,10 @@ void StackLayout::_relayout()
         adapters = std::vector<ItemAdapter>(stack_count);
         std::map<int, std::set<ItemAdapter*>> batches;
         for (size_t i = 0; i < stack_count; ++i) {
-            adapters[i].upper_bound = cross_stretches[i].get_max();
-            adapters[i].preferred = cross_stretches[i].get_preferred();
+            adapters[i].upper_bound  = cross_stretches[i].get_max();
+            adapters[i].preferred    = cross_stretches[i].get_preferred();
             adapters[i].scale_factor = cross_stretches[i].get_scale_factor();
-            adapters[i].result = cross_stretches[i].get_min();
+            adapters[i].result       = cross_stretches[i].get_min();
             batches[cross_stretches[i].get_priority()].insert(&adapters[i]);
         }
         cross_surplus = distribute_surplus(cross_surplus, batches);
@@ -456,8 +456,8 @@ void StackLayout::_layout_stack(const std::vector<LayoutItem*>& stack, const Siz
         return;
     }
 
-    const bool horizontal = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
-    const float available_width = max(0.f, total_size.width - (horizontal ? m_spacing * (item_count - 1) : 0.f));
+    const bool horizontal        = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
+    const float available_width  = max(0.f, total_size.width - (horizontal ? m_spacing * (item_count - 1) : 0.f));
     const float available_height = max(0.f, total_size.height - (horizontal ? 0.f : m_spacing * (item_count - 1)));
 
     // all elements get at least their minimum size
@@ -465,7 +465,7 @@ void StackLayout::_layout_stack(const std::vector<LayoutItem*>& stack, const Siz
     std::vector<ItemAdapter> adapters(stack.size());
     std::map<int, std::set<ItemAdapter*>> batches;
     for (size_t i = 0; i < stack.size(); ++i) {
-        const Claim& claim = stack[i]->get_claim();
+        const Claim& claim            = stack[i]->get_claim();
         const Claim::Stretch& stretch = horizontal ? claim.get_horizontal() : claim.get_vertical();
         const std::pair<float, float> width_to_height = claim.get_width_to_height();
         if (width_to_height.first > 0.f) {
@@ -479,9 +479,9 @@ void StackLayout::_layout_stack(const std::vector<LayoutItem*>& stack, const Siz
         else {
             adapters[i].upper_bound = stretch.get_max();
         }
-        adapters[i].preferred = min(adapters[i].upper_bound, stretch.get_preferred());
+        adapters[i].preferred    = min(adapters[i].upper_bound, stretch.get_preferred());
         adapters[i].scale_factor = stretch.get_scale_factor();
-        adapters[i].result = min(adapters[i].upper_bound, stretch.get_min());
+        adapters[i].result       = min(adapters[i].upper_bound, stretch.get_min());
         total_min += adapters[i].result;
         batches[stretch.get_priority()].insert(&adapters[i]);
     }
@@ -502,15 +502,15 @@ void StackLayout::_layout_stack(const std::vector<LayoutItem*>& stack, const Siz
     const bool reverse = (m_direction == Direction::RIGHT_TO_LEFT) || (m_direction == Direction::BOTTOM_TO_TOP);
     if (reverse) {
         start_offset = (horizontal ? total_size.width : total_size.height) - alignment_start - main_offset;
-        step_factor = -1.f;
+        step_factor  = -1.f;
     }
     else {
         start_offset = alignment_start + main_offset;
-        step_factor = 1.f;
+        step_factor  = 1.f;
     }
     float current_offset = start_offset;
     for (size_t index = 0; index < stack.size(); ++index) {
-        LayoutItem* child = stack.at(index);
+        LayoutItem* child          = stack.at(index);
         const ItemAdapter& adapter = adapters[index];
         const std::pair<float, float> width_to_height = child->get_claim().get_width_to_height();
         assert(adapter.result >= 0.f);
@@ -521,9 +521,9 @@ void StackLayout::_layout_stack(const std::vector<LayoutItem*>& stack, const Siz
             if (width_to_height.first > 0.f) {
                 item_size.height = min(item_size.height, adapter.result / width_to_height.first);
             }
-            item_size.height = max(item_size.height, vertical.get_min());
+            item_size.height                 = max(item_size.height, vertical.get_min());
             const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.height, available_height);
-            const float applied_offset = reverse ? current_offset - item_size.width : current_offset;
+            const float applied_offset       = reverse ? current_offset - item_size.width : current_offset;
             _set_item_transform(child, Xform2f::translation({applied_offset, cross_offset + applied_cross_offset}));
             _set_item_size(child, item_size);
         }
@@ -533,9 +533,9 @@ void StackLayout::_layout_stack(const std::vector<LayoutItem*>& stack, const Siz
             if (width_to_height.first > 0.f) {
                 item_size.width = min(item_size.width, adapter.result * width_to_height.second);
             }
-            item_size.width = max(item_size.width, horizontal.get_min());
+            item_size.width                  = max(item_size.width, horizontal.get_min());
             const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.width, available_width);
-            const float applied_offset = reverse ? current_offset - item_size.height : current_offset;
+            const float applied_offset       = reverse ? current_offset - item_size.height : current_offset;
             _set_item_transform(child, Xform2f::translation({cross_offset + applied_cross_offset, applied_offset}));
             _set_item_size(child, item_size);
         }

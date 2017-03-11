@@ -183,7 +183,7 @@ private: // methods
     void _layout_stack(const std::vector<LayoutItem *> &stack, const Size2f total_size,
                        const float main_offset, const float cross_offset);
 
-    virtual void _widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) override;
+    virtual void _widgets_at(const Vector2f& local_pos, std::vector<AbstractWidget*>& result) override;
 
 private: // fields
     /** Direction in which the StackLayout is stacked. */

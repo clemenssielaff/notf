@@ -126,7 +126,7 @@ protected: // methods
     virtual void _relayout() override;
 
 private: // methods
-    virtual void _widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) override;
+    virtual void _widgets_at(const Vector2f& local_pos, std::vector<AbstractWidget*>& result) override;
 
 private: // fields
     /** Padding around the Layout's borders. */

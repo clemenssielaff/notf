@@ -16,7 +16,7 @@ INCLUDEPATH *= /home/clemens/code/thirdparty/freetype-2.7/INSTALL/include/freety
 
 CONFIG(release, debug|release) {
 #    message("Building in Release Mode.")
-    DEFINES += "NDEBUG" "SIGNAL_LOG_LEVEL=4"
+    DEFINES += "NDEBUG" "NOTF_LOG_LEVEL=4"
     QMAKE_CXXFLAGS_RELEASE += -fvisibility=hidden -s
     QMAKE_CXXFLAGS_RELEASE += -O3 -flto #-Os
     QMAKE_LFLAGS_RELEASE += -fvisibility=hidden -s
@@ -134,7 +134,6 @@ SOURCES += \
     src/common/padding.cpp \
     src/dynamic/layout/overlayout.cpp \
     src/core/item.cpp \
-    src/core/controller.cpp \
     src/common/input.cpp \
     src/core/properties.cpp \
     src/core/property.cpp \
@@ -152,7 +151,8 @@ SOURCES += \
     src/common/size2.cpp \
     src/common/xform2.cpp \
     src/common/xform3.cpp \
-    src/common/exception.cpp
+    src/common/exception.cpp \
+    src/common/string.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -192,7 +192,6 @@ HEADERS += \
     include/dynamic/layout/overlayout.hpp \
     include/utils/make_smart_enabler.hpp \
     include/core/item.hpp \
-    include/core/controller.hpp \
     include/utils/binding_accessors.hpp \
     include/core/events/mouse_event.hpp \
     include/common/input.hpp \  

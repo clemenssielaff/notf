@@ -40,7 +40,7 @@ void LayoutRoot::set_item(std::shared_ptr<AbstractController> item)
     _redraw();
 }
 
-void LayoutRoot::_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result)
+void LayoutRoot::_widgets_at(const Vector2f& local_pos, std::vector<AbstractWidget*>& result)
 {
     if (is_empty()) {
         return;

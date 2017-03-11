@@ -73,7 +73,7 @@ private: // methods
     /// @brief Returns the Layout contained in this LayoutRoot, may be invalid.
     Item* _get_item() const;
 
-    virtual void _widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) override;
+    virtual void _widgets_at(const Vector2f& local_pos, std::vector<AbstractWidget*>& result) override;
 
 private: // fields
     /// @brief The Window containing this LayoutRoot.

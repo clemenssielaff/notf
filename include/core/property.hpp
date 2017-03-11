@@ -11,6 +11,7 @@
 namespace notf {
 
 class AbstractProperty;
+
 template <typename>
 class Property;
 

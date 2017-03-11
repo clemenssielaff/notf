@@ -46,7 +46,7 @@ void Overlayout::add_item(std::shared_ptr<Item> item)
     _relayout();
 }
 
-void Overlayout::_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result)
+void Overlayout::_widgets_at(const Vector2f& local_pos, std::vector<AbstractWidget*>& result)
 {
     for (Item* item : m_items) {
         // TODO: Overlayout::get_widget_at does not respect transform (only translate)

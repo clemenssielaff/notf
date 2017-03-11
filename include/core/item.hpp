@@ -13,6 +13,17 @@
 #include "python/py_fwd.hpp"
 #endif
 
+namespace notf {
+
+class AbstractWidget;
+class RenderLayer;
+class Window;
+
+/** Unqiue identification token of an Item. */
+using ItemID = size_t;
+
+/**********************************************************************************************************************/
+
 /* An Item is the base class for everything visual that makes up the UI.
  * It parents to specialized subclasses: Layout and Widgets.
  *
@@ -55,21 +66,6 @@
  * automatically stores a fresh reference to the `PyObject` in the `Item` instance, just as the `PyObject` would go out
  * of scope, if (and only if) there is another shared owner of the `Item` at the time of the `PyObjects` deallocation.
  * Effectively, this switches the ownership of the two objects.
- */
-
-namespace notf {
-
-class RenderLayer;
-class Widget;
-class Window;
-
-/** Unqiue identification token of an Item. */
-using ItemID = size_t;
-
-/**********************************************************************************************************************/
-
-/** A Item is an abstraction of an item in the Layout hierarchy.
- * All Widget and Layout subclasses inherit from it.
  */
 class Item : public receive_signals, public std::enable_shared_from_this<Item> {
 
@@ -150,7 +146,7 @@ public: // methods
      * @param local_pos     Local coordinates where to look for a Widget.
      * @return              All Widgets at the given coordinate, ordered from front to back.
      */
-    std::vector<Widget*> widgets_at(const Vector2f local_pos) const;
+    std::vector<AbstractWidget*> widgets_at(const Vector2f local_pos) const;
 
 public: // signals
     /** Emitted when this Item got a new parent.
@@ -232,7 +228,7 @@ protected: // static methods
     static bool _set_item_transform(Item* item, const Xform2f transform) { return item->_set_transform(std::move(transform)); }
 
     /** Allows any Item subclass to call `_widgets_at` on any other Item. */
-    static void _widgets_at_item_pos(Item* item, const Vector2f& local_pos, std::vector<Widget*>& result) { item->_widgets_at(local_pos, result); }
+    static void _widgets_at_item_pos(Item* item, const Vector2f& local_pos, std::vector<AbstractWidget*>& result) { item->_widgets_at(local_pos, result); }
 
 private: // methods
     /** Sets a new Item to manage this Item. */
@@ -245,7 +241,7 @@ private: // methods
     void _window_transform(Xform2f& result) const;
 
     /** Recursive implementation to find all Widgets at a given position in local space */
-    virtual void _widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) = 0;
+    virtual void _widgets_at(const Vector2f& local_pos, std::vector<AbstractWidget*>& result) = 0;
 
 private: // fields
     /** Application-unique ID of this Item. */
