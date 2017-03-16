@@ -1,20 +1,17 @@
 #pragma once
 
-#include <array>
 #include <iosfwd>
 #include <string>
 
 #include "common/float.hpp"
-#include "common/integer.hpp"
+#include "common/hash.hpp"
 #include "utils/sfinae.hpp"
 
 namespace notf {
 
 //*********************************************************************************************************************/
 
-/**
- * A Color, stored as RGBA floating-point values.
- */
+/** A Color, stored as RGBA floating-point values. */
 struct Color {
 
     /* Fields *********************************************************************************************************/
@@ -33,8 +30,10 @@ struct Color {
 
     /* Constructors ***************************************************************************************************/
 
-    Color() = default; // required so this class remains a POD
+    /** Default (non-initializing) constructor so this struct remains a POD */
+    Color() = default;
 
+    /** Value constructor. */
     Color(const float r, const float g, const float b, const float a = 1)
         : r(clamp(r, 0, 1))
         , g(clamp(g, 0, 1))
@@ -152,3 +151,15 @@ inline Color lerp(const Color& from, const Color& to, float blend)
 std::ostream& operator<<(std::ostream& out, const Color& color);
 
 } // namespace notf
+
+/* std::hash **********************************************************************************************************/
+
+namespace std {
+
+/** std::hash specialization for notf::Color. */
+template <>
+struct hash<notf::Color> {
+    size_t operator()(const notf::Color& color) const { return notf::hash(color.r, color.g, color.b, color.a); }
+};
+
+} // namespace std

@@ -15,8 +15,11 @@
 
 namespace notf {
 
-class AbstractWidget;
+class Controller;
+class Layout;
 class RenderLayer;
+class ScreenItem;
+class Widget;
 class Window;
 
 /** Unqiue identification token of an Item. */
@@ -69,6 +72,17 @@ using ItemID = size_t;
  */
 class Item : public receive_signals, public std::enable_shared_from_this<Item> {
 
+    friend class Controller; // can parent ScreenItems
+    friend class Layout;     // can parent ScreenItems
+    friend class LayoutRoot; // can set its RenderLayer even though it has no parent
+
+public: // static functions
+    /** Returns the ScreenItem associated with a given Item - either the Item itself or a Controller's root Item. */
+    static ScreenItem* get_screen_item(Item* item);
+
+    /** Returns the ScreenItem associated with a given Item - either the Item itself or a Controller's root Item. */
+    static const ScreenItem* get_screen_item(const Item* item) { return get_screen_item(const_cast<Item*>(item)); }
+
 protected: // constructor
     /** Default Constructor. */
     explicit Item();
@@ -82,13 +96,23 @@ public: // methods
     virtual ~Item();
 
     /** Application-unique ID of this Item. */
-    ItemID id() const { return m_id; }
+    ItemID get_id() const { return m_id; }
 
     /** Checks if this Item currently has a parent Item or not. */
     bool has_parent() const { return !m_parent.expired(); }
 
     /** Returns the parent Item containing this Item, may be invalid. */
-    std::shared_ptr<const Item> parent() const { return m_parent.lock(); }
+    std::shared_ptr<const Item> get_parent() const { return m_parent.lock(); }
+
+    /** Returns the Layout into which this Item is embedded.
+     * The only Item without a Layout is the LayoutRoot.
+     */
+    std::shared_ptr<const Layout> get_layout() const { return _get_layout(); }
+
+    /** Returns the Controller managing this Item.
+     * The only Item without a Controller is the LayoutRoot.
+     */
+    std::shared_ptr<const Controller> get_controller() const;
 
     /** Tests, if this Item is a descendant of the given `ancestor`.
      * @param ancestor  Potential ancestor (non-onwing pointer is used for identification only).
@@ -97,31 +121,17 @@ public: // methods
     bool has_ancestor(const Item* ancestor) const;
 
     /** Returns the Window containing this Widget (can be empty). */
-    std::shared_ptr<Window> window() const;
+    std::shared_ptr<Window> get_window() const;
 
-    /** Returns the Item's transformation in parent space. */
-    const Xform2f& transform() const { return m_transform; }
-
-    /** Recursive implementation to produce the Item's transformation in window space. */
-    Xform2f window_transform() const;
-
-    /** Returns the unscaled size of this Item in pixels. */
-    const Size2f& size() const { return m_size; }
-
-    /** Returns the opacity of this Item in the range [0 -> 1]. */
-    float opacity() const { return m_opacity; }
-
-    /** Sets the opacity of this Item.
-     * @param opacity   Is clamped to range [0 -> 1] with 0 => fully transparent and 1 => fully opaque.
-     * @return          True if the opacity changed, false if the old value is the same as the new one.
+    /** Returns the current RenderLayer of this Item.
+     * The RenderLayer is valid for all Items in the Item hierarchy but empty for those outside.
      */
-    bool set_opacity(float opacity);
+    const std::shared_ptr<RenderLayer>& get_render_layer() const;
 
-    /** The current Claim of this Item. */
-    const Claim& claim() const { return m_claim; }
-
-    /** Returns the current RenderLayer of this Item (can be empty). */
-    const std::shared_ptr<RenderLayer>& render_layer() const { return m_render_layer; }
+    /** Returns this Item's own RenderLayer.
+     * Is empty if the Item uses its parent's RenderLayer or if it is not part of the Item hierarchy.
+     */
+    const std::shared_ptr<RenderLayer>& get_own_render_layer() const { return m_render_layer; }
 
     /** (Re-)sets the RenderLayer of this Item.
      * Pass an empty shared_ptr to implicitly inherit the RenderLayer from the parent Layout.
@@ -130,84 +140,32 @@ public: // methods
      */
     void set_render_layer(std::shared_ptr<RenderLayer> render_layer);
 
-    /** Checks, if the Item is currently visible.
-     * This method does return false if the opacity is zero but also if there are any other factors that make this Item
-     * not visible, like a zero size for example.
-     */
-    bool is_visible() const
-    {
-        return !(false
-                 || size().is_zero()
-                 || !size().is_valid()
-                 || opacity() <= precision_high<float>());
-    }
-
-    /** Looks for all Widgets at a given position in local space.
-     * @param local_pos     Local coordinates where to look for a Widget.
-     * @return              All Widgets at the given coordinate, ordered from front to back.
-     */
-    std::vector<AbstractWidget*> widgets_at(const Vector2f local_pos) const;
-
 public: // signals
     /** Emitted when this Item got a new parent.
      * @param ItemID of the new parent.
      */
     Signal<ItemID> parent_changed;
 
-    /** Emitted, when the opacity of this Item has changed.
-     * @param New visiblity.
-     */
-    Signal<float> opacity_changed;
-
-    /** Emitted, when the size of this Item has changed.
-     * @param New size.
-     */
-    Signal<Size2f> size_changed;
-
-    /** Emitted, when the transform of this Item has changed.
-     * @param New local transform.
-     */
-    Signal<Xform2f> transform_changed;
-
 protected: // methods
+    /** Returns the Layout into which this Item is embedded as a mutable pointer.
+     * The only Item without a Layout is the LayoutRoot.
+     */
+    std::shared_ptr<Layout> _get_layout() const;
+
+    /** Returns the Controller managing this Item as a mutable pointer.
+     * The only Item without a Controller is the LayoutRoot.
+     */
+    std::shared_ptr<Controller> _get_controller() const;
+
     /** Notifies the parent Layout that the Claim of this Item has changed.
      * The change propagates up the Item hierarchy until it reaches the first ancestor, that doesn't need to change its
      * Claim, where it proceeds downwards again to re-layout all changed Items.
      */
     void _update_parent_layout();
 
-    /** Tells the Window that this Item needs to be redrawn. */
-    void _redraw();
-
-    /** Updates the size of this Item.
-     * Is virtual because Layouts can use this function to update their items.
-     * @return      True iff the size has been modified.
-     */
-    virtual bool _set_size(const Size2f& size);
-
-    /** Updates the transformation of this Item.
-     * @return      True iff the transform has been modified.
-     */
-    bool _set_transform(const Xform2f transform);
-
-    /** Updates the Claim but does not trigger any layouting.
-     * @return      True iff the Claim was changed.
-     */
-    bool _set_claim(const Claim claim);
-
     /** Returns the first ancestor of this Item that has a specific type (can be empty if none is found). */
     template <typename AncestorType>
-    std::shared_ptr<AncestorType> _first_ancestor() const
-    {
-        std::shared_ptr<Item> next = m_parent.lock();
-        while (next) {
-            if (std::shared_ptr<AncestorType> result = std::dynamic_pointer_cast<AncestorType>(next)) {
-                return result;
-            }
-            next = next->m_parent.lock();
-        }
-        return {};
-    }
+    std::shared_ptr<AncestorType> _get_first_ancestor() const;
 
 #ifdef NOTF_PYTHON
     /** The Python object owned by this Item, is nullptr before the ownership is transferred from Python's __main__. */
@@ -221,27 +179,21 @@ protected_except_for_bindings : // methods
 
     // clang-format on
 protected: // static methods
-    /** Allows any Item subclass to call `_set_size` on any other Item. */
-    static bool _set_item_size(Item* item, const Size2f& size) { return item->_set_size(size); }
-
-    /** Allows any Item subclass to call `_set_item_transform` on any other Item. */
-    static bool _set_item_transform(Item* item, const Xform2f transform) { return item->_set_transform(std::move(transform)); }
-
     /** Allows any Item subclass to call `_widgets_at` on any other Item. */
-    static void _widgets_at_item_pos(Item* item, const Vector2f& local_pos, std::vector<AbstractWidget*>& result) { item->_widgets_at(local_pos, result); }
+    static void _get_widgets_at_item_pos(const Item* item, const Vector2f& local_pos, std::vector<Widget*>& result)
+    {
+        item->_get_widgets_at(local_pos, result);
+    }
 
 private: // methods
-    /** Sets a new Item to manage this Item. */
+    /** Sets a new Item to manage this Item or an empty pointer to unparent it. */
     void _set_parent(std::shared_ptr<Item> parent);
 
-    /** Removes the current parent of this Item. */
-    void _unparent() { _set_parent({}); }
-
-    /** Calculates the transformation of this Item relative to its Window. */
-    void _window_transform(Xform2f& result) const;
-
-    /** Recursive implementation to find all Widgets at a given position in local space */
-    virtual void _widgets_at(const Vector2f& local_pos, std::vector<AbstractWidget*>& result) = 0;
+    /** Recursive implementation to find all Widgets at a given position in local space
+     * @param local_pos     Local coordinates where to look for a Widget.
+     * @return              All Widgets at the given coordinate, ordered from front to back.
+     */
+    virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const = 0;
 
 private: // fields
     /** Application-unique ID of this Item. */
@@ -254,18 +206,6 @@ private: // fields
      * An empty pointer means that this item inherits its render layer from its parent.
      */
     std::shared_ptr<RenderLayer> m_render_layer;
-
-    /** Opacity of this Item in the range [0 -> 1]. */
-    float m_opacity;
-
-    /** Unscaled size of this Item in pixels. */
-    Size2f m_size;
-
-    /** 2D transformation of this Item in local space. */
-    Xform2f m_transform;
-
-    /** The Claim of a Item determines how much space it receives in the parent Layout. */
-    Claim m_claim;
 
 #ifdef NOTF_PYTHON
     /** Python subclass object of this Item, if it was created through Python. */

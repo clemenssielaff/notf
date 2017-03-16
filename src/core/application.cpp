@@ -1,5 +1,6 @@
 #include "core/application.hpp"
 
+#include "common/integer.hpp"
 #include "common/log.hpp"
 #include "common/time.hpp"
 #include "common/vector2.hpp"
@@ -54,24 +55,24 @@ Application::Application(ApplicationInfo info)
     }
 
     // replace relative (default) paths with absolute ones
-    const std::string exe_path = info.argv[0];
+    const std::string exe_path = m_info.argv[0];
     const std::string exe_dir  = exe_path.substr(0, exe_path.find_last_of("/") + 1);
-    if (info.texture_directory.empty() || info.texture_directory[0] != '/') {
-        info.texture_directory = exe_dir + info.texture_directory;
+    if (m_info.texture_directory.empty() || m_info.texture_directory[0] != '/') {
+        m_info.texture_directory = exe_dir + m_info.texture_directory;
     }
-    if (info.fonts_directory.empty() || info.fonts_directory[0] != '/') {
-        info.fonts_directory = exe_dir + info.fonts_directory;
+    if (m_info.fonts_directory.empty() || m_info.fonts_directory[0] != '/') {
+        m_info.fonts_directory = exe_dir + m_info.fonts_directory;
     }
-    if (info.app_directory.empty() || info.app_directory[0] != '/') {
-        info.app_directory = exe_dir + info.app_directory;
+    if (m_info.app_directory.empty() || m_info.app_directory[0] != '/') {
+        m_info.app_directory = exe_dir + m_info.app_directory;
     }
 
     // set resource directories
-    if (!info.texture_directory.empty()) {
-        m_resource_manager->set_texture_directory(info.texture_directory);
+    if (!m_info.texture_directory.empty()) {
+        m_resource_manager->set_texture_directory(m_info.texture_directory);
     }
-    if (!info.fonts_directory.empty()) {
-        m_resource_manager->set_font_directory(info.fonts_directory);
+    if (!m_info.fonts_directory.empty()) {
+        m_resource_manager->set_font_directory(m_info.fonts_directory);
     }
 
     // set the error callback to catch all GLFW errors

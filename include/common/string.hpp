@@ -85,4 +85,20 @@ std::string string_format(const std::string& format, Args... args)
  */
 size_t levenshtein_distance(const std::string& s1, const std::string& s2);
 
+/** Extracts the last part of a pathname at compile time.
+ * @param input     Path to investigate.
+ * @param delimiter Delimiter used to separate path elements.
+ * @return          Only the last part of the path, e.g. basename("/path/to/some/file.cpp", '/') would return "file.cpp".
+ */
+constexpr const char* basename(const char* input, const char delimiter = '/')
+{
+    size_t last_occurrence = 0;
+    for (size_t offset = 0; input[offset]; ++offset) {
+        if (input[offset] == delimiter) {
+            last_occurrence = offset + 1;
+        }
+    }
+    return &input[last_occurrence];
+}
+
 } // namespace notf

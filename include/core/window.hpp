@@ -6,20 +6,16 @@
 #include "common/color.hpp"
 #include "common/signal.hpp"
 #include "common/size2.hpp"
-#include "common/vector2.hpp"
 
 struct GLFWwindow;
 
 namespace notf {
 
-template <typename T>
-class MakeSmartEnabler;
-
 struct KeyEvent;
+class LayoutRoot;
 class MouseEvent;
 class RenderManager;
 class RenderContext;
-class LayoutRoot;
 
 /**********************************************************************************************************************/
 
@@ -31,18 +27,8 @@ void window_deleter(GLFWwindow* glfw_window);
 /** Helper struct to create a Window instance. */
 struct WindowInfo {
 
-    /** OpenGL profiles. */
-    enum class PROFILE : unsigned char {
-        ANY,
-        CORE,
-        COMPAT,
-    };
-
-    /** Width of the window. */
-    int width = 640;
-
-    /** Height of the window. */
-    int height = 480;
+    /** Initial size of the Window. */
+    Size2i size = {640, 480};
 
     /** If the Window is resizeable or not. */
     bool is_resizeable = true;
@@ -63,7 +49,10 @@ struct WindowInfo {
 class Window : public receive_signals, public std::enable_shared_from_this<Window> {
 
     friend class Application;
-    friend class MakeSmartEnabler<Window>;
+
+protected: // constructor
+    /** @param info     WindowInfo providing initialization arguments. */
+    explicit Window(const WindowInfo& info);
 
 public: // methods
     /** Destructor. */
@@ -78,17 +67,26 @@ public: // methods
     /** Returns the Application's Render Manager. */
     RenderManager& get_render_manager() { return *m_render_manager; }
 
-    /** Returns the Window's size in screen coordinates (not pixels). */
+    /** Returns the Window's size in screen coordinates (not pixels).
+     * Returns an invalid size of the GLFW window was already closed.
+     */
     Size2i get_window_size() const;
 
-    /** Returns the size of the Window including decorators added by the OS in screen coordinates (not pixels). */
+    /** Returns the size of the Window including decorators added by the OS in screen coordinates (not pixels).
+     * Returns an invalid size of the GLFW window was already closed.
+    */
     Size2i get_framed_window_size() const;
 
-    /** Returns the size of the Window's framebuffer in pixels. */
+    /** Returns the size of the Window's framebuffer in pixels.
+     * Returns an invalid size of the GLFW window was already closed.
+     */
     Size2i get_buffer_size() const;
 
     /** Closes this Window. */
     void close();
+
+    /** Returns false if the GLFW window is still open or true if it was closed. */
+    bool was_closed() const { return !(static_cast<bool>(m_glfw_window)); }
 
 public: // static methods
     /** Factory function to create a new Window.
@@ -105,10 +103,6 @@ public: // signals
      * @param This window.
      */
     Signal<const Window&> on_close;
-
-private: // methods for MakeSmartEnabler<Window>
-    /** @param info     WindowInfo providing initialization arguments. */
-    explicit Window(const WindowInfo& info);
 
 private: // methods for Application
     /** The wrapped GLFW window. */
@@ -141,9 +135,6 @@ private: // fields
 
     /** The Window's background color. */
     Color m_background_color;
-
-    /** Last mouse position in this Window. */
-    Vector2f m_last_mouse_pos;
 };
 
 } // namespace notf

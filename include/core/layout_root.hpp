@@ -4,17 +4,12 @@
 
 namespace notf {
 
-template <typename T>
-class MakeSmartEnabler;
-
-class AbstractController;
 class LayoutRoot;
 class Window;
 
 /**********************************************************************************************************************/
 
-/**
- * @brief LayoutRoot Iterator that goes through all items in a Layout in order, from back to front.
+/** LayoutRoot Iterator that goes through all items in a Layout in order, from back to front.
  * Iterators must be used up immediately after creation as they might be invalidated by any operation on their Layout.
  */
 class LayoutRootIterator : public LayoutIterator {
@@ -40,23 +35,30 @@ private: // fields
 
 /**********************************************************************************************************************/
 
-/*
- * @brief The Layout Root is owned by a Window and root of all LayoutItems displayed within the Window.
- */
+/** The Layout Root is owned by a Window and root of all LayoutItems displayed within the Window. */
 class LayoutRoot : public Layout {
 
     friend class LayoutRootIterator;
-    friend class MakeSmartEnabler<LayoutRoot>;
     friend class Window;
 
-public: // methods
-    /// @brief Returns the Window owning this LayoutRoot.
-    std::shared_ptr<Window> window() const;
+protected: // methods
+    /** @param window   Window owning this RootWidget. */
+    explicit LayoutRoot(const std::shared_ptr<Window>& window);
 
-    /// @brief Sets a new Item at the LayoutRoot.
-    void set_item(std::shared_ptr<AbstractController> item);
+public: // methods
+    /** Returns the Window owning this LayoutRoot. */
+    std::shared_ptr<Window> get_window() const;
+
+    /** Sets a new Item at the LayoutRoot. */
+    void set_controller(std::shared_ptr<Controller> controller);
 
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
+
+    /** Find all Widgets at a given position in the Window.
+     * @param local_pos     Local coordinates where to look for a Widget.
+     * @return              All Widgets at the given coordinate, ordered from front to back.
+     */
+    std::vector<Widget*> get_widgets_at(const Vector2f& screen_pos) const;
 
 protected: // methods
     virtual bool _update_claim() override { return false; }
@@ -65,19 +67,18 @@ protected: // methods
 
     virtual void _relayout() override;
 
-private: // methods for MakeSmartEnabler<LayoutRoot>
-    /** @param window   Window owning this RootWidget. */
-    explicit LayoutRoot(const std::shared_ptr<Window>& window);
-
 private: // methods
     /// @brief Returns the Layout contained in this LayoutRoot, may be invalid.
     Item* _get_item() const;
 
-    virtual void _widgets_at(const Vector2f& local_pos, std::vector<AbstractWidget*>& result) override;
+    virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
 private: // fields
-    /// @brief The Window containing this LayoutRoot.
+    /** The Window containing this LayoutRoot. */
     Window* m_window;
+
+    /** The Window Controller. */
+    std::shared_ptr<Controller> m_controller;
 };
 
 } // namespace notf

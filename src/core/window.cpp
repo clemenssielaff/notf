@@ -1,14 +1,10 @@
 #include "core/window.hpp"
 
-#include "core/glfw.hpp"
-
-#include <set>
-
 #include "common/log.hpp"
 #include "core/application.hpp"
-#include "core/controller.hpp"
 #include "core/events/key_event.hpp"
 #include "core/events/mouse_event.hpp"
+#include "core/glfw.hpp"
 #include "core/layout_root.hpp"
 #include "core/render_manager.hpp"
 #include "core/resource_manager.hpp"
@@ -28,6 +24,61 @@ void window_deleter(GLFWwindow* glfw_window)
     }
 }
 
+Window::Window(const WindowInfo& info)
+    : m_glfw_window(nullptr, window_deleter)
+    , m_render_context(nullptr)
+    , m_title(info.title)
+    , m_root_layout()
+    , m_render_manager(std::make_unique<MakeSmartEnabler<RenderManager>>(this))
+    , m_background_color(info.clear_color)
+{
+    // make sure that an Application was initialized before instanciating a Window (will exit on failure)
+    Application& app = Application::get_instance();
+
+    // close when the user presses ESC
+    connect_signal(on_token_key, &Window::close, [](const KeyEvent& event) { return event.key == Key::ESCAPE; });
+
+    // NoTF uses OpenGL ES 3.0 for now
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_RESIZABLE, info.is_resizeable ? GL_TRUE : GL_FALSE);
+
+    // create the GLFW window
+    m_glfw_window.reset(glfwCreateWindow(info.size.width, info.size.height, m_title.c_str(), nullptr, nullptr));
+    if (!m_glfw_window) {
+        log_fatal << "Window or OpenGL context creation failed for Window '" << get_title() << "'";
+        app._shutdown();
+        exit(to_number(Application::RETURN_CODE::GLFW_FAILURE));
+    }
+    glfwSetWindowUserPointer(m_glfw_window.get(), this);
+
+    // setup OpenGL and create the render context
+    glfwMakeContextCurrent(m_glfw_window.get());
+    glfwSwapInterval(app.get_info().enable_vsync ? 1 : 0);
+    m_render_context = std::make_unique<RenderContext>(RenderContextArguments());
+
+    // apply the Window icon
+    // In order to remove leftover icons on Ubuntu call:
+    // rm ~/.local/share/applications/notf.desktop; rm ~/.local/share/icons/notf.png
+    if (!info.icon.empty()) {
+        const std::string icon_path = app.get_resource_manager().get_texture_directory() + info.icon;
+        try {
+            RawImage icon(icon_path);
+            if (icon.get_bytes_per_pixel() != 4) {
+                log_warning << "Icon file '" << icon_path
+                            << "' does not provide the required 4 byte per pixel, but " << icon.get_bytes_per_pixel();
+            }
+            else {
+                const GLFWimage glfw_icon{icon.get_width(), icon.get_height(), const_cast<uchar*>(icon.get_data())};
+                glfwSetWindowIcon(m_glfw_window.get(), 1, &glfw_icon);
+            }
+        } catch (std::runtime_error) {
+            log_warning << "Failed to load Window icon '" << icon_path << "'";
+        }
+    }
+}
+
 Window::~Window()
 {
     close();
@@ -36,8 +87,9 @@ Window::~Window()
 Size2i Window::get_window_size() const
 {
     if (!m_glfw_window) {
-        return {};
+        return Size2i::invalid();
     }
+    assert(m_glfw_window);
     Size2i result;
     glfwGetWindowSize(m_glfw_window.get(), &result.width, &result.height);
     assert(result.is_valid());
@@ -47,7 +99,7 @@ Size2i Window::get_window_size() const
 Size2i Window::get_framed_window_size() const
 {
     if (!m_glfw_window) {
-        return {};
+        return Size2i::invalid();
     }
     int left, top, right, bottom;
     glfwGetWindowFrameSize(m_glfw_window.get(), &left, &top, &right, &bottom);
@@ -59,7 +111,7 @@ Size2i Window::get_framed_window_size() const
 Size2i Window::get_buffer_size() const
 {
     if (!m_glfw_window) {
-        return {};
+        return Size2i::invalid();
     }
     Size2i result;
     glfwGetFramebufferSize(m_glfw_window.get(), &result.width, &result.height);
@@ -72,9 +124,9 @@ void Window::_update()
     assert(m_glfw_window);
 
     // do nothing, if there are no Widgets in need to be redrawn
-//    if (m_render_manager->is_clean()) {
-//        return;
-//    }
+    if (m_render_manager->is_clean()) {
+        return;
+    }
 
     // make the window current
     Application::get_instance()._set_current_window(this);
@@ -131,7 +183,10 @@ void Window::close()
 std::shared_ptr<Window> Window::create(const WindowInfo& info)
 {
     std::shared_ptr<Window> window = std::make_shared<MakeSmartEnabler<Window>>(info);
-    if (!check_gl_error()) {
+    if (check_gl_error()) {
+        exit(to_number(Application::RETURN_CODE::OPENGL_FAILURE));
+    }
+    else {
         log_info << "Created Window '" << window->get_title() << "' "
                  << "using OpenGl version: " << glGetString(GL_VERSION);
     }
@@ -140,65 +195,8 @@ std::shared_ptr<Window> Window::create(const WindowInfo& info)
     Application::get_instance()._register_window(window);
     window->m_root_layout = std::make_shared<MakeSmartEnabler<LayoutRoot>>(window);
     window->m_root_layout->_set_size(window->get_buffer_size());
-    // TODO: why again is the LayoutRoot created outside the Window Constructor?
 
     return window;
-}
-
-Window::Window(const WindowInfo& info)
-    : m_glfw_window(nullptr, window_deleter)
-    , m_render_context(nullptr)
-    , m_title(info.title)
-    , m_root_layout()
-    , m_render_manager(std::make_unique<MakeSmartEnabler<RenderManager>>(this))
-    , m_background_color(info.clear_color)
-    , m_last_mouse_pos(NAN, NAN)
-{
-    // always make sure that the Application is constructed first
-    Application& app = Application::get_instance();
-
-    // close when the user presses ESC
-    connect_signal(on_token_key, &Window::close, [](const KeyEvent& event) { return event.key == Key::ESCAPE; });
-
-    // NoTF uses OpenGL ES 3.0 for now
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    glfwWindowHint(GLFW_RESIZABLE, info.is_resizeable ? GL_TRUE : GL_FALSE);
-
-    // create the GLFW window
-    m_glfw_window.reset(glfwCreateWindow(info.width, info.height, m_title.c_str(), nullptr, nullptr));
-    if (!m_glfw_window) {
-        log_fatal << "Window or OpenGL context creation failed for Window '" << get_title() << "'";
-        app._shutdown();
-        exit(to_number(Application::RETURN_CODE::GLFW_FAILURE));
-    }
-    glfwSetWindowUserPointer(m_glfw_window.get(), this);
-
-    // setup OpenGL and create the render context
-    glfwMakeContextCurrent(m_glfw_window.get());
-    glfwSwapInterval(app.get_info().enable_vsync ? 1 : 0);
-    m_render_context = std::make_unique<RenderContext>(RenderContextArguments());
-
-    // apply the Window icon
-    // In order to remove leftover icons on Ubuntu call:
-    // rm ~/.local/share/applications/notf.desktop; rm ~/.local/share/icons/notf.png
-    if (!info.icon.empty()) {
-        const std::string icon_path = app.get_resource_manager().get_texture_directory() + info.icon;
-        try {
-            RawImage icon(icon_path);
-            if (icon.get_bytes_per_pixel() != 4) {
-                log_warning << "Icon file '" << icon_path
-                            << "' does not provide the required 4 byte per pixel, but " << icon.get_bytes_per_pixel();
-            }
-            else {
-                const GLFWimage glfw_icon{icon.get_width(), icon.get_height(), const_cast<uchar*>(icon.get_data())};
-                glfwSetWindowIcon(m_glfw_window.get(), 1, &glfw_icon);
-            }
-        } catch (std::runtime_error) {
-            log_warning << "Failed to load Window icon '" << icon_path << "'";
-        }
-    }
 }
 
 void Window::_on_resize(int width, int height)
@@ -210,54 +208,39 @@ void Window::_on_resize(int width, int height)
 
 void Window::_propagate_mouse_event(MouseEvent&& event)
 {
-    // collect all Widgets in Layout-given order (no RenderLayers yet).
-    std::vector<Widget*> widgets = m_root_layout->widgets_at(event.window_pos);
-
-    // extract Controllers in order, respecting RenderLayers
-    std::set<AbstractController*> known_controllers;
-    std::vector<std::vector<AbstractController*>> controllers_by_layer;
-    for (Widget* widget : widgets) {
-
-        // notify each Controller only once
-        AbstractController* controller = widget->get_controller().get();
-        if (known_controllers.count(controller)) {
-            continue;
-        }
-        known_controllers.insert(controller);
-
-        // find the widgets's render layer
+    // sort Widgets by render RenderLayers
+    std::vector<std::vector<Widget*>> widgets_by_layer;
+    for (Widget* widget : m_root_layout->get_widgets_at(event.window_pos)) {
         RenderLayer* render_layer = widget->get_render_layer().get();
-        if (!render_layer) {
-            const Item* ancestor = widget->get_parent().get();
-            assert(ancestor);
-            while (!render_layer) {
-                render_layer = ancestor->render_layer().get();
-                ancestor     = ancestor->parent().get();
-                assert(ancestor || render_layer);
-            }
-        }
+        assert(render_layer);
 
-        // sort them into RenderLayers
         size_t layer_index = m_render_manager->get_render_layer_index(render_layer);
         assert(layer_index > 0);
-        if (layer_index > controllers_by_layer.size()) {
-            controllers_by_layer.resize(layer_index);
+        if (layer_index > widgets_by_layer.size()) {
+            widgets_by_layer.resize(layer_index);
         }
-        controllers_by_layer[layer_index - 1].emplace_back(controller);
+        widgets_by_layer[layer_index - 1].emplace_back(widget);
     }
 
-    // call the event signals
+    // call the appropriate event signal
     if (event.action == MouseAction::MOVE) {
-        for (const auto& layer : controllers_by_layer) {
-            for (const auto& controller : layer) {
-                controller->on_mouse_move(event);
+        for (const auto& layer : widgets_by_layer) {
+            for (const auto& widget : layer) {
+                widget->on_mouse_move(event);
+                if (event.was_handled()) {
+                    return;
+                }
             }
         }
     }
-    else {
-        for (const auto& layer : controllers_by_layer) {
-            for (const auto& controller : layer) {
-                controller->on_mouse_button(event);
+    else if (event.action == MouseAction::PRESS
+             || event.action == MouseAction::RELEASE) {
+        for (const auto& layer : widgets_by_layer) {
+            for (const auto& widget : layer) {
+                widget->on_mouse_button(event);
+                if (event.was_handled()) {
+                    return;
+                }
             }
         }
     }

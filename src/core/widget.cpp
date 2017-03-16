@@ -6,28 +6,33 @@
 #include "core/window.hpp"
 #include "graphics/painter.hpp"
 #include "graphics/render_context.hpp"
+#include "utils/unused.hpp"
 
 namespace notf {
 
-AbstractWidget::AbstractWidget()
-    : Item()
+Widget::Widget()
+    : ScreenItem()
     , m_scissor_layout() // empty by default
     , m_cell(Cell())
 {
     m_cell.set_dirty();
 }
 
-void AbstractWidget::set_scissor(std::shared_ptr<Layout> scissor)
+Widget::~Widget()
+{
+}
+
+void Widget::set_scissor(std::shared_ptr<Layout> scissor)
 {
     if (!has_ancestor(scissor.get())) {
         throw_runtime_error(string_format(
             "Cannot set Layout %i as scissor for Widget %i, because it is not part of the Layout.",
-            scissor->id(), id()));
+            scissor->get_id(), get_id()));
     }
     m_scissor_layout = std::move(scissor);
 }
 
-bool AbstractWidget::set_claim(const Claim claim)
+bool Widget::set_claim(const Claim claim)
 {
     bool was_changed = _set_claim(claim);
     if (was_changed) {
@@ -36,13 +41,13 @@ bool AbstractWidget::set_claim(const Claim claim)
     return was_changed;
 }
 
-void AbstractWidget::redraw()
+void Widget::redraw()
 {
     m_cell.set_dirty();
     _redraw();
 }
 
-void AbstractWidget::paint(RenderContext& context) const
+void Widget::paint(RenderContext& context) const
 {
     // update the cell if dirty
     //    if (m_cell.is_dirty()) { TODO: currently _set_size does not dirty the Widget's Cell
@@ -58,10 +63,11 @@ void AbstractWidget::paint(RenderContext& context) const
     // TODO: clear all m_cell states after painting
 }
 
-void AbstractWidget::_widgets_at(const Vector2f& /*local_pos*/, std::vector<AbstractWidget*>& result)
+void Widget::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
+    UNUSED(local_pos);
+    result.push_back(const_cast<Widget*>(this));
     // TODO: Widget::get_widget_at() should test if the given local_pos is loctated in its shape
-    result.push_back(this);
 }
 
 } // namespace notf

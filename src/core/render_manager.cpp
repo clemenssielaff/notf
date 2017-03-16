@@ -2,6 +2,7 @@
 
 #include "common/log.hpp"
 #include "common/time.hpp"
+#include "core/controller.hpp"
 #include "core/layout_root.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
@@ -64,6 +65,8 @@ void RenderManager::render(RenderContext& context)
 {
     Time time_at_start = Time::now();
 
+    // TODO: optimize case where there's just one layer and you can simply draw them as you iterate through them
+
     // remove unused layers
     std::remove_if(m_layers.begin(), m_layers.end(), [](std::shared_ptr<RenderLayer>& layer) -> bool {
         return layer.unique();
@@ -71,7 +74,7 @@ void RenderManager::render(RenderContext& context)
 
     // register all drawable widgets with their render layers
     LayoutRoot* layout_root = m_window->get_layout_root().get();
-    _iterate_layout_hierarchy(layout_root, layout_root->render_layer().get());
+    _iterate_item_hierarchy(layout_root, get_default_layer().get());
 
     // draw all widgets
     for (std::shared_ptr<RenderLayer>& render_layer : m_layers) {
@@ -90,40 +93,38 @@ void RenderManager::render(RenderContext& context)
     }
 }
 
-void RenderManager::_iterate_layout_hierarchy(const LayoutItem* item, RenderLayer* parent_layer)
+void RenderManager::_iterate_item_hierarchy(const ScreenItem* screen_item, RenderLayer* parent_layer)
 {
-    assert(item);
+    assert(screen_item);
     assert(parent_layer);
 
+    // TODO: dont' draw scissored widgets
+    if (!screen_item->is_visible()) {
+        return;
+    }
+
     // implicit use of the parent's render layer
-    RenderLayer* current_layer = item->get_render_layer().get();
+    RenderLayer* current_layer = screen_item->get_own_render_layer().get();
     if (!current_layer) {
         current_layer = parent_layer;
     }
 
     // if the item is a visible widget, append it to the current render layer
-    if (const Widget* widget = dynamic_cast<const Widget*>(item)) {
-        // TODO: dont' draw scissored widgets
-        if (!widget->is_visible()) {
-            return;
-        }
+    if (const Widget* widget = dynamic_cast<const Widget*>(screen_item)) {
         current_layer->m_widgets.push_back(widget);
     }
 
     // if it is a Layout, start a recursive iteration
-    else if (const Layout* layout = dynamic_cast<const Layout*>(item)) {
-        if (!layout->is_visible()) {
-            return;
-        }
+    else if (const Layout* layout = dynamic_cast<const Layout*>(screen_item)) {
         std::unique_ptr<LayoutIterator> it = layout->iter_items();
         while (const Item* child_item = it->next()) {
-            if (const LayoutItem* layout_item = child_item->get_layout_item()) {
-                _iterate_layout_hierarchy(layout_item, current_layer);
+            if (const ScreenItem* screen_item = Item::get_screen_item(child_item)) {
+                _iterate_item_hierarchy(screen_item, current_layer);
             }
         }
     }
 
-    else {
+    else { // a ScreenItem but not a Layout or a Widget? .. something's wrong...
         assert(false);
     }
 }

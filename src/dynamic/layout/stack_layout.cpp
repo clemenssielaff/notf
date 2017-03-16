@@ -10,6 +10,7 @@
 #include "common/log.hpp"
 #include "common/vector.hpp"
 #include "common/xform2.hpp"
+#include "core/controller.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
@@ -288,14 +289,18 @@ void StackLayout::add_item(std::shared_ptr<Item> item)
     }
 }
 
-void StackLayout::_widgets_at(const Vector2f& local_pos, std::vector<AbstractWidget*>& result)
+void StackLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
     // TODO: StackLayout::get_widget_at is brute-force and does not respect transform (only translate)
     for (Item* item : m_items) {
-        const Vector2f item_pos = local_pos - item->transform().translation();
-        const Aabrf item_rect(item->size());
+        const ScreenItem* screen_item = get_screen_item(item);
+        if(!screen_item){
+            continue;
+        }
+        const Vector2f item_pos       = local_pos - screen_item->get_transform().translation();
+        const Aabrf item_rect(screen_item->get_size());
         if (item_rect.contains(item_pos)) {
-            _widgets_at_item_pos(item, local_pos, result);
+            _get_widgets_at_item_pos(screen_item, local_pos, result);
         }
     }
 }
@@ -310,8 +315,8 @@ bool StackLayout::_update_claim()
     Claim new_claim;
     if ((m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT)) { // horizontal
         for (const Item* item : m_items) {
-            if (const LayoutItem* layout_item = item->get_layout_item()) {
-                new_claim.add_horizontal(layout_item->get_claim());
+            if (const ScreenItem* screen_item = get_screen_item(item)) {
+                new_claim.add_horizontal(screen_item->get_claim());
             }
         }
         if (!m_items.empty()) {
@@ -321,8 +326,8 @@ bool StackLayout::_update_claim()
     else {
         assert((m_direction == Direction::TOP_TO_BOTTOM) || (m_direction == Direction::BOTTOM_TO_TOP)); // vertical
         for (const Item* item : m_items) {
-            if (const LayoutItem* layout_item = item->get_layout_item()) {
-                new_claim.add_vertical(layout_item->get_claim());
+            if (const ScreenItem* screen_item = get_screen_item(item)) {
+                new_claim.add_vertical(screen_item->get_claim());
             }
         }
         if (!m_items.empty()) {
@@ -341,7 +346,7 @@ void StackLayout::_remove_item(const Item* item)
 
 void StackLayout::_relayout()
 {
-    Size2f total_size     = size();
+    Size2f total_size     = get_size();
     Size2f available_size = {total_size.width - m_padding.width(), total_size.height - m_padding.height()};
     float main_offset, cross_offset;
     switch (m_direction) {
@@ -369,14 +374,14 @@ void StackLayout::_relayout()
 
     // layout all items in a single stack
     if (!is_wrapping()) {
-        std::vector<LayoutItem*> layout_items;
-        layout_items.reserve(m_items.size());
+        std::vector<ScreenItem*> screen_items;
+        screen_items.reserve(m_items.size());
         for (Item* item : m_items) {
-            if (LayoutItem* layout_item = item->get_layout_item()) {
-                layout_items.emplace_back(std::move(layout_item));
+            if (ScreenItem* screen_item = get_screen_item(item)) {
+                screen_items.emplace_back(std::move(screen_item));
             }
         }
-        return _layout_stack(layout_items, available_size, main_offset, cross_offset);
+        return _layout_stack(screen_items, available_size, main_offset, cross_offset);
     }
 
     const bool horizontal       = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
@@ -384,19 +389,19 @@ void StackLayout::_relayout()
     const float available_cross = horizontal ? available_size.height : available_size.width;
 
     // fill the items into stacks
-    std::vector<std::vector<LayoutItem*>> stacks;
+    std::vector<std::vector<ScreenItem*>> stacks;
     std::vector<Claim::Stretch> cross_stretches;
     float used_cross_space = 0.f;
     {
-        std::vector<LayoutItem*> current_stack;
+        std::vector<ScreenItem*> current_stack;
         Claim::Stretch current_cross_stretch = Claim::Stretch(0, 0, 0);
         float current_size                   = 0;
         for (Item* item : m_items) {
-            LayoutItem* layout_item = item->get_layout_item();
-            if (!layout_item) {
+            ScreenItem* screen_item = get_screen_item(item);
+            if (!screen_item) {
                 continue;
             }
-            const Claim& claim   = layout_item->get_claim();
+            const Claim& claim   = screen_item->get_claim();
             const float addition = (horizontal ? claim.get_horizontal() : claim.get_vertical()).get_preferred() + m_spacing;
             if (current_size + addition > available_main) {
                 stacks.emplace_back(std::move(current_stack));
@@ -407,7 +412,7 @@ void StackLayout::_relayout()
                 current_size          = 0.f;
             }
             current_size += addition;
-            current_stack.push_back(layout_item);
+            current_stack.push_back(screen_item);
             current_cross_stretch.maxed(horizontal ? claim.get_vertical() : claim.get_horizontal());
         }
         stacks.emplace_back(std::move(current_stack));
@@ -447,7 +452,7 @@ void StackLayout::_relayout()
     }
 }
 
-void StackLayout::_layout_stack(const std::vector<LayoutItem*>& stack, const Size2f total_size,
+void StackLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size2f total_size,
                                 const float main_offset, const float cross_offset)
 {
     // calculate the actual, availabe size
@@ -510,7 +515,7 @@ void StackLayout::_layout_stack(const std::vector<LayoutItem*>& stack, const Siz
     }
     float current_offset = start_offset;
     for (size_t index = 0; index < stack.size(); ++index) {
-        LayoutItem* child          = stack.at(index);
+        ScreenItem* child          = stack.at(index);
         const ItemAdapter& adapter = adapters[index];
         const std::pair<float, float> width_to_height = child->get_claim().get_width_to_height();
         assert(adapter.result >= 0.f);

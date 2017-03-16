@@ -24,16 +24,16 @@ public:
     }
 };
 
-class MyController : public Controller<MyController> {
+class MyController : public BaseController<MyController> {
 public:
     MyController()
-        : Controller<MyController>({}, {})
+        : BaseController<MyController>({}, {})
     {
     }
 
     void initialize()
     {
-        set_root_item(std::make_shared<MyWidget>());
+        _set_root_item(std::make_shared<MyWidget>());
     }
 };
 
@@ -41,22 +41,21 @@ void app_main(Window& window)
 {
     auto controller = std::make_shared<MyController>();
     controller->initialize();
-    window.get_layout_root()->set_item(controller);
+    window.get_layout_root()->set_controller(controller);
 }
 
 int main(int argc, char* argv[])
 //int notmain(int argc, char* argv[])
 {
     ApplicationInfo app_info;
-    app_info.argc          = argc;
-    app_info.argv          = argv;
-    Application& app       = Application::initialize(app_info);
+    app_info.argc    = argc;
+    app_info.argv    = argv;
+    Application& app = Application::initialize(app_info);
 
     // window
     WindowInfo window_info;
     window_info.icon               = "notf.png";
-    window_info.width              = 800;
-    window_info.height             = 600;
+    window_info.size               = {800, 600};
     window_info.clear_color        = Color("#262a32");
     window_info.is_resizeable      = true;
     std::shared_ptr<Window> window = Window::create(window_info);

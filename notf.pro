@@ -134,9 +134,11 @@ SOURCES += \
     src/common/padding.cpp \
     src/dynamic/layout/overlayout.cpp \
     src/core/item.cpp \
+    src/core/screen_item.cpp \
     src/common/input.cpp \
     src/core/properties.cpp \
     src/core/property.cpp \
+    src/core/controller.cpp \
     src/common/line2.cpp \
     src/graphics/shader.cpp \
     src/graphics/text/font.cpp \
@@ -192,6 +194,7 @@ HEADERS += \
     include/dynamic/layout/overlayout.hpp \
     include/utils/make_smart_enabler.hpp \
     include/core/item.hpp \
+    include/core/screen_item.hpp \
     include/utils/binding_accessors.hpp \
     include/core/events/mouse_event.hpp \
     include/common/input.hpp \  
@@ -200,6 +203,7 @@ HEADERS += \
     include/utils/apply_tuple.hpp \
     include/graphics/texture2.hpp \
     include/core/property.hpp \
+    include/core/controller.hpp \
     include/utils/print_notf.hpp \
     include/common/line2.hpp \
     include/graphics/shader.hpp \

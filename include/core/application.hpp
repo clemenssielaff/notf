@@ -86,6 +86,7 @@ public: // enum
         UNINITIALIZED,
         GLFW_FAILURE,
         PYTHON_FAILURE,
+        OPENGL_FAILURE,
     };
 
 public: // static methods

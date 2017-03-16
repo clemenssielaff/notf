@@ -10,5 +10,5 @@ void produce_layout_root(pybind11::module& module, py::detail::generic_type Py_L
 {
     py::class_<LayoutRoot, std::shared_ptr<LayoutRoot>> Py_LayoutRoot(module, "_LayoutRoot", Py_LayoutItem);
 
-    Py_LayoutRoot.def("set_item", &LayoutRoot::set_item, DOCSTR("Sets a new Item at the LayoutRoot."), py::arg("item"));
+    Py_LayoutRoot.def("set_item", &LayoutRoot::set_controller, DOCSTR("Sets a new Item at the LayoutRoot."), py::arg("item"));
 }

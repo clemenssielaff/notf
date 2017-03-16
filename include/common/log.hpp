@@ -43,6 +43,8 @@
 #include <thread>
 #include <vector>
 
+#include "common/string.hpp"
+
 namespace notf {
 
 struct LogMessage;
@@ -305,22 +307,6 @@ inline LogMessage::LEVEL get_log_level()
 inline void set_log_level(LogMessage::LEVEL level)
 {
     LogMessageFactory::s_log_level = level;
-}
-
-/** Extracts the last part of a pathname at compile time.
- * @param input     Path to investigate.
- * @param delimiter Delimiter used to separate path elements.
- * @return          Only the last part of the path, e.g. basename("/path/to/some/file.cpp", '/') would return "file.cpp".
- */
-constexpr const char* basename(const char* input, const char delimiter = '/')
-{
-    size_t last_occurrence = 0;
-    for (size_t offset = 0; input[offset]; ++offset) {
-        if (input[offset] == delimiter) {
-            last_occurrence = offset + 1;
-        }
-    }
-    return &input[last_occurrence];
 }
 
 /// @brief The NullBuffer is a helper class to ignore unwanted logging messages.

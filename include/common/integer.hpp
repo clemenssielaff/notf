@@ -24,13 +24,6 @@ constexpr ushort count_digits(Integer digits)
     return counter;
 }
 
-/** Clamps an integer value into a given range. */
-template <class Integer, ENABLE_IF_INT(Integer)>
-constexpr Integer clamp(const Integer value, const Integer min, const Integer max)
-{
-    return value > max ? max : (value < min ? min : value);
-}
-
 /** Implements Python's integer modulo operation where negative values wrap around.
  * @param n     n % M
  * @param M     n % M

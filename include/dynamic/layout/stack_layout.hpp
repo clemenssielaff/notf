@@ -64,18 +64,18 @@ public: // enums
 
     /** Alignment of items in a Layout along the main and cross axis. */
     enum class Alignment : unsigned char {
-        START, // items stacked towards the start of the parent, no additional spacing
-        END, // items stacked towards the end of the parent, no additional spacing
-        CENTER, // items centered in parent, no additional spacing
+        START,         // items stacked towards the start of the parent, no additional spacing
+        END,           // items stacked towards the end of the parent, no additional spacing
+        CENTER,        // items centered in parent, no additional spacing
         SPACE_BETWEEN, // equal spacing between items, no spacing between items and border
-        SPACE_AROUND, // single spacing between items and border, double spacing between items
-        SPACE_EQUAL, // equal spacing between the items and the border
+        SPACE_AROUND,  // single spacing between items and border, double spacing between items
+        SPACE_EQUAL,   // equal spacing between the items and the border
     };
 
     /** How a Layout wraps. */
     enum class Wrap : unsigned char {
-        NO_WRAP, // no wrap
-        WRAP, // wraps towards the lower-right corner
+        NO_WRAP,      // no wrap
+        WRAP,         // wraps towards the lower-right corner
         WRAP_REVERSE, // wraps towards the upper-left corner
     };
 
@@ -83,10 +83,10 @@ public: // enums
     enum class Circular : unsigned char {
         CLOCKWISE,
         COUNTERCLOCKWISE,
-        CW = CLOCKWISE,
-        CCW = COUNTERCLOCKWISE,
+        CW            = CLOCKWISE,
+        CCW           = COUNTERCLOCKWISE,
         ANTICLOCKWISE = COUNTERCLOCKWISE,
-        ACW = COUNTERCLOCKWISE,
+        ACW           = COUNTERCLOCKWISE,
     };
 
 public: // methods
@@ -180,10 +180,10 @@ private: // methods
      * @param main_offset   Start offset of the first item in the main axis.
      * @param cross_offset  Start offset of the first item in the cross axis.
      */
-    void _layout_stack(const std::vector<LayoutItem *> &stack, const Size2f total_size,
+    void _layout_stack(const std::vector<ScreenItem*>& stack, const Size2f total_size,
                        const float main_offset, const float cross_offset);
 
-    virtual void _widgets_at(const Vector2f& local_pos, std::vector<AbstractWidget*>& result) override;
+    virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
 private: // fields
     /** Direction in which the StackLayout is stacked. */

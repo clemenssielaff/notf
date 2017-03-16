@@ -44,7 +44,12 @@ struct _Size2 {
     {
     }
 
-    /*  Inspection  ***************************************************************************************************/
+    /* Static Constructors ********************************************************************************************/
+
+    /** Creates and returns an invalid Size2 instance. */
+    static _Size2 invalid() { return {-1, -1}; }
+
+    /* Inspection  ****************************************************************************************************/
 
     /** Tests if this Size is valid (>=0) in both dimensions. */
     bool is_valid() const { return width >= 0 && height >= 0; }

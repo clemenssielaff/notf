@@ -9,7 +9,7 @@ namespace notf {
 template <typename T>
 class MakeSmartEnabler;
 
-class LayoutItem;
+class ScreenItem;
 struct RenderContext;
 class RenderStats;
 class Widget;
@@ -44,7 +44,7 @@ public: // methods
     ~RenderManager();
 
     /** Checks, whether there are any LayoutItems that need to be redrawn. */
-    bool is_clean() const { return m_is_clean; }
+    bool is_clean() const { return false /*m_is_clean*/; } // TODO: Test only
 
     /** Returns the default RenderLayer that always exists. */
     std::shared_ptr<RenderLayer> get_default_layer() const { return m_default_layer; }
@@ -68,7 +68,7 @@ public: // methods
      * Cleans the RenderManager and doesn't render if clean to begin with.
      * @param context   The context into which to render.
      */
-    void render(RenderContext &context);
+    void render(RenderContext& context);
 
     /** Returns the index of a given RenderLayer, starting at 1. Returns 0 on failure. */
     size_t get_render_layer_index(const RenderLayer* render_layer)
@@ -83,7 +83,8 @@ public: // methods
     }
 
 private: // methods
-    void _iterate_layout_hierarchy(const LayoutItem* layout_item, RenderLayer* parent_layer);
+    /** Iterates through all ScreenItems in the Item hierarchy and collects them in their RenderLayers. */
+    void _iterate_item_hierarchy(const ScreenItem* screen_item, RenderLayer* parent_layer);
 
 private: // fields
     /** The Window owning this RenderManager. */
