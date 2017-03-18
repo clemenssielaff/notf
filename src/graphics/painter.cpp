@@ -471,7 +471,7 @@ void Painter::drawJoins(const Aabrf& rect, const float time)
 void Painter::drawTexture(const Aabrf& rect)
 {
     if (!test_texture) {
-        test_texture = Texture2::load("/home/clemens/code/notf/res/textures/face.png");
+        test_texture = m_context.load_texture("/home/clemens/code/notf/res/textures/face.png");
     }
 
     Paint pattern = m_cell.create_texture_pattern(rect.top_left(), rect.extend(), test_texture, 0, 1);

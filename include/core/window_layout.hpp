@@ -4,52 +4,52 @@
 
 namespace notf {
 
-class LayoutRoot;
+class WindowLayout;
 class Window;
 
 /**********************************************************************************************************************/
 
-/** LayoutRoot Iterator that goes through all items in a Layout in order, from back to front.
+/** WindowLayout Iterator that goes through all items in a Layout in order, from back to front.
  * Iterators must be used up immediately after creation as they might be invalidated by any operation on their Layout.
  */
-class LayoutRootIterator : public LayoutIterator {
+class WindowLayoutIterator : public LayoutIterator {
 
-    friend class LayoutRoot;
+    friend class WindowLayout;
 
-protected: // for LayoutRoot
-    LayoutRootIterator(const LayoutRoot* layout_root)
-        : m_layout(layout_root)
+protected: // for WindowLayout
+    WindowLayoutIterator(const WindowLayout* window_layout)
+        : m_layout(window_layout)
     {
     }
 
 public: // methods
-    virtual ~LayoutRootIterator() = default;
+    virtual ~WindowLayoutIterator() = default;
 
     /** Advances the Iterator one step, returns the next Item or nullptr if the iteration has finished. */
     virtual const Item* next() override;
 
 private: // fields
-    /** LayoutRoot that is iterated over, is set to nullptr when the iteration has finished. */
-    const LayoutRoot* m_layout;
+    /** WindowLayout that is iterated over, is set to nullptr when the iteration has finished. */
+    const WindowLayout* m_layout;
 };
 
 /**********************************************************************************************************************/
 
-/** The Layout Root is owned by a Window and root of all LayoutItems displayed within the Window. */
-class LayoutRoot : public Layout {
+/** The WindowLayout is owned by a Window and root of all LayoutItems displayed within the Window. */
+class WindowLayout : public Layout {
 
-    friend class LayoutRootIterator;
+    friend class WindowLayoutIterator;
     friend class Window;
 
 protected: // methods
     /** @param window   Window owning this RootWidget. */
-    explicit LayoutRoot(const std::shared_ptr<Window>& window);
+    explicit WindowLayout(const std::shared_ptr<Window>& window);
 
 public: // methods
-    /** Returns the Window owning this LayoutRoot. */
+    /** Returns the Window owning this WindowLayout. */
     std::shared_ptr<Window> get_window() const;
 
-    /** Sets a new Item at the LayoutRoot. */
+    /** Sets a new Item at the WindowLayout. */
     void set_controller(std::shared_ptr<Controller> controller);
 
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
@@ -68,13 +68,13 @@ protected: // methods
     virtual void _relayout() override;
 
 private: // methods
-    /// @brief Returns the Layout contained in this LayoutRoot, may be invalid.
+    /// @brief Returns the Layout contained in this WindowLayout, may be invalid.
     Item* _get_item() const;
 
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
 private: // fields
-    /** The Window containing this LayoutRoot. */
+    /** The Window containing this WindowLayout. */
     Window* m_window;
 
     /** The Window Controller. */

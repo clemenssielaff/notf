@@ -27,7 +27,7 @@ bool remove_one_unordered(std::vector<T>& vector, const T& element)
     if (it == vector.end()) {
         return false;
     }
-    std::swap(*it, vector.back());
+    *it = std::move(vector.back());
     vector.pop_back();
     return true;
 }

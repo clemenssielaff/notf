@@ -32,7 +32,7 @@ using ItemID = size_t;
  *
  * Item Hierarchy
  * ==============
- * Starting with the LayoutRoot, which is owned by a Window, every Item is owned by its immediate parent Item through
+ * Starting with the WindowLayout, which is owned by a Window, every Item is owned by its immediate parent Item through
  * a shared pointer.
  *
  * Item IDs
@@ -74,7 +74,7 @@ class Item : public receive_signals, public std::enable_shared_from_this<Item> {
 
     friend class Controller; // can parent ScreenItems
     friend class Layout;     // can parent ScreenItems
-    friend class LayoutRoot; // can set its RenderLayer even though it has no parent
+    friend class WindowLayout; // can set its RenderLayer even though it has no parent
 
 public: // static functions
     /** Returns the ScreenItem associated with a given Item - either the Item itself or a Controller's root Item. */
@@ -105,12 +105,12 @@ public: // methods
     std::shared_ptr<const Item> get_parent() const { return m_parent.lock(); }
 
     /** Returns the Layout into which this Item is embedded.
-     * The only Item without a Layout is the LayoutRoot.
+     * The only Item without a Layout is the WindowLayout.
      */
     std::shared_ptr<const Layout> get_layout() const { return _get_layout(); }
 
     /** Returns the Controller managing this Item.
-     * The only Item without a Controller is the LayoutRoot.
+     * The only Item without a Controller is the WindowLayout.
      */
     std::shared_ptr<const Controller> get_controller() const;
 
@@ -148,12 +148,12 @@ public: // signals
 
 protected: // methods
     /** Returns the Layout into which this Item is embedded as a mutable pointer.
-     * The only Item without a Layout is the LayoutRoot.
+     * The only Item without a Layout is the WindowLayout.
      */
     std::shared_ptr<Layout> _get_layout() const;
 
     /** Returns the Controller managing this Item as a mutable pointer.
-     * The only Item without a Controller is the LayoutRoot.
+     * The only Item without a Controller is the WindowLayout.
      */
     std::shared_ptr<Controller> _get_controller() const;
 

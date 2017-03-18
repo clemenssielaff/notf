@@ -1,7 +1,5 @@
 #pragma once
 
-#include <utility>
-
 namespace notf {
 
 /** HTML5 canvas-like approach to blending the results of multiple OpenGL drawings.
@@ -30,25 +28,13 @@ struct BlendMode {
     Mode alpha;
 
     /** Default Constructor. */
-    BlendMode()
-        : rgb(SOURCE_OVER)
-        , alpha(SOURCE_OVER)
-    {
-    }
+    BlendMode();
 
     /** Single blend mode for both rgb and alpha. */
-    BlendMode(const Mode mode)
-        : rgb(mode)
-        , alpha(std::move(mode))
-    {
-    }
+    BlendMode(const Mode mode);
 
-    /** Separete blend modes for both rgb and alpha. */
-    BlendMode(const Mode color, const Mode alpha)
-        : rgb(std::move(color))
-        , alpha(std::move(alpha))
-    {
-    }
+    /** Separate blend modes for both rgb and alpha. */
+    BlendMode(const Mode color, const Mode alpha);
 
     /** Applies the blend mode to OpenGL.
      * A valid OpenGL context must exist before calling this function.

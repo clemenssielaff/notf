@@ -16,6 +16,7 @@ typedef struct FT_LibraryRec_* FT_Library;
 namespace notf {
 
 class FontAtlas;
+class RenderContext;
 
 /**********************************************************************************************************************/
 
@@ -28,7 +29,7 @@ class FontManager {
 
 public: // methods
     /** Default constructor. */
-    FontManager();
+    FontManager(RenderContext* context);
 
     /** Destructor. */
     ~FontManager();
@@ -80,6 +81,9 @@ private: // for Font
 private: // fields
     /** Freetype library used to rasterize the glyphs. */
     FT_Library m_freetype;
+
+    /** Render Context in which the Texture lives. */
+    RenderContext* m_render_context;
 
     /** Font Atlas to store Glyphs of all loaded Fonts. */
     FontAtlas m_atlas;

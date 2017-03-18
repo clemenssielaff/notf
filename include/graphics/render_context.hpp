@@ -19,6 +19,7 @@ namespace notf {
 
 struct RenderContextArguments;
 class Texture2;
+class Window;
 
 /**********************************************************************************************************************/
 
@@ -32,11 +33,6 @@ struct RenderContextArguments {
      */
     bool enable_geometric_aa = true;
 
-    /** Default to GLES_3, because it's the fastest, newest version that works on my machine.
-     * (obviously, that's not at very good reason, but we'll see what happens).
-     */
-    OpenGLVersion version = OpenGLVersion::GLES_3;
-
     /** Pixel ratio of the RenderContext.
      * 1.0 means square pixels.
      */
@@ -48,9 +44,10 @@ struct RenderContextArguments {
 /** The RenderContext. */
 class RenderContext {
 
-    friend class FrameGuard;
     friend class Cell;
-    friend class Window;
+    friend class FrameGuard;
+    friend class RenderManager;
+    friend class Texture2;
 
 public:
     struct CanvasCall {
@@ -209,9 +206,13 @@ public: // enum
 
 public:
     /** Constructor. */
-    RenderContext(const RenderContextArguments args);
+    RenderContext(const Window* window, const RenderContextArguments args);
 
+    /** Destructor. */
     ~RenderContext();
+
+    /** Makes the OpenGL context of this RenderContext current. */
+    void make_current();
 
     FrameGuard begin_frame(const Size2i buffer_size);
 
@@ -223,12 +224,15 @@ public:
 
     Time get_time() const { return m_time; }
 
-private: // methods for Window
+    /** Loads and returns a new Texture.
+     * The result is empty if the Texture could not be loaded.
+     */
+    std::shared_ptr<Texture2> load_texture(const std::string& file_path);
+
+private: // methods for RenderManager
     void set_mouse_pos(Vector2f pos) { m_mouse_pos = std::move(pos); }
 
     void set_buffer_size(Size2f buffer) { m_buffer_size = std::move(buffer); }
-
-    void set_window_size(Size2i window_size) { m_window_size = std::move(window_size); }
 
 private: // methods for Cell
     void add_fill_call(const Paint& paint, const Cell& cell);
@@ -256,17 +260,18 @@ private: // methods
 
     void _stroke(const CanvasCall& call);
 
-    void bind_texture(const CanvasCall& call);
+    /** Binds a given Texture ID, but only if it is not the currently bound one. */
+    void _bind_texture(const GLuint texture_id);
 
 private: // static methods
     static Sources _create_shader_sources(const RenderContext& context);
 
 private: // fields
+    /** The Window owning this RenderManager. */
+    const Window* m_window;
+
     /** Argument struct to initialize the RenderContext. */
     const RenderContextArguments m_args;
-
-    /** Size of the Window in screen coordinates (not pixels). */
-    Size2i m_window_size;
 
     /** Returns the size of the Window's framebuffer in pixels. */
     Size2f m_buffer_size;
@@ -276,9 +281,6 @@ private: // fields
 
     /* Cached stencil mask to avoid unnecessary rebindings. */
     GLuint m_stencil_mask;
-
-    /* Cache the currently bound texture in order to avoid unnecessary rebindings. */
-    GLuint m_bound_texture;
 
     /** Cached stencil func to avoid unnecessary rebindings. */
     StencilFunc m_stencil_func;
@@ -298,7 +300,18 @@ private: // fields
     /** Position of the mouse relative to the Window. */
     Vector2f m_mouse_pos;
 
-    // Shader variables
+    /* Texture ********************************************************************************************************/
+
+    /** The ID of the currently bound texture in order to avoid unnecessary rebindings. */
+    GLuint m_bound_texture;
+
+    /** All Textures managed by this Context.
+     * Note that the Context doesn't "own" the textures, they are shared pointers, but the Render Context deallocates
+     * all Textures when it is deleted.
+     */
+    std::vector<std::weak_ptr<Texture2>> m_textures;
+
+    /* Shader variables ***********************************************************************************************/
 
     Sources m_sources;
 
@@ -315,6 +328,10 @@ private: // fields
     GLuint m_vertex_array;
 
     GLuint m_vertex_buffer;
+
+private: // static fields
+    /** The current RenderContext. */
+    static RenderContext* s_current_context;
 };
 
 } // namespace notf

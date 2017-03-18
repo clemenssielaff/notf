@@ -27,6 +27,8 @@ class ScreenItem;
  */
 class Controller : public Item {
 
+    friend class Layout; // calls initialize()
+
 protected: // methods
     /** Default Constructor. */
     Controller() = default;
@@ -39,18 +41,26 @@ public: // methods
     const std::shared_ptr<ScreenItem>& get_root_item() const { return m_root_item; }
 
 protected: // methods
-    /** Sets a new root at this Controller's branch of the  Item hierarchy.*/
+    /** Sets a new root at this Controller's branch of the  Item hierarchy. */
     void _set_root_item(std::shared_ptr<ScreenItem> item);
 
+private: // methods for Layout
+    /** Initializes this Controller, if it is uninitialized. */
+    void initialize();
+
 private: // methods
+    /** Initialize this Controller.
+     * Every Controller must create a ScreenItem at its root, even if it is empty.
+     * If this method returns without setting `m_root_item`, the Controller will remain uninitialized.
+     */
+    virtual void _initialize() = 0;
+
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
 private: // fields
     /** Item at the root of the Controller's Item hierarchy. */
     std::shared_ptr<ScreenItem> m_root_item;
 };
-
-// TODO: you cannot create new Items in the constructor of Controller (no "shared_from_this"), but building them outside is also not that great...
 
 /**********************************************************************************************************************/
 

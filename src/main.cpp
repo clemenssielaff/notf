@@ -6,7 +6,7 @@
 using namespace notf;
 
 #include "core/controller.hpp"
-#include "core/layout_root.hpp"
+#include "core/window_layout.hpp"
 #include "core/widget.hpp"
 #include "graphics/painter.hpp"
 
@@ -31,7 +31,7 @@ public:
     {
     }
 
-    void initialize()
+    virtual void _initialize() override
     {
         _set_root_item(std::make_shared<MyWidget>());
     }
@@ -40,8 +40,7 @@ public:
 void app_main(Window& window)
 {
     auto controller = std::make_shared<MyController>();
-    controller->initialize();
-    window.get_layout_root()->set_controller(controller);
+    window.get_layout()->set_controller(controller);
 }
 
 int main(int argc, char* argv[])
@@ -50,6 +49,7 @@ int main(int argc, char* argv[])
     ApplicationInfo app_info;
     app_info.argc    = argc;
     app_info.argv    = argv;
+    app_info.enable_vsync = false;
     Application& app = Application::initialize(app_info);
 
     // window

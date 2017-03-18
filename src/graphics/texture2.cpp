@@ -5,13 +5,14 @@
 #include "common/log.hpp"
 #include "core/opengl.hpp"
 #include "graphics/raw_image.hpp"
+#include "graphics/render_context.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
 using namespace notf;
 
-// as seen on: https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
-static const GLint THIS_VALUE_MUST_BE_ZERO = 0;
+// must be zero - as seen on: https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
+static const GLint BORDER = 0;
 
 GLint wrap_to_gl(const Texture2::Wrap wrap)
 {
@@ -63,10 +64,12 @@ GLint magfilter_to_gl(const Texture2::MagFilter filter)
 
 namespace notf {
 
-std::shared_ptr<Texture2> Texture2::load(const std::string& texture_path)
+std::shared_ptr<Texture2> Texture2::load(RenderContext* context, const std::string file_path)
 {
+    assert(context);
+
     // load the texture from file
-    RawImage image(texture_path);
+    RawImage image(file_path);
     if (!image) {
         return {};
     }
@@ -99,6 +102,7 @@ std::shared_ptr<Texture2> Texture2::load(const std::string& texture_path)
     }
 
     // load the texture into OpenGL
+    context->make_current();
     GLuint id = 0;
     glGenTextures(1, &id);
     assert(id);
@@ -110,7 +114,7 @@ std::shared_ptr<Texture2> Texture2::load(const std::string& texture_path)
     glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
 
     glTexImage2D(GL_TEXTURE_2D, /* level= */ 0, internal_format, image.get_width(), image.get_height(),
-                 THIS_VALUE_MUST_BE_ZERO, gl_format, GL_UNSIGNED_BYTE, image.get_data());
+                 BORDER, gl_format, GL_UNSIGNED_BYTE, image.get_data());
 
     // repeat wrap by default
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -123,11 +127,11 @@ std::shared_ptr<Texture2> Texture2::load(const std::string& texture_path)
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // TODO: this is just before mip map generation in nanovg .. does that make a difference?
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    unbind();
+    glBindTexture(GL_TEXTURE_2D, GL_ZERO);
 
     // log success
     {
-#if SIGNAL_LOG_LEVEL <= SIGNAL_LOG_LEVEL_TRACE
+#if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_INFO
         static const std::string grayscale = "grayscale";
         static const std::string rgb       = "rgb";
         static const std::string rgba      = "rgba";
@@ -146,18 +150,21 @@ std::shared_ptr<Texture2> Texture2::load(const std::string& texture_path)
         }
 
         log_trace << "Loaded " << image.get_width() << "x" << image.get_height() << " " << *format_name
-                  << " OpenGL texture with ID: " << id << " from: " << texture_path;
+                  << " OpenGL texture with ID: " << id << " from: " << file_path;
 #endif
     }
 
     // return the loaded texture on success
-
     return std::make_shared<MakeSmartEnabler<Texture2>>(
-        id, static_cast<GLuint>(image.get_width()), static_cast<GLuint>(image.get_height()), texture_format);
+        id, context, std::move(file_path),
+        static_cast<GLuint>(image.get_width()), static_cast<GLuint>(image.get_height()), texture_format);
 }
 
-Texture2::Texture2(const GLuint id, const GLuint width, const GLuint height, const Format format)
+Texture2::Texture2(const GLuint id, RenderContext* context, const std::string name,
+                   const GLuint width, const GLuint height, const Format format)
     : m_id(id)
+    , m_render_context(context)
+    , m_name(name)
     , m_width(width)
     , m_height(height)
     , m_format(format)
@@ -168,51 +175,54 @@ Texture2::Texture2(const GLuint id, const GLuint width, const GLuint height, con
 {
 }
 
+Texture2::~Texture2()
+{
+    _deallocate();
+}
+
 void Texture2::bind() const
 {
-    glBindTexture(GL_TEXTURE_2D, m_id);
+    m_render_context->make_current();
+    m_render_context->_bind_texture(m_id);
 }
 
 void Texture2::unbind()
 {
+    m_render_context->make_current();
     glBindTexture(GL_TEXTURE_2D, GL_ZERO);
-}
-
-Texture2::~Texture2()
-{
-    glDeleteTextures(1, &m_id);
-    log_trace << "Deleted OpenGL texture with ID: " << m_id;
 }
 
 void Texture2::set_min_filter(const MinFilter filter)
 {
-    if (GLint value = minfilter_to_gl(filter)) {
-        bind();
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, value);
-    }
+    bind();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter));
 }
 
 void Texture2::set_mag_filter(const MagFilter filter)
 {
-    if (GLint value = magfilter_to_gl(filter)) {
-        bind();
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, value);
-    }
+    bind();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter));
 }
 
 void Texture2::set_wrap_x(const Wrap wrap)
 {
-    if (GLint value = wrap_to_gl(wrap)) {
-        bind();
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, value);
-    }
+    bind();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap));
 }
 
 void Texture2::set_wrap_y(const Wrap wrap)
 {
-    if (GLint value = wrap_to_gl(wrap)) {
-        bind();
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, value);
+    bind();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap));
+}
+
+void Texture2::_deallocate()
+{
+    if (m_id) {
+        m_render_context->make_current();
+        glDeleteTextures(1, &m_id);
+        log_trace << "Deleted OpenGL texture with ID: " << m_id;
+        m_id = 0;
     }
 }
 

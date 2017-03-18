@@ -1,8 +1,28 @@
 #include "graphics/blend_mode.hpp"
 
+#include <utility>
+
 #include "core/opengl.hpp"
 
 namespace notf {
+
+BlendMode::BlendMode()
+    : rgb(SOURCE_OVER)
+    , alpha(SOURCE_OVER)
+{
+}
+
+BlendMode::BlendMode(const Mode mode)
+    : rgb(mode)
+    , alpha(std::move(mode))
+{
+}
+
+BlendMode::BlendMode(const Mode color, const Mode alpha)
+    : rgb(std::move(color))
+    , alpha(std::move(alpha))
+{
+}
 
 void BlendMode::apply() const
 {

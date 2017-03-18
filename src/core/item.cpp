@@ -5,7 +5,7 @@
 #include "common/log.hpp"
 #include "core/controller.hpp"
 #include "core/layout.hpp"
-#include "core/layout_root.hpp"
+#include "core/window_layout.hpp"
 #include "core/render_manager.hpp"
 #include "core/screen_item.hpp"
 #include "core/window.hpp"
@@ -77,8 +77,8 @@ bool Item::has_ancestor(const Item* ancestor) const
 
 std::shared_ptr<Window> Item::get_window() const
 {
-    if (std::shared_ptr<const LayoutRoot> root_item = _get_first_ancestor<LayoutRoot>()) {
-        return root_item->get_window();
+    if (std::shared_ptr<const WindowLayout> window_layout = _get_first_ancestor<WindowLayout>()) {
+        return window_layout->get_window();
     }
     return {};
 }
@@ -99,7 +99,7 @@ const std::shared_ptr<RenderLayer>& Item::get_render_layer() const
         ancestor = ancestor->get_parent().get();
     }
 
-    // the LayoutRoot at the latest should return a valid RenderLayer
+    // the WindowLayout at the latest should return a valid RenderLayer
     // but if this Item is not in the Item hierarchy, it is also not a part of a RenderLayer
     static const std::shared_ptr<RenderLayer> empty;
     return empty;

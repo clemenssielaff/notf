@@ -2,7 +2,7 @@
 namespace py = pybind11;
 
 #include "core/application.hpp"
-#include "core/layout_root.hpp"
+#include "core/window_layout.hpp"
 #include "core/window.hpp"
 #include "python/docstr.hpp"
 using namespace notf;
@@ -15,5 +15,5 @@ void produce_window(pybind11::module& module)
         return Application::get_instance().get_current_window();
     }, DOCSTR("Reference to the current Window of the Application."));
 
-    Py_Window.def("get_layout_root", &Window::get_layout_root, DOCSTR("The invisible root Layout of this Window."));
+    Py_Window.def("get_layout_root", &Window::get_layout, DOCSTR("The invisible root Layout of this Window."));
 }

@@ -6,6 +6,7 @@
 #include "common/xform3.hpp"
 #include "core/opengl.hpp"
 #include "graphics/gl_errors.hpp"
+#include "graphics/render_context.hpp"
 #include "graphics/text/font_atlas.hpp"
 #include "graphics/text/freetype.hpp"
 #include "graphics/vertex.hpp"
@@ -25,15 +26,16 @@ const char* font_fragment_shader =
 
 namespace notf {
 
-FontManager::FontManager()
+FontManager::FontManager(RenderContext* context)
     : m_freetype(nullptr)
+    , m_render_context(context)
     , m_atlas()
     , m_fonts()
     , m_font_names()
     , m_window_size()
     , m_color(Color(0.f, 0.f, 0.f, 1.f))
     , m_vbo(0)
-    , m_font_shader(Shader::build("font_shader", font_vertex_shader, font_fragment_shader))
+    , m_font_shader(Shader::build(m_render_context, "font_shader", font_vertex_shader, font_fragment_shader))
     , m_color_uniform(0)
     , m_texture_id_uniform(0)
     , m_view_proj_matrix_uniform(0)
@@ -102,9 +104,9 @@ void FontManager::render_text(const std::string& text, ushort x, ushort y, const
         if (glyph.rect.width && glyph.rect.height) {
 
             Aabrf glyph_rect(static_cast<float>(glyph.rect.x),
-                            static_cast<float>(glyph.rect.y),
-                            static_cast<float>(glyph.rect.width),
-                            static_cast<float>(glyph.rect.height));
+                             static_cast<float>(glyph.rect.y),
+                             static_cast<float>(glyph.rect.width),
+                             static_cast<float>(glyph.rect.height));
             glyph_rect = glyph_rect * (1 / 512.f); // TODO: MAGIC NUMBER!!!!!!!!!!!!!!
 
             Aabrf quad_rect(

@@ -1,4 +1,4 @@
-#include "core/layout_root.hpp"
+#include "core/window_layout.hpp"
 
 #include <assert.h>
 
@@ -11,7 +11,7 @@
 
 namespace notf {
 
-const Item* LayoutRootIterator::next()
+const Item* WindowLayoutIterator::next()
 {
     if (m_layout) {
         const Item* result = m_layout->_get_item();
@@ -23,21 +23,21 @@ const Item* LayoutRootIterator::next()
 
 /**********************************************************************************************************************/
 
-LayoutRoot::LayoutRoot(const std::shared_ptr<Window>& window)
+WindowLayout::WindowLayout(const std::shared_ptr<Window>& window)
     : Layout()
     , m_window(window.get())
     , m_controller()
 {
-    // the layout_root is always in the default render layer
+    // the window layout is always in the default render layer
     m_render_layer = window->get_render_manager().get_default_layer();
 }
 
-std::shared_ptr<Window> LayoutRoot::get_window() const
+std::shared_ptr<Window> WindowLayout::get_window() const
 {
     return m_window->shared_from_this();
 }
 
-void LayoutRoot::set_controller(std::shared_ptr<Controller> controller)
+void WindowLayout::set_controller(std::shared_ptr<Controller> controller)
 {
     // remove the existing item first
     if (!is_empty()) {
@@ -51,26 +51,26 @@ void LayoutRoot::set_controller(std::shared_ptr<Controller> controller)
     _redraw();
 }
 
-std::unique_ptr<LayoutIterator> LayoutRoot::iter_items() const
+std::unique_ptr<LayoutIterator> WindowLayout::iter_items() const
 {
-    return std::make_unique<MakeSmartEnabler<LayoutRootIterator>>(this);
+    return std::make_unique<MakeSmartEnabler<WindowLayoutIterator>>(this);
 }
 
-std::vector<Widget*> LayoutRoot::get_widgets_at(const Vector2f& screen_pos) const
+std::vector<Widget*> WindowLayout::get_widgets_at(const Vector2f& screen_pos) const
 {
     std::vector<Widget*> result;
     _get_widgets_at(screen_pos, result);
     return result;
 }
 
-void LayoutRoot::_relayout()
+void WindowLayout::_relayout()
 {
     if (!is_empty()) {
         _set_item_size(m_controller->get_root_item().get(), get_size());
     }
 }
 
-Item* LayoutRoot::_get_item() const
+Item* WindowLayout::_get_item() const
 {
     if (is_empty()) {
         return nullptr;
@@ -80,7 +80,7 @@ Item* LayoutRoot::_get_item() const
     return children.begin()->get();
 }
 
-void LayoutRoot::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
+void WindowLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
     if (is_empty()) {
         return;

@@ -26,7 +26,7 @@ class Painter;
  * that rectangle and since this operation is provided by OpenGL, it is pretty cheap.
  * Every Widget contains a pointer to the parent Layout that acts as its scissor.
  * An empty pointer means that this Widget is scissored by its parent Layout, but every Layout in this Widget's Item
- * ancestry can be used (including the Windows LayoutRoot, which effectively disables scissoring).
+ * ancestry can be used (including the Windows WindowLayout, which effectively disables scissoring).
  */
 class Widget : public ScreenItem {
 

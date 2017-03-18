@@ -4,14 +4,13 @@
 #include <memory>
 #include <vector>
 
+#include "common/size2.hpp"
+
 namespace notf {
 
-template <typename T>
-class MakeSmartEnabler;
-
-class ScreenItem;
 struct RenderContext;
 class RenderStats;
+class ScreenItem;
 class Widget;
 class Window;
 
@@ -20,10 +19,9 @@ class Window;
 /** The RenderLayer class */
 class RenderLayer {
 
-    friend class MakeSmartEnabler<RenderLayer>;
     friend class RenderManager;
 
-private: // methods for MakeSmartEnabler<RenderLayer>
+protected: // constructor
     RenderLayer() = default;
 
 private: // fields
@@ -68,7 +66,7 @@ public: // methods
      * Cleans the RenderManager and doesn't render if clean to begin with.
      * @param context   The context into which to render.
      */
-    void render(RenderContext& context);
+    void render(const Size2i buffer_size);
 
     /** Returns the index of a given RenderLayer, starting at 1. Returns 0 on failure. */
     size_t get_render_layer_index(const RenderLayer* render_layer)
@@ -89,6 +87,9 @@ private: // methods
 private: // fields
     /** The Window owning this RenderManager. */
     const Window* m_window;
+
+    /** The RenderContext used to draw into this Window. */
+    std::unique_ptr<RenderContext> m_render_context;
 
     /** The default layer, will never go out of scope as long as the RenderManager lives. */
     std::shared_ptr<RenderLayer> m_default_layer;

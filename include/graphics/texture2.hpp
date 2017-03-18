@@ -7,8 +7,26 @@
 
 namespace notf {
 
-/** Manages the loading and setup of an OpenGL texture. */
-class Texture2 {
+class RenderContext;
+
+//*********************************************************************************************************************/
+
+/** Manages the loading and setup of an OpenGL texture.
+ *
+ * Texture and RenderContext
+ * =========================
+ * A Texture needs a valid RenderContext (which in turn refers to an OpenGL context), since the Texture class itself
+ * does not store any image data, only the OpenGL ID and metadata.
+ * You create a Texture by calling `RenderContext::load_texture(texture_path)`, which attaches the RenderContext to the
+ * Texture.
+ * The return value is a shared pointer, which you own.
+ * However, the RenderContext does keep a weak pointer to the Texture and will deallocate it when it is itself removed.
+ * In this case, the remaining Texture will become invalid and you'll get a warning message.
+ * In a well-behaved program, all Textures should have gone out of scope by the time the RenderContext is destroyed.
+ */
+class Texture2 : public std::enable_shared_from_this<Texture2> {
+
+    friend class RenderContext; // invalidates all Textures when it is destroyed
 
 public: // enums
     enum class Format : unsigned char {
@@ -33,19 +51,30 @@ public: // enums
 
     /** How a coordinate (c) outside the texture size (n) in a given direcion is handled. */
     enum class Wrap : unsigned char {
-        REPEAT,               //* Only uses the fractional part of c, creating a repeating pattern (default)
-        CLAMP_TO_EDGE,        //* Clamps c to [1/2n,  1 - 1/2n]
-        MIRRORED_REPEAT,      //* Like REPEAT when the integer part of c is even, 1 - frac(c) when c is odd
+        REPEAT,          //* Only uses the fractional part of c, creating a repeating pattern (default)
+        CLAMP_TO_EDGE,   //* Clamps c to [1/2n,  1 - 1/2n]
+        MIRRORED_REPEAT, //* Like REPEAT when the integer part of c is even, 1 - frac(c) when c is odd
     };
 
-public: // static methods
-    /** Loads a texture from a given file. * @param texture_path  Path to a texture file.
-     * @return Texture2 instance, is empty if the texture could not be loaded.
+private: // static method for RenderContext
+    /** Loads a texture from a given file.
+     * @param context   Render Context in which the Texture lives.
+     * @param file_path Path to a texture file.
+     * @return          Texture2 instance, is empty if the texture could not be loaded.
      */
-    static std::shared_ptr<Texture2> load(const std::string& texture_path);
+    static std::shared_ptr<Texture2> load(RenderContext* context, const std::string file_path);
 
-    /** Unbinds any current active GL_TEXTURE_2D. */
-    static void unbind();
+protected: // constructor
+    /** Value Constructor.
+     * @param id        OpenGL texture ID.
+     * @param context   Render Context in which the Texture lives.
+     * @param name      Name of the Texture.
+     * @param width     Width of the loaded image in pixels.
+     * @param height    Height of the loaded image in pixels.
+     * @param format    Texture format.
+     */
+    Texture2(const GLuint id, RenderContext* context, const std::string name,
+             const GLuint width, const GLuint height, const Format format);
 
 public: // methods
     /// no copy / assignment
@@ -57,6 +86,15 @@ public: // methods
 
     /** The OpenGL ID of this Texture2. */
     GLuint get_id() const { return m_id; }
+
+    /** Checks if the Texture is still valid.
+     * A Texture should always be valid - the only way to get an invalid one is to remove the RenderContext while still
+     * holding on to shared pointers of a Texture that lived in the removed RenderContext.
+     */
+    bool is_valid() const { return m_id != 0; }
+
+    /** The name of this Texture. */
+    const std::string& get_name() const { return m_name; }
 
     /** Width of the loaded image in pixels. */
     GLuint get_width() const { return m_width; }
@@ -82,6 +120,9 @@ public: // methods
     /** Binds this Texture2 as the current active GL_TEXTURE_2D. */
     void bind() const;
 
+    /** Unbinds any current active GL_TEXTURE_2D. */
+    void unbind();
+
     /** Sets a new filter mode when the texture pixels are smaller than scren pixels. */
     void set_min_filter(const MinFilter filter);
 
@@ -94,18 +135,19 @@ public: // methods
     /** Sets a new vertical wrap mode. */
     void set_wrap_y(const Wrap wrap);
 
-protected: // methods
-    /**
-     * @param id        OpenGL texture ID.
-     * @param width     Width of the loaded image in pixels.
-     * @param height    Height of the loaded image in pixels.
-     * @param format    Texture format.
-     */
-    Texture2(const GLuint id, const GLuint width, const GLuint height, const Format format);
+private: // methods for RenderContext
+    /** Deallocates the Texture data and invalidates the Texture. */
+    void _deallocate();
 
 private: // fields
     /** OpenGL ID of this Shader. */
-    const GLuint m_id;
+    GLuint m_id;
+
+    /** Render Context in which the Texture lives. */
+    RenderContext* m_render_context;
+
+    /** The name of this Texture. */
+    std::string m_name;
 
     /** Width of the loaded image in pixels. */
     const GLuint m_width;

@@ -124,7 +124,6 @@ SOURCES += \
     src/core/render_manager.cpp \
     src/common/color.cpp \
     src/core/layout.cpp \
-    src/core/layout_root.cpp \
     src/dynamic/layout/stack_layout.cpp \
     src/common/claim.cpp \
     src/graphics/raw_image.cpp \
@@ -154,7 +153,9 @@ SOURCES += \
     src/common/xform2.cpp \
     src/common/xform3.cpp \
     src/common/exception.cpp \
-    src/common/string.cpp
+    src/common/string.cpp \
+    src/core/window_layout.cpp \
+    src/graphics/gl_errors.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -182,7 +183,6 @@ HEADERS += \
     include/utils/enum_to_number.hpp \
     include/utils/unused.hpp \
     include/core/layout.hpp \
-    include/core/layout_root.hpp \
     include/dynamic/layout/stack_layout.hpp \
     include/common/claim.hpp \
     include/graphics/raw_image.hpp \
@@ -230,7 +230,8 @@ HEADERS += \
     include/common/xform3.hpp \
     include/common/exception.hpp \
     include/core/opengl.hpp \
-    include/core/glfw.hpp
+    include/core/glfw.hpp \
+    include/core/window_layout.hpp
 
 QMAKE_CXX = ccache g++
 

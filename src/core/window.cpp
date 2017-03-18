@@ -5,15 +5,13 @@
 #include "core/events/key_event.hpp"
 #include "core/events/mouse_event.hpp"
 #include "core/glfw.hpp"
-#include "core/layout_root.hpp"
+#include "core/window_layout.hpp"
 #include "core/render_manager.hpp"
 #include "core/resource_manager.hpp"
 #include "core/widget.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/raw_image.hpp"
-#include "graphics/render_context.hpp"
 #include "utils/make_smart_enabler.hpp"
-#include "utils/unused.hpp"
 
 namespace notf {
 
@@ -26,11 +24,11 @@ void window_deleter(GLFWwindow* glfw_window)
 
 Window::Window(const WindowInfo& info)
     : m_glfw_window(nullptr, window_deleter)
-    , m_render_context(nullptr)
     , m_title(info.title)
-    , m_root_layout()
-    , m_render_manager(std::make_unique<MakeSmartEnabler<RenderManager>>(this))
+    , m_layout()
+    , m_render_manager() // has to be created after the OpenGL Context
     , m_background_color(info.clear_color)
+    , m_size(info.size)
 {
     // make sure that an Application was initialized before instanciating a Window (will exit on failure)
     Application& app = Application::get_instance();
@@ -45,7 +43,7 @@ Window::Window(const WindowInfo& info)
     glfwWindowHint(GLFW_RESIZABLE, info.is_resizeable ? GL_TRUE : GL_FALSE);
 
     // create the GLFW window
-    m_glfw_window.reset(glfwCreateWindow(info.size.width, info.size.height, m_title.c_str(), nullptr, nullptr));
+    m_glfw_window.reset(glfwCreateWindow(m_size.width, m_size.height, m_title.c_str(), nullptr, nullptr));
     if (!m_glfw_window) {
         log_fatal << "Window or OpenGL context creation failed for Window '" << get_title() << "'";
         app._shutdown();
@@ -53,10 +51,10 @@ Window::Window(const WindowInfo& info)
     }
     glfwSetWindowUserPointer(m_glfw_window.get(), this);
 
-    // setup OpenGL and create the render context
+    // setup OpenGL and create the render manager
     glfwMakeContextCurrent(m_glfw_window.get());
     glfwSwapInterval(app.get_info().enable_vsync ? 1 : 0);
-    m_render_context = std::make_unique<RenderContext>(RenderContextArguments());
+    m_render_manager = std::make_unique<MakeSmartEnabler<RenderManager>>(this);
 
     // apply the Window icon
     // In order to remove leftover icons on Ubuntu call:
@@ -84,18 +82,6 @@ Window::~Window()
     close();
 }
 
-Size2i Window::get_window_size() const
-{
-    if (!m_glfw_window) {
-        return Size2i::invalid();
-    }
-    assert(m_glfw_window);
-    Size2i result;
-    glfwGetWindowSize(m_glfw_window.get(), &result.width, &result.height);
-    assert(result.is_valid());
-    return result;
-}
-
 Size2i Window::get_framed_window_size() const
 {
     if (!m_glfw_window) {
@@ -119,6 +105,16 @@ Size2i Window::get_buffer_size() const
     return result;
 }
 
+Vector2f Window::get_mouse_pos() const
+{
+    if (!m_glfw_window) {
+        return Vector2f::zero();
+    }
+    double mouse_x, mouse_y;
+    glfwGetCursorPos(m_glfw_window.get(), &mouse_x, &mouse_y);
+    return {static_cast<float>(mouse_x), static_cast<float>(mouse_y)};
+}
+
 void Window::_update()
 {
     assert(m_glfw_window);
@@ -131,20 +127,10 @@ void Window::_update()
     // make the window current
     Application::get_instance()._set_current_window(this);
 
-    // build the render context
-    Size2i window_size;
-    glfwGetWindowSize(m_glfw_window.get(), &window_size.width, &window_size.height);
-    m_render_context->set_window_size(window_size);
-
+    // prepare the viewport
     Size2i buffer_size;
     glfwGetFramebufferSize(m_glfw_window.get(), &buffer_size.width, &buffer_size.height);
-    m_render_context->set_buffer_size(buffer_size);
 
-    double mouse_x, mouse_y;
-    glfwGetCursorPos(m_glfw_window.get(), &mouse_x, &mouse_y);
-    m_render_context->set_mouse_pos(Vector2f(static_cast<float>(mouse_x), static_cast<float>(mouse_y)));
-
-    // prepare the viewport
     glViewport(0, 0, buffer_size.width, buffer_size.height);
     glClearColor(m_background_color.r, m_background_color.g, m_background_color.b, m_background_color.a);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -154,10 +140,8 @@ void Window::_update()
     glDisable(GL_DEPTH_TEST);
 
     // render
-    RenderContext::FrameGuard frame_guard = m_render_context->begin_frame(buffer_size);
     try {
-        m_render_manager->render(*m_render_context.get());
-        frame_guard.end();
+        m_render_manager->render(buffer_size);
     }
     // if an error bubbled all the way up here, something has gone horribly wrong
     catch (std::runtime_error error) {
@@ -174,10 +158,11 @@ void Window::close()
     if (m_glfw_window) {
         log_trace << "Closing Window \"" << m_title << "\"";
         on_close(*this);
-        m_root_layout.reset();
+        m_layout.reset();
         Application::get_instance()._unregister_window(shared_from_this());
         m_glfw_window.reset(nullptr);
     }
+    m_size = Size2i::invalid();
 }
 
 std::shared_ptr<Window> Window::create(const WindowInfo& info)
@@ -193,24 +178,24 @@ std::shared_ptr<Window> Window::create(const WindowInfo& info)
 
     // inititalize the window
     Application::get_instance()._register_window(window);
-    window->m_root_layout = std::make_shared<MakeSmartEnabler<LayoutRoot>>(window);
-    window->m_root_layout->_set_size(window->get_buffer_size());
+    window->m_layout = std::make_shared<MakeSmartEnabler<WindowLayout>>(window);
+    window->m_layout->_set_size(window->get_buffer_size());
 
     return window;
 }
 
 void Window::_on_resize(int width, int height)
 {
-    UNUSED(width);
-    UNUSED(height);
-    m_root_layout->_set_size(get_buffer_size());
+    m_size.width = width;
+    m_size.height = height;
+    m_layout->_set_size(get_buffer_size());
 }
 
 void Window::_propagate_mouse_event(MouseEvent&& event)
 {
     // sort Widgets by render RenderLayers
     std::vector<std::vector<Widget*>> widgets_by_layer;
-    for (Widget* widget : m_root_layout->get_widgets_at(event.window_pos)) {
+    for (Widget* widget : m_layout->get_widgets_at(event.window_pos)) {
         RenderLayer* render_layer = widget->get_render_layer().get();
         assert(render_layer);
 

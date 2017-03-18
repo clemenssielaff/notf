@@ -9,8 +9,6 @@ struct NVGcontext;
 namespace notf {
 
 class Font;
-class Texture2;
-
 /** The Resource Manager owns all dynamically loaded resources.
  * It is not a Singleton, even though each Application will most likely only have one.
  */
@@ -47,15 +45,6 @@ public: // methods
      */
     std::shared_ptr<Font> fetch_font(const std::string& name);
 
-    /** Retrieves a Texture2 by its path.
-     * This function either loads the texture from disk if this is the first time it has been requested,
-     * or reuses a cached texture, if it was already loaded.
-     * @param texture_path          Texture path, relative to the texture directory.
-     * @param flags                 Texture2::Flags used to load the texture.
-    *  @throw std::runtime_error    If loading a Texture from the given path failed.
-     */
-    std::shared_ptr<Texture2> fetch_texture(const std::string& texture_path, int flags);
-
     /** Deletes all resources that are not currently being used. */
     void cleanup();
 
@@ -70,9 +59,6 @@ private: // fields
 
     /** System path to the font directory, absolute or relative to the executable. */
     std::string m_font_directory;
-
-    /** All managed Textures - indexed by hash of name relative to the texture directory and texture flags. */
-    std::unordered_map<size_t, std::shared_ptr<Texture2>> m_textures;
 
     /** All managed Fonts - indexed by hash of name relative to the font directory. */
     std::unordered_map<size_t, std::shared_ptr<Font>> m_fonts;

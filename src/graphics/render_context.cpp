@@ -2,7 +2,9 @@
 
 #include "common/log.hpp"
 #include "common/vector.hpp"
+#include "core/glfw.hpp"
 #include "core/opengl.hpp"
+#include "core/window.hpp"
 #include "graphics/gl_utils.hpp"
 #include "graphics/texture2.hpp"
 
@@ -46,19 +48,24 @@ const char* cell_fragment_shader =
 
 namespace notf {
 
-RenderContext::RenderContext(const RenderContextArguments args)
-    : m_args(std::move(args))
+RenderContext* RenderContext::s_current_context = nullptr;
+
+RenderContext::RenderContext(const Window* window, const RenderContextArguments args)
+    : m_window(window)
+    , m_args(std::move(args))
     , m_buffer_size(Size2f(0, 0))
     , m_time()
     , m_stencil_mask(0xffffffff)
-    , m_bound_texture(0)
     , m_stencil_func(StencilFunc::ALWAYS)
     , m_calls()
     , m_paths()
     , m_vertices()
     , m_frag_uniforms()
+    , m_mouse_pos()
+    , m_bound_texture(0)
+    , m_textures()
     , m_sources(_create_shader_sources(*this))
-    , m_shader(Shader::build("CellShader", m_sources.vertex, m_sources.fragment))
+    , m_shader(Shader::build(this, "CellShader", m_sources.vertex, m_sources.fragment))
     , m_loc_viewsize(glGetUniformLocation(m_shader.get_id(), "viewSize"))
     , m_loc_texture(glGetUniformLocation(m_shader.get_id(), "tex"))
     , m_loc_buffer(glGetUniformBlockIndex(m_shader.get_id(), "frag"))
@@ -83,13 +90,43 @@ RenderContext::~RenderContext()
 {
     if (m_fragment_buffer != 0) {
         glDeleteBuffers(1, &m_fragment_buffer);
+        m_fragment_buffer = 0;
     }
     if (m_vertex_array != 0) {
         glDeleteVertexArrays(1, &m_vertex_array);
+        m_vertex_array = 0;
     }
     if (m_vertex_buffer != 0) {
         glDeleteBuffers(1, &m_vertex_buffer);
+        m_vertex_buffer = 0;
     }
+
+    // deallocate and invalidate all remaining Textures
+    for (std::weak_ptr<Texture2> texture_weakptr : m_textures) {
+        std::shared_ptr<Texture2> texture = texture_weakptr.lock();
+        if (texture) {
+            log_warning << "Deallocating live Texture: " << texture->get_id();
+            texture->_deallocate();
+        }
+    }
+    m_textures.clear();
+}
+
+void RenderContext::make_current()
+{
+    if(s_current_context != this){
+        glfwMakeContextCurrent(m_window->_get_glfw_window());
+        s_current_context = this;
+    }
+}
+
+std::shared_ptr<Texture2> RenderContext::load_texture(const std::string& file_path)
+{
+    std::shared_ptr<Texture2> texture = Texture2::load(this, file_path);
+    if (texture) {
+        m_textures.emplace_back(texture);
+    }
+    return texture;
 }
 
 RenderContext::FrameGuard RenderContext::begin_frame(const Size2i buffer_size)
@@ -375,7 +412,9 @@ void RenderContext::_fill(const CanvasCall& call)
     // Draw anti-aliased pixels
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset + fragmentSize(), fragmentSize());
-    bind_texture(call);
+    if (call.texture) {
+        _bind_texture(call.texture->get_id());
+    }
 
     if (m_args.enable_geometric_aa) {
         set_stencil_func(StencilFunc::EQUAL);
@@ -400,7 +439,9 @@ void RenderContext::_convex_fill(const CanvasCall& call)
     assert(call.pathOffset + call.pathCount <= m_paths.size());
 
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset, fragmentSize());
-    bind_texture(call);
+    if (call.texture) {
+        _bind_texture(call.texture->get_id());
+    }
 
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
         // draw fill
@@ -428,7 +469,9 @@ void RenderContext::_stroke(const CanvasCall& call)
     set_stencil_func(StencilFunc::EQUAL);
     glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset + fragmentSize(), fragmentSize());
-    bind_texture(call);
+    if (call.texture) {
+        _bind_texture(call.texture->get_id());
+    }
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
         assert(static_cast<size_t>(m_paths[i].strokeOffset + m_paths[i].strokeCount) <= m_vertices.size());
         glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].strokeOffset, m_paths[i].strokeCount);
@@ -436,7 +479,9 @@ void RenderContext::_stroke(const CanvasCall& call)
 
     // draw anti-aliased pixels
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniformOffset, fragmentSize());
-    bind_texture(call);
+    if (call.texture) {
+        _bind_texture(call.texture->get_id());
+    }
     set_stencil_func(StencilFunc::EQUAL);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     for (size_t i = call.pathOffset; i < call.pathOffset + call.pathCount; ++i) {
@@ -457,14 +502,11 @@ void RenderContext::_stroke(const CanvasCall& call)
     glDisable(GL_STENCIL_TEST);
 }
 
-void RenderContext::bind_texture(const CanvasCall& call)
+void RenderContext::_bind_texture(const GLuint texture_id)
 {
-    if (!call.texture) {
-        return;
-    }
-    if (call.texture->get_id() != m_bound_texture) {
-        m_bound_texture = call.texture->get_id();
-        call.texture->bind();
+    if (texture_id != m_bound_texture) {
+        glBindTexture(GL_TEXTURE_2D, texture_id);
+        m_bound_texture = texture_id;
     }
 }
 
@@ -514,15 +556,8 @@ RenderContext::Sources RenderContext::_create_shader_sources(const RenderContext
 {
     // create the header
     std::string header;
-    switch (context.m_args.version) {
-    case OpenGLVersion::OPENGL_3:
-        header += "#version 150 core\n";
-        break;
-    case OpenGLVersion::GLES_3:
-        header += "#version 300 es\n";
-        header += "#define UNIFORMARRAY_SIZE 11\n";
-        break;
-    }
+    header += "#version 300 es\n";
+    header += "#define UNIFORMARRAY_SIZE 11\n";
     if (context.provides_geometric_aa()) {
         header += "#define GEOMETRY_AA 1\n";
     }

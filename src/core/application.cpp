@@ -152,12 +152,13 @@ int Application::exec()
 #endif
 
         // wait for the next event or the next time to fire an animation frame
-        if (m_info.fps == 0) {
-            glfwWaitEvents();
-        }
-        else {
-            glfwWaitEventsTimeout((next_frame > now.ticks ? next_frame - now.ticks : 0) / static_cast<double>(Time::frequency()));
-        }
+//        if (m_info.fps == 0) {
+//            glfwWaitEvents();
+//        }
+//        else {
+//            glfwWaitEventsTimeout((next_frame > now.ticks ? next_frame - now.ticks : 0) / static_cast<double>(Time::frequency()));
+//        }
+        glfwPollEvents();
     }
 
     _shutdown();
@@ -264,7 +265,7 @@ void Application::_on_window_resize(GLFWwindow* glfw_window, int width, int heig
 void Application::_register_window(std::shared_ptr<Window> window)
 {
     assert(window);
-    GLFWwindow* glfw_window = window->_get_glwf_window();
+    GLFWwindow* glfw_window = window->_get_glfw_window();
     if (!glfw_window) {
         log_fatal << "Window or context creation failed for window '" << window->get_title() << "'";
         _shutdown();
@@ -295,7 +296,7 @@ void Application::_unregister_window(std::shared_ptr<Window> window)
     assert(iterator != m_windows.end());
 
     // disconnect the window callbacks
-    GLFWwindow* glfw_window = window->_get_glwf_window();
+    GLFWwindow* glfw_window = window->_get_glfw_window();
     assert(glfw_window);
     glfwSetWindowCloseCallback(glfw_window, nullptr);
     glfwSetKeyCallback(glfw_window, nullptr);
@@ -309,7 +310,7 @@ void Application::_set_current_window(Window* window)
 {
     assert(window);
     if (m_current_window.get() != window) {
-        glfwMakeContextCurrent(window->_get_glwf_window());
+        glfwMakeContextCurrent(window->_get_glfw_window());
         m_current_window = window->shared_from_this();
     }
 }

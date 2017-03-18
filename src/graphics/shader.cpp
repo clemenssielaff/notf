@@ -4,6 +4,8 @@
 
 #include "common/log.hpp"
 #include "core/opengl.hpp"
+#include "graphics/render_context.hpp"
+
 namespace { // anonymous
 
 /** Helper class to make sure that shaders are properly detached / removed.
@@ -33,16 +35,21 @@ private:
     GLuint m_program;
 };
 
-} // namespace anonymous
+/** Shader stages. */
+enum class STAGE : unsigned char {
+    INVALID = 0,
+    VERTEX,
+    FRAGMENT,
+};
 
-namespace notf {
-
-const std::string& Shader::_stage_name(const STAGE stage)
+/** Returns the name of the given Shader stage.
+ * @param stage     Requested stage.
+ */
+const std::string& stage_name(const STAGE stage)
 {
     static const std::string invalid  = "invalid";
     static const std::string vertex   = "vertex";
     static const std::string fragment = "fragment";
-    static const std::string geometry = "geometry";
     static const std::string unknown  = "unknown";
 
     switch (stage) {
@@ -52,103 +59,17 @@ const std::string& Shader::_stage_name(const STAGE stage)
         return vertex;
     case STAGE::FRAGMENT:
         return fragment;
-    case STAGE::GEOMETRY:
-        return geometry;
     }
     return unknown;
 }
 
-Shader Shader::build(
-    const std::string& name,
-    const std::string& vertex_shader_source,
-    const std::string& fragment_shader_source,
-    const std::string& geometry_shader_source)
-{
-    // compile the mandatory shaders
-    GLuint vertex_shader = _compile(STAGE::VERTEX, name, vertex_shader_source);
-    ShaderRAII vertex_shader_raii(vertex_shader);
-    GLuint fragment_shader = _compile(STAGE::FRAGMENT, name, fragment_shader_source);
-    ShaderRAII fragment_shader_raii(fragment_shader);
-    if (!(vertex_shader && fragment_shader)) {
-        return {};
-    }
-
-    // compile the optional geometry shader
-    GLuint geometry_shader = 0;
-    if (!geometry_shader_source.empty()) {
-        geometry_shader = _compile(STAGE::GEOMETRY, name, geometry_shader_source);
-        if (!geometry_shader) {
-            return {};
-        }
-    }
-    ShaderRAII geometry_shader_raii(geometry_shader);
-
-    // link the program
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vertex_shader);
-    vertex_shader_raii.set_program(program);
-    glAttachShader(program, fragment_shader);
-    fragment_shader_raii.set_program(program);
-    if (geometry_shader) {
-        glAttachShader(program, geometry_shader);
-        geometry_shader_raii.set_program(program);
-    }
-    glLinkProgram(program);
-
-    // check for errors
-    GLint success = GL_FALSE;
-    glGetProgramiv(program, GL_LINK_STATUS, &success);
-    if (success) {
-        if (geometry_shader) {
-            log_trace << "Compiled and linked shader program \""
-                      << name
-                      << "\" with vertex, fragment and geometry shader.";
-        }
-        else {
-            log_trace << "Compiled and linked shader program \""
-                      << name
-                      << "\" with vertex and fragment shader.";
-        }
-    }
-    else {
-        GLint error_size;
-        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &error_size);
-        std::vector<char> error_message(static_cast<size_t>(error_size));
-        glGetProgramInfoLog(program, error_size, nullptr, &error_message[0]);
-        if (geometry_shader) {
-            log_critical << "Failed to link shader program \""
-                         << name
-                         << "\" with vertex, fragment and geometry shader:\n\t"
-                         << error_message.data();
-        }
-        else {
-            log_critical << "Failed to link shader program \""
-                         << name
-                         << "\" with vertex and fragment shader:\n\t"
-                         << error_message.data();
-        }
-        glDeleteProgram(program);
-        return {};
-    }
-    return Shader(name, program);
-}
-
-Shader::~Shader()
-{
-    glDeleteProgram(m_id);
-    log_trace << "Deleted Shader Program \"" << m_name << "\"";
-}
-
-void Shader::use()
-{
-    if(!is_valid()){
-        log_critical << "Cannot use invalid Shader \"" << m_name << "\"";
-        return;
-    }
-    glUseProgram(m_id);
-}
-
-GLuint Shader::_compile(STAGE stage, const std::string& name, const std::string& source)
+/** Compiles a single shader stage from a given source.
+ * @param stage     Stage of the Shader represented by the source.
+ * @param name      Name of the Shader program (for error messages).
+ * @param source    Source to compile.
+ * @return OpenGL ID of the shader - is 0 on error.
+ */
+GLuint compile_shader(STAGE stage, const std::string& name, const std::string& source)
 {
     // create the OpenGL shader
     GLuint shader = 0;
@@ -159,19 +80,9 @@ GLuint Shader::_compile(STAGE stage, const std::string& name, const std::string&
     case STAGE::FRAGMENT:
         shader = glCreateShader(GL_FRAGMENT_SHADER);
         break;
-    case STAGE::GEOMETRY:
-#ifdef NOTF_OPENGL3
-        shader = glCreateShader(GL_GEOMETRY_SHADER);
-        break;
-#else
-        log_critical << "Cannot compile geometry shader for '" << name
-                     << "' because geometry shaders are not supprted in this version of OpenGL "
-                     << "(" << glGetString(GL_VERSION) << ")";
-        return 0;
-#endif
     case STAGE::INVALID:
     default:
-        log_critical << "Cannot compile " << _stage_name(stage) << " shader for program \"" << name << "\"";
+        log_critical << "Cannot compile " << stage_name(stage) << " shader for program \"" << name << "\"";
         return 0;
     }
     assert(shader);
@@ -192,12 +103,109 @@ GLuint Shader::_compile(STAGE stage, const std::string& name, const std::string&
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &error_size);
         std::vector<char> error_message(static_cast<size_t>(error_size));
         glGetShaderInfoLog(shader, error_size, nullptr, &error_message[0]);
-        log_critical << "Failed to compile " << _stage_name(stage) << " shader for program \""
-                     << name << "\"\n\t"
-                     << error_message.data();
+        log_critical << "Failed to compile " << stage_name(stage) << " shader for program \"" << name
+                     << "\"\n\t" << error_message.data();
         glDeleteShader(shader);
         return 0;
     }
+}
+
+} // namespace anonymous
+
+namespace notf {
+
+Shader Shader::build(RenderContext* context,
+                     const std::string& name,
+                     const std::string& vertex_shader_source,
+                     const std::string& fragment_shader_source)
+{
+    assert(context);
+    context->make_current();
+
+    // compile the mandatory shaders
+    GLuint vertex_shader = compile_shader(STAGE::VERTEX, name, vertex_shader_source);
+    ShaderRAII vertex_shader_raii(vertex_shader);
+    GLuint fragment_shader = compile_shader(STAGE::FRAGMENT, name, fragment_shader_source);
+    ShaderRAII fragment_shader_raii(fragment_shader);
+    if (!(vertex_shader && fragment_shader)) {
+        return {};
+    }
+
+    // link the program
+    GLuint program = glCreateProgram();
+    glAttachShader(program, vertex_shader);
+    vertex_shader_raii.set_program(program);
+    glAttachShader(program, fragment_shader);
+    fragment_shader_raii.set_program(program);
+    glLinkProgram(program);
+
+    // check for errors
+    GLint success = GL_FALSE;
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
+    if (success) {
+        log_trace << "Compiled and linked shader program \"" << name << "\" with vertex and fragment shader.";
+    }
+    else {
+        GLint error_size;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &error_size);
+        std::vector<char> error_message(static_cast<size_t>(error_size));
+        glGetProgramInfoLog(program, error_size, nullptr, &error_message[0]);
+        log_critical << "Failed to link shader program \"" << name << "\" with vertex and fragment shader:"
+                     << "\n\t" << error_message.data();
+        glDeleteProgram(program);
+        return {};
+    }
+    return Shader(program, context, name);
+}
+
+Shader::Shader(const GLuint id, RenderContext* context, const std::string name)
+    : m_id(id)
+    , m_render_context(context)
+    , m_name(std::move(name))
+{
+}
+
+Shader::Shader()
+    : m_id(0)
+    , m_render_context(nullptr)
+    , m_name("UNINITIALIZED")
+{
+}
+
+Shader::Shader(Shader&& other)
+    : m_id(other.m_id)
+    , m_render_context(other.m_render_context)
+    , m_name(std::move(other.m_name))
+{
+    other.m_id = 0;
+}
+
+Shader& Shader::operator=(Shader&& other)
+{
+    m_id             = other.m_id;
+    m_render_context = other.m_render_context;
+    m_name           = std::move(other.m_name);
+    other.m_id       = 0;
+    return *this;
+}
+
+Shader::~Shader()
+{
+    if (m_id) {
+        glDeleteProgram(m_id);
+        log_trace << "Deleted Shader Program \"" << m_name << "\"";
+        m_id = 0;
+    }
+}
+
+void Shader::use()
+{
+    if (!is_valid()) {
+        log_critical << "Cannot use invalid Shader \"" << m_name << "\"";
+        return;
+    }
+    m_render_context->make_current();
+    glUseProgram(m_id);
 }
 
 } // namespace notf

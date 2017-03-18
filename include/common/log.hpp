@@ -53,45 +53,45 @@ using uchar = unsigned char;
 using std::chrono::milliseconds;
 using LogMessageHandler = std::function<void(LogMessage&&)>;
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/**********************************************************************************************************************/
 
-/// @brief A LogMessage consists of a raw message string and additional debug information.
+/** A LogMessage consists of a raw message string and additional debug information. */
 struct LogMessage {
 
-    /// @brief The level of a LogMessage indicates under what circumstance the message was created.
+    /** The level of a LogMessage indicates under what circumstance the message was created. */
     enum class LEVEL : int {
-        ALL = 0,
-        FORMAT, // formatting
-        TRACE, // for development only
-        INFO, // for documenting expected behavior
-        WARNING, // for unexpected but valid behavior
-        CRITICAL, // for errors that disrupt normal program flow and are noticeable by the user
-        FATAL, // for critical errors, documenting what went wrong before the application crashes
         NONE,
+        FATAL,    // for critical errors, documenting what went wrong before the application crashes
+        CRITICAL, // for errors that disrupt normal program flow and are noticeable by the user
+        WARNING,  // for unexpected but valid behavior
+        INFO,     // for documenting expected behavior
+        TRACE,    // for development only
+        FORMAT,   // formatting
+        ALL,
     };
 
-    /// @brief Level of this LogMessage;
+    /** Level of this LogMessage. */
     LEVEL level;
 
-    /// @brief Line of the file at which this LogMessage was created.
+    /** Line of the file at which this LogMessage was created. */
     uint line;
 
-    /// @brief Thread ID of the thread from which this LogMessage originates.
+    /** Thread ID of the thread from which this LogMessage originate.s */
     std::thread::id thread_id;
 
-    /// @brief Name of the file containing the call to create this LogMessage;
+    /** Name of the file containing the call to create this LogMessage. */
     std::string file;
 
-    /// @brief Name of the function from which the LogMessage was created.
+    /** Name of the function from which the LogMessage was created. */
     std::string caller;
 
-    /// @brief The actual message.
+    /** The actual message. */
     std::string message;
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/**********************************************************************************************************************/
 
-/// @brief Factory object creating a LogMessage instance and passing it to the handler when going out of scope.
+/** Factory object creating a LogMessage instance and passing it to the handler when going out of scope. */
 struct LogMessageFactory {
 
     friend void install_log_message_handler(LogMessageHandler);
@@ -100,29 +100,28 @@ struct LogMessageFactory {
     friend void set_log_level(LogMessage::LEVEL level);
 
 public: // methods
-    /// @brief Value constructor.
-    ///
-    /// @param level    Level of the LogMessage;
-    /// @param line     Line of the file where this constructer is called.
-    /// @param file     File in which this constructor is called.
-    /// @param caller   Name of the function from where this constructor is called.
+    /** Value constructor.
+     * @param level    Level of the LogMessage;
+     * @param line     Line of the file where this constructer is called.
+     * @param file     File in which this constructor is called.
+     * @param caller   Name of the function from where this constructor is called.
+     */
     LogMessageFactory(LogMessage::LEVEL level, uint line, std::string file, std::string caller) noexcept
-        : message(),
-          input()
+        : message(), input()
     {
         message = LogMessage{level, line, std::this_thread::get_id(), std::move(file), std::move(caller), {}};
     }
 
     // Forbid allocation on the heap.
-    void* operator new(size_t) = delete;
-    void* operator new[](size_t) = delete;
-    void operator delete(void*) = delete;
+    void* operator new(size_t)    = delete;
+    void* operator new[](size_t)  = delete;
+    void operator delete(void*)   = delete;
     void operator delete[](void*) = delete;
 
-    /// @brief Destructor.
+    /** Destructor. */
     ~LogMessageFactory()
     {
-        if (s_message_handler && message.level >= s_log_level) {
+        if (s_message_handler && message.level <= s_log_level) {
             // construct the message from the input stream before passing it on to the handler
             message.message = input.str();
             s_message_handler(std::move(message));
@@ -130,44 +129,43 @@ public: // methods
     }
 
 public: // fields
-    /// @brief The constructed LogMessage.
+    /** The constructed LogMessage. */
     LogMessage message;
 
-    /// @brief String stream to construct the message.
+    /** String stream to construct the message. */
     std::stringstream input;
 
 private: // static fields
-    /// @brief The message handler to which all fully created LogMessages are passed before destruction.
+    /** The message handler to which all fully created LogMessages are passed before destruction. */
     static LogMessageHandler s_message_handler;
 
-    /// @brief The minimum level at which operations are logged.
+    /** The minimum level at which operations are logged. */
     static LogMessage::LEVEL s_log_level;
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/**********************************************************************************************************************/
 
-/// @brief Log message handle provider using double-buffering in a separate thread.
+/** Log message handle provider using double-buffering in a separate thread. */
 class LogHandler {
 
 public: // methods
-    /// @brief Default constructor.
-    ///
-    /// @param initial_buffer   Initial size of the buffers.
-    /// @param flush_interval   How often the read- and write-buffers are swapped in milliseconds.
+    /** Default constructor.
+     * @param initial_buffer   Initial size of the buffers.
+     * @param flush_interval   How often the read- and write-buffers are swapped in milliseconds.
+     */
     explicit LogHandler(size_t initial_buffer, ulong flush_interval);
 
-    /// @brief Logs a new message.
-    ///
-    /// Is thread-safe.
-    ///
-    /// @param message  Message to log.
+    /** Logs a new message.
+     * Is thread-safe.
+     * @param message  Message to log.
+     */
     void push_log(LogMessage message)
     {
         // if the thread is running, add the log message to the write buffer
         if (m_is_running.test_and_set()) {
             std::lock_guard<std::mutex> _(m_mutex);
 
-            bool force_flush = message.level > LogMessage::LEVEL::WARNING;
+            bool force_flush = message.level < LogMessage::LEVEL::WARNING;
             m_write_buffer.emplace_back(std::move(message));
 
             // messages of level warning or higher cause an immediate (blocking) flush,
@@ -183,155 +181,137 @@ public: // methods
         }
     }
 
-    /// @brief Starts the handler loop in a separate thread.
+    /** Starts the handler loop in a separate thread. */
     void start();
 
-    /// @brief Stops the handler loop on the next runthrough.
-    ///
-    /// Does nothing if the handler is not currently running.
+    /** Stops the handler loop on the next runthrough.
+     * Does nothing if the handler is not currently running.
+     */
     void stop() { m_is_running.clear(); }
 
-    /// @brief Call after stop() to join the handler thread.
-    ///
-    /// Is a separate function so you can use the time between stop() and the thread finishing.
-    /// Does nothing if the handler cannot be joined.
+    /** Call after stop() to join the handler thread.
+     * Is a separate function so you can use the time between stop() and the thread finishing.
+     * Does nothing if the handler cannot be joined.
+     */
     void join();
 
-    /// @brief Sets the number of digits that the Log message counter should align for.
+    /** Sets the number of digits that the Log message counter should align for. */
     void set_number_padding(ushort digits) { m_number_padding = digits; }
 
-    /// @brief Colors all future log messages of the given level in the given color.
-    /// @param level    Log message level to color.
-    /// @param color    Which color to use, see description for details.
-    ///
-    /// NoTF can color log messages with up to 256 colors.
-    /// See http://misc.flogisoft.com/bash/tip_colors_and_formatting#colors1
-    ///
+    /** Colors all future log messages of the given level in the given color.
+     * NoTF can color log messages with up to 256 colors.
+     * See http://misc.flogisoft.com/bash/tip_colors_and_formatting#colors1
+     * @param level    Log message level to color.
+     * @param color    Which color to use, see description for details.
+     */
     void set_color(LogMessage::LEVEL level, u_char color);
 
 private: // methods
-    /// @brief Thread execution function.
+    /** Thread execution function. */
     void run();
 
-    /// @brief Flushes the read buffer.
-    ///
-    /// Afterwards, the given buffer is empty.
-    ///
-    /// @param buffer   Buffer to flush.
+    /** Flushes the read buffer.
+     * Afterwards, the given buffer is empty.
+     * @param buffer   Buffer to flush.
+     */
     void flush_buffer(std::vector<LogMessage>& buffer);
 
 private: // fields
-    /// @brief Incoming messages are stored in the write buffer.
+    /** Incoming messages are stored in the write buffer. */
     std::vector<LogMessage> m_write_buffer;
 
-    /// @brief The read buffer is used by the log handler thread to flush the messages.
+    /** The read buffer is used by the log handler thread to flush the messages. */
     std::vector<LogMessage> m_read_buffer;
 
-    /// @brief Mutex used for thread-safe access to the write log.
+    /** Mutex used for thread-safe access to the write log. */
     std::mutex m_mutex;
 
-    /// @brief Thread in which the hander loop is run.
+    /** Thread in which the hander loop is run. */
     std::thread m_thread;
 
-    /// @brief Counter, assigning a unique ID to each log message.
+    /** Counter, assigning a unique ID to each log message. */
     ulong m_log_count;
 
-    /// @brief How often the read- and write-buffers are swapped in milliseconds.
+    /** How often the read- and write-buffers are swapped in milliseconds. */
     milliseconds m_flush_interval;
 
-    /// @brief Flag indicating if the handler loop shoud continue or not.
+    /** Flag indicating if the handler loop shoud continue or not. */
     std::atomic_flag m_is_running = ATOMIC_FLAG_INIT; // set to false, see https://stackoverflow.com/a/24438336
 
-    /// @brief The number of digits that the message should align for.
-    /// If '3', single digit numbers will be padded with two spaces to the left, double-digits with a single space.
+    /** The number of digits that the message should align for.
+     * If '3', single digit numbers will be padded with two spaces to the left, double-digits with a single space.
+     */
     ushort m_number_padding;
 
-    // @brief Terminal color value of format log messages.
+    /** Terminal color value of format log messages. */
     uchar m_color_format;
 
-    // @brief Terminal color value of trace log messages.
+    /** Terminal color value of trace log messages. */
     uchar m_color_trace;
 
-    // @brief Terminal color value of info log messages.
+    /** Terminal color value of info log messages. */
     uchar m_color_info;
 
-    // @brief Terminal color value of warning log messages.
+    /** Terminal color value of warning log messages. */
     uchar m_color_warning;
 
-    // @brief Terminal color value of critical log messages.
+    /** Terminal color value of critical log messages. */
     uchar m_color_critical;
 
-    // @brief Terminal color value of fatal log messages.
+    /** Terminal color value of fatal log messages. */
     uchar m_color_fatal;
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/**********************************************************************************************************************/
 
-/// @brief Installs a new handler function to consume all future log messages.
-///
-/// Without a user-defined handler, all LogMessages are immediately destroyed.
-///
-/// @param handler  Log message handler function.
-inline void install_log_message_handler(LogMessageHandler handler)
-{
-    LogMessageFactory::s_message_handler = handler;
-}
+/** Installs a new handler function to consume all future log messages.
+ * Without a user-defined handler, all LogMessages are immediately destroyed.
+ * @param handler  Log message handler function.
+ */
+inline void install_log_message_handler(LogMessageHandler handler) { LogMessageFactory::s_message_handler = handler; }
 
-/// @brief Overload to install a LogHandler instance as the log message handler.
-///
-/// @param handler  LogHandler instance
+/** Overload to install a LogHandler instance as the log message handler. */
 inline void install_log_message_handler(LogHandler& handler)
 {
     install_log_message_handler(std::bind(&LogHandler::push_log, &handler, std::placeholders::_1));
 }
 
-/// @brief Removes a previously installed log message handler.
-///
-/// All future messages are ignored until a new handler is installed.
-inline void remove_log_message_handler()
-{
-    LogMessageFactory::s_message_handler = nullptr;
-}
+/** Removes a previously installed log message handler.
+ * All future messages are ignored until a new handler is installed.
+ */
+inline void remove_log_message_handler() { LogMessageFactory::s_message_handler = nullptr; }
 
-/// @brief The minimum log level required for a message to be logged.
-///
-/// @return The minimum log level required for a message to be logged.
-inline LogMessage::LEVEL get_log_level()
-{
-    return LogMessageFactory::s_log_level;
-}
+/** The minimum log level required for a message to be logged. */
+inline LogMessage::LEVEL get_log_level() { return LogMessageFactory::s_log_level; }
 
-/// @brief Sets the minimum log level required for a message to be logged.
-///
-/// @param level    The minimum log level required for a message to be logged.
-inline void set_log_level(LogMessage::LEVEL level)
-{
-    LogMessageFactory::s_log_level = level;
-}
+/** Sets the minimum log level required for a message to be logged. */
+inline void set_log_level(LogMessage::LEVEL level) { LogMessageFactory::s_log_level = level; }
 
-/// @brief The NullBuffer is a helper class to ignore unwanted logging messages.
-///
-/// It is used instead of a LogMessageFactory as target for logging strings when the code was compiled with flags to
-/// ignore certain levels of logging calls.
-/// For example, if the code was compiled using NOTF_LOG_LEVEL = 3 (warnings and errors only), all log_info and
-/// log_trace calls target a _NullBuffer.
-/// The _NullBuffer class provides a '<<' operator for all types of inputs but just ignores the argument.
-/// This way, input into a _NullBuffer is simply optimized out of existence.
+/** The NullBuffer is a helper class to ignore unwanted logging messages.
+ * It is used instead of a LogMessageFactory as target for logging strings when the code was compiled with flags to
+ * ignore certain levels of logging calls.
+ * For example, if the code was compiled using NOTF_LOG_LEVEL = 3 (warnings and errors only), all log_info and
+ * log_trace calls target a _NullBuffer.
+ * The _NullBuffer class provides a '<<' operator for all types of inputs but just ignores the argument.
+ * This way, input into a _NullBuffer is simply optimized out of existence.
+ */
 struct _NullBuffer {
-    template <typename ANY>
-    _NullBuffer& operator<<(ANY&&) { return *this; }
+    template <typename Any>
+    _NullBuffer& operator<<(Any&&) { return *this; }
 };
 
 } // namespace notf
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define NOTF_LOG_LEVEL_ALL 0
-#define NOTF_LOG_LEVEL_TRACE 1
-#define NOTF_LOG_LEVEL_INFO 2
-#define NOTF_LOG_LEVEL_WARNING 3
-#define NOTF_LOG_LEVEL_CRITICAL 4
-#define NOTF_LOG_LEVEL_FATAL 5
+#define NOTF_LOG_LEVEL_NONE 0     // if NOTF_LOG_LEVEL is not defined it will be interpreted as zero
+#define NOTF_LOG_LEVEL_FATAL 1    // log only fatal errors
+#define NOTF_LOG_LEVEL_CRITICAL 2 // log fatal and critical errors
+#define NOTF_LOG_LEVEL_WARNING 3  // log warnings and all errors
+#define NOTF_LOG_LEVEL_INFO 4     // log general infos, warnings and errors (and formatting messages)
+#define NOTF_LOG_LEVEL_TRACE 5    // log debug traces, infos, warnings and errors
+#define NOTF_LOG_LEVEL_ALL 6      // log everything (same as *_TRACE at the moment, but even if we add or remove a
+                                  //                 level later on, *_ALL will still mean _all_)
 
 #ifndef NOTF_LOG_LEVEL
 #define NOTF_LOG_LEVEL NOTF_LOG_LEVEL_ALL
@@ -346,7 +326,7 @@ struct _NullBuffer {
 ///
 /// The object provided by log_* is a std::stringstream or a _NullBuffer, which accepts all the same inputs.
 #ifndef log_format
-#if NOTF_LOG_LEVEL == NOTF_LOG_LEVEL_ALL
+#if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_WARNING
 #define log_format notf::LogMessageFactory(notf::LogMessage::LEVEL::FORMAT, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_format notf::_NullBuffer()
@@ -356,7 +336,7 @@ struct _NullBuffer {
 #endif
 
 #ifndef log_trace
-#if NOTF_LOG_LEVEL <= NOTF_LOG_LEVEL_TRACE
+#if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_INFO
 #define log_trace notf::LogMessageFactory(notf::LogMessage::LEVEL::TRACE, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_trace notf::_NullBuffer()
@@ -366,7 +346,7 @@ struct _NullBuffer {
 #endif
 
 #ifndef log_info
-#if NOTF_LOG_LEVEL <= NOTF_LOG_LEVEL_INFO
+#if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_WARNING
 #define log_info notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_info notf::_NullBuffer()
@@ -376,7 +356,7 @@ struct _NullBuffer {
 #endif
 
 #ifndef log_warning
-#if NOTF_LOG_LEVEL <= NOTF_LOG_LEVEL_WARNING
+#if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_CRITICAL
 #define log_warning notf::LogMessageFactory(notf::LogMessage::LEVEL::WARNING, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_warning notf::_NullBuffer()
@@ -386,7 +366,7 @@ struct _NullBuffer {
 #endif
 
 #ifndef log_critical
-#if NOTF_LOG_LEVEL <= NOTF_LOG_LEVEL_CRITICAL
+#if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_FATAL
 #define log_critical notf::LogMessageFactory(notf::LogMessage::LEVEL::CRITICAL, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_critical notf::_NullBuffer()
@@ -396,7 +376,7 @@ struct _NullBuffer {
 #endif
 
 #ifndef log_fatal
-#if NOTF_LOG_LEVEL <= NOTF_LOG_LEVEL_FATAL
+#if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_NONE
 #define log_fatal notf::LogMessageFactory(notf::LogMessage::LEVEL::FATAL, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_fatal notf::_NullBuffer()

@@ -86,12 +86,12 @@ void LogHandler::set_color(LogMessage::LEVEL level, u_char color)
         break;
 
     case LogMessage::LEVEL::ALL:
-        m_color_format = color;
-        m_color_trace = color;
-        m_color_info = color;
-        m_color_warning = color;
+        m_color_format   = color;
+        m_color_trace    = color;
+        m_color_info     = color;
+        m_color_warning  = color;
         m_color_critical = color;
-        m_color_fatal = color;
+        m_color_fatal    = color;
         break;
 
     case LogMessage::LEVEL::NONE:
@@ -123,16 +123,21 @@ void LogHandler::run()
 
 void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
 {
-    static const std::string TRACE = "trace: ";
-    static const std::string INFO = "info:  ";
-    static const std::string WARNING = "warn:  ";
+    static const std::string TRACE    = "trace: ";
+    static const std::string INFO     = "info:  ";
+    static const std::string WARNING  = "warn:  ";
     static const std::string CRITICAL = "crit:  ";
-    static const std::string FATAL = "fatal: ";
+    static const std::string FATAL    = "fatal: ";
 
     for (const LogMessage& log_message : buffer) {
 
+        // noop messages
+        if (log_message.level == LogMessage::LEVEL::NONE) {
+            continue;
+        }
+
         // formatting messages do not increate the counter, nor do they have additional info
-        if(log_message.level == LogMessage::LEVEL::FORMAT){
+        if (log_message.level == LogMessage::LEVEL::FORMAT) {
             std::cout << color_prefix(m_color_format)
                       << log_message.message
                       << "\033[0m\n";
@@ -147,9 +152,6 @@ void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
 
         // prefix
         switch (log_message.level) {
-        case LogMessage::LEVEL::FORMAT:
-            assert(0);
-            break;
         case LogMessage::LEVEL::ALL:
         case LogMessage::LEVEL::TRACE:
             std::cout << color_prefix(m_color_trace) << m_log_count << ". " << TRACE;
@@ -166,8 +168,10 @@ void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
         case LogMessage::LEVEL::FATAL:
             std::cout << color_prefix(m_color_fatal) << m_log_count << ". " << FATAL;
             break;
+        case LogMessage::LEVEL::FORMAT:
         case LogMessage::LEVEL::NONE:
-            continue;
+            assert(0); // should be unreachable
+            break;
         }
 
         // message
