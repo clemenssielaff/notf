@@ -186,7 +186,7 @@ public: // methods
 
     void set_dirty() { m_is_dirty = true; }
 
-    void reset(const RenderContext& layer);
+    void reset(const RenderContext& context);
 
     size_t push_state();
 

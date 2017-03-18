@@ -104,7 +104,7 @@ private: // fields
     GLuint m_vbo;
 
     /** The Shader program used to render the font. */
-    Shader m_font_shader;
+    std::shared_ptr<Shader> m_font_shader;
 
     /** Color uniform, is a color value. */
     GLint m_color_uniform;

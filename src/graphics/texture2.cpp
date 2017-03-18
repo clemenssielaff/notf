@@ -64,6 +64,11 @@ GLint magfilter_to_gl(const Texture2::MagFilter filter)
 
 namespace notf {
 
+void Texture2::unbind()
+{
+    glBindTexture(GL_TEXTURE_2D, GL_ZERO);
+}
+
 std::shared_ptr<Texture2> Texture2::load(RenderContext* context, const std::string file_path)
 {
     assert(context);
@@ -108,7 +113,7 @@ std::shared_ptr<Texture2> Texture2::load(RenderContext* context, const std::stri
     assert(id);
     glBindTexture(GL_TEXTURE_2D, id);
 
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, image.get_width());
     glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
     glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
@@ -125,9 +130,7 @@ std::shared_ptr<Texture2> Texture2::load(RenderContext* context, const std::stri
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glGenerateMipmap(GL_TEXTURE_2D);
 
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // TODO: this is just before mip map generation in nanovg .. does that make a difference?
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    glBindTexture(GL_TEXTURE_2D, GL_ZERO);
+    unbind();
 
     // log success
     {
@@ -180,40 +183,45 @@ Texture2::~Texture2()
     _deallocate();
 }
 
-void Texture2::bind() const
+bool Texture2::bind() const
 {
-    m_render_context->make_current();
-    m_render_context->_bind_texture(m_id);
-}
-
-void Texture2::unbind()
-{
-    m_render_context->make_current();
-    glBindTexture(GL_TEXTURE_2D, GL_ZERO);
+    if (is_valid()) {
+        m_render_context->make_current();
+        m_render_context->_bind_texture(m_id);
+        return true;
+    }
+    else {
+        log_critical << "Cannot bind invalid Texture \"" << m_name << "\"";
+        return false;
+    }
 }
 
 void Texture2::set_min_filter(const MinFilter filter)
 {
-    bind();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter));
+    if (bind()) {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter));
+    }
 }
 
 void Texture2::set_mag_filter(const MagFilter filter)
 {
-    bind();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter));
+    if (bind()) {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter));
+    }
 }
 
 void Texture2::set_wrap_x(const Wrap wrap)
 {
-    bind();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap));
+    if (bind()) {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap));
+    }
 }
 
 void Texture2::set_wrap_y(const Wrap wrap)
 {
-    bind();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap));
+    if (bind()) {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap));
+    }
 }
 
 void Texture2::_deallocate()

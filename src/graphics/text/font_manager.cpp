@@ -35,7 +35,7 @@ FontManager::FontManager(RenderContext* context)
     , m_window_size()
     , m_color(Color(0.f, 0.f, 0.f, 1.f))
     , m_vbo(0)
-    , m_font_shader(Shader::build(m_render_context, "font_shader", font_vertex_shader, font_fragment_shader))
+    , m_font_shader(m_render_context->build_shader("font_shader", font_vertex_shader, font_fragment_shader))
     , m_color_uniform(0)
     , m_texture_id_uniform(0)
     , m_view_proj_matrix_uniform(0)
@@ -46,16 +46,16 @@ FontManager::FontManager(RenderContext* context)
         return;
     }
 
-    if (!m_font_shader.is_valid()) {
+    if (!m_font_shader->is_valid()) {
         log_critical << "Failed to create Font shader";
         return;
     }
-    m_font_shader.use();
+    m_font_shader->bind();
 
-    m_color_uniform            = glGetUniformLocation(m_font_shader.get_id(), "color");
-    m_texture_id_uniform       = glGetUniformLocation(m_font_shader.get_id(), "tex");
-    m_view_proj_matrix_uniform = glGetUniformLocation(m_font_shader.get_id(), "view_proj_matrix");
-    m_world_matrix_uniform     = glGetUniformLocation(m_font_shader.get_id(), "world_matrix");
+    m_color_uniform            = glGetUniformLocation(m_font_shader->get_id(), "color");
+    m_texture_id_uniform       = glGetUniformLocation(m_font_shader->get_id(), "tex");
+    m_view_proj_matrix_uniform = glGetUniformLocation(m_font_shader->get_id(), "view_proj_matrix");
+    m_world_matrix_uniform     = glGetUniformLocation(m_font_shader->get_id(), "world_matrix");
 
     glUniform1i(m_texture_id_uniform, 0);
 
@@ -138,7 +138,7 @@ void FontManager::render_text(const std::string& text, ushort x, ushort y, const
     }
 
     // update the shader uniforms
-    m_font_shader.use(); // TODO: Can I use the cell shader for fonts?
+    m_font_shader->bind(); // TODO: Can I use the cell shader for fonts?
 
     const Transform3 proj_matrix = Transform3::orthographic(m_window_size.width, m_window_size.height, 0.05f, 100.0f);
     glUniformMatrix4fv(m_view_proj_matrix_uniform, 1, GL_FALSE, proj_matrix.as_ptr());
@@ -178,7 +178,7 @@ void FontManager::render_atlas() // TODO: MAGIC NUMBERS!!!!!!!!!!!!!!
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_atlas.get_texture_id());
 
-    m_font_shader.use();
+    m_font_shader->bind();
 
     GLfloat black[4] = {0, 0, 0, 1};
     glUniform4fv(m_color_uniform, 1, black);

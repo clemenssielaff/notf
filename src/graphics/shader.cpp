@@ -5,6 +5,7 @@
 #include "common/log.hpp"
 #include "core/opengl.hpp"
 #include "graphics/render_context.hpp"
+#include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
 
@@ -114,10 +115,15 @@ GLuint compile_shader(STAGE stage, const std::string& name, const std::string& s
 
 namespace notf {
 
-Shader Shader::build(RenderContext* context,
-                     const std::string& name,
-                     const std::string& vertex_shader_source,
-                     const std::string& fragment_shader_source)
+void Shader::unbind()
+{
+    glUseProgram(0);
+}
+
+std::shared_ptr<Shader> Shader::build(RenderContext* context,
+                                      const std::string& name,
+                                      const std::string& vertex_shader_source,
+                                      const std::string& fragment_shader_source)
 {
     assert(context);
     context->make_current();
@@ -155,7 +161,7 @@ Shader Shader::build(RenderContext* context,
         glDeleteProgram(program);
         return {};
     }
-    return Shader(program, context, name);
+    return std::make_shared<MakeSmartEnabler<Shader>>(program, context, name);
 }
 
 Shader::Shader(const GLuint id, RenderContext* context, const std::string name)
@@ -165,47 +171,31 @@ Shader::Shader(const GLuint id, RenderContext* context, const std::string name)
 {
 }
 
-Shader::Shader()
-    : m_id(0)
-    , m_render_context(nullptr)
-    , m_name("UNINITIALIZED")
-{
-}
-
-Shader::Shader(Shader&& other)
-    : m_id(other.m_id)
-    , m_render_context(other.m_render_context)
-    , m_name(std::move(other.m_name))
-{
-    other.m_id = 0;
-}
-
-Shader& Shader::operator=(Shader&& other)
-{
-    m_id             = other.m_id;
-    m_render_context = other.m_render_context;
-    m_name           = std::move(other.m_name);
-    other.m_id       = 0;
-    return *this;
-}
-
 Shader::~Shader()
+{
+    _deallocate();
+}
+
+bool Shader::bind()
+{
+    if (is_valid()) {
+        m_render_context->make_current();
+        m_render_context->_bind_shader(m_id);
+        return true;
+    }
+    else {
+        log_critical << "Cannot bind invalid Shader \"" << m_name << "\"";
+        return false;
+    }
+}
+
+void Shader::_deallocate()
 {
     if (m_id) {
         glDeleteProgram(m_id);
         log_trace << "Deleted Shader Program \"" << m_name << "\"";
         m_id = 0;
     }
-}
-
-void Shader::use()
-{
-    if (!is_valid()) {
-        log_critical << "Cannot use invalid Shader \"" << m_name << "\"";
-        return;
-    }
-    m_render_context->make_current();
-    glUseProgram(m_id);
 }
 
 } // namespace notf

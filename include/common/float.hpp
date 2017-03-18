@@ -81,14 +81,14 @@ inline Real deg_to_rad(Real&& degrees) { return degrees * (PI / 180.l); }
 template <typename Real>
 inline Real rad_to_deg(Real&& radians) { return radians * (180.l / PI); }
 
-/** Normalize Radians to a value within [-pi, pi). */
+/** Normalize Radians to a value within [-pi, pi]. */
 template <typename Real>
 inline Real norm_angle(Real alpha)
 {
-    while (alpha < 0) {
-        alpha += TWO_PI;
+    if (!is_real(alpha)) {
+        throw std::logic_error("Cannot normalize an invalid number");
     }
-    return fmod(alpha + PI, TWO_PI) - PI;
+    return fmod(alpha + PI, TWO_PI) + (PI * (alpha >= -PI ? -1 : 1));
 }
 
 /** Save division, throws a std::logic_error if the divisor is 0. */

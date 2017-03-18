@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 
 #include "graphics/gl_forwards.hpp"
@@ -9,20 +10,26 @@ namespace notf {
 class RenderContext;
 
 /** Manages the compilation, runtime functionality and resources of an OpenGL shader program. */
-class Shader final {
+class Shader {
+
+    friend class RenderContext; // creates and finally invalidates all of its Shaders when it is destroyed
 
 public: // static methods
-    /** Builds an OpenGL Shader from sources.
+    /** Unbinds any current active Shader. */
+    static void unbind();
+
+private: // static method for RenderContext
+    /** Builds a new OpenGL ES Shader from sources.
      * @param context           Render Context in which the Shader lives.
      * @param shader_name       Name of this Shader.
      * @param vertex_shader     Vertex shader source.
      * @param fragment_shader   Fragment shader source.
      * @return                  Shader instance, is empty if the compilation failed.
      */
-    static Shader build(RenderContext* context,
-                        const std::string& name,
-                        const std::string& vertex_shader_source,
-                        const std::string& fragment_shader_source);
+    static std::shared_ptr<Shader> build(RenderContext* context,
+                                         const std::string& name,
+                                         const std::string& vertex_shader_source,
+                                         const std::string& fragment_shader_source);
 
 protected: // constructor
     /** Value Constructor.
@@ -33,15 +40,6 @@ protected: // constructor
     Shader(const GLuint id, RenderContext* context, const std::string name);
 
 public: // methods
-    /** Default constructor, in case something goes wrong in `build`. */
-    Shader();
-
-    /** Move Constructor*/
-    Shader(Shader&& other);
-
-    /** Move assignment. */
-    Shader& operator=(Shader&& other);
-
     // no copy or assignment
     Shader(const Shader&) = delete;
     Shader& operator=(const Shader&) = delete;
@@ -58,8 +56,14 @@ public: // methods
     /** The name of this Shader. */
     const std::string& get_name() const { return m_name; }
 
-    /** Tells OpenGL to use this Shader. */
-    void use();
+    /** Tells OpenGL to use this Shader.
+     * @return  False if this Shader is invalid and cannot be bound.
+     */
+    bool bind();
+
+private: // methods for RenderContext
+    /** Deallocates the Shader data and invalidates the Shader. */
+    void _deallocate();
 
 private: // fields
     /** ID of the shader program. */

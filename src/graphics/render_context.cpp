@@ -64,11 +64,13 @@ RenderContext::RenderContext(const Window* window, const RenderContextArguments 
     , m_mouse_pos()
     , m_bound_texture(0)
     , m_textures()
+    , m_bound_shader(0)
+    , m_shaders()
     , m_sources(_create_shader_sources(*this))
-    , m_shader(Shader::build(this, "CellShader", m_sources.vertex, m_sources.fragment))
-    , m_loc_viewsize(glGetUniformLocation(m_shader.get_id(), "viewSize"))
-    , m_loc_texture(glGetUniformLocation(m_shader.get_id(), "tex"))
-    , m_loc_buffer(glGetUniformBlockIndex(m_shader.get_id(), "frag"))
+    , m_cell_shader(build_shader("CellShader", m_sources.vertex, m_sources.fragment))
+    , m_loc_viewsize(glGetUniformLocation(m_cell_shader->get_id(), "viewSize")) // TODO: these should be shader methods
+    , m_loc_texture(glGetUniformLocation(m_cell_shader->get_id(), "tex"))
+    , m_loc_buffer(glGetUniformBlockIndex(m_cell_shader->get_id(), "frag"))
     , m_fragment_buffer(0)
     , m_vertex_array(0)
     , m_vertex_buffer(0)
@@ -78,7 +80,7 @@ RenderContext::RenderContext(const Window* window, const RenderContextArguments 
     glGenBuffers(1, &m_vertex_buffer);
 
     // create UBOs
-    glUniformBlockBinding(m_shader.get_id(), m_loc_buffer, 0);
+    glUniformBlockBinding(m_cell_shader->get_id(), m_loc_buffer, 0);
     glGenBuffers(1, &m_fragment_buffer);
     GLint align = sizeof(float);
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &align);
@@ -105,16 +107,26 @@ RenderContext::~RenderContext()
     for (std::weak_ptr<Texture2> texture_weakptr : m_textures) {
         std::shared_ptr<Texture2> texture = texture_weakptr.lock();
         if (texture) {
-            log_warning << "Deallocating live Texture: " << texture->get_id();
+            log_warning << "Deallocating live Texture: " << texture->get_name();
             texture->_deallocate();
         }
     }
     m_textures.clear();
+
+    // deallocate and invalidate all remaining Shaders
+    for (std::weak_ptr<Shader> shader_weakptr : m_shaders) {
+        std::shared_ptr<Shader> shader = shader_weakptr.lock();
+        if (shader) {
+            log_warning << "Deallocating live Shader: " << shader->get_name();
+            shader->_deallocate();
+        }
+    }
+    m_shaders.clear();
 }
 
 void RenderContext::make_current()
 {
-    if(s_current_context != this){
+    if (s_current_context != this) {
         glfwMakeContextCurrent(m_window->_get_glfw_window());
         s_current_context = this;
     }
@@ -127,6 +139,17 @@ std::shared_ptr<Texture2> RenderContext::load_texture(const std::string& file_pa
         m_textures.emplace_back(texture);
     }
     return texture;
+}
+
+std::shared_ptr<Shader> RenderContext::build_shader(const std::string& name,
+                                                    const std::string& vertex_shader_source,
+                                                    const std::string& fragment_shader_source)
+{
+    std::shared_ptr<Shader> shader = Shader::build(this, name, vertex_shader_source, fragment_shader_source);
+    if (shader) {
+        m_shaders.emplace_back(shader);
+    }
+    return shader;
 }
 
 RenderContext::FrameGuard RenderContext::begin_frame(const Size2i buffer_size)
@@ -320,10 +343,11 @@ void RenderContext::_render_flush(const BlendMode blend_mode)
         // reset cache
         m_stencil_mask  = 0xffffffff;
         m_bound_texture = 0;
+        m_bound_shader  = 0;
         m_stencil_func  = StencilFunc::ALWAYS;
 
         // setup GL state
-        glUseProgram(m_shader.get_id());
+        m_cell_shader->bind();
         blend_mode.apply();
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
@@ -376,7 +400,7 @@ void RenderContext::_render_flush(const BlendMode blend_mode)
         glBindVertexArray(0);
         glDisable(GL_CULL_FACE);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glUseProgram(0);
+        Shader::unbind();
     }
 
     // reset layer state
@@ -507,6 +531,14 @@ void RenderContext::_bind_texture(const GLuint texture_id)
     if (texture_id != m_bound_texture) {
         glBindTexture(GL_TEXTURE_2D, texture_id);
         m_bound_texture = texture_id;
+    }
+}
+
+void RenderContext::_bind_shader(const GLuint shader_id)
+{
+    if (shader_id != m_bound_shader) {
+        glUseProgram(shader_id);
+        m_bound_shader = shader_id;
     }
 }
 

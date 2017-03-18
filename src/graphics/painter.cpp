@@ -120,6 +120,9 @@ void Painter::drawColorwheel(const Aabrf& rect, float t)
 
     const float outer_radius = rect.shorter_size() * 0.5f - 5.0f;
     const float inner_radius = outer_radius - 20.0f;
+    if(inner_radius <= 0){
+        return;
+    }
     const float aeps         = 0.5f / outer_radius; // half a pixel arc length in radians (2pi cancels out).
 
     // hue circle

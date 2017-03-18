@@ -16,7 +16,7 @@ INCLUDEPATH *= /home/clemens/code/thirdparty/freetype-2.7/INSTALL/include/freety
 
 CONFIG(release, debug|release) {
 #    message("Building in Release Mode.")
-    DEFINES += "NDEBUG" "NOTF_LOG_LEVEL=4"
+    DEFINES += "NDEBUG" "NOTF_LOG_LEVEL=3"
     QMAKE_CXXFLAGS_RELEASE += -fvisibility=hidden -s
     QMAKE_CXXFLAGS_RELEASE += -O3 -flto #-Os
     QMAKE_LFLAGS_RELEASE += -fvisibility=hidden -s
@@ -55,7 +55,8 @@ CONFIG(test) {
         test/test_circle.cpp \
         test/test_aabr.cpp \
         test/test_property.cpp \
-        test/test_vector2.cpp
+        test/test_vector2.cpp \
+        test/test_float.cpp
 
     HEADERS += \
         test/catch.hpp \
@@ -155,7 +156,8 @@ SOURCES += \
     src/common/exception.cpp \
     src/common/string.cpp \
     src/core/window_layout.cpp \
-    src/graphics/gl_errors.cpp
+    src/graphics/gl_errors.cpp \
+    src/graphics/vertex.cpp
 
 HEADERS += \
     include/core/application.hpp \

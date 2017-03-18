@@ -1,5 +1,6 @@
 #include "test/catch.hpp"
 
+#include "common/vector2.hpp"
 #include "test/test_utils.hpp"
 using namespace notf;
 

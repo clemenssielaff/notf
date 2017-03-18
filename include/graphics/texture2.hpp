@@ -24,9 +24,9 @@ class RenderContext;
  * In this case, the remaining Texture will become invalid and you'll get a warning message.
  * In a well-behaved program, all Textures should have gone out of scope by the time the RenderContext is destroyed.
  */
-class Texture2 : public std::enable_shared_from_this<Texture2> {
+class Texture2 {
 
-    friend class RenderContext; // invalidates all Textures when it is destroyed
+    friend class RenderContext; // creates and finally invalidates all of its Textures when it is destroyed
 
 public: // enums
     enum class Format : unsigned char {
@@ -55,6 +55,10 @@ public: // enums
         CLAMP_TO_EDGE,   //* Clamps c to [1/2n,  1 - 1/2n]
         MIRRORED_REPEAT, //* Like REPEAT when the integer part of c is even, 1 - frac(c) when c is odd
     };
+
+public: // static methods
+    /** Unbinds any current active Texture. */
+    static void unbind();
 
 private: // static method for RenderContext
     /** Loads a texture from a given file.
@@ -117,11 +121,10 @@ public: // methods
     /** Returns the vertical wrap mode. */
     Wrap get_wrap_y() const { return m_wrap_y; }
 
-    /** Binds this Texture2 as the current active GL_TEXTURE_2D. */
-    void bind() const;
-
-    /** Unbinds any current active GL_TEXTURE_2D. */
-    void unbind();
+    /** Binds this Texture2 as the current active GL_TEXTURE_2D.
+     * @return  False if this Texture is invalid and cannot be bound.
+     */
+    bool bind() const;
 
     /** Sets a new filter mode when the texture pixels are smaller than scren pixels. */
     void set_min_filter(const MinFilter filter);
