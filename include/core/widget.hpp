@@ -88,10 +88,17 @@ private: // fields
 
 } // namespace notf
 
-/* Draw / Redraw procedure:
+/* Draw / Redraw procedure
+ * =======================
  * A ScreenItem changes a Property
  * This results in the RenderManager getting a request to redraw the frame
  * The RenderManager then collects all Widgets, sorts them calls Widget::paint() on them
  * Widget::paint() checks if it needs to update its Cell
  *  if so, it creates a Painter object and calls the pure virtual function Widget::_paint(Painter&) which does the actual work
+ *
+ * State Machines
+ * ==============
+ * Maybe not all Widgets should have State Machines by default.
+ * I think they are great in general, but they might just be better as an optional mixin-class, so you are not forced
+ * to have a State Machine for even the most simplest Widget.
  */

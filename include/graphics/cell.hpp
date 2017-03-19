@@ -323,6 +323,9 @@ public: // getter
 
     const std::vector<Vertex>& get_vertices() const { return m_vertices; }
 
+    /** The bounding rectangle of the Cell.
+     * Is independent of the Widget's AARB and used as quad onto which the Cell is rendered.
+     */
     const Aabrf& get_bounds() const { return m_bounds; }
 
     float get_fringe_width() const { return m_fringe_width; }
@@ -397,7 +400,8 @@ private: // fields
 
     std::vector<Vertex> m_vertices;
 
-    Aabrf m_bounds; // TODO: Cell::m_bounds may be redundant when stored inside a Widget
+    /** The bounding rectangle of the Cell. */
+    Aabrf m_bounds;
 
     float m_tesselation_tolerance;
     float m_distance_tolerance;
