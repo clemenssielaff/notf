@@ -72,6 +72,7 @@ void Texture2::unbind()
 std::shared_ptr<Texture2> Texture2::load(RenderContext* context, const std::string file_path)
 {
     assert(context);
+    context->make_current();
 
     // load the texture from file
     RawImage image(file_path);
@@ -107,7 +108,6 @@ std::shared_ptr<Texture2> Texture2::load(RenderContext* context, const std::stri
     }
 
     // load the texture into OpenGL
-    context->make_current();
     GLuint id = 0;
     glGenTextures(1, &id);
     assert(id);
@@ -176,6 +176,7 @@ Texture2::Texture2(const GLuint id, RenderContext* context, const std::string na
     , m_wrap_x(Wrap::REPEAT)
     , m_wrap_y(Wrap::REPEAT)
 {
+    assert(m_render_context);
 }
 
 Texture2::~Texture2()
@@ -231,6 +232,7 @@ void Texture2::_deallocate()
         glDeleteTextures(1, &m_id);
         log_trace << "Deleted OpenGL texture with ID: " << m_id;
         m_id = 0;
+        m_render_context = nullptr;
     }
 }
 

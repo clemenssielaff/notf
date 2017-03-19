@@ -13,7 +13,7 @@ void transform_command_point(const Xform2f& xform, std::vector<float>& commands,
 {
     assert(commands.size() >= index + 2);
     Vector2f& point = *reinterpret_cast<Vector2f*>(&commands[index]);
-    point          = xform.transform(point);
+    point           = xform.transform(point);
 }
 
 /** Transforms a Command to a float value that can be stored in the Command buffer. */
@@ -223,7 +223,7 @@ void Cell::arc_to(const Vector2f tangent, const Vector2f end, const float radius
     // calculate tangential circle to lines (stylus -> tangent) and (tangent -> end)
     const Vector2f delta1 = (m_stylus - tangent).normalize();
     const Vector2f delta2 = (tangent - end).normalize();
-    const float a        = acos(delta1.dot(delta2)) / 2;
+    const float a         = acos(delta1.dot(delta2)) / 2;
     if (a == approx(0.)) {
         return line_to(end);
     }
@@ -608,26 +608,26 @@ void Cell::_expand_fill(const bool draw_antialiased)
 
                 // no bevel
                 if (!(current_point.flags & Point::Flags::BEVEL) || current_point.flags & Point::Flags::LEFT) {
-                    m_vertices.emplace_back(Vertex{current_point.pos + (current_point.dm * woff),
-                                                   Vector2f{.5f, 1}});
+                    m_vertices.emplace_back(current_point.pos + (current_point.dm * woff),
+                                            Vector2f(.5f, 1));
                 }
 
                 // beveling requires an extra vertex
                 else {
-                    m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x + previous_point.forward.y * woff,
-                                                           current_point.pos.y - previous_point.forward.x * woff},
-                                                   Vector2f{.5f, 1}});
-                    m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x + current_point.forward.y * woff,
-                                                           current_point.pos.y - current_point.forward.x * woff},
-                                                   Vector2f{.5f, 1}});
+                    m_vertices.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * woff,
+                                                     current_point.pos.y - previous_point.forward.x * woff),
+                                            Vector2f(.5f, 1));
+                    m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * woff,
+                                                     current_point.pos.y - current_point.forward.x * woff),
+                                            Vector2f(.5f, 1));
                 }
             }
         }
         // no fringe = no antialiasing
         else {
             for (size_t point_offset = path.point_offset; point_offset <= last_point_offset; ++point_offset) {
-                m_vertices.emplace_back(Vertex{m_points[point_offset].pos,
-                                               Vector2f{.5f, 1}});
+                m_vertices.emplace_back(m_points[point_offset].pos,
+                                        Vector2f(.5f, 1));
             }
         }
         path.fill_count = m_vertices.size() - path.fill_offset;
@@ -660,20 +660,20 @@ void Cell::_expand_fill(const bool draw_antialiased)
                     _bevel_join(previous_point, current_point, left_w, right_w, left_u, right_u);
                 }
                 else {
-                    m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x + current_point.dm.x * left_w,
-                                                           current_point.pos.y + current_point.dm.y * left_w},
-                                                   Vector2f{left_u, 1}});
-                    m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x - current_point.dm.x * right_w,
-                                                           current_point.pos.y - current_point.dm.y * right_w},
-                                                   Vector2f{right_u, 1}});
+                    m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.dm.x * left_w,
+                                                     current_point.pos.y + current_point.dm.y * left_w),
+                                            Vector2f(left_u, 1));
+                    m_vertices.emplace_back(Vector2f(current_point.pos.x - current_point.dm.x * right_w,
+                                                     current_point.pos.y - current_point.dm.y * right_w),
+                                            Vector2f(right_u, 1));
                 }
             }
 
             // copy the first two vertices from the beginning to form a cohesive loop
-            m_vertices.emplace_back(Vertex{m_vertices[path.stroke_offset + 0].pos,
-                                           Vector2f{left_u, 1}});
-            m_vertices.emplace_back(Vertex{m_vertices[path.stroke_offset + 1].pos,
-                                           Vector2f{right_u, 1}});
+            m_vertices.emplace_back(m_vertices[path.stroke_offset + 0].pos,
+                                    Vector2f(left_u, 1));
+            m_vertices.emplace_back(m_vertices[path.stroke_offset + 1].pos,
+                                    Vector2f(right_u, 1));
 
             path.stroke_count = m_vertices.size() - path.stroke_offset;
         }
@@ -692,7 +692,7 @@ void Cell::_expand_stroke(const float stroke_width)
     const LineCap line_cap   = get_current_state().line_cap;
     _calculate_joins(stroke_width, line_join, get_current_state().miter_limit);
 
-    { // reserve new vertices
+    {                                // reserve new vertices
         size_t new_vertex_count = 0; // TODO: this is way too high and maybe I don't even need it
         for (const Path& path : m_paths) {
             if (line_join == LineJoin::ROUND) {
@@ -772,17 +772,17 @@ void Cell::_expand_stroke(const float stroke_width)
                 }
             }
             else {
-                m_vertices.emplace_back(Vertex{current_point.pos + (current_point.dm * stroke_width),
-                                               Vector2f{0, 1}});
-                m_vertices.emplace_back(Vertex{current_point.pos - (current_point.dm * stroke_width),
-                                               Vector2f{1, 1}});
+                m_vertices.emplace_back(current_point.pos + (current_point.dm * stroke_width),
+                                        Vector2f(0, 1));
+                m_vertices.emplace_back(current_point.pos - (current_point.dm * stroke_width),
+                                        Vector2f(1, 1));
             }
         }
 
         if (path.is_closed) {
             // loop it
-            m_vertices.emplace_back(Vertex{m_vertices[path.stroke_offset + 0].pos, Vector2f{0, 1}});
-            m_vertices.emplace_back(Vertex{m_vertices[path.stroke_offset + 1].pos, Vector2f{1, 1}});
+            m_vertices.emplace_back(m_vertices[path.stroke_offset + 0].pos, Vector2f(0, 1));
+            m_vertices.emplace_back(m_vertices[path.stroke_offset + 1].pos, Vector2f(1, 1));
         }
         else {
             // add cap
@@ -919,7 +919,7 @@ Paint Cell::create_linear_gradient(const Vector2f& start_pos, const Vector2f& en
 {
     static const float large_number = 1e5;
 
-    Vector2f delta   = end_pos - start_pos;
+    Vector2f delta  = end_pos - start_pos;
     const float mag = delta.magnitude();
     if (mag == approx(0., 0.0001)) {
         delta.x = 0;
@@ -996,36 +996,36 @@ void Cell::_butt_cap_start(const Point& point, const Vector2f& direction, const 
 {
     const float px = point.pos.x - direction.x * d;
     const float py = point.pos.y - direction.y * d;
-    m_vertices.emplace_back(Vertex{Vector2f{px + direction.y * stroke_width - direction.x * m_fringe_width,
-                                           py + -direction.x * stroke_width - direction.y * m_fringe_width},
-                                   Vector2f{0, 0}});
-    m_vertices.emplace_back(Vertex{Vector2f{px - direction.y * stroke_width - direction.x * m_fringe_width,
-                                           py - -direction.x * stroke_width - direction.y * m_fringe_width},
-                                   Vector2f{1, 0}});
-    m_vertices.emplace_back(Vertex{Vector2f{px + direction.y * stroke_width,
-                                           py + -direction.x * stroke_width},
-                                   Vector2f{0, 1}});
-    m_vertices.emplace_back(Vertex{Vector2f{px - direction.y * stroke_width,
-                                           py - -direction.x * stroke_width},
-                                   Vector2f{1, 1}});
+    m_vertices.emplace_back(Vector2f(px + direction.y * stroke_width - direction.x * m_fringe_width,
+                                     py + -direction.x * stroke_width - direction.y * m_fringe_width),
+                            Vector2f(0, 0));
+    m_vertices.emplace_back(Vector2f(px - direction.y * stroke_width - direction.x * m_fringe_width,
+                                     py - -direction.x * stroke_width - direction.y * m_fringe_width),
+                            Vector2f(1, 0));
+    m_vertices.emplace_back(Vector2f(px + direction.y * stroke_width,
+                                     py + -direction.x * stroke_width),
+                            Vector2f(0, 1));
+    m_vertices.emplace_back(Vector2f(px - direction.y * stroke_width,
+                                     py - -direction.x * stroke_width),
+                            Vector2f(1, 1));
 }
 
 void Cell::_butt_cap_end(const Point& point, const Vector2f& delta, const float stroke_width, const float d)
 {
     const float px = point.pos.x + delta.x * d;
     const float py = point.pos.y + delta.y * d;
-    m_vertices.emplace_back(Vertex{Vector2f{px + delta.y * stroke_width,
-                                           py - delta.x * stroke_width},
-                                   Vector2f{0, 1}});
-    m_vertices.emplace_back(Vertex{Vector2f{px - delta.y * stroke_width,
-                                           py + delta.x * stroke_width},
-                                   Vector2f{1, 1}});
-    m_vertices.emplace_back(Vertex{Vector2f{px + delta.y * stroke_width + delta.x * m_fringe_width,
-                                           py - delta.x * stroke_width + delta.y * m_fringe_width},
-                                   Vector2f{0, 0}});
-    m_vertices.emplace_back(Vertex{Vector2f{px - delta.y * stroke_width + delta.x * m_fringe_width,
-                                           py + delta.x * stroke_width + delta.y * m_fringe_width},
-                                   Vector2f{1, 0}});
+    m_vertices.emplace_back(Vector2f(px + delta.y * stroke_width,
+                                     py - delta.x * stroke_width),
+                            Vector2f(0, 1));
+    m_vertices.emplace_back(Vector2f(px - delta.y * stroke_width,
+                                     py + delta.x * stroke_width),
+                            Vector2f(1, 1));
+    m_vertices.emplace_back(Vector2f(px + delta.y * stroke_width + delta.x * m_fringe_width,
+                                     py - delta.x * stroke_width + delta.y * m_fringe_width),
+                            Vector2f(0, 0));
+    m_vertices.emplace_back(Vector2f(px - delta.y * stroke_width + delta.x * m_fringe_width,
+                                     py + delta.x * stroke_width + delta.y * m_fringe_width),
+                            Vector2f(1, 0));
 }
 
 void Cell::_round_cap_start(const Point& point, const Vector2f& delta, const float stroke_width, const size_t cap_count)
@@ -1034,39 +1034,39 @@ void Cell::_round_cap_start(const Point& point, const Vector2f& delta, const flo
         const float a  = i / static_cast<float>(cap_count - 1) * PI;
         const float ax = cos(a) * stroke_width;
         const float ay = sin(a) * stroke_width;
-        m_vertices.emplace_back(Vertex{Vector2f{point.pos.x - delta.y * ax - delta.x * ay,
-                                               point.pos.y + delta.x * ax - delta.y * ay},
-                                       Vector2f{0, 1}});
-        m_vertices.emplace_back(Vertex{point.pos,
-                                       Vector2f{.5f, 1.f}});
+        m_vertices.emplace_back(Vector2f(point.pos.x - delta.y * ax - delta.x * ay,
+                                         point.pos.y + delta.x * ax - delta.y * ay),
+                                Vector2f(0, 1));
+        m_vertices.emplace_back(point.pos,
+                                Vector2f(.5f, 1.f));
     }
 
-    m_vertices.emplace_back(Vertex{Vector2f{point.pos.x + delta.y * stroke_width,
-                                           point.pos.y - delta.x * stroke_width},
-                                   Vector2f{0, 1}});
-    m_vertices.emplace_back(Vertex{Vector2f{point.pos.x - delta.y * stroke_width,
-                                           point.pos.y + delta.x * stroke_width},
-                                   Vector2f{1, 1}});
+    m_vertices.emplace_back(Vector2f(point.pos.x + delta.y * stroke_width,
+                                     point.pos.y - delta.x * stroke_width),
+                            Vector2f(0, 1));
+    m_vertices.emplace_back(Vector2f(point.pos.x - delta.y * stroke_width,
+                                     point.pos.y + delta.x * stroke_width),
+                            Vector2f(1, 1));
 }
 
 void Cell::_round_cap_end(const Point& point, const Vector2f& delta, const float stroke_width, const size_t cap_count)
 {
-    m_vertices.emplace_back(Vertex{Vector2f{point.pos.x + delta.y * stroke_width,
-                                           point.pos.y - delta.x * stroke_width},
-                                   Vector2f{0, 1}});
-    m_vertices.emplace_back(Vertex{Vector2f{point.pos.x - delta.y * stroke_width,
-                                           point.pos.y + delta.x * stroke_width},
-                                   Vector2f{1, 1}});
+    m_vertices.emplace_back(Vector2f(point.pos.x + delta.y * stroke_width,
+                                     point.pos.y - delta.x * stroke_width),
+                            Vector2f(0, 1));
+    m_vertices.emplace_back(Vector2f(point.pos.x - delta.y * stroke_width,
+                                     point.pos.y + delta.x * stroke_width),
+                            Vector2f(1, 1));
 
     for (size_t i = 0; i < cap_count; i++) {
         const float a  = i / static_cast<float>(cap_count - 1) * PI;
         const float ax = cos(a) * stroke_width;
         const float ay = sin(a) * stroke_width;
-        m_vertices.emplace_back(Vertex{point.pos,
-                                       Vector2f{.5f, 1.f}});
-        m_vertices.emplace_back(Vertex{Vector2f{point.pos.x - delta.y * ax + delta.x * ay,
-                                               point.pos.y + delta.x * ax + delta.y * ay},
-                                       Vector2f{0, 1}});
+        m_vertices.emplace_back(point.pos,
+                                Vector2f(.5f, 1.f));
+        m_vertices.emplace_back(Vector2f(point.pos.x - delta.y * ax + delta.x * ay,
+                                         point.pos.y + delta.x * ax + delta.y * ay),
+                                Vector2f(0, 1));
     }
 }
 
@@ -1078,52 +1078,52 @@ void Cell::_bevel_join(const Point& previous_point, const Point& current_point, 
         std::tie(lx0, ly0, lx1, ly1) = choose_bevel(current_point.flags & Point::Flags::INNERBEVEL,
                                                     previous_point, current_point, left_w);
 
-        m_vertices.emplace_back(Vertex{Vector2f{lx0, ly0},
-                                       Vector2f{left_u, 1}});
-        m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x - previous_point.forward.y * right_w,
-                                               current_point.pos.y + previous_point.forward.x * right_w},
-                                       Vector2f{right_u, 1}});
+        m_vertices.emplace_back(Vector2f(lx0, ly0),
+                                Vector2f(left_u, 1));
+        m_vertices.emplace_back(Vector2f(current_point.pos.x - previous_point.forward.y * right_w,
+                                         current_point.pos.y + previous_point.forward.x * right_w),
+                                Vector2f(right_u, 1));
 
         if (current_point.flags & Point::Flags::BEVEL) {
-            m_vertices.emplace_back(Vertex{Vector2f{lx0, ly0},
-                                           Vector2f{left_u, 1}});
-            m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x - previous_point.forward.y * right_w,
-                                                   current_point.pos.y + previous_point.forward.x * right_w},
-                                           Vector2f{right_u, 1}});
+            m_vertices.emplace_back(Vector2f(lx0, ly0),
+                                    Vector2f(left_u, 1));
+            m_vertices.emplace_back(Vector2f(current_point.pos.x - previous_point.forward.y * right_w,
+                                             current_point.pos.y + previous_point.forward.x * right_w),
+                                    Vector2f(right_u, 1));
 
-            m_vertices.emplace_back(Vertex{Vector2f{lx1, ly1},
-                                           Vector2f{left_u, 1}});
-            m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x - current_point.forward.y * right_w,
-                                                   current_point.pos.y + current_point.forward.x * right_w},
-                                           Vector2f{right_u, 1}});
+            m_vertices.emplace_back(Vector2f(lx1, ly1),
+                                    Vector2f(left_u, 1));
+            m_vertices.emplace_back(Vector2f(current_point.pos.x - current_point.forward.y * right_w,
+                                             current_point.pos.y + current_point.forward.x * right_w),
+                                    Vector2f(right_u, 1));
         }
         else {
             const float rx0 = current_point.pos.x - current_point.dm.x * right_w;
             const float ry0 = current_point.pos.y - current_point.dm.y * right_w;
 
-            m_vertices.emplace_back(Vertex{current_point.pos,
-                                           Vector2f{0.5f, 1}});
-            m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x - previous_point.forward.y * right_w,
-                                                   current_point.pos.y + previous_point.forward.x * right_w},
-                                           Vector2f{right_u, 1}});
+            m_vertices.emplace_back(current_point.pos,
+                                    Vector2f(0.5f, 1));
+            m_vertices.emplace_back(Vector2f(current_point.pos.x - previous_point.forward.y * right_w,
+                                             current_point.pos.y + previous_point.forward.x * right_w),
+                                    Vector2f(right_u, 1));
 
-            m_vertices.emplace_back(Vertex{Vector2f{rx0, ry0},
-                                           Vector2f{right_u, 1}});
-            m_vertices.emplace_back(Vertex{Vector2f{rx0, ry0},
-                                           Vector2f{right_u, 1}});
+            m_vertices.emplace_back(Vector2f(rx0, ry0),
+                                    Vector2f(right_u, 1));
+            m_vertices.emplace_back(Vector2f(rx0, ry0),
+                                    Vector2f(right_u, 1));
 
-            m_vertices.emplace_back(Vertex{current_point.pos,
-                                           Vector2f{0.5f, 1}});
-            m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x - current_point.forward.y * right_w,
-                                                   current_point.pos.y + current_point.forward.x * right_w},
-                                           Vector2f{right_u, 1}});
+            m_vertices.emplace_back(current_point.pos,
+                                    Vector2f(0.5f, 1));
+            m_vertices.emplace_back(Vector2f(current_point.pos.x - current_point.forward.y * right_w,
+                                             current_point.pos.y + current_point.forward.x * right_w),
+                                    Vector2f(right_u, 1));
         }
 
-        m_vertices.emplace_back(Vertex{Vector2f{lx1, ly1},
-                                       Vector2f{left_u, 1}});
-        m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x - current_point.forward.y * right_w,
-                                               current_point.pos.y + current_point.forward.x * right_w},
-                                       Vector2f{right_u, 1}});
+        m_vertices.emplace_back(Vector2f(lx1, ly1),
+                                Vector2f(left_u, 1));
+        m_vertices.emplace_back(Vector2f(current_point.pos.x - current_point.forward.y * right_w,
+                                         current_point.pos.y + current_point.forward.x * right_w),
+                                Vector2f(right_u, 1));
     }
 
     // right corner
@@ -1132,52 +1132,52 @@ void Cell::_bevel_join(const Point& previous_point, const Point& current_point, 
         std::tie(rx0, ry0, rx1, ry1) = choose_bevel(current_point.flags & Point::Flags::INNERBEVEL,
                                                     previous_point, current_point, -right_w);
 
-        m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x + previous_point.forward.y * left_w,
-                                               current_point.pos.y - previous_point.forward.x * left_w},
-                                       Vector2f{left_u, 1}});
-        m_vertices.emplace_back(Vertex{Vector2f{rx0, ry0},
-                                       Vector2f{right_u, 1}});
+        m_vertices.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * left_w,
+                                         current_point.pos.y - previous_point.forward.x * left_w),
+                                Vector2f(left_u, 1));
+        m_vertices.emplace_back(Vector2f(rx0, ry0),
+                                Vector2f(right_u, 1));
 
         if (current_point.flags & Point::Flags::BEVEL) {
-            m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x + previous_point.forward.y * left_w,
-                                                   current_point.pos.y - previous_point.forward.x * left_w},
-                                           Vector2f{left_u, 1}});
-            m_vertices.emplace_back(Vertex{Vector2f{rx0, ry0},
-                                           Vector2f{right_u, 1}});
+            m_vertices.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * left_w,
+                                             current_point.pos.y - previous_point.forward.x * left_w),
+                                    Vector2f(left_u, 1));
+            m_vertices.emplace_back(Vector2f(rx0, ry0),
+                                    Vector2f(right_u, 1));
 
-            m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x + current_point.forward.y * left_w,
-                                                   current_point.pos.y - current_point.forward.x * left_w},
-                                           Vector2f{left_u, 1}});
-            m_vertices.emplace_back(Vertex{Vector2f{rx1, ry1},
-                                           Vector2f{right_u, 1}});
+            m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * left_w,
+                                             current_point.pos.y - current_point.forward.x * left_w),
+                                    Vector2f(left_u, 1));
+            m_vertices.emplace_back(Vector2f(rx1, ry1),
+                                    Vector2f(right_u, 1));
         }
         else {
             const float lx0 = current_point.pos.x + current_point.dm.x * left_w;
             const float ly0 = current_point.pos.y + current_point.dm.y * left_w;
 
-            m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x + previous_point.forward.y * left_w,
-                                                   current_point.pos.y - previous_point.forward.x * left_w},
-                                           Vector2f{left_u, 1}});
-            m_vertices.emplace_back(Vertex{current_point.pos,
-                                           Vector2f{0.5f, 1}});
+            m_vertices.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * left_w,
+                                             current_point.pos.y - previous_point.forward.x * left_w),
+                                    Vector2f(left_u, 1));
+            m_vertices.emplace_back(current_point.pos,
+                                    Vector2f(0.5f, 1));
 
-            m_vertices.emplace_back(Vertex{Vector2f{lx0, ly0},
-                                           Vector2f{left_u, 1}});
-            m_vertices.emplace_back(Vertex{Vector2f{lx0, ly0},
-                                           Vector2f{left_u, 1}});
+            m_vertices.emplace_back(Vector2f(lx0, ly0),
+                                    Vector2f(left_u, 1));
+            m_vertices.emplace_back(Vector2f(lx0, ly0),
+                                    Vector2f(left_u, 1));
 
-            m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x + current_point.forward.y * left_w,
-                                                   current_point.pos.y - current_point.forward.x * left_w},
-                                           Vector2f{left_u, 1}});
-            m_vertices.emplace_back(Vertex{current_point.pos,
-                                           Vector2f{0.5f, 1}});
+            m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * left_w,
+                                             current_point.pos.y - current_point.forward.x * left_w),
+                                    Vector2f(left_u, 1));
+            m_vertices.emplace_back(current_point.pos,
+                                    Vector2f(0.5f, 1));
         }
 
-        m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x + current_point.forward.y * left_w,
-                                               current_point.pos.y - current_point.forward.x * left_w},
-                                       Vector2f{left_u, 1}});
-        m_vertices.emplace_back(Vertex{Vector2f{rx1, ry1},
-                                       Vector2f{right_u, 1}});
+        m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * left_w,
+                                         current_point.pos.y - current_point.forward.x * left_w),
+                                Vector2f(left_u, 1));
+        m_vertices.emplace_back(Vector2f(rx1, ry1),
+                                Vector2f(right_u, 1));
     }
 }
 
@@ -1193,28 +1193,28 @@ void Cell::_round_join(const Point& previous_point, const Point& current_point, 
             a1 -= TWO_PI;
         }
 
-        m_vertices.emplace_back(Vertex{Vector2f{lx0, ly0},
-                                       Vector2f{0, 1}});
-        m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x - previous_point.forward.y * stroke_width,
-                                               current_point.pos.y + previous_point.forward.x * stroke_width},
-                                       Vector2f{1, 1}});
+        m_vertices.emplace_back(Vector2f(lx0, ly0),
+                                Vector2f(0, 1));
+        m_vertices.emplace_back(Vector2f(current_point.pos.x - previous_point.forward.y * stroke_width,
+                                         current_point.pos.y + previous_point.forward.x * stroke_width),
+                                Vector2f(1, 1));
 
         size_t n = clamp(static_cast<size_t>(ceilf(((a1 - a0) / PI) * ncap)), 2u, ncap);
         for (size_t i = 0; i < n; i++) {
             const float u = i / static_cast<float>(n - 1);
             const float a = a0 + u * (a1 - a0);
-            m_vertices.emplace_back(Vertex{current_point.pos,
-                                           Vector2f{0.5f, 1}});
-            m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x + cosf(a) * stroke_width,
-                                                   current_point.pos.y + sinf(a) * stroke_width},
-                                           Vector2f{1, 1}});
+            m_vertices.emplace_back(current_point.pos,
+                                    Vector2f(0.5f, 1));
+            m_vertices.emplace_back(Vector2f(current_point.pos.x + cosf(a) * stroke_width,
+                                             current_point.pos.y + sinf(a) * stroke_width),
+                                    Vector2f(1, 1));
         }
 
-        m_vertices.emplace_back(Vertex{Vector2f{lx1, ly1},
-                                       Vector2f{0, 1}});
-        m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x - current_point.forward.y * stroke_width,
-                                               current_point.pos.y + current_point.forward.x * stroke_width},
-                                       Vector2f{1, 1}});
+        m_vertices.emplace_back(Vector2f(lx1, ly1),
+                                Vector2f(0, 1));
+        m_vertices.emplace_back(Vector2f(current_point.pos.x - current_point.forward.y * stroke_width,
+                                         current_point.pos.y + current_point.forward.x * stroke_width),
+                                Vector2f(1, 1));
     }
     else {
         float rx0, ry0, rx1, ry1;
@@ -1226,28 +1226,28 @@ void Cell::_round_join(const Point& previous_point, const Point& current_point, 
             a1 += TWO_PI;
         }
 
-        m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x + previous_point.forward.y * stroke_width,
-                                               current_point.pos.y - previous_point.forward.x * stroke_width},
-                                       Vector2f{0, 1}});
-        m_vertices.emplace_back(Vertex{Vector2f{rx0, ry0},
-                                       Vector2f{1, 1}});
+        m_vertices.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * stroke_width,
+                                         current_point.pos.y - previous_point.forward.x * stroke_width),
+                                Vector2f(0, 1));
+        m_vertices.emplace_back(Vector2f(rx0, ry0),
+                                Vector2f(1, 1));
 
         size_t n = clamp(static_cast<size_t>(ceilf(((a1 - a0) / PI) * ncap)), 2u, ncap);
         for (size_t i = 0; i < n; i++) {
             const float u = i / static_cast<float>(n - 1);
             const float a = a0 + u * (a1 - a0);
-            m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x + cosf(a) * stroke_width,
-                                                   current_point.pos.y + sinf(a) * stroke_width},
-                                           Vector2f{0, 1}});
-            m_vertices.emplace_back(Vertex{current_point.pos,
-                                           Vector2f{0.5f, 1}});
+            m_vertices.emplace_back(Vector2f(current_point.pos.x + cosf(a) * stroke_width,
+                                             current_point.pos.y + sinf(a) * stroke_width),
+                                    Vector2f(0, 1));
+            m_vertices.emplace_back(current_point.pos,
+                                    Vector2f(0.5f, 1));
         }
 
-        m_vertices.emplace_back(Vertex{Vector2f{current_point.pos.x + current_point.forward.y * stroke_width,
-                                               current_point.pos.y - current_point.forward.x * stroke_width},
-                                       Vector2f{0, 1}});
-        m_vertices.emplace_back(Vertex{Vector2f{rx1, ry1},
-                                       Vector2f{1, 1}});
+        m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * stroke_width,
+                                         current_point.pos.y - current_point.forward.x * stroke_width),
+                                Vector2f(0, 1));
+        m_vertices.emplace_back(Vector2f(rx1, ry1),
+                                Vector2f(1, 1));
     }
 }
 

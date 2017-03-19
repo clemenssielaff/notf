@@ -1,8 +1,8 @@
 #pragma once
 
-namespace notf {
+#include "common/log.hpp"
 
-using uint = unsigned int;
+namespace notf {
 
 /** Checks if there was an OpenGL error and reports it to Signal's logger.
  * @param line      Line at which the error occurred.

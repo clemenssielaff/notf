@@ -6,7 +6,6 @@ namespace notf {
 
 /* Vector2f ***********************************************************************************************************/
 
-template <>
 std::ostream& operator<<(std::ostream& out, const Vector2f& vec)
 {
     return out << "Vector2f(" << vec.x << ", " << vec.y << ")";
@@ -21,7 +20,6 @@ static_assert(std::is_pod<Vector2f>::value,
 
 /* Vector2d ***********************************************************************************************************/
 
-template <>
 std::ostream& operator<<(std::ostream& out, const Vector2d& vec)
 {
     return out << "Vector2d(" << vec.x << ", " << vec.y << ")";
@@ -36,7 +34,6 @@ static_assert(std::is_pod<Vector2d>::value,
 
 /* Vector2i ***********************************************************************************************************/
 
-template <>
 std::ostream& operator<<(std::ostream& out, const Vector2i& vec)
 {
     return out << "Vector2i(" << vec.x << ", " << vec.y << ")";

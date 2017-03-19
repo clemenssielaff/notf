@@ -600,16 +600,9 @@ inline _RealVector2<Real> lerp(const _RealVector2<Real>& from, const _RealVector
  * @param vec  Vector2 to print.
  * @return Output stream for further output.
  */
-template <typename Real>
-std::ostream& operator<<(std::ostream& out, const notf::_RealVector2<Real>& vec);
-
-/** Prints the contents of a Vector2 into a std::ostream.
- * @param os   Output stream, implicitly passed with the << operator.
- * @param vec  Vector2 to print.
- * @return Output stream for further output.
- */
-template <typename Integer>
-std::ostream& operator<<(std::ostream& out, const notf::_IntVector2<Integer>& vec);
+std::ostream& operator<<(std::ostream& out, const Vector2f& vec);
+std::ostream& operator<<(std::ostream& out, const Vector2d& vec);
+std::ostream& operator<<(std::ostream& out, const Vector2i& vec);
 
 } // namespace notf
 

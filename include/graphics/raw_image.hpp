@@ -11,12 +11,12 @@ using uchar = unsigned char;
  * Instead, they are usually loaded from disk, have their data copied into another object and are then destroyed again.
  * Use-cases include loading OpenGL textures and Window icons.
  */
-class RawImage final {
+class RawImage {
 
 public: // methods
     /** Value Constructor.
      * @param image_path            Absolute path to the Image file.
-     * @param force_format          Number of bytes per pixel, default is 0 (use defined in file).
+     * @param force_format          Number of bytes per pixel, default is 0 (=> use format defined in file).
      * @throw std::runtime_error    If the Image fails to load.
      */
     RawImage(const std::string& image_path, int force_format = 0);

@@ -23,6 +23,7 @@ class RenderContext;
  * However, the RenderContext does keep a weak pointer to the Texture and will deallocate it when it is itself removed.
  * In this case, the remaining Texture will become invalid and you'll get a warning message.
  * In a well-behaved program, all Textures should have gone out of scope by the time the RenderContext is destroyed.
+ * This behaviour is similar to the handling of Shaders.
  */
 class Texture2 {
 
@@ -72,7 +73,7 @@ protected: // constructor
     /** Value Constructor.
      * @param id        OpenGL texture ID.
      * @param context   Render Context in which the Texture lives.
-     * @param name      Name of the Texture.
+     * @param name      Human readable name of the Texture.
      * @param width     Width of the loaded image in pixels.
      * @param height    Height of the loaded image in pixels.
      * @param format    Texture format.
@@ -100,6 +101,11 @@ public: // methods
     /** The name of this Texture. */
     const std::string& get_name() const { return m_name; }
 
+    /** Binds this Texture2 as the current active Texture.
+     * @return  False if this Texture is invalid and cannot be bound.
+     */
+    bool bind() const;
+
     /** Width of the loaded image in pixels. */
     GLuint get_width() const { return m_width; }
 
@@ -120,11 +126,6 @@ public: // methods
 
     /** Returns the vertical wrap mode. */
     Wrap get_wrap_y() const { return m_wrap_y; }
-
-    /** Binds this Texture2 as the current active GL_TEXTURE_2D.
-     * @return  False if this Texture is invalid and cannot be bound.
-     */
-    bool bind() const;
 
     /** Sets a new filter mode when the texture pixels are smaller than scren pixels. */
     void set_min_filter(const MinFilter filter);
@@ -150,7 +151,7 @@ private: // fields
     RenderContext* m_render_context;
 
     /** The name of this Texture. */
-    std::string m_name;
+    const std::string m_name;
 
     /** Width of the loaded image in pixels. */
     const GLuint m_width;

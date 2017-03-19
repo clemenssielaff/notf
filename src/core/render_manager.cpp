@@ -3,9 +3,9 @@
 #include "common/log.hpp"
 #include "common/time.hpp"
 #include "core/controller.hpp"
-#include "core/window_layout.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
+#include "core/window_layout.hpp"
 #include "graphics/render_context.hpp"
 #include "graphics/stats.hpp"
 #include "utils/make_smart_enabler.hpp"
@@ -14,12 +14,17 @@ namespace notf {
 
 RenderManager::RenderManager(const Window* window)
     : m_window(window)
-    , m_render_context(std::make_unique<RenderContext>(window, RenderContextArguments()))
+    , m_render_context()
     , m_default_layer(std::make_shared<MakeSmartEnabler<RenderLayer>>())
     , m_layers({m_default_layer})
     , m_is_clean(false)
     , m_stats()
 {
+    // create the Render context
+    RenderContextArguments context_args;
+    context_args.pixel_ratio = static_cast<float>(window->get_buffer_size().width) / static_cast<float>(window->get_window_size().width);
+    m_render_context         = std::make_unique<RenderContext>(window, context_args);
+
     m_stats = std::make_unique<RenderStats>(120);
 }
 
@@ -67,7 +72,7 @@ void RenderManager::render(const Size2i buffer_size)
 {
     // TODO: optimize case where there's just one layer and you can simply draw them as you iterate through them
 
-    Time time_at_start                    = Time::now();
+    Time time_at_start = Time::now();
 
     // prepare the render context
     RenderContext& render_context         = *(m_render_context.get());

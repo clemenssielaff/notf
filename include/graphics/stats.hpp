@@ -1,6 +1,5 @@
 #pragma once
 
-#include <stddef.h>
 #include <vector>
 
 #include "common/aabr.hpp"
@@ -10,7 +9,7 @@ namespace notf {
 
 class RenderContext;
 
-class RenderStats {
+class RenderStats { // TODO: more expressive stats when the graphics rework is done
 
 public: // methods
     /** Default Constructor. */

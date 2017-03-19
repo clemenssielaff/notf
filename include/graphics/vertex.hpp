@@ -17,6 +17,13 @@ struct Vertex {
 
     /** UV-coordinates of the Vertex. */
     Vector2f uv;
+
+    /** Default (non-initializing) constructor so this struct remains a POD */
+    Vertex() = default;
+
+    /** Value Constructor. */
+    Vertex(Vector2f pos, Vector2f uv)
+        : pos(std::move(pos)), uv(std::move(uv)) {}
 };
 
 /**********************************************************************************************************************/

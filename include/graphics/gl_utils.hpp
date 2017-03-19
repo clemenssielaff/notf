@@ -2,8 +2,6 @@
 
 #include <stddef.h>
 
-#include "graphics/gl_forwards.hpp"
-
 namespace notf {
 
 /** Modern way of creating a GLvoid buffer offset. */

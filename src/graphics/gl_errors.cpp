@@ -1,6 +1,5 @@
 #include "graphics/gl_errors.hpp"
 
-#include "common/log.hpp"
 #include "core/opengl.hpp"
 
 namespace { // anonymous

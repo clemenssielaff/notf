@@ -14,13 +14,13 @@ namespace { // anonymous
  * objects for the individual shader stages can be savely discarded.
  */
 class ShaderRAII {
-public:
-    ShaderRAII(GLuint shader)
-        : m_shader(shader)
-        , m_program(GL_FALSE)
-    {
-    }
 
+public: // methods
+    /** Value Constructor. */
+    ShaderRAII(GLuint shader)
+        : m_shader(shader) , m_program(GL_FALSE) { }
+
+    /** Destructor. */
     ~ShaderRAII()
     {
         if (m_program) {
@@ -29,10 +29,14 @@ public:
         glDeleteShader(m_shader);
     }
 
+    /** If the Shader has been attached to a program, it needs to be detached first before it is removed. */
     void set_program(GLuint program) { m_program = program; }
 
-private:
+private: // fields
+    /** ID of the managed OpenGL shader. */
     GLuint m_shader;
+
+    /** ID of OpenGL program, that the shader is attached to. */
     GLuint m_program;
 };
 
@@ -43,7 +47,7 @@ enum class STAGE : unsigned char {
     FRAGMENT,
 };
 
-/** Returns the name of the given Shader stage.
+/** Returns the human readable name of the given Shader stage.
  * @param stage     Requested stage.
  */
 const std::string& stage_name(const STAGE stage)
@@ -117,7 +121,7 @@ namespace notf {
 
 void Shader::unbind()
 {
-    glUseProgram(0);
+    glUseProgram(GL_ZERO);
 }
 
 std::shared_ptr<Shader> Shader::build(RenderContext* context,
@@ -128,7 +132,7 @@ std::shared_ptr<Shader> Shader::build(RenderContext* context,
     assert(context);
     context->make_current();
 
-    // compile the mandatory shaders
+    // compile the shaders
     GLuint vertex_shader = compile_shader(STAGE::VERTEX, name, vertex_shader_source);
     ShaderRAII vertex_shader_raii(vertex_shader);
     GLuint fragment_shader = compile_shader(STAGE::FRAGMENT, name, fragment_shader_source);
@@ -169,6 +173,7 @@ Shader::Shader(const GLuint id, RenderContext* context, const std::string name)
     , m_render_context(context)
     , m_name(std::move(name))
 {
+    assert(m_render_context);
 }
 
 Shader::~Shader()
@@ -192,9 +197,11 @@ bool Shader::bind()
 void Shader::_deallocate()
 {
     if (m_id) {
+        m_render_context->make_current();
         glDeleteProgram(m_id);
         log_trace << "Deleted Shader Program \"" << m_name << "\"";
         m_id = 0;
+        m_render_context = nullptr;
     }
 }
 
