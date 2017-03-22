@@ -15,7 +15,6 @@ Widget::Widget()
     , m_scissor_layout() // empty by default
     , m_cell(Cell())
 {
-    m_cell.set_dirty();
 }
 
 Widget::~Widget()
@@ -43,7 +42,6 @@ bool Widget::set_claim(const Claim claim)
 
 void Widget::redraw()
 {
-    m_cell.set_dirty();
     _redraw();
 }
 
@@ -52,7 +50,7 @@ void Widget::paint(RenderContext& context) const
     // update the cell if dirty
     //    if (m_cell.is_dirty()) { TODO: currently _set_size does not dirty the Widget's Cell
     m_cell.reset(context);
-    Painter painter(*this, m_cell, context);
+    Painter_Old painter(*this, m_cell, context);
     try {
         _paint(painter);
     } catch (std::runtime_error error) {

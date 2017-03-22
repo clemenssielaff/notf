@@ -12,50 +12,86 @@
 #include "graphics/vertex.hpp"
 #include "utils/enum_to_number.hpp"
 
+#include "graphics/painter_new.hpp"
+
 namespace notf {
 
 class RenderContext;
 
-struct Paint {
-    Paint() = default;
-
-    Paint(Color color)
-        : xform(Xform2f::identity())
-        , extent()
-        , radius(0)
-        , feather(1)
-        , inner_color(std::move(color))
-        , outer_color(inner_color)
-    {
-    }
-
-    void set_color(const Color color)
-    {
-        xform       = Xform2f::identity();
-        radius      = 0;
-        feather     = 1;
-        inner_color = std::move(color);
-        outer_color = inner_color;
-    }
-
-    Xform2f xform;
-    Size2f extent;
-    float radius;
-    float feather;
-    Color inner_color;
-    Color outer_color;
-    std::shared_ptr<Texture2> texture;
-};
+/**********************************************************************************************************************/
 
 struct Scissor {
     /** Scissors have their own transformation. */
     Xform2f xform;
 
-    /** Extend around the center of the Transform.
-     * That means that the Scissor's width is extend.width * 2.
-     */
+    /** Extend around the center of the Transform. */
     Size2f extend;
 };
+
+/**********************************************************************************************************************/
+
+enum class LineCap : unsigned char {
+    BUTT,
+    ROUND,
+    SQUARE,
+};
+
+/**********************************************************************************************************************/
+
+enum class LineJoin : unsigned char {
+    MITER,
+    ROUND,
+    BEVEL,
+};
+
+/**********************************************************************************************************************/
+
+enum class Winding : unsigned char {
+    CCW,
+    CW,
+    COUNTERCLOCKWISE = CCW,
+    CLOCKWISE        = CW,
+    SOLID            = CCW,
+    HOLE             = CW,
+};
+
+/**********************************************************************************************************************/
+
+namespace detail {
+
+/** A Cell path is a slice of Cell::m_vertices.
+ * It is in the `detail` namespace, because it is used both by Cell and RenderContext.
+ */
+struct CellPath {
+    size_t point_offset; // points
+    size_t point_count;
+    bool is_closed;
+    size_t bevel_count;
+    size_t fill_offset; // vertices
+    size_t fill_count;
+    size_t stroke_offset; // vertices
+    size_t stroke_count;
+    Winding winding;
+    bool is_convex;
+
+    CellPath(size_t first)
+        : point_offset(first)
+        , point_count(0)
+        , is_closed(false)
+        , bevel_count(0)
+        , fill_offset(0)
+        , fill_count(0)
+        , stroke_offset(0)
+        , stroke_count(0)
+        , winding(Winding::COUNTERCLOCKWISE)
+        , is_convex(false)
+    {
+    }
+};
+
+} // namespace detail
+
+/**********************************************************************************************************************/
 
 /** Each Widget draws itself into a 'Cell'.
  * We can use the Cell to move the widget on the Canvas without redrawing it, much like you could re-use a 'Cel' in
@@ -64,7 +100,7 @@ struct Scissor {
  */
 class Cell {
 
-public: // enum
+private: // class
     /** Command identifyers, type must be of the same size as a float. */
     enum class Command : uint32_t {
         MOVE = 0,
@@ -73,55 +109,11 @@ public: // enum
         WINDING,
         CLOSE,
     };
+    static_assert(sizeof(Cell::Command) == sizeof(float),
+                  "Floats on your system don't seem be to be 32 bits wide. "
+                  "Adjust the type of the underlying type of CommandBuffer::Command to fit your particular system.");
 
-    enum class LineCap : unsigned char {
-        BUTT,
-        ROUND,
-        SQUARE,
-    };
-
-    enum class LineJoin : unsigned char {
-        MITER,
-        ROUND,
-        BEVEL,
-    };
-
-    enum class Winding : unsigned char {
-        CCW,
-        CW,
-        COUNTERCLOCKWISE = CCW,
-        CLOCKWISE        = CW,
-        SOLID            = CCW,
-        HOLE             = CW,
-    };
-
-    // The vertices of the Path are stored in Cell while this struct only stores offsets and sizes.
-    struct Path {
-        size_t point_offset; // points
-        size_t point_count;
-        bool is_closed;
-        size_t bevel_count;
-        size_t fill_offset; // vertices
-        size_t fill_count;
-        size_t stroke_offset; // vertices
-        size_t stroke_count;
-        Winding winding;
-        bool is_convex;
-
-        Path(size_t first)
-            : point_offset(first)
-            , point_count(0)
-            , is_closed(false)
-            , bevel_count(0)
-            , fill_offset(0)
-            , fill_count(0)
-            , stroke_offset(0)
-            , stroke_count(0)
-            , winding(Winding::COUNTERCLOCKWISE)
-            , is_convex(false)
-        {
-        }
-    };
+    /******************************************************************************************************************/
 
     struct Point {
         enum Flags : unsigned char {
@@ -148,8 +140,10 @@ public: // enum
         Flags flags;
     };
 
-private: // class
+    using Path = detail::CellPath;
+
     /******************************************************************************************************************/
+
     struct RenderState {
         RenderState()
             : stroke_width(1)
@@ -181,10 +175,6 @@ private: // class
 
 public: // methods
     Cell();
-
-    bool is_dirty() const { return m_is_dirty; }
-
-    void set_dirty() { m_is_dirty = true; }
 
     void reset(const RenderContext& context);
 
@@ -220,7 +210,6 @@ public: // methods
 
     /** Rotates the current state the given amount of radians in a counter-clockwise direction. */
     void rotate(const float angle) { _get_current_state().xform = Xform2f::rotation(angle) * _get_current_state().xform; }
-    // TODO: Transform2::premultiply
 
     void transform(const Xform2f& transform) { _get_current_state().xform *= transform; }
 
@@ -330,21 +319,6 @@ public: // getter
 
     float get_fringe_width() const { return m_fringe_width; }
 
-public:                                                                                     // static methods
-    static Paint create_linear_gradient(const Vector2f& start_pos, const Vector2f& end_pos, // TODO: these should be member of Paint
-                                        const Color start_color, const Color end_color);
-
-    static Paint create_radial_gradient(const Vector2f& center,
-                                        const float inner_radius, const float outer_radius,
-                                        const Color inner_color, const Color outer_color);
-
-    static Paint create_box_gradient(const Vector2f& center, const Size2f& extend,
-                                     const float radius, const float feather,
-                                     const Color inner_color, const Color outer_color);
-
-    static Paint create_texture_pattern(const Vector2f& top_left, const Size2f& extend,
-                                        std::shared_ptr<Texture2> texture,
-                                        const float angle, const float alpha);
 
 private: // methods
     void _append_commands(std::vector<float>&& commands);
@@ -382,14 +356,19 @@ private: // methods
 
     void _round_join(const Point& previous_point, const Point& current_point, const float stroke_width, const size_t ncap);
 
+private: // static methods
+    float poly_area(const std::vector<Point>& points, const size_t offset, const size_t count);
+
+    std::tuple<float, float, float, float>
+    choose_bevel(bool is_beveling, const Point& prev_point, const Point& curr_point, const float stroke_width);
+
+    float to_float(const Command command);
+
 private: // fields
     std::vector<RenderState> m_states;
 
     /** Bytecode-like instructions, separated by COMMAND values. */
     std::vector<float> m_commands;
-
-    /** Index of the current Command. */
-    size_t m_current_command;
 
     /** Current position of the 'stylus', as the last Command left it. */
     Vector2f m_stylus;
@@ -407,7 +386,6 @@ private: // fields
     float m_distance_tolerance;
     float m_fringe_width;
 
-    bool m_is_dirty;
 };
 
 } // namespace notf

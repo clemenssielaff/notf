@@ -18,7 +18,7 @@ public:
     {
     }
 
-    virtual void _paint(Painter& painter) const override
+    virtual void _paint(Painter_Old& painter) const override
     {
         painter.test();
     }

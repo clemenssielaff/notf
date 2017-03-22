@@ -2,6 +2,8 @@
 
 #include "common/log.hpp"
 #include "core/screen_item.hpp"
+#include "dynamic/layout/overlayout.hpp"
+#include "utils/make_smart_enabler.hpp"
 
 namespace notf {
 
@@ -23,8 +25,10 @@ void Controller::initialize()
         return;
     }
     _initialize();
-    if(!m_root_item){
-        log_critical << "Initialization of Controller " << get_id() << " did not set the Controller's root Item!";
+    if (!m_root_item) {
+        log_trace << "Creating default empty Layout as root Item for Controller " << get_id();
+        m_root_item = std::make_shared<MakeSmartEnabler<Overlayout>>();
+        m_root_item->_set_parent(shared_from_this());
     }
 }
 

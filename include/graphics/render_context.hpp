@@ -226,6 +226,12 @@ public:
 
     float get_pixel_ratio() const { return m_args.pixel_ratio; }
 
+    float get_tesselation_tolerance() const { return 0.25f / m_args.pixel_ratio; }
+
+    float get_distance_tolerance() const { return 0.01f / m_args.pixel_ratio; }
+
+    float get_finge_width() const { return 1.f / m_args.pixel_ratio; }
+
     bool provides_geometric_aa() const { return m_args.enable_geometric_aa; }
 
     const Vector2f& get_mouse_pos() const { return m_mouse_pos; }
@@ -293,7 +299,7 @@ private: // fields
     const Window* m_window;
 
     /** Argument struct to initialize the RenderContext. */
-    const RenderContextArguments m_args;
+    RenderContextArguments m_args;
 
     /** Returns the size of the Window's framebuffer in pixels. */
     Size2f m_buffer_size;

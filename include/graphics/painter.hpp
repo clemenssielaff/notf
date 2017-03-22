@@ -10,10 +10,10 @@ class Cell;
 class Widget;
 class RenderContext;
 
-class Painter {
+class Painter_Old {
 
 public: // methods
-    Painter(const Widget& widget, Cell& cell, RenderContext& context)
+    Painter_Old(const Widget& widget, Cell& cell, RenderContext& context)
         : m_widget(widget)
         , m_cell(cell)
         , m_context(context)
@@ -43,7 +43,5 @@ private: // fields
 
     static std::shared_ptr<Texture2> test_texture;
 };
-
-// TODO: move as much state from Cell to Painter in order to avoid growing the widget too large
 
 } // namespace notf

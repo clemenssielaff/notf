@@ -16,40 +16,6 @@ void transform_command_point(const Xform2f& xform, std::vector<float>& commands,
     point           = xform.transform(point);
 }
 
-/** Transforms a Command to a float value that can be stored in the Command buffer. */
-float to_float(const Cell::Command command) { return static_cast<float>(to_number(command)); }
-
-float poly_area(const std::vector<Cell::Point>& points, const size_t offset, const size_t count)
-{
-    float area           = 0;
-    const Cell::Point& a = points[0];
-    for (size_t index = offset + 2; index < offset + count; ++index) {
-        const Cell::Point& b = points[index - 1];
-        const Cell::Point& c = points[index];
-        area += (c.pos.x - a.pos.x) * (b.pos.y - a.pos.y) - (b.pos.x - a.pos.x) * (c.pos.y - a.pos.y);
-    }
-    return area / 2;
-}
-
-std::tuple<float, float, float, float>
-choose_bevel(bool is_beveling, const Cell::Point& prev_point, const Cell::Point& curr_point, const float stroke_width)
-{
-    float x0, y0, x1, y1;
-    if (is_beveling) {
-        x0 = curr_point.pos.x + prev_point.forward.y * stroke_width;
-        y0 = curr_point.pos.y - prev_point.forward.x * stroke_width;
-        x1 = curr_point.pos.x + curr_point.forward.y * stroke_width;
-        y1 = curr_point.pos.y - curr_point.forward.x * stroke_width;
-    }
-    else {
-        x0 = curr_point.pos.x + curr_point.dm.x * stroke_width;
-        y0 = curr_point.pos.y + curr_point.dm.y * stroke_width;
-        x1 = curr_point.pos.x + curr_point.dm.x * stroke_width;
-        y1 = curr_point.pos.y + curr_point.dm.y * stroke_width;
-    }
-    return std::make_tuple(x0, y0, x1, y1);
-}
-
 static const float KAPPAf = static_cast<float>(KAPPA);
 
 } // namespace anonymous
@@ -58,10 +24,8 @@ namespace notf {
 
 Cell::Cell()
     : m_states({RenderState()})
-    , m_commands() // TODO: make command buffer static (initialize with 256 entries and only grow)?
-    , m_current_command(0)
+    , m_commands()
     , m_stylus(Vector2f::zero())
-    , m_is_dirty(false)
 {
 }
 
@@ -69,8 +33,6 @@ void Cell::reset(const RenderContext& context)
 {
     m_states.clear();
     m_states.emplace_back(RenderState());
-
-    m_is_dirty = false;
 
     const float pixel_ratio = context.get_pixel_ratio();
     m_tesselation_tolerance = 0.25f / pixel_ratio;
@@ -119,7 +81,7 @@ void Cell::set_scissor(const Aabrf& aabr)
     RenderState& current_state  = _get_current_state();
     current_state.scissor.xform = Xform2f::translation(aabr.center());
     current_state.scissor.xform *= current_state.xform;
-    current_state.scissor.extend = aabr.extend() * 0.5f;
+    current_state.scissor.extend = aabr.extend();
 }
 
 void Cell::begin_path()
@@ -914,84 +876,6 @@ void Cell::_tesselate_bezier(const float x1, const float y1, const float x2, con
     }
 }
 
-Paint Cell::create_linear_gradient(const Vector2f& start_pos, const Vector2f& end_pos,
-                                   const Color start_color, const Color end_color)
-{
-    static const float large_number = 1e5;
-
-    Vector2f delta  = end_pos - start_pos;
-    const float mag = delta.magnitude();
-    if (mag == approx(0., 0.0001)) {
-        delta.x = 0;
-        delta.y = 1;
-    }
-    else {
-        delta.x /= mag;
-        delta.y /= mag;
-    }
-
-    Paint paint;
-    paint.xform[0][0]   = delta.y;
-    paint.xform[0][1]   = -delta.x;
-    paint.xform[1][0]   = delta.x;
-    paint.xform[1][1]   = delta.y;
-    paint.xform[2][0]   = start_pos.x - (delta.x * large_number);
-    paint.xform[2][1]   = start_pos.y - (delta.y * large_number);
-    paint.radius        = 0.0f;
-    paint.feather       = max(1.0f, mag);
-    paint.extent.width  = large_number;
-    paint.extent.height = large_number + (mag / 2);
-    paint.inner_color   = std::move(start_color);
-    paint.outer_color   = std::move(end_color);
-    return paint;
-}
-
-Paint Cell::create_radial_gradient(const Vector2f& center,
-                                   const float inner_radius, const float outer_radius,
-                                   const Color inner_color, const Color outer_color)
-{
-    Paint paint;
-    paint.xform         = Xform2f::translation(center);
-    paint.radius        = (inner_radius + outer_radius) * 0.5f;
-    paint.feather       = max(1.f, outer_radius - inner_radius);
-    paint.extent.width  = paint.radius;
-    paint.extent.height = paint.radius;
-    paint.inner_color   = std::move(inner_color);
-    paint.outer_color   = std::move(outer_color);
-    return paint;
-}
-
-Paint Cell::create_box_gradient(const Vector2f& center, const Size2f& extend,
-                                const float radius, const float feather,
-                                const Color inner_color, const Color outer_color)
-{
-    Paint paint;
-    paint.xform         = Xform2f::translation({center.x + extend.width / 2, center.y + extend.height / 2});
-    paint.radius        = radius;
-    paint.feather       = max(1.f, feather);
-    paint.extent.width  = extend.width / 2;
-    paint.extent.height = extend.height / 2;
-    paint.inner_color   = std::move(inner_color);
-    paint.outer_color   = std::move(outer_color);
-    return paint;
-}
-
-Paint Cell::create_texture_pattern(const Vector2f& top_left, const Size2f& extend,
-                                   std::shared_ptr<Texture2> texture,
-                                   const float angle, const float alpha)
-{
-    Paint paint;
-    paint.xform         = Xform2f::rotation(angle);
-    paint.xform[2][0]   = top_left.x;
-    paint.xform[2][1]   = top_left.y;
-    paint.extent.width  = extend.width;
-    paint.extent.height = extend.height;
-    paint.texture       = texture;
-    paint.inner_color   = Color(1, 1, 1, alpha);
-    paint.outer_color   = Color(1, 1, 1, alpha);
-    return paint;
-}
-
 void Cell::_butt_cap_start(const Point& point, const Vector2f& direction, const float stroke_width, const float d)
 {
     const float px = point.pos.x - direction.x * d;
@@ -1251,12 +1135,42 @@ void Cell::_round_join(const Point& previous_point, const Point& current_point, 
     }
 }
 
-/**
- * Compile-time sanity check.
- */
-static_assert(sizeof(Cell::Command) == sizeof(float),
-              "Floats on your system don't seem be to be 32 bits wide. "
-              "Adjust the type of the underlying type of CommandBuffer::Command to fit your particular system.");
+
+
+
+float Cell::poly_area(const std::vector<Point>& points, const size_t offset, const size_t count)
+{
+    float area           = 0;
+    const Cell::Point& a = points[0];
+    for (size_t index = offset + 2; index < offset + count; ++index) {
+        const Cell::Point& b = points[index - 1];
+        const Cell::Point& c = points[index];
+        area += (c.pos.x - a.pos.x) * (b.pos.y - a.pos.y) - (b.pos.x - a.pos.x) * (c.pos.y - a.pos.y);
+    }
+    return area / 2;
+}
+
+std::tuple<float, float, float, float>
+Cell::choose_bevel(bool is_beveling, const Point& prev_point, const Point& curr_point, const float stroke_width)
+{
+    float x0, y0, x1, y1;
+    if (is_beveling) {
+        x0 = curr_point.pos.x + prev_point.forward.y * stroke_width;
+        y0 = curr_point.pos.y - prev_point.forward.x * stroke_width;
+        x1 = curr_point.pos.x + curr_point.forward.y * stroke_width;
+        y1 = curr_point.pos.y - curr_point.forward.x * stroke_width;
+    }
+    else {
+        x0 = curr_point.pos.x + curr_point.dm.x * stroke_width;
+        y0 = curr_point.pos.y + curr_point.dm.y * stroke_width;
+        x1 = curr_point.pos.x + curr_point.dm.x * stroke_width;
+        y1 = curr_point.pos.y + curr_point.dm.y * stroke_width;
+    }
+    return std::make_tuple(x0, y0, x1, y1);
+}
+
+/** Transforms a Command to a float value that can be stored in the Command buffer. */
+float Cell::to_float(const Command command) { return static_cast<float>(to_number(command)); }
 
 } // namespace notf
 

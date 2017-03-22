@@ -48,6 +48,8 @@ const char* cell_fragment_shader =
 
 namespace notf {
 
+using detail::CellPath;
+
 RenderContext* RenderContext::s_current_context = nullptr;
 
 RenderContext::RenderContext(const Window* window, const RenderContextArguments args)
@@ -75,6 +77,11 @@ RenderContext::RenderContext(const Window* window, const RenderContextArguments 
     , m_vertex_array(0)
     , m_vertex_buffer(0)
 {
+    // make sure the pixel ratio is never zero
+    if(std::abs(m_args.pixel_ratio) < precision_high<float>()){
+        m_args.pixel_ratio = 0;
+    }
+
     //  create dynamic vertex arrays
     glGenVertexArrays(1, &m_vertex_array);
     glGenBuffers(1, &m_vertex_buffer);
@@ -194,7 +201,7 @@ void RenderContext::add_fill_call(const Paint& paint, const Cell& cell)
 
     //  this block is its own function in nanovg, called maxVertCount
     size_t new_vertex_count = 6; // + 6 for the quad that we construct further down
-    for (const Cell::Path& path : cell.get_paths()) {
+    for (const CellPath& path : cell.get_paths()) {
         new_vertex_count += path.fill_count;
         new_vertex_count += path.stroke_count;
     }
@@ -204,7 +211,7 @@ void RenderContext::add_fill_call(const Paint& paint, const Cell& cell)
     m_vertices.reserve(m_vertices.size() + new_vertex_count);
     m_paths.reserve(m_paths.size() + cell.get_paths().size());
 
-    for (const Cell::Path& path : cell.get_paths()) {
+    for (const CellPath& path : cell.get_paths()) {
         PathIndex path_index;
         if (path.fill_count != 0) {
             path_index.fillOffset = static_cast<GLint>(offset);
@@ -263,7 +270,7 @@ void RenderContext::add_stroke_call(const Paint& paint, const float stroke_width
     call.texture       = paint.texture;
 
     size_t new_vertex_count = 0;
-    for (const Cell::Path& path : cell.get_paths()) {
+    for (const CellPath& path : cell.get_paths()) {
         new_vertex_count += path.fill_count;
         new_vertex_count += path.stroke_count;
     }
@@ -272,7 +279,7 @@ void RenderContext::add_stroke_call(const Paint& paint, const float stroke_width
     m_vertices.reserve(m_vertices.size() + new_vertex_count);
     m_paths.reserve(m_paths.size() + cell.get_paths().size());
 
-    for (const Cell::Path& path : cell.get_paths()) {
+    for (const CellPath& path : cell.get_paths()) {
         PathIndex path_index;
         if (path.stroke_count != 0) {
             path_index.strokeOffset = static_cast<GLint>(offset);
@@ -306,7 +313,7 @@ void RenderContext::_paint_to_frag(FragmentUniforms& frag, const Paint& paint, c
 
     frag.innerCol = paint.inner_color.premultiplied();
     frag.outerCol = paint.outer_color.premultiplied();
-    if (scissor.extend.width < -0.5f || scissor.extend.height < -0.5f) { // extend cannot be less than a pixel
+    if (scissor.extend.width < 1.0f || scissor.extend.height < 1.0f) { // extend cannot be less than a pixel
         frag.scissorExt[0]   = 1.0f;
         frag.scissorExt[1]   = 1.0f;
         frag.scissorScale[0] = 1.0f;
@@ -314,8 +321,8 @@ void RenderContext::_paint_to_frag(FragmentUniforms& frag, const Paint& paint, c
     }
     else {
         xformToMat3x4(frag.scissorMat, scissor.xform.inverse());
-        frag.scissorExt[0]   = scissor.extend.width;
-        frag.scissorExt[1]   = scissor.extend.height;
+        frag.scissorExt[0]   = scissor.extend.width / 2;
+        frag.scissorExt[1]   = scissor.extend.height / 2;
         frag.scissorScale[0] = sqrt(scissor.xform[0][0] * scissor.xform[0][0] + scissor.xform[1][0] * scissor.xform[1][0]) / fringe;
         frag.scissorScale[1] = sqrt(scissor.xform[0][1] * scissor.xform[0][1] + scissor.xform[1][1] * scissor.xform[1][1]) / fringe;
     }

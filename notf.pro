@@ -148,6 +148,7 @@ SOURCES += \
     src/graphics/cell.cpp \
     src/graphics/stats.cpp \
     src/graphics/painter.cpp \
+    src/graphics/painter_new.cpp \
     src/graphics/text/font_manager.cpp \
     src/common/random.cpp \
     src/common/size2.cpp \
@@ -215,6 +216,7 @@ HEADERS += \
     include/graphics/blend_mode.hpp \
     include/graphics/gl_utils.hpp \
     include/graphics/render_context.hpp \
+    include/graphics/painter_new.hpp \
     include/graphics/painter.hpp \
     include/graphics/stats.hpp \
     include/graphics/cell.hpp \
