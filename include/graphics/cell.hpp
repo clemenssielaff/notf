@@ -224,6 +224,11 @@ public: // methods
     // nanovg has a function `nvgIntersectScissor` that tries to approximate the intersection of two (not aligned)
     // rectangles ... I leave that out for now
 
+
+
+
+    //
+
     void begin_path();
 
     void move_to(const Vector2f pos) { move_to(pos.x, pos.y); }

@@ -78,6 +78,16 @@ public: // static methods
 
 /**********************************************************************************************************************/
 
+/**
+ * Paths
+ * =====
+ * Painting using the Painter class is done in several stages.
+ * First, you define a "Path" using methods like `add_rect` and `add_circle`.
+ * The combination of all Paths will be used to render the shape when calling `fill` or `stroke`.
+ * In order to remove the current Path and start a new one call `begin_path`.
+ * Calling `close_path` at the end of the Path definition is only necessary, if the current Shape is not already closed.
+ * For example, if you construct a Path using bezier or quadratic curves.
+ */
 class Painter {
 
 public: // enums
@@ -150,7 +160,26 @@ private: // types
         float stroke_width;
     };
 
+    /******************************************************************************************************************/
+
+    /** Command identifyers, type must be of the same size as a float. */
+    enum class Command : uint32_t {
+        MOVE = 0,
+        LINE,
+        BEZIER,
+        WINDING,
+        CLOSE,
+    };
+    static_assert(sizeof(Command) == sizeof(float),
+                  "Floats on your system don't seem be to be 32 bits wide. "
+                  "Adjust the type of the underlying type of Painter::Command to fit your particular system.");
+
+    /** Transforms a Command to a float value that can be stored in the Command buffer. */
+    static float _to_float(const Command command);
+
 private: // methods
+    /******************************************************************************************************************/
+
     /** Value Constructor. */
     Painter(Cell& cell, const RenderContext& context);
 
@@ -261,88 +290,66 @@ public: // methods
     /** Changes the stroke width of the Painter. */
     void set_stroke_width(const float width) { _get_current_state().stroke_width = max(0.f, width); }
 
-    /* Shapes *********************************************************************************************************/
+    /* Paths *********************************************************************************************************/
 
-    // TODO: CONTINUE HERE
-
+    /** Clears the existing Path, but keeps the Painter's state intact. */
     void begin_path();
 
+    /** Closes the current Path.
+     * Has no effect on Paths that are already closed (like those you get from `add_rect` etc.).
+     */
+    void close_path();
+
+    /** Changes the "Winding" of the current Path. */
     void set_winding(const Winding winding);
 
+    /** Moves the stylus to a given position without creating a path. */
+    void move_to(const float x, const float y);
     void move_to(const Vector2f& pos) { move_to(pos.x, pos.y); }
 
-    void move_to(const float x, const float y);
-
+    /** Moves the stylus to a given position and creates a straight line. */
+    void line_to(const float x, const float y);
     void line_to(const Vector2f& pos) { line_to(pos.x, pos.y); }
 
-    void line_to(const float x, const float y);
-
-    void bezier_to(const Vector2f& ctrl1, const Vector2f& ctrl2, const Vector2f& end)
-    {
-        bezier_to(ctrl1.x, ctrl1.y, ctrl2.x, ctrl2.y, end.x, end.y);
-    }
-
-    void bezier_to(const float c1x, const float c1y, const float c2x, const float c2y, const float tx, const float ty);
-
-    void add_rect(const Aabrf& rect) { add_rect(rect.left(), rect.top(), rect.width(), rect.height()); }
-
-    void add_rect(const float x, const float y, const float w, const float h);
-
-    void add_ellipse(const Vector2f& center, const Size2f& extend)
-    {
-        add_ellipse(center.x, center.y, extend.width, extend.height);
-    }
-
-    void add_ellipse(const float cx, const float cy, const float rx, const float ry);
-
-    void add_circle(const float cx, const float cy, const float radius)
-    {
-        add_ellipse(cx, cy, radius, radius);
-    }
-
-    void add_circle(const Vector2f& center, const float radius)
-    {
-        add_ellipse(center.x, center.y, radius, radius);
-    }
-
-    void quad_to(const Vector2f& ctrl, const Vector2f& end)
-    {
-        quad_to(ctrl.x, ctrl.y, end.x, end.y);
-    }
-
+    /** Moves the stylus to `end` and draws a quadratic spline from the current postion over the given control point. */
     void quad_to(const float cx, const float cy, const float tx, const float ty);
+    void quad_to(const Vector2f& ctrl, const Vector2f& end) { quad_to(ctrl.x, ctrl.y, end.x, end.y); }
 
-    void add_rounded_rect(const Aabrf& rect, const float radius)
-    {
-        add_rounded_rect(rect.left(), rect.top(), rect.width(), rect.height(), radius, radius, radius, radius);
-    }
+    /** Moves the stylus to `end` and draws a bezier spline from the current postion over the two control points. */
+    void bezier_to(const float c1x, const float c1y, const float c2x, const float c2y, const float tx, const float ty);
+    void bezier_to(const Vector2f& ctrl1, const Vector2f& ctrl2, const Vector2f& end) { bezier_to(ctrl1.x, ctrl1.y, ctrl2.x, ctrl2.y, end.x, end.y); }
 
-    void add_rounded_rect(const float x, const float y, const float w, const float h, const float radius)
-    {
-        add_rounded_rect(x, y, w, h, radius, radius, radius, radius);
-    }
+    /** Creates an arc Path, used to create parts of circles.
+     * @see             https://www.w3schools.com/tags/canvas_arc.asp
+     */
+    void arc(const float x, const float y, const float r, const float start_angle, const float end_angle, const Winding dir = Winding::CCW);
+    void arc(const Vector2f& center, const float radius, const float start_angle, const float end_angle, const Winding dir = Winding::CCW) { arc(center.x, center.y, radius, start_angle, end_angle, dir); }
 
-    void add_rounded_rect(const float x, const float y, const float w, const float h,
-                          const float rtl, const float rtr, const float rbr, const float rbl);
-
-    void arc_to(const Vector2f& tangent, const Vector2f& end, const float radius);
-
-    /** Create an arc between two tangents on the canvas.
-     * @param x1        X-coordinate of the first tangent.
-     * @param y1        Y-coordinate of the first tangent.
-     * @param x2        X-coordinate of the second tangent.
-     * @param y2        Y-coordinate of the second tangent.
+    /** Create an open, arc between two tangents on the canvas.
+     * @param tangent   Position defining the start tangent vector (from the current stylus position).
+     * @param end       End position of the arc.
      * @param radius    Radius of the arc.
      * @see             http://www.w3schools.com/tags/canvas_arcto.asp
      */
-    void arc_to(const float x1, const float y1, const float x2, const float y2, const float radius)
-    {
-        arc_to({x1, y1}, {x2, y2}, radius);
-    }
+    void arc_to(const Vector2f& tangent, const Vector2f& end, const float radius);
+    void arc_to(const float x1, const float y1, const float x2, const float y2, const float radius) { arc_to({x1, y1}, {x2, y2}, radius); }
 
-    void arc(float cx, float cy, float r, float a0, float a1, Winding dir);
+    /** Creates a new rectangular Path. */
+    void add_rect(const float x, const float y, const float w, const float h);
+    void add_rect(const Aabrf& rect) { add_rect(rect.left(), rect.top(), rect.width(), rect.height()); }
 
-    void close_path();
+    /** Creates a new rectangular Path with rounded corners. */
+    void add_rounded_rect(const float x, const float y, const float w, const float h, const float rtl, const float rtr, const float rbr, const float rbl);
+    void add_rounded_rect(const Aabrf& rect, const float radius) { add_rounded_rect(rect.left(), rect.top(), rect.width(), rect.height(), radius, radius, radius, radius); }
+    void add_rounded_rect(const float x, const float y, const float w, const float h, const float radius) { add_rounded_rect(x, y, w, h, radius, radius, radius, radius); }
+
+    /** Creates a new elliptic Path. */
+    void add_ellipse(const float cx, const float cy, const float rx, const float ry);
+    void add_ellipse(const Vector2f& center, const Size2f& extend) { add_ellipse(center.x, center.y, extend.width, extend.height); }
+
+    /** Creates a new circular Path. */
+    void add_circle(const float cx, const float cy, const float radius) { add_ellipse(cx, cy, radius, radius); }
+    void add_circle(const Vector2f& center, const float radius) { add_ellipse(center.x, center.y, radius, radius); }
 
 private: // methods
     /** The current State of the Painter. */
@@ -352,11 +359,15 @@ private: // methods
         return m_states.back();
     }
 
+    /** The current State of the Painter. */
     const State& _get_current_state() const
     {
         assert(!m_states.empty());
         return m_states.back();
     }
+
+    /** Appends new Commands to the buffer. */
+    void _append_commands(std::vector<float>&& commands);
 
 private: // fields
     /** Cell, that this Painter is painting into. */
@@ -364,6 +375,9 @@ private: // fields
 
     /** Stack of Painter States. */
     std::vector<State> m_states;
+
+    /** Current position of the 'stylus', as the last Command left it. */
+    Vector2f m_stylus;
 
     const float m_tesselation_tolerance;
 

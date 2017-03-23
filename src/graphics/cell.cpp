@@ -9,7 +9,7 @@
 namespace { // anonymous
 using namespace notf;
 
-void transform_command_point(const Xform2f& xform, std::vector<float>& commands, size_t index)
+void transform_command_pos(const Xform2f& xform, std::vector<float>& commands, size_t index)
 {
     assert(commands.size() >= index + 2);
     Vector2f& point = *reinterpret_cast<Vector2f*>(&commands[index]);
@@ -117,15 +117,15 @@ void Cell::_append_commands(std::vector<float>&& commands)
 
         case Command::MOVE:
         case Command::LINE: {
-            transform_command_point(xform, commands, i + 1);
+            transform_command_pos(xform, commands, i + 1);
             m_stylus = *reinterpret_cast<Vector2f*>(&commands[i + 1]);
             i += 3;
         } break;
 
         case Command::BEZIER: {
-            transform_command_point(xform, commands, i + 1);
-            transform_command_point(xform, commands, i + 3);
-            transform_command_point(xform, commands, i + 5);
+            transform_command_pos(xform, commands, i + 1);
+            transform_command_pos(xform, commands, i + 3);
+            transform_command_pos(xform, commands, i + 5);
             m_stylus = *reinterpret_cast<Vector2f*>(&commands[i + 5]);
             i += 7;
         } break;
@@ -219,14 +219,13 @@ void Cell::arc(float cx, float cy, float r, float a0, float a1, Winding dir)
 {
     // clamp angles
     float da = a1 - a0;
+//    float da = norm_angle(a1 - a0 - static_cast<float>(PI)) + static_cast<float>(PI);
     if (dir == Winding::CLOCKWISE) {
         if (abs(da) >= TWO_PI) {
             da = TWO_PI;
         }
         else {
-            while (da < 0) {
-                da += TWO_PI;
-            }
+            da = norm_angle(a1 - a0 - static_cast<float>(PI)) + static_cast<float>(PI);
         }
     }
     else {
@@ -234,9 +233,7 @@ void Cell::arc(float cx, float cy, float r, float a0, float a1, Winding dir)
             da = -TWO_PI;
         }
         else {
-            while (da > 0) {
-                da -= TWO_PI;
-            }
+            da = norm_angle(a1 - a0 + static_cast<float>(PI)) - static_cast<float>(PI);
         }
     }
 
