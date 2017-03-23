@@ -164,11 +164,16 @@ private: // types
 
     /** Command identifyers, type must be of the same size as a float. */
     enum class Command : uint32_t {
-        MOVE = 0,
-        LINE,
-        BEZIER,
+        PUSH_STATE,
+        POP_STATE,
+        RESET,
         WINDING,
         CLOSE,
+        MOVE,
+        LINE,
+        BEZIER,
+        FILL,
+        STROKE,
     };
     static_assert(sizeof(Command) == sizeof(float),
                   "Floats on your system don't seem be to be 32 bits wide. "
@@ -196,8 +201,6 @@ public: // methods
      * @return  Stack index of the new (old) State.
      */
     size_t pop_state();
-
-    /* State changes **************************************************************************************************/
 
     /* Transform ******************************************/
 
@@ -351,6 +354,14 @@ public: // methods
     void add_circle(const float cx, const float cy, const float radius) { add_ellipse(cx, cy, radius, radius); }
     void add_circle(const Vector2f& center, const float radius) { add_ellipse(center.x, center.y, radius, radius); }
 
+    /* Painting *******************************************************************************************************/
+
+    /** Fills the current Path with the Paint defined in the Painter's current State. */
+    void fill();
+
+    /** Strokes the current Path with the Paint defined in the Painter's current State. */
+    void stroke();
+
 private: // methods
     /** The current State of the Painter. */
     State& _get_current_state()
@@ -365,6 +376,9 @@ private: // methods
         assert(!m_states.empty());
         return m_states.back();
     }
+
+    /** Resets the current Path of the Painter without changing its State. */
+    void _reset_path();
 
     /** Appends new Commands to the buffer. */
     void _append_commands(std::vector<float>&& commands);

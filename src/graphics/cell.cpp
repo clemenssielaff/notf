@@ -218,32 +218,19 @@ void Cell::arc_to(const Vector2f tangent, const Vector2f end, const float radius
 void Cell::arc(float cx, float cy, float r, float a0, float a1, Winding dir)
 {
     // clamp angles
-    float da = a1 - a0;
-//    float da = norm_angle(a1 - a0 - static_cast<float>(PI)) + static_cast<float>(PI);
-    if (dir == Winding::CLOCKWISE) {
-        if (abs(da) >= TWO_PI) {
-            da = TWO_PI;
-        }
-        else {
-            da = norm_angle(a1 - a0 - static_cast<float>(PI)) + static_cast<float>(PI);
-        }
+    float da;
+    if (dir == Winding::CLOCKWISE){
+        da = norm_angle(a1 - a0 - static_cast<float>(PI)) + static_cast<float>(PI);
+    } else {
+        da = norm_angle(a1 - a0 + static_cast<float>(PI)) - static_cast<float>(PI);
     }
-    else {
-        if (abs(da) <= -TWO_PI) {
-            da = -TWO_PI;
-        }
-        else {
-            da = norm_angle(a1 - a0 + static_cast<float>(PI)) - static_cast<float>(PI);
-        }
-    }
-
     // split the arc into <= 90deg segments
-    const float ndivs = max(1.f, min(ceilf(abs(da) / HALF_PI), 5.f));
+    const float ndivs = max(1.f, min(ceilf(abs(da) / static_cast<float>(HALF_PI)), 5.f));
     const float hda   = (da / ndivs) / 2;
-    const float kappa = abs(4.0f / 3.0f * (1.0f - cos(hda)) / sin(hda)) * (dir == Winding::CLOCKWISE ? 1 : -1);
+    const float kappa = abs(4.f / 3.f * (1.0f - cos(hda)) / sin(hda)) * (dir == Winding::CLOCKWISE ? 1 : -1);
 
     // create individual commands
-    std::vector<float> commands((static_cast<size_t>(ceilf(ndivs))) * 7 + 3);
+    std::vector<float> commands(static_cast<size_t>(ceilf(ndivs)) * 7 + 3);
     size_t command_index = 0;
     float px = 0, py = 0, ptanx = 0, ptany = 0;
     for (float i = 0; i <= ndivs; i++) {
@@ -274,7 +261,6 @@ void Cell::arc(float cx, float cy, float r, float a0, float a1, Winding dir)
         ptanx = tanx;
         ptany = tany;
     }
-
     _append_commands(std::move(commands));
 }
 
@@ -330,7 +316,7 @@ void Cell::close_path()
     _append_commands({to_float(Command::CLOSE)});
 }
 
-void Cell::fill(RenderContext& context) // TODO: the cell is already "seeded" with the Context since you have to call Cell::reset(context) at the beginning
+void Cell::fill(RenderContext& context)
 {
     const RenderState& state = _get_current_state();
     Paint fill_paint         = state.fill;

@@ -150,13 +150,14 @@ Painter::Painter(Cell& cell, const RenderContext& context)
     , m_fringe_width(1.f / context.get_pixel_ratio())
 {
     //    m_cell.reset();
-    begin_path();
+    _reset_path();
 }
 
 size_t Painter::push_state()
 {
     assert(!m_states.empty());
     m_states.emplace_back(m_states.back());
+    _append_commands({_to_float(Command::PUSH_STATE)});
     return m_states.size() - 1;
 }
 
@@ -169,6 +170,7 @@ size_t Painter::pop_state()
         m_states.back() = State();
     }
     assert(!m_states.empty());
+    _append_commands({_to_float(Command::POP_STATE)});
     return m_states.size() - 1;
 }
 
@@ -182,9 +184,7 @@ void Painter::set_scissor(const Aabrf& aabr)
 
 void Painter::begin_path()
 {
-    s_commands.clear();
-    m_points.clear();
-    m_stylus = Vector2f::zero();
+    _append_commands({_to_float(Command::RESET)});
 }
 
 void Painter::close_path()
@@ -228,35 +228,21 @@ void Painter::bezier_to(const float c1x, const float c1y, const float c2x, const
 void Painter::arc(float cx, float cy, float r, float a0, float a1, Winding dir)
 {
     // clamp angles
-    float da = a1 - a0;
+    float da;
     if (dir == Winding::CLOCKWISE) {
-        if (abs(da) >= TWO_PI) {
-            da = TWO_PI;
-        }
-        else {
-            while (da < 0) {
-                da += TWO_PI;
-            }
-        }
+        da = norm_angle(a1 - a0 - static_cast<float>(PI)) + static_cast<float>(PI);
     }
     else {
-        if (abs(da) <= -TWO_PI) {
-            da = -TWO_PI;
-        }
-        else {
-            while (da > 0) {
-                da -= TWO_PI;
-            }
-        }
+        assert(dir == Winding::COUNTERCLOCKWISE);
+        da = norm_angle(a1 - a0 + static_cast<float>(PI)) - static_cast<float>(PI);
     }
-
     // split the arc into <= 90deg segments
-    const float ndivs = max(1.f, min(ceilf(abs(da) / HALF_PI), 5.f));
+    const float ndivs = max(1.f, min(ceilf(abs(da) / static_cast<float>(HALF_PI)), 5.f));
     const float hda   = (da / ndivs) / 2;
-    const float kappa = abs(4.0f / 3.0f * (1.0f - cos(hda)) / sin(hda)) * (dir == Winding::CLOCKWISE ? 1 : -1);
+    const float kappa = abs(4.f / 3.f * (1.0f - cos(hda)) / sin(hda)) * (dir == Winding::CLOCKWISE ? 1 : -1);
 
     // create individual commands
-    std::vector<float> commands((static_cast<size_t>(ceilf(ndivs))) * 7 + 3);
+    std::vector<float> commands(static_cast<size_t>(ceilf(ndivs)) * 7 + 3);
     size_t command_index = 0;
     float px = 0, py = 0, ptanx = 0, ptany = 0;
     for (float i = 0; i <= ndivs; i++) {
@@ -287,7 +273,6 @@ void Painter::arc(float cx, float cy, float r, float a0, float a1, Winding dir)
         ptanx = tanx;
         ptany = tany;
     }
-
     _append_commands(std::move(commands));
 }
 
@@ -379,6 +364,23 @@ void Painter::add_ellipse(const float cx, const float cy, const float rx, const 
                       _to_float(Command::CLOSE)});
 }
 
+void Painter::fill()
+{
+    _append_commands({_to_float(Command::FILL)});
+}
+
+void Painter::stroke()
+{
+    _append_commands({_to_float(Command::STROKE)});
+}
+
+void Painter::_reset_path()
+{
+    s_commands.clear();
+    m_points.clear();
+    m_stylus = Vector2f::zero();
+}
+
 void Painter::_append_commands(std::vector<float>&& commands)
 {
     if (commands.empty()) {
@@ -388,7 +390,7 @@ void Painter::_append_commands(std::vector<float>&& commands)
 
     // commands operate in the context's current transformation space, but we need them in global space
     const Xform2f& xform = _get_current_state().xform;
-    for (size_t i = 0; i < commands.size();) {
+    for (size_t i = 0; i < commands.size(); ++i) {
         Command command = static_cast<Command>(commands[i]);
         switch (command) {
 
@@ -396,7 +398,7 @@ void Painter::_append_commands(std::vector<float>&& commands)
         case Command::LINE: {
             transform_command_pos(commands, i + 1, xform);
             m_stylus = *reinterpret_cast<Vector2f*>(&commands[i + 1]);
-            i += 3;
+            i += 2;
         } break;
 
         case Command::BEZIER: {
@@ -404,19 +406,23 @@ void Painter::_append_commands(std::vector<float>&& commands)
             transform_command_pos(commands, i + 3, xform);
             transform_command_pos(commands, i + 5, xform);
             m_stylus = *reinterpret_cast<Vector2f*>(&commands[i + 5]);
-            i += 7;
+            i += 6;
         } break;
 
         case Command::WINDING:
-            i += 2;
-            break;
-
-        case Command::CLOSE:
             i += 1;
             break;
 
+        case Command::PUSH_STATE:
+        case Command::POP_STATE:
+        case Command::RESET:
+        case Command::CLOSE:
+        case Command::FILL:
+        case Command::STROKE:
+            break;
+
         default:
-            assert(0);
+            assert(0); // unexpected enum
         }
     }
 
