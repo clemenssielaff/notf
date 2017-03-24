@@ -1,14 +1,64 @@
+/*
+ * The NoTF painting pipeline
+ * ==========================
+ *
+ * When drawing Widgets with NoTF, the internal process goes through several stages.
+ * The whole process is closely designed after the way nanovg (https://github.com/memononen/nanovg) handles its
+ * rendering, but adds a level of caching intermediate data for faster redrawing of unchanged Widgets.
+ *
+ * Commands
+ * ========
+ * Most public functions accessible on a Painter do not immediately do what their documentation sais, but instead create
+ * `commands` and stack them on the Painter's `command stack`.
+ * These `commands` are not the Commands NoTF uses for user interaction, think of them like bytecode that the Painter
+ * executes when it creates Paths.
+ * That means that they are very fast to execute, even when called from Python.
+ *
+ * PainterPoints and PainterPaths
+ * ==============================
+ * After the Painter finished building its `command stack`, it is executed.
+ * The final goal of the process is to create and store vertices in the Cell so that it can be rendered in OpenGL.
+ * However, in order to reason about the user's intention, the execution of `commands` does not produce vertices
+ * directly, but creates an intermediate representation: `PainterPoints` and `PainterPaths`.
+ * While the user thinks of "paths" as shapes that can be built, combined and eventually filled or stroked, a
+ * `PainterPath` object in the Painter implementation is simply a range of `PainterPoints`.
+ *
+ */
+
 #include "graphics/painter_new.hpp"
 
 #include "common/line2.hpp"
 #include "graphics/render_context.hpp"
+#include "utils/range.hpp"
 
 namespace { // anonymous
 using namespace notf;
 
 /**********************************************************************************************************************/
 
-struct Point {
+/** Command identifyers, type must be of the same size as a float. */
+enum class Command : uint32_t {
+    NEXT_STATE,
+    RESET,
+    WINDING,
+    CLOSE,
+    MOVE,
+    LINE,
+    BEZIER,
+    FILL,
+    STROKE,
+};
+
+static_assert(sizeof(Command) == sizeof(float),
+              "Floats on your system don't seem be to be 32 bits wide. "
+              "Adjust the type of the underlying type of Painter::Command to fit your particular system.");
+
+/** Transforms a Command to a float value that can be stored in the Command buffer. */
+float to_float(const Command command) { return static_cast<float>(to_number(command)); }
+
+/**********************************************************************************************************************/
+
+struct PainterPoint {
     enum Flags : uint {
         NONE       = 0,
         CORNER     = 1u << 1,
@@ -35,18 +85,194 @@ struct Point {
 
 /**********************************************************************************************************************/
 
+struct PainterPath {
+
+    PainterPath(std::vector<PainterPoint>& points)
+        : range(make_range(points, points.size(), points.size()))
+        , is_closed(false)
+        , winding(Painter::Winding::COUNTERCLOCKWISE)
+    {
+    }
+
+    /** Range of Points that make up this Path. */
+    Range<std::vector<PainterPoint>::iterator> range;
+
+    /** Whether this Path is closed or not.
+     * Closed Paths will draw an additional line between their last and first Point.
+     */
+    bool is_closed;
+
+    /** What direction the Path is wound. */
+    Painter::Winding winding;
+};
+
+/**********************************************************************************************************************/
+
+/** The Painter class makes use of a lot of stacks: Commands, Points and Paths.
+ * Instead of reallocating new vectors for each Painter, they all share the same vectors.
+ * This way, we should keep memory use and - dynamic allocation to a minimum.
+ * The PainterData is currently represented by a single, static and global object `g_data` which is fine as long as
+ * `Painter` is used in a single-threaded enivironment.
+ * If we decide to multi-thread Painter, there should be one PainterData object per thread.
+ */
+struct PainterData {
+
+    void clear()
+    {
+        paths.clear();
+        points.clear();
+        commands.clear();
+    }
+
+    /** Appends a new Point to the current Path. */
+    void add_point(const Vector2f position, const PainterPoint::Flags flags)
+    {
+        assert(!paths.empty());
+
+        // if the point is not significantly different from the last one, use that instead.
+        if (!points.empty()) {
+            PainterPoint& last_point = points.back();
+            if (position.is_approx(last_point.pos, distance_tolerance)) {
+                last_point.flags = static_cast<PainterPoint::Flags>(last_point.flags | flags);
+                return;
+            }
+        }
+
+        // otherwise append create a new point to the current path
+        points.emplace_back(PainterPoint{std::move(position), Vector2f::zero(), Vector2f::zero(), 0.f, flags});
+        paths.back().range.grow_one();
+    }
+
+    /** Creates a new, empty Path. */
+    void add_path() { paths.emplace_back(points); }
+
+public: // fields
+    /** Bytecode-like instructions, separated by COMMAND values. */
+    std::vector<float> commands;
+
+    /** Points making up the Painter Paths. */
+    std::vector<PainterPoint> points;
+
+    /** Intermediate representation of the Painter Paths. */
+    std::vector<PainterPath> paths;
+
+    /** Furthest distance between two points in which the second point is considered equal to the first. */
+    float distance_tolerance;
+
+    /** Tesselation density when creating rounded shapes. */
+    float tesselation_tolerance;
+
+    float fringe_width;
+};
+
+PainterData g_data;
+
+/**********************************************************************************************************************/
+
+/** Returns a Vector2f reference into the Command buffer without data allocation. */
+Vector2f& as_vector2f(std::vector<float>& commands, size_t index)
+{
+    assert(index + 1 < commands.size());
+    return *reinterpret_cast<Vector2f*>(&commands[index]);
+}
+
 /** Extracts a position from the given command buffer and applies a given transformation to it in-place. */
 void transform_command_pos(std::vector<float>& commands, size_t index, const Xform2f& xform)
 {
     assert(commands.size() >= index + 2);
-    Vector2f& vector = *reinterpret_cast<Vector2f*>(&commands[index]);
+    Vector2f& vector = as_vector2f(commands, index);
     vector           = xform.transform(vector);
 }
 
-/**********************************************************************************************************************/
+/** Tesellates a Bezier curve.
+ * Note that I am using the (experimental) improvement on the standard nanovg tesselation algorithm here,
+ * as found at: https://github.com/memononen/nanovg/issues/328
+ * If there seems to be an issue with the tesselation, revert back to the "official" implementation.
+ */
+void tesselate_bezier(const float x1, const float y1, const float x2, const float y2,
+                      const float x3, const float y3, const float x4, const float y4)
+{
+    static const int one = 1 << 10;
 
-/** Intermediate representation of the drawn shapes. */
-std::vector<Point> m_points;
+    // Power basis.
+    const float ax = -x1 + 3 * x2 - 3 * x3 + x4;
+    const float ay = -y1 + 3 * y2 - 3 * y3 + y4;
+    const float bx = 3 * x1 - 6 * x2 + 3 * x3;
+    const float by = 3 * y1 - 6 * y2 + 3 * y3;
+    const float cx = -3 * x1 + 3 * x2;
+    const float cy = -3 * y1 + 3 * y2;
+
+    // Transform to forward difference basis (stepsize 1)
+    float px   = x1;
+    float py   = y1;
+    float dx   = ax + bx + cx;
+    float dy   = ay + by + cy;
+    float ddx  = 6 * ax + 2 * bx;
+    float ddy  = 6 * ay + 2 * by;
+    float dddx = 6 * ax;
+    float dddy = 6 * ay;
+
+    int t           = 0;
+    int dt          = one;
+    const float tol = g_data.tesselation_tolerance * 4.f;
+
+    while (t < one) {
+
+        // flatness measure (guessed)
+        float d = ddx * ddx + ddy * ddy + dddx * dddx + dddy * dddy;
+
+        // go to higher resolution if we're moving a lot, or overshooting the end.
+        while ((d > tol && dt > 1) || (t + dt > one)) {
+
+            // apply L to the curve. Increase curve resolution.
+            dx   = .5f * dx - (1.f / 8.f) * ddx + (1.f / 16.f) * dddx;
+            dy   = .5f * dy - (1.f / 8.f) * ddy + (1.f / 16.f) * dddy;
+            ddx  = (1.f / 4.f) * ddx - (1.f / 8.f) * dddx;
+            ddy  = (1.f / 4.f) * ddy - (1.f / 8.f) * dddy;
+            dddx = (1.f / 8.f) * dddx;
+            dddy = (1.f / 8.f) * dddy;
+
+            // half the stepsize.
+            dt >>= 1;
+
+            d = ddx * ddx + ddy * ddy + dddx * dddx + dddy * dddy;
+        }
+
+        // go to lower resolution if we're really flat and we aren't going to overshoot the end.
+        // tol/32 is just a guess for when we are too flat.
+        while ((d > 0 && d < tol / 32.f && dt < one) && (t + 2 * dt <= one)) {
+
+            // apply L^(-1) to the curve. Decrease curve resolution.
+            dx   = 2 * dx + ddx;
+            dy   = 2 * dy + ddy;
+            ddx  = 4 * ddx + 4 * dddx;
+            ddy  = 4 * ddy + 4 * dddy;
+            dddx = 8 * dddx;
+            dddy = 8 * dddy;
+
+            // double the stepsize.
+            dt <<= 1;
+
+            d = ddx * ddx + ddy * ddy + dddx * dddx + dddy * dddy;
+        }
+
+        // forward differencing.
+        px += dx;
+        py += dy;
+        dx += ddx;
+        dy += ddy;
+        ddx += dddx;
+        ddy += dddy;
+
+        g_data.add_point({px, py}, (t > 0 ? PainterPoint::Flags::CORNER : PainterPoint::Flags::NONE));
+
+        // advance along the curve.
+        t += dt;
+        assert(t <= one);
+    }
+}
+
+/**********************************************************************************************************************/
 
 /** Length of a bezier control vector to draw a circle with radius 1. */
 static const float KAPPAf = static_cast<float>(KAPPA);
@@ -137,41 +363,57 @@ Paint Paint::create_texture_pattern(const Vector2f& top_left, const Size2f& exte
 
 /**********************************************************************************************************************/
 
-std::vector<float> Painter::s_commands;
-
-float Painter::_to_float(const Command command) { return static_cast<float>(to_number(command)); }
+std::vector<Painter::State> Painter::s_states;
+std::vector<size_t> Painter::s_state_succession;
 
 Painter::Painter(Cell& cell, const RenderContext& context)
     : m_cell(cell)
-    , m_states({State()})
-    , m_stylus()
-    , m_tesselation_tolerance(0.25f / context.get_pixel_ratio())
-    , m_distance_tolerance(0.01f / context.get_pixel_ratio())
-    , m_fringe_width(1.f / context.get_pixel_ratio())
+    , m_stylus(Vector2f::zero())
+    , m_state_index(0)
 {
-    //    m_cell.reset();
-    _reset_path();
+    // states
+    s_states.clear();
+    s_states.emplace_back();
+    s_state_succession.clear();
+    s_state_succession.emplace_back(0);
+
+    // data
+    const float pixel_ratio = context.get_pixel_ratio();
+    assert(abs(pixel_ratio) > 0);
+    g_data.clear();
+    g_data.distance_tolerance    = 0.01f / pixel_ratio;
+    g_data.tesselation_tolerance = 0.25f / pixel_ratio;
+    g_data.fringe_width          = 1.f / pixel_ratio;
 }
 
 size_t Painter::push_state()
 {
-    assert(!m_states.empty());
-    m_states.emplace_back(m_states.back());
-    _append_commands({_to_float(Command::PUSH_STATE)});
-    return m_states.size() - 1;
+    size_t stack_height  = 2;
+    State& current_state = _get_current_state();
+    for (size_t prev_index = current_state.previous_state; prev_index != State::INVALID_INDEX; ++stack_height) {
+        prev_index = s_states[prev_index].previous_state;
+    }
+    s_states.emplace_back(current_state);
+    s_states.back().previous_state = s_state_succession.back();
+    m_state_index = s_states.size() - 1;
+    s_state_succession.push_back(m_state_index);
+    _append_commands({to_float(Command::NEXT_STATE)});
+    return stack_height;
 }
 
 size_t Painter::pop_state()
 {
-    if (m_states.size() > 1) {
-        m_states.pop_back();
+    size_t stack_height = 1;
+    if (s_state_succession.size() == 1) {
+        return stack_height;
     }
-    else {
-        m_states.back() = State();
+    m_state_index = _get_current_state().previous_state;
+    s_state_succession.push_back(m_state_index);
+    _append_commands({to_float(Command::NEXT_STATE)});
+    for (size_t prev_index = _get_current_state().previous_state; prev_index != State::INVALID_INDEX; ++stack_height) {
+        prev_index = s_states[prev_index].previous_state;
     }
-    assert(!m_states.empty());
-    _append_commands({_to_float(Command::POP_STATE)});
-    return m_states.size() - 1;
+    return stack_height;
 }
 
 void Painter::set_scissor(const Aabrf& aabr)
@@ -184,33 +426,33 @@ void Painter::set_scissor(const Aabrf& aabr)
 
 void Painter::begin_path()
 {
-    _append_commands({_to_float(Command::RESET)});
+    _append_commands({to_float(Command::RESET)});
 }
 
 void Painter::close_path()
 {
-    _append_commands({_to_float(Command::CLOSE)});
+    _append_commands({to_float(Command::CLOSE)});
 }
 
 void Painter::set_winding(const Winding winding)
 {
-    _append_commands({_to_float(Command::WINDING), static_cast<float>(to_number(winding))});
+    _append_commands({to_float(Command::WINDING), static_cast<float>(to_number(winding))});
 }
 
 void Painter::move_to(const float x, const float y)
 {
-    _append_commands({_to_float(Command::MOVE), x, y});
+    _append_commands({to_float(Command::MOVE), x, y});
 }
 
 void Painter::line_to(const float x, const float y)
 {
-    _append_commands({_to_float(Command::LINE), x, y});
+    _append_commands({to_float(Command::LINE), x, y});
 }
 
 void Painter::quad_to(const float cx, const float cy, const float tx, const float ty)
 {
     _append_commands({
-        _to_float(Command::BEZIER),
+        to_float(Command::BEZIER),
         m_stylus.x + (2.f / 3.f) * (cx - m_stylus.x),
         m_stylus.y + (2.f / 3.f) * (cy - m_stylus.y),
         tx + (2.f / 3.f) * (cx - tx),
@@ -222,7 +464,7 @@ void Painter::quad_to(const float cx, const float cy, const float tx, const floa
 
 void Painter::bezier_to(const float c1x, const float c1y, const float c2x, const float c2y, const float tx, const float ty)
 {
-    _append_commands({_to_float(Command::BEZIER), c1x, c1y, c2x, c2y, tx, ty});
+    _append_commands({to_float(Command::BEZIER), c1x, c1y, c2x, c2y, tx, ty});
 }
 
 void Painter::arc(float cx, float cy, float r, float a0, float a1, Winding dir)
@@ -255,12 +497,12 @@ void Painter::arc(float cx, float cy, float r, float a0, float a1, Winding dir)
         const float tanx = -dy * r * kappa;
         const float tany = dx * r * kappa;
         if (command_index == 0) {
-            commands[command_index++] = _to_float(s_commands.empty() ? Command::MOVE : Command::LINE);
+            commands[command_index++] = to_float(g_data.commands.empty() ? Command::MOVE : Command::LINE);
             commands[command_index++] = x;
             commands[command_index++] = y;
         }
         else {
-            commands[command_index++] = _to_float(Command::BEZIER);
+            commands[command_index++] = to_float(Command::BEZIER);
             commands[command_index++] = px + ptanx;
             commands[command_index++] = py + ptany;
             commands[command_index++] = x - tanx;
@@ -279,10 +521,10 @@ void Painter::arc(float cx, float cy, float r, float a0, float a1, Winding dir)
 void Painter::arc_to(const Vector2f& tangent, const Vector2f& end, const float radius)
 {
     // handle degenerate cases
-    if (radius < m_distance_tolerance
-        || m_stylus.is_approx(tangent, m_distance_tolerance)
-        || tangent.is_approx(end, m_distance_tolerance)
-        || Line2::from_points(m_stylus, end).closest_point(tangent).magnitude_sq() < (m_distance_tolerance * m_distance_tolerance)) {
+    if (radius < g_data.distance_tolerance
+        || m_stylus.is_approx(tangent, g_data.distance_tolerance)
+        || tangent.is_approx(end, g_data.distance_tolerance)
+        || Line2::from_points(m_stylus, end).closest_point(tangent).magnitude_sq() < (g_data.distance_tolerance * g_data.distance_tolerance)) {
         return line_to(end);
     }
 
@@ -321,11 +563,11 @@ void Painter::arc_to(const Vector2f& tangent, const Vector2f& end, const float r
 void Painter::add_rect(const float x, const float y, const float w, const float h)
 {
     _append_commands({
-        _to_float(Command::MOVE), x, y,
-        _to_float(Command::LINE), x, y + h,
-        _to_float(Command::LINE), x + w, y + h,
-        _to_float(Command::LINE), x + w, y,
-        _to_float(Command::CLOSE),
+        to_float(Command::MOVE), x, y,
+        to_float(Command::LINE), x, y + h,
+        to_float(Command::LINE), x + w, y + h,
+        to_float(Command::LINE), x + w, y,
+        to_float(Command::CLOSE),
     });
 }
 
@@ -342,43 +584,36 @@ void Painter::add_rounded_rect(const float x, const float y, const float w, cons
     const float rxBR = min(rbr, halfw) * sign(w), ryBR = min(rbr, halfh) * sign(h);
     const float rxTR = min(rtr, halfw) * sign(w), ryTR = min(rtr, halfh) * sign(h);
     const float rxTL = min(rtl, halfw) * sign(w), ryTL = min(rtl, halfh) * sign(h);
-    _append_commands({_to_float(Command::MOVE), x, y + ryTL,
-                      _to_float(Command::LINE), x, y + h - ryBL,
-                      _to_float(Command::BEZIER), x, y + h - ryBL * (1 - KAPPAf), x + rxBL * (1 - KAPPAf), y + h, x + rxBL, y + h,
-                      _to_float(Command::LINE), x + w - rxBR, y + h,
-                      _to_float(Command::BEZIER), x + w - rxBR * (1 - KAPPAf), y + h, x + w, y + h - ryBR * (1 - KAPPAf), x + w, y + h - ryBR,
-                      _to_float(Command::LINE), x + w, y + ryTR,
-                      _to_float(Command::BEZIER), x + w, y + ryTR * (1 - KAPPAf), x + w - rxTR * (1 - KAPPAf), y, x + w - rxTR, y,
-                      _to_float(Command::LINE), x + rxTL, y,
-                      _to_float(Command::BEZIER), x + rxTL * (1 - KAPPAf), y, x, y + ryTL * (1 - KAPPAf), x, y + ryTL,
-                      _to_float(Command::CLOSE)});
+    _append_commands({to_float(Command::MOVE), x, y + ryTL,
+                      to_float(Command::LINE), x, y + h - ryBL,
+                      to_float(Command::BEZIER), x, y + h - ryBL * (1 - KAPPAf), x + rxBL * (1 - KAPPAf), y + h, x + rxBL, y + h,
+                      to_float(Command::LINE), x + w - rxBR, y + h,
+                      to_float(Command::BEZIER), x + w - rxBR * (1 - KAPPAf), y + h, x + w, y + h - ryBR * (1 - KAPPAf), x + w, y + h - ryBR,
+                      to_float(Command::LINE), x + w, y + ryTR,
+                      to_float(Command::BEZIER), x + w, y + ryTR * (1 - KAPPAf), x + w - rxTR * (1 - KAPPAf), y, x + w - rxTR, y,
+                      to_float(Command::LINE), x + rxTL, y,
+                      to_float(Command::BEZIER), x + rxTL * (1 - KAPPAf), y, x, y + ryTL * (1 - KAPPAf), x, y + ryTL,
+                      to_float(Command::CLOSE)});
 }
 
 void Painter::add_ellipse(const float cx, const float cy, const float rx, const float ry)
 {
-    _append_commands({_to_float(Command::MOVE), cx - rx, cy,
-                      _to_float(Command::BEZIER), cx - rx, cy + ry * KAPPAf, cx - rx * KAPPAf, cy + ry, cx, cy + ry,
-                      _to_float(Command::BEZIER), cx + rx * KAPPAf, cy + ry, cx + rx, cy + ry * KAPPAf, cx + rx, cy,
-                      _to_float(Command::BEZIER), cx + rx, cy - ry * KAPPAf, cx + rx * KAPPAf, cy - ry, cx, cy - ry,
-                      _to_float(Command::BEZIER), cx - rx * KAPPAf, cy - ry, cx - rx, cy - ry * KAPPAf, cx - rx, cy,
-                      _to_float(Command::CLOSE)});
+    _append_commands({to_float(Command::MOVE), cx - rx, cy,
+                      to_float(Command::BEZIER), cx - rx, cy + ry * KAPPAf, cx - rx * KAPPAf, cy + ry, cx, cy + ry,
+                      to_float(Command::BEZIER), cx + rx * KAPPAf, cy + ry, cx + rx, cy + ry * KAPPAf, cx + rx, cy,
+                      to_float(Command::BEZIER), cx + rx, cy - ry * KAPPAf, cx + rx * KAPPAf, cy - ry, cx, cy - ry,
+                      to_float(Command::BEZIER), cx - rx * KAPPAf, cy - ry, cx - rx, cy - ry * KAPPAf, cx - rx, cy,
+                      to_float(Command::CLOSE)});
 }
 
 void Painter::fill()
 {
-    _append_commands({_to_float(Command::FILL)});
+    _append_commands({to_float(Command::FILL)});
 }
 
 void Painter::stroke()
 {
-    _append_commands({_to_float(Command::STROKE)});
-}
-
-void Painter::_reset_path()
-{
-    s_commands.clear();
-    m_points.clear();
-    m_stylus = Vector2f::zero();
+    _append_commands({to_float(Command::STROKE)});
 }
 
 void Painter::_append_commands(std::vector<float>&& commands)
@@ -386,7 +621,7 @@ void Painter::_append_commands(std::vector<float>&& commands)
     if (commands.empty()) {
         return;
     }
-    s_commands.reserve(s_commands.size() + commands.size());
+    g_data.commands.reserve(g_data.commands.size() + commands.size());
 
     // commands operate in the context's current transformation space, but we need them in global space
     const Xform2f& xform = _get_current_state().xform;
@@ -396,16 +631,17 @@ void Painter::_append_commands(std::vector<float>&& commands)
 
         case Command::MOVE:
         case Command::LINE: {
+            m_stylus = as_vector2f(commands, i + 1);
             transform_command_pos(commands, i + 1, xform);
-            m_stylus = *reinterpret_cast<Vector2f*>(&commands[i + 1]);
+            ;
             i += 2;
         } break;
 
         case Command::BEZIER: {
+            m_stylus = as_vector2f(commands, i + 5);
             transform_command_pos(commands, i + 1, xform);
             transform_command_pos(commands, i + 3, xform);
             transform_command_pos(commands, i + 5, xform);
-            m_stylus = *reinterpret_cast<Vector2f*>(&commands[i + 5]);
             i += 6;
         } break;
 
@@ -413,8 +649,7 @@ void Painter::_append_commands(std::vector<float>&& commands)
             i += 1;
             break;
 
-        case Command::PUSH_STATE:
-        case Command::POP_STATE:
+        case Command::NEXT_STATE:
         case Command::RESET:
         case Command::CLOSE:
         case Command::FILL:
@@ -427,7 +662,79 @@ void Painter::_append_commands(std::vector<float>&& commands)
     }
 
     // finally, append the new commands to the existing ones
-    std::move(commands.begin(), commands.end(), std::back_inserter(s_commands));
+    std::move(commands.begin(), commands.end(), std::back_inserter(g_data.commands));
+}
+
+// TODO: when this draws, revisit this function and see if you find a way to guarantee that there is always a path and point without if-statements all over the place
+void Painter::_execute()
+{
+    assert(!s_state_succession.empty());
+    m_state_index = s_state_succession[0];
+
+    // parse the command buffer
+    for (size_t index = 0; index < g_data.commands.size(); ++index) {
+        switch (static_cast<Command>(g_data.commands[index])) {
+
+        case Command::MOVE:
+            g_data.add_path();
+            g_data.add_point(as_vector2f(g_data.commands, index + 1), PainterPoint::Flags::CORNER);
+            index += 2;
+            break;
+
+        case Command::LINE:
+            if (g_data.paths.empty()) {
+                g_data.add_path();
+            }
+            g_data.add_point(as_vector2f(g_data.commands, index + 1), PainterPoint::Flags::CORNER);
+            index += 2;
+            break;
+
+        case Command::BEZIER:
+            if (g_data.paths.empty()) {
+                g_data.add_path();
+            }
+            if (g_data.points.empty()) {
+                g_data.add_point(Vector2f::zero(), PainterPoint::Flags::CORNER);
+            }
+            tesselate_bezier(g_data.points.back().pos.x, g_data.points.back().pos.y,
+                             g_data.commands[index + 1], g_data.commands[index + 2],
+                             g_data.commands[index + 3], g_data.commands[index + 4],
+                             g_data.commands[index + 5], g_data.commands[index + 6]);
+            index += 6;
+            break;
+
+        case Command::CLOSE:
+            if (!g_data.paths.empty()) {
+                g_data.paths.back().is_closed = true;
+            }
+            break;
+
+        case Command::WINDING:
+            if (!g_data.paths.empty()) {
+                g_data.paths.back().winding = static_cast<Winding>(g_data.commands[index + 1]);
+            }
+            index += 1;
+            break;
+
+        case Command::RESET:
+            g_data.paths.clear();
+            g_data.points.clear();
+            m_stylus = Vector2f::zero();
+            break;
+
+        case Command::NEXT_STATE:
+            // aaargh! m_state_index must be an index into the s_state_succession, not into s_states!
+            // CONTINUE HERE
+            break;
+
+        case Command::FILL:
+        case Command::STROKE:
+            break;
+
+        default: // unknown enum
+            assert(0);
+        }
+    }
 }
 
 } // namespace notf

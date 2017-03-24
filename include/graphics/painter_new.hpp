@@ -136,13 +136,14 @@ private: // types
             : xform(Xform2f::identity())
             , scissor({Xform2f::identity(), {-1, -1}})
             , blend_mode(BlendMode::SOURCE_OVER)
-            , alpha(1)
-            , miter_limit(10)
             , line_cap(LineCap::BUTT)
             , line_join(LineJoin::MITER)
+            , alpha(1)
+            , miter_limit(10)
+            , stroke_width(1)
+            , previous_state(INVALID_INDEX)
             , fill(Color(255, 255, 255))
             , stroke(Color(0, 0, 0))
-            , stroke_width(1)
         {
         }
 
@@ -151,38 +152,19 @@ private: // types
         Xform2f xform;
         Scissor scissor;
         BlendMode blend_mode;
-        float alpha;
-        float miter_limit;
         LineCap line_cap;
         LineJoin line_join;
+        float alpha;
+        float miter_limit;
+        float stroke_width;
+        size_t previous_state;
         Paint fill;
         Paint stroke;
-        float stroke_width;
+
+        static const size_t INVALID_INDEX = std::numeric_limits<size_t>::max();
     };
 
-    /******************************************************************************************************************/
-
-    /** Command identifyers, type must be of the same size as a float. */
-    enum class Command : uint32_t {
-        PUSH_STATE,
-        POP_STATE,
-        RESET,
-        WINDING,
-        CLOSE,
-        MOVE,
-        LINE,
-        BEZIER,
-        FILL,
-        STROKE,
-    };
-    static_assert(sizeof(Command) == sizeof(float),
-                  "Floats on your system don't seem be to be 32 bits wide. "
-                  "Adjust the type of the underlying type of Painter::Command to fit your particular system.");
-
-    /** Transforms a Command to a float value that can be stored in the Command buffer. */
-    static float _to_float(const Command command);
-
-private: // methods
+private: // constructor
     /******************************************************************************************************************/
 
     /** Value Constructor. */
@@ -192,13 +174,13 @@ public: // methods
     /* State management ***********************************************************************************************/
 
     /** Copy the new state and place the copy on the stack.
-     * @return  Stack index of the new State.
+     * @return  Current stack height.
      */
     size_t push_state();
 
     /** Restore the previous State from the stack.
-     * Popping below the last State will just reset it.
-     * @return  Stack index of the new (old) State.
+     * Popping below the last State will have no effect.
+     * @return  Current stack height.
      */
     size_t pop_state();
 
@@ -366,44 +348,40 @@ private: // methods
     /** The current State of the Painter. */
     State& _get_current_state()
     {
-        assert(!m_states.empty());
-        return m_states.back();
+        assert(m_state_index < s_states.size());
+        return s_states[m_state_index];
     }
 
     /** The current State of the Painter. */
     const State& _get_current_state() const
     {
-        assert(!m_states.empty());
-        return m_states.back();
+        assert(m_state_index < s_states.size());
+        return s_states[m_state_index];
     }
-
-    /** Resets the current Path of the Painter without changing its State. */
-    void _reset_path();
 
     /** Appends new Commands to the buffer. */
     void _append_commands(std::vector<float>&& commands);
+
+private: // methods for friends
+    /** Clear the Painter's Cell, executes the Command stack and performs the drawings. */
+    void _execute();
 
 private: // fields
     /** Cell, that this Painter is painting into. */
     Cell& m_cell;
 
-    /** Stack of Painter States. */
-    std::vector<State> m_states;
-
     /** Current position of the 'stylus', as the last Command left it. */
     Vector2f m_stylus;
 
-    const float m_tesselation_tolerance;
-
-    const float m_distance_tolerance;
-
-    const float m_fringe_width;
+    /** Index of the current State in `s_states`. */
+    size_t m_state_index;
 
 private: // static fields
-    /** Bytecode-like instructions, separated by COMMAND values.
-     * Is a static vector so you don't have to reallocate memory every time a Painter is created.
-     */
-    static std::vector<float> s_commands;
+    /** All Painter States used by this Painter, their order is determined by `m_state_succession`. */
+    static std::vector<State> s_states;
+
+    /** Order in which the States are traversed when the Painter is executed. */
+    static std::vector<size_t> s_state_succession;
 };
 
 } // namespace notf

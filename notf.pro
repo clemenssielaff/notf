@@ -235,7 +235,8 @@ HEADERS += \
     include/common/exception.hpp \
     include/core/opengl.hpp \
     include/core/glfw.hpp \
-    include/core/window_layout.hpp
+    include/core/window_layout.hpp \
+    include/utils/range.hpp
 
 QMAKE_CXX = ccache g++
 

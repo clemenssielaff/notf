@@ -22,7 +22,6 @@ auto remove_all(std::vector<T>& vector, const T& element)
 template <typename T>
 bool remove_one_unordered(std::vector<T>& vector, const T& element)
 {
-    using std::swap;
     auto it = std::find(vector.begin(), vector.end(), element);
     if (it == vector.end()) {
         return false;

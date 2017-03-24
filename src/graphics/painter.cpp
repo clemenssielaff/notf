@@ -94,6 +94,7 @@ void Painter_Old::drawButton(const Aabrf& rect)
     m_cell.begin_path();
     m_cell.set_fill_color(Color(0, 96, 128));
     m_cell.add_rounded_rect(rect, corner_radius - 1);
+    m_cell.stroke(m_context);
     m_cell.fill(m_context);
 
     m_cell.begin_path();
@@ -106,6 +107,7 @@ void Painter_Old::drawCheckBox(const Aabrf& rect)
 {
     Paint gradient = Paint::create_box_gradient(Vector2f{rect.left() + 1, rect.y() - 8},
                                                 Size2f{18, 18}, 3, 3, Color(0, 0, 0, 32), Color(0, 0, 0, 92));
+    m_cell.quad_to(100.f, 100.f, 200.f, 200.f);
     m_cell.begin_path();
     m_cell.add_rounded_rect(rect.left() + 1, rect.y() - 9, 18, 18, 3);
     m_cell.set_fill_paint(gradient);

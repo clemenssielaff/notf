@@ -4,6 +4,7 @@
 
 #include "common/float.hpp"
 #include "common/line2.hpp"
+#include "common/vector.hpp"
 #include "graphics/render_context.hpp"
 
 namespace { // anonymous
@@ -14,6 +15,13 @@ void transform_command_pos(const Xform2f& xform, std::vector<float>& commands, s
     assert(commands.size() >= index + 2);
     Vector2f& point = *reinterpret_cast<Vector2f*>(&commands[index]);
     point           = xform.transform(point);
+}
+
+/** Returns a Vector2f reference into the Command buffer without data allocation. */
+Vector2f& as_vector2f(std::vector<float>& commands, size_t index)
+{
+    assert(index + 1 < commands.size());
+    return *reinterpret_cast<Vector2f*>(&commands[index]);
 }
 
 static const float KAPPAf = static_cast<float>(KAPPA);
@@ -89,7 +97,8 @@ void Cell::begin_path()
     m_commands.clear();
     m_paths.clear();
     m_points.clear();
-    m_vertices.clear(); // TODO: I haven't yet made up my mind about vertices, but right now I got to delete them somewhere
+    m_vertices.clear();
+    m_stylus = Vector2f::zero();
 }
 
 void Cell::move_to(const float x, const float y)
@@ -117,16 +126,16 @@ void Cell::_append_commands(std::vector<float>&& commands)
 
         case Command::MOVE:
         case Command::LINE: {
+            m_stylus = as_vector2f(commands, i + 1);
             transform_command_pos(xform, commands, i + 1);
-            m_stylus = *reinterpret_cast<Vector2f*>(&commands[i + 1]);
             i += 3;
         } break;
 
         case Command::BEZIER: {
+            m_stylus = as_vector2f(commands, i + 5);
             transform_command_pos(xform, commands, i + 1);
             transform_command_pos(xform, commands, i + 3);
             transform_command_pos(xform, commands, i + 5);
-            m_stylus = *reinterpret_cast<Vector2f*>(&commands[i + 5]);
             i += 7;
         } break;
 
@@ -219,9 +228,10 @@ void Cell::arc(float cx, float cy, float r, float a0, float a1, Winding dir)
 {
     // clamp angles
     float da;
-    if (dir == Winding::CLOCKWISE){
+    if (dir == Winding::CLOCKWISE) {
         da = norm_angle(a1 - a0 - static_cast<float>(PI)) + static_cast<float>(PI);
-    } else {
+    }
+    else {
         da = norm_angle(a1 - a0 + static_cast<float>(PI)) - static_cast<float>(PI);
     }
     // split the arc into <= 90deg segments
@@ -372,14 +382,26 @@ void Cell::_flatten_paths()
 
         case Command::MOVE:
             m_paths.emplace_back(m_points.size());
+            _add_point(*reinterpret_cast<Vector2f*>(&m_commands[index + 1]), Point::Flags::CORNER);
+            index += 3;
+            break;
 
         case Command::LINE:
-            _add_point(*reinterpret_cast<Vector2f*>(&m_commands[index + 1]), Point::Flags::CORNER); // TODO: this should be a member function on Cell::Path
+            if(m_paths.empty()){
+                m_paths.emplace_back(m_points.size());
+            }
+            _add_point(*reinterpret_cast<Vector2f*>(&m_commands[index + 1]), Point::Flags::CORNER);
             index += 3;
             break;
 
         case Command::BEZIER:
-            _tesselate_bezier(m_points.back().pos.x, m_points.back().pos.y, // TODO: this is ugly and doesn't work if no point exists
+            if(m_points.empty()){
+                m_points.emplace_back(Point{Vector2f::zero(), Vector2f::zero(), Vector2f::zero(), 0.f, Point::Flags::NONE});
+            }
+            if(m_paths.empty()){
+                m_paths.emplace_back(m_points.size());
+            }
+            _tesselate_bezier(m_points.back().pos.x, m_points.back().pos.y,
                               m_commands[index + 1], m_commands[index + 2],
                               m_commands[index + 3], m_commands[index + 4],
                               m_commands[index + 5], m_commands[index + 6]);
@@ -407,31 +429,32 @@ void Cell::_flatten_paths()
     }
 
     m_bounds = Aabrf::wrongest();
-    for (Path& path : m_paths) {
-        if (path.point_count < 2) {
-            continue; // TODO: make sure that all paths with point_count < 2 are ignored, always
-        }
+    for (size_t path_index = 0; path_index < m_paths.size(); ++path_index) {
+        Path& path = m_paths[path_index];
 
-        { // if the first and last points are the same, remove the last one and mark the path as closed
+        if (path.point_count >= 2) {
+            // if the first and last points are the same, remove the last one and mark the path as closed
             const Point& first = m_points[path.point_offset];
             const Point& last  = m_points[path.point_offset + path.point_count - 1];
             if (first.pos.is_approx(last.pos, m_distance_tolerance)) {
-                --path.point_count; // this could in theory produce a Path without points (if we started with one point)
-                if (path.point_count < 2) {
-                    continue;
-                }
+                --path.point_count;
                 path.is_closed = true;
             }
         }
 
+        if (path.point_count < 2) {
+            // remove paths with just a single point
+            m_paths.erase(iterator_at(m_paths, path_index));
+            --path_index;
+            continue;
+        }
+
         // enforce winding
-        if (path.point_count > 2) {
-            const float area = poly_area(m_points, path.point_offset, path.point_count);
-            if ((path.winding == Winding::CCW && area < 0)
-                || (path.winding == Winding::CW && area > 0)) {
-                for (size_t i = path.point_offset, j = path.point_offset + path.point_count - 1; i < j; ++i, --j) {
-                    std::swap(m_points[i], m_points[j]);
-                }
+        const float area = poly_area(m_points, path.point_offset, path.point_count);
+        if ((path.winding == Winding::CCW && area < 0)
+            || (path.winding == Winding::CW && area > 0)) {
+            for (size_t i = path.point_offset, j = path.point_offset + path.point_count - 1; i < j; ++i, --j) {
+                std::swap(m_points[i], m_points[j]);
             }
         }
 
@@ -627,18 +650,18 @@ void Cell::_expand_fill(const bool draw_antialiased)
 
 void Cell::_expand_stroke(const float stroke_width)
 {
-    size_t cap_count; // should be 3 in the test I'm doin'
-    {                 // calculate divisions per half circle
+    size_t cap_count;
+    { // calculate divisions per half circle
         float da  = acos(stroke_width / (stroke_width + m_tesselation_tolerance)) * 2;
-        cap_count = max(size_t(2), static_cast<size_t>(ceilf(PI / da)));
+        cap_count = max(size_t(2), static_cast<size_t>(ceilf(static_cast<float>(PI) / da)));
     }
 
     const LineJoin line_join = get_current_state().line_join;
     const LineCap line_cap   = get_current_state().line_cap;
     _calculate_joins(stroke_width, line_join, get_current_state().miter_limit);
 
-    {                                // reserve new vertices
-        size_t new_vertex_count = 0; // TODO: this is way too high and maybe I don't even need it
+    { // reserve new vertices
+        size_t new_vertex_count = 0;
         for (const Path& path : m_paths) {
             if (line_join == LineJoin::ROUND) {
                 new_vertex_count += (path.point_count + path.bevel_count * (cap_count + 2) + 1) * 2; // plus one for loop
@@ -659,15 +682,7 @@ void Cell::_expand_stroke(const float stroke_width)
     }
 
     for (Path& path : m_paths) {
-        //        assert(path.fill_offset == 0);
-        //        assert(path.fill_count == 0);
-
-        path.fill_count  = 0; // TODO: this destroys the path's fill capacity, once it is stroked ... what?
-        path.fill_offset = 0;
-
-        if (path.point_count < 2) {
-            continue;
-        }
+        assert(path.point_count > 1);
 
         const size_t last_point_offset = path.point_offset + path.point_count - 1;
         assert(last_point_offset < m_points.size());
@@ -898,7 +913,7 @@ void Cell::_butt_cap_end(const Point& point, const Vector2f& delta, const float 
 void Cell::_round_cap_start(const Point& point, const Vector2f& delta, const float stroke_width, const size_t cap_count)
 {
     for (size_t i = 0; i < cap_count; i++) {
-        const float a  = i / static_cast<float>(cap_count - 1) * PI;
+        const float a  = i / static_cast<float>(cap_count - 1) * static_cast<float>(PI);
         const float ax = cos(a) * stroke_width;
         const float ay = sin(a) * stroke_width;
         m_vertices.emplace_back(Vector2f(point.pos.x - delta.y * ax - delta.x * ay,
@@ -926,7 +941,7 @@ void Cell::_round_cap_end(const Point& point, const Vector2f& delta, const float
                             Vector2f(1, 1));
 
     for (size_t i = 0; i < cap_count; i++) {
-        const float a  = i / static_cast<float>(cap_count - 1) * PI;
+        const float a  = i / static_cast<float>(cap_count - 1) * static_cast<float>(PI);
         const float ax = cos(a) * stroke_width;
         const float ay = sin(a) * stroke_width;
         m_vertices.emplace_back(point.pos,
@@ -1066,7 +1081,7 @@ void Cell::_round_join(const Point& previous_point, const Point& current_point, 
                                          current_point.pos.y + previous_point.forward.x * stroke_width),
                                 Vector2f(1, 1));
 
-        size_t n = clamp(static_cast<size_t>(ceilf(((a1 - a0) / PI) * ncap)), 2u, ncap);
+        size_t n = clamp(static_cast<size_t>(ceilf(((a1 - a0) / static_cast<float>(PI)) * ncap)), 2u, ncap);
         for (size_t i = 0; i < n; i++) {
             const float u = i / static_cast<float>(n - 1);
             const float a = a0 + u * (a1 - a0);
@@ -1099,7 +1114,7 @@ void Cell::_round_join(const Point& previous_point, const Point& current_point, 
         m_vertices.emplace_back(Vector2f(rx0, ry0),
                                 Vector2f(1, 1));
 
-        size_t n = clamp(static_cast<size_t>(ceilf(((a1 - a0) / PI) * ncap)), 2u, ncap);
+        size_t n = clamp(static_cast<size_t>(ceilf(((a1 - a0) / static_cast<float>(PI)) * ncap)), 2u, ncap);
         for (size_t i = 0; i < n; i++) {
             const float u = i / static_cast<float>(n - 1);
             const float a = a0 + u * (a1 - a0);
@@ -1117,9 +1132,6 @@ void Cell::_round_join(const Point& previous_point, const Point& current_point, 
                                 Vector2f(1, 1));
     }
 }
-
-
-
 
 float Cell::poly_area(const std::vector<Point>& points, const size_t offset, const size_t count)
 {
