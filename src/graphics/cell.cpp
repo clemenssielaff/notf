@@ -30,14 +30,14 @@ static const float KAPPAf = static_cast<float>(KAPPA);
 
 namespace notf {
 
-Cell::Cell()
+Cell_Old::Cell_Old()
     : m_states({RenderState()})
     , m_commands()
     , m_stylus(Vector2f::zero())
 {
 }
 
-void Cell::reset(const RenderContext& context)
+void Cell_Old::reset(const RenderContext& context)
 {
     m_states.clear();
     m_states.emplace_back(RenderState());
@@ -48,14 +48,14 @@ void Cell::reset(const RenderContext& context)
     m_fringe_width          = 1.f / pixel_ratio;
 }
 
-size_t Cell::push_state()
+size_t Cell_Old::push_state()
 {
     assert(!m_states.empty());
     m_states.emplace_back(m_states.back());
     return m_states.size() - 1;
 }
 
-size_t Cell::pop_state()
+size_t Cell_Old::pop_state()
 {
     if (m_states.size() > 1) {
         m_states.pop_back();
@@ -64,27 +64,27 @@ size_t Cell::pop_state()
     return m_states.size() - 1;
 }
 
-const Cell::RenderState& Cell::get_current_state() const
+const Cell_Old::RenderState& Cell_Old::get_current_state() const
 {
     assert(!m_states.empty());
     return m_states.back();
 }
 
-void Cell::set_stroke_paint(Paint paint)
+void Cell_Old::set_stroke_paint(Paint paint)
 {
     RenderState& current_state = _get_current_state();
     paint.xform *= current_state.xform;
     current_state.stroke = std::move(paint);
 }
 
-void Cell::set_fill_paint(Paint paint)
+void Cell_Old::set_fill_paint(Paint paint)
 {
     RenderState& current_state = _get_current_state();
     paint.xform *= current_state.xform;
     current_state.fill = std::move(paint);
 }
 
-void Cell::set_scissor(const Aabrf& aabr)
+void Cell_Old::set_scissor(const Aabrf& aabr)
 {
     RenderState& current_state  = _get_current_state();
     current_state.scissor.xform = Xform2f::translation(aabr.center());
@@ -92,7 +92,7 @@ void Cell::set_scissor(const Aabrf& aabr)
     current_state.scissor.extend = aabr.extend();
 }
 
-void Cell::begin_path()
+void Cell_Old::begin_path()
 {
     m_commands.clear();
     m_paths.clear();
@@ -101,17 +101,17 @@ void Cell::begin_path()
     m_stylus = Vector2f::zero();
 }
 
-void Cell::move_to(const float x, const float y)
+void Cell_Old::move_to(const float x, const float y)
 {
     _append_commands({to_float(Command::MOVE), std::move(x), std::move(y)});
 }
 
-void Cell::line_to(const float x, const float y)
+void Cell_Old::line_to(const float x, const float y)
 {
     _append_commands({to_float(Command::LINE), std::move(x), std::move(y)});
 }
 
-void Cell::_append_commands(std::vector<float>&& commands)
+void Cell_Old::_append_commands(std::vector<float>&& commands)
 {
     if (commands.empty()) {
         return;
@@ -156,7 +156,7 @@ void Cell::_append_commands(std::vector<float>&& commands)
     std::move(commands.begin(), commands.end(), std::back_inserter(m_commands));
 }
 
-void Cell::add_rounded_rect(const float x, const float y, const float w, const float h,
+void Cell_Old::add_rounded_rect(const float x, const float y, const float w, const float h,
                             const float rtl, const float rtr, const float rbr, const float rbl)
 {
     if (rtl < 0.1f && rtr < 0.1f && rbr < 0.1f && rbl < 0.1f) {
@@ -181,7 +181,7 @@ void Cell::add_rounded_rect(const float x, const float y, const float w, const f
                       to_float(Command::CLOSE)});
 }
 
-void Cell::arc_to(const Vector2f tangent, const Vector2f end, const float radius)
+void Cell_Old::arc_to(const Vector2f tangent, const Vector2f end, const float radius)
 {
     // handle degenerate cases
     if (radius < m_distance_tolerance
@@ -224,7 +224,7 @@ void Cell::arc_to(const Vector2f tangent, const Vector2f end, const float radius
     arc(cx, cy, radius, a0, a1, dir);
 }
 
-void Cell::arc(float cx, float cy, float r, float a0, float a1, Winding dir)
+void Cell_Old::arc(float cx, float cy, float r, float a0, float a1, Winding dir)
 {
     // clamp angles
     float da;
@@ -274,12 +274,12 @@ void Cell::arc(float cx, float cy, float r, float a0, float a1, Winding dir)
     _append_commands(std::move(commands));
 }
 
-void Cell::bezier_to(const float c1x, const float c1y, const float c2x, const float c2y, const float tx, const float ty)
+void Cell_Old::bezier_to(const float c1x, const float c1y, const float c2x, const float c2y, const float tx, const float ty)
 {
     _append_commands({to_float(Command::BEZIER), c1x, c1y, c2x, c2y, tx, ty});
 }
 
-void Cell::add_rect(const float x, const float y, const float w, const float h)
+void Cell_Old::add_rect(const float x, const float y, const float w, const float h)
 {
     _append_commands({
         to_float(Command::MOVE), x, y,
@@ -290,7 +290,7 @@ void Cell::add_rect(const float x, const float y, const float w, const float h)
     });
 }
 
-void Cell::add_ellipse(const float cx, const float cy, const float rx, const float ry)
+void Cell_Old::add_ellipse(const float cx, const float cy, const float rx, const float ry)
 {
     _append_commands({to_float(Command::MOVE), cx - rx, cy,
                       to_float(Command::BEZIER), cx - rx, cy + ry * KAPPAf, cx - rx * KAPPAf, cy + ry, cx, cy + ry,
@@ -300,7 +300,7 @@ void Cell::add_ellipse(const float cx, const float cy, const float rx, const flo
                       to_float(Command::CLOSE)});
 }
 
-void Cell::quad_to(const float cx, const float cy, const float tx, const float ty)
+void Cell_Old::quad_to(const float cx, const float cy, const float tx, const float ty)
 {
     // in order to construct a quad spline with a bezier command we need the position of the last point
     // to infer, where the ctrl points for the bezier is located
@@ -316,17 +316,17 @@ void Cell::quad_to(const float cx, const float cy, const float tx, const float t
     });
 }
 
-void Cell::set_winding(const Winding winding)
+void Cell_Old::set_winding(const Winding winding)
 {
     _append_commands({to_float(Command::WINDING), static_cast<float>(to_number(std::move(winding)))});
 }
 
-void Cell::close_path()
+void Cell_Old::close_path()
 {
     _append_commands({to_float(Command::CLOSE)});
 }
 
-void Cell::fill(RenderContext& context)
+void Cell_Old::fill(RenderContext& context)
 {
     const RenderState& state = _get_current_state();
     Paint fill_paint         = state.fill;
@@ -340,7 +340,7 @@ void Cell::fill(RenderContext& context)
     context.add_fill_call(fill_paint, *this);
 }
 
-void Cell::stroke(RenderContext& context)
+void Cell_Old::stroke(RenderContext& context)
 {
     const RenderState& state = _get_current_state();
     Paint stroke_paint       = state.stroke;
@@ -370,7 +370,7 @@ void Cell::stroke(RenderContext& context)
     context.add_stroke_call(stroke_paint, stroke_width, *this);
 }
 
-void Cell::_flatten_paths()
+void Cell_Old::_flatten_paths()
 {
     if (!m_paths.empty()) {
         return; // This feels weird and I will change it in the rework discussed at the end of the file
@@ -481,12 +481,10 @@ void Cell::_flatten_paths()
     }
 }
 
-void Cell::_calculate_joins(const float fringe, const LineJoin join, const float miter_limit)
+void Cell_Old::_calculate_joins(const float fringe, const LineJoin join, const float miter_limit)
 {
     for (Path& path : m_paths) {
-        //        assert(path.bevel_count == 0);
         size_t left_turn_count = 0;
-        path.bevel_count       = 0;
 
         // Calculate which joins needs extra vertices to append, and gather vertex count.
         const size_t last_point_offset = path.point_offset + path.point_count - 1;
@@ -530,34 +528,18 @@ void Cell::_calculate_joins(const float fringe, const LineJoin join, const float
                     current_point.flags = static_cast<Point::Flags>(current_point.flags | Point::Flags::BEVEL);
                 }
             }
-
-            // keep track of the number of bevels in the path
-            if (current_point.flags & (Point::Flags::BEVEL | Point::Flags::INNERBEVEL)) {
-                path.bevel_count++;
-            }
         }
 
         path.is_convex = (left_turn_count == path.point_count);
     }
 }
 
-void Cell::_expand_fill(const bool draw_antialiased)
+void Cell_Old::_expand_fill(const bool draw_antialiased)
 {
     const float fringe = draw_antialiased ? m_fringe_width : 0;
     assert(fringe >= 0);
 
     _calculate_joins(fringe, LineJoin::MITER, 2.4f);
-
-    { // reserve new vertices
-        size_t new_vertex_count = 0;
-        for (const Path& path : m_paths) {
-            new_vertex_count += path.point_count + path.bevel_count + 1;
-            if (fringe > 0) {
-                new_vertex_count += (path.point_count + path.bevel_count * 5 + 1) * 2; // plus one for loop
-            }
-        }
-        m_vertices.reserve(m_vertices.size() + new_vertex_count);
-    }
 
     const float woff = fringe / 2;
     for (Path& path : m_paths) {
@@ -648,7 +630,7 @@ void Cell::_expand_fill(const bool draw_antialiased)
     }
 }
 
-void Cell::_expand_stroke(const float stroke_width)
+void Cell_Old::_expand_stroke(const float stroke_width)
 {
     size_t cap_count;
     { // calculate divisions per half circle
@@ -659,27 +641,6 @@ void Cell::_expand_stroke(const float stroke_width)
     const LineJoin line_join = get_current_state().line_join;
     const LineCap line_cap   = get_current_state().line_cap;
     _calculate_joins(stroke_width, line_join, get_current_state().miter_limit);
-
-    { // reserve new vertices
-        size_t new_vertex_count = 0;
-        for (const Path& path : m_paths) {
-            if (line_join == LineJoin::ROUND) {
-                new_vertex_count += (path.point_count + path.bevel_count * (cap_count + 2) + 1) * 2; // plus one for loop
-            }
-            else {
-                new_vertex_count += (path.point_count + path.bevel_count * 5 + 1) * 2; // plus one for loop
-            }
-            if (!path.is_closed) {
-                if (line_cap == LineCap::ROUND) {
-                    new_vertex_count += (cap_count * 2 + 2) * 2;
-                }
-                else {
-                    new_vertex_count += (3 + 3) * 2;
-                }
-            }
-        }
-        m_vertices.reserve(m_vertices.size() + new_vertex_count);
-    }
 
     for (Path& path : m_paths) {
         assert(path.point_count > 1);
@@ -767,7 +728,7 @@ void Cell::_expand_stroke(const float stroke_width)
     }
 }
 
-void Cell::_add_point(const Vector2f position, const Point::Flags flags)
+void Cell_Old::_add_point(const Vector2f position, const Point::Flags flags)
 {
     // if the point is not significantly different, use the last one instead.
     if (!m_points.empty()) {
@@ -791,7 +752,7 @@ void Cell::_add_point(const Vector2f position, const Point::Flags flags)
  * If there seems to be an issue with the tesselation, revert back to the "official" implementation
  */
 //void Cell::_tesselate_bezier(size_t offset)
-void Cell::_tesselate_bezier(const float x1, const float y1, const float x2, const float y2,
+void Cell_Old::_tesselate_bezier(const float x1, const float y1, const float x2, const float y2,
                              const float x3, const float y3, const float x4, const float y4)
 {
     static const int one = 1 << 10;
@@ -874,7 +835,7 @@ void Cell::_tesselate_bezier(const float x1, const float y1, const float x2, con
     }
 }
 
-void Cell::_butt_cap_start(const Point& point, const Vector2f& direction, const float stroke_width, const float d)
+void Cell_Old::_butt_cap_start(const Point& point, const Vector2f& direction, const float stroke_width, const float d)
 {
     const float px = point.pos.x - direction.x * d;
     const float py = point.pos.y - direction.y * d;
@@ -892,7 +853,7 @@ void Cell::_butt_cap_start(const Point& point, const Vector2f& direction, const 
                             Vector2f(1, 1));
 }
 
-void Cell::_butt_cap_end(const Point& point, const Vector2f& delta, const float stroke_width, const float d)
+void Cell_Old::_butt_cap_end(const Point& point, const Vector2f& delta, const float stroke_width, const float d)
 {
     const float px = point.pos.x + delta.x * d;
     const float py = point.pos.y + delta.y * d;
@@ -910,7 +871,7 @@ void Cell::_butt_cap_end(const Point& point, const Vector2f& delta, const float 
                             Vector2f(1, 0));
 }
 
-void Cell::_round_cap_start(const Point& point, const Vector2f& delta, const float stroke_width, const size_t cap_count)
+void Cell_Old::_round_cap_start(const Point& point, const Vector2f& delta, const float stroke_width, const size_t cap_count)
 {
     for (size_t i = 0; i < cap_count; i++) {
         const float a  = i / static_cast<float>(cap_count - 1) * static_cast<float>(PI);
@@ -931,7 +892,7 @@ void Cell::_round_cap_start(const Point& point, const Vector2f& delta, const flo
                             Vector2f(1, 1));
 }
 
-void Cell::_round_cap_end(const Point& point, const Vector2f& delta, const float stroke_width, const size_t cap_count)
+void Cell_Old::_round_cap_end(const Point& point, const Vector2f& delta, const float stroke_width, const size_t cap_count)
 {
     m_vertices.emplace_back(Vector2f(point.pos.x + delta.y * stroke_width,
                                      point.pos.y - delta.x * stroke_width),
@@ -952,7 +913,7 @@ void Cell::_round_cap_end(const Point& point, const Vector2f& delta, const float
     }
 }
 
-void Cell::_bevel_join(const Point& previous_point, const Point& current_point, const float left_w, const float right_w,
+void Cell_Old::_bevel_join(const Point& previous_point, const Point& current_point, const float left_w, const float right_w,
                        const float left_u, const float right_u)
 {
     if (current_point.flags & Point::Flags::LEFT) {
@@ -1063,7 +1024,7 @@ void Cell::_bevel_join(const Point& previous_point, const Point& current_point, 
     }
 }
 
-void Cell::_round_join(const Point& previous_point, const Point& current_point, const float stroke_width, const size_t ncap)
+void Cell_Old::_round_join(const Point& previous_point, const Point& current_point, const float stroke_width, const size_t ncap)
 {
     if (current_point.flags & Point::Flags::LEFT) {
         float lx0, ly0, lx1, ly1;
@@ -1133,20 +1094,20 @@ void Cell::_round_join(const Point& previous_point, const Point& current_point, 
     }
 }
 
-float Cell::poly_area(const std::vector<Point>& points, const size_t offset, const size_t count)
+float Cell_Old::poly_area(const std::vector<Point>& points, const size_t offset, const size_t count)
 {
     float area           = 0;
-    const Cell::Point& a = points[0];
+    const Cell_Old::Point& a = points[0];
     for (size_t index = offset + 2; index < offset + count; ++index) {
-        const Cell::Point& b = points[index - 1];
-        const Cell::Point& c = points[index];
+        const Cell_Old::Point& b = points[index - 1];
+        const Cell_Old::Point& c = points[index];
         area += (c.pos.x - a.pos.x) * (b.pos.y - a.pos.y) - (b.pos.x - a.pos.x) * (c.pos.y - a.pos.y);
     }
     return area / 2;
 }
 
 std::tuple<float, float, float, float>
-Cell::choose_bevel(bool is_beveling, const Point& prev_point, const Point& curr_point, const float stroke_width)
+Cell_Old::choose_bevel(bool is_beveling, const Point& prev_point, const Point& curr_point, const float stroke_width)
 {
     float x0, y0, x1, y1;
     if (is_beveling) {
@@ -1165,7 +1126,7 @@ Cell::choose_bevel(bool is_beveling, const Point& prev_point, const Point& curr_
 }
 
 /** Transforms a Command to a float value that can be stored in the Command buffer. */
-float Cell::to_float(const Command command) { return static_cast<float>(to_number(command)); }
+float Cell_Old::to_float(const Command command) { return static_cast<float>(to_number(command)); }
 
 } // namespace notf
 

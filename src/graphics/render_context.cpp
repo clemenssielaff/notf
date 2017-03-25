@@ -185,7 +185,7 @@ void RenderContext::_end_frame()
     _render_flush(BlendMode::SOURCE_OVER);
 }
 
-void RenderContext::add_fill_call(const Paint& paint, const Cell& cell)
+void RenderContext::add_fill_call(const Paint& paint, const Cell_Old& cell)
 {
     m_calls.emplace_back();
     CanvasCall& call = m_calls.back();
@@ -259,7 +259,7 @@ void RenderContext::add_fill_call(const Paint& paint, const Cell& cell)
                    cell.get_fringe_width(), cell.get_fringe_width(), -1.0f);
 }
 
-void RenderContext::add_stroke_call(const Paint& paint, const float stroke_width, const Cell& cell)
+void RenderContext::add_stroke_call(const Paint& paint, const float stroke_width, const Cell_Old& cell)
 {
     m_calls.emplace_back();
     CanvasCall& call   = m_calls.back();

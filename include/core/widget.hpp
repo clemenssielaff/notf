@@ -83,7 +83,7 @@ private: // fields
     std::weak_ptr<Layout> m_scissor_layout;
 
     /** Cell to draw this Widget into. */
-    mutable Cell m_cell;
+    mutable Cell_Old m_cell;
 };
 
 } // namespace notf

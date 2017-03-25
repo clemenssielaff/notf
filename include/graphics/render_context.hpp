@@ -51,7 +51,7 @@ struct RenderContextArguments {
  */
 class RenderContext {
 
-    friend class Cell;
+    friend class Cell_Old;
     friend class FrameGuard;
     friend class RenderManager;
     friend class Shader;
@@ -259,9 +259,9 @@ private: // methods for RenderManager
     void set_buffer_size(Size2f buffer) { m_buffer_size = std::move(buffer); }
 
 private: // methods for Cell
-    void add_fill_call(const Paint& paint, const Cell& cell);
+    void add_fill_call(const Paint& paint, const Cell_Old& cell);
 
-    void add_stroke_call(const Paint& paint, const float stroke_width, const Cell& cell);
+    void add_stroke_call(const Paint& paint, const float stroke_width, const Cell_Old& cell);
 
     void set_stencil_mask(const GLuint mask);
 

@@ -131,7 +131,7 @@ int Application::exec()
             next_frame     = next_interval(now.ticks, ticks_per_frame);
         }
 
-#ifdef _DEBUG
+//#ifdef _DEBUG
         { // print debug stats
             static Time last_frame    = Time::now();
             static Time time_counter  = 0;
@@ -149,7 +149,7 @@ int Application::exec()
                 time_counter -= Time::frequency();
             }
         }
-#endif
+//#endif
 
         // wait for the next event or the next time to fire an animation frame
 //        if (m_info.fps == 0) {

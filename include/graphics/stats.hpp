@@ -39,7 +39,7 @@ private: // fields
     Aabrf m_aabr;
 
     /** Cell to draw the Stats into. */
-    Cell m_cell;
+    Cell_Old m_cell;
 };
 
 } // namespace notf

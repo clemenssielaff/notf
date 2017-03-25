@@ -13,7 +13,7 @@ namespace notf {
 Widget::Widget()
     : ScreenItem()
     , m_scissor_layout() // empty by default
-    , m_cell(Cell())
+    , m_cell(Cell_Old())
 {
 }
 

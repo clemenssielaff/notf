@@ -66,7 +66,6 @@ struct CellPath {
     size_t point_offset; // points
     size_t point_count;
     bool is_closed;
-    size_t bevel_count;
     size_t fill_offset; // vertices
     size_t fill_count;
     size_t stroke_offset; // vertices
@@ -78,7 +77,6 @@ struct CellPath {
         : point_offset(first)
         , point_count(0)
         , is_closed(false)
-        , bevel_count(0)
         , fill_offset(0)
         , fill_count(0)
         , stroke_offset(0)
@@ -98,7 +96,7 @@ struct CellPath {
  * traditional animation ( see: https://en.wikipedia.org/wiki/Traditional_animation ).
  * Technically the name should be 'Cel' with a single 'l', but 'Cell' works as well and is more easily understood.
  */
-class Cell {
+class Cell_Old {
 
 private: // class
     /** Command identifyers, type must be of the same size as a float. */
@@ -109,7 +107,7 @@ private: // class
         WINDING,
         CLOSE,
     };
-    static_assert(sizeof(Cell::Command) == sizeof(float),
+    static_assert(sizeof(Cell_Old::Command) == sizeof(float),
                   "Floats on your system don't seem be to be 32 bits wide. "
                   "Adjust the type of the underlying type of CommandBuffer::Command to fit your particular system.");
 
@@ -174,7 +172,7 @@ private: // class
     };
 
 public: // methods
-    Cell();
+    Cell_Old();
 
     void reset(const RenderContext& context);
 

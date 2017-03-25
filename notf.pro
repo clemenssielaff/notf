@@ -16,7 +16,7 @@ INCLUDEPATH *= /home/clemens/code/thirdparty/freetype-2.7/INSTALL/include/freety
 
 CONFIG(release, debug|release) {
 #    message("Building in Release Mode.")
-    DEFINES += "NDEBUG" "NOTF_LOG_LEVEL=3"
+    DEFINES += "NDEBUG" #"NOTF_LOG_LEVEL=3"
     QMAKE_CXXFLAGS_RELEASE += -fvisibility=hidden -s
     QMAKE_CXXFLAGS_RELEASE += -O3 -flto #-Os
     QMAKE_LFLAGS_RELEASE += -fvisibility=hidden -s
@@ -146,6 +146,7 @@ SOURCES += \
     src/graphics/blend_mode.cpp \
     src/graphics/render_context.cpp \
     src/graphics/cell.cpp \
+    src/graphics/cell_new.cpp \
     src/graphics/stats.cpp \
     src/graphics/painter.cpp \
     src/graphics/painter_new.cpp \
@@ -220,6 +221,7 @@ HEADERS += \
     include/graphics/painter.hpp \
     include/graphics/stats.hpp \
     include/graphics/cell.hpp \
+    include/graphics/cell_new.hpp \
     include/graphics/text/font_manager.hpp \
     include/graphics/text/freetype.hpp \
     include/utils/sfinae.hpp \

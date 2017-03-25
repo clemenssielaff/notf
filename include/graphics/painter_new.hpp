@@ -261,13 +261,19 @@ public: // methods
 
     /* Fill Paint *****************************************/
 
-    /** Mutable reference to the current fill Paint. */
-    Paint& get_fill_paint() { return _get_current_state().fill; }
+    /** The current fill Paint. */
+    const Paint& get_fill_paint() { return _get_current_state().fill; }
+
+    /** Changes the current fill Paint. */
+    void set_fill_paint(Paint paint);
 
     /* Stroke Paint ***************************************/
 
-    /** Mutable reference to the current fill Paint. */
-    Paint& get_stroke_paint() { return _get_current_state().stroke; }
+    /** The current fill Paint. */
+    const Paint& get_stroke_paint() { return _get_current_state().stroke; }
+
+    /** Changes the current stroke Paint. */
+    void set_stroke_paint(Paint paint);
 
     /** The stroke width of the Painter. */
     float get_stroke_width() const { return _get_current_state().stroke_width; }
@@ -348,19 +354,25 @@ private: // methods
     /** The current State of the Painter. */
     State& _get_current_state()
     {
-        assert(m_state_index < s_states.size());
-        return s_states[m_state_index];
+        assert(s_state_succession.back() < s_states.size());
+        return s_states[s_state_succession.back()];
     }
 
     /** The current State of the Painter. */
     const State& _get_current_state() const
     {
-        assert(m_state_index < s_states.size());
-        return s_states[m_state_index];
+        assert(s_state_succession.back() < s_states.size());
+        return s_states[s_state_succession.back()];
     }
 
     /** Appends new Commands to the buffer. */
     void _append_commands(std::vector<float>&& commands);
+
+    void _fill();
+
+    void _stroke();
+
+    void _prepare_paths(const float fringe, const LineJoin join, const float miter_limit);
 
 private: // methods for friends
     /** Clear the Painter's Cell, executes the Command stack and performs the drawings. */
@@ -370,11 +382,11 @@ private: // fields
     /** Cell, that this Painter is painting into. */
     Cell& m_cell;
 
+    /** The Render Context in which the Painter operates. */
+    const RenderContext& m_context;
+
     /** Current position of the 'stylus', as the last Command left it. */
     Vector2f m_stylus;
-
-    /** Index of the current State in `s_states`. */
-    size_t m_state_index;
 
 private: // static fields
     /** All Painter States used by this Painter, their order is determined by `m_state_succession`. */

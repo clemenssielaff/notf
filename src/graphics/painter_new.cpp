@@ -28,8 +28,9 @@
 #include "graphics/painter_new.hpp"
 
 #include "common/line2.hpp"
+#include "common/log.hpp"
 #include "graphics/render_context.hpp"
-#include "utils/range.hpp"
+#include "graphics/vertex.hpp"
 
 namespace { // anonymous
 using namespace notf;
@@ -88,22 +89,37 @@ struct PainterPoint {
 struct PainterPath {
 
     PainterPath(std::vector<PainterPoint>& points)
-        : range(make_range(points, points.size(), points.size()))
-        , is_closed(false)
+        : first_point(points.size())
+        , point_count(0)
+        , prepared_count(0)
         , winding(Painter::Winding::COUNTERCLOCKWISE)
+        , is_closed(false)
+        , is_convex(true)
     {
     }
 
-    /** Range of Points that make up this Path. */
-    Range<std::vector<PainterPoint>::iterator> range;
+    /** Index of the first Point. */
+    size_t first_point;
+
+    /** Number of Points in this Path. */
+    size_t point_count;
+
+    /** After construction, a Path needs to be "prepared" for further processing.
+     * However, new Points can still be added after it has been prepared - requiring it to be prepared again.
+     * This number is the last number of Points at which the Path was prepared.
+     */
+    size_t prepared_count;
+
+    /** What direction the Path is wound. */
+    Painter::Winding winding;
 
     /** Whether this Path is closed or not.
      * Closed Paths will draw an additional line between their last and first Point.
      */
     bool is_closed;
 
-    /** What direction the Path is wound. */
-    Painter::Winding winding;
+    /** Whether the Path is convex or not. */
+    bool is_convex;
 };
 
 /**********************************************************************************************************************/
@@ -140,11 +156,24 @@ struct PainterData {
 
         // otherwise append create a new point to the current path
         points.emplace_back(PainterPoint{std::move(position), Vector2f::zero(), Vector2f::zero(), 0.f, flags});
-        paths.back().range.grow_one();
+        paths.back().point_count++;
     }
 
     /** Creates a new, empty Path. */
     void add_path() { paths.emplace_back(points); }
+
+    /** Calculates the area of a given Path. */
+    float get_path_area(const PainterPath& path)
+    {
+        float area            = 0;
+        const PainterPoint& a = points[0];
+        for (size_t index = path.first_point + 2; index < path.first_point + path.point_count; ++index) {
+            const PainterPoint& b = points[index - 1];
+            const PainterPoint& c = points[index];
+            area += (c.pos.x - a.pos.x) * (b.pos.y - a.pos.y) - (b.pos.x - a.pos.x) * (c.pos.y - a.pos.y);
+        }
+        return area / 2;
+    }
 
 public: // fields
     /** Bytecode-like instructions, separated by COMMAND values. */
@@ -272,6 +301,304 @@ void tesselate_bezier(const float x1, const float y1, const float x2, const floa
     }
 }
 
+/** Chooses whether to bevel a joint or not and returns vertex coordinates. */
+std::tuple<float, float, float, float>
+choose_bevel(bool is_beveling, const PainterPoint& prev_point, const PainterPoint& curr_point, const float stroke_width)
+{
+    float x0, y0, x1, y1;
+    if (is_beveling) {
+        x0 = curr_point.pos.x + prev_point.forward.y * stroke_width;
+        y0 = curr_point.pos.y - prev_point.forward.x * stroke_width;
+        x1 = curr_point.pos.x + curr_point.forward.y * stroke_width;
+        y1 = curr_point.pos.y - curr_point.forward.x * stroke_width;
+    }
+    else {
+        x0 = curr_point.pos.x + curr_point.dm.x * stroke_width;
+        y0 = curr_point.pos.y + curr_point.dm.y * stroke_width;
+        x1 = curr_point.pos.x + curr_point.dm.x * stroke_width;
+        y1 = curr_point.pos.y + curr_point.dm.y * stroke_width;
+    }
+    return std::make_tuple(x0, y0, x1, y1);
+}
+
+void create_bevel_join(const PainterPoint& previous_point, const PainterPoint& current_point, const float left_w, const float right_w,
+                       const float left_u, const float right_u, std::vector<Vertex>& vertices_out)
+{
+    if (current_point.flags & PainterPoint::Flags::LEFT) {
+        float lx0, ly0, lx1, ly1;
+        std::tie(lx0, ly0, lx1, ly1) = choose_bevel(current_point.flags & PainterPoint::Flags::INNERBEVEL,
+                                                    previous_point, current_point, left_w);
+
+        vertices_out.emplace_back(Vector2f(lx0, ly0),
+                                  Vector2f(left_u, 1));
+        vertices_out.emplace_back(Vector2f(current_point.pos.x - previous_point.forward.y * right_w,
+                                           current_point.pos.y + previous_point.forward.x * right_w),
+                                  Vector2f(right_u, 1));
+
+        if (current_point.flags & PainterPoint::Flags::BEVEL) {
+            vertices_out.emplace_back(Vector2f(lx0, ly0),
+                                      Vector2f(left_u, 1));
+            vertices_out.emplace_back(Vector2f(current_point.pos.x - previous_point.forward.y * right_w,
+                                               current_point.pos.y + previous_point.forward.x * right_w),
+                                      Vector2f(right_u, 1));
+
+            vertices_out.emplace_back(Vector2f(lx1, ly1),
+                                      Vector2f(left_u, 1));
+            vertices_out.emplace_back(Vector2f(current_point.pos.x - current_point.forward.y * right_w,
+                                               current_point.pos.y + current_point.forward.x * right_w),
+                                      Vector2f(right_u, 1));
+        }
+        else {
+            const float rx0 = current_point.pos.x - current_point.dm.x * right_w;
+            const float ry0 = current_point.pos.y - current_point.dm.y * right_w;
+
+            vertices_out.emplace_back(current_point.pos,
+                                      Vector2f(0.5f, 1));
+            vertices_out.emplace_back(Vector2f(current_point.pos.x - previous_point.forward.y * right_w,
+                                               current_point.pos.y + previous_point.forward.x * right_w),
+                                      Vector2f(right_u, 1));
+
+            vertices_out.emplace_back(Vector2f(rx0, ry0),
+                                      Vector2f(right_u, 1));
+            vertices_out.emplace_back(Vector2f(rx0, ry0),
+                                      Vector2f(right_u, 1));
+
+            vertices_out.emplace_back(current_point.pos,
+                                      Vector2f(0.5f, 1));
+            vertices_out.emplace_back(Vector2f(current_point.pos.x - current_point.forward.y * right_w,
+                                               current_point.pos.y + current_point.forward.x * right_w),
+                                      Vector2f(right_u, 1));
+        }
+
+        vertices_out.emplace_back(Vector2f(lx1, ly1),
+                                  Vector2f(left_u, 1));
+        vertices_out.emplace_back(Vector2f(current_point.pos.x - current_point.forward.y * right_w,
+                                           current_point.pos.y + current_point.forward.x * right_w),
+                                  Vector2f(right_u, 1));
+    }
+
+    // right corner
+    else {
+        float rx0, ry0, rx1, ry1;
+        std::tie(rx0, ry0, rx1, ry1) = choose_bevel(current_point.flags & PainterPoint::Flags::INNERBEVEL,
+                                                    previous_point, current_point, -right_w);
+
+        vertices_out.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * left_w,
+                                           current_point.pos.y - previous_point.forward.x * left_w),
+                                  Vector2f(left_u, 1));
+        vertices_out.emplace_back(Vector2f(rx0, ry0),
+                                  Vector2f(right_u, 1));
+
+        if (current_point.flags & PainterPoint::Flags::BEVEL) {
+            vertices_out.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * left_w,
+                                               current_point.pos.y - previous_point.forward.x * left_w),
+                                      Vector2f(left_u, 1));
+            vertices_out.emplace_back(Vector2f(rx0, ry0),
+                                      Vector2f(right_u, 1));
+
+            vertices_out.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * left_w,
+                                               current_point.pos.y - current_point.forward.x * left_w),
+                                      Vector2f(left_u, 1));
+            vertices_out.emplace_back(Vector2f(rx1, ry1),
+                                      Vector2f(right_u, 1));
+        }
+        else {
+            const float lx0 = current_point.pos.x + current_point.dm.x * left_w;
+            const float ly0 = current_point.pos.y + current_point.dm.y * left_w;
+
+            vertices_out.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * left_w,
+                                               current_point.pos.y - previous_point.forward.x * left_w),
+                                      Vector2f(left_u, 1));
+            vertices_out.emplace_back(current_point.pos,
+                                      Vector2f(0.5f, 1));
+
+            vertices_out.emplace_back(Vector2f(lx0, ly0),
+                                      Vector2f(left_u, 1));
+            vertices_out.emplace_back(Vector2f(lx0, ly0),
+                                      Vector2f(left_u, 1));
+
+            vertices_out.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * left_w,
+                                               current_point.pos.y - current_point.forward.x * left_w),
+                                      Vector2f(left_u, 1));
+            vertices_out.emplace_back(current_point.pos,
+                                      Vector2f(0.5f, 1));
+        }
+
+        vertices_out.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * left_w,
+                                           current_point.pos.y - current_point.forward.x * left_w),
+                                  Vector2f(left_u, 1));
+        vertices_out.emplace_back(Vector2f(rx1, ry1),
+                                  Vector2f(right_u, 1));
+    }
+}
+
+void create_round_join(const PainterPoint& previous_point, const PainterPoint& current_point, const float stroke_width,
+                       const size_t divisions, std::vector<Vertex>& vertices_out)
+{
+    if (current_point.flags & PainterPoint::Flags::LEFT) {
+        float lx0, ly0, lx1, ly1;
+        std::tie(lx0, ly0, lx1, ly1) = choose_bevel(
+            current_point.flags & PainterPoint::Flags::INNERBEVEL, previous_point, current_point, stroke_width);
+        float a0 = atan2(previous_point.forward.x, -previous_point.forward.y);
+        float a1 = atan2(current_point.forward.x, -current_point.forward.y);
+        if (a1 > a0) {
+            a1 -= TWO_PI;
+        }
+
+        vertices_out.emplace_back(Vector2f(lx0, ly0),
+                                  Vector2f(0, 1));
+        vertices_out.emplace_back(Vector2f(current_point.pos.x - previous_point.forward.y * stroke_width,
+                                           current_point.pos.y + previous_point.forward.x * stroke_width),
+                                  Vector2f(1, 1));
+
+        size_t n = clamp(static_cast<size_t>(ceilf(((a1 - a0) / static_cast<float>(PI)) * divisions)), 2u, divisions);
+        for (size_t i = 0; i < n; i++) {
+            const float u = i / static_cast<float>(n - 1);
+            const float a = a0 + u * (a1 - a0);
+            vertices_out.emplace_back(current_point.pos,
+                                      Vector2f(0.5f, 1));
+            vertices_out.emplace_back(Vector2f(current_point.pos.x + cosf(a) * stroke_width,
+                                               current_point.pos.y + sinf(a) * stroke_width),
+                                      Vector2f(1, 1));
+        }
+
+        vertices_out.emplace_back(Vector2f(lx1, ly1),
+                                  Vector2f(0, 1));
+        vertices_out.emplace_back(Vector2f(current_point.pos.x - current_point.forward.y * stroke_width,
+                                           current_point.pos.y + current_point.forward.x * stroke_width),
+                                  Vector2f(1, 1));
+    }
+    else {
+        float rx0, ry0, rx1, ry1;
+        std::tie(rx0, ry0, rx1, ry1) = choose_bevel(
+            current_point.flags & PainterPoint::Flags::INNERBEVEL, previous_point, current_point, -stroke_width);
+        float a0 = atan2(-previous_point.forward.x, previous_point.forward.y);
+        float a1 = atan2(-current_point.forward.x, current_point.forward.y);
+        if (a1 < a0) {
+            a1 += TWO_PI;
+        }
+
+        vertices_out.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * stroke_width,
+                                           current_point.pos.y - previous_point.forward.x * stroke_width),
+                                  Vector2f(0, 1));
+        vertices_out.emplace_back(Vector2f(rx0, ry0),
+                                  Vector2f(1, 1));
+
+        size_t n = clamp(static_cast<size_t>(ceilf(((a1 - a0) / static_cast<float>(PI)) * divisions)), 2u, divisions);
+        for (size_t i = 0; i < n; i++) {
+            const float u = i / static_cast<float>(n - 1);
+            const float a = a0 + u * (a1 - a0);
+            vertices_out.emplace_back(Vector2f(current_point.pos.x + cosf(a) * stroke_width,
+                                               current_point.pos.y + sinf(a) * stroke_width),
+                                      Vector2f(0, 1));
+            vertices_out.emplace_back(current_point.pos,
+                                      Vector2f(0.5f, 1));
+        }
+
+        vertices_out.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * stroke_width,
+                                           current_point.pos.y - current_point.forward.x * stroke_width),
+                                  Vector2f(0, 1));
+        vertices_out.emplace_back(Vector2f(rx1, ry1),
+                                  Vector2f(1, 1));
+    }
+}
+
+/** Creates the round cap and the start of a line.
+ * @param point         Start point of the line.
+ * @param delta         Direction of the cap.
+ * @param stroke_width  Width of the base of the cap.
+ * @param divisions     Number of divisions for the cap (per half-circle).
+ * @param vertices_out  [out] Vertex vector to write the cap into.
+ */
+void create_round_cap_start(const PainterPoint& point, const Vector2f& delta, const float stroke_width,
+                            const size_t divisions, std::vector<Vertex>& vertices_out)
+{
+    for (size_t i = 0; i < divisions; i++) {
+        const float a  = i / static_cast<float>(divisions - 1) * static_cast<float>(PI);
+        const float ax = cos(a) * stroke_width;
+        const float ay = sin(a) * stroke_width;
+        vertices_out.emplace_back(Vector2f(point.pos.x - delta.y * ax - delta.x * ay,
+                                           point.pos.y + delta.x * ax - delta.y * ay),
+                                  Vector2f(0, 1));
+        vertices_out.emplace_back(point.pos,
+                                  Vector2f(.5f, 1.f));
+    }
+
+    vertices_out.emplace_back(Vector2f(point.pos.x + delta.y * stroke_width,
+                                       point.pos.y - delta.x * stroke_width),
+                              Vector2f(0, 1));
+    vertices_out.emplace_back(Vector2f(point.pos.x - delta.y * stroke_width,
+                                       point.pos.y + delta.x * stroke_width),
+                              Vector2f(1, 1));
+}
+
+/** Creates the round cap and the end of a line.
+ * @param point         End point of the line.
+ * @param delta         Direction of the cap.
+ * @param stroke_width  Width of the base of the cap.
+ * @param divisions     Number of divisions for the cap (per half-circle).
+ * @param vertices_out  [out] Vertex vector to write the cap into.
+ */
+void create_round_cap_end(const PainterPoint& point, const Vector2f& delta, const float stroke_width,
+                          const size_t divisions, std::vector<Vertex>& vertices_out)
+{
+    vertices_out.emplace_back(Vector2f(point.pos.x + delta.y * stroke_width,
+                                       point.pos.y - delta.x * stroke_width),
+                              Vector2f(0, 1));
+    vertices_out.emplace_back(Vector2f(point.pos.x - delta.y * stroke_width,
+                                       point.pos.y + delta.x * stroke_width),
+                              Vector2f(1, 1));
+
+    for (size_t i = 0; i < divisions; i++) {
+        const float a  = i / static_cast<float>(divisions - 1) * static_cast<float>(PI);
+        const float ax = cos(a) * stroke_width;
+        const float ay = sin(a) * stroke_width;
+        vertices_out.emplace_back(point.pos,
+                                  Vector2f(.5f, 1.f));
+        vertices_out.emplace_back(Vector2f(point.pos.x - delta.y * ax + delta.x * ay,
+                                           point.pos.y + delta.x * ax + delta.y * ay),
+                                  Vector2f(0, 1));
+    }
+}
+
+void create_butt_cap_start(const PainterPoint& point, const Vector2f& direction, const float stroke_width,
+                           const float d, const float fringe_width, std::vector<Vertex>& vertices_out) // TODO: what is `d`?
+{
+    const float px = point.pos.x - (direction.x * d);
+    const float py = point.pos.y - (direction.y * d);
+    vertices_out.emplace_back(Vector2f(px + direction.y * stroke_width - direction.x * fringe_width,
+                                       py + -direction.x * stroke_width - direction.y * fringe_width),
+                              Vector2f(0, 0));
+    vertices_out.emplace_back(Vector2f(px - direction.y * stroke_width - direction.x * fringe_width,
+                                       py - -direction.x * stroke_width - direction.y * fringe_width),
+                              Vector2f(1, 0));
+    vertices_out.emplace_back(Vector2f(px + direction.y * stroke_width,
+                                       py + -direction.x * stroke_width),
+                              Vector2f(0, 1));
+    vertices_out.emplace_back(Vector2f(px - direction.y * stroke_width,
+                                       py - -direction.x * stroke_width),
+                              Vector2f(1, 1));
+}
+
+void create_butt_cap_end(const PainterPoint& point, const Vector2f& delta, const float stroke_width,
+                         const float d, const float fringe_width, std::vector<Vertex>& vertices_out)
+{
+    const float px = point.pos.x + (delta.x * d);
+    const float py = point.pos.y + (delta.y * d);
+    vertices_out.emplace_back(Vector2f(px + delta.y * stroke_width,
+                                       py - delta.x * stroke_width),
+                              Vector2f(0, 1));
+    vertices_out.emplace_back(Vector2f(px - delta.y * stroke_width,
+                                       py + delta.x * stroke_width),
+                              Vector2f(1, 1));
+    vertices_out.emplace_back(Vector2f(px + delta.y * stroke_width + delta.x * fringe_width,
+                                       py - delta.x * stroke_width + delta.y * fringe_width),
+                              Vector2f(0, 0));
+    vertices_out.emplace_back(Vector2f(px - delta.y * stroke_width + delta.x * fringe_width,
+                                       py + delta.x * stroke_width + delta.y * fringe_width),
+                              Vector2f(1, 0));
+}
+
 /**********************************************************************************************************************/
 
 /** Length of a bezier control vector to draw a circle with radius 1. */
@@ -368,8 +695,8 @@ std::vector<size_t> Painter::s_state_succession;
 
 Painter::Painter(Cell& cell, const RenderContext& context)
     : m_cell(cell)
+    , m_context(context)
     , m_stylus(Vector2f::zero())
-    , m_state_index(0)
 {
     // states
     s_states.clear();
@@ -378,7 +705,7 @@ Painter::Painter(Cell& cell, const RenderContext& context)
     s_state_succession.emplace_back(0);
 
     // data
-    const float pixel_ratio = context.get_pixel_ratio();
+    const float pixel_ratio = m_context.get_pixel_ratio();
     assert(abs(pixel_ratio) > 0);
     g_data.clear();
     g_data.distance_tolerance    = 0.01f / pixel_ratio;
@@ -395,8 +722,7 @@ size_t Painter::push_state()
     }
     s_states.emplace_back(current_state);
     s_states.back().previous_state = s_state_succession.back();
-    m_state_index = s_states.size() - 1;
-    s_state_succession.push_back(m_state_index);
+    s_state_succession.push_back(s_states.size() - 1);
     _append_commands({to_float(Command::NEXT_STATE)});
     return stack_height;
 }
@@ -407,8 +733,7 @@ size_t Painter::pop_state()
     if (s_state_succession.size() == 1) {
         return stack_height;
     }
-    m_state_index = _get_current_state().previous_state;
-    s_state_succession.push_back(m_state_index);
+    s_state_succession.push_back(_get_current_state().previous_state);
     _append_commands({to_float(Command::NEXT_STATE)});
     for (size_t prev_index = _get_current_state().previous_state; prev_index != State::INVALID_INDEX; ++stack_height) {
         prev_index = s_states[prev_index].previous_state;
@@ -422,6 +747,20 @@ void Painter::set_scissor(const Aabrf& aabr)
     current_state.scissor.xform = Xform2f::translation(aabr.center());
     current_state.scissor.xform *= current_state.xform;
     current_state.scissor.extend = aabr.extend();
+}
+
+void Painter::set_fill_paint(Paint paint)
+{
+    State& current_state = _get_current_state();
+    paint.xform *= current_state.xform;
+    current_state.fill = std::move(paint);
+}
+
+void Painter::set_stroke_paint(Paint paint)
+{
+    State& current_state = _get_current_state();
+    paint.xform *= current_state.xform;
+    current_state.stroke = std::move(paint);
 }
 
 void Painter::begin_path()
@@ -665,11 +1004,117 @@ void Painter::_append_commands(std::vector<float>&& commands)
     std::move(commands.begin(), commands.end(), std::back_inserter(g_data.commands));
 }
 
+void Painter::_fill()
+{
+    const State& state = _get_current_state();
+
+    // get the fill paint
+    Paint fill_paint = state.fill;
+    fill_paint.inner_color.a *= state.alpha;
+    fill_paint.outer_color.a *= state.alpha;
+
+    // TODO: CONTINUE HERE
+}
+
+void Painter::_stroke()
+{
+    const State& state = _get_current_state();
+
+    // get the stroke paint
+    Paint stroke_paint = state.stroke;
+    stroke_paint.inner_color.a *= state.alpha;
+    stroke_paint.outer_color.a *= state.alpha;
+
+    float stroke_width;
+    { // create a sane stroke width
+        const float scale = (state.xform.scale_factor_x() + state.xform.scale_factor_y()) / 2;
+        stroke_width      = clamp(state.stroke_width * scale, 0, 200); // 200 is arbitrary
+        if (stroke_width < g_data.fringe_width) {
+            // if the stroke width is less than pixel size, use alpha to emulate coverage.
+            const float alpha = clamp(stroke_width / g_data.fringe_width, 0.0f, 1.0f);
+            stroke_paint.inner_color.a *= alpha * alpha; // since coverage is area, scale by alpha*alpha
+            stroke_paint.outer_color.a *= alpha * alpha;
+            stroke_width = g_data.fringe_width;
+        }
+    }
+
+    // TODO: CONTINUE HERE
+//    if (context.provides_geometric_aa()) {
+//        _expand_stroke((stroke_width / 2.f) + (m_fringe_width / 2.f));
+//    }
+//    else {
+//        _expand_stroke(stroke_width / 2.f);
+//    }
+//    context.add_stroke_call(stroke_paint, stroke_width, *this);
+}
+
+void Painter::_prepare_paths(const float fringe, const LineJoin join, const float miter_limit)
+{
+    for (PainterPath& path : g_data.paths) {
+        // skip already prepared paths
+        if (path.prepared_count == path.point_count) {
+            continue;
+        }
+
+        // calculate which joins needs extra vertices to append and gather vertex count
+        size_t left_turn_count         = 0;
+        const size_t last_point_offset = path.first_point + path.point_count - 1;
+        for (size_t current_offset = path.first_point, previous_offset = last_point_offset;
+             current_offset <= last_point_offset;
+             previous_offset = current_offset++) {
+            const PainterPoint& previous_point = g_data.points[previous_offset];
+            PainterPoint& current_point        = g_data.points[current_offset];
+
+            // clear all flags except the corner (in case the Path has already been prepared one)
+            current_point.flags = (current_point.flags & PainterPoint::Flags::CORNER) ? PainterPoint::Flags::CORNER
+                                                                                      : PainterPoint::Flags::NONE;
+
+            // keep track of left turns
+            if (current_point.forward.cross(previous_point.forward) > 0) {
+                ++left_turn_count;
+                current_point.flags = static_cast<PainterPoint::Flags>(current_point.flags | PainterPoint::Flags::LEFT);
+            }
+
+            // calculate extrusions
+            current_point.dm.x    = (previous_point.forward.y + current_point.forward.y) / 2.f;
+            current_point.dm.y    = (previous_point.forward.x + current_point.forward.x) / -2.f;
+            const float dm_mag_sq = current_point.dm.magnitude_sq();
+            if (dm_mag_sq > precision_low<float>()) {
+                float scale = 1.0f / dm_mag_sq;
+                if (scale > 600.0f) {
+                    scale = 600.0f;
+                }
+                current_point.dm.x *= scale;
+                current_point.dm.y *= scale;
+            }
+
+            // calculate if we should use bevel or miter for inner join
+            float limit = max(1.01f, min(previous_point.length, current_point.length) * (fringe > 0.0f ? 1.0f / fringe : 0.f));
+            if ((dm_mag_sq * limit * limit) < 1.0f) {
+                current_point.flags = static_cast<PainterPoint::Flags>(current_point.flags | PainterPoint::Flags::INNERBEVEL);
+            }
+
+            // check to see if the corner needs to be beveled
+            if (current_point.flags & PainterPoint::Flags::CORNER) {
+                if (join == LineJoin::BEVEL || join == LineJoin::ROUND || (dm_mag_sq * miter_limit * miter_limit) < 1.0f) {
+                    current_point.flags = static_cast<PainterPoint::Flags>(current_point.flags | PainterPoint::Flags::BEVEL);
+                }
+            }
+        }
+
+        path.is_convex      = (left_turn_count == path.point_count);
+        path.prepared_count = path.point_count;
+    }
+}
+
 // TODO: when this draws, revisit this function and see if you find a way to guarantee that there is always a path and point without if-statements all over the place
 void Painter::_execute()
 {
     assert(!s_state_succession.empty());
-    m_state_index = s_state_succession[0];
+    std::vector<size_t> state_succession = s_state_succession;
+    s_state_succession.clear();
+    size_t state_index = 0;
+    s_state_succession.push_back(state_succession[state_index]);
 
     // parse the command buffer
     for (size_t index = 0; index < g_data.commands.size(); ++index) {
@@ -723,12 +1168,20 @@ void Painter::_execute()
             break;
 
         case Command::NEXT_STATE:
-            // aaargh! m_state_index must be an index into the s_state_succession, not into s_states!
-            // CONTINUE HERE
+            if (++state_index < state_succession.size()) {
+                s_state_succession.push_back(state_succession[state_index]);
+            }
+            else {
+                log_critical << "State succession missmatch detected during execution of the Command buffer";
+            }
             break;
 
         case Command::FILL:
+            _fill();
+            break;
+
         case Command::STROKE:
+            _stroke();
             break;
 
         default: // unknown enum
