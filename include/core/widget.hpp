@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/screen_item.hpp"
-#include "graphics/cell.hpp"
+#include "graphics/cell_old.hpp"
 
 namespace notf {
 
@@ -61,7 +61,7 @@ public: // methods
     /** Draws the Widget's Cell onto the screen.
      * Either uses the cached Cell or updates it first, using _paint().
      */
-    void paint(RenderContext& context) const;
+    void paint(RenderContext_Old& context) const;
 
 public: // signals
     /** Signal invoked when this Widget is asked to handle a Mouse move event. */

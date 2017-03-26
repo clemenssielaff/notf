@@ -144,12 +144,9 @@ SOURCES += \
     src/graphics/text/font.cpp \
     src/graphics/text/font_atlas.cpp \
     src/graphics/blend_mode.cpp \
-    src/graphics/render_context.cpp \
-    src/graphics/cell.cpp \
-    src/graphics/cell_new.cpp \
+    src/graphics/stencil_func.cpp \
     src/graphics/stats.cpp \
-    src/graphics/painter.cpp \
-    src/graphics/painter_new.cpp \
+    src/graphics/paint.cpp \
     src/graphics/text/font_manager.cpp \
     src/common/random.cpp \
     src/common/size2.cpp \
@@ -159,7 +156,13 @@ SOURCES += \
     src/common/string.cpp \
     src/core/window_layout.cpp \
     src/graphics/gl_errors.cpp \
-    src/graphics/vertex.cpp
+    src/graphics/vertex.cpp \
+    src/graphics/cell_old.cpp \
+    src/graphics/painter_old.cpp \
+    src/graphics/render_context_old.cpp \
+    src/graphics/render_context.cpp \
+    src/graphics/painter.cpp \
+    src/graphics/cell.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -215,13 +218,10 @@ HEADERS += \
     include/graphics/text/font_atlas.hpp \
     include/graphics/vertex.hpp \
     include/graphics/blend_mode.hpp \
+    include/graphics/stencil_func.hpp \
     include/graphics/gl_utils.hpp \
-    include/graphics/render_context.hpp \
-    include/graphics/painter_new.hpp \
-    include/graphics/painter.hpp \
+    include/graphics/paint.hpp \
     include/graphics/stats.hpp \
-    include/graphics/cell.hpp \
-    include/graphics/cell_new.hpp \
     include/graphics/text/font_manager.hpp \
     include/graphics/text/freetype.hpp \
     include/utils/sfinae.hpp \
@@ -238,7 +238,13 @@ HEADERS += \
     include/core/opengl.hpp \
     include/core/glfw.hpp \
     include/core/window_layout.hpp \
-    include/utils/range.hpp
+    include/utils/range.hpp \
+    include/graphics/painter_old.hpp \
+    include/graphics/render_context_old.hpp \
+    include/graphics/render_context.hpp \
+    include/graphics/cell_old.hpp \
+    include/graphics/cell.hpp \
+    include/graphics/painter.hpp
 
 QMAKE_CXX = ccache g++
 

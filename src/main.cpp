@@ -8,7 +8,7 @@ using namespace notf;
 #include "core/controller.hpp"
 #include "core/window_layout.hpp"
 #include "core/widget.hpp"
-#include "graphics/painter.hpp"
+#include "graphics/painter_old.hpp"
 
 class MyWidget : public Widget {
 

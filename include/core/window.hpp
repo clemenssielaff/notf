@@ -16,7 +16,7 @@ struct KeyEvent;
 class WindowLayout;
 class MouseEvent;
 class RenderManager;
-class RenderContext;
+class RenderContext_Old;
 
 /**********************************************************************************************************************/
 
@@ -50,6 +50,7 @@ struct WindowInfo {
 class Window : public receive_signals, public std::enable_shared_from_this<Window> {
 
     friend class Application;
+    friend class RenderContext_Old;
     friend class RenderContext;
 
 protected: // constructor

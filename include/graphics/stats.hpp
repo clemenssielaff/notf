@@ -3,11 +3,11 @@
 #include <vector>
 
 #include "common/aabr.hpp"
-#include "graphics/cell.hpp"
+#include "graphics/cell_old.hpp"
 
 namespace notf {
 
-class RenderContext;
+class RenderContext_Old;
 
 class RenderStats { // TODO: more expressive stats when the graphics rework is done
 
@@ -19,7 +19,7 @@ public: // methods
     void update(const float frame_time);
 
     /** Renders the Stats to a RenderContext. */
-    void render_stats(RenderContext& context);
+    void render_stats(RenderContext_Old& context);
 
 private: // methods
     /** Calculates the average frame time of all frames in the buffer. */

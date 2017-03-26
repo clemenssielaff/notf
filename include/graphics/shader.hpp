@@ -7,7 +7,7 @@
 
 namespace notf {
 
-class RenderContext;
+class RenderContext_Old;
 
 //*********************************************************************************************************************/
 
@@ -27,6 +27,7 @@ class RenderContext;
  */
 class Shader {
 
+    friend class RenderContext_Old;
     friend class RenderContext; // creates and finally invalidates all of its Shaders when it is destroyed
 
 public: // static methods
@@ -41,7 +42,7 @@ private: // static method for RenderContext
      * @param fragment_shader   Fragment shader source.
      * @return                  Shader instance, is empty if the compilation failed.
      */
-    static std::shared_ptr<Shader> build(RenderContext* context, const std::string& name,
+    static std::shared_ptr<Shader> build(RenderContext_Old* context, const std::string& name,
                                          const std::string& vertex_shader_source,
                                          const std::string& fragment_shader_source);
 
@@ -51,7 +52,7 @@ protected: // constructor
      * @param context   Render Context in which the Shader lives.
      * @param name      Human readable name of the Shader.
      */
-    Shader(const GLuint id, RenderContext* context, const std::string name);
+    Shader(const GLuint id, RenderContext_Old* context, const std::string name);
 
 public: // methods
     // no copy or assignment
@@ -87,7 +88,7 @@ private: // fields
     GLuint m_id;
 
     /** Render Context in which the Texture lives. */
-    RenderContext* m_render_context;
+    RenderContext_Old* m_render_context;
 
     /** The name of this Shader. */
     const std::string m_name;

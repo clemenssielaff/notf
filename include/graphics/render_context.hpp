@@ -3,23 +3,20 @@
 #include <memory>
 #include <vector>
 
-#include "common/aabr.hpp"
 #include "common/color.hpp"
 #include "common/size2.hpp"
 #include "common/time.hpp"
 #include "common/vector2.hpp"
 #include "graphics/blend_mode.hpp"
-#include "graphics/cell.hpp"
 #include "graphics/gl_forwards.hpp"
-#include "graphics/shader.hpp"
-#include "graphics/texture2.hpp"
+#include "graphics/stencil_func.hpp"
 #include "graphics/vertex.hpp"
 
 namespace notf {
 
-struct RenderContextArguments;
-class Texture2;
 class Window;
+class Shader;
+class Texture2;
 
 /**********************************************************************************************************************/
 
@@ -51,63 +48,97 @@ struct RenderContextArguments {
  */
 class RenderContext {
 
-    friend class Cell_Old;
-    friend class FrameGuard;
-    friend class RenderManager;
     friend class Shader;
     friend class Texture2;
 
-public:
-    struct CanvasCall {
+public: // classes
+    /******************************************************************************************************************/
+
+    /** The FrameGuard makes sure that for each call to `RenderContext::begin_frame` there is a corresponding call to
+     * either `RenderContext::end_frame` on success or `RenderContext::abort_frame` in case of an error.
+     *
+     * It is returned by `RenderContext::begin_frame` and must remain on the stack until the rendering has finished.
+     * Then, you need to call `FrameGuard::end()` to cleanly end the frame.
+     * If the FrameGuard is destroyed before `FrameGuard::end()` is called, the RenderContext is instructed to abort the
+     * currently drawn frame.
+     */
+    class FrameGuard {
+
+    public: // methods
+        /** Constructor. */
+        FrameGuard(RenderContext* context)
+            : m_render_context(context) {}
+
+        // no copy/assignment
+        FrameGuard(const FrameGuard&) = delete;
+        FrameGuard& operator=(const FrameGuard&) = default;
+
+        /** Move Constructor. */
+        FrameGuard(FrameGuard&& other)
+            : m_render_context(other.m_render_context)
+        {
+            other.m_render_context = nullptr;
+        }
+
+        /** Destructor.
+         * If the object is destroyed before FrameGuard::end() is called, the RenderContext's frame is cancelled.
+         */
+        ~FrameGuard()
+        {
+            if (m_render_context) {
+                m_render_context->_abort_frame();
+            }
+        }
+
+        /** Cleanly ends the current frame. */
+        void end()
+        {
+            if (m_render_context) {
+                m_render_context->_end_frame();
+                m_render_context = nullptr;
+            }
+        }
+
+    private: // fields
+        /** CanvasContext currently drawing a frame.*/
+        RenderContext* m_render_context;
+    };
+
+private: // classes
+    /******************************************************************************************************************/
+    struct Path {
+        GLint fillOffset    = 0;
+        GLsizei fillCount   = 0;
+        GLint strokeOffset  = 0;
+        GLsizei strokeCount = 0;
+    };
+
+    /******************************************************************************************************************/
+
+    struct Call {
         enum class Type : unsigned char {
             FILL,
             CONVEX_FILL,
             STROKE,
         };
-
-        CanvasCall() // we'll see if we need this initialization to zero at all
-            : type(Type::FILL),
-              pathOffset(0),
-              pathCount(0),
-              triangleOffset(0),
-              triangleCount(0),
-              uniformOffset(0)
-        {
-        }
-
         Type type;
         size_t pathOffset;
         size_t pathCount;
         GLint triangleOffset;
-        GLsizei triangleCount;
         GLintptr uniformOffset;
         std::shared_ptr<Texture2> texture;
     };
 
-    struct PathIndex {
+    /******************************************************************************************************************/
 
-        PathIndex() // we'll see if we need this initialization to zero at all
-            : fillOffset(0),
-              fillCount(0),
-              strokeOffset(0),
-              strokeCount(0)
-        {
-        }
-
-        GLint fillOffset;
-        GLsizei fillCount;
-        GLint strokeOffset;
-        GLsizei strokeCount;
-    };
-
-    struct FragmentUniforms { //  TODO: replace more of the float[]s with explicit types
+    struct ShaderVariables { //  TODO: replace more of the float[]s with explicit types
         enum class Type : GLint {
             GRADIENT,
             IMAGE,
             SIMPLE,
         };
 
-        FragmentUniforms() // we'll see if we need this initialization to zero at all
+        ShaderVariables() // we'll see if we need this initialization to zero at all
             : innerCol(),
               outerCol(),
               radius{0},
@@ -143,76 +174,24 @@ public:
         Type type;
     };
 
-    struct Sources {
-        std::string vertex;
-        std::string fragment;
-    };
-
-public: // classes
     /******************************************************************************************************************/
-    /** The FrameGuard makes sure that for each call to `CanvasContext::begin_frame` there is a corresponding call to
-     * either `CanvasContext::end_frame` on success or `CanvasContext::abort_frame` in case of an error.
-     *
-     * It is returned by `CanvasContext::begin_frame` and must remain on the stack until the rendering has finished.
-     * Then, you need to call `FrameGuard::end()` to cleanly end the frame.
-     * If the FrameGuard is destroyed before `FrameGuard::end()` is called, the CanvasContext is instructed to abort the
-     * currently drawn frame.
-     */
-    class FrameGuard {
 
-    public: // methods
-        /** Constructor. */
-        FrameGuard(RenderContext* context)
-            : m_canvas(context) {}
+    struct CellShader {
+        /** The actual Cell Shader. */
+        std::shared_ptr<Shader> shader;
 
-        // no copy/assignment
-        FrameGuard(const FrameGuard&) = delete;
-        FrameGuard& operator=(const FrameGuard&) = default;
+        /** Location of the `view_size` uniform in the Shader. */
+        GLint viewsize;
 
-        /** Move Constructor. */
-        FrameGuard(FrameGuard&& other)
-            : m_canvas(other.m_canvas)
-        {
-            other.m_canvas = nullptr;
-        }
+        /** Location of the `textures` uniform in the Shader. */
+        GLint texture;
 
-        /** Destructor.
-         * If the object is destroyed before FrameGuard::end() is called, the CanvasContext's frame is cancelled.
-         */
-        ~FrameGuard()
-        {
-            if (m_canvas) {
-                m_canvas->_abort_frame();
-            }
-        }
-
-        /** Cleanly ends the current frame. */
-        void end()
-        {
-            if (m_canvas) {
-                m_canvas->_end_frame();
-                m_canvas = nullptr;
-            }
-        }
-
-    private: // fields
-        /** CanvasContext currently drawing a frame.*/
-        RenderContext* m_canvas;
+        /** Location of the `variables` uniform in the Shader. */
+        GLuint variables;
     };
 
-public: // enum
-    enum class StencilFunc : unsigned char {
-        ALWAYS,
-        NEVER,
-        LESS,
-        LEQUAL,
-        GREATER,
-        GEQUAL,
-        EQUAL,
-        NOTEQUAL,
-    };
-
-public:
+public: // methods
+    /******************************************************************************************************************/
     /** Constructor. */
     RenderContext(const Window* window, const RenderContextArguments args);
 
@@ -222,21 +201,42 @@ public:
     /** Makes the OpenGL context of this RenderContext current. */
     void make_current();
 
-    FrameGuard begin_frame(const Size2i buffer_size);
+    /** Begins a new frame.
+     * @return  FrameGuard object. Call FrameGuard::end() to cleanly finish the drawing process.
+     */
+    FrameGuard begin_frame(const Size2i& buffer_size); // TODO: make begin_frame private and only let RenderManager call it?
 
-    float get_pixel_ratio() const { return m_args.pixel_ratio; }
+    /** Time at the beginning of the current frame. */
+    Time get_time() const { return m_time; }
 
-    float get_tesselation_tolerance() const { return 0.25f / m_args.pixel_ratio; }
-
-    float get_distance_tolerance() const { return 0.01f / m_args.pixel_ratio; }
-
-    float get_finge_width() const { return 1.f / m_args.pixel_ratio; }
-
-    bool provides_geometric_aa() const { return m_args.enable_geometric_aa; }
-
+    /** The mouse position relative to the Window's top-left corner. */
     const Vector2f& get_mouse_pos() const { return m_mouse_pos; }
 
-    Time get_time() const { return m_time; }
+    /** The pixel ratio of the RenderContext. */
+    float get_pixel_ratio() const { return m_args.pixel_ratio; }
+
+    /** Whether Cells should provide their own geometric antialiasing or not. */
+    bool provides_geometric_aa() const { return m_args.enable_geometric_aa; }
+
+    /** Furthest distance between two points in which the second point is considered equal to the first. */
+    float get_distance_tolerance() const { return 0.01f / m_args.pixel_ratio; }
+
+    /** Tesselation density when creating rounded shapes. */
+    float get_tesselation_tolerance() const { return 0.25f / m_args.pixel_ratio; }
+
+    // TODO: what is the fringe width?
+    float get_finge_width() const { return 1.f / m_args.pixel_ratio; }
+
+    /** Applies a new StencilFunction. */
+    void set_stencil_func(const StencilFunc func);
+
+    /** Applies the given stencil mask.  */
+    void set_stencil_mask(const GLuint mask);
+
+    /** Applies the given blend mode. */
+    void set_blend_mode(const BlendMode mode);
+
+    // TODO: pass a Context as argument to Texture and Shader instead / the RenderContext interface should be used for per-frame info
 
     /** Loads and returns a new Texture.
      * The result is empty if the Texture could not be loaded.
@@ -253,46 +253,41 @@ public:
                                          const std::string& vertex_shader_source,
                                          const std::string& fragment_shader_source);
 
-private: // methods for RenderManager
-    void set_mouse_pos(Vector2f pos) { m_mouse_pos = std::move(pos); }
+private: // methods for friends
+    /** Updates the mouse position. */
+    void _set_mouse_pos(Vector2f pos) { m_mouse_pos = std::move(pos); }
 
-    void set_buffer_size(Size2f buffer) { m_buffer_size = std::move(buffer); }
+    /** Updates buffer size. */
+    void _set_buffer_size(Size2f buffer) { m_buffer_size = std::move(buffer); }
 
-private: // methods for Cell
-    void add_fill_call(const Paint& paint, const Cell_Old& cell);
-
-    void add_stroke_call(const Paint& paint, const float stroke_width, const Cell_Old& cell);
-
-    void set_stencil_mask(const GLuint mask);
-
-    void set_stencil_func(const StencilFunc func);
-
-private: // methods for FrameGuard
+    /** Aborts the drawing of the current frame if something went wrong. */
     void _abort_frame();
 
+    /** Gracefully finishes the drawing of the current frame. */
     void _end_frame();
 
-private: // methods
-    void _paint_to_frag(FragmentUniforms& frag, const Paint& paint, const Scissor& scissor,
-                        const float stroke_width, const float fringe, const float stroke_threshold);
-
-    void _render_flush(BlendMode blend_mode);
-
-    void _fill(const CanvasCall& call);
-
-    void _convex_fill(const CanvasCall& call);
-
-    void _stroke(const CanvasCall& call);
-
-private: // methods for friends
     /** Binds the Texture with the given ID, but only if it is not the currently bound one. */
     void _bind_texture(const GLuint texture_id);
 
     /** Binds the Shader with the given ID, but only if it is not the currently bound one. */
     void _bind_shader(const GLuint shader_id);
 
+private: // shader
+    /** Fill oCall verload for simple, convex shapes. */
+    void _convex_fill(const Call& call);
+
+    /** Performs a fill Call. */
+    void _fill(const Call& call);
+
+    /** Performs a stroke Call. */
+    void _stroke(const Call& call);
+
+    /** Performs all stored Calls. */
+    void _render_flush();
+
 private: // static methods
-    static Sources _create_shader_sources(const RenderContext& context);
+    /** Size (in bytes) of a ShaderVariables struct. */
+    static constexpr GLintptr fragmentSize() { return sizeof(ShaderVariables); }
 
 private: // fields
     /** The Window owning this RenderManager. */
@@ -301,32 +296,37 @@ private: // fields
     /** Argument struct to initialize the RenderContext. */
     RenderContextArguments m_args;
 
+    /** All Calls that were collected during during the frame. */
+    std::vector<Call> m_calls;
+
+    /** Indices of `m_vertices` of all Paths drawn during the frame. */
+    std::vector<Path> m_paths;
+
+    /** Vertices (global, not path specific?) */
+    std::vector<Vertex> m_vertices;
+
+    /** ShaderVariables for each Call. */
+    std::vector<ShaderVariables> m_shader_variables;
+
+    /* Per-frame infos ************************************************************************************************/
+
     /** Returns the size of the Window's framebuffer in pixels. */
     Size2f m_buffer_size;
 
     /** Time at the beginning of the current frame. */
     Time m_time;
 
+    /** The mouse position relative to the Window's top-left corner. */
+    Vector2f m_mouse_pos;
+
+    /** Cached stencil function to avoid unnecessary rebindings. */
+    StencilFunc m_stencil_func;
+
     /* Cached stencil mask to avoid unnecessary rebindings. */
     GLuint m_stencil_mask;
 
-    /** Cached stencil func to avoid unnecessary rebindings. */
-    StencilFunc m_stencil_func;
-
-    /** All Calls that were collected during during the frame. */
-    std::vector<CanvasCall> m_calls;
-
-    /** Indices of `m_vertices` of all Paths drawn during the frame. */
-    std::vector<PathIndex> m_paths;
-
-    /** Vertices (global, not path specific?) */
-    std::vector<Vertex> m_vertices;
-
-    /** Fragment uniform buffers. */
-    std::vector<FragmentUniforms> m_frag_uniforms;
-
-    /** Position of the mouse relative to the Window. */
-    Vector2f m_mouse_pos;
+    /* Cached blend mode to avoid unnecessary rebindings. */
+    BlendMode m_blend_mode;
 
     /* Textures *******************************************************************************************************/
 
@@ -349,17 +349,10 @@ private: // fields
      */
     std::vector<std::weak_ptr<Shader>> m_shaders;
 
-    /* Cell Shader ****************************************************************************************************/
+    /** The Cell Shader used to render Widgets' Cells. */
+    CellShader m_cell_shader;
 
-    Sources m_sources;
-
-    std::shared_ptr<Shader> m_cell_shader;
-
-    GLint m_loc_viewsize;
-
-    GLint m_loc_texture;
-
-    GLuint m_loc_buffer;
+    /* OpenGL buffers *************************************************************************************************/
 
     GLuint m_fragment_buffer;
 

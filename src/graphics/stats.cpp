@@ -33,7 +33,7 @@ float RenderStats::get_average() const
     return sum / static_cast<float>(count);
 }
 
-void RenderStats::render_stats(RenderContext &context)
+void RenderStats::render_stats(RenderContext_Old &context)
 {
     if(m_buffer.size() < 2){
         return;

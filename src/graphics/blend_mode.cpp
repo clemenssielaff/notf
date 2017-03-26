@@ -1,7 +1,9 @@
 #include "graphics/blend_mode.hpp"
 
+#include <assert.h>
 #include <utility>
 
+#include "common/log.hpp"
 #include "core/opengl.hpp"
 
 namespace notf {
@@ -26,6 +28,11 @@ BlendMode::BlendMode(const Mode color, const Mode alpha)
 
 void BlendMode::apply() const
 {
+    if (!is_valid()) {
+        log_critical << "Cannot apply invalid BlendMode";
+        return;
+    }
+
     // color
     GLenum rgb_sfactor;
     GLenum rgb_dfactor;
@@ -73,6 +80,9 @@ void BlendMode::apply() const
     case (XOR):
         rgb_sfactor = GL_ONE_MINUS_DST_ALPHA;
         rgb_dfactor = GL_ONE_MINUS_SRC_ALPHA;
+        break;
+    case INVALID:
+        assert(false);
         break;
     }
 
@@ -123,6 +133,9 @@ void BlendMode::apply() const
     case (XOR):
         alpha_sfactor = GL_ONE_MINUS_DST_ALPHA;
         alpha_dfactor = GL_ONE_MINUS_SRC_ALPHA;
+        break;
+    case INVALID:
+        assert(false);
         break;
     }
 

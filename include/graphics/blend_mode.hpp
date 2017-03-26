@@ -8,6 +8,7 @@ namespace notf {
  */
 struct BlendMode {
     enum Mode : unsigned char {
+        INVALID = 0,
         SOURCE_OVER,
         SOURCE_IN,
         SOURCE_OUT,
@@ -40,6 +41,15 @@ struct BlendMode {
      * A valid OpenGL context must exist before calling this function.
      */
     void apply() const;
+
+    /** Equality operator. */
+    bool operator==(const BlendMode& other) const { return rgb == other.rgb && alpha == other.alpha; }
+
+    /** Inequality operator. */
+    bool operator!=(const BlendMode& other) const { return rgb != other.rgb || alpha != other.alpha; }
+
+    /** Checks if the BlendMode is valid. */
+    bool is_valid() const { return rgb != INVALID && alpha != INVALID; }
 };
 
 } // namespace notf

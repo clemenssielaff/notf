@@ -4,8 +4,8 @@
 #include "common/string.hpp"
 #include "core/layout.hpp"
 #include "core/window.hpp"
-#include "graphics/painter.hpp"
-#include "graphics/render_context.hpp"
+#include "graphics/painter_old.hpp"
+#include "graphics/render_context_old.hpp"
 #include "utils/unused.hpp"
 
 namespace notf {
@@ -45,7 +45,7 @@ void Widget::redraw()
     _redraw();
 }
 
-void Widget::paint(RenderContext& context) const
+void Widget::paint(RenderContext_Old& context) const
 {
     // update the cell if dirty
     //    if (m_cell.is_dirty()) { TODO: currently _set_size does not dirty the Widget's Cell
@@ -58,7 +58,6 @@ void Widget::paint(RenderContext& context) const
         // TODO: print Python stack trace here IF the item uses a Python object to draw itself
     }
     //    }
-    // TODO: clear all m_cell states after painting
 }
 
 void Widget::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
