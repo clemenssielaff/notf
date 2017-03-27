@@ -8,6 +8,7 @@ namespace notf {
 class Cell {
 
     friend class Painter;
+    friend class RenderContext;
 
 private: // types
     struct Path {

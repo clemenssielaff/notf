@@ -59,6 +59,16 @@ std::vector<VALUE> values(const MAP<KEY, VALUE>& map)
     return result;
 }
 
+/** Syntax sugar for an `emplace_back(...)`, followed by a `back()` reference.
+ * Will be standard in C++17.
+ */
+template <typename T, typename... Args>
+T& create_back(std::vector<T>& target, Args&&... args)
+{
+    target.emplace_back(std::forward<Args...>(args...));
+    return target.back();
+}
+
 /** Appends a vector to another one of the same type. */
 template <typename T>
 std::vector<T>& append(std::vector<T>& target, const std::vector<T>& source)

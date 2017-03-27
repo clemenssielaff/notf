@@ -8,7 +8,9 @@
 #include "common/time.hpp"
 #include "common/vector2.hpp"
 #include "graphics/blend_mode.hpp"
+#include "graphics/cell.hpp"
 #include "graphics/gl_forwards.hpp"
+#include "graphics/painter.hpp" // TODO: maybe put scissor into its own header
 #include "graphics/stencil_func.hpp"
 #include "graphics/vertex.hpp"
 
@@ -124,9 +126,9 @@ private: // classes
         Type type;
         size_t pathOffset;
         size_t pathCount;
-        GLint triangleOffset;
         GLintptr uniformOffset;
         std::shared_ptr<Texture2> texture;
+        GLint triangleOffset;
     };
 
     /******************************************************************************************************************/
@@ -173,6 +175,9 @@ private: // classes
         int texType;
         Type type;
     };
+
+    friend void paint_to_frag(ShaderVariables& frag, const Paint& paint, const Painter::Scissor& scissor,
+                              const float stroke_width, const float fringe, const float stroke_threshold);
 
     /******************************************************************************************************************/
 
@@ -225,7 +230,7 @@ public: // methods
     float get_tesselation_tolerance() const { return 0.25f / m_args.pixel_ratio; }
 
     // TODO: what is the fringe width?
-    float get_finge_width() const { return 1.f / m_args.pixel_ratio; }
+    float get_fringe_width() const { return 1.f / m_args.pixel_ratio; }
 
     /** Applies a new StencilFunction. */
     void set_stencil_func(const StencilFunc func);
@@ -266,21 +271,24 @@ private: // methods for friends
     /** Gracefully finishes the drawing of the current frame. */
     void _end_frame();
 
+    /** Adds render calls from a given Cell. */
+    void _add_cell(const Cell& cell);
+
     /** Binds the Texture with the given ID, but only if it is not the currently bound one. */
     void _bind_texture(const GLuint texture_id);
 
     /** Binds the Shader with the given ID, but only if it is not the currently bound one. */
     void _bind_shader(const GLuint shader_id);
 
-private: // shader
-    /** Fill oCall verload for simple, convex shapes. */
-    void _convex_fill(const Call& call);
+private: // methods
+    /** Fills a simple, convex shape. */
+    void _perform_convex_fill(const Call& call);
 
-    /** Performs a fill Call. */
-    void _fill(const Call& call);
+    /** Fills multiple or complex shapes in one call. */
+    void _perform_fill(const Call& call);
 
-    /** Performs a stroke Call. */
-    void _stroke(const Call& call);
+    /** Strokes a path. */
+    void _perform_stroke(const Call& call);
 
     /** Performs all stored Calls. */
     void _render_flush();
