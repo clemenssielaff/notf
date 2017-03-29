@@ -272,7 +272,7 @@ private: // methods for FrameGuard
     void _end_frame();
 
 private: // methods
-    void _paint_to_frag(FragmentUniforms& frag, const Paint& paint, const Scissor& scissor,
+    void _paint_to_frag(FragmentUniforms& frag, const Paint& paint, const Scissor_Old& scissor,
                         const float stroke_width, const float fringe, const float stroke_threshold);
 
     void _render_flush(BlendMode blend_mode);

@@ -8,6 +8,7 @@
 #include "core/window.hpp"
 #include "graphics/blend_mode.hpp"
 #include "graphics/gl_utils.hpp"
+#include "graphics/scissor.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/texture2.hpp"
 
@@ -203,22 +204,22 @@ void RenderContext::set_blend_mode(const BlendMode mode)
 
 std::shared_ptr<Texture2> RenderContext::load_texture(const std::string& file_path)
 {
-    std::shared_ptr<Texture2> texture = Texture2::load(this, file_path);
-    if (texture) {
-        m_textures.emplace_back(texture);
-    }
-    return texture;
+//    std::shared_ptr<Texture2> texture = Texture2::load(this, file_path);
+//    if (texture) {
+//        m_textures.emplace_back(texture);
+//    }
+//    return texture;
 }
 
 std::shared_ptr<Shader> RenderContext::build_shader(const std::string& name,
                                                     const std::string& vertex_shader_source,
                                                     const std::string& fragment_shader_source)
 {
-    std::shared_ptr<Shader> shader = Shader::build(this, name, vertex_shader_source, fragment_shader_source);
-    if (shader) {
-        m_shaders.emplace_back(shader);
-    }
-    return shader;
+//    std::shared_ptr<Shader> shader = Shader::build(this, name, vertex_shader_source, fragment_shader_source);
+//    if (shader) {
+//        m_shaders.emplace_back(shader);
+//    }
+//    return shader;
 }
 
 void RenderContext::_abort_frame()
@@ -290,18 +291,17 @@ void RenderContext::_add_cell(const Cell& cell)
             m_vertices.emplace_back(Vertex{Vector2f{bounds.left(), bounds.top()}, Vector2f{.5f, 1.f}});
         }
 
-        const Painter::Scissor& scissor = cell.get_current_state().scissor;
         const float fringe     = get_fringe_width();
         const float stroke_width = 1; // MAGIC
 
         // create the shader uniforms for the call
         if(cell_call.type == Cell::Call::Type::STROKE){
             ShaderVariables& stencil_uniforms = create_back(m_shader_variables);
-            paint_to_frag(stencil_uniforms, cell_call.paint, scissor, stroke_width, fringe, -1.0f);
+            paint_to_frag(stencil_uniforms, cell_call.paint, cell_call.scissor, stroke_width, fringe, -1.0f);
 
-            // I don't know what the magic number below is, but with -1 you get artefacts in the rotating lines test
+            // I don't know what the stroke_threshold below is, but with -1 you get artefacts in the rotating lines test
             ShaderVariables& stroke_uniforms = create_back(m_shader_variables);
-            paint_to_frag(stroke_uniforms, cell_call.paint, scissor, stroke_width, fringe, 1.0f - 0.5f / 255.0f);
+            paint_to_frag(stroke_uniforms, cell_call.paint, cell_call.scissor, stroke_width, fringe, 1.0f - 0.5f / 255.0f);
         }
         else {
             if (cell_call.type == Cell::Call::Type::FILL) {
@@ -312,7 +312,7 @@ void RenderContext::_add_cell(const Cell& cell)
             }
 
             ShaderVariables& fill_uniforms = create_back(m_shader_variables);
-            paint_to_frag(fill_uniforms, cell_call.paint, scissor, fringe, fringe, -1.0f);
+            paint_to_frag(fill_uniforms, cell_call.paint, cell_call.scissor, fringe, fringe, -1.0f);
         }
     }
 }
@@ -519,7 +519,7 @@ void RenderContext::_render_flush()
     Shader::unbind();
 }
 
-void paint_to_frag(RenderContext::ShaderVariables& frag, const Paint& paint, const Painter::Scissor& scissor,
+void paint_to_frag(RenderContext::ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
                               const float stroke_width, const float fringe, const float stroke_threshold)
 {
     assert(fringe > 0);

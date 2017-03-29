@@ -20,7 +20,7 @@ class RenderContext_Old;
 
 /**********************************************************************************************************************/
 
-struct Scissor {
+struct Scissor_Old {
     /** Scissors have their own transformation. */
     Xform2f xform;
 
@@ -168,7 +168,7 @@ private: // class
         LineJoin line_join;
         Paint fill;
         Paint stroke;
-        Scissor scissor;
+        Scissor_Old scissor;
     };
 
 public: // methods

@@ -1,10 +1,10 @@
 #pragma once
 
 #include "common/aabr.hpp"
-#include "common/size2.hpp"
 #include "common/xform2.hpp"
 #include "graphics/blend_mode.hpp"
 #include "graphics/paint.hpp"
+#include "graphics/scissor.hpp"
 
 namespace notf {
 
@@ -26,16 +26,6 @@ class RenderContext_Old;
 class Painter {
 
 public: // enums
-    /******************************************************************************************************************/
-
-    struct Scissor {
-        /** Scissors have their own transformation. */
-        Xform2f xform;
-
-        /** Extend around the center of the Transform. */
-        Size2f extend;
-    };
-
     /******************************************************************************************************************/
 
     enum class LineCap : unsigned char {

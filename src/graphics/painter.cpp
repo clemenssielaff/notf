@@ -932,8 +932,7 @@ void Painter::_fill()
     _prepare_paths(fringe, LineJoin::MITER, 2.4f);
 
     // create the Cell's render call
-    m_cell.m_calls.emplace_back();
-    Cell::Call& render_call = m_cell.m_calls.back();
+    Cell::Call& render_call = create_back(m_cell.m_calls);
     if (g_data.paths.size() == 1 && g_data.paths.front().is_convex) {
         render_call.type = Cell::Call::Type::CONVEX_FILL;
     }
@@ -949,9 +948,7 @@ void Painter::_fill()
         assert(last_point_offset < g_data.points.size());
 
         // create the fill vertices
-        m_cell.m_paths.emplace_back();
-        Cell::Path& cell_path = m_cell.m_paths.back();
-
+        Cell::Path& cell_path = create_back(m_cell.m_paths);
         cell_path.fill_offset = m_cell.m_vertices.size();
         if (fringe > 0) {
             // create a loop
@@ -1066,11 +1063,11 @@ void Painter::_stroke()
     }
 
     // create the Cell's render call
-    m_cell.m_calls.emplace_back();
-    Cell::Call& render_call = m_cell.m_calls.back();
+    Cell::Call& render_call = create_back(m_cell.m_calls);
     render_call.type        = Cell::Call::Type::STROKE;
     render_call.path_offset = m_cell.m_paths.size();
     render_call.paint       = stroke_paint;
+    render_call.scissor     = _get_current_state().scissor;
 
     size_t cap_divisions;
     { // calculate divisions per half circle
@@ -1088,9 +1085,7 @@ void Painter::_stroke()
         const size_t last_point_offset = path.first_point + path.point_count - 1;
         assert(last_point_offset < g_data.points.size());
 
-        m_cell.m_paths.emplace_back();
-        Cell::Path& cell_path = m_cell.m_paths.back();
-
+        Cell::Path& cell_path   = create_back(m_cell.m_paths);
         cell_path.stroke_offset = m_cell.m_vertices.size();
 
         size_t previous_offset, current_offset;
@@ -1256,6 +1251,12 @@ void Painter::_prepare_paths(const float fringe, const LineJoin join, const floa
                     current_point.flags = static_cast<PainterPoint::Flags>(current_point.flags | PainterPoint::Flags::BEVEL);
                 }
             }
+
+            // update the Cell's bounds
+            m_cell.m_bounds._min.x = min(m_cell.m_bounds._min.x, current_point.pos.x);
+            m_cell.m_bounds._min.y = min(m_cell.m_bounds._min.y, current_point.pos.y);
+            m_cell.m_bounds._max.x = max(m_cell.m_bounds._max.x, current_point.pos.x);
+            m_cell.m_bounds._max.y = max(m_cell.m_bounds._max.y, current_point.pos.y);
         }
 
         path.is_convex = (left_turn_count == path.point_count);
@@ -1270,6 +1271,9 @@ void Painter::_execute()
     s_state_succession.clear();
     size_t state_index = 0;
     s_state_succession.push_back(state_succession[state_index]);
+
+    // prepare the cell
+    m_cell.m_bounds = Aabrf::wrongest();
 
     // parse the command buffer
     for (size_t index = 0; index < g_data.commands.size(); ++index) {
@@ -1342,6 +1346,11 @@ void Painter::_execute()
         default: // unknown enum
             assert(0);
         }
+    }
+
+    // finish the Cell
+    if (!m_cell.m_bounds.is_valid()) {
+        m_cell.m_bounds = Aabrf::null();
     }
 }
 

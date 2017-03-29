@@ -1,6 +1,8 @@
 #pragma once
 
+#include "common/aabr.hpp"
 #include "graphics/paint.hpp"
+#include "graphics/scissor.hpp"
 #include "graphics/vertex.hpp"
 
 namespace notf {
@@ -28,9 +30,15 @@ private: // types
         size_t path_offset = 0;
         size_t path_count  = 0;
         Paint paint;
+        Scissor scissor;
     };
 
+public: // methods
+    /** A minimal bounding rect containing all Vertices in the Cell. */
+    const Aabrf& get_bounds() const { return m_bounds; }
+
 private: // fields
+    Aabrf m_bounds;
     std::vector<Call> m_calls;
     std::vector<Path> m_paths;
     std::vector<Vertex> m_vertices;

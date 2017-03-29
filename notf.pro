@@ -244,7 +244,8 @@ HEADERS += \
     include/graphics/render_context.hpp \
     include/graphics/cell_old.hpp \
     include/graphics/cell.hpp \
-    include/graphics/painter.hpp
+    include/graphics/painter.hpp \
+    include/graphics/scissor.hpp
 
 QMAKE_CXX = ccache g++
 

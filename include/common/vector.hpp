@@ -65,7 +65,7 @@ std::vector<VALUE> values(const MAP<KEY, VALUE>& map)
 template <typename T, typename... Args>
 T& create_back(std::vector<T>& target, Args&&... args)
 {
-    target.emplace_back(std::forward<Args...>(args...));
+    target.emplace_back(std::forward<Args>(args)...);
     return target.back();
 }
 

@@ -10,13 +10,13 @@
 #include "graphics/blend_mode.hpp"
 #include "graphics/cell.hpp"
 #include "graphics/gl_forwards.hpp"
-#include "graphics/painter.hpp" // TODO: maybe put scissor into its own header
 #include "graphics/stencil_func.hpp"
 #include "graphics/vertex.hpp"
 
 namespace notf {
 
 class Window;
+struct Scissor;
 class Shader;
 class Texture2;
 
@@ -176,7 +176,7 @@ private: // classes
         Type type;
     };
 
-    friend void paint_to_frag(ShaderVariables& frag, const Paint& paint, const Painter::Scissor& scissor,
+    friend void paint_to_frag(ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
                               const float stroke_width, const float fringe, const float stroke_threshold);
 
     /******************************************************************************************************************/

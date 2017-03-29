@@ -299,7 +299,7 @@ void RenderContext_Old::add_stroke_call(const Paint& paint, const float stroke_w
         m_paths.emplace_back(std::move(path_index));
     }
 
-    const Scissor& scissor = cell.get_current_state().scissor;
+    const Scissor_Old& scissor = cell.get_current_state().scissor;
     const float fringe     = cell.get_fringe_width();
 
     m_frag_uniforms.push_back({});
@@ -311,7 +311,7 @@ void RenderContext_Old::add_stroke_call(const Paint& paint, const float stroke_w
     _paint_to_frag(stroke_uniforms, paint, scissor, stroke_width, fringe, 1.0f - 0.5f / 255.0f);
 }
 
-void RenderContext_Old::_paint_to_frag(FragmentUniforms& frag, const Paint& paint, const Scissor& scissor,
+void RenderContext_Old::_paint_to_frag(FragmentUniforms& frag, const Paint& paint, const Scissor_Old& scissor,
                                    const float stroke_width, const float fringe, const float stroke_threshold)
 {
     assert(fringe > 0);
