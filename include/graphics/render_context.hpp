@@ -50,61 +50,10 @@ struct RenderContextArguments {
  */
 class RenderContext {
 
+    friend class RenderManager;
     friend class Shader;
     friend class Texture2;
-
-public: // classes
-    /******************************************************************************************************************/
-
-    /** The FrameGuard makes sure that for each call to `RenderContext::begin_frame` there is a corresponding call to
-     * either `RenderContext::end_frame` on success or `RenderContext::abort_frame` in case of an error.
-     *
-     * It is returned by `RenderContext::begin_frame` and must remain on the stack until the rendering has finished.
-     * Then, you need to call `FrameGuard::end()` to cleanly end the frame.
-     * If the FrameGuard is destroyed before `FrameGuard::end()` is called, the RenderContext is instructed to abort the
-     * currently drawn frame.
-     */
-    class FrameGuard {
-
-    public: // methods
-        /** Constructor. */
-        FrameGuard(RenderContext* context)
-            : m_render_context(context) {}
-
-        // no copy/assignment
-        FrameGuard(const FrameGuard&) = delete;
-        FrameGuard& operator=(const FrameGuard&) = default;
-
-        /** Move Constructor. */
-        FrameGuard(FrameGuard&& other)
-            : m_render_context(other.m_render_context)
-        {
-            other.m_render_context = nullptr;
-        }
-
-        /** Destructor.
-         * If the object is destroyed before FrameGuard::end() is called, the RenderContext's frame is cancelled.
-         */
-        ~FrameGuard()
-        {
-            if (m_render_context) {
-                m_render_context->_abort_frame();
-            }
-        }
-
-        /** Cleanly ends the current frame. */
-        void end()
-        {
-            if (m_render_context) {
-                m_render_context->_end_frame();
-                m_render_context = nullptr;
-            }
-        }
-
-    private: // fields
-        /** CanvasContext currently drawing a frame.*/
-        RenderContext* m_render_context;
-    };
+    friend class Widget;
 
 private: // classes
     /******************************************************************************************************************/
@@ -206,11 +155,6 @@ public: // methods
     /** Makes the OpenGL context of this RenderContext current. */
     void make_current();
 
-    /** Begins a new frame.
-     * @return  FrameGuard object. Call FrameGuard::end() to cleanly finish the drawing process.
-     */
-    FrameGuard begin_frame(const Size2i& buffer_size); // TODO: make begin_frame private and only let RenderManager call it?
-
     /** Time at the beginning of the current frame. */
     Time get_time() const { return m_time; }
 
@@ -265,11 +209,14 @@ private: // methods for friends
     /** Updates buffer size. */
     void _set_buffer_size(Size2f buffer) { m_buffer_size = std::move(buffer); }
 
-    /** Aborts the drawing of the current frame if something went wrong. */
-    void _abort_frame();
+    /** Begins a new frame. */
+    void _begin_frame(const Size2i& buffer_size);
 
-    /** Gracefully finishes the drawing of the current frame. */
-    void _end_frame();
+    /** Aborts the drawing of the current frame if something went wrong. */
+    void _reset();
+
+    /** Performs all stored Calls. */
+    void _finish_frame();
 
     /** Adds render calls from a given Cell. */
     void _add_cell(const Cell& cell);
@@ -289,9 +236,6 @@ private: // methods
 
     /** Strokes a path. */
     void _perform_stroke(const Call& call);
-
-    /** Performs all stored Calls. */
-    void _render_flush();
 
 private: // static methods
     /** Size (in bytes) of a ShaderVariables struct. */

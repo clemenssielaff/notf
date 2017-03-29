@@ -6,7 +6,7 @@
 #include "common/xform3.hpp"
 #include "core/opengl.hpp"
 #include "graphics/gl_errors.hpp"
-#include "graphics/render_context_old.hpp"
+#include "graphics/render_context.hpp"
 #include "graphics/text/font_atlas.hpp"
 #include "graphics/text/freetype.hpp"
 #include "graphics/vertex.hpp"
@@ -26,7 +26,7 @@ const char* font_fragment_shader =
 
 namespace notf {
 
-FontManager::FontManager(RenderContext_Old* context)
+FontManager::FontManager(RenderContext* context)
     : m_freetype(nullptr)
     , m_render_context(context)
     , m_atlas()

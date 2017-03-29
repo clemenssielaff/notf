@@ -31,8 +31,9 @@
 #include "common/log.hpp"
 #include "common/vector.hpp"
 #include "graphics/cell.hpp"
-#include "graphics/render_context_old.hpp"
+#include "graphics/render_context.hpp"
 #include "graphics/vertex.hpp"
+#include "utils/enum_to_number.hpp"
 
 namespace { // anonymous
 using namespace notf;
@@ -608,7 +609,7 @@ namespace notf {
 std::vector<Painter::State> Painter::s_states;
 std::vector<size_t> Painter::s_state_succession;
 
-Painter::Painter(Cell& cell, const RenderContext_Old& context)
+Painter::Painter(Cell& cell, const RenderContext& context)
     : m_cell(cell)
     , m_context(context)
     , m_stylus(Vector2f::zero())
@@ -671,11 +672,23 @@ void Painter::set_fill_paint(Paint paint)
     current_state.fill = std::move(paint);
 }
 
+void Painter::set_fill_color(Color color)
+{
+    State& current_state = _get_current_state();
+    current_state.fill.set_color(std::move(color));
+}
+
 void Painter::set_stroke_paint(Paint paint)
 {
     State& current_state = _get_current_state();
     paint.xform *= current_state.xform;
     current_state.stroke = std::move(paint);
+}
+
+void Painter::set_stroke_color(Color color)
+{
+    State& current_state = _get_current_state();
+    current_state.stroke.set_color(std::move(color));
 }
 
 void Painter::begin_path()
@@ -870,6 +883,16 @@ void Painter::stroke()
     _append_commands({to_float(Command::STROKE)});
 }
 
+Time Painter::get_time() const
+{
+    return m_context.get_time();
+}
+
+const Vector2f& Painter::get_mouse_pos() const
+{
+    return m_context.get_mouse_pos();
+}
+
 void Painter::_append_commands(std::vector<float>&& commands)
 {
     if (commands.empty()) {
@@ -939,8 +962,10 @@ void Painter::_fill()
     else {
         render_call.type = Cell::Call::Type::FILL;
     }
-    render_call.path_offset = m_cell.m_paths.size();
-    render_call.paint       = fill_paint;
+    render_call.path_offset  = m_cell.m_paths.size();
+    render_call.paint        = std::move(fill_paint);
+    render_call.scissor      = state.scissor;
+    render_call.stroke_width = 0;
 
     const float woff = fringe / 2;
     for (PainterPath& path : g_data.paths) {
@@ -1063,11 +1088,12 @@ void Painter::_stroke()
     }
 
     // create the Cell's render call
-    Cell::Call& render_call = create_back(m_cell.m_calls);
-    render_call.type        = Cell::Call::Type::STROKE;
-    render_call.path_offset = m_cell.m_paths.size();
-    render_call.paint       = stroke_paint;
-    render_call.scissor     = _get_current_state().scissor;
+    Cell::Call& render_call  = create_back(m_cell.m_calls);
+    render_call.type         = Cell::Call::Type::STROKE;
+    render_call.path_offset  = m_cell.m_paths.size();
+    render_call.paint        = stroke_paint;
+    render_call.scissor      = state.scissor;
+    render_call.stroke_width = stroke_width;
 
     size_t cap_divisions;
     { // calculate divisions per half circle
@@ -1273,6 +1299,9 @@ void Painter::_execute()
     s_state_succession.push_back(state_succession[state_index]);
 
     // prepare the cell
+    m_cell.m_calls.clear();
+    m_cell.m_paths.clear();
+    m_cell.m_vertices.clear();
     m_cell.m_bounds = Aabrf::wrongest();
 
     // parse the command buffer

@@ -166,18 +166,6 @@ void RenderContext::make_current()
     }
 }
 
-RenderContext::FrameGuard RenderContext::begin_frame(const Size2i& buffer_size)
-{
-    _abort_frame();
-
-    m_buffer_size.width  = static_cast<float>(buffer_size.width);
-    m_buffer_size.height = static_cast<float>(buffer_size.height);
-
-    m_time = Time::now();
-
-    return FrameGuard(this);
-}
-
 void RenderContext::set_stencil_func(const StencilFunc func)
 {
     if (func != m_stencil_func) {
@@ -204,25 +192,35 @@ void RenderContext::set_blend_mode(const BlendMode mode)
 
 std::shared_ptr<Texture2> RenderContext::load_texture(const std::string& file_path)
 {
-//    std::shared_ptr<Texture2> texture = Texture2::load(this, file_path);
-//    if (texture) {
-//        m_textures.emplace_back(texture);
-//    }
-//    return texture;
+    std::shared_ptr<Texture2> texture = Texture2::load(this, file_path);
+    if (texture) {
+        m_textures.emplace_back(texture);
+    }
+    return texture;
 }
 
 std::shared_ptr<Shader> RenderContext::build_shader(const std::string& name,
                                                     const std::string& vertex_shader_source,
                                                     const std::string& fragment_shader_source)
 {
-//    std::shared_ptr<Shader> shader = Shader::build(this, name, vertex_shader_source, fragment_shader_source);
-//    if (shader) {
-//        m_shaders.emplace_back(shader);
-//    }
-//    return shader;
+    std::shared_ptr<Shader> shader = Shader::build(this, name, vertex_shader_source, fragment_shader_source);
+    if (shader) {
+        m_shaders.emplace_back(shader);
+    }
+    return shader;
 }
 
-void RenderContext::_abort_frame()
+void RenderContext::_begin_frame(const Size2i& buffer_size)
+{
+    _reset();
+
+    m_buffer_size.width  = static_cast<float>(buffer_size.width);
+    m_buffer_size.height = static_cast<float>(buffer_size.height);
+
+    m_time = Time::now();
+}
+
+void RenderContext::_reset()
 {
     m_calls.clear();
     m_paths.clear();
@@ -230,9 +228,74 @@ void RenderContext::_abort_frame()
     m_shader_variables.clear();
 }
 
-void RenderContext::_end_frame()
+void RenderContext::_finish_frame()
 {
-    _render_flush();
+    if (m_calls.empty()) {
+        return;
+    }
+
+    // reset cache
+    m_stencil_func  = StencilFunc::INVALID;
+    m_stencil_mask  = 0;
+    m_blend_mode    = BlendMode::INVALID;
+    m_bound_texture = 0;
+    m_bound_shader  = 0;
+
+    // setup GL state
+    m_cell_shader.shader->bind();
+    set_blend_mode(BlendMode::SOURCE_OVER);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+    glEnable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_SCISSOR_TEST);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    set_stencil_mask(0xffffffff);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    set_stencil_func(StencilFunc::ALWAYS);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    // upload ubo for frag shaders
+    glBindBuffer(GL_UNIFORM_BUFFER, m_fragment_buffer);
+    glBufferData(GL_UNIFORM_BUFFER, static_cast<GLsizeiptr>(m_shader_variables.size()) * fragmentSize(), &m_shader_variables.front(), GL_STREAM_DRAW);
+
+    // upload vertex data
+    glBindVertexArray(m_vertex_array);
+    glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
+    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(m_vertices.size() * sizeof(Vertex)), &m_vertices.front(), GL_STREAM_DRAW);
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), nullptr);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), gl_buffer_offset(2 * sizeof(float)));
+
+    // Set view and texture just once per frame.
+    glUniform1i(m_cell_shader.texture, 0);
+    glUniform2fv(m_cell_shader.viewsize, 1, m_buffer_size.as_ptr());
+
+    // perform the render calls
+    for (const Call& call : m_calls) {
+        switch (call.type) {
+        case Call::Type::FILL:
+            _perform_fill(call);
+            break;
+        case Call::Type::CONVEX_FILL:
+            _perform_convex_fill(call);
+            break;
+        case Call::Type::STROKE:
+            _perform_stroke(call);
+            break;
+        }
+    }
+
+    // teardown GL state
+    glDisableVertexAttribArray(0);
+    glDisableVertexAttribArray(1);
+    glBindVertexArray(0);
+    glDisable(GL_CULL_FACE);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    Shader::unbind();
 }
 
 void RenderContext::_add_cell(const Cell& cell)
@@ -256,9 +319,9 @@ void RenderContext::_add_cell(const Cell& cell)
         // copy the vertices from the cell // TODO: I'm pretty sure when copying vertices from Cell to RenderContext you'll need to xform them
         size_t vertex_offset = m_vertices.size();
         for (const Cell::Path& cell_path : cell.m_paths) {
-            Path path = create_back(m_paths);
+            Path& path = create_back(m_paths);
             if (cell_path.fill_count != 0) {
-                assert(render_call.type == Call::Type::FILL || render_call.type == Call::Type::CONVEX_FILL);
+//                assert(render_call.type == Call::Type::FILL || render_call.type == Call::Type::CONVEX_FILL);
                 path.fillOffset = static_cast<GLint>(vertex_offset);
                 path.fillCount  = static_cast<GLsizei>(cell_path.fill_count);
                 m_vertices.insert(std::end(m_vertices),
@@ -292,16 +355,15 @@ void RenderContext::_add_cell(const Cell& cell)
         }
 
         const float fringe     = get_fringe_width();
-        const float stroke_width = 1; // MAGIC
 
         // create the shader uniforms for the call
         if(cell_call.type == Cell::Call::Type::STROKE){
             ShaderVariables& stencil_uniforms = create_back(m_shader_variables);
-            paint_to_frag(stencil_uniforms, cell_call.paint, cell_call.scissor, stroke_width, fringe, -1.0f);
+            paint_to_frag(stencil_uniforms, cell_call.paint, cell_call.scissor, cell_call.stroke_width, fringe, -1.0f);
 
             // I don't know what the stroke_threshold below is, but with -1 you get artefacts in the rotating lines test
             ShaderVariables& stroke_uniforms = create_back(m_shader_variables);
-            paint_to_frag(stroke_uniforms, cell_call.paint, cell_call.scissor, stroke_width, fringe, 1.0f - 0.5f / 255.0f);
+            paint_to_frag(stroke_uniforms, cell_call.paint, cell_call.scissor, cell_call.stroke_width, fringe, 1.0f - 0.5f / 255.0f);
         }
         else {
             if (cell_call.type == Cell::Call::Type::FILL) {
@@ -449,80 +511,12 @@ void RenderContext::_perform_stroke(const Call& call)
     glDisable(GL_STENCIL_TEST);
 }
 
-void RenderContext::_render_flush()
-{
-    if (m_calls.empty()) {
-        return;
-    }
-
-    // reset cache
-    m_stencil_func  = StencilFunc::INVALID;
-    m_stencil_mask  = 0;
-    m_blend_mode    = BlendMode::INVALID;
-    m_bound_texture = 0;
-    m_bound_shader  = 0;
-
-    // setup GL state
-    m_cell_shader.shader->bind();
-    set_blend_mode(BlendMode::SOURCE_OVER);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glFrontFace(GL_CCW);
-    glEnable(GL_BLEND);
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_SCISSOR_TEST);
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    set_stencil_mask(0xffffffff);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-    set_stencil_func(StencilFunc::ALWAYS);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    // upload ubo for frag shaders
-    glBindBuffer(GL_UNIFORM_BUFFER, m_fragment_buffer);
-    glBufferData(GL_UNIFORM_BUFFER, static_cast<GLsizeiptr>(m_shader_variables.size()) * fragmentSize(), &m_shader_variables.front(), GL_STREAM_DRAW);
-
-    // upload vertex data
-    glBindVertexArray(m_vertex_array);
-    glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
-    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(m_vertices.size() * sizeof(Vertex)), &m_vertices.front(), GL_STREAM_DRAW);
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), nullptr);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), gl_buffer_offset(2 * sizeof(float)));
-
-    // Set view and texture just once per frame.
-    glUniform1i(m_cell_shader.texture, 0);
-    glUniform2fv(m_cell_shader.viewsize, 1, m_buffer_size.as_ptr());
-
-    // perform the render calls
-    for (const Call& call : m_calls) {
-        switch (call.type) {
-        case Call::Type::FILL:
-            _perform_fill(call);
-            break;
-        case Call::Type::CONVEX_FILL:
-            _perform_convex_fill(call);
-            break;
-        case Call::Type::STROKE:
-            _perform_stroke(call);
-            break;
-        }
-    }
-
-    // teardown GL state
-    glDisableVertexAttribArray(0);
-    glDisableVertexAttribArray(1);
-    glBindVertexArray(0);
-    glDisable(GL_CULL_FACE);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    Shader::unbind();
-}
-
 void paint_to_frag(RenderContext::ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
                               const float stroke_width, const float fringe, const float stroke_threshold)
 {
     assert(fringe > 0);
+
+    // TODO: I don't know if scissor is ever anything else than identiy & -1/-1
 
     frag.innerCol = paint.inner_color.premultiplied();
     frag.outerCol = paint.outer_color.premultiplied();

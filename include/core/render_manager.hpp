@@ -8,7 +8,7 @@
 
 namespace notf {
 
-struct RenderContext_Old;
+class RenderContext;
 class RenderStats;
 class ScreenItem;
 class Widget;
@@ -89,7 +89,7 @@ private: // fields
     const Window* m_window;
 
     /** The RenderContext used to draw into this Window. */
-    std::unique_ptr<RenderContext_Old> m_render_context;
+    std::unique_ptr<RenderContext> m_render_context;
 
     /** The default layer, will never go out of scope as long as the RenderManager lives. */
     std::shared_ptr<RenderLayer> m_default_layer;

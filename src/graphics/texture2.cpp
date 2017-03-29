@@ -5,7 +5,7 @@
 #include "common/log.hpp"
 #include "core/opengl.hpp"
 #include "graphics/raw_image.hpp"
-#include "graphics/render_context_old.hpp"
+#include "graphics/render_context.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
@@ -69,7 +69,7 @@ void Texture2::unbind()
     glBindTexture(GL_TEXTURE_2D, GL_ZERO);
 }
 
-std::shared_ptr<Texture2> Texture2::load(RenderContext_Old* context, const std::string file_path)
+std::shared_ptr<Texture2> Texture2::load(RenderContext* context, const std::string file_path)
 {
     assert(context);
     context->make_current();
@@ -163,7 +163,7 @@ std::shared_ptr<Texture2> Texture2::load(RenderContext_Old* context, const std::
         static_cast<GLuint>(image.get_width()), static_cast<GLuint>(image.get_height()), texture_format);
 }
 
-Texture2::Texture2(const GLuint id, RenderContext_Old* context, const std::string name,
+Texture2::Texture2(const GLuint id, RenderContext* context, const std::string name,
                    const GLuint width, const GLuint height, const Format format)
     : m_id(id)
     , m_render_context(context)
@@ -231,7 +231,7 @@ void Texture2::_deallocate()
         m_render_context->make_current();
         glDeleteTextures(1, &m_id);
         log_trace << "Deleted OpenGL texture with ID: " << m_id;
-        m_id = 0;
+        m_id             = 0;
         m_render_context = nullptr;
     }
 }

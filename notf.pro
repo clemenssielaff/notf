@@ -157,9 +157,6 @@ SOURCES += \
     src/core/window_layout.cpp \
     src/graphics/gl_errors.cpp \
     src/graphics/vertex.cpp \
-    src/graphics/cell_old.cpp \
-    src/graphics/painter_old.cpp \
-    src/graphics/render_context_old.cpp \
     src/graphics/render_context.cpp \
     src/graphics/painter.cpp \
     src/graphics/cell.cpp
@@ -239,10 +236,7 @@ HEADERS += \
     include/core/glfw.hpp \
     include/core/window_layout.hpp \
     include/utils/range.hpp \
-    include/graphics/painter_old.hpp \
-    include/graphics/render_context_old.hpp \
     include/graphics/render_context.hpp \
-    include/graphics/cell_old.hpp \
     include/graphics/cell.hpp \
     include/graphics/painter.hpp \
     include/graphics/scissor.hpp

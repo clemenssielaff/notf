@@ -6,7 +6,7 @@
 #include "core/widget.hpp"
 #include "core/window.hpp"
 #include "core/window_layout.hpp"
-#include "graphics/render_context_old.hpp"
+#include "graphics/render_context.hpp"
 #include "graphics/stats.hpp"
 #include "utils/make_smart_enabler.hpp"
 
@@ -23,7 +23,7 @@ RenderManager::RenderManager(const Window* window)
     // create the Render context
     RenderContextArguments context_args;
     context_args.pixel_ratio = static_cast<float>(window->get_buffer_size().width) / static_cast<float>(window->get_window_size().width);
-    m_render_context         = std::make_unique<RenderContext_Old>(window, context_args);
+    m_render_context         = std::make_unique<RenderContext>(window, context_args);
 
     m_stats = std::make_unique<RenderStats>(120);
 }
@@ -75,9 +75,9 @@ void RenderManager::render(const Size2i buffer_size)
     Time time_at_start = Time::now();
 
     // prepare the render context
-    RenderContext_Old& render_context         = *(m_render_context.get());
-    RenderContext_Old::FrameGuard frame_guard = render_context.begin_frame(std::move(buffer_size));
-    render_context.set_mouse_pos(m_window->get_mouse_pos());
+    RenderContext& render_context = *(m_render_context.get());
+    render_context._begin_frame(std::move(buffer_size));
+    render_context._set_mouse_pos(m_window->get_mouse_pos());
 
     // remove unused layers
     std::remove_if(m_layers.begin(), m_layers.end(), [](std::shared_ptr<RenderLayer>& layer) -> bool {
@@ -91,7 +91,7 @@ void RenderManager::render(const Size2i buffer_size)
     // draw all widgets
     for (std::shared_ptr<RenderLayer>& render_layer : m_layers) {
         for (const Widget* widget : render_layer->m_widgets) {
-            widget->paint(render_context);
+            widget->paint(*m_render_context);
         }
         render_layer->m_widgets.clear();
     }
@@ -104,7 +104,8 @@ void RenderManager::render(const Size2i buffer_size)
         m_stats->render_stats(render_context);
     }
 
-    frame_guard.end();
+    // flush
+    render_context._finish_frame();
 }
 
 void RenderManager::_iterate_item_hierarchy(const ScreenItem* screen_item, RenderLayer* parent_layer)

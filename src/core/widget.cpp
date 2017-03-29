@@ -4,8 +4,8 @@
 #include "common/string.hpp"
 #include "core/layout.hpp"
 #include "core/window.hpp"
-#include "graphics/painter_old.hpp"
-#include "graphics/render_context_old.hpp"
+#include "graphics/painter.hpp"
+#include "graphics/render_context.hpp"
 #include "utils/unused.hpp"
 
 namespace notf {
@@ -13,7 +13,8 @@ namespace notf {
 Widget::Widget()
     : ScreenItem()
     , m_scissor_layout() // empty by default
-    , m_cell(Cell_Old())
+    , m_cell()
+    , m_is_clean(false)
 {
 }
 
@@ -40,24 +41,32 @@ bool Widget::set_claim(const Claim claim)
     return was_changed;
 }
 
-void Widget::redraw()
+void Widget::redraw() // TODO: currently _set_size does not dirty the Widget's Cell
 {
-    _redraw();
+    // don't dirty if the ScreenItem is invisible
+    if (!_redraw()) {
+        return;
+    }
+    m_is_clean = false;
 }
 
-void Widget::paint(RenderContext_Old& context) const
+void Widget::paint(RenderContext& context) const
 {
-    // update the cell if dirty
-    //    if (m_cell.is_dirty()) { TODO: currently _set_size does not dirty the Widget's Cell
-    m_cell.reset(context);
-    Painter_Old painter(*this, m_cell, context);
-    try {
-        _paint(painter);
-    } catch (std::runtime_error error) {
-        log_warning << error.what();
-        // TODO: print Python stack trace here IF the item uses a Python object to draw itself
+    // update the Cell if the Widget is dirty
+    if (!m_is_clean) {
+        Painter painter(m_cell, context);
+        try {
+            _paint(painter);
+        } catch (std::runtime_error error) {
+            log_warning << error.what(); // TODO: print Python stack trace here IF the item uses a Python object to draw itself
+            return;
+        }
+        painter._execute();
+        m_is_clean = true;
     }
-    //    }
+
+    // add your Cell to the rendering
+    context._add_cell(m_cell);
 }
 
 void Widget::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const

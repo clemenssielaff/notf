@@ -31,6 +31,7 @@ private: // types
         size_t path_count  = 0;
         Paint paint;
         Scissor scissor;
+        float stroke_width = 0;
     };
 
 public: // methods

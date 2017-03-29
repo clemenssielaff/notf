@@ -1,13 +1,14 @@
 #pragma once
 
 #include "core/screen_item.hpp"
-#include "graphics/cell_old.hpp"
+#include "graphics/cell.hpp"
 
 namespace notf {
 
 class Layout;
 class MouseEvent;
-class Painter_Old;
+class Painter;
+class RenderContext;
 
 /**********************************************************************************************************************/
 
@@ -61,7 +62,7 @@ public: // methods
     /** Draws the Widget's Cell onto the screen.
      * Either uses the cached Cell or updates it first, using _paint().
      */
-    void paint(RenderContext_Old& context) const;
+    void paint(RenderContext& context) const;
 
 public: // signals
     /** Signal invoked when this Widget is asked to handle a Mouse move event. */
@@ -72,7 +73,7 @@ public: // signals
 
 private: // methods
     /** Redraws the Cell with the Widget's current state. */
-    virtual void _paint(Painter_Old& painter) const = 0;
+    virtual void _paint(Painter& painter) const = 0;
 
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
@@ -83,7 +84,10 @@ private: // fields
     std::weak_ptr<Layout> m_scissor_layout;
 
     /** Cell to draw this Widget into. */
-    mutable Cell_Old m_cell;
+    mutable Cell m_cell;
+
+    /** Clean Widgets can use their current Cell when painted, dirty Widgets have to redraw their Cell. */
+    mutable bool m_is_clean;
 };
 
 } // namespace notf

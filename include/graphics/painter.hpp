@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/aabr.hpp"
+#include "common/time.hpp"
 #include "common/xform2.hpp"
 #include "graphics/blend_mode.hpp"
 #include "graphics/paint.hpp"
@@ -9,7 +10,7 @@
 namespace notf {
 
 class Cell;
-class RenderContext_Old;
+class RenderContext;
 
 /**********************************************************************************************************************/
 
@@ -24,6 +25,8 @@ class RenderContext_Old;
  * For example, if you construct a Path using bezier or quadratic curves.
  */
 class Painter {
+
+    friend class Widget;
 
 public: // enums
     /******************************************************************************************************************/
@@ -89,13 +92,12 @@ private: // types
         static const size_t INVALID_INDEX = std::numeric_limits<size_t>::max();
     };
 
-private: // constructor
+public: // methods
     /******************************************************************************************************************/
 
     /** Value Constructor. */
-    Painter(Cell& cell, const RenderContext_Old& context);
+    Painter(Cell& cell, const RenderContext& context);
 
-public: // methods
     /* State management ***********************************************************************************************/
 
     /** Copy the new state and place the copy on the stack.
@@ -192,6 +194,9 @@ public: // methods
     /** Changes the current fill Paint. */
     void set_fill_paint(Paint paint);
 
+    /** Changes the current fill Paint to a solid color. */
+    void set_fill_color(Color color);
+
     /* Stroke Paint ***************************************/
 
     /** The current fill Paint. */
@@ -199,6 +204,9 @@ public: // methods
 
     /** Changes the current stroke Paint. */
     void set_stroke_paint(Paint paint);
+
+    /** Changes the current stroke Paint to a solid color. */
+    void set_stroke_color(Color color);
 
     /** The stroke width of the Painter. */
     float get_stroke_width() const { return _get_current_state().stroke_width; }
@@ -275,6 +283,14 @@ public: // methods
     /** Strokes the current Path with the Paint defined in the Painter's current State. */
     void stroke();
 
+    /* Context ********************************************************************************************************/
+
+    /** Time at the beginning of the current frame. */
+    Time get_time() const;
+
+    /** The mouse position relative to the Window's top-left corner. */
+    const Vector2f& get_mouse_pos() const;
+
 private: // methods
     /** The current State of the Painter. */
     State& _get_current_state()
@@ -308,7 +324,7 @@ private: // fields
     Cell& m_cell;
 
     /** The Render Context in which the Painter operates. */
-    const RenderContext_Old& m_context;
+    const RenderContext& m_context;
 
     /** Current position of the 'stylus', as the last Command left it. */
     Vector2f m_stylus;

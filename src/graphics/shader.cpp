@@ -4,7 +4,7 @@
 
 #include "common/log.hpp"
 #include "core/opengl.hpp"
-#include "graphics/render_context_old.hpp"
+#include "graphics/render_context.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
@@ -124,7 +124,7 @@ void Shader::unbind()
     glUseProgram(GL_ZERO);
 }
 
-std::shared_ptr<Shader> Shader::build(RenderContext_Old* context,
+std::shared_ptr<Shader> Shader::build(RenderContext* context,
                                       const std::string& name,
                                       const std::string& vertex_shader_source,
                                       const std::string& fragment_shader_source)
@@ -168,7 +168,7 @@ std::shared_ptr<Shader> Shader::build(RenderContext_Old* context,
     return std::make_shared<MakeSmartEnabler<Shader>>(program, context, name);
 }
 
-Shader::Shader(const GLuint id, RenderContext_Old* context, const std::string name)
+Shader::Shader(const GLuint id, RenderContext *context, const std::string name)
     : m_id(id)
     , m_render_context(context)
     , m_name(std::move(name))

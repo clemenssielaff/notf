@@ -7,7 +7,7 @@
 
 namespace notf {
 
-class RenderContext_Old;
+class RenderContext;
 
 //*********************************************************************************************************************/
 
@@ -27,7 +27,6 @@ class RenderContext_Old;
  */
 class Texture2 {
 
-    friend class RenderContext_Old;
     friend class RenderContext; // creates and finally invalidates all of its Textures when it is destroyed
 
 public: // enums
@@ -68,7 +67,7 @@ private: // static method for RenderContext
      * @param file_path Path to a texture file.
      * @return          Texture2 instance, is empty if the texture could not be loaded.
      */
-    static std::shared_ptr<Texture2> load(RenderContext_Old* context, const std::string file_path);
+    static std::shared_ptr<Texture2> load(RenderContext* context, const std::string file_path);
 
 protected: // constructor
     /** Value Constructor.
@@ -79,7 +78,7 @@ protected: // constructor
      * @param height    Height of the loaded image in pixels.
      * @param format    Texture format.
      */
-    Texture2(const GLuint id, RenderContext_Old* context, const std::string name,
+    Texture2(const GLuint id, RenderContext* context, const std::string name,
              const GLuint width, const GLuint height, const Format format);
 
 public: // methods
@@ -149,7 +148,7 @@ private: // fields
     GLuint m_id;
 
     /** Render Context in which the Texture lives. */
-    RenderContext_Old* m_render_context;
+    RenderContext* m_render_context;
 
     /** The name of this Texture. */
     const std::string m_name;
