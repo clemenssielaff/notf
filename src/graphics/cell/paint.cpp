@@ -1,4 +1,4 @@
-#include "graphics/paint.hpp"
+#include "graphics/cell/paint.hpp"
 
 namespace notf {
 

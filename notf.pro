@@ -146,7 +146,7 @@ SOURCES += \
     src/graphics/blend_mode.cpp \
     src/graphics/stencil_func.cpp \
     src/graphics/stats.cpp \
-    src/graphics/paint.cpp \
+    src/graphics/cell/paint.cpp \
     src/graphics/text/font_manager.cpp \
     src/common/random.cpp \
     src/common/size2.cpp \
@@ -158,8 +158,9 @@ SOURCES += \
     src/graphics/gl_errors.cpp \
     src/graphics/vertex.cpp \
     src/graphics/render_context.cpp \
-    src/graphics/painter.cpp \
-    src/graphics/cell.cpp
+    src/graphics/cell/painter.cpp \
+    src/graphics/cell/painterpreter.cpp \
+    src/graphics/cell/cell.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -217,7 +218,7 @@ HEADERS += \
     include/graphics/blend_mode.hpp \
     include/graphics/stencil_func.hpp \
     include/graphics/gl_utils.hpp \
-    include/graphics/paint.hpp \
+    include/graphics/cell/paint.hpp \
     include/graphics/stats.hpp \
     include/graphics/text/font_manager.hpp \
     include/graphics/text/freetype.hpp \
@@ -237,8 +238,9 @@ HEADERS += \
     include/core/window_layout.hpp \
     include/utils/range.hpp \
     include/graphics/render_context.hpp \
-    include/graphics/cell.hpp \
-    include/graphics/painter.hpp \
+    include/graphics/cell/cell.hpp \
+    include/graphics/cell/painter.hpp \
+    include/graphics/cell/painterpreter.hpp \
     include/graphics/scissor.hpp
 
 QMAKE_CXX = ccache g++

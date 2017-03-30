@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "common/aabr.hpp"
-#include "graphics/cell.hpp"
+#include "graphics/cell/cell.hpp"
 
 namespace notf {
 

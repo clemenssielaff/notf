@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/screen_item.hpp"
-#include "graphics/cell.hpp"
+#include "graphics/cell/cell.hpp"
 
 namespace notf {
 

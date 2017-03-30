@@ -8,7 +8,7 @@
 #include "common/time.hpp"
 #include "common/vector2.hpp"
 #include "graphics/blend_mode.hpp"
-#include "graphics/cell.hpp"
+#include "graphics/cell/cell.hpp"
 #include "graphics/gl_forwards.hpp"
 #include "graphics/stencil_func.hpp"
 #include "graphics/vertex.hpp"
@@ -173,7 +173,7 @@ public: // methods
     /** Tesselation density when creating rounded shapes. */
     float get_tesselation_tolerance() const { return 0.25f / m_args.pixel_ratio; }
 
-    // TODO: what is the fringe width?
+    /** Width of the faint outline around shapes when geometric antialiasing is enabled. */
     float get_fringe_width() const { return 1.f / m_args.pixel_ratio; }
 
     /** Applies a new StencilFunction. */

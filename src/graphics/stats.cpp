@@ -1,6 +1,6 @@
 #include "graphics/stats.hpp"
 
-#include "graphics/painter.hpp"
+#include "graphics/cell/painter.hpp"
 
 namespace notf {
 

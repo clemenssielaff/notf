@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/aabr.hpp"
-#include "graphics/paint.hpp"
+#include "graphics/cell/paint.hpp"
 #include "graphics/scissor.hpp"
 #include "graphics/vertex.hpp"
 
@@ -11,6 +11,7 @@ class Cell {
 
     friend class Painter;
     friend class RenderContext;
+    friend class Painterpreter;
 
 private: // types
     struct Path {

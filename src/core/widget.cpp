@@ -4,7 +4,7 @@
 #include "common/string.hpp"
 #include "core/layout.hpp"
 #include "core/window.hpp"
-#include "graphics/painter.hpp"
+#include "graphics/cell/painter.hpp"
 #include "graphics/render_context.hpp"
 #include "utils/unused.hpp"
 

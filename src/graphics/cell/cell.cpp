@@ -1,4 +1,4 @@
-#include "graphics/cell.hpp"
+#include "graphics/cell/cell.hpp"
 
 namespace notf {
 

@@ -15,3 +15,5 @@
 #define ENABLE_IF_DIFFERENT(TYPE_A, TYPE_B) typename = std::enable_if_t<!std::is_same<typename std::decay<TYPE_A>::type, typename std::decay<TYPE_B>::type>::type>
 
 #define ENABLE_IF_ARITHMETIC(TYPE) typename = std::enable_if_t<std::is_arithmetic<typename std::decay<TYPE>::type>::value>
+
+#define ENABLE_IF_SUBCLASS(TYPE, PARENT) typename = std::enable_if_t<std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value>

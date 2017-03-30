@@ -4,7 +4,7 @@
 #include "common/time.hpp"
 #include "common/xform2.hpp"
 #include "graphics/blend_mode.hpp"
-#include "graphics/paint.hpp"
+#include "graphics/cell/paint.hpp"
 #include "graphics/scissor.hpp"
 
 namespace notf {
@@ -228,20 +228,20 @@ public: // methods
     void set_winding(const Winding winding);
 
     /** Moves the stylus to a given position without creating a path. */
-    void move_to(const float x, const float y);
-    void move_to(const Vector2f& pos) { move_to(pos.x, pos.y); }
+    void move_to(const float x, const float y) { move_to({x, y}); }
+    void move_to(const Vector2f pos);
 
     /** Moves the stylus to a given position and creates a straight line. */
-    void line_to(const float x, const float y);
-    void line_to(const Vector2f& pos) { line_to(pos.x, pos.y); }
+    void line_to(const float x, const float y) { line_to({x, y}); }
+    void line_to(const Vector2f pos);
 
     /** Moves the stylus to `end` and draws a quadratic spline from the current postion over the given control point. */
     void quad_to(const float cx, const float cy, const float tx, const float ty);
     void quad_to(const Vector2f& ctrl, const Vector2f& end) { quad_to(ctrl.x, ctrl.y, end.x, end.y); }
 
     /** Moves the stylus to `end` and draws a bezier spline from the current postion over the two control points. */
-    void bezier_to(const float c1x, const float c1y, const float c2x, const float c2y, const float tx, const float ty);
-    void bezier_to(const Vector2f& ctrl1, const Vector2f& ctrl2, const Vector2f& end) { bezier_to(ctrl1.x, ctrl1.y, ctrl2.x, ctrl2.y, end.x, end.y); }
+    void bezier_to(const float c1x, const float c1y, const float c2x, const float c2y, const float tx, const float ty) { bezier_to({c1x, c1y}, {c2x, c2y}, {tx, ty}); }
+    void bezier_to(const Vector2f ctrl1, const Vector2f ctrl2, const Vector2f end);
 
     /** Creates an arc Path, used to create parts of circles.
      * @see             https://www.w3schools.com/tags/canvas_arc.asp
@@ -295,19 +295,16 @@ private: // methods
     /** The current State of the Painter. */
     State& _get_current_state()
     {
-        assert(s_state_succession.back() < s_states.size());
-        return s_states[s_state_succession.back()];
+        assert(!s_states.empty());
+        return s_states.back();
     }
 
     /** The current State of the Painter. */
     const State& _get_current_state() const
     {
-        assert(s_state_succession.back() < s_states.size());
-        return s_states[s_state_succession.back()];
+        assert(!s_states.empty());
+        return s_states.back();
     }
-
-    /** Appends new Commands to the buffer. */
-    void _append_commands(std::vector<float>&& commands);
 
     void _fill();
 
@@ -332,9 +329,6 @@ private: // fields
 private: // static fields
     /** All Painter States used by this Painter, their order is determined by `m_state_succession`. */
     static std::vector<State> s_states;
-
-    /** Order in which the States are traversed when the Painter is executed. */
-    static std::vector<size_t> s_state_succession;
 };
 
 } // namespace notf
