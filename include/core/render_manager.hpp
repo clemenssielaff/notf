@@ -80,6 +80,9 @@ public: // methods
         return 0;
     }
 
+    /** Returns the RenderContext associated with the Window of this RenderManager. */
+    RenderContext& get_render_context() const { return *m_render_context; }
+
 private: // methods
     /** Iterates through all ScreenItems in the Item hierarchy and collects them in their RenderLayers. */
     void _iterate_item_hierarchy(const ScreenItem* screen_item, RenderLayer* parent_layer);

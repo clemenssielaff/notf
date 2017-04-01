@@ -57,6 +57,7 @@ Painter::Painter(Cell& cell, const RenderContext& context)
     : m_cell(cell)
     , m_context(context)
     , m_stylus(Vector2f::zero())
+    , m_has_open_path(false)
 {
     // states
     s_states.clear();
@@ -203,11 +204,13 @@ void Painter::set_stroke_width(const float width)
 void Painter::begin_path()
 {
     INTERPRETER.add_command(BeginCommand());
+    m_has_open_path = true;
 }
 
 void Painter::close_path()
 {
     INTERPRETER.add_command(CloseCommand());
+    m_has_open_path = false;
 }
 
 void Painter::set_winding(const Winding winding)
@@ -224,6 +227,7 @@ void Painter::move_to(const Vector2f pos)
 void Painter::line_to(const Vector2f pos)
 {
     INTERPRETER.add_command(LineCommand(std::move(pos)));
+    m_has_open_path = true;
 }
 
 void Painter::quad_to(const float cx, const float cy, const float tx, const float ty)
@@ -235,11 +239,13 @@ void Painter::quad_to(const float cx, const float cy, const float tx, const floa
         {tx + (2.f / 3.f) * (cx - tx),
          ty + (2.f / 3.f) * (cy - ty)},
         {tx, ty}));
+    m_has_open_path = true;
 }
 
 void Painter::bezier_to(const Vector2f ctrl1, const Vector2f ctrl2, const Vector2f end)
 {
     INTERPRETER.add_command(BezierCommand(std::move(ctrl1), std::move(ctrl2), std::move(end)));
+    m_has_open_path = true;
 }
 
 void Painter::arc(const float cx, const float cy, const float r, const float a0, const float a1, const Winding dir)
@@ -256,7 +262,7 @@ void Painter::arc(const float cx, const float cy, const float r, const float a0,
     // split the arc into <= 90deg segments
     const float ndivs = max(1.f, min(ceilf(abs(da) / static_cast<float>(HALF_PI)), 5.f));
     const float hda   = (da / ndivs) / 2;
-    const float kappa = abs(4.f / 3.f * (1.0f - cos(hda)) / sin(hda)) * (dir == Winding::CLOCKWISE ? 1 : -1);
+    const float kappa = abs(4.f / 3.f * (1.f - cos(hda)) / sin(hda)) * (dir == Winding::CLOCKWISE ? 1 : -1);
 
     // create individual commands
     float px = 0, py = 0, ptanx = 0, ptany = 0;
@@ -269,7 +275,7 @@ void Painter::arc(const float cx, const float cy, const float r, const float a0,
         const float tanx = -dy * r * kappa;
         const float tany = dx * r * kappa;
         if (static_cast<int>(i) == 0) {
-            if (INTERPRETER.is_current_path_empty()) {
+            if (!m_has_open_path) {
                 INTERPRETER.add_command(MoveCommand({x, y}));
             }
             else {
@@ -284,6 +290,7 @@ void Painter::arc(const float cx, const float cy, const float r, const float a0,
         ptanx = tanx;
         ptany = tany;
     }
+    m_has_open_path = true;
 }
 
 void Painter::arc_to(const Vector2f& tangent, const Vector2f& end, const float radius)
@@ -335,7 +342,7 @@ void Painter::add_rect(const float x, const float y, const float w, const float 
     INTERPRETER.add_command(LineCommand({x, y + h}));
     INTERPRETER.add_command(LineCommand({x + w, y + h}));
     INTERPRETER.add_command(LineCommand({x + w, y}));
-    INTERPRETER.add_command(CloseCommand());
+    close_path();
 }
 
 void Painter::add_rounded_rect(const float x, const float y, const float w, const float h,
@@ -360,7 +367,7 @@ void Painter::add_rounded_rect(const float x, const float y, const float w, cons
     INTERPRETER.add_command(BezierCommand({x + w, y + ryTR * (1 - KAPPAf)}, {x + w - rxTR * (1 - KAPPAf), y}, {x + w - rxTR, y}));
     INTERPRETER.add_command(LineCommand({x + rxTL, y}));
     INTERPRETER.add_command(BezierCommand({x + rxTL * (1 - KAPPAf), y}, {x, y + ryTL * (1 - KAPPAf)}, {x, y + ryTL}));
-    INTERPRETER.add_command(CloseCommand());
+    close_path();
 }
 
 void Painter::add_ellipse(const float cx, const float cy, const float rx, const float ry)
@@ -370,7 +377,7 @@ void Painter::add_ellipse(const float cx, const float cy, const float rx, const 
     INTERPRETER.add_command(BezierCommand({cx + rx * KAPPAf, cy + ry}, {cx + rx, cy + ry * KAPPAf}, {cx + rx, cy}));
     INTERPRETER.add_command(BezierCommand({cx + rx, cy - ry * KAPPAf}, {cx + rx * KAPPAf, cy - ry}, {cx, cy - ry}));
     INTERPRETER.add_command(BezierCommand({cx - rx * KAPPAf, cy - ry}, {cx - rx, cy - ry * KAPPAf}, {cx - rx, cy}));
-    INTERPRETER.add_command(CloseCommand());
+    close_path();
 }
 
 void Painter::fill()
@@ -403,5 +410,6 @@ void Painter::_execute()
 // Also, if you set a complete new paint, it might be better to split it up in several commands that only change
 // what is really changed, so instead of having two set_paint commands where only the fill color differs you have one
 // set_paint command and a set_fill_color command
+// Superfluous path close commands
 
 } // namespace notf

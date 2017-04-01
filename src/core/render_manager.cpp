@@ -76,6 +76,7 @@ void RenderManager::render(const Size2i buffer_size)
 
     // prepare the render context
     RenderContext& render_context = *(m_render_context.get());
+    render_context._set_time(time_at_start);
     render_context._begin_frame(std::move(buffer_size));
     render_context._set_mouse_pos(m_window->get_mouse_pos());
 

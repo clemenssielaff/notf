@@ -9,12 +9,17 @@ using namespace notf;
 #include "core/widget.hpp"
 #include "core/window_layout.hpp"
 #include "graphics/cell/painter.hpp"
+#include "graphics/render_context.hpp"
+#include "core/render_manager.hpp"
+
+RenderContext* g_render_context = nullptr;
 
 class MyWidget : public Widget {
 
 public:
-    MyWidget()
+    MyWidget(RenderContext& context)
         : Widget()
+        , test_texture(context.load_texture("/home/clemens/code/notf/res/textures/face.png"))
     {
     }
 
@@ -23,37 +28,27 @@ public:
         const Size2f widget_size = get_size();
         const Aabrf base(widget_size);
         const float margin = 20;
-//        const float time   = static_cast<float>(painter.get_time().in_seconds());
+        const float time   = static_cast<float>(painter.get_time().in_seconds());
 
-        painter.begin_path();
-        painter.add_rect(base.shrunken(margin));
-        painter.set_fill_color(Color(0.f, 0.f, 1.f, 1.f));
-        painter.fill();
+        drawGraph(painter, base, time);
 
-        painter.begin_path();
-        painter.add_circle(base.center(), 80.f);
-        painter.set_fill_color(Color(1.f, 0.f, 0.f, 1.f));
-        painter.fill();
+        drawColorwheel(painter, base.shrunken(margin), time);
 
-        //                drawGraph(painter, base, time);
+        drawCheckBox(painter, Aabrf{10, 100, 20, 20});
 
-        //        drawColorwheel(painter, base.shrunken(margin), time);
+        drawButton(painter, Aabrf{10, 130, 150, 30});
 
-        //        drawCheckBox(painter, Aabrf{10, 100, 20, 20});
+        drawSlider(painter, Aabrf{10, 170, 150, 30}, 0.4f);
 
-        //        drawButton(painter, Aabrf{10, 130, 150, 30});
+        drawCaps(painter, Vector2f{10, 200}, 30);
 
-        //        drawSlider(painter, Aabrf{10, 170, 150, 30}, 0.4f);
+        drawEyes(painter, Aabrf{600, 20, 80, 60}, painter.get_mouse_pos(), time);
 
-        //        drawCaps(painter, Vector2f{10, 200}, 30);
+        drawSpinner(painter, base.center(), 100, time);
 
-        //        drawEyes(painter, Aabrf{600, 20, 80, 60}, painter.get_mouse_pos(), time);
+        drawJoins(painter, Aabrf{120, widget_size.height - 50, 600, 50}, time);
 
-        //        drawSpinner(painter, base.center(), 100, time);
-
-        //        drawJoins(painter, Aabrf{120, widget_size.height - 50, 600, 50}, time);
-
-        //        drawTexture(painter, Aabrf{400, 100, 200, 200});
+        drawTexture(painter, Aabrf{400, 100, 200, 200});
     }
 
     void drawSlider(Painter& painter, const Aabrf& rect, float pos) const
@@ -487,21 +482,19 @@ public:
         painter.pop_state();
     }
 
-    //    void drawTexture(Painter& painter, const Aabrf& rect) const
-    //    {
-    //        if (!test_texture) {
-    //            test_texture = m_context.load_texture("/home/clemens/code/notf/res/textures/face.png");
-    //        }
+    void drawTexture(Painter& painter, const Aabrf& rect) const
+    {
+        Paint pattern = Paint::create_texture_pattern(rect.top_left(), rect.extend(), test_texture, 0, 1);
 
-    //        Paint pattern = Paint::create_texture_pattern(rect.top_left(), rect.extend(), test_texture, 0, 1);
+        const float corner_radius = 10;
 
-    //        const float corner_radius = 10;
+        painter.begin_path();
+        painter.set_fill_paint(pattern);
+        painter.add_rounded_rect(rect, corner_radius);
+        painter.fill();
+    }
 
-    //        painter.begin_path();
-    //        painter.set_fill_paint(pattern);
-    //        painter.add_rounded_rect(rect, corner_radius);
-    //        painter.fill();
-    //    }
+    std::shared_ptr<Texture2> test_texture;
 };
 
 class MyController : public BaseController<MyController> {
@@ -513,7 +506,7 @@ public:
 
     virtual void _initialize() override
     {
-        _set_root_item(std::make_shared<MyWidget>());
+        _set_root_item(std::make_shared<MyWidget>(*g_render_context));
     }
 };
 
@@ -522,6 +515,8 @@ void app_main(Window& window)
     auto controller = std::make_shared<MyController>();
     window.get_layout()->set_controller(controller);
 }
+
+
 
 int main(int argc, char* argv[])
 //int notmain(int argc, char* argv[])
@@ -540,6 +535,8 @@ int main(int argc, char* argv[])
     window_info.is_resizeable      = true;
     std::shared_ptr<Window> window = Window::create(window_info);
 
+    g_render_context = &(window->get_render_manager().get_render_context());
+
     //    window->on_token_key.connect(
     //        [window, &app](const KeyEvent&) {
     //            if (PythonInterpreter* python = app.get_python_interpreter()) {
@@ -551,6 +548,8 @@ int main(int argc, char* argv[])
     //        });
 
     app_main(*window.get());
+
+
 
     return app.exec();
 }

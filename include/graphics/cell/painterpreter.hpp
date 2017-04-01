@@ -316,8 +316,6 @@ public: // methods
 
     void set_fringe_width(float width) { m_fringe_width = width; }
 
-    bool is_current_path_empty() const { return m_paths.empty() || m_paths.back().point_count == 0; }
-
     /** Adds a new Command to be executed in order. */
     template <typename Subcommand, ENABLE_IF_SUBCLASS(Subcommand, Command)>
     inline void add_command(Subcommand command)
@@ -334,7 +332,7 @@ public: // methods
     void _pop_state();
 
     /** Appends a new Point to the current Path. */
-    void add_point(const Vector2f position, const Point::Flags flags);
+    void add_point(Vector2f position, const Point::Flags flags);
 
     /** Creates a new, empty Path. */
     void add_path() { m_paths.emplace_back(m_points); }

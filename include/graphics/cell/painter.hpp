@@ -54,8 +54,8 @@ struct PainterState {
     float alpha                     = 1;
     float miter_limit               = 10;
     float stroke_width              = 1;
-    Paint fill_paint                      = Color(255, 255, 255);
-    Paint stroke_paint                    = Color(0, 0, 0);
+    Paint fill_paint                = Color(255, 255, 255);
+    Paint stroke_paint              = Color(0, 0, 0);
 };
 
 } // namespace detail
@@ -116,7 +116,7 @@ public: // methods
     void translate(const float x, const float y) { translate(Vector2f{x, y}); }
 
     /** Translates the Painter's transformation matrix. */
-    void translate(const Vector2f &delta);
+    void translate(const Vector2f& delta);
 
     /** Rotates the current state the given amount of radians in a counter-clockwise direction. */
     void rotate(const float angle);
@@ -305,6 +305,11 @@ private: // fields
 
     /** Current position of the 'stylus', as the last Command left it. */
     Vector2f m_stylus; // TODO: get rid of the stylus if possible
+
+    /** Keeps track of whether the Painter has a current, open path or not.
+     * If not, it has to create a new Path before addng Points.
+     */
+    bool m_has_open_path;
 
 private: // static fields
     /** Stack of all PainterStates of this Painter. */

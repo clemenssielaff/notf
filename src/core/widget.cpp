@@ -53,7 +53,7 @@ void Widget::redraw() // TODO: currently _set_size does not dirty the Widget's C
 void Widget::paint(RenderContext& context) const
 {
     // update the Cell if the Widget is dirty
-    if (!m_is_clean) {
+//    if (!m_is_clean) { // TODO: dirty mechanism for cells
         Painter painter(m_cell, context);
         try {
             _paint(painter);
@@ -63,7 +63,7 @@ void Widget::paint(RenderContext& context) const
         }
         painter._execute();
         m_is_clean = true;
-    }
+//    }
 
     // add your Cell to the rendering
     context._add_cell(m_cell);

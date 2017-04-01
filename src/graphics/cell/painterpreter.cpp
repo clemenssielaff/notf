@@ -103,9 +103,12 @@ void Painterpreter::_pop_state()
     m_states.pop_back();
 }
 
-void Painterpreter::add_point(const Vector2f position, const Point::Flags flags)
+void Painterpreter::add_point(Vector2f position, const Point::Flags flags)
 {
     assert(!m_paths.empty());
+
+    // bring the point in to Cell space
+    position = _get_current_state().xform.transform(position);
 
     // if the point is not significantly different from the last one, use that instead.
     if (!m_points.empty()) {
@@ -654,7 +657,7 @@ void Painterpreter::_stroke(Cell& cell, const RenderContext& context)
 
     size_t cap_divisions;
     { // calculate divisions per half circle
-        float da      = acos(stroke_width / (stroke_width + m_tesselation_tolerance)) * 2;
+        float da      = acos(stroke_width / (stroke_width + m_tesselation_tolerance)) * 2; // TODO: can circles get more coarse the further away they are?
         cap_divisions = max(size_t(2), static_cast<size_t>(ceilf(static_cast<float>(PI) / da)));
     }
 
@@ -911,11 +914,15 @@ void Painterpreter::_execute(Cell& cell, const RenderContext& context)
             if (m_paths.empty()) {
                 add_path();
             }
+            Vector2f stylus;
             if (m_points.empty()) {
-                add_point(Vector2f::zero(), Point::Flags::CORNER);
+                stylus = Vector2f::zero();
+                add_point(stylus, Point::Flags::CORNER);
+            } else {
+                stylus = _get_current_state().xform.get_inverse().transform({m_points.back().pos.x, m_points.back().pos.y}); // TODO: that sucks
             }
             const BezierCommand& cmd = map_command<BezierCommand>(m_commands, index);
-            tesselate_bezier(m_points.back().pos.x, m_points.back().pos.y,
+            tesselate_bezier(stylus.x, stylus.y,
                              cmd.ctrl1.x, cmd.ctrl1.y,
                              cmd.ctrl2.x, cmd.ctrl2.y,
                              cmd.end.x, cmd.end.y);

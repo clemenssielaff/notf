@@ -318,10 +318,11 @@ void RenderContext::_add_cell(const Cell& cell)
 
         // copy the vertices from the cell // TODO: I'm pretty sure when copying vertices from Cell to RenderContext you'll need to xform them
         size_t vertex_offset = m_vertices.size();
-        for (const Cell::Path& cell_path : cell.m_paths) {
+        for( size_t path_index = cell_call.path_offset; path_index < cell_call.path_offset + cell_call.path_count; ++path_index){
+            const Cell::Path& cell_path = cell.m_paths[path_index];
             Path& path = create_back(m_paths);
             if (cell_path.fill_count != 0) {
-//                assert(render_call.type == Call::Type::FILL || render_call.type == Call::Type::CONVEX_FILL);
+                assert(render_call.type == Call::Type::FILL || render_call.type == Call::Type::CONVEX_FILL);
                 path.fillOffset = static_cast<GLint>(vertex_offset);
                 path.fillCount  = static_cast<GLsizei>(cell_path.fill_count);
                 m_vertices.insert(std::end(m_vertices),
@@ -527,7 +528,7 @@ void paint_to_frag(RenderContext::ShaderVariables& frag, const Paint& paint, con
         frag.scissorScale[1] = 1.0f;
     }
     else {
-        xformToMat3x4(frag.scissorMat, scissor.xform.inverse());
+        xformToMat3x4(frag.scissorMat, scissor.xform.get_inverse());
         frag.scissorExt[0]   = scissor.extend.width / 2;
         frag.scissorExt[1]   = scissor.extend.height / 2;
         frag.scissorScale[0] = sqrt(scissor.xform[0][0] * scissor.xform[0][0] + scissor.xform[1][0] * scissor.xform[1][0]) / fringe;
@@ -547,7 +548,7 @@ void paint_to_frag(RenderContext::ShaderVariables& frag, const Paint& paint, con
         frag.radius  = paint.radius;
         frag.feather = paint.feather;
     }
-    xformToMat3x4(frag.paintMat, paint.xform.inverse());
+    xformToMat3x4(frag.paintMat, paint.xform.get_inverse());
 }
 
 } // namespace notf

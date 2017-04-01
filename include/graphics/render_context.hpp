@@ -203,6 +203,9 @@ public: // methods
                                          const std::string& fragment_shader_source);
 
 private: // methods for friends
+    /** Updates the time at the start of the rendering. */
+    void _set_time(Time time) { m_time = time; }
+
     /** Updates the mouse position. */
     void _set_mouse_pos(Vector2f pos) { m_mouse_pos = std::move(pos); }
 

@@ -86,9 +86,8 @@ Application::Application(ApplicationInfo info)
     }
     log_info << "GLFW version: " << glfwGetVersionString();
 
-    // initialize the time
-    Time::set_frequency(glfwGetTimerFrequency());
-    glfwSetTime(0);
+    // initialize other NoTF mechanisms
+    Time::initialize();
 
 #ifdef NOTF_PYTHON
     // initialize Python
