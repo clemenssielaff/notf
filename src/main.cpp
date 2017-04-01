@@ -23,7 +23,7 @@ public:
         const Size2f widget_size = get_size();
         const Aabrf base(widget_size);
         const float margin = 20;
-        const float time   = static_cast<float>(painter.get_time().in_seconds());
+//        const float time   = static_cast<float>(painter.get_time().in_seconds());
 
         painter.begin_path();
         painter.add_rect(base.shrunken(margin));
@@ -32,7 +32,7 @@ public:
 
         painter.begin_path();
         painter.add_circle(base.center(), 80.f);
-        painter.set_fill_color(Color(0.f, 1.f, 1.f, 1.f));
+        painter.set_fill_color(Color(1.f, 0.f, 0.f, 1.f));
         painter.fill();
 
         //                drawGraph(painter, base, time);

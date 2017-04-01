@@ -2,15 +2,105 @@
 
 #include "common/vector.hpp"
 #include "graphics/cell/cell.hpp"
+#include "graphics/render_context.hpp"
 #include "graphics/vertex.hpp"
 
+/**********************************************************************************************************************/
+
+namespace { // anonymous
+using namespace notf;
+
+/** Convenience function go get the size of a given Subcommand type in units of Command::command_t. */
+template <typename Subcommand, ENABLE_IF_SUBCLASS(Subcommand, Command)>
+constexpr auto command_size()
+{
+    static_assert(sizeof(Subcommand) % sizeof(Command::command_t) == 0,
+                  "Cannot determine the exact size of Command in units of Command::command_t");
+    return sizeof(Subcommand) / sizeof(Command::command_t);
+}
+
+/** Creates a const reference of a specific Subcommand that maps into the given Command buffer. */
+template <typename Subcommand, ENABLE_IF_SUBCLASS(Subcommand, Command)>
+constexpr const Subcommand& map_command(const std::vector<Command::command_t>& buffer, size_t index)
+{
+    return *(reinterpret_cast<const Subcommand*>(&buffer[index]));
+}
+
+} // namespace anonymous
+
+/**********************************************************************************************************************/
+
 namespace notf {
+using namespace detail;
+
+/* The Command buffer is a tightly packed vector of `Command` subclasses.
+ * Internally, everything is a float (or to be more precise, a Command::command_t) - even the Command type identifier,
+ * which is just static cast to a command_t.
+ * In order to map subclasses of `Command` into the buffer, we require the `Command` subclasses to be unaligned, meaning
+ * they contain no padding.
+ * This works fine on my machine (...) but just to be sure, here's a block of static asserts that fail at compile time
+ * should your particular compiler behave differently.
+ * If any of them fail, you might want to look into compiler-specific pragmas or flags in order to stop it from adding
+ * padding bytes.
+ */
+
+static_assert(sizeof(Command::Type) == sizeof(Command::command_t),
+              "The underlying type of Command::Type has a different size than Command::command_t. "
+              "Adjust the underlying type of the Command::Type enum to fit your particular system.");
+
+#define ASSERT_COMMAND_SIZE(T, S) static_assert( \
+    sizeof(T) == sizeof(Command::command_t) * S, \
+    "Error: padding detected in Command `" #T "` - the Painterpreter requires its Commands to be tightly packed");
+
+ASSERT_COMMAND_SIZE(PushStateCommand, 1);
+ASSERT_COMMAND_SIZE(PopStateCommand, 1);
+ASSERT_COMMAND_SIZE(BeginCommand, 1);
+ASSERT_COMMAND_SIZE(SetWindingCommand, 2);
+ASSERT_COMMAND_SIZE(CloseCommand, 1);
+ASSERT_COMMAND_SIZE(MoveCommand, 3);
+ASSERT_COMMAND_SIZE(LineCommand, 3);
+ASSERT_COMMAND_SIZE(BezierCommand, 7);
+ASSERT_COMMAND_SIZE(FillCommand, 1);
+ASSERT_COMMAND_SIZE(StrokeCommand, 1);
+ASSERT_COMMAND_SIZE(SetXformCommand, 7);
+ASSERT_COMMAND_SIZE(ResetXformCommand, 1);
+ASSERT_COMMAND_SIZE(TransformCommand, 7);
+ASSERT_COMMAND_SIZE(TranslationCommand, 3);
+ASSERT_COMMAND_SIZE(RotationCommand, 2);
+ASSERT_COMMAND_SIZE(SetScissorCommand, 9);
+ASSERT_COMMAND_SIZE(ResetScissorCommand, 1);
+ASSERT_COMMAND_SIZE(FillColorCommand, 5);
+ASSERT_COMMAND_SIZE(FillPaintCommand, 24);
+ASSERT_COMMAND_SIZE(StrokeColorCommand, 5);
+ASSERT_COMMAND_SIZE(StrokePaintCommand, 24);
+ASSERT_COMMAND_SIZE(StrokeWidthCommand, 2);
+ASSERT_COMMAND_SIZE(BlendModeCommand, 2);
+ASSERT_COMMAND_SIZE(SetAlphaCommand, 2);
+ASSERT_COMMAND_SIZE(MiterLimitCommand, 2);
+ASSERT_COMMAND_SIZE(LineCapCommand, 2);
+ASSERT_COMMAND_SIZE(LineJoinCommand, 2);
+
+/**********************************************************************************************************************/
 
 void Painterpreter::reset()
 {
     m_paths.clear();
     m_points.clear();
     m_commands.clear();
+
+    m_states.clear();
+    m_states.emplace_back(); // always have at least one state
+}
+
+void Painterpreter::_push_state()
+{
+    m_states.emplace_back(m_states.back());
+}
+
+void Painterpreter::_pop_state()
+{
+    assert(m_states.size() > 1);
+    m_states.pop_back();
 }
 
 void Painterpreter::add_point(const Vector2f position, const Point::Flags flags)
@@ -26,7 +116,7 @@ void Painterpreter::add_point(const Vector2f position, const Point::Flags flags)
         }
     }
 
-    // otherwise append create a new point to the current path
+    // otherwise append a new point to the current path
     m_points.emplace_back(Point{std::move(position), Vector2f::zero(), Vector2f::zero(), 0.f, flags});
     m_paths.back().point_count++;
 }
@@ -34,7 +124,7 @@ void Painterpreter::add_point(const Vector2f position, const Point::Flags flags)
 float Painterpreter::get_path_area(const Path& path) const
 {
     float area     = 0;
-    const Point& a = m_points[0];
+    const Point& a = m_points[path.first_point]; // TODO: this was zero before, but that maken't sense (or does it?)
     for (size_t index = path.first_point + 2; index < path.first_point + path.point_count; ++index) {
         const Point& b = m_points[index - 1];
         const Point& c = m_points[index];
@@ -409,16 +499,16 @@ void Painterpreter::create_butt_cap_end(const Point& point, const Vector2f& delt
                               Vector2f(1, 0));
 }
 
-void Painterpreter::_fill(Cell& cell)
+void Painterpreter::_fill(Cell& cell, const RenderContext& context)
 {
-    const State& state = _get_current_state();
+    const detail::PainterState& state = _get_current_state();
 
     // get the fill paint
-    Paint fill_paint = state.fill;
+    Paint fill_paint = state.fill_paint;
     fill_paint.inner_color.a *= state.alpha;
     fill_paint.outer_color.a *= state.alpha;
 
-    const float fringe = m_context.provides_geometric_aa() ? m_fringe_width : 0;
+    const float fringe = context.provides_geometric_aa() ? m_fringe_width : 0;
     _prepare_paths(cell, fringe, Painter::LineJoin::MITER, 2.4f);
 
     // create the Cell's render call
@@ -525,12 +615,12 @@ void Painterpreter::_fill(Cell& cell)
     render_call.path_count = cell.m_paths.size() - render_call.path_offset;
 }
 
-void Painterpreter::_stroke(Cell& cell)
+void Painterpreter::_stroke(Cell& cell, const RenderContext& context)
 {
-    const State& state = _get_current_state();
+    const PainterState& state = _get_current_state();
 
     // get the stroke paint
-    Paint stroke_paint = state.stroke;
+    Paint stroke_paint = state.stroke_paint;
     stroke_paint.inner_color.a *= state.alpha;
     stroke_paint.outer_color.a *= state.alpha;
 
@@ -546,7 +636,7 @@ void Painterpreter::_stroke(Cell& cell)
             stroke_width = m_fringe_width;
         }
         //
-        if (m_context.provides_geometric_aa()) {
+        if (context.provides_geometric_aa()) {
             stroke_width = (stroke_width / 2.f) + (m_fringe_width / 2.f);
         }
         else {
@@ -759,7 +849,7 @@ void Painterpreter::_prepare_paths(Cell& cell, const float fringe, const Painter
 }
 
 // TODO: when this draws, revisit this function and see if you find a way to guarantee that there is always a path and point without if-statements all over the place
-void Painterpreter::_execute(Cell& cell)
+void Painterpreter::_execute(Cell& cell, const RenderContext& context)
 {
     // prepare the cell
     cell.m_calls.clear();
@@ -768,65 +858,184 @@ void Painterpreter::_execute(Cell& cell)
     cell.m_bounds = Aabrf::wrongest();
 
     // parse the command buffer
-    for (size_t index = 0; index < m_commands.size(); ++index) {
+    for (size_t index = 0; index < m_commands.size();) {
         switch (static_cast<Command::Type>(m_commands[index])) {
 
-        case Command::Type::MOVE:
-            add_path();
-            add_point(as_vector2f(m_commands, index + 1), Point::Flags::CORNER);
-            index += 2;
-            break;
+        case Command::Type::PUSH_STATE: {
+            _push_state();
+            index += command_size<PushStateCommand>();
+        } break;
 
-        case Command::LINE:
+        case Command::Type::POP_STATE: {
+            _pop_state();
+            index += command_size<PopStateCommand>();
+        } break;
+
+        case Command::BEGIN_PATH: {
+            m_paths.clear();
+            m_points.clear();
+            index += command_size<BeginCommand>();
+        } break;
+
+        case Command::SET_WINDING: {
+            if (!m_paths.empty()) {
+                m_paths.back().winding = static_cast<Painter::Winding>(m_commands[index + 1]);
+            }
+            index += command_size<SetWindingCommand>();
+        } break;
+
+        case Command::CLOSE: {
+            if (!m_paths.empty()) {
+                m_paths.back().is_closed = true;
+            }
+            index += command_size<CloseCommand>();
+        } break;
+
+        case Command::Type::MOVE: {
+            add_path();
+            const MoveCommand& cmd = map_command<MoveCommand>(m_commands, index);
+            add_point(cmd.pos, Point::Flags::CORNER);
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case Command::LINE: {
             if (m_paths.empty()) {
                 add_path();
             }
-            add_point(as_vector2f(m_commands, index + 1), Point::Flags::CORNER);
-            index += 2;
-            break;
+            const LineCommand& cmd = map_command<LineCommand>(m_commands, index);
+            add_point(cmd.pos, Point::Flags::CORNER);
+            index += command_size<decltype(cmd)>();
+        } break;
 
-        case Command::BEZIER:
+        case Command::BEZIER: {
             if (m_paths.empty()) {
                 add_path();
             }
             if (m_points.empty()) {
                 add_point(Vector2f::zero(), Point::Flags::CORNER);
             }
+            const BezierCommand& cmd = map_command<BezierCommand>(m_commands, index);
             tesselate_bezier(m_points.back().pos.x, m_points.back().pos.y,
-                             m_commands[index + 1], m_commands[index + 2],
-                             m_commands[index + 3], m_commands[index + 4],
-                             m_commands[index + 5], m_commands[index + 6]);
-            index += 6;
-            break;
+                             cmd.ctrl1.x, cmd.ctrl1.y,
+                             cmd.ctrl2.x, cmd.ctrl2.y,
+                             cmd.end.x, cmd.end.y);
+            index += command_size<decltype(cmd)>();
+        } break;
 
-        case Command::CLOSE:
-            if (!m_paths.empty()) {
-                m_paths.back().is_closed = true;
-            }
-            break;
+        case Command::FILL: {
+            _fill(cell, context);
+            index += command_size<FillCommand>();
+        } break;
 
-        case Command::SET_WINDING:
-            if (!m_paths.empty()) {
-                m_paths.back().winding = static_cast<Painter::Winding>(m_commands[index + 1]);
-            }
-            index += 1;
-            break;
+        case Command::STROKE: {
+            _stroke(cell, context);
+            index += command_size<StrokeCommand>();
+        } break;
 
-        case Command::BEGIN_PATH:
-            m_paths.clear();
-            m_points.clear();
-            break;
+        case Command::SET_XFORM: {
+            const SetXformCommand& cmd = map_command<SetXformCommand>(m_commands, index);
+            _get_current_state().xform = cmd.xform;
+            index += command_size<decltype(cmd)>();
+        } break;
 
-        case Command::FILL:
-            _fill(cell);
-            break;
+        case Command::RESET_XFORM: {
+            _get_current_state().xform = Xform2f::identity();
+            index += command_size<ResetXformCommand>();
+        } break;
 
-        case Command::STROKE:
-            _stroke(cell);
-            break;
+        case Command::TRANSFORM: {
+            const TransformCommand& cmd = map_command<TransformCommand>(m_commands, index);
+            _get_current_state().xform *= cmd.xform;
+            index += command_size<decltype(cmd)>();
+        } break;
 
-        default: // unknown enum
-            assert(0);
+        case Command::TRANSLATE: {
+            const TranslationCommand& cmd = map_command<TranslationCommand>(m_commands, index);
+            _get_current_state().xform *= Xform2f::translation(cmd.delta);
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case Command::ROTATE: {
+            const RotationCommand& cmd = map_command<RotationCommand>(m_commands, index);
+            _get_current_state().xform = Xform2f::rotation(cmd.angle) * _get_current_state().xform;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case Command::SET_SCISSOR: {
+            const SetScissorCommand& cmd = map_command<SetScissorCommand>(m_commands, index);
+            _get_current_state().scissor = cmd.sissor;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case Command::RESET_SCISSOR: {
+            const ResetScissorCommand& cmd = map_command<ResetScissorCommand>(m_commands, index);
+            _get_current_state().scissor   = {Xform2f::identity(), {-1, -1}};
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case Command::SET_FILL_COLOR: {
+            const FillColorCommand& cmd = map_command<FillColorCommand>(m_commands, index);
+            _get_current_state().fill_paint.set_color(cmd.color);
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case Command::SET_FILL_PAINT: {
+            const FillPaintCommand& cmd = map_command<FillPaintCommand>(m_commands, index);
+            _get_current_state().fill_paint = cmd.paint;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case Command::SET_STROKE_COLOR: {
+            const StrokeColorCommand& cmd = map_command<StrokeColorCommand>(m_commands, index);
+            _get_current_state().stroke_paint.set_color(cmd.color);
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case Command::SET_STROKE_PAINT: {
+            const StrokePaintCommand& cmd = map_command<StrokePaintCommand>(m_commands, index);
+            _get_current_state().stroke_paint = cmd.paint;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case Command::SET_STROKE_WIDTH: {
+            const StrokeWidthCommand& cmd = map_command<StrokeWidthCommand>(m_commands, index);
+            _get_current_state().stroke_width = cmd.stroke_width;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case Command::SET_BLEND_MODE: {
+            const BlendModeCommand& cmd     = map_command<BlendModeCommand>(m_commands, index);
+            _get_current_state().blend_mode = cmd.blend_mode;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case Command::SET_ALPHA: {
+            const SetAlphaCommand& cmd = map_command<SetAlphaCommand>(m_commands, index);
+            _get_current_state().alpha = cmd.alpha;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case Command::SET_MITER_LIMIT: {
+            const MiterLimitCommand& cmd     = map_command<MiterLimitCommand>(m_commands, index);
+            _get_current_state().miter_limit = cmd.miter_limit;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case Command::SET_LINE_CAP: {
+            const LineCapCommand& cmd     = map_command<LineCapCommand>(m_commands, index);
+            _get_current_state().line_cap = cmd.line_cap;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case Command::SET_LINE_JOIN: {
+            const LineJoinCommand& cmd     = map_command<LineJoinCommand>(m_commands, index);
+            _get_current_state().line_join = cmd.line_join;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        default:     // unknown enum
+            ++index; // failsave
+            throw std::runtime_error("Encountered Unknown enum in Painterpreter::_execute");
         }
     }
 

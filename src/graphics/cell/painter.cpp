@@ -39,24 +39,10 @@
 namespace { // anonymous
 using namespace notf;
 
-/** Returns a Vector2f reference into the Command buffer without data allocation. */
-Vector2f& as_vector2f(std::vector<float>& commands, size_t index)
-{
-    assert(index + 1 < commands.size());
-    return *reinterpret_cast<Vector2f*>(&commands[index]);
-}
-
-/** Extracts a position from the given command buffer and applies a given transformation to it in-place. */
-void transform_command_pos(std::vector<float>& commands, size_t index, const Xform2f& xform)
-{
-    assert(commands.size() >= index + 2);
-    Vector2f& vector = as_vector2f(commands, index);
-    vector           = xform.transform(vector);
-}
-
 /** Length of a bezier control vector to draw a circle with radius 1. */
 static const float KAPPAf = static_cast<float>(KAPPA);
 
+/** In a single-threaded environment, we only need one Painterpreter and its nice to re-use its allocated vectors. */
 static Painterpreter INTERPRETER;
 
 } // namespace anonymous
@@ -65,7 +51,7 @@ namespace notf {
 
 /**********************************************************************************************************************/
 
-std::vector<Painter::State> Painter::s_states;
+std::vector<detail::PainterState> Painter::s_states;
 
 Painter::Painter(Cell& cell, const RenderContext& context)
     : m_cell(cell)
@@ -101,38 +87,117 @@ size_t Painter::pop_state()
     return s_states.size();
 }
 
+void Painter::set_transform(const Xform2f xform)
+{
+    detail::PainterState& current_state = _get_current_state();
+    current_state.xform                 = std::move(xform);
+    INTERPRETER.add_command(SetXformCommand(current_state.xform));
+}
+void Painter::reset_transform()
+{
+    INTERPRETER.add_command(ResetXformCommand());
+    _get_current_state().xform = Xform2f::identity();
+}
+
+void Painter::transform(const Xform2f& transform)
+{
+    INTERPRETER.add_command(TransformCommand(transform));
+    _get_current_state().xform *= transform;
+}
+
+void Painter::translate(const Vector2f& delta)
+{
+    INTERPRETER.add_command(TranslationCommand(delta));
+    _get_current_state().xform *= Xform2f::translation(delta);
+}
+
+void Painter::rotate(const float angle)
+{
+    INTERPRETER.add_command(RotationCommand(angle));
+    _get_current_state().xform = Xform2f::rotation(angle) * _get_current_state().xform; // TODO: Transform2::premultiply
+}
+
 void Painter::set_scissor(const Aabrf& aabr)
 {
-    State& current_state        = _get_current_state();
+    detail::PainterState& current_state = _get_current_state();
+
     current_state.scissor.xform = Xform2f::translation(aabr.center());
     current_state.scissor.xform *= current_state.xform;
     current_state.scissor.extend = aabr.extend();
+    INTERPRETER.add_command(SetScissorCommand(current_state.scissor));
+}
+
+void Painter::remove_scissor()
+{
+    INTERPRETER.add_command(ResetScissorCommand());
+    _get_current_state().scissor = {Xform2f::identity(), {-1, -1}};
+}
+
+void Painter::set_blend_mode(const BlendMode mode)
+{
+    INTERPRETER.add_command(BlendModeCommand(mode));
+    _get_current_state().blend_mode = mode;
+}
+
+void Painter::set_alpha(const float alpha)
+{
+    INTERPRETER.add_command(SetAlphaCommand(alpha));
+    _get_current_state().alpha = alpha;
+}
+
+void Painter::set_miter_limit(const float limit)
+{
+    INTERPRETER.add_command(MiterLimitCommand(limit));
+    _get_current_state().miter_limit = limit;
+}
+
+void Painter::set_line_cap(const LineCap cap)
+{
+    INTERPRETER.add_command(LineCapCommand(cap));
+    _get_current_state().line_cap = cap;
+}
+
+void Painter::set_line_join(const LineJoin join)
+{
+    INTERPRETER.add_command(LineJoinCommand(join));
+    _get_current_state().line_join = join;
 }
 
 void Painter::set_fill_paint(Paint paint)
 {
-    State& current_state = _get_current_state();
+    detail::PainterState& current_state = _get_current_state();
     paint.xform *= current_state.xform;
-    current_state.fill = std::move(paint);
+    current_state.fill_paint = std::move(paint);
+    INTERPRETER.add_command(FillPaintCommand(current_state.fill_paint));
 }
 
 void Painter::set_fill_color(Color color)
 {
-    State& current_state = _get_current_state();
-    current_state.fill.set_color(std::move(color));
+    INTERPRETER.add_command(FillColorCommand(color));
+    detail::PainterState& current_state = _get_current_state();
+    current_state.fill_paint.set_color(std::move(color));
 }
 
 void Painter::set_stroke_paint(Paint paint)
 {
-    State& current_state = _get_current_state();
+    detail::PainterState& current_state = _get_current_state();
     paint.xform *= current_state.xform;
-    current_state.stroke = std::move(paint);
+    current_state.stroke_paint = std::move(paint);
+    INTERPRETER.add_command(StrokePaintCommand(current_state.stroke_paint));
 }
 
 void Painter::set_stroke_color(Color color)
 {
-    State& current_state = _get_current_state();
-    current_state.stroke.set_color(std::move(color));
+    INTERPRETER.add_command(StrokeColorCommand(color));
+    detail::PainterState& current_state = _get_current_state();
+    current_state.stroke_paint.set_color(std::move(color));
+}
+
+void Painter::set_stroke_width(const float width)
+{
+    detail::PainterState& current_state = _get_current_state();
+    current_state.stroke_width          = max(0.f, width);
+    INTERPRETER.add_command(StrokeWidthCommand(current_state.stroke_width));
 }
 
 void Painter::begin_path()
@@ -147,6 +212,7 @@ void Painter::close_path()
 
 void Painter::set_winding(const Winding winding)
 {
+    // TODO: SetWindingCommand has no effect when there's no Path yet. That's not a problem per se, but optimizable? Same goes for close
     INTERPRETER.add_command(SetWindingCommand(winding));
 }
 
@@ -176,7 +242,7 @@ void Painter::bezier_to(const Vector2f ctrl1, const Vector2f ctrl2, const Vector
     INTERPRETER.add_command(BezierCommand(std::move(ctrl1), std::move(ctrl2), std::move(end)));
 }
 
-void Painter::arc(float cx, float cy, float r, float a0, float a1, Winding dir)
+void Painter::arc(const float cx, const float cy, const float r, const float a0, const float a1, const Winding dir)
 {
     // clamp angles
     float da;
@@ -327,5 +393,15 @@ const Vector2f& Painter::get_mouse_pos() const
     return m_context.get_mouse_pos();
 }
 
+void Painter::_execute()
+{
+    INTERPRETER._execute(m_cell, m_context);
+}
+
+// TODO: the Painter might as well optimize the Commands given before sending them off to the cell.
+// For example, if you set a paint, set color a, set color b and fill, setting color a is irrelevant.
+// Also, if you set a complete new paint, it might be better to split it up in several commands that only change
+// what is really changed, so instead of having two set_paint commands where only the fill color differs you have one
+// set_paint command and a set_fill_color command
 
 } // namespace notf

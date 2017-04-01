@@ -69,7 +69,7 @@ public: // static methods
 
     Color outer_color;
 
-    std::shared_ptr<Texture2> texture;
+    std::shared_ptr<Texture2> texture; // TODO: shared pointers are NOT serializable into the Command BUFFER
 };
 
 } // namespace notf

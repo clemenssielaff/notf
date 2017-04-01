@@ -12,9 +12,62 @@ namespace notf {
 class Cell;
 class RenderContext;
 
+namespace detail {
+
+/** Empty base class in order to use the Painter enums both in PainterState and Painter.
+ * Should be optimized away by the compiler.
+ */
+struct PainterBase {
+
+    /** Type of cap used at the end of a painted line. */
+    enum class LineCap : unsigned char {
+        BUTT,
+        ROUND,
+        SQUARE,
+    };
+
+    /** Type of joint beween two painted line segments. */
+    enum class LineJoin : unsigned char {
+        MITER,
+        ROUND,
+        BEVEL,
+    };
+
+    /** Winding direction of a painted Shape */
+    enum class Winding : unsigned char {
+        CCW,
+        CW,
+        COUNTERCLOCKWISE = CCW,
+        CLOCKWISE        = CW,
+        SOLID            = CCW,
+        HOLE             = CW,
+    };
+};
+
+/** State used by a Painter (and Painterpreter) to contextualize paint operations. */
+struct PainterState {
+    Xform2f xform                   = Xform2f::identity();
+    Scissor scissor                 = {Xform2f::identity(), {-1, -1}};
+    BlendMode blend_mode            = BlendMode::SOURCE_OVER;
+    PainterBase::LineCap line_cap   = PainterBase::LineCap::BUTT;
+    PainterBase::LineJoin line_join = PainterBase::LineJoin::MITER;
+    float alpha                     = 1;
+    float miter_limit               = 10;
+    float stroke_width              = 1;
+    Paint fill_paint                      = Color(255, 255, 255);
+    Paint stroke_paint                    = Color(0, 0, 0);
+};
+
+} // namespace detail
+
 /**********************************************************************************************************************/
 
 /**
+ * The Painterpreter
+ * =================
+ * The Painter's job is to create Commands for the `Painterpreter`.
+ * The Painterpreter trusts the Painter to only give correct values (no line width <0, no state underflow...).
+ *
  * Paths
  * =====
  * Painting using the Painter class is done in several stages.
@@ -24,77 +77,11 @@ class RenderContext;
  * Calling `close_path` at the end of the Path definition is only necessary, if the current Shape is not already closed.
  * For example, if you construct a Path using bezier or quadratic curves.
  */
-class Painter {
+class Painter : public detail::PainterBase {
 
     friend class Widget;
 
-public: // enums
-    /******************************************************************************************************************/
-
-    enum class LineCap : unsigned char {
-        BUTT,
-        ROUND,
-        SQUARE,
-    };
-
-    /******************************************************************************************************************/
-
-    enum class LineJoin : unsigned char {
-        MITER,
-        ROUND,
-        BEVEL,
-    };
-
-    /******************************************************************************************************************/
-
-    enum class Winding : unsigned char {
-        CCW,
-        CW,
-        COUNTERCLOCKWISE = CCW,
-        CLOCKWISE        = CW,
-        SOLID            = CCW,
-        HOLE             = CW,
-    };
-
-private: // types
-    /******************************************************************************************************************/
-
-    struct State {
-        State()
-            : xform(Xform2f::identity())
-            , scissor({Xform2f::identity(), {-1, -1}})
-            , blend_mode(BlendMode::SOURCE_OVER)
-            , line_cap(LineCap::BUTT)
-            , line_join(LineJoin::MITER)
-            , alpha(1)
-            , miter_limit(10)
-            , stroke_width(1)
-            , previous_state(INVALID_INDEX)
-            , fill(Color(255, 255, 255))
-            , stroke(Color(0, 0, 0))
-        {
-        }
-
-        State(const State& other) = default;
-
-        Xform2f xform;
-        Scissor scissor;
-        BlendMode blend_mode;
-        LineCap line_cap;
-        LineJoin line_join;
-        float alpha;
-        float miter_limit;
-        float stroke_width;
-        size_t previous_state;
-        Paint fill;
-        Paint stroke;
-
-        static const size_t INVALID_INDEX = std::numeric_limits<size_t>::max();
-    };
-
 public: // methods
-    /******************************************************************************************************************/
-
     /** Value Constructor. */
     Painter(Cell& cell, const RenderContext& context);
 
@@ -117,23 +104,22 @@ public: // methods
     const Xform2f& get_transform() const { return _get_current_state().xform; }
 
     /** Sets the transform of the Painter. */
-    void set_transform(const Xform2f xform) { _get_current_state().xform = std::move(xform); }
+    void set_transform(const Xform2f xform);
 
     /** Reset the Painter's transform. */
-    void reset_transform() { set_transform(Xform2f::identity()); }
+    void reset_transform();
 
     /** Transforms the Painter's transformation matrix. */
-    void transform(const Xform2f& transform) { _get_current_state().xform *= transform; }
+    void transform(const Xform2f& transform);
 
     /** Translates the Painter's transformation matrix. */
     void translate(const float x, const float y) { translate(Vector2f{x, y}); }
 
     /** Translates the Painter's transformation matrix. */
-    void translate(const Vector2f delta) { _get_current_state().xform *= Xform2f::translation(std::move(delta)); }
+    void translate(const Vector2f &delta);
 
     /** Rotates the current state the given amount of radians in a counter-clockwise direction. */
-    void rotate(const float angle) { _get_current_state().xform = Xform2f::rotation(angle) * _get_current_state().xform; }
-    // TODO: Transform2::premultiply
+    void rotate(const float angle);
 
     /* Scissor ********************************************/
 
@@ -144,7 +130,7 @@ public: // methods
     void set_scissor(const Aabrf& aabr);
 
     /** Removes the Scissor currently applied to the Painter. */
-    void remove_scissor() { _get_current_state().scissor = {Xform2f::identity(), {-1, -1}}; }
+    void remove_scissor();
 
     /* Blend Mode *****************************************/
 
@@ -152,7 +138,7 @@ public: // methods
     BlendMode get_blend_mode() const { return _get_current_state().blend_mode; }
 
     /** Set the Painter's blend mode. */
-    void set_blend_mode(const BlendMode mode) { _get_current_state().blend_mode = std::move(mode); }
+    void set_blend_mode(const BlendMode mode);
 
     /* Alpha **********************************************/
 
@@ -160,7 +146,7 @@ public: // methods
     float get_alpha() const { return _get_current_state().alpha; }
 
     /** Set the global alpha for this Painter. */
-    void set_alpha(const float alpha) { _get_current_state().alpha = alpha; }
+    void set_alpha(const float alpha);
 
     /* Miter Limit ****************************************/
 
@@ -168,7 +154,7 @@ public: // methods
     float get_miter_limit() const { return _get_current_state().miter_limit; }
 
     /** Sets the Painter's miter limit. */
-    void set_miter_limit(const float limit) { _get_current_state().miter_limit = limit; }
+    void set_miter_limit(const float limit);
 
     /* Line Cap *******************************************/
 
@@ -176,7 +162,7 @@ public: // methods
     LineCap get_line_cap() const { return _get_current_state().line_cap; }
 
     /** Sets the Painter's line cap. */
-    void set_line_cap(const LineCap cap) { _get_current_state().line_cap = cap; }
+    void set_line_cap(const LineCap cap);
 
     /* Line Join ******************************************/
 
@@ -184,12 +170,12 @@ public: // methods
     LineJoin get_line_join() const { return _get_current_state().line_join; }
 
     /** Sets the Painter's line join. */
-    void set_line_join(const LineJoin join) { _get_current_state().line_join = join; }
+    void set_line_join(const LineJoin join);
 
     /* Fill Paint *****************************************/
 
     /** The current fill Paint. */
-    const Paint& get_fill_paint() { return _get_current_state().fill; }
+    const Paint& get_fill_paint() { return _get_current_state().fill_paint; }
 
     /** Changes the current fill Paint. */
     void set_fill_paint(Paint paint);
@@ -200,7 +186,7 @@ public: // methods
     /* Stroke Paint ***************************************/
 
     /** The current fill Paint. */
-    const Paint& get_stroke_paint() { return _get_current_state().stroke; }
+    const Paint& get_stroke_paint() { return _get_current_state().stroke_paint; }
 
     /** Changes the current stroke Paint. */
     void set_stroke_paint(Paint paint);
@@ -212,7 +198,7 @@ public: // methods
     float get_stroke_width() const { return _get_current_state().stroke_width; }
 
     /** Changes the stroke width of the Painter. */
-    void set_stroke_width(const float width) { _get_current_state().stroke_width = max(0.f, width); }
+    void set_stroke_width(const float width);
 
     /* Paths *********************************************************************************************************/
 
@@ -293,24 +279,18 @@ public: // methods
 
 private: // methods
     /** The current State of the Painter. */
-    State& _get_current_state()
+    detail::PainterState& _get_current_state()
     {
         assert(!s_states.empty());
         return s_states.back();
     }
 
     /** The current State of the Painter. */
-    const State& _get_current_state() const
+    const detail::PainterState& _get_current_state() const
     {
         assert(!s_states.empty());
         return s_states.back();
     }
-
-    void _fill();
-
-    void _stroke();
-
-    void _prepare_paths(const float fringe, const LineJoin join, const float miter_limit);
 
 private: // methods for friends
     /** Clear the Painter's Cell, executes the Command stack and performs the drawings. */
@@ -324,11 +304,11 @@ private: // fields
     const RenderContext& m_context;
 
     /** Current position of the 'stylus', as the last Command left it. */
-    Vector2f m_stylus;
+    Vector2f m_stylus; // TODO: get rid of the stylus if possible
 
 private: // static fields
-    /** All Painter States used by this Painter, their order is determined by `m_state_succession`. */
-    static std::vector<State> s_states;
+    /** Stack of all PainterStates of this Painter. */
+    static std::vector<detail::PainterState> s_states;
 };
 
 } // namespace notf

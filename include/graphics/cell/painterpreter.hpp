@@ -7,13 +7,17 @@
 #include "utils/enum_to_number.hpp"
 
 namespace notf {
+using namespace detail;
 
 class Cell;
 struct Vertex;
+class RenderContext;
 
 /**********************************************************************************************************************/
 
 struct Command {
+    using command_t = float; // TODO: use _Vector2<command_t> instead of Vector2f?
+
     enum Type : uint32_t {
         PUSH_STATE,
         POP_STATE,
@@ -25,7 +29,6 @@ struct Command {
         BEZIER,
         FILL,
         STROKE,
-
         SET_XFORM,
         RESET_XFORM,
         TRANSFORM,
@@ -47,61 +50,60 @@ struct Command {
 
 protected: // method
     Command(Type type)
-        : type(static_cast<float>(to_number(type))) {}
+        : type(static_cast<command_t>(to_number(type))) {}
 
 public: // field
-    const float type;
+    const command_t type;
 };
-static_assert(sizeof(Command::Type) == sizeof(float),
-              "Floats on your system don't seem be to be 32 bits wide. "
-              "Adjust the type of the underlying type of Painter::Command to fit your particular system.");
-static_assert(sizeof(Command) == sizeof(float) * 1, "Compiler added padding to the BezierCommand struct");
 
+/** Command to copy the current PainterState and push it on the states stack. */
 struct PushStateCommand : public Command {
     PushStateCommand()
         : Command(PUSH_STATE) {}
 };
-static_assert(sizeof(PushStateCommand) == sizeof(float) * 1, "Compiler added padding to the PushStateCommand struct");
 
+/** Command to remove the current PainterState and back to the previous one. */
 struct PopStateCommand : public Command {
     PopStateCommand()
         : Command(POP_STATE) {}
 };
-static_assert(sizeof(PopStateCommand) == sizeof(float) * 1, "Compiler added padding to the PopStateCommand struct");
 
+/** Command to start a new path. */
 struct BeginCommand : public Command {
     BeginCommand()
         : Command(BEGIN_PATH) {}
 };
-static_assert(sizeof(BeginCommand) == sizeof(float) * 1, "Compiler added padding to the BeginPathCommand struct");
 
+/** Command setting the winding direction for the next fill or stroke. */
 struct SetWindingCommand : public Command {
     SetWindingCommand(Painter::Winding winding)
         : Command(SET_WINDING), winding(static_cast<float>(to_number(winding))) {}
     float winding;
 };
-static_assert(sizeof(SetWindingCommand) == sizeof(float) * 2, "Compiler added padding to the SetWindingCommand struct");
 
+/** Command to close the current path. */
 struct CloseCommand : public Command {
     CloseCommand()
         : Command(CLOSE) {}
 };
-static_assert(sizeof(CloseCommand) == sizeof(float) * 1, "Compiler added padding to the ClosePathCommand struct");
 
+/** Command to move the Painter's stylus without drawing a line.
+ * Creates a new path.
+ */
 struct MoveCommand : public Command {
     MoveCommand(Vector2f pos)
         : Command(MOVE), pos(std::move(pos)) {}
     Vector2f pos;
 };
-static_assert(sizeof(MoveCommand) == sizeof(float) * 3, "Compiler added padding to the MoveCommand struct");
 
+/** Command to draw a line from the current stylus position to the one given. */
 struct LineCommand : public Command {
     LineCommand(Vector2f pos)
         : Command(LINE), pos(std::move(pos)) {}
     Vector2f pos;
 };
-static_assert(sizeof(LineCommand) == sizeof(float) * 3, "Compiler added padding to the LineCommand struct");
 
+/** Command to draw a bezier spline from the current stylus position. */
 struct BezierCommand : public Command {
     BezierCommand(Vector2f ctrl1, Vector2f ctrl2, Vector2f end)
         : Command(BEZIER), ctrl1(std::move(ctrl1)), ctrl2(std::move(ctrl2)), end(std::move(end)) {}
@@ -109,19 +111,135 @@ struct BezierCommand : public Command {
     Vector2f ctrl2;
     Vector2f end;
 };
-static_assert(sizeof(BezierCommand) == sizeof(float) * 7, "Compiler added padding to the BezierCommand struct");
 
+/** Command to fill the current paths using the current PainterState. */
 struct FillCommand : public Command {
     FillCommand()
         : Command(FILL) {}
 };
-static_assert(sizeof(FillCommand) == sizeof(float) * 1, "Compiler added padding to the FillCommand struct");
 
+/** Command to stroke the current paths using the current PainterState. */
 struct StrokeCommand : public Command {
     StrokeCommand()
         : Command(STROKE) {}
 };
-static_assert(sizeof(StrokeCommand) == sizeof(float) * 1, "Compiler added padding to the StrokeCommand struct");
+
+/** Command to change the Xform of the current PainterState. */
+struct SetXformCommand : public Command {
+    SetXformCommand(Xform2f xform)
+        : Command(SET_XFORM), xform(std::move(xform)) {}
+    Xform2f xform;
+};
+
+/** Command to reset the Xform of the current PainterState. */
+struct ResetXformCommand : public Command {
+    ResetXformCommand()
+        : Command(RESET_XFORM) {}
+};
+
+/** Command to transform the current Xform of the current PainterState. */
+struct TransformCommand : public Command {
+    TransformCommand(Xform2f xform)
+        : Command(TRANSFORM), xform(std::move(xform)) {}
+    Xform2f xform;
+};
+
+/** Command to add a translation the Xform of the current PainterState. */
+struct TranslationCommand : public Command {
+    TranslationCommand(Vector2f delta)
+        : Command(TRANSLATE), delta(std::move(delta)) {}
+    Vector2f delta;
+};
+
+/** Command to add a rotation in radians to the Xform of the current PainterState. */
+struct RotationCommand : public Command {
+    RotationCommand(float angle)
+        : Command(ROTATE), angle(angle) {}
+    float angle;
+};
+
+/** Command to set the Scissor of the current PainterState. */
+struct SetScissorCommand : public Command {
+    SetScissorCommand(Scissor sissor)
+        : Command(SET_SCISSOR), sissor(sissor) {}
+    Scissor sissor;
+};
+
+/** Command to reset the Scissor of the current PainterState. */
+struct ResetScissorCommand : public Command {
+    ResetScissorCommand()
+        : Command(RESET_SCISSOR) {}
+};
+
+/** Command to set the fill Color of the current PainterState. */
+struct FillColorCommand : public Command {
+    FillColorCommand(Color color)
+        : Command(SET_FILL_COLOR), color(color) {}
+    Color color;
+};
+
+/** Command to set the fill Paint of the current PainterState. */
+struct FillPaintCommand : public Command {
+    FillPaintCommand(Paint paint)
+        : Command(SET_FILL_PAINT), paint(paint) {}
+    Paint paint;
+};
+
+/** Command to set the stroke Color of the current PainterState. */
+struct StrokeColorCommand : public Command {
+    StrokeColorCommand(Color color)
+        : Command(SET_STROKE_COLOR), color(color) {}
+    Color color;
+};
+
+/** Command to set the stroke Paint of the current PainterState. */
+struct StrokePaintCommand : public Command {
+    StrokePaintCommand(Paint paint)
+        : Command(SET_STROKE_PAINT), paint(paint) {}
+    Paint paint;
+};
+
+/** Command to set the stroke width of the current PainterState. */
+struct StrokeWidthCommand : public Command {
+    StrokeWidthCommand(float stroke_width)
+        : Command(SET_STROKE_WIDTH), stroke_width(stroke_width) {}
+    float stroke_width;
+};
+
+/** Command to set the BlendMode of the current PainterState. */
+struct BlendModeCommand : public Command {
+    BlendModeCommand(BlendMode blend_mode)
+        : Command(SET_BLEND_MODE), blend_mode(blend_mode) {}
+    BlendMode blend_mode;
+};
+
+/** Command to set the alpha of the current PainterState. */
+struct SetAlphaCommand : public Command {
+    SetAlphaCommand(float alpha)
+        : Command(SET_ALPHA), alpha(alpha) {}
+    float alpha;
+};
+
+/** Command to set the MiterLimit of the current PainterState. */
+struct MiterLimitCommand : public Command {
+    MiterLimitCommand(float miter_limit)
+        : Command(SET_MITER_LIMIT), miter_limit(miter_limit) {}
+    float miter_limit;
+};
+
+/** Command to set the LineCap of the current PainterState. */
+struct LineCapCommand : public Command {
+    LineCapCommand(Painter::LineCap line_cap)
+        : Command(SET_LINE_CAP), line_cap(line_cap) {}
+    Painter::LineCap line_cap;
+};
+
+/** Command to set the LineJoinof the current PainterState. */
+struct LineJoinCommand : public Command {
+    LineJoinCommand(Painter::LineJoin line_join)
+        : Command(SET_LINE_JOIN), line_join(line_join) {}
+    Painter::LineJoin line_join;
+};
 
 /**********************************************************************************************************************/
 
@@ -204,12 +322,16 @@ public: // methods
     template <typename Subcommand, ENABLE_IF_SUBCLASS(Subcommand, Command)>
     inline void add_command(Subcommand command)
     {
-        using array_t        = std::array<float, sizeof(command) / sizeof(float)>;
-        array_t& float_array = *(reinterpret_cast<array_t*>(&command));
+        using array_t      = std::array<Command::command_t, sizeof(command) / sizeof(Command::command_t)>;
+        array_t& raw_array = *(reinterpret_cast<array_t*>(&command));
         m_commands.insert(std::end(m_commands),
-                          std::make_move_iterator(std::begin(float_array)),
-                          std::make_move_iterator(std::end(float_array)));
+                          std::make_move_iterator(std::begin(raw_array)),
+                          std::make_move_iterator(std::end(raw_array)));
     }
+
+    void _push_state();
+
+    void _pop_state();
 
     /** Appends a new Point to the current Path. */
     void add_point(const Vector2f position, const Point::Flags flags);
@@ -264,20 +386,33 @@ public: // methods
     void create_butt_cap_end(const Point& point, const Vector2f& delta, const float stroke_width,
                              const float d, const float fringe_width, std::vector<Vertex>& vertices_out);
 
-    void _fill(Cell& cell);
-    void _stroke(Cell& cell);
+    void _fill(Cell& cell, const RenderContext& context);
+    void _stroke(Cell& cell, const RenderContext& context);
     void _prepare_paths(Cell& cell, const float fringe, const Painter::LineJoin join, const float miter_limit);
-    void _execute(Cell& cell);
+    void _execute(Cell& cell, const RenderContext& context);
+
+private: // methods
+    /** The current State. */
+    PainterState& _get_current_state()
+    {
+        assert(!m_states.empty());
+        return m_states.back();
+    }
 
 public: // fields
     /** Bytecode-like instructions, separated by COMMAND values. */
-    std::vector<float> m_commands;
+    std::vector<Command::command_t> m_commands;
 
     /** Points making up the Painter Paths. */
     std::vector<Point> m_points;
 
     /** Intermediate representation of the Painter Paths. */
     std::vector<Path> m_paths;
+
+    /** Stack of painter states. */
+    std::vector<PainterState> m_states;
+
+    // TODO: all of the fields below are dependent on the RenderContext, yet the context is a paramter for some functions and not for others...
 
     /** Furthest distance between two points in which the second point is considered equal to the first. */
     float m_distance_tolerance;
