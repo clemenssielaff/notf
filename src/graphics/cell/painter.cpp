@@ -29,21 +29,15 @@
 
 #include "common/line2.hpp"
 #include "common/log.hpp"
-#include "common/vector.hpp"
 #include "graphics/cell/cell.hpp"
-#include "graphics/cell/painterpreter.hpp"
+#include "graphics/cell/commands.hpp"
 #include "graphics/render_context.hpp"
-#include "graphics/vertex.hpp"
-#include "utils/enum_to_number.hpp"
 
 namespace { // anonymous
 using namespace notf;
 
 /** Length of a bezier control vector to draw a circle with radius 1. */
 static const float KAPPAf = static_cast<float>(KAPPA);
-
-/** In a single-threaded environment, we only need one Painterpreter and its nice to re-use its allocated vectors. */
-static Painterpreter INTERPRETER;
 
 } // namespace anonymous
 
@@ -53,7 +47,7 @@ namespace notf {
 
 std::vector<detail::PainterState> Painter::s_states;
 
-Painter::Painter(Cell& cell, const RenderContext& context)
+Painter::Painter(Cell& cell, RenderContext& context)
     : m_cell(cell)
     , m_context(context)
     , m_stylus(Vector2f::zero())
@@ -63,18 +57,13 @@ Painter::Painter(Cell& cell, const RenderContext& context)
     s_states.clear();
     s_states.emplace_back();
 
-    // setup the Painterpreter
-    const float pixel_ratio = m_context.get_pixel_ratio();
-    assert(abs(pixel_ratio) > 0);
-    INTERPRETER.reset();
-    INTERPRETER.set_distance_tolerance(m_context.get_distance_tolerance());
-    INTERPRETER.set_tesselation_tolerance(m_context.get_tesselation_tolerance());
-    INTERPRETER.set_fringe_width(m_context.get_fringe_width());
+    // reset the Cell before adding any Commands
+    m_cell.m_commands.clear();
 }
 
 size_t Painter::push_state()
 {
-    INTERPRETER.add_command(PushStateCommand());
+    m_cell.m_commands.add_command(PushStateCommand());
     s_states.emplace_back(s_states.back());
     return s_states.size();
 }
@@ -82,7 +71,7 @@ size_t Painter::push_state()
 size_t Painter::pop_state()
 {
     if (s_states.size() > 1) {
-        INTERPRETER.add_command(PopStateCommand());
+        m_cell.m_commands.add_command(PopStateCommand());
         s_states.pop_back();
     }
     return s_states.size();
@@ -92,29 +81,29 @@ void Painter::set_transform(const Xform2f xform)
 {
     detail::PainterState& current_state = _get_current_state();
     current_state.xform                 = std::move(xform);
-    INTERPRETER.add_command(SetXformCommand(current_state.xform));
+    m_cell.m_commands.add_command(SetXformCommand(current_state.xform));
 }
 void Painter::reset_transform()
 {
-    INTERPRETER.add_command(ResetXformCommand());
+    m_cell.m_commands.add_command(ResetXformCommand());
     _get_current_state().xform = Xform2f::identity();
 }
 
 void Painter::transform(const Xform2f& transform)
 {
-    INTERPRETER.add_command(TransformCommand(transform));
+    m_cell.m_commands.add_command(TransformCommand(transform));
     _get_current_state().xform *= transform;
 }
 
 void Painter::translate(const Vector2f& delta)
 {
-    INTERPRETER.add_command(TranslationCommand(delta));
+    m_cell.m_commands.add_command(TranslationCommand(delta));
     _get_current_state().xform *= Xform2f::translation(delta);
 }
 
 void Painter::rotate(const float angle)
 {
-    INTERPRETER.add_command(RotationCommand(angle));
+    m_cell.m_commands.add_command(RotationCommand(angle));
     _get_current_state().xform = Xform2f::rotation(angle) * _get_current_state().xform; // TODO: Transform2::premultiply
 }
 
@@ -125,42 +114,42 @@ void Painter::set_scissor(const Aabrf& aabr)
     current_state.scissor.xform = Xform2f::translation(aabr.center());
     current_state.scissor.xform *= current_state.xform;
     current_state.scissor.extend = aabr.extend();
-    INTERPRETER.add_command(SetScissorCommand(current_state.scissor));
+    m_cell.m_commands.add_command(SetScissorCommand(current_state.scissor));
 }
 
 void Painter::remove_scissor()
 {
-    INTERPRETER.add_command(ResetScissorCommand());
+    m_cell.m_commands.add_command(ResetScissorCommand());
     _get_current_state().scissor = {Xform2f::identity(), {-1, -1}};
 }
 
 void Painter::set_blend_mode(const BlendMode mode)
 {
-    INTERPRETER.add_command(BlendModeCommand(mode));
+    m_cell.m_commands.add_command(BlendModeCommand(mode));
     _get_current_state().blend_mode = mode;
 }
 
 void Painter::set_alpha(const float alpha)
 {
-    INTERPRETER.add_command(SetAlphaCommand(alpha));
+    m_cell.m_commands.add_command(SetAlphaCommand(alpha));
     _get_current_state().alpha = alpha;
 }
 
 void Painter::set_miter_limit(const float limit)
 {
-    INTERPRETER.add_command(MiterLimitCommand(limit));
+    m_cell.m_commands.add_command(MiterLimitCommand(limit));
     _get_current_state().miter_limit = limit;
 }
 
 void Painter::set_line_cap(const LineCap cap)
 {
-    INTERPRETER.add_command(LineCapCommand(cap));
+    m_cell.m_commands.add_command(LineCapCommand(cap));
     _get_current_state().line_cap = cap;
 }
 
 void Painter::set_line_join(const LineJoin join)
 {
-    INTERPRETER.add_command(LineJoinCommand(join));
+    m_cell.m_commands.add_command(LineJoinCommand(join));
     _get_current_state().line_join = join;
 }
 
@@ -169,12 +158,12 @@ void Painter::set_fill_paint(Paint paint)
     detail::PainterState& current_state = _get_current_state();
     paint.xform *= current_state.xform;
     current_state.fill_paint = std::move(paint);
-    INTERPRETER.add_command(FillPaintCommand(current_state.fill_paint));
+    m_cell.m_commands.add_command(FillPaintCommand(current_state.fill_paint));
 }
 
 void Painter::set_fill_color(Color color)
 {
-    INTERPRETER.add_command(FillColorCommand(color));
+    m_cell.m_commands.add_command(FillColorCommand(color));
     detail::PainterState& current_state = _get_current_state();
     current_state.fill_paint.set_color(std::move(color));
 }
@@ -184,12 +173,12 @@ void Painter::set_stroke_paint(Paint paint)
     detail::PainterState& current_state = _get_current_state();
     paint.xform *= current_state.xform;
     current_state.stroke_paint = std::move(paint);
-    INTERPRETER.add_command(StrokePaintCommand(current_state.stroke_paint));
+    m_cell.m_commands.add_command(StrokePaintCommand(current_state.stroke_paint));
 }
 
 void Painter::set_stroke_color(Color color)
 {
-    INTERPRETER.add_command(StrokeColorCommand(color));
+    m_cell.m_commands.add_command(StrokeColorCommand(color));
     detail::PainterState& current_state = _get_current_state();
     current_state.stroke_paint.set_color(std::move(color));
 }
@@ -198,42 +187,42 @@ void Painter::set_stroke_width(const float width)
 {
     detail::PainterState& current_state = _get_current_state();
     current_state.stroke_width          = max(0.f, width);
-    INTERPRETER.add_command(StrokeWidthCommand(current_state.stroke_width));
+    m_cell.m_commands.add_command(StrokeWidthCommand(current_state.stroke_width));
 }
 
 void Painter::begin_path()
 {
-    INTERPRETER.add_command(BeginCommand());
+    m_cell.m_commands.add_command(BeginCommand());
     m_has_open_path = true;
 }
 
 void Painter::close_path()
 {
-    INTERPRETER.add_command(CloseCommand());
+    m_cell.m_commands.add_command(CloseCommand());
     m_has_open_path = false;
 }
 
 void Painter::set_winding(const Winding winding)
 {
     // TODO: SetWindingCommand has no effect when there's no Path yet. That's not a problem per se, but optimizable? Same goes for close
-    INTERPRETER.add_command(SetWindingCommand(winding));
+    m_cell.m_commands.add_command(SetWindingCommand(winding));
 }
 
 void Painter::move_to(const Vector2f pos)
 {
-    INTERPRETER.add_command(MoveCommand(std::move(pos)));
+    m_cell.m_commands.add_command(MoveCommand(std::move(pos)));
 }
 
 void Painter::line_to(const Vector2f pos)
 {
-    INTERPRETER.add_command(LineCommand(std::move(pos)));
+    m_cell.m_commands.add_command(LineCommand(std::move(pos)));
     m_has_open_path = true;
 }
 
 void Painter::quad_to(const float cx, const float cy, const float tx, const float ty)
 {
     // convert the quad spline into a bezier
-    INTERPRETER.add_command(BezierCommand(
+    m_cell.m_commands.add_command(BezierCommand(
         {m_stylus.x + (2.f / 3.f) * (cx - m_stylus.x),
          m_stylus.y + (2.f / 3.f) * (cy - m_stylus.y)},
         {tx + (2.f / 3.f) * (cx - tx),
@@ -244,7 +233,7 @@ void Painter::quad_to(const float cx, const float cy, const float tx, const floa
 
 void Painter::bezier_to(const Vector2f ctrl1, const Vector2f ctrl2, const Vector2f end)
 {
-    INTERPRETER.add_command(BezierCommand(std::move(ctrl1), std::move(ctrl2), std::move(end)));
+    m_cell.m_commands.add_command(BezierCommand(std::move(ctrl1), std::move(ctrl2), std::move(end)));
     m_has_open_path = true;
 }
 
@@ -276,14 +265,14 @@ void Painter::arc(const float cx, const float cy, const float r, const float a0,
         const float tany = dx * r * kappa;
         if (static_cast<int>(i) == 0) {
             if (!m_has_open_path) {
-                INTERPRETER.add_command(MoveCommand({x, y}));
+                m_cell.m_commands.add_command(MoveCommand({x, y}));
             }
             else {
-                INTERPRETER.add_command(LineCommand({x, y}));
+                m_cell.m_commands.add_command(LineCommand({x, y}));
             }
         }
         else {
-            INTERPRETER.add_command(BezierCommand({px + ptanx, py + ptany}, {x - tanx, y - tany}, {x, y}));
+            m_cell.m_commands.add_command(BezierCommand({px + ptanx, py + ptany}, {x - tanx, y - tany}, {x, y}));
         }
         px    = x;
         py    = y;
@@ -296,11 +285,11 @@ void Painter::arc(const float cx, const float cy, const float r, const float a0,
 void Painter::arc_to(const Vector2f& tangent, const Vector2f& end, const float radius)
 {
     // handle degenerate cases
-    if (radius < INTERPRETER.get_distance_tolerance()
-        || m_stylus.is_approx(tangent, INTERPRETER.get_distance_tolerance())
-        || tangent.is_approx(end, INTERPRETER.get_distance_tolerance())
-        || Line2::from_points(m_stylus, end).closest_point(tangent).magnitude_sq()
-            < (INTERPRETER.get_distance_tolerance() * INTERPRETER.get_distance_tolerance())) {
+    const float distance_tolerance = m_context.get_distance_tolerance();
+    if (radius < distance_tolerance
+        || m_stylus.is_approx(tangent, distance_tolerance)
+        || tangent.is_approx(end, distance_tolerance)
+        || Line2::from_points(m_stylus, end).closest_point(tangent).magnitude_sq() < (distance_tolerance * distance_tolerance)) {
         return line_to(end);
     }
 
@@ -338,10 +327,10 @@ void Painter::arc_to(const Vector2f& tangent, const Vector2f& end, const float r
 
 void Painter::add_rect(const float x, const float y, const float w, const float h)
 {
-    INTERPRETER.add_command(MoveCommand({x, y}));
-    INTERPRETER.add_command(LineCommand({x, y + h}));
-    INTERPRETER.add_command(LineCommand({x + w, y + h}));
-    INTERPRETER.add_command(LineCommand({x + w, y}));
+    m_cell.m_commands.add_command(MoveCommand({x, y}));
+    m_cell.m_commands.add_command(LineCommand({x, y + h}));
+    m_cell.m_commands.add_command(LineCommand({x + w, y + h}));
+    m_cell.m_commands.add_command(LineCommand({x + w, y}));
     close_path();
 }
 
@@ -358,36 +347,36 @@ void Painter::add_rounded_rect(const float x, const float y, const float w, cons
     const float rxBR = min(rbr, halfw) * sign(w), ryBR = min(rbr, halfh) * sign(h);
     const float rxTR = min(rtr, halfw) * sign(w), ryTR = min(rtr, halfh) * sign(h);
     const float rxTL = min(rtl, halfw) * sign(w), ryTL = min(rtl, halfh) * sign(h);
-    INTERPRETER.add_command(MoveCommand({x, y + ryTL}));
-    INTERPRETER.add_command(LineCommand({x, y + h - ryBL}));
-    INTERPRETER.add_command(BezierCommand({x, y + h - ryBL * (1 - KAPPAf)}, {x + rxBL * (1 - KAPPAf), y + h}, {x + rxBL, y + h}));
-    INTERPRETER.add_command(LineCommand({x + w - rxBR, y + h}));
-    INTERPRETER.add_command(BezierCommand({x + w - rxBR * (1 - KAPPAf), y + h}, {x + w, y + h - ryBR * (1 - KAPPAf)}, {x + w, y + h - ryBR}));
-    INTERPRETER.add_command(LineCommand({x + w, y + ryTR}));
-    INTERPRETER.add_command(BezierCommand({x + w, y + ryTR * (1 - KAPPAf)}, {x + w - rxTR * (1 - KAPPAf), y}, {x + w - rxTR, y}));
-    INTERPRETER.add_command(LineCommand({x + rxTL, y}));
-    INTERPRETER.add_command(BezierCommand({x + rxTL * (1 - KAPPAf), y}, {x, y + ryTL * (1 - KAPPAf)}, {x, y + ryTL}));
+    m_cell.m_commands.add_command(MoveCommand({x, y + ryTL}));
+    m_cell.m_commands.add_command(LineCommand({x, y + h - ryBL}));
+    m_cell.m_commands.add_command(BezierCommand({x, y + h - ryBL * (1 - KAPPAf)}, {x + rxBL * (1 - KAPPAf), y + h}, {x + rxBL, y + h}));
+    m_cell.m_commands.add_command(LineCommand({x + w - rxBR, y + h}));
+    m_cell.m_commands.add_command(BezierCommand({x + w - rxBR * (1 - KAPPAf), y + h}, {x + w, y + h - ryBR * (1 - KAPPAf)}, {x + w, y + h - ryBR}));
+    m_cell.m_commands.add_command(LineCommand({x + w, y + ryTR}));
+    m_cell.m_commands.add_command(BezierCommand({x + w, y + ryTR * (1 - KAPPAf)}, {x + w - rxTR * (1 - KAPPAf), y}, {x + w - rxTR, y}));
+    m_cell.m_commands.add_command(LineCommand({x + rxTL, y}));
+    m_cell.m_commands.add_command(BezierCommand({x + rxTL * (1 - KAPPAf), y}, {x, y + ryTL * (1 - KAPPAf)}, {x, y + ryTL}));
     close_path();
 }
 
 void Painter::add_ellipse(const float cx, const float cy, const float rx, const float ry)
 {
-    INTERPRETER.add_command(MoveCommand({cx - rx, cy}));
-    INTERPRETER.add_command(BezierCommand({cx - rx, cy + ry * KAPPAf}, {cx - rx * KAPPAf, cy + ry}, {cx, cy + ry}));
-    INTERPRETER.add_command(BezierCommand({cx + rx * KAPPAf, cy + ry}, {cx + rx, cy + ry * KAPPAf}, {cx + rx, cy}));
-    INTERPRETER.add_command(BezierCommand({cx + rx, cy - ry * KAPPAf}, {cx + rx * KAPPAf, cy - ry}, {cx, cy - ry}));
-    INTERPRETER.add_command(BezierCommand({cx - rx * KAPPAf, cy - ry}, {cx - rx, cy - ry * KAPPAf}, {cx - rx, cy}));
+    m_cell.m_commands.add_command(MoveCommand({cx - rx, cy}));
+    m_cell.m_commands.add_command(BezierCommand({cx - rx, cy + ry * KAPPAf}, {cx - rx * KAPPAf, cy + ry}, {cx, cy + ry}));
+    m_cell.m_commands.add_command(BezierCommand({cx + rx * KAPPAf, cy + ry}, {cx + rx, cy + ry * KAPPAf}, {cx + rx, cy}));
+    m_cell.m_commands.add_command(BezierCommand({cx + rx, cy - ry * KAPPAf}, {cx + rx * KAPPAf, cy - ry}, {cx, cy - ry}));
+    m_cell.m_commands.add_command(BezierCommand({cx - rx * KAPPAf, cy - ry}, {cx - rx, cy - ry * KAPPAf}, {cx - rx, cy}));
     close_path();
 }
 
 void Painter::fill()
 {
-    INTERPRETER.add_command(FillCommand());
+    m_cell.m_commands.add_command(FillCommand());
 }
 
 void Painter::stroke()
 {
-    INTERPRETER.add_command(StrokeCommand());
+    m_cell.m_commands.add_command(StrokeCommand());
 }
 
 Time Painter::get_time() const
@@ -398,11 +387,6 @@ Time Painter::get_time() const
 const Vector2f& Painter::get_mouse_pos() const
 {
     return m_context.get_mouse_pos();
-}
-
-void Painter::_execute()
-{
-    INTERPRETER._execute(m_cell, m_context);
 }
 
 // TODO: the Painter might as well optimize the Commands given before sending them off to the cell.

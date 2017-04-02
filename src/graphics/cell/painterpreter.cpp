@@ -2,94 +2,225 @@
 
 #include "common/vector.hpp"
 #include "graphics/cell/cell.hpp"
+#include "graphics/cell/commands.hpp"
 #include "graphics/render_context.hpp"
 #include "graphics/vertex.hpp"
 
-/**********************************************************************************************************************/
-
-namespace { // anonymous
-using namespace notf;
-
-/** Convenience function go get the size of a given Subcommand type in units of Command::command_t. */
-template <typename Subcommand, ENABLE_IF_SUBCLASS(Subcommand, Command)>
-constexpr auto command_size()
-{
-    static_assert(sizeof(Subcommand) % sizeof(Command::command_t) == 0,
-                  "Cannot determine the exact size of Command in units of Command::command_t");
-    return sizeof(Subcommand) / sizeof(Command::command_t);
-}
-
-/** Creates a const reference of a specific Subcommand that maps into the given Command buffer. */
-template <typename Subcommand, ENABLE_IF_SUBCLASS(Subcommand, Command)>
-constexpr const Subcommand& map_command(const std::vector<Command::command_t>& buffer, size_t index)
-{
-    return *(reinterpret_cast<const Subcommand*>(&buffer[index]));
-}
-
-} // namespace anonymous
-
-/**********************************************************************************************************************/
-
 namespace notf {
-using namespace detail;
 
-/* The Command buffer is a tightly packed vector of `Command` subclasses.
- * Internally, everything is a float (or to be more precise, a Command::command_t) - even the Command type identifier,
- * which is just static cast to a command_t.
- * In order to map subclasses of `Command` into the buffer, we require the `Command` subclasses to be unaligned, meaning
- * they contain no padding.
- * This works fine on my machine (...) but just to be sure, here's a block of static asserts that fail at compile time
- * should your particular compiler behave differently.
- * If any of them fail, you might want to look into compiler-specific pragmas or flags in order to stop it from adding
- * padding bytes.
- */
+Painterpreter::Painterpreter(RenderContext& context)
+    : m_context(context)
+    , m_points()
+    , m_paths()
+    , m_states()
+    , m_bounds(Aabrf::null())
+{
+}
 
-static_assert(sizeof(Command::Type) == sizeof(Command::command_t),
-              "The underlying type of Command::Type has a different size than Command::command_t. "
-              "Adjust the underlying type of the Command::Type enum to fit your particular system.");
+// TODO: when this draws, revisit this function and see if you find a way to guarantee that there is always a path and point without if-statements all over the place
+// TODO: I'm pretty sure when writing vertices from Cell to RenderContext you'll need to xform them
+void Painterpreter::paint(Cell& cell)
+{
+    _reset();
 
-#define ASSERT_COMMAND_SIZE(T, S) static_assert( \
-    sizeof(T) == sizeof(Command::command_t) * S, \
-    "Error: padding detected in Command `" #T "` - the Painterpreter requires its Commands to be tightly packed");
+    // parse the Cell's command buffer
+    const PainterCommandBuffer& commands = cell.get_commands();
+    for (size_t index = 0; index < commands.size();) {
+        switch (static_cast<PainterCommand::Type>(commands[index])) { // TODO: static_cast is NOT what I want here
 
-ASSERT_COMMAND_SIZE(PushStateCommand, 1);
-ASSERT_COMMAND_SIZE(PopStateCommand, 1);
-ASSERT_COMMAND_SIZE(BeginCommand, 1);
-ASSERT_COMMAND_SIZE(SetWindingCommand, 2);
-ASSERT_COMMAND_SIZE(CloseCommand, 1);
-ASSERT_COMMAND_SIZE(MoveCommand, 3);
-ASSERT_COMMAND_SIZE(LineCommand, 3);
-ASSERT_COMMAND_SIZE(BezierCommand, 7);
-ASSERT_COMMAND_SIZE(FillCommand, 1);
-ASSERT_COMMAND_SIZE(StrokeCommand, 1);
-ASSERT_COMMAND_SIZE(SetXformCommand, 7);
-ASSERT_COMMAND_SIZE(ResetXformCommand, 1);
-ASSERT_COMMAND_SIZE(TransformCommand, 7);
-ASSERT_COMMAND_SIZE(TranslationCommand, 3);
-ASSERT_COMMAND_SIZE(RotationCommand, 2);
-ASSERT_COMMAND_SIZE(SetScissorCommand, 9);
-ASSERT_COMMAND_SIZE(ResetScissorCommand, 1);
-ASSERT_COMMAND_SIZE(FillColorCommand, 5);
-ASSERT_COMMAND_SIZE(FillPaintCommand, 24);
-ASSERT_COMMAND_SIZE(StrokeColorCommand, 5);
-ASSERT_COMMAND_SIZE(StrokePaintCommand, 24);
-ASSERT_COMMAND_SIZE(StrokeWidthCommand, 2);
-ASSERT_COMMAND_SIZE(BlendModeCommand, 2);
-ASSERT_COMMAND_SIZE(SetAlphaCommand, 2);
-ASSERT_COMMAND_SIZE(MiterLimitCommand, 2);
-ASSERT_COMMAND_SIZE(LineCapCommand, 2);
-ASSERT_COMMAND_SIZE(LineJoinCommand, 2);
+        case PainterCommand::Type::PUSH_STATE: {
+            _push_state();
+            index += command_size<PushStateCommand>();
+        } break;
 
-/**********************************************************************************************************************/
+        case PainterCommand::Type::POP_STATE: {
+            _pop_state();
+            index += command_size<PopStateCommand>();
+        } break;
 
-void Painterpreter::reset()
+        case PainterCommand::BEGIN_PATH: {
+            m_paths.clear();
+            m_points.clear();
+            index += command_size<BeginCommand>();
+        } break;
+
+        case PainterCommand::SET_WINDING: {
+            if (!m_paths.empty()) {
+                m_paths.back().winding = static_cast<Painter::Winding>(commands[index + 1]);
+            }
+            index += command_size<SetWindingCommand>();
+        } break;
+
+        case PainterCommand::CLOSE: {
+            if (!m_paths.empty()) {
+                m_paths.back().is_closed = true;
+            }
+            index += command_size<CloseCommand>();
+        } break;
+
+        case PainterCommand::Type::MOVE: {
+            _add_path();
+            const MoveCommand& cmd = map_command<MoveCommand>(commands, index);
+            _add_point(cmd.pos, Point::Flags::CORNER);
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::LINE: {
+            if (m_paths.empty()) {
+                _add_path();
+            }
+            const LineCommand& cmd = map_command<LineCommand>(commands, index);
+            _add_point(cmd.pos, Point::Flags::CORNER);
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::BEZIER: {
+            if (m_paths.empty()) {
+                _add_path();
+            }
+            Vector2f stylus;
+            if (m_points.empty()) {
+                stylus = Vector2f::zero();
+                _add_point(stylus, Point::Flags::CORNER);
+            }
+            else {
+                stylus = _get_current_state().xform.get_inverse().transform({m_points.back().pos.x, m_points.back().pos.y}); // TODO: that sucks
+            }
+            const BezierCommand& cmd = map_command<BezierCommand>(commands, index);
+            _tesselate_bezier(stylus.x, stylus.y,
+                              cmd.ctrl1.x, cmd.ctrl1.y,
+                              cmd.ctrl2.x, cmd.ctrl2.y,
+                              cmd.end.x, cmd.end.y);
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::FILL: {
+            _fill();
+            index += command_size<FillCommand>();
+        } break;
+
+        case PainterCommand::STROKE: {
+            _stroke();
+            index += command_size<StrokeCommand>();
+        } break;
+
+        case PainterCommand::SET_XFORM: {
+            const SetXformCommand& cmd = map_command<SetXformCommand>(commands, index);
+            _get_current_state().xform = cmd.xform;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::RESET_XFORM: {
+            _get_current_state().xform = Xform2f::identity();
+            index += command_size<ResetXformCommand>();
+        } break;
+
+        case PainterCommand::TRANSFORM: {
+            const TransformCommand& cmd = map_command<TransformCommand>(commands, index);
+            _get_current_state().xform *= cmd.xform;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::TRANSLATE: {
+            const TranslationCommand& cmd = map_command<TranslationCommand>(commands, index);
+            _get_current_state().xform *= Xform2f::translation(cmd.delta);
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::ROTATE: {
+            const RotationCommand& cmd = map_command<RotationCommand>(commands, index);
+            _get_current_state().xform = Xform2f::rotation(cmd.angle) * _get_current_state().xform;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::SET_SCISSOR: {
+            const SetScissorCommand& cmd = map_command<SetScissorCommand>(commands, index);
+            _get_current_state().scissor = cmd.sissor;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::RESET_SCISSOR: {
+            const ResetScissorCommand& cmd = map_command<ResetScissorCommand>(commands, index);
+            _get_current_state().scissor   = {Xform2f::identity(), {-1, -1}};
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::SET_FILL_COLOR: {
+            const FillColorCommand& cmd = map_command<FillColorCommand>(commands, index);
+            _get_current_state().fill_paint.set_color(cmd.color);
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::SET_FILL_PAINT: {
+            const FillPaintCommand& cmd     = map_command<FillPaintCommand>(commands, index);
+            _get_current_state().fill_paint = cmd.paint;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::SET_STROKE_COLOR: {
+            const StrokeColorCommand& cmd = map_command<StrokeColorCommand>(commands, index);
+            _get_current_state().stroke_paint.set_color(cmd.color);
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::SET_STROKE_PAINT: {
+            const StrokePaintCommand& cmd     = map_command<StrokePaintCommand>(commands, index);
+            _get_current_state().stroke_paint = cmd.paint;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::SET_STROKE_WIDTH: {
+            const StrokeWidthCommand& cmd     = map_command<StrokeWidthCommand>(commands, index);
+            _get_current_state().stroke_width = cmd.stroke_width;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::SET_BLEND_MODE: {
+            const BlendModeCommand& cmd     = map_command<BlendModeCommand>(commands, index);
+            _get_current_state().blend_mode = cmd.blend_mode;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::SET_ALPHA: {
+            const SetAlphaCommand& cmd = map_command<SetAlphaCommand>(commands, index);
+            _get_current_state().alpha = cmd.alpha;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::SET_MITER_LIMIT: {
+            const MiterLimitCommand& cmd     = map_command<MiterLimitCommand>(commands, index);
+            _get_current_state().miter_limit = cmd.miter_limit;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::SET_LINE_CAP: {
+            const LineCapCommand& cmd     = map_command<LineCapCommand>(commands, index);
+            _get_current_state().line_cap = cmd.line_cap;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        case PainterCommand::SET_LINE_JOIN: {
+            const LineJoinCommand& cmd     = map_command<LineJoinCommand>(commands, index);
+            _get_current_state().line_join = cmd.line_join;
+            index += command_size<decltype(cmd)>();
+        } break;
+
+        default:     // unknown enum
+            ++index; // failsave
+            throw std::runtime_error("Encountered Unknown enum in Painterpreter::paint");
+        }
+    }
+}
+
+void Painterpreter::_reset()
 {
     m_paths.clear();
     m_points.clear();
-    m_commands.clear();
 
     m_states.clear();
     m_states.emplace_back(); // always have at least one state
+
+    m_bounds = Aabrf::wrongest();
 }
 
 void Painterpreter::_push_state()
@@ -103,31 +234,37 @@ void Painterpreter::_pop_state()
     m_states.pop_back();
 }
 
-void Painterpreter::add_point(Vector2f position, const Point::Flags flags)
+void Painterpreter::_add_point(Vector2f position, const Point::Flags flags)
 {
     assert(!m_paths.empty());
 
-    // bring the point in to Cell space
+    // bring the Point from Painter- into Cell-space
     position = _get_current_state().xform.transform(position);
 
-    // if the point is not significantly different from the last one, use that instead.
+    // if the Point is not significantly different from the last one, use that instead.
     if (!m_points.empty()) {
         Point& last_point = m_points.back();
-        if (position.is_approx(last_point.pos, m_distance_tolerance)) {
+        if (position.is_approx(last_point.pos, m_context.get_distance_tolerance())) {
             last_point.flags = static_cast<Point::Flags>(last_point.flags | flags);
             return;
         }
     }
 
-    // otherwise append a new point to the current path
+    // otherwise append a new Point to the current Path
     m_points.emplace_back(Point{std::move(position), Vector2f::zero(), Vector2f::zero(), 0.f, flags});
     m_paths.back().point_count++;
 }
 
-float Painterpreter::get_path_area(const Path& path) const
+void Painterpreter::_add_path()
+{
+    Path& new_path       = create_back(m_paths);
+    new_path.first_point = m_points.size();
+}
+
+float Painterpreter::_get_path_area(const Path& path) const
 {
     float area     = 0;
-    const Point& a = m_points[path.first_point]; // TODO: this was zero before, but that maken't sense (or does it?)
+    const Point& a = m_points[path.first_point];
     for (size_t index = path.first_point + 2; index < path.first_point + path.point_count; ++index) {
         const Point& b = m_points[index - 1];
         const Point& c = m_points[index];
@@ -136,8 +273,8 @@ float Painterpreter::get_path_area(const Path& path) const
     return area / 2;
 }
 
-void Painterpreter::tesselate_bezier(const float x1, const float y1, const float x2, const float y2,
-                                     const float x3, const float y3, const float x4, const float y4)
+void Painterpreter::_tesselate_bezier(const float x1, const float y1, const float x2, const float y2,
+                                      const float x3, const float y3, const float x4, const float y4)
 {
     static const int one = 1 << 10;
 
@@ -161,7 +298,7 @@ void Painterpreter::tesselate_bezier(const float x1, const float y1, const float
 
     int t           = 0;
     int dt          = one;
-    const float tol = m_tesselation_tolerance * 4.f;
+    const float tol = m_context.get_tesselation_tolerance() * 4.f;
 
     while (t < one) {
 
@@ -211,7 +348,7 @@ void Painterpreter::tesselate_bezier(const float x1, const float y1, const float
         ddx += dddx;
         ddy += dddy;
 
-        add_point({px, py}, (t > 0 ? Point::Flags::CORNER : Point::Flags::NONE));
+        _add_point({px, py}, (t > 0 ? Point::Flags::CORNER : Point::Flags::NONE));
 
         // advance along the curve.
         t += dt;
@@ -220,7 +357,7 @@ void Painterpreter::tesselate_bezier(const float x1, const float y1, const float
 }
 
 std::tuple<float, float, float, float>
-Painterpreter::choose_bevel(bool is_beveling, const Point& prev_point, const Point& curr_point, const float stroke_width)
+Painterpreter::_choose_bevel(bool is_beveling, const Point& prev_point, const Point& curr_point, const float stroke_width)
 {
     float x0, y0, x1, y1;
     if (is_beveling) {
@@ -238,13 +375,13 @@ Painterpreter::choose_bevel(bool is_beveling, const Point& prev_point, const Poi
     return std::make_tuple(x0, y0, x1, y1);
 }
 
-void Painterpreter::create_bevel_join(const Point& previous_point, const Point& current_point, const float left_w, const float right_w,
-                                      const float left_u, const float right_u, std::vector<Vertex>& vertices_out)
+void Painterpreter::_create_bevel_join(const Point& previous_point, const Point& current_point, const float left_w, const float right_w,
+                                       const float left_u, const float right_u, std::vector<Vertex>& vertices_out)
 {
     if (current_point.flags & Point::Flags::LEFT) {
         float lx0, ly0, lx1, ly1;
-        std::tie(lx0, ly0, lx1, ly1) = choose_bevel(current_point.flags & Point::Flags::INNERBEVEL,
-                                                    previous_point, current_point, left_w);
+        std::tie(lx0, ly0, lx1, ly1) = _choose_bevel(current_point.flags & Point::Flags::INNERBEVEL,
+                                                     previous_point, current_point, left_w);
 
         vertices_out.emplace_back(Vector2f(lx0, ly0),
                                   Vector2f(left_u, 1));
@@ -297,8 +434,8 @@ void Painterpreter::create_bevel_join(const Point& previous_point, const Point& 
     // right corner
     else {
         float rx0, ry0, rx1, ry1;
-        std::tie(rx0, ry0, rx1, ry1) = choose_bevel(current_point.flags & Point::Flags::INNERBEVEL,
-                                                    previous_point, current_point, -right_w);
+        std::tie(rx0, ry0, rx1, ry1) = _choose_bevel(current_point.flags & Point::Flags::INNERBEVEL,
+                                                     previous_point, current_point, -right_w);
 
         vertices_out.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * left_w,
                                            current_point.pos.y - previous_point.forward.x * left_w),
@@ -349,12 +486,12 @@ void Painterpreter::create_bevel_join(const Point& previous_point, const Point& 
     }
 }
 
-void Painterpreter::create_round_join(const Point& previous_point, const Point& current_point, const float stroke_width,
-                                      const size_t divisions, std::vector<Vertex>& vertices_out)
+void Painterpreter::_create_round_join(const Point& previous_point, const Point& current_point, const float stroke_width,
+                                       const size_t divisions, std::vector<Vertex>& vertices_out)
 {
     if (current_point.flags & Point::Flags::LEFT) {
         float lx0, ly0, lx1, ly1;
-        std::tie(lx0, ly0, lx1, ly1) = choose_bevel(
+        std::tie(lx0, ly0, lx1, ly1) = _choose_bevel(
             current_point.flags & Point::Flags::INNERBEVEL, previous_point, current_point, stroke_width);
         float a0 = atan2(previous_point.forward.x, -previous_point.forward.y);
         float a1 = atan2(current_point.forward.x, -current_point.forward.y);
@@ -387,7 +524,7 @@ void Painterpreter::create_round_join(const Point& previous_point, const Point& 
     }
     else {
         float rx0, ry0, rx1, ry1;
-        std::tie(rx0, ry0, rx1, ry1) = choose_bevel(
+        std::tie(rx0, ry0, rx1, ry1) = _choose_bevel(
             current_point.flags & Point::Flags::INNERBEVEL, previous_point, current_point, -stroke_width);
         float a0 = atan2(-previous_point.forward.x, previous_point.forward.y);
         float a1 = atan2(-current_point.forward.x, current_point.forward.y);
@@ -420,8 +557,8 @@ void Painterpreter::create_round_join(const Point& previous_point, const Point& 
     }
 }
 
-void Painterpreter::create_round_cap_start(const Point& point, const Vector2f& delta, const float stroke_width,
-                                           const size_t divisions, std::vector<Vertex>& vertices_out)
+void Painterpreter::_create_round_cap_start(const Point& point, const Vector2f& delta, const float stroke_width,
+                                            const size_t divisions, std::vector<Vertex>& vertices_out)
 {
     for (size_t i = 0; i < divisions; i++) {
         const float a  = i / static_cast<float>(divisions - 1) * static_cast<float>(PI);
@@ -442,8 +579,8 @@ void Painterpreter::create_round_cap_start(const Point& point, const Vector2f& d
                               Vector2f(1, 1));
 }
 
-void Painterpreter::create_round_cap_end(const Point& point, const Vector2f& delta, const float stroke_width,
-                                         const size_t divisions, std::vector<Vertex>& vertices_out)
+void Painterpreter::_create_round_cap_end(const Point& point, const Vector2f& delta, const float stroke_width,
+                                          const size_t divisions, std::vector<Vertex>& vertices_out)
 {
     vertices_out.emplace_back(Vector2f(point.pos.x + delta.y * stroke_width,
                                        point.pos.y - delta.x * stroke_width),
@@ -464,8 +601,8 @@ void Painterpreter::create_round_cap_end(const Point& point, const Vector2f& del
     }
 }
 
-void Painterpreter::create_butt_cap_start(const Point& point, const Vector2f& direction, const float stroke_width,
-                                          const float d, const float fringe_width, std::vector<Vertex>& vertices_out) // TODO: what is `d`?
+void Painterpreter::_create_butt_cap_start(const Point& point, const Vector2f& direction, const float stroke_width,
+                                           const float d, const float fringe_width, std::vector<Vertex>& vertices_out) // TODO: what is `d`?
 {
     const float px = point.pos.x - (direction.x * d);
     const float py = point.pos.y - (direction.y * d);
@@ -483,8 +620,8 @@ void Painterpreter::create_butt_cap_start(const Point& point, const Vector2f& di
                               Vector2f(1, 1));
 }
 
-void Painterpreter::create_butt_cap_end(const Point& point, const Vector2f& delta, const float stroke_width,
-                                        const float d, const float fringe_width, std::vector<Vertex>& vertices_out)
+void Painterpreter::_create_butt_cap_end(const Point& point, const Vector2f& delta, const float stroke_width,
+                                         const float d, const float fringe_width, std::vector<Vertex>& vertices_out)
 {
     const float px = point.pos.x + (delta.x * d);
     const float py = point.pos.y + (delta.y * d);
@@ -502,7 +639,7 @@ void Painterpreter::create_butt_cap_end(const Point& point, const Vector2f& delt
                               Vector2f(1, 0));
 }
 
-void Painterpreter::_fill(Cell& cell, const RenderContext& context)
+void Painterpreter::_fill()
 {
     const detail::PainterState& state = _get_current_state();
 
@@ -511,31 +648,30 @@ void Painterpreter::_fill(Cell& cell, const RenderContext& context)
     fill_paint.inner_color.a *= state.alpha;
     fill_paint.outer_color.a *= state.alpha;
 
-    const float fringe = context.provides_geometric_aa() ? m_fringe_width : 0;
-    _prepare_paths(cell, fringe, Painter::LineJoin::MITER, 2.4f);
+    const float fringe_width = m_context.provides_geometric_aa() ? m_context.get_fringe_width() : 0;
+    _prepare_paths(fringe_width, Painter::LineJoin::MITER, 2.4f);
 
-    // create the Cell's render call
-    Cell::Call& render_call = create_back(cell.m_calls);
+    // create the render call
+    RenderContext::Call& render_call = create_back(m_context.m_calls);
     if (m_paths.size() == 1 && m_paths.front().is_convex) {
-        render_call.type = Cell::Call::Type::CONVEX_FILL;
+        render_call.type = RenderContext::Call::Type::CONVEX_FILL;
     }
     else {
-        render_call.type = Cell::Call::Type::FILL;
+        render_call.type = RenderContext::Call::Type::FILL;
     }
-    render_call.path_offset  = cell.m_paths.size();
-    render_call.paint        = std::move(fill_paint);
-    render_call.scissor      = state.scissor;
-    render_call.stroke_width = 0;
+    render_call.path_offset = m_context.m_paths.size();
+    render_call.texture     = _get_current_state().fill_paint.texture;
 
-    const float woff = fringe / 2;
+    const float woff = fringe_width / 2;
     for (Path& path : m_paths) {
         const size_t last_point_offset = path.first_point + path.point_count - 1;
         assert(last_point_offset < m_points.size());
 
         // create the fill vertices
-        Cell::Path& cell_path = create_back(cell.m_paths);
-        cell_path.fill_offset = cell.m_vertices.size();
-        if (fringe > 0) {
+        RenderContext::Path& render_path = create_back(m_context.m_paths);
+        assert(m_context.m_vertices.size() < std::numeric_limits<GLint>::max());
+        render_path.fill_offset = static_cast<GLint>(m_context.m_vertices.size());
+        if (fringe_width > 0) {
             // create a loop
             for (size_t current_offset = path.first_point, previous_offset = last_point_offset;
                  current_offset <= last_point_offset;
@@ -545,37 +681,38 @@ void Painterpreter::_fill(Cell& cell, const RenderContext& context)
 
                 // no bevel
                 if (!(current_point.flags & Point::Flags::BEVEL) || current_point.flags & Point::Flags::LEFT) {
-                    cell.m_vertices.emplace_back(current_point.pos + (current_point.dm * woff),
-                                                 Vector2f(.5f, 1));
+                    m_context.m_vertices.emplace_back(current_point.pos + (current_point.dm * woff),
+                                                      Vector2f(.5f, 1));
                 }
 
                 // beveling requires an extra vertex
                 else {
-                    cell.m_vertices.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * woff,
-                                                          current_point.pos.y - previous_point.forward.x * woff),
-                                                 Vector2f(.5f, 1));
-                    cell.m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * woff,
-                                                          current_point.pos.y - current_point.forward.x * woff),
-                                                 Vector2f(.5f, 1));
+                    m_context.m_vertices.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * woff,
+                                                               current_point.pos.y - previous_point.forward.x * woff),
+                                                      Vector2f(.5f, 1));
+                    m_context.m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * woff,
+                                                               current_point.pos.y - current_point.forward.x * woff),
+                                                      Vector2f(.5f, 1));
                 }
             }
         }
         // no fringe = no antialiasing
         else {
             for (size_t point_offset = path.first_point; point_offset <= last_point_offset; ++point_offset) {
-                cell.m_vertices.emplace_back(m_points[point_offset].pos,
-                                             Vector2f(.5f, 1));
+                m_context.m_vertices.emplace_back(m_points[point_offset].pos,
+                                                  Vector2f(.5f, 1));
             }
         }
-        cell_path.fill_count = cell.m_vertices.size() - cell_path.fill_offset;
+        render_path.fill_count = static_cast<GLsizei>(m_context.m_vertices.size() - static_cast<size_t>(render_path.fill_offset));
 
         // create stroke vertices, if we draw this shape antialiased
-        if (fringe > 0) {
-            cell_path.stroke_offset = cell.m_vertices.size();
+        if (fringe_width > 0) {
+            assert(m_context.m_vertices.size() < std::numeric_limits<GLint>::max());
+            render_path.stroke_offset = static_cast<GLint>(m_context.m_vertices.size());
 
-            float left_w        = fringe + woff;
+            float left_w        = fringe_width + woff;
             float left_u        = 0;
-            const float right_w = fringe - woff;
+            const float right_w = fringe_width - woff;
             const float right_u = 1;
 
             { // create only half a fringe for convex shapes so that the shape can be rendered without stenciling
@@ -594,31 +731,56 @@ void Painterpreter::_fill(Cell& cell, const RenderContext& context)
                 const Point& current_point  = m_points[current_offset];
 
                 if (current_point.flags & (Point::Flags::BEVEL | Point::Flags::INNERBEVEL)) {
-                    create_bevel_join(previous_point, current_point, left_w, right_w, left_u, right_u, cell.m_vertices);
+                    _create_bevel_join(previous_point, current_point, left_w, right_w, left_u, right_u, m_context.m_vertices);
                 }
                 else {
-                    cell.m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.dm.x * left_w,
-                                                          current_point.pos.y + current_point.dm.y * left_w),
-                                                 Vector2f(left_u, 1));
-                    cell.m_vertices.emplace_back(Vector2f(current_point.pos.x - current_point.dm.x * right_w,
-                                                          current_point.pos.y - current_point.dm.y * right_w),
-                                                 Vector2f(right_u, 1));
+                    m_context.m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.dm.x * left_w,
+                                                               current_point.pos.y + current_point.dm.y * left_w),
+                                                      Vector2f(left_u, 1));
+                    m_context.m_vertices.emplace_back(Vector2f(current_point.pos.x - current_point.dm.x * right_w,
+                                                               current_point.pos.y - current_point.dm.y * right_w),
+                                                      Vector2f(right_u, 1));
                 }
             }
 
             // copy the first two vertices from the beginning to form a cohesive loop
-            cell.m_vertices.emplace_back(cell.m_vertices[cell_path.stroke_offset + 0].pos,
-                                         Vector2f(left_u, 1));
-            cell.m_vertices.emplace_back(cell.m_vertices[cell_path.stroke_offset + 1].pos,
-                                         Vector2f(right_u, 1));
+            assert(m_context.m_vertices.size() >= static_cast<size_t>(render_path.stroke_offset + 2));
+            m_context.m_vertices.emplace_back(m_context.m_vertices[static_cast<size_t>(render_path.stroke_offset + 0)].pos,
+                                              Vector2f(left_u, 1));
+            m_context.m_vertices.emplace_back(m_context.m_vertices[static_cast<size_t>(render_path.stroke_offset + 1)].pos,
+                                              Vector2f(right_u, 1));
 
-            cell_path.stroke_count = cell.m_vertices.size() - cell_path.stroke_offset;
+            render_path.stroke_count = static_cast<GLsizei>(m_context.m_vertices.size() - static_cast<size_t>(render_path.stroke_offset));
         }
     }
-    render_call.path_count = cell.m_paths.size() - render_call.path_offset;
+    render_call.path_count = m_context.m_paths.size() - render_call.path_offset;
+
+    // create the polygon onto which to render the shape
+    assert(m_context.m_vertices.size() < std::numeric_limits<GLint>::max());
+    render_call.polygon_offset = static_cast<GLint>(m_context.m_vertices.size());
+    m_context.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.left(), m_bounds.bottom()}, Vector2f{.5f, 1.f}});
+    m_context.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.right(), m_bounds.bottom()}, Vector2f{.5f, 1.f}});
+    m_context.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.right(), m_bounds.top()}, Vector2f{.5f, 1.f}});
+
+    m_context.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.left(), m_bounds.bottom()}, Vector2f{.5f, 1.f}});
+    m_context.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.right(), m_bounds.top()}, Vector2f{.5f, 1.f}});
+    m_context.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.left(), m_bounds.top()}, Vector2f{.5f, 1.f}});
+
+    // create the shader uniforms for the call
+    render_call.uniform_offset = static_cast<GLintptr>(m_context.m_shader_variables.size()) * m_context.fragmentSize();
+
+    if (render_call.type == RenderContext::Call::Type::FILL) {
+        // create an additional uniform buffer for a simple shader for the stencil
+        RenderContext::ShaderVariables& stencil_uniforms = create_back(m_context.m_shader_variables);
+        stencil_uniforms.strokeThr                       = -1;
+        stencil_uniforms.type                            = RenderContext::ShaderVariables::Type::SIMPLE;
+    }
+
+    RenderContext::ShaderVariables& fill_uniforms = create_back(m_context.m_shader_variables);
+    paint_to_frag(fill_uniforms, fill_paint, state.scissor, fringe_width, fringe_width, -1.0f);
 }
 
-void Painterpreter::_stroke(Cell& cell, const RenderContext& context)
+void Painterpreter::_stroke()
 {
     const PainterState& state = _get_current_state();
 
@@ -627,20 +789,21 @@ void Painterpreter::_stroke(Cell& cell, const RenderContext& context)
     stroke_paint.inner_color.a *= state.alpha;
     stroke_paint.outer_color.a *= state.alpha;
 
+    const float fringe_width = m_context.get_fringe_width();
     float stroke_width;
     { // create a sane stroke width
         const float scale = (state.xform.scale_factor_x() + state.xform.scale_factor_y()) / 2;
         stroke_width      = clamp(state.stroke_width * scale, 0, 200); // 200 is arbitrary
-        if (stroke_width < m_fringe_width) {
+        if (stroke_width < fringe_width) {
             // if the stroke width is less than pixel size, use alpha to emulate coverage.
-            const float alpha = clamp(stroke_width / m_fringe_width, 0.0f, 1.0f);
+            const float alpha = clamp(stroke_width / fringe_width, 0.0f, 1.0f);
             stroke_paint.inner_color.a *= alpha * alpha; // since coverage is area, scale by alpha*alpha
             stroke_paint.outer_color.a *= alpha * alpha;
-            stroke_width = m_fringe_width;
+            stroke_width = fringe_width;
         }
         //
-        if (context.provides_geometric_aa()) {
-            stroke_width = (stroke_width / 2.f) + (m_fringe_width / 2.f);
+        if (m_context.provides_geometric_aa()) {
+            stroke_width = (stroke_width / 2.f) + (fringe_width / 2.f);
         }
         else {
             stroke_width /= 2.f;
@@ -648,22 +811,21 @@ void Painterpreter::_stroke(Cell& cell, const RenderContext& context)
     }
 
     // create the Cell's render call
-    Cell::Call& render_call  = create_back(cell.m_calls);
-    render_call.type         = Cell::Call::Type::STROKE;
-    render_call.path_offset  = cell.m_paths.size();
-    render_call.paint        = stroke_paint;
-    render_call.scissor      = state.scissor;
-    render_call.stroke_width = stroke_width;
+    RenderContext::Call& render_call = create_back(m_context.m_calls);
+    render_call.type                 = RenderContext::Call::Type::STROKE;
+    render_call.path_offset          = m_context.m_paths.size();
+    render_call.texture              = state.stroke_paint.texture;
+    render_call.polygon_offset       = 0;
 
-    size_t cap_divisions;
-    { // calculate divisions per half circle
-        float da      = acos(stroke_width / (stroke_width + m_tesselation_tolerance)) * 2; // TODO: can circles get more coarse the further away they are?
+    size_t cap_divisions; // TODO: can circles get more coarse the further away they are?
+    {                     // calculate divisions per half circle
+        float da      = acos(stroke_width / (stroke_width + m_context.get_tesselation_tolerance())) * 2;
         cap_divisions = max(size_t(2), static_cast<size_t>(ceilf(static_cast<float>(PI) / da)));
     }
 
-    const Painter::LineJoin line_join = _get_current_state().line_join;
-    const Painter::LineCap line_cap   = _get_current_state().line_cap;
-    _prepare_paths(cell, stroke_width, line_join, _get_current_state().miter_limit);
+    const Painter::LineJoin line_join = state.line_join;
+    const Painter::LineCap line_cap   = state.line_cap;
+    _prepare_paths(stroke_width, line_join, state.miter_limit);
 
     for (Path& path : m_paths) {
         assert(path.point_count > 1);
@@ -671,8 +833,9 @@ void Painterpreter::_stroke(Cell& cell, const RenderContext& context)
         const size_t last_point_offset = path.first_point + path.point_count - 1;
         assert(last_point_offset < m_points.size());
 
-        Cell::Path& cell_path   = create_back(cell.m_paths);
-        cell_path.stroke_offset = cell.m_vertices.size();
+        RenderContext::Path& render_path = create_back(m_context.m_paths);
+        assert(m_context.m_vertices.size() < std::numeric_limits<GLint>::max());
+        render_path.stroke_offset = static_cast<GLint>(m_context.m_vertices.size());
 
         size_t previous_offset, current_offset;
         if (path.is_closed) { // loop
@@ -688,13 +851,13 @@ void Painterpreter::_stroke(Cell& cell, const RenderContext& context)
             // add cap
             switch (line_cap) {
             case Painter::LineCap::BUTT:
-                create_butt_cap_start(m_points[previous_offset], m_points[previous_offset].forward, stroke_width, m_fringe_width / -2, m_fringe_width, cell.m_vertices);
+                _create_butt_cap_start(m_points[previous_offset], m_points[previous_offset].forward, stroke_width, fringe_width / -2, fringe_width, m_context.m_vertices);
                 break;
             case Painter::LineCap::SQUARE:
-                create_butt_cap_start(m_points[previous_offset], m_points[previous_offset].forward, stroke_width, stroke_width - m_fringe_width, m_fringe_width, cell.m_vertices);
+                _create_butt_cap_start(m_points[previous_offset], m_points[previous_offset].forward, stroke_width, stroke_width - fringe_width, fringe_width, m_context.m_vertices);
                 break;
             case Painter::LineCap::ROUND:
-                create_round_cap_start(m_points[previous_offset], m_points[previous_offset].forward, stroke_width, cap_divisions, cell.m_vertices);
+                _create_round_cap_start(m_points[previous_offset], m_points[previous_offset].forward, stroke_width, cap_divisions, m_context.m_vertices);
                 break;
             default:
                 assert(0);
@@ -708,47 +871,59 @@ void Painterpreter::_stroke(Cell& cell, const RenderContext& context)
 
             if (current_point.flags & (Point::Flags::BEVEL | Point::Flags::INNERBEVEL)) {
                 if (line_join == Painter::LineJoin::ROUND) {
-                    create_round_join(previous_point, current_point, stroke_width, cap_divisions, cell.m_vertices);
+                    _create_round_join(previous_point, current_point, stroke_width, cap_divisions, m_context.m_vertices);
                 }
                 else {
-                    create_bevel_join(previous_point, current_point, stroke_width, stroke_width, 0, 1, cell.m_vertices);
+                    _create_bevel_join(previous_point, current_point, stroke_width, stroke_width, 0, 1, m_context.m_vertices);
                 }
             }
             else {
-                cell.m_vertices.emplace_back(current_point.pos + (current_point.dm * stroke_width),
-                                             Vector2f(0, 1));
-                cell.m_vertices.emplace_back(current_point.pos - (current_point.dm * stroke_width),
-                                             Vector2f(1, 1));
+                m_context.m_vertices.emplace_back(current_point.pos + (current_point.dm * stroke_width),
+                                                  Vector2f(0, 1));
+                m_context.m_vertices.emplace_back(current_point.pos - (current_point.dm * stroke_width),
+                                                  Vector2f(1, 1));
             }
         }
 
         if (path.is_closed) {
             // loop it
-            cell.m_vertices.emplace_back(cell.m_vertices[cell_path.stroke_offset + 0].pos, Vector2f(0, 1));
-            cell.m_vertices.emplace_back(cell.m_vertices[cell_path.stroke_offset + 1].pos, Vector2f(1, 1));
+            assert(m_context.m_vertices.size() >= static_cast<size_t>(render_path.stroke_offset + 2));
+            m_context.m_vertices.emplace_back(m_context.m_vertices[static_cast<size_t>(render_path.stroke_offset + 0)].pos,
+                                              Vector2f(0, 1));
+            m_context.m_vertices.emplace_back(m_context.m_vertices[static_cast<size_t>(render_path.stroke_offset + 1)].pos,
+                                              Vector2f(1, 1));
         }
         else {
             // add cap
             switch (line_cap) {
             case Painter::LineCap::BUTT:
-                create_butt_cap_end(m_points[current_offset], m_points[previous_offset].forward, stroke_width, m_fringe_width / -2, m_fringe_width, cell.m_vertices);
+                _create_butt_cap_end(m_points[current_offset], m_points[previous_offset].forward, stroke_width, fringe_width / -2, fringe_width, m_context.m_vertices);
                 break;
             case Painter::LineCap::SQUARE:
-                create_butt_cap_end(m_points[current_offset], m_points[previous_offset].forward, stroke_width, stroke_width - m_fringe_width, m_fringe_width, cell.m_vertices);
+                _create_butt_cap_end(m_points[current_offset], m_points[previous_offset].forward, stroke_width, stroke_width - fringe_width, fringe_width, m_context.m_vertices);
                 break;
             case Painter::LineCap::ROUND:
-                create_round_cap_end(m_points[current_offset], m_points[previous_offset].forward, stroke_width, cap_divisions, cell.m_vertices);
+                _create_round_cap_end(m_points[current_offset], m_points[previous_offset].forward, stroke_width, cap_divisions, m_context.m_vertices);
                 break;
             default:
                 assert(0);
             }
         }
-        cell_path.stroke_count = cell.m_vertices.size() - cell_path.stroke_offset;
+        render_path.stroke_count = static_cast<GLsizei>(m_context.m_vertices.size() - static_cast<size_t>(render_path.stroke_offset));
     }
-    render_call.path_count = cell.m_paths.size() - render_call.path_offset;
+    render_call.path_count = m_context.m_paths.size() - render_call.path_offset;
+
+    // create the shader uniforms for the call
+    render_call.uniform_offset                       = static_cast<GLintptr>(m_context.m_shader_variables.size()) * m_context.fragmentSize();
+    RenderContext::ShaderVariables& stencil_uniforms = create_back(m_context.m_shader_variables);
+    paint_to_frag(stencil_uniforms, stroke_paint, state.scissor, stroke_width, fringe_width, -1.0f);
+
+    // I don't know what the stroke_threshold below is, but with -1 you get artefacts in the rotating lines test
+    RenderContext::ShaderVariables& stroke_uniforms = create_back(m_context.m_shader_variables);
+    paint_to_frag(stroke_uniforms, stroke_paint, state.scissor, stroke_width, fringe_width, 1.0f - 0.5f / 255.0f);
 }
 
-void Painterpreter::_prepare_paths(Cell& cell, const float fringe, const Painter::LineJoin join, const float miter_limit)
+void Painterpreter::_prepare_paths(const float fringe, const Painter::LineJoin join, const float miter_limit)
 {
     for (size_t path_index = 0; path_index < m_paths.size(); ++path_index) {
         Path& path = m_paths[path_index];
@@ -757,7 +932,7 @@ void Painterpreter::_prepare_paths(Cell& cell, const float fringe, const Painter
         if (path.point_count >= 2) {
             const Point& first = m_points[path.first_point];
             const Point& last  = m_points[path.first_point + path.point_count - 1];
-            if (first.pos.is_approx(last.pos, m_distance_tolerance)) {
+            if (first.pos.is_approx(last.pos, m_context.get_distance_tolerance())) {
                 --path.point_count;
                 path.is_closed = true;
             }
@@ -771,7 +946,7 @@ void Painterpreter::_prepare_paths(Cell& cell, const float fringe, const Painter
         }
 
         // enforce winding
-        const float area = get_path_area(path);
+        const float area = _get_path_area(path);
         if ((path.winding == Painter::Winding::CCW && area < 0)
             || (path.winding == Painter::Winding::CW && area > 0)) {
             for (size_t i = path.first_point, j = path.first_point + path.point_count - 1; i < j; ++i, --j) {
@@ -840,215 +1015,14 @@ void Painterpreter::_prepare_paths(Cell& cell, const float fringe, const Painter
                 }
             }
 
-            // update the Cell's bounds
-            cell.m_bounds._min.x = min(cell.m_bounds._min.x, current_point.pos.x);
-            cell.m_bounds._min.y = min(cell.m_bounds._min.y, current_point.pos.y);
-            cell.m_bounds._max.x = max(cell.m_bounds._max.x, current_point.pos.x);
-            cell.m_bounds._max.y = max(cell.m_bounds._max.y, current_point.pos.y);
+            // update the bounds
+            m_bounds._min.x = min(m_bounds._min.x, current_point.pos.x);
+            m_bounds._min.y = min(m_bounds._min.y, current_point.pos.y);
+            m_bounds._max.x = max(m_bounds._max.x, current_point.pos.x);
+            m_bounds._max.y = max(m_bounds._max.y, current_point.pos.y);
         }
 
         path.is_convex = (left_turn_count == path.point_count);
-    }
-}
-
-// TODO: when this draws, revisit this function and see if you find a way to guarantee that there is always a path and point without if-statements all over the place
-void Painterpreter::_execute(Cell& cell, const RenderContext& context)
-{
-    // prepare the cell
-    cell.m_calls.clear();
-    cell.m_paths.clear();
-    cell.m_vertices.clear();
-    cell.m_bounds = Aabrf::wrongest();
-
-    // parse the command buffer
-    for (size_t index = 0; index < m_commands.size();) {
-        switch (static_cast<Command::Type>(m_commands[index])) {
-
-        case Command::Type::PUSH_STATE: {
-            _push_state();
-            index += command_size<PushStateCommand>();
-        } break;
-
-        case Command::Type::POP_STATE: {
-            _pop_state();
-            index += command_size<PopStateCommand>();
-        } break;
-
-        case Command::BEGIN_PATH: {
-            m_paths.clear();
-            m_points.clear();
-            index += command_size<BeginCommand>();
-        } break;
-
-        case Command::SET_WINDING: {
-            if (!m_paths.empty()) {
-                m_paths.back().winding = static_cast<Painter::Winding>(m_commands[index + 1]);
-            }
-            index += command_size<SetWindingCommand>();
-        } break;
-
-        case Command::CLOSE: {
-            if (!m_paths.empty()) {
-                m_paths.back().is_closed = true;
-            }
-            index += command_size<CloseCommand>();
-        } break;
-
-        case Command::Type::MOVE: {
-            add_path();
-            const MoveCommand& cmd = map_command<MoveCommand>(m_commands, index);
-            add_point(cmd.pos, Point::Flags::CORNER);
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::LINE: {
-            if (m_paths.empty()) {
-                add_path();
-            }
-            const LineCommand& cmd = map_command<LineCommand>(m_commands, index);
-            add_point(cmd.pos, Point::Flags::CORNER);
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::BEZIER: {
-            if (m_paths.empty()) {
-                add_path();
-            }
-            Vector2f stylus;
-            if (m_points.empty()) {
-                stylus = Vector2f::zero();
-                add_point(stylus, Point::Flags::CORNER);
-            } else {
-                stylus = _get_current_state().xform.get_inverse().transform({m_points.back().pos.x, m_points.back().pos.y}); // TODO: that sucks
-            }
-            const BezierCommand& cmd = map_command<BezierCommand>(m_commands, index);
-            tesselate_bezier(stylus.x, stylus.y,
-                             cmd.ctrl1.x, cmd.ctrl1.y,
-                             cmd.ctrl2.x, cmd.ctrl2.y,
-                             cmd.end.x, cmd.end.y);
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::FILL: {
-            _fill(cell, context);
-            index += command_size<FillCommand>();
-        } break;
-
-        case Command::STROKE: {
-            _stroke(cell, context);
-            index += command_size<StrokeCommand>();
-        } break;
-
-        case Command::SET_XFORM: {
-            const SetXformCommand& cmd = map_command<SetXformCommand>(m_commands, index);
-            _get_current_state().xform = cmd.xform;
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::RESET_XFORM: {
-            _get_current_state().xform = Xform2f::identity();
-            index += command_size<ResetXformCommand>();
-        } break;
-
-        case Command::TRANSFORM: {
-            const TransformCommand& cmd = map_command<TransformCommand>(m_commands, index);
-            _get_current_state().xform *= cmd.xform;
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::TRANSLATE: {
-            const TranslationCommand& cmd = map_command<TranslationCommand>(m_commands, index);
-            _get_current_state().xform *= Xform2f::translation(cmd.delta);
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::ROTATE: {
-            const RotationCommand& cmd = map_command<RotationCommand>(m_commands, index);
-            _get_current_state().xform = Xform2f::rotation(cmd.angle) * _get_current_state().xform;
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::SET_SCISSOR: {
-            const SetScissorCommand& cmd = map_command<SetScissorCommand>(m_commands, index);
-            _get_current_state().scissor = cmd.sissor;
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::RESET_SCISSOR: {
-            const ResetScissorCommand& cmd = map_command<ResetScissorCommand>(m_commands, index);
-            _get_current_state().scissor   = {Xform2f::identity(), {-1, -1}};
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::SET_FILL_COLOR: {
-            const FillColorCommand& cmd = map_command<FillColorCommand>(m_commands, index);
-            _get_current_state().fill_paint.set_color(cmd.color);
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::SET_FILL_PAINT: {
-            const FillPaintCommand& cmd = map_command<FillPaintCommand>(m_commands, index);
-            _get_current_state().fill_paint = cmd.paint;
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::SET_STROKE_COLOR: {
-            const StrokeColorCommand& cmd = map_command<StrokeColorCommand>(m_commands, index);
-            _get_current_state().stroke_paint.set_color(cmd.color);
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::SET_STROKE_PAINT: {
-            const StrokePaintCommand& cmd = map_command<StrokePaintCommand>(m_commands, index);
-            _get_current_state().stroke_paint = cmd.paint;
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::SET_STROKE_WIDTH: {
-            const StrokeWidthCommand& cmd = map_command<StrokeWidthCommand>(m_commands, index);
-            _get_current_state().stroke_width = cmd.stroke_width;
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::SET_BLEND_MODE: {
-            const BlendModeCommand& cmd     = map_command<BlendModeCommand>(m_commands, index);
-            _get_current_state().blend_mode = cmd.blend_mode;
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::SET_ALPHA: {
-            const SetAlphaCommand& cmd = map_command<SetAlphaCommand>(m_commands, index);
-            _get_current_state().alpha = cmd.alpha;
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::SET_MITER_LIMIT: {
-            const MiterLimitCommand& cmd     = map_command<MiterLimitCommand>(m_commands, index);
-            _get_current_state().miter_limit = cmd.miter_limit;
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::SET_LINE_CAP: {
-            const LineCapCommand& cmd     = map_command<LineCapCommand>(m_commands, index);
-            _get_current_state().line_cap = cmd.line_cap;
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        case Command::SET_LINE_JOIN: {
-            const LineJoinCommand& cmd     = map_command<LineJoinCommand>(m_commands, index);
-            _get_current_state().line_join = cmd.line_join;
-            index += command_size<decltype(cmd)>();
-        } break;
-
-        default:     // unknown enum
-            ++index; // failsave
-            throw std::runtime_error("Encountered Unknown enum in Painterpreter::_execute");
-        }
-    }
-
-    // finish the Cell
-    if (!cell.m_bounds.is_valid()) {
-        cell.m_bounds = Aabrf::null();
     }
 }
 

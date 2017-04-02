@@ -2,7 +2,6 @@
 
 #include "common/aabr.hpp"
 #include "common/time.hpp"
-#include "common/xform2.hpp"
 #include "graphics/blend_mode.hpp"
 #include "graphics/cell/paint.hpp"
 #include "graphics/scissor.hpp"
@@ -83,7 +82,7 @@ class Painter : public detail::PainterBase {
 
 public: // methods
     /** Value Constructor. */
-    Painter(Cell& cell, const RenderContext& context);
+    Painter(Cell& cell, RenderContext &context);
 
     /* State management ***********************************************************************************************/
 
@@ -291,10 +290,6 @@ private: // methods
         assert(!s_states.empty());
         return s_states.back();
     }
-
-private: // methods for friends
-    /** Clear the Painter's Cell, executes the Command stack and performs the drawings. */
-    void _execute();
 
 private: // fields
     /** Cell, that this Painter is painting into. */

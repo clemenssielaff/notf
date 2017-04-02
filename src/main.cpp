@@ -30,6 +30,11 @@ public:
         const float margin = 20;
         const float time   = static_cast<float>(painter.get_time().in_seconds());
 
+//        painter.begin_path();
+//        painter.add_circle(base.center(), 80);
+//        painter.set_fill_paint(Color(255, 0, 0));
+//        painter.fill();
+
         drawGraph(painter, base, time);
 
         drawColorwheel(painter, base.shrunken(margin), time);

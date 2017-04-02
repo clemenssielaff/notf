@@ -8,17 +8,19 @@
 #include "common/time.hpp"
 #include "common/vector2.hpp"
 #include "graphics/blend_mode.hpp"
-#include "graphics/cell/cell.hpp"
+#include "graphics/cell/paint.hpp"
 #include "graphics/gl_forwards.hpp"
 #include "graphics/stencil_func.hpp"
 #include "graphics/vertex.hpp"
 
 namespace notf {
 
-class Window;
+class Cell;
+class Painterpreter;
 struct Scissor;
 class Shader;
 class Texture2;
+class Window;
 
 /**********************************************************************************************************************/
 
@@ -54,14 +56,15 @@ class RenderContext {
     friend class Shader;
     friend class Texture2;
     friend class Widget;
+    friend class Painterpreter;
 
 private: // classes
     /******************************************************************************************************************/
     struct Path {
-        GLint fillOffset    = 0;
-        GLsizei fillCount   = 0;
-        GLint strokeOffset  = 0;
-        GLsizei strokeCount = 0;
+        GLint fill_offset    = 0;
+        GLsizei fill_count   = 0;
+        GLint stroke_offset  = 0;
+        GLsizei stroke_count = 0;
     };
 
     /******************************************************************************************************************/
@@ -73,11 +76,11 @@ private: // classes
             STROKE,
         };
         Type type;
-        size_t pathOffset;
-        size_t pathCount;
-        GLintptr uniformOffset;
+        size_t path_offset;
+        size_t path_count;
+        GLintptr uniform_offset;
         std::shared_ptr<Texture2> texture;
-        GLint triangleOffset;
+        GLint polygon_offset;
     };
 
     /******************************************************************************************************************/
@@ -168,13 +171,13 @@ public: // methods
     bool provides_geometric_aa() const { return m_args.enable_geometric_aa; }
 
     /** Furthest distance between two points in which the second point is considered equal to the first. */
-    float get_distance_tolerance() const { return 0.01f / m_args.pixel_ratio; }
+    float get_distance_tolerance() const { return m_distance_tolerance; }
 
     /** Tesselation density when creating rounded shapes. */
-    float get_tesselation_tolerance() const { return 0.25f / m_args.pixel_ratio; }
+    float get_tesselation_tolerance() const { return m_tesselation_tolerance; }
 
     /** Width of the faint outline around shapes when geometric antialiasing is enabled. */
-    float get_fringe_width() const { return 1.f / m_args.pixel_ratio; }
+    float get_fringe_width() const { return m_fringe_width; }
 
     /** Applies a new StencilFunction. */
     void set_stencil_func(const StencilFunc func);
@@ -218,11 +221,11 @@ private: // methods for friends
     /** Aborts the drawing of the current frame if something went wrong. */
     void _reset();
 
+    /** The Painterpreter painting into the RenderContext. */
+    Painterpreter& _get_painterpreter() { return *m_painterpreter; }
+
     /** Performs all stored Calls. */
     void _finish_frame();
-
-    /** Adds render calls from a given Cell. */
-    void _add_cell(const Cell& cell);
 
     /** Binds the Texture with the given ID, but only if it is not the currently bound one. */
     void _bind_texture(const GLuint texture_id);
@@ -251,17 +254,31 @@ private: // fields
     /** Argument struct to initialize the RenderContext. */
     RenderContextArguments m_args;
 
+    /** The Painterpreter painting into the RenderContext. */
+    std::unique_ptr<Painterpreter> m_painterpreter;
+
     /** All Calls that were collected during during the frame. */
     std::vector<Call> m_calls;
 
     /** Indices of `m_vertices` of all Paths drawn during the frame. */
     std::vector<Path> m_paths;
 
-    /** Vertices (global, not path specific?) */
+    /** Vertices in screen space. */
     std::vector<Vertex> m_vertices;
 
     /** ShaderVariables for each Call. */
     std::vector<ShaderVariables> m_shader_variables;
+
+    /* Paint parameters ***********************************************************************************************/
+
+    /** Furthest distance between two points in which the second point is considered equal to the first. */
+    float m_distance_tolerance;
+
+    /** Tesselation density when creating rounded shapes. */
+    float m_tesselation_tolerance;
+
+    /** Width of the faint outline around shapes when geometric antialiasing is enabled. */
+    float m_fringe_width;
 
     /* Per-frame infos ************************************************************************************************/
 
@@ -309,6 +326,7 @@ private: // fields
 
     /* OpenGL buffers *************************************************************************************************/
 
+    /** Buffer containing all fragment shader uniforms. */
     GLuint m_fragment_buffer;
 
     GLuint m_vertex_array;

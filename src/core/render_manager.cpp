@@ -76,7 +76,7 @@ void RenderManager::render(const Size2i buffer_size)
 
     // prepare the render context
     RenderContext& render_context = *(m_render_context.get());
-    render_context._set_time(time_at_start);
+    render_context._set_time(time_at_start); // TODO: time is reset in begin_frame
     render_context._begin_frame(std::move(buffer_size));
     render_context._set_mouse_pos(m_window->get_mouse_pos());
 
@@ -99,11 +99,11 @@ void RenderManager::render(const Size2i buffer_size)
     m_is_clean = true;
 
     // draw the render stats on top
-    if (m_stats) {
-        double time_elapsed = (Time::now().since(time_at_start)).in_seconds();
-        m_stats->update(static_cast<float>(time_elapsed));
-        m_stats->render_stats(render_context);
-    }
+//    if (m_stats) { // TODO: make stats work again
+//        double time_elapsed = (Time::now().since(time_at_start)).in_seconds();
+//        m_stats->update(static_cast<float>(time_elapsed));
+//        m_stats->render_stats(render_context);
+//    }
 
     // flush
     render_context._finish_frame();

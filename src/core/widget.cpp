@@ -5,6 +5,7 @@
 #include "core/layout.hpp"
 #include "core/window.hpp"
 #include "graphics/cell/painter.hpp"
+#include "graphics/cell/painterpreter.hpp"
 #include "graphics/render_context.hpp"
 #include "utils/unused.hpp"
 
@@ -53,20 +54,19 @@ void Widget::redraw() // TODO: currently _set_size does not dirty the Widget's C
 void Widget::paint(RenderContext& context) const
 {
     // update the Cell if the Widget is dirty
-//    if (!m_is_clean) { // TODO: dirty mechanism for cells
-        Painter painter(m_cell, context);
-        try {
-            _paint(painter);
-        } catch (std::runtime_error error) {
-            log_warning << error.what(); // TODO: print Python stack trace here IF the item uses a Python object to draw itself
-            return;
-        }
-        painter._execute();
-        m_is_clean = true;
-//    }
+    //    if (!m_is_clean) { // TODO: dirty mechanism for cells
+    Painter painter(m_cell, context);
+    try {
+        _paint(painter);
+    } catch (std::runtime_error error) {
+        log_warning << error.what(); // TODO: print Python stack trace here IF the item uses a Python object to draw itself
+        return;
+    }
+    m_is_clean = true;
+    //    }
 
-    // add your Cell to the rendering
-    context._add_cell(m_cell);
+    // paint the Cell into the RenderContext
+    context._get_painterpreter().paint(m_cell);
 }
 
 void Widget::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const

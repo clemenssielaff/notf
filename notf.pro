@@ -160,7 +160,8 @@ SOURCES += \
     src/graphics/render_context.cpp \
     src/graphics/cell/painter.cpp \
     src/graphics/cell/painterpreter.cpp \
-    src/graphics/cell/cell.cpp
+    src/graphics/cell/cell.cpp \
+    src/graphics/cell/commands.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -241,7 +242,9 @@ HEADERS += \
     include/graphics/cell/cell.hpp \
     include/graphics/cell/painter.hpp \
     include/graphics/cell/painterpreter.hpp \
-    include/graphics/scissor.hpp
+    include/graphics/scissor.hpp \
+    include/graphics/cell/commands.hpp \
+    include/graphics/cell/command_buffer.hpp
 
 QMAKE_CXX = ccache g++
 
