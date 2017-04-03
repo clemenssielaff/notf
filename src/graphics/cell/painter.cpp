@@ -193,7 +193,6 @@ void Painter::set_stroke_width(const float width)
 void Painter::begin_path()
 {
     m_cell.m_commands.add_command(BeginCommand());
-    m_has_open_path = true;
 }
 
 void Painter::close_path()

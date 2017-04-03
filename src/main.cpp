@@ -35,25 +35,25 @@ public:
 //        painter.set_fill_paint(Color(255, 0, 0));
 //        painter.fill();
 
-        drawGraph(painter, base, time);
+//        drawGraph(painter, base, time);
 
         drawColorwheel(painter, base.shrunken(margin), time);
 
-        drawCheckBox(painter, Aabrf{10, 100, 20, 20});
+//        drawCheckBox(painter, Aabrf{10, 100, 20, 20});
 
-        drawButton(painter, Aabrf{10, 130, 150, 30});
+//        drawButton(painter, Aabrf{10, 130, 150, 30});
 
-        drawSlider(painter, Aabrf{10, 170, 150, 30}, 0.4f);
+//        drawSlider(painter, Aabrf{10, 170, 150, 30}, 0.4f);
 
-        drawCaps(painter, Vector2f{10, 200}, 30);
+//        drawCaps(painter, Vector2f{10, 200}, 30);
 
-        drawEyes(painter, Aabrf{600, 20, 80, 60}, painter.get_mouse_pos(), time);
+//        drawEyes(painter, Aabrf{600, 20, 80, 60}, painter.get_mouse_pos(), time);
 
-        drawSpinner(painter, base.center(), 100, time);
+//        drawSpinner(painter, base.center(), 100, time);
 
-        drawJoins(painter, Aabrf{120, widget_size.height - 50, 600, 50}, time);
+//        drawJoins(painter, Aabrf{120, widget_size.height - 50, 600, 50}, time);
 
-        drawTexture(painter, Aabrf{400, 100, 200, 200});
+//        drawTexture(painter, Aabrf{400, 100, 200, 200});
     }
 
     void drawSlider(Painter& painter, const Aabrf& rect, float pos) const
@@ -132,7 +132,7 @@ public:
     {
         float hue = sin(t * 0.12f);
 
-        painter.push_state();
+//        painter.push_state();
 
         const float outer_radius = rect.shorter_size() * 0.5f - 5.0f;
         const float inner_radius = outer_radius - 20.0f;
@@ -150,93 +150,93 @@ public:
             painter.arc(rect.x(), rect.y(), outer_radius, a1, a0, Painter::Winding::COUNTERCLOCKWISE);
             painter.close_path();
 
-            const Vector2f start_pos{rect.x() + cosf(a0) * (inner_radius + outer_radius) * 0.5f, rect.y() + sinf(a0) * (inner_radius + outer_radius) * 0.5f};
-            const Vector2f end_pos{rect.x() + cosf(a1) * (inner_radius + outer_radius) * 0.5f, rect.y() + sinf(a1) * (inner_radius + outer_radius) * 0.5f};
-            const Color start_color = Color::from_hsl(a0, 1.0f, 0.55f, 1);
-            const Color end_color   = Color::from_hsl(a1, 1.0f, 0.55f, 1);
-            painter.set_fill_paint(Paint::create_linear_gradient(start_pos, end_pos, start_color, end_color));
+//            const Vector2f start_pos{rect.x() + cosf(a0) * (inner_radius + outer_radius) * 0.5f, rect.y() + sinf(a0) * (inner_radius + outer_radius) * 0.5f};
+//            const Vector2f end_pos{rect.x() + cosf(a1) * (inner_radius + outer_radius) * 0.5f, rect.y() + sinf(a1) * (inner_radius + outer_radius) * 0.5f};
+//            const Color start_color = Color::from_hsl(a0, 1.0f, 0.55f, 1);
+//            const Color end_color   = Color::from_hsl(a1, 1.0f, 0.55f, 1);
+//            painter.set_fill_paint(Paint::create_linear_gradient(start_pos, end_pos, start_color, end_color));
             painter.fill();
         }
 
-        // border around hue circle
-        painter.begin_path();
-        painter.add_circle(rect.x(), rect.y(), inner_radius - 0.5f);
-        painter.add_circle(rect.x(), rect.y(), outer_radius + 0.5f);
-        painter.set_stroke_color(Color(0, 0, 0, 64));
-        painter.set_stroke_width(1.0f);
-        painter.stroke();
+//        // border around hue circle
+//        painter.begin_path();
+//        painter.add_circle(rect.x(), rect.y(), inner_radius - 0.5f);
+//        painter.add_circle(rect.x(), rect.y(), outer_radius + 0.5f);
+//        painter.set_stroke_color(Color(0, 0, 0, 64));
+//        painter.set_stroke_width(1.0f);
+//        painter.stroke();
 
-        // Selector
-        painter.push_state();
-        painter.translate(rect.center());
-        painter.rotate(hue * TWO_PI);
+//        // Selector
+//        painter.push_state();
+//        painter.translate(rect.center());
+//        painter.rotate(hue * TWO_PI);
 
-        // marker on circle
-        painter.begin_path();
-        painter.add_rect(inner_radius - 2, -3, outer_radius - inner_radius + 4, 6);
-        painter.set_stroke_width(2.0f);
-        painter.set_stroke_color(Color(255, 255, 255, 192));
-        painter.stroke();
+//        // marker on circle
+//        painter.begin_path();
+//        painter.add_rect(inner_radius - 2, -3, outer_radius - inner_radius + 4, 6);
+//        painter.set_stroke_width(2.0f);
+//        painter.set_stroke_color(Color(255, 255, 255, 192));
+//        painter.stroke();
 
-        painter.begin_path();
-        painter.add_rect(inner_radius - 2 - 10, -4 - 10, outer_radius - inner_radius + 4 + 20, 8 + 20);
-        painter.add_rect(inner_radius - 2, -4, outer_radius - inner_radius + 4, 8);
-        painter.set_winding(Painter::Winding::HOLE);
-        const Vector2f center{inner_radius - 3, -5};
-        const Size2f extend{outer_radius - inner_radius + 6, 10};
-        painter.set_fill_paint(Paint::create_box_gradient(center, extend, 2, 4, Color(0, 0, 0, .5), Color(0, 0, 0, 0)));
-        painter.fill();
+//        painter.begin_path();
+//        painter.add_rect(inner_radius - 2 - 10, -4 - 10, outer_radius - inner_radius + 4 + 20, 8 + 20);
+//        painter.add_rect(inner_radius - 2, -4, outer_radius - inner_radius + 4, 8);
+//        painter.set_winding(Painter::Winding::HOLE);
+//        const Vector2f center{inner_radius - 3, -5};
+//        const Size2f extend{outer_radius - inner_radius + 6, 10};
+//        painter.set_fill_paint(Paint::create_box_gradient(center, extend, 2, 4, Color(0, 0, 0, .5), Color(0, 0, 0, 0)));
+//        painter.fill();
 
-        const float r = inner_radius - 6;
+//        const float r = inner_radius - 6;
 
-        // center triangle
-        {
-            const float ax = cosf(120.0f / 180.0f * PI) * r;
-            const float ay = sinf(120.0f / 180.0f * PI) * r;
-            const float bx = cosf(-120.0f / 180.0f * PI) * r;
-            const float by = sinf(-120.0f / 180.0f * PI) * r;
-            painter.begin_path();
-            painter.move_to(r, 0);
-            painter.line_to(ax, ay);
-            painter.line_to(bx, by);
-            painter.close_path();
+//        // center triangle
+//        {
+//            const float ax = cosf(120.0f / 180.0f * PI) * r;
+//            const float ay = sinf(120.0f / 180.0f * PI) * r;
+//            const float bx = cosf(-120.0f / 180.0f * PI) * r;
+//            const float by = sinf(-120.0f / 180.0f * PI) * r;
+//            painter.begin_path();
+//            painter.move_to(r, 0);
+//            painter.line_to(ax, ay);
+//            painter.line_to(bx, by);
+//            painter.close_path();
 
-            Vector2f start_pos{r, 0};
-            Vector2f end_pos{ax, ay};
-            Color start_color = Color::from_hsl(hue * TWO_PI, 1.0f, 0.5f, 1);
-            Color end_color   = Color(1, 1, 1, 1.);
-            painter.set_fill_paint(Paint::create_linear_gradient(start_pos, end_pos, start_color, end_color));
-            painter.fill();
+//            Vector2f start_pos{r, 0};
+//            Vector2f end_pos{ax, ay};
+//            Color start_color = Color::from_hsl(hue * TWO_PI, 1.0f, 0.5f, 1);
+//            Color end_color   = Color(1, 1, 1, 1.);
+//            painter.set_fill_paint(Paint::create_linear_gradient(start_pos, end_pos, start_color, end_color));
+//            painter.fill();
 
-            start_pos   = Vector2f{(r + ax) * 0.5f, (0 + ay) * 0.5f};
-            end_pos     = Vector2f{bx, by};
-            start_color = Color(0, 0, 0, 0.);
-            end_color   = Color(0, 0, 0, 1.);
-            painter.set_fill_paint(Paint::create_linear_gradient(start_pos, end_pos, start_color, end_color));
-            painter.fill();
-            painter.set_stroke_color(Color(0, 0, 0, 64));
-            painter.stroke();
-        }
+//            start_pos   = Vector2f{(r + ax) * 0.5f, (0 + ay) * 0.5f};
+//            end_pos     = Vector2f{bx, by};
+//            start_color = Color(0, 0, 0, 0.);
+//            end_color   = Color(0, 0, 0, 1.);
+//            painter.set_fill_paint(Paint::create_linear_gradient(start_pos, end_pos, start_color, end_color));
+//            painter.fill();
+//            painter.set_stroke_color(Color(0, 0, 0, 64));
+//            painter.stroke();
+//        }
 
-        // Select circle on triangle
-        const float ax = cosf(120.0f / 180.0f * PI) * r * 0.3f;
-        const float ay = sinf(120.0f / 180.0f * PI) * r * 0.4f;
-        painter.set_stroke_width(2);
-        painter.begin_path();
-        painter.add_circle(ax, ay, 5);
-        painter.set_stroke_color(Color(1, 1, 1, 192));
-        painter.stroke();
+//        // Select circle on triangle
+//        const float ax = cosf(120.0f / 180.0f * PI) * r * 0.3f;
+//        const float ay = sinf(120.0f / 180.0f * PI) * r * 0.4f;
+//        painter.set_stroke_width(2);
+//        painter.begin_path();
+//        painter.add_circle(ax, ay, 5);
+//        painter.set_stroke_color(Color(1, 1, 1, 192));
+//        painter.stroke();
 
-        painter.begin_path();
-        painter.add_rect(ax - 20, ay - 20, 40, 40);
-        painter.add_circle(ax, ay, 7);
-        painter.set_winding(Painter::Winding::HOLE);
-        painter.set_fill_paint(Paint::create_radial_gradient(Vector2f{ax, ay}, 7, 9, Color(0, 0, 0, 64), Color(0, 0, 0, 0)));
-        painter.fill();
+//        painter.begin_path();
+//        painter.add_rect(ax - 20, ay - 20, 40, 40);
+//        painter.add_circle(ax, ay, 7);
+//        painter.set_winding(Painter::Winding::HOLE);
+//        painter.set_fill_paint(Paint::create_radial_gradient(Vector2f{ax, ay}, 7, 9, Color(0, 0, 0, 64), Color(0, 0, 0, 0)));
+//        painter.fill();
 
-        painter.pop_state();
+//        painter.pop_state();
 
-        painter.pop_state();
+//        painter.pop_state();
     }
 
     void drawEyes(Painter& painter, const Aabrf& rect, const Vector2f& target, float t) const

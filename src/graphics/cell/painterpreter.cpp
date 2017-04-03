@@ -4,9 +4,33 @@
 #include "graphics/cell/cell.hpp"
 #include "graphics/cell/commands.hpp"
 #include "graphics/render_context.hpp"
+#include "graphics/texture2.hpp"
 #include "graphics/vertex.hpp"
 
+namespace { // anonymous
+using namespace notf;
+void xformToMat3x4(float* m3, Xform2f t)
+{
+    m3[0]  = t[0][0];
+    m3[1]  = t[0][1];
+    m3[2]  = 0.0f;
+    m3[3]  = 0.0f;
+    m3[4]  = t[1][0];
+    m3[5]  = t[1][1];
+    m3[6]  = 0.0f;
+    m3[7]  = 0.0f;
+    m3[8]  = t[2][0];
+    m3[9]  = t[2][1];
+    m3[10] = 1.0f;
+    m3[11] = 0.0f;
+}
+
+} // namespace anonymous
+
 namespace notf {
+
+void paint_to_frag(RenderContext::ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
+                   const float stroke_width, const float fringe, const float stroke_threshold);
 
 Painterpreter::Painterpreter(RenderContext& context)
     : m_context(context)
@@ -1024,6 +1048,45 @@ void Painterpreter::_prepare_paths(const float fringe, const Painter::LineJoin j
 
         path.is_convex = (left_turn_count == path.point_count);
     }
+}
+
+void paint_to_frag(RenderContext::ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
+                   const float stroke_width, const float fringe, const float stroke_threshold)
+{
+    assert(fringe > 0);
+
+    // TODO: I don't know if scissor is ever anything else than identiy & -1/-1
+
+    frag.innerCol = paint.inner_color.premultiplied();
+    frag.outerCol = paint.outer_color.premultiplied();
+    if (scissor.extend.width < 1.0f || scissor.extend.height < 1.0f) { // extend cannot be less than a pixel
+        frag.scissorExt[0]   = 1.0f;
+        frag.scissorExt[1]   = 1.0f;
+        frag.scissorScale[0] = 1.0f;
+        frag.scissorScale[1] = 1.0f;
+    }
+    else {
+        xformToMat3x4(frag.scissorMat, scissor.xform.get_inverse());
+        frag.scissorExt[0]   = scissor.extend.width / 2;
+        frag.scissorExt[1]   = scissor.extend.height / 2;
+        frag.scissorScale[0] = sqrt(scissor.xform[0][0] * scissor.xform[0][0] + scissor.xform[1][0] * scissor.xform[1][0]) / fringe;
+        frag.scissorScale[1] = sqrt(scissor.xform[0][1] * scissor.xform[0][1] + scissor.xform[1][1] * scissor.xform[1][1]) / fringe;
+    }
+    frag.extent[0]  = paint.extent.width;
+    frag.extent[1]  = paint.extent.height;
+    frag.strokeMult = (stroke_width * 0.5f + fringe * 0.5f) / fringe;
+    frag.strokeThr  = stroke_threshold;
+
+    if (paint.texture) {
+        frag.type    = RenderContext::ShaderVariables::Type::IMAGE;
+        frag.texType = paint.texture->get_format() == Texture2::Format::GRAYSCALE ? 2 : 0; // TODO: change the 'texType' uniform in the shader to something more meaningful
+    }
+    else { // no image
+        frag.type    = RenderContext::ShaderVariables::Type::GRADIENT;
+        frag.radius  = paint.radius;
+        frag.feather = paint.feather;
+    }
+    xformToMat3x4(frag.paintMat, paint.xform.get_inverse());
 }
 
 } // namespace notf

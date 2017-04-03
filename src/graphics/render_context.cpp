@@ -79,9 +79,9 @@ RenderContext::RenderContext(const Window* window, const RenderContextArguments 
     , m_paths()
     , m_vertices()
     , m_shader_variables()
-    , m_distance_tolerance(0.01f / m_args.pixel_ratio)
-    , m_tesselation_tolerance(0.25f / m_args.pixel_ratio)
-    , m_fringe_width(1.f / m_args.pixel_ratio)
+    , m_distance_tolerance(0)
+    , m_tesselation_tolerance(0)
+    , m_fringe_width(0)
     , m_buffer_size(Size2f(0, 0))
     , m_time()
     , m_mouse_pos(Vector2f::zero())
@@ -106,6 +106,11 @@ RenderContext::RenderContext(const Window* window, const RenderContextArguments 
         log_warning << "Pixel ratio cannot be zero, defaulting to 1";
         m_args.pixel_ratio = 1;
     }
+
+    // calculate the pixel-ratio dependent fields
+    m_distance_tolerance = 0.01f / m_args.pixel_ratio;
+    m_tesselation_tolerance = 0.25f / m_args.pixel_ratio;
+    m_fringe_width = 1.f / m_args.pixel_ratio;
 
     // create the CellShader
     const std::pair<std::string, std::string> sources = create_shader_sources(*this);
@@ -257,7 +262,7 @@ void RenderContext::_finish_frame()
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_SCISSOR_TEST);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    set_stencil_mask(0xffffffff);
+    set_stencil_mask(0xff);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     set_stencil_func(StencilFunc::ALWAYS);
     glActiveTexture(GL_TEXTURE0);
@@ -434,45 +439,6 @@ void RenderContext::_perform_stroke(const Call& call)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
     glDisable(GL_STENCIL_TEST);
-}
-
-void paint_to_frag(RenderContext::ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
-                              const float stroke_width, const float fringe, const float stroke_threshold)
-{
-    assert(fringe > 0);
-
-    // TODO: I don't know if scissor is ever anything else than identiy & -1/-1
-
-    frag.innerCol = paint.inner_color.premultiplied();
-    frag.outerCol = paint.outer_color.premultiplied();
-    if (scissor.extend.width < 1.0f || scissor.extend.height < 1.0f) { // extend cannot be less than a pixel
-        frag.scissorExt[0]   = 1.0f;
-        frag.scissorExt[1]   = 1.0f;
-        frag.scissorScale[0] = 1.0f;
-        frag.scissorScale[1] = 1.0f;
-    }
-    else {
-        xformToMat3x4(frag.scissorMat, scissor.xform.get_inverse());
-        frag.scissorExt[0]   = scissor.extend.width / 2;
-        frag.scissorExt[1]   = scissor.extend.height / 2;
-        frag.scissorScale[0] = sqrt(scissor.xform[0][0] * scissor.xform[0][0] + scissor.xform[1][0] * scissor.xform[1][0]) / fringe;
-        frag.scissorScale[1] = sqrt(scissor.xform[0][1] * scissor.xform[0][1] + scissor.xform[1][1] * scissor.xform[1][1]) / fringe;
-    }
-    frag.extent[0]  = paint.extent.width;
-    frag.extent[1]  = paint.extent.height;
-    frag.strokeMult = (stroke_width * 0.5f + fringe * 0.5f) / fringe;
-    frag.strokeThr  = stroke_threshold;
-
-    if (paint.texture) {
-        frag.type    = RenderContext::ShaderVariables::Type::IMAGE;
-        frag.texType = paint.texture->get_format() == Texture2::Format::GRAYSCALE ? 2 : 0; // TODO: change the 'texType' uniform in the shader to something more meaningful
-    }
-    else { // no image
-        frag.type    = RenderContext::ShaderVariables::Type::GRADIENT;
-        frag.radius  = paint.radius;
-        frag.feather = paint.feather;
-    }
-    xformToMat3x4(frag.paintMat, paint.xform.get_inverse());
 }
 
 } // namespace notf
