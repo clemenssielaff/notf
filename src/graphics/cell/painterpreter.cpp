@@ -684,6 +684,7 @@ void Painterpreter::_fill()
         render_call.type = RenderContext::Call::Type::FILL;
     }
     render_call.path_offset = m_context.m_paths.size();
+    render_call.path_count  = m_paths.size();
     render_call.texture     = _get_current_state().fill_paint.texture;
 
     const float woff = fringe_width / 2;
@@ -777,7 +778,6 @@ void Painterpreter::_fill()
             render_path.stroke_count = static_cast<GLsizei>(m_context.m_vertices.size() - static_cast<size_t>(render_path.stroke_offset));
         }
     }
-    render_call.path_count = m_context.m_paths.size() - render_call.path_offset;
 
     // create the polygon onto which to render the shape
     assert(m_context.m_vertices.size() < std::numeric_limits<GLint>::max());
