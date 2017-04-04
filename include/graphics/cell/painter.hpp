@@ -159,9 +159,6 @@ public: // methods
 
     /* Line Cap *******************************************/
 
-
-    void _append_commands(std::vector<float>&& commands);
-
     /** The Painter's line cap. */
     LineCap get_line_cap() const { return _get_current_state().line_cap; }
 

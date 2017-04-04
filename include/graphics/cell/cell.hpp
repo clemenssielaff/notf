@@ -11,18 +11,6 @@ class Cell {
 public:
     friend class Painter;
 
-    /** Command identifyers, type must be of the same size as a float. */
-    enum class Command : uint32_t {
-        MOVE = 0,
-        LINE,
-        BEZIER,
-        WINDING,
-        CLOSE,
-    };
-    static_assert(sizeof(Cell::Command) == sizeof(float),
-                  "Floats on your system don't seem be to be 32 bits wide. "
-                  "Adjust the type of the underlying type of CommandBuffer::Command to fit your particular system.");
-
     struct Path {
         size_t point_offset; // points
         size_t point_count;

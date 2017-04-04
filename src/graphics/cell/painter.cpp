@@ -40,22 +40,6 @@ using namespace notf;
 /** Length of a bezier control vector to draw a circle with radius 1. */
 static const float KAPPAf = static_cast<float>(KAPPA);
 
-float to_float(const Cell::Command command) { return static_cast<float>(to_number(command)); }
-
-void transform_command_pos(const Xform2f& xform, std::vector<float>& commands, size_t index)
-{
-    assert(commands.size() >= index + 2);
-    Vector2f& point = *reinterpret_cast<Vector2f*>(&commands[index]);
-    point           = xform.transform(point);
-}
-
-/** Returns a Vector2f reference into the Command buffer without data allocation. */
-Vector2f& as_vector2f(std::vector<float>& commands, size_t index)
-{
-    assert(index + 1 < commands.size());
-    return *reinterpret_cast<Vector2f*>(&commands[index]);
-}
-
 } // namespace anonymous
 
 namespace notf {
@@ -265,19 +249,17 @@ void Painter::arc(const float cx, const float cy, const float r, const float a0,
         da = norm_angle(a1 - a0 - static_cast<float>(PI)) + static_cast<float>(PI);
     }
     else {
+        assert(dir == Winding::COUNTERCLOCKWISE);
         da = norm_angle(a1 - a0 + static_cast<float>(PI)) - static_cast<float>(PI);
     }
     // split the arc into <= 90deg segments
     const float ndivs = max(1.f, min(ceilf(abs(da) / static_cast<float>(HALF_PI)), 5.f));
     const float hda   = (da / ndivs) / 2;
-    const float kappa = abs(4.f / 3.f * (1.0f - cos(hda)) / sin(hda)) * (dir == Winding::CLOCKWISE ? 1 : -1);
+    const float kappa = abs(4.f / 3.f * (1.f - cos(hda)) / sin(hda)) * (dir == Winding::CLOCKWISE ? 1 : -1);
 
     // create individual commands
-    std::vector<float> commands(static_cast<size_t>(ceilf(ndivs)) * 7 + 3);
-    size_t command_index = 0;
     float px = 0, py = 0, ptanx = 0, ptany = 0;
     for (float i = 0; i <= ndivs; i++) {
-        assert(command_index < commands.size());
         const float a    = a0 + da * (i / ndivs);
         const float dx   = cos(a);
         const float dy   = sin(a);
@@ -285,71 +267,23 @@ void Painter::arc(const float cx, const float cy, const float r, const float a0,
         const float y    = cy + dy * r;
         const float tanx = -dy * r * kappa;
         const float tany = dx * r * kappa;
-        if (command_index == 0) {
-            commands[command_index++] = to_float(m_cell.m_commands.empty() ? Cell::Command::MOVE : Cell::Command::LINE);
-            commands[command_index++] = x;
-            commands[command_index++] = y;
+        if (static_cast<int>(i) == 0) {
+            if (!m_has_open_path) {
+                m_cell.m_commands.add_command(MoveCommand({x, y}));
+            }
+            else {
+                m_cell.m_commands.add_command(LineCommand({x, y}));
+            }
         }
         else {
-            commands[command_index++] = to_float(Cell::Command::BEZIER);
-            commands[command_index++] = px + ptanx;
-            commands[command_index++] = py + ptany;
-            commands[command_index++] = x - tanx;
-            commands[command_index++] = y - tany;
-            commands[command_index++] = x;
-            commands[command_index++] = y;
+            m_cell.m_commands.add_command(BezierCommand({px + ptanx, py + ptany}, {x - tanx, y - tany}, {x, y}));
         }
         px    = x;
         py    = y;
         ptanx = tanx;
         ptany = tany;
     }
-    _append_commands(std::move(commands));
-}
-
-void Painter::_append_commands(std::vector<float>&& commands)
-{
-    if (commands.empty()) {
-        return;
-    }
-    m_cell.m_commands.reserve(m_cell.m_commands.size() + commands.size());
-
-    // commands operate in the context's current transformation space, but we need them in global space
-    const Xform2f& xform = _get_current_state().xform;
-    for (size_t i = 0; i < commands.size();) {
-        Cell::Command command = static_cast<Cell::Command>(commands[i]);
-        switch (command) {
-
-        case Cell::Command::MOVE:
-        case Cell::Command::LINE: {
-            m_stylus = as_vector2f(commands, i + 1);
-            transform_command_pos(xform, commands, i + 1);
-            i += 3;
-        } break;
-
-        case Cell::Command::BEZIER: {
-            m_stylus = as_vector2f(commands, i + 5);
-            transform_command_pos(xform, commands, i + 1);
-            transform_command_pos(xform, commands, i + 3);
-            transform_command_pos(xform, commands, i + 5);
-            i += 7;
-        } break;
-
-        case Cell::Command::WINDING:
-            i += 2;
-            break;
-
-        case Cell::Command::CLOSE:
-            i += 1;
-            break;
-
-        default:
-            assert(0);
-        }
-    }
-
-    // finally, append the new commands to the existing ones
-    std::move(commands.begin(), commands.end(), std::back_inserter(m_cell.m_commands));
+    m_has_open_path = true;
 }
 
 void Painter::arc_to(const Vector2f& tangent, const Vector2f& end, const float radius)
@@ -659,49 +593,57 @@ void Painter::_flatten_paths()
 
     // parse the command buffer
     for (size_t index = 0; index < m_cell.m_commands.size();) {
-        switch (static_cast<Cell::Command>(m_cell.m_commands[index])) {
+        switch (static_cast<PainterCommand::Type>(m_cell.m_commands[index])) {
 
-        case Cell::Command::MOVE:
-            m_cell.m_paths.emplace_back(m_cell.m_points.size());
-            _add_point(*reinterpret_cast<Vector2f*>(&m_cell.m_commands[index + 1]), Cell::Point::Flags::CORNER);
-            index += 3;
-            break;
+        case PainterCommand::Type::MOVE: {
+            create_back(m_cell.m_paths, m_cell.m_points.size());
+            const MoveCommand& cmd = map_command<MoveCommand>(m_cell.m_commands, index);
+            _add_point(cmd.pos, Cell::Point::Flags::CORNER);
+            index += command_size<decltype(cmd)>();
+        } break;
 
-        case Cell::Command::LINE:
+        case PainterCommand::LINE: {
             if (m_cell.m_paths.empty()) {
-                m_cell.m_paths.emplace_back(m_cell.m_points.size());
+                create_back(m_cell.m_paths, m_cell.m_points.size());
             }
-            _add_point(*reinterpret_cast<Vector2f*>(&m_cell.m_commands[index + 1]), Cell::Point::Flags::CORNER);
-            index += 3;
-            break;
+            const LineCommand& cmd = map_command<LineCommand>(m_cell.m_commands, index);
+            _add_point(cmd.pos, Cell::Point::Flags::CORNER);
+            index += command_size<decltype(cmd)>();
+        } break;
 
-        case Cell::Command::BEZIER:
+        case PainterCommand::BEZIER: {
+            if (m_cell.m_paths.empty()) {
+                create_back(m_cell.m_paths, m_cell.m_points.size());
+            }
+            Vector2f stylus;
             if (m_cell.m_points.empty()) {
-                m_cell.m_points.emplace_back(Cell::Point{Vector2f::zero(), Vector2f::zero(), Vector2f::zero(), 0.f, Cell::Point::Flags::NONE});
+                stylus = Vector2f::zero();
+                _add_point(stylus, Cell::Point::Flags::CORNER);
             }
-            if (m_cell.m_paths.empty()) {
-                m_cell.m_paths.emplace_back(m_cell.m_points.size());
+            else {
+                stylus = _get_current_state().xform.get_inverse().transform({m_cell.m_points.back().pos.x, m_cell.m_points.back().pos.y}); // TODO: that sucks
             }
-            _tesselate_bezier(m_cell.m_points.back().pos.x, m_cell.m_points.back().pos.y,
-                              m_cell.m_commands[index + 1], m_cell.m_commands[index + 2],
-                              m_cell.m_commands[index + 3], m_cell.m_commands[index + 4],
-                              m_cell.m_commands[index + 5], m_cell.m_commands[index + 6]);
-            index += 7;
-            break;
+            const BezierCommand& cmd = map_command<BezierCommand>(m_cell.m_commands, index);
+            _tesselate_bezier(stylus.x, stylus.y,
+                              cmd.ctrl1.x, cmd.ctrl1.y,
+                              cmd.ctrl2.x, cmd.ctrl2.y,
+                              cmd.end.x, cmd.end.y);
+            index += command_size<decltype(cmd)>();
+        } break;
 
-        case Cell::Command::CLOSE:
-            if (!m_cell.m_paths.empty()) {
-                m_cell.m_paths.back().is_closed = true;
-            }
-            ++index;
-            break;
-
-        case Cell::Command::WINDING:
+        case PainterCommand::SET_WINDING: {
             if (!m_cell.m_paths.empty()) {
                 m_cell.m_paths.back().winding = static_cast<unsigned char>(m_cell.m_commands[index + 1]);
             }
-            index += 2;
-            break;
+            index += command_size<SetWindingCommand>();
+        } break;
+
+        case PainterCommand::CLOSE: {
+            if (!m_cell.m_paths.empty()) {
+                m_cell.m_paths.back().is_closed = true;
+            }
+            index += command_size<CloseCommand>();
+        } break;
 
         default: // should never happen
             assert(0);
