@@ -69,10 +69,8 @@ public: // signals
     Signal<Xform2f> transform_changed;
 
 protected: // methods
-    /** Tells the Window that this Item needs to be redrawn.
-     * @return False if the Widget is invisible and doesn't need to be redrawn.
-     */
-    bool _redraw();
+    /** Tells the Window that this Item needs to be redrawn. */
+    void _redraw();
 
     /** Updates the size of this Item.
      * Is virtual because Layouts can use this function to update their items.

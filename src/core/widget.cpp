@@ -15,7 +15,6 @@ Widget::Widget()
     : ScreenItem()
     , m_scissor_layout() // empty by default
     , m_cell()
-    , m_is_clean(false)
 {
 }
 
@@ -45,10 +44,10 @@ bool Widget::set_claim(const Claim claim)
 void Widget::redraw() // TODO: currently _set_size does not dirty the Widget's Cell
 {
     // don't dirty if the ScreenItem is invisible
-    if (!_redraw()) {
-        return;
-    }
-    m_is_clean = false;
+    _redraw();
+//        return;
+//    }
+//    m_is_clean = false;
 }
 
 void Widget::paint(RenderContext& context) const
@@ -62,7 +61,7 @@ void Widget::paint(RenderContext& context) const
         log_warning << error.what(); // TODO: print Python stack trace here IF the item uses a Python object to draw itself
         return;
     }
-    m_is_clean = true;
+//    m_is_clean = true;
     //    }
 
     // paint the Cell into the RenderContext

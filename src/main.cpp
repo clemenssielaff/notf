@@ -19,7 +19,7 @@ class MyWidget : public Widget {
 public:
     MyWidget(RenderContext& context)
         : Widget()
-        , test_texture(context.load_texture("/home/clemens/code/notf/res/textures/face.png"))
+//        , test_texture(context.load_texture("/home/clemens/code/notf/res/textures/face.png"))
     {
     }
 
@@ -239,267 +239,267 @@ public:
 //        painter.pop_state();
     }
 
-    void drawEyes(Painter& painter, const Aabrf& rect, const Vector2f& target, float t) const
-    {
-        float ex = rect.width() * 0.23f;
-        float ey = rect.height() * 0.5f;
-        float lx = rect.left() + ex;
-        float ly = rect.top() + ey;
-        float rx = rect.left() + rect.width() - ex;
-        float ry = rect.top() + ey;
-        float dx, dy, d;
-        float br    = (ex < ey ? ex : ey) * 0.5f;
-        float blink = 1 - pow(sinf(t * 0.5f), 200) * 0.8f;
+//    void drawEyes(Painter& painter, const Aabrf& rect, const Vector2f& target, float t) const
+//    {
+//        float ex = rect.width() * 0.23f;
+//        float ey = rect.height() * 0.5f;
+//        float lx = rect.left() + ex;
+//        float ly = rect.top() + ey;
+//        float rx = rect.left() + rect.width() - ex;
+//        float ry = rect.top() + ey;
+//        float dx, dy, d;
+//        float br    = (ex < ey ? ex : ey) * 0.5f;
+//        float blink = 1 - pow(sinf(t * 0.5f), 200) * 0.8f;
 
-        Paint bg = Paint::create_linear_gradient(Vector2f{rect.left(), rect.top() + rect.height() * 0.5f},
-                                                 Vector2f{rect.left() + rect.width() * 0.1f, rect.top() + rect.height()},
-                                                 Color(0, 0, 0, 32), Color(0, 0, 0, 16));
-        painter.begin_path();
-        painter.add_ellipse(lx + 3.0f, ly + 16.0f, ex, ey);
-        painter.add_ellipse(rx + 3.0f, ry + 16.0f, ex, ey);
-        painter.set_fill_paint(bg);
-        painter.fill();
+//        Paint bg = Paint::create_linear_gradient(Vector2f{rect.left(), rect.top() + rect.height() * 0.5f},
+//                                                 Vector2f{rect.left() + rect.width() * 0.1f, rect.top() + rect.height()},
+//                                                 Color(0, 0, 0, 32), Color(0, 0, 0, 16));
+//        painter.begin_path();
+//        painter.add_ellipse(lx + 3.0f, ly + 16.0f, ex, ey);
+//        painter.add_ellipse(rx + 3.0f, ry + 16.0f, ex, ey);
+//        painter.set_fill_paint(bg);
+//        painter.fill();
 
-        bg = Paint::create_linear_gradient({rect.left(), rect.top() + rect.height() * 0.25f},
-                                           {rect.left() + rect.width() * 0.1f, rect.top() + rect.height()}, Color(220, 220, 220, 255), Color(128, 128, 128, 255));
-        painter.begin_path();
-        painter.add_ellipse(lx, ly, ex, ey);
-        painter.add_ellipse(rx, ry, ex, ey);
-        painter.set_fill_paint(bg);
-        painter.fill();
+//        bg = Paint::create_linear_gradient({rect.left(), rect.top() + rect.height() * 0.25f},
+//                                           {rect.left() + rect.width() * 0.1f, rect.top() + rect.height()}, Color(220, 220, 220, 255), Color(128, 128, 128, 255));
+//        painter.begin_path();
+//        painter.add_ellipse(lx, ly, ex, ey);
+//        painter.add_ellipse(rx, ry, ex, ey);
+//        painter.set_fill_paint(bg);
+//        painter.fill();
 
-        dx = (target.x - rx) / (ex * 10);
-        dy = (target.y - ry) / (ey * 10);
-        d  = sqrtf(dx * dx + dy * dy);
-        if (d > 1.0f) {
-            dx /= d;
-            dy /= d;
-        }
-        dx *= ex * 0.4f;
-        dy *= ey * 0.5f;
-        painter.begin_path();
-        painter.add_ellipse(lx + dx, ly + dy + ey * 0.25f * (1 - blink), br, br * blink);
-        painter.set_fill_color(Color(32, 32, 32, 255));
-        painter.fill();
+//        dx = (target.x - rx) / (ex * 10);
+//        dy = (target.y - ry) / (ey * 10);
+//        d  = sqrtf(dx * dx + dy * dy);
+//        if (d > 1.0f) {
+//            dx /= d;
+//            dy /= d;
+//        }
+//        dx *= ex * 0.4f;
+//        dy *= ey * 0.5f;
+//        painter.begin_path();
+//        painter.add_ellipse(lx + dx, ly + dy + ey * 0.25f * (1 - blink), br, br * blink);
+//        painter.set_fill_color(Color(32, 32, 32, 255));
+//        painter.fill();
 
-        dx = (target.x - rx) / (ex * 10);
-        dy = (target.y - ry) / (ey * 10);
-        d  = sqrtf(dx * dx + dy * dy);
-        if (d > 1.0f) {
-            dx /= d;
-            dy /= d;
-        }
-        dx *= ex * 0.4f;
-        dy *= ey * 0.5f;
-        painter.begin_path();
-        painter.add_ellipse(rx + dx, ry + dy + ey * 0.25f * (1 - blink), br, br * blink);
-        painter.set_fill_color(Color(32, 32, 32, 255));
-        painter.fill();
+//        dx = (target.x - rx) / (ex * 10);
+//        dy = (target.y - ry) / (ey * 10);
+//        d  = sqrtf(dx * dx + dy * dy);
+//        if (d > 1.0f) {
+//            dx /= d;
+//            dy /= d;
+//        }
+//        dx *= ex * 0.4f;
+//        dy *= ey * 0.5f;
+//        painter.begin_path();
+//        painter.add_ellipse(rx + dx, ry + dy + ey * 0.25f * (1 - blink), br, br * blink);
+//        painter.set_fill_color(Color(32, 32, 32, 255));
+//        painter.fill();
 
-        Paint gloss = Paint::create_radial_gradient(Vector2f{lx - ex * 0.25f, ly - ey * 0.5f}, ex * 0.1f, ex * 0.75f, Color(255, 255, 255, 128), Color(255, 255, 255, 0));
-        painter.begin_path();
-        painter.add_ellipse(lx, ly, ex, ey);
-        painter.set_fill_paint(gloss);
-        painter.fill();
+//        Paint gloss = Paint::create_radial_gradient(Vector2f{lx - ex * 0.25f, ly - ey * 0.5f}, ex * 0.1f, ex * 0.75f, Color(255, 255, 255, 128), Color(255, 255, 255, 0));
+//        painter.begin_path();
+//        painter.add_ellipse(lx, ly, ex, ey);
+//        painter.set_fill_paint(gloss);
+//        painter.fill();
 
-        gloss = Paint::create_radial_gradient(Vector2f{rx - ex * 0.25f, ry - ey * 0.5f}, ex * 0.1f, ex * 0.75f, Color(255, 255, 255, 128), Color(255, 255, 255, 0));
-        painter.begin_path();
-        painter.add_ellipse(rx, ry, ex, ey);
-        painter.set_fill_paint(gloss);
-        painter.fill();
-    }
+//        gloss = Paint::create_radial_gradient(Vector2f{rx - ex * 0.25f, ry - ey * 0.5f}, ex * 0.1f, ex * 0.75f, Color(255, 255, 255, 128), Color(255, 255, 255, 0));
+//        painter.begin_path();
+//        painter.add_ellipse(rx, ry, ex, ey);
+//        painter.set_fill_paint(gloss);
+//        painter.fill();
+//    }
 
-    void drawGraph(Painter& painter, const Aabrf& rect, float t) const
-    {
-        float samples[6];
-        float sx[6], sy[6];
-        float dx = rect.width() / 5.0f;
-        int i;
+//    void drawGraph(Painter& painter, const Aabrf& rect, float t) const
+//    {
+//        float samples[6];
+//        float sx[6], sy[6];
+//        float dx = rect.width() / 5.0f;
+//        int i;
 
-        samples[0] = (1 + sinf(t * 1.2345f + cosf(t * 0.33457f) * 0.44f)) * 0.5f;
-        samples[1] = (1 + sinf(t * 0.68363f + cosf(t * 1.3f) * 1.55f)) * 0.5f;
-        samples[2] = (1 + sinf(t * 1.1642f + cosf(t * 0.33457) * 1.24f)) * 0.5f;
-        samples[3] = (1 + sinf(t * 0.56345f + cosf(t * 1.63f) * 0.14f)) * 0.5f;
-        samples[4] = (1 + sinf(t * 1.6245f + cosf(t * 0.254f) * 0.3f)) * 0.5f;
-        samples[5] = (1 + sinf(t * 0.345f + cosf(t * 0.03f) * 0.6f)) * 0.5f;
+//        samples[0] = (1 + sinf(t * 1.2345f + cosf(t * 0.33457f) * 0.44f)) * 0.5f;
+//        samples[1] = (1 + sinf(t * 0.68363f + cosf(t * 1.3f) * 1.55f)) * 0.5f;
+//        samples[2] = (1 + sinf(t * 1.1642f + cosf(t * 0.33457) * 1.24f)) * 0.5f;
+//        samples[3] = (1 + sinf(t * 0.56345f + cosf(t * 1.63f) * 0.14f)) * 0.5f;
+//        samples[4] = (1 + sinf(t * 1.6245f + cosf(t * 0.254f) * 0.3f)) * 0.5f;
+//        samples[5] = (1 + sinf(t * 0.345f + cosf(t * 0.03f) * 0.6f)) * 0.5f;
 
-        for (i = 0; i < 6; i++) {
-            sx[i] = rect.left() + i * dx;
-            sy[i] = rect.top() + rect.height() * samples[i] * 0.8f;
-        }
+//        for (i = 0; i < 6; i++) {
+//            sx[i] = rect.left() + i * dx;
+//            sy[i] = rect.top() + rect.height() * samples[i] * 0.8f;
+//        }
 
-        // Graph background
-        Paint bg = Paint::create_linear_gradient(rect.top_left(), rect.bottom_left(), Color(0, 160, 192, 0), Color(0, 160, 192, 64));
-        painter.begin_path();
-        painter.move_to(sx[0], sy[0]);
-        for (i = 1; i < 6; i++)
-            painter.bezier_to(sx[i - 1] + dx * 0.5f, sy[i - 1], sx[i] - dx * 0.5f, sy[i], sx[i], sy[i]);
-        painter.line_to(rect.left() + rect.width(), rect.top() + rect.height());
-        painter.line_to(rect.left(), rect.top() + rect.height());
-        painter.set_fill_paint(bg);
-        painter.fill();
+//        // Graph background
+//        Paint bg = Paint::create_linear_gradient(rect.top_left(), rect.bottom_left(), Color(0, 160, 192, 0), Color(0, 160, 192, 64));
+//        painter.begin_path();
+//        painter.move_to(sx[0], sy[0]);
+//        for (i = 1; i < 6; i++)
+//            painter.bezier_to(sx[i - 1] + dx * 0.5f, sy[i - 1], sx[i] - dx * 0.5f, sy[i], sx[i], sy[i]);
+//        painter.line_to(rect.left() + rect.width(), rect.top() + rect.height());
+//        painter.line_to(rect.left(), rect.top() + rect.height());
+//        painter.set_fill_paint(bg);
+//        painter.fill();
 
-        // Graph line
-        painter.begin_path();
-        painter.move_to(sx[0], sy[0] + 2);
-        for (i = 1; i < 6; i++)
-            painter.bezier_to(sx[i - 1] + dx * 0.5f, sy[i - 1] + 2, sx[i] - dx * 0.5f, sy[i] + 2, sx[i], sy[i] + 2);
-        painter.set_stroke_color(Color(0, 0, 0, 32));
-        painter.set_stroke_width(3.0f);
-        painter.stroke();
+//        // Graph line
+//        painter.begin_path();
+//        painter.move_to(sx[0], sy[0] + 2);
+//        for (i = 1; i < 6; i++)
+//            painter.bezier_to(sx[i - 1] + dx * 0.5f, sy[i - 1] + 2, sx[i] - dx * 0.5f, sy[i] + 2, sx[i], sy[i] + 2);
+//        painter.set_stroke_color(Color(0, 0, 0, 32));
+//        painter.set_stroke_width(3.0f);
+//        painter.stroke();
 
-        painter.begin_path();
-        painter.move_to(sx[0], sy[0]);
-        for (i = 1; i < 6; i++)
-            painter.bezier_to(sx[i - 1] + dx * 0.5f, sy[i - 1], sx[i] - dx * 0.5f, sy[i], sx[i], sy[i]);
-        painter.set_stroke_color(Color(0, 160, 192, 255));
-        painter.set_stroke_width(3.0f);
-        painter.stroke();
+//        painter.begin_path();
+//        painter.move_to(sx[0], sy[0]);
+//        for (i = 1; i < 6; i++)
+//            painter.bezier_to(sx[i - 1] + dx * 0.5f, sy[i - 1], sx[i] - dx * 0.5f, sy[i], sx[i], sy[i]);
+//        painter.set_stroke_color(Color(0, 160, 192, 255));
+//        painter.set_stroke_width(3.0f);
+//        painter.stroke();
 
-        // Graph sample pos
-        for (i = 0; i < 6; i++) {
-            bg = Paint::create_radial_gradient(Vector2f{sx[i], sy[i] + 2}, 3.0f, 8.0f, Color(0, 0, 0, 32), Color(0, 0, 0, 0));
-            painter.begin_path();
-            painter.add_rect(sx[i] - 10, sy[i] - 10 + 2, 20, 20);
-            painter.set_fill_paint(bg);
-            painter.fill();
-        }
+//        // Graph sample pos
+//        for (i = 0; i < 6; i++) {
+//            bg = Paint::create_radial_gradient(Vector2f{sx[i], sy[i] + 2}, 3.0f, 8.0f, Color(0, 0, 0, 32), Color(0, 0, 0, 0));
+//            painter.begin_path();
+//            painter.add_rect(sx[i] - 10, sy[i] - 10 + 2, 20, 20);
+//            painter.set_fill_paint(bg);
+//            painter.fill();
+//        }
 
-        painter.begin_path();
-        for (i = 0; i < 6; i++)
-            painter.add_circle(sx[i], sy[i], 4.0f);
-        painter.set_fill_color(Color(0, 160, 192, 255));
-        painter.fill();
-        painter.begin_path();
-        for (i = 0; i < 6; i++)
-            painter.add_circle(sx[i], sy[i], 2.0f);
-        painter.set_fill_color(Color(220, 220, 220, 255));
-        painter.fill();
+//        painter.begin_path();
+//        for (i = 0; i < 6; i++)
+//            painter.add_circle(sx[i], sy[i], 4.0f);
+//        painter.set_fill_color(Color(0, 160, 192, 255));
+//        painter.fill();
+//        painter.begin_path();
+//        for (i = 0; i < 6; i++)
+//            painter.add_circle(sx[i], sy[i], 2.0f);
+//        painter.set_fill_color(Color(220, 220, 220, 255));
+//        painter.fill();
 
-        painter.set_stroke_width(1.0f);
-    }
+//        painter.set_stroke_width(1.0f);
+//    }
 
-    void drawSpinner(Painter& painter, const Vector2f& center, const float radius, float t) const
-    {
-        float a0 = 0.0f + t * 6;
-        float a1 = PI + t * 6;
-        float r0 = radius;
-        float r1 = radius * 0.75f;
-        float ax, ay, bx, by;
+//    void drawSpinner(Painter& painter, const Vector2f& center, const float radius, float t) const
+//    {
+//        float a0 = 0.0f + t * 6;
+//        float a1 = PI + t * 6;
+//        float r0 = radius;
+//        float r1 = radius * 0.75f;
+//        float ax, ay, bx, by;
 
-        painter.push_state();
+//        painter.push_state();
 
-        painter.begin_path();
-        painter.arc(center.x, center.y, r0, a0, a1, Painter::Winding::CW);
-        painter.arc(center.x, center.y, r1, a1, a0, Painter::Winding::CCW);
-        painter.close_path();
-        ax          = center.x + cosf(a0) * (r0 + r1) * 0.5f;
-        ay          = center.y + sinf(a0) * (r0 + r1) * 0.5f;
-        bx          = center.x + cosf(a1) * (r0 + r1) * 0.5f;
-        by          = center.y + sinf(a1) * (r0 + r1) * 0.5f;
-        Paint paint = Paint::create_linear_gradient({ax, ay}, {bx, by}, Color(0, 0, 0, 0), Color(0, 0, 0, 128));
-        painter.set_fill_paint(paint);
-        painter.fill();
+//        painter.begin_path();
+//        painter.arc(center.x, center.y, r0, a0, a1, Painter::Winding::CW);
+//        painter.arc(center.x, center.y, r1, a1, a0, Painter::Winding::CCW);
+//        painter.close_path();
+//        ax          = center.x + cosf(a0) * (r0 + r1) * 0.5f;
+//        ay          = center.y + sinf(a0) * (r0 + r1) * 0.5f;
+//        bx          = center.x + cosf(a1) * (r0 + r1) * 0.5f;
+//        by          = center.y + sinf(a1) * (r0 + r1) * 0.5f;
+//        Paint paint = Paint::create_linear_gradient({ax, ay}, {bx, by}, Color(0, 0, 0, 0), Color(0, 0, 0, 128));
+//        painter.set_fill_paint(paint);
+//        painter.fill();
 
-        painter.pop_state();
-    }
+//        painter.pop_state();
+//    }
 
-    void drawCaps(Painter& painter, const Vector2f& pos, const float width) const
-    {
-        Painter::LineCap caps[3] = {Painter::LineCap::BUTT, Painter::LineCap::ROUND, Painter::LineCap::SQUARE};
-        float lineWidth          = 8.0f;
+//    void drawCaps(Painter& painter, const Vector2f& pos, const float width) const
+//    {
+//        Painter::LineCap caps[3] = {Painter::LineCap::BUTT, Painter::LineCap::ROUND, Painter::LineCap::SQUARE};
+//        float lineWidth          = 8.0f;
 
-        painter.push_state();
+//        painter.push_state();
 
-        painter.begin_path();
-        painter.add_rect(pos.x - lineWidth / 2, pos.y, width + lineWidth, width + 10);
-        painter.set_fill_color(Color(255, 255, 255, 32));
-        painter.fill();
+//        painter.begin_path();
+//        painter.add_rect(pos.x - lineWidth / 2, pos.y, width + lineWidth, width + 10);
+//        painter.set_fill_color(Color(255, 255, 255, 32));
+//        painter.fill();
 
-        painter.begin_path();
-        painter.add_rect(pos.x, pos.y, width, width + 10);
-        painter.set_fill_color(Color(255, 255, 255, 32));
-        painter.fill();
+//        painter.begin_path();
+//        painter.add_rect(pos.x, pos.y, width, width + 10);
+//        painter.set_fill_color(Color(255, 255, 255, 32));
+//        painter.fill();
 
-        painter.set_stroke_width(lineWidth);
-        for (int i = 0; i < 3; i++) {
-            painter.set_line_cap(caps[i]);
-            painter.set_stroke_color(Color(0, 0, 0, 255));
-            painter.begin_path();
-            painter.move_to(pos.x, pos.y + i * 10 + 5);
-            painter.line_to(pos.x + width, pos.y + i * 10 + 5);
-            painter.stroke();
-        }
+//        painter.set_stroke_width(lineWidth);
+//        for (int i = 0; i < 3; i++) {
+//            painter.set_line_cap(caps[i]);
+//            painter.set_stroke_color(Color(0, 0, 0, 255));
+//            painter.begin_path();
+//            painter.move_to(pos.x, pos.y + i * 10 + 5);
+//            painter.line_to(pos.x + width, pos.y + i * 10 + 5);
+//            painter.stroke();
+//        }
 
-        painter.pop_state();
-    }
+//        painter.pop_state();
+//    }
 
-    void drawJoins(Painter& painter, const Aabrf& rect, const float time) const
-    {
-        Painter::LineJoin joins[3] = {Painter::LineJoin::MITER, Painter::LineJoin::ROUND, Painter::LineJoin::BEVEL};
-        Painter::LineCap caps[3]   = {Painter::LineCap::BUTT, Painter::LineCap::ROUND, Painter::LineCap::SQUARE};
-        const float pad            = 5.0f;
-        const float s              = rect.width() / 9.0f - pad * 2;
+//    void drawJoins(Painter& painter, const Aabrf& rect, const float time) const
+//    {
+//        Painter::LineJoin joins[3] = {Painter::LineJoin::MITER, Painter::LineJoin::ROUND, Painter::LineJoin::BEVEL};
+//        Painter::LineCap caps[3]   = {Painter::LineCap::BUTT, Painter::LineCap::ROUND, Painter::LineCap::SQUARE};
+//        const float pad            = 5.0f;
+//        const float s              = rect.width() / 9.0f - pad * 2;
 
-        painter.push_state();
+//        painter.push_state();
 
-        float pts[4 * 2];
-        pts[0] = -s * 0.25f + cosf(time * 0.3f) * s * 0.5f;
-        pts[1] = sinf(time * 0.3f) * s * 0.5f;
-        pts[2] = -s * 0.25f;
-        pts[3] = 0;
-        pts[4] = s * 0.25f;
-        pts[5] = 0;
-        pts[6] = s * 0.25f + cosf(-time * 0.3f) * s * 0.5f;
-        pts[7] = sinf(-time * 0.3f) * s * 0.5f;
+//        float pts[4 * 2];
+//        pts[0] = -s * 0.25f + cosf(time * 0.3f) * s * 0.5f;
+//        pts[1] = sinf(time * 0.3f) * s * 0.5f;
+//        pts[2] = -s * 0.25f;
+//        pts[3] = 0;
+//        pts[4] = s * 0.25f;
+//        pts[5] = 0;
+//        pts[6] = s * 0.25f + cosf(-time * 0.3f) * s * 0.5f;
+//        pts[7] = sinf(-time * 0.3f) * s * 0.5f;
 
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                const float fx = rect.left() + s * 0.5f + (i * 3 + j) / 9.0f * rect.width() + pad;
-                const float fy = rect.top() - s * 0.5f + pad;
+//        for (int i = 0; i < 3; i++) {
+//            for (int j = 0; j < 3; j++) {
+//                const float fx = rect.left() + s * 0.5f + (i * 3 + j) / 9.0f * rect.width() + pad;
+//                const float fy = rect.top() - s * 0.5f + pad;
 
-                painter.set_line_cap(caps[i]);
-                painter.set_line_join(joins[j]);
+//                painter.set_line_cap(caps[i]);
+//                painter.set_line_join(joins[j]);
 
-                painter.set_stroke_width(s * 0.3f);
-                painter.set_stroke_color(Color(0, 0, 0, 160));
-                painter.begin_path();
-                painter.move_to(fx + pts[0], fy + pts[1]);
-                painter.line_to(fx + pts[2], fy + pts[3]);
-                painter.line_to(fx + pts[4], fy + pts[5]);
-                painter.line_to(fx + pts[6], fy + pts[7]);
-                painter.stroke();
+//                painter.set_stroke_width(s * 0.3f);
+//                painter.set_stroke_color(Color(0, 0, 0, 160));
+//                painter.begin_path();
+//                painter.move_to(fx + pts[0], fy + pts[1]);
+//                painter.line_to(fx + pts[2], fy + pts[3]);
+//                painter.line_to(fx + pts[4], fy + pts[5]);
+//                painter.line_to(fx + pts[6], fy + pts[7]);
+//                painter.stroke();
 
-                painter.set_line_cap(Painter::LineCap::BUTT);
-                painter.set_line_join(Painter::LineJoin::BEVEL);
+//                painter.set_line_cap(Painter::LineCap::BUTT);
+//                painter.set_line_join(Painter::LineJoin::BEVEL);
 
-                painter.set_stroke_width(1.f);
-                painter.set_stroke_color(Color(0, 192, 255, 255));
-                painter.begin_path();
-                painter.move_to(fx + pts[0], fy + pts[1]);
-                painter.line_to(fx + pts[2], fy + pts[3]);
-                painter.line_to(fx + pts[4], fy + pts[5]);
-                painter.line_to(fx + pts[6], fy + pts[7]);
-                painter.stroke();
-            }
-        }
+//                painter.set_stroke_width(1.f);
+//                painter.set_stroke_color(Color(0, 192, 255, 255));
+//                painter.begin_path();
+//                painter.move_to(fx + pts[0], fy + pts[1]);
+//                painter.line_to(fx + pts[2], fy + pts[3]);
+//                painter.line_to(fx + pts[4], fy + pts[5]);
+//                painter.line_to(fx + pts[6], fy + pts[7]);
+//                painter.stroke();
+//            }
+//        }
 
-        painter.pop_state();
-    }
+//        painter.pop_state();
+//    }
 
-    void drawTexture(Painter& painter, const Aabrf& rect) const
-    {
-        Paint pattern = Paint::create_texture_pattern(rect.top_left(), rect.extend(), test_texture, 0, 1);
+//    void drawTexture(Painter& painter, const Aabrf& rect) const
+//    {
+//        Paint pattern = Paint::create_texture_pattern(rect.top_left(), rect.extend(), test_texture, 0, 1);
 
-        const float corner_radius = 10;
+//        const float corner_radius = 10;
 
-        painter.begin_path();
-        painter.set_fill_paint(pattern);
-        painter.add_rounded_rect(rect, corner_radius);
-        painter.fill();
-    }
+//        painter.begin_path();
+//        painter.set_fill_paint(pattern);
+//        painter.add_rounded_rect(rect, corner_radius);
+//        painter.fill();
+//    }
 
-    std::shared_ptr<Texture2> test_texture;
+//    std::shared_ptr<Texture2> test_texture;
 };
 
 class MyController : public BaseController<MyController> {

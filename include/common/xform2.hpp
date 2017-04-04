@@ -157,10 +157,10 @@ struct _Xform2 {
     }
 
     /** Inverts this Xform2 in-place. */
-    _Xform2& invert() { *this = (*this).get_inverse(); } // TODO: test Xform2::invert
+    _Xform2& invert() { *this = (*this).inverse(); } // TODO: test Xform2::invert
 
     /** Returns the inverse of this Xform2. */
-    _Xform2 get_inverse() const
+    _Xform2 inverse() const
     {
         const Value_t det = rows[0][0] * rows[1][1] - rows[1][0] * rows[0][1];
         if (abs(det) <= precision_high<Value_t>()) {

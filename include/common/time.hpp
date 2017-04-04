@@ -71,13 +71,10 @@ struct Time {
     }
 
 private: // static methods
-    /** Initializes the static fields of the Time class at the beginning of the application. */
-    static void initialize();
+    /** Set the global frequency value. */
+    static void set_frequency(Ticks ticks);
 
 private: // fields
-    /** Ticks on the system clock when the application was started (to keep the number of seconds low). */
-    static Ticks s_null;
-
     /** Ticks per second. */
     static Ticks s_frequency;
 };

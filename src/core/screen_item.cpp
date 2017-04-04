@@ -39,17 +39,16 @@ bool ScreenItem::set_opacity(float opacity)
     return true;
 }
 
-bool ScreenItem::_redraw()
+void ScreenItem::_redraw()
 {
     // do not request a redraw, if this item cannot be drawn anyway
     if (!is_visible()) {
-        return false;
+        return;
     }
 
     if (std::shared_ptr<Window> my_window = get_window()) {
         my_window->get_render_manager().request_redraw();
     }
-    return true;
 }
 
 bool ScreenItem::_set_size(const Size2f& size)
