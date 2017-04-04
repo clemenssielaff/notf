@@ -531,7 +531,7 @@ void RenderContext::_paint_to_frag(ShaderVariables& frag, const Paint& paint, co
         frag.scissorScale[1] = 1.0f;
     }
     else {
-        xformToMat3x4(frag.scissorMat, scissor.xform.inverse());
+        xformToMat3x4(frag.scissorMat, scissor.xform.get_inverse());
         frag.scissorExt[0]   = scissor.extend.width / 2;
         frag.scissorExt[1]   = scissor.extend.height / 2;
         frag.scissorScale[0] = sqrt(scissor.xform[0][0] * scissor.xform[0][0] + scissor.xform[1][0] * scissor.xform[1][0]) / fringe;
@@ -551,7 +551,7 @@ void RenderContext::_paint_to_frag(ShaderVariables& frag, const Paint& paint, co
         frag.radius  = paint.radius;
         frag.feather = paint.feather;
     }
-    xformToMat3x4(frag.paintMat, paint.xform.inverse());
+    xformToMat3x4(frag.paintMat, paint.xform.get_inverse());
 }
 
 

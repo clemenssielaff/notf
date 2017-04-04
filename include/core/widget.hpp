@@ -85,6 +85,9 @@ private: // fields
 
     /** Cell to draw this Widget into. */
     mutable Cell m_cell;
+
+    /** Clean Widgets can use their current Cell when painted, dirty Widgets have to redraw their Cell. */
+    mutable bool m_is_clean;
 };
 
 } // namespace notf

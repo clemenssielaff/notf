@@ -19,7 +19,7 @@ class MyWidget : public Widget {
 public:
     MyWidget(RenderContext& context)
         : Widget()
-//        , test_texture(context.load_texture("/home/clemens/code/notf/res/textures/face.png"))
+        , test_texture(context.load_texture("/home/clemens/code/notf/res/textures/face.png"))
     {
     }
 
@@ -499,7 +499,7 @@ public:
 //        painter.fill();
 //    }
 
-//    std::shared_ptr<Texture2> test_texture;
+    std::shared_ptr<Texture2> test_texture;
 };
 
 class MyController : public BaseController<MyController> {

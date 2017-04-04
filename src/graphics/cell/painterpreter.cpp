@@ -109,7 +109,7 @@ void Painterpreter::paint(Cell& cell)
                 _add_point(stylus, Point::Flags::CORNER);
             }
             else {
-                stylus = _get_current_state().xform.inverse().transform({m_points.back().pos.x, m_points.back().pos.y}); // TODO: that sucks
+                stylus = _get_current_state().xform.get_inverse().transform({m_points.back().pos.x, m_points.back().pos.y}); // TODO: that sucks
             }
             const BezierCommand& cmd = map_command<BezierCommand>(commands, index);
             _tesselate_bezier(stylus.x, stylus.y,
@@ -1067,7 +1067,7 @@ void paint_to_frag(RenderContext::ShaderVariables& frag, const Paint& paint, con
         frag.scissorScale[1] = 1.0f;
     }
     else {
-        xformToMat3x4(frag.scissorMat, scissor.xform.inverse());
+        xformToMat3x4(frag.scissorMat, scissor.xform.get_inverse());
         frag.scissorExt[0]   = scissor.extend.width / 2;
         frag.scissorExt[1]   = scissor.extend.height / 2;
         frag.scissorScale[0] = sqrt(scissor.xform[0][0] * scissor.xform[0][0] + scissor.xform[1][0] * scissor.xform[1][0]) / fringe;
@@ -1087,7 +1087,7 @@ void paint_to_frag(RenderContext::ShaderVariables& frag, const Paint& paint, con
         frag.radius  = paint.radius;
         frag.feather = paint.feather;
     }
-    xformToMat3x4(frag.paintMat, paint.xform.inverse());
+    xformToMat3x4(frag.paintMat, paint.xform.get_inverse());
 }
 
 } // namespace notf
