@@ -33,6 +33,7 @@
 #include "graphics/cell/cell.hpp"
 #include "graphics/cell/commands.hpp"
 #include "graphics/render_context.hpp"
+#include "graphics/cell/painterpreter.hpp"
 
 namespace { // anonymous
 using namespace notf;
@@ -43,6 +44,8 @@ static const float KAPPAf = static_cast<float>(KAPPA);
 } // namespace anonymous
 
 namespace notf {
+
+#define FAST_HACK 0
 
 /**********************************************************************************************************************/
 
@@ -193,11 +196,14 @@ void Painter::set_stroke_width(const float width)
 
 void Painter::begin_path()
 {
+#if FAST_HACK
     m_cell.m_commands.clear();
     m_cell.m_paths.clear();
     m_cell.m_points.clear();
     m_cell.m_vertices.clear();
     m_stylus = Vector2f::zero();
+#endif
+    m_cell.m_commands.add_command(BeginCommand());
 }
 
 void Painter::close_path()
@@ -385,6 +391,14 @@ void Painter::fill()
     _flatten_paths();
     _expand_fill(m_context.provides_geometric_aa());
     m_context.add_fill_call(fill_paint, m_cell);
+}
+
+void Painter::fill_new()
+{
+    m_cell.m_commands.add_command(FillCommand());
+#if FAST_HACK
+    m_context.m_painterpreter->paint(m_cell);
+#endif
 }
 
 void Painter::_expand_fill(const bool draw_antialiased)

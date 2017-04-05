@@ -245,6 +245,12 @@ void RenderContext::_finish_frame()
         return;
     }
 
+//    static bool do_it_once = false;
+//    if(!do_it_once){
+//        _dump_debug_info();
+//        do_it_once = true;
+//    }
+
     // reset cache
     m_stencil_func  = StencilFunc::INVALID;
     m_stencil_mask  = 0;
@@ -441,6 +447,46 @@ void RenderContext::_perform_stroke(const Call& call)
     glDisable(GL_STENCIL_TEST);
 }
 
+
+void RenderContext::_dump_debug_info() const
+{
+    log_format << "==========================================================\n"
+               << "== Render Context Dump Begin                            ==\n"
+               << "==========================================================";
+
+    log_format << "==========================================================\n"
+               << "== Arguments                                            ==";
+    log_trace << "Enable geometric AA: " << m_args.enable_geometric_aa;
+    log_trace << "Pixel ratio: " << m_args.pixel_ratio;
+
+    log_format << "==========================================================\n"
+               << "== Calls                                                ==";
+    for(const Call& call : m_calls){
+        log_trace << "Type: " << static_cast<int>(to_number(call.type)) << " | "
+                  << "Path offset:" << call.path_offset << ", Path count: " << call.path_count << " | "
+                  << "Uniform offset: " << call.uniform_offset << " | "
+                  << "Texture: " << call.texture << " | "
+                  << "Polygon offset: " << call.polygon_offset;
+    }
+
+    log_format << "==========================================================\n"
+               << "== Paths                                                ==";
+    for(const Path& path : m_paths){
+        log_trace << "Fill offset: " << path.fill_offset << ", Fill count:" << path.fill_count << " | "
+                  << "Stroke offset: " << path.stroke_offset << ", Stroke count" << path.stroke_count;
+    }
+
+    log_format << "==========================================================\n"
+               << "== Vertices                                             ==";
+    for(const Vertex& vertex : m_vertices){
+        log_trace << "Pos: " << vertex.pos.x << ", " << vertex.pos.y << " | "
+                  << "UV: "<< vertex.uv.x << ", " << vertex.uv.y;
+    }
+
+    log_format << "==========================================================\n"
+               << "== Render Context Dump End                              ==\n"
+               << "==========================================================";
+}
 
 void RenderContext::add_fill_call(const Paint& paint, const Cell& cell)
 {

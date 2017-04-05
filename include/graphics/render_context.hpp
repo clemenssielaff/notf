@@ -245,6 +245,11 @@ public:
     /** Strokes a path. */
     void _perform_stroke(const Call& call);
 
+    /** Writes the contents of a current frame to the log.
+     * Is very long ... you should probably only do this once per run.
+     */
+    void _dump_debug_info() const;
+
 //private: // static methods
     /** Size (in bytes) of a ShaderVariables struct. */
     static constexpr GLintptr fragmentSize() { return sizeof(ShaderVariables); }

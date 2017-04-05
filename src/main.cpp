@@ -155,7 +155,8 @@ public:
 //            const Color start_color = Color::from_hsl(a0, 1.0f, 0.55f, 1);
 //            const Color end_color   = Color::from_hsl(a1, 1.0f, 0.55f, 1);
 //            painter.set_fill_paint(Paint::create_linear_gradient(start_pos, end_pos, start_color, end_color));
-            painter.fill();
+//            painter.fill();
+            painter.fill_new();
         }
 
 //        // border around hue circle

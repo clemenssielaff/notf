@@ -45,7 +45,6 @@ Painterpreter::Painterpreter(RenderContext& context)
 // TODO: I'm pretty sure when writing vertices from Cell to RenderContext you'll need to xform them
 void Painterpreter::paint(Cell& cell)
 {
-    return;
     _reset();
 
     // parse the Cell's command buffer
@@ -66,6 +65,7 @@ void Painterpreter::paint(Cell& cell)
         case PainterCommand::BEGIN_PATH: {
             m_paths.clear();
             m_points.clear();
+            m_bounds = Aabrf::wrongest();
             index += command_size<BeginCommand>();
         } break;
 

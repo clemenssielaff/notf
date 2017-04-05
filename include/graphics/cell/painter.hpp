@@ -266,6 +266,7 @@ public: // methods
 
     /** Fills the current Path with the Paint defined in the Painter's current State. */
     void fill();
+    void fill_new();
 
     /** Strokes the current Path with the Paint defined in the Painter's current State. */
     void stroke();
