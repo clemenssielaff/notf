@@ -50,11 +50,13 @@ float scissorMask(vec2 p) {
 void main(void) {
     vec4 result;
     float scissor = scissorMask(fpos);
+
 #ifdef GEOMETRY_AA
     float strokeAlpha = strokeMask();
 #else
     float strokeAlpha = 1.0;
 #endif
+
     // Gradient
     if (type == 0) {
         // Calculate gradient color using box gradient
@@ -91,25 +93,6 @@ void main(void) {
     else if (type == 2) {
         result = vec4(1,1,1,1);
     }
-
-    // Textured tris
-    else if (type == 3) {
-        vec4 color = texture(tex, ftcoord);
-        if (texType == 1){
-            color = vec4(color.xyz*color.w,color.w);
-        }
-        if (texType == 2) {
-            color = vec4(color.x);
-        }
-        color *= scissor;
-        result = color * innerCol;
-    }
-
-#ifdef GEOMETRY_AA
-    if (strokeAlpha < strokeThr) {
-        discard;
-    }
-#endif
 
     // return result
     outColor = result;

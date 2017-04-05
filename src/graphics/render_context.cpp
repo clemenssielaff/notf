@@ -47,22 +47,6 @@ std::pair<std::string, std::string> create_shader_sources(const RenderContext& c
             header + cell_fragment_shader};
 }
 
-void xformToMat3x4(float* m3, Xform2f t)
-{
-    m3[0]  = t[0][0];
-    m3[1]  = t[0][1];
-    m3[2]  = 0.0f;
-    m3[3]  = 0.0f;
-    m3[4]  = t[1][0];
-    m3[5]  = t[1][1];
-    m3[6]  = 0.0f;
-    m3[7]  = 0.0f;
-    m3[8]  = t[2][0];
-    m3[9]  = t[2][1];
-    m3[10] = 1.0f;
-    m3[11] = 0.0f;
-}
-
 const GLuint FRAG_BINDING = 0;
 
 } // namespace anonymous
