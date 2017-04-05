@@ -4,7 +4,6 @@
 #include "common/time.hpp"
 #include "graphics/blend_mode.hpp"
 #include "graphics/cell/paint.hpp"
-#include "graphics/cell/cell.hpp"
 #include "graphics/scissor.hpp"
 
 namespace notf {
@@ -79,10 +78,9 @@ struct PainterState {
  */
 class Painter : public detail::PainterBase {
 
-public: // methods
-
     friend class Widget;
 
+public: // methods
     /** Value Constructor. */
     Painter(Cell& cell, RenderContext &context);
 
@@ -266,7 +264,6 @@ public: // methods
 
     /** Fills the current Path with the Paint defined in the Painter's current State. */
     void fill();
-    void fill_new();
 
     /** Strokes the current Path with the Paint defined in the Painter's current State. */
     void stroke();
@@ -279,7 +276,7 @@ public: // methods
     /** The mouse position relative to the Window's top-left corner. */
     const Vector2f& get_mouse_pos() const;
 
-//private: // methods
+private: // methods
     /** The current State of the Painter. */
     detail::PainterState& _get_current_state()
     {
@@ -294,20 +291,12 @@ public: // methods
         return s_states.back();
     }
 
-    void _flatten_paths();
-
-    void _add_point(const Vector2f position, const Cell::Point::Flags flags);
-
-
-    void _tesselate_bezier(const float x1, const float y1, const float x2, const float y2,
-                           const float x3, const float y3, const float x4, const float y4);
-
-//private: // fields
+private: // fields
     /** Cell, that this Painter is painting into. */
     Cell& m_cell;
 
     /** The Render Context in which the Painter operates. */
-    RenderContext& m_context;
+    const RenderContext& m_context;
 
     /** Current position of the 'stylus', as the last Command left it. */
     Vector2f m_stylus; // TODO: get rid of the stylus if possible
@@ -317,23 +306,9 @@ public: // methods
      */
     bool m_has_open_path;
 
-//private: // static fields
+private: // static fields
     /** Stack of all PainterStates of this Painter. */
     static std::vector<detail::PainterState> s_states;
-
-
-    float poly_area(const std::vector<Cell::Point>& points, const size_t offset, const size_t count);
-
-    void _expand_fill(const bool draw_antialiased);
-    void _calculate_joins(const float fringe, const LineJoin join, const float miter_limit);
-
-    void _bevel_join(const Cell::Point& previous_point, const Cell::Point& current_point, const float left_w, const float right_w,
-                     const float left_u, const float right_u);
-
-
-    std::tuple<float, float, float, float>
-    choose_bevel(bool is_beveling, const Cell::Point& prev_point, const Cell::Point& curr_point, const float stroke_width);
-
 };
 
 } // namespace notf

@@ -245,12 +245,6 @@ void RenderContext::_finish_frame()
         return;
     }
 
-//    static bool do_it_once = false;
-//    if(!do_it_once){
-//        _dump_debug_info();
-//        do_it_once = true;
-//    }
-
     // reset cache
     m_stencil_func  = StencilFunc::INVALID;
     m_stencil_mask  = 0;
@@ -447,7 +441,6 @@ void RenderContext::_perform_stroke(const Call& call)
     glDisable(GL_STENCIL_TEST);
 }
 
-
 void RenderContext::_dump_debug_info() const
 {
     log_format << "==========================================================\n"
@@ -487,118 +480,5 @@ void RenderContext::_dump_debug_info() const
                << "== Render Context Dump End                              ==\n"
                << "==========================================================";
 }
-
-void RenderContext::add_fill_call(const Paint& paint, const Cell& cell)
-{
-    m_calls.emplace_back();
-    Call& call = m_calls.back();
-    call.path_offset  = m_paths.size();
-    call.path_count   = cell.m_paths.size();
-    call.texture     = paint.texture;
-    if (call.path_count == 1 && cell.m_paths.front().is_convex) {
-        call.type = Call::Type::CONVEX_FILL;
-    }
-    else {
-        call.type = Call::Type::FILL;
-    }
-
-    //  this block is its own function in nanovg, called maxVertCount
-    size_t new_vertex_count = 6; // + 6 for the quad that we construct further down
-    for (const Cell::Path& path : cell.m_paths) {
-        new_vertex_count += path.fill_count;
-        new_vertex_count += path.stroke_count;
-    }
-    //
-
-    size_t offset = m_vertices.size();
-    m_vertices.reserve(m_vertices.size() + new_vertex_count);
-    m_paths.reserve(m_paths.size() + cell.m_paths.size());
-
-    for (const Cell::Path& path : cell.m_paths) {
-        Path path_index;
-        if (path.fill_count != 0) {
-            path_index.fill_offset = static_cast<GLint>(offset);
-            path_index.fill_count  = static_cast<GLsizei>(path.fill_count);
-            m_vertices.insert(std::end(m_vertices),
-                              iterator_at(cell.m_vertices, path.fill_offset),
-                              iterator_at(cell.m_vertices, path.fill_offset + path.fill_count));
-            offset += path.fill_count;
-        }
-        if (path.stroke_count != 0) {
-            path_index.stroke_offset = static_cast<GLint>(offset);
-            path_index.stroke_count  = static_cast<GLsizei>(path.stroke_count);
-            m_vertices.insert(std::end(m_vertices),
-                              iterator_at(cell.m_vertices, path.stroke_offset),
-                              iterator_at(cell.m_vertices, path.stroke_offset + path.stroke_count));
-            offset += path.stroke_count;
-        }
-        m_paths.emplace_back(std::move(path_index));
-    }
-
-    // create a quad around the bounds of the filled area
-    call.polygon_offset = static_cast<GLint>(offset);
-    const Aabrf& bounds = cell.m_bounds;
-    m_vertices.emplace_back(Vertex{Vector2f{bounds.left(), bounds.bottom()}, Vector2f{.5f, 1.f}});
-    m_vertices.emplace_back(Vertex{Vector2f{bounds.right(), bounds.bottom()}, Vector2f{.5f, 1.f}});
-    m_vertices.emplace_back(Vertex{Vector2f{bounds.right(), bounds.top()}, Vector2f{.5f, 1.f}});
-
-    m_vertices.emplace_back(Vertex{Vector2f{bounds.left(), bounds.bottom()}, Vector2f{.5f, 1.f}});
-    m_vertices.emplace_back(Vertex{Vector2f{bounds.right(), bounds.top()}, Vector2f{.5f, 1.f}});
-    m_vertices.emplace_back(Vertex{Vector2f{bounds.left(), bounds.top()}, Vector2f{.5f, 1.f}});
-
-    call.uniform_offset = static_cast<GLintptr>(m_shader_variables.size()) * fragmentSize();
-    if (call.type == Call::Type::FILL) {
-        // create an additional uniform buffer for a simple shader for the stencil
-        m_shader_variables.emplace_back(ShaderVariables());
-        ShaderVariables& stencil_uniforms = m_shader_variables.back();
-        stencil_uniforms.strokeThr         = -1;
-        stencil_uniforms.type              = ShaderVariables::Type::SIMPLE;
-    }
-
-    m_shader_variables.push_back({});
-    ShaderVariables& fill_uniforms = m_shader_variables.back();
-    _paint_to_frag(fill_uniforms, paint, Scissor{Xform2f::identity(), {-1,-1}},
-                   get_fringe_width(), get_fringe_width(), -1.0f);
-}
-
-
-
-void RenderContext::_paint_to_frag(ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
-                                   const float stroke_width, const float fringe, const float stroke_threshold)
-{
-    assert(fringe > 0);
-
-    frag.innerCol = paint.inner_color.premultiplied();
-    frag.outerCol = paint.outer_color.premultiplied();
-    if (scissor.extend.width < 1.0f || scissor.extend.height < 1.0f) { // extend cannot be less than a pixel
-        frag.scissorExt[0]   = 1.0f;
-        frag.scissorExt[1]   = 1.0f;
-        frag.scissorScale[0] = 1.0f;
-        frag.scissorScale[1] = 1.0f;
-    }
-    else {
-        xformToMat3x4(frag.scissorMat, scissor.xform.get_inverse());
-        frag.scissorExt[0]   = scissor.extend.width / 2;
-        frag.scissorExt[1]   = scissor.extend.height / 2;
-        frag.scissorScale[0] = sqrt(scissor.xform[0][0] * scissor.xform[0][0] + scissor.xform[1][0] * scissor.xform[1][0]) / fringe;
-        frag.scissorScale[1] = sqrt(scissor.xform[0][1] * scissor.xform[0][1] + scissor.xform[1][1] * scissor.xform[1][1]) / fringe;
-    }
-    frag.extent[0]  = paint.extent.width;
-    frag.extent[1]  = paint.extent.height;
-    frag.strokeMult = (stroke_width * 0.5f + fringe * 0.5f) / fringe;
-    frag.strokeThr  = stroke_threshold;
-
-    if (paint.texture) {
-        frag.type    = ShaderVariables::Type::IMAGE;
-        frag.texType = paint.texture->get_format() == Texture2::Format::GRAYSCALE ? 2 : 0; // TODO: change the 'texType' uniform in the shader to something more meaningful
-    }
-    else { // no image
-        frag.type    = ShaderVariables::Type::GRADIENT;
-        frag.radius  = paint.radius;
-        frag.feather = paint.feather;
-    }
-    xformToMat3x4(frag.paintMat, paint.xform.get_inverse());
-}
-
 
 } // namespace notf

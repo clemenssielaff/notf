@@ -9,7 +9,6 @@
 #include "common/vector2.hpp"
 #include "graphics/blend_mode.hpp"
 #include "graphics/cell/paint.hpp"
-#include "graphics/cell/cell.hpp"
 #include "graphics/gl_forwards.hpp"
 #include "graphics/stencil_func.hpp"
 #include "graphics/vertex.hpp"
@@ -59,8 +58,7 @@ class RenderContext {
     friend class Widget;
     friend class Painterpreter;
 
-public:
-//private: // classes
+private: // classes
     /******************************************************************************************************************/
     struct Path {
         GLint fill_offset    = 0;
@@ -149,7 +147,7 @@ public:
         GLuint variables;
     };
 
-//public: // /*methods*/
+public: // methods
     /******************************************************************************************************************/
     /** Constructor. */
     RenderContext(const Window* window, const RenderContextArguments args);
@@ -207,7 +205,7 @@ public:
                                          const std::string& vertex_shader_source,
                                          const std::string& fragment_shader_source);
 
-//private: // methods for friends
+private: // methods for friends
     /** Updates the time at the start of the rendering. */
     void _set_time(Time time) { m_time = time; }
 
@@ -235,7 +233,7 @@ public:
     /** Binds the Shader with the given ID, but only if it is not the currently bound one. */
     void _bind_shader(const GLuint shader_id);
 
-//private: // methods
+private: // methods
     /** Fills a simple, convex shape. */
     void _perform_convex_fill(const Call& call);
 
@@ -250,11 +248,11 @@ public:
      */
     void _dump_debug_info() const;
 
-//private: // static methods
+private: // static methods
     /** Size (in bytes) of a ShaderVariables struct. */
     static constexpr GLintptr fragmentSize() { return sizeof(ShaderVariables); }
 
-//private: // fields
+private: // fields
     /** The Window owning this RenderManager. */
     const Window* m_window;
 
@@ -340,16 +338,9 @@ public:
 
     GLuint m_vertex_buffer;
 
-//private: // static fields
+private: // static fields
     /** The current RenderContext. */
     static RenderContext* s_current_context;
-
-
-    void add_fill_call(const Paint& paint, const Cell& cell);
-
-    void _paint_to_frag(ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
-                        const float stroke_width, const float fringe, const float stroke_threshold);
-
 };
 
 } // namespace notf

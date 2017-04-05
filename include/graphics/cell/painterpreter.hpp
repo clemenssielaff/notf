@@ -12,8 +12,8 @@ class RenderContext;
 /**********************************************************************************************************************/
 
 class Painterpreter {
-public:
-//private: // types
+
+private: // types
     struct Point {
         enum Flags : uint {
             NONE       = 0,
@@ -60,14 +60,14 @@ public:
         bool is_convex = false;
     };
 
-//public: // methods
+public: // methods
     /** Constructor. */
     Painterpreter(RenderContext& context);
 
     /** Paints a given Cell into the RenderContext. */
     void paint(Cell& cell);
 
-//private: // methods
+private: // methods
     /** Resets the Painterpreter and clears all States, Points etc. */
     void _reset();
 
