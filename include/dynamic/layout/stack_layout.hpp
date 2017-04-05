@@ -20,9 +20,11 @@ class StackLayout;
  */
 class StackLayoutIterator : public LayoutIterator {
 
-    friend class MakeSmartEnabler<StackLayoutIterator>;
+    friend class StackLayout;
 
-private: // for MakeSmartEnabler<StackLayoutIterator>;
+private: // factory
+    struct make_shared_enabler;
+
     explicit StackLayoutIterator(const StackLayout* stack_layout)
         : m_layout(stack_layout)
         , m_index(0)

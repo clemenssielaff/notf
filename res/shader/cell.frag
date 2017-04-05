@@ -53,6 +53,12 @@ void main(void) {
 
 #ifdef GEOMETRY_AA
     float strokeAlpha = strokeMask();
+    if (strokeAlpha < strokeThr) {
+        discard;
+        // this really slows things down, but you can see (tiny) artefacts in the rotating angles when not set
+        // either find another way to fix the artefacts or provide a flag to enable this feature, as it is not used
+        // for anything else than transparent, overlapping strokes - but slows down everything significantly
+    }
 #else
     float strokeAlpha = 1.0;
 #endif

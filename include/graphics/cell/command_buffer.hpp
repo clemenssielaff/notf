@@ -42,15 +42,41 @@ struct PainterCommand {
         SET_LINE_JOIN,
     };
 
+public: // static methods
+    /** Bitwise conversion from a command_t to a Type enum. */
+    static constexpr Type command_t_to_type(command_t command)
+    {
+        union convert {
+            command_t f;
+            uint32_t i;
+        };
+        return static_cast<Type>(convert{command}.i);
+    }
+
+    /** Bitwise conversion from a Type enum to a command_t. */
+    static constexpr command_t type_to_command_t(Type type)
+    {
+        union convert {
+            uint32_t i;
+            command_t f;
+        };
+        return convert{to_number(type)}.f;
+    }
+
 protected: // method
     PainterCommand(Type type)
-        : type(static_cast<command_t>(to_number(type))) {} // TODO: static_casting is NOT what I want here
+        : type(type_to_command_t(type)) {}
 
 public: // field
     const command_t type;
 };
 
 /**********************************************************************************************************************/
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#endif
 
 class PainterCommandBuffer : public std::vector<PainterCommand::command_t> {
 
@@ -64,6 +90,10 @@ public: // methods
         insert(end(), std::make_move_iterator(std::begin(raw_array)), std::make_move_iterator(std::end(raw_array)));
     }
 };
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 /**********************************************************************************************************************/
 

@@ -19,9 +19,11 @@ class Overlayout;
  */
 class OverlayoutIterator : public LayoutIterator {
 
-    friend class MakeSmartEnabler<OverlayoutIterator>;
+    friend class Overlayout;
 
-private: // for MakeSmartEnabler<OverlayoutIterator>;
+private: // factory
+    struct make_shared_enabler;
+
     OverlayoutIterator(const Overlayout* overlayout)
         : m_layout(overlayout)
         , m_index(0)

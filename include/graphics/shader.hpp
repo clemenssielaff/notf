@@ -33,7 +33,9 @@ public: // static methods
     /** Unbinds any current active Shader. */
     static void unbind();
 
-private: // static method for RenderContext
+private: // factory
+    struct make_shared_enabler;
+
     /** Builds a new OpenGL ES Shader from sources.
      * @param context           Render Context in which the Shader lives.
      * @param shader_name       Name of this Shader.
@@ -45,7 +47,6 @@ private: // static method for RenderContext
                                          const std::string& vertex_shader_source,
                                          const std::string& fragment_shader_source);
 
-protected: // constructor
     /** Value Constructor.
      * @param id        OpenGL Shader program ID.
      * @param context   Render Context in which the Shader lives.

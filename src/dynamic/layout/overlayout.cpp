@@ -8,9 +8,19 @@
 #include "common/vector.hpp"
 #include "core/controller.hpp"
 #include "core/screen_item.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 namespace notf {
+
+struct OverlayoutIterator::make_shared_enabler : public OverlayoutIterator {
+    template <typename... Args>
+    make_shared_enabler(Args&&... args)
+        : OverlayoutIterator(std::forward<Args>(args)...) {}
+    virtual ~make_shared_enabler();
+};
+
+OverlayoutIterator::make_shared_enabler::~make_shared_enabler()
+{
+}
 
 const Item* OverlayoutIterator::next()
 {
@@ -66,7 +76,7 @@ void Overlayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
 
 std::unique_ptr<LayoutIterator> Overlayout::iter_items() const
 {
-    return std::make_unique<MakeSmartEnabler<OverlayoutIterator>>(this);
+    return std::make_unique<OverlayoutIterator::make_shared_enabler>(this);
 }
 
 void Overlayout::_remove_item(const Item* item)

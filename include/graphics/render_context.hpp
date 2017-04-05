@@ -55,7 +55,7 @@ class RenderContext {
     friend class RenderManager;
     friend class Shader;
     friend class Texture2;
-    friend class Widget;
+    friend class Widget; // TODO: these a quite a few friends you have there
     friend class Painterpreter;
 
 private: // classes
@@ -205,18 +205,12 @@ public: // methods
                                          const std::string& vertex_shader_source,
                                          const std::string& fragment_shader_source);
 
+    /** The Painterpreter painting into the RenderContext. */
+    Painterpreter& get_painterpreter() const { return *m_painterpreter.get(); }
+
 private: // methods for friends
-    /** Updates the time at the start of the rendering. */
-    void _set_time(Time time) { m_time = time; }
-
-    /** Updates the mouse position. */
-    void _set_mouse_pos(Vector2f pos) { m_mouse_pos = std::move(pos); }
-
-    /** Updates buffer size. */
-    void _set_buffer_size(Size2f buffer) { m_buffer_size = std::move(buffer); }
-
     /** Begins a new frame. */
-    void _begin_frame(const Size2i& buffer_size);
+    void _begin_frame(const Size2i& buffer_size, const Time time, const Vector2f mouse_pos);
 
     /** Aborts the drawing of the current frame if something went wrong. */
     void _reset();

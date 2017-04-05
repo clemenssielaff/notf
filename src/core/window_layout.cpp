@@ -7,9 +7,19 @@
 #include "core/controller.hpp"
 #include "core/render_manager.hpp"
 #include "core/window.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 namespace notf {
+
+struct WindowLayoutIterator::make_shared_enabler : public WindowLayoutIterator {
+    template <typename... Args>
+    make_shared_enabler(Args&&... args)
+        : WindowLayoutIterator(std::forward<Args>(args)...) {}
+    virtual ~make_shared_enabler();
+};
+
+WindowLayoutIterator::make_shared_enabler::~make_shared_enabler()
+{
+}
 
 const Item* WindowLayoutIterator::next()
 {
@@ -53,7 +63,7 @@ void WindowLayout::set_controller(std::shared_ptr<Controller> controller)
 
 std::unique_ptr<LayoutIterator> WindowLayout::iter_items() const
 {
-    return std::make_unique<MakeSmartEnabler<WindowLayoutIterator>>(this);
+    return std::make_unique<WindowLayoutIterator::make_shared_enabler>(this);
 }
 
 std::vector<Widget*> WindowLayout::get_widgets_at(const Vector2f& screen_pos) const

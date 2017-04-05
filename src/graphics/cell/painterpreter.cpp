@@ -50,7 +50,7 @@ void Painterpreter::paint(Cell& cell)
     // parse the Cell's command buffer
     const PainterCommandBuffer& commands = cell.get_commands();
     for (size_t index = 0; index < commands.size();) {
-        switch (static_cast<PainterCommand::Type>(commands[index])) { // TODO: static_cast is NOT what I want here
+        switch (PainterCommand::command_t_to_type(commands[index])) {
 
         case PainterCommand::Type::PUSH_STATE: {
             _push_state();

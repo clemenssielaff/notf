@@ -11,7 +11,6 @@
 #include "common/vector.hpp"
 #include "common/xform2.hpp"
 #include "core/controller.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
 
@@ -179,6 +178,17 @@ float cross_align_offset(const StackLayout::Alignment alignment, const float ite
 
 namespace notf {
 
+struct StackLayoutIterator::make_shared_enabler : public StackLayoutIterator {
+    template <typename... Args>
+    make_shared_enabler(Args&&... args)
+        : StackLayoutIterator(std::forward<Args>(args)...) {}
+    virtual ~make_shared_enabler();
+};
+
+StackLayoutIterator::make_shared_enabler::~make_shared_enabler()
+{
+}
+
 const Item* StackLayoutIterator::next()
 {
     if (m_index >= m_layout->m_items.size()) {
@@ -294,10 +304,10 @@ void StackLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*
     // TODO: StackLayout::get_widget_at is brute-force and does not respect transform (only translate)
     for (Item* item : m_items) {
         const ScreenItem* screen_item = get_screen_item(item);
-        if(!screen_item){
+        if (!screen_item) {
             continue;
         }
-        const Vector2f item_pos       = local_pos - screen_item->get_transform().translation();
+        const Vector2f item_pos = local_pos - screen_item->get_transform().translation();
         const Aabrf item_rect(screen_item->get_size());
         if (item_rect.contains(item_pos)) {
             _get_widgets_at_item_pos(screen_item, local_pos, result);
@@ -307,7 +317,7 @@ void StackLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*
 
 std::unique_ptr<LayoutIterator> StackLayout::iter_items() const
 {
-    return std::make_unique<MakeSmartEnabler<StackLayoutIterator>>(this);
+    return std::make_unique<StackLayoutIterator::make_shared_enabler>(this);
 }
 
 bool StackLayout::_update_claim()

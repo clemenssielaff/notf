@@ -61,7 +61,9 @@ public: // static methods
     /** Unbinds any current active Texture. */
     static void unbind();
 
-private: // static method for RenderContext
+private: // factory
+    struct make_shared_enabler;
+
     /** Loads a texture from a given file.
      * @param context   Render Context in which the Texture lives.
      * @param file_path Path to a texture file.
@@ -69,7 +71,6 @@ private: // static method for RenderContext
      */
     static std::shared_ptr<Texture2> load(RenderContext* context, const std::string file_path);
 
-protected: // constructor
     /** Value Constructor.
      * @param id        OpenGL texture ID.
      * @param context   Render Context in which the Texture lives.

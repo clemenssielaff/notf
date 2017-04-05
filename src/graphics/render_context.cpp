@@ -23,7 +23,7 @@ const char* cell_vertex_shader =
 
 // fragment shader source
 const char* cell_fragment_shader =
-#include "shader/cell.frag"
+#include "shader/cell.frag" // TODO: discard-question in cell fragment shader
 } // namespace anonymous
 
 namespace { // anonymous
@@ -34,8 +34,7 @@ std::pair<std::string, std::string> create_shader_sources(const RenderContext& c
 {
     // create the header
     std::stringstream ss;
-    ss << "#version 300 es\n"
-       << "#define UNIFORMARRAY_SIZE 11\n"; // TODO: why is UNIFORMARRAY_SIZE == 11 ?
+    ss << "#version 300 es\n";
     if (context.provides_geometric_aa()) {
         ss << "#define GEOMETRY_AA 1\n";
     }
@@ -205,14 +204,16 @@ std::shared_ptr<Shader> RenderContext::build_shader(const std::string& name,
     return shader;
 }
 
-void RenderContext::_begin_frame(const Size2i& buffer_size)
+void RenderContext::_begin_frame(const Size2i& buffer_size, const Time time, const Vector2f mouse_pos)
 {
     _reset();
 
     m_buffer_size.width  = static_cast<float>(buffer_size.width);
     m_buffer_size.height = static_cast<float>(buffer_size.height);
 
-    m_time = Time::now();
+    m_time = time;
+
+    m_mouse_pos = std::move(mouse_pos);
 }
 
 void RenderContext::_reset()

@@ -5,7 +5,6 @@
 #include "common/log.hpp"
 #include "core/opengl.hpp"
 #include "graphics/render_context.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
 
@@ -119,6 +118,12 @@ GLuint compile_shader(STAGE stage, const std::string& name, const std::string& s
 
 namespace notf {
 
+struct Shader::make_shared_enabler : public Shader {
+    template <typename... Args>
+    make_shared_enabler(Args&&... args)
+        : Shader(std::forward<Args>(args)...) {}
+};
+
 void Shader::unbind()
 {
     glUseProgram(GL_ZERO);
@@ -165,7 +170,7 @@ std::shared_ptr<Shader> Shader::build(RenderContext* context,
         glDeleteProgram(program);
         return {};
     }
-    return std::make_shared<MakeSmartEnabler<Shader>>(program, context, name);
+    return std::make_shared<make_shared_enabler>(program, context, name);
 }
 
 Shader::Shader(const GLuint id, RenderContext *context, const std::string name)

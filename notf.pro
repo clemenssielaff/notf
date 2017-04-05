@@ -244,7 +244,8 @@ HEADERS += \
     include/graphics/cell/painterpreter.hpp \
     include/graphics/scissor.hpp \
     include/graphics/cell/commands.hpp \
-    include/graphics/cell/command_buffer.hpp
+    include/graphics/cell/command_buffer.hpp \
+    include/common/identifier.hpp
 
 QMAKE_CXX = ccache g++
 

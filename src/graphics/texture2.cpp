@@ -6,7 +6,6 @@
 #include "core/opengl.hpp"
 #include "graphics/raw_image.hpp"
 #include "graphics/render_context.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
 using namespace notf;
@@ -63,6 +62,12 @@ GLint magfilter_to_gl(const Texture2::MagFilter filter)
 } // namespace anonymous
 
 namespace notf {
+
+struct Texture2::make_shared_enabler : public Texture2 {
+    template <typename... Args>
+    make_shared_enabler(Args&&... args)
+        : Texture2(std::forward<Args>(args)...) {}
+};
 
 void Texture2::unbind()
 {
@@ -158,7 +163,7 @@ std::shared_ptr<Texture2> Texture2::load(RenderContext* context, const std::stri
     }
 
     // return the loaded texture on success
-    return std::make_shared<MakeSmartEnabler<Texture2>>(
+    return std::make_shared<make_shared_enabler>(
         id, context, std::move(file_path),
         static_cast<GLuint>(image.get_width()), static_cast<GLuint>(image.get_height()), texture_format);
 }

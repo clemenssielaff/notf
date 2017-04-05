@@ -1,6 +1,8 @@
 #include "graphics/stats.hpp"
 
 #include "graphics/cell/painter.hpp"
+#include "graphics/cell/painterpreter.hpp"
+#include "graphics/render_context.hpp"
 
 namespace notf {
 
@@ -67,6 +69,8 @@ void RenderStats::render_stats(RenderContext& context)
     painter.line_to(m_aabr.bottom_right());
     painter.set_fill_color(Color(255, 192, 0, 128));
     painter.fill();
+
+    context.get_painterpreter().paint(m_cell);
 }
 
 } // namespace notf
