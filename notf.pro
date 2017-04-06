@@ -160,8 +160,7 @@ SOURCES += \
     src/graphics/render_context.cpp \
     src/graphics/cell/painter.cpp \
     src/graphics/cell/painterpreter.cpp \
-    src/graphics/cell/cell.cpp \
-    src/graphics/cell/commands.cpp
+    src/graphics/cell/cell.cpp
 
 HEADERS += \
     include/core/application.hpp \

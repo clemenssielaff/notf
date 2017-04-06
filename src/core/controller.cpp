@@ -27,7 +27,7 @@ void Controller::initialize()
     _initialize();
     if (!m_root_item) {
         log_trace << "Creating default empty Layout as root Item for Controller " << get_id();
-        m_root_item = std::make_shared<MakeSmartEnabler<Overlayout>>();
+        m_root_item = Overlayout::create();
         m_root_item->_set_parent(shared_from_this());
     }
 }

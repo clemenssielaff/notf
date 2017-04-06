@@ -178,23 +178,41 @@ float cross_align_offset(const StackLayout::Alignment alignment, const float ite
 
 namespace notf {
 
-struct StackLayoutIterator::make_shared_enabler : public StackLayoutIterator {
-    template <typename... Args>
-    make_shared_enabler(Args&&... args)
-        : StackLayoutIterator(std::forward<Args>(args)...) {}
-    virtual ~make_shared_enabler();
-};
-
-StackLayoutIterator::make_shared_enabler::~make_shared_enabler()
-{
-}
-
 const Item* StackLayoutIterator::next()
 {
     if (m_index >= m_layout->m_items.size()) {
         return nullptr;
     }
     return m_layout->m_items[m_index++];
+}
+
+/**********************************************************************************************************************/
+
+struct StackLayout::make_shared_enabler : public StackLayout {
+    template <typename... Args>
+    make_shared_enabler(Args&&... args)
+        : StackLayout(std::forward<Args>(args)...) {}
+    virtual ~make_shared_enabler();
+};
+StackLayout::make_shared_enabler::~make_shared_enabler() {}
+
+StackLayout::StackLayout(const Direction direction)
+    : Layout()
+    , m_direction(direction)
+    , m_main_alignment(Alignment::START)
+    , m_cross_alignment(Alignment::START)
+    , m_content_alignment(Alignment::START)
+    , m_wrap(Wrap::NO_WRAP)
+    , m_padding(Padding::none())
+    , m_spacing(0.f)
+    , m_cross_spacing(0.f)
+    , m_items()
+{
+}
+
+std::shared_ptr<StackLayout> StackLayout::create(const Direction direction)
+{
+    return std::make_shared<make_shared_enabler>(direction);
 }
 
 void StackLayout::set_direction(const Direction direction)
@@ -317,7 +335,7 @@ void StackLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*
 
 std::unique_ptr<LayoutIterator> StackLayout::iter_items() const
 {
-    return std::make_unique<StackLayoutIterator::make_shared_enabler>(this);
+    return std::make_unique<StackLayoutIterator>(this);
 }
 
 bool StackLayout::_update_claim()

@@ -11,23 +11,36 @@
 
 namespace notf {
 
-struct OverlayoutIterator::make_shared_enabler : public OverlayoutIterator {
-    template <typename... Args>
-    make_shared_enabler(Args&&... args)
-        : OverlayoutIterator(std::forward<Args>(args)...) {}
-    virtual ~make_shared_enabler();
-};
-
-OverlayoutIterator::make_shared_enabler::~make_shared_enabler()
-{
-}
-
 const Item* OverlayoutIterator::next()
 {
     if (m_index >= m_layout->m_items.size()) {
         return nullptr;
     }
     return m_layout->m_items[m_index++];
+}
+
+/**********************************************************************************************************************/
+
+struct Overlayout::make_shared_enabler : public Overlayout {
+    template <typename... Args>
+    make_shared_enabler(Args&&... args)
+        : Overlayout(std::forward<Args>(args)...) {}
+    virtual ~make_shared_enabler();
+};
+Overlayout::make_shared_enabler::~make_shared_enabler() {}
+
+Overlayout::Overlayout()
+    : Layout()
+    , m_padding(Padding::none())
+    , m_horizontal_alignment(Horizontal::CENTER)
+    , m_vertical_alignment(Vertical::CENTER)
+    , m_items()
+{
+}
+
+std::shared_ptr<Overlayout> Overlayout::create()
+{
+    return std::make_shared<make_shared_enabler>();
 }
 
 void Overlayout::set_padding(const Padding& padding)
@@ -63,7 +76,7 @@ void Overlayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
     // TODO: Overlayout::get_widget_at does not respect transform (only translate)
     for (const Item* item : m_items) {
         const ScreenItem* screen_item = get_screen_item(item);
-        if(!screen_item){
+        if (!screen_item) {
             continue;
         }
         const Vector2f item_pos = local_pos - screen_item->get_transform().translation();
@@ -76,7 +89,7 @@ void Overlayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
 
 std::unique_ptr<LayoutIterator> Overlayout::iter_items() const
 {
-    return std::make_unique<OverlayoutIterator::make_shared_enabler>(this);
+    return std::make_unique<OverlayoutIterator>(this);
 }
 
 void Overlayout::_remove_item(const Item* item)
@@ -92,7 +105,7 @@ void Overlayout::_relayout()
     const Size2f available_size = {total_size.width - m_padding.width(), total_size.height - m_padding.height()};
     for (Item* item : m_items) {
         ScreenItem* screen_item = get_screen_item(item);
-        if(!screen_item){
+        if (!screen_item) {
             continue;
         }
 

@@ -7,9 +7,6 @@
 
 namespace notf {
 
-template <typename T>
-class MakeSmartEnabler;
-
 class StackLayout;
 
 /**********************************************************************************************************************/
@@ -20,18 +17,15 @@ class StackLayout;
  */
 class StackLayoutIterator : public LayoutIterator {
 
-    friend class StackLayout;
-
-private: // factory
-    struct make_shared_enabler;
-
-    explicit StackLayoutIterator(const StackLayout* stack_layout)
+public: // methods
+    /** Constructor */
+    StackLayoutIterator(const StackLayout* stack_layout)
         : m_layout(stack_layout)
         , m_index(0)
     {
     }
 
-public: // methods
+    /** Destructor */
     virtual ~StackLayoutIterator() = default;
 
     /** Advances the Iterator one step, returns the next Item or nullptr if the iteration has finished. */
@@ -52,7 +46,6 @@ private: // fields
  */
 class StackLayout : public Layout {
 
-    friend class MakeSmartEnabler<StackLayout>;
     friend class StackLayoutIterator;
 
 public: // enums
@@ -91,7 +84,23 @@ public: // enums
         ACW           = COUNTERCLOCKWISE,
     };
 
+private: // factory
+    struct make_shared_enabler;
+
+    // clang-format off
+protected_except_for_bindings:
+    /** Constructor.
+     * @param direction Direction of the stack.
+     */
+    explicit StackLayout(const Direction direction);
+    // clang-format on
+
 public: // methods
+    /** Factory method.
+     * @param direction Direction of the stack.
+     */
+    static std::shared_ptr<StackLayout> create(const Direction direction);
+
     /** Direction in which items are stacked. */
     Direction get_direction() const { return m_direction; }
 
@@ -150,24 +159,6 @@ public: // methods
 
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
-    // clang-format off
-protected_except_for_bindings: // methods for MakeSmartEnabler<StackLayout>
-    /** @param direction Direction of the stack. */
-    explicit StackLayout(const Direction direction)
-        : Layout()
-        , m_direction(direction)
-        , m_main_alignment(Alignment::START)
-        , m_cross_alignment(Alignment::START)
-        , m_content_alignment(Alignment::START)
-        , m_wrap(Wrap::NO_WRAP)
-        , m_padding(Padding::none())
-        , m_spacing(0.f)
-        , m_cross_spacing(0.f)
-        , m_items()
-    {
-    }
-
-    // clang-format on
 protected: // methods
     virtual bool _update_claim() override;
 

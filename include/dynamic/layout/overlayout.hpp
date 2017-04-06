@@ -6,9 +6,6 @@
 
 namespace notf {
 
-template <typename T>
-class MakeSmartEnabler;
-
 class Overlayout;
 
 /**********************************************************************************************************************/
@@ -19,18 +16,15 @@ class Overlayout;
  */
 class OverlayoutIterator : public LayoutIterator {
 
-    friend class Overlayout;
-
-private: // factory
-    struct make_shared_enabler;
-
+public: // methods
+    /** Constructor */
     OverlayoutIterator(const Overlayout* overlayout)
         : m_layout(overlayout)
         , m_index(0)
     {
     }
 
-public: // methods
+    /** Destructor */
     virtual ~OverlayoutIterator() = default;
 
     /** Advances the Iterator one step, returns the next Item or nullptr if the iteration has finished. */
@@ -51,7 +45,6 @@ private: // fields
  */
 class Overlayout : public Layout {
 
-    friend class MakeSmartEnabler<Overlayout>;
     friend class OverlayoutIterator;
 
 public: // enums
@@ -69,7 +62,18 @@ public: // enums
         BOTTOM,
     };
 
+private: // factory
+    struct make_shared_enabler;
+
+    // clang-format off
+protected_except_for_bindings: // factory
+    Overlayout();
+    // clang-format on
+
 public: // methods
+    /** Factory method */
+    static std::shared_ptr<Overlayout> create();
+
     /** Padding around the Layout's border. */
     const Padding& get_padding() const { return m_padding; }
 
@@ -105,18 +109,6 @@ public: // methods
 
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
-    // clang-format off
-protected_except_for_bindings: // methods for MakeSmartEnabler<Overlayout>
-    Overlayout()
-        : Layout()
-        , m_padding(Padding::none())
-        , m_horizontal_alignment(Horizontal::CENTER)
-        , m_vertical_alignment(Vertical::CENTER)
-        , m_items()
-    {
-    }
-
-    // clang-format on
 protected: // methods
     virtual bool _update_claim() override
     {

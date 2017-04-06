@@ -14,17 +14,14 @@ class Window;
  */
 class WindowLayoutIterator : public LayoutIterator {
 
-    friend class WindowLayout;
-
-private: // factory
-    struct make_shared_enabler;
-
-    WindowLayoutIterator(const WindowLayout* window_layout) // TODO: is it really that imporant that LayoutIterator constructors are not public?
+public: // methods
+    /** Constructor */
+    WindowLayoutIterator(const WindowLayout* window_layout)
         : m_layout(window_layout)
     {
     }
 
-public: // methods
+    /** Destructor */
     virtual ~WindowLayoutIterator() = default;
 
     /** Advances the Iterator one step, returns the next Item or nullptr if the iteration has finished. */

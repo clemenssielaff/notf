@@ -26,8 +26,8 @@ struct BeginCommand : public PainterCommand {
 /** Command setting the winding direction for the next fill or stroke. */
 struct SetWindingCommand : public PainterCommand {
     SetWindingCommand(Painter::Winding winding)
-        : PainterCommand(SET_WINDING), winding(static_cast<float>(to_number(winding))) {}
-    float winding;
+        : PainterCommand(SET_WINDING), winding(winding) {}
+    Painter::Winding winding;
 };
 
 /** Command to close the current path. */

@@ -10,17 +10,6 @@
 
 namespace notf {
 
-struct WindowLayoutIterator::make_shared_enabler : public WindowLayoutIterator {
-    template <typename... Args>
-    make_shared_enabler(Args&&... args)
-        : WindowLayoutIterator(std::forward<Args>(args)...) {}
-    virtual ~make_shared_enabler();
-};
-
-WindowLayoutIterator::make_shared_enabler::~make_shared_enabler()
-{
-}
-
 const Item* WindowLayoutIterator::next()
 {
     if (m_layout) {
@@ -63,7 +52,7 @@ void WindowLayout::set_controller(std::shared_ptr<Controller> controller)
 
 std::unique_ptr<LayoutIterator> WindowLayout::iter_items() const
 {
-    return std::make_unique<WindowLayoutIterator::make_shared_enabler>(this);
+    return std::make_unique<WindowLayoutIterator>(this);
 }
 
 std::vector<Widget*> WindowLayout::get_widgets_at(const Vector2f& screen_pos) const
