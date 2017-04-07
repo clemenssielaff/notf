@@ -1080,7 +1080,6 @@ void paint_to_frag(RenderContext::ShaderVariables& frag, const Paint& paint, con
 
     if (paint.texture) {
         frag.type    = RenderContext::ShaderVariables::Type::IMAGE;
-        frag.texType = paint.texture->get_format() == Texture2::Format::GRAYSCALE ? 2 : 0; // TODO: change the 'texType' uniform in the shader to something more meaningful
     }
     else { // no image
         frag.type    = RenderContext::ShaderVariables::Type::GRADIENT;

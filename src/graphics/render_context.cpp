@@ -23,7 +23,7 @@ const char* cell_vertex_shader =
 
 // fragment shader source
 const char* cell_fragment_shader =
-#include "shader/cell.frag" // TODO: discard-question in cell fragment shader
+#include "shader/cell.frag"
 } // namespace anonymous
 
 namespace { // anonymous
@@ -37,6 +37,9 @@ std::pair<std::string, std::string> create_shader_sources(const RenderContext& c
     ss << "#version 300 es\n";
     if (context.provides_geometric_aa()) {
         ss << "#define GEOMETRY_AA 1\n";
+        if(context.has_save_alpha_strokes()){
+            ss << "#define SAVE_ALPHA_STROKE 1\n";
+        }
     }
     ss << "\n";
     std::string header = ss.str();
@@ -324,7 +327,7 @@ void RenderContext::_perform_convex_fill(const Call& call)
         assert(static_cast<size_t>(m_paths[i].fill_offset + m_paths[i].fill_count) <= m_vertices.size());
         glDrawArrays(GL_TRIANGLE_FAN, m_paths[i].fill_offset, m_paths[i].fill_count);
     }
-    if (m_args.enable_geometric_aa) {
+    if (m_args.geometric_aa) {
         // draw fringes
         for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
             assert(static_cast<size_t>(m_paths[i].stroke_offset + m_paths[i].stroke_count) <= m_vertices.size());
@@ -363,7 +366,7 @@ void RenderContext::_perform_fill(const Call& call)
         _bind_texture(call.texture->get_id());
     }
 
-    if (m_args.enable_geometric_aa) {
+    if (m_args.geometric_aa) {
         set_stencil_func(StencilFunc::EQUAL);
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         // draw fringes
@@ -434,7 +437,7 @@ void RenderContext::_dump_debug_info() const
 
     log_format << "==========================================================\n"
                << "== Arguments                                            ==";
-    log_trace << "Enable geometric AA: " << m_args.enable_geometric_aa;
+    log_trace << "Enable geometric AA: " << m_args.geometric_aa;
     log_trace << "Pixel ratio: " << m_args.pixel_ratio;
 
     log_format << "==========================================================\n"

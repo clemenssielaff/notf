@@ -138,7 +138,7 @@ void FontManager::render_text(const std::string& text, ushort x, ushort y, const
     }
 
     // update the shader uniforms
-    m_font_shader->bind(); // TODO: Can I use the cell shader for fonts?
+    m_font_shader->bind();
 
     const Transform3 proj_matrix = Transform3::orthographic(m_window_size.width, m_window_size.height, 0.05f, 100.0f);
     glUniformMatrix4fv(m_view_proj_matrix_uniform, 1, GL_FALSE, proj_matrix.as_ptr());

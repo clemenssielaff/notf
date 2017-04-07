@@ -9,7 +9,7 @@ namespace notf {
 
 class RenderContext;
 
-class RenderStats { // TODO: more expressive stats when the graphics rework is done
+class RenderStats {
 
 public: // methods
     /** Default Constructor. */

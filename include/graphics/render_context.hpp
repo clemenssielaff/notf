@@ -32,7 +32,19 @@ struct RenderContextArguments {
      * However, in a 3D application, you will most likely require true multisampling anyway, in which case we don't
      * need the redundant geometrical antialiasing on top.
      */
-    bool enable_geometric_aa = true;
+    bool geometric_aa = true;
+
+    /** When painting a semi-transparent stroke with enabled geometric AA, this will discard fragments around the
+     * antialised edge of the stroke that would interfere with a self-crossing stroke.
+     * This is a potentially expensive operation which is only noticeable in special circumstances, hence the flag.
+     * TL;DR:
+     *  - If you don't use geometric antialiasing, this has no effect.
+     *  - If you do use it and notice no performance hit just leave it on.
+     *  - If you do use it and it is slow and yet you see no artefacts, chances are you are not hitting the edge-case
+     *    in question and you could disable this flag.
+     * To see the effect in question, set this to false and play the test case with the rotating strokes.
+     */
+    bool save_alpha_stroke = true;
 
     /** Pixel ratio of the RenderContext.
      * Calculate the pixel ratio using `Window::get_buffer_size().width() / Window::get_window_size().width()`.
@@ -85,7 +97,7 @@ private: // classes
 
     /******************************************************************************************************************/
 
-    struct ShaderVariables { //  TODO: replace more of the float[]s with explicit types
+    struct alignas(8) ShaderVariables {
         enum class Type : GLint {
             GRADIENT,
             IMAGE,
@@ -99,7 +111,6 @@ private: // classes
               feather{0},
               strokeMult{0},
               strokeThr{0},
-              texType{0},
               type{Type::SIMPLE}
         {
             for (auto i = 0; i < 12; ++i) {
@@ -124,7 +135,6 @@ private: // classes
         float feather;
         float strokeMult;
         float strokeThr;
-        int texType;
         Type type;
     };
 
@@ -168,7 +178,12 @@ public: // methods
     float get_pixel_ratio() const { return m_args.pixel_ratio; }
 
     /** Whether Cells should provide their own geometric antialiasing or not. */
-    bool provides_geometric_aa() const { return m_args.enable_geometric_aa; }
+    bool provides_geometric_aa() const { return m_args.geometric_aa; }
+
+    /** Whether the fragment shader should discard antialiased stroke fragments below a certain threshold
+     * See RenderContextArguments for details.
+     */
+    bool has_save_alpha_strokes() const { return m_args.save_alpha_stroke; }
 
     /** Furthest distance between two points in which the second point is considered equal to the first. */
     float get_distance_tolerance() const { return m_distance_tolerance; }

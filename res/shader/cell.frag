@@ -18,7 +18,6 @@ layout(std140) uniform frag {
     float feather;
     float strokeMult;
     float strokeThr;
-    int texType;
     int type;
 };
 uniform sampler2D tex;
@@ -53,12 +52,11 @@ void main(void) {
 
 #ifdef GEOMETRY_AA
     float strokeAlpha = strokeMask();
+#ifdef SAVE_ALPHA_STROKE
     if (strokeAlpha < strokeThr) {
         discard;
-        // this really slows things down, but you can see (tiny) artefacts in the rotating angles when not set
-        // either find another way to fix the artefacts or provide a flag to enable this feature, as it is not used
-        // for anything else than transparent, overlapping strokes - but slows down everything significantly
     }
+#endif
 #else
     float strokeAlpha = 1.0;
 #endif
@@ -80,12 +78,12 @@ void main(void) {
         // Calculate color from texture
         vec2 pt = (paintMat * vec3(fpos,1.0)).xy / extent;
         vec4 color = texture(tex, pt);
-        if (texType == 1) {
-            color = vec4(color.xyz*color.w,color.w);
-        }
-        else if (texType == 2) {
-            color = vec4(color.x);
-        }
+//        if (texType == 1) {
+//            color = vec4(color.xyz*color.w,color.w);
+//        }
+//        else if (texType == 2) {
+//            color = vec4(color.x);
+//        }
 
         // Apply color tint and alpha.
         color *= innerCol;
