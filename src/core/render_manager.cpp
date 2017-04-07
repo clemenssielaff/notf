@@ -8,14 +8,39 @@
 #include "core/window_layout.hpp"
 #include "graphics/render_context.hpp"
 #include "graphics/stats.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 namespace notf {
+
+struct RenderLayer::make_shared_enabler : public RenderLayer {
+    template <typename... Args>
+    make_shared_enabler(Args&&... args)
+        : RenderLayer(std::forward<Args>(args)...) {}
+};
+
+std::shared_ptr<RenderLayer> RenderLayer::create()
+{
+    return std::make_shared<make_shared_enabler>();
+}
+
+/**********************************************************************************************************************/
+
+//struct RenderManager::make_shared_enabler : public RenderManager {
+//    template <typename... Args>
+//    make_shared_enabler(Args&&... args)
+//        : RenderManager(std::forward<Args>(args)...) {}
+//    virtual ~make_shared_enabler();
+//};
+//RenderManager::make_shared_enabler::~make_shared_enabler() {}
+
+//std::unique_ptr<RenderManager> RenderManager::create(const Window* window)
+//{
+//    return std::make_unique<make_shared_enabler>(window);
+//}
 
 RenderManager::RenderManager(const Window* window)
     : m_window(window)
     , m_render_context()
-    , m_default_layer(std::make_shared<MakeSmartEnabler<RenderLayer>>())
+    , m_default_layer(RenderLayer::create())
     , m_layers({m_default_layer})
     , m_is_clean(false)
     , m_stats()
@@ -32,13 +57,13 @@ RenderManager::~RenderManager() = default; // without this, the forward declared
 
 std::shared_ptr<RenderLayer> RenderManager::create_front_layer()
 {
-    m_layers.emplace_back(std::make_shared<MakeSmartEnabler<RenderLayer>>());
+    m_layers.emplace_back(RenderLayer::create());
     return m_layers.back();
 }
 
 std::shared_ptr<RenderLayer> RenderManager::create_back_layer()
 {
-    m_layers.emplace(m_layers.begin(), std::make_shared<MakeSmartEnabler<RenderLayer>>());
+    m_layers.emplace(m_layers.begin(), RenderLayer::create());
     return m_layers.front();
 }
 
@@ -50,7 +75,7 @@ std::shared_ptr<RenderLayer> RenderManager::create_layer_above(const std::shared
         return {};
     }
 
-    std::shared_ptr<RenderLayer> result = std::make_shared<MakeSmartEnabler<RenderLayer>>();
+    std::shared_ptr<RenderLayer> result = RenderLayer::create();
     m_layers.emplace(++it, result);
     return result;
 }
@@ -63,7 +88,7 @@ std::shared_ptr<RenderLayer> RenderManager::create_layer_below(const std::shared
         return {};
     }
 
-    std::shared_ptr<RenderLayer> result = std::make_shared<MakeSmartEnabler<RenderLayer>>();
+    std::shared_ptr<RenderLayer> result = RenderLayer::create();
     m_layers.emplace(it, result);
     return result;
 }
@@ -97,7 +122,7 @@ void RenderManager::render(const Size2i buffer_size)
     m_is_clean = true;
 
     // draw the render stats on top
-    if (m_stats) { // TODO: make stats work again
+    if (m_stats) {
         double time_elapsed = (Time::now().since(time_at_start)).in_seconds();
         m_stats->update(static_cast<float>(time_elapsed));
         m_stats->render_stats(render_context);

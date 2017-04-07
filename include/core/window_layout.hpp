@@ -40,7 +40,11 @@ class WindowLayout : public Layout {
     friend class WindowLayoutIterator;
     friend class Window;
 
-protected: // methods
+private: // factory
+    struct make_shared_enabler;
+
+    static std::shared_ptr<WindowLayout> create(const std::shared_ptr<Window>& window);
+
     /** @param window   Window owning this RootWidget. */
     explicit WindowLayout(const std::shared_ptr<Window>& window);
 

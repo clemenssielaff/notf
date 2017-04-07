@@ -5,13 +5,12 @@
 #include "core/events/key_event.hpp"
 #include "core/events/mouse_event.hpp"
 #include "core/glfw.hpp"
-#include "core/window_layout.hpp"
 #include "core/render_manager.hpp"
 #include "core/resource_manager.hpp"
 #include "core/widget.hpp"
+#include "core/window_layout.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/raw_image.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 namespace notf {
 
@@ -21,6 +20,14 @@ void window_deleter(GLFWwindow* glfw_window)
         glfwDestroyWindow(glfw_window);
     }
 }
+
+struct Window::make_shared_enabler : public Window {
+    template <typename... Args>
+    make_shared_enabler(Args&&... args)
+        : Window(std::forward<Args>(args)...) {}
+    virtual ~make_shared_enabler();
+};
+Window::make_shared_enabler::~make_shared_enabler() {}
 
 Window::Window(const WindowInfo& info)
     : m_glfw_window(nullptr, window_deleter)
@@ -54,7 +61,7 @@ Window::Window(const WindowInfo& info)
     // setup OpenGL and create the render manager
     glfwMakeContextCurrent(m_glfw_window.get());
     glfwSwapInterval(app.get_info().enable_vsync ? 1 : 0);
-    m_render_manager = std::make_unique<MakeSmartEnabler<RenderManager>>(this);
+    m_render_manager = std::make_unique<RenderManager>(this);
 
     // apply the Window icon
     // In order to remove leftover icons on Ubuntu call:
@@ -75,6 +82,26 @@ Window::Window(const WindowInfo& info)
             log_warning << "Failed to load Window icon '" << icon_path << "'";
         }
     }
+}
+
+std::shared_ptr<Window> Window::create(const WindowInfo& info)
+{
+
+    std::shared_ptr<Window> window = std::make_shared<make_shared_enabler>(info);
+    if (check_gl_error()) {
+        exit(to_number(Application::RETURN_CODE::OPENGL_FAILURE));
+    }
+    else {
+        log_info << "Created Window '" << window->get_title() << "' "
+                 << "using OpenGl version: " << glGetString(GL_VERSION);
+    }
+
+    // inititalize the window
+    Application::get_instance()._register_window(window);
+    window->m_layout = WindowLayout::create(window);
+    window->m_layout->_set_size(window->get_buffer_size());
+
+    return window;
 }
 
 Window::~Window()
@@ -120,9 +147,9 @@ void Window::_update()
     assert(m_glfw_window);
 
     // do nothing, if there are no Widgets in need to be redrawn
-    if (m_render_manager->is_clean()) {
-        return;
-    }
+//    if (m_render_manager->is_clean()) { // TODO: dirty mechanism for RenderManager
+//        return;
+//    }
 
     // make the window current
     Application::get_instance()._set_current_window(this);
@@ -165,28 +192,9 @@ void Window::close()
     m_size = Size2i::invalid();
 }
 
-std::shared_ptr<Window> Window::create(const WindowInfo& info)
-{
-    std::shared_ptr<Window> window = std::make_shared<MakeSmartEnabler<Window>>(info);
-    if (check_gl_error()) {
-        exit(to_number(Application::RETURN_CODE::OPENGL_FAILURE));
-    }
-    else {
-        log_info << "Created Window '" << window->get_title() << "' "
-                 << "using OpenGl version: " << glGetString(GL_VERSION);
-    }
-
-    // inititalize the window
-    Application::get_instance()._register_window(window);
-    window->m_layout = std::make_shared<MakeSmartEnabler<WindowLayout>>(window);
-    window->m_layout->_set_size(window->get_buffer_size());
-
-    return window;
-}
-
 void Window::_on_resize(int width, int height)
 {
-    m_size.width = width;
+    m_size.width  = width;
     m_size.height = height;
     m_layout->_set_size(get_buffer_size());
 }

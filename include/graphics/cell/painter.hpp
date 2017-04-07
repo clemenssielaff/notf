@@ -299,7 +299,7 @@ private: // fields
     const RenderContext& m_context;
 
     /** Current position of the 'stylus', as the last Command left it. */
-    Vector2f m_stylus; // TODO: get rid of the stylus if possible
+    Vector2f m_stylus;
 
     /** Keeps track of whether the Painter has a current, open path or not.
      * If not, it has to create a new Path before addng Points.

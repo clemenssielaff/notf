@@ -197,7 +197,6 @@ HEADERS += \
     include/common/padding.hpp \
     include/utils/reverse_iterator.hpp \
     include/dynamic/layout/overlayout.hpp \
-    include/utils/make_smart_enabler.hpp \
     include/core/item.hpp \
     include/core/screen_item.hpp \
     include/utils/binding_accessors.hpp \

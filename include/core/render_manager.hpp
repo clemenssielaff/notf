@@ -21,7 +21,11 @@ class RenderLayer {
 
     friend class RenderManager;
 
-protected: // constructor
+protected: // factory
+    struct make_shared_enabler;
+
+    static std::shared_ptr<RenderLayer> create();
+
     RenderLayer() = default;
 
 private: // fields
@@ -34,15 +38,15 @@ private: // fields
 /** The RenderManager class */
 class RenderManager {
 
-protected: // methods
+public: // methods
+    /** Constructor */
     explicit RenderManager(const Window* window);
 
-public: // methods
     /** Destructor. */
     ~RenderManager();
 
     /** Checks, whether there are any LayoutItems that need to be redrawn. */
-    bool is_clean() const { return false /*m_is_clean*/; } // TODO: Test only
+    bool is_clean() const { return m_is_clean; }
 
     /** Returns the default RenderLayer that always exists. */
     std::shared_ptr<RenderLayer> get_default_layer() const { return m_default_layer; }

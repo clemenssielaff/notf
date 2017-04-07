@@ -22,6 +22,19 @@ const Item* WindowLayoutIterator::next()
 
 /**********************************************************************************************************************/
 
+struct WindowLayout::make_shared_enabler : public WindowLayout {
+    template <typename... Args>
+    make_shared_enabler(Args&&... args)
+        : WindowLayout(std::forward<Args>(args)...) {}
+    virtual ~make_shared_enabler();
+};
+WindowLayout::make_shared_enabler::~make_shared_enabler() {}
+
+std::shared_ptr<WindowLayout> WindowLayout::create(const std::shared_ptr<Window>& window)
+{
+    return std::make_shared<make_shared_enabler>(window);
+}
+
 WindowLayout::WindowLayout(const std::shared_ptr<Window>& window)
     : Layout()
     , m_window(window.get())

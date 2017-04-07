@@ -51,9 +51,18 @@ class Window : public receive_signals, public std::enable_shared_from_this<Windo
     friend class Application;
     friend class RenderContext;
 
-protected: // constructor
+protected: // factory
+    struct make_shared_enabler;
+
     /** @param info     WindowInfo providing initialization arguments. */
     explicit Window(const WindowInfo& info);
+
+public: // static methods
+    /** Factory function to create a new Window.
+     * @param info  WindowInfo providing initialization arguments.
+     * @return      The created Window, pointer is empty on error.
+     */
+    static std::shared_ptr<Window> create(const WindowInfo& info = WindowInfo());
 
 public: // methods
     /** Destructor. */
@@ -93,13 +102,6 @@ public: // methods
 
     /** Returns false if the GLFW window is still open or true if it was closed. */
     bool was_closed() const { return !(static_cast<bool>(m_glfw_window)); }
-
-public: // static methods
-    /** Factory function to create a new Window.
-     * @param info  WindowInfo providing initialization arguments.
-     * @return      The created Window, pointer is empty on error.
-     */
-    static std::shared_ptr<Window> create(const WindowInfo& info = WindowInfo());
 
 public: // signals
     /** Emitted, when a single key was pressed / released / repeated. */

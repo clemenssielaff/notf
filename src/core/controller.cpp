@@ -3,7 +3,6 @@
 #include "common/log.hpp"
 #include "core/screen_item.hpp"
 #include "dynamic/layout/overlayout.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 namespace notf {
 
