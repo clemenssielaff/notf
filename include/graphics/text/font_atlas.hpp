@@ -58,12 +58,12 @@ public: // struct
             : x(x), y(y), width(width), height(height) {}
     };
 
-    struct NamedRect {
+    struct ProtoGlyph {
         codepoint_t code_point;
         Rect rect;
 
-        NamedRect() = default;
-        NamedRect(codepoint_t code_point, Rect rect)
+        ProtoGlyph() = default;
+        ProtoGlyph(codepoint_t code_point, Rect rect)
             : code_point(code_point), rect(std::move(rect)) {}
     };
 
@@ -164,7 +164,7 @@ public: // methods
     /** Places and returns multiple rectangles into the Atlas.
      * Produces a better fit than multiple calls to `insert_rect`.
      */
-    std::vector<NamedRect> insert_rects(std::vector<NamedExtend> named_extends);
+    std::vector<ProtoGlyph> insert_rects(std::vector<NamedExtend> named_extends);
 
     /** Fills a rect in the Atlas with the given data.
      * Does not check whether the rect corresponds to a node in the atlas, I trust you know what you are doing.

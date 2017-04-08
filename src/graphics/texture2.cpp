@@ -5,7 +5,7 @@
 #include "common/log.hpp"
 #include "core/opengl.hpp"
 #include "graphics/raw_image.hpp"
-#include "graphics/render_context.hpp"
+#include "graphics/graphics_context.hpp"
 
 namespace { // anonymous
 using namespace notf;
@@ -74,7 +74,7 @@ void Texture2::unbind()
     glBindTexture(GL_TEXTURE_2D, GL_ZERO);
 }
 
-std::shared_ptr<Texture2> Texture2::load(RenderContext* context, const std::string file_path)
+std::shared_ptr<Texture2> Texture2::load(GraphicsContext* context, const std::string file_path)
 {
     assert(context);
     context->make_current();
@@ -168,10 +168,10 @@ std::shared_ptr<Texture2> Texture2::load(RenderContext* context, const std::stri
         static_cast<GLuint>(image.get_width()), static_cast<GLuint>(image.get_height()), texture_format);
 }
 
-Texture2::Texture2(const GLuint id, RenderContext* context, const std::string name,
+Texture2::Texture2(const GLuint id, GraphicsContext* context, const std::string name,
                    const GLuint width, const GLuint height, const Format format)
     : m_id(id)
-    , m_render_context(context)
+    , m_graphics_context(context)
     , m_name(name)
     , m_width(width)
     , m_height(height)
@@ -181,7 +181,7 @@ Texture2::Texture2(const GLuint id, RenderContext* context, const std::string na
     , m_wrap_x(Wrap::REPEAT)
     , m_wrap_y(Wrap::REPEAT)
 {
-    assert(m_render_context);
+    assert(m_graphics_context);
 }
 
 Texture2::~Texture2()
@@ -192,8 +192,8 @@ Texture2::~Texture2()
 bool Texture2::bind() const
 {
     if (is_valid()) {
-        m_render_context->make_current();
-        m_render_context->_bind_texture(m_id);
+        m_graphics_context->make_current();
+        m_graphics_context->_bind_texture(m_id);
         return true;
     }
     else {
@@ -233,11 +233,11 @@ void Texture2::set_wrap_y(const Wrap wrap)
 void Texture2::_deallocate()
 {
     if (m_id) {
-        m_render_context->make_current();
+        m_graphics_context->make_current();
         glDeleteTextures(1, &m_id);
         log_trace << "Deleted OpenGL texture with ID: " << m_id;
         m_id             = 0;
-        m_render_context = nullptr;
+        m_graphics_context = nullptr;
     }
 }
 

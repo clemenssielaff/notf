@@ -9,8 +9,10 @@
 #include "core/resource_manager.hpp"
 #include "core/widget.hpp"
 #include "core/window_layout.hpp"
+#include "graphics/cell/cell_context.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/raw_image.hpp"
+#include "graphics/graphics_context.hpp"
 
 namespace notf {
 
@@ -34,6 +36,8 @@ Window::Window(const WindowInfo& info)
     , m_title(info.title)
     , m_layout()
     , m_render_manager() // has to be created after the OpenGL Context
+    , m_graphics_context()
+    , m_cell_context()
     , m_background_color(info.clear_color)
     , m_size(info.size)
 {
@@ -57,11 +61,17 @@ Window::Window(const WindowInfo& info)
         exit(to_number(Application::RETURN_CODE::GLFW_FAILURE));
     }
     glfwSetWindowUserPointer(m_glfw_window.get(), this);
-
-    // setup OpenGL and create the render manager
     glfwMakeContextCurrent(m_glfw_window.get());
     glfwSwapInterval(app.get_info().enable_vsync ? 1 : 0);
+
+    // create the auxiliary objects
     m_render_manager = std::make_unique<RenderManager>(this);
+
+    GraphicsContextArguments context_args;
+    context_args.pixel_ratio = static_cast<float>(get_buffer_size().width) / static_cast<float>(get_window_size().width);
+    m_graphics_context         = std::make_unique<GraphicsContext>(this, context_args);
+
+    m_cell_context = std::make_unique<CellContext>(*m_graphics_context);
 
     // apply the Window icon
     // In order to remove leftover icons on Ubuntu call:
@@ -147,9 +157,9 @@ void Window::_update()
     assert(m_glfw_window);
 
     // do nothing, if there are no Widgets in need to be redrawn
-//    if (m_render_manager->is_clean()) { // TODO: dirty mechanism for RenderManager
-//        return;
-//    }
+    //    if (m_render_manager->is_clean()) { // TODO: dirty mechanism for RenderManager
+    //        return;
+    //    }
 
     // make the window current
     Application::get_instance()._set_current_window(this);

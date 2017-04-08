@@ -2,8 +2,8 @@
 
 #include "common/vector.hpp"
 #include "graphics/cell/cell.hpp"
+#include "graphics/cell/cell_context.hpp"
 #include "graphics/cell/commands.hpp"
-#include "graphics/render_context.hpp"
 #include "graphics/texture2.hpp"
 #include "graphics/vertex.hpp"
 
@@ -29,10 +29,10 @@ void xformToMat3x4(float* m3, Xform2f t)
 
 namespace notf {
 
-void paint_to_frag(RenderContext::ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
+void paint_to_frag(CellContext::ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
                    const float stroke_width, const float fringe, const float stroke_threshold);
 
-Painterpreter::Painterpreter(RenderContext& context)
+Painterpreter::Painterpreter(CellContext &context)
     : m_context(context)
     , m_points()
     , m_paths()
@@ -42,7 +42,7 @@ Painterpreter::Painterpreter(RenderContext& context)
 }
 
 // TODO: when this draws, revisit this function and see if you find a way to guarantee that there is always a path and point without if-statements all over the place
-// TODO: I'm pretty sure when writing vertices from Cell to RenderContext you'll need to xform them
+// TODO: I'm pretty sure when writing vertices from Cell to CellContext you'll need to xform them
 void Painterpreter::paint(Cell& cell)
 {
     _reset();
@@ -677,12 +677,12 @@ void Painterpreter::_fill()
     _prepare_paths(fringe_width, Painter::LineJoin::MITER, 2.4f);
 
     // create the render call
-    RenderContext::Call& render_call = create_back(m_context.m_calls);
+    CellContext::Call& render_call = create_back(m_context.m_calls);
     if (m_paths.size() == 1 && m_paths.front().is_convex) {
-        render_call.type = RenderContext::Call::Type::CONVEX_FILL;
+        render_call.type = CellContext::Call::Type::CONVEX_FILL;
     }
     else {
-        render_call.type = RenderContext::Call::Type::FILL;
+        render_call.type = CellContext::Call::Type::FILL;
     }
     render_call.path_offset = m_context.m_paths.size();
     render_call.path_count  = m_paths.size();
@@ -694,7 +694,7 @@ void Painterpreter::_fill()
         assert(last_point_offset < m_points.size());
 
         // create the fill vertices
-        RenderContext::Path& render_path = create_back(m_context.m_paths);
+        CellContext::Path& render_path = create_back(m_context.m_paths);
         assert(m_context.m_vertices.size() < std::numeric_limits<GLint>::max());
         render_path.fill_offset = static_cast<GLint>(m_context.m_vertices.size());
         if (fringe_width > 0) {
@@ -794,14 +794,14 @@ void Painterpreter::_fill()
     // create the shader uniforms for the call
     render_call.uniform_offset = static_cast<GLintptr>(m_context.m_shader_variables.size()) * m_context.fragmentSize();
 
-    if (render_call.type == RenderContext::Call::Type::FILL) {
+    if (render_call.type == CellContext::Call::Type::FILL) {
         // create an additional uniform buffer for a simple shader for the stencil
-        RenderContext::ShaderVariables& stencil_uniforms = create_back(m_context.m_shader_variables);
+        CellContext::ShaderVariables& stencil_uniforms = create_back(m_context.m_shader_variables);
         stencil_uniforms.strokeThr                       = -1;
-        stencil_uniforms.type                            = RenderContext::ShaderVariables::Type::SIMPLE;
+        stencil_uniforms.type                            = CellContext::ShaderVariables::Type::SIMPLE;
     }
 
-    RenderContext::ShaderVariables& fill_uniforms = create_back(m_context.m_shader_variables);
+    CellContext::ShaderVariables& fill_uniforms = create_back(m_context.m_shader_variables);
     paint_to_frag(fill_uniforms, fill_paint, state.scissor, fringe_width, fringe_width, -1.0f);
 }
 
@@ -836,8 +836,8 @@ void Painterpreter::_stroke()
     }
 
     // create the Cell's render call
-    RenderContext::Call& render_call = create_back(m_context.m_calls);
-    render_call.type                 = RenderContext::Call::Type::STROKE;
+    CellContext::Call& render_call = create_back(m_context.m_calls);
+    render_call.type                 = CellContext::Call::Type::STROKE;
     render_call.path_offset          = m_context.m_paths.size();
     render_call.texture              = state.stroke_paint.texture;
     render_call.polygon_offset       = 0;
@@ -858,7 +858,7 @@ void Painterpreter::_stroke()
         const size_t last_point_offset = path.first_point + path.point_count - 1;
         assert(last_point_offset < m_points.size());
 
-        RenderContext::Path& render_path = create_back(m_context.m_paths);
+        CellContext::Path& render_path = create_back(m_context.m_paths);
         assert(m_context.m_vertices.size() < std::numeric_limits<GLint>::max());
         render_path.stroke_offset = static_cast<GLint>(m_context.m_vertices.size());
 
@@ -940,11 +940,11 @@ void Painterpreter::_stroke()
 
     // create the shader uniforms for the call
     render_call.uniform_offset                       = static_cast<GLintptr>(m_context.m_shader_variables.size()) * m_context.fragmentSize();
-    RenderContext::ShaderVariables& stencil_uniforms = create_back(m_context.m_shader_variables);
+    CellContext::ShaderVariables& stencil_uniforms = create_back(m_context.m_shader_variables);
     paint_to_frag(stencil_uniforms, stroke_paint, state.scissor, stroke_width, fringe_width, -1.0f);
 
     // I don't know what the stroke_threshold below is, but with -1 you get artefacts in the rotating lines test
-    RenderContext::ShaderVariables& stroke_uniforms = create_back(m_context.m_shader_variables);
+    CellContext::ShaderVariables& stroke_uniforms = create_back(m_context.m_shader_variables);
     paint_to_frag(stroke_uniforms, stroke_paint, state.scissor, stroke_width, fringe_width, 1.0f - 0.5f / 255.0f);
 }
 
@@ -1051,7 +1051,7 @@ void Painterpreter::_prepare_paths(const float fringe, const Painter::LineJoin j
     }
 }
 
-void paint_to_frag(RenderContext::ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
+void paint_to_frag(CellContext::ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
                    const float stroke_width, const float fringe, const float stroke_threshold)
 {
     assert(fringe > 0);
@@ -1079,10 +1079,10 @@ void paint_to_frag(RenderContext::ShaderVariables& frag, const Paint& paint, con
     frag.strokeThr  = stroke_threshold;
 
     if (paint.texture) {
-        frag.type    = RenderContext::ShaderVariables::Type::IMAGE;
+        frag.type = CellContext::ShaderVariables::Type::IMAGE;
     }
     else { // no image
-        frag.type    = RenderContext::ShaderVariables::Type::GRADIENT;
+        frag.type    = CellContext::ShaderVariables::Type::GRADIENT;
         frag.radius  = paint.radius;
         frag.feather = paint.feather;
     }

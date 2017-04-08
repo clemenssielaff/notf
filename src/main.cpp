@@ -9,15 +9,15 @@ using namespace notf;
 #include "core/widget.hpp"
 #include "core/window_layout.hpp"
 #include "graphics/cell/painter.hpp"
-#include "graphics/render_context.hpp"
+#include "graphics/graphics_context.hpp"
 #include "core/render_manager.hpp"
 
-RenderContext* g_render_context = nullptr;
+GraphicsContext* g_graphics_context = nullptr;
 
 class MyWidget : public Widget {
 
 public:
-    MyWidget(RenderContext& context)
+    MyWidget(GraphicsContext& context)
         : Widget()
         , test_texture(context.load_texture("/home/clemens/code/notf/res/textures/face.png"))
     {
@@ -511,7 +511,7 @@ public:
 
     virtual void _initialize() override
     {
-        _set_root_item(std::make_shared<MyWidget>(*g_render_context));
+        _set_root_item(std::make_shared<MyWidget>(*g_graphics_context));
     }
 };
 
@@ -540,7 +540,7 @@ int main(int argc, char* argv[])
     window_info.is_resizeable      = true;
     std::shared_ptr<Window> window = Window::create(window_info);
 
-    g_render_context = &(window->get_render_manager().get_render_context());
+    g_graphics_context = &(window->get_graphics_context());
 
     //    window->on_token_key.connect(
     //        [window, &app](const KeyEvent&) {

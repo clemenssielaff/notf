@@ -7,27 +7,27 @@
 
 namespace notf {
 
-class RenderContext;
+class GraphicsContext;
 
 //*********************************************************************************************************************/
 
 /** Manages the loading and setup of an OpenGL texture.
  *
- * Texture and RenderContext
- * =========================
- * A Texture needs a valid RenderContext (which in turn refers to an OpenGL context), since the Texture class itself
+ * Texture and GraphicsContext
+ * ===========================
+ * A Texture needs a valid GraphicsContext (which in turn refers to an OpenGL context), since the Texture class itself
  * does not store any image data, only the OpenGL ID and metadata.
- * You create a Texture by calling `RenderContext::load_texture(texture_path)`, which attaches the RenderContext to the
+ * You create a Texture by calling `GraphicsContext::load_texture(texture_path)`, which attaches the GraphicsContext to the
  * Texture.
  * The return value is a shared pointer, which you own.
- * However, the RenderContext does keep a weak pointer to the Texture and will deallocate it when it is itself removed.
+ * However, the GraphicsContext does keep a weak pointer to the Texture and will deallocate it when it is itself removed.
  * In this case, the remaining Texture will become invalid and you'll get a warning message.
- * In a well-behaved program, all Textures should have gone out of scope by the time the RenderContext is destroyed.
+ * In a well-behaved program, all Textures should have gone out of scope by the time the GraphicsContext is destroyed.
  * This behaviour is similar to the handling of Shaders.
  */
 class Texture2 {
 
-    friend class RenderContext; // creates and finally invalidates all of its Textures when it is destroyed
+    friend class GraphicsContext; // creates and finally invalidates all of its Textures when it is destroyed
 
 public: // enums
     enum class Format : unsigned char {
@@ -69,7 +69,7 @@ private: // factory
      * @param file_path Path to a texture file.
      * @return          Texture2 instance, is empty if the texture could not be loaded.
      */
-    static std::shared_ptr<Texture2> load(RenderContext* context, const std::string file_path);
+    static std::shared_ptr<Texture2> load(GraphicsContext* context, const std::string file_path);
 
     /** Value Constructor.
      * @param id        OpenGL texture ID.
@@ -79,7 +79,7 @@ private: // factory
      * @param height    Height of the loaded image in pixels.
      * @param format    Texture format.
      */
-    Texture2(const GLuint id, RenderContext* context, const std::string name,
+    Texture2(const GLuint id, GraphicsContext* context, const std::string name,
              const GLuint width, const GLuint height, const Format format);
 
 public: // methods
@@ -94,8 +94,8 @@ public: // methods
     GLuint get_id() const { return m_id; }
 
     /** Checks if the Texture is still valid.
-     * A Texture should always be valid - the only way to get an invalid one is to remove the RenderContext while still
-     * holding on to shared pointers of a Texture that lived in the removed RenderContext.
+     * A Texture should always be valid - the only way to get an invalid one is to remove the GraphicsContext while still
+     * holding on to shared pointers of a Texture that lived in the removed GraphicsContext.
      */
     bool is_valid() const { return m_id != 0; }
 
@@ -140,7 +140,7 @@ public: // methods
     /** Sets a new vertical wrap mode. */
     void set_wrap_y(const Wrap wrap);
 
-private: // methods for RenderContext
+private: // methods for GraphicsContext
     /** Deallocates the Texture data and invalidates the Texture. */
     void _deallocate();
 
@@ -149,7 +149,7 @@ private: // fields
     GLuint m_id;
 
     /** Render Context in which the Texture lives. */
-    RenderContext* m_render_context;
+    GraphicsContext* m_graphics_context;
 
     /** The name of this Texture. */
     const std::string m_name;

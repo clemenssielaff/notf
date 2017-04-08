@@ -6,7 +6,7 @@
 #include "core/widget.hpp"
 #include "core/window.hpp"
 #include "core/window_layout.hpp"
-#include "graphics/render_context.hpp"
+#include "graphics/cell/cell_context.hpp"
 #include "graphics/stats.hpp"
 
 namespace notf {
@@ -24,32 +24,13 @@ std::shared_ptr<RenderLayer> RenderLayer::create()
 
 /**********************************************************************************************************************/
 
-//struct RenderManager::make_shared_enabler : public RenderManager {
-//    template <typename... Args>
-//    make_shared_enabler(Args&&... args)
-//        : RenderManager(std::forward<Args>(args)...) {}
-//    virtual ~make_shared_enabler();
-//};
-//RenderManager::make_shared_enabler::~make_shared_enabler() {}
-
-//std::unique_ptr<RenderManager> RenderManager::create(const Window* window)
-//{
-//    return std::make_unique<make_shared_enabler>(window);
-//}
-
 RenderManager::RenderManager(const Window* window)
     : m_window(window)
-    , m_render_context()
     , m_default_layer(RenderLayer::create())
     , m_layers({m_default_layer})
     , m_is_clean(false)
     , m_stats()
 {
-    // create the Render context
-    RenderContextArguments context_args;
-    context_args.pixel_ratio = static_cast<float>(window->get_buffer_size().width) / static_cast<float>(window->get_window_size().width);
-    m_render_context         = std::make_unique<RenderContext>(window, context_args);
-
     m_stats = std::make_unique<RenderStats>(120);
 }
 
@@ -100,8 +81,8 @@ void RenderManager::render(const Size2i buffer_size)
     Time time_at_start = Time::now();
 
     // prepare the render context
-    RenderContext& render_context = *(m_render_context.get());
-    render_context._begin_frame(buffer_size, time_at_start, m_window->get_mouse_pos());
+    CellContext& cell_context = m_window->get_cell_context();
+    cell_context.begin_frame(buffer_size, time_at_start, m_window->get_mouse_pos());
 
     // remove unused layers
     std::remove_if(m_layers.begin(), m_layers.end(), [](std::shared_ptr<RenderLayer>& layer) -> bool {
@@ -115,7 +96,7 @@ void RenderManager::render(const Size2i buffer_size)
     // draw all widgets
     for (std::shared_ptr<RenderLayer>& render_layer : m_layers) {
         for (const Widget* widget : render_layer->m_widgets) {
-            widget->paint(*m_render_context);
+            widget->paint(cell_context);
         }
         render_layer->m_widgets.clear();
     }
@@ -125,11 +106,11 @@ void RenderManager::render(const Size2i buffer_size)
     if (m_stats) {
         double time_elapsed = (Time::now().since(time_at_start)).in_seconds();
         m_stats->update(static_cast<float>(time_elapsed));
-        m_stats->render_stats(render_context);
+        m_stats->render_stats(cell_context);
     }
 
     // flush
-    render_context._finish_frame();
+    cell_context.finish_frame();
 }
 
 void RenderManager::_iterate_item_hierarchy(const ScreenItem* screen_item, RenderLayer* parent_layer)

@@ -5,10 +5,10 @@
 
 namespace notf {
 
+class CellContext;
 class Layout;
 class MouseEvent;
 class Painter;
-class RenderContext;
 
 /**********************************************************************************************************************/
 
@@ -62,7 +62,7 @@ public: // methods
     /** Draws the Widget's Cell onto the screen.
      * Either uses the cached Cell or updates it first, using _paint().
      */
-    void paint(RenderContext& context) const;
+    void paint(CellContext &cell_context) const;
 
 public: // signals
     /** Signal invoked when this Widget is asked to handle a Mouse move event. */

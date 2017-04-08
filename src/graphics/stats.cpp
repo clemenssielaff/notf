@@ -1,8 +1,8 @@
 #include "graphics/stats.hpp"
 
+#include "graphics/cell/cell_context.hpp"
 #include "graphics/cell/painter.hpp"
 #include "graphics/cell/painterpreter.hpp"
-#include "graphics/render_context.hpp"
 
 namespace notf {
 
@@ -37,7 +37,7 @@ float RenderStats::get_average() const
     return sum / static_cast<float>(count);
 }
 
-void RenderStats::render_stats(RenderContext& context)
+void RenderStats::render_stats(CellContext& context)
 {
     if (m_buffer.size() < 2) {
         return;

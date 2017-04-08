@@ -31,7 +31,7 @@
 #include "common/log.hpp"
 #include "graphics/cell/cell.hpp"
 #include "graphics/cell/commands.hpp"
-#include "graphics/render_context.hpp"
+#include "graphics/cell/cell_context.hpp"
 
 namespace { // anonymous
 using namespace notf;
@@ -47,9 +47,9 @@ namespace notf {
 
 std::vector<detail::PainterState> Painter::s_states;
 
-Painter::Painter(Cell& cell, RenderContext& context)
+Painter::Painter(Cell& cell, CellContext& cell_context)
     : m_cell(cell)
-    , m_context(context)
+    , m_cell_context(cell_context)
     , m_stylus(Vector2f::zero())
     , m_has_open_path(false)
 {
@@ -284,7 +284,7 @@ void Painter::arc(const float cx, const float cy, const float r, const float a0,
 void Painter::arc_to(const Vector2f& tangent, const Vector2f& end, const float radius)
 {
     // handle degenerate cases
-    const float distance_tolerance = m_context.get_distance_tolerance();
+    const float distance_tolerance = m_cell_context.get_distance_tolerance();
     if (radius < distance_tolerance
         || m_stylus.is_approx(tangent, distance_tolerance)
         || tangent.is_approx(end, distance_tolerance)
@@ -380,12 +380,12 @@ void Painter::stroke()
 
 Time Painter::get_time() const
 {
-    return m_context.get_time();
+    return m_cell_context.get_time();
 }
 
 const Vector2f& Painter::get_mouse_pos() const
 {
-    return m_context.get_mouse_pos();
+    return m_cell_context.get_mouse_pos();
 }
 
 // TODO: the Painter might as well optimize the Commands given before sending them off to the cell.

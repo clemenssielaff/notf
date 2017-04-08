@@ -4,7 +4,7 @@
 
 #include "common/log.hpp"
 #include "core/opengl.hpp"
-#include "graphics/render_context.hpp"
+#include "graphics/graphics_context.hpp"
 
 namespace { // anonymous
 
@@ -129,7 +129,7 @@ void Shader::unbind()
     glUseProgram(GL_ZERO);
 }
 
-std::shared_ptr<Shader> Shader::build(RenderContext* context,
+std::shared_ptr<Shader> Shader::build(GraphicsContext* context,
                                       const std::string& name,
                                       const std::string& vertex_shader_source,
                                       const std::string& fragment_shader_source)
@@ -173,12 +173,12 @@ std::shared_ptr<Shader> Shader::build(RenderContext* context,
     return std::make_shared<make_shared_enabler>(program, context, name);
 }
 
-Shader::Shader(const GLuint id, RenderContext *context, const std::string name)
+Shader::Shader(const GLuint id, GraphicsContext *context, const std::string name)
     : m_id(id)
-    , m_render_context(context)
+    , m_graphics_context(context)
     , m_name(std::move(name))
 {
-    assert(m_render_context);
+    assert(m_graphics_context);
 }
 
 Shader::~Shader()
@@ -189,8 +189,8 @@ Shader::~Shader()
 bool Shader::bind()
 {
     if (is_valid()) {
-        m_render_context->make_current();
-        m_render_context->_bind_shader(m_id);
+        m_graphics_context->make_current();
+        m_graphics_context->_bind_shader(m_id);
         return true;
     }
     else {
@@ -202,11 +202,11 @@ bool Shader::bind()
 void Shader::_deallocate()
 {
     if (m_id) {
-        m_render_context->make_current();
+        m_graphics_context->make_current();
         glDeleteProgram(m_id);
         log_trace << "Deleted Shader Program \"" << m_name << "\"";
         m_id = 0;
-        m_render_context = nullptr;
+        m_graphics_context = nullptr;
     }
 }
 

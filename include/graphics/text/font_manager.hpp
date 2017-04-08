@@ -16,20 +16,18 @@ typedef struct FT_LibraryRec_* FT_Library;
 namespace notf {
 
 class FontAtlas;
-class RenderContext;
+class GraphicsContext;
 
 /**********************************************************************************************************************/
 
-/** Object used to load, render and work with Fonts and rendered text.
- * Before creating an instance of this class, make sure that a valid OpenGL context exists.
- */
+/** Object used to load, render and work with Fonts and rendered text. */
 class FontManager {
 
-    friend Font::Font(FontManager*, FontID, std::string, std::string, ushort);
+    friend class Font;
 
 public: // methods
     /** Default constructor. */
-    FontManager(RenderContext* context);
+    FontManager(GraphicsContext* context);
 
     /** Destructor. */
     ~FontManager();
@@ -42,14 +40,14 @@ public: // methods
      */
     FontID load_font(std::string name, std::string filepath, ushort pixel_size);
 
-    /** Returns the FontID of a loaded font, or INVALID_FONT if no Font by the name is known. */
+    /** Returns the FontID of a loaded font, or an invalid FontID if no Font by the name is known. */
     FontID get_font(const std::string& name) const
     {
         const auto& it = m_font_names.find(name);
         if (it != std::end(m_font_names)) {
             return it->second;
         }
-        return INVALID_FONT;
+        return {};
     }
 
     /** Sets the size of the Window into which to render text.
@@ -83,7 +81,7 @@ private: // fields
     FT_Library m_freetype;
 
     /** Render Context in which the Texture lives. */
-    RenderContext* m_render_context;
+    GraphicsContext* m_graphics_context;
 
     /** Font Atlas to store Glyphs of all loaded Fonts. */
     FontAtlas m_atlas;

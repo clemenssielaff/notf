@@ -9,7 +9,7 @@
 namespace notf {
 
 class Cell;
-class RenderContext;
+class CellContext;
 
 namespace detail {
 
@@ -82,7 +82,7 @@ class Painter : public detail::PainterBase {
 
 public: // methods
     /** Value Constructor. */
-    Painter(Cell& cell, RenderContext &context);
+    Painter(Cell& cell, CellContext& cell_context);
 
     /* State management ***********************************************************************************************/
 
@@ -295,8 +295,8 @@ private: // fields
     /** Cell, that this Painter is painting into. */
     Cell& m_cell;
 
-    /** The Render Context in which the Painter operates. */
-    const RenderContext& m_context;
+    /** Context into which the given Cell is painted. */
+    const CellContext& m_cell_context;
 
     /** Current position of the 'stylus', as the last Command left it. */
     Vector2f m_stylus;

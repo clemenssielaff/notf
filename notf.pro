@@ -157,10 +157,11 @@ SOURCES += \
     src/core/window_layout.cpp \
     src/graphics/gl_errors.cpp \
     src/graphics/vertex.cpp \
-    src/graphics/render_context.cpp \
     src/graphics/cell/painter.cpp \
     src/graphics/cell/painterpreter.cpp \
-    src/graphics/cell/cell.cpp
+    src/graphics/cell/cell.cpp \
+    src/graphics/cell/cell_context.cpp \
+    src/graphics/graphics_context.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -236,14 +237,15 @@ HEADERS += \
     include/core/glfw.hpp \
     include/core/window_layout.hpp \
     include/utils/range.hpp \
-    include/graphics/render_context.hpp \
     include/graphics/cell/cell.hpp \
     include/graphics/cell/painter.hpp \
     include/graphics/cell/painterpreter.hpp \
     include/graphics/scissor.hpp \
     include/graphics/cell/commands.hpp \
     include/graphics/cell/command_buffer.hpp \
-    include/common/identifier.hpp
+    include/common/identifier.hpp \
+    include/graphics/cell/cell_context.hpp \
+    include/graphics/graphics_context.hpp
 
 QMAKE_CXX = ccache g++
 

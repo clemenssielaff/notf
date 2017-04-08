@@ -96,14 +96,6 @@ FontAtlas::Rect FontAtlas::WasteMap::reclaim_rect(const coord_t width, const coo
         }
     }
 
-// TODO: we can theoretically try to merge the free rects, although I don't know how much difference it would make
-// For that, consider creating 1 or 3 free rectangles, 1 if either one is degenerate and three if both would have
-// an area. In that case, create a third rectangle for the overlapping area.
-// Then, in a separate process, go through all rectangles and try to fit larger rectangles through any combination
-// of them, making use of the most available space.
-// However ... this is probably a wasted effort as the chance of this actually generating a free rect that can be
-// used for another character is rather slim (I'd assume) and the cost of even an unsuccessful merge is quite high.
-
 return_success:
     m_free_rects.erase(iterator_at(m_free_rects, best_node_index));
     return result;
@@ -182,9 +174,9 @@ FontAtlas::Rect FontAtlas::insert_rect(const coord_t width, const coord_t height
     return result.rect;
 }
 
-std::vector<FontAtlas::NamedRect> FontAtlas::insert_rects(std::vector<NamedExtend> named_extends)
+std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<NamedExtend> named_extends)
 {
-    std::vector<NamedRect> result;
+    std::vector<ProtoGlyph> result;
 
     // repeatedly go through all named extends, find the best one to insert and remove it
     while (!named_extends.empty()) {

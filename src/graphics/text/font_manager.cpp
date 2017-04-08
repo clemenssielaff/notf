@@ -6,7 +6,7 @@
 #include "common/xform3.hpp"
 #include "core/opengl.hpp"
 #include "graphics/gl_errors.hpp"
-#include "graphics/render_context.hpp"
+#include "graphics/graphics_context.hpp"
 #include "graphics/text/font_atlas.hpp"
 #include "graphics/text/freetype.hpp"
 #include "graphics/vertex.hpp"
@@ -26,16 +26,16 @@ const char* font_fragment_shader =
 
 namespace notf {
 
-FontManager::FontManager(RenderContext* context)
+FontManager::FontManager(GraphicsContext* context)
     : m_freetype(nullptr)
-    , m_render_context(context)
+    , m_graphics_context(context)
     , m_atlas()
     , m_fonts()
     , m_font_names()
     , m_window_size()
     , m_color(Color(0.f, 0.f, 0.f, 1.f))
     , m_vbo(0)
-    , m_font_shader(m_render_context->build_shader("font_shader", font_vertex_shader, font_fragment_shader))
+    , m_font_shader(m_graphics_context->build_shader("font_shader", font_vertex_shader, font_fragment_shader))
     , m_color_uniform(0)
     , m_texture_id_uniform(0)
     , m_view_proj_matrix_uniform(0)
@@ -86,7 +86,7 @@ FontID FontManager::load_font(std::string name, std::string filepath, ushort pix
 
 void FontManager::render_text(const std::string& text, ushort x, ushort y, const FontID font_id)
 {
-    if (font_id == INVALID_FONT) {
+    if (font_id){
         log_critical << "Cannot render text \"" << text << "\" with an invalid Font";
         return;
     }
@@ -96,7 +96,7 @@ void FontManager::render_text(const std::string& text, ushort x, ushort y, const
     static std::vector<Vertex> vertices;
     vertices.clear();
     vertices.reserve(text.size());
-    const Font& font = m_fonts[font_id - 1];
+    const Font& font = m_fonts[static_cast<FontID::underlying_t>(font_id) - 1];
     for (const auto character : text) {
         const Glyph& glyph = font.get_glyph(static_cast<codepoint_t>(character)); // TODO: text rendering will only work for pure ascii
 

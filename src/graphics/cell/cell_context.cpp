@@ -1,18 +1,13 @@
-#include "graphics/render_context.hpp"
+#include "graphics/cell/cell_context.hpp"
 
-#include "common/aabr.hpp"
+#include <sstream>
+
 #include "common/log.hpp"
-#include "common/vector.hpp"
-#include "common/xform2.hpp"
 #include "core/glfw.hpp"
-#include "core/window.hpp"
-#include "graphics/blend_mode.hpp"
-#include "graphics/cell/cell.hpp"
-#include "graphics/cell/painterpreter.hpp"
 #include "graphics/gl_utils.hpp"
-#include "graphics/scissor.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/texture2.hpp"
+#include "utils/enum_to_number.hpp"
 
 namespace { // anonymous
 // clang-format off
@@ -30,14 +25,14 @@ namespace { // anonymous
 using namespace notf;
 
 /** Loads the shader sources and creates a dynamic header for them. */
-std::pair<std::string, std::string> create_shader_sources(const RenderContext& context)
+std::pair<std::string, std::string> create_shader_sources(const GraphicsContext& context)
 {
     // create the header
     std::stringstream ss;
     ss << "#version 300 es\n";
-    if (context.provides_geometric_aa()) {
+    if (context.get_args().geometric_aa) {
         ss << "#define GEOMETRY_AA 1\n";
-        if(context.has_save_alpha_strokes()){
+        if(context.get_args().save_alpha_stroke){
             ss << "#define SAVE_ALPHA_STROKE 1\n";
         }
     }
@@ -55,12 +50,10 @@ const GLuint FRAG_BINDING = 0;
 
 namespace notf {
 
-RenderContext* RenderContext::s_current_context = nullptr;
-
-RenderContext::RenderContext(const Window* window, const RenderContextArguments args)
-    : m_window(window)
-    , m_args(std::move(args))
+CellContext::CellContext(GraphicsContext& context)
+    : m_context(context)
     , m_painterpreter(std::make_unique<Painterpreter>(*this))
+    , m_cell_shader()
     , m_calls()
     , m_paths()
     , m_vertices()
@@ -71,36 +64,18 @@ RenderContext::RenderContext(const Window* window, const RenderContextArguments 
     , m_buffer_size(Size2f(0, 0))
     , m_time()
     , m_mouse_pos(Vector2f::zero())
-    , m_stencil_func(StencilFunc::ALWAYS)
-    , m_stencil_mask(0)
-    , m_blend_mode(BlendMode::SOURCE_OVER)
-    , m_bound_texture(0)
-    , m_textures()
-    , m_bound_shader(0)
-    , m_shaders()
-    , m_cell_shader()
     , m_fragment_buffer(0)
     , m_vertex_array(0)
     , m_vertex_buffer(0)
 {
-    // make sure the pixel ratio is real and never zero
-    if (!is_real(m_args.pixel_ratio)) {
-        log_warning << "Pixel ratio cannot be " << m_args.pixel_ratio << ", defaulting to 1";
-        m_args.pixel_ratio = 1;
-    }
-    else if (std::abs(m_args.pixel_ratio) < precision_high<float>()) {
-        log_warning << "Pixel ratio cannot be zero, defaulting to 1";
-        m_args.pixel_ratio = 1;
-    }
-
     // calculate the pixel-ratio dependent fields
-    m_distance_tolerance = 0.01f / m_args.pixel_ratio;
-    m_tesselation_tolerance = 0.25f / m_args.pixel_ratio;
-    m_fringe_width = 1.f / m_args.pixel_ratio;
+    m_distance_tolerance = 0.01f / m_context.get_args().pixel_ratio;
+    m_tesselation_tolerance = 0.25f / m_context.get_args().pixel_ratio;
+    m_fringe_width = 1.f / m_context.get_args().pixel_ratio;
 
     // create the CellShader
-    const std::pair<std::string, std::string> sources = create_shader_sources(*this);
-    m_cell_shader.shader        = build_shader("CellShader", sources.first, sources.second);
+    const std::pair<std::string, std::string> sources = create_shader_sources(m_context);
+    m_cell_shader.shader        = m_context.build_shader("CellShader", sources.first, sources.second);
     const GLuint cell_shader_id = m_cell_shader.shader->get_id();
     m_cell_shader.viewsize      = glGetUniformLocation(cell_shader_id, "viewSize");
     m_cell_shader.texture       = glGetUniformLocation(cell_shader_id, "tex");
@@ -119,7 +94,7 @@ RenderContext::RenderContext(const Window* window, const RenderContextArguments 
     glFinish();
 }
 
-RenderContext::~RenderContext()
+CellContext::~CellContext()
 {
     if (m_fragment_buffer != 0) {
         glDeleteBuffers(1, &m_fragment_buffer);
@@ -133,83 +108,11 @@ RenderContext::~RenderContext()
         glDeleteBuffers(1, &m_vertex_buffer);
         m_vertex_buffer = 0;
     }
-
-    // deallocate and invalidate all remaining Textures
-    for (std::weak_ptr<Texture2> texture_weakptr : m_textures) {
-        std::shared_ptr<Texture2> texture = texture_weakptr.lock();
-        if (texture) {
-            log_warning << "Deallocating live Texture: " << texture->get_name();
-            texture->_deallocate();
-        }
-    }
-    m_textures.clear();
-
-    // deallocate and invalidate all remaining Shaders
-    for (std::weak_ptr<Shader> shader_weakptr : m_shaders) {
-        std::shared_ptr<Shader> shader = shader_weakptr.lock();
-        if (shader) {
-            log_warning << "Deallocating live Shader: " << shader->get_name();
-            shader->_deallocate();
-        }
-    }
-    m_shaders.clear();
 }
 
-void RenderContext::make_current()
+void CellContext::begin_frame(const Size2i& buffer_size, const Time time, const Vector2f mouse_pos)
 {
-    if (s_current_context != this) {
-        glfwMakeContextCurrent(m_window->_get_glfw_window());
-        s_current_context = this;
-    }
-}
-
-void RenderContext::set_stencil_func(const StencilFunc func)
-{
-    if (func != m_stencil_func) {
-        m_stencil_func = func;
-        m_stencil_func.apply();
-    }
-}
-
-void RenderContext::set_stencil_mask(const GLuint mask)
-{
-    if (mask != m_stencil_mask) {
-        m_stencil_mask = mask;
-        glStencilMask(mask);
-    }
-}
-
-void RenderContext::set_blend_mode(const BlendMode mode)
-{
-    if (mode != m_blend_mode) {
-        m_blend_mode = mode;
-        m_blend_mode.apply();
-    }
-}
-
-std::shared_ptr<Texture2> RenderContext::load_texture(const std::string& file_path)
-{
-    std::shared_ptr<Texture2> texture = Texture2::load(this, file_path);
-    if (texture) {
-        m_textures.emplace_back(texture);
-    }
-    return texture;
-}
-
-std::shared_ptr<Shader> RenderContext::build_shader(const std::string& name,
-                                                    const std::string& vertex_shader_source,
-                                                    const std::string& fragment_shader_source)
-{
-    std::shared_ptr<Shader> shader = Shader::build(this, name, vertex_shader_source, fragment_shader_source);
-    if (shader) {
-        m_shaders.emplace_back(shader);
-    }
-    return shader;
-}
-
-void RenderContext::_begin_frame(const Size2i& buffer_size, const Time time, const Vector2f mouse_pos)
-{
-    _reset();
+    reset();
 
     m_buffer_size.width  = static_cast<float>(buffer_size.width);
     m_buffer_size.height = static_cast<float>(buffer_size.height);
@@ -219,7 +122,7 @@ void RenderContext::_begin_frame(const Size2i& buffer_size, const Time time, con
     m_mouse_pos = std::move(mouse_pos);
 }
 
-void RenderContext::_reset()
+void CellContext::reset()
 {
     m_calls.clear();
     m_paths.clear();
@@ -227,22 +130,16 @@ void RenderContext::_reset()
     m_shader_variables.clear();
 }
 
-void RenderContext::_finish_frame()
+void CellContext::finish_frame()
 {
     if (m_calls.empty()) {
         return;
     }
-
-    // reset cache
-    m_stencil_func  = StencilFunc::INVALID;
-    m_stencil_mask  = 0;
-    m_blend_mode    = BlendMode::INVALID;
-    m_bound_texture = 0;
-    m_bound_shader  = 0;
+    m_context.force_reloads();
 
     // setup GL state
     m_cell_shader.shader->bind();
-    set_blend_mode(BlendMode::SOURCE_OVER);
+    m_context.set_blend_mode(BlendMode::SOURCE_OVER);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
@@ -250,9 +147,9 @@ void RenderContext::_finish_frame()
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_SCISSOR_TEST);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    set_stencil_mask(0xff);
+    m_context.set_stencil_mask(0xff);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-    set_stencil_func(StencilFunc::ALWAYS);
+    m_context.set_stencil_func(StencilFunc::ALWAYS);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -289,37 +186,21 @@ void RenderContext::_finish_frame()
     }
 
     // teardown GL state
-    glDisableVertexAttribArray(0);
-    glDisableVertexAttribArray(1);
-    glBindVertexArray(0);
-    glDisable(GL_CULL_FACE);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    Shader::unbind();
+//    glDisableVertexAttribArray(0);
+//    glDisableVertexAttribArray(1);
+//    glBindVertexArray(0);
+//    glDisable(GL_CULL_FACE);
+//    glBindBuffer(GL_ARRAY_BUFFER, 0);
+//    Shader::unbind();
 }
 
-void RenderContext::_bind_texture(const GLuint texture_id)
-{
-    if (texture_id != m_bound_texture) {
-        glBindTexture(GL_TEXTURE_2D, texture_id);
-        m_bound_texture = texture_id;
-    }
-}
-
-void RenderContext::_bind_shader(const GLuint shader_id)
-{
-    if (shader_id != m_bound_shader) {
-        glUseProgram(shader_id);
-        m_bound_shader = shader_id;
-    }
-}
-
-void RenderContext::_perform_convex_fill(const Call& call)
+void CellContext::_perform_convex_fill(  const Call& call)
 {
     assert(call.path_offset + call.path_count <= m_paths.size());
 
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset, fragmentSize());
     if (call.texture) {
-        _bind_texture(call.texture->get_id());
+        call.texture->bind();
     }
 
     for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
@@ -327,7 +208,7 @@ void RenderContext::_perform_convex_fill(const Call& call)
         assert(static_cast<size_t>(m_paths[i].fill_offset + m_paths[i].fill_count) <= m_vertices.size());
         glDrawArrays(GL_TRIANGLE_FAN, m_paths[i].fill_offset, m_paths[i].fill_count);
     }
-    if (m_args.geometric_aa) {
+    if (m_context.get_args().geometric_aa) {
         // draw fringes
         for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
             assert(static_cast<size_t>(m_paths[i].stroke_offset + m_paths[i].stroke_count) <= m_vertices.size());
@@ -336,15 +217,15 @@ void RenderContext::_perform_convex_fill(const Call& call)
     }
 }
 
-void RenderContext::_perform_fill(const Call& call)
+void CellContext::_perform_fill(const Call& call)
 {
     assert(call.path_offset + call.path_count <= m_paths.size());
     assert(static_cast<size_t>(call.uniform_offset) <= max(size_t(0), m_shader_variables.size() - 1) * fragmentSize());
 
     // draw stencil shapes
     glEnable(GL_STENCIL_TEST);
-    set_stencil_mask(0xff);
-    set_stencil_func(StencilFunc::ALWAYS);
+    m_context.set_stencil_mask(0xff);
+    m_context.set_stencil_func(StencilFunc::ALWAYS);
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
     // set bindpoint for solid loc
@@ -363,11 +244,11 @@ void RenderContext::_perform_fill(const Call& call)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset + fragmentSize(), fragmentSize());
     if (call.texture) {
-        _bind_texture(call.texture->get_id());
+        call.texture->bind();
     }
 
-    if (m_args.geometric_aa) {
-        set_stencil_func(StencilFunc::EQUAL);
+    if (m_context.get_args().geometric_aa) {
+        m_context.set_stencil_func(StencilFunc::EQUAL);
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         // draw fringes
         for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
@@ -377,27 +258,27 @@ void RenderContext::_perform_fill(const Call& call)
     }
 
     // Draw fill
-    set_stencil_func(StencilFunc::NOTEQUAL);
+    m_context.set_stencil_func(StencilFunc::NOTEQUAL);
     glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO);
     glDrawArrays(GL_TRIANGLES, call.polygon_offset, /* triangle count = */ 6);
 
     glDisable(GL_STENCIL_TEST);
 }
 
-void RenderContext::_perform_stroke(const Call& call)
+void CellContext::_perform_stroke(const Call& call)
 {
     assert(call.path_offset + call.path_count <= m_paths.size());
     assert(static_cast<size_t>(call.uniform_offset) <= max(size_t(0), m_shader_variables.size() - 1) * fragmentSize());
 
     glEnable(GL_STENCIL_TEST);
-    set_stencil_mask(0xff);
+    m_context.set_stencil_mask(0xff);
 
     // fill the stroke base without overlap
-    set_stencil_func(StencilFunc::EQUAL);
+    m_context.set_stencil_func(StencilFunc::EQUAL);
     glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset + fragmentSize(), fragmentSize());
     if (call.texture) {
-        _bind_texture(call.texture->get_id());
+        call.texture->bind();
     }
     for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
         assert(static_cast<size_t>(m_paths[i].stroke_offset + m_paths[i].stroke_count) <= m_vertices.size());
@@ -407,9 +288,9 @@ void RenderContext::_perform_stroke(const Call& call)
     // draw anti-aliased pixels
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset, fragmentSize());
     if (call.texture) {
-        _bind_texture(call.texture->get_id());
+        call.texture->bind();
     }
-    set_stencil_func(StencilFunc::EQUAL);
+    m_context.set_stencil_func(StencilFunc::EQUAL);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
         assert(static_cast<size_t>(m_paths[i].stroke_offset + m_paths[i].stroke_count) <= m_vertices.size());
@@ -418,7 +299,7 @@ void RenderContext::_perform_stroke(const Call& call)
 
     // clear stencil buffer
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    set_stencil_func(StencilFunc::ALWAYS);
+    m_context.set_stencil_func(StencilFunc::ALWAYS);
     glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO);
     for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
         assert(static_cast<size_t>(m_paths[i].stroke_offset + m_paths[i].stroke_count) <= m_vertices.size());
@@ -429,7 +310,7 @@ void RenderContext::_perform_stroke(const Call& call)
     glDisable(GL_STENCIL_TEST);
 }
 
-void RenderContext::_dump_debug_info() const
+void CellContext::_dump_debug_info() const
 {
     log_format << "==========================================================\n"
                << "== Render Context Dump Begin                            ==\n"
@@ -437,8 +318,8 @@ void RenderContext::_dump_debug_info() const
 
     log_format << "==========================================================\n"
                << "== Arguments                                            ==";
-    log_trace << "Enable geometric AA: " << m_args.geometric_aa;
-    log_trace << "Pixel ratio: " << m_args.pixel_ratio;
+    log_trace << "Enable geometric AA: " << m_context.get_args().geometric_aa;
+    log_trace << "Pixel ratio: " << m_context.get_args().pixel_ratio;
 
     log_format << "==========================================================\n"
                << "== Calls                                                ==";
@@ -468,5 +349,6 @@ void RenderContext::_dump_debug_info() const
                << "== Render Context Dump End                              ==\n"
                << "==========================================================";
 }
+
 
 } // namespace notf

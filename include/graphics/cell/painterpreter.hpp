@@ -6,8 +6,8 @@ namespace notf {
 using namespace detail;
 
 class Cell;
+class CellContext;
 struct Vertex;
-class RenderContext;
 
 /**********************************************************************************************************************/
 
@@ -62,9 +62,9 @@ private: // types
 
 public: // methods
     /** Constructor. */
-    Painterpreter(RenderContext& context);
+    Painterpreter(CellContext& context);
 
-    /** Paints a given Cell into the RenderContext. */
+    /** Paints a given Cell. */
     void paint(Cell& cell);
 
 private: // methods
@@ -147,8 +147,8 @@ private: // methods
     void _prepare_paths(const float fringe, const Painter::LineJoin join, const float miter_limit);
 
 public: // fields
-    /** The current Render Context that is painted into. */
-    RenderContext& m_context;
+    /** The Cell Context that is painted into. */
+    CellContext& m_context;
 
     /** Points making up the Painter Paths. */
     std::vector<Point> m_points;

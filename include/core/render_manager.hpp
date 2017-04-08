@@ -8,7 +8,6 @@
 
 namespace notf {
 
-class RenderContext;
 class RenderStats;
 class ScreenItem;
 class Widget;
@@ -84,9 +83,6 @@ public: // methods
         return 0;
     }
 
-    /** Returns the RenderContext associated with the Window of this RenderManager. */
-    RenderContext& get_render_context() const { return *m_render_context; }
-
 private: // methods
     /** Iterates through all ScreenItems in the Item hierarchy and collects them in their RenderLayers. */
     void _iterate_item_hierarchy(const ScreenItem* screen_item, RenderLayer* parent_layer);
@@ -94,9 +90,6 @@ private: // methods
 private: // fields
     /** The Window owning this RenderManager. */
     const Window* m_window;
-
-    /** The RenderContext used to draw into this Window. */
-    std::unique_ptr<RenderContext> m_render_context;
 
     /** The default layer, will never go out of scope as long as the RenderManager lives. */
     std::shared_ptr<RenderLayer> m_default_layer;

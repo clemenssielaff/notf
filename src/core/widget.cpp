@@ -4,9 +4,9 @@
 #include "common/string.hpp"
 #include "core/layout.hpp"
 #include "core/window.hpp"
+#include "graphics/cell/cell_context.hpp"
 #include "graphics/cell/painter.hpp"
 #include "graphics/cell/painterpreter.hpp"
-#include "graphics/render_context.hpp"
 #include "utils/unused.hpp"
 
 namespace notf {
@@ -51,11 +51,11 @@ void Widget::redraw() // TODO: currently _set_size does not dirty the Widget's C
     m_is_clean = false;
 }
 
-void Widget::paint(RenderContext& context) const
+void Widget::paint(CellContext& cell_context) const
 {
     // update the Cell if the Widget is dirty
     //    if (!m_is_clean) { // TODO: dirty mechanism for cells
-    Painter painter(m_cell, context);
+    Painter painter(m_cell, cell_context);
     try {
         _paint(painter);
     } catch (std::runtime_error error) {
@@ -65,8 +65,8 @@ void Widget::paint(RenderContext& context) const
     m_is_clean = true;
     //    }
 
-    // paint the Cell into the RenderContext
-    context._get_painterpreter().paint(m_cell);
+    // paint the Cell
+    cell_context.get_painterpreter().paint(m_cell);
 }
 
 void Widget::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const

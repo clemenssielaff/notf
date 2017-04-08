@@ -13,8 +13,10 @@ struct GLFWwindow;
 namespace notf {
 
 struct KeyEvent;
+class CellContext;
 class WindowLayout;
 class MouseEvent;
+class GraphicsContext;
 class RenderManager;
 
 /**********************************************************************************************************************/
@@ -49,7 +51,7 @@ struct WindowInfo {
 class Window : public receive_signals, public std::enable_shared_from_this<Window> {
 
     friend class Application;
-    friend class RenderContext;
+    friend class GraphicsContext;
 
 protected: // factory
     struct make_shared_enabler;
@@ -76,6 +78,12 @@ public: // methods
 
     /** Returns the Application's Render Manager. */
     RenderManager& get_render_manager() { return *m_render_manager; }
+
+    /** Returns the GraphicsContext associated with this Window. */
+    GraphicsContext& get_graphics_context() const { return *m_graphics_context; }
+
+    /** Object drawing Cells into the Window. */
+    CellContext& get_cell_context() const { return *m_cell_context; }
 
     /** Returns the Window's size in screen coordinates (not pixels).
      * Returns an invalid size if the GLFW window was already closed.
@@ -137,6 +145,12 @@ private: // fields
 
     /** The Window's render manager. */
     std::unique_ptr<RenderManager> m_render_manager;
+
+    /** The GraphicsContext used to draw into this Window. */
+    std::unique_ptr<GraphicsContext> m_graphics_context;
+
+    /** Object drawing Cells into the Window. */
+    std::unique_ptr<CellContext> m_cell_context;
 
     /** The Window's background color. */
     Color m_background_color;
