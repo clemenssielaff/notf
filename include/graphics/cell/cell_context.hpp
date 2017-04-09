@@ -8,7 +8,6 @@
 #include "common/vector2.hpp"
 #include "graphics/cell/painterpreter.hpp"
 #include "graphics/gl_forwards.hpp"
-#include "graphics/graphics_context.hpp"
 #include "graphics/vertex.hpp"
 
 namespace notf {
@@ -19,6 +18,41 @@ class GraphicsContext;
 struct Scissor;
 class Shader;
 class Texture2;
+
+/**********************************************************************************************************************/
+
+/** All values that determine the paint operations in the painted Cells.
+ * We need options to stay the same during a frame, which is why they are collected from various sources at the
+ * beginning and do not change until the next frame.
+ */
+struct CellContextOptions {
+
+    /** Furthest distance between two points in which the second point is considered equal to the first. */
+    float distance_tolerance;
+
+    /** Tesselation density when creating rounded shapes. */
+    float tesselation_tolerance;
+
+    /** Width of the faint outline around shapes when geometric antialiasing is enabled. */
+    float fringe_width;
+
+    /** See `GraphicsContextOptions` for details. */
+    bool geometric_aa;
+
+    /** See `GraphicsContextOptions` for details. */
+    bool stencil_strokes;
+
+    /** Returns the size of the Window's framebuffer in pixels. */
+    Size2f buffer_size;
+
+    /** The mouse position relative to the Window's top-left corner. */
+    Vector2f mouse_pos;
+
+    /** Time at the beginning of the current frame. */
+    Time time;
+};
+
+/**********************************************************************************************************************/
 
 class CellContext {
 
@@ -53,9 +87,10 @@ private: // classes
 
     struct alignas(8) ShaderVariables {
         enum class Type : GLint {
-            GRADIENT,
-            IMAGE,
-            SIMPLE,
+            GRADIENT = 0,
+            IMAGE    = 1,
+            STENCIL  = 2,
+            TEXT     = 3,
         };
 
         ShaderVariables() // we'll see if we need this initialization to zero at all
@@ -65,7 +100,7 @@ private: // classes
               feather{0},
               strokeMult{0},
               strokeThr{0},
-              type{Type::SIMPLE}
+              type{Type::STENCIL}
         {
             for (auto i = 0; i < 12; ++i) {
                 scissorMat[i] = 0;
@@ -105,7 +140,7 @@ private: // classes
         GLint viewsize;
 
         /** Location of the `textures` uniform in the Shader. */
-        GLint texture;
+        GLint image;
 
         /** Location of the `variables` uniform in the Shader. */
         GLuint variables;
@@ -122,31 +157,8 @@ public: // methods
     /** The Painterpreter painting into the Cell Context. */
     Painterpreter& get_painterpreter() const { return *m_painterpreter.get(); }
 
-    /** Time at the beginning of the current frame. */
-    Time get_time() const { return m_time; }
-
-    /** The mouse position relative to the Window's top-left corner. */
-    const Vector2f& get_mouse_pos() const { return m_mouse_pos; }
-
-    /** The pixel ratio of the GraphicsContext. */
-    float get_pixel_ratio() const { return m_context.get_args().pixel_ratio; }
-
-    /** Whether Cells should provide their own geometric antialiasing or not. */
-    bool provides_geometric_aa() const { return m_context.get_args().geometric_aa; }
-
-    /** Whether the fragment shader should discard antialiased stroke fragments below a certain threshold
-     * See GraphicsContextArguments for details.
-     */
-    bool has_save_alpha_strokes() const { return m_context.get_args().save_alpha_stroke; }
-
-    /** Furthest distance between two points in which the second point is considered equal to the first. */
-    float get_distance_tolerance() const { return m_distance_tolerance; }
-
-    /** Tesselation density when creating rounded shapes. */
-    float get_tesselation_tolerance() const { return m_tesselation_tolerance; }
-
-    /** Width of the faint outline around shapes when geometric antialiasing is enabled. */
-    float get_fringe_width() const { return m_fringe_width; }
+    /** */
+    const CellContextOptions& get_options() const { return m_options;}
 
     /** Begins a new frame. */
     void begin_frame(const Size2i& buffer_size, const Time time, const Vector2f mouse_pos);
@@ -177,11 +189,14 @@ private: // static methods
     static constexpr GLintptr fragmentSize() { return sizeof(ShaderVariables); }
 
 private: // fields
-    /** Context used by the Cell Context. */
+    /** Graphics Context used by the Cell Context. */
     GraphicsContext& m_context;
 
     /** The single Painterpreter used to paint in this Cell Context. */
     std::unique_ptr<Painterpreter> m_painterpreter;
+
+    /** All values that determine the paint operations in the painted Cells. */
+    CellContextOptions m_options;
 
     /** The Cell Shader used to render Widgets' Cells. */
     CellShader m_cell_shader;
@@ -197,30 +212,6 @@ private: // fields
 
     /** ShaderVariables for each Call. */
     std::vector<ShaderVariables> m_shader_variables;
-
-    /* Paint parameters ***********************************************************************************************/
-
-    /** Furthest distance between two points in which the second point is considered equal to the first. */
-    float m_distance_tolerance;
-
-    /** Tesselation density when creating rounded shapes. */
-    float m_tesselation_tolerance;
-
-    /** Width of the faint outline around shapes when geometric antialiasing is enabled. */
-    float m_fringe_width;
-
-    /* Per-frame infos ************************************************************************************************/
-
-    /** Returns the size of the Window's framebuffer in pixels. */
-    Size2f m_buffer_size;
-
-    /** Time at the beginning of the current frame. */
-    Time m_time;
-
-    /** The mouse position relative to the Window's top-left corner. */
-    Vector2f m_mouse_pos;
-
-    /* OpenGL buffers *************************************************************************************************/
 
     /** Buffer containing all fragment shader uniforms. */
     GLuint m_fragment_buffer;

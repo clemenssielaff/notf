@@ -10,9 +10,9 @@ namespace notf {
 
 GraphicsContext* GraphicsContext::s_current_context = nullptr;
 
-GraphicsContext::GraphicsContext(const Window* window, const GraphicsContextArguments args)
+GraphicsContext::GraphicsContext(const Window* window, const GraphicsContextOptions args)
     : m_window(window)
-    , m_args(std::move(args))
+    , m_options(std::move(args))
     , m_stencil_func(StencilFunc::INVALID)
     , m_stencil_mask(0)
     , m_blend_mode(BlendMode::INVALID)
@@ -22,13 +22,13 @@ GraphicsContext::GraphicsContext(const Window* window, const GraphicsContextArgu
     , m_shaders()
 {
     // make sure the pixel ratio is real and never zero
-    if (!is_real(m_args.pixel_ratio)) {
-        log_warning << "Pixel ratio cannot be " << m_args.pixel_ratio << ", defaulting to 1";
-        m_args.pixel_ratio = 1;
+    if (!is_real(m_options.pixel_ratio)) {
+        log_warning << "Pixel ratio cannot be " << m_options.pixel_ratio << ", defaulting to 1";
+        m_options.pixel_ratio = 1;
     }
-    else if (std::abs(m_args.pixel_ratio) < precision_high<float>()) {
+    else if (std::abs(m_options.pixel_ratio) < precision_high<float>()) {
         log_warning << "Pixel ratio cannot be zero, defaulting to 1";
-        m_args.pixel_ratio = 1;
+        m_options.pixel_ratio = 1;
     }
 }
 

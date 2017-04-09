@@ -6,7 +6,7 @@ R"=====(
     precision mediump float;
 #endif
 
-layout(std140) uniform frag {
+layout(std140) uniform variables {
     mat3 scissorMat;
     mat3 paintMat;
     vec4 innerCol;
@@ -20,10 +20,10 @@ layout(std140) uniform frag {
     float strokeThr;
     int type;
 };
-uniform sampler2D tex;
-in vec2 ftcoord;
-in vec2 fpos;
-out vec4 outColor;
+uniform sampler2D image;
+in vec2 tex_coord;
+in vec2 vertex_pos;
+out vec4 result; // fragment color
 
 
 float sdroundrect(vec2 pt, vec2 ext, float rad) {
@@ -42,29 +42,29 @@ float scissorMask(vec2 p) {
 #ifdef GEOMETRY_AA
     // Stroke - from [0..1] to clipped pyramid, where the slope is 1px.
     float strokeMask() {
-        return min(1.0, (1.0-abs(ftcoord.x*2.0-1.0))*strokeMult) * min(1.0, ftcoord.y);
+        return min(1.0, (1.0-abs(tex_coord.x*2.0-1.0))*strokeMult) * min(1.0, tex_coord.y);
     }
 #endif
 
 void main(void) {
-    vec4 result;
-    float scissor = scissorMask(fpos);
+    float scissor = scissorMask(vertex_pos);
 
 #ifdef GEOMETRY_AA
     float strokeAlpha = strokeMask();
+#else
+    float strokeAlpha = 1.0;
+#endif
+
 #ifdef SAVE_ALPHA_STROKE
     if (strokeAlpha < strokeThr) {
         discard;
     }
 #endif
-#else
-    float strokeAlpha = 1.0;
-#endif
 
     // Gradient
     if (type == 0) {
         // Calculate gradient color using box gradient
-        vec2 pt = (paintMat * vec3(fpos,1.0)).xy;
+        vec2 pt = (paintMat * vec3(vertex_pos,1.0)).xy;
         float d = clamp((sdroundrect(pt, extent, radius) + feather*0.5) / feather, 0.0, 1.0);
         vec4 color = mix(innerCol,outerCol,d);
 
@@ -76,8 +76,8 @@ void main(void) {
     // Image
     else if (type == 1) {
         // Calculate color from texture
-        vec2 pt = (paintMat * vec3(fpos,1.0)).xy / extent;
-        vec4 color = texture(tex, pt);
+        vec2 pt = (paintMat * vec3(vertex_pos,1.0)).xy / extent;
+        vec4 color = texture(image, pt);
 //        if (texType == 1) {
 //            color = vec4(color.xyz*color.w,color.w);
 //        }
@@ -98,7 +98,14 @@ void main(void) {
         result = vec4(1,1,1,1);
     }
 
-    // return result
-    outColor = result;
+    // Text
+    else if (type == 3) {
+        result = vec4(1, 1, 1, texture(image, tex_coord).r) * innerCol;
+    }
+
+    // Error
+    else {
+        result = vec4(0,0,0,1);
+    }
 }
 //)====="; // footer, required to read the file into NoTF at compile time

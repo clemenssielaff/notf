@@ -67,7 +67,7 @@ Window::Window(const WindowInfo& info)
     // create the auxiliary objects
     m_render_manager = std::make_unique<RenderManager>(this);
 
-    GraphicsContextArguments context_args;
+    GraphicsContextOptions context_args;
     context_args.pixel_ratio = static_cast<float>(get_buffer_size().width) / static_cast<float>(get_window_size().width);
     m_graphics_context         = std::make_unique<GraphicsContext>(this, context_args);
 
@@ -98,7 +98,7 @@ std::shared_ptr<Window> Window::create(const WindowInfo& info)
 {
 
     std::shared_ptr<Window> window = std::make_shared<make_shared_enabler>(info);
-    if (check_gl_error()) {
+    if (get_gl_error()) {
         exit(to_number(Application::RETURN_CODE::OPENGL_FAILURE));
     }
     else {

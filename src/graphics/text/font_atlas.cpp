@@ -8,8 +8,13 @@
 #include "common/vector.hpp"
 #include "core/opengl.hpp"
 #include "graphics/gl_errors.hpp"
+#include "utils/unused.hpp"
 
-#define INVALID_SIZE_T (std::numeric_limits<size_t>::max())
+namespace { // anonymous
+
+const size_t INVALID_SIZE_T = std::numeric_limits<size_t>::max();
+
+} // namespace anonymous
 
 namespace notf {
 
@@ -118,11 +123,17 @@ FontAtlas::FontAtlas(const coord_t width, const coord_t height)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    check_gl_error();
 
     // initialize
     reset();
 
     log_trace << "Created font atlas of size " << m_width << "x" << m_height << " with ID: " << m_texture_id;
+
+    static_assert(std::is_pod<Rect>::value, "This compiler does not recognize notf::FontAtlas::WasteRect as a POD.");
+    static_assert(std::is_pod<FitRequest>::value, "This compiler does not recognize notf::FontAtlas::FitRequest as a POD.");
+    static_assert(std::is_pod<SkylineNode>::value, "This compiler does not recognize notf::FontAtlas::SkylineNode as a POD.");
+    static_assert(std::is_pod<ScoredRect>::value, "This compiler does not recognize notf::FontAtlas::ScoredRect as a POD.");
 }
 
 FontAtlas::~FontAtlas()
@@ -135,7 +146,7 @@ void FontAtlas::reset()
 {
     // create a flat skyline of zero height
     m_nodes.clear();
-    m_nodes.emplace_back(0, 0, m_width);
+    m_nodes.emplace_back(SkylineNode{0, 0, m_width});
     m_waste.initialize(m_width, m_height);
     m_used_area = 0;
 
@@ -174,7 +185,7 @@ FontAtlas::Rect FontAtlas::insert_rect(const coord_t width, const coord_t height
     return result.rect;
 }
 
-std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<NamedExtend> named_extends)
+std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<FitRequest> named_extends)
 {
     std::vector<ProtoGlyph> result;
 
@@ -189,8 +200,8 @@ std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<NamedExte
 
         // find the best fit
         for (size_t named_size_index = 0; named_size_index < named_extends.size(); ++named_size_index) {
-            const NamedExtend& extend = named_extends[named_size_index];
-            const ScoredRect scored   = _get_rect(extend.width, extend.height);
+            const FitRequest& extend = named_extends[named_size_index];
+            const ScoredRect scored  = _get_rect(extend.width, extend.height);
             if (scored.rect.height == 0) {
                 named_extends.erase(iterator_at(named_extends, named_size_index));
                 result.emplace_back(best_code_point, best_rect);
@@ -312,8 +323,10 @@ void FontAtlas::_add_node(const size_t node_index, const Rect& rect)
     }
 
     // create the new node
+    assert(rect.y + rect.height <= std::numeric_limits<coord_t>::max());
     const SkylineNode& new_node = *(m_nodes.emplace(iterator_at(m_nodes, node_index),
-                                                    rect.x, rect.y + rect.height, rect.width));
+                                                    SkylineNode{rect.x, static_cast<coord_t>(rect.y + rect.height), rect.width}));
+    UNUSED(new_node);
 
     // adjust all affected nodes to the right
     for (size_t i = node_index + 1; i < m_nodes.size(); ++i) {

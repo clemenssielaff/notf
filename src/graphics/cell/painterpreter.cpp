@@ -4,6 +4,7 @@
 #include "graphics/cell/cell.hpp"
 #include "graphics/cell/cell_context.hpp"
 #include "graphics/cell/commands.hpp"
+#include "graphics/graphics_context.hpp"
 #include "graphics/texture2.hpp"
 #include "graphics/vertex.hpp"
 
@@ -32,7 +33,7 @@ namespace notf {
 void paint_to_frag(CellContext::ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
                    const float stroke_width, const float fringe, const float stroke_threshold);
 
-Painterpreter::Painterpreter(CellContext &context)
+Painterpreter::Painterpreter(CellContext& context)
     : m_context(context)
     , m_points()
     , m_paths()
@@ -269,7 +270,7 @@ void Painterpreter::_add_point(Vector2f position, const Point::Flags flags)
     // if the Point is not significantly different from the last one, use that instead.
     if (!m_points.empty()) {
         Point& last_point = m_points.back();
-        if (position.is_approx(last_point.pos, m_context.get_distance_tolerance())) {
+        if (position.is_approx(last_point.pos, m_context.get_options().distance_tolerance)) {
             last_point.flags = static_cast<Point::Flags>(last_point.flags | flags);
             return;
         }
@@ -323,7 +324,7 @@ void Painterpreter::_tesselate_bezier(const float x1, const float y1, const floa
 
     int t           = 0;
     int dt          = one;
-    const float tol = m_context.get_tesselation_tolerance() * 4.f;
+    const float tol = m_context.get_options().tesselation_tolerance * 4.f;
 
     while (t < one) {
 
@@ -667,13 +668,14 @@ void Painterpreter::_create_butt_cap_end(const Point& point, const Vector2f& del
 void Painterpreter::_fill()
 {
     const detail::PainterState& state = _get_current_state();
+    const CellContextOptions& options = m_context.get_options();
 
     // get the fill paint
     Paint fill_paint = state.fill_paint;
     fill_paint.inner_color.a *= state.alpha;
     fill_paint.outer_color.a *= state.alpha;
 
-    const float fringe_width = m_context.provides_geometric_aa() ? m_context.get_fringe_width() : 0;
+    const float fringe_width = options.geometric_aa ? options.fringe_width : 0;
     _prepare_paths(fringe_width, Painter::LineJoin::MITER, 2.4f);
 
     // create the render call
@@ -797,8 +799,8 @@ void Painterpreter::_fill()
     if (render_call.type == CellContext::Call::Type::FILL) {
         // create an additional uniform buffer for a simple shader for the stencil
         CellContext::ShaderVariables& stencil_uniforms = create_back(m_context.m_shader_variables);
-        stencil_uniforms.strokeThr                       = -1;
-        stencil_uniforms.type                            = CellContext::ShaderVariables::Type::SIMPLE;
+        stencil_uniforms.strokeThr                     = -1;
+        stencil_uniforms.type                          = CellContext::ShaderVariables::Type::STENCIL;
     }
 
     CellContext::ShaderVariables& fill_uniforms = create_back(m_context.m_shader_variables);
@@ -808,13 +810,14 @@ void Painterpreter::_fill()
 void Painterpreter::_stroke()
 {
     const PainterState& state = _get_current_state();
+    const CellContextOptions& options = m_context.get_options();
 
     // get the stroke paint
     Paint stroke_paint = state.stroke_paint;
     stroke_paint.inner_color.a *= state.alpha;
     stroke_paint.outer_color.a *= state.alpha;
 
-    const float fringe_width = m_context.get_fringe_width();
+    const float fringe_width = options.fringe_width;
     float stroke_width;
     { // create a sane stroke width
         const float scale = (state.xform.scale_factor_x() + state.xform.scale_factor_y()) / 2;
@@ -827,7 +830,7 @@ void Painterpreter::_stroke()
             stroke_width = fringe_width;
         }
         //
-        if (m_context.provides_geometric_aa()) {
+        if (options.geometric_aa) {
             stroke_width = (stroke_width / 2.f) + (fringe_width / 2.f);
         }
         else {
@@ -837,14 +840,14 @@ void Painterpreter::_stroke()
 
     // create the Cell's render call
     CellContext::Call& render_call = create_back(m_context.m_calls);
-    render_call.type                 = CellContext::Call::Type::STROKE;
-    render_call.path_offset          = m_context.m_paths.size();
-    render_call.texture              = state.stroke_paint.texture;
-    render_call.polygon_offset       = 0;
+    render_call.type               = CellContext::Call::Type::STROKE;
+    render_call.path_offset        = m_context.m_paths.size();
+    render_call.texture            = state.stroke_paint.texture;
+    render_call.polygon_offset     = 0;
 
     size_t cap_divisions; // TODO: can circles get more coarse the further away they are?
     {                     // calculate divisions per half circle
-        float da      = acos(stroke_width / (stroke_width + m_context.get_tesselation_tolerance())) * 2;
+        float da      = acos(stroke_width / (stroke_width + options.tesselation_tolerance)) * 2;
         cap_divisions = max(size_t(2), static_cast<size_t>(ceilf(static_cast<float>(PI) / da)));
     }
 
@@ -939,13 +942,15 @@ void Painterpreter::_stroke()
     render_call.path_count = m_context.m_paths.size() - render_call.path_offset;
 
     // create the shader uniforms for the call
-    render_call.uniform_offset                       = static_cast<GLintptr>(m_context.m_shader_variables.size()) * m_context.fragmentSize();
+    render_call.uniform_offset                     = static_cast<GLintptr>(m_context.m_shader_variables.size()) * m_context.fragmentSize();
     CellContext::ShaderVariables& stencil_uniforms = create_back(m_context.m_shader_variables);
     paint_to_frag(stencil_uniforms, stroke_paint, state.scissor, stroke_width, fringe_width, -1.0f);
 
-    // I don't know what the stroke_threshold below is, but with -1 you get artefacts in the rotating lines test
-    CellContext::ShaderVariables& stroke_uniforms = create_back(m_context.m_shader_variables);
-    paint_to_frag(stroke_uniforms, stroke_paint, state.scissor, stroke_width, fringe_width, 1.0f - 0.5f / 255.0f);
+    if (options.stencil_strokes) {
+        // I don't know what the stroke_threshold below is, but with -1 you get artefacts in the rotating lines test
+        CellContext::ShaderVariables& stroke_uniforms = create_back(m_context.m_shader_variables);
+        paint_to_frag(stroke_uniforms, stroke_paint, state.scissor, stroke_width, fringe_width, 1.0f - 0.5f / 255.0f);
+    }
 }
 
 void Painterpreter::_prepare_paths(const float fringe, const Painter::LineJoin join, const float miter_limit)
@@ -957,7 +962,7 @@ void Painterpreter::_prepare_paths(const float fringe, const Painter::LineJoin j
         if (path.point_count >= 2) {
             const Point& first = m_points[path.first_point];
             const Point& last  = m_points[path.first_point + path.point_count - 1];
-            if (first.pos.is_approx(last.pos, m_context.get_distance_tolerance())) {
+            if (first.pos.is_approx(last.pos, m_context.get_options().distance_tolerance)) {
                 --path.point_count;
                 path.is_closed = true;
             }

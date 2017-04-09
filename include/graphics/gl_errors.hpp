@@ -12,10 +12,15 @@ namespace notf {
  */
 int _check_gl_error(uint line, const char* file, const char* function);
 
-#if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_WARNING // evaluates to false if both are not defined
+/** Function forcing a check for OpenGL errors, which allows the caller to use the returned value.
+ * For a simple error reporting mechanism use `check_gl_error` which is a noop in release.
+ */
+#define get_gl_error() _check_gl_error(__LINE__, notf::basename(__FILE__), __FUNCTION__)
+
+#ifdef _DEBUG
 #define check_gl_error() _check_gl_error(__LINE__, notf::basename(__FILE__), __FUNCTION__)
 #else
-#define check_gl_error() (0)
+#define check_gl_error() do {} while(0)
 #endif
 
 } // namespace notf

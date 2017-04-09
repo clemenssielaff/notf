@@ -37,7 +37,7 @@ Font::Font(FontManager* manager, const FontID id, const std::string name,
 
     // create the map of glyphs
     FT_GlyphSlot slot = m_face->glyph;
-    std::vector<FontAtlas::NamedExtend> fit_atlas_request;
+    std::vector<FontAtlas::FitRequest> fit_atlas_request;
     for (codepoint_t codepoint = 32; codepoint < 128; codepoint++) {
         if (FT_Load_Char(m_face, codepoint, FT_LOAD_RENDER)) {
             log_warning << "Failed to render codepoint " << codepoint << " of Font \"" << m_name << "\"";
@@ -52,18 +52,20 @@ Font::Font(FontManager* manager, const FontID id, const std::string name,
         new_glyph.advance_y = static_cast<Glyph::pos_t>(slot->advance.y >> 6);
         m_glyphs.insert(std::make_pair(codepoint, std::move(new_glyph)));
 
-        fit_atlas_request.emplace_back(codepoint, slot->bitmap.width, slot->bitmap.rows);
+        fit_atlas_request.emplace_back(FontAtlas::FitRequest{codepoint,
+                                                             static_cast<FontAtlas::coord_t>(slot->bitmap.width),
+                                                             static_cast<FontAtlas::coord_t>(slot->bitmap.rows)});
     }
 
     // render the glyph into the atlas
     for (const FontAtlas::ProtoGlyph& protoglyph : font_atlas.insert_rects(std::move(fit_atlas_request))) {
-        if (FT_Load_Char(m_face, protoglyph.code_point, FT_LOAD_RENDER)) {
+        if (FT_Load_Char(m_face, protoglyph.first, FT_LOAD_RENDER)) {
             continue;
         }
-        font_atlas.fill_rect(protoglyph.rect, slot->bitmap.buffer);
+        font_atlas.fill_rect(protoglyph.second, slot->bitmap.buffer);
 
-        assert(m_glyphs.count(protoglyph.code_point));
-        m_glyphs.at(protoglyph.code_point).rect = protoglyph.rect;
+        assert(m_glyphs.count(protoglyph.first));
+        m_glyphs.at(protoglyph.first).rect = protoglyph.second;
     }
 }
 
@@ -92,7 +94,7 @@ const Glyph& Font::_allocate_glyph(const codepoint_t codepoint)
     glyph.advance_y = static_cast<Glyph::pos_t>(slot->advance.y >> 6);
 
     FontAtlas& font_atlas = m_manager->get_atlas();
-    glyph.rect = font_atlas.insert_rect(static_cast<FontAtlas::coord_t>(slot->bitmap.width),
+    glyph.rect            = font_atlas.insert_rect(static_cast<FontAtlas::coord_t>(slot->bitmap.width),
                                         static_cast<FontAtlas::coord_t>(slot->bitmap.rows));
     font_atlas.fill_rect(glyph.rect, slot->bitmap.buffer);
 

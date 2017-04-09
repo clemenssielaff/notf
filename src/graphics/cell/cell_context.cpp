@@ -3,8 +3,10 @@
 #include <sstream>
 
 #include "common/log.hpp"
-#include "core/glfw.hpp"
+#include "core/opengl.hpp"
+#include "graphics/gl_errors.hpp"
 #include "graphics/gl_utils.hpp"
+#include "graphics/graphics_context.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/texture2.hpp"
 #include "utils/enum_to_number.hpp"
@@ -30,11 +32,11 @@ std::pair<std::string, std::string> create_shader_sources(const GraphicsContext&
     // create the header
     std::stringstream ss;
     ss << "#version 300 es\n";
-    if (context.get_args().geometric_aa) {
+    if (context.get_options().geometric_aa) {
         ss << "#define GEOMETRY_AA 1\n";
-        if(context.get_args().save_alpha_stroke){
-            ss << "#define SAVE_ALPHA_STROKE 1\n";
-        }
+    }
+    if(context.get_options().stencil_strokes){
+        ss << "#define SAVE_ALPHA_STROKE 1\n";
     }
     ss << "\n";
     std::string header = ss.str();
@@ -53,33 +55,23 @@ namespace notf {
 CellContext::CellContext(GraphicsContext& context)
     : m_context(context)
     , m_painterpreter(std::make_unique<Painterpreter>(*this))
+    , m_options()
     , m_cell_shader()
     , m_calls()
     , m_paths()
     , m_vertices()
     , m_shader_variables()
-    , m_distance_tolerance(0)
-    , m_tesselation_tolerance(0)
-    , m_fringe_width(0)
-    , m_buffer_size(Size2f(0, 0))
-    , m_time()
-    , m_mouse_pos(Vector2f::zero())
     , m_fragment_buffer(0)
     , m_vertex_array(0)
     , m_vertex_buffer(0)
 {
-    // calculate the pixel-ratio dependent fields
-    m_distance_tolerance = 0.01f / m_context.get_args().pixel_ratio;
-    m_tesselation_tolerance = 0.25f / m_context.get_args().pixel_ratio;
-    m_fringe_width = 1.f / m_context.get_args().pixel_ratio;
-
     // create the CellShader
     const std::pair<std::string, std::string> sources = create_shader_sources(m_context);
     m_cell_shader.shader        = m_context.build_shader("CellShader", sources.first, sources.second);
     const GLuint cell_shader_id = m_cell_shader.shader->get_id();
     m_cell_shader.viewsize      = glGetUniformLocation(cell_shader_id, "viewSize");
-    m_cell_shader.texture       = glGetUniformLocation(cell_shader_id, "tex");
-    m_cell_shader.variables     = glGetUniformBlockIndex(cell_shader_id, "frag");
+    m_cell_shader.image         = glGetUniformLocation(cell_shader_id, "image");
+    m_cell_shader.variables     = glGetUniformBlockIndex(cell_shader_id, "variables");
 
     // create dynamic vertex arrays
     glGenVertexArrays(1, &m_vertex_array);
@@ -92,6 +84,7 @@ CellContext::CellContext(GraphicsContext& context)
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &align);
 
     glFinish();
+    check_gl_error();
 }
 
 CellContext::~CellContext()
@@ -114,12 +107,19 @@ void CellContext::begin_frame(const Size2i& buffer_size, const Time time, const 
 {
     reset();
 
-    m_buffer_size.width  = static_cast<float>(buffer_size.width);
-    m_buffer_size.height = static_cast<float>(buffer_size.height);
+    m_options.distance_tolerance = 0.01f / m_context.get_options().pixel_ratio;
+    m_options.tesselation_tolerance = 0.25f / m_context.get_options().pixel_ratio;
+    m_options.fringe_width = 1.f / m_context.get_options().pixel_ratio;
 
-    m_time = time;
+    m_options.geometric_aa = m_context.get_options().geometric_aa;
+    m_options.stencil_strokes = m_context.get_options().stencil_strokes;
 
-    m_mouse_pos = std::move(mouse_pos);
+    m_options.buffer_size.width  = static_cast<float>(buffer_size.width);
+    m_options.buffer_size.height = static_cast<float>(buffer_size.height);
+
+    m_options.mouse_pos = std::move(mouse_pos);
+
+    m_options.time = time;
 }
 
 void CellContext::reset()
@@ -167,8 +167,8 @@ void CellContext::finish_frame()
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), gl_buffer_offset(2 * sizeof(float)));
 
     // Set view and texture just once per frame.
-    glUniform1i(m_cell_shader.texture, 0);
-    glUniform2fv(m_cell_shader.viewsize, 1, m_buffer_size.as_ptr());
+    glUniform1i(m_cell_shader.image, 0);
+    glUniform2fv(m_cell_shader.viewsize, 1, m_options.buffer_size.as_ptr());
 
     // perform the render calls
     for (const Call& call : m_calls) {
@@ -186,12 +186,14 @@ void CellContext::finish_frame()
     }
 
     // teardown GL state
-//    glDisableVertexAttribArray(0);
-//    glDisableVertexAttribArray(1);
-//    glBindVertexArray(0);
-//    glDisable(GL_CULL_FACE);
-//    glBindBuffer(GL_ARRAY_BUFFER, 0);
-//    Shader::unbind();
+    glDisableVertexAttribArray(0);
+    glDisableVertexAttribArray(1);
+    glBindVertexArray(0);
+    glDisable(GL_CULL_FACE);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    Shader::unbind();
+
+    check_gl_error();
 }
 
 void CellContext::_perform_convex_fill(  const Call& call)
@@ -208,13 +210,15 @@ void CellContext::_perform_convex_fill(  const Call& call)
         assert(static_cast<size_t>(m_paths[i].fill_offset + m_paths[i].fill_count) <= m_vertices.size());
         glDrawArrays(GL_TRIANGLE_FAN, m_paths[i].fill_offset, m_paths[i].fill_count);
     }
-    if (m_context.get_args().geometric_aa) {
+    if (m_context.get_options().geometric_aa) {
         // draw fringes
         for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
             assert(static_cast<size_t>(m_paths[i].stroke_offset + m_paths[i].stroke_count) <= m_vertices.size());
             glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].stroke_offset, m_paths[i].stroke_count);
         }
     }
+
+    check_gl_error();
 }
 
 void CellContext::_perform_fill(const Call& call)
@@ -247,7 +251,7 @@ void CellContext::_perform_fill(const Call& call)
         call.texture->bind();
     }
 
-    if (m_context.get_args().geometric_aa) {
+    if (m_context.get_options().geometric_aa) {
         m_context.set_stencil_func(StencilFunc::EQUAL);
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         // draw fringes
@@ -263,6 +267,8 @@ void CellContext::_perform_fill(const Call& call)
     glDrawArrays(GL_TRIANGLES, call.polygon_offset, /* triangle count = */ 6);
 
     glDisable(GL_STENCIL_TEST);
+
+    check_gl_error();
 }
 
 void CellContext::_perform_stroke(const Call& call)
@@ -270,44 +276,58 @@ void CellContext::_perform_stroke(const Call& call)
     assert(call.path_offset + call.path_count <= m_paths.size());
     assert(static_cast<size_t>(call.uniform_offset) <= max(size_t(0), m_shader_variables.size() - 1) * fragmentSize());
 
-    glEnable(GL_STENCIL_TEST);
-    m_context.set_stencil_mask(0xff);
+    if(m_context.get_options().stencil_strokes){
+        glEnable(GL_STENCIL_TEST);
+        m_context.set_stencil_mask(0xff);
 
-    // fill the stroke base without overlap
-    m_context.set_stencil_func(StencilFunc::EQUAL);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
-    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset + fragmentSize(), fragmentSize());
-    if (call.texture) {
-        call.texture->bind();
-    }
-    for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
-        assert(static_cast<size_t>(m_paths[i].stroke_offset + m_paths[i].stroke_count) <= m_vertices.size());
-        glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].stroke_offset, m_paths[i].stroke_count);
+        // fill the stroke base without overlap
+        m_context.set_stencil_func(StencilFunc::EQUAL);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+        glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset + fragmentSize(), fragmentSize());
+        if (call.texture) {
+            call.texture->bind();
+        }
+        for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
+            assert(static_cast<size_t>(m_paths[i].stroke_offset + m_paths[i].stroke_count) <= m_vertices.size());
+            glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].stroke_offset, m_paths[i].stroke_count);
+        }
+
+        // draw anti-aliased pixels
+        glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset, fragmentSize());
+        if (call.texture) {
+            call.texture->bind();
+        }
+        m_context.set_stencil_func(StencilFunc::EQUAL);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+        for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
+            assert(static_cast<size_t>(m_paths[i].stroke_offset + m_paths[i].stroke_count) <= m_vertices.size());
+            glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].stroke_offset, m_paths[i].stroke_count);
+        }
+
+        // clear stencil buffer
+        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        m_context.set_stencil_func(StencilFunc::ALWAYS);
+        glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO);
+        for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
+            assert(static_cast<size_t>(m_paths[i].stroke_offset + m_paths[i].stroke_count) <= m_vertices.size());
+            glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].stroke_offset, m_paths[i].stroke_count);
+        }
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+        glDisable(GL_STENCIL_TEST);
+
+    } else { // !m_context.get_args().save_alpha_stroke
+        glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset, fragmentSize());
+        if (call.texture) {
+            call.texture->bind();
+        }
+        for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
+            glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].stroke_offset, m_paths[i].stroke_count);
+        }
+        return;
     }
 
-    // draw anti-aliased pixels
-    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset, fragmentSize());
-    if (call.texture) {
-        call.texture->bind();
-    }
-    m_context.set_stencil_func(StencilFunc::EQUAL);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-    for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
-        assert(static_cast<size_t>(m_paths[i].stroke_offset + m_paths[i].stroke_count) <= m_vertices.size());
-        glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].stroke_offset, m_paths[i].stroke_count);
-    }
-
-    // clear stencil buffer
-    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    m_context.set_stencil_func(StencilFunc::ALWAYS);
-    glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO);
-    for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
-        assert(static_cast<size_t>(m_paths[i].stroke_offset + m_paths[i].stroke_count) <= m_vertices.size());
-        glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].stroke_offset, m_paths[i].stroke_count);
-    }
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
-    glDisable(GL_STENCIL_TEST);
+    check_gl_error();
 }
 
 void CellContext::_dump_debug_info() const
@@ -318,8 +338,8 @@ void CellContext::_dump_debug_info() const
 
     log_format << "==========================================================\n"
                << "== Arguments                                            ==";
-    log_trace << "Enable geometric AA: " << m_context.get_args().geometric_aa;
-    log_trace << "Pixel ratio: " << m_context.get_args().pixel_ratio;
+    log_trace << "Enable geometric AA: " << m_context.get_options().geometric_aa;
+    log_trace << "Pixel ratio: " << m_context.get_options().pixel_ratio;
 
     log_format << "==========================================================\n"
                << "== Calls                                                ==";

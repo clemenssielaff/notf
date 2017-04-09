@@ -15,27 +15,26 @@ class Window;
 
 /**********************************************************************************************************************/
 
-struct GraphicsContextArguments {
+struct GraphicsContextOptions {
 
     /** Flag indicating whether the GraphicsContext will provide geometric antialiasing for its 2D shapes or not.
      * In a purely 2D application, this flag should be set to `true` since geometric antialiasing is cheaper than
      * full blown multisampling and looks just as good.
-     * However, in a 3D application, you will most likely require true multisampling anyway, in which case we don't
+     * However, in a 3D application, you will most likely require true multisampling anyway, in which case we might not
      * need the redundant geometrical antialiasing on top.
      */
     bool geometric_aa = true;
 
-    /** When painting a semi-transparent stroke with enabled geometric AA, this will discard fragments around the
-     * antialised edge of the stroke that would interfere with a self-crossing stroke.
-     * This is a potentially expensive operation which is only noticeable in special circumstances, hence the flag.
-     * TL;DR:
-     *  - If you don't use geometric antialiasing, this has no effect.
-     *  - If you do use it and notice no performance hit just leave it on.
-     *  - If you do use it and it is slow and yet you see no artefacts, chances are you are not hitting the edge-case
-     *    in question and you could disable this flag.
-     * To see the effect in question, set this to false and play the test case with the rotating strokes.
+    /** When drawing transparent strokes, this flag will make sure that the stroke has a consistent alpha.
+     * It does so by creating two stroke calls - one for the stencil and one for the actual fill.
+     * This is expensive and becomes even more so, because the fragment shader will have to discard many fragments,
+     * which might cause a massive slowdown on some machines (cuts fps in half on mine).
+     * Since the effect is not visible if you don't draw thick, transparent strokes, this is off by default.
+     * If you do see areas in your stroke that are darker than others you might want to enable it.
+     * Also, if you try it out and it does not cause a massive performance hit, you might just as well leave it on
+     * because it is the Right Way™ to draw strokes.
      */
-    bool save_alpha_stroke = true;
+    bool stencil_strokes = false;
 
     /** Pixel ratio of the GraphicsContext.
      * Calculate the pixel ratio using `Window::get_buffer_size().width() / Window::get_window_size().width()`.
@@ -61,7 +60,7 @@ class GraphicsContext {
 public: // methods
     /******************************************************************************************************************/
     /** Constructor. */
-    GraphicsContext(const Window* window, const GraphicsContextArguments args);
+    GraphicsContext(const Window* window, const GraphicsContextOptions args);
 
     /** Destructor. */
     ~GraphicsContext();
@@ -69,8 +68,8 @@ public: // methods
     /** Makes the OpenGL context of this GraphicsContext current. */
     void make_current();
 
-    /** The arguments with which the GraphicsContext was initialized. */
-    const GraphicsContextArguments& get_args() const { return m_args; }
+    /** The curent options of the GraphicsContext. */
+    const GraphicsContextOptions& get_options() const { return m_options; }
 
     /** Applies a new StencilFunction. */
     void set_stencil_func(const StencilFunc func);
@@ -113,7 +112,7 @@ private: // fields
     const Window* m_window;
 
     /** Argument struct to initialize the GraphicsContext. */
-    GraphicsContextArguments m_args;
+    GraphicsContextOptions m_options;
 
     /* OpenGL state cache *********************************************************************************************/
 

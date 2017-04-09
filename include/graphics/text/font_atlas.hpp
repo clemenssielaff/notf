@@ -35,7 +35,9 @@ public: // types
     /** Integer type that can be used to express an area (coordinate_type^2). */
     using area_t = uint32_t;
 
-public: // struct
+public: // types
+    /******************************************************************************************************************/
+
     /** Rectangular area inside the Atlas. */
     struct Rect {
         /** X-coordinate of the rectangle in the atlas. */
@@ -58,36 +60,35 @@ public: // struct
             : x(x), y(y), width(width), height(height) {}
     };
 
-    struct ProtoGlyph {
-        codepoint_t code_point;
-        Rect rect;
+    using ProtoGlyph = std::pair<codepoint_t, Rect>;
 
-        ProtoGlyph() = default;
-        ProtoGlyph(codepoint_t code_point, Rect rect)
-            : code_point(code_point), rect(std::move(rect)) {}
-    };
+    /******************************************************************************************************************/
 
-    struct NamedExtend {
+    struct FitRequest {
+        /** Codepoint, used to associate the answer to the request. */
         codepoint_t code_point;
+
+        /** Width of the rectangle to fit into the atlas. */
         coord_t width;
-        coord_t height;
 
-        NamedExtend() = default;
-        NamedExtend(codepoint_t code_point, coord_t width, coord_t height)
-            : code_point(code_point), width(width), height(height) {}
+        /** Height of the rectangle to fit into the atlas. */
+        coord_t height;
     };
 
 private: // classes
+    /******************************************************************************************************************/
+
     /** Helper data structure to keep track of the free space of the bin where rectangles may be placed. */
     class WasteMap {
 
     public: // methods
+        /** Constructor. */
         WasteMap() = default;
 
         /** (Re-)initializes the WasteMap. */
         void initialize(const coord_t width, const coord_t height);
 
-        /** Registers a new rectangle as "waste" */
+        /** Registers a new rectangle as "waste". */
         void add_waste(Rect rect);
 
         /** Tries to reclaim a rectangle of the given size from waste.
@@ -100,7 +101,9 @@ private: // classes
         std::vector<Rect> m_free_rects;
     };
 
-    /** A single level (a horizontal line) of the skyline envelope*/
+    /******************************************************************************************************************/
+
+    /** A single node (a horizontal line) of the skyline envelope*/
     struct SkylineNode {
         /** Horizontal start of the line.*/
         coord_t x;
@@ -110,14 +113,9 @@ private: // classes
 
         /** Width of the line from x going right.*/
         coord_t width;
-
-        /** Default Constructor. */
-        SkylineNode() = default;
-
-        /** Value Constructor. */
-        SkylineNode(coord_t x, coord_t y, coord_t width)
-            : x(x), y(y), width(width) {}
     };
+
+    /******************************************************************************************************************/
 
     /** Return value of '_place_rect()'. */
     struct ScoredRect {
@@ -132,8 +130,6 @@ private: // classes
 
         /** Height of the space used when inserting rect at the best position. */
         coord_t new_height;
-
-        ScoredRect() = default;
     };
 
 public: // methods
@@ -164,7 +160,7 @@ public: // methods
     /** Places and returns multiple rectangles into the Atlas.
      * Produces a better fit than multiple calls to `insert_rect`.
      */
-    std::vector<ProtoGlyph> insert_rects(std::vector<NamedExtend> named_extends);
+    std::vector<ProtoGlyph> insert_rects(std::vector<FitRequest> named_extends);
 
     /** Fills a rect in the Atlas with the given data.
      * Does not check whether the rect corresponds to a node in the atlas, I trust you know what you are doing.
