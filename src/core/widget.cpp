@@ -4,7 +4,7 @@
 #include "common/string.hpp"
 #include "core/layout.hpp"
 #include "core/window.hpp"
-#include "graphics/cell/cell_context.hpp"
+#include "graphics/cell/cell_canvas.hpp"
 #include "graphics/cell/painter.hpp"
 #include "graphics/cell/painterpreter.hpp"
 #include "utils/unused.hpp"
@@ -51,7 +51,7 @@ void Widget::redraw() // TODO: currently _set_size does not dirty the Widget's C
     m_is_clean = false;
 }
 
-void Widget::paint(CellContext& cell_context) const
+void Widget::paint(CellCanvas& cell_context) const
 {
     // update the Cell if the Widget is dirty
     //    if (!m_is_clean) { // TODO: dirty mechanism for cells
@@ -66,7 +66,7 @@ void Widget::paint(CellContext& cell_context) const
     //    }
 
     // paint the Cell
-    cell_context.get_painterpreter().paint(m_cell);
+    cell_context.paint(m_cell);
 }
 
 void Widget::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const

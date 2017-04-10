@@ -1,4 +1,4 @@
-#include "graphics/cell/cell_context.hpp"
+#include "graphics/cell/cell_canvas.hpp"
 
 #include <sstream>
 
@@ -52,7 +52,7 @@ const GLuint FRAG_BINDING = 0;
 
 namespace notf {
 
-CellContext::CellContext(GraphicsContext& context)
+CellCanvas::CellCanvas(GraphicsContext& context)
     : m_context(context)
     , m_painterpreter(std::make_unique<Painterpreter>(*this))
     , m_options()
@@ -87,7 +87,7 @@ CellContext::CellContext(GraphicsContext& context)
     check_gl_error();
 }
 
-CellContext::~CellContext()
+CellCanvas::~CellCanvas()
 {
     if (m_fragment_buffer != 0) {
         glDeleteBuffers(1, &m_fragment_buffer);
@@ -103,7 +103,12 @@ CellContext::~CellContext()
     }
 }
 
-void CellContext::begin_frame(const Size2i& buffer_size, const Time time, const Vector2f mouse_pos)
+const FontManager& CellCanvas::get_font_manager() const
+{
+    return m_context.get_font_manager();
+}
+
+void CellCanvas::begin_frame(const Size2i& buffer_size, const Time time, const Vector2f mouse_pos)
 {
     reset();
 
@@ -122,7 +127,7 @@ void CellContext::begin_frame(const Size2i& buffer_size, const Time time, const 
     m_options.time = time;
 }
 
-void CellContext::reset()
+void CellCanvas::reset()
 {
     m_calls.clear();
     m_paths.clear();
@@ -130,7 +135,7 @@ void CellContext::reset()
     m_shader_variables.clear();
 }
 
-void CellContext::finish_frame()
+void CellCanvas::finish_frame()
 {
     if (m_calls.empty()) {
         return;
@@ -196,7 +201,7 @@ void CellContext::finish_frame()
     check_gl_error();
 }
 
-void CellContext::_perform_convex_fill(  const Call& call)
+void CellCanvas::_perform_convex_fill(  const Call& call)
 {
     assert(call.path_offset + call.path_count <= m_paths.size());
 
@@ -221,7 +226,7 @@ void CellContext::_perform_convex_fill(  const Call& call)
     check_gl_error();
 }
 
-void CellContext::_perform_fill(const Call& call)
+void CellCanvas::_perform_fill(const Call& call)
 {
     assert(call.path_offset + call.path_count <= m_paths.size());
     assert(static_cast<size_t>(call.uniform_offset) <= max(size_t(0), m_shader_variables.size() - 1) * fragmentSize());
@@ -271,7 +276,7 @@ void CellContext::_perform_fill(const Call& call)
     check_gl_error();
 }
 
-void CellContext::_perform_stroke(const Call& call)
+void CellCanvas::_perform_stroke(const Call& call)
 {
     assert(call.path_offset + call.path_count <= m_paths.size());
     assert(static_cast<size_t>(call.uniform_offset) <= max(size_t(0), m_shader_variables.size() - 1) * fragmentSize());
@@ -330,7 +335,7 @@ void CellContext::_perform_stroke(const Call& call)
     check_gl_error();
 }
 
-void CellContext::_dump_debug_info() const
+void CellCanvas::_dump_debug_info() const
 {
     log_format << "==========================================================\n"
                << "== Render Context Dump Begin                            ==\n"

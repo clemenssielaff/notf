@@ -12,6 +12,7 @@
 
 namespace notf {
 
+class FontManager;
 struct Paint;
 class Painterpreter;
 class GraphicsContext;
@@ -25,7 +26,7 @@ class Texture2;
  * We need options to stay the same during a frame, which is why they are collected from various sources at the
  * beginning and do not change until the next frame.
  */
-struct CellContextOptions {
+struct CellCanvasOptions {
 
     /** Furthest distance between two points in which the second point is considered equal to the first. */
     float distance_tolerance;
@@ -54,7 +55,7 @@ struct CellContextOptions {
 
 /**********************************************************************************************************************/
 
-class CellContext {
+class CellCanvas {
 
     friend class Painterpreter;
 
@@ -149,19 +150,22 @@ private: // classes
 public: // methods
     /******************************************************************************************************************/
     /** Constructor. */
-    CellContext(GraphicsContext& context);
+    CellCanvas(GraphicsContext& context);
 
     /** Destructor. */
-    ~CellContext();
+    ~CellCanvas();
 
-    /** The Painterpreter painting into the Cell Context. */
-    Painterpreter& get_painterpreter() const { return *m_painterpreter.get(); }
+    /** The Font Manager. */
+    const FontManager& get_font_manager() const;
 
-    /** */
-    const CellContextOptions& get_options() const { return m_options;}
+    /** Returns the Cell options that are guaranteed to be consistent during the drawing of a frame. */
+    const CellCanvasOptions& get_options() const { return m_options;}
 
     /** Begins a new frame. */
     void begin_frame(const Size2i& buffer_size, const Time time, const Vector2f mouse_pos);
+
+    /** Paints a given Cell. */
+    void paint(Cell& cell) { m_painterpreter->paint(cell); }
 
     /** Aborts the drawing of the current frame if something went wrong. */
     void reset();
@@ -196,7 +200,7 @@ private: // fields
     std::unique_ptr<Painterpreter> m_painterpreter;
 
     /** All values that determine the paint operations in the painted Cells. */
-    CellContextOptions m_options;
+    CellCanvasOptions m_options;
 
     /** The Cell Shader used to render Widgets' Cells. */
     CellShader m_cell_shader;

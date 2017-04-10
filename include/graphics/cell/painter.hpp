@@ -5,11 +5,12 @@
 #include "graphics/blend_mode.hpp"
 #include "graphics/cell/paint.hpp"
 #include "graphics/scissor.hpp"
+#include "graphics/text/font_id.hpp"
 
 namespace notf {
 
 class Cell;
-class CellContext;
+class CellCanvas;
 
 namespace detail {
 
@@ -82,7 +83,7 @@ class Painter : public detail::PainterBase {
 
 public: // methods
     /** Value Constructor. */
-    Painter(Cell& cell, CellContext& cell_context);
+    Painter(Cell& cell, CellCanvas& cell_context);
 
     /* State management ***********************************************************************************************/
 
@@ -260,6 +261,13 @@ public: // methods
     void add_circle(const float cx, const float cy, const float radius) { add_ellipse(cx, cy, radius, radius); }
     void add_circle(const Vector2f& center, const float radius) { add_ellipse(center.x, center.y, radius, radius); }
 
+    /* Text ***********************************************************************************************************/
+
+    /** Renders a text.
+     * The stencil position corresponts to the start of the text's baseline.
+     */
+    void render_text(const std::string& text, const FontID font_id);
+
     /* Painting *******************************************************************************************************/
 
     /** Fills the current Path with the Paint defined in the Painter's current State. */
@@ -296,7 +304,7 @@ private: // fields
     Cell& m_cell;
 
     /** Context into which the given Cell is painted. */
-    const CellContext& m_cell_context;
+    const CellCanvas& m_cell_context;
 
     /** Current position of the 'stylus', as the last Command left it. */
     Vector2f m_stylus;

@@ -30,8 +30,8 @@
 #include "common/line2.hpp"
 #include "common/log.hpp"
 #include "graphics/cell/cell.hpp"
+#include "graphics/cell/cell_canvas.hpp"
 #include "graphics/cell/commands.hpp"
-#include "graphics/cell/cell_context.hpp"
 
 namespace { // anonymous
 using namespace notf;
@@ -47,7 +47,7 @@ namespace notf {
 
 std::vector<detail::PainterState> Painter::s_states;
 
-Painter::Painter(Cell& cell, CellContext& cell_context)
+Painter::Painter(Cell& cell, CellCanvas& cell_context)
     : m_cell(cell)
     , m_cell_context(cell_context)
     , m_stylus(Vector2f::zero())
@@ -57,8 +57,7 @@ Painter::Painter(Cell& cell, CellContext& cell_context)
     s_states.clear();
     s_states.emplace_back();
 
-    // reset the Cell before adding any Commands
-    m_cell.m_commands.clear();
+    m_cell.clear();
 }
 
 size_t Painter::push_state()
@@ -155,9 +154,14 @@ void Painter::set_line_join(const LineJoin join)
 
 void Painter::set_fill_paint(Paint paint)
 {
+    if (std::shared_ptr<Texture2> texture = paint.texture) {
+        m_cell.m_vault.insert(texture);
+    }
+
     detail::PainterState& current_state = _get_current_state();
     paint.xform *= current_state.xform;
     current_state.fill_paint = std::move(paint);
+
     m_cell.m_commands.add_command(FillPaintCommand(current_state.fill_paint));
 }
 
@@ -170,9 +174,14 @@ void Painter::set_fill_color(Color color)
 
 void Painter::set_stroke_paint(Paint paint)
 {
+    if (std::shared_ptr<Texture2> texture = paint.texture) {
+        m_cell.m_vault.insert(texture);
+    }
+
     detail::PainterState& current_state = _get_current_state();
     paint.xform *= current_state.xform;
     current_state.stroke_paint = std::move(paint);
+
     m_cell.m_commands.add_command(StrokePaintCommand(current_state.stroke_paint));
 }
 
@@ -366,6 +375,13 @@ void Painter::add_ellipse(const float cx, const float cy, const float rx, const 
     m_cell.m_commands.add_command(BezierCommand({cx + rx, cy - ry * KAPPAf}, {cx + rx * KAPPAf, cy - ry}, {cx, cy - ry}));
     m_cell.m_commands.add_command(BezierCommand({cx - rx * KAPPAf, cy - ry}, {cx - rx, cy - ry * KAPPAf}, {cx - rx, cy}));
     close_path();
+}
+
+void Painter::render_text(const std::string& text, const FontID font_id)
+{
+    std::shared_ptr<std::string> rendered_text = std::make_shared<std::string>(text);
+    m_cell.m_vault.insert(rendered_text);
+    m_cell.m_commands.add_command(RenderTextCommand(rendered_text, font_id));
 }
 
 void Painter::fill()

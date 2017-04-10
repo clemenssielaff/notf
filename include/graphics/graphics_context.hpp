@@ -9,6 +9,7 @@
 
 namespace notf {
 
+class FontManager;
 class Shader;
 class Texture2;
 class Window;
@@ -71,6 +72,9 @@ public: // methods
     /** The curent options of the GraphicsContext. */
     const GraphicsContextOptions& get_options() const { return m_options; }
 
+    /** The Font Manager. */
+    const FontManager& get_font_manager() const { return *m_font_manager.get(); }
+
     /** Applies a new StencilFunction. */
     void set_stencil_func(const StencilFunc func);
 
@@ -113,6 +117,11 @@ private: // fields
 
     /** Argument struct to initialize the GraphicsContext. */
     GraphicsContextOptions m_options;
+
+    /* Dedicated context managers *************************************************************************************/
+
+    /** The Font Manager. */
+    std::unique_ptr<FontManager> m_font_manager;
 
     /* OpenGL state cache *********************************************************************************************/
 

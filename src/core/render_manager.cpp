@@ -6,7 +6,7 @@
 #include "core/widget.hpp"
 #include "core/window.hpp"
 #include "core/window_layout.hpp"
-#include "graphics/cell/cell_context.hpp"
+#include "graphics/cell/cell_canvas.hpp"
 #include "graphics/stats.hpp"
 
 namespace notf {
@@ -81,7 +81,7 @@ void RenderManager::render(const Size2i buffer_size)
     Time time_at_start = Time::now();
 
     // prepare the render context
-    CellContext& cell_context = m_window->get_cell_context();
+    CellCanvas& cell_context = m_window->get_cell_context();
     cell_context.begin_frame(buffer_size, time_at_start, m_window->get_mouse_pos());
 
     // remove unused layers

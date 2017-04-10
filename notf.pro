@@ -160,8 +160,8 @@ SOURCES += \
     src/graphics/cell/painter.cpp \
     src/graphics/cell/painterpreter.cpp \
     src/graphics/cell/cell.cpp \
-    src/graphics/cell/cell_context.cpp \
-    src/graphics/graphics_context.cpp
+    src/graphics/graphics_context.cpp \
+    src/graphics/cell/cell_canvas.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -244,8 +244,9 @@ HEADERS += \
     include/graphics/cell/commands.hpp \
     include/graphics/cell/command_buffer.hpp \
     include/common/identifier.hpp \
-    include/graphics/cell/cell_context.hpp \
-    include/graphics/graphics_context.hpp
+    include/graphics/graphics_context.hpp \
+    include/graphics/text/font_id.hpp \
+    include/graphics/cell/cell_canvas.hpp
 
 QMAKE_CXX = ccache g++
 

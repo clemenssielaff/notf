@@ -9,7 +9,7 @@
 #include "core/resource_manager.hpp"
 #include "core/widget.hpp"
 #include "core/window_layout.hpp"
-#include "graphics/cell/cell_context.hpp"
+#include "graphics/cell/cell_canvas.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/raw_image.hpp"
 #include "graphics/graphics_context.hpp"
@@ -71,7 +71,7 @@ Window::Window(const WindowInfo& info)
     context_args.pixel_ratio = static_cast<float>(get_buffer_size().width) / static_cast<float>(get_window_size().width);
     m_graphics_context         = std::make_unique<GraphicsContext>(this, context_args);
 
-    m_cell_context = std::make_unique<CellContext>(*m_graphics_context);
+    m_cell_context = std::make_unique<CellCanvas>(*m_graphics_context);
 
     // apply the Window icon
     // In order to remove leftover icons on Ubuntu call:

@@ -13,7 +13,7 @@ struct GLFWwindow;
 namespace notf {
 
 struct KeyEvent;
-class CellContext;
+class CellCanvas;
 class WindowLayout;
 class MouseEvent;
 class GraphicsContext;
@@ -83,7 +83,7 @@ public: // methods
     GraphicsContext& get_graphics_context() const { return *m_graphics_context; }
 
     /** Object drawing Cells into the Window. */
-    CellContext& get_cell_context() const { return *m_cell_context; }
+    CellCanvas& get_cell_context() const { return *m_cell_context; }
 
     /** Returns the Window's size in screen coordinates (not pixels).
      * Returns an invalid size if the GLFW window was already closed.
@@ -150,7 +150,7 @@ private: // fields
     std::unique_ptr<GraphicsContext> m_graphics_context;
 
     /** Object drawing Cells into the Window. */
-    std::unique_ptr<CellContext> m_cell_context;
+    std::unique_ptr<CellCanvas> m_cell_context;
 
     /** The Window's background color. */
     Color m_background_color;

@@ -2,11 +2,12 @@
 
 #include "common/vector.hpp"
 #include "graphics/cell/cell.hpp"
-#include "graphics/cell/cell_context.hpp"
+#include "graphics/cell/cell_canvas.hpp"
 #include "graphics/cell/commands.hpp"
 #include "graphics/graphics_context.hpp"
 #include "graphics/texture2.hpp"
 #include "graphics/vertex.hpp"
+#include "graphics/text/font_manager.hpp"
 
 namespace { // anonymous
 using namespace notf;
@@ -30,11 +31,11 @@ void xformToMat3x4(float* m3, Xform2f t)
 
 namespace notf {
 
-void paint_to_frag(CellContext::ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
+void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
                    const float stroke_width, const float fringe, const float stroke_threshold);
 
-Painterpreter::Painterpreter(CellContext& context)
-    : m_context(context)
+Painterpreter::Painterpreter(CellCanvas& context)
+    : m_canvas(context)
     , m_points()
     , m_paths()
     , m_states()
@@ -43,7 +44,6 @@ Painterpreter::Painterpreter(CellContext& context)
 }
 
 // TODO: when this draws, revisit this function and see if you find a way to guarantee that there is always a path and point without if-statements all over the place
-// TODO: I'm pretty sure when writing vertices from Cell to CellContext you'll need to xform them
 void Painterpreter::paint(Cell& cell)
 {
     _reset();
@@ -231,6 +231,13 @@ void Painterpreter::paint(Cell& cell)
             index += command_size<decltype(cmd)>();
         } break;
 
+        case PainterCommand::RENDER_TEXT: {
+            const RenderTextCommand& cmd     = map_command<RenderTextCommand>(commands, index);
+            _render_text(*cmd.text.get(), cmd.font);
+            index += command_size<decltype(cmd)>();
+        } break;
+
+
         default:     // unknown enum
             ++index; // failsave
             throw std::runtime_error("Encountered Unknown enum in Painterpreter::paint");
@@ -270,7 +277,7 @@ void Painterpreter::_add_point(Vector2f position, const Point::Flags flags)
     // if the Point is not significantly different from the last one, use that instead.
     if (!m_points.empty()) {
         Point& last_point = m_points.back();
-        if (position.is_approx(last_point.pos, m_context.get_options().distance_tolerance)) {
+        if (position.is_approx(last_point.pos, m_canvas.get_options().distance_tolerance)) {
             last_point.flags = static_cast<Point::Flags>(last_point.flags | flags);
             return;
         }
@@ -324,7 +331,7 @@ void Painterpreter::_tesselate_bezier(const float x1, const float y1, const floa
 
     int t           = 0;
     int dt          = one;
-    const float tol = m_context.get_options().tesselation_tolerance * 4.f;
+    const float tol = m_canvas.get_options().tesselation_tolerance * 4.f;
 
     while (t < one) {
 
@@ -665,10 +672,16 @@ void Painterpreter::_create_butt_cap_end(const Point& point, const Vector2f& del
                               Vector2f(1, 0));
 }
 
+void Painterpreter::_render_text(const std::string& text, const FontID font_id)
+{
+    // TODO: pass transform to font manager - also, full xform of all created vertices (I want 3D spinning widgets!)
+    m_canvas.m_context.get_font_manager().render_text(text, 0, 0, font_id);
+}
+
 void Painterpreter::_fill()
 {
     const detail::PainterState& state = _get_current_state();
-    const CellContextOptions& options = m_context.get_options();
+    const CellCanvasOptions& options = m_canvas.get_options();
 
     // get the fill paint
     Paint fill_paint = state.fill_paint;
@@ -679,14 +692,14 @@ void Painterpreter::_fill()
     _prepare_paths(fringe_width, Painter::LineJoin::MITER, 2.4f);
 
     // create the render call
-    CellContext::Call& render_call = create_back(m_context.m_calls);
+    CellCanvas::Call& render_call = create_back(m_canvas.m_calls);
     if (m_paths.size() == 1 && m_paths.front().is_convex) {
-        render_call.type = CellContext::Call::Type::CONVEX_FILL;
+        render_call.type = CellCanvas::Call::Type::CONVEX_FILL;
     }
     else {
-        render_call.type = CellContext::Call::Type::FILL;
+        render_call.type = CellCanvas::Call::Type::FILL;
     }
-    render_call.path_offset = m_context.m_paths.size();
+    render_call.path_offset = m_canvas.m_paths.size();
     render_call.path_count  = m_paths.size();
     render_call.texture     = _get_current_state().fill_paint.texture;
 
@@ -696,9 +709,9 @@ void Painterpreter::_fill()
         assert(last_point_offset < m_points.size());
 
         // create the fill vertices
-        CellContext::Path& render_path = create_back(m_context.m_paths);
-        assert(m_context.m_vertices.size() < std::numeric_limits<GLint>::max());
-        render_path.fill_offset = static_cast<GLint>(m_context.m_vertices.size());
+        CellCanvas::Path& render_path = create_back(m_canvas.m_paths);
+        assert(m_canvas.m_vertices.size() < std::numeric_limits<GLint>::max());
+        render_path.fill_offset = static_cast<GLint>(m_canvas.m_vertices.size());
         if (fringe_width > 0) {
             // create a loop
             for (size_t current_offset = path.first_point, previous_offset = last_point_offset;
@@ -709,16 +722,16 @@ void Painterpreter::_fill()
 
                 // no bevel
                 if (!(current_point.flags & Point::Flags::BEVEL) || current_point.flags & Point::Flags::LEFT) {
-                    m_context.m_vertices.emplace_back(current_point.pos + (current_point.dm * woff),
+                    m_canvas.m_vertices.emplace_back(current_point.pos + (current_point.dm * woff),
                                                       Vector2f(.5f, 1));
                 }
 
                 // beveling requires an extra vertex
                 else {
-                    m_context.m_vertices.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * woff,
+                    m_canvas.m_vertices.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * woff,
                                                                current_point.pos.y - previous_point.forward.x * woff),
                                                       Vector2f(.5f, 1));
-                    m_context.m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * woff,
+                    m_canvas.m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * woff,
                                                                current_point.pos.y - current_point.forward.x * woff),
                                                       Vector2f(.5f, 1));
                 }
@@ -727,16 +740,16 @@ void Painterpreter::_fill()
         // no fringe = no antialiasing
         else {
             for (size_t point_offset = path.first_point; point_offset <= last_point_offset; ++point_offset) {
-                m_context.m_vertices.emplace_back(m_points[point_offset].pos,
+                m_canvas.m_vertices.emplace_back(m_points[point_offset].pos,
                                                   Vector2f(.5f, 1));
             }
         }
-        render_path.fill_count = static_cast<GLsizei>(m_context.m_vertices.size() - static_cast<size_t>(render_path.fill_offset));
+        render_path.fill_count = static_cast<GLsizei>(m_canvas.m_vertices.size() - static_cast<size_t>(render_path.fill_offset));
 
         // create stroke vertices, if we draw this shape antialiased
         if (fringe_width > 0) {
-            assert(m_context.m_vertices.size() < std::numeric_limits<GLint>::max());
-            render_path.stroke_offset = static_cast<GLint>(m_context.m_vertices.size());
+            assert(m_canvas.m_vertices.size() < std::numeric_limits<GLint>::max());
+            render_path.stroke_offset = static_cast<GLint>(m_canvas.m_vertices.size());
 
             float left_w        = fringe_width + woff;
             float left_u        = 0;
@@ -759,58 +772,58 @@ void Painterpreter::_fill()
                 const Point& current_point  = m_points[current_offset];
 
                 if (current_point.flags & (Point::Flags::BEVEL | Point::Flags::INNERBEVEL)) {
-                    _create_bevel_join(previous_point, current_point, left_w, right_w, left_u, right_u, m_context.m_vertices);
+                    _create_bevel_join(previous_point, current_point, left_w, right_w, left_u, right_u, m_canvas.m_vertices);
                 }
                 else {
-                    m_context.m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.dm.x * left_w,
+                    m_canvas.m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.dm.x * left_w,
                                                                current_point.pos.y + current_point.dm.y * left_w),
                                                       Vector2f(left_u, 1));
-                    m_context.m_vertices.emplace_back(Vector2f(current_point.pos.x - current_point.dm.x * right_w,
+                    m_canvas.m_vertices.emplace_back(Vector2f(current_point.pos.x - current_point.dm.x * right_w,
                                                                current_point.pos.y - current_point.dm.y * right_w),
                                                       Vector2f(right_u, 1));
                 }
             }
 
             // copy the first two vertices from the beginning to form a cohesive loop
-            assert(m_context.m_vertices.size() >= static_cast<size_t>(render_path.stroke_offset + 2));
-            m_context.m_vertices.emplace_back(m_context.m_vertices[static_cast<size_t>(render_path.stroke_offset + 0)].pos,
+            assert(m_canvas.m_vertices.size() >= static_cast<size_t>(render_path.stroke_offset + 2));
+            m_canvas.m_vertices.emplace_back(m_canvas.m_vertices[static_cast<size_t>(render_path.stroke_offset + 0)].pos,
                                               Vector2f(left_u, 1));
-            m_context.m_vertices.emplace_back(m_context.m_vertices[static_cast<size_t>(render_path.stroke_offset + 1)].pos,
+            m_canvas.m_vertices.emplace_back(m_canvas.m_vertices[static_cast<size_t>(render_path.stroke_offset + 1)].pos,
                                               Vector2f(right_u, 1));
 
-            render_path.stroke_count = static_cast<GLsizei>(m_context.m_vertices.size() - static_cast<size_t>(render_path.stroke_offset));
+            render_path.stroke_count = static_cast<GLsizei>(m_canvas.m_vertices.size() - static_cast<size_t>(render_path.stroke_offset));
         }
     }
 
     // create the polygon onto which to render the shape
-    assert(m_context.m_vertices.size() < std::numeric_limits<GLint>::max());
-    render_call.polygon_offset = static_cast<GLint>(m_context.m_vertices.size());
-    m_context.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.left(), m_bounds.bottom()}, Vector2f{.5f, 1.f}});
-    m_context.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.right(), m_bounds.bottom()}, Vector2f{.5f, 1.f}});
-    m_context.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.right(), m_bounds.top()}, Vector2f{.5f, 1.f}});
+    assert(m_canvas.m_vertices.size() < std::numeric_limits<GLint>::max());
+    render_call.polygon_offset = static_cast<GLint>(m_canvas.m_vertices.size());
+    m_canvas.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.left(), m_bounds.bottom()}, Vector2f{.5f, 1.f}});
+    m_canvas.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.right(), m_bounds.bottom()}, Vector2f{.5f, 1.f}});
+    m_canvas.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.right(), m_bounds.top()}, Vector2f{.5f, 1.f}});
 
-    m_context.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.left(), m_bounds.bottom()}, Vector2f{.5f, 1.f}});
-    m_context.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.right(), m_bounds.top()}, Vector2f{.5f, 1.f}});
-    m_context.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.left(), m_bounds.top()}, Vector2f{.5f, 1.f}});
+    m_canvas.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.left(), m_bounds.bottom()}, Vector2f{.5f, 1.f}});
+    m_canvas.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.right(), m_bounds.top()}, Vector2f{.5f, 1.f}});
+    m_canvas.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.left(), m_bounds.top()}, Vector2f{.5f, 1.f}});
 
     // create the shader uniforms for the call
-    render_call.uniform_offset = static_cast<GLintptr>(m_context.m_shader_variables.size()) * m_context.fragmentSize();
+    render_call.uniform_offset = static_cast<GLintptr>(m_canvas.m_shader_variables.size()) * m_canvas.fragmentSize();
 
-    if (render_call.type == CellContext::Call::Type::FILL) {
+    if (render_call.type == CellCanvas::Call::Type::FILL) {
         // create an additional uniform buffer for a simple shader for the stencil
-        CellContext::ShaderVariables& stencil_uniforms = create_back(m_context.m_shader_variables);
+        CellCanvas::ShaderVariables& stencil_uniforms = create_back(m_canvas.m_shader_variables);
         stencil_uniforms.strokeThr                     = -1;
-        stencil_uniforms.type                          = CellContext::ShaderVariables::Type::STENCIL;
+        stencil_uniforms.type                          = CellCanvas::ShaderVariables::Type::STENCIL;
     }
 
-    CellContext::ShaderVariables& fill_uniforms = create_back(m_context.m_shader_variables);
+    CellCanvas::ShaderVariables& fill_uniforms = create_back(m_canvas.m_shader_variables);
     paint_to_frag(fill_uniforms, fill_paint, state.scissor, fringe_width, fringe_width, -1.0f);
 }
 
 void Painterpreter::_stroke()
 {
     const PainterState& state = _get_current_state();
-    const CellContextOptions& options = m_context.get_options();
+    const CellCanvasOptions& options = m_canvas.get_options();
 
     // get the stroke paint
     Paint stroke_paint = state.stroke_paint;
@@ -839,9 +852,9 @@ void Painterpreter::_stroke()
     }
 
     // create the Cell's render call
-    CellContext::Call& render_call = create_back(m_context.m_calls);
-    render_call.type               = CellContext::Call::Type::STROKE;
-    render_call.path_offset        = m_context.m_paths.size();
+    CellCanvas::Call& render_call = create_back(m_canvas.m_calls);
+    render_call.type               = CellCanvas::Call::Type::STROKE;
+    render_call.path_offset        = m_canvas.m_paths.size();
     render_call.texture            = state.stroke_paint.texture;
     render_call.polygon_offset     = 0;
 
@@ -861,9 +874,9 @@ void Painterpreter::_stroke()
         const size_t last_point_offset = path.first_point + path.point_count - 1;
         assert(last_point_offset < m_points.size());
 
-        CellContext::Path& render_path = create_back(m_context.m_paths);
-        assert(m_context.m_vertices.size() < std::numeric_limits<GLint>::max());
-        render_path.stroke_offset = static_cast<GLint>(m_context.m_vertices.size());
+        CellCanvas::Path& render_path = create_back(m_canvas.m_paths);
+        assert(m_canvas.m_vertices.size() < std::numeric_limits<GLint>::max());
+        render_path.stroke_offset = static_cast<GLint>(m_canvas.m_vertices.size());
 
         size_t previous_offset, current_offset;
         if (path.is_closed) { // loop
@@ -879,13 +892,13 @@ void Painterpreter::_stroke()
             // add cap
             switch (line_cap) {
             case Painter::LineCap::BUTT:
-                _create_butt_cap_start(m_points[previous_offset], m_points[previous_offset].forward, stroke_width, fringe_width / -2, fringe_width, m_context.m_vertices);
+                _create_butt_cap_start(m_points[previous_offset], m_points[previous_offset].forward, stroke_width, fringe_width / -2, fringe_width, m_canvas.m_vertices);
                 break;
             case Painter::LineCap::SQUARE:
-                _create_butt_cap_start(m_points[previous_offset], m_points[previous_offset].forward, stroke_width, stroke_width - fringe_width, fringe_width, m_context.m_vertices);
+                _create_butt_cap_start(m_points[previous_offset], m_points[previous_offset].forward, stroke_width, stroke_width - fringe_width, fringe_width, m_canvas.m_vertices);
                 break;
             case Painter::LineCap::ROUND:
-                _create_round_cap_start(m_points[previous_offset], m_points[previous_offset].forward, stroke_width, cap_divisions, m_context.m_vertices);
+                _create_round_cap_start(m_points[previous_offset], m_points[previous_offset].forward, stroke_width, cap_divisions, m_canvas.m_vertices);
                 break;
             default:
                 assert(0);
@@ -899,56 +912,56 @@ void Painterpreter::_stroke()
 
             if (current_point.flags & (Point::Flags::BEVEL | Point::Flags::INNERBEVEL)) {
                 if (line_join == Painter::LineJoin::ROUND) {
-                    _create_round_join(previous_point, current_point, stroke_width, cap_divisions, m_context.m_vertices);
+                    _create_round_join(previous_point, current_point, stroke_width, cap_divisions, m_canvas.m_vertices);
                 }
                 else {
-                    _create_bevel_join(previous_point, current_point, stroke_width, stroke_width, 0, 1, m_context.m_vertices);
+                    _create_bevel_join(previous_point, current_point, stroke_width, stroke_width, 0, 1, m_canvas.m_vertices);
                 }
             }
             else {
-                m_context.m_vertices.emplace_back(current_point.pos + (current_point.dm * stroke_width),
+                m_canvas.m_vertices.emplace_back(current_point.pos + (current_point.dm * stroke_width),
                                                   Vector2f(0, 1));
-                m_context.m_vertices.emplace_back(current_point.pos - (current_point.dm * stroke_width),
+                m_canvas.m_vertices.emplace_back(current_point.pos - (current_point.dm * stroke_width),
                                                   Vector2f(1, 1));
             }
         }
 
         if (path.is_closed) {
             // loop it
-            assert(m_context.m_vertices.size() >= static_cast<size_t>(render_path.stroke_offset + 2));
-            m_context.m_vertices.emplace_back(m_context.m_vertices[static_cast<size_t>(render_path.stroke_offset + 0)].pos,
+            assert(m_canvas.m_vertices.size() >= static_cast<size_t>(render_path.stroke_offset + 2));
+            m_canvas.m_vertices.emplace_back(m_canvas.m_vertices[static_cast<size_t>(render_path.stroke_offset + 0)].pos,
                                               Vector2f(0, 1));
-            m_context.m_vertices.emplace_back(m_context.m_vertices[static_cast<size_t>(render_path.stroke_offset + 1)].pos,
+            m_canvas.m_vertices.emplace_back(m_canvas.m_vertices[static_cast<size_t>(render_path.stroke_offset + 1)].pos,
                                               Vector2f(1, 1));
         }
         else {
             // add cap
             switch (line_cap) {
             case Painter::LineCap::BUTT:
-                _create_butt_cap_end(m_points[current_offset], m_points[previous_offset].forward, stroke_width, fringe_width / -2, fringe_width, m_context.m_vertices);
+                _create_butt_cap_end(m_points[current_offset], m_points[previous_offset].forward, stroke_width, fringe_width / -2, fringe_width, m_canvas.m_vertices);
                 break;
             case Painter::LineCap::SQUARE:
-                _create_butt_cap_end(m_points[current_offset], m_points[previous_offset].forward, stroke_width, stroke_width - fringe_width, fringe_width, m_context.m_vertices);
+                _create_butt_cap_end(m_points[current_offset], m_points[previous_offset].forward, stroke_width, stroke_width - fringe_width, fringe_width, m_canvas.m_vertices);
                 break;
             case Painter::LineCap::ROUND:
-                _create_round_cap_end(m_points[current_offset], m_points[previous_offset].forward, stroke_width, cap_divisions, m_context.m_vertices);
+                _create_round_cap_end(m_points[current_offset], m_points[previous_offset].forward, stroke_width, cap_divisions, m_canvas.m_vertices);
                 break;
             default:
                 assert(0);
             }
         }
-        render_path.stroke_count = static_cast<GLsizei>(m_context.m_vertices.size() - static_cast<size_t>(render_path.stroke_offset));
+        render_path.stroke_count = static_cast<GLsizei>(m_canvas.m_vertices.size() - static_cast<size_t>(render_path.stroke_offset));
     }
-    render_call.path_count = m_context.m_paths.size() - render_call.path_offset;
+    render_call.path_count = m_canvas.m_paths.size() - render_call.path_offset;
 
     // create the shader uniforms for the call
-    render_call.uniform_offset                     = static_cast<GLintptr>(m_context.m_shader_variables.size()) * m_context.fragmentSize();
-    CellContext::ShaderVariables& stencil_uniforms = create_back(m_context.m_shader_variables);
+    render_call.uniform_offset                     = static_cast<GLintptr>(m_canvas.m_shader_variables.size()) * m_canvas.fragmentSize();
+    CellCanvas::ShaderVariables& stencil_uniforms = create_back(m_canvas.m_shader_variables);
     paint_to_frag(stencil_uniforms, stroke_paint, state.scissor, stroke_width, fringe_width, -1.0f);
 
     if (options.stencil_strokes) {
         // I don't know what the stroke_threshold below is, but with -1 you get artefacts in the rotating lines test
-        CellContext::ShaderVariables& stroke_uniforms = create_back(m_context.m_shader_variables);
+        CellCanvas::ShaderVariables& stroke_uniforms = create_back(m_canvas.m_shader_variables);
         paint_to_frag(stroke_uniforms, stroke_paint, state.scissor, stroke_width, fringe_width, 1.0f - 0.5f / 255.0f);
     }
 }
@@ -962,7 +975,7 @@ void Painterpreter::_prepare_paths(const float fringe, const Painter::LineJoin j
         if (path.point_count >= 2) {
             const Point& first = m_points[path.first_point];
             const Point& last  = m_points[path.first_point + path.point_count - 1];
-            if (first.pos.is_approx(last.pos, m_context.get_options().distance_tolerance)) {
+            if (first.pos.is_approx(last.pos, m_canvas.get_options().distance_tolerance)) {
                 --path.point_count;
                 path.is_closed = true;
             }
@@ -1056,7 +1069,7 @@ void Painterpreter::_prepare_paths(const float fringe, const Painter::LineJoin j
     }
 }
 
-void paint_to_frag(CellContext::ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
+void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
                    const float stroke_width, const float fringe, const float stroke_threshold)
 {
     assert(fringe > 0);
@@ -1084,10 +1097,10 @@ void paint_to_frag(CellContext::ShaderVariables& frag, const Paint& paint, const
     frag.strokeThr  = stroke_threshold;
 
     if (paint.texture) {
-        frag.type = CellContext::ShaderVariables::Type::IMAGE;
+        frag.type = CellCanvas::ShaderVariables::Type::IMAGE;
     }
     else { // no image
-        frag.type    = CellContext::ShaderVariables::Type::GRADIENT;
+        frag.type    = CellCanvas::ShaderVariables::Type::GRADIENT;
         frag.radius  = paint.radius;
         frag.feather = paint.feather;
     }

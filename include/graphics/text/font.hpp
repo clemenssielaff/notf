@@ -3,25 +3,15 @@
 #include <string>
 #include <unordered_map>
 
-#include "common/identifier.hpp"
 #include "graphics/text/font_atlas.hpp"
+#include "graphics/text/font_id.hpp"
 
 struct FT_FaceRec_;
 typedef struct FT_FaceRec_* FT_Face;
 
 namespace notf {
 
-class Font;
 class FontManager;
-
-/**********************************************************************************************************************/
-
-/** To allow other objects to keep references to a Font without handing them volatile pointers or split ownership with
- * shared pointers, everyone can request a `FontID` from the manager.
- * The FontId corresponds to an index in a vector in the FontManager, meaning lookup of the actual Font object given its
- * ID is trivial.
- */
-using FontID = Id<Font, size_t>;
 
 /**********************************************************************************************************************/
 
@@ -61,7 +51,7 @@ using FontID = Id<Font, size_t>;
 
 struct Glyph {
     using pos_t = int;
-    
+
     /** Rectangle of the FontAtlas that contains the texture of this Glyph. */
     FontAtlas::Rect rect;
 

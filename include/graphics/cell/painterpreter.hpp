@@ -6,7 +6,7 @@ namespace notf {
 using namespace detail;
 
 class Cell;
-class CellContext;
+class CellCanvas;
 struct Vertex;
 
 /**********************************************************************************************************************/
@@ -62,7 +62,7 @@ private: // types
 
 public: // methods
     /** Constructor. */
-    Painterpreter(CellContext& context);
+    Painterpreter(CellCanvas& context);
 
     /** Paints a given Cell. */
     void paint(Cell& cell);
@@ -137,6 +137,11 @@ private: // methods
     void _create_butt_cap_end(const Point& point, const Vector2f& delta, const float stroke_width,
                               const float d, const float fringe_width, std::vector<Vertex>& vertices_out);
 
+    /** Remders a text at the given screen coordinate.
+     * The position corresponts to the start of the text's baseline.
+     */
+    void _render_text(const std::string& text, const FontID font_id);
+
     /** Paints the current Path. */
     void _fill();
 
@@ -148,7 +153,7 @@ private: // methods
 
 public: // fields
     /** The Cell Context that is painted into. */
-    CellContext& m_context;
+    CellCanvas& m_canvas;
 
     /** Points making up the Painter Paths. */
     std::vector<Point> m_points;

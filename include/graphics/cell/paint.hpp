@@ -65,11 +65,14 @@ public: // static methods
 
     float feather;
 
+    /** Inner color of the gradient. */
     Color inner_color;
 
+    /** Outer color of the gradient. */
     Color outer_color;
 
-    std::shared_ptr<Texture2> texture; // TODO: shared pointers are NOT serializable into the Command BUFFER
+    /** Texture used within this Paint, can be empty. */
+    std::shared_ptr<Texture2> texture;
 };
 
 } // namespace notf

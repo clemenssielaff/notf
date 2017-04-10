@@ -7,7 +7,7 @@
 
 namespace notf {
 
-class CellContext;
+class CellCanvas;
 
 class RenderStats {
 
@@ -19,7 +19,7 @@ public: // methods
     void update(const float frame_time);
 
     /** Renders the Stats. */
-    void render_stats(CellContext& context);
+    void render_stats(CellCanvas& context);
 
 private: // methods
     /** Calculates the average frame time of all frames in the buffer. */

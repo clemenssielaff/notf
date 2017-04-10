@@ -4,6 +4,7 @@
 #include "core/glfw.hpp"
 #include "core/window.hpp"
 #include "graphics/shader.hpp"
+#include "graphics/text/font_manager.hpp"
 #include "graphics/texture2.hpp"
 
 namespace notf {
@@ -13,6 +14,7 @@ GraphicsContext* GraphicsContext::s_current_context = nullptr;
 GraphicsContext::GraphicsContext(const Window* window, const GraphicsContextOptions args)
     : m_window(window)
     , m_options(std::move(args))
+    , m_font_manager(std::make_unique<FontManager>(this))
     , m_stencil_func(StencilFunc::INVALID)
     , m_stencil_mask(0)
     , m_blend_mode(BlendMode::INVALID)
@@ -97,8 +99,8 @@ std::shared_ptr<Texture2> GraphicsContext::load_texture(const std::string& file_
 }
 
 std::shared_ptr<Shader> GraphicsContext::build_shader(const std::string& name,
-                                                    const std::string& vertex_shader_source,
-                                                    const std::string& fragment_shader_source)
+                                                      const std::string& vertex_shader_source,
+                                                      const std::string& fragment_shader_source)
 {
     std::shared_ptr<Shader> shader = Shader::build(this, name, vertex_shader_source, fragment_shader_source);
     if (shader) {
@@ -113,7 +115,7 @@ void GraphicsContext::force_reloads()
     m_stencil_mask  = 0;
     m_blend_mode    = BlendMode::INVALID;
     m_bound_texture = 0;
-    m_bound_shader = 0;
+    m_bound_shader  = 0;
 }
 
 void GraphicsContext::_bind_texture(const GLuint texture_id)

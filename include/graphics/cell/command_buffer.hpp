@@ -43,6 +43,7 @@ struct PainterCommand {
         SET_MITER_LIMIT,
         SET_LINE_CAP,
         SET_LINE_JOIN,
+        RENDER_TEXT,
     };
 
 public: // static methods
