@@ -73,7 +73,7 @@ public: // methods
     const GraphicsContextOptions& get_options() const { return m_options; }
 
     /** The Font Manager. */
-    const FontManager& get_font_manager() const { return *m_font_manager.get(); }
+    FontManager& get_font_manager() const { return *m_font_manager.get(); }
 
     /** Applies a new StencilFunction. */
     void set_stencil_func(const StencilFunc func);

@@ -5,9 +5,9 @@
 #include "graphics/cell/cell_canvas.hpp"
 #include "graphics/cell/commands.hpp"
 #include "graphics/graphics_context.hpp"
+#include "graphics/text/font_manager.hpp"
 #include "graphics/texture2.hpp"
 #include "graphics/vertex.hpp"
-#include "graphics/text/font_manager.hpp"
 
 namespace { // anonymous
 using namespace notf;
@@ -232,11 +232,10 @@ void Painterpreter::paint(Cell& cell)
         } break;
 
         case PainterCommand::RENDER_TEXT: {
-            const RenderTextCommand& cmd     = map_command<RenderTextCommand>(commands, index);
+            const RenderTextCommand& cmd = map_command<RenderTextCommand>(commands, index);
             _render_text(*cmd.text.get(), cmd.font);
             index += command_size<decltype(cmd)>();
         } break;
-
 
         default:     // unknown enum
             ++index; // failsave
@@ -674,14 +673,79 @@ void Painterpreter::_create_butt_cap_end(const Point& point, const Vector2f& del
 
 void Painterpreter::_render_text(const std::string& text, const FontID font_id)
 {
+    const PainterState& state        = _get_current_state();
+    const CellCanvasOptions& options = m_canvas.get_options();
+    const Size2f buffer_size         = options.buffer_size;
+
+    // get the fill paint
+    Paint fill_paint = state.fill_paint;
+    fill_paint.inner_color.a *= state.alpha;
+    fill_paint.outer_color.a *= state.alpha;
+
+    // create the Cell's render call
+    CellCanvas::Call& render_call = create_back(m_canvas.m_calls);
+    render_call.type              = CellCanvas::Call::Type::TEXT;
+    render_call.path_offset       = 0;
+    render_call.path_count        = 0;
+    render_call.uniform_offset    = static_cast<GLintptr>(m_canvas.m_shader_variables.size()) * m_canvas.fragmentSize();
+    render_call.texture           = state.fill_paint.texture; // TODO: THIS IS WRONG CONTINUE HERE I AM SO TIRED
+    render_call.polygon_offset    = static_cast<GLint>(m_canvas.m_vertices.size());
+
+    // create the fragment uniforms
+    CellCanvas::ShaderVariables& fill_uniforms = create_back(m_canvas.m_shader_variables);
+    paint_to_frag(fill_uniforms, fill_paint, state.scissor, 0, 1, 0);
+
     // TODO: pass transform to font manager - also, full xform of all created vertices (I want 3D spinning widgets!)
-    m_canvas.m_context.get_font_manager().render_text(text, 0, 0, font_id);
+    const Font& font     = m_canvas.m_context.get_font_manager().get_font(font_id);
+    FontAtlas::coord_t x = 0;
+    FontAtlas::coord_t y = -100;
+
+    for (const auto character : text) {
+        const Glyph& glyph = font.get_glyph(static_cast<codepoint_t>(character)); // TODO: text rendering will only work for pure ascii
+
+        // skip glyphs wihout pixels
+        if (glyph.rect.width && glyph.rect.height) {
+
+            Aabrf glyph_rect(static_cast<float>(glyph.rect.x),
+                             static_cast<float>(glyph.rect.y),
+                             static_cast<float>(glyph.rect.width),
+                             static_cast<float>(glyph.rect.height));
+            glyph_rect = glyph_rect * (1 / 512.f); // TODO: MAGIC NUMBER!!!!!!!!!!!!!!
+
+            Aabrf quad_rect(
+                (buffer_size.width / -2.f) + (x + glyph.left),
+                (buffer_size.height / -2.f) + (y + glyph.top),
+                static_cast<float>(glyph.rect.width),
+                static_cast<float>(glyph.rect.height));
+            quad_rect.move_by({0, static_cast<float>(-glyph.rect.height)});
+
+            // create the quad (2*3 vertices) to render the character
+            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.left(), quad_rect.bottom()},
+                                             Vector2f{glyph_rect.left(), glyph_rect.top()});
+            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.left(), quad_rect.top()},
+                                             Vector2f{glyph_rect.left(), glyph_rect.bottom()});
+            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.right(), quad_rect.bottom()},
+                                             Vector2f{glyph_rect.right(), glyph_rect.top()});
+
+            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.right(), quad_rect.bottom()},
+                                             Vector2f{glyph_rect.right(), glyph_rect.top()});
+            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.left(), quad_rect.top()},
+                                             Vector2f{glyph_rect.left(), glyph_rect.bottom()});
+            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.right(), quad_rect.top()},
+                                             Vector2f{glyph_rect.right(), glyph_rect.bottom()});
+        }
+
+        // advance to the next character position
+        x += glyph.advance_x;
+        y += glyph.advance_y;
+    }
+    render_call.polygon_count = static_cast<GLint>(m_canvas.m_vertices.size()) - render_call.polygon_offset;
 }
 
 void Painterpreter::_fill()
 {
     const detail::PainterState& state = _get_current_state();
-    const CellCanvasOptions& options = m_canvas.get_options();
+    const CellCanvasOptions& options  = m_canvas.get_options();
 
     // get the fill paint
     Paint fill_paint = state.fill_paint;
@@ -723,17 +787,17 @@ void Painterpreter::_fill()
                 // no bevel
                 if (!(current_point.flags & Point::Flags::BEVEL) || current_point.flags & Point::Flags::LEFT) {
                     m_canvas.m_vertices.emplace_back(current_point.pos + (current_point.dm * woff),
-                                                      Vector2f(.5f, 1));
+                                                     Vector2f(.5f, 1));
                 }
 
                 // beveling requires an extra vertex
                 else {
                     m_canvas.m_vertices.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * woff,
-                                                               current_point.pos.y - previous_point.forward.x * woff),
-                                                      Vector2f(.5f, 1));
+                                                              current_point.pos.y - previous_point.forward.x * woff),
+                                                     Vector2f(.5f, 1));
                     m_canvas.m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * woff,
-                                                               current_point.pos.y - current_point.forward.x * woff),
-                                                      Vector2f(.5f, 1));
+                                                              current_point.pos.y - current_point.forward.x * woff),
+                                                     Vector2f(.5f, 1));
                 }
             }
         }
@@ -741,7 +805,7 @@ void Painterpreter::_fill()
         else {
             for (size_t point_offset = path.first_point; point_offset <= last_point_offset; ++point_offset) {
                 m_canvas.m_vertices.emplace_back(m_points[point_offset].pos,
-                                                  Vector2f(.5f, 1));
+                                                 Vector2f(.5f, 1));
             }
         }
         render_path.fill_count = static_cast<GLsizei>(m_canvas.m_vertices.size() - static_cast<size_t>(render_path.fill_offset));
@@ -776,20 +840,20 @@ void Painterpreter::_fill()
                 }
                 else {
                     m_canvas.m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.dm.x * left_w,
-                                                               current_point.pos.y + current_point.dm.y * left_w),
-                                                      Vector2f(left_u, 1));
+                                                              current_point.pos.y + current_point.dm.y * left_w),
+                                                     Vector2f(left_u, 1));
                     m_canvas.m_vertices.emplace_back(Vector2f(current_point.pos.x - current_point.dm.x * right_w,
-                                                               current_point.pos.y - current_point.dm.y * right_w),
-                                                      Vector2f(right_u, 1));
+                                                              current_point.pos.y - current_point.dm.y * right_w),
+                                                     Vector2f(right_u, 1));
                 }
             }
 
             // copy the first two vertices from the beginning to form a cohesive loop
             assert(m_canvas.m_vertices.size() >= static_cast<size_t>(render_path.stroke_offset + 2));
             m_canvas.m_vertices.emplace_back(m_canvas.m_vertices[static_cast<size_t>(render_path.stroke_offset + 0)].pos,
-                                              Vector2f(left_u, 1));
+                                             Vector2f(left_u, 1));
             m_canvas.m_vertices.emplace_back(m_canvas.m_vertices[static_cast<size_t>(render_path.stroke_offset + 1)].pos,
-                                              Vector2f(right_u, 1));
+                                             Vector2f(right_u, 1));
 
             render_path.stroke_count = static_cast<GLsizei>(m_canvas.m_vertices.size() - static_cast<size_t>(render_path.stroke_offset));
         }
@@ -805,6 +869,7 @@ void Painterpreter::_fill()
     m_canvas.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.left(), m_bounds.bottom()}, Vector2f{.5f, 1.f}});
     m_canvas.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.right(), m_bounds.top()}, Vector2f{.5f, 1.f}});
     m_canvas.m_vertices.emplace_back(Vertex{Vector2f{m_bounds.left(), m_bounds.top()}, Vector2f{.5f, 1.f}});
+    render_call.polygon_count = 6;
 
     // create the shader uniforms for the call
     render_call.uniform_offset = static_cast<GLintptr>(m_canvas.m_shader_variables.size()) * m_canvas.fragmentSize();
@@ -812,8 +877,8 @@ void Painterpreter::_fill()
     if (render_call.type == CellCanvas::Call::Type::FILL) {
         // create an additional uniform buffer for a simple shader for the stencil
         CellCanvas::ShaderVariables& stencil_uniforms = create_back(m_canvas.m_shader_variables);
-        stencil_uniforms.strokeThr                     = -1;
-        stencil_uniforms.type                          = CellCanvas::ShaderVariables::Type::STENCIL;
+        stencil_uniforms.strokeThr                    = -1;
+        stencil_uniforms.type                         = CellCanvas::ShaderVariables::Type::STENCIL;
     }
 
     CellCanvas::ShaderVariables& fill_uniforms = create_back(m_canvas.m_shader_variables);
@@ -822,7 +887,7 @@ void Painterpreter::_fill()
 
 void Painterpreter::_stroke()
 {
-    const PainterState& state = _get_current_state();
+    const PainterState& state        = _get_current_state();
     const CellCanvasOptions& options = m_canvas.get_options();
 
     // get the stroke paint
@@ -853,10 +918,11 @@ void Painterpreter::_stroke()
 
     // create the Cell's render call
     CellCanvas::Call& render_call = create_back(m_canvas.m_calls);
-    render_call.type               = CellCanvas::Call::Type::STROKE;
-    render_call.path_offset        = m_canvas.m_paths.size();
-    render_call.texture            = state.stroke_paint.texture;
-    render_call.polygon_offset     = 0;
+    render_call.type              = CellCanvas::Call::Type::STROKE;
+    render_call.path_offset       = m_canvas.m_paths.size();
+    render_call.texture           = state.stroke_paint.texture;
+    render_call.polygon_offset    = 0;
+    render_call.polygon_count     = 0;
 
     size_t cap_divisions; // TODO: can circles get more coarse the further away they are?
     {                     // calculate divisions per half circle
@@ -920,9 +986,9 @@ void Painterpreter::_stroke()
             }
             else {
                 m_canvas.m_vertices.emplace_back(current_point.pos + (current_point.dm * stroke_width),
-                                                  Vector2f(0, 1));
+                                                 Vector2f(0, 1));
                 m_canvas.m_vertices.emplace_back(current_point.pos - (current_point.dm * stroke_width),
-                                                  Vector2f(1, 1));
+                                                 Vector2f(1, 1));
             }
         }
 
@@ -930,9 +996,9 @@ void Painterpreter::_stroke()
             // loop it
             assert(m_canvas.m_vertices.size() >= static_cast<size_t>(render_path.stroke_offset + 2));
             m_canvas.m_vertices.emplace_back(m_canvas.m_vertices[static_cast<size_t>(render_path.stroke_offset + 0)].pos,
-                                              Vector2f(0, 1));
+                                             Vector2f(0, 1));
             m_canvas.m_vertices.emplace_back(m_canvas.m_vertices[static_cast<size_t>(render_path.stroke_offset + 1)].pos,
-                                              Vector2f(1, 1));
+                                             Vector2f(1, 1));
         }
         else {
             // add cap
@@ -955,7 +1021,7 @@ void Painterpreter::_stroke()
     render_call.path_count = m_canvas.m_paths.size() - render_call.path_offset;
 
     // create the shader uniforms for the call
-    render_call.uniform_offset                     = static_cast<GLintptr>(m_canvas.m_shader_variables.size()) * m_canvas.fragmentSize();
+    render_call.uniform_offset                    = static_cast<GLintptr>(m_canvas.m_shader_variables.size()) * m_canvas.fragmentSize();
     CellCanvas::ShaderVariables& stencil_uniforms = create_back(m_canvas.m_shader_variables);
     paint_to_frag(stencil_uniforms, stroke_paint, state.scissor, stroke_width, fringe_width, -1.0f);
 

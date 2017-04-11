@@ -44,7 +44,11 @@ public: // methods
             return it->second;
         }
         return {};
-    }
+    } // TODO: FontIDs is broken since you can never remove a font. Is that the idea?
+
+    /** Returns a Font by its ID. */
+    const Font& get_font(const FontID id) const { return m_fonts[static_cast<FontID::underlying_t>(id) - 1]; }
+    // TODO: unhandled exception if the font ID is not found... maybe Font should behave like Shaders and textures?
 
     /** Remders a text at the given screen coordinate.
      * The position corresponts to the start of the text's baseline.
@@ -64,7 +68,6 @@ private: // for Font
     FontAtlas& get_atlas() { return m_atlas; }
 
 private: // methods
-
     /** Renders the Font Atlas on screen */
     void _debug_render_atlas();
 
@@ -83,7 +86,6 @@ private: // fields
 
     /** Map of Font names to indices. */
     std::unordered_map<std::string, FontID> m_font_names;
-
 };
 
 } // namespace notf

@@ -58,7 +58,7 @@ struct Id {
     explicit operator underlying_type() const { return id; }
 
     /** Identifier value of this instance. */
-    const underlying_type id;
+    underlying_type id;
 };
 
 } // namespace notf

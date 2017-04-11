@@ -11,8 +11,11 @@ using namespace notf;
 #include "graphics/cell/painter.hpp"
 #include "graphics/graphics_context.hpp"
 #include "core/render_manager.hpp"
+#include "graphics/text/font_manager.hpp"
 
 GraphicsContext* g_graphics_context = nullptr;
+FontManager* g_font_manager= nullptr;
+FontID g_font;
 
 class MyWidget : public Widget {
 
@@ -54,6 +57,8 @@ public:
         drawJoins(painter, Aabrf{120, widget_size.height - 50, 600, 50}, time);
 
         drawTexture(painter, Aabrf{400, 100, 200, 200});
+
+        painter.render_text("This is a test text that i would like to see printed on screen please", g_font);
     }
 
     void drawSlider(Painter& painter, const Aabrf& rect, float pos) const
@@ -541,6 +546,8 @@ int main(int argc, char* argv[])
     std::shared_ptr<Window> window = Window::create(window_info);
 
     g_graphics_context = &(window->get_graphics_context());
+    g_font_manager = &(g_graphics_context->get_font_manager());
+    g_font = g_font_manager->load_font("Roboto48", "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 48);
 
     //    window->on_token_key.connect(
     //        [window, &app](const KeyEvent&) {

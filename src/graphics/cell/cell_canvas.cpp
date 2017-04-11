@@ -187,6 +187,9 @@ void CellCanvas::finish_frame()
         case Call::Type::STROKE:
             _perform_stroke(call);
             break;
+        case Call::Type::TEXT:
+            _render_text(call);
+            break;
         }
     }
 
@@ -333,6 +336,16 @@ void CellCanvas::_perform_stroke(const Call& call)
     }
 
     check_gl_error();
+}
+
+void CellCanvas::_render_text(const Call& call)
+{
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_CULL_FACE);
+    glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset, fragmentSize());
+    call.texture->bind();
+    glDrawArrays(GL_TRIANGLES, call.polygon_offset, call.polygon_count);
 }
 
 void CellCanvas::_dump_debug_info() const
