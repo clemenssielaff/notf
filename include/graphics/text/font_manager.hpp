@@ -23,7 +23,7 @@ class FontManager {
 
 public: // methods
     /** Default constructor. */
-    FontManager(GraphicsContext* context);
+    FontManager(GraphicsContext& graphics_context);
 
     /** Destructor. */
     ~FontManager();
@@ -57,6 +57,8 @@ public: // methods
 
     void render_atlas();
 
+    std::shared_ptr<Texture2> get_atlas_texture() const;
+
 private: // for Font
     /** The Freetype library used by the Manager. */
     FT_Library get_freetype() const
@@ -76,7 +78,7 @@ private: // fields
     FT_Library m_freetype;
 
     /** Render Context in which the Texture lives. */
-    GraphicsContext* m_graphics_context;
+    GraphicsContext& m_graphics_context;
 
     /** Font Atlas to store Glyphs of all loaded Fonts. */
     FontAtlas m_atlas;

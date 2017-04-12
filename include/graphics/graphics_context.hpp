@@ -84,23 +84,6 @@ public: // methods
     /** Applies the given blend mode. */
     void set_blend_mode(const BlendMode mode);
 
-    // TODO: pass a Context as argument to Texture and Shader instead / the GraphicsContext interface should be used for per-frame info
-
-    /** Loads and returns a new Texture.
-     * The result is empty if the Texture could not be loaded.
-     */
-    std::shared_ptr<Texture2> load_texture(const std::string& file_path);
-
-    /** Builds a new OpenGL ES Shader from sources.
-     * @param shader_name       Name of this Shader.
-     * @param vertex_shader     Vertex shader source.
-     * @param fragment_shader   Fragment shader source.
-     * @return                  Shader instance, is empty if the compilation failed.
-     */
-    std::shared_ptr<Shader> build_shader(const std::string& name,
-                                         const std::string& vertex_shader_source,
-                                         const std::string& fragment_shader_source);
-
     /** Resets the cached state, forcing the GraphicsContext to explicitly re-bind and re-set all values. */
     void force_reloads();
 
@@ -117,11 +100,6 @@ private: // fields
 
     /** Argument struct to initialize the GraphicsContext. */
     GraphicsContextOptions m_options;
-
-    /* Dedicated context managers *************************************************************************************/
-
-    /** The Font Manager. */
-    std::unique_ptr<FontManager> m_font_manager;
 
     /* OpenGL state cache *********************************************************************************************/
 
@@ -154,6 +132,11 @@ private: // fields
      * See `m_textures` for details on management.
      */
     std::vector<std::weak_ptr<Shader>> m_shaders;
+
+    /* Dedicated context managers (at the end so the rest is already initialized when they are created) ***************/
+
+    /** The Font Manager. */
+    std::unique_ptr<FontManager> m_font_manager;
 
 private: // static fields
     /** The current GraphicsContext. */

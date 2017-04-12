@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <stddef.h>
 #include <vector>
 
@@ -9,6 +10,9 @@
 namespace notf {
 
 using uchar = unsigned char;
+
+class GraphicsContext;
+class Texture2;
 
 /** Data type to identify a single Glyph. */
 using codepoint_t = unsigned long;
@@ -134,7 +138,7 @@ private: // classes
 
 public: // methods
     /** Default constructor. */
-    FontAtlas(const coord_t width = 512, const coord_t height = 512);
+    FontAtlas(GraphicsContext& graphics_contextS);
 
     /** Destructor. */
     ~FontAtlas();
@@ -145,11 +149,11 @@ public: // methods
     /** Resets the Texture Atlas without changing its size. */
     void reset();
 
-    /** OpenGL texture ID of the Atlas. */
-    GLuint get_texture_id() const { return m_texture_id; }
-
     /** Computes the ratio of used atlas area (from 0 -> 1). */
     float get_occupancy() const { return static_cast<float>(m_used_area) / (m_width * m_height); }
+
+    /** The Atlas Texture. */
+    std::shared_ptr<Texture2> get_texture() const { return m_texture; }
 
     /** Places and returns a single rectangle into the Atlas.
      * If you want to insert multiple known rects, calling `insert_rects` will probably yield a tighter result than
@@ -178,8 +182,8 @@ private: // methods
     void _add_node(const size_t node_index, const Rect& rect);
 
 private: //
-    /** OpenGl texture ID of the Atlas. */
-    GLuint m_texture_id;
+    /** Font Atlas Texture. */
+    std::shared_ptr<Texture2> m_texture;
 
     /** Width of the texture Atlas. */
     coord_t m_width;

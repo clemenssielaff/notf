@@ -124,18 +124,12 @@ struct Shader::make_shared_enabler : public Shader {
         : Shader(std::forward<Args>(args)...) {}
 };
 
-void Shader::unbind()
-{
-    glUseProgram(GL_ZERO);
-}
-
-std::shared_ptr<Shader> Shader::build(GraphicsContext* context,
+std::shared_ptr<Shader> Shader::build(GraphicsContext &context,
                                       const std::string& name,
                                       const std::string& vertex_shader_source,
                                       const std::string& fragment_shader_source)
 {
-    assert(context);
-    context->make_current();
+    context.make_current();
 
     // compile the shaders
     GLuint vertex_shader = compile_shader(STAGE::VERTEX, name, vertex_shader_source);
@@ -170,15 +164,22 @@ std::shared_ptr<Shader> Shader::build(GraphicsContext* context,
         glDeleteProgram(program);
         return {};
     }
-    return std::make_shared<make_shared_enabler>(program, context, name);
+
+    std::shared_ptr<Shader> shader = std::make_shared<make_shared_enabler>(program, context, name);
+    context.m_shaders.emplace_back(shader);
+    return shader;
 }
 
-Shader::Shader(const GLuint id, GraphicsContext *context, const std::string name)
+void Shader::unbind()
+{
+    glUseProgram(GL_ZERO);
+}
+
+Shader::Shader(const GLuint id, GraphicsContext &context, const std::string name)
     : m_id(id)
     , m_graphics_context(context)
     , m_name(std::move(name))
 {
-    assert(m_graphics_context);
 }
 
 Shader::~Shader()
@@ -189,8 +190,8 @@ Shader::~Shader()
 bool Shader::bind()
 {
     if (is_valid()) {
-        m_graphics_context->make_current();
-        m_graphics_context->_bind_shader(m_id);
+        m_graphics_context.make_current();
+        m_graphics_context._bind_shader(m_id);
         return true;
     }
     else {
@@ -202,11 +203,10 @@ bool Shader::bind()
 void Shader::_deallocate()
 {
     if (m_id) {
-        m_graphics_context->make_current();
+        m_graphics_context.make_current();
         glDeleteProgram(m_id);
         log_trace << "Deleted Shader Program \"" << m_name << "\"";
         m_id = 0;
-        m_graphics_context = nullptr;
     }
 }
 

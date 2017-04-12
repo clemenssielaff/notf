@@ -12,6 +12,7 @@ using namespace notf;
 #include "graphics/graphics_context.hpp"
 #include "core/render_manager.hpp"
 #include "graphics/text/font_manager.hpp"
+#include "graphics/texture2.hpp"
 
 GraphicsContext* g_graphics_context = nullptr;
 FontManager* g_font_manager= nullptr;
@@ -22,7 +23,7 @@ class MyWidget : public Widget {
 public:
     MyWidget(GraphicsContext& context)
         : Widget()
-        , test_texture(context.load_texture("/home/clemens/code/notf/res/textures/face.png"))
+        , test_texture(Texture2::load_image(context, "/home/clemens/code/notf/res/textures/face.png"))
     {
     }
 
@@ -38,25 +39,25 @@ public:
 //        painter.set_fill_paint(Color(255, 0, 0));
 //        painter.fill();
 
-        drawGraph(painter, base, time);
+//        drawGraph(painter, base, time);
 
-        drawColorwheel(painter, base.shrunken(margin), time);
+//        drawColorwheel(painter, base.shrunken(margin), time);
 
-        drawCheckBox(painter, Aabrf{10, 100, 20, 20});
+//        drawCheckBox(painter, Aabrf{10, 100, 20, 20});
 
-        drawButton(painter, Aabrf{10, 130, 150, 30});
+//        drawButton(painter, Aabrf{10, 130, 150, 30});
 
-        drawSlider(painter, Aabrf{10, 170, 150, 30}, 0.4f);
+//        drawSlider(painter, Aabrf{10, 170, 150, 30}, 0.4f);
 
-        drawCaps(painter, Vector2f{10, 200}, 30);
+//        drawCaps(painter, Vector2f{10, 200}, 30);
 
-        drawEyes(painter, Aabrf{600, 20, 80, 60}, painter.get_mouse_pos(), time);
+//        drawEyes(painter, Aabrf{600, 20, 80, 60}, painter.get_mouse_pos(), time);
 
-        drawSpinner(painter, base.center(), 100, time);
+//        drawSpinner(painter, base.center(), 100, time);
 
-        drawJoins(painter, Aabrf{120, widget_size.height - 50, 600, 50}, time);
+//        drawJoins(painter, Aabrf{120, widget_size.height - 50, 600, 50}, time);
 
-        drawTexture(painter, Aabrf{400, 100, 200, 200});
+//        drawTexture(painter, Aabrf{400, 100, 200, 200});
 
         painter.render_text("This is a test text that i would like to see printed on screen please", g_font);
     }

@@ -14,7 +14,6 @@ GraphicsContext* GraphicsContext::s_current_context = nullptr;
 GraphicsContext::GraphicsContext(const Window* window, const GraphicsContextOptions args)
     : m_window(window)
     , m_options(std::move(args))
-    , m_font_manager(std::make_unique<FontManager>(this))
     , m_stencil_func(StencilFunc::INVALID)
     , m_stencil_mask(0)
     , m_blend_mode(BlendMode::INVALID)
@@ -22,6 +21,7 @@ GraphicsContext::GraphicsContext(const Window* window, const GraphicsContextOpti
     , m_textures()
     , m_bound_shader(0)
     , m_shaders()
+    , m_font_manager(std::make_unique<FontManager>(*this))
 {
     // make sure the pixel ratio is real and never zero
     if (!is_real(m_options.pixel_ratio)) {
@@ -87,26 +87,6 @@ void GraphicsContext::set_blend_mode(const BlendMode mode)
         m_blend_mode = mode;
         m_blend_mode.apply();
     }
-}
-
-std::shared_ptr<Texture2> GraphicsContext::load_texture(const std::string& file_path)
-{
-    std::shared_ptr<Texture2> texture = Texture2::load(this, file_path);
-    if (texture) {
-        m_textures.emplace_back(texture);
-    }
-    return texture;
-}
-
-std::shared_ptr<Shader> GraphicsContext::build_shader(const std::string& name,
-                                                      const std::string& vertex_shader_source,
-                                                      const std::string& fragment_shader_source)
-{
-    std::shared_ptr<Shader> shader = Shader::build(this, name, vertex_shader_source, fragment_shader_source);
-    if (shader) {
-        m_shaders.emplace_back(shader);
-    }
-    return shader;
 }
 
 void GraphicsContext::force_reloads()

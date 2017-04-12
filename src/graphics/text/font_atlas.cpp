@@ -3,11 +3,14 @@
 #include <assert.h>
 #include <limits>
 
+#include "common/color.hpp"
 #include "common/float.hpp"
 #include "common/log.hpp"
+#include "common/size2.hpp"
 #include "common/vector.hpp"
 #include "core/opengl.hpp"
 #include "graphics/gl_errors.hpp"
+#include "graphics/texture2.hpp"
 #include "utils/unused.hpp"
 
 namespace { // anonymous
@@ -106,29 +109,25 @@ return_success:
     return result;
 }
 
-FontAtlas::FontAtlas(const coord_t width, const coord_t height)
-    : m_texture_id(0)
-    , m_width(width)
-    , m_height(height)
+FontAtlas::FontAtlas(GraphicsContext& graphics_context)
+    : m_texture(nullptr)
+    , m_width(512)
+    , m_height(512)
     , m_used_area(0)
     , m_nodes()
     , m_waste()
 {
     // create the atlas texture
-    glGenTextures(1, &m_texture_id);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, m_texture_id);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    check_gl_error();
+    m_texture = Texture2::create_empty(graphics_context, "__notf_font_atlas", Size2i(m_width, m_height), Texture2::Format::GRAYSCALE);
+    m_texture->set_wrap_x(Texture2::Wrap::CLAMP_TO_EDGE);
+    m_texture->set_wrap_y(Texture2::Wrap::CLAMP_TO_EDGE);
+    m_texture->set_min_filter(Texture2::MinFilter::LINEAR);
+    m_texture->set_mag_filter(Texture2::MagFilter::LINEAR);
 
     // initialize
     reset();
 
-    log_trace << "Created font atlas of size " << m_width << "x" << m_height << " with ID: " << m_texture_id;
+    log_trace << "Created font atlas of size " << m_width << "x" << m_height << " with texture ID: " << m_texture->get_id();
 
     static_assert(std::is_pod<Rect>::value, "This compiler does not recognize notf::FontAtlas::WasteRect as a POD.");
     static_assert(std::is_pod<FitRequest>::value, "This compiler does not recognize notf::FontAtlas::FitRequest as a POD.");
@@ -138,8 +137,7 @@ FontAtlas::FontAtlas(const coord_t width, const coord_t height)
 
 FontAtlas::~FontAtlas()
 {
-    glDeleteTextures(1, &m_texture_id);
-    log_trace << "Deleted font atlas with ID: " << m_texture_id;
+    log_trace << "Deleted font atlas with texture ID: " << m_texture->get_id();
 }
 
 void FontAtlas::reset()
@@ -150,13 +148,8 @@ void FontAtlas::reset()
     m_waste.initialize(m_width, m_height);
     m_used_area = 0;
 
-    // fill the atlas with zeros
-    const std::vector<uchar> zeros(static_cast<size_t>(m_width * m_height), 0);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, m_texture_id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, m_width, m_height, 0, GL_RED, GL_UNSIGNED_BYTE, &zeros[0]);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    check_gl_error();
+    // fill the atlas with transparency
+    m_texture->fill(Color(0, 0, 0, 0));
 }
 
 FontAtlas::Rect FontAtlas::insert_rect(const coord_t width, const coord_t height)
@@ -238,9 +231,7 @@ std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<FitReques
 
 void FontAtlas::fill_rect(const Rect& rect, const uchar* data)
 {
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, m_texture_id);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    m_texture->bind();
     glTexSubImage2D(GL_TEXTURE_2D, /* level = */ 0, rect.x, rect.y, rect.width, rect.height, GL_RED, GL_UNSIGNED_BYTE, data);
     check_gl_error();
 }

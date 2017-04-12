@@ -30,12 +30,6 @@ class Shader {
     friend class GraphicsContext; // creates and finally invalidates all of its Shaders when it is destroyed
 
 public: // static methods
-    /** Unbinds any current active Shader. */
-    static void unbind();
-
-private: // factory
-    struct make_shared_enabler;
-
     /** Builds a new OpenGL ES Shader from sources.
      * @param context           Render Context in which the Shader lives.
      * @param shader_name       Name of this Shader.
@@ -43,16 +37,22 @@ private: // factory
      * @param fragment_shader   Fragment shader source.
      * @return                  Shader instance, is empty if the compilation failed.
      */
-    static std::shared_ptr<Shader> build(GraphicsContext* context, const std::string& name,
+    static std::shared_ptr<Shader> build(GraphicsContext& context, const std::string& name,
                                          const std::string& vertex_shader_source,
                                          const std::string& fragment_shader_source);
+
+    /** Unbinds any current active Shader. */
+    static void unbind();
+
+private: // factory
+    struct make_shared_enabler;
 
     /** Value Constructor.
      * @param id        OpenGL Shader program ID.
      * @param context   Render Context in which the Shader lives.
      * @param name      Human readable name of the Shader.
      */
-    Shader(const GLuint id, GraphicsContext* context, const std::string name);
+    Shader(const GLuint id, GraphicsContext& context, const std::string name);
 
 public: // methods
     // no copy or assignment
@@ -88,7 +88,7 @@ private: // fields
     GLuint m_id;
 
     /** Render Context in which the Texture lives. */
-    GraphicsContext* m_graphics_context;
+    GraphicsContext& m_graphics_context;
 
     /** The name of this Shader. */
     const std::string m_name;

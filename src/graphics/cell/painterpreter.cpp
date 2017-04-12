@@ -688,7 +688,7 @@ void Painterpreter::_render_text(const std::string& text, const FontID font_id)
     render_call.path_offset       = 0;
     render_call.path_count        = 0;
     render_call.uniform_offset    = static_cast<GLintptr>(m_canvas.m_shader_variables.size()) * m_canvas.fragmentSize();
-    render_call.texture           = state.fill_paint.texture; // TODO: THIS IS WRONG CONTINUE HERE I AM SO TIRED
+    render_call.texture           = m_canvas.get_font_manager().get_atlas_texture();
     render_call.polygon_offset    = static_cast<GLint>(m_canvas.m_vertices.size());
 
     // create the fragment uniforms
@@ -696,9 +696,9 @@ void Painterpreter::_render_text(const std::string& text, const FontID font_id)
     paint_to_frag(fill_uniforms, fill_paint, state.scissor, 0, 1, 0);
 
     // TODO: pass transform to font manager - also, full xform of all created vertices (I want 3D spinning widgets!)
-    const Font& font     = m_canvas.m_context.get_font_manager().get_font(font_id);
-    FontAtlas::coord_t x = 0;
-    FontAtlas::coord_t y = -100;
+    const Font& font     = m_canvas.m_graphics_context.get_font_manager().get_font(font_id);
+    FontAtlas::coord_t x = 200;
+    FontAtlas::coord_t y = 200;
 
     for (const auto character : text) {
         const Glyph& glyph = font.get_glyph(static_cast<codepoint_t>(character)); // TODO: text rendering will only work for pure ascii

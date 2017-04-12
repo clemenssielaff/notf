@@ -199,7 +199,7 @@ private: // static methods
 
 private: // fields
     /** Graphics Context used by the Cell Context. */
-    GraphicsContext& m_context;
+    GraphicsContext& m_graphics_context;
 
     /** The single Painterpreter used to paint in this Cell Context. */
     std::unique_ptr<Painterpreter> m_painterpreter;

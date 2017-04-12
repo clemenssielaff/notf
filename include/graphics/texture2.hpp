@@ -4,10 +4,16 @@
 #include <string>
 
 #include "graphics/gl_forwards.hpp"
+#include "utils/sfinae.hpp"
 
 namespace notf {
 
+class Color;
 class GraphicsContext;
+
+template <typename Value_t, FWD_ENABLE_IF_ARITHMETIC(Value_t)>
+struct _Size2;
+using Size2i = _Size2<int, true>;
 
 //*********************************************************************************************************************/
 
@@ -31,9 +37,9 @@ class Texture2 {
 
 public: // enums
     enum class Format : unsigned char {
-        GRAYSCALE, //* one byte per pixel (grayscale)
-        RGB,       //* 3 bytes per pixel (color)
-        RGBA,      //* 4 bytes per pixel (color + alpha)
+        GRAYSCALE = 1, //* one byte per pixel (grayscale)
+        RGB       = 3, //* 3 bytes per pixel (color)
+        RGBA      = 4, //* 4 bytes per pixel (color + alpha)
     };
 
     enum class MinFilter : unsigned char {
@@ -58,18 +64,27 @@ public: // enums
     };
 
 public: // static methods
-    /** Unbinds any current active Texture. */
-    static void unbind();
-
-private: // factory
-    struct make_shared_enabler;
-
     /** Loads a texture from a given file.
      * @param context   Render Context in which the Texture lives.
      * @param file_path Path to a texture file.
      * @return          Texture2 instance, is empty if the texture could not be loaded.
      */
-    static std::shared_ptr<Texture2> load(GraphicsContext* context, const std::string file_path);
+    static std::shared_ptr<Texture2> load_image(GraphicsContext& context, const std::string file_path);
+
+    /** Creates an empty texture in memory.
+     * @param context   Render Context in which the Texture lives.
+     * @param name      Name of the Texture.
+     * @param size      Size of the Texture.
+     * @param format    Texture format.
+     */
+    static std::shared_ptr<Texture2> create_empty(GraphicsContext& context, const std::string name,
+                                                  const Size2i& size, const Format format);
+
+    /** Unbinds any current active Texture. */
+    static void unbind();
+
+private: // factory
+    struct make_shared_enabler;
 
     /** Value Constructor.
      * @param id        OpenGL texture ID.
@@ -79,8 +94,8 @@ private: // factory
      * @param height    Height of the loaded image in pixels.
      * @param format    Texture format.
      */
-    Texture2(const GLuint id, GraphicsContext* context, const std::string name,
-             const GLuint width, const GLuint height, const Format format);
+    Texture2(const GLuint id, GraphicsContext& context, const std::string name,
+             const GLint width, const GLint height, const Format format);
 
 public: // methods
     /// no copy / assignment
@@ -108,10 +123,10 @@ public: // methods
     bool bind() const;
 
     /** Width of the loaded image in pixels. */
-    GLuint get_width() const { return m_width; }
+    GLint get_width() const { return m_width; }
 
     /** Height of the loaded image in pixels. */
-    GLuint get_height() const { return m_height; }
+    GLint get_height() const { return m_height; }
 
     /** The format of this Texture. */
     Format get_format() const { return m_format; }
@@ -140,6 +155,9 @@ public: // methods
     /** Sets a new vertical wrap mode. */
     void set_wrap_y(const Wrap wrap);
 
+    /** Fills the Texture with a given color. */
+    void fill(const Color& color);
+
 private: // methods for GraphicsContext
     /** Deallocates the Texture data and invalidates the Texture. */
     void _deallocate();
@@ -149,16 +167,16 @@ private: // fields
     GLuint m_id;
 
     /** Render Context in which the Texture lives. */
-    GraphicsContext* m_graphics_context;
+    GraphicsContext& m_graphics_context;
 
     /** The name of this Texture. */
     const std::string m_name;
 
     /** Width of the loaded image in pixels. */
-    const GLuint m_width;
+    const GLint m_width;
 
     /** Height of the loaded image in pixels. */
-    const GLuint m_height;
+    const GLint m_height;
 
     /** Texture format. */
     const Format m_format;
