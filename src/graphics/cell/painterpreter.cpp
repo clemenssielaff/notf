@@ -694,6 +694,7 @@ void Painterpreter::_render_text(const std::string& text, const FontID font_id)
     // create the fragment uniforms
     CellCanvas::ShaderVariables& fill_uniforms = create_back(m_canvas.m_shader_variables);
     paint_to_frag(fill_uniforms, fill_paint, state.scissor, 0, 1, 0);
+    fill_uniforms.type = CellCanvas::ShaderVariables::Type::TEXT;
 
     // TODO: pass transform to font manager - also, full xform of all created vertices (I want 3D spinning widgets!)
     const Font& font     = m_canvas.m_graphics_context.get_font_manager().get_font(font_id);
@@ -713,26 +714,27 @@ void Painterpreter::_render_text(const std::string& text, const FontID font_id)
             glyph_rect = glyph_rect * (1 / 512.f); // TODO: MAGIC NUMBER!!!!!!!!!!!!!!
 
             Aabrf quad_rect(
-                (buffer_size.width / -2.f) + (x + glyph.left),
-                (buffer_size.height / -2.f) + (y + glyph.top),
+                (x + glyph.left), //+ (buffer_size.width / -2.f),
+                (y + glyph.top), // + (buffer_size.height / -2.f),
                 static_cast<float>(glyph.rect.width),
                 static_cast<float>(glyph.rect.height));
             quad_rect.move_by({0, static_cast<float>(-glyph.rect.height)});
 
             // create the quad (2*3 vertices) to render the character
+            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.right(), quad_rect.bottom()},
+                                             Vector2f{glyph_rect.right(), glyph_rect.top()});
+            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.left(), quad_rect.top()},
+                                             Vector2f{glyph_rect.left(), glyph_rect.bottom()});
             m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.left(), quad_rect.bottom()},
                                              Vector2f{glyph_rect.left(), glyph_rect.top()});
+
+            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.right(), quad_rect.top()},
+                                             Vector2f{glyph_rect.right(), glyph_rect.bottom()});
             m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.left(), quad_rect.top()},
                                              Vector2f{glyph_rect.left(), glyph_rect.bottom()});
             m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.right(), quad_rect.bottom()},
                                              Vector2f{glyph_rect.right(), glyph_rect.top()});
 
-            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.right(), quad_rect.bottom()},
-                                             Vector2f{glyph_rect.right(), glyph_rect.top()});
-            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.left(), quad_rect.top()},
-                                             Vector2f{glyph_rect.left(), glyph_rect.bottom()});
-            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.right(), quad_rect.top()},
-                                             Vector2f{glyph_rect.right(), glyph_rect.bottom()});
         }
 
         // advance to the next character position
@@ -1162,7 +1164,7 @@ void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const 
     frag.strokeMult = (stroke_width * 0.5f + fringe * 0.5f) / fringe;
     frag.strokeThr  = stroke_threshold;
 
-    if (paint.texture) {
+    if (paint.texture) { // TODO: this is not the appropriate place to say so.. or is it?S
         frag.type = CellCanvas::ShaderVariables::Type::IMAGE;
     }
     else { // no image

@@ -65,7 +65,7 @@ Font::Font(FontManager* manager, const FontID id, const std::string name,
         font_atlas.fill_rect(protoglyph.second, slot->bitmap.buffer);
 
         assert(m_glyphs.count(protoglyph.first));
-        m_glyphs.at(protoglyph.first).rect = protoglyph.second;
+        m_glyphs[protoglyph.first].rect = protoglyph.second;
     }
 }
 

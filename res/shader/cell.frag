@@ -78,12 +78,6 @@ void main(void) {
         // Calculate color from texture
         vec2 pt = (paintMat * vec3(vertex_pos,1.0)).xy / extent;
         vec4 color = texture(image, pt);
-//        if (texType == 1) {
-//            color = vec4(color.xyz*color.w,color.w);
-//        }
-//        else if (texType == 2) {
-//            color = vec4(color.x);
-//        }
 
         // Apply color tint and alpha.
         color *= innerCol;

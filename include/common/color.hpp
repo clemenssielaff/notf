@@ -77,6 +77,15 @@ struct Color {
      */
     static Color from_hsl(const float h, const float s, const float l, const float a = 1);
 
+    /** Transparency. */
+    static Color transparent() { return Color(0., 0., 0., 0.); }
+
+    /** Black */
+    static Color black() { return Color(0., 0., 0., 1.); }
+
+    /** White */
+    static Color white() { return Color(1., 1., 1., 1.); }
+
     /*  Inspection  ***************************************************************************************************/
 
     /** Checks, if the given string is a valid color value that can be passed to the constructor. */

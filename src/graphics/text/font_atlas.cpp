@@ -149,7 +149,7 @@ void FontAtlas::reset()
     m_used_area = 0;
 
     // fill the atlas with transparency
-    m_texture->fill(Color(0, 0, 0, 0));
+    m_texture->fill(Color::transparent());
 }
 
 FontAtlas::Rect FontAtlas::insert_rect(const coord_t width, const coord_t height)
@@ -231,8 +231,14 @@ std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<FitReques
 
 void FontAtlas::fill_rect(const Rect& rect, const uchar* data)
 {
-    m_texture->bind();
-    glTexSubImage2D(GL_TEXTURE_2D, /* level = */ 0, rect.x, rect.y, rect.width, rect.height, GL_RED, GL_UNSIGNED_BYTE, data);
+    if (rect.height == 0 || rect.width == 0) {
+        return;
+    }
+    if (m_texture->bind()) {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, rect.width);
+        glTexSubImage2D(GL_TEXTURE_2D, /* level = */ 0, rect.x, rect.y, rect.width, rect.height, GL_RED, GL_UNSIGNED_BYTE, data);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, m_texture->get_width());
+    }
     check_gl_error();
 }
 

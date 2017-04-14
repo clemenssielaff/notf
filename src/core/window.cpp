@@ -171,10 +171,6 @@ void Window::_update()
     glViewport(0, 0, buffer_size.width, buffer_size.height);
     glClearColor(m_background_color.r, m_background_color.g, m_background_color.b, m_background_color.a);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_CULL_FACE);
-    glDisable(GL_DEPTH_TEST);
 
     // render
     try {
@@ -186,7 +182,6 @@ void Window::_update()
     }
 
     // post-render
-    glEnable(GL_DEPTH_TEST);
     glfwSwapBuffers(m_glfw_window.get());
 }
 

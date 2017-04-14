@@ -160,7 +160,7 @@ std::shared_ptr<Texture2> Texture2::load_image(GraphicsContext& context, const s
 
     // return the loaded texture on success
     std::shared_ptr<Texture2> texture = std::make_shared<make_shared_enabler>(
-                id, context, std::move(file_path), image.get_width(), image.get_height(), texture_format);
+        id, context, std::move(file_path), image.get_width(), image.get_height(), texture_format);
     context.m_textures.emplace_back(texture);
     return texture;
 }
@@ -171,6 +171,29 @@ std::shared_ptr<Texture2> Texture2::create_empty(GraphicsContext& context, const
     if (!size.is_valid()) {
         log_critical << "Cannot create a Texture2 with an invalid size";
         return {};
+    }
+
+    // create the data
+    std::vector<uchar> data(static_cast<size_t>(size.area()), 0);
+
+    // translate to OpenGL format
+    GLenum gl_format;
+    GLint internal_format;
+    switch (format) {
+    case Format::GRAYSCALE:
+        gl_format       = GL_RED;
+        internal_format = GL_R8;
+        break;
+    case Format::RGB:
+        gl_format       = GL_RGB;
+        internal_format = GL_RGB8;
+        break;
+    case Format::RGBA:
+        gl_format       = GL_RGBA;
+        internal_format = GL_RGBA8;
+        break;
+    default:
+        assert(0);
     }
 
     // create the atlas texture
@@ -184,6 +207,9 @@ std::shared_ptr<Texture2> Texture2::create_empty(GraphicsContext& context, const
     glPixelStorei(GL_UNPACK_ROW_LENGTH, size.width);
     glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
     glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+
+    glTexImage2D(GL_TEXTURE_2D, /* level= */ 0, internal_format, size.width, size.height,
+                 BORDER, gl_format, GL_UNSIGNED_BYTE, &data[0]);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -216,7 +242,7 @@ Texture2::Texture2(const GLuint id, GraphicsContext& context, const std::string 
     , m_wrap_x(Wrap::REPEAT)
     , m_wrap_y(Wrap::REPEAT)
 {
-    if(m_width <= 0 || m_height <= 0){
+    if (m_width <= 0 || m_height <= 0) {
         log_critical << "Cannot create a Texture with zero or negative area";
         _deallocate();
     }
@@ -244,6 +270,7 @@ void Texture2::set_min_filter(const MinFilter filter)
 {
     if (bind()) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter));
+        m_min_filter = filter;
     }
 }
 
@@ -251,6 +278,7 @@ void Texture2::set_mag_filter(const MagFilter filter)
 {
     if (bind()) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter));
+        m_mag_filter = filter;
     }
 }
 
@@ -258,6 +286,7 @@ void Texture2::set_wrap_x(const Wrap wrap)
 {
     if (bind()) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap));
+        m_wrap_x = wrap;
     }
 }
 
@@ -265,6 +294,7 @@ void Texture2::set_wrap_y(const Wrap wrap)
 {
     if (bind()) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap));
+        m_wrap_y = wrap;
     }
 }
 
@@ -291,6 +321,8 @@ void Texture2::fill(const Color& color)
     const uchar g = static_cast<uchar>(roundf(fill_color.g * 255.f));
     const uchar b = static_cast<uchar>(roundf(fill_color.b * 255.f));
     const uchar a = static_cast<uchar>(roundf(fill_color.a * 255.f));
+
+    glActiveTexture(GL_TEXTURE0);
 
     // create the source buffer and copy it into the texture
     if (m_format == Format::GRAYSCALE) {
