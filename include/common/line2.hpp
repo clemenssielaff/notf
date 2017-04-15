@@ -38,10 +38,10 @@ struct Line2 {
     Vector2f end() const { return _start + _delta; }
 
     /** The length of this Line2. */
-    float length() const { return _delta.magnitude(); }
+    float length() const { return _delta.get_magnitude(); }
 
     /** The squared length of this Line2 (is faster than `lenght()`). */
-    float length_sq() const { return _delta.magnitude_sq(); }
+    float length_sq() const { return _delta.get_magnitude_sq(); }
 
     /** Has the Line2 zero length? */
     bool is_zero() const { return _delta.is_zero(); }

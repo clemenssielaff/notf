@@ -8,7 +8,7 @@ Paint Paint::create_linear_gradient(const Vector2f& start_pos, const Vector2f& e
     static const float large_number = 1e5;
 
     Vector2f delta  = end_pos - start_pos;
-    const float mag = delta.magnitude();
+    const float mag = delta.get_magnitude();
     if (mag == approx(0., 0.0001)) {
         delta.x = 0;
         delta.y = 1;

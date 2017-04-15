@@ -7,7 +7,7 @@ namespace notf {
 
 Vector2f Line2::closest_point(const Vector2f& point, bool inside) const
 {
-    const float length_sq = _delta.magnitude_sq();
+    const float length_sq = _delta.get_magnitude_sq();
     if (length_sq == approx(0.)) {
         return _start;
     }

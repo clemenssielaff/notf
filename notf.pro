@@ -246,7 +246,8 @@ HEADERS += \
     include/common/identifier.hpp \
     include/graphics/graphics_context.hpp \
     include/graphics/text/font_id.hpp \
-    include/graphics/cell/cell_canvas.hpp
+    include/graphics/cell/cell_canvas.hpp \
+    include/utils/enum_bitmask.h
 
 QMAKE_CXX = ccache g++
 

@@ -505,6 +505,24 @@ struct _Aabr {
     }
     _Aabr& operator|=(const _Aabr& other) { return united(other); }
 
+    /** Returns the Aabr of this Aabr rotated counter-clockwise (in radians) around its center. */
+    _Aabr get_rotated(const Value_t angle) const { return get_rotated(angle, center()); }
+
+    /** Returns the Aabr of this Aabr rotated counter-clockwise (in radians) around a pivot point. */
+    _Aabr get_rotated(const Value_t angle, const Vector_t& pivot) const
+    {
+        const Vector_t a = _min.get_rotated_around(angle, pivot);
+        const Vector_t b = top_right().rotate_around(angle, pivot);
+        const Vector_t c = _max.get_rotated_around(angle, pivot);
+        const Vector_t d = bottom_left().rotate_around(angle, pivot);
+        _Aabr result;
+        result._min.x = min(a.x, min(b.x, min(c.x, d.x)));
+        result._min.y = min(a.y, min(b.y, min(c.y, d.y)));
+        result._max.x = max(a.x, max(b.x, max(c.x, d.x)));
+        result._max.y = max(a.y, max(b.y, max(c.y, d.y)));
+        return result;
+    }
+
     /** Read-write pointer to the Aabr's internal storage. */
     Value_t* as_ptr() { return &_min.x; }
 };

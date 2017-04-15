@@ -66,7 +66,7 @@ struct _RealVector2 {
     bool contains_zero() const { return abs(x) <= precision_high<Value_t>() || abs(y) <= precision_high<Value_t>(); }
 
     /** Checks whether this Vector2 is of unit magnitude. */
-    bool is_unit() const { return abs(magnitude_sq() - 1) <= precision_high<Value_t>(); }
+    bool is_unit() const { return abs(get_magnitude_sq() - 1) <= precision_high<Value_t>(); }
 
     /** Checks whether this Vector2's direction is parallel to the other.
      * The zero Vector2 is parallel to every other Vector2.
@@ -90,7 +90,7 @@ struct _RealVector2 {
     bool is_orthogonal_to(const _RealVector2& other) const
     {
         // normalization required for large absolute differences in vector lengths
-        return abs(normalized().dot(other.normalized())) <= precision_high<Value_t>();
+        return abs(get_normalized().dot(other.get_normalized())) <= precision_high<Value_t>();
     }
 
     /** Returns the angle (in radians) between the positive x-axis and this Vector2.
@@ -105,7 +105,7 @@ struct _RealVector2 {
      */
     Value_t angle_to(const _RealVector2& other) const
     {
-        const Value_t mag_sq_product = magnitude_sq() * other.magnitude_sq();
+        const Value_t mag_sq_product = get_magnitude_sq() * other.get_magnitude_sq();
         if (mag_sq_product <= precision_high<Value_t>()) {
             return 0; // one or both are zero
         }
@@ -122,7 +122,7 @@ struct _RealVector2 {
      */
     Value_t direction_to(const _RealVector2& other) const
     {
-        const Value_t mag_sq_product = magnitude_sq() * other.magnitude_sq();
+        const Value_t mag_sq_product = get_magnitude_sq() * other.get_magnitude_sq();
         if (mag_sq_product <= precision_high<Value_t>()) {
             return 0; // one or both are zero
         }
@@ -148,7 +148,7 @@ struct _RealVector2 {
      */
     bool is_approx(const _RealVector2& other, const Value_t epsilon = precision_high<Value_t>()) const
     {
-        return (*this - other).magnitude_sq() <= epsilon * epsilon;
+        return (*this - other).get_magnitude_sq() <= epsilon * epsilon;
     }
 
     /** Returns the slope of this Vector2.
@@ -165,10 +165,10 @@ struct _RealVector2 {
     /** Returns the squared magnitude of this Vector2.
      * The squared magnitude is much cheaper to compute than the actual.
      */
-    Value_t magnitude_sq() const { return dot(*this); }
+    Value_t get_magnitude_sq() const { return dot(*this); }
 
     /** Returns the magnitude of this Vector2. */
-    Value_t magnitude() const { return sqrt(dot(*this)); }
+    Value_t get_magnitude() const { return sqrt(dot(*this)); }
 
     /** Operators *****************************************************************************************************/
 
@@ -258,7 +258,7 @@ struct _RealVector2 {
     }
 
     /** Returns an inverted copy of this Vector2. */
-    _RealVector2 operator-() const { return inverse(); }
+    _RealVector2 operator-() const { return get_inverse(); }
 
     /** Read-only reference to an entry of the Vector2's internal storage. */
     template <typename Index, ENABLE_IF_INT(Index)>
@@ -296,7 +296,7 @@ struct _RealVector2 {
     }
 
     /** Returns an inverted copy of this Vector2. */
-    _RealVector2 inverse() const { return _RealVector2(-x, -y); }
+    _RealVector2 get_inverse() const { return _RealVector2(-x, -y); }
 
     /** Inverts this Vector2 in-place. */
     _RealVector2& invert()
@@ -321,9 +321,9 @@ struct _RealVector2 {
     }
 
     /** Returns a normalized copy of this Vector2. */
-    _RealVector2 normalized() const
+    _RealVector2 get_normalized() const
     {
-        const Value_t mag_sq = magnitude_sq();
+        const Value_t mag_sq = get_magnitude_sq();
         if (abs(mag_sq - 1) <= precision_high<Value_t>()) {
             return _RealVector2(*this); // is unit
         }
@@ -336,7 +336,7 @@ struct _RealVector2 {
     /** In-place normalization of this Vector2. */
     _RealVector2& normalize()
     {
-        const Value_t mag_sq = magnitude_sq();
+        const Value_t mag_sq = get_magnitude_sq();
         if (abs(mag_sq - 1) <= precision_high<Value_t>()) {
             return (*this); // is unit
         }
@@ -349,7 +349,7 @@ struct _RealVector2 {
     /** Creates a projection of this Vector2 onto an infinite line whose direction is specified by other.
      * If the other Vector2 is not normalized, the projection is scaled alongside with it.
      */
-    _RealVector2 projected_on(const _RealVector2& other) { return other * dot(other); }
+    _RealVector2 get_projected_on(const _RealVector2& other) { return other * dot(other); }
 
     /** Projects this Vector2 onto an infinite line whose direction is specified by other.
      * If the other Vector2 is not normalized, the projection is scaled alongside with it.
@@ -363,7 +363,7 @@ struct _RealVector2 {
     /** Returns a Vector2 orthogonal to this one, by rotating the copy 90 degree counter-clockwise.
      * The resulting Vector2 is of the same magnitude as the original one.
      */
-    _RealVector2 orthogonal() const { return _RealVector2(-y, x); }
+    _RealVector2 get_orthogonal() const { return _RealVector2(-y, x); }
 
     /** Rotates this Vector2 90 degree counter-clockwise. */
     _RealVector2& orthogonalize()
@@ -375,7 +375,7 @@ struct _RealVector2 {
     }
 
     /** Returns a copy of this 2D Vector, rotated counter-clockwise by a given angle (in radians). */
-    _RealVector2 rotated(const Value_t angle) const
+    _RealVector2 get_rotated(const Value_t angle) const
     {
         const Value_t sin_angle = sin(angle);
         const Value_t cos_angle = cos(angle);
@@ -393,13 +393,25 @@ struct _RealVector2 {
         const Value_t temp_y    = (y * cos_angle) + (x * sin_angle);
         x                       = temp_x;
         y                       = temp_y;
-        return (*this);
+        return *this;
+    }
+
+    /** Returns a copy this vector rotated around a pivot point by a given angle (in radians). */
+    _RealVector2 get_rotated_around(const Value_t angle, const _RealVector2& pivot) const
+    {
+        return pivot + (*this - pivot).rotate(angle);
+    }
+
+    /** Rotates this vector around a pivot point by a given angle (in radians). */
+    _RealVector2 rotate_around(const Value_t angle, const _RealVector2& pivot)
+    {
+        return *this = pivot + (pivot - *this).rotate(angle);
     }
 
     /** Returns the side on which the other Vector2 points to, relative to the direction of this Vector2.
      * @return +1 when other is on the left, -1 when on the right and 0 when it is straight ahead or behind.
      */
-    Value_t side_of(const _RealVector2& other) const
+    Value_t get_side_of(const _RealVector2& other) const
     {
         const Value_t direction = cross(other);
         if (abs(direction) <= precision_high<Value_t>()) {
@@ -538,7 +550,7 @@ struct _IntVector2 {
     }
 
     /** Returns an inverted copy of this Vector2. */
-    _IntVector2 operator-() const { return inverse(); }
+    _IntVector2 operator-() const { return get_inverse(); }
 
     /** Modifiers *****************************************************************************************************/
 
@@ -551,7 +563,7 @@ struct _IntVector2 {
     }
 
     /** Returns an inverted copy of this Vector2. */
-    _IntVector2 inverse() const { return _IntVector2(-x, -y); }
+    _IntVector2 get_inverse() const { return _IntVector2(-x, -y); }
 
     /** Inverts this Vector2 in-place. */
     _IntVector2& invert()
@@ -564,7 +576,7 @@ struct _IntVector2 {
     /** Returns a Vector2 orthogonal to this one, by rotating the copy 90 degree counter-clockwise.
      * The resulting Vector2 is of the same magnitude as the original one.
      */
-    _IntVector2 orthogonal() const { return _IntVector2(-y, x); }
+    _IntVector2 get_orthogonal() const { return _IntVector2(-y, x); }
 
     /** Rotates this Vector2 90 degree counter-clockwise. */
     _IntVector2& orthogonalize()

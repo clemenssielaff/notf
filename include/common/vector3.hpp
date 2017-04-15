@@ -76,7 +76,7 @@ struct _RealVector3 {
     }
 
     /** Checks whether this Vector3 is of unit magnitude. */
-    bool is_unit() const { return abs(magnitude_sq() - 1) <= precision_high<Value_t>(); }
+    bool is_unit() const { return abs(get_magnitude_sq() - 1) <= precision_high<Value_t>(); }
 
     /** Returns True, if other and self are approximately the same Vector3.
      * @param other     Vector3 to test against.
@@ -84,16 +84,16 @@ struct _RealVector3 {
      */
     bool is_approx(const _RealVector3& other, const Value_t epsilon = precision_high<Value_t>()) const
     {
-        return (*this - other).magnitude_sq() <= epsilon * epsilon;
+        return (*this - other).get_magnitude_sq() <= epsilon * epsilon;
     }
 
     /** Returns the squared magnitude of this Vector3.
      * The squared magnitude is much cheaper to compute than the actual.
      */
-    Value_t magnitude_sq() const { return dot(*this); }
+    Value_t get_magnitude_sq() const { return dot(*this); }
 
     /** Returns the magnitude of this Vector3. */
-    Value_t magnitude() const { return sqrt(dot(*this)); }
+    Value_t get_magnitude() const { return sqrt(dot(*this)); }
 
     /** Checks whether this Vector3 is parallel to other.
      * The zero Vector3 is parallel to everything.
@@ -101,7 +101,7 @@ struct _RealVector3 {
      */
     bool is_parallel_to(const _RealVector3& other) const
     {
-        return crossed(other).magnitude_sq() <= precision_high<Value_t>();
+        return crossed(other).get_magnitude_sq() <= precision_high<Value_t>();
     }
 
     /** Checks whether this Vector3 is orthogonal to other.
@@ -120,7 +120,7 @@ struct _RealVector3 {
      */
     Value_t angle_to(const _RealVector3& other) const
     {
-        const Value_t mag_sq_product = magnitude_sq() * other.magnitude_sq();
+        const Value_t mag_sq_product = get_magnitude_sq() * other.get_magnitude_sq();
         if (mag_sq_product <= precision_high<Value_t>()) {
             return 0.; // one or both are zero
         }
@@ -137,7 +137,7 @@ struct _RealVector3 {
      */
     Real direction_to(const _RealVector3& other) const
     {
-        const Value_t mag_sq_product = magnitude_sq() * other.magnitude_sq();
+        const Value_t mag_sq_product = get_magnitude_sq() * other.get_magnitude_sq();
         if (mag_sq_product <= precision_high<Value_t>()) {
             return 0.; // one or both are zero
         }
@@ -244,7 +244,7 @@ struct _RealVector3 {
     }
 
     /** Returns an inverted copy of this Vector3. */
-    _RealVector3 operator-() const { return inverse(); }
+    _RealVector3 operator-() const { return get_inverse(); }
 
     /** Read-only access to the Vector3's internal storage. */
     template <typename Index, ENABLE_IF_INT(Index)>
@@ -282,7 +282,7 @@ struct _RealVector3 {
     }
 
     /** Returns an inverted copy of this Vector3. */
-    _RealVector3 inverse() const { return _RealVector3(-x, -y, -z); }
+    _RealVector3 get_inverse() const { return _RealVector3(-x, -y, -z); }
 
     /** Inverts this Vector3 in-place. */
     _RealVector3& invert()
@@ -330,9 +330,9 @@ struct _RealVector3 {
     }
 
     /** Returns a normalized copy of this Vector3. */
-    _RealVector3 normalized() const
+    _RealVector3 get_normalized() const
     {
-        const Value_t mag_sq = magnitude_sq();
+        const Value_t mag_sq = get_magnitude_sq();
         if (abs(mag_sq - 1) <= precision_high<Value_t>()) {
             return _RealVector3(*this); // is unit
         }
@@ -345,7 +345,7 @@ struct _RealVector3 {
     /** In-place normalization of this Vector3. */
     _RealVector3& normalize()
     {
-        const Value_t mag_sq = magnitude_sq();
+        const Value_t mag_sq = get_magnitude_sq();
         if (abs(mag_sq - 1) <= precision_high<Value_t>()) {
             return (*this); // is unit
         }
@@ -358,7 +358,7 @@ struct _RealVector3 {
     /** Creates a projection of this Vector3 onto an infinite line whose direction is specified by other.
      * If the other Vector3 is not normalized, the projection is scaled alongside with it.
      */
-    _RealVector3 projected_on(const _RealVector3& other) { return other * dot(other); }
+    _RealVector3 get_projected_on(const _RealVector3& other) { return other * dot(other); }
 
     /** Projects this Vector3 onto an infinite line whose direction is specified by other.
      * If the other Vector3 is not normalized, the projection is scaled alongside with it.

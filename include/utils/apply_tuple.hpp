@@ -4,11 +4,15 @@
 
 namespace notf {
 
+namespace detail {
+
 template <typename FUNC, typename TUPLE, std::size_t... I>
-auto apply_impl(FUNC&& f, TUPLE&& t, std::index_sequence<I...>)
+auto _apply_impl(FUNC&& f, TUPLE&& t, std::index_sequence<I...>)
 {
     return std::forward<FUNC>(f)(std::get<I>(std::forward<TUPLE>(t))...);
 }
+
+} // namespace detail
 
 /** Expands (applies) a tuple to arguments for a function call.
  * Is included in the std from C++17 onwards.
@@ -20,7 +24,7 @@ template <typename FUNC, typename TUPLE>
 auto apply(FUNC&& f, TUPLE&& t)
 {
     using Indices = std::make_index_sequence<std::tuple_size<std::decay_t<TUPLE>>::value>;
-    return apply_impl(std::forward<FUNC>(f), std::forward<TUPLE>(t), Indices());
+    return detail::_apply_impl(std::forward<FUNC>(f), std::forward<TUPLE>(t), Indices());
 }
 
 } // namespace notf

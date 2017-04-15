@@ -1076,7 +1076,7 @@ void Painterpreter::_prepare_paths(const float fringe, const Painter::LineJoin j
             Point& next_point    = m_points[next_offset];
 
             current_point.forward = next_point.pos - current_point.pos;
-            current_point.length  = current_point.forward.magnitude();
+            current_point.length  = current_point.forward.get_magnitude();
             if (current_point.length > 0) {
                 current_point.forward /= current_point.length;
             }
@@ -1103,7 +1103,7 @@ void Painterpreter::_prepare_paths(const float fringe, const Painter::LineJoin j
             // calculate extrusions
             current_point.dm.x    = (previous_point.forward.y + current_point.forward.y) / 2.f;
             current_point.dm.y    = (previous_point.forward.x + current_point.forward.x) / -2.f;
-            const float dm_mag_sq = current_point.dm.magnitude_sq();
+            const float dm_mag_sq = current_point.dm.get_magnitude_sq();
             if (dm_mag_sq > precision_low<float>()) {
                 float scale = 1.0f / dm_mag_sq;
                 if (scale > 600.0f) { // 600 seems to be an arbitrary value?
