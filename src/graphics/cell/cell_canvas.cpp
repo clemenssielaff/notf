@@ -208,6 +208,8 @@ void CellCanvas::_perform_convex_fill(  const Call& call)
 {
     assert(call.path_offset + call.path_count <= m_paths.size());
 
+    check_gl_error();
+
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset, fragmentSize());
     if (call.texture) {
         call.texture->bind();

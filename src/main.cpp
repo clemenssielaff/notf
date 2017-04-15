@@ -59,6 +59,7 @@ public:
 
 //        drawTexture(painter, Aabrf{400, 100, 200, 200});
 
+        painter.translate(192.57f, 200);
         painter.render_text("This is a test text that i would like to see printed on screen please", g_font);
     }
 

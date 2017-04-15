@@ -101,7 +101,7 @@ struct _Xform2 {
     /*  Inspection  ***************************************************************************************************/
 
     /** Returns the translation part of this Xform. */
-    Vector_t translation() const { return rows[2]; }
+    const Vector_t& get_translation() const { return rows[2]; }
 
     /** Scale factor along the x-axis. */
     Value_t scale_factor_x() const { return sqrt(rows[0][0] * rows[0][0] + rows[1][0] * rows[1][0]); }

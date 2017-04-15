@@ -50,11 +50,6 @@ public: // methods
     const Font& get_font(const FontID id) const { return m_fonts[static_cast<FontID::underlying_t>(id) - 1]; }
     // TODO: unhandled exception if the font ID is not found... maybe Font should behave like Shaders and textures?
 
-    /** Remders a text at the given screen coordinate.
-     * The position corresponts to the start of the text's baseline.
-     */
-    void render_text(const std::string& text, ushort x, ushort y, const FontID font_id) const;
-
     void render_atlas();
 
     std::shared_ptr<Texture2> get_atlas_texture() const;

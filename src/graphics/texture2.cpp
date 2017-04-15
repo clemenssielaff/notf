@@ -322,8 +322,6 @@ void Texture2::fill(const Color& color)
     const uchar b = static_cast<uchar>(roundf(fill_color.b * 255.f));
     const uchar a = static_cast<uchar>(roundf(fill_color.a * 255.f));
 
-    glActiveTexture(GL_TEXTURE0);
-
     // create the source buffer and copy it into the texture
     if (m_format == Format::GRAYSCALE) {
         const std::vector<uchar> buffer(static_cast<size_t>(m_width * m_height * to_number(m_format)), r);

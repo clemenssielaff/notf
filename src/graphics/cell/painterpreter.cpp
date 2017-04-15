@@ -673,9 +673,11 @@ void Painterpreter::_create_butt_cap_end(const Point& point, const Vector2f& del
 
 void Painterpreter::_render_text(const std::string& text, const FontID font_id)
 {
-    const PainterState& state        = _get_current_state();
-    const CellCanvasOptions& options = m_canvas.get_options();
-    const Size2f buffer_size         = options.buffer_size;
+    const PainterState& state                     = _get_current_state();
+    const FontManager& font_manager               = m_canvas.m_graphics_context.get_font_manager();
+    const std::shared_ptr<Texture2>& font_texture = font_manager.get_atlas_texture();
+    const Font& font                              = font_manager.get_font(font_id);
+    assert(font_texture->get_width() == font_texture->get_height());
 
     // get the fill paint
     Paint fill_paint = state.fill_paint;
@@ -688,7 +690,7 @@ void Painterpreter::_render_text(const std::string& text, const FontID font_id)
     render_call.path_offset       = 0;
     render_call.path_count        = 0;
     render_call.uniform_offset    = static_cast<GLintptr>(m_canvas.m_shader_variables.size()) * m_canvas.fragmentSize();
-    render_call.texture           = m_canvas.get_font_manager().get_atlas_texture();
+    render_call.texture           = font_texture;
     render_call.polygon_offset    = static_cast<GLint>(m_canvas.m_vertices.size());
 
     // create the fragment uniforms
@@ -696,45 +698,45 @@ void Painterpreter::_render_text(const std::string& text, const FontID font_id)
     paint_to_frag(fill_uniforms, fill_paint, state.scissor, 0, 1, 0);
     fill_uniforms.type = CellCanvas::ShaderVariables::Type::TEXT;
 
+    // make sure that text is always rendered on the pixel grid, not between pixels
     // TODO: pass transform to font manager - also, full xform of all created vertices (I want 3D spinning widgets!)
-    const Font& font     = m_canvas.m_graphics_context.get_font_manager().get_font(font_id);
-    FontAtlas::coord_t x = 200;
-    FontAtlas::coord_t y = 200;
+    const Vector2f& translation = state.xform.get_translation();
+    FontAtlas::coord_t x        = static_cast<FontAtlas::coord_t>(roundf(translation.x));
+    FontAtlas::coord_t y        = static_cast<FontAtlas::coord_t>(roundf(translation.y));
 
     for (const auto character : text) {
         const Glyph& glyph = font.get_glyph(static_cast<codepoint_t>(character)); // TODO: text rendering will only work for pure ascii
 
-        // skip glyphs wihout pixels
-        if (glyph.rect.width && glyph.rect.height) {
-
-            Aabrf glyph_rect(static_cast<float>(glyph.rect.x),
-                             static_cast<float>(glyph.rect.y),
-                             static_cast<float>(glyph.rect.width),
-                             static_cast<float>(glyph.rect.height));
-            glyph_rect = glyph_rect * (1 / 512.f); // TODO: MAGIC NUMBER!!!!!!!!!!!!!!
+        if (!glyph.rect.width || !glyph.rect.height) {
+            // skip glyphs wihout pixels
+        }
+        else {
+            Aabrf uv_rect(static_cast<float>(glyph.rect.x),
+                          static_cast<float>(glyph.rect.y),
+                          static_cast<float>(glyph.rect.width),
+                          static_cast<float>(glyph.rect.height));
+            uv_rect = uv_rect * (1.f / static_cast<float>(font_texture->get_width()));
 
             Aabrf quad_rect(
-                (x + glyph.left), //+ (buffer_size.width / -2.f),
-                (y + glyph.top), // + (buffer_size.height / -2.f),
+                (x + glyph.left),
+                (y - glyph.top),
                 static_cast<float>(glyph.rect.width),
                 static_cast<float>(glyph.rect.height));
-            quad_rect.move_by({0, static_cast<float>(-glyph.rect.height)});
 
             // create the quad (2*3 vertices) to render the character
             m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.right(), quad_rect.bottom()},
-                                             Vector2f{glyph_rect.right(), glyph_rect.top()});
+                                             Vector2f{uv_rect.right(), uv_rect.bottom()});
             m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.left(), quad_rect.top()},
-                                             Vector2f{glyph_rect.left(), glyph_rect.bottom()});
+                                             Vector2f{uv_rect.left(), uv_rect.top()});
             m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.left(), quad_rect.bottom()},
-                                             Vector2f{glyph_rect.left(), glyph_rect.top()});
+                                             Vector2f{uv_rect.left(), uv_rect.bottom()});
 
             m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.right(), quad_rect.top()},
-                                             Vector2f{glyph_rect.right(), glyph_rect.bottom()});
+                                             Vector2f{uv_rect.right(), uv_rect.top()});
             m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.left(), quad_rect.top()},
-                                             Vector2f{glyph_rect.left(), glyph_rect.bottom()});
+                                             Vector2f{uv_rect.left(), uv_rect.top()});
             m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.right(), quad_rect.bottom()},
-                                             Vector2f{glyph_rect.right(), glyph_rect.top()});
-
+                                             Vector2f{uv_rect.right(), uv_rect.bottom()});
         }
 
         // advance to the next character position

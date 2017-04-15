@@ -325,7 +325,7 @@ void StackLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*
         if (!screen_item) {
             continue;
         }
-        const Vector2f item_pos = local_pos - screen_item->get_transform().translation();
+        const Vector2f item_pos = local_pos - screen_item->get_transform().get_translation();
         const Aabrf item_rect(screen_item->get_size());
         if (item_rect.contains(item_pos)) {
             _get_widgets_at_item_pos(screen_item, local_pos, result);

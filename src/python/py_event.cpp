@@ -19,7 +19,6 @@ void produce_events(pybind11::module& module)
         Py_KeyEvent.def_readonly("key", &KeyEvent::key);
         Py_KeyEvent.def_readonly("action", &KeyEvent::action);
         Py_KeyEvent.def_readonly("modifiers", &KeyEvent::modifiers);
-        // TODO: bindings for KeyStateSet of KeyEvent
     }
 
     {
@@ -33,6 +32,5 @@ void produce_events(pybind11::module& module)
         Py_MouseEvent.def_readonly("button", &MouseEvent::button);
         Py_MouseEvent.def_readonly("action", &MouseEvent::action);
         Py_MouseEvent.def_readonly("modifiers", &MouseEvent::modifiers);
-        // TODO: bindings for ButtonStateSet of MouseEvent
     }
 }

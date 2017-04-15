@@ -23,9 +23,9 @@ CONFIG(release, debug|release) {
     QMAKE_LFLAGS_RELEASE += -O3 -flto #-Os
 
     # python
-    LIBS *= -L/home/clemens/code/thirdparty/Python-3.5.2/
-    LIBS *= -lpython3.5m
-    INCLUDEPATH *= /home/clemens/code/thirdparty/Python-3.5.2/INSTALL/include/python3.5m/
+    LIBS *= -L/home/clemens/code/thirdparty/Python-3.6.1/
+    LIBS *= -lpython3.6m
+    INCLUDEPATH *= /home/clemens/code/thirdparty/Python-3.6.1/INSTALL/include/python3.6m/
 }
 
 # debug
@@ -34,9 +34,9 @@ CONFIG(debug, debug|release) {
     DEFINES += _DEBUG
 
     # python
-    LIBS *= -L/home/clemens/code/thirdparty/Python-3.5.2/
-    LIBS *= -lpython3.5dm
-    INCLUDEPATH *= /home/clemens/code/thirdparty/Python-3.5.2/INSTALL/include/python3.5dm/
+    LIBS *= -L/home/clemens/code/thirdparty/Python-3.6.1/
+    LIBS *= -lpython3.6dm
+    INCLUDEPATH *= /home/clemens/code/thirdparty/Python-3.6.1/INSTALL/include/python3.6dm/
 }
 
 # test
