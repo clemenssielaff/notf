@@ -5,12 +5,12 @@
 #include "graphics/blend_mode.hpp"
 #include "graphics/cell/paint.hpp"
 #include "graphics/scissor.hpp"
-#include "graphics/text/font_id.hpp"
 
 namespace notf {
 
 class Cell;
 class CellCanvas;
+class Font;
 
 namespace detail {
 
@@ -266,7 +266,7 @@ public: // methods
     /** Renders a text.
      * The stencil position corresponts to the start of the text's baseline.
      */
-    void render_text(const std::string& text, const FontID font_id);
+    void render_text(const std::string& text, const std::shared_ptr<Font> font);
 
     /* Painting *******************************************************************************************************/
 

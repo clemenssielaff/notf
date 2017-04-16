@@ -3,8 +3,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "graphics/text/font_atlas.hpp"
-#include "graphics/text/font_id.hpp"
+#include "common/hash.hpp"
 
 struct FT_FaceRec_;
 typedef struct FT_FaceRec_* FT_Face;
@@ -12,11 +11,16 @@ typedef struct FT_FaceRec_* FT_Face;
 namespace notf {
 
 class FontManager;
+class GraphicsContext;
+
+/** Data type to identify a single Glyph. */
+using codepoint_t = unsigned long;
 
 /**********************************************************************************************************************/
 
 /**
  * A Glyph contains information about how to render a single character from a font atlas.
+ * Glyph coordinates are stored as signed integers, because they can be negative as well.
  *
  *          ^
  *          |
@@ -33,7 +37,7 @@ class FontManager;
  *          |          |    .ckXMMMMMMN0x:        |     |
  *          |          |      'XMK..              |     |
  *          |  -left-> |     :MMMk.               |     |
- *        --X----------|-----0MMMMMMMWNKOdl,.-----|-----|--X--->
+ *        --X----------|-----0MMMMMMMWNKOdl,.-----|-----|--x--->
  *   origin |          |    'kMMNKXWMMMMMMMMMXo   |     |  |
  *          |          | ,0MMWo.      .,cxNMMMMN. |     v
  *          |          |oMMMM.             oMMMMd |        |
@@ -44,28 +48,56 @@ class FontManager;
  *          |          |     ;xKWMMMN0d,          |
  *          |          +--------------------------+        |
  *          |
- *          |- - - - - - - - - - - - - - - - - - - - - - -+
+ *          |- - - - - - - - - - - - - - - - - - - - - - - +
  *          |                 -advance_x->
  *          v
  */
-
 struct Glyph {
-    using pos_t = int;
 
+public: // types
+    /** Integer type to store a single Glyph coordinate. */
+    using coord_t = int16_t;
+
+    /** Integer type that can be used to express an area (coordinate_type^2). */
+    using area_t = int32_t;
+
+    /** Rectangular area inside the Atlas. */
+    struct Rect {
+        /** X-coordinate of the rectangle in the atlas. */
+        coord_t x;
+
+        /** Y-coordinate of the rectangle in the atlas. */
+        coord_t y;
+
+        /** Width of the rectangle in pixels. */
+        coord_t width;
+
+        /** Height of the rectangle in pixels. */
+        coord_t height;
+
+        /** Default Constructor. */
+        Rect() = default;
+
+        /** Value Constructor. */
+        Rect(coord_t x, coord_t y, coord_t width, coord_t height)
+            : x(x), y(y), width(width), height(height) {}
+    };
+
+public: // fields
     /** Rectangle of the FontAtlas that contains the texture of this Glyph. */
-    FontAtlas::Rect rect;
+    Rect rect;
 
     /** Distance to the left side of the Glyph from the origin in pixels. */
-    FontAtlas::coord_t left;
+    coord_t left;
 
     /** Distance to the top of the Glyph from the baseline in pixels. */
-    FontAtlas::coord_t top;
+    coord_t top;
 
     /** How far to advance the origin horizontal. */
-    pos_t advance_x;
+    coord_t advance_x;
 
     /** How far to advance the origin vertically. */
-    pos_t advance_y;
+    coord_t advance_y;
 };
 
 /**********************************************************************************************************************/
@@ -76,11 +108,40 @@ struct Glyph {
  */
 class Font {
 
-public: // methods
-    /** Constructor. */
-    Font(FontManager* manager, const FontID id, const std::string name,
-         const std::string filename, const ushort pixel_size);
+    friend class FontManager;
 
+public: // types
+    using pixel_size_t = ushort;
+
+    /** Every Font is uniquely identified by its file and the Font size in pixels. */
+    struct Identifier {
+
+        /** Filename of the loaded Font. */
+        std::string filename;
+
+        /** Pixel size of this Font. */
+        pixel_size_t pixel_size;
+
+        /** Equality test operator. f*/
+        bool operator==(const Identifier& rhs) const { return filename == rhs.filename && pixel_size == rhs.pixel_size; }
+    };
+
+public: // static methods
+    /** Loads a new Font or returns a pointer to an existing font if a font with the same filename / pixel_size-pair
+     * has already been loaded.
+     * @param context       Render Context in which the Font lives.
+     * @param filename      File from which the Font is loaded.
+     * @param pixel_size    Nominal size of the loaded Font in pixels.
+     */
+    static std::shared_ptr<Font> load(GraphicsContext& context, const std::string filename, const pixel_size_t pixel_size);
+
+private: // factory
+    struct make_shared_enabler;
+
+    /** Constructor. */
+    Font(FontManager& manager, const std::string filename, const pixel_size_t pixel_size);
+
+public: // methods
     /** Returns true if this Font is valid.
      * If the file used to initialize the Font could not be loaded, the Font is invalid.
      */
@@ -91,23 +152,17 @@ public: // methods
 
 private: // methods
     /** Renders and returns a new Glyph. */
-    const Glyph& _allocate_glyph(const codepoint_t codepoint);
+    const Glyph& _allocate_glyph(const codepoint_t codepoint) const;
 
 private: // members
     /** Font Manager. */
-    FontManager* m_manager;
+    FontManager& m_manager;
 
-    /** Id of this Font. */
-    const FontID m_id;
+    /** Name of the Font. */
+    std::string m_name;
 
-    /** Given name of the Font. */
-    const std::string m_name;
-
-    /** Filename of the loaded Font. */
-    const std::string m_filename;
-
-    /** Pixel size of this Font. */
-    const ushort m_pixel_size;
+    /** Every Font is uniquely identified by its file and the Font size in pixels. */
+    const Identifier m_identifier;
 
     /** Freetype font face. */
     FT_Face m_face;
@@ -117,3 +172,15 @@ private: // members
 };
 
 } // namespace notf
+
+/* std::hash **********************************************************************************************************/
+
+namespace std {
+
+/** std::hash specialization for notf::Font::Identifier. */
+template <>
+struct hash<notf::Font::Identifier> {
+    size_t operator()(const notf::Font::Identifier& id) const { return notf::hash(id.filename, id.pixel_size); }
+};
+
+} // namespace std

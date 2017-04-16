@@ -8,11 +8,11 @@
 namespace py = pybind11;
 using namespace py::literals;
 
+#include "common/enum.hpp"
 #include "common/log.hpp"
 #include "common/string.hpp"
 #include "core/application.hpp"
 #include "python/py_notf.hpp"
-#include "utils/enum_to_number.hpp"
 
 namespace notf {
 
@@ -55,7 +55,7 @@ void PythonInterpreter::parse_app(const std::string& filename)
 
     // find and open the file to execute
     std::string absolute_path = m_app_directory + filename;
-    FILE* fp = std::fopen(absolute_path.c_str(), "r");
+    FILE* fp                  = std::fopen(absolute_path.c_str(), "r");
     if (!fp) {
         log_warning << "Could not parse empty source code read from " << absolute_path;
         log_format << "================================================================================";
@@ -68,12 +68,12 @@ void PythonInterpreter::parse_app(const std::string& filename)
     // build the globals dict
     py::object globals = py::dict(
         "__builtins__"_a = py::handle(PyEval_GetBuiltins()),
-        "__name__"_a = py::str("__main__"),
-        "__package__"_a = py::none(),
-        "__doc__"_a = py::none(),
-        "__spec__"_a = py::none(),
-        "__loader__"_a = py::none(),
-        "__file__"_a = py::str(filename.c_str()));
+        "__name__"_a     = py::str("__main__"),
+        "__package__"_a  = py::none(),
+        "__doc__"_a      = py::none(),
+        "__spec__"_a     = py::none(),
+        "__loader__"_a   = py::none(),
+        "__file__"_a     = py::str(filename.c_str()));
     if (!globals.check()) {
         log_critical << "Failed to build the 'globals' dictionary!";
         std::fclose(fp);
@@ -92,7 +92,7 @@ void PythonInterpreter::parse_app(const std::string& filename)
     // run the script
     py::object _(PyRun_FileEx(fp, absolute_path.c_str(), Py_file_input, globals.ptr(), globals.ptr(),
                               1), // close the file stream before returning
-                 false); // the return object is a new reference
+                 false);          // the return object is a new reference
 
     // check for errors
     if (PyErr_Occurred()) {

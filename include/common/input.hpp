@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <bitset>
 
-#include "utils/enum_to_number.hpp"
+#include "common/enum.hpp"
 
 namespace notf {
 
@@ -12,7 +12,7 @@ namespace notf {
  */
 enum class Key : unsigned char {
     __first = 0,
-    SPACE = __first,
+    SPACE   = __first,
     APOSTROPHE,
     COMMA,
     MINUS,
@@ -133,14 +133,14 @@ enum class Key : unsigned char {
     RIGHT_SUPER,
     MENU,
     INVALID = 255,
-    __last = MENU,
+    __last  = MENU,
 };
 
 /** All mouse buttons recognized by GLFW.
  * Can be used as indices for a ButtonStateSet object.
  */
 enum class Button : unsigned char {
-    __first = 0,
+    __first  = 0,
     BUTTON_1 = __first,
     BUTTON_2,
     BUTTON_3,
@@ -150,11 +150,11 @@ enum class Button : unsigned char {
     BUTTON_7,
     BUTTON_8,
     NONE,
-    LEFT = BUTTON_1,
-    RIGHT = BUTTON_2,
-    MIDDLE = BUTTON_3,
+    LEFT    = BUTTON_1,
+    RIGHT   = BUTTON_2,
+    MIDDLE  = BUTTON_3,
     INVALID = 255,
-    __last = BUTTON_8,
+    __last  = BUTTON_8,
 };
 
 /** Actions you can do with a key. */
@@ -176,10 +176,10 @@ enum class MouseAction : unsigned char {
  * the flag is still set only once (meaning there is no double-shift modifier).
  */
 enum KeyModifiers : unsigned char {
-    NONE = 0,
+    NONE  = 0,
     SHIFT = 1,
-    CTRL = 2,
-    ALT = 4,
+    CTRL  = 2,
+    ALT   = 4,
     SUPER = 8,
 };
 

@@ -105,9 +105,25 @@ private: // methods
     std::tuple<float, float, float, float>
     _choose_bevel(bool is_beveling, const Point& prev_point, const Point& curr_point, const float stroke_width);
 
+    /** Creates a bevel join in between to line segments.
+     * @param previous_point    Previous point.
+     * @param current_point     Corner point.
+     * @param left_w
+     * @param right_w
+     * @param left_u
+     * @param right_u
+     * @param vertices_out      [out] Vertex vector to write the cap into.
+     */
     void _create_bevel_join(const Point& previous_point, const Point& current_point, const float left_w, const float right_w,
                             const float left_u, const float right_u, std::vector<Vertex>& vertices_out);
 
+    /** Creates a round join in between to line segments.
+     * @param previous_point    Previous point.
+     * @param current_point     Corner point.
+     * @param stroke_width      Width of the base of the cap.
+     * @param divisions         Number of divisions for the cap (per half-circle).
+     * @param vertices_out      [out] Vertex vector to write the cap into.
+     */
     void _create_round_join(const Point& previous_point, const Point& current_point, const float stroke_width,
                             const size_t divisions, std::vector<Vertex>& vertices_out);
 
@@ -131,16 +147,32 @@ private: // methods
     void _create_round_cap_end(const Point& point, const Vector2f& delta, const float stroke_width,
                                const size_t divisions, std::vector<Vertex>& vertices_out);
 
+    /** Creates a square cap at the start of a line.
+     * @param point         Start point of the line.
+     * @param direction     Direction of the cap.
+     * @param stroke_width  Width of the base of the butt.
+     * @param offset        Is low for butt, higher for square ends.
+     * @param fringe_width  Width of the geometric anti-aliasing.
+     * @param vertices_out  [out] Vertex vector to write the cap into.
+     */
     void _create_butt_cap_start(const Point& point, const Vector2f& direction, const float stroke_width,
-                                const float d, const float fringe_width, std::vector<Vertex>& vertices_out);
+                                const float offset, const float fringe_width, std::vector<Vertex>& vertices_out);
 
+    /** Creates a square cap at the end of a line.
+     * @param point         End point of the line.
+     * @param direction     Direction of the cap.
+     * @param stroke_width  Width of the base of the butt.
+     * @param offset        Is low for butt, higher for square ends.
+     * @param fringe_width  Width of the geometric anti-aliasing.
+     * @param vertices_out  [out] Vertex vector to write the cap into.
+     */
     void _create_butt_cap_end(const Point& point, const Vector2f& delta, const float stroke_width,
                               const float d, const float fringe_width, std::vector<Vertex>& vertices_out);
 
     /** Remders a text at the given screen coordinate.
      * The position corresponts to the start of the text's baseline.
      */
-    void _render_text(const std::string& text, const FontID font_id);
+    void _render_text(const std::string& text, const std::shared_ptr<Font> font);
 
     /** Paints the current Path. */
     void _fill();

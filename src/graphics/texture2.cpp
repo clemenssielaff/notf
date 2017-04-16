@@ -3,13 +3,13 @@
 #include "assert.h"
 
 #include "common/color.hpp"
+#include "common/enum.hpp"
 #include "common/log.hpp"
 #include "common/size2.hpp"
 #include "core/opengl.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/graphics_context.hpp"
 #include "graphics/raw_image.hpp"
-#include "utils/enum_to_number.hpp"
 
 namespace { // anonymous
 using namespace notf;

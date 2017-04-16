@@ -2,6 +2,7 @@
 
 #include <sstream>
 
+#include "common/enum.hpp"
 #include "common/log.hpp"
 #include "core/opengl.hpp"
 #include "graphics/gl_errors.hpp"
@@ -9,7 +10,6 @@
 #include "graphics/graphics_context.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/texture2.hpp"
-#include "utils/enum_to_number.hpp"
 
 namespace { // anonymous
 // clang-format off

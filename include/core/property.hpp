@@ -281,7 +281,7 @@ private: // fields
 #define PropertyExpression(TARGET, LAMBDA, ...) \
     notf::detail::create_property_expression(TARGET, [__VA_ARGS__] LAMBDA, __VA_ARGS__)
 
-/* TODO: Property overhaul (hopefully for the last time).
+/*
  * There are a few things that I want.
  * 1.   Make `Property` a private class.
  *      This is de-facto the case already, with a protected Constructor and an argument that can only be supplied when

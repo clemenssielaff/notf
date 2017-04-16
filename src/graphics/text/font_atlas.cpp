@@ -28,20 +28,20 @@ void FontAtlas::WasteMap::initialize(const coord_t width, const coord_t height)
     m_free_rects.emplace_back(0, 0, width, height);
 }
 
-void FontAtlas::WasteMap::add_waste(Rect rect)
+void FontAtlas::WasteMap::add_waste(Glyph::Rect rect)
 {
     m_free_rects.emplace_back(std::move(rect));
 }
 
-FontAtlas::Rect FontAtlas::WasteMap::reclaim_rect(const coord_t width, const coord_t height)
+Glyph::Rect FontAtlas::WasteMap::reclaim_rect(const coord_t width, const coord_t height)
 {
-    Rect result(0, 0, 0, 0);
+    Glyph::Rect result(0, 0, 0, 0);
     size_t best_node_index = INVALID_SIZE_T;
 
     { // try all free rects to find the best one for placement
         area_t least_waste = std::numeric_limits<area_t>::max();
         for (size_t node_index = 0; node_index < m_free_rects.size(); ++node_index) {
-            const Rect& rect = m_free_rects[node_index];
+            const Glyph::Rect& rect = m_free_rects[node_index];
             if (width == rect.width && height == rect.height) {
                 // return early on a perfect fit
                 result.x      = rect.x;
@@ -72,14 +72,14 @@ FontAtlas::Rect FontAtlas::WasteMap::reclaim_rect(const coord_t width, const coo
     }
 
     { // keep track of the one or two generated smaller rects of free space
-        const Rect& free_rect = m_free_rects[best_node_index];
+        const Glyph::Rect& free_rect = m_free_rects[best_node_index];
 
-        Rect vertical;
+        Glyph::Rect vertical;
         vertical.x     = free_rect.x + width;
         vertical.y     = free_rect.y;
         vertical.width = free_rect.width - width;
 
-        Rect horizontal;
+        Glyph::Rect horizontal;
         horizontal.x      = free_rect.x;
         horizontal.y      = free_rect.y + height;
         horizontal.height = free_rect.height - height;
@@ -129,7 +129,6 @@ FontAtlas::FontAtlas(GraphicsContext& graphics_context)
 
     log_trace << "Created font atlas of size " << m_width << "x" << m_height << " with texture ID: " << m_texture->get_id();
 
-    static_assert(std::is_pod<Rect>::value, "This compiler does not recognize notf::FontAtlas::WasteRect as a POD.");
     static_assert(std::is_pod<FitRequest>::value, "This compiler does not recognize notf::FontAtlas::FitRequest as a POD.");
     static_assert(std::is_pod<SkylineNode>::value, "This compiler does not recognize notf::FontAtlas::SkylineNode as a POD.");
     static_assert(std::is_pod<ScoredRect>::value, "This compiler does not recognize notf::FontAtlas::ScoredRect as a POD.");
@@ -152,10 +151,10 @@ void FontAtlas::reset()
     m_texture->fill(Color::transparent());
 }
 
-FontAtlas::Rect FontAtlas::insert_rect(const coord_t width, const coord_t height)
+Glyph::Rect FontAtlas::insert_rect(const coord_t width, const coord_t height)
 {
     { // try to fit the rectangle into the waste areas first...
-        const Rect rect = m_waste.reclaim_rect(width, height);
+        const Glyph::Rect rect = m_waste.reclaim_rect(width, height);
         if (rect.height != 0) {
             assert(rect.width != 0);
             m_used_area += rect.width * rect.height;
@@ -184,7 +183,7 @@ std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<FitReques
 
     // repeatedly go through all named extends, find the best one to insert and remove it
     while (!named_extends.empty()) {
-        Rect best_rect           = {0, 0, 0, 0};
+        Glyph::Rect best_rect    = {0, 0, 0, 0};
         size_t best_node_index   = INVALID_SIZE_T;
         size_t best_extend_index = INVALID_SIZE_T;
         coord_t best_node_width  = std::numeric_limits<coord_t>::max();
@@ -229,7 +228,7 @@ std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<FitReques
     return result;
 }
 
-void FontAtlas::fill_rect(const Rect& rect, const uchar* data)
+void FontAtlas::fill_rect(const Glyph::Rect& rect, const uchar* data)
 {
     if (rect.height == 0 || rect.width == 0) {
         return;
@@ -251,10 +250,10 @@ FontAtlas::ScoredRect FontAtlas::_get_rect(const coord_t width, const coord_t he
     result.new_height = std::numeric_limits<coord_t>::max();
 
     for (size_t node_index = 0; node_index < m_nodes.size(); ++node_index) {
-        const SkylineNode& currrent_node = m_nodes[node_index];
+        const SkylineNode& current_node = m_nodes[node_index];
 
         // if the rect is too wide, there's nothing more we can do
-        if (currrent_node.x + width > m_width) {
+        if (current_node.x + width > m_width) {
             break;
         }
 
@@ -281,11 +280,11 @@ FontAtlas::ScoredRect FontAtlas::_get_rect(const coord_t width, const coord_t he
         // if the rectangle fits, check if it is a better fit than the last one and update the result if it is
         const coord_t new_height = y + height;
         if (new_height < result.new_height
-            || (new_height == result.new_height && currrent_node.width < result.node_width)) {
-            result.rect.x     = currrent_node.x;
+            || (new_height == result.new_height && current_node.width < result.node_width)) {
+            result.rect.x     = current_node.x;
             result.rect.y     = y;
             result.node_index = node_index;
-            result.node_width = currrent_node.width;
+            result.node_width = current_node.width;
             result.new_height = new_height;
         }
     }
@@ -299,10 +298,10 @@ FontAtlas::ScoredRect FontAtlas::_get_rect(const coord_t width, const coord_t he
     return result;
 }
 
-void FontAtlas::_add_node(const size_t node_index, const Rect& rect)
+void FontAtlas::_add_node(const size_t node_index, const Glyph::Rect& rect)
 {
     const coord_t rect_right = rect.x + rect.width;
-    assert(rect_right < m_width);
+    assert(rect_right <= m_width);
     assert(rect.y + rect.height < m_height);
 
     // identify and store generated waste
@@ -312,7 +311,7 @@ void FontAtlas::_add_node(const size_t node_index, const Rect& rect)
         if (current_node.x < rect_right) {
             assert(rect.y >= current_node.y);
             const coord_t current_right = min(static_cast<coord_t>(current_node.x + current_node.width), rect_right);
-            m_waste.add_waste(Rect(current_node.x, current_node.y, current_right - current_node.x, rect.y - current_node.y));
+            m_waste.add_waste(Glyph::Rect(current_node.x, current_node.y, current_right - current_node.x, rect.y - current_node.y));
         }
         else {
             break;

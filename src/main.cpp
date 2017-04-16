@@ -16,7 +16,7 @@ using namespace notf;
 
 GraphicsContext* g_graphics_context = nullptr;
 FontManager* g_font_manager= nullptr;
-FontID g_font;
+std::shared_ptr<Font> g_font;
 
 class MyWidget : public Widget {
 
@@ -39,28 +39,28 @@ public:
 //        painter.set_fill_paint(Color(255, 0, 0));
 //        painter.fill();
 
-//        drawGraph(painter, base, time);
+        drawGraph(painter, base, time);
 
-//        drawColorwheel(painter, base.shrunken(margin), time);
+        drawColorwheel(painter, base.shrunken(margin), time);
 
-//        drawCheckBox(painter, Aabrf{10, 100, 20, 20});
+        drawCheckBox(painter, Aabrf{10, 100, 20, 20});
 
-//        drawButton(painter, Aabrf{10, 130, 150, 30});
+        drawButton(painter, Aabrf{10, 130, 150, 30});
 
-//        drawSlider(painter, Aabrf{10, 170, 150, 30}, 0.4f);
+        drawSlider(painter, Aabrf{10, 170, 150, 30}, 0.4f);
 
-//        drawCaps(painter, Vector2f{10, 200}, 30);
+        drawCaps(painter, Vector2f{10, 200}, 30);
 
-//        drawEyes(painter, Aabrf{600, 20, 80, 60}, painter.get_mouse_pos(), time);
+        drawEyes(painter, Aabrf{600, 20, 80, 60}, painter.get_mouse_pos(), time);
 
-//        drawSpinner(painter, base.center(), 100, time);
+        drawSpinner(painter, base.center(), 100, time);
 
-//        drawJoins(painter, Aabrf{120, widget_size.height - 50, 600, 50}, time);
+        drawJoins(painter, Aabrf{120, widget_size.height - 50, 600, 50}, time);
 
-//        drawTexture(painter, Aabrf{400, 100, 200, 200});
+        drawTexture(painter, Aabrf{400, 100, 200, 200});
 
-        painter.translate(192.57f, 200);
-        painter.render_text("This is a test text that i would like to see printed on screen please", g_font);
+        painter.translate(192, 200);
+        painter.render_text("This is a test text that I would like to see printed on screen please", g_font);
     }
 
     void drawSlider(Painter& painter, const Aabrf& rect, float pos) const
@@ -549,7 +549,8 @@ int main(int argc, char* argv[])
 
     g_graphics_context = &(window->get_graphics_context());
     g_font_manager = &(g_graphics_context->get_font_manager());
-    g_font = g_font_manager->load_font("Roboto48", "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 48);
+
+    g_font = Font::load(*g_graphics_context, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 10);
 
     //    window->on_token_key.connect(
     //        [window, &app](const KeyEvent&) {

@@ -59,7 +59,7 @@ void Widget::paint(CellCanvas& cell_context) const
     try {
         _paint(painter);
     } catch (std::runtime_error error) {
-        log_warning << error.what(); // TODO: print Python stack trace here IF the item uses a Python object to draw itself
+        log_warning << error.what();
         return;
     }
     m_is_clean = true;

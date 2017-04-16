@@ -185,8 +185,6 @@ HEADERS += \
     include/core/resource_manager.hpp \
     include/core/render_manager.hpp \
     include/common/color.hpp \
-    include/utils/enummap.hpp \
-    include/utils/enum_to_number.hpp \
     include/utils/unused.hpp \
     include/core/layout.hpp \
     include/dynamic/layout/stack_layout.hpp \
@@ -245,9 +243,8 @@ HEADERS += \
     include/graphics/cell/command_buffer.hpp \
     include/common/identifier.hpp \
     include/graphics/graphics_context.hpp \
-    include/graphics/text/font_id.hpp \
     include/graphics/cell/cell_canvas.hpp \
-    include/utils/enum_bitmask.h
+    include/common/enum.hpp
 
 QMAKE_CXX = ccache g++
 

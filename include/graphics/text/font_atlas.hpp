@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "graphics/gl_forwards.hpp"
+#include "graphics/text/font.hpp"
 
 namespace notf {
 
@@ -13,9 +14,6 @@ using uchar = unsigned char;
 
 class GraphicsContext;
 class Texture2;
-
-/** Data type to identify a single Glyph. */
-using codepoint_t = unsigned long;
 
 /** A texture atlas is a texture that is filled with Glyphs.
  *
@@ -32,39 +30,13 @@ using codepoint_t = unsigned long;
  */
 class FontAtlas {
 
-public: // types
-    /** Integer type to store a single Glyph coordinate. */
-    using coord_t = uint16_t;
-
-    /** Integer type that can be used to express an area (coordinate_type^2). */
-    using area_t = uint32_t;
+    using coord_t = Glyph::coord_t;
+    using area_t  = Glyph::area_t;
 
 public: // types
     /******************************************************************************************************************/
 
-    /** Rectangular area inside the Atlas. */
-    struct Rect {
-        /** X-coordinate of the rectangle in the atlas. */
-        coord_t x;
-
-        /** Y-coordinate of the rectangle in the atlas. */
-        coord_t y;
-
-        /** Width of the rectangle in pixels. */
-        coord_t width;
-
-        /** Height of the rectangle in pixels. */
-        coord_t height;
-
-        /** Default Constructor. */
-        Rect() = default;
-
-        /** Value Constructor. */
-        Rect(coord_t x, coord_t y, coord_t width, coord_t height)
-            : x(x), y(y), width(width), height(height) {}
-    };
-
-    using ProtoGlyph = std::pair<codepoint_t, Rect>;
+    using ProtoGlyph = std::pair<codepoint_t, Glyph::Rect>;
 
     /******************************************************************************************************************/
 
@@ -93,16 +65,16 @@ private: // classes
         void initialize(const coord_t width, const coord_t height);
 
         /** Registers a new rectangle as "waste". */
-        void add_waste(Rect rect);
+        void add_waste(Glyph::Rect rect);
 
         /** Tries to reclaim a rectangle of the given size from waste.
          * The returned rectangle has zero width and height if reclaiming failed.
          */
-        Rect reclaim_rect(const coord_t width, const coord_t height);
+        Glyph::Rect reclaim_rect(const coord_t width, const coord_t height);
 
     private: // fields
         /** Disjoint rectangles of free space that are located below the skyline in the Atlas. */
-        std::vector<Rect> m_free_rects;
+        std::vector<Glyph::Rect> m_free_rects;
     };
 
     /******************************************************************************************************************/
@@ -124,7 +96,7 @@ private: // classes
     /** Return value of '_place_rect()'. */
     struct ScoredRect {
         /** Rectangular area of the Atlas. */
-        Rect rect;
+        Glyph::Rect rect;
 
         /** Index of the best node to insert rect, is max(size_t) if invalid. */
         size_t node_index;
@@ -159,7 +131,7 @@ public: // methods
      * If you want to insert multiple known rects, calling `insert_rects` will probably yield a tighter result than
      * multiple calls to `insert_rect`.
      */
-    Rect insert_rect(const coord_t width, const coord_t height);
+    Glyph::Rect insert_rect(const coord_t width, const coord_t height);
 
     /** Places and returns multiple rectangles into the Atlas.
      * Produces a better fit than multiple calls to `insert_rect`.
@@ -169,7 +141,7 @@ public: // methods
     /** Fills a rect in the Atlas with the given data.
      * Does not check whether the rect corresponds to a node in the atlas, I trust you know what you are doing.
      */
-    void fill_rect(const Rect& rect, const uchar* data);
+    void fill_rect(const Glyph::Rect& rect, const uchar* data);
 
 private: // methods
     /** Finds and returns a free rectangle in the Atlas of the requested size
@@ -179,7 +151,7 @@ private: // methods
     ScoredRect _get_rect(const coord_t width, const coord_t height) const;
 
     /** Creates a new Skyline node just left of the given node index. */
-    void _add_node(const size_t node_index, const Rect& rect);
+    void _add_node(const size_t node_index, const Glyph::Rect& rect);
 
 private: //
     /** Font Atlas Texture. */

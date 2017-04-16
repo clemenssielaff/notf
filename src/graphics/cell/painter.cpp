@@ -377,11 +377,12 @@ void Painter::add_ellipse(const float cx, const float cy, const float rx, const 
     close_path();
 }
 
-void Painter::render_text(const std::string& text, const FontID font_id)
+void Painter::render_text(const std::string& text, const std::shared_ptr<Font> font)
 {
     std::shared_ptr<std::string> rendered_text = std::make_shared<std::string>(text);
     m_cell.m_vault.insert(rendered_text);
-    m_cell.m_commands.add_command(RenderTextCommand(rendered_text, font_id));
+    m_cell.m_vault.insert(font);
+    m_cell.m_commands.add_command(RenderTextCommand(rendered_text, font));
 }
 
 void Painter::fill()

@@ -5,6 +5,7 @@
 #include "graphics/cell/cell_canvas.hpp"
 #include "graphics/cell/commands.hpp"
 #include "graphics/graphics_context.hpp"
+#include "graphics/text/font.hpp"
 #include "graphics/text/font_manager.hpp"
 #include "graphics/texture2.hpp"
 #include "graphics/vertex.hpp"
@@ -634,10 +635,10 @@ void Painterpreter::_create_round_cap_end(const Point& point, const Vector2f& de
 }
 
 void Painterpreter::_create_butt_cap_start(const Point& point, const Vector2f& direction, const float stroke_width,
-                                           const float d, const float fringe_width, std::vector<Vertex>& vertices_out) // TODO: what is `d`?
+                                           const float offset, const float fringe_width, std::vector<Vertex>& vertices_out)
 {
-    const float px = point.pos.x - (direction.x * d);
-    const float py = point.pos.y - (direction.y * d);
+    const float px = point.pos.x - (direction.x * offset);
+    const float py = point.pos.y - (direction.y * offset);
     vertices_out.emplace_back(Vector2f(px + direction.y * stroke_width - direction.x * fringe_width,
                                        py + -direction.x * stroke_width - direction.y * fringe_width),
                               Vector2f(0, 0));
@@ -671,12 +672,11 @@ void Painterpreter::_create_butt_cap_end(const Point& point, const Vector2f& del
                               Vector2f(1, 0));
 }
 
-void Painterpreter::_render_text(const std::string& text, const FontID font_id)
+void Painterpreter::_render_text(const std::string& text, const std::shared_ptr<Font> font)
 {
     const PainterState& state                     = _get_current_state();
     const FontManager& font_manager               = m_canvas.m_graphics_context.get_font_manager();
     const std::shared_ptr<Texture2>& font_texture = font_manager.get_atlas_texture();
-    const Font& font                              = font_manager.get_font(font_id);
     assert(font_texture->get_width() == font_texture->get_height());
 
     // get the fill paint
@@ -701,11 +701,11 @@ void Painterpreter::_render_text(const std::string& text, const FontID font_id)
     // make sure that text is always rendered on the pixel grid, not between pixels
     // TODO: pass transform to font manager - also, full xform of all created vertices (I want 3D spinning widgets!)
     const Vector2f& translation = state.xform.get_translation();
-    FontAtlas::coord_t x        = static_cast<FontAtlas::coord_t>(roundf(translation.x));
-    FontAtlas::coord_t y        = static_cast<FontAtlas::coord_t>(roundf(translation.y));
+    Glyph::coord_t x            = static_cast<Glyph::coord_t>(roundf(translation.x));
+    Glyph::coord_t y            = static_cast<Glyph::coord_t>(roundf(translation.y));
 
     for (const auto character : text) {
-        const Glyph& glyph = font.get_glyph(static_cast<codepoint_t>(character)); // TODO: text rendering will only work for pure ascii
+        const Glyph& glyph = font->get_glyph(static_cast<codepoint_t>(character)); // TODO: text rendering will only work for pure ascii
 
         if (!glyph.rect.width || !glyph.rect.height) {
             // skip glyphs wihout pixels
@@ -1165,14 +1165,14 @@ void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const 
     frag.extent[1]  = paint.extent.height;
     frag.strokeMult = (stroke_width * 0.5f + fringe * 0.5f) / fringe;
     frag.strokeThr  = stroke_threshold;
+    frag.radius     = paint.radius;
+    frag.feather    = paint.feather;
 
-    if (paint.texture) { // TODO: this is not the appropriate place to say so.. or is it?S
+    if (paint.texture) {
         frag.type = CellCanvas::ShaderVariables::Type::IMAGE;
     }
     else { // no image
-        frag.type    = CellCanvas::ShaderVariables::Type::GRADIENT;
-        frag.radius  = paint.radius;
-        frag.feather = paint.feather;
+        frag.type = CellCanvas::ShaderVariables::Type::GRADIENT;
     }
     xformToMat3x4(frag.paintMat, paint.xform.get_inverse());
 }

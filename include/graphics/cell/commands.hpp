@@ -192,10 +192,10 @@ struct LineJoinCommand : public PainterCommand {
 
 /** Command to render the given text in the given font. */
 struct RenderTextCommand : public PainterCommand {
-    RenderTextCommand(std::shared_ptr<std::string> text, FontID font)
+    RenderTextCommand(std::shared_ptr<std::string> text, std::shared_ptr<Font> font)
         : PainterCommand(RENDER_TEXT), text(text), font(font) {}
   std::shared_ptr<std::string> text;
-  FontID font;
+  std::shared_ptr<Font> font;
 };
 
 } // namespace notf

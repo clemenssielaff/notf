@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <vector>
 
-#include "utils/enum_to_number.hpp"
+#include "common/enum.hpp"
 #include "utils/sfinae.hpp"
 
 namespace notf {
