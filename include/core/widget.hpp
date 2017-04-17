@@ -33,7 +33,7 @@ class Widget : public ScreenItem {
 
 protected: // Constructor
     /** Default Constructor. */
-    explicit Widget();
+    explicit Widget(); // TODO: there is no save factory for Controller and Widgets
 
 public: // methods
     /** Destructor. */

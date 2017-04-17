@@ -1,3 +1,8 @@
+#include "core/application.hpp"
+#include "core/window.hpp"
+#include "core/window_layout.hpp"
+#include "dynamic/controller/scroll_area.hpp"
+
 #include "common/random.hpp"
 #include "core/application.hpp"
 #include "core/controller.hpp"
@@ -66,12 +71,12 @@ private: // fields
     int m_number;
 };
 
-/** Window Controller
+/** Stack Controller
  */
-class WindowController : public BaseController<WindowController> {
+class StackController : public BaseController<StackController> {
 public: // methods
-    WindowController(std::shared_ptr<Window>& window)
-        : BaseController<WindowController>({}, {}), m_graphics_context(window->get_graphics_context()), m_layout() {}
+    StackController(std::shared_ptr<Window>& window)
+        : BaseController<StackController>({}, {}), m_graphics_context(window->get_graphics_context()), m_layout() {}
 
     virtual void _initialize() override
     {
@@ -79,7 +84,7 @@ public: // methods
         m_layout->set_padding(Padding::all(20));
         m_layout->set_spacing(10);
         m_layout->set_cross_spacing(10);
-        m_layout->set_wrap(StackLayout::Wrap::WRAP_REVERSE);
+        m_layout->set_wrap(StackLayout::Wrap::WRAP);
         _set_root_item(m_layout);
 
         FontPtr font = Font::load(m_graphics_context, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 12);
@@ -95,8 +100,6 @@ private: // fields
     std::shared_ptr<StackLayout> m_layout;
 };
 
-/** MAIN
- */
 int main(int argc, char* argv[])
 {
     ApplicationInfo app_info;
@@ -111,10 +114,13 @@ int main(int argc, char* argv[])
     window_info.size          = {800, 600};
     window_info.clear_color   = Color("#262a32");
     window_info.is_resizeable = true;
-    WindowPtr window          = Window::create(window_info);
+    auto window               = Window::create(window_info);
 
-    ControllerPtr controller = std::make_shared<WindowController>(window); // TODO: there is no save factory for Controller and Widgets
-    window->get_layout()->set_controller(controller);
+    std::shared_ptr<ScrollArea> scroll_area = std::make_shared<ScrollArea>();
+    window->get_layout()->set_controller(scroll_area);
+
+    ControllerPtr controller = std::make_shared<StackController>(window);
+    scroll_area->set_area_controller(controller);
 
     return app.exec();
 }

@@ -126,6 +126,7 @@ SOURCES += \
     src/common/color.cpp \
     src/core/layout.cpp \
     src/dynamic/layout/stack_layout.cpp \
+    src/dynamic/controller/scroll_area.cpp \
     src/common/claim.cpp \
     src/graphics/raw_image.cpp \
     src/graphics/texture2.cpp \
@@ -189,6 +190,7 @@ HEADERS += \
     include/utils/unused.hpp \
     include/core/layout.hpp \
     include/dynamic/layout/stack_layout.hpp \
+    include/dynamic/controller/scroll_area.hpp \
     include/common/claim.hpp \
     include/graphics/raw_image.hpp \
     include/common/circle.hpp \

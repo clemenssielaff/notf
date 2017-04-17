@@ -107,10 +107,13 @@ public: // methods
      */
     void add_item(std::shared_ptr<Item> item);
 
+    /** Removes all Items from the Layout. */
+    void clear();
+
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
 protected: // methods
-    virtual bool _update_claim() override
+    virtual bool _update_claim() override // TODO: the OverLayout needs to build its claim as well, now that it can be ignored
     {
         return false; // the Overlayout brings its own Claim to the table
     }

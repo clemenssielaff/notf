@@ -71,6 +71,14 @@ void Overlayout::add_item(std::shared_ptr<Item> item)
     _relayout();
 }
 
+void Overlayout::clear()
+{
+    auto backup = m_items; // TODO: fix this as soon as Layouts store their own children
+    for (auto item : backup) {
+        _remove_item(item);
+    }
+}
+
 void Overlayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
     // TODO: Overlayout::get_widget_at does not respect transform (only translate)
