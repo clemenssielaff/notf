@@ -10,7 +10,7 @@ namespace notf {
 ScreenItem::ScreenItem()
     : Item()
     , m_opacity(1)
-    , m_size()
+    , m_size(Size2f::zero())
     , m_transform(Xform2f::identity())
     , m_claim()
 {
@@ -52,15 +52,10 @@ bool ScreenItem::_redraw()
     return true;
 }
 
-bool ScreenItem::_set_size(const Size2f& size)
+bool ScreenItem::_set_size(const Size2f size)
 {
     if (size != m_size) {
-        const Claim::Stretch& horizontal = m_claim.get_horizontal();
-        const Claim::Stretch& vertical   = m_claim.get_vertical();
-        // TODO: enforce width-to-height constraint in Item::_set_size (the StackLayout does something like it already)
-
-        m_size.width  = max(horizontal.get_min(), min(horizontal.get_max(), size.width));
-        m_size.height = max(vertical.get_min(), min(vertical.get_max(), size.height));
+        m_size = std::move(size);
         size_changed(m_size);
         _redraw();
         return true;

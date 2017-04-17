@@ -374,8 +374,9 @@ void StackLayout::_remove_item(const Item* item)
 
 void StackLayout::_relayout()
 {
-    Size2f total_size     = get_size();
-    Size2f available_size = {total_size.width - m_padding.width(), total_size.height - m_padding.height()};
+    const Size2f total_size     = get_size();
+    const Size2f available_size = {total_size.width - m_padding.width(), total_size.height - m_padding.height()};
+
     float main_offset, cross_offset;
     switch (m_direction) {
     case StackLayout::Direction::LEFT_TO_RIGHT:
@@ -384,7 +385,7 @@ void StackLayout::_relayout()
         break;
     case StackLayout::Direction::RIGHT_TO_LEFT:
         main_offset  = m_padding.right;
-        cross_offset = (m_wrap == StackLayout::Wrap::WRAP ? m_padding.bottom : m_padding.top);
+        cross_offset = (m_wrap == StackLayout::Wrap::WRAP ? m_padding.top : m_padding.bottom);
         break;
     case StackLayout::Direction::TOP_TO_BOTTOM:
         main_offset  = m_padding.top;
@@ -392,7 +393,7 @@ void StackLayout::_relayout()
         break;
     case StackLayout::Direction::BOTTOM_TO_TOP:
         main_offset  = m_padding.bottom;
-        cross_offset = (m_wrap == StackLayout::Wrap::WRAP ? m_padding.right : m_padding.left);
+        cross_offset = (m_wrap == StackLayout::Wrap::WRAP ? m_padding.left : m_padding.right);
         break;
     default:
         log_warning << "Unexpected StackLayout::Direction";
@@ -412,25 +413,25 @@ void StackLayout::_relayout()
         return _layout_stack(screen_items, available_size, main_offset, cross_offset);
     }
 
-    const bool horizontal       = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
-    const float available_main  = horizontal ? available_size.width : available_size.height;
-    const float available_cross = horizontal ? available_size.height : available_size.width;
+    const bool is_horizontal    = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
+    const float available_main  = is_horizontal ? available_size.width : available_size.height;
+    const float available_cross = is_horizontal ? available_size.height : available_size.width;
 
     // fill the items into stacks
     std::vector<std::vector<ScreenItem*>> stacks;
     std::vector<Claim::Stretch> cross_stretches;
     float used_cross_space = 0.f;
     {
+        float current_size = 0;
         std::vector<ScreenItem*> current_stack;
         Claim::Stretch current_cross_stretch = Claim::Stretch(0, 0, 0);
-        float current_size                   = 0;
         for (Item* item : m_items) {
             ScreenItem* screen_item = get_screen_item(item);
             if (!screen_item) {
                 continue;
             }
             const Claim& claim   = screen_item->get_claim();
-            const float addition = (horizontal ? claim.get_horizontal() : claim.get_vertical()).get_preferred() + m_spacing;
+            const float addition = (is_horizontal ? claim.get_horizontal() : claim.get_vertical()).get_preferred() + m_spacing;
             if (current_size + addition > available_main) {
                 stacks.emplace_back(std::move(current_stack));
                 cross_stretches.push_back(current_cross_stretch);
@@ -441,7 +442,7 @@ void StackLayout::_relayout()
             }
             current_size += addition;
             current_stack.push_back(screen_item);
-            current_cross_stretch.maxed(horizontal ? claim.get_vertical() : claim.get_horizontal());
+            current_cross_stretch.maxed(is_horizontal ? claim.get_vertical() : claim.get_horizontal());
         }
         stacks.emplace_back(std::move(current_stack));
         cross_stretches.push_back(current_cross_stretch);
@@ -472,11 +473,23 @@ void StackLayout::_relayout()
     std::tie(alignment_start, alignment_spacing) = calculate_alignment(m_content_alignment, stack_count, cross_surplus);
     alignment_spacing += m_cross_spacing;
     cross_offset += alignment_start;
-    for (size_t i = 0; i < stack_count; ++i) {
+
+    size_t i                = (m_wrap == Wrap::WRAP_REVERSE ? stack_count - 1 : 0);
+    const size_t last_index = (m_wrap == Wrap::WRAP_REVERSE ? 0 : stack_count - 1);
+    while (1) {
         const float stack_width = adapters.empty() ? cross_stretches[i].get_min() : adapters[i].result;
-        const Size2f stack_size = horizontal ? Size2f{available_main, stack_width} : Size2f{stack_width, available_main};
+        const Size2f stack_size = is_horizontal ? Size2f{available_main, stack_width} : Size2f{stack_width, available_main};
         _layout_stack(stacks[i], stack_size, main_offset, cross_offset);
         cross_offset += alignment_spacing + stack_width;
+        if (i == last_index) {
+            break;
+        }
+        if (m_wrap == Wrap::WRAP_REVERSE) {
+            --i;
+        }
+        else {
+            ++i;
+        }
     }
 }
 
@@ -534,7 +547,7 @@ void StackLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
     float start_offset, step_factor;
     const bool reverse = (m_direction == Direction::RIGHT_TO_LEFT) || (m_direction == Direction::BOTTOM_TO_TOP);
     if (reverse) {
-        start_offset = (horizontal ? total_size.width : total_size.height) - alignment_start - main_offset;
+        start_offset = (horizontal ? total_size.width : total_size.height) + main_offset;
         step_factor  = -1.f;
     }
     else {

@@ -2,6 +2,7 @@
 
 #include "common/aabr.hpp"
 #include "common/time.hpp"
+#include "common/xform2.hpp"
 #include "graphics/blend_mode.hpp"
 #include "graphics/cell/paint.hpp"
 #include "graphics/scissor.hpp"
@@ -83,7 +84,7 @@ class Painter : public detail::PainterBase {
 
 public: // methods
     /** Value Constructor. */
-    Painter(Cell& cell, CellCanvas& cell_context);
+    Painter(Cell& cell, CellCanvas& cell_context, const Xform2f transform = Xform2f::identity());
 
     /* State management ***********************************************************************************************/
 
@@ -104,7 +105,7 @@ public: // methods
     const Xform2f& get_transform() const { return _get_current_state().xform; }
 
     /** Sets the transform of the Painter. */
-    void set_transform(const Xform2f xform);
+    void set_transform(const Xform2f& xform);
 
     /** Reset the Painter's transform. */
     void reset_transform();
@@ -266,7 +267,7 @@ public: // methods
     /** Renders a text.
      * The stencil position corresponts to the start of the text's baseline.
      */
-    void render_text(const std::string& text, const std::shared_ptr<Font> font);
+    void write(const std::string& text, const std::shared_ptr<Font> font);
 
     /* Painting *******************************************************************************************************/
 
@@ -303,8 +304,11 @@ private: // fields
     /** Cell, that this Painter is painting into. */
     Cell& m_cell;
 
-    /** Context into which the given Cell is painted. */
-    const CellCanvas& m_cell_context;
+    /** Canvas into which the Cell is painted. */
+    const CellCanvas& m_canvas;
+
+    /** Window transformation of the painted Widget. */
+    const Xform2f m_base_transform;
 
     /** Current position of the 'stylus', as the last Command left it. */
     Vector2f m_stylus;

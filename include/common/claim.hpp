@@ -28,7 +28,8 @@ public: // class
     class Stretch {
 
     public: // methods
-        explicit Stretch() = default;
+        Stretch()
+            : Stretch(0, 0, INFINITY) {}
 
         /**
          * @param preferred    Preferred size in local units, is limited to values >= 0.
@@ -41,6 +42,16 @@ public: // class
             , m_max(is_real(preferred) ? (is_nan(max) ? m_preferred : notf::max(max, m_preferred)) : 0.f)
             , m_scale_factor(1.f)
             , m_priority(0.f)
+        {
+        }
+
+        /** Copy constructor. */
+        Stretch(const Stretch& other)
+            : m_preferred(other.m_preferred)
+            , m_min(other.m_min)
+            , m_max(other.m_max)
+            , m_scale_factor(other.m_scale_factor)
+            , m_priority(other.m_priority)
         {
         }
 
@@ -162,7 +173,9 @@ private: // class
     class Ratio {
 
     public: // methods
-        explicit Ratio() = default;
+        /** Default Constructor. */
+        Ratio()
+            : Ratio(0, 0) {}
 
         /** Setting one or both values to zero, results in an invalid Ratio.
          * @param width    Width in units, is 0 < width < INFINITY
@@ -214,15 +227,18 @@ private: // class
         }
 
     private: // fields
-        /** Width in discrete steps. */
+        /** Width. */
         float m_width;
 
-        /** Height in continuous units. */
+        /** Height. */
         float m_height;
     };
 
 public: // methods
     explicit Claim() = default;
+
+    Claim(Claim::Stretch horizontal, Claim::Stretch vertical)
+        : m_horizontal(std::move(horizontal)), m_vertical(std::move(vertical)), m_ratios() {}
 
     Claim(const Claim& other) = default;
 

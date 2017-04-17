@@ -80,12 +80,6 @@ struct SetXformCommand : public PainterCommand {
     Xform2f xform;
 };
 
-/** Command to reset the Xform of the current PainterState. */
-struct ResetXformCommand : public PainterCommand {
-    ResetXformCommand()
-        : PainterCommand(RESET_XFORM) {}
-};
-
 /** Command to transform the current Xform of the current PainterState. */
 struct TransformCommand : public PainterCommand {
     TransformCommand(Xform2f xform)

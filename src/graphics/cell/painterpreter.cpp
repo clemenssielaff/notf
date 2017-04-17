@@ -137,11 +137,6 @@ void Painterpreter::paint(Cell& cell)
             index += command_size<decltype(cmd)>();
         } break;
 
-        case PainterCommand::RESET_XFORM: {
-            _get_current_state().xform = Xform2f::identity();
-            index += command_size<ResetXformCommand>();
-        } break;
-
         case PainterCommand::TRANSFORM: {
             const TransformCommand& cmd = map_command<TransformCommand>(commands, index);
             _get_current_state().xform *= cmd.xform;

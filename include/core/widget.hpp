@@ -1,10 +1,10 @@
 #pragma once
 
 #include "core/screen_item.hpp"
-#include "graphics/cell/cell.hpp"
 
 namespace notf {
 
+class Cell;
 class CellCanvas;
 class Layout;
 class MouseEvent;
@@ -43,13 +43,16 @@ public: // methods
      * Returns an empty shared_ptr, if no explicit scissor Layout was set or the scissor Layout has since expired.
      * In this case, the Widget is implicitly scissored by its parent Layout.
      */
-    std::shared_ptr<Layout> scissor() const { return m_scissor_layout.lock(); }
+    std::shared_ptr<Layout> get_scissor() const { return m_scissor_layout.lock(); }
+
+    /** The Cell used to display the Widget on screen. */
+    std::shared_ptr<Cell> get_cell() const { return m_cell; }
 
     /** Sets the new scissor Layout for this Widget.
      * @param scissor               New scissor Layout, must be an Layout in this Widget's Item hierarchy or empty.
      * @throw std::runtime_error    If the scissor is not an ancestor Layout of this Widget.
      */
-    void set_scissor(std::shared_ptr<Layout> scissor);
+    void set_scissor(std::shared_ptr<Layout> get_scissor);
 
     /** Sets a new Claim for this Widget.
      * @return  True, iff the currenct Claim was changed.
@@ -84,7 +87,7 @@ private: // fields
     std::weak_ptr<Layout> m_scissor_layout;
 
     /** Cell to draw this Widget into. */
-    mutable Cell m_cell;
+    std::shared_ptr<Cell> m_cell;
 
     /** Clean Widgets can use their current Cell when painted, dirty Widgets have to redraw their Cell. */
     mutable bool m_is_clean;

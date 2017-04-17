@@ -29,6 +29,7 @@
 
 #include "common/line2.hpp"
 #include "common/log.hpp"
+#include "core/widget.hpp"
 #include "graphics/cell/cell.hpp"
 #include "graphics/cell/cell_canvas.hpp"
 #include "graphics/cell/commands.hpp"
@@ -47,17 +48,18 @@ namespace notf {
 
 std::vector<detail::PainterState> Painter::s_states;
 
-Painter::Painter(Cell& cell, CellCanvas& cell_context)
+Painter::Painter(Cell& cell, CellCanvas& cell_context, const Xform2f transform)
     : m_cell(cell)
-    , m_cell_context(cell_context)
+    , m_canvas(cell_context)
+    , m_base_transform(std::move(transform))
     , m_stylus(Vector2f::zero())
     , m_has_open_path(false)
 {
-    // states
     s_states.clear();
     s_states.emplace_back();
 
     m_cell.clear();
+    m_cell.m_commands.add_command(SetXformCommand(m_base_transform));
 }
 
 size_t Painter::push_state()
@@ -76,16 +78,16 @@ size_t Painter::pop_state()
     return s_states.size();
 }
 
-void Painter::set_transform(const Xform2f xform)
+void Painter::set_transform(const Xform2f& xform)
 {
     detail::PainterState& current_state = _get_current_state();
-    current_state.xform                 = std::move(xform);
+    current_state.xform                 = m_base_transform * xform;
     m_cell.m_commands.add_command(SetXformCommand(current_state.xform));
 }
 void Painter::reset_transform()
 {
-    m_cell.m_commands.add_command(ResetXformCommand());
-    _get_current_state().xform = Xform2f::identity();
+    m_cell.m_commands.add_command(SetXformCommand(m_base_transform));
+    _get_current_state().xform = m_base_transform;
 }
 
 void Painter::transform(const Xform2f& transform)
@@ -293,7 +295,7 @@ void Painter::arc(const float cx, const float cy, const float r, const float a0,
 void Painter::arc_to(const Vector2f& tangent, const Vector2f& end, const float radius)
 {
     // handle degenerate cases
-    const float distance_tolerance = m_cell_context.get_options().distance_tolerance;
+    const float distance_tolerance = m_canvas.get_options().distance_tolerance;
     if (radius < distance_tolerance
         || m_stylus.is_approx(tangent, distance_tolerance)
         || tangent.is_approx(end, distance_tolerance)
@@ -377,7 +379,7 @@ void Painter::add_ellipse(const float cx, const float cy, const float rx, const 
     close_path();
 }
 
-void Painter::render_text(const std::string& text, const std::shared_ptr<Font> font)
+void Painter::write(const std::string& text, const std::shared_ptr<Font> font)
 {
     std::shared_ptr<std::string> rendered_text = std::make_shared<std::string>(text);
     m_cell.m_vault.insert(rendered_text);
@@ -397,12 +399,12 @@ void Painter::stroke()
 
 Time Painter::get_time() const
 {
-    return m_cell_context.get_options().time;
+    return m_canvas.get_options().time;
 }
 
 const Vector2f& Painter::get_mouse_pos() const
 {
-    return m_cell_context.get_options().mouse_pos;
+    return m_canvas.get_options().mouse_pos;
 }
 
 // TODO: the Painter might as well optimize the Commands given before sending them off to the cell.

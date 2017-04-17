@@ -76,9 +76,14 @@ protected: // methods
 
     /** Updates the size of this Item.
      * Is virtual because Layouts can use this function to update their items.
+     * Note that the size is set without checking it against the Claim.
+     * That means that, for example, you can make a Widget smaller than its minimal Claim.
+     * It is the Layout's responsibility to respect the Claims and handle them appropriately.
+     * The reason why the Claim is not enforced here is that some ScreenItems (Layouts mostly) are able to adapt to
+     * smaller sizes by changing the way Widgets are arranged or by scissoring.
      * @return      True iff the size has been modified.
      */
-    virtual bool _set_size(const Size2f& get_size);
+    virtual bool _set_size(const Size2f get_size);
 
     /** Updates the transformation of this Item.
      * @return      True iff the transform has been modified.

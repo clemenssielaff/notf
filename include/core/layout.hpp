@@ -70,7 +70,7 @@ protected: // methods
     /** Removes the given Item Layout. */
     void _remove_child(const Item* item);
 
-    virtual bool _set_size(const Size2f& size) override;
+    virtual bool _set_size(const Size2f size) override;
 
     /** Tells this Layout to update its Claim based on the combined Claims of its children.
      *
@@ -97,7 +97,7 @@ protected: // static methods
     static void _set_item_parent(Item* item, std::shared_ptr<Item> parent) { item->_set_parent(parent); }
 
     /** Allows any Layout subclass to call `_set_size` on any other ScreenItem. */
-    static bool _set_item_size(ScreenItem* item, const Size2f& size) { return item->_set_size(size); }
+    static bool _set_item_size(ScreenItem* item, const Size2f size) { return item->_set_size(std::move(size)); }
 
     /** Allows any Layout subclass to call `_set_item_transform` on any other ScreenItem. */
     static bool _set_item_transform(ScreenItem* item, const Xform2f transform) { return item->_set_transform(std::move(transform)); }

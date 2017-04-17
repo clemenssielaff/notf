@@ -27,7 +27,6 @@ struct PainterCommand {
         FILL,
         STROKE,
         SET_XFORM,
-        RESET_XFORM,
         TRANSFORM,
         TRANSLATE,
         ROTATE,

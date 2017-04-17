@@ -11,8 +11,7 @@ class StackLayout;
 
 /**********************************************************************************************************************/
 
-/**
- * @brief StackLayout Iterator that goes through all items in a Layout in order, from back to front.
+/** StackLayout Iterator that goes through all items in a Layout in order, from back to front.
  * Iterators must be used up immediately after creation as they might be invalidated by any operation on their Layout.
  */
 class StackLayoutIterator : public LayoutIterator {
@@ -74,16 +73,6 @@ public: // enums
         WRAP_REVERSE, // wraps towards the upper-left corner
     };
 
-    /** Direction of a cirular motion. */
-    enum class Circular : unsigned char {
-        CLOCKWISE,
-        COUNTERCLOCKWISE,
-        CW            = CLOCKWISE,
-        CCW           = COUNTERCLOCKWISE,
-        ANTICLOCKWISE = COUNTERCLOCKWISE,
-        ACW           = COUNTERCLOCKWISE,
-    };
-
 private: // factory
     struct make_shared_enabler;
 
@@ -92,14 +81,14 @@ protected_except_for_bindings:
     /** Constructor.
      * @param direction Direction of the stack.
      */
-    explicit StackLayout(const Direction direction);
+    StackLayout(const Direction direction);
     // clang-format on
 
 public: // methods
     /** Factory method.
      * @param direction Direction of the stack.
      */
-    static std::shared_ptr<StackLayout> create(const Direction direction);
+    static std::shared_ptr<StackLayout> create(const Direction direction = Direction::LEFT_TO_RIGHT);
 
     /** Direction in which items are stacked. */
     Direction get_direction() const { return m_direction; }
@@ -192,7 +181,7 @@ private: // fields
     Alignment m_content_alignment;
 
     /** How items in the Layout are wrapped. */
-    Wrap m_wrap; // TODO: reverse-wrap does nothing
+    Wrap m_wrap;
 
     /** Padding around the Layout's borders. */
     Padding m_padding;

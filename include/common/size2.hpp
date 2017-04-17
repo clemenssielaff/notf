@@ -49,6 +49,9 @@ struct _Size2 {
     /** Creates and returns an invalid Size2 instance. */
     static _Size2 invalid() { return {-1, -1}; }
 
+    /** Creates and returns zero Size2 instance. */
+    static _Size2 zero() { return {0, 0}; }
+
     /* Inspection  ****************************************************************************************************/
 
     /** Tests if this Size is valid (>=0) in both dimensions. */
