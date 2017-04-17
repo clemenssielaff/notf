@@ -27,8 +27,6 @@ class ScreenItem;
  */
 class Controller : public Item {
 
-    friend class Layout; // calls initialize()
-
 protected: // methods
     /** Default Constructor. */
     Controller() = default;
@@ -40,13 +38,12 @@ public: // methods
     /** Item at the root of the Controller's branch of the Item hierarchy. */
     const std::shared_ptr<ScreenItem>& get_root_item() const { return m_root_item; }
 
+    /** Initializes this Controller if it is uninitialized, otherwise does nothing. */
+    void initialize();
+
 protected: // methods
     /** Sets a new root at this Controller's branch of the  Item hierarchy. */
     void _set_root_item(std::shared_ptr<ScreenItem> item);
-
-private: // methods for Layout
-    /** Initializes this Controller, if it is uninitialized. */
-    void initialize();
 
 private: // methods
     /** Initialize this Controller.

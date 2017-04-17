@@ -74,6 +74,30 @@ public: // methods
     /** Factory method */
     static std::shared_ptr<Overlayout> create();
 
+    /** Destructor. */
+    virtual ~Overlayout() override;
+
+    /** Tests if a given Item is a child of this Item. */
+    bool has_item(const std::shared_ptr<Item>& item) const;
+
+    /** Checks if this Layout is empty or not. */
+    bool is_empty() const { return m_items.empty(); }
+
+    /** Removes all Items from the Layout. */
+    void clear();
+
+    /** Adds a new Item into the Layout.
+     * @param item     Item to place at the front end of the Layout. If the item is already a child, it is moved.
+     */
+    void add_item(std::shared_ptr<Item> item);
+
+    /** Removes a single Item from this Layout.
+     * Does nothing, if the Item is not a child of this Layout.
+     */
+    virtual void remove_item(const std::shared_ptr<Item>& item) override;
+
+    virtual std::unique_ptr<LayoutIterator> iter_items() const override;
+
     /** Padding around the Layout's border. */
     const Padding& get_padding() const { return m_padding; }
 
@@ -96,26 +120,8 @@ public: // methods
         _relayout();
     }
 
-    /** Sets an explicit Claim for this Layout.
-     * The default Claim makes use of all available space but doesn't take any as long as there are others more greedy
-     * that itself.
-     */
-    void set_claim(Claim claim) { _set_claim(std::move(claim)); }
-
-    /** Adds a new Item into the Layout.
-     * @param item     Item to place at the front end of the Layout. If the item is already a child, it is moved.
-     */
-    void add_item(std::shared_ptr<Item> item);
-
-    /** Removes all Items from the Layout. */
-    void clear();
-
-    virtual std::unique_ptr<LayoutIterator> iter_items() const override;
-
 protected: // methods
     virtual bool _update_claim() override;
-
-    virtual void _remove_item(const Item* item) override;
 
     virtual void _relayout() override;
 
@@ -133,7 +139,7 @@ private: // fields
     Vertical m_vertical_alignment;
 
     /** All items in this Layout in order. */
-    std::vector<Item*> m_items;
+    std::vector<std::shared_ptr<Item>> m_items;
 };
 
 } // namespace notf

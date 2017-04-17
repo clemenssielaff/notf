@@ -1,6 +1,5 @@
 #pragma once
 
-#include "common/size2.hpp"
 #include "core/screen_item.hpp"
 
 namespace notf {
@@ -49,17 +48,6 @@ class Layout : public ScreenItem {
     friend class Item;
 
 public: // methods
-    virtual ~Layout() override;
-
-    /** Tests if a given Item is a child of this Item. */
-    bool has_item(const std::shared_ptr<Item>& candidate) const;
-
-    /** Returns the number of items in this Layout. */
-    size_t get_item_count() const { return _get_children().size(); }
-
-    /** Checks if this Layout is empty. */
-    bool is_empty() const { return m_children.empty(); }
-
     /** Returns an iterator that goes over all Items in this Layout in order from back to front. */
     virtual std::unique_ptr<LayoutIterator> iter_items() const = 0;
 
@@ -78,16 +66,12 @@ protected: // methods
     explicit Layout()
         : ScreenItem() {}
 
-    /** Returns all children of this Layout. */
-    const std::vector<std::shared_ptr<Item>>& _get_children() const { return m_children; }
-
-    /** Adds the given Item to this Layout. */
-    void _add_child(std::shared_ptr<Item> item);
-
-    /** Removes the given Item Layout. */
-    void _remove_child(const Item* item);
-
     virtual bool _set_size(const Size2f size) override;
+
+    /** Removes a single Item from this Layout.
+     * Does nothing, if the Item is not a child of this Layout.
+     */
+    virtual void remove_item(const std::shared_ptr<Item>& item) = 0;
 
     /** Tells this Layout to update its Claim based on the combined Claims of its children.
      *
@@ -101,14 +85,6 @@ protected: // methods
     /** Updates the layout of Items in this Layout. */
     virtual void _relayout() = 0;
 
-    /** Layout-specific removal a of child Item.
-     * When a child is removed from the Layout, it calls _remove_child(), which takes care of the changes in the
-     * Item hierarchy.
-     * However, most Layouts have an additional data structure for sorted, easy access to their children and it is
-     * this methods's job to remove the child from there.
-     */
-    virtual void _remove_item(const Item* item) = 0;
-
 protected: // static methods
     /** Allows any Layout subclass to update another Item's parent. */
     static void _set_item_parent(Item* item, std::shared_ptr<Item> parent) { item->_set_parent(parent); }
@@ -118,10 +94,6 @@ protected: // static methods
 
     /** Allows any Layout subclass to call `_set_item_transform` on any other ScreenItem. */
     static bool _set_item_transform(ScreenItem* item, const Xform2f transform) { return item->_set_transform(std::move(transform)); }
-
-private: // fields
-    /** All child items contained in this Layout. */
-    std::vector<std::shared_ptr<Item>> m_children; // TODO: rethink this practice of storing children in Layout and not only in subclasses
 };
 
 } // namespace notf

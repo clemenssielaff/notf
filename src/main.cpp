@@ -117,10 +117,9 @@ int main(int argc, char* argv[])
     auto window               = Window::create(window_info);
 
     std::shared_ptr<ScrollArea> scroll_area = std::make_shared<ScrollArea>();
-    window->get_layout()->set_controller(scroll_area);
-
     ControllerPtr controller = std::make_shared<StackController>(window);
     scroll_area->set_area_controller(controller);
+    window->get_layout()->set_controller(scroll_area);
 
     return app.exec();
 }

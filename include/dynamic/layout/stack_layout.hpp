@@ -90,6 +90,31 @@ public: // methods
      */
     static std::shared_ptr<StackLayout> create(const Direction direction = Direction::LEFT_TO_RIGHT);
 
+    /** Destructor. */
+    virtual ~StackLayout() override;
+
+    /** Tests if a given Item is a child of this Item. */
+    bool has_item(const std::shared_ptr<Item>& item) const;
+
+    /** Checks if this Layout is empty or not. */
+    bool is_empty() const { return m_items.empty(); }
+
+    /** Removes all Items from the Layout. */
+    void clear();
+
+    /** Adds a new Item into the Layout.
+     * @param item  Item to place at the end of the Layout. If the item is already a child, it is moved to the end.
+     */
+    void add_item(std::shared_ptr<Item> item);
+
+    /** Removes a single Item from this Layout.
+     * Does nothing, if the Item is not a child of this Layout.
+     */
+    virtual void remove_item(const std::shared_ptr<Item>& item) override;
+
+    /** Returns an iterator that goes over all Items in this Layout in order from back to front. */
+    virtual std::unique_ptr<LayoutIterator> iter_items() const override;
+
     /** Direction in which items are stacked. */
     Direction get_direction() const { return m_direction; }
 
@@ -141,17 +166,8 @@ public: // methods
     /** Defines the spacing between stacks of items if this Layout is wrapped. */
     void set_cross_spacing(float spacing);
 
-    /** Adds a new Item into the Layout.
-     * @param item  Item to place at the end of the Layout. If the item is already a child, it is moved.
-     */
-    void add_item(std::shared_ptr<Item> item);
-
-    virtual std::unique_ptr<LayoutIterator> iter_items() const override;
-
 protected: // methods
     virtual bool _update_claim() override;
-
-    virtual void _remove_item(const Item* item) override;
 
     virtual void _relayout() override;
 
@@ -192,8 +208,8 @@ private: // fields
     /** Spacing between stacks, if this Layout wraps. */
     float m_cross_spacing;
 
-    /** All items in this Layout in order. */
-    std::vector<Item*> m_items;
+    /** All items in this Layout in order from back to front. */
+    std::vector<std::shared_ptr<Item>> m_items;
 };
 
 } // namespace notf

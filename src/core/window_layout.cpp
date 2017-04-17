@@ -13,7 +13,7 @@ namespace notf {
 const Item* WindowLayoutIterator::next()
 {
     if (m_layout) {
-        const Item* result = m_layout->_get_item();
+        const Item* result = m_layout->m_controller.get();
         m_layout           = nullptr;
         return result;
     }
@@ -44,23 +44,67 @@ WindowLayout::WindowLayout(const std::shared_ptr<Window>& window)
     m_render_layer = window->get_render_manager().get_default_layer();
 }
 
-std::shared_ptr<Window> WindowLayout::get_window() const
+WindowLayout::~WindowLayout()
 {
-    return m_window->shared_from_this();
+    // explicitly unparent all children so they can send the `parent_changed` signal
+    child_removed(m_controller->get_id());
+    _set_item_parent(m_controller.get(), {});
+}
+
+bool WindowLayout::has_item(const std::shared_ptr<Item>& item) const
+{
+    return std::static_pointer_cast<Item>(m_controller) == item;
+}
+
+void WindowLayout::clear()
+{
+    if (m_controller) {
+        remove_item(m_controller);
+    }
 }
 
 void WindowLayout::set_controller(std::shared_ptr<Controller> controller)
 {
+    if (!controller) {
+        log_warning << "Cannot add an empty Controller pointer to a Layout";
+        return;
+    }
+
     // remove the existing item first
     if (!is_empty()) {
-        const auto& children = _get_children();
-        assert(children.size() == 1);
-        _remove_child(children.begin()->get());
+        if (m_controller == controller) {
+            return;
+        }
+        remove_item(m_controller);
     }
-    m_controller = controller;
-    _add_child(std::move(controller));
+
+    // Controllers are initialized the first time they are parented to a Layout
+    controller->initialize();
+
+    // take ownership of the Item
+    _set_item_parent(controller.get(), std::static_pointer_cast<Layout>(shared_from_this()));
+    const ItemID child_id = controller->get_id();
+    m_controller          = std::move(controller);
+    child_added(child_id);
+
     _relayout();
     _redraw();
+}
+
+void WindowLayout::remove_item(const std::shared_ptr<Item>& item)
+{
+    if (item == m_controller) {
+        child_removed(m_controller->get_id());
+        m_controller.reset();
+    }
+    else {
+        log_warning << "Could not remove Controller from WindowLayout " << get_id() << " because it is already emppty";
+    }
+}
+
+std::shared_ptr<Window> WindowLayout::get_window() const
+{
+    return m_window->shared_from_this();
 }
 
 std::unique_ptr<LayoutIterator> WindowLayout::iter_items() const
@@ -82,22 +126,12 @@ void WindowLayout::_relayout()
     }
 }
 
-Item* WindowLayout::_get_item() const
-{
-    if (is_empty()) {
-        return nullptr;
-    }
-    const auto& children = _get_children();
-    assert(children.size() == 1);
-    return children.begin()->get();
-}
-
 void WindowLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
     if (is_empty()) {
         return;
     }
-    _get_widgets_at_item_pos(_get_item(), local_pos, result);
+    _get_widgets_at_item_pos(m_controller.get(), local_pos, result);
 }
 
 } // namespace notf

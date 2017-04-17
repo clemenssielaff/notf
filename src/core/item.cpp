@@ -180,7 +180,7 @@ void Item::_set_parent(std::shared_ptr<Item> parent)
 
     // remove yourself from the old parent Layout
     if (std::shared_ptr<Layout> old_layout = std::dynamic_pointer_cast<Layout>(old_parent)) {
-        old_layout->_remove_child(this);
+        old_layout->remove_item(shared_from_this());
     }
 
     m_parent = parent;

@@ -46,16 +46,34 @@ private: // factory
     static std::shared_ptr<WindowLayout> create(const std::shared_ptr<Window>& window);
 
     /** @param window   Window owning this RootWidget. */
-    explicit WindowLayout(const std::shared_ptr<Window>& window);
+    WindowLayout(const std::shared_ptr<Window>& window);
 
 public: // methods
-    /** Returns the Window owning this WindowLayout. */
-    std::shared_ptr<Window> get_window() const;
+    /** Destructor. */
+    virtual ~WindowLayout() override;
 
-    /** Sets a new Item at the WindowLayout. */
+    /** Tests if a given Item is a child of this Item. */
+    bool has_item(const std::shared_ptr<Item>& item) const;
+
+    /** Checks if this Layout is empty or not. */
+    bool is_empty() const { return m_controller.get() == nullptr; }
+
+    /** Removes all Items from the Layout. */
+    void clear();
+
+    /** Sets a new Controller for the WindowLayout. */
     void set_controller(std::shared_ptr<Controller> controller);
 
+    /** Removes a single Item from this Layout.
+     * Does nothing, if the Item is not a child of this Layout.
+     */
+    virtual void remove_item(const std::shared_ptr<Item>& item) override;
+
+    /** Returns an iterator that goes over all Items in this Layout in order from back to front. */
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
+
+    /** Returns the Window owning this WindowLayout. */
+    std::shared_ptr<Window> get_window() const;
 
     /** Find all Widgets at a given position in the Window.
      * @param local_pos     Local coordinates where to look for a Widget.
@@ -66,14 +84,9 @@ public: // methods
 protected: // methods
     virtual bool _update_claim() override { return false; }
 
-    virtual void _remove_item(const Item*) override {}
-
     virtual void _relayout() override;
 
 private: // methods
-    /// @brief Returns the Layout contained in this WindowLayout, may be invalid.
-    Item* _get_item() const;
-
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
 private: // fields

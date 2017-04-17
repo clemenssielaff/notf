@@ -1,5 +1,6 @@
 #include "dynamic/layout/stack_layout.hpp"
 
+#include <algorithm>
 #include <assert.h>
 #include <map>
 #include <set>
@@ -183,7 +184,7 @@ const Item* StackLayoutIterator::next()
     if (m_index >= m_layout->m_items.size()) {
         return nullptr;
     }
-    return m_layout->m_items[m_index++];
+    return m_layout->m_items[m_index++].get();
 }
 
 /**********************************************************************************************************************/
@@ -215,6 +216,75 @@ std::shared_ptr<StackLayout> StackLayout::create(const Direction direction)
     return std::make_shared<make_shared_enabler>(direction);
 }
 
+StackLayout::~StackLayout()
+{
+    // explicitly unparent all children so they can send the `parent_changed` signal
+    for (std::shared_ptr<Item>& item : m_items) {
+        child_removed(item->get_id());
+        _set_item_parent(item.get(), {});
+    }
+}
+
+bool StackLayout::has_item(const std::shared_ptr<Item>& item) const
+{
+    return std::find(m_items.cbegin(), m_items.cbegin(), item) != m_items.cend();
+}
+
+void StackLayout::clear()
+{
+    for(std::shared_ptr<Item>& item : m_items){
+        child_removed(item->get_id());
+    }
+    m_items.clear();
+}
+
+void StackLayout::add_item(std::shared_ptr<Item> item)
+{
+    if(!item){
+        log_warning << "Cannot add an empty Item pointer to a Layout";
+        return;
+    }
+
+    // if the item is already child of this Layout, place it at the end
+    if (has_item(item)) {
+        remove_one_unordered(m_items, item);
+    }
+
+    // Controllers are initialized the first time they are parented to a Layout
+    if (Controller* controller = dynamic_cast<Controller*>(item.get())) {
+        controller->initialize();
+    }
+
+    // take ownership of the Item
+    _set_item_parent(item.get(), std::static_pointer_cast<Layout>(shared_from_this()));
+    const ItemID child_id = item->get_id();
+    m_items.emplace_back(std::move(item));
+    child_added(child_id);
+
+    // update the parent layout if necessary
+    if (_update_claim()) {
+        _update_parent_layout();
+    }
+    _redraw();
+}
+
+void StackLayout::remove_item(const std::shared_ptr<Item>& item)
+{
+    auto it = std::find(m_items.begin(), m_items.end(), item);
+    if (it == m_items.end()) {
+        log_warning << "Could not remove Item " << item->get_id() << " from StackLayout " << get_id()
+                    << " because it is not a child of the layout";
+        return;
+    }
+    m_items.erase(it);
+    child_removed(item->get_id());
+}
+
+std::unique_ptr<LayoutIterator> StackLayout::iter_items() const
+{
+    return std::make_unique<StackLayoutIterator>(this);
+}
+
 void StackLayout::set_direction(const Direction direction)
 {
     if (m_direction == direction) {
@@ -224,6 +294,42 @@ void StackLayout::set_direction(const Direction direction)
     if (_update_claim()) {
         _update_parent_layout();
     }
+}
+
+void StackLayout::set_alignment(const Alignment alignment)
+{
+    if (alignment == m_main_alignment) {
+        return;
+    }
+    m_main_alignment = alignment;
+    _relayout();
+}
+
+void StackLayout::set_cross_alignment(const Alignment alignment)
+{
+    if (alignment == m_cross_alignment) {
+        return;
+    }
+    m_cross_alignment = alignment;
+    _relayout();
+}
+
+void StackLayout::set_content_alignment(const Alignment alignment)
+{
+    if (alignment == m_content_alignment) {
+        return;
+    }
+    m_content_alignment = alignment;
+    _relayout();
+}
+
+void StackLayout::set_wrap(const Wrap wrap)
+{
+    if (wrap == m_wrap) {
+        return;
+    }
+    m_wrap = wrap;
+    _update_parent_layout();
 }
 
 void StackLayout::set_padding(const Padding& padding)
@@ -266,84 +372,12 @@ void StackLayout::set_cross_spacing(float spacing)
     }
 }
 
-void StackLayout::set_alignment(const Alignment alignment)
-{
-    if (alignment == m_main_alignment) {
-        return;
-    }
-    m_main_alignment = alignment;
-    _relayout();
-}
-
-void StackLayout::set_cross_alignment(const Alignment alignment)
-{
-    if (alignment == m_cross_alignment) {
-        return;
-    }
-    m_cross_alignment = alignment;
-    _relayout();
-}
-
-void StackLayout::set_content_alignment(const Alignment alignment)
-{
-    if (alignment == m_content_alignment) {
-        return;
-    }
-    m_content_alignment = alignment;
-    _relayout();
-}
-
-void StackLayout::set_wrap(const Wrap wrap)
-{
-    if (wrap == m_wrap) {
-        return;
-    }
-    m_wrap = wrap;
-    _update_parent_layout();
-}
-
-void StackLayout::add_item(std::shared_ptr<Item> item)
-{
-    // if the item is already child of this Layout, place it at the end
-    if (has_item(item)) {
-        remove_one_unordered(m_items, item.get());
-    }
-    else {
-        _add_child(item);
-    }
-    m_items.emplace_back(item.get());
-    if (_update_claim()) {
-        _update_parent_layout();
-    }
-}
-
-void StackLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
-{
-    // TODO: StackLayout::get_widget_at is brute-force and does not respect transform (only translate)
-    for (Item* item : m_items) {
-        const ScreenItem* screen_item = get_screen_item(item);
-        if (!screen_item) {
-            continue;
-        }
-        const Vector2f item_pos = local_pos - screen_item->get_transform().get_translation();
-        const Aabrf item_rect(screen_item->get_size());
-        if (item_rect.contains(item_pos)) {
-            _get_widgets_at_item_pos(screen_item, local_pos, result);
-        }
-    }
-}
-
-std::unique_ptr<LayoutIterator> StackLayout::iter_items() const
-{
-    return std::make_unique<StackLayoutIterator>(this);
-}
-
 bool StackLayout::_update_claim()
 {
     Claim new_claim;
     if ((m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT)) { // horizontal
-        for (const Item* item : m_items) {
-            if (const ScreenItem* screen_item = get_screen_item(item)) {
+        for (const std::shared_ptr<Item>& item : m_items) {
+            if (const ScreenItem* screen_item = get_screen_item(item.get())) {
                 new_claim.add_horizontal(screen_item->get_claim());
             }
         }
@@ -353,8 +387,8 @@ bool StackLayout::_update_claim()
     }
     else {
         assert((m_direction == Direction::TOP_TO_BOTTOM) || (m_direction == Direction::BOTTOM_TO_TOP)); // vertical
-        for (const Item* item : m_items) {
-            if (const ScreenItem* screen_item = get_screen_item(item)) {
+        for (const std::shared_ptr<Item>& item : m_items) {
+            if (const ScreenItem* screen_item = get_screen_item(item.get())) {
                 new_claim.add_vertical(screen_item->get_claim());
             }
         }
@@ -363,13 +397,6 @@ bool StackLayout::_update_claim()
         }
     }
     return _set_claim(std::move(new_claim));
-}
-
-void StackLayout::_remove_item(const Item* item)
-{
-    auto it = std::find(m_items.begin(), m_items.end(), item);
-    assert(it != m_items.end());
-    m_items.erase(it);
 }
 
 void StackLayout::_relayout()
@@ -405,8 +432,8 @@ void StackLayout::_relayout()
     if (!is_wrapping()) {
         std::vector<ScreenItem*> screen_items;
         screen_items.reserve(m_items.size());
-        for (Item* item : m_items) {
-            if (ScreenItem* screen_item = get_screen_item(item)) {
+        for (std::shared_ptr<Item>& item : m_items) {
+            if (ScreenItem* screen_item = get_screen_item(item.get())) {
                 screen_items.emplace_back(std::move(screen_item));
             }
         }
@@ -425,8 +452,8 @@ void StackLayout::_relayout()
         float current_size = 0;
         std::vector<ScreenItem*> current_stack;
         Claim::Stretch current_cross_stretch = Claim::Stretch(0, 0, 0);
-        for (Item* item : m_items) {
-            ScreenItem* screen_item = get_screen_item(item);
+        for (std::shared_ptr<Item>& item : m_items) {
+            ScreenItem* screen_item = get_screen_item(item.get());
             if (!screen_item) {
                 continue;
             }
@@ -589,4 +616,19 @@ void StackLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
     }
 }
 
+void StackLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
+{
+    // TODO: StackLayout::get_widget_at is brute-force and does not respect transform (only translate)
+    for (const std::shared_ptr<Item>& item : m_items) {
+        const ScreenItem* screen_item = get_screen_item(item.get());
+        if (!screen_item) {
+            continue;
+        }
+        const Vector2f item_pos = local_pos - screen_item->get_transform().get_translation();
+        const Aabrf item_rect(screen_item->get_size());
+        if (item_rect.contains(item_pos)) {
+            _get_widgets_at_item_pos(screen_item, local_pos, result);
+        }
+    }
+}
 } // namespace notf
