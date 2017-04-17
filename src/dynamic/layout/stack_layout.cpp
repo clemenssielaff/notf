@@ -338,7 +338,7 @@ std::unique_ptr<LayoutIterator> StackLayout::iter_items() const
     return std::make_unique<StackLayoutIterator>(this);
 }
 
-bool StackLayout::_update_claim() // TODO: the claim of the StackLayout can be determined only AFTER it has been laid out
+bool StackLayout::_update_claim()
 {
     Claim new_claim;
     if ((m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT)) { // horizontal
@@ -362,7 +362,7 @@ bool StackLayout::_update_claim() // TODO: the claim of the StackLayout can be d
             new_claim.get_vertical().add_offset((m_items.size() - 1) * m_spacing);
         }
     }
-    return _set_claim(new_claim);
+    return _set_claim(std::move(new_claim));
 }
 
 void StackLayout::_remove_item(const Item* item)

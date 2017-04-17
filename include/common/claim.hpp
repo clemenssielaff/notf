@@ -169,6 +169,7 @@ public: // class
 private: // class
     /** A height-for-width ratio constraint of the Claim.
      * Is its own class so two Ratios can be properly added.
+     * A value of zero means no Ratio constraint.
      */
     class Ratio {
 
@@ -293,6 +294,17 @@ public: // methods
      * @param ratio_max    Width to Height (max value), 'ratio_min' is use by default.
      */
     void set_width_to_height(const float ratio_min, const float ratio_max = NAN);
+
+    /** In-place max operator. */
+    Claim& maxed(const Claim& other)
+    {
+        m_horizontal.maxed(other.m_horizontal);
+        m_vertical.maxed(other.m_vertical);
+        const std::pair<float, float> my_ratios    = get_width_to_height();
+        const std::pair<float, float> other_ratios = other.get_width_to_height();
+        set_width_to_height(min(my_ratios.first, other_ratios.first), max(my_ratios.second, other_ratios.second));
+        return *this;
+    }
 
     Claim& operator=(const Claim& other)
     {

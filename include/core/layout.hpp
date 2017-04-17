@@ -26,7 +26,24 @@ public: // methods
 
 /**********************************************************************************************************************/
 
-/** Abstract Layout baseclass. */
+/** Abstract Layout baseclass.
+ *
+ * Size negotiation
+ * ================
+ * Every ScreenItem has a Claim, that is a minimum / preferred / maximum 2D size that it would like to occupy on the
+ * screen.
+ * A Layout that has multiple ScreenItems as children, will combine their Claims into a new Claim >= the union of all
+ * of its children.
+ * This Claim in then used by the parent Layout to distribute its own space to the children.
+ * Note that a Claim is just that - a Claim, it is not a hard constraint, even though the Layouts will do their best
+ * to accomodate the wishes of each ScreenItem.
+ * But there is just so much screen estate to go around and not all of the wishes will be fulfilled.
+ * For example, if a StackLayout has 10 Widgets of 100px min width each, but the Window is only 700px wide, the
+ * StackLayout's Claim will still have a minimum of 1000px.
+ * The WindowLayout will set the StackLayout size to 700px, to which the StackLayout can then react.
+ * Either, the 3 Widgets will overflow and not be displayed, or the StackLayout might wrap them into a second row, if
+ * the user chooses to set those flags.
+ */
 class Layout : public ScreenItem {
 
     friend class Item;

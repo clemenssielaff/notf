@@ -100,6 +100,17 @@ std::unique_ptr<LayoutIterator> Overlayout::iter_items() const
     return std::make_unique<OverlayoutIterator>(this);
 }
 
+bool Overlayout::_update_claim()
+{
+    Claim new_claim;
+    for (Item* item : m_items) {
+        if (const ScreenItem* screen_item = get_screen_item(item)) {
+            new_claim.maxed(screen_item->get_claim());
+        }
+    }
+    return _set_claim(std::move(new_claim));
+}
+
 void Overlayout::_remove_item(const Item* item)
 {
     auto it = std::find(m_items.begin(), m_items.end(), item);

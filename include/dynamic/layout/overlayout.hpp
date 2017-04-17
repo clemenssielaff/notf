@@ -113,10 +113,7 @@ public: // methods
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
 protected: // methods
-    virtual bool _update_claim() override // TODO: the OverLayout needs to build its claim as well, now that it can be ignored
-    {
-        return false; // the Overlayout brings its own Claim to the table
-    }
+    virtual bool _update_claim() override;
 
     virtual void _remove_item(const Item* item) override;
 
