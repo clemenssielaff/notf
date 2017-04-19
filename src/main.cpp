@@ -118,8 +118,8 @@ int main(int argc, char* argv[])
 
     std::shared_ptr<ScrollArea> scroll_area = std::make_shared<ScrollArea>();
     ControllerPtr controller = std::make_shared<StackController>(window);
-    scroll_area->set_area_controller(controller);
     window->get_layout()->set_controller(scroll_area);
+    scroll_area->set_area_controller(controller); // TODO: this Controller::initialize stuff is really brittle, maybe combine TODO with Controller::Factory?
 
     return app.exec();
 }

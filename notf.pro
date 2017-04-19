@@ -249,7 +249,7 @@ HEADERS += \
     include/graphics/cell/cell_canvas.hpp \
     include/common/enum.hpp
 
-QMAKE_CXX = ccache g++
+#QMAKE_CXX = ccache g++
 
 DISTFILES += \
     app/main.py \

@@ -79,7 +79,7 @@ void WindowLayout::set_controller(std::shared_ptr<Controller> controller)
     }
 
     // Controllers are initialized the first time they are parented to a Layout
-    controller->initialize();
+    m_controller->initialize();
 
     // take ownership of the Item
     _set_item_parent(controller.get(), std::static_pointer_cast<Layout>(shared_from_this()));

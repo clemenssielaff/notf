@@ -43,9 +43,8 @@ void ScrollArea::_initialize()
     m_horizontal_layout->add_item(m_vscrollbar);
 
     m_main_layout = Overlayout::create();
-    m_main_layout->add_item(m_horizontal_layout);
-
-    _set_root_item(m_main_layout);
+    _set_root_item(m_main_layout);                //
+    m_main_layout->add_item(m_horizontal_layout); // TODO: does it still work if I switch the two lines here?
 }
 
 void ScrollArea::set_area_controller(std::shared_ptr<Controller> controller)

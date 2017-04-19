@@ -5,10 +5,10 @@
 #include "common/log.hpp"
 #include "core/controller.hpp"
 #include "core/layout.hpp"
-#include "core/window_layout.hpp"
 #include "core/render_manager.hpp"
 #include "core/screen_item.hpp"
 #include "core/window.hpp"
+#include "core/window_layout.hpp"
 
 namespace { // anonymous
 using namespace notf;
@@ -126,16 +126,16 @@ std::shared_ptr<Controller> Item::_get_controller() const
 
 void Item::_update_parent_layout()
 {
-    std::shared_ptr<Layout> layout = _get_layout();
-    while (layout) {
+    std::shared_ptr<Layout> parent_layout = _get_layout();
+    while (parent_layout) {
         // if the parent Layout's Claim changed, we also need to update its parent ...
-        if (layout->_update_claim()) {
-            layout = layout->_get_layout();
+        if (parent_layout->_update_claim()) {
+            parent_layout = parent_layout->_get_layout();
         }
         // ... otherwise, we have reached the end of the propagation through the ancestry
         // and continue to relayout all children from the parent downwards
         else {
-            layout->_relayout();
+            parent_layout->_relayout();
             return;
         }
     }
