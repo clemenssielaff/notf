@@ -41,7 +41,7 @@ public: // class
             , m_min(is_real(min) ? notf::min(std::max(0.f, min), m_preferred) : m_preferred)
             , m_max(is_real(preferred) ? (is_nan(max) ? m_preferred : notf::max(max, m_preferred)) : 0.f)
             , m_scale_factor(1.f)
-            , m_priority(0.f)
+            , m_priority(0)
         {
         }
 
@@ -93,7 +93,7 @@ public: // class
          */
         void set_scale_factor(const float factor);
 
-        /** Sets a new scaling priority. */
+        /** Sets a new scaling priority (0 = default). */
         void set_priority(const int priority) { m_priority = priority; }
 
         /** Sets a fixed size. */

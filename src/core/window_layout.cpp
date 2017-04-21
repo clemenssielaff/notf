@@ -78,14 +78,14 @@ void WindowLayout::set_controller(std::shared_ptr<Controller> controller)
         remove_item(m_controller);
     }
 
-    // Controllers are initialized the first time they are parented to a Layout
-    m_controller->initialize();
-
     // take ownership of the Item
     _set_item_parent(controller.get(), std::static_pointer_cast<Layout>(shared_from_this()));
     const ItemID child_id = controller->get_id();
     m_controller          = std::move(controller);
     child_added(child_id);
+
+    // Controllers are initialized the first time they are parented to a Layout
+    m_controller->initialize();
 
     _relayout();
     _redraw();

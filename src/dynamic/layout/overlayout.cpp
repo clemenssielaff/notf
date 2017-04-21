@@ -80,10 +80,17 @@ void Overlayout::add_item(std::shared_ptr<Item> item)
     // Controllers are initialized the first time they are parented to a Layout
     if (Controller* controller = dynamic_cast<Controller*>(item.get())) {
         controller->initialize();
+
+        // update the item's size to this one
+        _set_item_size(controller->get_root_item().get(), get_size());
+        // TODO: all of this should be a Layout function! ... but can it be?
+    }
+    else if (ScreenItem* screen_item = dynamic_cast<ScreenItem*>(item.get())) {
+        _set_item_size(screen_item, get_size());
     }
 
     // take ownership of the Item
-    _set_item_parent(item.get(), std::static_pointer_cast<Layout>(shared_from_this()));
+    _set_item_parent(item.get(), shared_from_this());
     const ItemID child_id = item->get_id();
     m_items.emplace_back(std::move(item));
     child_added(child_id);

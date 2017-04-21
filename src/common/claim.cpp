@@ -111,7 +111,6 @@ void Claim::set_width_to_height(const float ratio_min, const float ratio_max)
     }
 
     if (ratio_min == approx(0.)) {
-        log_warning << "Ignoring ratio_max value, since the min ratio constraint is set to 0.";
         m_ratios = std::make_pair(min_ratio, min_ratio);
         return;
     }

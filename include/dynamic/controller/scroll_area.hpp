@@ -34,14 +34,11 @@ public: // methods
     void set_area_controller(std::shared_ptr<Controller> controller);
 
 private: // fields
-    /** Layout at the root of this Controller. */
-    std::shared_ptr<Overlayout> m_main_layout;
-
     /** Layout containing the scrolled Area. */
     std::shared_ptr<Overlayout> m_area_layout;
 
     /** Layout providing a split between the scrolled area and the ScrollBar widgetg. */
-    std::shared_ptr<StackLayout> m_horizontal_layout;
+    std::shared_ptr<StackLayout> m_main_layout;
 
     /** Vertical scroll bar. */
     std::shared_ptr<ScrollBar> m_vscrollbar;
