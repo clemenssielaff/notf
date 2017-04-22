@@ -161,7 +161,7 @@ public: // methods *************************************************************
      * @param own   By default, the first valid RenderLayer in the ancestry is returned, if `own==true` the RenderLayer
      *              of this Item is returned, even if it is empty.
      */
-    const std::shared_ptr<RenderLayer>& get_render_layer(bool own = false) const;
+    const std::shared_ptr<RenderLayer>& get_render_layer(const bool own = false) const;
 
     /** (Re-)sets the RenderLayer of this Item.
      * Pass an empty shared_ptr to implicitly inherit the RenderLayer from the parent Layout.

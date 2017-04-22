@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iosfwd>
+#include <assert.h>
 
 #include "common/float.hpp"
 #include "common/hash.hpp"
@@ -250,9 +251,7 @@ struct _RealVector3 {
     template <typename Index, ENABLE_IF_INT(Index)>
     const float& operator[](const Index index) const
     {
-        if (0 > index || index > 2) {
-            throw std::range_error("Index requested via Vector3 [] operator is out of bounds");
-        }
+        assert(0 <= index && index <= 2);
         return *(&x + index);
     }
 
@@ -260,9 +259,7 @@ struct _RealVector3 {
     template <typename Index, ENABLE_IF_INT(Index)>
     float& operator[](const Index index)
     {
-        if (0 > index || index > 2) {
-            throw std::range_error("Index requested via Vector3 [] operator is out of bounds");
-        }
+        assert(0 <= index && index <= 2);
         return *(&x + index);
     }
 

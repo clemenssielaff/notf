@@ -45,7 +45,7 @@ void Widget::paint(CellCanvas& cell_context) const
 {
     // update the Cell if the Widget is dirty
     //    if (!m_is_clean) { // TODO: dirty mechanism for cells
-    Painter painter(*m_cell, cell_context, get_window_transform());
+    Painter painter(cell_context, this);
     try {
         _paint(painter);
     } catch (std::runtime_error error) {

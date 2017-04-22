@@ -36,7 +36,7 @@ float sdroundrect(vec2 pt, vec2 ext, float rad) {
 float scissorMask(vec2 p) {
     vec2 sc = (abs((scissorMat * vec3(p,1.0)).xy) - scissorExt);
     sc = vec2(0.5,0.5) - sc * scissorScale;
-    return clamp(sc.x,0.0,1.0) * clamp(sc.y,0.0,1.0);
+    return clamp(sc.x,0.,1.) * clamp(sc.y,0.,1.);
 }
 
 #ifdef GEOMETRY_AA

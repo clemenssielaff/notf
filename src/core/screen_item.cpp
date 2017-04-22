@@ -56,13 +56,21 @@ bool ScreenItem::is_visible() const
         && m_opacity > precision_high<float>();
 }
 
-void ScreenItem::set_scissor(std::shared_ptr<Layout> scissor)
+LayoutPtr ScreenItem::get_scissor(const bool own) const
 {
-    if (!has_ancestor(scissor)) {
-        throw_runtime_error(string_format(
-            "Cannot set Layout %i as scissor for ScreenItem %i, because the sissor is not an ancestor.",
-            scissor->get_id(), get_id()));
+    if(LayoutPtr scissor = m_scissor_layout.lock()){
+        return scissor;
     }
+    if (!own) {
+        if (LayoutPtr parent = get_layout()) {
+            return parent->get_scissor();
+        }
+    }
+    return {};
+}
+
+void ScreenItem::set_scissor(LayoutPtr scissor)
+{
     m_scissor_layout = std::move(scissor);
 }
 

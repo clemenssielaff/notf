@@ -6,7 +6,10 @@
 namespace notf {
 
 class Overlayout;
+class ScrollArea;
 class StackLayout;
+
+using ScrollAreaPtr = std::shared_ptr<ScrollArea>;
 
 /** Scroll Area Controller. */
 class ScrollArea : public BaseController<ScrollArea> {

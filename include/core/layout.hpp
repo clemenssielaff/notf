@@ -25,15 +25,7 @@ public: // methods
 
 /**********************************************************************************************************************/
 
-/** Abstract Layout baseclass.
- *
- * Layout negotiation
- * ==================
- * Layouts and Widgets need to "negotiate" the Layout.
- * Whenever a Widget changes its Claim, the parent Layout has to see if it needs to update its Claim accordingly.
- * If its Claim changes, its respective parent might need to update as well - up to the first Layout that does not
- * update its Claim (at the latest, the WindowLayout never updates its Claim).
- */
+/** Abstract Layout baseclass. */
 class Layout : public ScreenItem {
 
     friend class Item;

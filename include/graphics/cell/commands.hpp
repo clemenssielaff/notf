@@ -104,8 +104,8 @@ struct RotationCommand : public PainterCommand {
 /** Command to set the Scissor of the current PainterState. */
 struct SetScissorCommand : public PainterCommand {
     SetScissorCommand(Scissor sissor)
-        : PainterCommand(SET_SCISSOR), sissor(sissor) {}
-    Scissor sissor;
+        : PainterCommand(SET_SCISSOR), scissor(sissor) {}
+    Scissor scissor;
 };
 
 /** Command to reset the Scissor of the current PainterState. */

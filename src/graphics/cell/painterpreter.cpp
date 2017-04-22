@@ -111,7 +111,7 @@ void Painterpreter::paint(Cell& cell)
                 _add_point(stylus, Point::Flags::CORNER);
             }
             else {
-                stylus = _get_current_state().xform.get_inverse().transform({m_points.back().pos.x, m_points.back().pos.y}); // TODO: that sucks
+                stylus = _get_current_state().xform.get_inverse().transform({m_points.back().pos.x, m_points.back().pos.y});
             }
             const BezierCommand& cmd = map_command<BezierCommand>(commands, index);
             _tesselate_bezier(stylus.x, stylus.y,
@@ -157,7 +157,7 @@ void Painterpreter::paint(Cell& cell)
 
         case PainterCommand::SET_SCISSOR: {
             const SetScissorCommand& cmd = map_command<SetScissorCommand>(commands, index);
-            _get_current_state().scissor = cmd.sissor;
+            _get_current_state().scissor = cmd.scissor;
             index += command_size<decltype(cmd)>();
         } break;
 
@@ -897,7 +897,7 @@ void Painterpreter::_stroke()
     const float fringe_width = options.fringe_width;
     float stroke_width;
     { // create a sane stroke width
-        const float scale = (state.xform.scale_factor_x() + state.xform.scale_factor_y()) / 2;
+        const float scale = (state.xform.get_scale_x() + state.xform.get_scale_y()) / 2;
         stroke_width      = clamp(state.stroke_width * scale, 0, 200); // 200 is arbitrary
         if (stroke_width < fringe_width) {
             // if the stroke width is less than pixel size, use alpha to emulate coverage.
@@ -1138,8 +1138,6 @@ void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const 
                    const float stroke_width, const float fringe, const float stroke_threshold)
 {
     assert(fringe > 0);
-
-    // TODO: I don't know if scissor is ever anything else than identiy & -1/-1
 
     frag.innerCol = paint.inner_color.premultiplied();
     frag.outerCol = paint.outer_color.premultiplied();

@@ -43,6 +43,13 @@ namespace notf {
  * rather than to the combined Claims of all of its child Items.
  * If you want to revert to an Item-driven Claim, call `set_claim` with a zero Claim.
  *
+ * Layout negotiation
+ * ==================
+ * Layouts and Widgets need to "negotiate" the Layout.
+ * Whenever a Widget changes its Claim, the parent Layout has to see if it needs to update its Claim accordingly.
+ * If its Claim changes, its respective parent might need to update as well - up to the first Layout that does not
+ * update its Claim (at the latest, the WindowLayout never updates its Claim).
+ *
  * Scissoring
  * ==========
  * In order to implement scroll areas that contain a view on Widgets that are never drawn outside of its boundaries,
@@ -97,16 +104,17 @@ public: // methods *************************************************************
     bool is_visible() const;
 
     /** Returns the Layout used to scissor this ScreenItem.
-     * Returns an empty shared_ptr, if no explicit scissor Layout was set or the scissor Layout has since expired.
+     * Returns an empty shared_ptr, if no explicit scissor Layout was set, the scissor Layout has since expired or the
+     * scissor Layout does not share a Window with this ScreenItem.
      * In this case, the ScreenItem is implicitly scissored by its parent Layout.
      */
-    std::shared_ptr<Layout> get_scissor() const { return m_scissor_layout.lock(); }
+    LayoutPtr get_scissor(const bool own = false) const;
 
     /** Sets the new scissor Layout for this ScreenItem.
      * @param scissor               New scissor Layout, must be an Layout in this ScreenItem's ancestry or empty.
      * @throw std::runtime_error    If the scissor is not an ancestor Layout of this ScreenItem.
      */
-    void set_scissor(std::shared_ptr<Layout> get_scissor);
+    void set_scissor(LayoutPtr get_scissor);
 
 public: // signals ****************************************************************************************************/
     /** Emitted, when the opacity of this Item has changed.

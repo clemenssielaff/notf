@@ -9,6 +9,8 @@ namespace notf {
 
 class StackLayout;
 
+using StackLayoutPtr = std::shared_ptr<StackLayout>;
+
 /**********************************************************************************************************************/
 
 /** StackLayout Iterator that goes through all items in a Layout in order, from back to front.

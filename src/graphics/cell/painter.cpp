@@ -29,6 +29,7 @@
 
 #include "common/line2.hpp"
 #include "common/log.hpp"
+#include "core/layout.hpp"
 #include "core/widget.hpp"
 #include "graphics/cell/cell.hpp"
 #include "graphics/cell/cell_canvas.hpp"
@@ -48,10 +49,34 @@ namespace notf {
 
 std::vector<detail::PainterState> Painter::s_states;
 
-Painter::Painter(Cell& cell, CellCanvas& cell_context, const Xform2f transform)
-    : m_cell(cell)
-    , m_canvas(cell_context)
+Painter::Painter(CellCanvas& canvas, const Widget* widget)
+    : m_canvas(canvas)
+    , m_cell(*widget->get_cell().get())
+    , m_base_transform(widget->get_window_transform())
+    , m_base_scissor()
+    , m_stylus(Vector2f::zero())
+    , m_has_open_path(false)
+{
+    if (LayoutPtr scissor_layout = widget->get_scissor()) {
+        m_base_scissor.xform  = m_base_transform;
+        m_base_scissor.extend = scissor_layout->get_size();
+    }
+
+    s_states.clear();
+    s_states.emplace_back();
+
+    m_cell.clear();
+    m_cell.m_commands.add_command(SetXformCommand(m_base_transform));
+    if (!m_base_scissor.extend.is_zero()) {
+        m_cell.m_commands.add_command(SetScissorCommand(m_base_scissor));
+    }
+}
+
+Painter::Painter(CellCanvas& canvas, Cell& cell, const Xform2f transform, const Aabrf scissor)
+    : m_canvas(canvas)
+    , m_cell(cell)
     , m_base_transform(std::move(transform))
+    , m_base_scissor{Xform2f::translation(scissor.center()), {scissor.width(), scissor.height()}}
     , m_stylus(Vector2f::zero())
     , m_has_open_path(false)
 {
@@ -60,6 +85,9 @@ Painter::Painter(Cell& cell, CellCanvas& cell_context, const Xform2f transform)
 
     m_cell.clear();
     m_cell.m_commands.add_command(SetXformCommand(m_base_transform));
+    if (!m_base_scissor.extend.is_zero()) {
+        m_cell.m_commands.add_command(SetScissorCommand(m_base_scissor));
+    }
 }
 
 size_t Painter::push_state()
@@ -105,7 +133,7 @@ void Painter::translate(const Vector2f& delta)
 void Painter::rotate(const float angle)
 {
     m_cell.m_commands.add_command(RotationCommand(angle));
-    _get_current_state().xform = Xform2f::rotation(angle) * _get_current_state().xform; // TODO: Transform2::premultiply
+    _get_current_state().xform.premult(Xform2f::rotation(angle));
 }
 
 void Painter::set_scissor(const Aabrf& aabr)
@@ -116,6 +144,8 @@ void Painter::set_scissor(const Aabrf& aabr)
     current_state.scissor.xform *= current_state.xform;
     current_state.scissor.extend = aabr.extend();
     m_cell.m_commands.add_command(SetScissorCommand(current_state.scissor));
+
+    // TODO: scissor can never be larger than base_scissor
 }
 
 void Painter::remove_scissor()

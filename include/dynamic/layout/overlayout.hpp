@@ -8,6 +8,8 @@ namespace notf {
 
 class Overlayout;
 
+using OverlayoutPtr = std::shared_ptr<Overlayout>;
+
 /**********************************************************************************************************************/
 
 /**

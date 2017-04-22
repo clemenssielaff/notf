@@ -12,6 +12,7 @@ namespace notf {
 class Cell;
 class CellCanvas;
 class Font;
+class Widget;
 
 namespace detail {
 
@@ -83,8 +84,16 @@ class Painter : public detail::PainterBase {
     friend class Widget;
 
 public: // methods
-    /** Value Constructor. */
-    Painter(Cell& cell, CellCanvas& cell_context, const Xform2f transform = Xform2f::identity());
+    /** Constructor for Widgets. */
+    Painter(CellCanvas& canvas, const Widget* widget);
+
+    /** Manual value constructor (in case you want to draw something that's not a Widget).
+     * @param canvas    CellCanvas to paint into.
+     * @param cell      Cell to paint.
+     * @param transform Base transform of the Painter in Cell coordinates.
+     * @param scissor   Scissor rect in Cell coordinates.
+     */
+    Painter(CellCanvas& canvas, Cell& cell, const Xform2f transform = Xform2f::identity(), const Aabrf scissor = Aabrf::null());
 
     /* State management ***********************************************************************************************/
 
@@ -301,14 +310,17 @@ private: // methods
     }
 
 private: // fields
-    /** Cell, that this Painter is painting into. */
-    Cell& m_cell;
-
     /** Canvas into which the Cell is painted. */
     const CellCanvas& m_canvas;
 
-    /** Window transformation of the painted Widget. */
+    /** Cell, that this Painter is painting into. */
+    Cell& m_cell;
+
+    /** Transformation of the painted Cell. */
     const Xform2f m_base_transform;
+
+    /** Scissor of the painted Cell. */
+    Scissor m_base_scissor;
 
     /** Current position of the 'stylus', as the last Command left it. */
     Vector2f m_stylus;

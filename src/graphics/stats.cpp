@@ -43,7 +43,7 @@ void RenderStats::render_stats(CellCanvas& context)
         return;
     }
 
-    Painter painter(m_cell, context);
+    Painter painter(context, m_cell);
 
     painter.begin_path();
     painter.add_rect(m_aabr);

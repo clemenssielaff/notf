@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iosfwd>
+#include <assert.h>
 
 #include "common/float.hpp"
 #include "common/hash.hpp"
@@ -264,9 +265,7 @@ struct _RealVector2 {
     template <typename Index, ENABLE_IF_INT(Index)>
     const Value_t& operator[](const Index index) const
     {
-        if (0 > index || index > 1) {
-            throw std::range_error("Index requested via Vector2 [] operator is out of bounds");
-        }
+        assert(0 <= index && index <= 1);
         return *(&x + index);
     }
 
@@ -274,9 +273,7 @@ struct _RealVector2 {
     template <typename Index, ENABLE_IF_INT(Index)>
     Value_t& operator[](const Index index)
     {
-        if (0 > index || index > 1) {
-            throw std::range_error("Index requested via Vector2 [] operator is out of bounds");
-        }
+        assert(0 <= index && index <= 1);
         return *(&x + index);
     }
 
@@ -481,9 +478,7 @@ struct _IntVector2 {
     template <typename Index, ENABLE_IF_INT(Index)>
     const Integer& operator[](const Index index) const
     {
-        if (0 > index || index > 1) {
-            throw std::range_error("Index requested via Vector2 [] operator is out of bounds");
-        }
+        assert(0 <= index && index <= 1);
         return *(&x + index);
     }
 
@@ -491,9 +486,7 @@ struct _IntVector2 {
     template <typename Index, ENABLE_IF_INT(Index)>
     Integer& operator[](const Index index)
     {
-        if (0 > index || index > 1) {
-            throw std::range_error("Index requested via Vector2 [] operator is out of bounds");
-        }
+        assert(0 <= index && index <= 1);
         return *(&x + index);
     }
 

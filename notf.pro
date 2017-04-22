@@ -56,7 +56,8 @@ CONFIG(test) {
         test/test_aabr.cpp \
         test/test_property.cpp \
         test/test_vector2.cpp \
-        test/test_float.cpp
+        test/test_float.cpp \
+        test/test_xform2.cpp
 
     HEADERS += \
         test/catch.hpp \
@@ -249,11 +250,9 @@ HEADERS += \
     include/common/enum.hpp \
     include/common/id.hpp
 
-#QMAKE_CXX = ccache g++
+QMAKE_CXX = ccache g++
 
 DISTFILES += \
     app/main.py \
     res/shader/cell.frag \
-    res/shader/cell.vert \
-    res/shader/font.frag \
-    res/shader/font.vert
+    res/shader/cell.vert 

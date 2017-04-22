@@ -104,18 +104,19 @@ struct _Xform2 {
     const Vector_t& get_translation() const { return rows[2]; }
 
     /** Scale factor along the x-axis. */
-    Value_t scale_factor_x() const { return sqrt(rows[0][0] * rows[0][0] + rows[1][0] * rows[1][0]); }
+    Value_t get_scale_x() const { return sqrt(rows[0][0] * rows[0][0] + rows[1][0] * rows[1][0]); }
 
     /** Scale factor along the y-axis. */
-    Value_t scale_factor_y() const { return sqrt(rows[0][1] * rows[0][1] + rows[1][1] * rows[1][1]); }
+    Value_t get_scale_y() const { return sqrt(rows[0][1] * rows[0][1] + rows[1][1] * rows[1][1]); }
+
+    /** Calculates the determinant of this Xform2. */
+    Value_t get_determinant() const { return (rows[0][0] * rows[1][1]) - (rows[1][0] * rows[0][1]); }
 
     /** Read-only reference to a row of the Xform2's internal matrix. */
     template <typename Row, ENABLE_IF_INT(Row)>
     const Vector_t& operator[](const Row row) const
     {
-        if (0 > row || row > 2) {
-            throw std::range_error("Index requested via Xform2 [] operator is out of bounds");
-        }
+        assert(0 <= row && row <= 2);
         return rows[row];
     }
 
@@ -129,6 +130,20 @@ struct _Xform2 {
 
     /** Tests whether two Xform2s are not equal. */
     bool operator!=(const _Xform2& other) const { return rows != other.rows; }
+
+    /** Returns True, if other and self are approximately the same Xform2.
+     * @param other     Xform2 to test against.
+     * @param epsilon   Maximal allowed distance between the individual entries in the transform matrix.
+     */
+    bool is_approx(const _Xform2& other, const Value_t epsilon = precision_high<Value_t>()) const
+    {
+        for (size_t i = 0; i < 6; ++i) {
+            if (abs(as_ptr()[i] - other.as_ptr()[i]) > epsilon) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     /** Modifiers *****************************************************************************************************/
 
@@ -144,36 +159,64 @@ struct _Xform2 {
     {
         Value_t* this_array        = this->as_ptr();
         const Value_t* other_array = other.as_ptr();
-        const Value_t t0           = this_array[0] * other_array[0] + this_array[1] * other_array[2];
-        const Value_t t2           = this_array[2] * other_array[0] + this_array[3] * other_array[2];
-        const Value_t t4           = this_array[4] * other_array[0] + this_array[5] * other_array[2] + other_array[4];
-        this_array[1]              = this_array[0] * other_array[1] + this_array[1] * other_array[3];
-        this_array[3]              = this_array[2] * other_array[1] + this_array[3] * other_array[3];
-        this_array[5]              = this_array[4] * other_array[1] + this_array[5] * other_array[3] + other_array[5];
-        this_array[0]              = t0;
-        this_array[2]              = t2;
-        this_array[4]              = t4;
+
+        const Value_t t0 = this_array[0] * other_array[0] + this_array[1] * other_array[2];
+        const Value_t t2 = this_array[2] * other_array[0] + this_array[3] * other_array[2];
+        const Value_t t4 = this_array[4] * other_array[0] + this_array[5] * other_array[2] + other_array[4];
+
+        this_array[1] = this_array[0] * other_array[1] + this_array[1] * other_array[3];
+        this_array[3] = this_array[2] * other_array[1] + this_array[3] * other_array[3];
+        this_array[5] = this_array[4] * other_array[1] + this_array[5] * other_array[3] + other_array[5];
+        this_array[0] = t0;
+        this_array[2] = t2;
+        this_array[4] = t4;
         return *this;
     }
 
+    /** Premultiplies the other Xform with this one in-place (same as `*this = other * this`). */
+    _Xform2& premult(const _Xform2& other)
+    {
+        Value_t* this_array        = this->as_ptr();
+        const Value_t* other_array = other.as_ptr();
+
+        const Value_t t0 = other_array[0] * this_array[0] + other_array[1] * this_array[2];
+        const Value_t t1 = other_array[0] * this_array[1] + other_array[1] * this_array[3];
+        const Value_t t3 = other_array[2] * this_array[1] + other_array[3] * this_array[3];
+
+        this_array[4] = other_array[4] * this_array[0] + other_array[5] * this_array[2] + this_array[4];
+        this_array[5] = other_array[4] * this_array[1] + other_array[5] * this_array[3] + this_array[5];
+        this_array[2] = other_array[2] * this_array[0] + other_array[3] * this_array[2];
+        this_array[0] = t0;
+        this_array[1] = t1;
+        this_array[3] = t3;
+        return *this;
+    }
+
+    /** Premultiplies the other Xform with this one (same as `*this = other * this`). */
+    _Xform2 get_premult(const _Xform2& other) const
+    {
+        _Xform2 result = *this;
+        return result.premult(other);
+    }
+
     /** Inverts this Xform2 in-place. */
-    _Xform2& invert() { *this = (*this).get_inverse(); } // TODO: test Xform2::invert
+    _Xform2& invert() { *this = (*this).get_inverse(); }
 
     /** Returns the inverse of this Xform2. */
     _Xform2 get_inverse() const
     {
-        const Value_t det = rows[0][0] * rows[1][1] - rows[1][0] * rows[0][1];
+        const Value_t det = get_determinant();
         if (abs(det) <= precision_high<Value_t>()) {
             return _Xform2::identity();
         }
         const Value_t invdet = 1 / det;
         _Xform2 result;
-        result[0][0] = rows[1][1] * invdet;
-        result[1][0] = -rows[1][0] * invdet;
-        result[2][0] = (rows[1][0] * rows[2][1] - rows[1][1] * rows[2][0]) * invdet;
-        result[0][1] = -rows[0][1] * invdet;
-        result[1][1] = rows[0][0] * invdet;
-        result[2][1] = (rows[0][1] * rows[2][0] - rows[0][0] * rows[2][1]) * invdet;
+        result[0][0] = +(rows[1][1]) * invdet;
+        result[0][1] = -(rows[0][1]) * invdet;
+        result[1][0] = -(rows[1][0]) * invdet;
+        result[1][1] = +(rows[0][0]) * invdet;
+        result[2][0] = +(rows[1][0] * rows[2][1] - rows[1][1] * rows[2][0]) * invdet;
+        result[2][1] = -(rows[0][0] * rows[2][1] - rows[0][1] * rows[2][0]) * invdet;
         return result;
     }
 
@@ -190,9 +233,7 @@ struct _Xform2 {
     template <typename Row, ENABLE_IF_INT(Row)>
     Vector_t& operator[](const Row row)
     {
-        if (0 > row || row > 2) {
-            throw std::range_error("Index requested via Xform2 [] operator is out of bounds");
-        }
+        assert(0 <= row && row <= 2);
         return rows[row];
     }
 
@@ -203,6 +244,7 @@ struct _Xform2 {
 //*********************************************************************************************************************/
 
 using Xform2f = _Xform2<float>;
+using Xform2d = _Xform2<double>;
 
 /* Free Functions *****************************************************************************************************/
 
