@@ -14,7 +14,7 @@ namespace { // anonymous
 using namespace notf;
 
 /** The next available Item ID, is ever-increasing. */
-std::atomic<ItemID> g_nextID(1);
+std::atomic<RawID> g_nextID(1);
 
 /** Returns the next, free ItemID.
  * Is thread-safe.
@@ -55,7 +55,7 @@ Item::~Item()
     log_trace << "Destroying Item #" << m_id;
 }
 
-bool Item::has_ancestor(const Item* ancestor) const
+bool Item::has_ancestor(const ItemPtr& ancestor) const
 {
     // invalid Item can never be an ancestor
     if (!ancestor) {
@@ -63,12 +63,12 @@ bool Item::has_ancestor(const Item* ancestor) const
     }
 
     // check all actual ancestors against the candidate
-    const Item* my_parent = get_parent().get();
+    ItemPtr my_parent = get_parent();
     while (my_parent) {
         if (my_parent == ancestor) {
             return true;
         }
-        my_parent = my_parent->get_parent().get();
+        my_parent = my_parent->get_parent();
     }
 
     // if no ancestor matches, we have our answer
@@ -83,10 +83,10 @@ std::shared_ptr<Window> Item::get_window() const
     return {};
 }
 
-const std::shared_ptr<RenderLayer>& Item::get_render_layer() const
+const std::shared_ptr<RenderLayer>& Item::get_render_layer(bool own) const
 {
-    // if you have your own RenderLayer, return that
-    if (m_render_layer) {
+    // if you have your own RenderLayer or the own RenderLayer is requested, return that
+    if (own || m_render_layer) {
         return m_render_layer;
     }
 
@@ -114,19 +114,19 @@ void Item::set_render_layer(std::shared_ptr<RenderLayer> render_layer)
     m_render_layer = std::move(render_layer);
 }
 
-std::shared_ptr<Layout> Item::_get_layout() const
+LayoutPtr Item::_get_layout() const
 {
     return _get_first_ancestor<Layout>();
 }
 
-std::shared_ptr<Controller> Item::_get_controller() const
+ControllerPtr Item::_get_controller() const
 {
     return _get_first_ancestor<Controller>();
 }
 
 void Item::_update_parent_layout()
 {
-    std::shared_ptr<Layout> parent_layout = _get_layout();
+    LayoutPtr parent_layout = _get_layout();
     while (parent_layout) {
         // if the parent Layout's Claim changed, we also need to update its parent ...
         if (parent_layout->_update_claim()) {
@@ -144,7 +144,7 @@ void Item::_update_parent_layout()
 template <typename AncestorType>
 std::shared_ptr<AncestorType> Item::_get_first_ancestor() const
 {
-    std::shared_ptr<Item> next = m_parent.lock();
+    ItemPtr next = m_parent.lock();
     while (next) {
         if (std::shared_ptr<AncestorType> result = std::dynamic_pointer_cast<AncestorType>(next)) {
             return result;
@@ -163,16 +163,16 @@ void Item::_set_pyobject(PyObject* object)
 }
 #endif
 
-void Item::_set_parent(std::shared_ptr<Item> parent)
+void Item::_set_parent(ItemPtr parent)
 {
     // do nothing if the new parent is the same as the old (or both are invalid)
-    std::shared_ptr<Item> old_parent = m_parent.lock();
+    ItemPtr old_parent = m_parent.lock();
     if (parent == old_parent) {
         return;
     }
 
     // check for cyclic ancestry
-    if (has_ancestor(parent.get())) {
+    if (has_ancestor(parent)) {
         log_critical << "Cannot make " << parent->get_id() << " the parent of " << get_id()
                      << " because " << parent->get_id() << " is already a child of " << get_id();
         return;

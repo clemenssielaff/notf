@@ -107,7 +107,7 @@ namespace detail {
 
     private: // methods
         /** @param data Shared Connection data block. */
-        explicit Connection(std::shared_ptr<Data> data)
+        Connection(std::shared_ptr<Data> data)
             : m_data(std::move(data))
         {
         }
@@ -257,7 +257,7 @@ namespace detail {
 
     /** Guard struct to make sure that the `is_firing` flag is always unset when a Signal has finished firing. */
     struct FlagGuard {
-        explicit FlagGuard(bool& flag)
+        FlagGuard(bool& flag)
             : m_flag(flag)
         {
             m_flag = true;

@@ -244,10 +244,10 @@ HEADERS += \
     include/graphics/scissor.hpp \
     include/graphics/cell/commands.hpp \
     include/graphics/cell/command_buffer.hpp \
-    include/common/identifier.hpp \
     include/graphics/graphics_context.hpp \
     include/graphics/cell/cell_canvas.hpp \
-    include/common/enum.hpp
+    include/common/enum.hpp \
+    include/common/id.hpp
 
 #QMAKE_CXX = ccache g++
 

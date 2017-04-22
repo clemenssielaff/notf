@@ -16,7 +16,7 @@ public:
 
 void finalize_py_item(PyObject* object)
 {
-    auto instance = reinterpret_cast<py::detail::instance<Item, std::shared_ptr<Item>>*>(object);
+    auto instance = reinterpret_cast<py::detail::instance<Item, ItemPtr>*>(object);
     if (instance->holder.use_count() > 1) {
         instance->value->_set_pyobject(object);
         assert(object->ob_refcnt >= 2); // one from us, one from PyObject_CallFinalizerFromDealloc + n self-referencing

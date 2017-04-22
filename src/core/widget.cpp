@@ -14,7 +14,6 @@ namespace notf {
 
 Widget::Widget()
     : ScreenItem()
-    , m_scissor_layout() // empty by default
     , m_cell(std::make_shared<Cell>())
     , m_is_clean(false)
 {
@@ -22,16 +21,6 @@ Widget::Widget()
 
 Widget::~Widget()
 {
-}
-
-void Widget::set_scissor(std::shared_ptr<Layout> scissor)
-{
-    if (!has_ancestor(scissor.get())) {
-        throw_runtime_error(string_format(
-            "Cannot set Layout %i as scissor for Widget %i, because it is not part of the Layout.",
-            scissor->get_id(), get_id()));
-    }
-    m_scissor_layout = std::move(scissor);
 }
 
 bool Widget::set_claim(const Claim claim)

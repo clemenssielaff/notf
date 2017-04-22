@@ -31,7 +31,7 @@ public: // methods
     virtual void _initialize() override;
 
     /** Displays the content of the given Controller inside the scroll area.  */
-    void set_area_controller(std::shared_ptr<Controller> controller);
+    void set_area_controller(ControllerPtr controller);
 
 private: // fields
     /** Layout containing the scrolled Area. */

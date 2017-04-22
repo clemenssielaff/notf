@@ -51,7 +51,7 @@ WindowLayout::~WindowLayout()
     _set_item_parent(m_controller.get(), {});
 }
 
-bool WindowLayout::has_item(const std::shared_ptr<Item>& item) const
+bool WindowLayout::has_item(const ItemPtr& item) const
 {
     return std::static_pointer_cast<Item>(m_controller) == item;
 }
@@ -63,7 +63,7 @@ void WindowLayout::clear()
     }
 }
 
-void WindowLayout::set_controller(std::shared_ptr<Controller> controller)
+void WindowLayout::set_controller(ControllerPtr controller)
 {
     if (!controller) {
         log_warning << "Cannot add an empty Controller pointer to a Layout";
@@ -91,7 +91,7 @@ void WindowLayout::set_controller(std::shared_ptr<Controller> controller)
     _redraw();
 }
 
-void WindowLayout::remove_item(const std::shared_ptr<Item>& item)
+void WindowLayout::remove_item(const ItemPtr& item)
 {
     if (item == m_controller) {
         child_removed(m_controller->get_id());
@@ -132,6 +132,12 @@ void WindowLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget
         return;
     }
     _get_widgets_at_item_pos(m_controller.get(), local_pos, result);
+}
+
+Claim WindowLayout::_aggregate_claim()
+{
+    const Size2f window_size = m_window->get_window_size();
+    return Claim::fixed(window_size.width, window_size.height);
 }
 
 } // namespace notf

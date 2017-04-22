@@ -57,7 +57,7 @@ protected: // factory
     struct make_shared_enabler;
 
     /** @param info     WindowInfo providing initialization arguments. */
-    explicit Window(const WindowInfo& info);
+    Window(const WindowInfo& info);
 
 public: // static methods
     /** Factory function to create a new Window.

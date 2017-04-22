@@ -18,7 +18,7 @@ namespace { // anonymous
 using namespace notf;
 
 /**
- * Helper struct used to abstract away which claim-direction and stack-direction is used for layouting.
+ * Helper struct used to abstract away which Claim-direction and stack-direction is used for layouting.
  */
 struct ItemAdapter {
     float upper_bound;
@@ -209,6 +209,7 @@ StackLayout::StackLayout(const Direction direction)
     , m_cross_spacing(0.f)
     , m_items()
 {
+    set_claim({});
 }
 
 std::shared_ptr<StackLayout> StackLayout::create(const Direction direction)
@@ -219,28 +220,28 @@ std::shared_ptr<StackLayout> StackLayout::create(const Direction direction)
 StackLayout::~StackLayout()
 {
     // explicitly unparent all children so they can send the `parent_changed` signal
-    for (std::shared_ptr<Item>& item : m_items) {
+    for (ItemPtr& item : m_items) {
         child_removed(item->get_id());
         _set_item_parent(item.get(), {});
     }
 }
 
-bool StackLayout::has_item(const std::shared_ptr<Item>& item) const
+bool StackLayout::has_item(const ItemPtr& item) const
 {
     return std::find(m_items.cbegin(), m_items.cbegin(), item) != m_items.cend();
 }
 
 void StackLayout::clear()
 {
-    for(std::shared_ptr<Item>& item : m_items){
+    for (ItemPtr& item : m_items) {
         child_removed(item->get_id());
     }
     m_items.clear();
 }
 
-void StackLayout::add_item(std::shared_ptr<Item> item)
+void StackLayout::add_item(ItemPtr item)
 {
-    if(!item){
+    if (!item) {
         log_warning << "Cannot add an empty Item pointer to a Layout";
         return;
     }
@@ -268,7 +269,7 @@ void StackLayout::add_item(std::shared_ptr<Item> item)
     _redraw();
 }
 
-void StackLayout::remove_item(const std::shared_ptr<Item>& item)
+void StackLayout::remove_item(const ItemPtr& item)
 {
     auto it = std::find(m_items.begin(), m_items.end(), item);
     if (it == m_items.end()) {
@@ -340,8 +341,9 @@ void StackLayout::set_padding(const Padding& padding)
     }
     if (padding != m_padding) {
         m_padding = padding;
-        _update_claim();
-        _update_parent_layout();
+        if (_update_claim()) {
+            _update_parent_layout();
+        }
     }
 }
 
@@ -353,8 +355,9 @@ void StackLayout::set_spacing(float spacing)
     }
     if (spacing != approx(m_spacing)) {
         m_spacing = spacing;
-        _update_claim();
-        _update_parent_layout();
+        if (_update_claim()) {
+            _update_parent_layout();
+        }
     }
 }
 
@@ -372,11 +375,11 @@ void StackLayout::set_cross_spacing(float spacing)
     }
 }
 
-bool StackLayout::_update_claim()
+Claim StackLayout::_aggregate_claim()
 {
     Claim new_claim;
     if ((m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT)) { // horizontal
-        for (const std::shared_ptr<Item>& item : m_items) {
+        for (const ItemPtr& item : m_items) {
             if (const ScreenItem* screen_item = get_screen_item(item.get())) {
                 new_claim.add_horizontal(screen_item->get_claim());
             }
@@ -387,7 +390,7 @@ bool StackLayout::_update_claim()
     }
     else {
         assert((m_direction == Direction::TOP_TO_BOTTOM) || (m_direction == Direction::BOTTOM_TO_TOP)); // vertical
-        for (const std::shared_ptr<Item>& item : m_items) {
+        for (const ItemPtr& item : m_items) {
             if (const ScreenItem* screen_item = get_screen_item(item.get())) {
                 new_claim.add_vertical(screen_item->get_claim());
             }
@@ -396,7 +399,7 @@ bool StackLayout::_update_claim()
             new_claim.get_vertical().add_offset((m_items.size() - 1) * m_spacing);
         }
     }
-    return _set_claim(std::move(new_claim));
+    return new_claim;
 }
 
 void StackLayout::_relayout()
@@ -432,7 +435,7 @@ void StackLayout::_relayout()
     if (!is_wrapping()) {
         std::vector<ScreenItem*> screen_items;
         screen_items.reserve(m_items.size());
-        for (std::shared_ptr<Item>& item : m_items) {
+        for (ItemPtr& item : m_items) {
             if (ScreenItem* screen_item = get_screen_item(item.get())) {
                 screen_items.emplace_back(std::move(screen_item));
             }
@@ -452,7 +455,7 @@ void StackLayout::_relayout()
         float current_size = 0;
         std::vector<ScreenItem*> current_stack;
         Claim::Stretch current_cross_stretch = Claim::Stretch(0, 0, 0);
-        for (std::shared_ptr<Item>& item : m_items) {
+        for (ItemPtr& item : m_items) {
             ScreenItem* screen_item = get_screen_item(item.get());
             if (!screen_item) {
                 continue;
@@ -619,7 +622,7 @@ void StackLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
 void StackLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
     // TODO: StackLayout::get_widget_at is brute-force and does not respect transform (only translate)
-    for (const std::shared_ptr<Item>& item : m_items) {
+    for (const ItemPtr& item : m_items) {
         const ScreenItem* screen_item = get_screen_item(item.get());
         if (!screen_item) {
             continue;

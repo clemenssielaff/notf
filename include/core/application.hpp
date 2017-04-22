@@ -110,7 +110,7 @@ public: // static methods
 
 private: // constructor
     /** @param info     ApplicationInfo providing initialization arguments. */
-    explicit Application(ApplicationInfo info);
+    Application(ApplicationInfo info);
 
 public: // methods
     // no copy / assignment

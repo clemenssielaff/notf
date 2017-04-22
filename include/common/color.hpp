@@ -134,7 +134,7 @@ struct Color {
 
 /* FREE FUNCTIONS *****************************************************************************************************/
 
-/** Linear interpolation between two Color%s.
+/** Linear interpolation between two Colors.
  * @param from      Left Color, full weight at bend = 0.
  * @param to        Right Color, full weight at bend = 1.
  * @param blend     Blend value, clamped to range [0, 1].

@@ -14,48 +14,27 @@ class Painter;
 
 /** A Widget is something drawn on screen that the user can interact with.
  * The term "Widget" is a mixture of "Window" and "Gadget".
+ *
  * Cells
  * =====
  * While the Widget determines the size and the state of what is drawn, the actual drawing is performed on "Cells".
  * A Widget can have multiple Cells.
- *
- * Scissoring
- * ==========
- * In order to implement scroll areas that contain a view on Widgets that are never drawn outside of its boundaries,
- * those Widgets need to be "scissored" by the scroll area.
- * A "Scissor" is an axis-aligned rectangle, scissoring is the act of cutting off parts of a Widget that fall outside
- * that rectangle and since this operation is provided by OpenGL, it is pretty cheap.
- * Every Widget contains a pointer to the parent Layout that acts as its scissor.
- * An empty pointer means that this Widget is scissored by its parent Layout, but every Layout in this Widget's Item
- * ancestry can be used (including the Windows WindowLayout, which effectively disables scissoring).
  */
 class Widget : public ScreenItem {
 
 protected: // Constructor
     /** Default Constructor. */
-    explicit Widget(); // TODO: there is no save factory for Controller and Widgets
+    Widget(); // TODO: there is no save factory for Controller and Widgets
 
 public: // methods
     /** Destructor. */
     virtual ~Widget() override;
 
-    /** Returns the Layout used to scissor this Widget.
-     * Returns an empty shared_ptr, if no explicit scissor Layout was set or the scissor Layout has since expired.
-     * In this case, the Widget is implicitly scissored by its parent Layout.
-     */
-    std::shared_ptr<Layout> get_scissor() const { return m_scissor_layout.lock(); }
-
     /** The Cell used to display the Widget on screen. */
     std::shared_ptr<Cell> get_cell() const { return m_cell; }
 
-    /** Sets the new scissor Layout for this Widget.
-     * @param scissor               New scissor Layout, must be an Layout in this Widget's Item hierarchy or empty.
-     * @throw std::runtime_error    If the scissor is not an ancestor Layout of this Widget.
-     */
-    void set_scissor(std::shared_ptr<Layout> get_scissor);
-
     /** Sets a new Claim for this Widget.
-     * @return  True, iff the currenct Claim was changed.
+     * @return True iff the Claim was modified.
      */
     bool set_claim(const Claim get_claim);
 
@@ -65,7 +44,7 @@ public: // methods
     /** Draws the Widget's Cell onto the screen.
      * Either uses the cached Cell or updates it first, using _paint().
      */
-    void paint(CellCanvas &cell_context) const;
+    void paint(CellCanvas& cell_context) const;
 
 public: // signals
     /** Signal invoked when this Widget is asked to handle a Mouse move event. */
@@ -81,11 +60,6 @@ private: // methods
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
 private: // fields
-    /** Reference to a Layout used to 'scissor' this Widget.
-     * An expired weak_ptr is treated like an empty pointer.
-     */
-    std::weak_ptr<Layout> m_scissor_layout;
-
     /** Cell to draw this Widget into. */
     std::shared_ptr<Cell> m_cell;
 

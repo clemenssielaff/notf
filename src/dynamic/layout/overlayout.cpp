@@ -46,26 +46,26 @@ std::shared_ptr<Overlayout> Overlayout::create()
 Overlayout::~Overlayout()
 {
     // explicitly unparent all children so they can send the `parent_changed` signal
-    for (std::shared_ptr<Item>& item : m_items) {
+    for (ItemPtr& item : m_items) {
         child_removed(item->get_id());
         _set_item_parent(item.get(), {});
     }
 }
 
-bool Overlayout::has_item(const std::shared_ptr<Item>& item) const
+bool Overlayout::has_item(const ItemPtr& item) const
 {
     return std::find(m_items.cbegin(), m_items.cbegin(), item) != m_items.cend();
 }
 
 void Overlayout::clear()
 {
-    for (std::shared_ptr<Item>& item : m_items) {
+    for (ItemPtr& item : m_items) {
         child_removed(item->get_id());
     }
     m_items.clear();
 }
 
-void Overlayout::add_item(std::shared_ptr<Item> item)
+void Overlayout::add_item(ItemPtr item)
 {
     if (!item) {
         log_warning << "Cannot add an empty Item pointer to a Layout";
@@ -102,7 +102,7 @@ void Overlayout::add_item(std::shared_ptr<Item> item)
     _redraw();
 }
 
-void Overlayout::remove_item(const std::shared_ptr<Item>& item)
+void Overlayout::remove_item(const ItemPtr& item)
 {
     auto it = std::find(m_items.begin(), m_items.end(), item);
     assert(it != m_items.end());
@@ -129,22 +129,22 @@ void Overlayout::set_padding(const Padding& padding)
     }
 }
 
-bool Overlayout::_update_claim()
+Claim Overlayout::_aggregate_claim()
 {
     Claim new_claim;
-    for (std::shared_ptr<Item>& item : m_items) {
+    for (ItemPtr& item : m_items) {
         if (const ScreenItem* screen_item = get_screen_item(item.get())) {
             new_claim.maxed(screen_item->get_claim());
         }
     }
-    return _set_claim(std::move(new_claim));
+    return new_claim;
 }
 
 void Overlayout::_relayout()
 {
     const Size2f total_size     = get_size();
     const Size2f available_size = {total_size.width - m_padding.width(), total_size.height - m_padding.height()};
-    for (std::shared_ptr<Item>& item : m_items) {
+    for (ItemPtr& item : m_items) {
         ScreenItem* screen_item = get_screen_item(item.get());
         if (!screen_item) {
             continue;
@@ -185,7 +185,7 @@ void Overlayout::_relayout()
 void Overlayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
     // TODO: Overlayout::get_widget_at does not respect transform (only translate)
-    for (const std::shared_ptr<Item>& item : m_items) {
+    for (const ItemPtr& item : m_items) {
         const ScreenItem* screen_item = get_screen_item(item.get());
         if (!screen_item) {
             continue;

@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "common/claim.hpp"
+#include "common/id.hpp"
 #include "common/signal.hpp"
 #include "common/size2.hpp"
 #include "common/xform2.hpp"
@@ -15,20 +16,35 @@
 
 namespace notf {
 
-class Controller;
-class Layout;
-class RenderLayer;
+class Item;
 class ScreenItem;
 class Widget;
+class Layout;
+class Controller;
+
+using ItemPtr       = std::shared_ptr<Item>;
+using ScreenItemPtr = std::shared_ptr<ScreenItem>;
+using WidgetPtr     = std::shared_ptr<Widget>;
+using LayoutPtr     = std::shared_ptr<Layout>;
+using ControllerPtr = std::shared_ptr<Controller>;
+
+using ConstItemPtr       = std::shared_ptr<const Item>;
+using ConstScreenItemPtr = std::shared_ptr<const ScreenItem>;
+using ConstWidgetPtr     = std::shared_ptr<const Widget>;
+using ConstLayoutPtr     = std::shared_ptr<const Layout>;
+using ConstControllerPtr = std::shared_ptr<const Controller>;
+
+class RenderLayer;
 class Window;
 
 /** Unqiue identification token of an Item. */
-using ItemID = size_t;
+using RawID  = size_t;
+using ItemID = Id<Item, RawID>;
 
 /**********************************************************************************************************************/
 
-/* An Item is the base class for everything visual that makes up the UI.
- * It parents to specialized subclasses: Layout and Widgets.
+/* An Item is the base class for all objects in the `Item hierarchy`.
+ * Its three main spezializations are `Widgets`, `Layouts` and `Controllers`.
  *
  * Item Hierarchy
  * ==============
@@ -69,25 +85,41 @@ using ItemID = size_t;
  * automatically stores a fresh reference to the `PyObject` in the `Item` instance, just as the `PyObject` would go out
  * of scope, if (and only if) there is another shared owner of the `Item` at the time of the `PyObjects` deallocation.
  * Effectively, this switches the ownership of the two objects.
+ *
+ * RenderLayer
+ * ===========
+ * By default, it is the Layouts' job to determine the order in which Widgets are drawn on screen.
+ * This will probably suffice for most use cases, is very easy to reason about and fast to compute.
+ * However, we might want to make exceptions to this rule, where an item (for example a tooltip) is logically part of
+ * a nested Layout, but should be drawn on top of everything else.
+ * For that, we have RenderLayers, explicit layers that Item in the hierarchy can be assigned to in order to render
+ * them before or after other parts of the hierarchy have been rendered.
+ * The WindowLayout is part of RenderLayer `zero` which is the default one.
+ * If you set an Item to another RenderLayer (for example `one`) it, and all of its children will be drawn in front of
+ * everything in RenderLayer zero.
+ * Internally, this is done by setting the `m_render_layer` member to point either to a RenderLayer object or be empty,
+ * in which case the Item will simply inherit the parent's RenderLayer and so on.
+ * If you change nothing by hand, all of the pointers (except the one for the root WindowLayout) will be empty and all
+ * Items in the Window's hierachy will be implicit members of the default render layer.
  */
 class Item : public receive_signals, public std::enable_shared_from_this<Item> {
 
-    friend class Controller; // can parent ScreenItems
-    friend class Layout;     // can parent ScreenItems
+    friend class Controller;   // can parent ScreenItems
+    friend class Layout;       // can parent ScreenItems
     friend class WindowLayout; // can set its RenderLayer even though it has no parent
 
-public: // static functions
+public: // static functions *******************************************************************************************/
     /** Returns the ScreenItem associated with a given Item - either the Item itself or a Controller's root Item. */
     static ScreenItem* get_screen_item(Item* item);
 
     /** Returns the ScreenItem associated with a given Item - either the Item itself or a Controller's root Item. */
     static const ScreenItem* get_screen_item(const Item* item) { return get_screen_item(const_cast<Item*>(item)); }
 
-protected: // constructor
+protected: // constructor *********************************************************************************************/
     /** Default Constructor. */
-    explicit Item();
+    Item();
 
-public: // methods
+public: // methods ****************************************************************************************************/
     // no copy / assignment
     Item(const Item&) = delete;
     Item& operator=(const Item&) = delete;
@@ -102,60 +134,58 @@ public: // methods
     bool has_parent() const { return !m_parent.expired(); }
 
     /** Returns the parent Item containing this Item, may be invalid. */
-    std::shared_ptr<const Item> get_parent() const { return m_parent.lock(); }
+    ItemPtr get_parent() const { return m_parent.lock(); }
 
     /** Returns the Layout into which this Item is embedded.
      * The only Item without a Layout is the WindowLayout.
      */
-    std::shared_ptr<const Layout> get_layout() const { return _get_layout(); }
+    LayoutPtr get_layout() const { return _get_layout(); }
 
     /** Returns the Controller managing this Item.
      * The only Item without a Controller is the WindowLayout.
      */
-    std::shared_ptr<const Controller> get_controller() const;
+    ControllerPtr get_controller() const;
 
     /** Tests, if this Item is a descendant of the given `ancestor`.
-     * @param ancestor  Potential ancestor (non-onwing pointer is used for identification only).
+     * @param ancestor  Potential ancestor.
      * @return          True iff `ancestor` is an ancestor of this Item, false otherwise.
      */
-    bool has_ancestor(const Item* ancestor) const;
+    bool has_ancestor(const ItemPtr& ancestor) const;
 
     /** Returns the Window containing this Widget (can be empty). */
     std::shared_ptr<Window> get_window() const;
 
     /** Returns the current RenderLayer of this Item.
-     * The RenderLayer is valid for all Items in the Item hierarchy but empty for those outside.
+     * If `own==false`, the returned RenderLayer is valid if this Item is in the Item hierarchy and invalid if not.
+     * If `own==true`, it is empty if the Item uses its parent's RenderLayer or if it is not part of the Item hierarchy.
+     * @param own   By default, the first valid RenderLayer in the ancestry is returned, if `own==true` the RenderLayer
+     *              of this Item is returned, even if it is empty.
      */
-    const std::shared_ptr<RenderLayer>& get_render_layer() const;
-
-    /** Returns this Item's own RenderLayer.
-     * Is empty if the Item uses its parent's RenderLayer or if it is not part of the Item hierarchy.
-     */
-    const std::shared_ptr<RenderLayer>& get_own_render_layer() const { return m_render_layer; }
+    const std::shared_ptr<RenderLayer>& get_render_layer(bool own = false) const;
 
     /** (Re-)sets the RenderLayer of this Item.
      * Pass an empty shared_ptr to implicitly inherit the RenderLayer from the parent Layout.
-     * If the Item does not have a parent Layout, this method does nothing but print a warning.
+     * If the Item does not have a parent, this method does nothing but print a warning.
      * @param render_layer  New RenderLayer of this Item.
      */
     void set_render_layer(std::shared_ptr<RenderLayer> render_layer);
 
-public: // signals
+public: // signals ****************************************************************************************************/
     /** Emitted when this Item got a new parent.
      * @param ItemID of the new parent.
      */
     Signal<ItemID> parent_changed;
 
-protected: // methods
+protected: // methods *************************************************************************************************/
     /** Returns the Layout into which this Item is embedded as a mutable pointer.
      * The only Item without a Layout is the WindowLayout.
      */
-    std::shared_ptr<Layout> _get_layout() const;
+    LayoutPtr _get_layout() const;
 
     /** Returns the Controller managing this Item as a mutable pointer.
      * The only Item without a Controller is the WindowLayout.
      */
-    std::shared_ptr<Controller> _get_controller() const;
+    ControllerPtr _get_controller() const;
 
     /** Notifies the parent Layout that the Claim of this Item has changed.
      * The change propagates up the Item hierarchy until it reaches the first ancestor, that doesn't need to change its
@@ -178,7 +208,7 @@ protected_except_for_bindings : // methods
 #endif
 
     // clang-format on
-protected: // static methods
+protected: // static methods ******************************************************************************************/
     /** Allows any Item subclass to call `_widgets_at` on any other Item. */
     static void _get_widgets_at_item_pos(const Item* item, const Vector2f& local_pos, std::vector<Widget*>& result)
     {
@@ -195,7 +225,7 @@ private: // methods
      */
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const = 0;
 
-private: // fields
+private: // fields ****************************************************************************************************/
     /** Application-unique ID of this Item. */
     const ItemID m_id;
 

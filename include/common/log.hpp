@@ -153,7 +153,7 @@ public: // methods
      * @param initial_buffer   Initial size of the buffers.
      * @param flush_interval   How often the read- and write-buffers are swapped in milliseconds.
      */
-    explicit LogHandler(size_t initial_buffer, ulong flush_interval);
+    LogHandler(size_t initial_buffer, ulong flush_interval);
 
     /** Logs a new message.
      * Is thread-safe.

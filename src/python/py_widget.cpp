@@ -45,7 +45,7 @@ void produce_widget(pybind11::module& module, py::detail::generic_type Py_Layout
     Py_Widget.def("get_opacity", &Widget::get_opacity, DOCSTR("Returns the opacity of this Item in the range [0 -> 1]."));
     Py_Widget.def("get_size", &Widget::get_size, DOCSTR("Returns the unscaled size of this Item in pixels."));
     //    Py_Widget.def("get_transform", &Widget::get_transform, "Returns this Item's transformation in the given space.", py::arg("space"));
-    Py_Widget.def("get_claim", &Widget::get_claim, DOCSTR("The current Claim of this Widget."));
+    Py_Widget.def("get_claim", &Widget::get_claim, DOCSTR("The current claim of this Widget."));
     Py_Widget.def("get_scissor", &Widget::set_claim, DOCSTR("Returns the Layout used to scissor this Widget."));
     Py_Widget.def("is_visible", &Widget::is_visible, DOCSTR("Checks, if the Item is currently visible."));
 
@@ -53,7 +53,7 @@ void produce_widget(pybind11::module& module, py::detail::generic_type Py_Layout
 
     Py_Widget.def("set_opacity", &Widget::set_opacity, DOCSTR("Sets the opacity of this Widget."), py::arg("opacity"));
     Py_Widget.def("set_scissor", &Widget::set_claim, DOCSTR("Sets the new scissor Layout for this Widget."), py::arg("scissor"));
-    Py_Widget.def("set_claim", &Widget::set_claim, DOCSTR("Sets a new Claim for this Widget."), py::arg("claim"));
+    Py_Widget.def("set_claim", &Widget::set_claim, DOCSTR("Sets a new claim for this Widget."), py::arg("claim"));
 
     Py_Widget.def("redraw", &Widget::redraw, DOCSTR("Tells the Window that its contents need to be redrawn."));
     Py_Widget.def("paint", &Widget::paint, DOCSTR("Paints this Widget onto the screen."), py::arg("painter"));

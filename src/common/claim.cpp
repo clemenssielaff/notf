@@ -118,6 +118,22 @@ void Claim::set_width_to_height(const float ratio_min, const float ratio_max)
     m_ratios = std::make_pair(min_ratio, Ratio(ratio_max));
 }
 
+Claim Claim::fixed(float width, float height)
+{
+    Claim::Stretch horizontal, vertical;
+    horizontal.set_fixed(width);
+    vertical.set_fixed(height);
+    return {horizontal, vertical};
+}
+
+Claim Claim::zero()
+{
+    Claim::Stretch horizontal, vertical;
+    horizontal.set_fixed(0);
+    vertical.set_fixed(0);
+    return {horizontal, vertical};
+}
+
 std::ostream& operator<<(std::ostream& out, const Claim::Stretch& stretch)
 {
     return out << string_format(

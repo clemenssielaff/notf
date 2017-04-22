@@ -36,6 +36,7 @@ ScrollArea::ScrollArea()
 void ScrollArea::_initialize()
 {
     m_area_layout = Overlayout::create();
+    m_area_layout->set_claim(Claim());
 
     m_vscrollbar = std::make_shared<ScrollBar>(*this);
 
@@ -45,7 +46,7 @@ void ScrollArea::_initialize()
     _set_root_item(m_main_layout);
 }
 
-void ScrollArea::set_area_controller(std::shared_ptr<Controller> controller)
+void ScrollArea::set_area_controller(ControllerPtr controller)
 {
     controller->initialize(); // TODO: maybe initialize when you add a controller somewhere?
     if (!controller->get_root_item()) {

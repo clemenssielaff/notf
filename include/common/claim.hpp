@@ -65,13 +65,20 @@ public: // class
         float get_max() const { return m_max; }
 
         /** Tests if this Stretch is a fixed size where all 3 values are the same. */
-        bool is_fixed() const { return m_preferred == approx(m_min) && m_preferred == approx(m_max); }
+        bool is_fixed() const
+        {
+            return abs(m_preferred - m_min) < precision_high<float>()
+                && abs(m_preferred - m_max) < precision_high<float>();
+        }
 
         /** Returns the scale factor. */
         float get_scale_factor() const { return m_scale_factor; }
 
         /** Returns the scale priority. */
         int get_priority() const { return m_priority; }
+
+        /** Test if this stretch is always zero. */
+        bool is_zero() const { return is_fixed() && m_max < precision_high<float>(); }
 
         /** Sets a new preferred size, accomodates both the min and max size if necessary.
          * @param preferred    Preferred size, must be 0 <= size < INFINITY.
@@ -102,7 +109,7 @@ public: // class
         /** Adds an offset to the min, max and preferred value.
          * The offset can be negative.
          * Fields are truncated to be >= 0, invalid values are ignored.
-         * Useful, for example, if you want to add a fixed "spacing" to the claim of a Layout.
+         * Useful, for example, if you want to add a fixed "spacing" to the Claim of a Layout.
          */
         void add_offset(const float offset);
 
@@ -235,13 +242,24 @@ private: // class
         float m_height;
     };
 
-public: // methods
-    explicit Claim() = default;
+public: // methods ****************************************************************************************************/
+    Claim() = default;
 
     Claim(Claim::Stretch horizontal, Claim::Stretch vertical)
         : m_horizontal(std::move(horizontal)), m_vertical(std::move(vertical)), m_ratios() {}
 
     Claim(const Claim& other) = default;
+
+public: // static methods *********************************************************************************************/
+    /** Returns a Claim with fixed height and width. */
+    static Claim fixed(float width, float height);
+
+    /** Returns a Claim with all limits set to zero. */
+    static Claim zero();
+
+public: // methods ****************************************************************************************************/
+    /** Tests if both Stretches of this Claim are always zero. */
+    bool is_zero() const { return m_horizontal.is_zero() && m_vertical.is_zero(); }
 
     /** Returns the horizontal part of this Claim. */
     Stretch& get_horizontal() { return m_horizontal; }

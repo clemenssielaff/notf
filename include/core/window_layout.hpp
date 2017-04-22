@@ -53,7 +53,7 @@ public: // methods
     virtual ~WindowLayout() override;
 
     /** Tests if a given Item is a child of this Item. */
-    bool has_item(const std::shared_ptr<Item>& item) const;
+    bool has_item(const ItemPtr& item) const;
 
     /** Checks if this Layout is empty or not. */
     bool is_empty() const { return m_controller.get() == nullptr; }
@@ -62,12 +62,12 @@ public: // methods
     void clear();
 
     /** Sets a new Controller for the WindowLayout. */
-    void set_controller(std::shared_ptr<Controller> controller);
+    void set_controller(ControllerPtr controller);
 
     /** Removes a single Item from this Layout.
      * Does nothing, if the Item is not a child of this Layout.
      */
-    virtual void remove_item(const std::shared_ptr<Item>& item) override;
+    virtual void remove_item(const ItemPtr& item) override;
 
     /** Returns an iterator that goes over all Items in this Layout in order from back to front. */
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
@@ -82,19 +82,19 @@ public: // methods
     std::vector<Widget*> get_widgets_at(const Vector2f& screen_pos) const;
 
 protected: // methods
-    virtual bool _update_claim() override { return false; }
-
     virtual void _relayout() override;
 
 private: // methods
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
+
+    virtual Claim _aggregate_claim() override;
 
 private: // fields
     /** The Window containing this WindowLayout. */
     Window* m_window;
 
     /** The Window Controller. */
-    std::shared_ptr<Controller> m_controller;
+    ControllerPtr m_controller;
 };
 
 } // namespace notf

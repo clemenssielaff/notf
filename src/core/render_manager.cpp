@@ -124,7 +124,7 @@ void RenderManager::_iterate_item_hierarchy(const ScreenItem* screen_item, Rende
     }
 
     // implicit use of the parent's render layer
-    RenderLayer* current_layer = screen_item->get_own_render_layer().get();
+    RenderLayer* current_layer = screen_item->get_render_layer(true).get();
     if (!current_layer) {
         current_layer = parent_layer;
     }

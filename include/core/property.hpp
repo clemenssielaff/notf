@@ -66,7 +66,7 @@ public: // methods
 class AbstractProperty : public receive_signals {
 
 protected: // methods
-    explicit AbstractProperty(const PropertyMap::iterator iterator)
+    AbstractProperty(const PropertyMap::iterator iterator)
         : m_it(iterator)
     {
     }

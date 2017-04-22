@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <type_traits>
 
 namespace notf {
@@ -11,7 +12,7 @@ namespace notf {
 template <typename Type, typename underlying_type,
           typename = std::enable_if_t<std::is_integral<underlying_type>::value>>
 struct Id {
-    using type_t = Type;
+    using type_t       = Type;
     using underlying_t = underlying_type;
 
     /** Invalid Id. */
@@ -35,21 +36,31 @@ struct Id {
     template <typename Other, typename = std::enable_if_t<std::is_same<typename Other::type_t, type_t>::value>>
     bool operator!=(const Other& rhs) const { return id != rhs.id; }
 
+    bool operator!=(const underlying_t& rhs) const { return id != rhs; }
+
     /** Lesser-then operator. */
     template <typename Other, typename = std::enable_if_t<std::is_same<typename Other::type_t, type_t>::value>>
     bool operator<(const Other& rhs) const { return id < rhs.id; }
+
+    bool operator<(const underlying_t& rhs) const { return id < rhs; }
 
     /** Lesser-or-equal-then operator. */
     template <typename Other, typename = std::enable_if_t<std::is_same<typename Other::type_t, type_t>::value>>
     bool operator<=(const Other& rhs) const { return id <= rhs.id; }
 
+    bool operator<=(const underlying_t& rhs) const { return id <= rhs; }
+
     /** Greater-then operator. */
     template <typename Other, typename = std::enable_if_t<std::is_same<typename Other::type_t, type_t>::value>>
     bool operator>(const Other& rhs) const { return id > rhs.id; }
 
+    bool operator>(const underlying_t& rhs) const { return id > rhs; }
+
     /** Greater-or-equal-then operator. */
     template <typename Other, typename = std::enable_if_t<std::is_same<typename Other::type_t, type_t>::value>>
     bool operator>=(const Other& rhs) const { return id >= rhs.id; }
+
+    bool operator>=(const underlying_t& rhs) const { return id >= rhs; }
 
     /** Checks if this Id is valid or not. */
     explicit operator bool() const { return id != INVALID; }
@@ -58,7 +69,18 @@ struct Id {
     explicit operator underlying_type() const { return id; }
 
     /** Identifier value of this instance. */
-    underlying_type id;
+    const underlying_type id;
 };
+
+/** Prints the contents of an Id into a std::ostream.
+ * @param os   Output stream, implicitly passed with the << operator.
+ * @param id   Id to print.
+ * @return Output stream for further output.
+ */
+template <typename Type, typename underlying_type>
+std::ostream& operator<<(std::ostream& out, const Id<Type, underlying_type>& id)
+{
+    return out << id.id;
+}
 
 } // namespace notf

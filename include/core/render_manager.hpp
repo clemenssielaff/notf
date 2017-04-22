@@ -39,12 +39,12 @@ class RenderManager {
 
 public: // methods
     /** Constructor */
-    explicit RenderManager(const Window* window);
+    RenderManager(const Window* window);
 
     /** Destructor. */
     ~RenderManager();
 
-    /** Checks, whether there are any LayoutItems that need to be redrawn. */
+    /** Checks, whether there are any ScreenItems that need to be redrawn. */
     bool is_clean() const { return m_is_clean; }
 
     /** Returns the default RenderLayer that always exists. */

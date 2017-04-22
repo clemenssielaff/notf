@@ -53,7 +53,7 @@ PyObject* produce_pynotf_module()
     produce_signals(module);
     produce_properties(module);
 
-    py::class_<Item, std::shared_ptr<Item>> Py_Item(module, "_Item");
+    py::class_<Item, ItemPtr> Py_Item(module, "_Item");
     produce_controller(module, Py_Item);
 
     py::class_<LayoutItem, std::shared_ptr<LayoutItem>> Py_LayoutItem(module, "_LayoutItem", Py_Item);

@@ -94,7 +94,7 @@ public: // methods
     virtual ~StackLayout() override;
 
     /** Tests if a given Item is a child of this Item. */
-    bool has_item(const std::shared_ptr<Item>& item) const;
+    bool has_item(const ItemPtr& item) const;
 
     /** Checks if this Layout is empty or not. */
     bool is_empty() const { return m_items.empty(); }
@@ -105,12 +105,12 @@ public: // methods
     /** Adds a new Item into the Layout.
      * @param item  Item to place at the end of the Layout. If the item is already a child, it is moved to the end.
      */
-    void add_item(std::shared_ptr<Item> item);
+    void add_item(ItemPtr item);
 
     /** Removes a single Item from this Layout.
      * Does nothing, if the Item is not a child of this Layout.
      */
-    virtual void remove_item(const std::shared_ptr<Item>& item) override;
+    virtual void remove_item(const ItemPtr& item) override;
 
     /** Returns an iterator that goes over all Items in this Layout in order from back to front. */
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
@@ -167,7 +167,7 @@ public: // methods
     void set_cross_spacing(float spacing);
 
 protected: // methods
-    virtual bool _update_claim() override;
+    virtual Claim _aggregate_claim() override;
 
     virtual void _relayout() override;
 
@@ -209,7 +209,7 @@ private: // fields
     float m_cross_spacing;
 
     /** All items in this Layout in order from back to front. */
-    std::vector<std::shared_ptr<Item>> m_items;
+    std::vector<ItemPtr> m_items;
 };
 
 } // namespace notf
