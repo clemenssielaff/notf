@@ -20,7 +20,7 @@ namespace notf {
  *  [e, f, 1]]
  */
 template <typename Real, ENABLE_IF_REAL(Real)>
-struct _Xform2 { // TODO: _Xform2::translate / ::rotate
+struct _Xform2 {
 
     /* Types **********************************************************************************************************/
 
@@ -146,6 +146,12 @@ struct _Xform2 { // TODO: _Xform2::translate / ::rotate
     }
 
     /** Modifiers *****************************************************************************************************/
+
+    /** Translates the transformation in-place by a given delta vector. */
+    _Xform2& translate(const Vector_t& delta) { return premult(_Xform2::translation(delta)); }
+
+    /** Rotates the transformation in-place by a given angle in radians. */
+    _Xform2& rotate(const Value_t radians) { return premult(_Xform2::rotation(radians)); }
 
     /** Multiplication of this Matrix with another. */
     _Xform2 operator*(const _Xform2& other) const

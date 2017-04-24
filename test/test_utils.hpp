@@ -10,7 +10,7 @@ namespace detail {
 
 /** The largest screen diagonale that you can reasonably expect NoTF to encounter.
  * The value is based on the 8K fulldome format (8192 × 8192) used for planetaria...
- * It is higher than the theatric 8K resolution (10240 × 4320) and over twice as much as the normal 8K (7680 × 4320).
+ * It is higher than the theatric 8K resolution (10240 × 4320) and over twice as much as normal 8K (7680 × 4320).
  */
 constexpr long double largest_supported_diagonale() { return 11585.2375029603946397834340287258466596427520030879586l; }
 
@@ -60,4 +60,9 @@ inline _Xform2<Real> random_xform2(const Real min_trans, const Real max_trans, c
     return result;
 }
 
+template <typename Real>
+inline _Xform2<Real> random_xform2()
+{
+    return random_xform2(lowest_tested<Real>(), highest_tested<Real>(), Real(0), Real(2));
+}
 } // namespace notf
