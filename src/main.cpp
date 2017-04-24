@@ -86,7 +86,6 @@ public: // methods
     virtual void _initialize() override
     {
         StackLayoutPtr stack_layout = StackLayout::create(StackLayout::Direction::LEFT_TO_RIGHT);
-        stack_layout->set_padding(Padding::all(20));
         stack_layout->set_spacing(10);
         stack_layout->set_cross_spacing(10);
         stack_layout->set_wrap(StackLayout::Wrap::WRAP);
@@ -131,28 +130,23 @@ private: // fields
     std::shared_ptr<Window> m_window;
 };
 
-//int main(int argc, char* argv[])
-//{
-//    ApplicationInfo app_info;
-//    app_info.argc         = argc;
-//    app_info.argv         = argv;
-//    app_info.enable_vsync = false;
-//    Application& app      = Application::initialize(app_info);
+int main(int argc, char* argv[])
+{
+    ApplicationInfo app_info;
+    app_info.argc         = argc;
+    app_info.argv         = argv;
+    app_info.enable_vsync = false;
+    Application& app      = Application::initialize(app_info);
 
-//    // window
-//    WindowInfo window_info;
-//    window_info.icon          = "notf.png";
-//    window_info.size          = {800, 600};
-//    window_info.clear_color   = Color("#262a32");
-//    window_info.is_resizeable = true;
-//    auto window               = Window::create(window_info);
+    // window
+    WindowInfo window_info;
+    window_info.icon          = "notf.png";
+    window_info.size          = {800, 600};
+    window_info.clear_color   = Color("#262a32");
+    window_info.is_resizeable = true;
+    auto window               = Window::create(window_info);
 
-//    //    ScrollAreaPtr scroll_area = std::make_shared<ScrollArea>();
-//    //    ControllerPtr controller  = std::make_shared<StackController>(window);
-//    //    window->get_layout()->set_controller(scroll_area);
-//    //    scroll_area->set_area_controller(controller);
+    window->get_layout()->set_controller(std::make_shared<MainController>(window));
 
-//    window->get_layout()->set_controller(std::make_shared<MainController>(window));
-
-//    return app.exec();
-//}
+    return app.exec();
+}

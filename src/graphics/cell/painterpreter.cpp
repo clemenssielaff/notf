@@ -861,7 +861,7 @@ void Painterpreter::_fill()
     }
 
     CellCanvas::ShaderVariables& fill_uniforms = create_back(m_canvas.m_shader_variables);
-    paint_to_frag(fill_uniforms, fill_paint, state.scissor, fringe_width, fringe_width, -1.0f);
+    paint_to_frag(fill_uniforms, fill_paint, state.scissor, fringe_width, fringe_width > 0 ? fringe_width : 1, -1.0f);
 }
 
 void Painterpreter::_stroke()

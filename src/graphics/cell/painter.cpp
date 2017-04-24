@@ -59,7 +59,7 @@ Painter::Painter(CellCanvas& canvas, const Widget* widget)
 {
     if (LayoutPtr scissor_layout = widget->get_scissor()) {
         m_base_scissor.xform  = m_base_transform;
-        m_base_scissor.extend = scissor_layout->get_size();
+        m_base_scissor.extend = scissor_layout->get_size() * 2; // TODO: fix this in the shader
     }
 
     s_states.clear();

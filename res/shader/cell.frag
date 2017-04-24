@@ -63,7 +63,6 @@ void main(void) {
     }
 #endif
 
-    float scissor = scissorMask(vertex_pos);
     mat3x2 paintMat = mat3x2(paintRot, paintTrans);
 
     // Gradient
@@ -71,25 +70,14 @@ void main(void) {
         // Calculate gradient color using box gradient
         vec2 pt = (paintMat * vec3(vertex_pos, 1.0)).xy;
         float d = clamp((sdroundrect(pt, extent, radius) + feather*0.5) / feather, 0.0, 1.0);
-        vec4 color = mix(innerCol,outerCol,d);
-
-        // Combine alpha
-        color *= strokeAlpha * scissor;
-        result = color;
+        result = mix(innerCol,outerCol,d) * strokeAlpha;
     }
 
     // Image
     else if (type == 1) {
         // Calculate color from texture
         vec2 pt = (paintMat * vec3(vertex_pos, 1.0)).xy / extent;
-        vec4 color = texture(image, pt);
-
-        // Apply color tint and alpha.
-        color *= innerCol;
-
-        // Combine alpha
-        color *= strokeAlpha * scissor;
-        result = color;
+        result = texture(image, pt) * innerCol * strokeAlpha;
     }
 
     // Stencil fill
@@ -106,5 +94,8 @@ void main(void) {
     else {
         result = vec4(0, 0, 0, 1);
     }
+
+    // apply scissor
+    result *= scissorMask(vertex_pos);
 }
 //)====="; // footer, required to read the file into NoTF at compile time
