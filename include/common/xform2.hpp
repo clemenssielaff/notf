@@ -20,7 +20,7 @@ namespace notf {
  *  [e, f, 1]]
  */
 template <typename Real, ENABLE_IF_REAL(Real)>
-struct _Xform2 {
+struct _Xform2 { // TODO: _Xform2::translate / ::rotate
 
     /* Types **********************************************************************************************************/
 

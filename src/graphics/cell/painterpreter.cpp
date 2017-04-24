@@ -1134,15 +1134,15 @@ void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const 
         frag.scissor_scale[1]  = 1.0f;
     }
     else {
-        const Xform2f xinv     = paint.xform.get_inverse();
+        const Xform2f xinv     = scissor.xform.get_inverse();
         frag.scissor_2x2[0]    = xinv[0][0];
         frag.scissor_2x2[1]    = xinv[0][1];
         frag.scissor_2x2[2]    = xinv[1][0];
         frag.scissor_2x2[3]    = xinv[1][1];
         frag.scissor_trans[0]  = xinv[2][0];
         frag.scissor_trans[1]  = xinv[2][1];
-        frag.scissor_extent[0] = scissor.extend.width / 2;
-        frag.scissor_extent[1] = scissor.extend.height / 2;
+        frag.scissor_extent[0] = scissor.extend.width;
+        frag.scissor_extent[1] = scissor.extend.height;
         frag.scissor_scale[0]  = sqrt(scissor.xform[0][0] * scissor.xform[0][0] + scissor.xform[1][0] * scissor.xform[1][0]) / fringe;
         frag.scissor_scale[1]  = sqrt(scissor.xform[0][1] * scissor.xform[0][1] + scissor.xform[1][1] * scissor.xform[1][1]) / fringe;
     }
