@@ -7,24 +7,27 @@ R"=====(
 #endif
 
 layout(std140) uniform variables {
-    mat3 scissorMat;
-    mat3 paintMat;
-    vec4 innerCol;
-    vec4 outerCol;
+    vec4 paintRot;
+    vec4 scissorRot;
+    vec2 paintTrans;
+    vec2 scissorTrans;
     vec2 scissorExt;
     vec2 scissorScale;
+    vec4 innerCol;
+    vec4 outerCol;
     vec2 extent;
     float radius;
     float feather;
     float strokeMult;
     float strokeThr;
     int type;
+    float _padding;
 };
+
 uniform sampler2D image;
 in vec2 tex_coord;
 in vec2 vertex_pos;
 out vec4 result; // fragment color
-
 
 float sdroundrect(vec2 pt, vec2 ext, float rad) {
     vec2 ext2 = ext - vec2(rad,rad);
@@ -34,6 +37,7 @@ float sdroundrect(vec2 pt, vec2 ext, float rad) {
 
 // Scissoring
 float scissorMask(vec2 p) {
+    mat3x2 scissorMat = mat3x2(scissorRot, scissorTrans);
     vec2 sc = (abs((scissorMat * vec3(p,1.0)).xy) - scissorExt);
     sc = vec2(0.5,0.5) - sc * scissorScale;
     return clamp(sc.x,0.,1.) * clamp(sc.y,0.,1.);
@@ -47,8 +51,6 @@ float scissorMask(vec2 p) {
 #endif
 
 void main(void) {
-    float scissor = scissorMask(vertex_pos);
-
 #ifdef GEOMETRY_AA
     float strokeAlpha = strokeMask();
 #else
@@ -61,10 +63,13 @@ void main(void) {
     }
 #endif
 
+    float scissor = scissorMask(vertex_pos);
+    mat3x2 paintMat = mat3x2(paintRot, paintTrans);
+
     // Gradient
     if (type == 0) {
         // Calculate gradient color using box gradient
-        vec2 pt = (paintMat * vec3(vertex_pos,1.0)).xy;
+        vec2 pt = (paintMat * vec3(vertex_pos, 1.0)).xy;
         float d = clamp((sdroundrect(pt, extent, radius) + feather*0.5) / feather, 0.0, 1.0);
         vec4 color = mix(innerCol,outerCol,d);
 
@@ -76,7 +81,7 @@ void main(void) {
     // Image
     else if (type == 1) {
         // Calculate color from texture
-        vec2 pt = (paintMat * vec3(vertex_pos,1.0)).xy / extent;
+        vec2 pt = (paintMat * vec3(vertex_pos, 1.0)).xy / extent;
         vec4 color = texture(image, pt);
 
         // Apply color tint and alpha.
@@ -89,7 +94,7 @@ void main(void) {
 
     // Stencil fill
     else if (type == 2) {
-        result = vec4(1,1,1,1);
+        result = vec4(1, 1, 1, 1);
     }
 
     // Text
@@ -99,7 +104,7 @@ void main(void) {
 
     // Error
     else {
-        result = vec4(0,0,0,1);
+        result = vec4(0, 0, 0, 1);
     }
 }
 //)====="; // footer, required to read the file into NoTF at compile time

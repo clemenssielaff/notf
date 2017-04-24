@@ -88,7 +88,7 @@ private: // classes
 
     /******************************************************************************************************************/
 
-    struct alignas(8) ShaderVariables {
+    struct ShaderVariables {
         enum class Type : GLint {
             GRADIENT = 0,
             IMAGE    = 1,
@@ -96,38 +96,21 @@ private: // classes
             TEXT     = 3,
         };
 
-        ShaderVariables() // we'll see if we need this initialization to zero at all
-            : innerCol(),
-              outerCol(),
-              radius{0},
-              feather{0},
-              strokeMult{0},
-              strokeThr{0},
-              type{Type::STENCIL}
-        {
-            for (auto i = 0; i < 12; ++i) {
-                scissorMat[i] = 0;
-                paintMat[i]   = 0;
-            }
-            for (auto i = 0; i < 2; ++i) {
-                scissorExt[i]   = 0;
-                scissorScale[i] = 0;
-                extent[i]       = 0;
-            }
-        }
-
-        float scissorMat[12]; // matrices are actually 3 vec4s
-        float paintMat[12];
-        Color innerCol;
-        Color outerCol;
-        float scissorExt[2];
-        float scissorScale[2];
-        float extent[2];
+        float paint_2x2[4];
+        float scissor_2x2[4];
+        float paint_trans[2];
+        float scissor_trans[2];
+        float scissor_extent[2];
+        float scissor_scale[2];
+        Color inner_color;
+        Color outer_color;
+        float paint_extent[2];
         float radius;
         float feather;
-        float strokeMult;
-        float strokeThr;
+        float stroke_factor;
+        float stroke_threshold;
         Type type;
+        float _padding;
     };
 
     friend void paint_to_frag(ShaderVariables& frag, const Paint& paint, const Scissor& scissor,

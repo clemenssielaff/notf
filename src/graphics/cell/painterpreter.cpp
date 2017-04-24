@@ -10,26 +10,6 @@
 #include "graphics/texture2.hpp"
 #include "graphics/vertex.hpp"
 
-namespace { // anonymous
-using namespace notf;
-void xformToMat3x4(float* m3, Xform2f t)
-{
-    m3[0]  = t[0][0];
-    m3[1]  = t[0][1];
-    m3[2]  = 0.0f;
-    m3[3]  = 0.0f;
-    m3[4]  = t[1][0];
-    m3[5]  = t[1][1];
-    m3[6]  = 0.0f;
-    m3[7]  = 0.0f;
-    m3[8]  = t[2][0];
-    m3[9]  = t[2][1];
-    m3[10] = 1.0f;
-    m3[11] = 0.0f;
-}
-
-} // namespace anonymous
-
 namespace notf {
 
 void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
@@ -876,7 +856,7 @@ void Painterpreter::_fill()
     if (render_call.type == CellCanvas::Call::Type::FILL) {
         // create an additional uniform buffer for a simple shader for the stencil
         CellCanvas::ShaderVariables& stencil_uniforms = create_back(m_canvas.m_shader_variables);
-        stencil_uniforms.strokeThr                    = -1;
+        stencil_uniforms.stroke_threshold             = -1;
         stencil_uniforms.type                         = CellCanvas::ShaderVariables::Type::STENCIL;
     }
 
@@ -1139,27 +1119,39 @@ void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const 
 {
     assert(fringe > 0);
 
-    frag.innerCol = paint.inner_color.premultiplied();
-    frag.outerCol = paint.outer_color.premultiplied();
+    frag.inner_color = paint.inner_color.premultiplied();
+    frag.outer_color = paint.outer_color.premultiplied();
     if (scissor.extend.width < 1.0f || scissor.extend.height < 1.0f) { // extend cannot be less than a pixel
-        frag.scissorExt[0]   = 1.0f;
-        frag.scissorExt[1]   = 1.0f;
-        frag.scissorScale[0] = 1.0f;
-        frag.scissorScale[1] = 1.0f;
+        frag.scissor_2x2[0]    = 0;
+        frag.scissor_2x2[1]    = 0;
+        frag.scissor_2x2[2]    = 0;
+        frag.scissor_2x2[3]    = 0;
+        frag.scissor_trans[0]  = 0;
+        frag.scissor_trans[1]  = 0;
+        frag.scissor_extent[0] = 1.0f;
+        frag.scissor_extent[1] = 1.0f;
+        frag.scissor_scale[0]  = 1.0f;
+        frag.scissor_scale[1]  = 1.0f;
     }
     else {
-        xformToMat3x4(frag.scissorMat, scissor.xform.get_inverse());
-        frag.scissorExt[0]   = scissor.extend.width / 2;
-        frag.scissorExt[1]   = scissor.extend.height / 2;
-        frag.scissorScale[0] = sqrt(scissor.xform[0][0] * scissor.xform[0][0] + scissor.xform[1][0] * scissor.xform[1][0]) / fringe;
-        frag.scissorScale[1] = sqrt(scissor.xform[0][1] * scissor.xform[0][1] + scissor.xform[1][1] * scissor.xform[1][1]) / fringe;
+        const Xform2f xinv     = paint.xform.get_inverse();
+        frag.scissor_2x2[0]    = xinv[0][0];
+        frag.scissor_2x2[1]    = xinv[0][1];
+        frag.scissor_2x2[2]    = xinv[1][0];
+        frag.scissor_2x2[3]    = xinv[1][1];
+        frag.scissor_trans[0]  = xinv[2][0];
+        frag.scissor_trans[1]  = xinv[2][1];
+        frag.scissor_extent[0] = scissor.extend.width / 2;
+        frag.scissor_extent[1] = scissor.extend.height / 2;
+        frag.scissor_scale[0]  = sqrt(scissor.xform[0][0] * scissor.xform[0][0] + scissor.xform[1][0] * scissor.xform[1][0]) / fringe;
+        frag.scissor_scale[1]  = sqrt(scissor.xform[0][1] * scissor.xform[0][1] + scissor.xform[1][1] * scissor.xform[1][1]) / fringe;
     }
-    frag.extent[0]  = paint.extent.width;
-    frag.extent[1]  = paint.extent.height;
-    frag.strokeMult = (stroke_width * 0.5f + fringe * 0.5f) / fringe;
-    frag.strokeThr  = stroke_threshold;
-    frag.radius     = paint.radius;
-    frag.feather    = paint.feather;
+    frag.paint_extent[0]  = paint.extent.width;
+    frag.paint_extent[1]  = paint.extent.height;
+    frag.stroke_factor    = (stroke_width * 0.5f + fringe * 0.5f) / fringe;
+    frag.stroke_threshold = stroke_threshold;
+    frag.radius           = paint.radius;
+    frag.feather          = paint.feather;
 
     if (paint.texture) {
         frag.type = CellCanvas::ShaderVariables::Type::IMAGE;
@@ -1167,7 +1159,14 @@ void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const 
     else { // no image
         frag.type = CellCanvas::ShaderVariables::Type::GRADIENT;
     }
-    xformToMat3x4(frag.paintMat, paint.xform.get_inverse());
+
+    const Xform2f xinv  = paint.xform.get_inverse();
+    frag.paint_2x2[0]   = xinv[0][0];
+    frag.paint_2x2[1]   = xinv[0][1];
+    frag.paint_2x2[2]   = xinv[1][0];
+    frag.paint_2x2[3]   = xinv[1][1];
+    frag.paint_trans[0] = xinv[2][0];
+    frag.paint_trans[1] = xinv[2][1];
 }
 
 } // namespace notf
