@@ -11,8 +11,8 @@
 #include "core/window_layout.hpp"
 #include "graphics/cell/cell_canvas.hpp"
 #include "graphics/gl_errors.hpp"
-#include "graphics/raw_image.hpp"
 #include "graphics/graphics_context.hpp"
+#include "graphics/raw_image.hpp"
 
 namespace notf {
 
@@ -69,13 +69,15 @@ Window::Window(const WindowInfo& info)
 
     GraphicsContextOptions context_args;
     context_args.pixel_ratio = static_cast<float>(get_buffer_size().width) / static_cast<float>(get_window_size().width);
-    m_graphics_context         = std::make_unique<GraphicsContext>(this, context_args);
+    m_graphics_context       = std::make_unique<GraphicsContext>(this, context_args);
 
     m_cell_context = std::make_unique<CellCanvas>(*m_graphics_context);
 
     // apply the Window icon
-    // In order to remove leftover icons on Ubuntu call:
-    // rm ~/.local/share/applications/notf.desktop; rm ~/.local/share/icons/notf.png
+    // In order to show the icon in Ubuntu 16.04 is as bit more complicated:
+    // 1. start the software
+    // 2. copy the icon to ~/.local/share/icons/hicolor/<resolution>/apps/<yourapp>
+    // 3. modify the file ~/.local/share/applications/<yourapp>, in particular the line Icon=<yourapp>
     if (!info.icon.empty()) {
         const std::string icon_path = app.get_resource_manager().get_texture_directory() + info.icon;
         try {
@@ -96,7 +98,6 @@ Window::Window(const WindowInfo& info)
 
 std::shared_ptr<Window> Window::create(const WindowInfo& info)
 {
-
     std::shared_ptr<Window> window = std::make_shared<make_shared_enabler>(info);
     if (get_gl_error()) {
         exit(to_number(Application::RETURN_CODE::OPENGL_FAILURE));
@@ -206,6 +207,8 @@ void Window::_on_resize(int width, int height)
 
 void Window::_propagate_mouse_event(MouseEvent&& event)
 {
+    // TODO: I suspect mouse event propagation is suboptimal - also, it doesn't propagate up the hierarchy!
+
     // sort Widgets by render RenderLayers
     std::vector<std::vector<Widget*>> widgets_by_layer;
     for (Widget* widget : m_layout->get_widgets_at(event.window_pos)) {
@@ -241,6 +244,19 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
                 }
             }
         }
+    }
+    else if (event.action == MouseAction::SCROLL) {
+        for (const auto& layer : widgets_by_layer) {
+            for (const auto& widget : layer) {
+                widget->on_scroll(event);
+                if (event.was_handled()) {
+                    return;
+                }
+            }
+        }
+    }
+    else {
+        assert(0);
     }
 }
 

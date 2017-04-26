@@ -169,6 +169,7 @@ enum class MouseAction : unsigned char {
     RELEASE = 0,
     PRESS,
     MOVE,
+    SCROLL,
 };
 
 /** Modifier keys.

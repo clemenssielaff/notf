@@ -26,8 +26,11 @@ KeyModifiers g_key_modifiers;
 /** The current state of all mouse buttons. */
 ButtonStateSet g_button_states;
 
-/** Last recorded position of the mouse (relative to the last focused Window). */
-Vector2f g_mouse_pos = Vector2f::zero();
+/** Current position of the mouse cursor in screen coordinates. */
+Vector2f g_cursor_pos;
+
+/** Previous position of the mouse cursor in screen coordinates. */
+Vector2f g_prev_cursor_pos;
 
 } // namespace anonymous
 
@@ -130,7 +133,7 @@ int Application::exec()
             next_frame     = next_interval(now.ticks, ticks_per_frame);
         }
 
-//#ifdef _DEBUG
+        //#ifdef _DEBUG
         { // print debug stats
             static Time last_frame    = Time::now();
             static Time time_counter  = 0;
@@ -148,15 +151,15 @@ int Application::exec()
                 time_counter -= Time::frequency();
             }
         }
-//#endif
+        //#endif
 
         // wait for the next event or the next time to fire an animation frame
-//        if (m_info.fps == 0) {
-//            glfwWaitEvents();
-//        }
-//        else {
-//            glfwWaitEventsTimeout((next_frame > now.ticks ? next_frame - now.ticks : 0) / static_cast<double>(Time::frequency()));
-//        }
+        //        if (m_info.fps == 0) {
+        //            glfwWaitEvents();
+        //        }
+        //        else {
+        //            glfwWaitEventsTimeout((next_frame > now.ticks ? next_frame - now.ticks : 0) / static_cast<double>(Time::frequency()));
+        //        }
         glfwPollEvents();
     }
 
@@ -191,6 +194,31 @@ void Application::_on_token_key(GLFWwindow* glfw_window, int key, int scancode, 
     window->on_token_key(key_event);
 }
 
+void Application::_on_char_input(GLFWwindow* /*glfw_window*/, uint /*codepoint*/, int /*modifiers*/)
+{
+    // TODO: character input events
+}
+
+void Application::_on_cursor_entered(GLFWwindow* glfw_window, int entered)
+{
+    assert(glfw_window);
+    Window* window_raw = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    assert(window_raw);
+    std::shared_ptr<Window> window = window_raw->shared_from_this();
+    if (!window) {
+        log_critical << "Received '_on_cursor_entered' Callback for unknown GLFW window";
+        return;
+    }
+
+    // emit the appropriate signal
+    if (entered) {
+        window->on_cursor_entered(*window_raw);
+    }
+    else {
+        window->on_cursor_exited(*window_raw);
+    }
+}
+
 void Application::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
 {
     assert(glfw_window);
@@ -202,11 +230,24 @@ void Application::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
         return;
     }
 
-    // update the global state
-    g_mouse_pos = {static_cast<float>(x), static_cast<float>(y)};
+    { // update the global state
+        g_prev_cursor_pos = g_cursor_pos;
+
+        Vector2i window_pos;
+        glfwGetWindowPos(glfw_window, &window_pos.x, &window_pos.y);
+        g_cursor_pos.x = static_cast<int>(static_cast<double>(window_pos.x) + x);
+        g_cursor_pos.y = static_cast<int>(static_cast<double>(window_pos.y) + y);
+    }
 
     // propagate the event
-    MouseEvent mouse_event(window.get(), g_mouse_pos, Button::NONE, MouseAction::MOVE, g_key_modifiers, g_button_states);
+    MouseEvent mouse_event(
+        window.get(),
+        {static_cast<float>(x), static_cast<float>(y)}, // event position in window coordinates
+        g_cursor_pos - g_prev_cursor_pos,               // delta in window coordinates
+        Button::NONE,                                   // move events are triggered by no button
+        MouseAction::MOVE,
+        g_key_modifiers,
+        g_button_states);
     window->_propagate_mouse_event(std::move(mouse_event));
 }
 
@@ -224,14 +265,36 @@ void Application::_on_mouse_button(GLFWwindow* glfw_window, int button, int acti
     // parse raw arguments
     Button notf_button      = static_cast<Button>(button);
     MouseAction notf_action = static_cast<MouseAction>(action);
-    assert(notf_action != MouseAction::MOVE);
+    assert(notf_action == MouseAction::PRESS || notf_action == MouseAction::RELEASE);
 
     // update the global state
     set_button(g_button_states, notf_button, action);
     g_key_modifiers = KeyModifiers(modifiers);
 
     // propagate the event
-    MouseEvent mouse_event(window.get(), g_mouse_pos, notf_button, notf_action, g_key_modifiers, g_button_states);
+    MouseEvent mouse_event(window.get(), g_cursor_pos, Vector2f::zero(),
+                           notf_button, notf_action, g_key_modifiers, g_button_states);
+    window->_propagate_mouse_event(std::move(mouse_event));
+}
+
+void Application::_on_scroll(GLFWwindow* glfw_window, double x, double y)
+{
+    assert(glfw_window);
+    Window* window_raw = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    assert(window_raw);
+    std::shared_ptr<Window> window = window_raw->shared_from_this();
+    if (!window) {
+        log_critical << "Received '_on_scroll' Callback for unknown GLFW window";
+        return;
+    }
+
+    // propagate the event
+    MouseEvent mouse_event(
+        window.get(), g_cursor_pos,
+        {static_cast<float>(x), static_cast<float>(y)},
+        Button::NONE,
+        MouseAction::SCROLL,
+        g_key_modifiers, g_button_states);
     window->_propagate_mouse_event(std::move(mouse_event));
 }
 
@@ -276,10 +339,15 @@ void Application::_register_window(std::shared_ptr<Window> window)
     m_windows.push_back(window);
 
     // connect the window callbacks
-    glfwSetWindowCloseCallback(glfw_window, _on_window_close);
     glfwSetKeyCallback(glfw_window, _on_token_key);
+    glfwSetCharModsCallback(glfw_window, _on_char_input);
+
+    glfwSetCursorEnterCallback(glfw_window, _on_cursor_entered);
     glfwSetCursorPosCallback(glfw_window, _on_cursor_move);
     glfwSetMouseButtonCallback(glfw_window, _on_mouse_button);
+    glfwSetScrollCallback(glfw_window, _on_scroll);
+
+    glfwSetWindowCloseCallback(glfw_window, _on_window_close);
     glfwSetWindowSizeCallback(glfw_window, _on_window_resize);
 
     // if this is the first Window, it is also the current one

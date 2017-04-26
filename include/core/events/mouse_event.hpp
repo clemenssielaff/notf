@@ -13,11 +13,11 @@ class MouseEvent {
     friend class Window;
 
 public: // methods
-    MouseEvent(Window* window, Vector2f window_pos, Button button,
+    MouseEvent(Window* window, Vector2f window_pos, Vector2f window_delta, Button button,
                MouseAction action, KeyModifiers modifiers, const ButtonStateSet& stateset)
         : window(window)
         , window_pos(std::move(window_pos))
-        , window_delta(Vector2f::zero()) // TODO: some means to set the MouseEvent delta on a per-window basis
+        , window_delta(std::move(window_delta))
         , button(button)
         , action(action)
         , modifiers(modifiers)
@@ -39,10 +39,14 @@ public: // fields
     /** Position of the mouse cursor relative to the top-left corner of `window`. */
     const Vector2f window_pos;
 
-    /** Delta of the mouse cursor since the last event, in window coordinates. */
+    /** Delta of the mouse cursor since the last event, in window coordinates.
+     * If this is a "scroll" event, this field holds the scroll delta instead.
+     */
     const Vector2f window_delta;
 
-    /** The mouse button that triggered this event, is set to Button::INVALID when this is a "move" event. */
+    /** The mouse button that triggered this event.
+     * Is set to Button::INVALID when this is a "move" or "scroll" event.
+     */
     const Button button;
 
     /** The action that triggered this event. */
@@ -56,7 +60,7 @@ public: // fields
 
 private: // fields
     /** True iff this event was already handled. */
-    bool m_was_handled = false;
+    bool m_was_handled;
 };
 
 } // namespace notf

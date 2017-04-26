@@ -53,6 +53,9 @@ public: // signals
     /** Signal invoked when this Widget is asked to handle a Mouse button event. */
     Signal<MouseEvent&> on_mouse_button;
 
+    /** Signal invoked when this Widget is asked to handle a scroll event. */
+    Signal<MouseEvent&> on_scroll;
+
 private: // methods
     /** Redraws the Cell with the Widget's current state. */
     virtual void _paint(Painter& painter) const = 0;

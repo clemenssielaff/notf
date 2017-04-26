@@ -116,9 +116,19 @@ public: // signals
     Signal<const KeyEvent&> on_token_key;
 
     /** Emitted just before this Window is closed.
-     * @param This window.
+     * @param   This Window.
      */
     Signal<const Window&> on_close;
+
+    /** Emitted when the mouse cursor entered the client area of this Window.
+     * @param   This Window.
+     */
+    Signal<const Window&> on_cursor_entered;
+
+    /** Emitted when the mouse cursor exited the client area of this Window.
+     * @param   This Window.
+     */
+    Signal<const Window&> on_cursor_exited;
 
 private: // methods for friends
     /** Called when the Window was resized. */
