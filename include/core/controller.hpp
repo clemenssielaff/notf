@@ -36,7 +36,7 @@ public: // methods
     virtual ~Controller() override;
 
     /** Item at the root of the Controller's branch of the Item hierarchy. */
-    const std::shared_ptr<ScreenItem>& get_root_item() const { return m_root_item; }
+    std::shared_ptr<ScreenItem>& get_root_item() { return m_root_item; }
 
     /** Initializes this Controller if it is uninitialized, otherwise does nothing. */
     void initialize();

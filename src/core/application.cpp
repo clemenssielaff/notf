@@ -288,9 +288,13 @@ void Application::_on_scroll(GLFWwindow* glfw_window, double x, double y)
         return;
     }
 
+    Vector2i window_pos;
+    glfwGetWindowPos(glfw_window, &window_pos.x, &window_pos.y);
+
     // propagate the event
     MouseEvent mouse_event(
-        window.get(), g_cursor_pos,
+        window.get(),
+        {g_cursor_pos.x - static_cast<float>(window_pos.x), g_cursor_pos.y - static_cast<float>(window_pos.y)},
         {static_cast<float>(x), static_cast<float>(y)},
         Button::NONE,
         MouseAction::SCROLL,

@@ -28,6 +28,15 @@ private: // types
         ScrollArea& m_scroll_area;
     };
 
+    class Background : public Widget {
+    public: // methods
+        /** Constructor. */
+        Background()
+            : Widget() {}
+
+        virtual void _paint(Painter& painter) const override;
+    };
+
 public: // methods
     ScrollArea();
 
@@ -37,14 +46,17 @@ public: // methods
     void set_area_controller(ControllerPtr controller);
 
 private: // fields
-    /** Layout containing the scrolled Area. */
-    std::shared_ptr<Overlayout> m_area_layout;
+    /** Window into the content. */
+    std::shared_ptr<Overlayout> m_area_window;
 
-    /** Layout providing a split between the scrolled area and the ScrollBar widgetg. */
-    std::shared_ptr<StackLayout> m_main_layout;
+    /** Scrolled layout containing the ScrollArea's content. */
+    std::shared_ptr<Overlayout> m_scroll_container;
 
     /** Vertical scroll bar. */
     std::shared_ptr<ScrollBar> m_vscrollbar;
+
+    /** Controller providing the content of the scrolled area. */
+    ControllerPtr m_content;
 };
 
 } // namespace notf

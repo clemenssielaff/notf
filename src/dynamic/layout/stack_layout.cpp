@@ -600,7 +600,7 @@ void StackLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
             item_size.height                 = max(item_size.height, vertical.get_min());
             const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.height, available_height);
             const float applied_offset       = reverse ? current_offset - item_size.width : current_offset;
-            _set_item_transform(child, Xform2f::translation({applied_offset, cross_offset + applied_cross_offset}));
+            child->set_transform(Xform2f::translation({applied_offset, cross_offset + applied_cross_offset}));
             _set_item_size(child, item_size);
         }
         else { // vertical
@@ -612,7 +612,7 @@ void StackLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
             item_size.width                  = max(item_size.width, horizontal.get_min());
             const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.width, available_width);
             const float applied_offset       = reverse ? current_offset - item_size.height : current_offset;
-            _set_item_transform(child, Xform2f::translation({cross_offset + applied_cross_offset, applied_offset}));
+            child->set_transform(Xform2f::translation({cross_offset + applied_cross_offset, applied_offset}));
             _set_item_size(child, item_size);
         }
         current_offset += (adapter.result + alignment_spacing) * step_factor;

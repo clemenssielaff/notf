@@ -116,6 +116,12 @@ public: // methods *************************************************************
      */
     void set_scissor(LayoutPtr get_scissor);
 
+
+    /** Updates the transformation of this Item.
+     * @return      True iff the transform was modified.
+     */
+    bool set_transform(const Xform2f transform);
+
 public: // signals ****************************************************************************************************/
     /** Emitted, when the opacity of this Item has changed.
      * @param New visiblity.
@@ -146,10 +152,6 @@ protected: // methods **********************************************************
      */
     virtual bool _set_size(const Size2f size);
 
-    /** Updates the transformation of this Item.
-     * @return      True iff the transform was modified.
-     */
-    bool _set_transform(const Xform2f transform);
 
     /** Updates the Claim of this Item, may also change its size to comply with the new constraints.
      * @return      True iff the Claim was modified.

@@ -86,9 +86,6 @@ protected: // static methods ***************************************************
     /** Allows any Layout subclass to call `_set_size` on any other ScreenItem. */
     static bool _set_item_size(ScreenItem* item, const Size2f size) { return item->_set_size(std::move(size)); }
 
-    /** Allows any Layout subclass to call `_set_item_transform` on any other ScreenItem. */
-    static bool _set_item_transform(ScreenItem* item, const Xform2f transform) { return item->_set_transform(std::move(transform)); }
-
 private: // members ***************************************************************************************************/
     /** If true, this Layout provides its own Claim and does not aggregate it from its children. */
     bool m_override_claim;

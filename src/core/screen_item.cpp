@@ -74,6 +74,17 @@ void ScreenItem::set_scissor(LayoutPtr scissor)
     m_scissor_layout = std::move(scissor);
 }
 
+bool ScreenItem::set_transform(const Xform2f transform)
+{
+    if (transform == m_transform) {
+        return false;
+    }
+    m_transform = std::move(transform);
+    transform_changed(m_transform);
+    _redraw();
+    return true;
+}
+
 bool ScreenItem::_redraw()
 {
     if (is_visible()) {
@@ -106,17 +117,6 @@ bool ScreenItem::_set_size(const Size2f size)
     }
     m_size = std::move(actual_size);
     size_changed(m_size);
-    _redraw();
-    return true;
-}
-
-bool ScreenItem::_set_transform(const Xform2f transform)
-{
-    if (transform == m_transform) {
-        return false;
-    }
-    m_transform = std::move(transform);
-    transform_changed(m_transform);
     _redraw();
     return true;
 }

@@ -78,6 +78,9 @@ Window::Window(const WindowInfo& info)
     // 1. start the software
     // 2. copy the icon to ~/.local/share/icons/hicolor/<resolution>/apps/<yourapp>
     // 3. modify the file ~/.local/share/applications/<yourapp>, in particular the line Icon=<yourapp>
+    //
+    // in order to remove leftover icons on Ubuntu call:
+    // rm ~/.local/share/applications/notf.desktop; rm ~/.local/share/icons/notf.png
     if (!info.icon.empty()) {
         const std::string icon_path = app.get_resource_manager().get_texture_directory() + info.icon;
         try {
