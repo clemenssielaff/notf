@@ -282,11 +282,11 @@ void Painter::arc(const float cx, const float cy, const float r, const float a0,
     // clamp angles
     float da;
     if (dir == Winding::CLOCKWISE) {
-        da = norm_angle(a1 - a0 - static_cast<float>(PI)) + static_cast<float>(PI);
+        da = norm_angle(a1 - a0);
     }
     else {
         assert(dir == Winding::COUNTERCLOCKWISE);
-        da = norm_angle(a1 - a0 + static_cast<float>(PI)) - static_cast<float>(PI);
+        da = -norm_angle(a0 - a1);
     }
     // split the arc into <= 90deg segments
     const float ndivs = max(1.f, min(ceilf(abs(da) / static_cast<float>(HALF_PI)), 5.f));

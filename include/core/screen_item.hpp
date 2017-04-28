@@ -59,6 +59,14 @@ namespace notf {
  * Every Widget contains a pointer to the parent Layout that acts as its scissor.
  * An empty pointer means that this Widget is scissored by its parent Layout, but every Layout in this Widget's Item
  * ancestry can be used (including the Windows WindowLayout, which effectively disables scissoring).
+ *
+ * Transformations
+ * ===============
+ * Screen Items have two transformations that are combined into its final transformation in relation to its parent
+ * Layout, which can be queried using `get_transform()`.
+ * The `layout transform` is the transformation applied to the Item by its parent Layout.
+ * The `offset transform` is an additional offset transformation on the Item that is applied after the `layout
+ * transform`.
  */
 class ScreenItem : public Item {
 
@@ -74,7 +82,13 @@ public: // methods *************************************************************
     virtual ~ScreenItem() override;
 
     /** Returns the Item's transformation in parent space. */
-    const Xform2f& get_transform() const { return m_transform; }
+    Xform2f get_transform() const { return m_layout_transform * m_offset_transform; }
+
+    /** 2D transformation of this Item as determined by its parent Layout. */
+    const Xform2f& get_layout_transform() const { return m_layout_transform; }
+
+    /** 2D transformation of this Item on top of the layout transformation. */
+    const Xform2f& get_offset_transform() const { return m_offset_transform; }
 
     /** Recursive implementation to produce the Item's transformation in window space. */
     Xform2f get_window_transform() const;
@@ -116,11 +130,10 @@ public: // methods *************************************************************
      */
     void set_scissor(LayoutPtr get_scissor);
 
-
     /** Updates the transformation of this Item.
      * @return      True iff the transform was modified.
      */
-    bool set_transform(const Xform2f transform);
+    bool set_offset_transform(const Xform2f transform);
 
 public: // signals ****************************************************************************************************/
     /** Emitted, when the opacity of this Item has changed.
@@ -131,18 +144,23 @@ public: // signals *************************************************************
     /** Emitted, when the size of this Item has changed.
      * @param New size.
      */
-    Signal<Size2f> size_changed;
+    Signal<const Size2f&> size_changed; // TODO: should all signals be named "on_*"?
 
     /** Emitted, when the transform of this Item has changed.
      * @param New local transform.
      */
-    Signal<Xform2f> transform_changed;
+    Signal<const Xform2f&> transform_changed;
 
 protected: // methods *************************************************************************************************/
     /** Tells the Window that this Item needs to be redrawn.
      * @return False if the Widget is invisible and doesn't need to be redrawn.
      */
     bool _redraw();
+
+    /** Updates the layout transformation of this Item.
+     * @return      True iff the transform was modified.
+     */
+    bool _set_layout_transform(const Xform2f transform);
 
     /** Updates the size of this Item.
      * Note that the ScreenItem's Claim can impose hard constraints on the size, which are enforced by this method.
@@ -151,7 +169,6 @@ protected: // methods **********************************************************
      * @return      True iff the size was modified.
      */
     virtual bool _set_size(const Size2f size);
-
 
     /** Updates the Claim of this Item, may also change its size to comply with the new constraints.
      * @return      True iff the Claim was modified.
@@ -169,8 +186,11 @@ private: // fields *************************************************************
     /** Unscaled size of this Item in pixels. */
     Size2f m_size;
 
-    /** 2D transformation of this Item in relation to its parent. */
-    Xform2f m_transform;
+    /** 2D transformation of this Item as determined by its parent Layout. */
+    Xform2f m_layout_transform;
+
+    /** 2D transformation of this Item on top of the layout transformation. */
+    Xform2f m_offset_transform;
 
     /** The Claim of a Item determines how much space it receives in the parent Layout. */
     Claim m_claim;

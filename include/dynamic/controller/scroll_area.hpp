@@ -23,8 +23,15 @@ private: // types
 
         virtual void _paint(Painter& painter) const override;
 
+    public: // fields
+        /** Size of the actual bar in relation to the height of the ScrollBar widget, in the range (0 -> 1].*/
+        float size;
+
+        /** Position of the actual bar in relation to the height of the ScrollBar widget, in the range [0 -> 1).*/
+        float pos;
+
     private: // fields
-        /** Scroll Area containing this ScrollBar. */
+        /** ScrollArea containing this ScrollBar. */
         ScrollArea& m_scroll_area;
     };
 
@@ -44,6 +51,10 @@ public: // methods
 
     /** Displays the content of the given Controller inside the scroll area.  */
     void set_area_controller(ControllerPtr controller);
+
+private: // methods
+    /** Updates the position and size of the scrollbar. */
+    void _update_scrollbar(float delta_y);
 
 private: // fields
     /** Window into the content. */

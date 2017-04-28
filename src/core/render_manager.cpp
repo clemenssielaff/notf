@@ -136,7 +136,7 @@ void RenderManager::_iterate_item_hierarchy(const ScreenItem* screen_item, Rende
 
     // if it is a Layout, start a recursive iteration
     else if (const Layout* layout = dynamic_cast<const Layout*>(screen_item)) {
-        std::unique_ptr<LayoutIterator> it = layout->iter_items();
+        LayoutIteratorPtr it = layout->iter_items();
         while (const Item* child_item = it->next()) {
             if (const ScreenItem* screen_item = Item::get_screen_item(child_item)) {
                 _iterate_item_hierarchy(screen_item, current_layer);

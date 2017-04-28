@@ -88,7 +88,8 @@ inline Real norm_angle(Real alpha)
     if (!is_real(alpha)) {
         throw std::logic_error("Cannot normalize an invalid number");
     }
-    return fmod(alpha + PI, TWO_PI) + (PI * (alpha >= -PI ? -1 : 1));
+    const float modulo = fmod(alpha, TWO_PI);
+    return modulo >= 0 ? modulo : TWO_PI + modulo;
 }
 
 /** Save division, throws a std::logic_error if the divisor is 0. */
@@ -196,6 +197,13 @@ struct _approx {
     template <typename Other, ENABLE_IF_REAL(Other)>
     friend bool operator!=(const _approx& lhs, Other rhs) { return !operator==(rhs, lhs); }
 };
+
+template <typename Real>
+std::ostream& operator<<(std::ostream& os, const _approx<Real>& value)
+{
+    os << std::string("approx(") << value.value << ", " << value.epsilon << ")";
+    return os;
+}
 
 template <typename Real, ENABLE_IF_REAL(Real)>
 auto approx(const Real value)

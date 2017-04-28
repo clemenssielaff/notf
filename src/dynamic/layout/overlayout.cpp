@@ -8,6 +8,7 @@
 #include "common/vector.hpp"
 #include "core/controller.hpp"
 #include "core/screen_item.hpp"
+#include "utils/reverse_iterator.hpp"
 
 namespace notf {
 
@@ -178,14 +179,14 @@ void Overlayout::_relayout()
             assert(m_vertical_alignment == Vertical::BOTTOM);
             y = total_size.height - m_padding.bottom - item_size.height;
         }
-        screen_item->set_transform(Xform2f::translation({x, y}));
+        _set_item_layout_transform(screen_item, Xform2f::translation({x, y}));
     }
 }
 
 void Overlayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
     // TODO: Overlayout::get_widget_at does not respect transform (only translate)
-    for (const ItemPtr& item : m_items) {
+    for (const ItemPtr& item : reverse(m_items)) {
         const ScreenItem* screen_item = get_screen_item(item.get());
         if (!screen_item) {
             continue;
@@ -196,7 +197,6 @@ void Overlayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
             _get_widgets_at_item_pos(screen_item, item_pos, result);
         }
     }
-    // TODO: Overlayout::_get_widgets_at iterates the wrong way around (from back to front)
 }
 
 } // namespace notf

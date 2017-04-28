@@ -66,3 +66,4 @@ inline _Xform2<Real> random_xform2()
     return random_xform2(lowest_tested<Real>(), highest_tested<Real>(), Real(0), Real(2));
 }
 } // namespace notf
+

@@ -10,7 +10,8 @@ ScreenItem::ScreenItem()
     : Item()
     , m_opacity(1)
     , m_size(Size2f::zero())
-    , m_transform(Xform2f::identity())
+    , m_layout_transform(Xform2f::identity())
+    , m_offset_transform(Xform2f::identity())
     , m_claim()
     , m_scissor_layout() // empty by default
 {
@@ -58,7 +59,7 @@ bool ScreenItem::is_visible() const
 
 LayoutPtr ScreenItem::get_scissor(const bool own) const
 {
-    if(LayoutPtr scissor = m_scissor_layout.lock()){
+    if (LayoutPtr scissor = m_scissor_layout.lock()) {
         return scissor;
     }
     if (!own) {
@@ -74,13 +75,15 @@ void ScreenItem::set_scissor(LayoutPtr scissor)
     m_scissor_layout = std::move(scissor);
 }
 
-bool ScreenItem::set_transform(const Xform2f transform)
+bool ScreenItem::set_offset_transform(const Xform2f transform)
 {
-    if (transform == m_transform) {
+    if (transform == m_offset_transform) {
         return false;
     }
-    m_transform = std::move(transform);
-    transform_changed(m_transform);
+    m_offset_transform = std::move(transform);
+
+    const Xform2f new_transform = get_transform();
+    transform_changed(new_transform);
     _redraw();
     return true;
 }
@@ -94,6 +97,19 @@ bool ScreenItem::_redraw()
         }
     }
     return false;
+}
+
+bool ScreenItem::_set_layout_transform(const Xform2f transform)
+{
+    if (transform == m_layout_transform) {
+        return false;
+    }
+    m_layout_transform = std::move(transform);
+
+    const Xform2f new_transform = get_transform();
+    transform_changed(new_transform);
+    _redraw();
+    return true;
 }
 
 bool ScreenItem::_set_size(const Size2f size)

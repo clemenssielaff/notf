@@ -17,8 +17,13 @@ class Painter;
  *
  * Cells
  * =====
- * While the Widget determines the size and the state of what is drawn, the actual drawing is performed on "Cells".
- * A Widget can have multiple Cells.
+ * While the Widget determines the size and the state of what is drawn, the actual drawing is performed in a "Cell".
+ * Multiple Widgets may share a Cell.
+ *
+ * Events
+ * ======
+ * Only Widgets receive events, which means that in order to handle events, a Layout must contain an invisible Widget
+ * in the background (see ScrollArea for an example).
  */
 class Widget : public ScreenItem {
 
@@ -71,18 +76,3 @@ private: // fields
 };
 
 } // namespace notf
-
-/* Draw / Redraw procedure
- * =======================
- * A ScreenItem changes a Property
- * This results in the RenderManager getting a request to redraw the frame
- * The RenderManager then collects all Widgets, sorts them calls Widget::paint() on them
- * Widget::paint() checks if it needs to update its Cell
- *  if so, it creates a Painter object and calls the pure virtual function Widget::_paint(Painter&) which does the actual work
- *
- * State Machines
- * ==============
- * Maybe not all Widgets should have State Machines by default.
- * I think they are great in general, but they might just be better as an optional mixin-class, so you are not forced
- * to have a State Machine for even the most simplest Widget.
- */

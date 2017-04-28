@@ -135,6 +135,7 @@ SOURCES += \
     src/common/time.cpp \
     src/common/padding.cpp \
     src/dynamic/layout/overlayout.cpp \
+    src/dynamic/layout/free_layout.cpp \
     src/core/item.cpp \
     src/core/screen_item.cpp \
     src/common/input.cpp \
@@ -200,6 +201,7 @@ HEADERS += \
     include/common/padding.hpp \
     include/utils/reverse_iterator.hpp \
     include/dynamic/layout/overlayout.hpp \
+    include/dynamic/layout/free_layout.hpp \
     include/core/item.hpp \
     include/core/screen_item.hpp \
     include/utils/binding_accessors.hpp \

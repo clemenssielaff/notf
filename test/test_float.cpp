@@ -13,10 +13,10 @@ SCENARIO("Working with angles", "[common][float][arithmetic]")
 
         THEN("it can can be correctly normalized")
         {
-            REQUIRE(norm_angle(-two_pi) == approx(0.f, precision_low<float>()));
+            REQUIRE(norm_angle(-two_pi) == approx(two_pi, precision_low<float>()));
             REQUIRE(norm_angle(-pi) == approx(pi, precision_low<float>()));
             REQUIRE(norm_angle(0.) == approx(0.f, precision_low<float>()));
-            REQUIRE(norm_angle(pi) == approx(-pi, precision_low<float>()));
+            REQUIRE(norm_angle(pi) == approx(pi, precision_low<float>()));
             REQUIRE(norm_angle(two_pi) == approx(0.f, precision_low<float>()));
         }
 
@@ -24,8 +24,8 @@ SCENARIO("Working with angles", "[common][float][arithmetic]")
         {
             for (auto i = 0; i < 10000; ++i) {
                 const float result = norm_angle(random_number<float>());
-                REQUIRE(-pi <= result);
-                REQUIRE(result <= pi);
+                REQUIRE(result >= 0);
+                REQUIRE(result < two_pi);
             }
         }
     }

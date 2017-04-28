@@ -23,6 +23,8 @@ public: // methods
     virtual const Item* next() = 0;
 };
 
+using LayoutIteratorPtr = std::unique_ptr<LayoutIterator>;
+
 /**********************************************************************************************************************/
 
 /** Abstract Layout baseclass. */
@@ -85,6 +87,9 @@ protected: // static methods ***************************************************
 
     /** Allows any Layout subclass to call `_set_size` on any other ScreenItem. */
     static bool _set_item_size(ScreenItem* item, const Size2f size) { return item->_set_size(std::move(size)); }
+
+    /** Allows any Layout subclass to call `_set_layout_transform` on any other ScreenItem. */
+    static bool _set_item_layout_transform(ScreenItem* item, const Xform2f transform) { return item->_set_layout_transform(std::move(transform)); }
 
 private: // members ***************************************************************************************************/
     /** If true, this Layout provides its own Claim and does not aggregate it from its children. */

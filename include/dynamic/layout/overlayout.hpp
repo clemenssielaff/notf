@@ -13,7 +13,7 @@ using OverlayoutPtr = std::shared_ptr<Overlayout>;
 /**********************************************************************************************************************/
 
 /**
- * @brief Overlayout Iterator that goes through all items in a Layout in order, from back to front.
+ * @brief Overlayout iterator that goes through all items in a Layout in order, from back to front.
  * Iterators must be used up immediately after creation as they might be invalidated by any operation on their Layout.
  */
 class OverlayoutIterator : public LayoutIterator {

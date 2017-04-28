@@ -74,7 +74,7 @@ struct _Aabr {
      */
     _Aabr(const Vector_t& position, const Size2f& size)
         : _min(position)
-        , _max(size.width, size.height)
+        , _max(position.x + size.width, position.y + size.height)
     {
     }
 
@@ -83,8 +83,8 @@ struct _Aabr {
      * @param height    Height of the Aabr.
      */
     _Aabr(const Value_t width, const Value_t height)
-        : _min(width / -2, height / -2)
-        , _max(width / 2, height / 2)
+        : _min(0, 0)
+        , _max(width, height)
     {
     }
 
@@ -472,7 +472,7 @@ struct _Aabr {
     /** Intersection of this Aabr with `other` in-place.
      * Intersecting with another Aabr that does not intersect results in the null Aabr.
      */
-    _Aabr& intersected(const _Aabr& other)
+    _Aabr& intersect(const _Aabr& other)
     {
         if (!intersects(other)) {
             return set_null();
@@ -483,7 +483,7 @@ struct _Aabr {
         _max.y = _max.y < other._max.y ? _max.y : other._max.y;
         return *this;
     }
-    _Aabr operator&=(const _Aabr& other) { return intersected(other); }
+    _Aabr operator&=(const _Aabr& other) { return intersect(other); }
 
     /** Creates the union of this Aabr with `other`. */
     _Aabr union_(const _Aabr& other) const

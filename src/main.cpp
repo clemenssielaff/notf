@@ -3,9 +3,11 @@
 #include "core/window_layout.hpp"
 #include "dynamic/controller/scroll_area.hpp"
 
+#include "common/log.hpp"
 #include "common/random.hpp"
 #include "core/application.hpp"
 #include "core/controller.hpp"
+#include "core/events/mouse_event.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
 #include "core/window_layout.hpp"
@@ -96,6 +98,10 @@ public: // methods
         for (int i = 1; i <= 20; ++i) {
             std::shared_ptr<RectWidget> rect = std::make_shared<RectWidget>(m_graphics_context, i, font, Color("#c34200"));
             stack_layout->add_item(rect);
+//            rect->on_scroll.connect([](MouseEvent& event) -> void {
+//                event.set_handled();
+//                log_info << "Event handled!";
+//            });
         }
     }
 

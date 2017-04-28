@@ -53,7 +53,7 @@ void produce_aabr(pybind11::module& module)
     PyAabr.def("shrink", &Aabrf::shrink, DOCSTR("Moves each edge of the Aabr a given amount towards the inside."), py::arg("amount"));
     PyAabr.def("shrink", &Aabrf::shrink, DOCSTR("Moves each edge of the Aabr a given amount towards the inside."), py::arg("amount"));
     PyAabr.def("intersection", &Aabrf::intersection, DOCSTR("Intersection of this Aabr with `other`."), py::arg("other"));
-    PyAabr.def("intersected", &Aabrf::intersected, DOCSTR("Intersection of this Aabr with `other` in-place."), py::arg("other"));
+    PyAabr.def("intersected", &Aabrf::intersect, DOCSTR("Intersection of this Aabr with `other` in-place."), py::arg("other"));
     PyAabr.def("union", &Aabrf::union_, DOCSTR("Creates the union of this Aabr with `other`."), py::arg("other"));
     PyAabr.def("united", &Aabrf::united, DOCSTR("Creates the union of this Aabr with `other` in-place."), py::arg("other"));
 

@@ -282,7 +282,7 @@ Color::Color(const std::string& value)
 
 Color Color::from_hsl(const float h, const float s, const float l, const float a)
 {
-    return hsl_to_rgb({norm_angle(h - static_cast<float>(PI)) + static_cast<float>(PI), s, l, a});
+    return hsl_to_rgb({norm_angle(h), s, l, a});
 }
 
 bool Color::is_color(const std::string& value)
