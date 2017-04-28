@@ -8,12 +8,12 @@
 
 namespace notf {
 
-Time::Ticks Time::s_null      = {0};
+Time::Ticks Time::s_zero      = {0};
 Time::Ticks Time::s_frequency = {0};
 
 Time Time::now()
 {
-    return {glfwGetTimerValue() - s_null};
+    return {glfwGetTimerValue() - s_zero};
 }
 
 Time Time::since(const Time& then)
@@ -38,7 +38,7 @@ Time Time::until(const Time& then)
 
 void Time::initialize()
 {
-    s_null      = glfwGetTimerValue();
+    s_zero      = glfwGetTimerValue();
     s_frequency = glfwGetTimerFrequency();
     log_info << "Setting Time::frequency to: " << s_frequency;
 }

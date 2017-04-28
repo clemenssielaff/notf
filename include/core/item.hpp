@@ -174,7 +174,7 @@ public: // signals *************************************************************
     /** Emitted when this Item got a new parent.
      * @param ItemID of the new parent.
      */
-    Signal<ItemID> parent_changed;
+    Signal<ItemID> on_parent_changed;
 
 protected: // methods *************************************************************************************************/
     /** Returns the Layout into which this Item is embedded as a mutable pointer.

@@ -49,13 +49,13 @@ struct _Circle {
 
     /* Static Constructors ********************************************************************************************/
 
-    /** Produces a null Circle. */
-    static _Circle null() { return {{0, 0}, 0}; }
+    /** Produces a zero Circle. */
+    static _Circle zero() { return {{0, 0}, 0}; }
 
     /*  Inspection  ***************************************************************************************************/
 
-    /** Checks if this is a null Circle. */
-    bool is_null() const { return radius == 0.f; }
+    /** Checks if this is a zero Circle. */
+    bool is_zero() const { return radius == 0.f; }
 
     /** The diameter of the Circle. */
     Value_t diameter() const { return radius * 2.f; }
@@ -101,8 +101,8 @@ struct _Circle {
 
     /*  Modifiers *****************************************************************************************************/
 
-    /** Sets this Circle to null. */
-    void set_null()
+    /** Sets this Circle to zero. */
+    void set_zero()
     {
         center.set_zero();
         radius = 0.f;

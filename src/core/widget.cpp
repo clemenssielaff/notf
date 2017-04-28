@@ -32,7 +32,7 @@ bool Widget::set_claim(const Claim claim)
     return was_changed;
 }
 
-void Widget::redraw() // TODO: currently _set_size does not dirty the Widget's Cell
+void Widget::redraw()
 {
     // don't dirty if the ScreenItem is invisible
     if (!_redraw()) {
@@ -44,7 +44,7 @@ void Widget::redraw() // TODO: currently _set_size does not dirty the Widget's C
 void Widget::paint(CellCanvas& cell_context) const
 {
     // update the Cell if the Widget is dirty
-    //    if (!m_is_clean) { // TODO: dirty mechanism for cells
+    //    if (!m_is_clean) {
     Painter painter(cell_context, this);
     try {
         _paint(painter);

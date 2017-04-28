@@ -48,23 +48,30 @@ public: // methods *************************************************************
     /** Returns an iterator that goes over all Items in this Layout in order from back to front. */
     virtual std::unique_ptr<LayoutIterator> iter_items() const = 0;
 
-public: // signals  ***************************************************************************************************/
-    /** Emitted when a new child Item was added to this one.
-     * @param ItemID of the new child.
-     */
-    Signal<ItemID> child_added;
-
-    /** Emitted when a child Item of this one was removed.
-     * @param ItemID of the removed child.
-     */
-    Signal<ItemID> child_removed;
-
-    virtual bool _set_size(const Size2f size) override;
-
     /** Removes a single Item from this Layout.
      * Does nothing, if the Item is not a child of this Layout.
      */
     virtual void remove_item(const ItemPtr& item) = 0;
+
+    /** Returns the united bounding rect of all Items in the Layout. */
+    virtual Aabrf get_content_aabr() const = 0;
+
+public: // signals  ***************************************************************************************************/
+    /** Emitted when a new child Item was added to this one.
+     * @param ItemID of the new child.
+     */
+    Signal<ItemID> on_child_added;
+
+    /** Emitted when a child Item of this one was removed.
+     * @param ItemID of the removed child.
+     */
+    Signal<ItemID> on_child_removed;
+
+    /** Emitted when the Layout changed the position of the child Items. */
+    Signal<> on_layout_changed;
+
+protected: // methods *************************************************************************************************/
+    virtual bool _set_size(const Size2f size) override;
 
     /** Updates the Claim of this Layout.
      * @return  True, iff the Claim was modified.

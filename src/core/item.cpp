@@ -184,7 +184,7 @@ void Item::_set_parent(ItemPtr parent)
     }
 
     m_parent = parent;
-    parent_changed(parent->get_id());
+    on_parent_changed(parent->get_id());
 }
 
 } // namespace notf

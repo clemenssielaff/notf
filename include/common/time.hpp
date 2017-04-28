@@ -76,7 +76,7 @@ private: // static methods
 
 private: // fields
     /** Ticks on the system clock when the application was started (to keep the number of seconds low). */
-    static Ticks s_null;
+    static Ticks s_zero;
 
     /** Ticks per second. */
     static Ticks s_frequency;

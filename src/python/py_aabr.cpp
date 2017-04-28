@@ -24,7 +24,7 @@ void produce_aabr(pybind11::module& module)
     PyAabr.def(py::init<const Vector2f&, const Vector2f&>());
 
     // static constructors
-    PyAabr.def_static("null", &Aabrf::null, "The null Aabr.");
+    PyAabr.def_static("null", &Aabrf::zero, "The null Aabr.");
 
     // properties
     PyAabr.def_property("x", &Aabrf::x, &Aabrf::set_x);
@@ -43,12 +43,12 @@ void produce_aabr(pybind11::module& module)
     PyAabr.def_property_readonly("area", &Aabrf::area);
 
     // inspections
-    PyAabr.def("is_null", &Aabrf::is_null, DOCSTR("Test, if this Aabr is null; The null Aabr has no area and is located at zero."));
+    PyAabr.def("is_null", &Aabrf::is_zero, DOCSTR("Test, if this Aabr is null; The null Aabr has no area and is located at zero."));
     PyAabr.def("contains", &Aabrf::contains, DOCSTR("Checks if this Aabr contains a given point."), py::arg("point"));
     PyAabr.def("closest_point_to", &Aabrf::closest_point_to, DOCSTR("Returns the closest point inside the Aabr to a given target point."), py::arg("target"));
 
     // modification
-    PyAabr.def("set_null", &Aabrf::set_null, DOCSTR("Sets this Aabr to null."));
+    PyAabr.def("set_null", &Aabrf::set_zero, DOCSTR("Sets this Aabr to null."));
     PyAabr.def("grow", &Aabrf::grow, DOCSTR("Moves each edge of the Aabr a given amount towards the outside."), py::arg("amount"));
     PyAabr.def("shrink", &Aabrf::shrink, DOCSTR("Moves each edge of the Aabr a given amount towards the inside."), py::arg("amount"));
     PyAabr.def("shrink", &Aabrf::shrink, DOCSTR("Moves each edge of the Aabr a given amount towards the inside."), py::arg("amount"));

@@ -58,7 +58,7 @@ struct _Size2 {
     bool is_valid() const { return width >= 0 && height >= 0; }
 
     /** Tests if a rectangle of this Size had zero area. */
-    bool is_zero() const // TODO: we have both is_null and is_zero
+    bool is_zero() const
     {
         return abs(width) <= precision_high<Value_t>()
             && abs(height) <= precision_high<Value_t>();

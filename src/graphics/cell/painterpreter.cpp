@@ -20,7 +20,7 @@ Painterpreter::Painterpreter(CellCanvas& context)
     , m_points()
     , m_paths()
     , m_states()
-    , m_bounds(Aabrf::null())
+    , m_bounds(Aabrf::zero())
 {
 }
 

@@ -10,7 +10,7 @@
 namespace notf {
 
 ScrollArea::ScrollBar::ScrollBar(ScrollArea& scroll_area)
-    : size(.8f)
+    : size(1)
     , pos(0)
     , m_scroll_area(scroll_area)
 {
@@ -67,7 +67,7 @@ void ScrollArea::_initialize()
 
     m_scroll_container = Overlayout::create();
     m_scroll_container->set_scissor(m_area_window);
-    m_scroll_container->size_changed.connect([this](const Size2f&) -> void {
+    m_scroll_container->on_layout_changed.connect([this]() -> void {
         _update_scrollbar(0);
     });
     m_area_window->add_item(m_scroll_container);
@@ -96,27 +96,23 @@ void ScrollArea::set_area_controller(ControllerPtr controller)
 
 void ScrollArea::_update_scrollbar(float delta_y)
 {
+    // get content
     if (!m_content) {
         return;
     }
+    ScreenItemPtr root_item = m_content->get_root_item();
+    if (!root_item) {
+        log_warning << "Encountered Controller " << m_content->get_id() << " without a root Item";
+        return;
+    }
 
+    // get content aabr
     Aabrf content_aabr;
-    {
-        ScreenItemPtr root_item = m_content->get_root_item();
-        if (LayoutPtr layout = std::dynamic_pointer_cast<Layout>(root_item)) {
-            // TODO: proper bounding-rect method for each layout type
-            LayoutIteratorPtr it = layout->iter_items();
-            while (const Item* child_item = it->next()) {
-                if (const ScreenItem* screen_item = Item::get_screen_item(child_item)) {
-                    const Vector2f translation = screen_item->get_transform().get_translation();
-                    const Size2f size          = screen_item->get_size();
-                    content_aabr.united(Aabrf(translation, size));
-                }
-            }
-        }
-        else {
-            content_aabr = Aabrf(root_item->get_transform().get_translation(), root_item->get_size());
-        }
+    if (LayoutPtr layout = std::dynamic_pointer_cast<Layout>(root_item)) {
+        content_aabr = layout->get_content_aabr();
+    }
+    else {
+        content_aabr = root_item->get_aarbr();
     }
 
     const float area_height    = m_scroll_container->get_size().height;
@@ -126,7 +122,8 @@ void ScrollArea::_update_scrollbar(float delta_y)
     const float y = min(0.f, max(overflow, m_scroll_container->get_offset_transform().get_translation().y + delta_y));
     m_scroll_container->set_offset_transform(Xform2f::translation({0, y}));
 
-    if (abs(content_height) >= precision_high<float>()) {
+    if (overflow <= -0.5f // there must at least be half a pixel to scroll in order for the bar to show up
+            && abs(content_height) >= precision_high<float>()) {
         m_vscrollbar->size = area_height / content_height;
         m_vscrollbar->pos  = abs(y) / content_height;
     }

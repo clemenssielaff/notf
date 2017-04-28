@@ -123,7 +123,7 @@ public: // methods
         overlayout->add_item(back_rect);
 
         ScrollAreaPtr scroll_area = std::make_shared<ScrollArea>();
-        scroll_area->initialize(); // TODO: this Controller::initialize stuff is really brittle, maybe combine TODO with Controller::Factory?
+        scroll_area->initialize(); // TODO: this Controller::initialize stuff is really brittle, maybe combine with Controller::Factory?
         ControllerPtr stack_controller = std::make_shared<StackController>(m_window);
         scroll_area->set_area_controller(stack_controller);
 

@@ -128,8 +128,8 @@ struct _Aabr {
 
     /* Static Constructors ********************************************************************************************/
 
-    /** The null Aabr. */
-    static _Aabr null() { return _Aabr({0, 0, 0, 0}); }
+    /** The zero Aabr. */
+    static _Aabr zero() { return _Aabr({0, 0, 0, 0}); }
 
     /** The largest representable Aabr. */
     static _Aabr huge()
@@ -198,10 +198,10 @@ struct _Aabr {
     /** A valid Aabr has a width and height >= 0. */
     bool is_valid() const { return _min.x <= _max.x && _min.y <= _max.y; }
 
-    /** Test, if this Aabr is null.
-     * The null Aabr has no area and is located at zero.
+    /** Test, if this Aabr is zero.
+     * The zero Aabr has no area and is located at zero.
      */
-    bool is_null() const { return _min.is_zero() && _max.is_zero(); }
+    bool is_zero() const { return _min.is_zero() && _max.is_zero(); }
 
     /** Checks if this Aabr contains a given point. */
     bool contains(const Vector_t& point) const
@@ -210,7 +210,7 @@ struct _Aabr {
     }
 
     /** Checks if two Aabrs intersect.
-     * Two Aabrs intersect if their intersection has a non-null area.
+     * Two Aabrs intersect if their intersection has a non-zero area.
      * To get the actual intersection Aabr, use Aabr::intersection().
      */
     bool intersects(const _Aabr& other) const
@@ -410,8 +410,8 @@ struct _Aabr {
         return *this;
     }
 
-    /** Sets this Aabr to null. */
-    _Aabr& set_null()
+    /** Sets this Aabr to zero. */
+    _Aabr& set_zero()
     {
         _min.set_zero();
         _max.set_zero();
@@ -455,13 +455,13 @@ struct _Aabr {
     }
 
     /** Intersection of this Aabr with `other`.
-     * Intersecting with another Aabr that does not intersect results in the null Aabr.
+     * Intersecting with another Aabr that does not intersect results in the zero Aabr.
      * @return  The intersection Aabr.
      */
     _Aabr intersection(const _Aabr& other) const
     {
         if (!intersects(other)) {
-            return _Aabr::null();
+            return _Aabr::zero();
         }
         return _Aabr(
             Vector_t{_min.x > other._min.x ? _min.x : other._min.x, _min.y > other._min.y ? _min.y : other._min.y},
@@ -470,12 +470,12 @@ struct _Aabr {
     _Aabr operator&(const _Aabr& other) const { return intersection(other); }
 
     /** Intersection of this Aabr with `other` in-place.
-     * Intersecting with another Aabr that does not intersect results in the null Aabr.
+     * Intersecting with another Aabr that does not intersect results in the zero Aabr.
      */
     _Aabr& intersect(const _Aabr& other)
     {
         if (!intersects(other)) {
-            return set_null();
+            return set_zero();
         }
         _min.x = _min.x > other._min.x ? _min.x : other._min.x;
         _max.x = _max.x < other._max.x ? _max.x : other._max.x;

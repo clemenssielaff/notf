@@ -22,7 +22,7 @@ void produce_circle(pybind11::module& module)
     PyCircle.def(py::init<const Vector2f&, float>());
 
     // static constructors
-    PyCircle.def_static("null", &Circlef::null, "The null Circle.");
+    PyCircle.def_static("null", &Circlef::zero, "The null Circle.");
 
     // properties
     PyCircle.def_readwrite("center", &Circlef::center);
@@ -32,12 +32,12 @@ void produce_circle(pybind11::module& module)
     PyCircle.def_property_readonly("area", &Circlef::area);
 
     // inspections
-    PyCircle.def("is_null", &Circlef::is_null, DOCSTR("Test, if this Circle is null; The null Circle has no area."));
+    PyCircle.def("is_null", &Circlef::is_zero, DOCSTR("Test, if this Circle is null; The null Circle has no area."));
     PyCircle.def("contains", &Circlef::contains, DOCSTR("Checks if this Circle contains a given point."), py::arg("point"));
     PyCircle.def("closest_point_to", &Circlef::closest_point_to, DOCSTR("Returns the closest point inside the Circle to a given target point."), py::arg("target"));
 
     // modification
-    PyCircle.def("set_null", &Circlef::set_null, DOCSTR("Sets this Circle to null."));
+    PyCircle.def("set_null", &Circlef::set_zero, DOCSTR("Sets this Circle to null."));
 
     // operators
     PyCircle.def(py::self == py::self);

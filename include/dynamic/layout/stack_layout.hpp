@@ -114,6 +114,9 @@ public: // methods
      */
     virtual void remove_item(const ItemPtr& item) override;
 
+    /** Returns the united bounding rect of all Items in the Layout. */
+    virtual Aabrf get_content_aabr() const override;
+
     /** Returns an iterator that goes over all Items in this Layout in order from back to front. */
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 

@@ -45,7 +45,7 @@ bool ScreenItem::set_opacity(float opacity)
         return false;
     }
     m_opacity = opacity;
-    opacity_changed(m_opacity);
+    on_opacity_changed(m_opacity);
     _redraw();
     return true;
 }
@@ -83,7 +83,7 @@ bool ScreenItem::set_offset_transform(const Xform2f transform)
     m_offset_transform = std::move(transform);
 
     const Xform2f new_transform = get_transform();
-    transform_changed(new_transform);
+    on_transform_changed(new_transform);
     _redraw();
     return true;
 }
@@ -107,7 +107,7 @@ bool ScreenItem::_set_layout_transform(const Xform2f transform)
     m_layout_transform = std::move(transform);
 
     const Xform2f new_transform = get_transform();
-    transform_changed(new_transform);
+    on_transform_changed(new_transform);
     _redraw();
     return true;
 }
@@ -132,7 +132,7 @@ bool ScreenItem::_set_size(const Size2f size)
         return false;
     }
     m_size = std::move(actual_size);
-    size_changed(m_size);
+    on_size_changed(m_size);
     _redraw();
     return true;
 }

@@ -73,3 +73,7 @@ Thumbs.db
 
 # NoTF specific
 app/notf.py
+
+# Website
+docs/_site/
+docs/.sass-cache/

@@ -158,7 +158,7 @@ protected: // methods
 
 public: // signals
     /** Emitted when the value of this Property has changed. */
-    Signal<> value_changed;
+    Signal<> on_value_changed;
 
     /** Emitted, when the Property is being deleted. */
     Signal<> on_deletion;
@@ -189,7 +189,7 @@ private: // methods
             _signal_test();
             _signal_dirty();
             _signal_clean();
-            value_changed();
+            on_value_changed();
         }
     }
 
@@ -212,7 +212,7 @@ private: // methods
             m_is_dirty = false;
             _signal_clean();
             if (cache != m_value) {
-                value_changed();
+                on_value_changed();
             }
         }
     }

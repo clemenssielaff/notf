@@ -11,7 +11,6 @@
 #include "common/exception.hpp"
 #include "common/string.hpp"
 #include "core/item.hpp"
-#include "core/item.hpp"
 #include "core/property.hpp"
 
 namespace notf {

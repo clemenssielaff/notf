@@ -83,6 +83,9 @@ public: // methods
      */
     virtual void remove_item(const ItemPtr& item) override;
 
+    /** Returns the united bounding rect of all Items in the Layout. */
+    virtual Aabrf get_content_aabr() const override;
+
     virtual std::unique_ptr<LayoutIterator> iter_items() const override;
 
 protected: // methods

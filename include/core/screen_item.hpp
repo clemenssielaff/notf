@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/aabr.hpp"
 #include "core/item.hpp"
 
 namespace notf {
@@ -96,6 +97,9 @@ public: // methods *************************************************************
     /** Returns the unscaled size of this Item in pixels. */
     const Size2f& get_size() const { return m_size; }
 
+    /** Returns the axis-aligned bounding rect of this ScreenItem in parent space. */
+    Aabrf get_aarbr() const { return Aabrf(get_transform().get_translation(), get_size()); }
+
     /** Returns the opacity of this Item in the range [0 -> 1].
      * @param own   By default, the returned opacity will be the product of this Item's opacity with all of its
      *              ancestors. If you set `own` to true, the opacity of this Item alone is returned.
@@ -139,17 +143,17 @@ public: // signals *************************************************************
     /** Emitted, when the opacity of this Item has changed.
      * @param New visiblity.
      */
-    Signal<float> opacity_changed; // TODO: emit ScreenItem::opacity_changed also when a parent items' opacity changed?
+    Signal<float> on_opacity_changed; // TODO: emit ScreenItem::opacity_changed also when a parent items' opacity changed?
 
     /** Emitted, when the size of this Item has changed.
      * @param New size.
      */
-    Signal<const Size2f&> size_changed; // TODO: should all signals be named "on_*"?
+    Signal<const Size2f&> on_size_changed;
 
     /** Emitted, when the transform of this Item has changed.
      * @param New local transform.
      */
-    Signal<const Xform2f&> transform_changed;
+    Signal<const Xform2f&> on_transform_changed;
 
 protected: // methods *************************************************************************************************/
     /** Tells the Window that this Item needs to be redrawn.

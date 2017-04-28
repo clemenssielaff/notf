@@ -42,7 +42,7 @@ FreeLayout::~FreeLayout()
 {
     // explicitly unparent all children so they can send the `parent_changed` signal
     for (ItemPtr& item : m_items) {
-        child_removed(item->get_id());
+        on_child_removed(item->get_id());
         _set_item_parent(item.get(), {});
     }
 }
@@ -55,7 +55,7 @@ bool FreeLayout::has_item(const ItemPtr& item) const
 void FreeLayout::clear()
 {
     for (ItemPtr& item : m_items) {
-        child_removed(item->get_id());
+        on_child_removed(item->get_id());
     }
     m_items.clear();
 }
@@ -81,7 +81,7 @@ void FreeLayout::add_item(ItemPtr item)
     _set_item_parent(item.get(), shared_from_this());
     const ItemID child_id = item->get_id();
     m_items.emplace_back(std::move(item));
-    child_added(child_id);
+    on_child_added(child_id);
 
     // update the parent layout if necessary
     if (_update_claim()) {
@@ -95,6 +95,15 @@ void FreeLayout::remove_item(const ItemPtr& item)
     auto it = std::find(m_items.begin(), m_items.end(), item);
     assert(it != m_items.end());
     m_items.erase(it);
+}
+
+Aabrf FreeLayout::get_content_aabr() const
+{
+    Aabrf result;
+    for(const ItemPtr& item : m_items){
+        result.united(get_screen_item(item.get())->get_aarbr());
+    }
+    return result;
 }
 
 std::unique_ptr<LayoutIterator> FreeLayout::iter_items() const

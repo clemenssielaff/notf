@@ -48,7 +48,7 @@ Overlayout::~Overlayout()
 {
     // explicitly unparent all children so they can send the `parent_changed` signal
     for (ItemPtr& item : m_items) {
-        child_removed(item->get_id());
+        on_child_removed(item->get_id());
         _set_item_parent(item.get(), {});
     }
 }
@@ -61,7 +61,7 @@ bool Overlayout::has_item(const ItemPtr& item) const
 void Overlayout::clear()
 {
     for (ItemPtr& item : m_items) {
-        child_removed(item->get_id());
+        on_child_removed(item->get_id());
     }
     m_items.clear();
 }
@@ -94,7 +94,7 @@ void Overlayout::add_item(ItemPtr item)
     _set_item_parent(item.get(), shared_from_this());
     const ItemID child_id = item->get_id();
     m_items.emplace_back(std::move(item));
-    child_added(child_id);
+    on_child_added(child_id);
 
     // update the parent layout if necessary
     if (_update_claim()) {
@@ -108,6 +108,15 @@ void Overlayout::remove_item(const ItemPtr& item)
     auto it = std::find(m_items.begin(), m_items.end(), item);
     assert(it != m_items.end());
     m_items.erase(it);
+}
+
+Aabrf Overlayout::get_content_aabr() const
+{
+    Aabrf result;
+    for(const ItemPtr& item : m_items){
+        result.united(get_screen_item(item.get())->get_aarbr());
+    }
+    return result;
 }
 
 std::unique_ptr<LayoutIterator> Overlayout::iter_items() const
@@ -181,6 +190,7 @@ void Overlayout::_relayout()
         }
         _set_item_layout_transform(screen_item, Xform2f::translation({x, y}));
     }
+    on_layout_changed();
 }
 
 void Overlayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const

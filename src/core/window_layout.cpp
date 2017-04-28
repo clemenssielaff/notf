@@ -47,7 +47,7 @@ WindowLayout::WindowLayout(const std::shared_ptr<Window>& window)
 WindowLayout::~WindowLayout()
 {
     // explicitly unparent all children so they can send the `parent_changed` signal
-    child_removed(m_controller->get_id());
+    on_child_removed(m_controller->get_id());
     _set_item_parent(m_controller.get(), {});
 }
 
@@ -82,7 +82,7 @@ void WindowLayout::set_controller(ControllerPtr controller)
     _set_item_parent(controller.get(), std::static_pointer_cast<Layout>(shared_from_this()));
     const ItemID child_id = controller->get_id();
     m_controller          = std::move(controller);
-    child_added(child_id);
+    on_child_added(child_id);
 
     // Controllers are initialized the first time they are parented to a Layout
     m_controller->initialize();
@@ -94,12 +94,22 @@ void WindowLayout::set_controller(ControllerPtr controller)
 void WindowLayout::remove_item(const ItemPtr& item)
 {
     if (item == m_controller) {
-        child_removed(m_controller->get_id());
+        on_child_removed(m_controller->get_id());
         m_controller.reset();
     }
     else {
         log_warning << "Could not remove Controller from WindowLayout " << get_id() << " because it is already emppty";
     }
+}
+
+Aabrf WindowLayout::get_content_aabr() const
+{
+    if(m_controller){
+        if(ScreenItem* screen_item = get_screen_item(m_controller.get())){
+            return screen_item->get_aarbr();
+        }
+    }
+    return Aabrf::zero();
 }
 
 std::shared_ptr<Window> WindowLayout::get_window() const
@@ -124,6 +134,7 @@ void WindowLayout::_relayout()
     if (!is_empty()) {
         _set_item_size(m_controller->get_root_item().get(), get_size());
     }
+    on_layout_changed();
 }
 
 void WindowLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const

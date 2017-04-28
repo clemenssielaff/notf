@@ -93,7 +93,7 @@ public: // methods
      * @param transform Base transform of the Painter in Cell coordinates.
      * @param scissor   Scissor rect in Cell coordinates.
      */
-    Painter(CellCanvas& canvas, Cell& cell, const Xform2f transform = Xform2f::identity(), const Aabrf scissor = Aabrf::null());
+    Painter(CellCanvas& canvas, Cell& cell, const Xform2f transform = Xform2f::identity(), const Aabrf scissor = Aabrf::zero());
 
     /* State management ***********************************************************************************************/
 

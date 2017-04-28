@@ -221,7 +221,7 @@ StackLayout::~StackLayout()
 {
     // explicitly unparent all children so they can send the `parent_changed` signal
     for (ItemPtr& item : m_items) {
-        child_removed(item->get_id());
+        on_child_removed(item->get_id());
         _set_item_parent(item.get(), {});
     }
 }
@@ -234,7 +234,7 @@ bool StackLayout::has_item(const ItemPtr& item) const
 void StackLayout::clear()
 {
     for (ItemPtr& item : m_items) {
-        child_removed(item->get_id());
+        on_child_removed(item->get_id());
     }
     m_items.clear();
 }
@@ -260,7 +260,7 @@ void StackLayout::add_item(ItemPtr item)
     _set_item_parent(item.get(), std::static_pointer_cast<Layout>(shared_from_this()));
     const ItemID child_id = item->get_id();
     m_items.emplace_back(std::move(item));
-    child_added(child_id);
+    on_child_added(child_id);
 
     // update the parent layout if necessary
     if (_update_claim()) {
@@ -278,7 +278,16 @@ void StackLayout::remove_item(const ItemPtr& item)
         return;
     }
     m_items.erase(it);
-    child_removed(item->get_id());
+    on_child_removed(item->get_id());
+}
+
+Aabrf StackLayout::get_content_aabr() const
+{
+    Aabrf result; // TODO: better StackLayout::get_content_aabr
+    for (const ItemPtr& item : m_items) {
+        result.united(get_screen_item(item.get())->get_aarbr());
+    }
+    return result;
 }
 
 std::unique_ptr<LayoutIterator> StackLayout::iter_items() const
@@ -521,6 +530,8 @@ void StackLayout::_relayout()
             ++i;
         }
     }
+
+    on_layout_changed();
 }
 
 void StackLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size2f total_size,
