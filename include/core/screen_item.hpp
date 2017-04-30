@@ -7,6 +7,62 @@ namespace notf {
 
 /** Baseclass for all Items that have physical expansion (Widgets and Layouts).
  *
+ *  ScreenItem size is an interesting topic, worth a little bit of discussion.
+ * It is one of those things you don't really tend to think too much about, until you have to layout widgets on a screen.
+ * Layouting is urprisingly hard, but you've heard that already - I suppose.
+ * Let's go through a standard layouting process and how NoTF does it's magic behind the scenes.
+ *
+ * We'll look at Widgets first, and than at Layouts sind Layouts contain Widgets but not the other way around.
+ *
+ * At the very least, a Widget needs a size: a 2-dimensional value describing the width and the height of the expansion
+ * of the Widget on screen.
+ * Widgets have a size and it does correspond to the screen area of the Widget if certain conditions are met.
+ * For now, let's assume this is the case.
+ * What determines the size of a Widget?
+ * To a certain degree, the programmer.
+ * You can set all Widget sizes explicitly and be done with it.
+ * But that wouldn't make for a responsive interface. As soon as you have basic Widget types, that we've all come to
+ * expect from our UIs (like splitter or resizeable container), Widgets that only have a fixed size will end up taking
+ * too much screen real-estate or too litle.
+ * It's like visiting an old website on your phone to find that there's no way to read a paragraph without horizontal
+ * scrolling because the page does not respond to the size of you phone.
+ *
+ * This is why the Layout determines the size of a Widget, while the programmer only supplies a contraints and hints.
+ * In NoTF, these are called a `Claim`.
+ * Basically, a Widget claims a certain aoumt of space and then negotates with the Layout how much it actually receives.
+ * You (the programmer) can provide a hard minimum and a hard maximum as well as a preferred value which is used to
+ * distribute surplus space among multiple Widgets.
+ * Additionally, you can define minimum and maximum width/height ratios for the area, as well as a priority that causes
+ * Widgets with a higher priority to fill up as much space as allowed, before giving other Widgets the chance to do the
+ * same.
+ * If you want to make sure that the Widget has a certain size, you can set the min- and max-values of the Claim to the
+ * same value.
+ *
+ * Up to this point, the size of the Widget is guaranteed to be in screen coordinates, meaning a size of 50x50 will
+ * result in a Widget that takes up 50x50 pixels (on a monitor with a 1:1 relation between pixels and screen
+ * coordinates, but that's a different topic).
+ * But that is only true for unscaled Widgets.
+ *
+ * Widgets, like any ScreenItem, can be transformed.
+ * If you don't know what that means, think "moved, rotated and scaled".
+ * Moving is pretty straight forward and does not influence the size of the Widget.
+ * Widgets are usually moved by their Layout, but you can always define a manual offset to a Widget's transform which
+ * is added on top of the Layout's transformation.
+ *
+ * Rotating and scaling a Widget does influence its size and this is where things get a bit more complicated.
+ * Fortunately, in most cases you will not need to use this functionality - but if you do, its nice to know that is
+ * there.
+ * The thing is: transforming a Widget does not influence this (internal) size. Of course, a Widget scaled to twice its
+ * size will appear bigger on screen, but its size data field (the one used by its Layout to place it) remains
+ * unaffected.
+ *
+ * Let me repeat this, because this is important: scale and rotation of a Widget does not affect its Layout, nor does
+ * it affect its hit detection.
+ * Clicking into an area of a Widget that is outside its unscaled shape will not be registered.
+ * Now, you might think that this makes things more complicated, but it really doesn't.
+ * Scaling and rotating Widgets rarely occur in user interfaces and when it does, it is usally the 'Cell' of a Widget
+ * that is rotating, not the Widget itself (see 'Cell' below).
+ *
  * Opacity
  * =======
  * Each ScreenItem has an `opacity` member, which is a float in the range [0 -> 1].

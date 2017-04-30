@@ -113,7 +113,7 @@ public: // methods
         }
 
         // create the new target
-        ConnectionID id = detail::Connection::get_next_id();
+        ConnectionID id = detail::Connection::_get_next_id();
         if (test.check()) {
             m_targets.emplace_back(id, callback, test);
         }
