@@ -707,8 +707,8 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         Sender sender;
         Receiver receiver;
 
-        ConnectionID a = receiver.connect_signal(sender.int_signal, &Receiver::on_int_signal, [](int i) { return i == 3; });
-        ConnectionID b = receiver.connect_signal(sender.int_signal, &Receiver::on_int_signal, [](int i) { return i == 5; });
+        Connection a = receiver.connect_signal(sender.int_signal, &Receiver::on_int_signal, [](int i) { return i == 3; });
+        Connection b = receiver.connect_signal(sender.int_signal, &Receiver::on_int_signal, [](int i) { return i == 5; });
 
         THEN("only the enabled connections are used")
         {
@@ -717,25 +717,25 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
             sender.int_signal(5);
             REQUIRE(receiver.int_counter == 8);
 
-            sender.int_signal.disable(a);
+            a.disable();
             sender.int_signal(3);
             sender.int_signal(4);
             sender.int_signal(5);
             REQUIRE(receiver.int_counter == 13);
 
-            sender.int_signal.disable(b);
+            b.disable();
             sender.int_signal(3);
             sender.int_signal(4);
             sender.int_signal(5);
             REQUIRE(receiver.int_counter == 13);
 
-            sender.int_signal.enable(a);
+            a.enable();
             sender.int_signal(3);
             sender.int_signal(4);
             sender.int_signal(5);
             REQUIRE(receiver.int_counter == 16);
 
-            sender.int_signal.enable(b);
+            b.enable();
             sender.int_signal(3);
             sender.int_signal(4);
             sender.int_signal(5);
@@ -748,8 +748,8 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
         Sender sender;
         Receiver receiver;
 
-        ConnectionID a = receiver.connect_signal(sender.int_signal, &Receiver::on_int_signal, [](int i) { return i == 3; });
-        ConnectionID b = receiver.connect_signal(sender.int_signal, &Receiver::on_int_signal, [](int i) { return i == 5; });
+        Connection a = receiver.connect_signal(sender.int_signal, &Receiver::on_int_signal, [](int i) { return i == 3; });
+        Connection b = receiver.connect_signal(sender.int_signal, &Receiver::on_int_signal, [](int i) { return i == 5; });
 
         THEN("only the enabled connections are used")
         {
@@ -758,25 +758,25 @@ SCENARIO("signals are dynamic callbacks between functions and methods", "[common
             sender.int_signal(5);
             REQUIRE(receiver.int_counter == 8);
 
-            receiver.disable_connection(a);
+            a.disable();
             sender.int_signal(3);
             sender.int_signal(4);
             sender.int_signal(5);
             REQUIRE(receiver.int_counter == 13);
 
-            receiver.disable_connection(b);
+            b.disable();
             sender.int_signal(3);
             sender.int_signal(4);
             sender.int_signal(5);
             REQUIRE(receiver.int_counter == 13);
 
-            receiver.enable_connection(a);
+            a.enable();
             sender.int_signal(3);
             sender.int_signal(4);
             sender.int_signal(5);
             REQUIRE(receiver.int_counter == 16);
 
-            receiver.enable_connection(b);
+            b.enable();
             sender.int_signal(3);
             sender.int_signal(4);
             sender.int_signal(5);

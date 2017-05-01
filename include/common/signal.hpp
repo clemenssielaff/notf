@@ -36,276 +36,13 @@
 #include <memory>
 #include <vector>
 
-#include "common/id.hpp"
-
-// see commit de6d173f0339fadc20f128891ecaba6f637e07cb for a somewhat thread-safe (but only 16-25% as fast) implementation
-
 namespace notf {
-
-namespace detail {
-
-struct Connection;
-using RawConnectionId = size_t;
-
-} /// namespace detail
-
-/** Every connection from a Signal has an application-unique ID. */
-using ConnectionID = Id<detail::Connection, detail::RawConnectionId>;
-
-namespace detail {
-
-/******************************************************************************************************************/
-
-/** Internal data for a Connection between a Signal and a Callback. */
-struct Connection {
-
-    template <typename...>
-    friend class Signal;
-
-private: //struct
-    /** Data block shared by two Connection instances. */
-    struct Data {
-        Data(bool is_connected, bool is_enabled, ConnectionID id)
-            : is_connected(std::move(is_connected))
-            , is_enabled(std::move(is_enabled))
-            , id(id)
-        {
-        }
-
-        /** Is the connection still active? */
-        bool is_connected;
-
-        /** Is the connection currently enabled? */
-        bool is_enabled;
-
-        /** ID of this connection, is application-unique. */
-        const ConnectionID id;
-    };
-
-public: // methods
-    /** Creates a new, default constructed ConnectionData object. */
-    static Connection create()
-    {
-        return Connection(std::make_shared<Data>(/*is_connected=*/true, /*is_enabled=*/true, _get_next_id()));
-    }
-
-    Connection(const Connection&) = default;
-    Connection& operator=(const Connection&) = default;
-    Connection(Connection&&)                 = default;
-    Connection& operator=(Connection&&) = default;
-
-    /** Check if the connection is alive. */
-    bool is_connected() const { return m_data && m_data->is_connected; }
-
-    /** Checks if the Connection is currently enabled. */
-    bool is_enabled() const { return m_data && m_data->is_enabled; }
-
-    /** Breaks this Connection.
-     * After calling this function, future signals will not be delivered.
-     */
-    void disconnect()
-    {
-        if (!m_data) {
-            return;
-        }
-        m_data->is_connected = false;
-    }
-
-    /** Enables this Connection (does nothing when disconnected). */
-    void enable() const
-    {
-        if (m_data) {
-            m_data->is_enabled = true;
-        }
-    }
-
-    /** Disables this Connection (does nothing when disconnected). */
-    void disable() const
-    {
-        if (m_data) {
-            m_data->is_enabled = false;
-        }
-    }
-
-    /** Returns the ID of this Connection or 0 when disconnected. */
-    ConnectionID get_id() const
-    {
-        if (m_data) {
-            return m_data->id;
-        }
-        return 0;
-    }
-
-private: // methods
-    /** @param data Shared ConnectionData block. */
-    Connection(std::shared_ptr<Data> data)
-        : m_data(std::move(data))
-    {
-    }
-
-private: // static methods
-    /** The next Connection ID. */
-    static ConnectionID _get_next_id()
-    {
-        static RawConnectionId next_id = 0;
-        return ++next_id; // leaving 0 as 'invalid'
-    }
-
-private: // fields
-    /** Data block shared by two Connection instances. */
-    std::shared_ptr<Data> m_data;
-};
 
 /**********************************************************************************************************************/
 
-/** Manager object owned by objects that receive Signals.
- * The CallbackManager tracks all incoming Connections to member functions of the owner and disconnects them, when
- * the owner is destructed.
- */
-class CallbackManager {
+namespace detail {
 
-public: // methods
-    CallbackManager() = default;
-
-    ~CallbackManager() { disconnect_all(); }
-
-    // no copy, move & -assignment
-    CallbackManager(const CallbackManager&) = delete;
-    CallbackManager& operator=(const CallbackManager&) = delete;
-    CallbackManager(CallbackManager&&)                 = delete;
-    CallbackManager& operator=(CallbackManager&&) = delete;
-
-    /** Creates and tracks a new Connection between the Signal and a lambda or free function.
-         * @brief signal       The Signal to connect to.
-         * @brief lambda       Function object (lambda / free function) to call.
-         * @brief test_func    (optional) Test function.
-         */
-    template <typename SIGNAL, typename... ARGS>
-    ConnectionID connect(SIGNAL& signal, ARGS&&... args)
-    {
-        Connection connection = signal.connect(std::forward<ARGS>(args)...);
-        ConnectionID id       = connection.get_id();
-        m_connections.emplace_back(std::move(connection));
-        return id;
-    }
-
-    /** Checks if a particular Connection is managed by this manager. */
-    bool has_connection(const ConnectionID id) const
-    {
-        if (!id) {
-            return false;
-        }
-        for (const Connection& connection : m_connections) {
-            if (connection.get_id() == id) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** Checks whether a given Connection is currently enabled or not. */
-    bool is_connection_enabled(const ConnectionID id) const
-    {
-        for (auto& connection : m_connections) {
-            if (connection.get_id() == id) {
-                return connection.is_enabled();
-            }
-        }
-        throw std::runtime_error("Cannot inspect unknown connection");
-    }
-
-    /** Returns a vector of all managed (connected) Connections.*/
-    std::vector<ConnectionID> get_connections() const
-    {
-        std::vector<ConnectionID> result;
-        result.reserve(m_connections.size());
-        for (const Connection& connection : m_connections) {
-            ConnectionID id = connection.get_id();
-            if (id) {
-                result.push_back(id);
-            }
-        }
-        return result;
-    }
-
-    /** Temporarily disables all tracked Connections. */
-    void disable_all()
-    {
-        for (auto& connection : m_connections) {
-            connection.disable();
-        }
-    }
-
-    /** Disables a specific Connection into the managed object.
-         * @param connection            ID of the Connection.
-         * @throw std:runtime_error     If there is no Connection with the given ID connected.
-         */
-    void disable(const ConnectionID id)
-    {
-        for (auto& connection : m_connections) {
-            if (connection.get_id() == id) {
-                connection.disable();
-                return;
-            }
-        }
-        throw std::runtime_error("Cannot disable unknown connection");
-    }
-
-    /** (Re-)Enables all tracked Connections. */
-    void enable_all()
-    {
-        for (auto& connection : m_connections) {
-            connection.enable();
-        }
-    }
-
-    /** Enables a specific Connection into the managed object.
-         * @param connection            ID of the Connection.
-         * @throw std:runtime_error     If there is no Connection with the given ID connected.
-         */
-    void enable(const ConnectionID id)
-    {
-        for (auto& connection : m_connections) {
-            if (connection.get_id() == id) {
-                connection.enable();
-                return;
-            }
-        }
-        throw std::runtime_error("Cannot enable unknown connection");
-    }
-
-    /** Disconnects all tracked Connections. */
-    void disconnect_all()
-    {
-        for (Connection& connection : m_connections) {
-            connection.disconnect();
-        }
-        m_connections.clear();
-    }
-
-    /** Disconnects a specific Connection into the managed object.
-         * @param connection            ID of the Connection.
-         * @throw std:runtime_error     If there is no Connection with the given ID connected.
-         */
-    void disconnect(const ConnectionID id)
-    {
-        for (auto& connection : m_connections) {
-            if (connection.get_id() == id) {
-                connection.disconnect();
-                return;
-            }
-        }
-        throw std::runtime_error("Cannot diconnected unknown connection");
-    }
-
-private: // fields
-    /** All managed Connections. */
-    std::vector<Connection> m_connections;
-};
-
-/******************************************************************************************************************/
-
-/** Guard struct to make sure that the `is_firing` flag is always unset when a Signal has finished firing. */
+/** Guard making sure that a Signal's `is_firing` flag is always unset when the Signal has finished firing. */
 struct FlagGuard {
     FlagGuard(bool& flag)
         : m_flag(flag)
@@ -325,6 +62,79 @@ struct FlagGuard {
 
 /**********************************************************************************************************************/
 
+/** Internal data for a Connection between a Signal and a Callback. */
+struct Connection {
+
+    template <typename...>
+    friend class Signal;
+
+private: //struct
+    /** Data block shared by all instances of the same logical Connection.
+     * That means, at least the Signal owns a Connection object, as does the `receive_signals` mixins or even the user.
+     */
+    struct Data {
+        /** Is the connection still active? */
+        bool is_connected = true;
+
+        /** Is the connection currently enabled? */
+        bool is_enabled = true;
+    };
+
+public: // methods
+    /** Creates a new, default constructed ConnectionData object. */
+    static Connection create() { return Connection(std::make_shared<Data>()); }
+
+public: // methods
+    /** Check if the connection is alive. */
+    bool is_connected() const { return m_data && m_data->is_connected; }
+
+    /** Checks if the Connection is currently enabled. */
+    bool is_enabled() const { return m_data && m_data->is_enabled; }
+
+    /** Checks if two Connection objects identify the same logical connection. */
+    bool operator==(const Connection& other) const { return m_data == other.m_data; }
+
+    /** Enables this Connection (does nothing when disconnected). */
+    void enable() const
+    {
+        if (m_data) {
+            m_data->is_enabled = true;
+        }
+    }
+
+    /** Disables this Connection (does nothing when disconnected). */
+    void disable() const
+    {
+        if (m_data) {
+            m_data->is_enabled = false;
+        }
+    }
+
+    /** Breaks this Connection.
+     * After calling this function, future signals will not be delivered.
+     */
+    void disconnect()
+    {
+        if (!m_data) {
+            return;
+        }
+        m_data->is_connected = false;
+    }
+
+private: // methods
+    /** @param data Shared ConnectionData block. */
+    Connection(std::shared_ptr<Data> data)
+        : m_data(std::move(data))
+    {
+    }
+
+private: // fields
+    /** Data block shared by two Connection instances. */
+    std::shared_ptr<Data> m_data;
+};
+
+/**********************************************************************************************************************/
+
 /** An object capable of firing (emitting) signals to connected targets. */
 template <typename... SIGNATURE>
 class Signal {
@@ -335,7 +145,7 @@ public: // type
 private: // struct
     /** Connection and target function pair. */
     struct Target {
-        Target(detail::Connection connection, std::function<void(SIGNATURE...)> function,
+        Target(Connection connection, std::function<void(SIGNATURE...)> function,
                std::function<bool(SIGNATURE...)> test_function)
             : connection(std::move(connection))
             , function(std::move(function))
@@ -344,7 +154,7 @@ private: // struct
         }
 
         /** Connection through which the Callback is performed. */
-        detail::Connection connection;
+        Connection connection;
 
         /** Callback function. */
         std::function<void(SIGNATURE...)> function;
@@ -354,12 +164,14 @@ private: // struct
     };
 
 public: // methods
+    /** Constructor. */
     Signal() = default;
 
     // no copy / assignment
     Signal(const Signal&) = delete;
     Signal& operator=(const Signal&) = delete;
 
+    /** Destructor. */
     ~Signal() { disconnect(); }
 
     /** Move Constructor. */
@@ -381,8 +193,8 @@ public: // methods
      * @param test_func    (optional) Test function. When null, the Target is always called.
      * @return             The created Connection.
      */
-    detail::Connection connect(std::function<void(SIGNATURE...)> function,
-                               std::function<bool(SIGNATURE...)> test_func = {})
+    Connection connect(std::function<void(SIGNATURE...)> function,
+                       std::function<bool(SIGNATURE...)> test_func = {})
     {
         assert(function);
 
@@ -392,20 +204,17 @@ public: // methods
         });
 
         // add the new connection
-        detail::Connection connection = detail::Connection::create();
+        Connection connection = Connection::create();
         m_targets.emplace_back(connection, std::move(function), std::move(test_func));
 
         return connection;
     }
 
     /** Checks if a particular Connection is connected to this Signal. */
-    bool has_connection(const ConnectionID id) const
+    bool has_connection(const Connection& connection) const
     {
-        if (!id) {
-            return false;
-        }
         for (const Target& target : m_targets) {
-            if (target.connection.get_id() == id) {
+            if (target.connection == connection) {
                 return true;
             }
         }
@@ -413,40 +222,16 @@ public: // methods
     }
 
     /** Returns a vector of all (connected) Connections.*/
-    std::vector<ConnectionID> get_connections() const
+    std::vector<Connection> get_connections() const
     {
-        std::vector<ConnectionID> result;
+        std::vector<Connection> result;
         result.reserve(m_targets.size());
         for (const Target& target : m_targets) {
-            ConnectionID id = target.connection.get_id();
-            if (id) {
-                result.push_back(id);
+            if (target.connection.is_connected()) {
+                result.push_back(target.connection);
             }
         }
         return result;
-    }
-
-    /** Temporarily disables all Connections of this Signal. */
-    void disable()
-    {
-        for (auto& target : m_targets) {
-            target.connection.disable();
-        }
-    }
-
-    /** Disables a specific Connection of this Signal.
-     * @param connection            ID of the Connection.
-     * @throw std:runtime_error     If there is no Connection with the given ID connected to this Signal.
-     */
-    void disable(const ConnectionID id)
-    {
-        for (auto& target : m_targets) {
-            if (target.connection.get_id() == id) {
-                target.connection.disable();
-                return;
-            }
-        }
-        throw std::runtime_error("Cannot disable unknown connection");
     }
 
     /** (Re-)Enables all Connections of this Signal. */
@@ -457,19 +242,12 @@ public: // methods
         }
     }
 
-    /** Enables a specific Connection of this Signal.
-     * @param connection            ID of the Connection.
-     * @throw std:runtime_error     If there is no Connection with the given ID connected to this Signal.
-     */
-    void enable(const ConnectionID id)
+    /** Temporarily disables all Connections of this Signal. */
+    void disable()
     {
-        for (auto& target : m_targets) {
-            if (target.connection.get_id() == id) {
-                target.connection.enable();
-                return;
-            }
+        for (Target& target : m_targets) {
+            target.connection.disable();
         }
-        throw std::runtime_error("Cannot enable unknown connection");
     }
 
     /** Disconnect all Connections from this Signal. */
@@ -479,21 +257,6 @@ public: // methods
             target.connection.disconnect();
         }
         m_targets.clear();
-    }
-
-    /** Disconnects a specific Connection of this Signal.
-     * @param connection            ID of the Connection.
-     * @throw std:runtime_error     If there is no Connection with the given ID connected to this Signal.
-     */
-    void disconnect(const ConnectionID id)
-    {
-        for (auto& target : m_targets) {
-            if (target.connection.get_id() == id) {
-                target.connection.disconnect();
-                return;
-            }
-        }
-        throw std::runtime_error("Cannot disconnect unknown connection");
     }
 
     /** Fires (emits) the signal.
@@ -531,7 +294,7 @@ private: // fields
 /**********************************************************************************************************************/
 
 /** Full specialization for Signals that require no arguments.
- * Since they don't have a test-function, emitting Signals without arguments is 1.65x as fast than those with args.
+ * Since they don't have a test-function, emitting Signals without arguments is ~1.65x as fast than those without.
  */
 template <>
 class Signal<> {
@@ -542,14 +305,14 @@ public: // type
 private: // struct
     /** Connection and target function pair. */
     struct Target {
-        Target(detail::Connection connection, std::function<void()> function)
+        Target(Connection connection, std::function<void()> function)
             : connection(std::move(connection))
             , function(std::move(function))
         {
         }
 
         /** Connection through which the Callback is performed. */
-        detail::Connection connection;
+        Connection connection;
 
         /** Callback function. */
         std::function<void()> function;
@@ -581,7 +344,7 @@ public: // methods
      * @param function     Target function.
      * @return             The created Connection.
      */
-    detail::Connection connect(std::function<void()> function)
+    Connection connect(std::function<void()> function)
     {
         assert(function);
 
@@ -591,20 +354,17 @@ public: // methods
         });
 
         // create a new Connection
-        detail::Connection connection = detail::Connection::create();
+        Connection connection = Connection::create();
         m_targets.emplace_back(connection, std::move(function));
 
         return connection;
     }
 
     /** Checks if a particular Connection is connected to this Signal. */
-    bool has_connection(const ConnectionID id) const
+    bool has_connection(const Connection& connection) const
     {
-        if (!id) {
-            return false;
-        }
         for (const Target& target : m_targets) {
-            if (target.connection.get_id() == id) {
+            if (target.connection == connection) {
                 return true;
             }
         }
@@ -612,40 +372,16 @@ public: // methods
     }
 
     /** Returns a vector of all (connected) Connections.*/
-    std::vector<ConnectionID> get_connections() const
+    std::vector<Connection> get_connections() const
     {
-        std::vector<ConnectionID> result;
+        std::vector<Connection> result;
         result.reserve(m_targets.size());
         for (const Target& target : m_targets) {
-            ConnectionID id = target.connection.get_id();
-            if (id) {
-                result.push_back(id);
+            if (target.connection.is_connected()) {
+                result.push_back(target.connection);
             }
         }
         return result;
-    }
-
-    /** Temporarily disables all Connections of this Signal. */
-    void disable()
-    {
-        for (auto& target : m_targets) {
-            target.connection.disable();
-        }
-    }
-
-    /** Disables a specific Connection of this Signal.
-     * @param connection            ID of the Connection.
-     * @throw std:runtime_error     If there is no Connection with the given ID connected to this Signal.
-     */
-    void disable(const ConnectionID id)
-    {
-        for (auto& target : m_targets) {
-            if (target.connection.get_id() == id) {
-                target.connection.disable();
-                return;
-            }
-        }
-        throw std::runtime_error("Cannot disable unknown connection");
     }
 
     /** (Re-)Enables all Connections of this Signal. */
@@ -656,19 +392,12 @@ public: // methods
         }
     }
 
-    /** Enables a specific Connection of this Signal.
-     * @param connection            ID of the Connection.
-     * @throw std:runtime_error     If there is no Connection with the given ID connected to this Signal.
-     */
-    void enable(const ConnectionID id)
+    /** Temporarily disables all Connections of this Signal. */
+    void disable()
     {
         for (auto& target : m_targets) {
-            if (target.connection.get_id() == id) {
-                target.connection.enable();
-                return;
-            }
+            target.connection.disable();
         }
-        throw std::runtime_error("Cannot disable unknown connection");
     }
 
     /** Disconnect all Connections from this Signal. */
@@ -678,21 +407,6 @@ public: // methods
             target.connection.disconnect();
         }
         m_targets.clear();
-    }
-
-    /** Disconnects a specific Connection of this Signal.
-     * @param connection            ID of the Connection.
-     * @throw std:runtime_error     If there is no Connection with the given ID connected to this Signal.
-     */
-    void disconnect(const ConnectionID id)
-    {
-        for (auto& target : m_targets) {
-            if (target.connection.get_id() == id) {
-                target.connection.disconnect();
-                return;
-            }
-        }
-        throw std::runtime_error("Cannot disconnect unknown connection");
     }
 
     /** Fires (emits) the signal.
@@ -724,40 +438,54 @@ private: // fields
 
 /**********************************************************************************************************************/
 
-class ConnectionHandle;
-
 /** Mixin class to be able to receive Signals. */
 class receive_signals {
 
 public: // methods
+    /** Constructor. */
+    receive_signals() = default;
+
+    // no copy, move & -assignment
+    receive_signals& operator=(const receive_signals&) = delete;
+    receive_signals(const receive_signals&)            = delete;
+    receive_signals& operator=(receive_signals&&) = delete;
+    receive_signals(receive_signals&&)            = delete;
+
+    /** Destructor. */
+    virtual ~receive_signals();
+
+    // 1st overload
+
     /** Creates a connection managed by this object, connecting the given signal to a function object. */
     template <typename SIGNAL, typename... ARGS>
-    ConnectionID connect_signal(SIGNAL& signal, ARGS&&... args)
+    Connection connect_signal(SIGNAL& signal, ARGS&&... args)
     {
-        return m_callback_manager.connect(signal, std::forward<ARGS>(args)...);
+        return _connect_signal(signal, std::forward<ARGS>(args)...);
     }
+
+    // 2nd overload
 
     /** Creates a Connection connecting the given Signal to a member function of this object. */
     template <typename SIGNAL, typename RECEIVER, typename... SIGNATURE, typename... ARGS,
               typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value == sizeof...(SIGNATURE))>>
-    ConnectionID connect_signal(SIGNAL& signal, void (RECEIVER::*method)(SIGNATURE...), ARGS&&... args)
+    Connection connect_signal(SIGNAL& signal, void (RECEIVER::*method)(SIGNATURE...), ARGS&&... args)
     {
-        return m_callback_manager.connect(
-            signal,
-            [this, method](SIGNATURE... args) { (static_cast<RECEIVER*>(this)->*method)(args...); },
-            std::forward<ARGS>(args)...);
+        return _connect_signal(signal,
+                               [this, method](SIGNATURE... args) { (static_cast<RECEIVER*>(this)->*method)(args...); },
+                               std::forward<ARGS>(args)...);
     }
 
-    /** Creates a Connection connecting the given Signal to a const member function of this object. */
+    /** Creates a Connection connecting the given Signal to a CONST member function of this object. */
     template <typename SIGNAL, typename RECEIVER, typename... SIGNATURE, typename... ARGS,
               typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value == sizeof...(SIGNATURE))>>
-    ConnectionID connect_signal(SIGNAL& signal, void (RECEIVER::*method)(SIGNATURE...) const, ARGS&&... args)
+    Connection connect_signal(SIGNAL& signal, void (RECEIVER::*method)(SIGNATURE...) const, ARGS&&... args)
     {
-        return m_callback_manager.connect(
-            signal,
-            [this, method](SIGNATURE... args) { (static_cast<RECEIVER*>(this)->*method)(args...); },
-            std::forward<ARGS>(args)...);
+        return _connect_signal(signal,
+                               [this, method](SIGNATURE... args) { (static_cast<RECEIVER*>(this)->*method)(args...); },
+                               std::forward<ARGS>(args)...);
     }
+
+    // 3rd overload
 
     /** Overload to connect any Signal to a member function without arguments.
      * This way, you can connect a `Signal<int>` to a function `foo()` without having to manually wrap the function
@@ -765,63 +493,87 @@ public: // methods
      */
     template <typename SIGNAL, typename RECEIVER, typename... TEST_FUNC,
               typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value > 0)>>
-    ConnectionID connect_signal(SIGNAL& signal, void (RECEIVER::*method)(void), TEST_FUNC&&... test_func)
+    Connection connect_signal(SIGNAL& signal, void (RECEIVER::*method)(void), TEST_FUNC&&... test_func)
     {
         constexpr auto signal_size = std::tuple_size<typename std::decay<typename SIGNAL::Signature>::type>::value;
-        return m_callback_manager.connect(signal,
-                                          _connection_helper(signal, method, std::make_index_sequence<signal_size>{}),
-                                          std::forward<TEST_FUNC>(test_func)...);
+        return _connect_signal(signal,
+                               _connection_helper(signal, method, std::make_index_sequence<signal_size>{}),
+                               std::forward<TEST_FUNC>(test_func)...);
     }
 
-    /** Argument-ignoring overload for const functions (see overload above). */
+    /** Argument-ignoring overload for CONST functions (see overload above). */
     template <typename SIGNAL, typename RECEIVER, typename... TEST_FUNC,
               typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value > 0)>>
-    ConnectionID connect_signal(SIGNAL& signal, void (RECEIVER::*method)(void) const, TEST_FUNC&&... test_func)
+    Connection connect_signal(SIGNAL& signal, void (RECEIVER::*method)(void) const, TEST_FUNC&&... test_func)
     {
         constexpr auto signal_size = std::tuple_size<typename std::decay<typename SIGNAL::Signature>::type>::value;
-        return m_callback_manager.connect(signal,
-                                          _connection_helper(signal, method, std::make_index_sequence<signal_size>{}),
-                                          std::forward<TEST_FUNC>(test_func)...);
+        return _connect_signal(signal,
+                               _connection_helper(signal, method, std::make_index_sequence<signal_size>{}),
+                               std::forward<TEST_FUNC>(test_func)...);
     }
 
-    /** Checks if a particular Connection is connected to this object. */
-    bool has_connection(const ConnectionID id) const { return m_callback_manager.has_connection(id); }
+    /** Checks if a particular Connection is managed by this object. */
+    bool has_connection(const Connection& other) const
+    {
+        for (const Connection& connection : m_connections) {
+            if (connection == other) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-    /** Checks whether a given Connection is currently enabled or not. */
-    bool is_connection_enabled(const ConnectionID id) const { return m_callback_manager.is_connection_enabled(id); }
+    /** All Connections managed by this object. */
+    const std::vector<Connection>& get_connections() const
+    {
+        _cleanup();
+        return m_connections;
+    }
 
-    /** Returns a vector of all (connected) Connections to this object.*/
-    std::vector<ConnectionID> get_connections() const { return m_callback_manager.get_connections(); }
+    /** (Re-)Enables all tracked Connections managed by this object. */
+    void enable_all_connections()
+    {
+        for (Connection& connection : m_connections) {
+            connection.enable();
+        }
+    }
 
-    /** Temporarily disables all Connections into this object. */
-    void disable_all_connections() { m_callback_manager.disable_all(); }
-
-    /** Disables a specific Connection into this object.
-     * @param connection            ID of the Connection.
-     * @throw std:runtime_error     If there is no Connection with the given ID connected.
-     */
-    void disable_connection(const ConnectionID id) { m_callback_manager.disable(id); }
-
-    /** (Re-)Enables all tracked Connections into this object. */
-    void enable_all_connections() { m_callback_manager.enable_all(); }
-
-    /** Enables a specific Connection into this object.
-     * @param connection            ID of the Connection.
-     * @throw std:runtime_error     If there is no Connection with the given ID connected.
-     */
-    void enable_connection(const ConnectionID id) { m_callback_manager.enable(id); }
+    /** Disables all Connections managed by this object. */
+    void disable_all_connections()
+    {
+        for (Connection& connection : m_connections) {
+            connection.disable();
+        }
+    }
 
     /** Disconnects all Signals from Connections managed by this object. */
-    void disconnect_all_connections() { m_callback_manager.disconnect_all(); }
-
-    /** Disconnects a specific Connection into this object.
-     * @param connection            ID of the Connection.
-     * @throw std:runtime_error     If there is no Connection with the given ID connected.
-     */
-    void disconnect_connection(const ConnectionID id) { m_callback_manager.disconnect(id); }
+    void disconnect_all_connections()
+    {
+        for (Connection& connection : m_connections) {
+            connection.disconnect();
+        }
+    }
 
 private: // methods
-    /** Helper function for the third overload of `connect_signal`.
+    /** Removes all disconnected Connections. */
+    void _cleanup() const
+    {
+        std::remove_if(m_connections.begin(), m_connections.end(), [](const Connection& connection) -> bool {
+            return !connection.is_connected();
+        });
+    }
+
+    /** Connects a new Connection to be managed by this object. */
+    template <typename SIGNAL, typename... ARGS>
+    Connection _connect_signal(SIGNAL& signal, ARGS&&... args)
+    {
+        _cleanup();
+        Connection connection = signal.connect(std::forward<ARGS>(args)...);
+        m_connections.push_back(connection);
+        return connection;
+    }
+
+    /** Helper function for the 3rd overload of `connect_signal`.
      * Returns a lambda wrapping a call from any Signal to a method of this object that takes no arguments.
      */
     template <typename SIGNAL, typename RECEIVER, std::size_t... index>
@@ -833,69 +585,8 @@ private: // methods
     }
 
 private: // fields
-    /** Callback manager owning one half of the Signals' Connections. */
-    detail::CallbackManager m_callback_manager;
-
-    /** All ConnectionHandles of Connections to this object. */
-    std::vector<std::weak_ptr<ConnectionHandle>> m_handles;
-};
-
-/**********************************************************************************************************************/
-
-/** Convenience class for managing individual Connections.
- * You don't have to use this, all functions are available through the `receive_signals` mixin class.
- * But this is nicer.
- */
-class ConnectionHandle {
-
-    friend class receive_signals;
-
-    // TODO: CONTINUE HERE
-    // this class may only be creatd by 'receive_signals' and only as shared_ptr
-
-public: // methods
-    ConnectionHandle(receive_signals* receiver, ConnectionID id)
-        : m_receiver(receiver)
-        , m_id(id)
-    {
-    }
-
-    /** Disconnects the Connection. */
-    ~ConnectionHandle()
-    {
-        if (m_receiver) {
-            m_receiver->disconnect_connection(m_id);
-        }
-    }
-
-    /** Tests whether the managed Connection has been destroyed by its manager. */
-    bool is_alive() const { return m_receiver && m_receiver->has_connection(m_id); }
-
-    /** Tests whether the managed Connection is currently enabled.
-     * @returns True if the Connection is alive and enabled, false otherwise.
-     */
-    bool is_enabled() const { return is_alive() && m_receiver->is_connection_enabled(m_id); }
-
-    /** Enables the Connection, if it is still alive. */
-    void enable()
-    {
-        if (is_alive()) {
-            m_receiver->enable_connection(m_id);
-        }
-    }
-
-    /** Disables the Connection, if it is still alive. */
-    void disable()
-    {
-        if (is_alive()) {
-            m_receiver->disable_connection(m_id);
-        }
-    }
-
-private: // fields
-    receive_signals* m_receiver;
-
-    const ConnectionID m_id;
+    /** All incoming Connections. */
+    mutable std::vector<Connection> m_connections;
 };
 
 /**********************************************************************************************************************/

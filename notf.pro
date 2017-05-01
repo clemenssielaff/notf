@@ -165,7 +165,8 @@ SOURCES += \
     src/graphics/cell/cell.cpp \
     src/graphics/graphics_context.cpp \
     src/graphics/cell/cell_canvas.cpp \
-    src/nanovg_test.cpp
+    src/nanovg_test.cpp \
+    src/common/signal.cpp
 
 HEADERS += \
     include/core/application.hpp \
