@@ -51,6 +51,7 @@ ScrollArea::ScrollArea()
     , m_scroll_container()
     , m_vscrollbar()
     , m_content()
+    , m_on_scrollbar_drag()
 {
 }
 
@@ -67,7 +68,7 @@ void ScrollArea::_initialize()
 
     m_scroll_container = Overlayout::create();
     m_scroll_container->set_scissor(m_area_window);
-    m_scroll_container->on_layout_changed.connect([this]() -> void {
+    connect_signal(m_scroll_container->on_layout_changed, [this]() -> void {
         _update_scrollbar(0);
     });
     m_area_window->add_item(m_scroll_container);
@@ -78,6 +79,16 @@ void ScrollArea::_initialize()
     root_layout->add_item(m_area_window);
     root_layout->add_item(m_vscrollbar);
     _set_root_item(root_layout);
+
+    /* TODO: continue here
+     * I need focus. When you click the mouse down in the scroll bar, it needs to receive mouse events, even if you move
+     * the mouse cursor outside its area...
+     * Also, I need another focus for the keyboard ... CONCEPTION TIME!
+     */
+    m_on_scrollbar_drag = connect_signal(m_vscrollbar->on_mouse_move, [this](MouseEvent&) -> void {
+        log_trace << "mouse moved";
+    });
+    m_on_scrollbar_drag.disable();
 }
 
 void ScrollArea::set_area_controller(ControllerPtr controller)
@@ -123,7 +134,7 @@ void ScrollArea::_update_scrollbar(float delta_y)
     m_scroll_container->set_offset_transform(Xform2f::translation({0, y}));
 
     if (overflow <= -0.5f // there must at least be half a pixel to scroll in order for the bar to show up
-            && abs(content_height) >= precision_high<float>()) {
+        && abs(content_height) >= precision_high<float>()) {
         m_vscrollbar->size = area_height / content_height;
         m_vscrollbar->pos  = abs(y) / content_height;
     }

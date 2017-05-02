@@ -76,40 +76,40 @@ CONFIG(python) {
     DEFINES += NOTF_PYTHON
 
     SOURCES += \
-        src/python/interpreter.cpp \
-        src/python/py_layoutroot.cpp \
-        src/python/py_painter.cpp \
-        src/python/py_stacklayout.cpp \
-        src/python/py_vector2.cpp \
-        src/python/py_widget.cpp \
-        src/python/py_window.cpp \
-        src/python/py_color.cpp \
-        src/python/py_aabr.cpp \
-        src/python/py_circle.cpp \
-        src/python/py_texture2.cpp \
-        src/python/py_size.cpp \
-        src/python/py_resourcemanager.cpp \
-        src/python/py_font.cpp \
-        src/python/py_padding.cpp \
-        src/python/py_claim.cpp \
-        src/python/py_overlayout.cpp \
-        src/python/py_notf.cpp \
-        src/python/py_controller.cpp \
-        src/python/type_patches.cpp \
-        src/python/py_fwd.cpp \
-        src/python/py_globals.cpp \
-        src/python/py_event.cpp \
-        src/python/py_signal.cpp \
-        src/python/py_dict_utils.cpp \
-        src/python/py_property.cpp
+        src/ext/python/interpreter.cpp \
+        src/ext/python/py_layoutroot.cpp \
+        src/ext/python/py_painter.cpp \
+        src/ext/python/py_stacklayout.cpp \
+        src/ext/python/py_vector2.cpp \
+        src/ext/python/py_widget.cpp \
+        src/ext/python/py_window.cpp \
+        src/ext/python/py_color.cpp \
+        src/ext/python/py_aabr.cpp \
+        src/ext/python/py_circle.cpp \
+        src/ext/python/py_texture2.cpp \
+        src/ext/python/py_size.cpp \
+        src/ext/python/py_resourcemanager.cpp \
+        src/ext/python/py_font.cpp \
+        src/ext/python/py_padding.cpp \
+        src/ext/python/py_claim.cpp \
+        src/ext/python/py_overlayout.cpp \
+        src/ext/python/py_notf.cpp \
+        src/ext/python/py_controller.cpp \
+        src/ext/python/type_patches.cpp \
+        src/ext/python/py_fwd.cpp \
+        src/ext/python/py_globals.cpp \
+        src/ext/python/py_event.cpp \
+        src/ext/python/py_signal.cpp \
+        src/ext/python/py_dict_utils.cpp \
+        src/ext/python/py_property.cpp
 
     HEADERS += \
-        include/python/interpreter.hpp \
-        include/python/py_notf.hpp \
-        include/python/docstr.hpp \
-        include/python/type_patches.hpp \
-        include/python/py_fwd.hpp \
-        include/python/py_signal.hpp \
+        include/ext/python/interpreter.hpp \
+        include/ext/python/py_notf.hpp \
+        include/ext/python/docstr.hpp \
+        include/ext/python/type_patches.hpp \
+        include/ext/python/py_fwd.hpp \
+        include/ext/python/py_signal.hpp \
         include/python/py_dict_utils.hpp
 }
 

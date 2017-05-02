@@ -68,6 +68,9 @@ private: // fields
 
     /** Controller providing the content of the scrolled area. */
     ControllerPtr m_content;
+
+    /** Connection enabled to drag the scrollbar with the cursor. */
+    Connection m_on_scrollbar_drag;
 };
 
 } // namespace notf

@@ -85,6 +85,12 @@ public: // methods
     static Connection create() { return Connection(std::make_shared<Data>()); }
 
 public: // methods
+    /** Default (empty) Connection. */
+    Connection()
+        : m_data()
+    {
+    }
+
     /** Check if the connection is alive. */
     bool is_connected() const { return m_data && m_data->is_connected; }
 
