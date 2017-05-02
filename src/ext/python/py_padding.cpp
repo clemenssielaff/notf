@@ -3,7 +3,7 @@ namespace py = pybind11;
 
 #include "common/padding.hpp"
 #include "common/string.hpp"
-#include "python/docstr.hpp"
+#include "ext/python/docstr.hpp"
 using namespace notf;
 
 #ifdef __clang__

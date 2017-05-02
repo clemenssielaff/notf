@@ -3,7 +3,7 @@ namespace py = pybind11;
 
 #include "core/controller.hpp"
 #include "core/window_layout.hpp"
-#include "python/docstr.hpp"
+#include "ext/python/docstr.hpp"
 using namespace notf;
 
 void produce_layout_root(pybind11::module& module, py::detail::generic_type Py_LayoutItem)

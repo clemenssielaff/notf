@@ -1,11 +1,11 @@
-#include "python/py_dict_utils.hpp"
+#include "ext/python/py_dict_utils.hpp"
 
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
 #include "common/log.hpp"
 #include "common/string.hpp"
-#include "python/py_fwd.hpp"
+#include "ext/python/py_fwd.hpp"
 
 namespace notf {
 

@@ -89,4 +89,22 @@ constexpr typename std::vector<T>::iterator iterator_at(std::vector<T>& vector, 
     return vector.begin() + static_cast<typename std::vector<T>::difference_type>(offset);
 }
 
+/** Flattens a 2D nested vector into a single one.
+ * As seen on: http://stackoverflow.com/a/17299623/3444217
+ */
+template <typename T>
+std::vector<T> flatten(const std::vector<std::vector<T>>& v)
+{
+    std::size_t total_size = 0;
+    for (const auto& sub : v) {
+        total_size += sub.size();
+    }
+    std::vector<T> result;
+    result.reserve(total_size);
+    for (const auto& sub : v) {
+        result.insert(result.end(), sub.begin(), sub.end());
+    }
+    return result;
+}
+
 } // namespace notf

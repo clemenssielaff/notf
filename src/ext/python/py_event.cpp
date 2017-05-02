@@ -5,7 +5,7 @@ namespace py = pybind11;
 
 #include "core/events/key_event.hpp"
 #include "core/events/mouse_event.hpp"
-#include "python/docstr.hpp"
+#include "ext/python/docstr.hpp"
 using namespace notf;
 
 void produce_events(pybind11::module& module)

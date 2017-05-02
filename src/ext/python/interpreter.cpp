@@ -1,4 +1,4 @@
-#include "python/interpreter.hpp"
+#include "ext/python/interpreter.hpp"
 
 #include <cstdio>
 #include <iostream>
@@ -12,7 +12,7 @@ using namespace py::literals;
 #include "common/log.hpp"
 #include "common/string.hpp"
 #include "core/application.hpp"
-#include "python/py_notf.hpp"
+#include "ext/python/py_notf.hpp"
 
 namespace notf {
 

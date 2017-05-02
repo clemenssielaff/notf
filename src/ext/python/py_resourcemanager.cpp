@@ -3,7 +3,7 @@ namespace py = pybind11;
 
 #include "core/application.hpp"
 #include "core/resource_manager.hpp"
-#include "python/docstr.hpp"
+#include "ext/python/docstr.hpp"
 using namespace notf;
 
 namespace { // anonymous

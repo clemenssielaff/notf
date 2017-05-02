@@ -4,7 +4,7 @@ namespace py = pybind11;
 #include "core/application.hpp"
 #include "core/window_layout.hpp"
 #include "core/window.hpp"
-#include "python/docstr.hpp"
+#include "ext/python/docstr.hpp"
 using namespace notf;
 
 void produce_window(pybind11::module& module)

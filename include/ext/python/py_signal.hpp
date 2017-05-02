@@ -5,8 +5,8 @@ namespace py = pybind11;
 
 #include "common/log.hpp"
 #include "common/signal.hpp"
-#include "python/py_dict_utils.hpp"
-#include "python/py_fwd.hpp"
+#include "ext/python/py_dict_utils.hpp"
+#include "ext/python/py_fwd.hpp"
 #include "utils/apply_tuple.hpp"
 #include "utils/unused.hpp"
 

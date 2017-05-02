@@ -2,8 +2,8 @@
 namespace py = pybind11;
 
 #include "core/events/mouse_event.hpp"
-#include "python/docstr.hpp"
-#include "python/py_signal.hpp"
+#include "ext/python/docstr.hpp"
+#include "ext/python/py_signal.hpp"
 using namespace notf;
 
 #ifdef __clang__

@@ -1,10 +1,10 @@
-#include "python/py_notf.hpp"
+#include "ext/python/py_notf.hpp"
 
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
 #include "core/layout_item.hpp"
-#include "python/docstr.hpp"
+#include "ext/python/docstr.hpp"
 using namespace notf;
 
 void produce_resource_manager(pybind11::module& module);

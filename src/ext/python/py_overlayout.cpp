@@ -3,7 +3,7 @@ namespace py = pybind11;
 
 #define NOTF_BINDINGS
 #include "dynamic/layout/overlayout.hpp"
-#include "python/docstr.hpp"
+#include "ext/python/docstr.hpp"
 using namespace notf;
 
 void produce_overlayout(pybind11::module& module, py::detail::generic_type Py_LayoutItem)

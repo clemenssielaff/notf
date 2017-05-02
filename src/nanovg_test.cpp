@@ -1,7 +1,7 @@
 #include "core/application.hpp"
 #include "core/events/key_event.hpp"
 #include "core/window.hpp"
-#include "python/interpreter.hpp"
+#include "ext/python/interpreter.hpp"
 
 using namespace notf;
 

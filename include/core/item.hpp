@@ -11,7 +11,7 @@
 #include "utils/binding_accessors.hpp"
 
 #ifdef NOTF_PYTHON
-#include "python/py_fwd.hpp"
+#include "ext/python/py_fwd.hpp"
 #endif
 
 namespace notf {
@@ -233,7 +233,7 @@ private: // fields *************************************************************
     std::weak_ptr<Item> m_parent;
 
     /** The RenderLayer of this Item.
-     * An empty pointer means that this item inherits its render layer from its parent.
+     * An empty pointer means that this item inherits its RenderLayer from its parent.
      */
     std::shared_ptr<RenderLayer> m_render_layer;
 

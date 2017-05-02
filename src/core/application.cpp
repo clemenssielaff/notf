@@ -9,9 +9,12 @@
 #include "core/glfw.hpp"
 #include "core/resource_manager.hpp"
 #include "core/window.hpp"
-#include "python/interpreter.hpp"
 #include "utils/print_notf.hpp"
 #include "utils/unused.hpp"
+
+#ifdef NOTF_PYTHON
+#include "ext/python/interpreter.hpp"
+#endif
 
 namespace { // anonymous
 

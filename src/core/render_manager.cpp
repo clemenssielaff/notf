@@ -1,7 +1,10 @@
 #include "core/render_manager.hpp"
 
+#include <iterator>
+
 #include "common/log.hpp"
 #include "common/time.hpp"
+#include "common/vector.hpp"
 #include "core/controller.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
@@ -11,22 +14,22 @@
 
 namespace notf {
 
-struct RenderLayer::make_shared_enabler : public RenderLayer {
-    template <typename... Args>
-    make_shared_enabler(Args&&... args)
-        : RenderLayer(std::forward<Args>(args)...) {}
-};
+/**********************************************************************************************************************/
 
-std::shared_ptr<RenderLayer> RenderLayer::create()
+RenderLayerPtr RenderLayer::create(const size_t index)
 {
-    return std::make_shared<make_shared_enabler>();
+    struct make_shared_enabler : public RenderLayer {
+        make_shared_enabler(const size_t index)
+            : RenderLayer(std::forward<const size_t>(index)) {}
+    };
+    return std::make_shared<make_shared_enabler>(index);
 }
 
 /**********************************************************************************************************************/
 
 RenderManager::RenderManager(const Window* window)
     : m_window(window)
-    , m_default_layer(RenderLayer::create())
+    , m_default_layer(RenderLayer::create(0))
     , m_layers({m_default_layer})
     , m_is_clean(false)
     , m_stats()
@@ -34,43 +37,54 @@ RenderManager::RenderManager(const Window* window)
     m_stats = std::make_unique<RenderStats>(120);
 }
 
-RenderManager::~RenderManager() = default; // without this, the forward declared unique_ptr to RenderStats wouldn't work
-
-std::shared_ptr<RenderLayer> RenderManager::create_front_layer()
+RenderManager::~RenderManager()
 {
-    m_layers.emplace_back(RenderLayer::create());
-    return m_layers.back();
-}
-
-std::shared_ptr<RenderLayer> RenderManager::create_back_layer()
-{
-    m_layers.emplace(m_layers.begin(), RenderLayer::create());
-    return m_layers.front();
-}
-
-std::shared_ptr<RenderLayer> RenderManager::create_layer_above(const std::shared_ptr<RenderLayer>& layer)
-{
-    auto it = std::find(m_layers.begin(), m_layers.end(), layer);
-    if (it == m_layers.end()) {
-        log_critical << "Cannot insert new layer above unknown RenderLayer";
-        return {};
+    for (RenderLayerPtr& layer : m_layers) {
+        layer->invalidate();
     }
+}
 
-    std::shared_ptr<RenderLayer> result = RenderLayer::create();
-    m_layers.emplace(++it, result);
+RenderLayerPtr RenderManager::create_front_layer()
+{
+    RenderLayerPtr result = RenderLayer::create(m_layers.size());
+    m_layers.emplace_back(result);
     return result;
 }
 
-std::shared_ptr<RenderLayer> RenderManager::create_layer_below(const std::shared_ptr<RenderLayer>& layer)
+RenderLayerPtr RenderManager::create_back_layer()
 {
-    auto it = std::find(m_layers.begin(), m_layers.end(), layer);
-    if (it == m_layers.end()) {
-        log_critical << "Cannot insert new layer below unknown RenderLayer";
-        return {};
+    return create_layer_below(m_layers.front());
+}
+
+RenderLayerPtr RenderManager::create_layer_above(const RenderLayerPtr& layer)
+{
+    auto it                = std::find(m_layers.begin(), m_layers.end(), layer);
+    const size_t new_index = static_cast<size_t>(std::distance(m_layers.begin(), it)) + 1;
+    if (new_index >= m_layers.size()) {
+        throw std::invalid_argument("Cannot insert new layer above unknown RenderLayer");
     }
 
-    std::shared_ptr<RenderLayer> result = RenderLayer::create();
+    RenderLayerPtr result = RenderLayer::create(new_index);
+    m_layers.emplace(++it, result);
+    for (; it != m_layers.end(); ++it) {
+        ++((*it)->m_index);
+    }
+    return result;
+}
+
+RenderLayerPtr RenderManager::create_layer_below(const RenderLayerPtr& layer)
+{
+    auto it                = std::find(m_layers.begin(), m_layers.end(), layer);
+    const size_t new_index = static_cast<size_t>(std::distance(m_layers.begin(), it));
+    if (new_index >= m_layers.size()) {
+        throw std::invalid_argument("Cannot insert new layer below unknown RenderLayer");
+    }
+
+    RenderLayerPtr result = RenderLayer::create(new_index);
     m_layers.emplace(it, result);
+    for (++it; it != m_layers.end(); ++it) {
+        ++((*it)->m_index);
+    }
     return result;
 }
 
@@ -85,7 +99,7 @@ void RenderManager::render(const Size2i buffer_size)
     cell_context.begin_frame(buffer_size, time_at_start, m_window->get_mouse_pos());
 
     // remove unused layers
-    std::remove_if(m_layers.begin(), m_layers.end(), [](std::shared_ptr<RenderLayer>& layer) -> bool {
+    std::remove_if(m_layers.begin(), m_layers.end(), [](RenderLayerPtr& layer) -> bool {
         return layer.unique();
     });
 
@@ -94,7 +108,7 @@ void RenderManager::render(const Size2i buffer_size)
     _iterate_item_hierarchy(window_layout, get_default_layer().get());
 
     // draw all widgets
-    for (std::shared_ptr<RenderLayer>& render_layer : m_layers) {
+    for (RenderLayerPtr& render_layer : m_layers) {
         for (const Widget* widget : render_layer->m_widgets) {
             widget->paint(cell_context);
         }

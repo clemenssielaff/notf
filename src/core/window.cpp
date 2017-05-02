@@ -1,6 +1,7 @@
 #include "core/window.hpp"
 
 #include "common/log.hpp"
+#include "common/vector.hpp"
 #include "core/application.hpp"
 #include "core/events/key_event.hpp"
 #include "core/events/mouse_event.hpp"
@@ -213,18 +214,19 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
     // TODO: I suspect mouse event propagation is suboptimal - also, it doesn't propagate up the hierarchy!
 
     // sort Widgets by render RenderLayers
-    std::vector<std::vector<Widget*>> widgets_by_layer;
-    for (Widget* widget : m_layout->get_widgets_at(event.window_pos)) {
-        RenderLayer* render_layer = widget->get_render_layer().get();
-        assert(render_layer);
-
-        size_t layer_index = m_render_manager->get_render_layer_index(render_layer);
-        assert(layer_index > 0);
-        if (layer_index > widgets_by_layer.size()) {
-            widgets_by_layer.resize(layer_index);
+    std::vector<Widget*> widgets;
+    {
+        std::vector<std::vector<Widget*>> widgets_by_layer(m_render_manager->get_layer_count());
+        for (Widget* widget : m_layout->get_widgets_at(event.window_pos)) {
+            RenderLayer* render_layer = widget->get_render_layer().get();
+            assert(render_layer);
+            widgets_by_layer[render_layer->get_index()].emplace_back(widget);
         }
-        widgets_by_layer[layer_index - 1].emplace_back(widget);
+        widgets = flatten(widgets_by_layer);
     }
+
+// TODO: CONTINUE HERE
+
 
     // call the appropriate event signal
     if (event.action == MouseAction::MOVE) {

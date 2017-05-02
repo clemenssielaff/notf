@@ -5,8 +5,8 @@ namespace py = pybind11;
 #define NOTF_BINDINGS
 #include "core/widget.hpp"
 //#include "graphics/canvas_painter.hpp"
-#include "python/docstr.hpp"
-#include "python/type_patches.hpp"
+#include "ext/python/docstr.hpp"
+#include "ext/python/type_patches.hpp"
 using namespace notf;
 
 /* Trampoline Class ***************************************************************************************************/

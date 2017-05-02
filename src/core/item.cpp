@@ -85,6 +85,8 @@ std::shared_ptr<Window> Item::get_window() const
 
 const std::shared_ptr<RenderLayer>& Item::get_render_layer(const bool own) const
 {
+    assert(m_render_layer->is_valid());
+
     // if you have your own RenderLayer or the own RenderLayer is requested, return that
     if (own || m_render_layer) {
         return m_render_layer;

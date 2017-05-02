@@ -14,6 +14,7 @@ namespace notf {
 
 struct KeyEvent;
 class CellCanvas;
+class Item;
 class WindowLayout;
 class MouseEvent;
 class GraphicsContext;
@@ -167,6 +168,19 @@ private: // fields
 
     /** The Window size. */
     Size2i m_size;
+
+    /** The first Item to receive mouse events.
+     * When an Item handles a mouse press event, it will also receive -move and -release events, even if the cursor is
+     * no longer within the Item.
+     * May be empty.
+     */
+    std::weak_ptr<Item> m_mouse_item;
+
+    /** The first Item to receive keyboard events.
+     * The 'focused' Item.
+     * May be empty.
+     */
+    std::weak_ptr<Item> m_keyboard_item;
 };
 
 } // namespace notf

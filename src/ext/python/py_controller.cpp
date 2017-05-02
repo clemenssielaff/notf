@@ -7,11 +7,11 @@ namespace py = pybind11;
 #include "common/log.hpp"
 #include "core/controller.hpp"
 #include "core/events/mouse_event.hpp"
-#include "python/docstr.hpp"
-#include "python/py_dict_utils.hpp"
-#include "python/py_fwd.hpp"
-#include "python/py_signal.hpp"
-#include "python/type_patches.hpp"
+#include "ext/python/docstr.hpp"
+#include "ext/python/py_dict_utils.hpp"
+#include "ext/python/py_fwd.hpp"
+#include "ext/python/py_signal.hpp"
+#include "ext/python/type_patches.hpp"
 using namespace notf;
 
 /* Trampoline Class ***************************************************************************************************/

@@ -6,8 +6,8 @@ namespace py = pybind11;
 #include <string>
 
 #define NOTF_BINDINGS
-#include "python/docstr.hpp"
-#include "python/py_signal.hpp"
+#include "ext/python/docstr.hpp"
+#include "ext/python/py_signal.hpp"
 using namespace notf;
 
 namespace std {

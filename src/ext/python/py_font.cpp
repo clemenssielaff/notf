@@ -5,7 +5,7 @@ namespace py = pybind11;
 #include "core/application.hpp"
 #include "core/resource_manager.hpp"
 #include "graphics/font.hpp"
-#include "python/docstr.hpp"
+#include "ext/python/docstr.hpp"
 using namespace notf;
 
 void produce_font(pybind11::module& module)
