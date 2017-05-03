@@ -467,7 +467,7 @@ void StackLayout::_relayout()
             }
             const Claim& claim   = screen_item->get_claim();
             const float addition = (is_horizontal ? claim.get_horizontal() : claim.get_vertical()).get_preferred() + m_spacing;
-            if (current_size + addition > available_main) {
+            if (current_size + addition > available_main && !current_stack.empty()) {
                 stacks.emplace_back(std::move(current_stack));
                 cross_stretches.push_back(current_cross_stretch);
                 used_cross_space += current_cross_stretch.get_min();

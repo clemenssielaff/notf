@@ -220,7 +220,8 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
 
     // call the appropriate event signal
     if (event.action == MouseAction::MOVE) {
-        if(std::shared_ptr<Widget> mouse_item = m_mouse_item.lock()){
+        std::shared_ptr<Widget> mouse_item = m_mouse_item.lock();
+        if(mouse_item){
             mouse_item->on_mouse_move(event);
             if (event.was_handled()) {
                 return;
@@ -228,7 +229,9 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
         }
         for (const auto& layer : reverse(widgets_by_layer)) {
             for (const auto& widget : reverse(layer)) {
-                widget->on_mouse_move(event);
+                if(widget != mouse_item.get()){
+                    widget->on_mouse_move(event);
+                }
                 if (event.was_handled()) {
                     return;
                 }
@@ -236,7 +239,8 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
         }
     }
     else if (event.action == MouseAction::SCROLL) {
-        if(std::shared_ptr<Widget> mouse_item = m_mouse_item.lock()){
+        std::shared_ptr<Widget> mouse_item = m_mouse_item.lock();
+        if(mouse_item){
             mouse_item->on_scroll(event);
             if (event.was_handled()) {
                 return;
@@ -244,7 +248,9 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
         }
         for (const auto& layer : reverse(widgets_by_layer)) {
             for (const auto& widget : reverse(layer)) {
-                widget->on_scroll(event);
+                if(widget != mouse_item.get()){
+                    widget->on_scroll(event);
+                }
                 if (event.was_handled()) {
                     return;
                 }
@@ -264,7 +270,8 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
         }
     }
     else if (event.action == MouseAction::RELEASE) {
-        if(std::shared_ptr<Widget> mouse_item = m_mouse_item.lock()){
+        std::shared_ptr<Widget> mouse_item = m_mouse_item.lock();
+        if(mouse_item){
             m_mouse_item.reset();
             mouse_item->on_mouse_button(event);
             if (event.was_handled()) {
@@ -273,7 +280,9 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
         }
         for (const auto& layer : reverse(widgets_by_layer)) {
             for (const auto& widget : reverse(layer)) {
-                widget->on_mouse_button(event);
+                if(widget != mouse_item.get()){
+                    widget->on_mouse_button(event);
+                }
                 if (event.was_handled()) {
                     return;
                 }

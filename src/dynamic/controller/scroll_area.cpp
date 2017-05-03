@@ -55,41 +55,62 @@ ScrollArea::ScrollArea()
 {
 }
 
-// TODO: first element of stack layout is pushed down when the area is really narrow
-
 void ScrollArea::_initialize()
 {
+    // the window into the content
     m_area_window = Overlayout::create();
     m_area_window->set_claim(Claim());
 
+    // transparent background Widget reacting to scroll events not caught by the ScrollArea's content
     std::shared_ptr<Background> background = std::make_shared<Background>();
     m_area_window->add_item(background);
-    background->on_scroll.connect([this](MouseEvent& event) -> void {
-        _update_scrollbar(16 * event.window_delta.y);
-    });
 
+    // container inside the area, scissored by the window and containing the content
     m_scroll_container = Overlayout::create();
     m_scroll_container->set_scissor(m_area_window);
-    connect_signal(m_scroll_container->on_layout_changed, [this]() -> void {
-        _update_scrollbar(0);
-    });
     m_area_window->add_item(m_scroll_container);
 
+    // the scrollbar on the side of the area window
     m_vscrollbar = std::make_shared<ScrollBar>(*this);
 
+    // the root layout of this Controller
     std::shared_ptr<StackLayout> root_layout = StackLayout::create(StackLayout::Direction::LEFT_TO_RIGHT);
     root_layout->add_item(m_area_window);
     root_layout->add_item(m_vscrollbar);
     _set_root_item(root_layout);
 
+    // update the scrollbar, if the container layout changed
+    connect_signal(
+        m_scroll_container->on_layout_changed,
+        [this]() -> void {
+            _update_scrollbar(0);
+        });
+
+    // scroll when scrolling the mouse wheel over the container or the scrollbar
+    connect_signal(
+        background->on_scroll,
+        [this](MouseEvent& event) -> void {
+            _update_scrollbar(16 * event.window_delta.y);
+        });
+    connect_signal(
+        m_vscrollbar->on_scroll,
+        [this](MouseEvent& event) -> void {
+            _update_scrollbar(16 * event.window_delta.y);
+        });
+
+    // event handler for when then scrollbar is dragged
     m_on_scrollbar_drag = connect_signal(
         m_vscrollbar->on_mouse_move,
         [this](MouseEvent& event) -> void {
-            // TODO: CONTINUE HERE
-            _update_scrollbar(-event.window_delta.y * (_get_content_height() / m_scroll_container->get_size().height));
+            const float area_height = m_scroll_container->get_size().height;
+            if (area_height >= 1) {
+                _update_scrollbar(-event.window_delta.y * _get_content_height() / area_height);
+            }
+            event.set_handled();
         });
     m_on_scrollbar_drag.disable();
 
+    // enable scrollbar dragging when the user clicks on the scrollbar
     connect_signal(
         m_vscrollbar->on_mouse_button,
         [this](MouseEvent& event) -> void {
@@ -105,6 +126,7 @@ void ScrollArea::_initialize()
                     && event.window_pos.y <= scroll_bar_top + scroll_bar_height);
         });
 
+    // disable scrollbar dragging again, when the user releases the mouse
     connect_signal(
         m_vscrollbar->on_mouse_button,
         [this](MouseEvent& event) -> void {
