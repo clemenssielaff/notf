@@ -10,11 +10,11 @@
 
 namespace notf {
 
-const Item* WindowLayoutIterator::next()
+Item* WindowLayoutIterator::next()
 {
     if (m_layout) {
-        const Item* result = m_layout->m_controller.get();
-        m_layout           = nullptr;
+        Item* result = m_layout->m_controller.get();
+        m_layout     = nullptr;
         return result;
     }
     return nullptr;
@@ -22,16 +22,12 @@ const Item* WindowLayoutIterator::next()
 
 /**********************************************************************************************************************/
 
-struct WindowLayout::make_shared_enabler : public WindowLayout {
-    template <typename... Args>
-    make_shared_enabler(Args&&... args)
-        : WindowLayout(std::forward<Args>(args)...) {}
-    virtual ~make_shared_enabler();
-};
-WindowLayout::make_shared_enabler::~make_shared_enabler() {}
-
 std::shared_ptr<WindowLayout> WindowLayout::create(const std::shared_ptr<Window>& window)
 {
+    struct make_shared_enabler : public WindowLayout {
+        make_shared_enabler(const std::shared_ptr<Window>& window)
+            : WindowLayout(window) {}
+    };
     return std::make_shared<make_shared_enabler>(window);
 }
 
@@ -41,6 +37,7 @@ WindowLayout::WindowLayout(const std::shared_ptr<Window>& window)
     , m_controller()
 {
     // the window layout is always in the default render layer
+    m_has_own_render_layer = true;
     m_render_layer = window->get_render_manager().get_default_layer();
 }
 
@@ -48,7 +45,7 @@ WindowLayout::~WindowLayout()
 {
     // explicitly unparent all children so they can send the `parent_changed` signal
     on_child_removed(m_controller->get_id());
-    _set_item_parent(m_controller.get(), {});
+    _set_parent(m_controller.get(), {});
 }
 
 bool WindowLayout::has_item(const ItemPtr& item) const
@@ -79,7 +76,7 @@ void WindowLayout::set_controller(ControllerPtr controller)
     }
 
     // take ownership of the Item
-    _set_item_parent(controller.get(), std::static_pointer_cast<Layout>(shared_from_this()));
+    _set_parent(controller.get(), std::static_pointer_cast<Layout>(shared_from_this()));
     const ItemID child_id = controller->get_id();
     m_controller          = std::move(controller);
     on_child_added(child_id);
@@ -104,8 +101,8 @@ void WindowLayout::remove_item(const ItemPtr& item)
 
 Aabrf WindowLayout::get_content_aabr() const
 {
-    if(m_controller){
-        if(ScreenItem* screen_item = get_screen_item(m_controller.get())){
+    if (m_controller) {
+        if (ScreenItem* screen_item = get_screen_item(m_controller.get())) {
             return screen_item->get_aarbr();
         }
     }
@@ -132,7 +129,7 @@ std::vector<Widget*> WindowLayout::get_widgets_at(const Vector2f& screen_pos) co
 void WindowLayout::_relayout()
 {
     if (!is_empty()) {
-        _set_item_size(m_controller->get_root_item().get(), get_size());
+        _set_size(m_controller->get_root_item().get(), get_size());
     }
     on_layout_changed();
 }
@@ -142,7 +139,7 @@ void WindowLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget
     if (is_empty()) {
         return;
     }
-    _get_widgets_at_item_pos(m_controller.get(), local_pos, result);
+    Item::_get_widgets_at(m_controller.get(), local_pos, result);
 }
 
 Claim WindowLayout::_aggregate_claim()

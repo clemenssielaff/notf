@@ -67,6 +67,8 @@ private: // methods
 
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
+    virtual void _set_render_layer(const RenderLayerPtr& render_layer) override;
+
 private: // fields
     /** Cell to draw this Widget into. */
     std::shared_ptr<Cell> m_cell;

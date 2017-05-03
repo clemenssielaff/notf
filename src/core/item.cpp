@@ -40,9 +40,10 @@ ScreenItem* Item::get_screen_item(Item* item)
 }
 
 Item::Item()
-    : m_id(get_next_id())
+    : m_render_layer() // empty by default
+    , m_id(get_next_id())
     , m_parent()
-    , m_render_layer() // empty by default
+    , m_has_own_render_layer(false)
 #ifdef NOTF_PYTHON
     , m_py_object(nullptr, py_decref)
 #endif
@@ -83,10 +84,8 @@ std::shared_ptr<Window> Item::get_window() const
     return {};
 }
 
-const std::shared_ptr<RenderLayer>& Item::get_render_layer(const bool own) const
+const RenderLayerPtr& Item::get_render_layer(const bool own) const
 {
-    assert(m_render_layer->is_valid());
-
     // if you have your own RenderLayer or the own RenderLayer is requested, return that
     if (own || m_render_layer) {
         return m_render_layer;
@@ -95,7 +94,7 @@ const std::shared_ptr<RenderLayer>& Item::get_render_layer(const bool own) const
     // ... otherwise return the nearest ancestor's one
     const Item* ancestor = get_parent().get();
     while (ancestor) {
-        if (const std::shared_ptr<RenderLayer>& render_layer = ancestor->get_render_layer()) {
+        if (const RenderLayerPtr& render_layer = ancestor->get_render_layer()) {
             return render_layer;
         }
         ancestor = ancestor->get_parent().get();
@@ -103,17 +102,24 @@ const std::shared_ptr<RenderLayer>& Item::get_render_layer(const bool own) const
 
     // the WindowLayout at the latest should return a valid RenderLayer
     // but if this Item is not in the Item hierarchy, it is also not a part of a RenderLayer
-    static const std::shared_ptr<RenderLayer> empty;
+    static const RenderLayerPtr empty;
     return empty;
 }
 
-void Item::set_render_layer(std::shared_ptr<RenderLayer> render_layer)
+void Item::set_render_layer(const RenderLayerPtr& render_layer)
 {
-    if (m_parent.expired()) {
-        log_critical << "Cannot change the RenderLayer of an Item outside the Item hierarchy.";
-        return;
+    ItemPtr parent = m_parent.lock();
+    if (!parent) {
+        throw std::runtime_error("Cannot change the RenderLayer of an Item outside the Item hierarchy.");
     }
-    m_render_layer = std::move(render_layer);
+    m_has_own_render_layer = false;
+    if (render_layer) {
+        _set_render_layer(render_layer);
+        m_has_own_render_layer = true;
+    }
+    else {
+        _set_render_layer(parent->m_render_layer);
+    }
 }
 
 LayoutPtr Item::_get_layout() const
@@ -185,7 +191,18 @@ void Item::_set_parent(ItemPtr parent)
         old_layout->remove_item(shared_from_this());
     }
 
+    // set the new parent and return if it is empty
     m_parent = parent;
+    if(!parent){
+        on_parent_changed(0);
+        return;
+    }
+
+    // inherit the parent's RenderLayer, if you don't have your own
+    if (!_has_own_render_layer()) {
+        _set_render_layer(parent->m_render_layer);
+    }
+
     on_parent_changed(parent->get_id());
 }
 

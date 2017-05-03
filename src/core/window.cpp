@@ -1,7 +1,6 @@
 #include "core/window.hpp"
 
 #include "common/log.hpp"
-#include "common/vector.hpp"
 #include "core/application.hpp"
 #include "core/events/key_event.hpp"
 #include "core/events/mouse_event.hpp"
@@ -14,6 +13,7 @@
 #include "graphics/gl_errors.hpp"
 #include "graphics/graphics_context.hpp"
 #include "graphics/raw_image.hpp"
+#include "utils/reverse_iterator.hpp"
 
 namespace notf {
 
@@ -24,13 +24,29 @@ void window_deleter(GLFWwindow* glfw_window)
     }
 }
 
-struct Window::make_shared_enabler : public Window {
-    template <typename... Args>
-    make_shared_enabler(Args&&... args)
-        : Window(std::forward<Args>(args)...) {}
-    virtual ~make_shared_enabler();
-};
-Window::make_shared_enabler::~make_shared_enabler() {}
+std::shared_ptr<Window> Window::create(const WindowInfo& info)
+{
+    struct make_shared_enabler : public Window {
+        make_shared_enabler(const WindowInfo& info)
+            : Window(info) {}
+    };
+    std::shared_ptr<Window> window = std::make_shared<make_shared_enabler>(info);
+
+    if (get_gl_error()) {
+        exit(to_number(Application::RETURN_CODE::OPENGL_FAILURE));
+    }
+    else {
+        log_info << "Created Window '" << window->get_title() << "' "
+                 << "using OpenGl version: " << glGetString(GL_VERSION);
+    }
+
+    // inititalize the window
+    Application::get_instance()._register_window(window);
+    window->m_layout = WindowLayout::create(window);
+    window->m_layout->_set_size(window->get_buffer_size());
+
+    return window;
+}
 
 Window::Window(const WindowInfo& info)
     : m_glfw_window(nullptr, window_deleter)
@@ -98,25 +114,6 @@ Window::Window(const WindowInfo& info)
             log_warning << "Failed to load Window icon '" << icon_path << "'";
         }
     }
-}
-
-std::shared_ptr<Window> Window::create(const WindowInfo& info)
-{
-    std::shared_ptr<Window> window = std::make_shared<make_shared_enabler>(info);
-    if (get_gl_error()) {
-        exit(to_number(Application::RETURN_CODE::OPENGL_FAILURE));
-    }
-    else {
-        log_info << "Created Window '" << window->get_title() << "' "
-                 << "using OpenGl version: " << glGetString(GL_VERSION);
-    }
-
-    // inititalize the window
-    Application::get_instance()._register_window(window);
-    window->m_layout = WindowLayout::create(window);
-    window->m_layout->_set_size(window->get_buffer_size());
-
-    return window;
 }
 
 Window::~Window()
@@ -211,27 +208,26 @@ void Window::_on_resize(int width, int height)
 
 void Window::_propagate_mouse_event(MouseEvent&& event)
 {
-    // TODO: I suspect mouse event propagation is suboptimal - also, it doesn't propagate up the hierarchy!
+    // TODO: mouse event propagation doesn't propagate up the hierarchy
 
-    // sort Widgets by render RenderLayers
-    std::vector<Widget*> widgets;
-    {
-        std::vector<std::vector<Widget*>> widgets_by_layer(m_render_manager->get_layer_count());
-        for (Widget* widget : m_layout->get_widgets_at(event.window_pos)) {
-            RenderLayer* render_layer = widget->get_render_layer().get();
-            assert(render_layer);
-            widgets_by_layer[render_layer->get_index()].emplace_back(widget);
-        }
-        widgets = flatten(widgets_by_layer);
+    // sort Widgets by RenderLayers
+    std::vector<std::vector<Widget*>> widgets_by_layer(m_render_manager->get_layer_count());
+    for (Widget* widget : m_layout->get_widgets_at(event.window_pos)) {
+        RenderLayer* render_layer = widget->get_render_layer().get();
+        assert(render_layer);
+        widgets_by_layer[render_layer->get_index()].emplace_back(widget);
     }
-
-// TODO: CONTINUE HERE
-
 
     // call the appropriate event signal
     if (event.action == MouseAction::MOVE) {
-        for (const auto& layer : widgets_by_layer) {
-            for (const auto& widget : layer) {
+        if(std::shared_ptr<Widget> mouse_item = m_mouse_item.lock()){
+            mouse_item->on_mouse_move(event);
+            if (event.was_handled()) {
+                return;
+            }
+        }
+        for (const auto& layer : reverse(widgets_by_layer)) {
+            for (const auto& widget : reverse(layer)) {
                 widget->on_mouse_move(event);
                 if (event.was_handled()) {
                     return;
@@ -239,20 +235,15 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
             }
         }
     }
-    else if (event.action == MouseAction::PRESS
-             || event.action == MouseAction::RELEASE) {
-        for (const auto& layer : widgets_by_layer) {
-            for (const auto& widget : layer) {
-                widget->on_mouse_button(event);
-                if (event.was_handled()) {
-                    return;
-                }
+    else if (event.action == MouseAction::SCROLL) {
+        if(std::shared_ptr<Widget> mouse_item = m_mouse_item.lock()){
+            mouse_item->on_scroll(event);
+            if (event.was_handled()) {
+                return;
             }
         }
-    }
-    else if (event.action == MouseAction::SCROLL) {
-        for (const auto& layer : widgets_by_layer) {
-            for (const auto& widget : layer) {
+        for (const auto& layer : reverse(widgets_by_layer)) {
+            for (const auto& widget : reverse(layer)) {
                 widget->on_scroll(event);
                 if (event.was_handled()) {
                     return;
@@ -260,6 +251,36 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
             }
         }
     }
+    else if (event.action == MouseAction::PRESS) {
+        assert(m_mouse_item.expired());
+        for (const auto& layer : reverse(widgets_by_layer)) {
+            for (const auto& widget : reverse(layer)) {
+                widget->on_mouse_button(event);
+                if (event.was_handled()) {
+                    m_mouse_item = std::dynamic_pointer_cast<Widget>(static_cast<Item*>(widget)->shared_from_this());
+                    return;
+                }
+            }
+        }
+    }
+    else if (event.action == MouseAction::RELEASE) {
+        if(std::shared_ptr<Widget> mouse_item = m_mouse_item.lock()){
+            m_mouse_item.reset();
+            mouse_item->on_mouse_button(event);
+            if (event.was_handled()) {
+                return;
+            }
+        }
+        for (const auto& layer : reverse(widgets_by_layer)) {
+            for (const auto& widget : reverse(layer)) {
+                widget->on_mouse_button(event);
+                if (event.was_handled()) {
+                    return;
+                }
+            }
+        }
+    }
+
     else {
         assert(0);
     }

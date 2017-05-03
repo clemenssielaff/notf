@@ -56,6 +56,9 @@ private: // methods
     /** Updates the position and size of the scrollbar. */
     void _update_scrollbar(float delta_y);
 
+    /** Calculates the height of the ScrollArea's content. */
+    float _get_content_height() const;
+
 private: // fields
     /** Window into the content. */
     std::shared_ptr<Overlayout> m_area_window;

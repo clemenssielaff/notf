@@ -39,9 +39,6 @@ RenderManager::RenderManager(const Window* window)
 
 RenderManager::~RenderManager()
 {
-    for (RenderLayerPtr& layer : m_layers) {
-        layer->invalidate();
-    }
 }
 
 RenderLayerPtr RenderManager::create_front_layer()
@@ -98,21 +95,27 @@ void RenderManager::render(const Size2i buffer_size)
     CellCanvas& cell_context = m_window->get_cell_context();
     cell_context.begin_frame(buffer_size, time_at_start, m_window->get_mouse_pos());
 
-    // remove unused layers
-    std::remove_if(m_layers.begin(), m_layers.end(), [](RenderLayerPtr& layer) -> bool {
-        return layer.unique();
-    });
-
-    // register all drawable widgets with their render layers
-    WindowLayout* window_layout = m_window->get_layout().get();
-    _iterate_item_hierarchy(window_layout, get_default_layer().get());
-
-    // draw all widgets
-    for (RenderLayerPtr& render_layer : m_layers) {
-        for (const Widget* widget : render_layer->m_widgets) {
-            widget->paint(cell_context);
+    { // remove unused layers
+        const size_t size_before = m_layers.size();
+        std::remove_if(m_layers.begin(), m_layers.end(), [](RenderLayerPtr& layer) -> bool {
+            return layer.unique();
+        });
+        if (size_before != m_layers.size()) {
+            size_t index = 0;
+            for (RenderLayerPtr& layer : m_layers) {
+                layer->m_index = index++;
+            }
         }
-        render_layer->m_widgets.clear();
+    }
+
+    { // draw all widgets
+        std::vector<std::vector<const Widget*>> widgets(m_layers.size());
+        _collect_widgets(m_window->get_layout().get(), widgets);
+        for (const auto& render_layer : widgets) {
+            for (const Widget* widget : render_layer) {
+                widget->paint(cell_context);
+            }
+        }
     }
     m_is_clean = true;
 
@@ -127,33 +130,29 @@ void RenderManager::render(const Size2i buffer_size)
     cell_context.finish_frame();
 }
 
-void RenderManager::_iterate_item_hierarchy(const ScreenItem* screen_item, RenderLayer* parent_layer)
+void RenderManager::_collect_widgets(const ScreenItem* root_item, std::vector<std::vector<const Widget*>>& widgets)
 {
-    assert(screen_item);
-    assert(parent_layer);
+    assert(root_item);
 
     // TODO: dont' draw scissored widgets
-    if (!screen_item->is_visible()) {
+    if (!root_item->is_visible()) {
         return;
     }
 
-    // implicit use of the parent's render layer
-    RenderLayer* current_layer = screen_item->get_render_layer(true).get();
-    if (!current_layer) {
-        current_layer = parent_layer;
-    }
+    size_t render_layer = root_item->get_render_layer()->get_index();
+    assert(render_layer < widgets.size());
 
     // if the item is a visible widget, append it to the current render layer
-    if (const Widget* widget = dynamic_cast<const Widget*>(screen_item)) {
-        current_layer->m_widgets.push_back(widget);
+    if (const Widget* widget = dynamic_cast<const Widget*>(root_item)) {
+        widgets[render_layer].push_back(widget);
     }
 
     // if it is a Layout, start a recursive iteration
-    else if (const Layout* layout = dynamic_cast<const Layout*>(screen_item)) {
+    else if (const Layout* layout = dynamic_cast<const Layout*>(root_item)) {
         LayoutIteratorPtr it = layout->iter_items();
         while (const Item* child_item = it->next()) {
             if (const ScreenItem* screen_item = Item::get_screen_item(child_item)) {
-                _iterate_item_hierarchy(screen_item, current_layer);
+                _collect_widgets(screen_item, widgets);
             }
         }
     }

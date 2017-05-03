@@ -44,9 +44,7 @@ public: // static methods
     /** Unbinds any current active Shader. */
     static void unbind();
 
-private: // factory
-    struct make_shared_enabler;
-
+private: // constructor
     /** Value Constructor.
      * @param id        OpenGL Shader program ID.
      * @param context   Render Context in which the Shader lives.

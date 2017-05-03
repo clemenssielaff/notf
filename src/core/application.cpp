@@ -238,8 +238,8 @@ void Application::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
 
         Vector2i window_pos;
         glfwGetWindowPos(glfw_window, &window_pos.x, &window_pos.y);
-        g_cursor_pos.x = static_cast<int>(static_cast<double>(window_pos.x) + x);
-        g_cursor_pos.y = static_cast<int>(static_cast<double>(window_pos.y) + y);
+        g_cursor_pos.x = static_cast<float>(window_pos.x) + static_cast<float>(x);
+        g_cursor_pos.y = static_cast<float>(window_pos.y) + static_cast<float>(y);
     }
 
     // propagate the event
@@ -274,9 +274,19 @@ void Application::_on_mouse_button(GLFWwindow* glfw_window, int button, int acti
     set_button(g_button_states, notf_button, action);
     g_key_modifiers = KeyModifiers(modifiers);
 
+    Vector2i window_pos;
+    glfwGetWindowPos(glfw_window, &window_pos.x, &window_pos.y);
+
     // propagate the event
-    MouseEvent mouse_event(window.get(), g_cursor_pos, Vector2f::zero(),
-                           notf_button, notf_action, g_key_modifiers, g_button_states);
+    MouseEvent mouse_event(
+        window.get(),
+        {g_cursor_pos.x - static_cast<float>(window_pos.x),
+         g_cursor_pos.y - static_cast<float>(window_pos.y)},
+        Vector2f::zero(),
+        notf_button,
+        notf_action,
+        g_key_modifiers,
+        g_button_states);
     window->_propagate_mouse_event(std::move(mouse_event));
 }
 
@@ -297,7 +307,8 @@ void Application::_on_scroll(GLFWwindow* glfw_window, double x, double y)
     // propagate the event
     MouseEvent mouse_event(
         window.get(),
-        {g_cursor_pos.x - static_cast<float>(window_pos.x), g_cursor_pos.y - static_cast<float>(window_pos.y)},
+        {g_cursor_pos.x - static_cast<float>(window_pos.x),
+         g_cursor_pos.y - static_cast<float>(window_pos.y)},
         {static_cast<float>(x), static_cast<float>(y)},
         Button::NONE,
         MouseAction::SCROLL,

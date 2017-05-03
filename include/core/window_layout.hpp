@@ -25,7 +25,7 @@ public: // methods
     virtual ~WindowLayoutIterator() = default;
 
     /** Advances the Iterator one step, returns the next Item or nullptr if the iteration has finished. */
-    virtual const Item* next() override;
+    virtual Item* next() override;
 
 private: // fields
     /** WindowLayout that is iterated over, is set to nullptr when the iteration has finished. */
@@ -41,8 +41,7 @@ class WindowLayout : public Layout {
     friend class Window;
 
 private: // factory
-    struct make_shared_enabler;
-
+    /** Factory method. */
     static std::shared_ptr<WindowLayout> create(const std::shared_ptr<Window>& window);
 
     /** @param window   Window owning this RootWidget. */

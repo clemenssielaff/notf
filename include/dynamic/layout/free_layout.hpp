@@ -29,7 +29,7 @@ public: // methods
     virtual ~FreeLayoutIterator() = default;
 
     /** Advances the Iterator one step, returns the next Item or nullptr if the iteration has finished. */
-    virtual const Item* next() override;
+    virtual Item* next() override;
 
 private: // fields
     /** Free Layout that is iterated over. */
@@ -49,18 +49,17 @@ class FreeLayout : public Layout {
 
     friend class FreeLayoutIterator;
 
-private: // factory
-    struct make_shared_enabler;
+public: // static methods
+    /** Factory. */
+    static FreeLayoutPtr create();
 
+private: // methods
     // clang-format off
-protected_except_for_bindings: // factory
+protected_except_for_bindings:
     FreeLayout();
     // clang-format on
 
 public: // methods
-    /** Factory method */
-    static FreeLayoutPtr create();
-
     /** Destructor. */
     virtual ~FreeLayout() override;
 

@@ -66,4 +66,9 @@ void Widget::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& re
     // TODO: Widget::get_widget_at() should test if the given local_pos is loctated in its shape
 }
 
+void Widget::_set_render_layer(const RenderLayerPtr& render_layer)
+{
+    m_render_layer = render_layer;
+}
+
 } // namespace notf

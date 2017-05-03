@@ -84,7 +84,9 @@ public: // static methods
     static void unbind();
 
 private: // factory
-    struct make_shared_enabler;
+    /** Factory. */
+    static std::shared_ptr<Texture2> create(const GLuint id, GraphicsContext& context, const std::string name,
+                                            const GLint width, const GLint height, const Format format);
 
     /** Value Constructor.
      * @param id        OpenGL texture ID.

@@ -14,7 +14,7 @@ namespace notf {
 
 struct KeyEvent;
 class CellCanvas;
-class Item;
+class Widget;
 class WindowLayout;
 class MouseEvent;
 class GraphicsContext;
@@ -54,18 +54,16 @@ class Window : public receive_signals, public std::enable_shared_from_this<Windo
     friend class Application;
     friend class GraphicsContext;
 
-protected: // factory
-    struct make_shared_enabler;
-
-    /** @param info     WindowInfo providing initialization arguments. */
-    Window(const WindowInfo& info);
-
 public: // static methods
     /** Factory function to create a new Window.
      * @param info  WindowInfo providing initialization arguments.
      * @return      The created Window, pointer is empty on error.
      */
     static std::shared_ptr<Window> create(const WindowInfo& info = WindowInfo());
+
+protected: // constructor.
+    /** @param info     WindowInfo providing initialization arguments. */
+    Window(const WindowInfo& info);
 
 public: // methods
     /** Destructor. */
@@ -174,13 +172,13 @@ private: // fields
      * no longer within the Item.
      * May be empty.
      */
-    std::weak_ptr<Item> m_mouse_item;
+    std::weak_ptr<Widget> m_mouse_item;
 
     /** The first Item to receive keyboard events.
      * The 'focused' Item.
      * May be empty.
      */
-    std::weak_ptr<Item> m_keyboard_item;
+    std::weak_ptr<Widget> m_keyboard_item;
 };
 
 } // namespace notf

@@ -27,30 +27,20 @@ class RenderLayer {
 protected: // factory
     /** Constructor. */
     RenderLayer(const size_t index)
-        : m_index(index), m_widgets() {}
+        : m_index(index) {}
 
     /** Factory */
     static RenderLayerPtr create(const size_t index);
 
 public: // methods
-    /** Tests if this RenderLayer is still valid or not. */
-    bool is_valid() const { return !m_widgets.empty(); }
-
     /** Returns the index of this RenderLayer, starting at 0 going up.
      * If there are layers stacked behind the default layer, the default layer will have an index > 0.
      */
     size_t get_index() const { return m_index; }
 
-private: // methods for friends
-    /** Invalidates this RenderLayer, if it sticks around longer than its Manager. */
-    void invalidate() { m_widgets.clear(); }
-
 private: // fields
     /** Index of this RenderLayer. */
     size_t m_index;
-
-    /** Widgets ordered from back to front. */
-    std::vector<const Widget*> m_widgets;
 };
 
 /**********************************************************************************************************************/
@@ -100,8 +90,11 @@ public: // methods
     void render(const Size2i buffer_size);
 
 private: // methods
-    /** Iterates through all ScreenItems in the Item hierarchy and collects them in their RenderLayers. */
-    void _iterate_item_hierarchy(const ScreenItem* screen_item, RenderLayer* parent_layer);
+    /** Recursively collects the Widgets to draw in the next call.
+     * @param root_item     Item under which to collect Widgets.
+     * @param widgets [OUT] Collected Widgets, sorted by RenderLayer from back to front.
+     */
+    void _collect_widgets(const ScreenItem* root_item, std::vector<std::vector<const Widget*>>& widgets);
 
 private: // fields
     /** The Window owning this RenderManager. */

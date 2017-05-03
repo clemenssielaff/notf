@@ -118,12 +118,6 @@ GLuint compile_shader(STAGE stage, const std::string& name, const std::string& s
 
 namespace notf {
 
-struct Shader::make_shared_enabler : public Shader {
-    template <typename... Args>
-    make_shared_enabler(Args&&... args)
-        : Shader(std::forward<Args>(args)...) {}
-};
-
 std::shared_ptr<Shader> Shader::build(GraphicsContext &context,
                                       const std::string& name,
                                       const std::string& vertex_shader_source,
@@ -165,6 +159,11 @@ std::shared_ptr<Shader> Shader::build(GraphicsContext &context,
         return {};
     }
 
+    // create the Shader object
+    struct make_shared_enabler : public Shader {
+        make_shared_enabler(const GLuint id, GraphicsContext &context, const std::string name)
+            : Shader(id, context, name) {}
+    };
     std::shared_ptr<Shader> shader = std::make_shared<make_shared_enabler>(program, context, name);
     context.m_shaders.emplace_back(shader);
     return shader;

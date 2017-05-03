@@ -30,7 +30,7 @@ public: // methods
     virtual ~StackLayoutIterator() = default;
 
     /** Advances the Iterator one step, returns the next Item or nullptr if the iteration has finished. */
-    virtual const Item* next() override;
+    virtual Item* next() override;
 
 private: // fields
     /** StackLayout that is iterated over. */
@@ -75,9 +75,13 @@ public: // enums
         WRAP_REVERSE, // wraps towards the upper-left corner
     };
 
-private: // factory
-    struct make_shared_enabler;
+public: // static methods
+    /** Factory.
+     * @param direction Direction of the stack.
+     */
+    static std::shared_ptr<StackLayout> create(const Direction direction = Direction::LEFT_TO_RIGHT);
 
+private: // constructor
     // clang-format off
 protected_except_for_bindings:
     /** Constructor.
@@ -87,11 +91,6 @@ protected_except_for_bindings:
     // clang-format on
 
 public: // methods
-    /** Factory method.
-     * @param direction Direction of the stack.
-     */
-    static std::shared_ptr<StackLayout> create(const Direction direction = Direction::LEFT_TO_RIGHT);
-
     /** Destructor. */
     virtual ~StackLayout() override;
 

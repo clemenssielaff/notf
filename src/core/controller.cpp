@@ -34,7 +34,18 @@ void Controller::initialize()
 void Controller::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
     if (m_root_item) {
-        _get_widgets_at_item_pos(m_root_item.get(), local_pos, result);
+        Item::_get_widgets_at(m_root_item.get(), local_pos, result);
+    }
+}
+
+void Controller::_set_render_layer(const RenderLayerPtr& render_layer)
+{
+    if(_has_own_render_layer() || render_layer == m_render_layer){
+        return;
+    }
+    m_render_layer = render_layer;
+    if (m_root_item) {
+        Item::_set_render_layer(m_root_item.get(), render_layer);
     }
 }
 

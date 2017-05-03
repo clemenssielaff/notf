@@ -67,12 +67,6 @@ GLint magfilter_to_gl(const Texture2::MagFilter filter)
 
 namespace notf {
 
-struct Texture2::make_shared_enabler : public Texture2 {
-    template <typename... Args>
-    make_shared_enabler(Args&&... args)
-        : Texture2(std::forward<Args>(args)...) {}
-};
-
 std::shared_ptr<Texture2> Texture2::load_image(GraphicsContext& context, const std::string file_path)
 {
     // load the texture from file
@@ -159,7 +153,7 @@ std::shared_ptr<Texture2> Texture2::load_image(GraphicsContext& context, const s
     }
 
     // return the loaded texture on success
-    std::shared_ptr<Texture2> texture = std::make_shared<make_shared_enabler>(
+    std::shared_ptr<Texture2> texture = Texture2::create(
         id, context, std::move(file_path), image.get_width(), image.get_height(), texture_format);
     context.m_textures.emplace_back(texture);
     return texture;
@@ -218,8 +212,7 @@ std::shared_ptr<Texture2> Texture2::create_empty(GraphicsContext& context, const
     check_gl_error();
 
     // return the loaded texture on success
-    std::shared_ptr<Texture2> texture = std::make_shared<make_shared_enabler>(
-        id, context, std::move(name), size.width, size.height, format);
+    std::shared_ptr<Texture2> texture = Texture2::create(id, context, std::move(name), size.width, size.height, format);
     context.m_textures.emplace_back(texture);
     return texture;
 }
@@ -227,6 +220,18 @@ std::shared_ptr<Texture2> Texture2::create_empty(GraphicsContext& context, const
 void Texture2::unbind()
 {
     glBindTexture(GL_TEXTURE_2D, GL_ZERO);
+}
+
+std::shared_ptr<Texture2> Texture2::create(const GLuint id, GraphicsContext& context, const std::string name,
+                                           const GLint width, const GLint height, const Format format)
+{
+    struct make_shared_enabler : public Texture2 {
+        make_shared_enabler(const GLuint id, GraphicsContext& context, const std::string name,
+                            const GLint width, const GLint height, const Format format)
+            : Texture2(id, context, name, width, height, format) {}
+        char _padding[3];
+    };
+    return std::make_shared<make_shared_enabler>(id, context, std::move(name), width, height, format);
 }
 
 Texture2::Texture2(const GLuint id, GraphicsContext& context, const std::string name,

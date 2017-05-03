@@ -9,7 +9,7 @@
 
 namespace notf {
 
-const Item* FreeLayoutIterator::next()
+Item* FreeLayoutIterator::next()
 {
     if (m_index >= m_layout->m_items.size()) {
         return nullptr;
@@ -19,13 +19,14 @@ const Item* FreeLayoutIterator::next()
 
 /**********************************************************************************************************************/
 
-struct FreeLayout::make_shared_enabler : public FreeLayout {
-    template <typename... Args>
-    make_shared_enabler(Args&&... args)
-        : FreeLayout(std::forward<Args>(args)...) {}
-    virtual ~make_shared_enabler();
-};
-FreeLayout::make_shared_enabler::~make_shared_enabler() {}
+FreeLayoutPtr FreeLayout::create()
+{
+    struct make_shared_enabler : public FreeLayout {
+        make_shared_enabler()
+            : FreeLayout() {}
+    };
+    return std::make_shared<make_shared_enabler>();
+}
 
 FreeLayout::FreeLayout()
     : Layout()
@@ -33,17 +34,12 @@ FreeLayout::FreeLayout()
 {
 }
 
-FreeLayoutPtr FreeLayout::create()
-{
-    return std::make_shared<make_shared_enabler>();
-}
-
 FreeLayout::~FreeLayout()
 {
     // explicitly unparent all children so they can send the `parent_changed` signal
     for (ItemPtr& item : m_items) {
         on_child_removed(item->get_id());
-        _set_item_parent(item.get(), {});
+        _set_parent(item.get(), {});
     }
 }
 
@@ -78,7 +74,7 @@ void FreeLayout::add_item(ItemPtr item)
     }
 
     // take ownership of the Item
-    _set_item_parent(item.get(), shared_from_this());
+    _set_parent(item.get(), shared_from_this());
     const ItemID child_id = item->get_id();
     m_items.emplace_back(std::move(item));
     on_child_added(child_id);
@@ -100,7 +96,7 @@ void FreeLayout::remove_item(const ItemPtr& item)
 Aabrf FreeLayout::get_content_aabr() const
 {
     Aabrf result;
-    for(const ItemPtr& item : m_items){
+    for (const ItemPtr& item : m_items) {
         result.united(get_screen_item(item.get())->get_aarbr());
     }
     return result;
@@ -122,7 +118,7 @@ void FreeLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
         const Vector2f item_pos = local_pos - screen_item->get_transform().get_translation();
         const Aabrf item_rect(screen_item->get_size());
         if (item_rect.contains(item_pos)) {
-            _get_widgets_at_item_pos(screen_item, item_pos, result);
+            Item::_get_widgets_at(screen_item, item_pos, result);
         }
     }
 }

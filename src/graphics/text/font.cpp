@@ -19,12 +19,6 @@ namespace notf {
 
 static_assert(std::is_pod<Glyph::Rect>::value, "This compiler does not recognize notf::Glyph::Rect as a POD.");
 
-struct Font::make_shared_enabler : public Font {
-    template <typename... Args>
-    make_shared_enabler(Args&&... args)
-        : Font(std::forward<Args>(args)...) {}
-};
-
 std::shared_ptr<Font> Font::load(GraphicsContext& context, const std::string filename, const pixel_size_t pixel_size)
 {
     FontManager& font_manager         = context.get_font_manager();
@@ -43,6 +37,10 @@ std::shared_ptr<Font> Font::load(GraphicsContext& context, const std::string fil
     }
 
     // create and store the new Font in the manager, so it can be re-used
+    struct make_shared_enabler : public Font {
+        make_shared_enabler(FontManager& manager, const std::string filename, const pixel_size_t pixel_size)
+            : Font(manager, filename, pixel_size) {}
+    };
     std::shared_ptr<Font> font = std::make_shared<make_shared_enabler>(font_manager, filename, pixel_size);
     font_manager.m_fonts.insert({identifier, font});
     return font;

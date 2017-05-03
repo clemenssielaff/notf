@@ -16,11 +16,13 @@
 
 namespace notf {
 
+class Controller;
 class Item;
+class Layout;
+class RenderLayer;
 class ScreenItem;
 class Widget;
-class Layout;
-class Controller;
+class Window;
 
 using ItemPtr       = std::shared_ptr<Item>;
 using ScreenItemPtr = std::shared_ptr<ScreenItem>;
@@ -34,8 +36,7 @@ using ConstWidgetPtr     = std::shared_ptr<const Widget>;
 using ConstLayoutPtr     = std::shared_ptr<const Layout>;
 using ConstControllerPtr = std::shared_ptr<const Controller>;
 
-class RenderLayer;
-class Window;
+using RenderLayerPtr = std::shared_ptr<RenderLayer>;
 
 /** Unqiue identification token of an Item. */
 using RawID  = size_t;
@@ -161,14 +162,14 @@ public: // methods *************************************************************
      * @param own   By default, the first valid RenderLayer in the ancestry is returned, if `own==true` the RenderLayer
      *              of this Item is returned, even if it is empty.
      */
-    const std::shared_ptr<RenderLayer>& get_render_layer(const bool own = false) const;
+    const RenderLayerPtr& get_render_layer(const bool own = false) const;
 
     /** (Re-)sets the RenderLayer of this Item.
      * Pass an empty shared_ptr to implicitly inherit the RenderLayer from the parent Layout.
-     * If the Item does not have a parent, this method does nothing but print a warning.
-     * @param render_layer  New RenderLayer of this Item.
+     * @param render_layer  New RenderLayer of this Item
+     * @throws std::runtime_error   If the Item does not have a parent.
      */
-    void set_render_layer(std::shared_ptr<RenderLayer> render_layer);
+    void set_render_layer(const RenderLayerPtr& render_layer);
 
 public: // signals ****************************************************************************************************/
     /** Emitted when this Item got a new parent.
@@ -193,6 +194,9 @@ protected: // methods **********************************************************
      */
     void _update_parent_layout();
 
+    /** Tests whether this Item has its own RenderLayer, or if it inherits one from its parent. */
+    bool _has_own_render_layer() const { return m_has_own_render_layer; }
+
     /** Returns the first ancestor of this Item that has a specific type (can be empty if none is found). */
     template <typename AncestorType>
     std::shared_ptr<AncestorType> _get_first_ancestor() const;
@@ -209,8 +213,14 @@ protected_except_for_bindings : // methods
 
     // clang-format on
 protected: // static methods ******************************************************************************************/
-    /** Allows any Item subclass to call `_widgets_at` on any other Item. */
-    static void _get_widgets_at_item_pos(const Item* item, const Vector2f& local_pos, std::vector<Widget*>& result)
+    /** Allows any Item subclass to call `_set_render_layer` on any other Item. */
+    static void _set_render_layer(Item* item, const RenderLayerPtr& render_layer)
+    {
+        item->_set_render_layer(render_layer);
+    }
+
+    /** Allows any Item subclass to call `_get_widgets_at` on any other Item. */
+    static void _get_widgets_at(const Item* item, const Vector2f& local_pos, std::vector<Widget*>& result)
     {
         item->_get_widgets_at(local_pos, result);
     }
@@ -225,6 +235,15 @@ private: // methods
      */
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const = 0;
 
+    /** Recursive implementation to set the RenderLayer of all Items below this one. */
+    virtual void _set_render_layer(const RenderLayerPtr& render_layer) = 0;
+
+protected: // fields
+    /** The RenderLayer of this Item.
+     * An empty pointer means that this item inherits its RenderLayer from its parent.
+     */
+    RenderLayerPtr m_render_layer;
+
 private: // fields ****************************************************************************************************/
     /** Application-unique ID of this Item. */
     const ItemID m_id;
@@ -232,10 +251,11 @@ private: // fields *************************************************************
     /** The parent Item, may be invalid. */
     std::weak_ptr<Item> m_parent;
 
-    /** The RenderLayer of this Item.
-     * An empty pointer means that this item inherits its RenderLayer from its parent.
+    /** Every Item references a render layer, but most inherit theirs from their parent.
+     * If a RenderLayer is explicitly set, this flag is set to true, so moving the Item to another parent will not
+     * change the RenderLayer.
      */
-    std::shared_ptr<RenderLayer> m_render_layer;
+    bool m_has_own_render_layer;
 
 #ifdef NOTF_PYTHON
     /** Python subclass object of this Item, if it was created through Python. */

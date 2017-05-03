@@ -135,10 +135,12 @@ public: // static methods
      */
     static std::shared_ptr<Font> load(GraphicsContext& context, const std::string filename, const pixel_size_t pixel_size);
 
-private: // factory
-    struct make_shared_enabler;
-
-    /** Constructor. */
+private: // constructor
+    /** Constructor.
+     * @param manager       Font manager.
+     * @param filename      File from which to load the font.
+     * @param pixel_size    Font base size in pixels.
+     */
     Font(FontManager& manager, const std::string filename, const pixel_size_t pixel_size);
 
 public: // methods

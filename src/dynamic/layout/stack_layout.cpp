@@ -179,7 +179,7 @@ float cross_align_offset(const StackLayout::Alignment alignment, const float ite
 
 namespace notf {
 
-const Item* StackLayoutIterator::next()
+Item* StackLayoutIterator::next()
 {
     if (m_index >= m_layout->m_items.size()) {
         return nullptr;
@@ -189,13 +189,14 @@ const Item* StackLayoutIterator::next()
 
 /**********************************************************************************************************************/
 
-struct StackLayout::make_shared_enabler : public StackLayout {
-    template <typename... Args>
-    make_shared_enabler(Args&&... args)
-        : StackLayout(std::forward<Args>(args)...) {}
-    virtual ~make_shared_enabler();
-};
-StackLayout::make_shared_enabler::~make_shared_enabler() {}
+std::shared_ptr<StackLayout> StackLayout::create(const Direction direction)
+{
+    struct make_shared_enabler : public StackLayout {
+        make_shared_enabler(const Direction direction)
+            : StackLayout(direction) {}
+    };
+    return std::make_shared<make_shared_enabler>(direction);
+}
 
 StackLayout::StackLayout(const Direction direction)
     : Layout()
@@ -212,17 +213,12 @@ StackLayout::StackLayout(const Direction direction)
     set_claim({});
 }
 
-std::shared_ptr<StackLayout> StackLayout::create(const Direction direction)
-{
-    return std::make_shared<make_shared_enabler>(direction);
-}
-
 StackLayout::~StackLayout()
 {
     // explicitly unparent all children so they can send the `parent_changed` signal
     for (ItemPtr& item : m_items) {
         on_child_removed(item->get_id());
-        _set_item_parent(item.get(), {});
+        _set_parent(item.get(), {});
     }
 }
 
@@ -257,7 +253,7 @@ void StackLayout::add_item(ItemPtr item)
     }
 
     // take ownership of the Item
-    _set_item_parent(item.get(), std::static_pointer_cast<Layout>(shared_from_this()));
+    _set_parent(item.get(), std::static_pointer_cast<Layout>(shared_from_this()));
     const ItemID child_id = item->get_id();
     m_items.emplace_back(std::move(item));
     on_child_added(child_id);
@@ -611,8 +607,8 @@ void StackLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
             item_size.height                 = max(item_size.height, vertical.get_min());
             const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.height, available_height);
             const float applied_offset       = reverse ? current_offset - item_size.width : current_offset;
-            _set_item_layout_transform(child, Xform2f::translation({applied_offset, cross_offset + applied_cross_offset}));
-            _set_item_size(child, item_size);
+            _set_layout_transform(child, Xform2f::translation({applied_offset, cross_offset + applied_cross_offset}));
+            _set_size(child, item_size);
         }
         else { // vertical
             const Claim::Stretch& horizontal = child->get_claim().get_horizontal();
@@ -623,8 +619,8 @@ void StackLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
             item_size.width                  = max(item_size.width, horizontal.get_min());
             const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.width, available_width);
             const float applied_offset       = reverse ? current_offset - item_size.height : current_offset;
-            _set_item_layout_transform(child, Xform2f::translation({cross_offset + applied_cross_offset, applied_offset}));
-            _set_item_size(child, item_size);
+            _set_layout_transform(child, Xform2f::translation({cross_offset + applied_cross_offset, applied_offset}));
+            _set_size(child, item_size);
         }
         current_offset += (adapter.result + alignment_spacing) * step_factor;
     }
@@ -641,7 +637,7 @@ void StackLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*
         const Vector2f item_pos = local_pos - screen_item->get_transform().get_translation();
         const Aabrf item_rect(screen_item->get_size());
         if (item_rect.contains(item_pos)) {
-            _get_widgets_at_item_pos(screen_item, local_pos, result);
+            Item::_get_widgets_at(screen_item, local_pos, result);
         }
     }
 }

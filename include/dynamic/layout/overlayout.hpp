@@ -30,7 +30,7 @@ public: // methods
     virtual ~OverlayoutIterator() = default;
 
     /** Advances the Iterator one step, returns the next Item or nullptr if the iteration has finished. */
-    virtual const Item* next() override;
+    virtual Item* next() override;
 
 private: // fields
     /** Overlayout that is iterated over. */
@@ -64,18 +64,17 @@ public: // enums
         BOTTOM,
     };
 
-private: // factory
-    struct make_shared_enabler;
+public: // static methods
+    /** Factory. */
+    static std::shared_ptr<Overlayout> create();
 
+private: // constructor
     // clang-format off
-protected_except_for_bindings: // factory
+protected_except_for_bindings:
     Overlayout();
     // clang-format on
 
 public: // methods
-    /** Factory method */
-    static std::shared_ptr<Overlayout> create();
-
     /** Destructor. */
     virtual ~Overlayout() override;
 

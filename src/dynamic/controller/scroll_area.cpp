@@ -55,6 +55,8 @@ ScrollArea::ScrollArea()
 {
 }
 
+// TODO: first element of stack layout is pushed down when the area is really narrow
+
 void ScrollArea::_initialize()
 {
     m_area_window = Overlayout::create();
@@ -80,15 +82,40 @@ void ScrollArea::_initialize()
     root_layout->add_item(m_vscrollbar);
     _set_root_item(root_layout);
 
-    /* TODO: continue here
-     * I need focus. When you click the mouse down in the scroll bar, it needs to receive mouse events, even if you move
-     * the mouse cursor outside its area...
-     * Also, I need another focus for the keyboard ... CONCEPTION TIME!
-     */
-    m_on_scrollbar_drag = connect_signal(m_vscrollbar->on_mouse_move, [this](MouseEvent&) -> void {
-        log_trace << "mouse moved";
-    });
+    m_on_scrollbar_drag = connect_signal(
+        m_vscrollbar->on_mouse_move,
+        [this](MouseEvent& event) -> void {
+            // TODO: CONTINUE HERE
+            _update_scrollbar(-event.window_delta.y * (_get_content_height() / m_scroll_container->get_size().height));
+        });
     m_on_scrollbar_drag.disable();
+
+    connect_signal(
+        m_vscrollbar->on_mouse_button,
+        [this](MouseEvent& event) -> void {
+            m_on_scrollbar_drag.enable();
+            event.set_handled();
+        },
+        [this](MouseEvent& event) -> bool {
+            const float scroll_bar_top = m_vscrollbar->get_window_transform().get_translation().y
+                + (m_vscrollbar->pos * m_vscrollbar->get_size().height);
+            const float scroll_bar_height = m_vscrollbar->size * m_vscrollbar->get_size().height;
+            return (event.action == MouseAction::PRESS
+                    && event.window_pos.y >= scroll_bar_top
+                    && event.window_pos.y <= scroll_bar_top + scroll_bar_height);
+        });
+
+    connect_signal(
+        m_vscrollbar->on_mouse_button,
+        [this](MouseEvent& event) -> void {
+            if (m_on_scrollbar_drag.is_enabled()) {
+                m_on_scrollbar_drag.disable();
+                event.set_handled();
+            }
+        },
+        [this](MouseEvent& event) -> bool {
+            return event.action == MouseAction::RELEASE;
+        });
 }
 
 void ScrollArea::set_area_controller(ControllerPtr controller)
@@ -107,28 +134,12 @@ void ScrollArea::set_area_controller(ControllerPtr controller)
 
 void ScrollArea::_update_scrollbar(float delta_y)
 {
-    // get content
-    if (!m_content) {
+    const float content_height = _get_content_height();
+    if (content_height <= precision_high<float>()) {
         return;
     }
-    ScreenItemPtr root_item = m_content->get_root_item();
-    if (!root_item) {
-        log_warning << "Encountered Controller " << m_content->get_id() << " without a root Item";
-        return;
-    }
-
-    // get content aabr
-    Aabrf content_aabr;
-    if (LayoutPtr layout = std::dynamic_pointer_cast<Layout>(root_item)) {
-        content_aabr = layout->get_content_aabr();
-    }
-    else {
-        content_aabr = root_item->get_aarbr();
-    }
-
-    const float area_height    = m_scroll_container->get_size().height;
-    const float content_height = content_aabr.height();
-    const float overflow       = min(0.f, area_height - content_height);
+    const float area_height = m_scroll_container->get_size().height;
+    const float overflow    = min(0.f, area_height - content_height);
 
     const float y = min(0.f, max(overflow, m_scroll_container->get_offset_transform().get_translation().y + delta_y));
     m_scroll_container->set_offset_transform(Xform2f::translation({0, y}));
@@ -141,6 +152,27 @@ void ScrollArea::_update_scrollbar(float delta_y)
     else {
         m_vscrollbar->size = 1;
         m_vscrollbar->pos  = 0;
+    }
+}
+
+float ScrollArea::_get_content_height() const
+{
+    // get content
+    if (!m_content) {
+        return 0;
+    }
+    ScreenItemPtr root_item = m_content->get_root_item();
+    if (!root_item) {
+        log_warning << "Encountered Controller " << m_content->get_id() << " without a root Item";
+        return 0;
+    }
+
+    // get content aabr
+    if (LayoutPtr layout = std::dynamic_pointer_cast<Layout>(root_item)) {
+        return layout->get_content_aabr().height();
+    }
+    else {
+        return root_item->get_aarbr().height();
     }
 }
 
