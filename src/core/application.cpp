@@ -4,6 +4,7 @@
 #include "common/log.hpp"
 #include "common/time.hpp"
 #include "common/vector2.hpp"
+#include "core/events/char_event.hpp"
 #include "core/events/key_event.hpp"
 #include "core/events/mouse_event.hpp"
 #include "core/glfw.hpp"
@@ -179,13 +180,8 @@ void Application::_on_token_key(GLFWwindow* glfw_window, int key, int scancode, 
 {
     assert(glfw_window);
     UNUSED(scancode);
-    Window* window_raw = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-    assert(window_raw);
-    std::shared_ptr<Window> window = window_raw->shared_from_this();
-    if (!window) {
-        log_critical << "Received 'on_token_key' Callback for unknown GLFW window";
-        return;
-    }
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    assert(window);
 
     // update the global state
     Key notf_key = from_glfw_key(key);
@@ -193,45 +189,37 @@ void Application::_on_token_key(GLFWwindow* glfw_window, int key, int scancode, 
     g_key_modifiers = KeyModifiers(modifiers);
 
     // let the window fire the key event
-    KeyEvent key_event(window.get(), notf_key, KeyAction(action), KeyModifiers(modifiers), g_key_states);
-    window->on_token_key(key_event);
+    window->_propagate_key_event(KeyEvent(*window, notf_key, KeyAction(action), KeyModifiers(modifiers), g_key_states));
 }
 
-void Application::_on_char_input(GLFWwindow* /*glfw_window*/, uint /*codepoint*/, int /*modifiers*/)
+void Application::_on_char_input(GLFWwindow* glfw_window, uint codepoint, int modifiers)
 {
-    // TODO: character input events
+    assert(glfw_window);
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    assert(window);
+    window->_propagate_char_event(CharEvent(*window, codepoint, KeyModifiers(modifiers), g_key_states));
 }
 
 void Application::_on_cursor_entered(GLFWwindow* glfw_window, int entered)
 {
     assert(glfw_window);
-    Window* window_raw = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-    assert(window_raw);
-    std::shared_ptr<Window> window = window_raw->shared_from_this();
-    if (!window) {
-        log_critical << "Received '_on_cursor_entered' Callback for unknown GLFW window";
-        return;
-    }
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    assert(window);
 
     // emit the appropriate signal
     if (entered) {
-        window->on_cursor_entered(*window_raw);
+        window->on_cursor_entered(*window);
     }
     else {
-        window->on_cursor_exited(*window_raw);
+        window->on_cursor_exited(*window);
     }
 }
 
 void Application::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
 {
     assert(glfw_window);
-    Window* window_raw = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-    assert(window_raw);
-    std::shared_ptr<Window> window = window_raw->shared_from_this();
-    if (!window) {
-        log_critical << "Received 'on_token_key' Callback for unknown GLFW window";
-        return;
-    }
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    assert(window);
 
     { // update the global state
         g_prev_cursor_pos = g_cursor_pos;
@@ -244,7 +232,7 @@ void Application::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
 
     // propagate the event
     MouseEvent mouse_event(
-        window.get(),
+        *window,
         {static_cast<float>(x), static_cast<float>(y)}, // event position in window coordinates
         g_cursor_pos - g_prev_cursor_pos,               // delta in window coordinates
         Button::NONE,                                   // move events are triggered by no button
@@ -257,13 +245,8 @@ void Application::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
 void Application::_on_mouse_button(GLFWwindow* glfw_window, int button, int action, int modifiers)
 {
     assert(glfw_window);
-    Window* window_raw = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-    assert(window_raw);
-    std::shared_ptr<Window> window = window_raw->shared_from_this();
-    if (!window) {
-        log_critical << "Received '_on_mouse_button' Callback for unknown GLFW window";
-        return;
-    }
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    assert(window);
 
     // parse raw arguments
     Button notf_button      = static_cast<Button>(button);
@@ -279,7 +262,7 @@ void Application::_on_mouse_button(GLFWwindow* glfw_window, int button, int acti
 
     // propagate the event
     MouseEvent mouse_event(
-        window.get(),
+        *window,
         {g_cursor_pos.x - static_cast<float>(window_pos.x),
          g_cursor_pos.y - static_cast<float>(window_pos.y)},
         Vector2f::zero(),
@@ -293,20 +276,15 @@ void Application::_on_mouse_button(GLFWwindow* glfw_window, int button, int acti
 void Application::_on_scroll(GLFWwindow* glfw_window, double x, double y)
 {
     assert(glfw_window);
-    Window* window_raw = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-    assert(window_raw);
-    std::shared_ptr<Window> window = window_raw->shared_from_this();
-    if (!window) {
-        log_critical << "Received '_on_scroll' Callback for unknown GLFW window";
-        return;
-    }
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    assert(window);
 
     Vector2i window_pos;
     glfwGetWindowPos(glfw_window, &window_pos.x, &window_pos.y);
 
     // propagate the event
     MouseEvent mouse_event(
-        window.get(),
+        *window,
         {g_cursor_pos.x - static_cast<float>(window_pos.x),
          g_cursor_pos.y - static_cast<float>(window_pos.y)},
         {static_cast<float>(x), static_cast<float>(y)},
@@ -319,26 +297,16 @@ void Application::_on_scroll(GLFWwindow* glfw_window, double x, double y)
 void Application::_on_window_close(GLFWwindow* glfw_window)
 {
     assert(glfw_window);
-    Window* window_raw = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-    assert(window_raw);
-    std::shared_ptr<Window> window = window_raw->shared_from_this();
-    if (!window) {
-        log_critical << "Callback for unknown GLFW window";
-        return;
-    }
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    assert(window);
     window->close();
 }
 
 void Application::_on_window_resize(GLFWwindow* glfw_window, int width, int height)
 {
     assert(glfw_window);
-    Window* window_raw = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-    assert(window_raw);
-    std::shared_ptr<Window> window = window_raw->shared_from_this();
-    if (!window) {
-        log_critical << "Callback for unknown GLFW window";
-        return;
-    }
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    assert(window);
     window->_on_resize(width, height);
 }
 
@@ -413,11 +381,11 @@ void Application::_shutdown()
         window->close();
     }
 
-    // stop the event loop
-    glfwTerminate();
-
     // release all resources and objects
     m_resource_manager->clear();
+
+    // stop the event loop
+    glfwTerminate();
 
 #ifdef NOTF_PYTHON
     // kill the interpreter

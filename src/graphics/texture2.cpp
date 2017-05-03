@@ -229,7 +229,6 @@ std::shared_ptr<Texture2> Texture2::create(const GLuint id, GraphicsContext& con
         make_shared_enabler(const GLuint id, GraphicsContext& context, const std::string name,
                             const GLint width, const GLint height, const Format format)
             : Texture2(id, context, name, width, height, format) {}
-        char _padding[3];
     };
     return std::make_shared<make_shared_enabler>(id, context, std::move(name), width, height, format);
 }

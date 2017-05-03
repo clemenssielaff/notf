@@ -1,18 +1,18 @@
 #pragma once
 
 #include "common/input.hpp"
+#include "common/utf.hpp"
 
 namespace notf {
 
 class Window;
 
 /** Event object generated when the Application receives a keyboard input. */
-class KeyEvent {
+class CharEvent {
 public: // methods
-    KeyEvent(Window& window, Key key, KeyAction action, KeyModifiers modifiers, const KeyStateSet& stateset)
+    CharEvent(Window& window, utf32_t codepoint, KeyModifiers modifiers, const KeyStateSet& stateset)
         : window(window)
-        , key(key)
-        , action(action)
+        , codepoint(codepoint)
         , modifiers(modifiers)
         , stateset(stateset)
         , m_was_handled(false)
@@ -29,11 +29,8 @@ public: // fields
     /** The Window to which the event was sent. */
     const Window& window;
 
-    /** The key that triggered this event. */
-    const Key key;
-
-    /** The action that triggered this event. */
-    const KeyAction action;
+    /** The input character codepoint as native endian UTF-32. */
+    const utf32_t codepoint;
 
     /** Mask of all active keyboard modifiers for this event. */
     const KeyModifiers modifiers;

@@ -251,7 +251,9 @@ HEADERS += \
     include/graphics/graphics_context.hpp \
     include/graphics/cell/cell_canvas.hpp \
     include/common/enum.hpp \
-    include/common/id.hpp
+    include/common/id.hpp \
+    include/core/events/char_event.hpp \
+    include/common/utf.hpp
 
 QMAKE_CXX = ccache g++
 

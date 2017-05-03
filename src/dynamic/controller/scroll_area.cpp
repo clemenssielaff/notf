@@ -106,7 +106,7 @@ void ScrollArea::_initialize()
             if (area_height >= 1) {
                 _update_scrollbar(-event.window_delta.y * _get_content_height() / area_height);
             }
-            event.set_handled();
+            event.set_is_handled();
         });
     m_on_scrollbar_drag.disable();
 
@@ -115,7 +115,7 @@ void ScrollArea::_initialize()
         m_vscrollbar->on_mouse_button,
         [this](MouseEvent& event) -> void {
             m_on_scrollbar_drag.enable();
-            event.set_handled();
+            event.set_is_handled();
         },
         [this](MouseEvent& event) -> bool {
             const float scroll_bar_top = m_vscrollbar->get_window_transform().get_translation().y
@@ -132,7 +132,7 @@ void ScrollArea::_initialize()
         [this](MouseEvent& event) -> void {
             if (m_on_scrollbar_drag.is_enabled()) {
                 m_on_scrollbar_drag.disable();
-                event.set_handled();
+                event.set_is_handled();
             }
         },
         [this](MouseEvent& event) -> bool {

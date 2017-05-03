@@ -12,7 +12,8 @@ struct GLFWwindow;
 
 namespace notf {
 
-struct KeyEvent;
+class CharEvent;
+class KeyEvent;
 class CellCanvas;
 class Widget;
 class WindowLayout;
@@ -111,9 +112,6 @@ public: // methods
     bool was_closed() const { return !(static_cast<bool>(m_glfw_window)); }
 
 public: // signals
-    /** Emitted, when a single key was pressed / released / repeated. */
-    Signal<const KeyEvent&> on_token_key;
-
     /** Emitted just before this Window is closed.
      * @param   This Window.
      */
@@ -135,6 +133,12 @@ private: // methods for friends
 
     /** Called when the Application receives a mouse event targeting this Window. */
     void _propagate_mouse_event(MouseEvent&& event);
+
+    /** Called when the Application receives a key event targeting this Window. */
+    void _propagate_key_event(KeyEvent&& event);
+
+    /** Called when the Application receives a character input event targeting this Window. */
+    void _propagate_char_event(CharEvent&& event);
 
     /** Updates the contents of this Window. */
     void _update();

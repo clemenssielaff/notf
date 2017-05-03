@@ -2,6 +2,7 @@
 
 #include "common/log.hpp"
 #include "core/application.hpp"
+#include "core/events/char_event.hpp"
 #include "core/events/key_event.hpp"
 #include "core/events/mouse_event.hpp"
 #include "core/glfw.hpp"
@@ -60,9 +61,6 @@ Window::Window(const WindowInfo& info)
 {
     // make sure that an Application was initialized before instanciating a Window (will exit on failure)
     Application& app = Application::get_instance();
-
-    // close when the user presses ESC
-    connect_signal(on_token_key, &Window::close, [](const KeyEvent& event) { return event.key == Key::ESCAPE; });
 
     // NoTF uses OpenGL ES 3.0 for now
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
@@ -221,7 +219,7 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
     // call the appropriate event signal
     if (event.action == MouseAction::MOVE) {
         std::shared_ptr<Widget> mouse_item = m_mouse_item.lock();
-        if(mouse_item){
+        if (mouse_item) {
             mouse_item->on_mouse_move(event);
             if (event.was_handled()) {
                 return;
@@ -229,7 +227,7 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
         }
         for (const auto& layer : reverse(widgets_by_layer)) {
             for (const auto& widget : reverse(layer)) {
-                if(widget != mouse_item.get()){
+                if (widget != mouse_item.get()) {
                     widget->on_mouse_move(event);
                 }
                 if (event.was_handled()) {
@@ -240,7 +238,7 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
     }
     else if (event.action == MouseAction::SCROLL) {
         std::shared_ptr<Widget> mouse_item = m_mouse_item.lock();
-        if(mouse_item){
+        if (mouse_item) {
             mouse_item->on_scroll(event);
             if (event.was_handled()) {
                 return;
@@ -248,7 +246,7 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
         }
         for (const auto& layer : reverse(widgets_by_layer)) {
             for (const auto& widget : reverse(layer)) {
-                if(widget != mouse_item.get()){
+                if (widget != mouse_item.get()) {
                     widget->on_scroll(event);
                 }
                 if (event.was_handled()) {
@@ -271,7 +269,7 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
     }
     else if (event.action == MouseAction::RELEASE) {
         std::shared_ptr<Widget> mouse_item = m_mouse_item.lock();
-        if(mouse_item){
+        if (mouse_item) {
             m_mouse_item.reset();
             mouse_item->on_mouse_button(event);
             if (event.was_handled()) {
@@ -280,7 +278,7 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
         }
         for (const auto& layer : reverse(widgets_by_layer)) {
             for (const auto& widget : reverse(layer)) {
-                if(widget != mouse_item.get()){
+                if (widget != mouse_item.get()) {
                     widget->on_mouse_button(event);
                 }
                 if (event.was_handled()) {
@@ -293,6 +291,14 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
     else {
         assert(0);
     }
+}
+
+void Window::_propagate_key_event(KeyEvent&& event)
+{
+}
+
+void Window::_propagate_char_event(CharEvent&& event)
+{
 }
 
 } // namespace notf

@@ -13,7 +13,7 @@ class MouseEvent {
     friend class Window;
 
 public: // methods
-    MouseEvent(Window* window, Vector2f window_pos, Vector2f window_delta, Button button,
+    MouseEvent(Window& window, Vector2f window_pos, Vector2f window_delta, Button button,
                MouseAction action, KeyModifiers modifiers, const ButtonStateSet& stateset)
         : window(window)
         , window_pos(std::move(window_pos))
@@ -29,12 +29,12 @@ public: // methods
     /** Checks whether this event was already handled or not. */
     bool was_handled() const { return m_was_handled; }
 
-    /** Must be called after a event handler handled this event. */
-    void set_handled() { m_was_handled = true; }
+    /** Must be called after an event handler handled this event. */
+    void set_is_handled() { m_was_handled = true; }
 
 public: // fields
     /** The Window to which the event was sent. */
-    const Window* window;
+    const Window& window;
 
     /** Position of the mouse cursor relative to the top-left corner of `window`. */
     const Vector2f window_pos;

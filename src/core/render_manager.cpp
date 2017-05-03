@@ -134,10 +134,19 @@ void RenderManager::_collect_widgets(const ScreenItem* root_item, std::vector<st
 {
     assert(root_item);
 
-    // TODO: dont' draw scissored widgets
+    // don't draw invisible Widgets
     if (!root_item->is_visible()) {
         return;
     }
+
+    // don't draw scissored Widgets
+//    if(LayoutPtr scissor = root_item->get_scissor()){
+//        if(!scissor->get_aarbr().intersects(root_item->get_aarbr())){
+//            log_trace << "Skipping Item: " << root_item->get_id();
+//            return;
+//        }
+//    }
+    // TODO: item aabr must be transformed to scissor space before testing
 
     size_t render_layer = root_item->get_render_layer()->get_index();
     assert(render_layer < widgets.size());
