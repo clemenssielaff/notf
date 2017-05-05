@@ -9,6 +9,7 @@
 #include "common/size2.hpp"
 #include "common/xform2.hpp"
 #include "utils/binding_accessors.hpp"
+#include "utils/sfinae.hpp"
 
 #ifdef NOTF_PYTHON
 #include "ext/python/py_fwd.hpp"
@@ -262,5 +263,14 @@ private: // fields *************************************************************
     std::unique_ptr<PyObject, decltype(&py_decref)> m_py_object;
 #endif
 };
+
+/**********************************************************************************************************************/
+
+/** Convenience function to create correctly typed `shared_from_this` shared_ptrs from Item subclasses. */
+template <typename ItemSubclass, ENABLE_IF_SUBCLASS(ItemSubclass, Item)>
+std::shared_ptr<ItemSubclass> make_shared_from(ItemSubclass* item)
+{
+    return std::dynamic_pointer_cast<ItemSubclass>(static_cast<Item*>(item)->shared_from_this());
+}
 
 } // namespace notf

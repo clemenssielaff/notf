@@ -30,7 +30,7 @@ public: // methods
     bool was_handled() const { return m_was_handled; }
 
     /** Must be called after an event handler handled this event. */
-    void set_is_handled() { m_was_handled = true; }
+    void set_handled() { m_was_handled = true; }
 
 public: // fields
     /** The Window to which the event was sent. */

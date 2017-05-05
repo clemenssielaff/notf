@@ -253,7 +253,7 @@ void StackLayout::add_item(ItemPtr item)
     }
 
     // take ownership of the Item
-    _set_parent(item.get(), std::static_pointer_cast<Layout>(shared_from_this()));
+    _set_parent(item.get(), shared_from_this());
     const ItemID child_id = item->get_id();
     m_items.emplace_back(std::move(item));
     on_child_added(child_id);

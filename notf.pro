@@ -253,7 +253,8 @@ HEADERS += \
     include/common/enum.hpp \
     include/common/id.hpp \
     include/core/events/char_event.hpp \
-    include/common/utf.hpp
+    include/common/utf.hpp \
+    include/core/events/focus_event.hpp
 
 QMAKE_CXX = ccache g++
 

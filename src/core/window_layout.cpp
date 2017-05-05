@@ -76,7 +76,7 @@ void WindowLayout::set_controller(ControllerPtr controller)
     }
 
     // take ownership of the Item
-    _set_parent(controller.get(), std::static_pointer_cast<Layout>(shared_from_this()));
+    _set_parent(controller.get(), make_shared_from(this));
     const ItemID child_id = controller->get_id();
     m_controller          = std::move(controller);
     on_child_added(child_id);

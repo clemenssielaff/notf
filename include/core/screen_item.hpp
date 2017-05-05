@@ -5,6 +5,9 @@
 
 namespace notf {
 
+class FocusEvent;
+class MouseEvent;
+
 /** Baseclass for all Items that have physical expansion (Widgets and Layouts).
  *
  *  ScreenItem size is an interesting topic, worth a little bit of discussion.
@@ -124,6 +127,16 @@ namespace notf {
  * The `layout transform` is the transformation applied to the Item by its parent Layout.
  * The `offset transform` is an additional offset transformation on the Item that is applied after the `layout
  * transform`.
+ *
+ * Focus
+ * =====
+ * Each Window has to types of focus: the 'mouse' focus and the 'keyboard' focus.
+ * The mouse focus exists only between the mouse-press and -release events and is used to make sure that a Widget will
+ * always receive a corresponding -release event, as well as for allowing drag operations where the cursor might move
+ * outside of the Widget's boundaries between two frames.
+ * The keyboard focus is the first widget that receives key events.
+ * All events are sent to a Widget first and the propagated up until some ScreenItem ancestor handles it (or not).
+ * Focus events are always propagated upwards to notify the hierarchy that a child has received the focus.
  */
 class ScreenItem : public Item {
 
@@ -210,6 +223,18 @@ public: // signals *************************************************************
      * @param New local transform.
      */
     Signal<const Xform2f&> on_transform_changed;
+
+    /** Signal invoked when this Widget is asked to handle a Mouse move event. */
+    Signal<MouseEvent&> on_mouse_move;
+
+    /** Signal invoked when this Widget is asked to handle a Mouse button event. */
+    Signal<MouseEvent&> on_mouse_button;
+
+    /** Signal invoked when this Widget is asked to handle a scroll event. */
+    Signal<MouseEvent&> on_mouse_scroll;
+
+    /** Emitted, when the Widget has gained or lost the Window's focus. */
+    Signal<FocusEvent&> on_focus_changed;
 
 protected: // methods *************************************************************************************************/
     /** Tells the Window that this Item needs to be redrawn.

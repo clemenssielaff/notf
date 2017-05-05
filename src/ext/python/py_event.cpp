@@ -25,7 +25,7 @@ void produce_events(pybind11::module& module)
         py::class_<MouseEvent> Py_MouseEvent(module, "MouseEvent");
 
         Py_MouseEvent.def("was_handled", &MouseEvent::was_handled, DOCSTR("Checks whether this event was already handled or not."));
-        Py_MouseEvent.def("set_handled", &MouseEvent::set_is_handled, DOCSTR("Must be called after a event handler handled this event."));
+        Py_MouseEvent.def("set_handled", &MouseEvent::set_handled, DOCSTR("Must be called after a event handler handled this event."));
 
         Py_MouseEvent.def_readonly("window_pos", &MouseEvent::window_pos);
         Py_MouseEvent.def_readonly("window_delta", &MouseEvent::window_delta);

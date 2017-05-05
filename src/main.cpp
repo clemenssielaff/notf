@@ -8,6 +8,7 @@
 #include "core/application.hpp"
 #include "core/controller.hpp"
 #include "core/events/mouse_event.hpp"
+#include "core/events/focus_event.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
 #include "core/window_layout.hpp"
@@ -34,8 +35,8 @@ using namespace notf::shorthand;
  */
 class RectWidget : public Widget {
 public: // methods
-    RectWidget(GraphicsContext& context, int number, FontPtr font, Color color)
-        : Widget(), m_graphics_context(context), m_font(font), m_number(number), m_color(color)
+    RectWidget(GraphicsContext& context, FontPtr font, Color color)
+        : Widget(), m_graphics_context(context), m_font(font), m_color(color)
     {
         const float min_min = 20;
         const float max_min = 100;
@@ -49,6 +50,20 @@ public: // methods
         vertical.set_max(random_number(vertical.get_min(), max_max));
         vertical.set_preferred(random_number(vertical.get_min(), vertical.get_max()));
         set_claim({horizontal, vertical});
+
+        on_mouse_button.connect([](MouseEvent& event) -> void {
+            event.set_handled();
+        });
+
+        on_focus_changed.connect([this](FocusEvent& event) -> void {
+            if(event.new_focus.get() == this){
+                event.set_handled();
+                m_color = Color("#12d0e1");
+            }
+            else if(event.old_focus.get() == this) {
+                m_color = Color("#c34200");
+            }
+        });
 
         UNUSED(m_graphics_context);
     }
@@ -64,7 +79,7 @@ public: // methods
         if (m_font) {
             painter.set_fill_paint(Color::white());
             painter.translate(widget_rect.center());
-            painter.write(std::to_string(m_number), m_font);
+            painter.write(std::to_string(get_id().id), m_font);
         }
     }
 
@@ -72,8 +87,6 @@ private: // fields
     GraphicsContext& m_graphics_context;
 
     FontPtr m_font;
-
-    int m_number;
 
     Color m_color;
 };
@@ -96,12 +109,8 @@ public: // methods
         FontPtr font = Font::load(m_graphics_context, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 12);
 
         for (int i = 1; i <= 20; ++i) {
-            std::shared_ptr<RectWidget> rect = std::make_shared<RectWidget>(m_graphics_context, i, font, Color("#c34200"));
+            std::shared_ptr<RectWidget> rect = std::make_shared<RectWidget>(m_graphics_context, font, Color("#c34200"));
             stack_layout->add_item(rect);
-//            rect->on_scroll.connect([](MouseEvent& event) -> void {
-//                event.set_handled();
-//                log_info << "Event handled!";
-//            });
         }
     }
 
@@ -118,7 +127,7 @@ public: // methods
     {
         OverlayoutPtr overlayout = Overlayout::create();
         overlayout->set_padding(Padding::all(20));
-        auto back_rect = std::make_shared<RectWidget>(m_window->get_graphics_context(), 0, nullptr, Color("#333333"));
+        auto back_rect = std::make_shared<RectWidget>(m_window->get_graphics_context(), nullptr, Color("#333333"));
         back_rect->set_claim({});
         overlayout->add_item(back_rect);
 

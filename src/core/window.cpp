@@ -1,8 +1,11 @@
 #include "core/window.hpp"
 
+#include <unordered_set>
+
 #include "common/log.hpp"
 #include "core/application.hpp"
 #include "core/events/char_event.hpp"
+#include "core/events/focus_event.hpp"
 #include "core/events/key_event.hpp"
 #include "core/events/mouse_event.hpp"
 #include "core/glfw.hpp"
@@ -15,6 +18,42 @@
 #include "graphics/graphics_context.hpp"
 #include "graphics/raw_image.hpp"
 #include "utils/reverse_iterator.hpp"
+
+namespace { // anonymous
+using namespace notf;
+
+/** Helper function that propagates an event up the Item hierarchy.
+ * @param widget    Widget receiving the original event.
+ * @param signal    Signal to trigger on each ScreenItem in the hierarchy.
+ * @param event     Event object that is passed as an argument to the Signals.
+ * @param notified  ScreenItems that have already been notified of this event and that must not handle it again.
+ * @return          The ScreenItem that handled the event or nullptr, if none did.
+ */
+template <class Event, typename... Args>
+ScreenItem* propagate_to_hierarchy(Widget* widget, Signal<Args...> ScreenItem::*signal, Event& event,
+                                   std::unordered_set<ScreenItem*>& notified_items)
+{
+    ScreenItemPtr handler = make_shared_from(widget);
+    while (handler) {
+        ScreenItem* screen_item = handler.get();
+
+        // don't propagate the event to items that have already seen (but not handled) it
+        if (notified_items.count(screen_item)) {
+            return nullptr;
+        }
+        notified_items.insert(screen_item);
+
+        // fire the signal and return if it was handled
+        (screen_item->*signal)(event);
+        if (event.was_handled()) {
+            return screen_item;
+        }
+        handler = handler->get_layout();
+    }
+    return nullptr;
+}
+
+} // namespace anonymous
 
 namespace notf {
 
@@ -90,7 +129,7 @@ Window::Window(const WindowInfo& info)
 
     // apply the Window icon
     // In order to show the icon in Ubuntu 16.04 is as bit more complicated:
-    // 1. start the software
+    // 1. start the software at least once, you might have to pin it to the launcher as well ...
     // 2. copy the icon to ~/.local/share/icons/hicolor/<resolution>/apps/<yourapp>
     // 3. modify the file ~/.local/share/applications/<yourapp>, in particular the line Icon=<yourapp>
     //
@@ -206,8 +245,6 @@ void Window::_on_resize(int width, int height)
 
 void Window::_propagate_mouse_event(MouseEvent&& event)
 {
-    // TODO: mouse event propagation doesn't propagate up the hierarchy
-
     // sort Widgets by RenderLayers
     std::vector<std::vector<Widget*>> widgets_by_layer(m_render_manager->get_layer_count());
     for (Widget* widget : m_layout->get_widgets_at(event.window_pos)) {
@@ -216,72 +253,98 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
         widgets_by_layer[render_layer->get_index()].emplace_back(widget);
     }
 
+    std::shared_ptr<Widget> mouse_item = m_mouse_item.lock();
+    std::unordered_set<ScreenItem*> notified_items;
+
     // call the appropriate event signal
     if (event.action == MouseAction::MOVE) {
-        std::shared_ptr<Widget> mouse_item = m_mouse_item.lock();
         if (mouse_item) {
             mouse_item->on_mouse_move(event);
             if (event.was_handled()) {
                 return;
             }
+            notified_items.insert(mouse_item.get());
         }
         for (const auto& layer : reverse(widgets_by_layer)) {
-            for (const auto& widget : reverse(layer)) {
-                if (widget != mouse_item.get()) {
-                    widget->on_mouse_move(event);
-                }
-                if (event.was_handled()) {
+            for (const auto& widget : layer) {
+                if (propagate_to_hierarchy(widget, &ScreenItem::on_mouse_move, event, notified_items)) {
                     return;
                 }
             }
         }
     }
+
     else if (event.action == MouseAction::SCROLL) {
-        std::shared_ptr<Widget> mouse_item = m_mouse_item.lock();
         if (mouse_item) {
-            mouse_item->on_scroll(event);
+            mouse_item->on_mouse_scroll(event);
             if (event.was_handled()) {
                 return;
             }
+            notified_items.insert(mouse_item.get());
         }
         for (const auto& layer : reverse(widgets_by_layer)) {
-            for (const auto& widget : reverse(layer)) {
-                if (widget != mouse_item.get()) {
-                    widget->on_scroll(event);
-                }
-                if (event.was_handled()) {
+            for (const auto& widget : layer) {
+                if (propagate_to_hierarchy(widget, &ScreenItem::on_mouse_scroll, event, notified_items)) {
                     return;
                 }
             }
         }
     }
+
     else if (event.action == MouseAction::PRESS) {
-        assert(m_mouse_item.expired());
+        assert(!mouse_item);
         for (const auto& layer : reverse(widgets_by_layer)) {
-            for (const auto& widget : reverse(layer)) {
-                widget->on_mouse_button(event);
-                if (event.was_handled()) {
-                    m_mouse_item = std::dynamic_pointer_cast<Widget>(static_cast<Item*>(widget)->shared_from_this());
+            for (const auto& widget : layer) {
+                if (propagate_to_hierarchy(widget, &ScreenItem::on_mouse_button, event, notified_items)) {
+                    WidgetPtr new_focus_widget = make_shared_from(widget);
+                    m_mouse_item               = new_focus_widget;
+
+                    // send the mouse item a 'focus gained' event and notify its hierarchy, if it handles it
+                    WidgetPtr old_focus_widget = m_keyboard_item.lock();
+                    FocusEvent focus_gained_event(*this, FocusAction::GAINED, old_focus_widget, new_focus_widget);
+                    new_focus_widget->on_focus_changed(focus_gained_event);
+                    if (focus_gained_event.was_handled()) {
+
+                        // let the previously focused Widget know that it lost the focus
+                        if (old_focus_widget) {
+                            FocusEvent focus_lost_event(*this, FocusAction::LOST, old_focus_widget, new_focus_widget);
+                            ScreenItemPtr handler = old_focus_widget;
+                            while (handler) {
+                                handler->on_focus_changed(focus_lost_event);
+                                handler = handler->get_layout();
+                            }
+                        }
+
+                        // notify the new focused Widget's hierarchy
+                        m_keyboard_item       = new_focus_widget;
+                        ScreenItemPtr handler = new_focus_widget->get_layout();
+                        while (handler) {
+                            handler->on_focus_changed(focus_gained_event);
+                            handler = handler->get_layout();
+                        }
+                    }
+                    else {
+                        // if it doesn't handle the focus event, the focus remains untouched
+                    }
+
                     return;
                 }
             }
         }
     }
+
     else if (event.action == MouseAction::RELEASE) {
-        std::shared_ptr<Widget> mouse_item = m_mouse_item.lock();
         if (mouse_item) {
             m_mouse_item.reset();
             mouse_item->on_mouse_button(event);
             if (event.was_handled()) {
                 return;
             }
+            notified_items.insert(mouse_item.get());
         }
         for (const auto& layer : reverse(widgets_by_layer)) {
-            for (const auto& widget : reverse(layer)) {
-                if (widget != mouse_item.get()) {
-                    widget->on_mouse_button(event);
-                }
-                if (event.was_handled()) {
+            for (const auto& widget : layer) {
+                if (propagate_to_hierarchy(widget, &ScreenItem::on_mouse_button, event, notified_items)) {
                     return;
                 }
             }

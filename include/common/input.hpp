@@ -243,4 +243,10 @@ inline void set_button(ButtonStateSet& state_set, Button button, bool pressed)
     state_set.set(static_cast<size_t>(to_number(button)), pressed);
 }
 
+/** Things the focus can do. */
+enum class FocusAction : unsigned char {
+    LOST = 0,
+    GAINED,
+};
+
 } // namespace notf

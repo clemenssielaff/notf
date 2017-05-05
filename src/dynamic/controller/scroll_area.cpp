@@ -78,6 +78,7 @@ void ScrollArea::_initialize()
     root_layout->add_item(m_area_window);
     root_layout->add_item(m_vscrollbar);
     _set_root_item(root_layout);
+    log_trace << "Root Layout has ID: " << root_layout->get_id();
 
     // update the scrollbar, if the container layout changed
     connect_signal(
@@ -86,14 +87,9 @@ void ScrollArea::_initialize()
             _update_scrollbar(0);
         });
 
-    // scroll when scrolling the mouse wheel over the container or the scrollbar
+    // scroll when scrolling the mouse wheel anywhere over the scroll area
     connect_signal(
-        background->on_scroll,
-        [this](MouseEvent& event) -> void {
-            _update_scrollbar(16 * event.window_delta.y);
-        });
-    connect_signal(
-        m_vscrollbar->on_scroll,
+        root_layout->on_mouse_scroll,
         [this](MouseEvent& event) -> void {
             _update_scrollbar(16 * event.window_delta.y);
         });
@@ -106,7 +102,7 @@ void ScrollArea::_initialize()
             if (area_height >= 1) {
                 _update_scrollbar(-event.window_delta.y * _get_content_height() / area_height);
             }
-            event.set_is_handled();
+            event.set_handled();
         });
     m_on_scrollbar_drag.disable();
 
@@ -115,7 +111,7 @@ void ScrollArea::_initialize()
         m_vscrollbar->on_mouse_button,
         [this](MouseEvent& event) -> void {
             m_on_scrollbar_drag.enable();
-            event.set_is_handled();
+            event.set_handled();
         },
         [this](MouseEvent& event) -> bool {
             const float scroll_bar_top = m_vscrollbar->get_window_transform().get_translation().y
@@ -132,7 +128,7 @@ void ScrollArea::_initialize()
         [this](MouseEvent& event) -> void {
             if (m_on_scrollbar_drag.is_enabled()) {
                 m_on_scrollbar_drag.disable();
-                event.set_is_handled();
+                event.set_handled();
             }
         },
         [this](MouseEvent& event) -> bool {

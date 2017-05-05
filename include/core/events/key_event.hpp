@@ -43,7 +43,7 @@ public: // fields
 
 private: // fields
     /** True iff this event was already handled. */
-    bool m_was_handled = false;
+    bool m_was_handled;
 };
 
 } // namespace notf

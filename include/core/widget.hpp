@@ -7,7 +7,6 @@ namespace notf {
 class Cell;
 class CellCanvas;
 class Layout;
-class MouseEvent;
 class Painter;
 
 /**********************************************************************************************************************/
@@ -50,16 +49,6 @@ public: // methods
      * Either uses the cached Cell or updates it first, using _paint().
      */
     void paint(CellCanvas& cell_context) const;
-
-public: // signals
-    /** Signal invoked when this Widget is asked to handle a Mouse move event. */
-    Signal<MouseEvent&> on_mouse_move;
-
-    /** Signal invoked when this Widget is asked to handle a Mouse button event. */
-    Signal<MouseEvent&> on_mouse_button;
-
-    /** Signal invoked when this Widget is asked to handle a scroll event. */
-    Signal<MouseEvent&> on_scroll;
 
 private: // methods
     /** Redraws the Cell with the Widget's current state. */
