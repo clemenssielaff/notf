@@ -7,6 +7,8 @@ namespace notf {
 class WindowLayout;
 class Window;
 
+using WindowLayoutPtr = std::shared_ptr<WindowLayout>;
+
 /**********************************************************************************************************************/
 
 /** WindowLayout Iterator that goes through all items in a Layout in order, from back to front.
@@ -42,7 +44,7 @@ class WindowLayout : public Layout {
 
 private: // factory
     /** Factory method. */
-    static std::shared_ptr<WindowLayout> create(const std::shared_ptr<Window>& window);
+    static WindowLayoutPtr create(const std::shared_ptr<Window>& window);
 
     /** @param window   Window owning this RootWidget. */
     WindowLayout(const std::shared_ptr<Window>& window);

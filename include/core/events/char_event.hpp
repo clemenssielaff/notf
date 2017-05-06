@@ -30,7 +30,7 @@ public: // fields
     const Window& window;
 
     /** The input character codepoint as native endian UTF-32. */
-    const utf32_t codepoint;
+    const Codepoint codepoint;
 
     /** Mask of all active keyboard modifiers for this event. */
     const KeyModifiers modifiers;

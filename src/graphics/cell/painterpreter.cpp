@@ -1,5 +1,6 @@
 #include "graphics/cell/painterpreter.hpp"
 
+#include "common/utf.hpp"
 #include "common/vector.hpp"
 #include "graphics/cell/cell.hpp"
 #include "graphics/cell/cell_canvas.hpp"
@@ -649,7 +650,8 @@ void Painterpreter::_create_butt_cap_end(const Point& point, const Vector2f& del
 
 void Painterpreter::_render_text(const std::string& text, const std::shared_ptr<Font> font)
 {
-    const PainterState& state                     = _get_current_state();
+    const utf8_string utf8_text(text);
+    const PainterState& state               = _get_current_state();
     const FontManager& font_manager               = m_canvas.m_graphics_context.get_font_manager();
     const std::shared_ptr<Texture2>& font_texture = font_manager.get_atlas_texture();
     assert(font_texture->get_width() == font_texture->get_height());
@@ -679,8 +681,8 @@ void Painterpreter::_render_text(const std::string& text, const std::shared_ptr<
     Glyph::coord_t x            = static_cast<Glyph::coord_t>(roundf(translation.x));
     Glyph::coord_t y            = static_cast<Glyph::coord_t>(roundf(translation.y));
 
-    for (const auto character : text) {
-        const Glyph& glyph = font->get_glyph(static_cast<codepoint_t>(character)); // TODO: text rendering will only work for pure ascii
+    for (const auto character : utf8_text) {
+        const Glyph& glyph = font->get_glyph(static_cast<codepoint_t>(character));
 
         if (!glyph.rect.width || !glyph.rect.height) {
             // skip glyphs wihout pixels

@@ -166,7 +166,9 @@ SOURCES += \
     src/graphics/graphics_context.cpp \
     src/graphics/cell/cell_canvas.cpp \
     src/nanovg_test.cpp \
-    src/common/signal.cpp
+    src/common/signal.cpp \
+    src/common/utf.cpp \
+    thirdparty/tinyutf8/tinyutf8.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -254,9 +256,10 @@ HEADERS += \
     include/common/id.hpp \
     include/core/events/char_event.hpp \
     include/common/utf.hpp \
-    include/core/events/focus_event.hpp
+    include/core/events/focus_event.hpp \
+    thirdparty/tinyutf8/tinyutf8.h
 
-QMAKE_CXX = ccache g++
+#QMAKE_CXX = ccache g++
 
 DISTFILES += \
     app/main.py \

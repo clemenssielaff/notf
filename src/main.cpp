@@ -9,6 +9,7 @@
 #include "core/controller.hpp"
 #include "core/events/mouse_event.hpp"
 #include "core/events/focus_event.hpp"
+#include "core/events/char_event.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
 #include "core/window_layout.hpp"
@@ -36,7 +37,7 @@ using namespace notf::shorthand;
 class RectWidget : public Widget {
 public: // methods
     RectWidget(GraphicsContext& context, FontPtr font, Color color)
-        : Widget(), m_graphics_context(context), m_font(font), m_color(color)
+        : Widget(), m_graphics_context(context), m_font(font), m_color(color), m_text(std::to_string(get_id().id))
     {
         const float min_min = 20;
         const float max_min = 100;
@@ -56,13 +57,19 @@ public: // methods
         });
 
         on_focus_changed.connect([this](FocusEvent& event) -> void {
-            if(event.new_focus.get() == this){
+            if(event.action == FocusAction::GAINED){
                 event.set_handled();
                 m_color = Color("#12d0e1");
             }
-            else if(event.old_focus.get() == this) {
+            else {
                 m_color = Color("#c34200");
             }
+        });
+
+        on_char_input.connect([this](CharEvent& event) -> void {
+            std::stringstream ss;
+            ss << m_text << event.codepoint;
+            m_text = ss.str();
         });
 
         UNUSED(m_graphics_context);
@@ -79,7 +86,7 @@ public: // methods
         if (m_font) {
             painter.set_fill_paint(Color::white());
             painter.translate(widget_rect.center());
-            painter.write(std::to_string(get_id().id), m_font);
+            painter.write(m_text, m_font);
         }
     }
 
@@ -89,6 +96,8 @@ private: // fields
     FontPtr m_font;
 
     Color m_color;
+
+    std::string m_text;
 };
 
 /** Stack Controller

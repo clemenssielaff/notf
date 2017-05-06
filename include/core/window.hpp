@@ -21,6 +21,8 @@ class MouseEvent;
 class GraphicsContext;
 class RenderManager;
 
+using WindowLayoutPtr = std::shared_ptr<WindowLayout>;
+
 /**********************************************************************************************************************/
 
 /** Destroys a GLFW window. */
@@ -49,7 +51,23 @@ struct WindowInfo {
 
 /**********************************************************************************************************************/
 
-/** The Window is a OS window containing an OpenGL context. */
+/** The Window is a OS window containing an OpenGL context.
+ *
+ * Event propagation
+ * =================
+ * Each Window has to types of focus: the 'mouse' focus and the 'keyboard' focus.
+ * The mouse focus exists only between the mouse-press and -release events and is used to make sure that a Widget will
+ * always receive a corresponding -release event, as well as for allowing drag operations where the cursor might move
+ * outside of the Widget's boundaries between two frames.
+ * The keyboard focus is the first widget that receives key events.
+ * All events are sent to a Widget first and the propagated up until some ScreenItem ancestor handles it (or not).
+ * Focus events are always propagated upwards to notify the hierarchy that a child has received the focus.
+ *
+ * If a Window has no current keyboard item, the WindowLayout is the only one notified of a key event, for example to
+ * close the Window on ESC.
+ * Note that this doesn't mean that the WindowLayout is always notified!
+ * If there is a keyboard item and it handles the key event, the event will not propagate further.
+ */
 class Window : public receive_signals, public std::enable_shared_from_this<Window> {
 
     friend class Application;
@@ -74,7 +92,7 @@ public: // methods
     const std::string& get_title() const { return m_title; }
 
     /** The invisible root Layout of this Window. */
-    std::shared_ptr<WindowLayout> get_layout() const { return m_layout; }
+    WindowLayoutPtr get_layout() const { return m_layout; }
 
     /** Returns the Application's Render Manager. */
     RenderManager& get_render_manager() { return *m_render_manager; }
@@ -154,7 +172,7 @@ private: // fields
     std::string m_title;
 
     /** The Root Layout of this Window. */
-    std::shared_ptr<WindowLayout> m_layout;
+    WindowLayoutPtr m_layout;
 
     /** The Window's render manager. */
     std::unique_ptr<RenderManager> m_render_manager;

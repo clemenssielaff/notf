@@ -188,7 +188,7 @@ std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<FitReques
         size_t best_extend_index = INVALID_SIZE_T;
         coord_t best_node_width  = std::numeric_limits<coord_t>::max();
         coord_t best_new_height  = std::numeric_limits<coord_t>::max();
-        codepoint_t best_code_point;
+        codepoint_t best_code_point = 0;
 
         // find the best fit
         for (size_t named_size_index = 0; named_size_index < named_extends.size(); ++named_size_index) {
@@ -196,7 +196,7 @@ std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<FitReques
             const ScoredRect scored  = _get_rect(extend.width, extend.height);
             if (scored.rect.height == 0) {
                 named_extends.erase(iterator_at(named_extends, named_size_index));
-                result.emplace_back(best_code_point, best_rect);
+                result.emplace_back(extend.code_point, best_rect);
                 --named_size_index;
                 continue;
             }

@@ -22,7 +22,7 @@ Item* WindowLayoutIterator::next()
 
 /**********************************************************************************************************************/
 
-std::shared_ptr<WindowLayout> WindowLayout::create(const std::shared_ptr<Window>& window)
+WindowLayoutPtr WindowLayout::create(const std::shared_ptr<Window>& window)
 {
     struct make_shared_enabler : public WindowLayout {
         make_shared_enabler(const std::shared_ptr<Window>& window)

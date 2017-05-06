@@ -135,10 +135,14 @@ const Glyph& Font::_allocate_glyph(const codepoint_t codepoint) const
         glyph.rect            = font_atlas.insert_rect(
             static_cast<Glyph::coord_t>(slot->bitmap.width),
             static_cast<Glyph::coord_t>(slot->bitmap.rows));
-        font_atlas.fill_rect(glyph.rect, slot->bitmap.buffer); // TODO: dynamically allocating glyphs fails with OpenGL error: GL_INVALID_OPERATION
+        font_atlas.fill_rect(glyph.rect, slot->bitmap.buffer);
     }
     else {
         assert(!slot->bitmap.rows);
+        glyph.rect.x      = 0;
+        glyph.rect.y      = 0;
+        glyph.rect.height = 0;
+        glyph.rect.width  = 0;
     }
 
     // store and return the new Glyph

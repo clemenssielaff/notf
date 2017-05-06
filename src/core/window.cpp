@@ -3,6 +3,7 @@
 #include <unordered_set>
 
 #include "common/log.hpp"
+#include "common/utf.hpp"
 #include "core/application.hpp"
 #include "core/events/char_event.hpp"
 #include "core/events/focus_event.hpp"
@@ -253,7 +254,7 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
         widgets_by_layer[render_layer->get_index()].emplace_back(widget);
     }
 
-    std::shared_ptr<Widget> mouse_item = m_mouse_item.lock();
+    WidgetPtr mouse_item = m_mouse_item.lock();
     std::unordered_set<ScreenItem*> notified_items;
 
     // call the appropriate event signal
@@ -299,8 +300,13 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
                     WidgetPtr new_focus_widget = make_shared_from(widget);
                     m_mouse_item               = new_focus_widget;
 
-                    // send the mouse item a 'focus gained' event and notify its hierarchy, if it handles it
+                    // do nothing if the item already has the focus
                     WidgetPtr old_focus_widget = m_keyboard_item.lock();
+                    if(new_focus_widget == old_focus_widget){
+                        return;
+                    }
+
+                    // send the mouse item a 'focus gained' event and notify its hierarchy, if it handles it
                     FocusEvent focus_gained_event(*this, FocusAction::GAINED, old_focus_widget, new_focus_widget);
                     new_focus_widget->on_focus_changed(focus_gained_event);
                     if (focus_gained_event.was_handled()) {
@@ -358,10 +364,24 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
 
 void Window::_propagate_key_event(KeyEvent&& event)
 {
+    std::unordered_set<ScreenItem*> notified_items;
+    if (WidgetPtr keyboard_item = m_keyboard_item.lock()) {
+        propagate_to_hierarchy(keyboard_item.get(), &ScreenItem::on_key, event, notified_items);
+    }
+    else { // if there is no keyboard item, only notify the WindowLayout
+        m_layout->on_key(event);
+    }
 }
 
 void Window::_propagate_char_event(CharEvent&& event)
 {
+    std::unordered_set<ScreenItem*> notified_items;
+    if (WidgetPtr keyboard_item = m_keyboard_item.lock()) {
+        propagate_to_hierarchy(keyboard_item.get(), &ScreenItem::on_char_input, event, notified_items);
+    }
+    else { // if there is no keyboard item, only notify the WindowLayout
+        m_layout->on_char_input(event);
+    }
 }
 
 } // namespace notf

@@ -5,6 +5,8 @@
 
 namespace notf {
 
+class CharEvent;
+class KeyEvent;
 class FocusEvent;
 class MouseEvent;
 
@@ -127,16 +129,6 @@ class MouseEvent;
  * The `layout transform` is the transformation applied to the Item by its parent Layout.
  * The `offset transform` is an additional offset transformation on the Item that is applied after the `layout
  * transform`.
- *
- * Focus
- * =====
- * Each Window has to types of focus: the 'mouse' focus and the 'keyboard' focus.
- * The mouse focus exists only between the mouse-press and -release events and is used to make sure that a Widget will
- * always receive a corresponding -release event, as well as for allowing drag operations where the cursor might move
- * outside of the Widget's boundaries between two frames.
- * The keyboard focus is the first widget that receives key events.
- * All events are sent to a Widget first and the propagated up until some ScreenItem ancestor handles it (or not).
- * Focus events are always propagated upwards to notify the hierarchy that a child has received the focus.
  */
 class ScreenItem : public Item {
 
@@ -224,14 +216,20 @@ public: // signals *************************************************************
      */
     Signal<const Xform2f&> on_transform_changed;
 
-    /** Signal invoked when this Widget is asked to handle a Mouse move event. */
+    /** Signal invoked when this Item is asked to handle a Mouse move event. */
     Signal<MouseEvent&> on_mouse_move;
 
-    /** Signal invoked when this Widget is asked to handle a Mouse button event. */
+    /** Signal invoked when this Item is asked to handle a Mouse button event. */
     Signal<MouseEvent&> on_mouse_button;
 
-    /** Signal invoked when this Widget is asked to handle a scroll event. */
+    /** Signal invoked when this Item is asked to handle a scroll event. */
     Signal<MouseEvent&> on_mouse_scroll;
+
+    /** Signal invoked, when this Item is asked to handle a key event. */
+    Signal<KeyEvent&> on_key;
+
+    /** Signal invoked, when this Item is asked to handle a character input event. */
+    Signal<CharEvent&> on_char_input;
 
     /** Emitted, when the Widget has gained or lost the Window's focus. */
     Signal<FocusEvent&> on_focus_changed;

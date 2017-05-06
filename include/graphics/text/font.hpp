@@ -4,6 +4,7 @@
 #include <unordered_map>
 
 #include "common/hash.hpp"
+#include "common/utf.hpp"
 
 struct FT_FaceRec_;
 typedef struct FT_FaceRec_* FT_Face;
@@ -14,7 +15,7 @@ class FontManager;
 class GraphicsContext;
 
 /** Data type to identify a single Glyph. */
-using codepoint_t = unsigned long;
+using codepoint_t = utf32_t;
 
 /**********************************************************************************************************************/
 
