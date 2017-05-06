@@ -4,7 +4,7 @@
 
 #include "common/float.hpp"
 #include "randutils/randutils.hpp"
-#include "utils/sfinae.hpp"
+#include "common/template.hpp"
 
 namespace notf {
 

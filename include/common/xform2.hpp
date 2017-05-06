@@ -7,7 +7,7 @@
 #include "common/float.hpp"
 #include "common/hash.hpp"
 #include "common/vector2.hpp"
-#include "utils/sfinae.hpp"
+#include "common/template.hpp"
 
 namespace notf {
 
@@ -24,14 +24,14 @@ struct _Xform2 {
 
     /* Types **********************************************************************************************************/
 
-    using Value_t = Real;
+    using value_t = Real;
 
-    using Vector_t = _RealVector2<Value_t>;
+    using vector_t = _RealVector2<value_t>;
 
     /* Fields *********************************************************************************************************/
 
     /** First two columns of each Matrix row. */
-    std::array<Vector_t, 3> rows;
+    std::array<vector_t, 3> rows;
 
     /* Constructors ***************************************************************************************************/
 
@@ -49,7 +49,7 @@ struct _Xform2 {
     }
 
     /** A translation matrix. */
-    static _Xform2 translation(Vector_t translation)
+    static _Xform2 translation(vector_t translation)
     {
         return _Xform2{{{{1, 0},
                          {0, 1},
@@ -59,10 +59,10 @@ struct _Xform2 {
     /** A rotation matrix.
      * @param radians   Counter-clockwise rotation in radians.
      */
-    static _Xform2 rotation(const Value_t radians)
+    static _Xform2 rotation(const value_t radians)
     {
-        const Value_t sine   = sin(radians);
-        const Value_t cosine = cos(radians);
+        const value_t sine   = sin(radians);
+        const value_t cosine = cos(radians);
         return _Xform2{{{{cosine, sine},
                          {-sine, cosine},
                          {0, 0}}}};
@@ -71,7 +71,7 @@ struct _Xform2 {
     /** A uniform scale matrix.
      * @param factor   Uniform scale factor.
      */
-    static _Xform2 scale(const Value_t factor)
+    static _Xform2 scale(const value_t factor)
     {
         return _Xform2{{{{factor, 0},
                          {0, factor},
@@ -81,7 +81,7 @@ struct _Xform2 {
     /** A non-uniform scale matrix.
      * @param vector   Non-uniform scale vector.
      */
-    static _Xform2 scale(const Vector_t& vec)
+    static _Xform2 scale(const vector_t& vec)
     {
         return _Xform2{{{{vec.x, 0},
                          {0, vec.y},
@@ -91,7 +91,7 @@ struct _Xform2 {
     /** A non-uniform skew matrix.
      * @param vector   Non-uniform skew vector.
      */
-    static _Xform2 skew(const Vector_t& vec)
+    static _Xform2 skew(const vector_t& vec)
     {
         return _Xform2{{{{1, tan(vec.y)},
                          {tan(vec.x), 1},
@@ -101,27 +101,27 @@ struct _Xform2 {
     /*  Inspection  ***************************************************************************************************/
 
     /** Returns the translation part of this Xform. */
-    const Vector_t& get_translation() const { return rows[2]; }
+    const vector_t& get_translation() const { return rows[2]; }
 
     /** Scale factor along the x-axis. */
-    Value_t get_scale_x() const { return sqrt(rows[0][0] * rows[0][0] + rows[1][0] * rows[1][0]); }
+    value_t get_scale_x() const { return sqrt(rows[0][0] * rows[0][0] + rows[1][0] * rows[1][0]); }
 
     /** Scale factor along the y-axis. */
-    Value_t get_scale_y() const { return sqrt(rows[0][1] * rows[0][1] + rows[1][1] * rows[1][1]); }
+    value_t get_scale_y() const { return sqrt(rows[0][1] * rows[0][1] + rows[1][1] * rows[1][1]); }
 
     /** Calculates the determinant of this Xform2. */
-    Value_t get_determinant() const { return (rows[0][0] * rows[1][1]) - (rows[1][0] * rows[0][1]); }
+    value_t get_determinant() const { return (rows[0][0] * rows[1][1]) - (rows[1][0] * rows[0][1]); }
 
     /** Read-only reference to a row of the Xform2's internal matrix. */
     template <typename Row, ENABLE_IF_INT(Row)>
-    const Vector_t& operator[](const Row row) const
+    const vector_t& operator[](const Row row) const
     {
         assert(0 <= row && row <= 2);
         return rows[row];
     }
 
     /** Read-only pointer to the Xform2's internal storage. */
-    const Value_t* as_ptr() const { return &rows[0][0]; }
+    const value_t* as_ptr() const { return &rows[0][0]; }
 
     /** Operators *****************************************************************************************************/
 
@@ -135,7 +135,7 @@ struct _Xform2 {
      * @param other     Xform2 to test against.
      * @param epsilon   Maximal allowed distance between the individual entries in the transform matrix.
      */
-    bool is_approx(const _Xform2& other, const Value_t epsilon = precision_high<Value_t>()) const
+    bool is_approx(const _Xform2& other, const value_t epsilon = precision_high<value_t>()) const
     {
         for (size_t i = 0; i < 6; ++i) {
             if (abs(as_ptr()[i] - other.as_ptr()[i]) > epsilon) {
@@ -148,10 +148,10 @@ struct _Xform2 {
     /** Modifiers *****************************************************************************************************/
 
     /** Translates the transformation in-place by a given delta vector. */
-    _Xform2& translate(const Vector_t& delta) { return premult(_Xform2::translation(delta)); }
+    _Xform2& translate(const vector_t& delta) { return premult(_Xform2::translation(delta)); }
 
     /** Rotates the transformation in-place by a given angle in radians. */
-    _Xform2& rotate(const Value_t radians) { return premult(_Xform2::rotation(radians)); }
+    _Xform2& rotate(const value_t radians) { return premult(_Xform2::rotation(radians)); }
 
     /** Multiplication of this Matrix with another. */
     _Xform2 operator*(const _Xform2& other) const
@@ -163,12 +163,12 @@ struct _Xform2 {
     /** Applies another Xform to this one in-place. */
     _Xform2& operator*=(const _Xform2& other)
     {
-        Value_t* this_array        = this->as_ptr();
-        const Value_t* other_array = other.as_ptr();
+        value_t* this_array        = this->as_ptr();
+        const value_t* other_array = other.as_ptr();
 
-        const Value_t t0 = this_array[0] * other_array[0] + this_array[1] * other_array[2];
-        const Value_t t2 = this_array[2] * other_array[0] + this_array[3] * other_array[2];
-        const Value_t t4 = this_array[4] * other_array[0] + this_array[5] * other_array[2] + other_array[4];
+        const value_t t0 = this_array[0] * other_array[0] + this_array[1] * other_array[2];
+        const value_t t2 = this_array[2] * other_array[0] + this_array[3] * other_array[2];
+        const value_t t4 = this_array[4] * other_array[0] + this_array[5] * other_array[2] + other_array[4];
 
         this_array[1] = this_array[0] * other_array[1] + this_array[1] * other_array[3];
         this_array[3] = this_array[2] * other_array[1] + this_array[3] * other_array[3];
@@ -182,12 +182,12 @@ struct _Xform2 {
     /** Premultiplies the other Xform with this one in-place (same as `*this = other * this`). */
     _Xform2& premult(const _Xform2& other)
     {
-        Value_t* this_array        = this->as_ptr();
-        const Value_t* other_array = other.as_ptr();
+        value_t* this_array        = this->as_ptr();
+        const value_t* other_array = other.as_ptr();
 
-        const Value_t t0 = other_array[0] * this_array[0] + other_array[1] * this_array[2];
-        const Value_t t1 = other_array[0] * this_array[1] + other_array[1] * this_array[3];
-        const Value_t t3 = other_array[2] * this_array[1] + other_array[3] * this_array[3];
+        const value_t t0 = other_array[0] * this_array[0] + other_array[1] * this_array[2];
+        const value_t t1 = other_array[0] * this_array[1] + other_array[1] * this_array[3];
+        const value_t t3 = other_array[2] * this_array[1] + other_array[3] * this_array[3];
 
         this_array[4] = other_array[4] * this_array[0] + other_array[5] * this_array[2] + this_array[4];
         this_array[5] = other_array[4] * this_array[1] + other_array[5] * this_array[3] + this_array[5];
@@ -211,11 +211,11 @@ struct _Xform2 {
     /** Returns the inverse of this Xform2. */
     _Xform2 get_inverse() const
     {
-        const Value_t det = get_determinant();
-        if (abs(det) <= precision_high<Value_t>()) {
+        const value_t det = get_determinant();
+        if (abs(det) <= precision_high<value_t>()) {
             return _Xform2::identity();
         }
-        const Value_t invdet = 1 / det;
+        const value_t invdet = 1 / det;
         _Xform2 result;
         result[0][0] = +(rows[1][1]) * invdet;
         result[0][1] = -(rows[0][1]) * invdet;
@@ -227,7 +227,7 @@ struct _Xform2 {
     }
 
     /** Returns a transformed Vector2. */
-    Vector_t transform(const Vector_t& vector) const
+    vector_t transform(const vector_t& vector) const
     {
         return {
             vector.x * rows[0][0] + vector.y * rows[1][0] + rows[2][0],
@@ -237,14 +237,14 @@ struct _Xform2 {
 
     /** Read-write reference to a row of the Xform2's internal matrix. */
     template <typename Row, ENABLE_IF_INT(Row)>
-    Vector_t& operator[](const Row row)
+    vector_t& operator[](const Row row)
     {
         assert(0 <= row && row <= 2);
         return rows[row];
     }
 
     /** Read-write pointer to the Xform2's internal storage. */
-    Value_t* as_ptr() { return &rows[0][0]; }
+    value_t* as_ptr() { return &rows[0][0]; }
 };
 
 //*********************************************************************************************************************/

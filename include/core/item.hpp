@@ -9,7 +9,7 @@
 #include "common/size2.hpp"
 #include "common/xform2.hpp"
 #include "utils/binding_accessors.hpp"
-#include "utils/sfinae.hpp"
+#include "common/template.hpp"
 
 #ifdef NOTF_PYTHON
 #include "ext/python/py_fwd.hpp"

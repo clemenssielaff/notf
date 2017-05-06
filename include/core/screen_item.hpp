@@ -10,14 +10,18 @@ class KeyEvent;
 class FocusEvent;
 class MouseEvent;
 
+using uchar = unsigned char;
+
 /** Baseclass for all Items that have physical expansion (Widgets and Layouts).
  *
- *  ScreenItem size is an interesting topic, worth a little bit of discussion.
+ *
+ *
+ * ScreenItem size is an interesting topic, worth a little bit of discussion.
  * It is one of those things you don't really tend to think too much about, until you have to layout widgets on a screen.
- * Layouting is urprisingly hard, but you've heard that already - I suppose.
+ * Layouting is urprisingly hard, but you've heard that already, I suppose.
  * Let's go through a standard layouting process and how NoTF does it's magic behind the scenes.
  *
- * We'll look at Widgets first, and than at Layouts sind Layouts contain Widgets but not the other way around.
+ * We'll look at Widgets first, and than at Layouts since Layouts contain Widgets but not the other way around.
  *
  * At the very least, a Widget needs a size: a 2-dimensional value describing the width and the height of the expansion
  * of the Widget on screen.
@@ -26,15 +30,16 @@ class MouseEvent;
  * What determines the size of a Widget?
  * To a certain degree, the programmer.
  * You can set all Widget sizes explicitly and be done with it.
- * But that wouldn't make for a responsive interface. As soon as you have basic Widget types, that we've all come to
- * expect from our UIs (like splitter or resizeable container), Widgets that only have a fixed size will end up taking
- * too much screen real-estate or too litle.
+ * But that wouldn't make for a responsive interface.
+ * As soon as you have basic Widget types, that we've all come to expect from our UIs (like splitter or resizeable
+ * container), Widgets that only have a fixed size will end up taking too much screen real-estate or too litle.
  * It's like visiting an old website on your phone to find that there's no way to read a paragraph without horizontal
  * scrolling because the page does not respond to the size of you phone.
  *
  * This is why the Layout determines the size of a Widget, while the programmer only supplies a contraints and hints.
  * In NoTF, these are called a `Claim`.
- * Basically, a Widget claims a certain aoumt of space and then negotates with the Layout how much it actually receives.
+ * Basically, a Widget claims a certain amount of space and then negotates with the Layout on how much it actually
+ * receives.
  * You (the programmer) can provide a hard minimum and a hard maximum as well as a preferred value which is used to
  * distribute surplus space among multiple Widgets.
  * Additionally, you can define minimum and maximum width/height ratios for the area, as well as a priority that causes
@@ -57,6 +62,21 @@ class MouseEvent;
  * Rotating and scaling a Widget does influence its size and this is where things get a bit more complicated.
  * Fortunately, in most cases you will not need to use this functionality - but if you do, its nice to know that is
  * there.
+ *
+ * Transformations
+ * ===============
+ * As mentioned, you can always add an offset to a ScreenItem's transformation supplied by its Layout.
+ * This works because internally, any ScreenItem has two transformations that are combined into its final transformation
+ * in relation to its parent
+ * Layout, which can be queried using `get_transform()`.
+ * The `layout transform` is the transformation applied to the Item by its parent Layout.
+ * The `offset transform` is an additional offset transformation on the Item that is applied after the `layout
+ * transform`.
+ *
+ *
+ *
+ *
+ *
  * The thing is: transforming a Widget does not influence this (internal) size. Of course, a Widget scaled to twice its
  * size will appear bigger on screen, but its size data field (the one used by its Layout to place it) remains
  * unaffected.
@@ -67,6 +87,7 @@ class MouseEvent;
  * Now, you might think that this makes things more complicated, but it really doesn't.
  * Scaling and rotating Widgets rarely occur in user interfaces and when it does, it is usally the 'Cell' of a Widget
  * that is rotating, not the Widget itself (see 'Cell' below).
+ *
  *
  * Opacity
  * =======
@@ -112,23 +133,51 @@ class MouseEvent;
  * If its Claim changes, its respective parent might need to update as well - up to the first Layout that does not
  * update its Claim (at the latest, the WindowLayout never updates its Claim).
  *
+ * The pipeline is as follows:
+ *
+ *      1. A ScreenItem changes its Claim. Either a Widget claims more/less space in response to an event, a Layout
+ *         finds itself with one more child or whatever.
+ *      2. The ScreenItem notifies its parent Layout, which in turn updates its Claim and notifies its own parent.
+ *         This chain continues, until one Layout finds, that its own Claim did not change after recalculation.
+ *      3. The last notified Layout will re-layout all of its children and assign each one a new size and transform.
+ *         Layout children will react by themselves re-layouting and potentially resizing their own children.
+ *
+ *
  * Scissoring
  * ==========
  * In order to implement scroll areas that contain a view on Widgets that are never drawn outside of its boundaries,
  * those Widgets need to be "scissored" by the scroll area.
  * A "Scissor" is an axis-aligned rectangle, scissoring is the act of cutting off parts of a Widget that fall outside
- * that rectangle and since this operation is provided by OpenGL, it is pretty cheap.
+ * that rectangle.
  * Every Widget contains a pointer to the parent Layout that acts as its scissor.
  * An empty pointer means that this Widget is scissored by its parent Layout, but every Layout in this Widget's Item
  * ancestry can be used (including the Windows WindowLayout, which effectively disables scissoring).
  *
- * Transformations
- * ===============
- * Screen Items have two transformations that are combined into its final transformation in relation to its parent
- * Layout, which can be queried using `get_transform()`.
- * The `layout transform` is the transformation applied to the Item by its parent Layout.
- * The `offset transform` is an additional offset transformation on the Item that is applied after the `layout
- * transform`.
+ * Spaces
+ * ======
+ *
+ * Untransformed local space
+ * -------------------------
+ * Claims are made in untransformed local space.
+ * That means, they are not affected by the offset transform applied to the ScreenItem, nor do they change when the
+ * parent Layout changes the ScreenItem's layout transform.
+ *
+ * Local (offset) space
+ * --------------------
+ * Each ScreenItem has full control over its own offset.
+ * The offset is applied last and does not influence how the Layout perceives the ScreenItem, meaning if you scale the
+ * ScreenItem twofold, it will appear bigger on screen but the scale will remain invisible to the the parent Layout.
+ * That also means that clicking the cursor into the overflow areas will not count as a click inside the ScreenItem,
+ * because the parent won't know that it appears bigger on screen.
+ * Offsets are useful, for example, to apply a jitter animation to a Layout.
+ *
+ * Layout (parent) space
+ * ---------------------
+ * Transform controller by the parent Layout.
+ * Used mostly to position the ScreenItem within the parent Layout.
+ * Can also be used as a projection matrix in a scene view ...?
+ *
+ *
  */
 class ScreenItem : public Item {
 
@@ -275,7 +324,9 @@ private: // fields *************************************************************
     /** 2D transformation of this Item on top of the layout transformation. */
     Xform2f m_offset_transform;
 
-    /** The Claim of a Item determines how much space it receives in the parent Layout. */
+    /** The Claim of a Item determines how much space it receives in the parent Layout.
+     * Claim values are in untransformed local space.
+     */
     Claim m_claim;
 
     /** Reference to a Layout used to 'scissor' this Widget.

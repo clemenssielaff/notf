@@ -229,7 +229,7 @@ HEADERS += \
     include/graphics/stats.hpp \
     include/graphics/text/font_manager.hpp \
     include/graphics/text/freetype.hpp \
-    include/utils/sfinae.hpp \
+    include/common/template.hpp \
     include/common/hash.hpp \
     include/common/integer.hpp \
     include/common/set.hpp \

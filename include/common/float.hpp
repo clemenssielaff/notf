@@ -7,7 +7,7 @@
 #include <limits>
 
 #include "common/exception.hpp"
-#include "utils/sfinae.hpp"
+#include "common/template.hpp"
 
 namespace notf {
 

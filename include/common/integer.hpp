@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-#include "utils/sfinae.hpp"
+#include "common/template.hpp"
 
 namespace notf {
 

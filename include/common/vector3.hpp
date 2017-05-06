@@ -5,7 +5,7 @@
 
 #include "common/float.hpp"
 #include "common/hash.hpp"
-#include "utils/sfinae.hpp"
+#include "common/template.hpp"
 
 namespace notf {
 //*********************************************************************************************************************/
@@ -15,18 +15,18 @@ template <typename Real, ENABLE_IF_REAL(Real)>
 struct _RealVector3 {
     /* Types **********************************************************************************************************/
 
-    using Value_t = Real;
+    using value_t = Real;
 
     /* Fields *********************************************************************************************************/
 
     /** X-coordinate. */
-    Value_t x;
+    value_t x;
 
     /** Y-coordinate */
-    Value_t y;
+    value_t y;
 
     /** Z-coordinate */
-    Value_t z;
+    value_t z;
 
     /* Constructors ***************************************************************************************************/
 
@@ -37,7 +37,7 @@ struct _RealVector3 {
      * @param x     X-coordinate.
      * @param y     Y-coordinate.
      */
-    _RealVector3(const Value_t x, const Value_t y, const Value_t z)
+    _RealVector3(const value_t x, const value_t y, const value_t z)
         : x(x), y(y), z(z) {}
 
     /* Static Constructors ********************************************************************************************/
@@ -46,7 +46,7 @@ struct _RealVector3 {
     static _RealVector3 zero() { return _RealVector3(0, 0, 0); }
 
     /** Constructs a Vector3 with both coordinates set to the given value. */
-    static _RealVector3 fill(const Value_t value) { return _RealVector3(value, value, value); }
+    static _RealVector3 fill(const value_t value) { return _RealVector3(value, value, value); }
 
     /** Unit Vector3 along the X-axis. */
     static _RealVector3 x_axis() { return _RealVector3(1, 0, 0); }
@@ -65,7 +65,7 @@ struct _RealVector3 {
     /** Returns true if all coordinates are (approximately) zero.
      * @param epsilon   Largest difference that is still considered to be zero.
      */
-    bool is_zero(const Value_t epsilon = precision_high<Value_t>()) const
+    bool is_zero(const value_t epsilon = precision_high<value_t>()) const
     {
         return abs(x) <= epsilon && abs(y) <= epsilon && abs(z) <= epsilon;
     }
@@ -73,17 +73,17 @@ struct _RealVector3 {
     /** Checks, if any component of this Vector3 is a zero. */
     bool contains_zero() const
     {
-        return abs(x) <= precision_high<Value_t>() || abs(y) <= precision_high<Value_t>() || abs(z) <= precision_high<Value_t>();
+        return abs(x) <= precision_high<value_t>() || abs(y) <= precision_high<value_t>() || abs(z) <= precision_high<value_t>();
     }
 
     /** Checks whether this Vector3 is of unit magnitude. */
-    bool is_unit() const { return abs(get_magnitude_sq() - 1) <= precision_high<Value_t>(); }
+    bool is_unit() const { return abs(get_magnitude_sq() - 1) <= precision_high<value_t>(); }
 
     /** Returns True, if other and self are approximately the same Vector3.
      * @param other     Vector3 to test against.
      * @param epsilon   Maximal allowed distance between the two Vectors.
      */
-    bool is_approx(const _RealVector3& other, const Value_t epsilon = precision_high<Value_t>()) const
+    bool is_approx(const _RealVector3& other, const value_t epsilon = precision_high<value_t>()) const
     {
         return (*this - other).get_magnitude_sq() <= epsilon * epsilon;
     }
@@ -91,10 +91,10 @@ struct _RealVector3 {
     /** Returns the squared magnitude of this Vector3.
      * The squared magnitude is much cheaper to compute than the actual.
      */
-    Value_t get_magnitude_sq() const { return dot(*this); }
+    value_t get_magnitude_sq() const { return dot(*this); }
 
     /** Returns the magnitude of this Vector3. */
-    Value_t get_magnitude() const { return sqrt(dot(*this)); }
+    value_t get_magnitude() const { return sqrt(dot(*this)); }
 
     /** Checks whether this Vector3 is parallel to other.
      * The zero Vector3 is parallel to everything.
@@ -102,7 +102,7 @@ struct _RealVector3 {
      */
     bool is_parallel_to(const _RealVector3& other) const
     {
-        return crossed(other).get_magnitude_sq() <= precision_high<Value_t>();
+        return crossed(other).get_magnitude_sq() <= precision_high<value_t>();
     }
 
     /** Checks whether this Vector3 is orthogonal to other.
@@ -111,7 +111,7 @@ struct _RealVector3 {
      */
     bool is_orthogonal_to(const _RealVector3& other) const
     {
-        return dot(other) <= precision_high<Value_t>();
+        return dot(other) <= precision_high<value_t>();
     }
 
     /** Calculates the smallest angle between two Vector3s.
@@ -119,13 +119,13 @@ struct _RealVector3 {
      * @param other     Vector3 to test against.
      * @return Angle in positive radians.
      */
-    Value_t angle_to(const _RealVector3& other) const
+    value_t angle_to(const _RealVector3& other) const
     {
-        const Value_t mag_sq_product = get_magnitude_sq() * other.get_magnitude_sq();
-        if (mag_sq_product <= precision_high<Value_t>()) {
+        const value_t mag_sq_product = get_magnitude_sq() * other.get_magnitude_sq();
+        if (mag_sq_product <= precision_high<value_t>()) {
             return 0.; // one or both are zero
         }
-        if (mag_sq_product - 1 <= precision_high<Value_t>()) {
+        if (mag_sq_product - 1 <= precision_high<value_t>()) {
             return acos(dot(other)); // both are unit
         }
         return acos(dot(other) / sqrt(mag_sq_product));
@@ -138,11 +138,11 @@ struct _RealVector3 {
      */
     Real direction_to(const _RealVector3& other) const
     {
-        const Value_t mag_sq_product = get_magnitude_sq() * other.get_magnitude_sq();
-        if (mag_sq_product <= precision_high<Value_t>()) {
+        const value_t mag_sq_product = get_magnitude_sq() * other.get_magnitude_sq();
+        if (mag_sq_product <= precision_high<value_t>()) {
             return 0.; // one or both are zero
         }
-        if (mag_sq_product - 1 <= precision_high<Value_t>()) {
+        if (mag_sq_product - 1 <= precision_high<value_t>()) {
             return clamp(dot(other), -1., 1.); // both are unit
         }
         return clamp(this->dot(other) / sqrt(mag_sq_product), -1., 1.);
@@ -208,10 +208,10 @@ struct _RealVector3 {
     }
 
     /** Multiplication with a scalar scales this Vector3's length. */
-    _RealVector3 operator*(const Value_t factor) const { return _RealVector3(x * factor, y * factor, z * factor); }
+    _RealVector3 operator*(const value_t factor) const { return _RealVector3(x * factor, y * factor, z * factor); }
 
     /** In-place multiplication with a scalar. */
-    _RealVector3& operator*=(const Value_t factor)
+    _RealVector3& operator*=(const value_t factor)
     {
         x *= factor;
         y *= factor;
@@ -222,7 +222,7 @@ struct _RealVector3 {
     /** Division by a scalar inversely scales this Vector3's length.
      * If you know that divisor cannot be zero, calling `vector *= 1/divisor` will save you a 'division-by-zero' test.
      */
-    _RealVector3 operator/(const Value_t divisor) const
+    _RealVector3 operator/(const value_t divisor) const
     {
         if (divisor == 0) {
             throw division_by_zero();
@@ -233,7 +233,7 @@ struct _RealVector3 {
     /** In-place division by a scalar value.
      * If you know that divisor cannot be zero, calling `vector *= 1/divisor` will save you a 'division-by-zero' test.
      */
-    _RealVector3& operator/=(const Value_t divisor)
+    _RealVector3& operator/=(const value_t divisor)
     {
         if (divisor == 0) {
             throw division_by_zero();
@@ -264,10 +264,10 @@ struct _RealVector3 {
     }
 
     /** Read-only pointer to the Vector3's internal storage. */
-    const Value_t* as_ptr() const { return &x; }
+    const value_t* as_ptr() const { return &x; }
 
     /** Read-write pointer to the Vector3's internal storage. */
-    Value_t* as_ptr() { return &x; }
+    value_t* as_ptr() { return &x; }
 
     /** Modifiers *****************************************************************************************************/
 
@@ -296,7 +296,7 @@ struct _RealVector3 {
      * in relation to another one.
      * @param other     Other Vector3.
      */
-    Value_t dot(const _RealVector3& other) const { return (x * other.x) + (y * other.y) + (z * other.z); }
+    value_t dot(const _RealVector3& other) const { return (x * other.x) + (y * other.y) + (z * other.z); }
 
     /** Vector3 cross product.
      * The cross product is a Vector3 perpendicular to this one and other.
@@ -317,9 +317,9 @@ struct _RealVector3 {
      */
     _RealVector3& cross(const _RealVector3& other)
     {
-        const Value_t tx = (y * other.z) - (z * other.y);
-        const Value_t ty = (z * other.x) - (x * other.z);
-        const Value_t tz = (x * other.y) - (y * other.x);
+        const value_t tx = (y * other.z) - (z * other.y);
+        const value_t ty = (z * other.x) - (x * other.z);
+        const value_t tz = (x * other.y) - (y * other.x);
         x                = tx;
         y                = ty;
         z                = tz;
@@ -329,11 +329,11 @@ struct _RealVector3 {
     /** Returns a normalized copy of this Vector3. */
     _RealVector3 get_normalized() const
     {
-        const Value_t mag_sq = get_magnitude_sq();
-        if (abs(mag_sq - 1) <= precision_high<Value_t>()) {
+        const value_t mag_sq = get_magnitude_sq();
+        if (abs(mag_sq - 1) <= precision_high<value_t>()) {
             return _RealVector3(*this); // is unit
         }
-        if (abs(mag_sq) <= precision_high<Value_t>()) {
+        if (abs(mag_sq) <= precision_high<value_t>()) {
             return _RealVector3(); // is zero
         }
         return *this * (1 / sqrt(mag_sq));
@@ -342,11 +342,11 @@ struct _RealVector3 {
     /** In-place normalization of this Vector3. */
     _RealVector3& normalize()
     {
-        const Value_t mag_sq = get_magnitude_sq();
-        if (abs(mag_sq - 1) <= precision_high<Value_t>()) {
+        const value_t mag_sq = get_magnitude_sq();
+        if (abs(mag_sq - 1) <= precision_high<value_t>()) {
             return (*this); // is unit
         }
-        if (abs(mag_sq) <= precision_high<Value_t>()) {
+        if (abs(mag_sq) <= precision_high<value_t>()) {
             return set_zero(); // is zero
         }
         return *this *= (1 / sqrt(mag_sq));

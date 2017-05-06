@@ -5,7 +5,7 @@
 
 #include "common/float.hpp"
 #include "common/hash.hpp"
-#include "utils/sfinae.hpp"
+#include "common/template.hpp"
 
 namespace notf {
 

@@ -5,7 +5,7 @@
 #include "common/float.hpp"
 #include "common/hash.hpp"
 #include "common/vector2.hpp"
-#include "utils/sfinae.hpp"
+#include "common/template.hpp"
 
 namespace notf {
 
@@ -19,9 +19,9 @@ struct _Circle {
 
     /* Types **********************************************************************************************************/
 
-    using Value_t = Real;
+    using value_t = Real;
 
-    using Vector_t = _RealVector2<Real>;
+    using vector_t = _RealVector2<Real>;
 
     /* Fields *********************************************************************************************************/
 
@@ -29,20 +29,20 @@ struct _Circle {
     _RealVector2<Real> center;
 
     /** Radius of the Circle. */
-    Value_t radius;
+    value_t radius;
 
     /* Constructors ***************************************************************************************************/
 
     _Circle() = default; // so this data structure remains a POD
 
-    _Circle(Vector_t center, const Value_t radius)
+    _Circle(vector_t center, const value_t radius)
         : center(std::move(center))
         , radius(radius)
     {
     }
 
-    _Circle(const Value_t radius)
-        : center(Vector_t::zero())
+    _Circle(const value_t radius)
+        : center(vector_t::zero())
         , radius(radius)
     {
     }
@@ -58,16 +58,16 @@ struct _Circle {
     bool is_zero() const { return radius == 0.f; }
 
     /** The diameter of the Circle. */
-    Value_t diameter() const { return radius * 2.f; }
+    value_t diameter() const { return radius * 2.f; }
 
     /** The circumenfence of this Circle. */
-    Value_t circumfence() const { return PI * radius * 2.f; }
+    value_t circumfence() const { return PI * radius * 2.f; }
 
     /** The area of this Circle. */
-    Value_t area() const { return PI * radius * radius; }
+    value_t area() const { return PI * radius * radius; }
 
     /** Checks, if the given point is contained within (or on the border of) this Circle. */
-    bool contains(const Vector_t& point) const
+    bool contains(const vector_t& point) const
     {
         return (point - center).get_magnitude_sq() <= (radius * radius);
     }
@@ -75,15 +75,15 @@ struct _Circle {
     /** Checks if the other Circle intersects with this one, intersection requires the intersected area to be >= zero. */
     bool intersects(const _Circle& other) const
     {
-        const Value_t radii = radius + other.radius;
+        const value_t radii = radius + other.radius;
         return (other.center - center).get_magnitude_sq() < (radii * radii);
     }
 
     /** Returns the closest point inside this Circle to the given target point. */
-    Vector_t closest_point_to(const Vector_t& target) const
+    vector_t closest_point_to(const vector_t& target) const
     {
-        const Vector_t delta = target - center;
-        const Value_t mag_sq = delta.get_magnitude_sq();
+        const vector_t delta = target - center;
+        const value_t mag_sq = delta.get_magnitude_sq();
         if (mag_sq <= (radius * radius)) {
             return target;
         }

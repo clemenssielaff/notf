@@ -4,14 +4,14 @@
 #include <string>
 
 #include "graphics/gl_forwards.hpp"
-#include "utils/sfinae.hpp"
+#include "common/template.hpp"
 
 namespace notf {
 
 class Color;
 class GraphicsContext;
 
-template <typename Value_t, FWD_ENABLE_IF_ARITHMETIC(Value_t)>
+template <typename value_t, FWD_ENABLE_IF_ARITHMETIC(value_t)>
 struct _Size2;
 using Size2i = _Size2<int, true>;
 

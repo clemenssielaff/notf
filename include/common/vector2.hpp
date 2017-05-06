@@ -5,7 +5,7 @@
 
 #include "common/float.hpp"
 #include "common/hash.hpp"
-#include "utils/sfinae.hpp"
+#include "common/template.hpp"
 
 namespace notf {
 
@@ -17,15 +17,15 @@ struct _RealVector2 {
 
     /* Types **********************************************************************************************************/
 
-    using Value_t = Real;
+    using value_t = Real;
 
     /* Fields *********************************************************************************************************/
 
     /** X-coordinate. */
-    Value_t x;
+    value_t x;
 
     /** Y-coordinate */
-    Value_t y;
+    value_t y;
 
     /* Constructors ***************************************************************************************************/
 
@@ -36,7 +36,7 @@ struct _RealVector2 {
      * @param x     X-coordinate.
      * @param y     Y-coordinate.
      */
-    _RealVector2(const Value_t x, const Value_t y)
+    _RealVector2(const value_t x, const value_t y)
         : x(x), y(y) {}
 
     /* Static Constructors ********************************************************************************************/
@@ -45,7 +45,7 @@ struct _RealVector2 {
     static _RealVector2 zero() { return _RealVector2(0, 0); }
 
     /** Constructs a Vector2 with both coordinates set to the given value. */
-    static _RealVector2 fill(const Value_t value) { return _RealVector2(value, value); }
+    static _RealVector2 fill(const value_t value) { return _RealVector2(value, value); }
 
     /** Unit Vector2 along the X-axis. */
     static _RealVector2 x_axis() { return _RealVector2(1, 0); }
@@ -61,13 +61,13 @@ struct _RealVector2 {
     /** Returns true if both coordinates are (approximately) zero.
      * @param epsilon   Largest difference that is still considered to be zero.
      */
-    bool is_zero(const Value_t epsilon = precision_high<Value_t>()) const { return abs(x) <= epsilon && abs(y) <= epsilon; }
+    bool is_zero(const value_t epsilon = precision_high<value_t>()) const { return abs(x) <= epsilon && abs(y) <= epsilon; }
 
     /** Checks, if any component of this Vector2 is a zero. */
-    bool contains_zero() const { return abs(x) <= precision_high<Value_t>() || abs(y) <= precision_high<Value_t>(); }
+    bool contains_zero() const { return abs(x) <= precision_high<value_t>() || abs(y) <= precision_high<value_t>(); }
 
     /** Checks whether this Vector2 is of unit magnitude. */
-    bool is_unit() const { return abs(get_magnitude_sq() - 1) <= precision_high<Value_t>(); }
+    bool is_unit() const { return abs(get_magnitude_sq() - 1) <= precision_high<value_t>(); }
 
     /** Checks whether this Vector2's direction is parallel to the other.
      * The zero Vector2 is parallel to every other Vector2.
@@ -75,13 +75,13 @@ struct _RealVector2 {
      */
     bool is_parallel_to(const _RealVector2& other) const
     {
-        if (abs(y) <= precision_high<Value_t>()) {
-            return abs(other.y) <= precision_high<Value_t>();
+        if (abs(y) <= precision_high<value_t>()) {
+            return abs(other.y) <= precision_high<value_t>();
         }
-        else if (abs(other.y) <= precision_high<Value_t>()) {
-            return abs(other.x) <= precision_high<Value_t>();
+        else if (abs(other.y) <= precision_high<value_t>()) {
+            return abs(other.x) <= precision_high<value_t>();
         }
-        return abs((x / y) - (other.x / other.y)) <= precision_low<Value_t>();
+        return abs((x / y) - (other.x / other.y)) <= precision_low<value_t>();
     }
 
     /** Checks whether this Vector2 is orthogonal to the other.
@@ -91,26 +91,26 @@ struct _RealVector2 {
     bool is_orthogonal_to(const _RealVector2& other) const
     {
         // normalization required for large absolute differences in vector lengths
-        return abs(get_normalized().dot(other.get_normalized())) <= precision_high<Value_t>();
+        return abs(get_normalized().dot(other.get_normalized())) <= precision_high<value_t>();
     }
 
     /** Returns the angle (in radians) between the positive x-axis and this Vector2.
      * The angle is positive for counter-clockwise angles (upper half-plane, y > 0),
      * and negative for clockwise angles (lower half-plane, y < 0).
      */
-    Value_t angle() const { return atan2(y, x); }
+    value_t angle() const { return atan2(y, x); }
 
     /** Returns the smallest angle (in radians) to the other Vector2.
      * Always returns zero, if one or both of the input Vector2s are of zero magnitude.
      * @param other     Vector2 to test against.
      */
-    Value_t angle_to(const _RealVector2& other) const
+    value_t angle_to(const _RealVector2& other) const
     {
-        const Value_t mag_sq_product = get_magnitude_sq() * other.get_magnitude_sq();
-        if (mag_sq_product <= precision_high<Value_t>()) {
+        const value_t mag_sq_product = get_magnitude_sq() * other.get_magnitude_sq();
+        if (mag_sq_product <= precision_high<value_t>()) {
             return 0; // one or both are zero
         }
-        if (abs(mag_sq_product - 1) <= precision_high<Value_t>()) {
+        if (abs(mag_sq_product - 1) <= precision_high<value_t>()) {
             return acos(dot(other)); // both are unit
         }
         return acos(dot(other) / sqrt(mag_sq_product));
@@ -121,13 +121,13 @@ struct _RealVector2 {
      * Returns zero, if one or both of the input Vector2s are of zero magnitude.
      * @param other     Vector2 to test against.
      */
-    Value_t direction_to(const _RealVector2& other) const
+    value_t direction_to(const _RealVector2& other) const
     {
-        const Value_t mag_sq_product = get_magnitude_sq() * other.get_magnitude_sq();
-        if (mag_sq_product <= precision_high<Value_t>()) {
+        const value_t mag_sq_product = get_magnitude_sq() * other.get_magnitude_sq();
+        if (mag_sq_product <= precision_high<value_t>()) {
             return 0; // one or both are zero
         }
-        if (abs(mag_sq_product - 1) <= precision_high<Value_t>()) {
+        if (abs(mag_sq_product - 1) <= precision_high<value_t>()) {
             return clamp(dot(other), -1, 1); // both are unit
         }
         return clamp(dot(other) / sqrt(mag_sq_product), -1, 1);
@@ -136,18 +136,18 @@ struct _RealVector2 {
     /** Tests if this Vector2 is parallel to the X-axis.
      * The zero Vector2 is parallel to every Vector2.
      */
-    bool is_horizontal() const { return abs(y) <= precision_high<Value_t>(); }
+    bool is_horizontal() const { return abs(y) <= precision_high<value_t>(); }
 
     /** Tests if this Vector2 is parallel to the Y-axis.
      * The zero Vector2 is parallel to every Vector2.
      */
-    bool is_vertical() const { return abs(x) <= precision_high<Value_t>(); }
+    bool is_vertical() const { return abs(x) <= precision_high<value_t>(); }
 
     /** Returns True, if other and self are approximately the same Vector2.
      * @param other     Vector2 to test against.
      * @param epsilon   Maximal allowed distance between the two Vectors.
      */
-    bool is_approx(const _RealVector2& other, const Value_t epsilon = precision_high<Value_t>()) const
+    bool is_approx(const _RealVector2& other, const value_t epsilon = precision_high<value_t>()) const
     {
         return (*this - other).get_magnitude_sq() <= epsilon * epsilon;
     }
@@ -155,9 +155,9 @@ struct _RealVector2 {
     /** Returns the slope of this Vector2.
      * If the Vector2 is parallel to the y-axis, the slope is infinite.
      */
-    Value_t slope() const
+    value_t slope() const
     {
-        if (abs(x) <= precision_high<Value_t>()) {
+        if (abs(x) <= precision_high<value_t>()) {
             return INFINITY;
         }
         return y / x;
@@ -166,10 +166,10 @@ struct _RealVector2 {
     /** Returns the squared magnitude of this Vector2.
      * The squared magnitude is much cheaper to compute than the actual.
      */
-    Value_t get_magnitude_sq() const { return dot(*this); }
+    value_t get_magnitude_sq() const { return dot(*this); }
 
     /** Returns the magnitude of this Vector2. */
-    Value_t get_magnitude() const { return sqrt(dot(*this)); }
+    value_t get_magnitude() const { return sqrt(dot(*this)); }
 
     /** Operators *****************************************************************************************************/
 
@@ -224,10 +224,10 @@ struct _RealVector2 {
     }
 
     /** Multiplication with a scalar scales this Vector2's length. */
-    _RealVector2 operator*(const Value_t factor) const { return _RealVector2(x * factor, y * factor); }
+    _RealVector2 operator*(const value_t factor) const { return _RealVector2(x * factor, y * factor); }
 
     /** In-place multiplication with a scalar. */
-    _RealVector2& operator*=(const Value_t factor)
+    _RealVector2& operator*=(const value_t factor)
     {
         x *= factor;
         y *= factor;
@@ -237,7 +237,7 @@ struct _RealVector2 {
     /** Division by a scalar inversely scales this Vector3's length.
      * If you know that divisor cannot be zero, calling `vector *= 1/divisor` will save you a 'division-by-zero' test.
      */
-    _RealVector2 operator/(const Value_t divisor) const
+    _RealVector2 operator/(const value_t divisor) const
     {
         if (divisor == 0) {
             throw division_by_zero();
@@ -248,7 +248,7 @@ struct _RealVector2 {
     /** In-place division by a scalar value.
      * If you know that divisor cannot be zero, calling `vector *= 1/divisor` will save you a 'division-by-zero' test.
      */
-    _RealVector2& operator/=(const Value_t divisor)
+    _RealVector2& operator/=(const value_t divisor)
     {
         if (divisor == 0) {
             throw division_by_zero();
@@ -263,7 +263,7 @@ struct _RealVector2 {
 
     /** Read-only reference to an entry of the Vector2's internal storage. */
     template <typename Index, ENABLE_IF_INT(Index)>
-    const Value_t& operator[](const Index index) const
+    const value_t& operator[](const Index index) const
     {
         assert(0 <= index && index <= 1);
         return *(&x + index);
@@ -271,17 +271,17 @@ struct _RealVector2 {
 
     /** Read-write reference to an entry of the Vector2's internal storage. */
     template <typename Index, ENABLE_IF_INT(Index)>
-    Value_t& operator[](const Index index)
+    value_t& operator[](const Index index)
     {
         assert(0 <= index && index <= 1);
         return *(&x + index);
     }
 
     /** Read-only pointer to the Vector2's internal storage. */
-    const Value_t* as_ptr() const { return &x; }
+    const value_t* as_ptr() const { return &x; }
 
     /** Read-write pointer to the Vector2's internal storage. */
-    Value_t* as_ptr() { return &x; }
+    value_t* as_ptr() { return &x; }
 
     /** Modifiers *****************************************************************************************************/
 
@@ -306,13 +306,13 @@ struct _RealVector2 {
     /** Returns the dot product of this Vector2 and another.
      * @param other     Vector2 to the right.
      */
-    Value_t dot(const _RealVector2& other) const { return (x * other.x) + (y * other.y); }
+    value_t dot(const _RealVector2& other) const { return (x * other.x) + (y * other.y); }
 
     /** Returns the cross product of this Vector2 and another.
      * As defined at http://mathworld.wolfram.com/CrossProduct.html
      * @param other     Vector2 to the right.
      */
-    Value_t cross(const _RealVector2 other) const
+    value_t cross(const _RealVector2 other) const
     {
         return (x * other.y) - (y * other.x);
     }
@@ -320,11 +320,11 @@ struct _RealVector2 {
     /** Returns a normalized copy of this Vector2. */
     _RealVector2 get_normalized() const
     {
-        const Value_t mag_sq = get_magnitude_sq();
-        if (abs(mag_sq - 1) <= precision_high<Value_t>()) {
+        const value_t mag_sq = get_magnitude_sq();
+        if (abs(mag_sq - 1) <= precision_high<value_t>()) {
             return _RealVector2(*this); // is unit
         }
-        if (abs(mag_sq) <= precision_high<Value_t>()) {
+        if (abs(mag_sq) <= precision_high<value_t>()) {
             return _RealVector2(); // is zero
         }
         return (*this) * (1 / sqrt(mag_sq));
@@ -333,11 +333,11 @@ struct _RealVector2 {
     /** In-place normalization of this Vector2. */
     _RealVector2& normalize()
     {
-        const Value_t mag_sq = get_magnitude_sq();
-        if (abs(mag_sq - 1) <= precision_high<Value_t>()) {
+        const value_t mag_sq = get_magnitude_sq();
+        if (abs(mag_sq - 1) <= precision_high<value_t>()) {
             return (*this); // is unit
         }
-        if (abs(mag_sq) <= precision_high<Value_t>()) {
+        if (abs(mag_sq) <= precision_high<value_t>()) {
             return set_zero(); // is zero
         }
         return (*this) *= (1 / sqrt(mag_sq));
@@ -365,42 +365,42 @@ struct _RealVector2 {
     /** Rotates this Vector2 90 degree counter-clockwise. */
     _RealVector2& orthogonalize()
     {
-        const Value_t temp = -y;
+        const value_t temp = -y;
         y                  = x;
         x                  = temp;
         return *this;
     }
 
     /** Returns a copy of this 2D Vector, rotated counter-clockwise by a given angle (in radians). */
-    _RealVector2 get_rotated(const Value_t angle) const
+    _RealVector2 get_rotated(const value_t angle) const
     {
-        const Value_t sin_angle = sin(angle);
-        const Value_t cos_angle = cos(angle);
+        const value_t sin_angle = sin(angle);
+        const value_t cos_angle = cos(angle);
         return _RealVector2(
             (x * cos_angle) - (y * sin_angle),
             (y * cos_angle) + (x * sin_angle));
     }
 
     /** Rotates this 2D Vector counter-clockwise by a given angle (in radians). */
-    _RealVector2& rotate(const Value_t angle)
+    _RealVector2& rotate(const value_t angle)
     {
-        const Value_t sin_angle = sin(angle);
-        const Value_t cos_angle = cos(angle);
-        const Value_t temp_x    = (x * cos_angle) - (y * sin_angle);
-        const Value_t temp_y    = (y * cos_angle) + (x * sin_angle);
+        const value_t sin_angle = sin(angle);
+        const value_t cos_angle = cos(angle);
+        const value_t temp_x    = (x * cos_angle) - (y * sin_angle);
+        const value_t temp_y    = (y * cos_angle) + (x * sin_angle);
         x                       = temp_x;
         y                       = temp_y;
         return *this;
     }
 
     /** Returns a copy this vector rotated around a pivot point by a given angle (in radians). */
-    _RealVector2 get_rotated_around(const Value_t angle, const _RealVector2& pivot) const
+    _RealVector2 get_rotated_around(const value_t angle, const _RealVector2& pivot) const
     {
         return pivot + (*this - pivot).rotate(angle);
     }
 
     /** Rotates this vector around a pivot point by a given angle (in radians). */
-    _RealVector2 rotate_around(const Value_t angle, const _RealVector2& pivot)
+    _RealVector2 rotate_around(const value_t angle, const _RealVector2& pivot)
     {
         return *this = pivot + (pivot - *this).rotate(angle);
     }
@@ -408,10 +408,10 @@ struct _RealVector2 {
     /** Returns the side on which the other Vector2 points to, relative to the direction of this Vector2.
      * @return +1 when other is on the left, -1 when on the right and 0 when it is straight ahead or behind.
      */
-    Value_t get_side_of(const _RealVector2& other) const
+    value_t get_side_of(const _RealVector2& other) const
     {
-        const Value_t direction = cross(other);
-        if (abs(direction) <= precision_high<Value_t>()) {
+        const value_t direction = cross(other);
+        if (abs(direction) <= precision_high<value_t>()) {
             return 0;
         }
         return sign(direction);
