@@ -4,16 +4,17 @@
 #include <assert.h>
 #include <iosfwd>
 
+#include "common/aabr.hpp"
 #include "common/float.hpp"
 #include "common/hash.hpp"
-#include "common/vector2.hpp"
 #include "common/template.hpp"
+#include "common/vector2.hpp"
 
 namespace notf {
 
 //*********************************************************************************************************************/
 
-/** A 2D Transformation Matrix with 3x3 components.
+/** A 2D (row-major) transformation matrix with 3x3 components.
  * Only the first two columns are actually stored though, the last column is implicit.
  * [[a, b, 0]
  *  [c, d, 0]
@@ -79,6 +80,8 @@ struct _Xform2 {
     }
 
     /** A non-uniform scale matrix.
+     * You can also achieve reflection by passing (-1, 1) for a reflection over the vertical axis, (1, -1) for over the
+     * horizontal axis or (-1, -1) for a point-reflection with respect to the origin.
      * @param vector   Non-uniform scale vector.
      */
     static _Xform2 scale(const vector_t& vec)
@@ -109,7 +112,7 @@ struct _Xform2 {
     /** Scale factor along the y-axis. */
     value_t get_scale_y() const { return sqrt(rows[0][1] * rows[0][1] + rows[1][1] * rows[1][1]); }
 
-    /** Calculates the determinant of this Xform2. */
+    /** Calculates the determinant of the transformation matrix. */
     value_t get_determinant() const { return (rows[0][0] * rows[1][1]) - (rows[1][0] * rows[0][1]); }
 
     /** Read-only reference to a row of the Xform2's internal matrix. */
@@ -226,13 +229,30 @@ struct _Xform2 {
         return result;
     }
 
-    /** Returns a transformed Vector2. */
-    vector_t transform(const vector_t& vector) const
+    /** Transforms the given Vector2 in-place. */
+    void transform(vector_t& vector) const
     {
-        return {
+        vector = {
             vector.x * rows[0][0] + vector.y * rows[1][0] + rows[2][0],
             vector.x * rows[0][1] + vector.y * rows[1][1] + rows[2][1],
         };
+    }
+
+    /** Transforms the given AABR in-place. */
+    void transform(_Aabr<vector_t>& aabr) const
+    {
+        vector_t d0 = aabr._min;
+        vector_t d1 = aabr._max;
+        vector_t d2 = {aabr._min.x, aabr._max.y};
+        vector_t d3 = {aabr._max.x, aabr._min.y};
+        transform(d0);
+        transform(d1);
+        transform(d2);
+        transform(d3);
+        aabr._min.x = min(d0.x, d1.x, d2.x, d3.x);
+        aabr._min.y = min(d0.y, d1.y, d2.y, d3.y);
+        aabr._max.x = max(d0.x, d1.x, d2.x, d3.x);
+        aabr._max.y = max(d0.y, d1.y, d2.y, d3.y);
     }
 
     /** Read-write reference to a row of the Xform2's internal matrix. */

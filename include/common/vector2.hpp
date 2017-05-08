@@ -1,7 +1,7 @@
 #pragma once
 
-#include <iosfwd>
 #include <assert.h>
+#include <iosfwd>
 
 #include "common/float.hpp"
 #include "common/hash.hpp"
@@ -68,6 +68,23 @@ struct _RealVector2 {
 
     /** Checks whether this Vector2 is of unit magnitude. */
     bool is_unit() const { return abs(get_magnitude_sq() - 1) <= precision_high<value_t>(); }
+
+    /** Returns True, if other and self are approximately the same Vector2.
+     * @param other     Vector2 to test against.
+     * @param epsilon   Maximal allowed distance between the two Vectors.
+     */
+    bool is_approx(const _RealVector2& other, const value_t epsilon = precision_high<value_t>()) const
+    {
+        return (*this - other).get_magnitude_sq() <= epsilon * epsilon;
+    }
+
+    /** Returns the squared magnitude of this Vector2.
+     * The squared magnitude is much cheaper to compute than the actual.
+     */
+    value_t get_magnitude_sq() const { return dot(*this); }
+
+    /** Returns the magnitude of this Vector2. */
+    value_t get_magnitude() const { return sqrt(dot(*this)); }
 
     /** Checks whether this Vector2's direction is parallel to the other.
      * The zero Vector2 is parallel to every other Vector2.
@@ -143,15 +160,6 @@ struct _RealVector2 {
      */
     bool is_vertical() const { return abs(x) <= precision_high<value_t>(); }
 
-    /** Returns True, if other and self are approximately the same Vector2.
-     * @param other     Vector2 to test against.
-     * @param epsilon   Maximal allowed distance between the two Vectors.
-     */
-    bool is_approx(const _RealVector2& other, const value_t epsilon = precision_high<value_t>()) const
-    {
-        return (*this - other).get_magnitude_sq() <= epsilon * epsilon;
-    }
-
     /** Returns the slope of this Vector2.
      * If the Vector2 is parallel to the y-axis, the slope is infinite.
      */
@@ -162,14 +170,6 @@ struct _RealVector2 {
         }
         return y / x;
     }
-
-    /** Returns the squared magnitude of this Vector2.
-     * The squared magnitude is much cheaper to compute than the actual.
-     */
-    value_t get_magnitude_sq() const { return dot(*this); }
-
-    /** Returns the magnitude of this Vector2. */
-    value_t get_magnitude() const { return sqrt(dot(*this)); }
 
     /** Operators *****************************************************************************************************/
 

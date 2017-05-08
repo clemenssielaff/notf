@@ -56,6 +56,7 @@ public: // methods
             event.set_handled();
         });
 
+        // FIXME: when you click on the scroll bar are where the scroll bar is not, the background changes?
         on_focus_changed.connect([this](FocusEvent& event) -> void {
             if(event.action == FocusAction::GAINED){
                 event.set_handled();

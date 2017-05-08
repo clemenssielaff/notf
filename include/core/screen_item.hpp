@@ -210,6 +210,9 @@ public: // methods *************************************************************
     /** Returns the axis-aligned bounding rect of this ScreenItem in parent space. */
     Aabrf get_aarbr() const { return Aabrf(get_transform().get_translation(), get_size()); }
 
+    /** Returns the axis-aligned bounding rect of this ScreenItem in local space. */
+    Aabrf get_offset_aarbr() const { return Aabrf(get_transform().get_translation(), get_size()); }
+
     /** Returns the opacity of this Item in the range [0 -> 1].
      * @param own   By default, the returned opacity will be the product of this Item's opacity with all of its
      *              ancestors. If you set `own` to true, the opacity of this Item alone is returned.

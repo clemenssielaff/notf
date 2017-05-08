@@ -92,7 +92,9 @@ void Painterpreter::paint(Cell& cell)
                 _add_point(stylus, Point::Flags::CORNER);
             }
             else {
-                stylus = _get_current_state().xform.get_inverse().transform({m_points.back().pos.x, m_points.back().pos.y});
+                auto pos = m_points.back().pos;
+                _get_current_state().xform.get_inverse().transform(pos);
+                stylus = pos;
             }
             const BezierCommand& cmd = map_command<BezierCommand>(commands, index);
             _tesselate_bezier(stylus.x, stylus.y,
@@ -248,7 +250,7 @@ void Painterpreter::_add_point(Vector2f position, const Point::Flags flags)
     assert(!m_paths.empty());
 
     // bring the Point from Painter- into Cell-space
-    position = _get_current_state().xform.transform(position);
+    _get_current_state().xform.transform(position);
 
     // if the Point is not significantly different from the last one, use that instead.
     if (!m_points.empty()) {

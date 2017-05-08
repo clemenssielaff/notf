@@ -1,7 +1,7 @@
 #pragma once
 
-#include <iosfwd>
 #include <assert.h>
+#include <iosfwd>
 
 #include "common/float.hpp"
 #include "common/hash.hpp"
@@ -13,6 +13,7 @@ namespace notf {
 /** 3-dimensional mathematical Vector containing real numbers. */
 template <typename Real, ENABLE_IF_REAL(Real)>
 struct _RealVector3 {
+
     /* Types **********************************************************************************************************/
 
     using value_t = Real;
@@ -36,6 +37,7 @@ struct _RealVector3 {
     /** Creates a Vector3 with the given components.
      * @param x     X-coordinate.
      * @param y     Y-coordinate.
+     * @param z     Z-coordinate.
      */
     _RealVector3(const value_t x, const value_t y, const value_t z)
         : x(x), y(y), z(z) {}
@@ -102,7 +104,7 @@ struct _RealVector3 {
      */
     bool is_parallel_to(const _RealVector3& other) const
     {
-        return crossed(other).get_magnitude_sq() <= precision_high<value_t>();
+        return get_crossed(other).get_magnitude_sq() <= precision_high<value_t>();
     }
 
     /** Checks whether this Vector3 is orthogonal to other.
@@ -304,7 +306,7 @@ struct _RealVector3 {
      * defined by the two input Vector3s.
      * @param other     Other Vector3.
      */
-    _RealVector3 crossed(const _RealVector3& other) const
+    _RealVector3 get_crossed(const _RealVector3& other) const
     {
         return _RealVector3(
             (y * other.z) - (z * other.y),

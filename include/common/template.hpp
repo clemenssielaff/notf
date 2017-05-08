@@ -2,6 +2,26 @@
 
 #include <type_traits>
 
+/* Extension for variadic compile-time checks.
+ * Originally from http://stackoverflow.com/a/17200820/3444217
+ */
+
+template <typename T, typename...>
+struct is_same_any : std::true_type {
+};
+
+template <typename T, typename Head, typename... Rest>
+struct is_same_any<T, Head, Rest...> : std::integral_constant<bool, std::is_same<T, Head>::value || is_same_any<T, Rest...>::value> {
+};
+
+template <typename T, typename...>
+struct is_base_of_any : std::true_type {
+};
+
+template <typename T, typename Head, typename... Rest>
+struct is_base_of_any<T, Head, Rest...> : std::integral_constant<bool, std::is_base_of<T, Head>::value || is_base_of_any<T, Rest...>::value> {
+};
+
 /* At the beginning, the macros here used std::enable_if_t, but typedefs from those templates could not be properly
  * forward defined.
  * Therefore I came up with this method which is similar, also throws a compiler error if the check fails, but has a
@@ -30,6 +50,9 @@
 #define ENABLE_IF_SAME(TYPE_A, TYPE_B) typename std::enable_if<std::is_same<typename std::decay<TYPE_A>::type, typename std::decay<TYPE_B>::type>::value, bool>::type = true
 #define FWD_ENABLE_IF_SAME(TYPE_A, TYPE_B) typename std::enable_if<std::is_same<typename std::decay<TYPE_A>::type, typename std::decay<TYPE_B>::type>::value, bool>::type
 
+#define ENABLE_IF_SAME_ANY(TYPE_A, ...) typename std::enable_if<is_same_any<typename std::decay<TYPE_A>::type, __VA_ARGS__>::value, bool>::type = true
+#define FWD_ENABLE_IF_SAME_ANY(TYPE_A, ...) typename std::enable_if<is_same_any<typename std::decay<TYPE_A>::type, __VA_ARGS__>::value, bool>::type
+
 #define ENABLE_IF_DIFFERENT(TYPE_A, TYPE_B) typename std::enable_if<!std::is_same<typename std::decay<TYPE_A>::type, typename std::decay<TYPE_B>::type>::value, bool>::type = true
 #define FWD_ENABLE_IF_DIFFERENT(TYPE_A, TYPE_B) typename std::enable_if<!std::is_same<typename std::decay<TYPE_A>::type, typename std::decay<TYPE_B>::type>::value, bool>::type
 
@@ -39,6 +62,8 @@
 #define ENABLE_IF_SUBCLASS(TYPE, PARENT) typename std::enable_if<std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type = true
 #define FWD_ENABLE_IF_SUBCLASS(TYPE, PARENT) typename std::enable_if<std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type
 
+#define ENABLE_IF_SUBCLASS_ANY(TYPE, ...) typename std::enable_if<is_base_of_any<typename std::decay<TYPE>::type, __VA_ARGS__>::value, bool>::type = true
+#define FWD_ENABLE_IF_SUBCLASS_ANY(TYPE, ...) typename std::enable_if<is_base_of_any<typename std::decay<TYPE>::type, __VA_ARGS__>::value, bool>::type
 
 /** The `always_false` struct can be used to create a templated struct that will always evaluate to `false` when used
  * in a static_assert.
@@ -75,4 +100,5 @@
  *
  */
 template <typename T, T val>
-struct always_false : std::false_type {};
+struct always_false : std::false_type {
+};

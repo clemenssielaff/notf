@@ -18,12 +18,7 @@ namespace notf {
  * While this does mean that you need to change four instead of two values for repositioning the Aabr, other
  * calculations (like intersections) are faster; and they are usually more relevant.
  */
-// clang-format off
-template <typename Vector2,
-          typename = std::enable_if_t<std::is_base_of<Vector2f, typename std::decay<Vector2>::type>::value ||
-                                      std::is_base_of<Vector2d, typename std::decay<Vector2>::type>::value ||
-                                      std::is_base_of<Vector2i, typename std::decay<Vector2>::type>::value>>
-// clang-format on
+template <typename Vector2, ENABLE_IF_SAME_ANY(Vector2, Vector2f, Vector2d, Vector2i)>
 struct _Aabr {
 
     /* Types **********************************************************************************************************/
@@ -516,10 +511,10 @@ struct _Aabr {
         const vector_t c = _max.get_rotated_around(angle, pivot);
         const vector_t d = bottom_left().rotate_around(angle, pivot);
         _Aabr result;
-        result._min.x = min(a.x, min(b.x, min(c.x, d.x)));
-        result._min.y = min(a.y, min(b.y, min(c.y, d.y)));
-        result._max.x = max(a.x, max(b.x, max(c.x, d.x)));
-        result._max.y = max(a.y, max(b.y, max(c.y, d.y)));
+        result._min.x = min(a.x, b.x, c.x, d.x);
+        result._min.y = min(a.y, b.y, c.y, d.y);
+        result._max.x = max(a.x, b.x, c.x, d.x);
+        result._max.y = max(a.y, b.y, c.y, d.y);
         return result;
     }
 

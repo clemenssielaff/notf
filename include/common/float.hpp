@@ -26,8 +26,6 @@ const long double KAPPA      = 0.55228474983079339840225163227959743809289583383
 #endif
 
 using std::abs;
-using std::max;
-using std::min;
 using std::sqrt;
 using std::fmod;
 using std::sin;
@@ -35,6 +33,18 @@ using std::cos;
 using std::tan;
 using std::atan2;
 using std::roundf;
+
+/** Variadic min using auto type deduction. */
+template <typename T>
+T&& min(T&& val) { return std::forward<T>(val); }
+template <typename Lhs, typename Rhs, typename... Tail>
+auto min(Lhs&& lhs, Rhs&& rhs, Tail&&... tail) { return std::min(lhs, min(rhs, std::forward<Tail>(tail)...)); }
+
+/** Variadic max using auto type deduction. */
+template <typename T>
+T&& max(T&& val) { return std::forward<T>(val); }
+template <typename Lhs, typename Rhs, typename... Tail>
+auto max(Lhs&& lhs, Rhs&& rhs, Tail&&... tail) { return std::max(lhs, max(rhs, std::forward<Tail>(tail)...)); }
 
 /** Tests whether a given value is NAN. */
 template <typename Real>
