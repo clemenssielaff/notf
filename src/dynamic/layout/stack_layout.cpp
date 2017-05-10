@@ -281,7 +281,7 @@ Aabrf StackLayout::get_content_aabr() const
 {
     Aabrf result; // TODO: better StackLayout::get_content_aabr
     for (const ItemPtr& item : m_items) {
-        result.united(get_screen_item(item.get())->get_aarbr());
+        result.unite(get_screen_item(item.get())->get_aarbr());
     }
     return result;
 }

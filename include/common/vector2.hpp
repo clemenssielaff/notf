@@ -404,18 +404,6 @@ struct _RealVector2 {
     {
         return *this = pivot + (pivot - *this).rotate(angle);
     }
-
-    /** Returns the side on which the other Vector2 points to, relative to the direction of this Vector2.
-     * @return +1 when other is on the left, -1 when on the right and 0 when it is straight ahead or behind.
-     */
-    value_t get_side_of(const _RealVector2& other) const
-    {
-        const value_t direction = cross(other);
-        if (abs(direction) <= precision_high<value_t>()) {
-            return 0;
-        }
-        return sign(direction);
-    }
 };
 
 //*********************************************************************************************************************/

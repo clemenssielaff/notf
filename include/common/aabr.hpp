@@ -14,7 +14,8 @@ namespace notf {
 //*********************************************************************************************************************/
 
 /** A 2D Axis-Aligned-Bounding-Rectangle.
- * Stores two Vectors, the top-left and bottom-right corner (in a coordinate system where +x is left and +y is down).
+ * Stores two Vectors, the top-left and bottom-right corner (in a coordinate system where +x is right and +y is down,
+ * see ScreenItem -> coordinates for details).
  * While this does mean that you need to change four instead of two values for repositioning the Aabr, other
  * calculations (like intersections) are faster; and they are usually more relevant.
  */
@@ -135,7 +136,7 @@ struct _Aabr {
         return result;
     }
 
-    /** The "most wrong" Aabr.
+    /** The "most wrong" Aabr (maximal negative area).
      * Is useful as the starting point for defining an Aabr from a set of points.
      */
     static _Aabr wrongest()
@@ -210,7 +211,8 @@ struct _Aabr {
      */
     bool intersects(const _Aabr& other) const
     {
-        return !((_max.x < other._min.x) || (_min.x > other._max.x) || (_min.y > other._max.y) || (_max.y < other._min.y));
+        return !((_max.x < other._min.x) || (_min.x > other._max.x)
+                 || (_min.y > other._max.y) || (_max.y < other._min.y));
     }
 
     /** Returns the closest point inside the Aabr to a given target point.
@@ -427,11 +429,24 @@ struct _Aabr {
     }
 
     /** Returns a grown copy of this Aabr. */
-    _Aabr grown(const value_t amount) const
+    _Aabr get_grown(const value_t amount) const
     {
         _Aabr result(*this);
         result.grow(amount);
         return result;
+    }
+
+    /** Grows this Aabr to include the given point.
+     * If the point is already within the rectangle, this does nothing.
+     * @param point     Point to include in the Aabr.
+     */
+    _Aabr& grow_to(const vector_t& point)
+    {
+        _min.x = min(_min.x, point.x);
+        _min.y = min(_min.y, point.y);
+        _max.x = max(_max.x, point.x);
+        _max.y = max(_max.y, point.y);
+        return *this;
     }
 
     /** Moves each edge of the Aabr a given amount towards the inside.
@@ -442,7 +457,7 @@ struct _Aabr {
     _Aabr& shrink(const value_t amount) { return grow(-amount); }
 
     /** Returns a shrunken copy of this Aabr. */
-    _Aabr shrunken(const value_t amount) const
+    _Aabr get_shrunken(const value_t amount) const
     {
         _Aabr result(*this);
         result.grow(-amount);
@@ -453,7 +468,7 @@ struct _Aabr {
      * Intersecting with another Aabr that does not intersect results in the zero Aabr.
      * @return  The intersection Aabr.
      */
-    _Aabr intersection(const _Aabr& other) const
+    _Aabr get_intersection(const _Aabr& other) const
     {
         if (!intersects(other)) {
             return _Aabr::zero();
@@ -462,7 +477,7 @@ struct _Aabr {
             vector_t{_min.x > other._min.x ? _min.x : other._min.x, _min.y > other._min.y ? _min.y : other._min.y},
             vector_t{_max.x < other._max.x ? _max.x : other._max.x, _max.y < other._max.y ? _max.y : other._max.y});
     }
-    _Aabr operator&(const _Aabr& other) const { return intersection(other); }
+    _Aabr operator&(const _Aabr& other) const { return get_intersection(other); }
 
     /** Intersection of this Aabr with `other` in-place.
      * Intersecting with another Aabr that does not intersect results in the zero Aabr.
@@ -481,16 +496,16 @@ struct _Aabr {
     _Aabr operator&=(const _Aabr& other) { return intersect(other); }
 
     /** Creates the union of this Aabr with `other`. */
-    _Aabr union_(const _Aabr& other) const
+    _Aabr get_union(const _Aabr& other) const
     {
         return _Aabr(
             vector_t{_min.x < other._min.x ? _min.x : other._min.x, _min.y < other._min.y ? _min.y : other._min.y},
             vector_t{_max.x > other._max.x ? _max.x : other._max.x, _max.y > other._max.y ? _max.y : other._max.y});
     }
-    _Aabr operator|(const _Aabr& other) const { return union_(other); }
+    _Aabr operator|(const _Aabr& other) const { return get_union(other); }
 
     /** Creates the union of this Aabr with `other` in-place. */
-    _Aabr& united(const _Aabr& other)
+    _Aabr& unite(const _Aabr& other)
     {
         _min.x = _min.x < other._min.x ? _min.x : other._min.x;
         _min.y = _min.y < other._min.y ? _min.y : other._min.y;
@@ -498,7 +513,7 @@ struct _Aabr {
         _max.y = _max.y > other._max.y ? _max.y : other._max.y;
         return *this;
     }
-    _Aabr& operator|=(const _Aabr& other) { return united(other); }
+    _Aabr& operator|=(const _Aabr& other) { return unite(other); }
 
     /** Returns the Aabr of this Aabr rotated counter-clockwise (in radians) around its center. */
     _Aabr get_rotated(const value_t angle) const { return get_rotated(angle, center()); }

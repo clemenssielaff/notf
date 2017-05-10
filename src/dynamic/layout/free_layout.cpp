@@ -97,7 +97,7 @@ Aabrf FreeLayout::get_content_aabr() const
 {
     Aabrf result;
     for (const ItemPtr& item : m_items) {
-        result.united(get_screen_item(item.get())->get_aarbr());
+        result.unite(get_screen_item(item.get())->get_aarbr());
     }
     return result;
 }

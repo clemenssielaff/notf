@@ -41,7 +41,7 @@ public:
 
         drawGraph(painter, base, time);
 
-        drawColorwheel(painter, base.shrunken(margin), time);
+        drawColorwheel(painter, base.get_shrunken(margin), time);
 
         drawCheckBox(painter, Aabrf{10, 100, 20, 20});
 

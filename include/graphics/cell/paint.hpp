@@ -41,7 +41,7 @@ public: // static methods
                                      const float radius, const float feather,
                                      const Color inner_color, const Color outer_color);
 
-    static Paint create_texture_pattern(const Vector2f& top_left, const Size2f& extend,
+    static Paint create_texture_pattern(const Vector2f& origin, const Size2f& extend,
                                         std::shared_ptr<Texture2> texture,
                                         const float angle, const float alpha);
 

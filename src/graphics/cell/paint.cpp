@@ -64,14 +64,14 @@ Paint Paint::create_box_gradient(const Vector2f& center, const Size2f& extend,
     return paint;
 }
 
-Paint Paint::create_texture_pattern(const Vector2f& top_left, const Size2f& extend,
+Paint Paint::create_texture_pattern(const Vector2f& origin, const Size2f& extend,
                                     std::shared_ptr<Texture2> texture,
                                     const float angle, const float alpha)
 {
     Paint paint;
     paint.xform         = Xform2f::rotation(angle);
-    paint.xform[2][0]   = top_left.x;
-    paint.xform[2][1]   = top_left.y;
+    paint.xform[2][0]   = origin.x;
+    paint.xform[2][1]   = origin.y;
     paint.extent.width  = extend.width;
     paint.extent.height = extend.height;
     paint.texture       = texture;

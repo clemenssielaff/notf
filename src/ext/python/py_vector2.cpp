@@ -78,7 +78,6 @@ void produce_vector2(pybind11::module& module)
     Py_Vector2.def("orthogonalize", &Vector2f::orthogonalize, DOCSTR("In-place rotation of this Vector2 90 degrees counter-clockwise."));
     Py_Vector2.def("rotated", &Vector2f::get_rotated, DOCSTR("Returns a copy of this 2D Vector rotated counter-clockwise around its origin by a given angle in radians."), py::arg("angle"));
     Py_Vector2.def("rotate", &Vector2f::rotate, DOCSTR("Rotates this Vector2 counter-clockwise in-place around its origin by a given angle in radians."), py::arg("angle"));
-    Py_Vector2.def("side_of", &Vector2f::get_side_of, DOCSTR("The side of the other 2D Vector relative to direction of this 2D Vector (+1 = left, -1 = right)."), py::arg("other"));
 
     // representation
     Py_Vector2.def("__repr__", [](const Vector2f& vec) { return string_format("notf.Vector2(%f, %f)", vec.x, vec.y); });
