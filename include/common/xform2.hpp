@@ -209,7 +209,11 @@ struct _Xform2 {
     }
 
     /** Inverts this Xform2 in-place. */
-    _Xform2& invert() { *this = (*this).get_inverse(); }
+    _Xform2& invert()
+    {
+        *this = (*this).get_inverse();
+        return *this;
+    }
 
     /** Returns the inverse of this Xform2. */
     _Xform2 get_inverse() const

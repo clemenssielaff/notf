@@ -38,7 +38,7 @@ WindowLayout::WindowLayout(const std::shared_ptr<Window>& window)
 {
     // the window layout is always in the default render layer
     m_has_own_render_layer = true;
-    m_render_layer = window->get_render_manager().get_default_layer();
+    m_render_layer         = window->get_render_manager().get_default_layer();
 }
 
 WindowLayout::~WindowLayout()

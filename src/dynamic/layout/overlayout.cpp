@@ -191,15 +191,11 @@ void Overlayout::_relayout()
 
 void Overlayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
-    // TODO: Overlayout::get_widget_at does not respect transform (only translate)
     for (const ItemPtr& item : reverse(m_items)) {
         const ScreenItem* screen_item = get_screen_item(item.get());
-        if (!screen_item) {
-            continue;
-        }
-        const Vector2f item_pos = local_pos - screen_item->get_transform().get_translation();
-        const Aabrf item_rect(screen_item->get_size());
-        if (item_rect.contains(item_pos)) {
+        if (screen_item && screen_item->get_aarbr().contains(local_pos)) {
+            Vector2f item_pos = local_pos;
+            screen_item->get_transform().get_inverse().transform(item_pos);
             Item::_get_widgets_at(screen_item, item_pos, result);
         }
     }

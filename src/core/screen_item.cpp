@@ -1,5 +1,7 @@
 #include "core/screen_item.hpp"
 
+#include <sstream>
+
 #include "core/layout.hpp"
 #include "core/render_manager.hpp"
 #include "core/window.hpp"
@@ -11,9 +13,10 @@ ScreenItem::ScreenItem()
     , m_opacity(1)
     , m_size(Size2f::zero())
     , m_layout_transform(Xform2f::identity())
-    , m_offset_transform(Xform2f::identity())
+    , m_local_transform(Xform2f::identity())
+    , m_applied_transform(Xform2f::identity())
     , m_claim()
-    , m_scissor_layout() // empty by default
+    , m_scissor_layout()
 {
 }
 
@@ -26,6 +29,27 @@ Xform2f ScreenItem::get_window_transform() const
     Xform2f result = Xform2f::identity();
     _get_window_transform(result);
     return result;
+}
+
+Aabrf ScreenItem::get_aarbr() const
+{
+    Aabrf aabr(get_size());
+    m_applied_transform.transform(aabr);
+    return aabr;
+}
+
+Aabrf ScreenItem::get_layout_aarbr() const
+{
+    Aabrf aabr(get_size());
+    m_layout_transform.transform(aabr);
+    return aabr;
+}
+
+Aabrf ScreenItem::get_local_aarbr() const
+{
+    Aabrf aabr(get_size());
+    m_local_transform.transform(aabr);
+    return aabr;
 }
 
 float ScreenItem::get_opacity(bool own) const
@@ -72,18 +96,23 @@ LayoutPtr ScreenItem::get_scissor(const bool own) const
 
 void ScreenItem::set_scissor(LayoutPtr scissor)
 {
-    m_scissor_layout = std::move(scissor);
+    if (has_ancestor(scissor)) {
+        m_scissor_layout = std::move(scissor);
+    }
+    else {
+        std::stringstream ss;
+        ss << "Failed to set non-ancestor scissor Layout (" << scissor->get_id() << ") on ScreenItem " << get_id();
+        throw std::runtime_error(ss.str());
+    }
 }
 
-bool ScreenItem::set_offset_transform(const Xform2f transform)
+bool ScreenItem::set_local_transform(const Xform2f transform)
 {
-    if (transform == m_offset_transform) {
+    if (transform == m_local_transform) {
         return false;
     }
-    m_offset_transform = std::move(transform);
-
-    const Xform2f new_transform = get_transform();
-    on_transform_changed(new_transform);
+    m_local_transform = std::move(transform);
+    _update_applied_transform();
     _redraw();
     return true;
 }
@@ -105,9 +134,7 @@ bool ScreenItem::_set_layout_transform(const Xform2f transform)
         return false;
     }
     m_layout_transform = std::move(transform);
-
-    const Xform2f new_transform = get_transform();
-    on_transform_changed(new_transform);
+    _update_applied_transform();
     _redraw();
     return true;
 }
@@ -153,6 +180,37 @@ void ScreenItem::_get_window_transform(Xform2f& result) const
         layout->_get_window_transform(result);
         result = get_transform() * result;
     }
+}
+
+void ScreenItem::_update_applied_transform()
+{
+    m_applied_transform = m_layout_transform * m_local_transform;
+    on_transform_changed(m_applied_transform);
+}
+
+/**********************************************************************************************************************/
+
+Xform2f get_transformation_between(const ScreenItem* source, const ScreenItem* target)
+{
+    const ScreenItem* common_ancestor = get_screen_item(get_common_ancestor(source, target));
+    if (!common_ancestor) {
+        std::stringstream ss;
+        ss << "Cannot find common ancestor for Items " << source->get_id() << " and " << target->get_id();
+        throw std::runtime_error(ss.str());
+    }
+
+    Xform2f source_branch = Xform2f::identity();
+    for (const ScreenItem* it = source; it != common_ancestor; it = it->get_layout().get()) {
+        source_branch *= it->get_transform();
+    }
+//    source_branch.invert();
+
+    Xform2f target_branch = Xform2f::identity();
+    for (const ScreenItem* it = target; it != common_ancestor; it = it->get_layout().get()) {
+        target_branch *= it->get_transform();
+    }
+
+    return source_branch * target_branch.get_inverse();
 }
 
 } // namespace notf

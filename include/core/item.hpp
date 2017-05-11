@@ -7,9 +7,9 @@
 #include "common/id.hpp"
 #include "common/signal.hpp"
 #include "common/size2.hpp"
+#include "common/template.hpp"
 #include "common/xform2.hpp"
 #include "utils/binding_accessors.hpp"
-#include "common/template.hpp"
 
 #ifdef NOTF_PYTHON
 #include "ext/python/py_fwd.hpp"
@@ -110,13 +110,6 @@ class Item : public receive_signals, public std::enable_shared_from_this<Item> {
     friend class Layout;       // can parent ScreenItems
     friend class WindowLayout; // can set its RenderLayer even though it has no parent
 
-public: // static functions *******************************************************************************************/
-    /** Returns the ScreenItem associated with a given Item - either the Item itself or a Controller's root Item. */
-    static ScreenItem* get_screen_item(Item* item);
-
-    /** Returns the ScreenItem associated with a given Item - either the Item itself or a Controller's root Item. */
-    static const ScreenItem* get_screen_item(const Item* item) { return get_screen_item(const_cast<Item*>(item)); }
-
 protected: // constructor *********************************************************************************************/
     /** Default Constructor. */
     Item();
@@ -157,13 +150,8 @@ public: // methods *************************************************************
     /** Returns the Window containing this Widget (can be empty). */
     std::shared_ptr<Window> get_window() const;
 
-    /** Returns the current RenderLayer of this Item.
-     * If `own==false`, the returned RenderLayer is valid if this Item is in the Item hierarchy and invalid if not.
-     * If `own==true`, it is empty if the Item uses its parent's RenderLayer or if it is not part of the Item hierarchy.
-     * @param own   By default, the first valid RenderLayer in the ancestry is returned, if `own==true` the RenderLayer
-     *              of this Item is returned, even if it is empty.
-     */
-    const RenderLayerPtr& get_render_layer(const bool own = false) const;
+    /** Returns the current RenderLayer of this Item. */
+    const RenderLayerPtr& get_render_layer() const { return m_render_layer; }
 
     /** (Re-)sets the RenderLayer of this Item.
      * Pass an empty shared_ptr to implicitly inherit the RenderLayer from the parent Layout.
@@ -179,12 +167,12 @@ public: // signals *************************************************************
     Signal<ItemID> on_parent_changed;
 
 protected: // methods *************************************************************************************************/
-    /** Returns the Layout into which this Item is embedded as a mutable pointer.
+    /** Returns the Layout into which this Item is embedded.
      * The only Item without a Layout is the WindowLayout.
      */
     LayoutPtr _get_layout() const;
 
-    /** Returns the Controller managing this Item as a mutable pointer.
+    /** Returns the Controller managing this Item.
      * The only Item without a Controller is the WindowLayout.
      */
     ControllerPtr _get_controller() const;
@@ -266,11 +254,24 @@ private: // fields *************************************************************
 
 /**********************************************************************************************************************/
 
+/** Returns the ScreenItem associated with a given Item - either the Item itself or a Controller's root Item.
+ * Returns nullptr only if the given Item itself is null.
+ */
+ScreenItem* get_screen_item(Item* item);
+inline const ScreenItem* get_screen_item(const Item* item) { return get_screen_item(const_cast<Item*>(item)); }
+
 /** Convenience function to create correctly typed `shared_from_this` shared_ptrs from Item subclasses. */
 template <typename ItemSubclass, ENABLE_IF_SUBCLASS(ItemSubclass, Item)>
 std::shared_ptr<ItemSubclass> make_shared_from(ItemSubclass* item)
 {
     return std::dynamic_pointer_cast<ItemSubclass>(static_cast<Item*>(item)->shared_from_this());
+}
+
+/** Finds and returns the first common ancestor of two Items, returns empty if none exists. */
+const Item* get_common_ancestor(const Item* first, const Item* second);
+inline Item* get_common_ancestor(Item* first, Item* second)
+{
+    return const_cast<Item*>(get_common_ancestor(const_cast<const Item*>(first), const_cast<const Item*>(second)));
 }
 
 } // namespace notf

@@ -628,16 +628,13 @@ void StackLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
 
 void StackLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
-    // TODO: StackLayout::get_widget_at is brute-force and does not respect transform (only translate)
+    // TODO: StackLayout::get_widget_at is brute-force
     for (const ItemPtr& item : m_items) {
         const ScreenItem* screen_item = get_screen_item(item.get());
-        if (!screen_item) {
-            continue;
-        }
-        const Vector2f item_pos = local_pos - screen_item->get_transform().get_translation();
-        const Aabrf item_rect(screen_item->get_size());
-        if (item_rect.contains(item_pos)) {
-            Item::_get_widgets_at(screen_item, local_pos, result);
+        if (screen_item && screen_item->get_aarbr().contains(local_pos)) {
+            Vector2f item_pos = local_pos;
+            screen_item->get_transform().get_inverse().transform(item_pos);
+            Item::_get_widgets_at(screen_item, item_pos, result);
         }
     }
 }

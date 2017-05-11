@@ -28,17 +28,6 @@ ItemID get_next_id()
 
 namespace notf {
 
-ScreenItem* Item::get_screen_item(Item* item)
-{
-    ScreenItem* screen_item = dynamic_cast<ScreenItem*>(item);
-    if (!screen_item) {
-        Controller* controller = dynamic_cast<Controller*>(item);
-        screen_item            = controller->get_root_item().get();
-    }
-    assert(screen_item);
-    return screen_item;
-}
-
 Item::Item()
     : m_render_layer() // empty by default
     , m_id(get_next_id())
@@ -82,28 +71,6 @@ std::shared_ptr<Window> Item::get_window() const
         return window_layout->get_window();
     }
     return {};
-}
-
-const RenderLayerPtr& Item::get_render_layer(const bool own) const
-{
-    // if you have your own RenderLayer or the own RenderLayer is requested, return that
-    if (own || m_render_layer) {
-        return m_render_layer;
-    }
-
-    // ... otherwise return the nearest ancestor's one
-    const Item* ancestor = get_parent().get();
-    while (ancestor) {
-        if (const RenderLayerPtr& render_layer = ancestor->get_render_layer()) {
-            return render_layer;
-        }
-        ancestor = ancestor->get_parent().get();
-    }
-
-    // the WindowLayout at the latest should return a valid RenderLayer
-    // but if this Item is not in the Item hierarchy, it is also not a part of a RenderLayer
-    static const RenderLayerPtr empty;
-    return empty;
 }
 
 void Item::set_render_layer(const RenderLayerPtr& render_layer)
@@ -193,7 +160,7 @@ void Item::_set_parent(ItemPtr parent)
 
     // set the new parent and return if it is empty
     m_parent = parent;
-    if(!parent){
+    if (!parent) {
         on_parent_changed(0);
         return;
     }
@@ -204,6 +171,47 @@ void Item::_set_parent(ItemPtr parent)
     }
 
     on_parent_changed(parent->get_id());
+}
+
+/**********************************************************************************************************************/
+
+ScreenItem* get_screen_item(Item* item)
+{
+    if (!item) {
+        return nullptr;
+    }
+    ScreenItem* screen_item = dynamic_cast<ScreenItem*>(item);
+    if (!screen_item) {
+        Controller* controller = dynamic_cast<Controller*>(item);
+        screen_item            = controller->get_root_item().get();
+    }
+    assert(screen_item);
+    return screen_item;
+}
+
+const Item* get_common_ancestor(const Item* i_first, const Item* i_second)
+{
+    if (i_first == i_second) {
+        return i_first;
+    }
+    const Item* first  = i_first;
+    const Item* second = i_second;
+
+    std::set<const Item*> known_ancestors = {first, second};
+    while (first && second) {
+        first  = first->get_layout().get();
+        second = second->get_layout().get();
+        if (known_ancestors.count(first)) {
+            return first;
+        }
+        if (known_ancestors.count(second)) {
+            return second;
+        }
+        known_ancestors.insert(first);
+        known_ancestors.insert(second);
+    }
+
+    return {};
 }
 
 } // namespace notf

@@ -56,7 +56,6 @@ public: // methods
             event.set_handled();
         });
 
-        // FIXME: when you click on the scroll bar are where the scroll bar is not, the background changes?
         on_focus_changed.connect([this](FocusEvent& event) -> void {
             if(event.action == FocusAction::GAINED){
                 event.set_handled();
@@ -79,7 +78,7 @@ public: // methods
     virtual void _paint(Painter& painter) const override
     {
         const Aabrf widget_rect = Aabrf(get_size());
-//        painter.set_scissor(widget_rect); // FIXME
+        painter.set_scissor(widget_rect); // FIXME
         painter.begin_path();
         painter.add_rect(widget_rect);
         painter.set_fill_paint(m_color);
@@ -146,8 +145,8 @@ public: // methods
         scroll_area->initialize(); // TODO: this Controller::initialize stuff is really brittle, maybe combine with Controller::Factory?
         ControllerPtr stack_controller = std::make_shared<StackController>(m_window);
         scroll_area->set_area_controller(stack_controller);
-
         overlayout->add_item(scroll_area);
+
         _set_root_item(overlayout);
     }
 
@@ -155,23 +154,23 @@ private: // fields
     std::shared_ptr<Window> m_window;
 };
 
-int main(int argc, char* argv[])
-{
-    ApplicationInfo app_info;
-    app_info.argc         = argc;
-    app_info.argv         = argv;
-    app_info.enable_vsync = false;
-    Application& app      = Application::initialize(app_info);
+//int main(int argc, char* argv[])
+//{
+//    ApplicationInfo app_info;
+//    app_info.argc         = argc;
+//    app_info.argv         = argv;
+//    app_info.enable_vsync = false;
+//    Application& app      = Application::initialize(app_info);
 
-    // window
-    WindowInfo window_info;
-    window_info.icon          = "notf.png";
-    window_info.size          = {800, 600};
-    window_info.clear_color   = Color("#262a32");
-    window_info.is_resizeable = true;
-    auto window               = Window::create(window_info);
+//    // window
+//    WindowInfo window_info;
+//    window_info.icon          = "notf.png";
+//    window_info.size          = {800, 600};
+//    window_info.clear_color   = Color("#262a32");
+//    window_info.is_resizeable = true;
+//    auto window               = Window::create(window_info);
 
-    window->get_layout()->set_controller(std::make_shared<MainController>(window));
+//    window->get_layout()->set_controller(std::make_shared<MainController>(window));
 
-    return app.exec();
-}
+//    return app.exec();
+//}

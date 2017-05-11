@@ -40,7 +40,7 @@ public: // methods
     /** Sets a new Claim for this Widget.
      * @return True iff the Claim was modified.
      */
-    bool set_claim(const Claim get_claim);
+    bool set_claim(const Claim claim);
 
     /** Tells the Render Manager that this Widget needs to be redrawn. */
     void redraw();

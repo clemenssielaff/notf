@@ -67,8 +67,8 @@ void ScrollArea::_initialize()
 
     // container inside the area, scissored by the window and containing the content
     m_scroll_container = Overlayout::create();
-    m_scroll_container->set_scissor(m_area_window);
     m_area_window->add_item(m_scroll_container);
+    m_scroll_container->set_scissor(m_area_window);
 
     // the scrollbar on the side of the area window
     m_vscrollbar = std::make_shared<ScrollBar>(*this);
@@ -159,8 +159,8 @@ void ScrollArea::_update_scrollbar(float delta_y)
     const float area_height = m_scroll_container->get_size().height;
     const float overflow    = min(0.f, area_height - content_height);
 
-    const float y = min(0.f, max(overflow, m_scroll_container->get_offset_transform().get_translation().y + delta_y));
-    m_scroll_container->set_offset_transform(Xform2f::translation({0, y}));
+    const float y = min(0.f, max(overflow, m_scroll_container->get_local_transform().get_translation().y + delta_y));
+    m_scroll_container->set_local_transform(Xform2f::translation({0, y}));
 
     if (overflow <= -0.5f // there must at least be half a pixel to scroll in order for the bar to show up
         && abs(content_height) >= precision_high<float>()) {

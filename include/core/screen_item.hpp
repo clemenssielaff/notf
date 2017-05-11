@@ -70,7 +70,7 @@ using uchar = unsigned char;
  * in relation to its parent
  * Layout, which can be queried using `get_transform()`.
  * The `layout transform` is the transformation applied to the Item by its parent Layout.
- * The `offset transform` is an additional offset transformation on the Item that is applied after the `layout
+ * The `local transform` is an additional offset transformation on the Item that is applied after the `layout
  * transform`.
  *
  *
@@ -159,7 +159,7 @@ using uchar = unsigned char;
  * Untransformed local space
  * -------------------------
  * Claims are made in untransformed local space.
- * That means, they are not affected by the offset transform applied to the ScreenItem, nor do they change when the
+ * That means, they are not affected by the local transform applied to the ScreenItem, nor do they change when the
  * parent Layout changes the ScreenItem's layout transform.
  *
  * Local (offset) space
@@ -192,14 +192,14 @@ public: // methods *************************************************************
     /** Destructor. */
     virtual ~ScreenItem() override;
 
-    /** Returns the Item's transformation in parent space. */
-    Xform2f get_transform() const { return m_layout_transform * m_offset_transform; }
+    /** Returns the Item's applied transformation in parent space. */
+    const Xform2f& get_transform() const { return m_applied_transform; }
 
     /** 2D transformation of this Item as determined by its parent Layout. */
     const Xform2f& get_layout_transform() const { return m_layout_transform; }
 
     /** 2D transformation of this Item on top of the layout transformation. */
-    const Xform2f& get_offset_transform() const { return m_offset_transform; }
+    const Xform2f& get_local_transform() const { return m_local_transform; }
 
     /** Recursive implementation to produce the Item's transformation in window space. */
     Xform2f get_window_transform() const;
@@ -208,10 +208,13 @@ public: // methods *************************************************************
     const Size2f& get_size() const { return m_size; }
 
     /** Returns the axis-aligned bounding rect of this ScreenItem in parent space. */
-    Aabrf get_aarbr() const { return Aabrf(get_transform().get_translation(), get_size()); }
+    Aabrf get_aarbr() const;
+
+    /** Returns the axis-aligned bounding rect of this ScreenItem as transformed by its layout only. */
+    Aabrf get_layout_aarbr() const;
 
     /** Returns the axis-aligned bounding rect of this ScreenItem in local space. */
-    Aabrf get_offset_aarbr() const { return Aabrf(get_transform().get_translation(), get_size()); }
+    Aabrf get_local_aarbr() const;
 
     /** Returns the opacity of this Item in the range [0 -> 1].
      * @param own   By default, the returned opacity will be the product of this Item's opacity with all of its
@@ -239,7 +242,7 @@ public: // methods *************************************************************
      * scissor Layout does not share a Window with this ScreenItem.
      * In this case, the ScreenItem is implicitly scissored by its parent Layout.
      */
-    LayoutPtr get_scissor(const bool own = false) const;
+    LayoutPtr get_scissor(const bool own = false) const; // TODO: propagate the scissor layout down, instead of querying it up
 
     /** Sets the new scissor Layout for this ScreenItem.
      * @param scissor               New scissor Layout, must be an Layout in this ScreenItem's ancestry or empty.
@@ -250,7 +253,7 @@ public: // methods *************************************************************
     /** Updates the transformation of this Item.
      * @return      True iff the transform was modified.
      */
-    bool set_offset_transform(const Xform2f transform);
+    bool set_local_transform(const Xform2f transform);
 
 public: // signals ****************************************************************************************************/
     /** Emitted, when the opacity of this Item has changed.
@@ -314,6 +317,9 @@ private: // methods ************************************************************
     /** Calculates the transformation of this Item relative to its Window. */
     void _get_window_transform(Xform2f& result) const;
 
+    /** Updates the ScreenItem's applied transform if either the layout- or local transform changed. */
+    void _update_applied_transform();
+
 private: // fields ****************************************************************************************************/
     /** Opacity of this Item in the range [0 -> 1]. */
     float m_opacity;
@@ -325,7 +331,13 @@ private: // fields *************************************************************
     Xform2f m_layout_transform;
 
     /** 2D transformation of this Item on top of the layout transformation. */
-    Xform2f m_offset_transform;
+    Xform2f m_local_transform;
+
+    /** Applied 2d transformation.
+     * This value could be recalculated on-the-fly with `m_layout_transform * m_local_transform`, but usually it is
+     * changed once and read many times which is why we store it.
+     */
+    Xform2f m_applied_transform;
 
     /** The Claim of a Item determines how much space it receives in the parent Layout.
      * Claim values are in untransformed local space.
@@ -337,5 +349,15 @@ private: // fields *************************************************************
      */
     std::weak_ptr<Layout> m_scissor_layout;
 };
+
+/**********************************************************************************************************************/
+
+/** Returns a transformation from a given ScreenItem to another one.
+ * @param source    ScreenItem prodiving source coordinates in local space.
+ * @param target    ScreenItem into which the coordinates should be transformed.
+ * @return          Transformation.
+ * @throw           std::runtime_error, if the two ScreenItems do not share a common ancestor.
+ */
+Xform2f get_transformation_between(const ScreenItem *source, const ScreenItem *target);
 
 } // namespace notf
