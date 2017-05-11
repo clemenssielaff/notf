@@ -119,12 +119,10 @@ protected: // types
     class StateMachine {
 
     public: // methods
+        DISALLOW_COPY_AND_ASSIGN(StateMachine)
+
         /** Default Constructor. */
         StateMachine() = default;
-
-        // no copy / assignment
-        StateMachine(const StateMachine&) = delete;
-        StateMachine& operator=(const StateMachine&) = delete;
 
         /** Move Constructor. */
         StateMachine(StateMachine&& other)

@@ -23,15 +23,13 @@ class FontManager {
     friend class Font;
 
 public: // methods
+    DISALLOW_COPY_AND_ASSIGN(FontManager)
+
     /** Default constructor. */
     FontManager(GraphicsContext& graphics_context);
 
     /** Destructor. */
     ~FontManager();
-
-    FontManager(const FontManager&) = delete;            // no copy construction
-    FontManager& operator=(const FontManager&) = delete; // no copy assignment
-
     std::shared_ptr<Texture2> get_atlas_texture() const;
 
 private: // for Font

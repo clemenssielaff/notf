@@ -4,6 +4,7 @@
 #include "common/log.hpp"
 #include "common/time.hpp"
 #include "common/vector2.hpp"
+#include "common/warnings.hpp"
 #include "core/events/char_event.hpp"
 #include "core/events/key_event.hpp"
 #include "core/events/mouse_event.hpp"
@@ -11,7 +12,6 @@
 #include "core/resource_manager.hpp"
 #include "core/window.hpp"
 #include "utils/print_notf.hpp"
-#include "utils/unused.hpp"
 
 #ifdef NOTF_PYTHON
 #include "ext/python/interpreter.hpp"

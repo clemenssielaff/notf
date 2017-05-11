@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 
+#include "common/meta.hpp"
 #include "graphics/gl_forwards.hpp"
 
 namespace notf {
@@ -53,9 +54,7 @@ private: // constructor
     Shader(const GLuint id, GraphicsContext& context, const std::string name);
 
 public: // methods
-    // no copy or assignment
-    Shader(const Shader&) = delete;
-    Shader& operator=(const Shader&) = delete;
+    DISALLOW_COPY_AND_ASSIGN(Shader)
 
     /** Destructor */
     ~Shader();

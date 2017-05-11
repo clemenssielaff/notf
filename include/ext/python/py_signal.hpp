@@ -5,15 +5,15 @@ namespace py = pybind11;
 
 #include "common/log.hpp"
 #include "common/signal.hpp"
+#include "common/warnings.hpp"
 #include "ext/python/py_dict_utils.hpp"
 #include "ext/python/py_fwd.hpp"
 #include "utils/apply_tuple.hpp"
-#include "utils/unused.hpp"
 
 namespace notf {
 
 namespace detail {
-    extern const char* s_signal_cache_name;
+extern const char* s_signal_cache_name;
 }
 
 /** Python implementation of the notf Signal object.
@@ -85,9 +85,9 @@ public: // methods
         }
 
         { // store the callback and test into a cache in the object's __dict__ so they don't get lost
-            py::dict notf_cache = get_notf_cache(host);
+            py::dict notf_cache        = get_notf_cache(host);
             py::dict signal_cache_dict = get_dict(notf_cache, detail::s_signal_cache_name);
-            py::list cache = get_list(signal_cache_dict, m_name.c_str());
+            py::list cache             = get_list(signal_cache_dict, m_name.c_str());
             py::object handler;
             if (test.check()) {
                 handler = py::object(PyTuple_Pack(2, callback.ptr(), test.ptr()), /* borrowed = */ false);
@@ -150,8 +150,7 @@ public: // methods
                         if (PyObject_IsTrue(result.ptr()) != 1) {
                             continue;
                         }
-                    }
-                    catch (std::runtime_error error) {
+                    } catch (std::runtime_error error) {
                         log_warning << error.what();
                         continue;
                     }
@@ -166,8 +165,7 @@ public: // methods
             if (callback.check()) {
                 try {
                     apply(callback, arguments);
-                }
-                catch (std::runtime_error error) {
+                } catch (std::runtime_error error) {
                     log_warning << error.what();
                 }
             }
@@ -261,9 +259,9 @@ public: // methods
 
         // clear the cache as well
         py::object host(PyWeakref_GetObject(m_host.get()), /* borrowed = */ true);
-        py::dict notf_cache = get_notf_cache(host);
+        py::dict notf_cache        = get_notf_cache(host);
         py::dict signal_cache_dict = get_dict(notf_cache, detail::s_signal_cache_name);
-        py::list cache = get_list(signal_cache_dict, m_name.c_str());
+        py::list cache             = get_list(signal_cache_dict, m_name.c_str());
         PySequence_DelSlice(cache.ptr(), 0, PySequence_Length(cache.ptr()));
         assert(PySequence_Length(cache.ptr()) == 0);
     }
@@ -275,7 +273,7 @@ public: // methods
     void disconnect(const ConnectionID id)
     {
         using std::swap;
-        bool success = false;
+        bool success           = false;
         Py_ssize_t cache_index = 0;
         for (Target& target : m_targets) {
             if (id == target.id) {
@@ -293,9 +291,9 @@ public: // methods
 
         // delete the target from the cache as well
         py::object host(PyWeakref_GetObject(m_host.get()), /* borrowed = */ true);
-        py::dict notf_cache = get_notf_cache(host);
+        py::dict notf_cache        = get_notf_cache(host);
         py::dict signal_cache_dict = get_dict(notf_cache, detail::s_signal_cache_name);
-        py::list cache = get_list(signal_cache_dict, m_name.c_str());
+        py::list cache             = get_list(signal_cache_dict, m_name.c_str());
         assert(cache_index < PyList_Size(cache.ptr()));
         PySequence_DelSlice(cache.ptr(), cache_index, cache_index + 1);
     }
@@ -311,9 +309,9 @@ public: // methods
         m_host.reset(PyWeakref_NewRef(host.ptr(), nullptr));
 
         // get the host's signal cache
-        py::dict notf_cache = get_notf_cache(host);
+        py::dict notf_cache        = get_notf_cache(host);
         py::dict signal_cache_dict = get_dict(notf_cache, detail::s_signal_cache_name);
-        py::list cache = get_list(signal_cache_dict, m_name.c_str());
+        py::list cache             = get_list(signal_cache_dict, m_name.c_str());
         assert(cache.size() == m_targets.size());
 
         // ... and use it to restore the targets
@@ -321,7 +319,7 @@ public: // methods
         new_targets.reserve(m_targets.size());
         for (size_t i = 0; i < m_targets.size(); ++i) {
             const Target& target = m_targets[i];
-            py::tuple handlers = py::object(cache[i]);
+            py::tuple handlers   = py::object(cache[i]);
             assert(handlers.check());
             if (handlers.size() == 1) {
                 new_targets.emplace_back(target.id, py::object(handlers[0]), target.is_enabled);

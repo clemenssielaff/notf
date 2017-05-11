@@ -6,7 +6,7 @@
 #include "common/float.hpp"
 #include "common/hash.hpp"
 #include "common/size2.hpp"
-#include "common/template.hpp"
+#include "common/meta.hpp"
 #include "common/vector2.hpp"
 
 namespace notf {

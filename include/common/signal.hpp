@@ -36,6 +36,8 @@
 #include <memory>
 #include <vector>
 
+#include "common/meta.hpp"
+
 namespace notf {
 
 /**********************************************************************************************************************/
@@ -170,12 +172,10 @@ private: // struct
     };
 
 public: // methods
+    DISALLOW_COPY_AND_ASSIGN(Signal)
+
     /** Constructor. */
     Signal() = default;
-
-    // no copy / assignment
-    Signal(const Signal&) = delete;
-    Signal& operator=(const Signal&) = delete;
 
     /** Destructor. */
     ~Signal() { disconnect(); }
@@ -325,12 +325,11 @@ private: // struct
     };
 
 public: // methods
+    DISALLOW_COPY_AND_ASSIGN(Signal)
+
     Signal() = default;
 
     ~Signal() { disconnect(); }
-
-    Signal(const Signal&) = delete;
-    Signal& operator=(const Signal&) = delete;
 
     /** Move Constructor. */
     Signal(Signal&& other) noexcept
@@ -448,14 +447,10 @@ private: // fields
 class receive_signals {
 
 public: // methods
+    DISALLOW_COPY_AND_ASSIGN(receive_signals)
+
     /** Constructor. */
     receive_signals() = default;
-
-    // no copy, move & -assignment
-    receive_signals& operator=(const receive_signals&) = delete;
-    receive_signals(const receive_signals&)            = delete;
-    receive_signals& operator=(receive_signals&&) = delete;
-    receive_signals(receive_signals&&)            = delete;
 
     /** Destructor. */
     virtual ~receive_signals();

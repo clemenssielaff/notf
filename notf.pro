@@ -192,7 +192,6 @@ HEADERS += \
     include/core/resource_manager.hpp \
     include/core/render_manager.hpp \
     include/common/color.hpp \
-    include/utils/unused.hpp \
     include/core/layout.hpp \
     include/dynamic/layout/stack_layout.hpp \
     include/dynamic/controller/scroll_area.hpp \
@@ -229,7 +228,6 @@ HEADERS += \
     include/graphics/stats.hpp \
     include/graphics/text/font_manager.hpp \
     include/graphics/text/freetype.hpp \
-    include/common/template.hpp \
     include/common/hash.hpp \
     include/common/integer.hpp \
     include/common/set.hpp \
@@ -257,7 +255,9 @@ HEADERS += \
     include/core/events/char_event.hpp \
     include/common/utf.hpp \
     include/core/events/focus_event.hpp \
-    thirdparty/tinyutf8/tinyutf8.h
+    thirdparty/tinyutf8/tinyutf8.h \
+    include/common/warnings.hpp \
+    include/common/meta.hpp
 
 #QMAKE_CXX = ccache g++
 

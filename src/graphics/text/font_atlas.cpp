@@ -8,10 +8,10 @@
 #include "common/log.hpp"
 #include "common/size2.hpp"
 #include "common/vector.hpp"
+#include "common/warnings.hpp"
 #include "core/opengl.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/texture2.hpp"
-#include "utils/unused.hpp"
 
 namespace { // anonymous
 
@@ -183,11 +183,11 @@ std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<FitReques
 
     // repeatedly go through all named extends, find the best one to insert and remove it
     while (!named_extends.empty()) {
-        Glyph::Rect best_rect    = {0, 0, 0, 0};
-        size_t best_node_index   = INVALID_SIZE_T;
-        size_t best_extend_index = INVALID_SIZE_T;
-        coord_t best_node_width  = std::numeric_limits<coord_t>::max();
-        coord_t best_new_height  = std::numeric_limits<coord_t>::max();
+        Glyph::Rect best_rect       = {0, 0, 0, 0};
+        size_t best_node_index      = INVALID_SIZE_T;
+        size_t best_extend_index    = INVALID_SIZE_T;
+        coord_t best_node_width     = std::numeric_limits<coord_t>::max();
+        coord_t best_new_height     = std::numeric_limits<coord_t>::max();
         codepoint_t best_code_point = 0;
 
         // find the best fit

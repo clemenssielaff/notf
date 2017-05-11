@@ -5,7 +5,7 @@
 #include "common/hash.hpp"
 #include "common/log.hpp"
 #include "common/string.hpp"
-#include "utils/unused.hpp"
+#include "common/warnings.hpp"
 
 namespace { // anonymous
 
@@ -58,19 +58,19 @@ std::shared_ptr<Font> ResourceManager::fetch_font(const std::string& name)
 {
     UNUSED(name);
     return {};
-//    std::string full_path = m_font_directory + name;
-//    if(!iends_with(name, Font::file_extension)){
-//        full_path.append(Font::file_extension);
-//    }
+    //    std::string full_path = m_font_directory + name;
+    //    if(!iends_with(name, Font::file_extension)){
+    //        full_path.append(Font::file_extension);
+    //    }
 
-//    const size_t hash_value = hash(full_path);
-//    if (m_fonts.count(hash_value)) {
-//        return m_fonts.at(hash_value);
-//    }
+    //    const size_t hash_value = hash(full_path);
+    //    if (m_fonts.count(hash_value)) {
+    //        return m_fonts.at(hash_value);
+    //    }
 
-//    std::shared_ptr<Font> font = Font::load(m_context, name, full_path);
-//    m_fonts.emplace(hash_value, font);
-//    return font;
+    //    std::shared_ptr<Font> font = Font::load(m_context, name, full_path);
+    //    m_fonts.emplace(hash_value, font);
+    //    return font;
 }
 
 void ResourceManager::cleanup()

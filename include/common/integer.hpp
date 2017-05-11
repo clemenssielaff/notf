@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-#include "common/template.hpp"
+#include "common/meta.hpp"
 
 namespace notf {
 

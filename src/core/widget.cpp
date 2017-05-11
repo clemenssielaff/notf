@@ -2,13 +2,13 @@
 
 #include "common/log.hpp"
 #include "common/string.hpp"
+#include "common/warnings.hpp"
 #include "core/layout.hpp"
 #include "core/window.hpp"
 #include "graphics/cell/cell.hpp"
 #include "graphics/cell/cell_canvas.hpp"
 #include "graphics/cell/painter.hpp"
 #include "graphics/cell/painterpreter.hpp"
-#include "utils/unused.hpp"
 
 namespace notf {
 

@@ -65,6 +65,8 @@ struct is_base_of_any<T, Head, Rest...> : std::integral_constant<bool, std::is_b
 #define ENABLE_IF_SUBCLASS_ANY(TYPE, ...) typename std::enable_if<is_base_of_any<typename std::decay<TYPE>::type, __VA_ARGS__>::value, bool>::type = true
 #define FWD_ENABLE_IF_SUBCLASS_ANY(TYPE, ...) typename std::enable_if<is_base_of_any<typename std::decay<TYPE>::type, __VA_ARGS__>::value, bool>::type
 
+/**********************************************************************************************************************/
+
 /** The `always_false` struct can be used to create a templated struct that will always evaluate to `false` when used
  * in a static_assert.
  *
@@ -102,3 +104,13 @@ struct is_base_of_any<T, Head, Rest...> : std::integral_constant<bool, std::is_b
 template <typename T, T val>
 struct always_false : std::false_type {
 };
+
+/**********************************************************************************************************************/
+
+/** Standard convenience macro to disable the construction of automatic copy- and assign methods.
+ * Also disables automatic move constructor/assignment methods, although you might define them yourself, if you want to.
+ */
+#define DISALLOW_COPY_AND_ASSIGN(Type) \
+    Type(const Type&) = delete;        \
+    void operator=(const Type&) = delete;
+

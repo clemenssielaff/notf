@@ -4,7 +4,7 @@
 #include <string>
 
 #include "graphics/gl_forwards.hpp"
-#include "common/template.hpp"
+#include "common/meta.hpp"
 
 namespace notf {
 
@@ -100,9 +100,7 @@ private: // factory
              const GLint width, const GLint height, const Format format);
 
 public: // methods
-    /// no copy / assignment
-    Texture2(const Texture2&) = delete;
-    Texture2& operator=(const Texture2&) = delete;
+    DISALLOW_COPY_AND_ASSIGN(Texture2)
 
     /** Destructor. */
     ~Texture2();

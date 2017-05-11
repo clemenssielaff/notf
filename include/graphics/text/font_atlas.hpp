@@ -109,14 +109,13 @@ private: // classes
     };
 
 public: // methods
+    DISALLOW_COPY_AND_ASSIGN(FontAtlas)
+
     /** Default constructor. */
     FontAtlas(GraphicsContext& graphics_contextS);
 
     /** Destructor. */
     ~FontAtlas();
-
-    FontAtlas(const FontAtlas&) = delete;            // no copy construction
-    FontAtlas& operator=(const FontAtlas&) = delete; // no copy assignment
 
     /** Resets the Texture Atlas without changing its size. */
     void reset();

@@ -5,11 +5,12 @@
 
 #include "common/log.hpp"
 #include "common/random.hpp"
+#include "common/warnings.hpp"
 #include "core/application.hpp"
 #include "core/controller.hpp"
-#include "core/events/mouse_event.hpp"
-#include "core/events/focus_event.hpp"
 #include "core/events/char_event.hpp"
+#include "core/events/focus_event.hpp"
+#include "core/events/mouse_event.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
 #include "core/window_layout.hpp"
@@ -18,7 +19,6 @@
 #include "graphics/cell/painter.hpp"
 #include "graphics/graphics_context.hpp"
 #include "graphics/text/font.hpp"
-#include "utils/unused.hpp"
 
 namespace notf {
 namespace shorthand {
@@ -57,7 +57,7 @@ public: // methods
         });
 
         on_focus_changed.connect([this](FocusEvent& event) -> void {
-            if(event.action == FocusAction::GAINED){
+            if (event.action == FocusAction::GAINED) {
                 event.set_handled();
                 m_color = Color("#12d0e1");
             }
@@ -78,7 +78,7 @@ public: // methods
     virtual void _paint(Painter& painter) const override
     {
         const Aabrf widget_rect = Aabrf(get_size());
-        painter.set_scissor(widget_rect); // FIXME
+//        painter.set_scissor(widget_rect); // FIXME
         painter.begin_path();
         painter.add_rect(widget_rect);
         painter.set_fill_paint(m_color);
@@ -154,23 +154,23 @@ private: // fields
     std::shared_ptr<Window> m_window;
 };
 
-//int main(int argc, char* argv[])
-//{
-//    ApplicationInfo app_info;
-//    app_info.argc         = argc;
-//    app_info.argv         = argv;
-//    app_info.enable_vsync = false;
-//    Application& app      = Application::initialize(app_info);
+int main(int argc, char* argv[])
+{
+    ApplicationInfo app_info;
+    app_info.argc         = argc;
+    app_info.argv         = argv;
+    app_info.enable_vsync = false;
+    Application& app      = Application::initialize(app_info);
 
-//    // window
-//    WindowInfo window_info;
-//    window_info.icon          = "notf.png";
-//    window_info.size          = {800, 600};
-//    window_info.clear_color   = Color("#262a32");
-//    window_info.is_resizeable = true;
-//    auto window               = Window::create(window_info);
+    // window
+    WindowInfo window_info;
+    window_info.icon          = "notf.png";
+    window_info.size          = {800, 600};
+    window_info.clear_color   = Color("#262a32");
+    window_info.is_resizeable = true;
+    auto window               = Window::create(window_info);
 
-//    window->get_layout()->set_controller(std::make_shared<MainController>(window));
+    window->get_layout()->set_controller(std::make_shared<MainController>(window));
 
-//    return app.exec();
-//}
+    return app.exec();
+}

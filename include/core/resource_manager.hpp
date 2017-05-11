@@ -4,6 +4,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "common/meta.hpp"
+
 struct NVGcontext;
 
 namespace notf {
@@ -15,10 +17,10 @@ class Font;
 class ResourceManager {
 
 public: // methods
-    ResourceManager() = default;
+    DISALLOW_COPY_AND_ASSIGN(ResourceManager)
 
-    ResourceManager(const ResourceManager&) = delete; // no copy construction
-    ResourceManager& operator=(const ResourceManager&) = delete; // no copy assignment
+    /**Default Constructor. */
+    ResourceManager() = default;
 
     /** The Graphic Manager's texture directory path, absolute or relative to the executable. */
     const std::string& get_texture_directory() const { return m_texture_directory; }

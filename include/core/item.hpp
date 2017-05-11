@@ -7,7 +7,7 @@
 #include "common/id.hpp"
 #include "common/signal.hpp"
 #include "common/size2.hpp"
-#include "common/template.hpp"
+#include "common/meta.hpp"
 #include "common/xform2.hpp"
 #include "utils/binding_accessors.hpp"
 
@@ -115,9 +115,7 @@ protected: // constructor ******************************************************
     Item();
 
 public: // methods ****************************************************************************************************/
-    // no copy / assignment
-    Item(const Item&) = delete;
-    Item& operator=(const Item&) = delete;
+    DISALLOW_COPY_AND_ASSIGN(Item)
 
     /** Destructor */
     virtual ~Item();

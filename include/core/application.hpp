@@ -113,9 +113,7 @@ private: // constructor
     Application(ApplicationInfo info);
 
 public: // methods
-    // no copy / assignment
-    Application(const Application&) = delete;
-    Application& operator=(Application) = delete;
+    DISALLOW_COPY_AND_ASSIGN(Application)
 
     /** Desctructor */
     ~Application();

@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "common/enum.hpp"
-#include "common/template.hpp"
+#include "common/meta.hpp"
 
 namespace notf {
 
