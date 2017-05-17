@@ -303,14 +303,14 @@ void Painterpreter::_set_scissor(const Scissor& scissor)
 
         Xform2f local_xform = current_state.xform * scissor.xform;
 
-        Aabrf base_aabr = Aabrf::centered(current_state.scissor.extend * 2);
+        Aabrf base_aabr = Aabrf::centered(current_state.scissor.extend);
         current_state.scissor.xform.transform(base_aabr);
 
-        Aabrf scissor_aabr = Aabrf::centered(scissor.extend * 2);
+        Aabrf scissor_aabr = Aabrf::centered(scissor.extend);
         local_xform.transform(scissor_aabr);
         scissor_aabr.intersect(base_aabr);
 
-        current_state.scissor.extend = scissor_aabr.extend() / 2;
+        current_state.scissor.extend = scissor_aabr.extend();
         current_state.scissor.xform  = Xform2f::translation(scissor_aabr.center());
     }
     else { // => !m_base_scissor.extend.is_valid()
@@ -1196,8 +1196,8 @@ void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const 
         frag.scissor_2x2[3]    = xinv[1][1];
         frag.scissor_trans[0]  = xinv[2][0];
         frag.scissor_trans[1]  = xinv[2][1];
-        frag.scissor_extent[0] = scissor.extend.width;
-        frag.scissor_extent[1] = scissor.extend.height;
+        frag.scissor_extent[0] = scissor.extend.width / 2;
+        frag.scissor_extent[1] = scissor.extend.height / 2;
         frag.scissor_scale[0]  = sqrt(scissor.xform[0][0] * scissor.xform[0][0] + scissor.xform[1][0] * scissor.xform[1][0]) / fringe;
         frag.scissor_scale[1]  = sqrt(scissor.xform[0][1] * scissor.xform[0][1] + scissor.xform[1][1] * scissor.xform[1][1]) / fringe;
     }

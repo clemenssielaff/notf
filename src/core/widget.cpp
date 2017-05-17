@@ -58,8 +58,9 @@ void Widget::paint(CellCanvas& canvas) const
     { // paint the Cell
         Scissor scissor;
         if (LayoutPtr scissor_layout = get_scissor()) {
-            scissor.extend = scissor_layout->get_size() / 2;
-            scissor.xform  = scissor_layout->get_window_transform() * Xform2f::translation({scissor.extend.width, scissor.extend.height});
+            scissor.extend = scissor_layout->get_size();
+            scissor.xform  = scissor_layout->get_window_transform() * Xform2f::translation({scissor.extend.width / 2,
+                                                                                           scissor.extend.height / 2});
         }
         canvas.paint(*m_cell, get_window_transform(), std::move(scissor));
     }

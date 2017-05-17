@@ -111,7 +111,7 @@ void Painter::set_scissor(const Aabrf& aabr)
     detail::PainterState& current_state = _get_current_state();
 
     current_state.scissor.xform  = Xform2f::translation(aabr.center());
-    current_state.scissor.extend = aabr.extend() / 2;
+    current_state.scissor.extend = aabr.extend();
     m_cell.m_commands.add_command(SetScissorCommand(current_state.scissor));
 }
 

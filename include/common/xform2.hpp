@@ -49,6 +49,14 @@ struct _Xform2 {
                          {0, 0}}}};
     }
 
+    /** The zero matrix. */
+    static _Xform2 zero()
+    {
+        return _Xform2{{{{0, 0},
+                         {0, 0},
+                         {0, 0}}}};
+    }
+
     /** A translation matrix. */
     static _Xform2 translation(vector_t translation)
     {
