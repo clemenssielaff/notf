@@ -14,7 +14,7 @@ class Font;
 /** The Resource Manager owns all dynamically loaded resources.
  * It is not a Singleton, even though each Application will most likely only have one.
  */
-class ResourceManager {
+class ResourceManager { // TODO: cleanup ResourceManager, I don't know how/if it is still used
 
 public: // methods
     DISALLOW_COPY_AND_ASSIGN(ResourceManager)

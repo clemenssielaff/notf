@@ -80,6 +80,12 @@ struct SetXformCommand : public PainterCommand {
     Xform2f xform;
 };
 
+/** Command to reset the Xform of the current PainterState. */
+struct ResetXformCommand : public PainterCommand {
+    ResetXformCommand()
+        : PainterCommand(RESET_XFORM) {}
+};
+
 /** Command to transform the current Xform of the current PainterState. */
 struct TransformCommand : public PainterCommand {
     TransformCommand(Xform2f xform)
@@ -188,8 +194,8 @@ struct LineJoinCommand : public PainterCommand {
 struct RenderTextCommand : public PainterCommand {
     RenderTextCommand(std::shared_ptr<std::string> text, std::shared_ptr<Font> font)
         : PainterCommand(RENDER_TEXT), text(text), font(font) {}
-  std::shared_ptr<std::string> text;
-  std::shared_ptr<Font> font;
+    std::shared_ptr<std::string> text;
+    std::shared_ptr<Font> font;
 };
 
 } // namespace notf

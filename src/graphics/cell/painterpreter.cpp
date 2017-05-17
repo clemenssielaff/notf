@@ -21,15 +21,30 @@ Painterpreter::Painterpreter(CellCanvas& context)
     , m_points()
     , m_paths()
     , m_states()
-    , m_bounds(Aabrf::zero())
+    , m_bounds()
+    , m_base_xform()
+    , m_base_scissor()
 {
+    _reset();
 }
 
-// TODO: when this draws, revisit this function and see if you find a way to guarantee that there is always a path and point without if-statements all over the place
-void Painterpreter::paint(Cell& cell)
+void Painterpreter::paint(Cell& cell, Xform2f base_xform, Scissor base_scissor)
 {
     _reset();
 
+    m_base_xform   = std::move(base_xform);
+    m_base_scissor = std::move(base_scissor);
+
+    PainterState& current_state = _get_current_state();
+    current_state.xform         = m_base_xform;
+    current_state.scissor       = m_base_scissor;
+
+    _paint(cell);
+}
+
+// TODO: when this draws, revisit this function and see if you find a way to guarantee that there is always a path and point without if-statements all over the place
+void Painterpreter::_paint(Cell& cell)
+{
     // parse the Cell's command buffer
     const PainterCommandBuffer& commands = cell.get_commands();
     for (size_t index = 0; index < commands.size();) {
@@ -120,6 +135,12 @@ void Painterpreter::paint(Cell& cell)
             index += command_size<decltype(cmd)>();
         } break;
 
+        case PainterCommand::RESET_XFORM: {
+            const ResetXformCommand& cmd = map_command<ResetXformCommand>(commands, index);
+            _get_current_state().xform   = m_base_xform;
+            index += command_size<decltype(cmd)>();
+        } break;
+
         case PainterCommand::TRANSFORM: {
             const TransformCommand& cmd = map_command<TransformCommand>(commands, index);
             _get_current_state().xform *= cmd.xform;
@@ -128,25 +149,25 @@ void Painterpreter::paint(Cell& cell)
 
         case PainterCommand::TRANSLATE: {
             const TranslationCommand& cmd = map_command<TranslationCommand>(commands, index);
-            _get_current_state().xform *= Xform2f::translation(cmd.delta);
+            _get_current_state().xform.translate(cmd.delta);
             index += command_size<decltype(cmd)>();
         } break;
 
         case PainterCommand::ROTATE: {
             const RotationCommand& cmd = map_command<RotationCommand>(commands, index);
-            _get_current_state().xform = Xform2f::rotation(cmd.angle) * _get_current_state().xform;
+            _get_current_state().xform.rotate(cmd.angle);
             index += command_size<decltype(cmd)>();
         } break;
 
         case PainterCommand::SET_SCISSOR: {
             const SetScissorCommand& cmd = map_command<SetScissorCommand>(commands, index);
-            _get_current_state().scissor = cmd.scissor;
+            _set_scissor(cmd.scissor);
             index += command_size<decltype(cmd)>();
         } break;
 
         case PainterCommand::RESET_SCISSOR: {
             const ResetScissorCommand& cmd = map_command<ResetScissorCommand>(commands, index);
-            _get_current_state().scissor   = {Xform2f::identity(), {-1, -1}};
+            _get_current_state().scissor   = m_base_scissor;
             index += command_size<decltype(cmd)>();
         } break;
 
@@ -231,7 +252,9 @@ void Painterpreter::_reset()
     m_states.clear();
     m_states.emplace_back(); // always have at least one state
 
-    m_bounds = Aabrf::wrongest();
+    m_bounds       = Aabrf::wrongest();
+    m_base_xform   = Xform2f::identity();
+    m_base_scissor = Scissor();
 }
 
 void Painterpreter::_push_state()
@@ -270,6 +293,30 @@ void Painterpreter::_add_path()
 {
     Path& new_path       = create_back(m_paths);
     new_path.first_point = m_points.size();
+}
+
+void Painterpreter::_set_scissor(const Scissor& scissor)
+{
+    PainterState& current_state = _get_current_state();
+
+    if (m_base_scissor.extend.is_valid()) {
+
+        Xform2f local_xform = current_state.xform * scissor.xform;
+
+        Aabrf base_aabr = Aabrf::centered(current_state.scissor.extend * 2);
+        current_state.scissor.xform.transform(base_aabr);
+
+        Aabrf scissor_aabr = Aabrf::centered(scissor.extend * 2);
+        local_xform.transform(scissor_aabr);
+        scissor_aabr.intersect(base_aabr);
+
+        current_state.scissor.extend = scissor_aabr.extend() / 2;
+        current_state.scissor.xform  = Xform2f::translation(scissor_aabr.center());
+    }
+    else { // => !m_base_scissor.extend.is_valid()
+        current_state.scissor.extend = scissor.extend;
+        current_state.scissor.xform  = _get_current_state().xform * scissor.xform;
+    }
 }
 
 float Painterpreter::_get_path_area(const Path& path) const
@@ -1128,7 +1175,8 @@ void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const 
 
     frag.inner_color = paint.inner_color.premultiplied();
     frag.outer_color = paint.outer_color.premultiplied();
-    if (scissor.extend.width < 1.0f || scissor.extend.height < 1.0f) { // extend cannot be less than a pixel
+    if (scissor.extend.width < 0 || scissor.extend.height < 0) {
+        // invalid scissor
         frag.scissor_2x2[0]    = 0;
         frag.scissor_2x2[1]    = 0;
         frag.scissor_2x2[2]    = 0;
@@ -1146,10 +1194,10 @@ void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const 
         frag.scissor_2x2[1]    = xinv[0][1];
         frag.scissor_2x2[2]    = xinv[1][0];
         frag.scissor_2x2[3]    = xinv[1][1];
-        frag.scissor_trans[0]  = xinv[2][0] - scissor.extend.width / 2;
-        frag.scissor_trans[1]  = xinv[2][1] - scissor.extend.height / 2;
-        frag.scissor_extent[0] = scissor.extend.width / 2;
-        frag.scissor_extent[1] = scissor.extend.height / 2;
+        frag.scissor_trans[0]  = xinv[2][0];
+        frag.scissor_trans[1]  = xinv[2][1];
+        frag.scissor_extent[0] = scissor.extend.width;
+        frag.scissor_extent[1] = scissor.extend.height;
         frag.scissor_scale[0]  = sqrt(scissor.xform[0][0] * scissor.xform[0][0] + scissor.xform[1][0] * scissor.xform[1][0]) / fringe;
         frag.scissor_scale[1]  = sqrt(scissor.xform[0][1] * scissor.xform[0][1] + scissor.xform[1][1] * scissor.xform[1][1]) / fringe;
     }

@@ -64,10 +64,20 @@ public: // methods
     /** Constructor. */
     Painterpreter(CellCanvas& context);
 
-    /** Paints a given Cell. */
-    void paint(Cell& cell);
+    /** Paints a given Cell without applying a base transform or -scissor. */
+    void paint(Cell& cell)
+    {
+        _reset();
+        _paint(cell);
+    }
+
+    /** Paints a given Cell with a base transform and -scissor applied to all paint operations. */
+    void paint(Cell& cell, Xform2f base_xform, Scissor base_scissor);
 
 private: // methods
+    /** Paints a given Cell.*/
+    void _paint(Cell& cell);
+
     /** Resets the Painterpreter and clears all States, Points etc. */
     void _reset();
 
@@ -89,6 +99,9 @@ private: // methods
 
     /** Creates a new, empty Path. */
     void _add_path();
+
+    /** Sets a new scissor. */
+    void _set_scissor(const Scissor& scissor);
 
     /** Calculates the area of a given Path. */
     float _get_path_area(const Path& path) const;
@@ -193,11 +206,17 @@ public: // fields
     /** Intermediate representation of the Painter Paths. */
     std::vector<Path> m_paths;
 
-    /** Stack of painter states. */
+    /** Stack of painter states, is never empty. */
     std::vector<PainterState> m_states;
 
     /** The bounds of all vertices, used to define the quad to render them onto. */
     Aabrf m_bounds;
+
+    /** First Xform applied all paint operations. */
+    Xform2f m_base_xform;
+
+    /** Scissor applied to all paint operations. */
+    Scissor m_base_scissor;
 };
 
 } // namespace notf

@@ -49,7 +49,7 @@ struct PainterBase {
 /** State used by a Painter (and Painterpreter) to contextualize paint operations. */
 struct PainterState {
     Xform2f xform                   = Xform2f::identity();
-    Scissor scissor                 = {Xform2f::identity(), {-1, -1}};
+    Scissor scissor                 = Scissor();
     BlendMode blend_mode            = BlendMode::SOURCE_OVER;
     PainterBase::LineCap line_cap   = PainterBase::LineCap::BUTT;
     PainterBase::LineJoin line_join = PainterBase::LineJoin::MITER;
@@ -84,16 +84,11 @@ class Painter : public detail::PainterBase {
     friend class Widget;
 
 public: // methods
-    /** Constructor for Widgets. */
-    Painter(CellCanvas& canvas, const Widget* widget);
-
-    /** Manual value constructor (in case you want to draw something that's not a Widget).
+     /** Value constructor.
      * @param canvas    CellCanvas to paint into.
      * @param cell      Cell to paint.
-     * @param transform Base transform of the Painter in Cell coordinates.
-     * @param scissor   Scissor rect in Cell coordinates.
      */
-    Painter(CellCanvas& canvas, Cell& cell, const Xform2f transform = Xform2f::identity(), const Aabrf scissor = Aabrf::zero());
+    Painter(CellCanvas& canvas, Cell& cell);
 
     /* State management ***********************************************************************************************/
 
@@ -315,9 +310,6 @@ private: // fields
 
     /** Cell, that this Painter is painting into. */
     Cell& m_cell;
-
-    /** Transformation of the painted Cell. */
-    const Xform2f m_base_transform;
 
     /** Scissor of the painted Cell. */
     Scissor m_base_scissor;

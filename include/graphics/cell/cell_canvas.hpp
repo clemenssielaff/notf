@@ -144,13 +144,17 @@ public: // methods
     const FontManager& get_font_manager() const;
 
     /** Returns the Cell options that are guaranteed to be consistent during the drawing of a frame. */
-    const CellCanvasOptions& get_options() const { return m_options;}
+    const CellCanvasOptions& get_options() const { return m_options; }
 
     /** Begins a new frame. */
     void begin_frame(const Size2i& buffer_size, const Time time, const Vector2f mouse_pos);
 
     /** Paints a given Cell. */
     void paint(Cell& cell) { m_painterpreter->paint(cell); }
+    void paint(Cell& cell, Xform2f base_xform, Scissor base_scissor)
+    {
+        m_painterpreter->paint(cell, std::move(base_xform), std::move(base_scissor));
+    }
 
     /** Aborts the drawing of the current frame if something went wrong. */
     void reset();

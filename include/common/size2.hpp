@@ -1,5 +1,6 @@
 #pragma once
 
+#include <assert.h>
 #include <iosfwd>
 
 #include "common/float.hpp"
@@ -88,6 +89,13 @@ struct _Size2 {
 
     /** Changes the Size2 by a given factor. */
     _Size2 operator*(const value_t factor) const { return {width * factor, height * factor}; }
+
+    /** Changes the Size2 by a given divisor. */
+    _Size2 operator/(const value_t divisor) const
+    {
+        assert(divisor != 0);
+        return {width / divisor, height / divisor};
+    }
 };
 
 //*********************************************************************************************************************/

@@ -41,11 +41,11 @@ void Widget::redraw()
     m_is_clean = false;
 }
 
-void Widget::paint(CellCanvas& cell_context) const
+void Widget::paint(CellCanvas& canvas) const
 {
     // update the Cell if the Widget is dirty
     //    if (!m_is_clean) {
-    Painter painter(cell_context, this);
+    Painter painter(canvas, *m_cell.get());
     try {
         _paint(painter);
     } catch (std::runtime_error error) {
@@ -55,8 +55,14 @@ void Widget::paint(CellCanvas& cell_context) const
     m_is_clean = true;
     //    }
 
-    // paint the Cell
-    cell_context.paint(*m_cell);
+    { // paint the Cell
+        Scissor scissor;
+        if (LayoutPtr scissor_layout = get_scissor()) {
+            scissor.extend = scissor_layout->get_size() / 2;
+            scissor.xform  = scissor_layout->get_window_transform() * Xform2f::translation({scissor.extend.width, scissor.extend.height});
+        }
+        canvas.paint(*m_cell, get_window_transform(), std::move(scissor));
+    }
 }
 
 void Widget::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const

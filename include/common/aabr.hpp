@@ -5,8 +5,8 @@
 
 #include "common/float.hpp"
 #include "common/hash.hpp"
-#include "common/size2.hpp"
 #include "common/meta.hpp"
+#include "common/size2.hpp"
 #include "common/vector2.hpp"
 
 namespace notf {
@@ -144,6 +144,17 @@ struct _Aabr {
         _Aabr result;
         result._min = vector_t::fill(std::numeric_limits<value_t>::max());
         result._max = vector_t::fill(std::numeric_limits<value_t>::lowest());
+        return result;
+    }
+
+    /** Returns an Aabr of a given size, with zero in the center. */
+    static _Aabr centered(const _Size2<value_t>& size)
+    {
+        const value_t half_width  = size.width / 2;
+        const value_t half_height = size.height / 2;
+        _Aabr result;
+        result._min = {-half_width, -half_height};
+        result._max = {half_width, half_height};
         return result;
     }
 

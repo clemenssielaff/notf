@@ -140,13 +140,14 @@ void RenderManager::_collect_widgets(const ScreenItem* root_item, std::vector<st
     }
 
     // don't draw scissored Widgets
-    if(LayoutPtr scissor = root_item->get_scissor()){
-        Aabrf root_item_aabr = root_item->get_local_aarbr();
-        get_transformation_between(root_item, scissor.get()).transform(root_item_aabr);
-        if(!scissor->get_local_aarbr().intersects(root_item_aabr)){
-            return;
-        }
-    }
+//    if(LayoutPtr scissor = root_item->get_scissor()){
+//        Aabrf root_item_aabr = root_item->get_local_aarbr();
+//        get_transformation_between(root_item, scissor.get()).transform(root_item_aabr);
+//        if(!scissor->get_local_aarbr().intersects(root_item_aabr)){
+//            return;
+//        }
+//    }
+    // TODO: ignoring scissored widgets doesn't work...
 
     size_t render_layer = root_item->get_render_layer()->get_index();
     assert(render_layer < widgets.size());

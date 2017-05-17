@@ -49,45 +49,15 @@ namespace notf {
 
 std::vector<detail::PainterState> Painter::s_states;
 
-Painter::Painter(CellCanvas& canvas, const Widget* widget)
-    : m_canvas(canvas)
-    , m_cell(*widget->get_cell().get())
-    , m_base_transform(widget->get_window_transform())
-    , m_base_scissor()
-    , m_stylus(Vector2f::zero())
-    , m_has_open_path(false)
-{
-    if (LayoutPtr scissor_layout = widget->get_scissor()) {
-        m_base_scissor.xform  = scissor_layout->get_window_transform();
-        m_base_scissor.extend = scissor_layout->get_size();
-    }
-
-    s_states.clear();
-    s_states.emplace_back();
-
-    m_cell.clear();
-    m_cell.m_commands.add_command(SetXformCommand(m_base_transform));
-    if (!m_base_scissor.extend.is_zero()) {
-        m_cell.m_commands.add_command(SetScissorCommand(m_base_scissor));
-    }
-}
-
-Painter::Painter(CellCanvas& canvas, Cell& cell, const Xform2f transform, const Aabrf scissor)
+Painter::Painter(CellCanvas& canvas, Cell& cell)
     : m_canvas(canvas)
     , m_cell(cell)
-    , m_base_transform(std::move(transform))
-    , m_base_scissor{Xform2f::translation(scissor.center()), {scissor.width(), scissor.height()}}
     , m_stylus(Vector2f::zero())
     , m_has_open_path(false)
 {
     s_states.clear();
     s_states.emplace_back();
-
     m_cell.clear();
-    m_cell.m_commands.add_command(SetXformCommand(m_base_transform));
-    if (!m_base_scissor.extend.is_zero()) {
-        m_cell.m_commands.add_command(SetScissorCommand(m_base_scissor));
-    }
 }
 
 size_t Painter::push_state()
@@ -109,13 +79,13 @@ size_t Painter::pop_state()
 void Painter::set_transform(const Xform2f& xform)
 {
     detail::PainterState& current_state = _get_current_state();
-    current_state.xform                 = m_base_transform * xform;
+    current_state.xform                 = xform;
     m_cell.m_commands.add_command(SetXformCommand(current_state.xform));
 }
 void Painter::reset_transform()
 {
-    m_cell.m_commands.add_command(SetXformCommand(m_base_transform));
-    _get_current_state().xform = m_base_transform;
+    _get_current_state().xform = Xform2f::identity();
+    m_cell.m_commands.add_command(ResetXformCommand());
 }
 
 void Painter::transform(const Xform2f& transform)
@@ -140,18 +110,15 @@ void Painter::set_scissor(const Aabrf& aabr)
 {
     detail::PainterState& current_state = _get_current_state();
 
-    current_state.scissor.xform = Xform2f::translation(aabr.center());
-    current_state.scissor.xform *= current_state.xform;
-    current_state.scissor.extend = aabr.extend();
+    current_state.scissor.xform  = Xform2f::translation(aabr.center());
+    current_state.scissor.extend = aabr.extend() / 2;
     m_cell.m_commands.add_command(SetScissorCommand(current_state.scissor));
-
-    // TODO: scissor can never be larger than base_scissor
 }
 
 void Painter::remove_scissor()
 {
     m_cell.m_commands.add_command(ResetScissorCommand());
-    _get_current_state().scissor = {Xform2f::identity(), {-1, -1}};
+    _get_current_state().scissor = Scissor();
 }
 
 void Painter::set_blend_mode(const BlendMode mode)

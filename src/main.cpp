@@ -78,7 +78,7 @@ public: // methods
     virtual void _paint(Painter& painter) const override
     {
         const Aabrf widget_rect = Aabrf(get_size());
-//        painter.set_scissor(widget_rect); // FIXME
+        painter.set_scissor(widget_rect); // FIXME
         painter.begin_path();
         painter.add_rect(widget_rect);
         painter.set_fill_paint(m_color);
@@ -118,7 +118,7 @@ public: // methods
 
         FontPtr font = Font::load(m_graphics_context, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 12);
 
-        for (int i = 1; i <= 20; ++i) {
+        for (int i = 1; i <= 25; ++i) {
             std::shared_ptr<RectWidget> rect = std::make_shared<RectWidget>(m_graphics_context, font, Color("#c34200"));
             stack_layout->add_item(rect);
         }
