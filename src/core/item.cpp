@@ -81,11 +81,11 @@ void Item::set_render_layer(const RenderLayerPtr& render_layer)
     }
     m_has_own_render_layer = false;
     if (render_layer) {
-        _set_render_layer(render_layer);
+        _cascade_render_layer(render_layer);
         m_has_own_render_layer = true;
     }
     else {
-        _set_render_layer(parent->m_render_layer);
+        _cascade_render_layer(parent->m_render_layer);
     }
 }
 
@@ -97,23 +97,6 @@ LayoutPtr Item::_get_layout() const
 ControllerPtr Item::_get_controller() const
 {
     return _get_first_ancestor<Controller>();
-}
-
-void Item::_update_parent_layout()
-{
-    LayoutPtr parent_layout = _get_layout();
-    while (parent_layout) {
-        // if the parent Layout's Claim changed, we also need to update its parent ...
-        if (parent_layout->_update_claim()) {
-            parent_layout = parent_layout->_get_layout();
-        }
-        // ... otherwise, we have reached the end of the propagation through the ancestry
-        // and continue to relayout all children from the parent downwards
-        else {
-            parent_layout->_relayout();
-            return;
-        }
-    }
 }
 
 template <typename AncestorType>
@@ -167,7 +150,7 @@ void Item::_set_parent(ItemPtr parent)
 
     // inherit the parent's RenderLayer, if you don't have your own
     if (!_has_own_render_layer()) {
-        _set_render_layer(parent->m_render_layer);
+        _cascade_render_layer(parent->m_render_layer);
     }
 
     on_parent_changed(parent->get_id());

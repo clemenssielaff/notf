@@ -290,6 +290,12 @@ public: // signals *************************************************************
     Signal<FocusEvent&> on_focus_changed;
 
 protected: // methods *************************************************************************************************/
+    /** Notifies the parent Layout that the Claim of this ScreenItem has changed.
+     * The change propagates up the Item hierarchy until it reaches the first ancestor, that doesn't need to change its
+     * Claim, where it proceeds downwards again to re-layout all changed Items.
+     */
+    void _update_parent_layout();
+
     /** Tells the Window that this Item needs to be redrawn.
      * @return False if the Widget is invisible and doesn't need to be redrawn.
      */

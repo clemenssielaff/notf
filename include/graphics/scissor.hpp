@@ -9,12 +9,10 @@ namespace notf {
  * The default constructed Scissor is invalid.
  */
 struct Scissor {
-    /** Scissors transformation.
-     * Note that the transformation of the scissor points to the center of the scissor, not it's top-left corner.
-     */
+    /** Scissors transformation of its top-left corner. */
     Xform2f xform = Xform2f::zero();
 
-    /** Extend of the Scissor. */
+    /** Extend of the Scissor in coordinates transformed with `xform`. */
     Size2f extend = Size2f::invalid();
 };
 

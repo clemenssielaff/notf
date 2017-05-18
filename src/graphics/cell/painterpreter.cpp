@@ -275,7 +275,7 @@ void Painterpreter::_add_point(Vector2f position, const Point::Flags flags)
     // bring the Point from Painter- into Cell-space
     _get_current_state().xform.transform(position);
 
-    // if the Point is not significantly different from the last one, use that instead.
+    // if the Point is not significantly different from the last one, use that instead
     if (!m_points.empty()) {
         Point& last_point = m_points.back();
         if (position.is_approx(last_point.pos, m_canvas.get_options().distance_tolerance)) {
@@ -284,7 +284,7 @@ void Painterpreter::_add_point(Vector2f position, const Point::Flags flags)
         }
     }
 
-    // otherwise append a new Point to the current Path
+    // ... or if it is significantly different, append a new Point to the current Path
     m_points.emplace_back(Point{std::move(position), Vector2f::zero(), Vector2f::zero(), 0.f, flags});
     m_paths.back().point_count++;
 }
@@ -300,20 +300,20 @@ void Painterpreter::_set_scissor(const Scissor& scissor)
     PainterState& current_state = _get_current_state();
 
     if (m_base_scissor.extend.is_valid()) {
-
-        Xform2f local_xform = current_state.xform * scissor.xform;
-
-        Aabrf base_aabr = Aabrf::centered(current_state.scissor.extend);
+        // calculate the base scissor AABR
+        Aabrf base_aabr = Aabrf(current_state.scissor.extend);
         current_state.scissor.xform.transform(base_aabr);
 
-        Aabrf scissor_aabr = Aabrf::centered(scissor.extend);
-        local_xform.transform(scissor_aabr);
+        // ... and intersect it with the proposed scissor's AABR before applying it
+        Aabrf scissor_aabr = Aabrf(scissor.extend);
+        (current_state.xform * scissor.xform).transform(scissor_aabr);
         scissor_aabr.intersect(base_aabr);
 
         current_state.scissor.extend = scissor_aabr.extend();
-        current_state.scissor.xform  = Xform2f::translation(scissor_aabr.center());
+        current_state.scissor.xform  = Xform2f::translation(scissor_aabr.top_left());
     }
-    else { // => !m_base_scissor.extend.is_valid()
+    else {
+        // if there is no valid base scissor, just apply the new one
         current_state.scissor.extend = scissor.extend;
         current_state.scissor.xform  = _get_current_state().xform * scissor.xform;
     }
@@ -1189,15 +1189,20 @@ void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const 
         frag.scissor_scale[1]  = 1.0f;
     }
     else {
-        const Xform2f xinv     = scissor.xform.get_inverse();
+        const float half_width  = scissor.extend.width / 2;
+        const float half_height = scissor.extend.height / 2;
+        Xform2f xinv            = scissor.xform;
+        xinv.translate({half_width, half_height});
+        xinv.invert();
+
         frag.scissor_2x2[0]    = xinv[0][0];
         frag.scissor_2x2[1]    = xinv[0][1];
         frag.scissor_2x2[2]    = xinv[1][0];
         frag.scissor_2x2[3]    = xinv[1][1];
         frag.scissor_trans[0]  = xinv[2][0];
         frag.scissor_trans[1]  = xinv[2][1];
-        frag.scissor_extent[0] = scissor.extend.width / 2;
-        frag.scissor_extent[1] = scissor.extend.height / 2;
+        frag.scissor_extent[0] = half_width;
+        frag.scissor_extent[1] = half_height;
         frag.scissor_scale[0]  = sqrt(scissor.xform[0][0] * scissor.xform[0][0] + scissor.xform[1][0] * scissor.xform[1][0]) / fringe;
         frag.scissor_scale[1]  = sqrt(scissor.xform[0][1] * scissor.xform[0][1] + scissor.xform[1][1] * scissor.xform[1][1]) / fringe;
     }

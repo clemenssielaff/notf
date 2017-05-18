@@ -107,10 +107,14 @@ struct always_false : std::false_type {
 
 /**********************************************************************************************************************/
 
-/** Standard convenience macro to disable the construction of automatic copy- and assign methods.
+/** Convenience macro to disable the construction of automatic copy- and assign methods.
  * Also disables automatic move constructor/assignment methods, although you might define them yourself, if you want to.
  */
 #define DISALLOW_COPY_AND_ASSIGN(Type) \
     Type(const Type&) = delete;        \
     void operator=(const Type&) = delete;
 
+/** Convenience macro to define shared pointer types for a given type. */
+#define DEFINE_SHARED_POINTER_TYPES(Type)   \
+    using Ptr      = std::shared_ptr<Type>; \
+    using ConstPtr = std::shared_ptr<const Type>;

@@ -27,6 +27,7 @@ bool Widget::set_claim(const Claim claim)
 {
     bool was_changed = _set_claim(claim);
     if (was_changed) {
+        _update_parent_layout();
         _redraw();
     }
     return was_changed;
@@ -59,8 +60,7 @@ void Widget::paint(CellCanvas& canvas) const
         Scissor scissor;
         if (LayoutPtr scissor_layout = get_scissor()) {
             scissor.extend = scissor_layout->get_size();
-            scissor.xform  = scissor_layout->get_window_transform() * Xform2f::translation({scissor.extend.width / 2,
-                                                                                           scissor.extend.height / 2});
+            scissor.xform  = scissor_layout->get_window_transform();
         }
         canvas.paint(*m_cell, get_window_transform(), std::move(scissor));
     }
@@ -73,7 +73,7 @@ void Widget::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& re
     // TODO: Widget::get_widget_at() should test if the given local_pos is loctated in its shape
 }
 
-void Widget::_set_render_layer(const RenderLayerPtr& render_layer)
+void Widget::_cascade_render_layer(const RenderLayerPtr& render_layer)
 {
     m_render_layer = render_layer;
 }

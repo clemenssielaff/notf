@@ -50,8 +50,8 @@ using ItemID = Id<Item, RawID>;
  *
  * Item Hierarchy
  * ==============
- * Starting with the WindowLayout, which is owned by a Window, every Item is owned by its immediate parent Item through
- * a shared pointer.
+ * Starting with the WindowLayout at the root, which is owned by a Window, every Item is owned by its immediate parent
+ * Item through a shared pointer.
  *
  * Item IDs
  * ========
@@ -62,23 +62,22 @@ using ItemID = Id<Item, RawID>;
  * ===============
  * When it comes to the lifetime of items, the way that Python and NoTF work together poses an interesting challenge.
  *
- * Within NoTF's C++ codebase, Items (Layouts, Widgets, Controllers) are usually owned by their parent item through a
- * `shared_ptr`.
- * There may be other `shared_ptr`s at any given time that keep an Item alive but they are usually short-lived and only
- * serve as a fail-save mechanism to ensure that the item stays valid between function calls.
+ * Within NoTF's C++ codebase, Items (Layouts, Widgets, Controllers) are owned by their parent item through a shared
+ * pointer.
+ * There may be other shared pointers at any given time that keep an Item alive but they are usually short-lived and
+ * only serve as a fail-save mechanism to ensure that the item stays valid between function calls.
  * When instancing a Item subclass in Python, a `PyObject` is generated, whose lifetime is managed by Python.
- * In order to have save access to the underlying NoTF Item, the `PyObject` keeps a `shared_ptr` to it.
- * So far so good.
+ * In order to have save access to the underlying NoTF Item, the `PyObject` keeps a shared pointer to it.
  *
  * The difficulties arise, when Python execution of the app's `main.py` has finished.
- * By that time, all `PyObject`s are deallocated and release their `shared_ptr`s.
+ * By that time, all `PyObject`s are deallocated and release their shared pointers.
  * Items that are connected into the Item hierarchy stay alive, Items that are only referenced by a `PyObject` (and are
  * not part of the Item hierarchy) are deleted.
  * Usually that is what we would want, but in order to be able to call overridden virtual methods of Item subclasses
  * created in Python, we need to keep the `PyObject` alive for as long as the corresponding NoTF Item is alive.
  *
  * To do that, Items can keep a `PyObject` around, making sure that it is alive as long as they are.
- * However, since the `PyObject` also has a `std::shared_ptr` to the item, they own each other and will therefore never
+ * However, since the `PyObject` also has a shared pointer to the item, they own each other and will therefore never
  * be deleted.
  * Something has to give.
  * We cannot *not* keep a `PyObject` around, and we cannot allow the `PyObject` to have anything but a strong (owning)
@@ -175,12 +174,6 @@ protected: // methods **********************************************************
      */
     ControllerPtr _get_controller() const;
 
-    /** Notifies the parent Layout that the Claim of this Item has changed.
-     * The change propagates up the Item hierarchy until it reaches the first ancestor, that doesn't need to change its
-     * Claim, where it proceeds downwards again to re-layout all changed Items.
-     */
-    void _update_parent_layout();
-
     /** Tests whether this Item has its own RenderLayer, or if it inherits one from its parent. */
     bool _has_own_render_layer() const { return m_has_own_render_layer; }
 
@@ -200,10 +193,10 @@ protected_except_for_bindings : // methods
 
     // clang-format on
 protected: // static methods ******************************************************************************************/
-    /** Allows any Item subclass to call `_set_render_layer` on any other Item. */
-    static void _set_render_layer(Item* item, const RenderLayerPtr& render_layer)
+    /** Allows any Item subclass to call `_cascade_render_layer` on any other Item. */
+    static void _cascade_render_layer(Item* item, const RenderLayerPtr& render_layer)
     {
-        item->_set_render_layer(render_layer);
+        item->_cascade_render_layer(render_layer);
     }
 
     /** Allows any Item subclass to call `_get_widgets_at` on any other Item. */
@@ -223,7 +216,7 @@ private: // methods
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const = 0;
 
     /** Recursive implementation to set the RenderLayer of all Items below this one. */
-    virtual void _set_render_layer(const RenderLayerPtr& render_layer) = 0;
+    virtual void _cascade_render_layer(const RenderLayerPtr& render_layer) = 0;
 
 protected: // fields
     /** The RenderLayer of this Item.

@@ -117,6 +117,23 @@ bool ScreenItem::set_local_transform(const Xform2f transform)
     return true;
 }
 
+void ScreenItem::_update_parent_layout()
+{
+    LayoutPtr parent_layout = _get_layout();
+    while (parent_layout) {
+        // if the parent Layout's Claim changed, we also need to update its parent ...
+        if (parent_layout->_update_claim()) {
+            parent_layout = parent_layout->_get_layout();
+        }
+        // ... otherwise, we have reached the end of the propagation through the ancestry
+        // and continue to relayout all children from the parent downwards
+        else {
+            parent_layout->_relayout();
+            return;
+        }
+    }
+}
+
 bool ScreenItem::_redraw()
 {
     if (is_visible()) {
@@ -203,14 +220,15 @@ Xform2f get_transformation_between(const ScreenItem* source, const ScreenItem* t
     for (const ScreenItem* it = source; it != common_ancestor; it = it->get_layout().get()) {
         source_branch *= it->get_transform();
     }
-//    source_branch.invert();
 
     Xform2f target_branch = Xform2f::identity();
     for (const ScreenItem* it = target; it != common_ancestor; it = it->get_layout().get()) {
         target_branch *= it->get_transform();
     }
+    target_branch.invert();
 
-    return source_branch * target_branch.get_inverse();
+    source_branch *= target_branch;
+    return source_branch;
 }
 
 } // namespace notf

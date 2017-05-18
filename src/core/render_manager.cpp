@@ -143,8 +143,10 @@ void RenderManager::_collect_widgets(const ScreenItem* root_item, std::vector<st
     if (LayoutPtr scissor = root_item->get_scissor()) {
         Aabrf root_item_aabr = root_item->get_local_aarbr();
         get_transformation_between(root_item, scissor.get()).transform(root_item_aabr);
+        const Aabrf scissor_aabr = scissor->get_local_aarbr();
         if (!scissor->get_local_aarbr().intersects(root_item_aabr)) {
-            log_trace << "Ignoring ScreenItem " << root_item->get_id();
+//            log_trace << "Scissoring Item " << root_item->get_id();
+            root_item_aabr.grow(1);
             return;
         }
     }
@@ -167,7 +169,7 @@ void RenderManager::_collect_widgets(const ScreenItem* root_item, std::vector<st
         }
     }
 
-    else { // a ScreenItem but not a Layout or a Widget? .. something's wrong...
+    else { // a ScreenItem but not a Layout or a Widget? Something's wrong...
         assert(false);
     }
 }

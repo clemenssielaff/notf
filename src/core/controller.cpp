@@ -38,14 +38,14 @@ void Controller::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
     }
 }
 
-void Controller::_set_render_layer(const RenderLayerPtr& render_layer)
+void Controller::_cascade_render_layer(const RenderLayerPtr& render_layer)
 {
     if(_has_own_render_layer() || render_layer == m_render_layer){
         return;
     }
     m_render_layer = render_layer;
     if (m_root_item) {
-        Item::_set_render_layer(m_root_item.get(), render_layer);
+        Item::_cascade_render_layer(m_root_item.get(), render_layer);
     }
 }
 

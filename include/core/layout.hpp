@@ -30,7 +30,7 @@ using LayoutIteratorPtr = std::unique_ptr<LayoutIterator>;
 /** Abstract Layout baseclass. */
 class Layout : public ScreenItem {
 
-    friend class Item;
+    friend class ScreenItem;
 
 protected: // constructor  ********************************************************************************************/
     /** Default Constructor. */
@@ -73,7 +73,7 @@ public: // signals  ************************************************************
 protected: // methods *************************************************************************************************/
     virtual bool _set_size(const Size2f size) override;
 
-    virtual void _set_render_layer(const RenderLayerPtr& render_layer) override;
+    virtual void _cascade_render_layer(const RenderLayerPtr& render_layer) override;
 
     /** Updates the Claim of this Layout.
      * @return  True, iff the Claim was modified.

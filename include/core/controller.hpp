@@ -53,7 +53,7 @@ private: // methods
 
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
-    virtual void _set_render_layer(const RenderLayerPtr& render_layer) override;
+    virtual void _cascade_render_layer(const RenderLayerPtr& render_layer) override;
 
 private: // fields
     /** Item at the root of the Controller's Item hierarchy. */

@@ -29,7 +29,7 @@ bool Layout::_set_size(const Size2f size)
     return false;
 }
 
-void Layout::_set_render_layer(const RenderLayerPtr& render_layer)
+void Layout::_cascade_render_layer(const RenderLayerPtr& render_layer)
 {
     if(_has_own_render_layer() || render_layer == m_render_layer){
         return;
@@ -37,7 +37,7 @@ void Layout::_set_render_layer(const RenderLayerPtr& render_layer)
     m_render_layer = render_layer;
     auto it = iter_items();
     while (Item* item = it->next()) {
-        Item::_set_render_layer(item, render_layer);
+        Item::_cascade_render_layer(item, render_layer);
     }
 }
 
