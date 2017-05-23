@@ -43,6 +43,8 @@ private: // fields
     size_t m_index;
 };
 
+// TODO: will we ever have a problem with Items holding shared_ptr to a renderLayer that the RenderManager got rid off?
+
 /**********************************************************************************************************************/
 
 /** The RenderManager class */

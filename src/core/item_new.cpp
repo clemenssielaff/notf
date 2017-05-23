@@ -5,6 +5,7 @@
 
 #include "common/log.hpp"
 #include "core/controller.hpp"
+#include "core/item_container.hpp"
 #include "core/layout.hpp"
 #include "core/window_layout.hpp"
 
@@ -24,10 +25,11 @@ ItemID get_next_id()
 
 namespace notf {
 
-Item::Item()
+Item::Item(std::unique_ptr<detail::ItemContainer> container)
     : m_id(get_next_id())
+    , m_window()
     , m_parent()
-    , m_raw_parent()
+    , m_children(std::move(container))
 #ifdef NOTF_PYTHON
     , m_py_object(nullptr, py_decref)
 #endif
@@ -38,6 +40,7 @@ Item::Item()
 Item::~Item()
 {
     log_trace << "Destroying Item #" << m_id;
+    m_children->clear();
 }
 
 bool Item::has_ancestor(const Item* ancestor) const
@@ -46,9 +49,9 @@ bool Item::has_ancestor(const Item* ancestor) const
         return false;
     }
 
-    ConstItemPtr parent = get_parent();
+    const Item* parent = m_parent;
     while (parent) {
-        if (parent.get() == ancestor) {
+        if (parent == ancestor) {
             return true;
         }
         parent = parent->get_parent();
@@ -56,45 +59,51 @@ bool Item::has_ancestor(const Item* ancestor) const
     return false;
 }
 
-ItemPtr Item::get_common_ancestor(Item* other)
+Item* Item::get_common_ancestor(Item* other)
 {
+    if (this->m_window != other->m_window) {
+        return nullptr;
+    }
+
     if (this == other) {
-        return shared_from_this();
+        return this;
     }
 
-    ItemPtr first  = shared_from_this();
-    ItemPtr second = other->shared_from_this();
+    Item* first  = this;
+    Item* second = other;
 
-    std::unordered_set<ItemPtr> known_ancestors = {first, second};
-    while (first && second) {
-        first  = first->get_parent();
-        second = second->get_parent();
-        if (known_ancestors.count(first)) {
-            return first;
+    std::unordered_set<Item*> known_ancestors = {first, second};
+    while (1) {
+        if (first) {
+            first = first->get_parent();
+            if (known_ancestors.count(first)) {
+                return first;
+            }
+            known_ancestors.insert(first);
         }
-        if (known_ancestors.count(second)) {
-            return second;
+        if (second) {
+            second = second->get_parent();
+            if (known_ancestors.count(second)) {
+                return second;
+            }
+            known_ancestors.insert(second);
         }
-        known_ancestors.insert(first);
-        known_ancestors.insert(second);
     }
-
-    return nullptr;
 }
 
-LayoutPtr Item::get_layout()
+Layout* Item::get_layout()
 {
     return _get_first_ancestor<Layout>();
 }
 
-ControllerPtr Item::get_controller()
+Controller* Item::get_controller()
 {
     return _get_first_ancestor<Controller>();
 }
 
-ScreenItemPtr Item::get_screen_item()
+ScreenItem* Item::get_screen_item()
 {
-    ScreenItemPtr screen_item = std::dynamic_pointer_cast<ScreenItem>(shared_from_this());
+    ScreenItem* screen_item = dynamic_cast<ScreenItem*>(this);
     if (!screen_item) {
         screen_item = dynamic_cast<Controller*>(this)->get_root_item();
     }
@@ -102,23 +111,46 @@ ScreenItemPtr Item::get_screen_item()
     return screen_item;
 }
 
-Window* Item::get_window() const
+void Item::_set_parent(Item* parent)
 {
-    if (WindowLayoutPtr window_layout = _get_first_ancestor<WindowLayout>()) {
-        return window_layout->get_window();
+    if (parent == m_parent) {
+        return;
     }
-    return {};
+    m_parent = parent;
+
+    if (m_parent) {
+        _set_window(m_parent->m_window);
+    }
+    else {
+        _set_window(nullptr);
+    }
+
+    on_parent_changed(m_parent);
+}
+
+void Item::_set_window(Window* window)
+{
+    if (window == m_window) {
+        return;
+    }
+    m_window = window;
+
+    m_children->apply([window](Item* item) -> void {
+        item->_set_window(window);
+    });
+
+    on_window_changed(m_window);
 }
 
 template <typename Type>
-std::shared_ptr<Type> Item::_get_first_ancestor() const
+Type* Item::_get_first_ancestor() const
 {
-    ItemPtr next = m_parent.lock();
+    Item* next = m_parent;
     while (next) {
-        if (std::shared_ptr<Type> result = std::dynamic_pointer_cast<Type>(next)) {
+        if (Type* result = dynamic_cast<Type*>(next)) {
             return result;
         }
-        next = next->m_parent.lock();
+        next = next->m_parent;
     }
     return {};
 }

@@ -168,6 +168,7 @@ SOURCES += \
     src/nanovg_test.cpp \
     src/common/signal.cpp \
     src/core/item_new.cpp \
+    src/core/item_container.cpp \
     src/core/screen_item_new.cpp \
     src/core/widget_new.cpp \
     src/core/layout_new.cpp \
@@ -261,6 +262,7 @@ HEADERS += \
     include/common/utf.hpp \
     include/core/events/focus_event.hpp \
     include/core/item_new.hpp \
+    include/core/item_container.hpp \
     include/core/screen_item_new.hpp \
     include/core/widget_new.hpp \
     include/core/layout_new.hpp \

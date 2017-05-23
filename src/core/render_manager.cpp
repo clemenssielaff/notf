@@ -139,18 +139,6 @@ void RenderManager::_collect_widgets(const ScreenItem* root_item, std::vector<st
         return;
     }
 
-    // don't draw scissored Widgets
-    if (LayoutPtr scissor = root_item->get_scissor()) {
-        Aabrf root_item_aabr = root_item->get_local_aarbr();
-        get_transformation_between(root_item, scissor.get()).transform(root_item_aabr);
-        const Aabrf scissor_aabr = scissor->get_local_aarbr();
-        if (!scissor->get_local_aarbr().intersects(root_item_aabr)) {
-//            log_trace << "Scissoring Item " << root_item->get_id();
-            root_item_aabr.grow(1);
-            return;
-        }
-    }
-
     size_t render_layer = root_item->get_render_layer()->get_index();
     assert(render_layer < widgets.size());
 

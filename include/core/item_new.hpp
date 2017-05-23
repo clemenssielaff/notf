@@ -21,17 +21,9 @@ class ScreenItem;
 class Widget;
 class Window;
 
-using ControllerPtr = std::shared_ptr<Controller>;
-using ItemPtr       = std::shared_ptr<Item>;
-using LayoutPtr     = std::shared_ptr<Layout>;
-using ScreenItemPtr = std::shared_ptr<ScreenItem>;
-using WidgetPtr     = std::shared_ptr<Widget>;
-
-using ConstControllerPtr = std::shared_ptr<const Controller>;
-using ConstItemPtr       = std::shared_ptr<const Item>;
-using ConstLayoutPtr     = std::shared_ptr<const Layout>;
-using ConstScreenItemPtr = std::shared_ptr<const ScreenItem>;
-using ConstWidgetPtr     = std::shared_ptr<const Widget>;
+namespace detail {
+struct ItemContainer;
+} // namespace detail
 
 /** Unqiue identification token of an Item. */
 using RawID  = size_t;
@@ -84,11 +76,13 @@ using ItemID = Id<Item, RawID>;
  */
 class Item : public receive_signals, public std::enable_shared_from_this<Item> {
 
+    friend struct detail::ItemContainer;
+
 protected: // constructor *********************************************************************************************/
-    /** Default Constructor. */
-    Item();
+    Item(std::unique_ptr<detail::ItemContainer> container);
 
 public: // methods ****************************************************************************************************/
+    DEFINE_SHARED_POINTER_TYPES(Item)
     DISALLOW_COPY_AND_ASSIGN(Item)
 
     /** Destructor */
@@ -97,19 +91,23 @@ public: // methods *************************************************************
     /** Application-unique ID of this Item. */
     ItemID get_id() const { return m_id; }
 
-    /** Checks if this Item currently has a parent Item or not. */
-    bool has_parent() const { return !m_parent.expired(); }
+    /** The Window containing the hierarchy that this Item is a part of.
+     * Is invalid if this Item is not part of a rooted hierarchy.
+     */
+    Window* get_window() const { return m_window; }
 
-    /** Returns the parent Item containing this Item, may be invalid. */
-    ItemPtr get_parent() { return m_parent.lock(); }
-    ConstItemPtr get_parent() const { return m_parent.lock(); }
+    /** The parent of this Item.
+     * Is invalid if this Item does not have a parent.
+     */
+    Item* get_parent() { return m_parent; }
+    const Item* get_parent() const { return const_cast<Item*>(this)->get_parent(); }
 
     /** Tests, if this Item is a descendant of the given ancestor Item. */
     bool has_ancestor(const Item* ancestor) const;
 
     /** Finds and returns the first common ancestor of two Items, returns empty if none exists. */
-    ItemPtr get_common_ancestor(Item* other);
-    ConstItemPtr get_common_ancestor(const Item* other) const
+    Item* get_common_ancestor(Item* other);
+    const Item* get_common_ancestor(const Item* other) const
     {
         return const_cast<Item*>(this)->get_common_ancestor(const_cast<Item*>(other));
     }
@@ -117,32 +115,40 @@ public: // methods *************************************************************
     /** Returns the closest Layout in the hierarchy of the given Item.
      * Is empty if the given Item has no ancestor Layout.
      */
-    LayoutPtr get_layout();
-    ConstLayoutPtr get_layout() const { return const_cast<Item*>(this)->get_layout(); }
+    Layout* get_layout();
+    const Layout* get_layout() const { return const_cast<Item*>(this)->get_layout(); }
 
     /** Returns the closest Controller in the hierarchy of the given Item.
      * Is empty if the given Item has no ancestor Controller.
      */
-    ControllerPtr get_controller();
-    ConstControllerPtr get_controller() const { return const_cast<Item*>(this)->get_controller(); }
+    Controller* get_controller();
+    const Controller* get_controller() const { return const_cast<Item*>(this)->get_controller(); }
 
     /** Returns the ScreenItem associated with this given Item - either the Item itself or a Controller's root Item. */
-    ScreenItemPtr get_screen_item();
-    ConstScreenItemPtr get_screen_item() const { return const_cast<Item*>(this)->get_screen_item(); }
-
-    /** Returns the Window containing this Widget (can be empty). */
-    Window* get_window() const;
+    ScreenItem* get_screen_item();
+    const ScreenItem* get_screen_item() const { return const_cast<Item*>(this)->get_screen_item(); }
 
 public: // signals ****************************************************************************************************/
     /** Emitted when this Item got a new parent.
-     * @param ItemID of the new parent.
+     * @param The new parent.
      */
-    Signal<ItemID> on_parent_changed;
+    Signal<Item*> on_parent_changed;
+
+    /** Emitted when this Item is moved to the Item hierarchy of a new Window.
+     * @param New Window.
+     */
+    Signal<Window*> on_window_changed;
 
 protected: // methods *************************************************************************************************/
+    /** Sets the parent of this Item. */
+    virtual void _set_parent(Item* parent);
+
+    /** Changes the Window that this Item is displayed id. */
+    void _set_window(Window* window);
+
     /** Returns the first ancestor of this Item that has a specific type (can be empty if none is found). */
     template <typename Type>
-    std::shared_ptr<Type> _get_first_ancestor() const;
+    Type* _get_first_ancestor() const;
 
 #ifdef NOTF_PYTHON
     /** The Python object owned by this Item, is nullptr before the ownership is transferred from Python's __main__. */
@@ -155,21 +161,19 @@ protected_except_for_bindings : // methods
 #endif
     // clang-format on
 
-protected: // static methods ******************************************************************************************/
-    /** Allow any Item to inspect the raw parent of every other Item. */
-    Item* _get_raw_parent(const Item* item) { return item->m_raw_parent; }
+protected: // fields **************************************************************************************************/
+    /** All children of this Item. */
+    std::unique_ptr<detail::ItemContainer> m_children;
 
 private: // fields ****************************************************************************************************/
     /** Application-unique ID of this Item. */
     const ItemID m_id;
 
-    /** The parent Item, may be invalid. */
-    std::weak_ptr<Item> m_parent;
+    /** The Window containing the hierarchy that this Item is a part of. */
+    Window* m_window;
 
-    /** The parent Item as a raw pointer for quick traversal.
-     * Must only be used internally and only when you are certain that the pointer is still valid.
-     */
-    Item* m_raw_parent;
+    /** The parent Item, is guaranteed to be valid iff `m_window` is valid. */
+    Item* m_parent;
 
 #ifdef NOTF_PYTHON
     /** Python subclass object of this Item, if it was created through Python. */
