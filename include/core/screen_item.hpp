@@ -1,6 +1,7 @@
 #pragma once
 
-#include "common/aabr.hpp"
+#include "common/xform2.hpp"
+#include "core/claim.hpp"
 #include "core/item.hpp"
 
 namespace notf {
@@ -10,118 +11,27 @@ class KeyEvent;
 class FocusEvent;
 class MouseEvent;
 
-using uchar = unsigned char;
+class RenderLayer;
+using RenderLayerPtr = std::shared_ptr<RenderLayer>;
 
-/** Baseclass for all Items that have physical expansion (Widgets and Layouts).
- *
- *
- *
- * ScreenItem size is an interesting topic, worth a little bit of discussion.
- * It is one of those things you don't really tend to think too much about, until you have to layout widgets on a screen.
- * Layouting is urprisingly hard, but you've heard that already, I suppose.
- * Let's go through a standard layouting process and how NoTF does it's magic behind the scenes.
- *
- * We'll look at Widgets first, and than at Layouts since Layouts contain Widgets but not the other way around.
- *
- * At the very least, a Widget needs a size: a 2-dimensional value describing the width and the height of the expansion
- * of the Widget on screen.
- * Widgets have a size and it does correspond to the screen area of the Widget if certain conditions are met.
- * For now, let's assume this is the case.
- * What determines the size of a Widget?
- * To a certain degree, the programmer.
- * You can set all Widget sizes explicitly and be done with it.
- * But that wouldn't make for a responsive interface.
- * As soon as you have basic Widget types, that we've all come to expect from our UIs (like splitter or resizeable
- * container), Widgets that only have a fixed size will end up taking too much screen real-estate or too litle.
- * It's like visiting an old website on your phone to find that there's no way to read a paragraph without horizontal
- * scrolling because the page does not respond to the size of you phone.
- *
- * This is why the Layout determines the size of a Widget, while the programmer only supplies a contraints and hints.
- * In NoTF, these are called a `Claim`.
- * Basically, a Widget claims a certain amount of space and then negotates with the Layout on how much it actually
- * receives.
- * You (the programmer) can provide a hard minimum and a hard maximum as well as a preferred value which is used to
- * distribute surplus space among multiple Widgets.
- * Additionally, you can define minimum and maximum width/height ratios for the area, as well as a priority that causes
- * Widgets with a higher priority to fill up as much space as allowed, before giving other Widgets the chance to do the
- * same.
- * If you want to make sure that the Widget has a certain size, you can set the min- and max-values of the Claim to the
- * same value.
- *
- * Up to this point, the size of the Widget is guaranteed to be in screen coordinates, meaning a size of 50x50 will
- * result in a Widget that takes up 50x50 pixels (on a monitor with a 1:1 relation between pixels and screen
- * coordinates, but that's a different topic).
- * But that is only true for unscaled Widgets.
- *
- * Widgets, like any ScreenItem, can be transformed.
- * If you don't know what that means, think "moved, rotated and scaled".
- * Moving is pretty straight forward and does not influence the size of the Widget.
- * Widgets are usually moved by their Layout, but you can always define a manual offset to a Widget's transform which
- * is added on top of the Layout's transformation.
- *
- * Rotating and scaling a Widget does influence its size and this is where things get a bit more complicated.
- * Fortunately, in most cases you will not need to use this functionality - but if you do, its nice to know that is
- * there.
- *
- * Transformations
- * ===============
- * As mentioned, you can always add an offset to a ScreenItem's transformation supplied by its Layout.
- * This works because internally, any ScreenItem has two transformations that are combined into its final transformation
- * in relation to its parent
- * Layout, which can be queried using `get_transform()`.
- * The `layout transform` is the transformation applied to the Item by its parent Layout.
- * The `local transform` is an additional offset transformation on the Item that is applied after the `layout
- * transform`.
- *
- *
- *
- *
- *
- * The thing is: transforming a Widget does not influence this (internal) size. Of course, a Widget scaled to twice its
- * size will appear bigger on screen, but its size data field (the one used by its Layout to place it) remains
- * unaffected.
- *
- * Let me repeat this, because this is important: scale and rotation of a Widget does not affect its Layout, nor does
- * it affect its hit detection.
- * Clicking into an area of a Widget that is outside its unscaled shape will not be registered.
- * Now, you might think that this makes things more complicated, but it really doesn't.
- * Scaling and rotating Widgets rarely occur in user interfaces and when it does, it is usally the 'Cell' of a Widget
- * that is rotating, not the Widget itself (see 'Cell' below).
- *
- *
- * Opacity
- * =======
- * Each ScreenItem has an `opacity` member, which is a float in the range [0 -> 1].
- * An opacity of `0` means that the Item is fully transparent (invisible, in fact), an opacity of `0.5` semi-transparent
- * and `1` not transparent at all.
- * Opacity trickles down the hierarchy, meaning that in order to get to the effective opacity of an Item, you have to
- * multiply it's own opacity with that of each ancestor.
- *
- * Size
- * ====
- * The size is the visual size of the Widget in parent space.
- * If a Widget has a size of 100x100 in an unscaled space, it does not necessarily mean that the Widget takes up
- * 100x100 px in the Window.
- * It might be outside the Window or (partly) scissored, but if you were to show it in its entirety, this is how large
- * it would be.
- * This is the same for both Widgets and Layouts.
+/**
  *
  * Claims
  * ================
- * Both widgets and Layouts have a Claim, that is a minimum / preferred / maximum 2D size that it would like to occupy
- * on the screen, but both use them in different ways:
+ * All ScreenItems have a Claim, that is a minimum / preferred / maximum 2D size that it would like to occupy on screen,
+ * but Layouts and Widgets use them in different ways:
  *
- * For a widget, the Claim is a hard constraint.
+ * For a Widget, the Claim is a hard constraint.
  * It can never shrink beyond its minimum and never grow beyond its maximum.
- * Everything in between is determined by its parent Layout, which should have a tendency to favor the widgets preferred
- * size if in doubt.
+ * Everything in between is determined by its parent Layout, which should have a tendency to favor the Widget's
+ * preferred size if in doubt.
  *
  * Layouts have two modes in which they can operate.
  * By default, a Layout builds up its Claim by accumulating all of its items' Claims in a layout-specific way.
  * In that case, the combined minimum size of all Items becomes the Layout's minimum size - the same goes for the
  * maximum size.
- * Optionally, you can manually set a Claim, which internally causes the Layout to ignore its Items' Claims and provide
- * its own from now on.
+ * Optionally, you can set an explicit Claim on the Layout, which internally causes the Layout to ignore its Items'
+ * Claims and provide its own from now on.
  * This way, you can have a scroll area that takes up available space and has its size set in response to its own Claim,
  * rather than to the combined Claims of all of its child Items.
  * If you want to revert to an Item-driven Claim, call `set_claim` with a zero Claim.
@@ -130,8 +40,8 @@ using uchar = unsigned char;
  * ==================
  * Layouts and Widgets need to "negotiate" the Layout.
  * Whenever a Widget changes its Claim, the parent Layout has to see if it needs to update its Claim accordingly.
- * If its Claim changes, its respective parent might need to update as well - up to the first Layout that does not
- * update its Claim (at the latest, the WindowLayout never updates its Claim).
+ * If its Claim changes, its respective parent Layout might need to update as well - up to the first Layout that does
+ * not update its Claim (at the latest, the WindowLayout never updates its Claim).
  *
  * The pipeline is as follows:
  *
@@ -142,25 +52,28 @@ using uchar = unsigned char;
  *      3. The last notified Layout will re-layout all of its children and assign each one a new size and transform.
  *         Layout children will react by themselves re-layouting and potentially resizing their own children.
  *
+ * Size
+ * ====
+ * The size is the visual size of the Widget in untransformed space.
+ * If a Widget has a size of 100x100 in an unscaled space, it does not necessarily mean that the Widget takes up
+ * 100x100 px in the Window as it might be transformed and / or scissored.
  *
- * Scissoring
- * ==========
- * In order to implement scroll areas that contain a view on Widgets that are never drawn outside of its boundaries,
- * those Widgets need to be "scissored" by the scroll area.
- * A "Scissor" is an axis-aligned rectangle, scissoring is the act of cutting off parts of a Widget that fall outside
- * that rectangle.
- * Every Widget contains a pointer to the parent Layout that acts as its scissor.
- * An empty pointer means that this Widget is scissored by its parent Layout, but every Layout in this Widget's Item
- * ancestry can be used (including the Windows WindowLayout, which effectively disables scissoring).
+ * A Layout's size is the area in which it can arrange its children.
+ * There is no guarantee that all of the children will fit into the size and Layouts will frequently flow over, but
+ * the size is the goal that the Layout should fulfill as closely as possible.
+ *
+ * A Widget's size is the size of its Cell, the area into which it is painted.
+ * Like Layouts, Widgets are not bound to their size and can paint into the area outside as well.
  *
  * Spaces
  * ======
  *
- * Untransformed local space
+ * Untransformed space
  * -------------------------
- * Claims are made in untransformed local space.
+ * Claims are made in untransformed space.
  * That means, they are not affected by the local transform applied to the ScreenItem, nor do they change when the
  * parent Layout changes the ScreenItem's layout transform.
+ * The ScreenItem's size is in this space also.
  *
  * Local (offset) space
  * --------------------
@@ -169,42 +82,67 @@ using uchar = unsigned char;
  * ScreenItem twofold, it will appear bigger on screen but the scale will remain invisible to the the parent Layout.
  * That also means that clicking the cursor into the overflow areas will not count as a click inside the ScreenItem,
  * because the parent won't know that it appears bigger on screen.
- * Offsets are useful, for example, to apply a jitter animation to a Layout.
+ * Offsets are useful, for example, to apply a jitter animation or similiar transformations that should not affect the
+ * layout.
  *
  * Layout (parent) space
  * ---------------------
- * Transform controller by the parent Layout.
+ * Transformation controlled by the parent Layout.
  * Used mostly to position the ScreenItem within the parent Layout.
  * Can also be used as a projection matrix in a scene view ...?
  *
+ * Opacity
+ * =======
+ * Each ScreenItem has an `opacity` member, which is a float in the range [0 -> 1].
+ * An opacity of `0` means that the Item is fully transparent (invisible, in fact), an opacity of `0.5` semi-transparent
+ * and `1` not transparent at all.
+ * Opacity trickles down the hierarchy, meaning that in order to get to the effective opacity of an Item, you have to
+ * multiply it's own opacity with that of each ancestor.
  *
+ * Scissoring
+ * ==========
+ * In order to implement scroll areas that contain a view on Widgets that are never drawn outside of its boundaries,
+ * those Widgets need to be "scissored" by the scroll area.
+ * A "Scissor" is an axis-aligned rectangle, scissoring is the act of cutting off parts of a Widget that fall outside
+ * that rectangle.
+ * Every Widget contains a pointer to the ancestor Layout that acts as its scissor.
+ * By default, all ScreenItems are scissored to the WindowLayout, but you can explicitly override the scissor Layout for
+ * each ScreenItem individually.
+ * If a ScreenItem is moved outside of its scissor hierarchy, it will fall back to its parent's scissor Layout.
+ * ScreenItems outside a hierarchy do not have a scissor.
+ *
+ * RenderLayer
+ * ===========
+ * By default, it is the Layouts' job to determine the order in which Widgets are drawn on screen.
+ * However, we might want to make exceptions to this rule, where an Widget (for example a tooltip) is logically part of
+ * a nested Layout, but should be drawn on top of everything else.
+ * For that, we have RenderLayers, explicit layers that each ScreenItem in the hierarchy can be assigned to in order to
+ * render them before or after other parts of the hierarchy.
+ * The WindowLayout is part of the default RenderLayer `zero`.
+ * If you set an ScreenItem to another RenderLayer (for example `one`) it, and all of its children will be drawn in
+ * front of everything in RenderLayer zero.
  */
 class ScreenItem : public Item {
-
-    friend class Item;
-    friend class Layout;
-
 protected: // constructor *********************************************************************************************/
-    /** Default Constructor. */
-    ScreenItem();
+    ScreenItem(std::unique_ptr<detail::ItemContainer> container);
 
 public: // methods ****************************************************************************************************/
-    /** Destructor. */
-    virtual ~ScreenItem() override;
+    /** Returns the ScreenItem's effective transformation in parent space. */
+    const Xform2f& get_transform() const { return m_effective_transform; }
 
-    /** Returns the Item's applied transformation in parent space. */
-    const Xform2f& get_transform() const { return m_applied_transform; }
-
-    /** 2D transformation of this Item as determined by its parent Layout. */
+    /** 2D transformation of this ScreenItem as determined by its parent Layout. */
     const Xform2f& get_layout_transform() const { return m_layout_transform; }
 
-    /** 2D transformation of this Item on top of the layout transformation. */
+    /** 2D transformation of this ScreenItem on top of the layout transformation. */
     const Xform2f& get_local_transform() const { return m_local_transform; }
 
-    /** Recursive implementation to produce the Item's transformation in window space. */
+    /** Recursive implementation to produce the ScreenItem's transformation in window space. */
     Xform2f get_window_transform() const;
 
-    /** Returns the unscaled size of this Item in pixels. */
+    /** Updates the transformation of this ScreenItem. */
+    void set_local_transform(const Xform2f transform);
+
+    /** Returns the unscaled size of this ScreenItem in pixels. */
     const Size2f& get_size() const { return m_size; }
 
     /** Returns the axis-aligned bounding rect of this ScreenItem in parent space. */
@@ -216,154 +154,219 @@ public: // methods *************************************************************
     /** Returns the axis-aligned bounding rect of this ScreenItem in local space. */
     Aabrf get_local_aarbr() const;
 
-    /** Returns the opacity of this Item in the range [0 -> 1].
-     * @param own   By default, the returned opacity will be the product of this Item's opacity with all of its
-     *              ancestors. If you set `own` to true, the opacity of this Item alone is returned.
-     */
-    float get_opacity(bool own = false) const;
-
-    /** Sets the opacity of this Item.
-     * @param opacity   Is clamped to range [0 -> 1] with 0 => fully transparent and 1 => fully opaque.
-     * @return          True if the opacity changed, false if the old value is the same as the new one.
-     */
-    bool set_opacity(float opacity);
-
     /** The current Claim of this Item. */
     const Claim& get_claim() const { return m_claim; }
 
-    /** Checks, if the Item is currently visible.
-     * This method does return false if the opacity is zero but also if there are any other factors that make this Item
-     * not visible, like a zero size for example.
+    /** Returns the effective opacity of this ScreenItem in the range [0 -> 1].
+     * @param effective By default, the returned opacity will be the product of this ScreenItem's opacity with all of
+     *                  its ancestors'. If set to false, the opacity of this ScreenItem alone is returned.
+     */
+    float get_opacity(bool effective = true) const;
+
+    /** Sets the opacity of this ScreenItem.
+     * @param opacity   Is clamped to range [0 -> 1] with 0 => fully transparent and 1 => fully opaque.
+     */
+    void set_opacity(float opacity);
+
+    /** Checks, if the ScreenItem is currently visible.
+     * This method does return false if the opacity is zero but also if there are any other factors that make this
+     * ScreenItem not visible, like a zero size for example or being completely scissored.
      */
     bool is_visible() const;
 
-    /** Returns the Layout used to scissor this ScreenItem.
-     * Returns an empty shared_ptr, if no explicit scissor Layout was set, the scissor Layout has since expired or the
-     * scissor Layout does not share a Window with this ScreenItem.
-     * In this case, the ScreenItem is implicitly scissored by its parent Layout.
+    /** Sets the visibility flag of this ScreenItem.
+     * Note that the ScreenItem is not guaranteed to be visible just because the visibility flag is true (see
+     * `is_visible` for details).
+     * If the flag is false however, the ScreenItem is guaranteed to be not visible.
      */
-    LayoutPtr get_scissor(const bool own = false) const; // TODO: propagate the scissor layout down, instead of querying it up
+    void set_visible(bool is_visible);
 
-    /** Sets the new scissor Layout for this ScreenItem.
-     * @param scissor               New scissor Layout, must be an Layout in this ScreenItem's ancestry or empty.
-     * @throw std::runtime_error    If the scissor is not an ancestor Layout of this ScreenItem.
-     */
-    void set_scissor(LayoutPtr get_scissor);
+    /** Returns the Layout used to scissor this ScreenItem. */
+    const Layout* get_scissor() const { return m_scissor_layout; }
 
-    /** Updates the transformation of this Item.
-     * @return      True iff the transform was modified.
+    /** Whether this ScreenItem will inherit its scissor Layout from its parent or supply its own. */
+    bool has_explicit_scissor() const { return m_has_explicit_scissor; }
+
+    /** Sets the new scissor Layout for this ScreenItem. */
+    void set_scissor(const Layout* scissor_layout);
+
+    /** The RenderLayer that this ScreenItem is a part of. */
+    const RenderLayerPtr& get_render_layer() const { return m_render_layer; }
+
+    /** Tests whether this ScreenItem has its own RenderLayer, or if it inherits one from its parent. */
+    bool has_explicit_render_layer() const { return m_has_explicit_render_layer; }
+
+    /** (Re-)sets the RenderLayer of this ScreenItem.
+     * Pass an empty shared_ptr to implicitly inherit the RenderLayer from the parent Layout.
+     * @param render_layer  New RenderLayer of this ScreenItem
      */
-    bool set_local_transform(const Xform2f transform);
+    void set_render_layer(const RenderLayerPtr& render_layer);
 
 public: // signals ****************************************************************************************************/
-    /** Emitted, when the opacity of this Item has changed.
-     * @param New visiblity.
-     */
-    Signal<float> on_opacity_changed; // TODO: emit ScreenItem::opacity_changed also when a parent items' opacity changed?
-
-    /** Emitted, when the size of this Item has changed.
+    /** Emitted, when the size of this ScreenItem has changed.
      * @param New size.
      */
     Signal<const Size2f&> on_size_changed;
 
-    /** Emitted, when the transform of this Item has changed.
+    /** Emitted, when the effective transform of this ScreenItem has changed.
      * @param New local transform.
      */
     Signal<const Xform2f&> on_transform_changed;
 
-    /** Signal invoked when this Item is asked to handle a Mouse move event. */
+    /** Emitted when the visibility flag was changed by the user.
+     * See `set_visible()` for details.
+     */
+    Signal<bool> on_visibility_changed;
+
+    /** Emitted, when the opacity of this ScreenItem has changed.
+     * Note that the effective opacity of a ScreenItem is determined through the multiplication of all of its ancestors
+     * opacity.
+     * If an ancestor changes its opacity, only itself will fire this signal.
+     * @param New visiblity.
+     */
+    Signal<float> on_opacity_changed;
+
+    /** Emitted when the scissor of this ScreenItem changed.
+     */
+    Signal<const Layout*> on_scissor_changed;
+
+    /** Emitted when the ScreenItem is moved into a new RenderLayer.
+     * @param New RenderLayer.
+     */
+    Signal<const RenderLayerPtr&> on_render_layer_changed;
+
+    /** Signal invoked when this ScreenItem is asked to handle a Mouse move event. */
     Signal<MouseEvent&> on_mouse_move;
 
-    /** Signal invoked when this Item is asked to handle a Mouse button event. */
+    /** Signal invoked when this ScreenItem is asked to handle a Mouse button event. */
     Signal<MouseEvent&> on_mouse_button;
 
-    /** Signal invoked when this Item is asked to handle a scroll event. */
+    /** Signal invoked when this ScreenItem is asked to handle a scroll event. */
     Signal<MouseEvent&> on_mouse_scroll;
 
-    /** Signal invoked, when this Item is asked to handle a key event. */
+    /** Signal invoked, when this ScreenItem is asked to handle a key event. */
     Signal<KeyEvent&> on_key;
 
-    /** Signal invoked, when this Item is asked to handle a character input event. */
+    /** Signal invoked, when this ScreenItem is asked to handle a character input event. */
     Signal<CharEvent&> on_char_input;
 
-    /** Emitted, when the Widget has gained or lost the Window's focus. */
+    /** Emitted, when the ScreenItem has gained or lost the Window's focus. */
     Signal<FocusEvent&> on_focus_changed;
 
 protected: // methods *************************************************************************************************/
-    /** Notifies the parent Layout that the Claim of this ScreenItem has changed.
-     * The change propagates up the Item hierarchy until it reaches the first ancestor, that doesn't need to change its
-     * Claim, where it proceeds downwards again to re-layout all changed Items.
-     */
-    void _update_parent_layout();
+    /** Tells the Window that this ScreenItem needs to be redrawn. */
+    void _redraw();
 
-    /** Tells the Window that this Item needs to be redrawn.
-     * @return False if the Widget is invisible and doesn't need to be redrawn.
+    /** Returns the actual axis-aligned bounding rect of this ScreenItem in non-transformed space.
+     * Widgets simply return their size, Layouts may have more involved methods of determining their effective Aabr.
+     * Note that the Aabr may be larger or smaller than the ScreenItem size, because Layouts may need to accomodate
+     * more children than their size would allow.
      */
-    bool _redraw();
+    virtual Aabrf _get_aabr() const = 0;
 
-    /** Updates the layout transformation of this Item.
-     * @return      True iff the transform was modified.
+    /** Recursive implementation to find all Widgets at a given position in local space
+     * @param local_pos     Local coordinates where to look for a Widget.
+     * @return              All Widgets at the given coordinate, ordered from front to back.
      */
-    bool _set_layout_transform(const Xform2f transform);
+    virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const = 0;
 
-    /** Updates the size of this Item.
-     * Note that the ScreenItem's Claim can impose hard constraints on the size, which are enforced by this method.
-     * That means, you cannot assign a size to a ScreenItem that would violate its Claim.
-     * Is virtual because Layouts use this function to update their Items.
-     * @return      True iff the size was modified.
-     */
-    virtual bool _set_size(const Size2f size);
+    /** Sets the parent of this ScreenItem. */
+    virtual void _set_parent(Item* parent) override;
 
     /** Updates the Claim of this Item, may also change its size to comply with the new constraints.
      * @return      True iff the Claim was modified.
      */
     bool _set_claim(const Claim claim);
 
+    /** Updates the size of the ScreenItem.
+     * Note that the ScreenItem's claim is a hard constraint, which is enforced by this method.
+     * That means when you assign a size that cannot fulfill the claim, the actual size that ends up being set is not
+     * the one passed into the function.
+     * This function is virtual because Layouts use it to determine how to arrange their children.
+     */
+    virtual const Size2f& _set_size(const Size2f size) = 0;
+
+    /** Updates the layout transformation of this Item. */
+    void _set_layout_transform(const Xform2f transform);
+
+    /** Sets a new Scissor for this ScreenItem. */
+    void _set_scissor(const Layout* scissor_layout);
+
+    /** Sets a new RenderLayer for this ScreenItem. */
+    void _set_render_layer(const RenderLayerPtr& render_layer);
+
+    /** Notifies the parent Layout that the Claim of this ScreenItem has changed.
+     * The change propagates up the Item hierarchy until it reaches the first ancestor, that doesn't need to change its
+     * Claim, where it proceeds downwards again to re-layout all changed Items.
+     */
+    void _update_ancestor_layouts();
+
 private: // methods ***************************************************************************************************/
-    /** Calculates the transformation of this Item relative to its Window. */
+    /** Calculates the transformation of this ScreenItem relative to its Window. */
     void _get_window_transform(Xform2f& result) const;
 
-    /** Updates the ScreenItem's applied transform if either the layout- or local transform changed. */
-    void _update_applied_transform();
+    /** Updates the ScreenItem's effective transform if either the layout- or local transform changed. */
+    void _update_effective_transform();
 
 private: // fields ****************************************************************************************************/
-    /** Opacity of this Item in the range [0 -> 1]. */
-    float m_opacity;
-
-    /** Unscaled size of this Item in pixels. */
-    Size2f m_size;
-
-    /** 2D transformation of this Item as determined by its parent Layout. */
+    /** 2D transformation of this ScreenItem as determined by its parent Layout. */
     Xform2f m_layout_transform;
 
-    /** 2D transformation of this Item on top of the layout transformation. */
+    /** 2D transformation of this ScreenItem on top of the layout transformation. */
     Xform2f m_local_transform;
 
-    /** Applied 2d transformation.
+    /** effective 2d transformation.
      * This value could be recalculated on-the-fly with `m_layout_transform * m_local_transform`, but usually it is
      * changed once and read many times which is why we store it.
      */
-    Xform2f m_applied_transform;
+    Xform2f m_effective_transform;
 
-    /** The Claim of a Item determines how much space it receives in the parent Layout.
+    /** The Claim of a ScreenItem determines how much space it receives in the parent Layout.
      * Claim values are in untransformed local space.
      */
     Claim m_claim;
 
-    /** Reference to a Layout used to 'scissor' this Widget.
-     * An expired weak_ptr is treated like an empty pointer.
+    /** Unscaled size of this ScreenItem in local space. */
+    Size2f m_size;
+
+    /** Flag indicating whether a ScreenItem should be visble or not.
+     * Note that the ScreenItem is not guaranteed to be visible just because this flag is true.
+     * If the flag is false however, the ScreenItem is guaranteed to be invisible.
      */
-    std::weak_ptr<Layout> m_scissor_layout;
+    bool m_is_visible;
+
+    /** Opacity of this ScreenItem in the range [0 -> 1]. */
+    float m_opacity;
+
+    /** Reference to a Layout in the ancestry, used to 'scissor' this ScreenItem. */
+    const Layout* m_scissor_layout;
+
+    /** Whether this ScreenItem will inherit its scissor Layout from its parent or supply its own.
+     * If the ScreenItem provides its own scissor and is moved out of its scissor's hierarchy, this flag is reset to
+     * false, causing the ScreenItem to inherit its new parent's scissor instead.
+     */
+    bool m_has_explicit_scissor;
+
+    /** The RenderLayer of this ScreenItem.
+     * An empty pointer means that this ScreenItem inherits its RenderLayer from its parent.
+     */
+    RenderLayerPtr m_render_layer;
+
+    /** Every ScreenItem references a render layer, but most implicitly inherit theirs from their parent.
+     * If a RenderLayer is explicitly set, this flag is set to true, so moving the ScreenItem to another parent will not
+     * change the RenderLayer.
+     */
+    bool m_has_explicit_render_layer;
 };
 
 /**********************************************************************************************************************/
 
-/** Returns a transformation from a given ScreenItem to another one.
+/** Calculates a transformation from a given ScreenItem to another one.
  * @param source    ScreenItem prodiving source coordinates in local space.
  * @param target    ScreenItem into which the coordinates should be transformed.
  * @return          Transformation.
  * @throw           std::runtime_error, if the two ScreenItems do not share a common ancestor.
  */
-Xform2f get_transformation_between(const ScreenItem *source, const ScreenItem *target);
+Xform2f transformation_between(const ScreenItem* source, const ScreenItem* target);
 
 } // namespace notf

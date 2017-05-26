@@ -81,7 +81,7 @@ void FreeLayout::add_item(ItemPtr item)
 
     // update the parent layout if necessary
     if (_update_claim()) {
-        _update_parent_layout();
+        _update_ancestor_layouts();
     }
     _redraw();
 }

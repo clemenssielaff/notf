@@ -27,7 +27,7 @@ bool Widget::set_claim(const Claim claim)
 {
     bool was_changed = _set_claim(claim);
     if (was_changed) {
-        _update_parent_layout();
+        _update_ancestor_layouts();
         _redraw();
     }
     return was_changed;

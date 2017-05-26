@@ -260,7 +260,7 @@ void StackLayout::add_item(ItemPtr item)
 
     // update the parent layout if necessary
     if (_update_claim()) {
-        _update_parent_layout();
+        _update_ancestor_layouts();
     }
     _redraw();
 }
@@ -298,7 +298,7 @@ void StackLayout::set_direction(const Direction direction)
     }
     m_direction = direction;
     if (_update_claim()) {
-        _update_parent_layout();
+        _update_ancestor_layouts();
     }
 }
 
@@ -335,7 +335,7 @@ void StackLayout::set_wrap(const Wrap wrap)
         return;
     }
     m_wrap = wrap;
-    _update_parent_layout();
+    _update_ancestor_layouts();
 }
 
 void StackLayout::set_padding(const Padding& padding)
@@ -347,7 +347,7 @@ void StackLayout::set_padding(const Padding& padding)
     if (padding != m_padding) {
         m_padding = padding;
         if (_update_claim()) {
-            _update_parent_layout();
+            _update_ancestor_layouts();
         }
     }
 }
@@ -361,7 +361,7 @@ void StackLayout::set_spacing(float spacing)
     if (spacing != approx(m_spacing)) {
         m_spacing = spacing;
         if (_update_claim()) {
-            _update_parent_layout();
+            _update_ancestor_layouts();
         }
     }
 }
@@ -375,7 +375,7 @@ void StackLayout::set_cross_spacing(float spacing)
     if (spacing != approx(m_cross_spacing)) {
         m_cross_spacing = spacing;
         if (_update_claim()) {
-            _update_parent_layout();
+            _update_ancestor_layouts();
         }
     }
 }

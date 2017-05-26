@@ -168,7 +168,7 @@ std::shared_ptr<Texture2> Texture2::create_empty(GraphicsContext& context, const
     }
 
     // create the data
-    std::vector<uchar> data(static_cast<size_t>(size.area()), 0);
+    std::vector<uchar> data(static_cast<size_t>(size.get_area()), 0);
 
     // translate to OpenGL format
     GLenum gl_format;

@@ -1,26 +1,23 @@
 #include "core/item.hpp"
 
 #include <atomic>
+#include <unordered_set>
 
 #include "common/log.hpp"
 #include "core/controller.hpp"
+#include "core/item_container.hpp"
 #include "core/layout.hpp"
-#include "core/render_manager.hpp"
-#include "core/screen_item.hpp"
-#include "core/window.hpp"
 #include "core/window_layout.hpp"
 
 namespace { // anonymous
 using namespace notf;
 
-/** The next available Item ID, is ever-increasing. */
-std::atomic<RawID> g_nextID(1);
-
-/** Returns the next, free ItemID.
- * Is thread-safe.
+/** Returns the next available ItemID.
+ * Is thread-safe and ever-increasing.
  */
 ItemID get_next_id()
 {
+    static std::atomic<RawID> g_nextID(1);
     return g_nextID++;
 }
 
@@ -28,11 +25,11 @@ ItemID get_next_id()
 
 namespace notf {
 
-Item::Item()
-    : m_render_layer() // empty by default
+Item::Item(std::unique_ptr<detail::ItemContainer> container)
+    : m_children(std::move(container))
     , m_id(get_next_id())
+    , m_window()
     , m_parent()
-    , m_has_own_render_layer(false)
 #ifdef NOTF_PYTHON
     , m_py_object(nullptr, py_decref)
 #endif
@@ -43,157 +40,118 @@ Item::Item()
 Item::~Item()
 {
     log_trace << "Destroying Item #" << m_id;
+    m_children->clear();
 }
 
-bool Item::has_ancestor(const ItemPtr& ancestor) const
+bool Item::has_ancestor(const Item* ancestor) const
 {
-    // invalid Item can never be an ancestor
     if (!ancestor) {
         return false;
     }
 
-    // check all actual ancestors against the candidate
-    ItemPtr my_parent = get_parent();
-    while (my_parent) {
-        if (my_parent == ancestor) {
+    const Item* parent = m_parent;
+    while (parent) {
+        if (parent == ancestor) {
             return true;
         }
-        my_parent = my_parent->get_parent();
+        parent = parent->get_parent();
     }
-
-    // if no ancestor matches, we have our answer
     return false;
 }
 
-std::shared_ptr<Window> Item::get_window() const
+Item* Item::get_common_ancestor(Item* other)
 {
-    if (std::shared_ptr<const WindowLayout> window_layout = _get_first_ancestor<WindowLayout>()) {
-        return window_layout->get_window();
+    if (this->m_window != other->m_window) {
+        return nullptr;
     }
-    return {};
+
+    if (this == other) {
+        return this;
+    }
+
+    Item* first  = this;
+    Item* second = other;
+
+    std::unordered_set<Item*> known_ancestors = {first, second};
+    while (1) {
+        if (first) {
+            first = first->get_parent();
+            if (known_ancestors.count(first)) {
+                return first;
+            }
+            known_ancestors.insert(first);
+        }
+        if (second) {
+            second = second->get_parent();
+            if (known_ancestors.count(second)) {
+                return second;
+            }
+            known_ancestors.insert(second);
+        }
+    }
 }
 
-void Item::set_render_layer(const RenderLayerPtr& render_layer)
-{
-    ItemPtr parent = m_parent.lock();
-    if (!parent) {
-        throw std::runtime_error("Cannot change the RenderLayer of an Item outside the Item hierarchy.");
-    }
-    m_has_own_render_layer = false;
-    if (render_layer) {
-        _cascade_render_layer(render_layer);
-        m_has_own_render_layer = true;
-    }
-    else {
-        _cascade_render_layer(parent->m_render_layer);
-    }
-}
-
-LayoutPtr Item::_get_layout() const
+Layout* Item::get_layout()
 {
     return _get_first_ancestor<Layout>();
 }
 
-ControllerPtr Item::_get_controller() const
+Controller* Item::get_controller()
 {
     return _get_first_ancestor<Controller>();
 }
 
-template <typename AncestorType>
-std::shared_ptr<AncestorType> Item::_get_first_ancestor() const
+ScreenItem* Item::get_screen_item()
 {
-    ItemPtr next = m_parent.lock();
-    while (next) {
-        if (std::shared_ptr<AncestorType> result = std::dynamic_pointer_cast<AncestorType>(next)) {
-            return result;
-        }
-        next = next->m_parent.lock();
-    }
-    return {};
-}
-
-#ifdef NOTF_PYTHON
-void Item::_set_pyobject(PyObject* object)
-{
-    assert(!m_py_object); // you should only have to do this once
-    py_incref(object);
-    m_py_object.reset(std::move(object));
-}
-#endif
-
-void Item::_set_parent(ItemPtr parent)
-{
-    // do nothing if the new parent is the same as the old (or both are invalid)
-    ItemPtr old_parent = m_parent.lock();
-    if (parent == old_parent) {
-        return;
-    }
-
-    // check for cyclic ancestry
-    if (has_ancestor(parent)) {
-        log_critical << "Cannot make " << parent->get_id() << " the parent of " << get_id()
-                     << " because " << parent->get_id() << " is already a child of " << get_id();
-        return;
-    }
-
-    // remove yourself from the old parent Layout
-    if (LayoutPtr old_layout = std::dynamic_pointer_cast<Layout>(old_parent)) {
-        old_layout->remove_item(shared_from_this());
-    }
-
-    // set the new parent and return if it is empty
-    m_parent = parent;
-    if (!parent) {
-        on_parent_changed(0);
-        return;
-    }
-
-    // inherit the parent's RenderLayer, if you don't have your own
-    if (!_has_own_render_layer()) {
-        _cascade_render_layer(parent->m_render_layer);
-    }
-
-    on_parent_changed(parent->get_id());
-}
-
-/**********************************************************************************************************************/
-
-ScreenItem* get_screen_item(Item* item)
-{
-    if (!item) {
-        return nullptr;
-    }
-    ScreenItem* screen_item = dynamic_cast<ScreenItem*>(item);
+    ScreenItem* screen_item = dynamic_cast<ScreenItem*>(this);
     if (!screen_item) {
-        Controller* controller = dynamic_cast<Controller*>(item);
-        screen_item            = controller->get_root_item().get();
+        screen_item = dynamic_cast<Controller*>(this)->get_root_item();
     }
     assert(screen_item);
     return screen_item;
 }
 
-const Item* get_common_ancestor(const Item* i_first, const Item* i_second)
+void Item::_set_parent(Item* parent)
 {
-    if (i_first == i_second) {
-        return i_first;
+    if (parent == m_parent) {
+        return;
     }
-    const Item* first  = i_first;
-    const Item* second = i_second;
+    m_parent = parent;
 
-    std::set<const Item*> known_ancestors = {first, second};
-    while (first && second) {
-        first  = first->get_layout().get();
-        second = second->get_layout().get();
-        if (known_ancestors.count(first)) {
-            return first;
-        }
-        if (known_ancestors.count(second)) {
-            return second;
-        }
-        known_ancestors.insert(first);
-        known_ancestors.insert(second);
+    if (m_parent) {
+        _set_window(m_parent->m_window);
+    }
+    else {
+        _set_window(nullptr);
     }
 
+    on_parent_changed(m_parent);
+}
+
+void Item::_set_window(Window* window)
+{
+    if (window == m_window) {
+        return;
+    }
+    m_window = window;
+
+    m_children->apply([window](Item* item) -> void {
+        item->_set_window(window);
+    });
+
+    on_window_changed(m_window);
+}
+
+template <typename Type>
+Type* Item::_get_first_ancestor() const
+{
+    Item* next = m_parent;
+    while (next) {
+        if (Type* result = dynamic_cast<Type*>(next)) {
+            return result;
+        }
+        next = next->m_parent;
+    }
     return {};
 }
 

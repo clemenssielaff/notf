@@ -128,7 +128,7 @@ SOURCES += \
     src/core/layout.cpp \
     src/dynamic/layout/stack_layout.cpp \
     src/dynamic/controller/scroll_area.cpp \
-    src/common/claim.cpp \
+    src/core/claim.cpp \
     src/graphics/raw_image.cpp \
     src/graphics/texture2.cpp \
     src/common/circle.cpp \
@@ -167,9 +167,7 @@ SOURCES += \
     src/graphics/cell/cell_canvas.cpp \
     src/nanovg_test.cpp \
     src/common/signal.cpp \
-    src/core/item_new.cpp \
     src/core/item_container.cpp \
-    src/core/screen_item_new.cpp \
     src/core/widget_new.cpp \
     src/core/layout_new.cpp \
     src/core/controller_new.cpp \
@@ -201,7 +199,7 @@ HEADERS += \
     include/core/layout.hpp \
     include/dynamic/layout/stack_layout.hpp \
     include/dynamic/controller/scroll_area.hpp \
-    include/common/claim.hpp \
+    include/core/claim.hpp \
     include/graphics/raw_image.hpp \
     include/common/circle.hpp \
     include/common/time.hpp \
@@ -261,9 +259,7 @@ HEADERS += \
     include/core/events/char_event.hpp \
     include/common/utf.hpp \
     include/core/events/focus_event.hpp \
-    include/core/item_new.hpp \
     include/core/item_container.hpp \
-    include/core/screen_item_new.hpp \
     include/core/widget_new.hpp \
     include/core/layout_new.hpp \
     include/core/controller_new.hpp \

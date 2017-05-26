@@ -2,22 +2,35 @@
 
 #include <iosfwd>
 
-#include "common/float.hpp"
-#include "common/hash.hpp"
+#include "common/size2.hpp"
 
 namespace notf {
 
-/** The Claim of a Widget determines how much space it will receive in its parent Layout.
- * Widget Claims are not changed by the Layout, only by the Widget or User.
- * If the parent Layout cannot accompany the Items minimal size, then it must simply overflow the parent Layout.
- * Also has a min and max ratio betweeen horizontal and vertical.
- * For example, a circular Item may have a size range from 1 - 10 both vertically and horizontally, but should only
- * expand in the ration 1:1, to stay circular.
- * Also, scale factors, both for vertical and horizontal expansion.
- * Linear factors work great if you want all to expand at the same time, but not if you want some to expand before
- * others.
- * For that, you also need a priority system, where widgets in priority two are expanded before priority one.
- * Reversly, widget in priority -1 are shrunk before priority 0 etc.
+/** Every ScreenItem has a Claim that determines how much space is alloted for it in its parent Layout.
+ * The user can declare Claims manually for both Widgets and Layouts, although Layouts usually have a mechanism to
+ * calculate their own Claim based on the combined Claims of their children.
+ * A Claim is made up of serveral parts:
+ *
+ * Stretches
+ * ---------
+ * A Claim has 2 `Stretch` fields, one for its horizontal and one for its vertical extension.
+ * Each Stretch consists of a *minimum* value, a *maximum* and a preferred value.
+ * Usually, the ScreenItem assumes its *preferred* size first and is then regulated up or down, depending on how much
+ * space is left in its parent Layout.
+ *
+ * The *Stretch factor* of a Strech determines, how fast a ScreenItem grows in relation to its siblings.
+ * Two ScreenItems with Stretch factors of 1 each, will grow at the same rate when more space becomes available.
+ * If one of them had a Stretch factor of 2, it would grow twice as fast as the other, until it reaches its maximum.
+ * Conversely, a Strecth factor of 0.5 would make it grow only half as fast.
+ *
+ * The *priority* of a Stretch comes into play, when you want one ScreenItem to fully expand before any others are even
+ * considered.
+ * If you have 3 ScreenItems A, B and C and C has a priority of 1, while A and B have a priority of 0, then C will take
+ * up all available space without giving any to A and B.
+ * Only after C has reached its maximum size, is the additional space distributed to A and B (using their individual
+ * Stretch factors).
+ * Conversely, if the available space should shrink then A and B are the first ones to give up their additional space.
+ * C will only shrink after A and B have both reached their minimum size.
  */
 class Claim {
 
@@ -28,17 +41,18 @@ public: // class
     class Stretch {
 
     public: // methods
+        /** Default Constructor. */
         Stretch()
             : Stretch(0, 0, INFINITY) {}
 
-        /**
+        /** Value Constructor.
          * @param preferred    Preferred size in local units, is limited to values >= 0.
          * @param min          (optional) Minimum size, is clamped to 0 <= value <= preferred, defaults to 'preferred'.
          * @param max          (optional) Maximum size, is clamped to preferred <= value, can be INFINITY, defaults to 'preferred'.
          */
         Stretch(const float preferred, const float min = NAN, const float max = NAN)
             : m_preferred(is_real(preferred) ? notf::max(preferred, 0.f) : 0.f)
-            , m_min(is_real(min) ? notf::min(std::max(0.f, min), m_preferred) : m_preferred)
+            , m_min(is_real(min) ? notf::min(notf::max(0.f, min), m_preferred) : m_preferred)
             , m_max(is_real(preferred) ? (is_nan(max) ? m_preferred : notf::max(max, m_preferred)) : 0.f)
             , m_scale_factor(1.f)
             , m_priority(0)
@@ -46,14 +60,7 @@ public: // class
         }
 
         /** Copy constructor. */
-        Stretch(const Stretch& other)
-            : m_preferred(other.m_preferred)
-            , m_min(other.m_min)
-            , m_max(other.m_max)
-            , m_scale_factor(other.m_scale_factor)
-            , m_priority(other.m_priority)
-        {
-        }
+        Stretch(const Stretch& other) = default;
 
         /** Preferred size in local units, is >= 0. */
         float get_preferred() const { return m_preferred; }
@@ -125,10 +132,10 @@ public: // class
 
         bool operator==(const Stretch& other) const
         {
-            return (m_preferred == approx(other.m_preferred)
-                    && m_min == approx(other.m_min)
-                    && (m_max == approx(other.m_max) || (is_inf(m_max) && is_inf(other.m_max)))
-                    && m_scale_factor == approx(other.m_scale_factor)
+            return (abs(m_preferred - other.m_preferred) < precision_high<float>()
+                    && abs(m_min - other.m_min) < precision_high<float>()
+                    && (abs(m_max - other.m_max) < precision_high<float>() || (is_inf(m_max) && is_inf(other.m_max)))
+                    && abs(m_scale_factor - other.m_scale_factor) < precision_high<float>()
                     && m_priority == other.m_priority);
         }
 
@@ -185,7 +192,8 @@ private: // class
         Ratio()
             : Ratio(0, 0) {}
 
-        /** Setting one or both values to zero, results in an invalid Ratio.
+        /** Value Constructor.
+         * Setting one or both values to zero, results in an invalid Ratio.
          * @param width    Width in units, is 0 < width < INFINITY
          * @param height   Height in units, is 0 < height < INFINITY
          */
@@ -193,27 +201,28 @@ private: // class
             : m_width(width)
             , m_height(height)
         {
-            if (!notf::is_real(width) || !notf::is_real(height) || width <= 0 || height <= 0) {
+            if (!is_real(width) || !is_real(height) || width <= 0 || height <= 0) {
                 m_width  = 0;
                 m_height = 0;
             }
         }
 
         /** Tests if this Ratio is valid. */
-        bool is_valid() const { return !(m_width == approx(0) || m_height == approx(0)); }
+        bool is_valid() const { return m_width > precision_high<float>() && m_height > precision_high<float>(); }
 
         /** Returns the ratio, is 0 if invalid. */
-        float get_width_to_height() const
+        float get_height_for_width() const
         {
             if (!is_valid()) {
                 return 0;
             }
-            return m_width / m_height;
+            return m_height / m_width;
         }
 
         bool operator==(const Ratio& other) const
         {
-            return (m_width == approx(other.m_width) && m_height == approx(other.m_height));
+            return (abs(m_width - other.m_width) < precision_high<float>())
+                && (abs(m_height - other.m_height) < precision_high<float>());
         }
 
         bool operator!=(const Ratio& other) const { return !(*this == other); }
@@ -242,14 +251,6 @@ private: // class
         float m_height;
     };
 
-public: // methods ****************************************************************************************************/
-    Claim() = default;
-
-    Claim(Claim::Stretch horizontal, Claim::Stretch vertical)
-        : m_horizontal(std::move(horizontal)), m_vertical(std::move(vertical)), m_ratios() {}
-
-    Claim(const Claim& other) = default;
-
 public: // static methods *********************************************************************************************/
     /** Returns a Claim with fixed height and width. */
     static Claim fixed(float width, float height);
@@ -258,6 +259,16 @@ public: // static methods ******************************************************
     static Claim zero();
 
 public: // methods ****************************************************************************************************/
+    /** Default Constructor. */
+    Claim() = default;
+
+    /** Value Constructor. */
+    Claim(Claim::Stretch horizontal, Claim::Stretch vertical)
+        : m_horizontal(std::move(horizontal)), m_vertical(std::move(vertical)), m_ratios() {}
+
+    /** Copy Constructor. */
+    Claim(const Claim& other) = default;
+
     /** Tests if both Stretches of this Claim are always zero. */
     bool is_zero() const { return m_horizontal.is_zero() && m_vertical.is_zero(); }
 
@@ -304,7 +315,7 @@ public: // methods *************************************************************
      */
     std::pair<float, float> get_width_to_height() const
     {
-        return {m_ratios.first.get_width_to_height(), m_ratios.second.get_width_to_height()};
+        return {m_ratios.first.get_height_for_width(), m_ratios.second.get_height_for_width()};
     }
 
     /** Sets the ratio constraint.
@@ -340,6 +351,9 @@ public: // methods *************************************************************
     }
 
     bool operator!=(const Claim& other) const { return !(*this == other); }
+
+    /** Applies the constraints of this Claim to a given size value which is modified in-place. */
+    Size2f apply(const Size2f& size) const;
 
 private: // members
     /** The vertical part of this Claim. */
