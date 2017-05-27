@@ -14,8 +14,8 @@
 #include "core/widget.hpp"
 #include "core/window.hpp"
 #include "core/window_layout.hpp"
+#include "dynamic/layout/flex_layout.hpp"
 #include "dynamic/layout/overlayout.hpp"
-#include "dynamic/layout/stack_layout.hpp"
 #include "graphics/cell/painter.hpp"
 #include "graphics/graphics_context.hpp"
 #include "graphics/text/font.hpp"
@@ -101,26 +101,24 @@ private: // fields
     std::string m_text;
 };
 
-/** Stack Controller
+/** Flex Controller
  */
-class StackController : public BaseController<StackController> {
+class FlexController : public BaseController<FlexController> {
 public: // methods
-    StackController(std::shared_ptr<Window>& window)
-        : BaseController<StackController>({}, {}), m_graphics_context(window->get_graphics_context()) {}
-
-    virtual void _initialize()
+    FlexController(std::shared_ptr<Window>& window)
+        : BaseController<FlexController>({}, {}), m_graphics_context(window->get_graphics_context())
     {
-        StackLayoutPtr stack_layout = StackLayout::create(StackLayout::Direction::LEFT_TO_RIGHT);
-        stack_layout->set_spacing(10);
-        stack_layout->set_cross_spacing(10);
-        stack_layout->set_wrap(StackLayout::Wrap::WRAP);
-        _set_root_item(stack_layout);
+        std::shared_ptr<FlexLayout> flex_layout = FlexLayout::create(FlexLayout::Direction::LEFT_TO_RIGHT);
+        flex_layout->set_spacing(10);
+        flex_layout->set_cross_spacing(10);
+        flex_layout->set_wrap(FlexLayout::Wrap::WRAP);
+        _set_root_item(flex_layout);
 
         FontPtr font = Font::load(m_graphics_context, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 12);
 
         for (int i = 1; i <= 5; ++i) {
             std::shared_ptr<RectWidget> rect = std::make_shared<RectWidget>(m_graphics_context, font, Color("#c34200"));
-            stack_layout->add_item(rect);
+            flex_layout->add_item(rect);
         }
     }
 
@@ -131,27 +129,22 @@ private: // fields
 class MainController : public BaseController<MainController> {
 public: // methods
     MainController(std::shared_ptr<Window> window)
-        : BaseController<MainController>({}, {}), m_window(window) {}
-
-    virtual void _initialize()
+        : BaseController<MainController>({}, {})
     {
-        OverlayoutPtr overlayout = Overlayout::create();
+        std::shared_ptr<Overlayout> overlayout = Overlayout::create();
         overlayout->set_padding(Padding::all(20));
-        auto back_rect = std::make_shared<RectWidget>(m_window->get_graphics_context(), nullptr, Color("#333333"));
+        auto back_rect = std::make_shared<RectWidget>(window->get_graphics_context(), nullptr, Color("#333333"));
         back_rect->set_claim({});
         overlayout->add_item(back_rect);
 
-        ScrollAreaPtr scroll_area = std::make_shared<ScrollArea>();
-        scroll_area->initialize(); // TODO: this Controller::initialize stuff is really brittle, maybe combine with Controller::Factory?
-        ControllerPtr stack_controller = std::make_shared<StackController>(m_window);
-        scroll_area->set_area_controller(stack_controller);
+        ScrollAreaPtr scroll_area     = std::make_shared<ScrollArea>();
+        ControllerPtr flex_controller = std::make_shared<FlexController>(window);
+        scroll_area->set_area_controller(flex_controller);
         overlayout->add_item(scroll_area);
 
         _set_root_item(overlayout);
     }
 
-private: // fields
-    std::shared_ptr<Window> m_window;
 };
 
 int main(int argc, char* argv[])

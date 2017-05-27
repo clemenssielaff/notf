@@ -29,7 +29,7 @@ public:
 
     virtual void _paint(Painter& painter) const override
     {
-        const Size2f widget_size = get_size();
+        const Size2f widget_size = _get_size();
         const Aabrf base(widget_size);
         const float margin = 20;
         const float time   = static_cast<float>(painter.get_time().in_seconds());
@@ -513,10 +513,6 @@ class MyController : public BaseController<MyController> {
 public:
     MyController()
         : BaseController<MyController>({}, {})
-    {
-    }
-
-    virtual void _initialize() override
     {
         _set_root_item(std::make_shared<MyWidget>(*g_graphics_context));
     }

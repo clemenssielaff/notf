@@ -21,10 +21,11 @@ ScreenItem::ScreenItem(ItemContainerPtr container)
     , m_effective_transform(Xform2f::identity())
     , m_claim()
     , m_size(Size2f::zero())
+    , m_is_visible(true)
     , m_opacity(1)
     , m_scissor_layout()
     , m_has_explicit_scissor(false)
-    , m_render_layer(nullptr)
+    , m_render_layer()
     , m_has_explicit_render_layer(false)
 {
 }
@@ -76,12 +77,12 @@ Aabrf ScreenItem::get_window_aarbr() const
 
 float ScreenItem::get_opacity(bool effective) const
 {
+    if (abs(m_opacity) < g_alpha_cutoff) {
+        return 0;
+    }
     if (effective) {
-        if (const Item* parent = get_parent()) {
-            if (abs(m_opacity) < g_alpha_cutoff) {
-                return 0;
-            }
-            return m_opacity * parent->get_screen_item()->get_opacity();
+        if (const Layout* parent_layout = get_layout()) {
+            return m_opacity * parent_layout->get_opacity();
         }
     }
     return m_opacity;
@@ -122,11 +123,11 @@ bool ScreenItem::is_visible() const
     }
 
     { // fully scissored
-        Aabrf local_aabr = get_local_aarbr();
-        transformation_between(this, m_scissor_layout).transform(local_aabr);
-        if (!m_scissor_layout->get_local_aarbr().intersects(local_aabr)) {
-            return false;
-        }
+//        Aabrf local_aabr = get_local_aarbr();
+//        transformation_between(this, m_scissor_layout).transform(local_aabr);
+//        if (!m_scissor_layout->get_local_aarbr().intersects(local_aabr)) {
+//            return false;
+//        }
     }
 
     // visible
@@ -160,8 +161,23 @@ void ScreenItem::set_scissor(const Layout* scissor_layout)
 
 void ScreenItem::set_render_layer(const RenderLayerPtr& render_layer)
 {
-    m_has_explicit_render_layer = static_cast<bool>(render_layer);
     _set_render_layer(render_layer);
+    m_has_explicit_render_layer = static_cast<bool>(render_layer);
+}
+
+void ScreenItem::_update_from_parent()
+{
+    Item::_update_from_parent();
+    if (Item* parent = get_parent()) {
+        Layout* parent_layout = parent->get_layout();
+        if (!parent_layout) { // if the parent is the WindowLayout it won't have a parent itself
+            parent_layout = dynamic_cast<Layout*>(parent);
+        }
+        if (parent_layout) { // parent may be a Controller without a parent itself
+            _set_scissor(parent_layout->get_scissor());
+            _set_render_layer(parent_layout->get_render_layer());
+        }
+    }
 }
 
 bool ScreenItem::_redraw() const
@@ -175,13 +191,6 @@ bool ScreenItem::_redraw() const
     return true;
 }
 
-void ScreenItem::_set_parent(Item* parent)
-{
-    Item::_set_parent(parent);
-    _set_scissor(parent->get_screen_item()->get_scissor());
-    _set_render_layer(parent->get_screen_item()->get_render_layer());
-}
-
 bool ScreenItem::_set_claim(const Claim claim)
 {
     if (claim == m_claim) {
@@ -190,19 +199,19 @@ bool ScreenItem::_set_claim(const Claim claim)
     m_claim = std::move(claim);
 
     // update the size to accomodate changed Claim constraints
-    const auto old_size = m_size;
-    return old_size == _set_size(m_size);
+    return _set_size(m_size);
 }
 
-const Size2f& ScreenItem::_set_size(const Size2f size)
+bool ScreenItem::_set_size(const Size2f size)
 {
     Size2f actual_size = m_claim.apply(size);
     if (actual_size != m_size) {
         m_size = std::move(actual_size);
         on_size_changed(m_size);
         _redraw();
+        return true;
     }
-    return m_size;
+    return false;
 }
 
 void ScreenItem::_set_layout_transform(const Xform2f transform)

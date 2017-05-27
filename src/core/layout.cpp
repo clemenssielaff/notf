@@ -37,13 +37,14 @@ void Layout::clear()
     m_children->clear();
 }
 
-const Size2f& Layout::_set_size(const Size2f size)
+bool Layout::_set_size(const Size2f size)
 {
-    if (size != ScreenItem::_set_size(size)) {
+    if (ScreenItem::_set_size(size)) {
         _relayout();
         on_layout_changed();
+        return true;
     }
-    return _get_size();
+    return false;
 }
 
 bool Layout::_update_claim()

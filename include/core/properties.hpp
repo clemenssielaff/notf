@@ -2,9 +2,9 @@
 
 #include <iostream>
 
-#include "common/claim.hpp"
 #include "common/size2.hpp"
 #include "common/xform2.hpp"
+#include "core/claim.hpp"
 #include "core/property.hpp"
 #include "utils/make_smart_enabler.hpp"
 

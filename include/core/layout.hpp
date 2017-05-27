@@ -45,7 +45,7 @@ public: // signals  ************************************************************
     Signal<> on_layout_changed;
 
 protected: // methods *************************************************************************************************/
-    virtual const Size2f& _set_size(const Size2f size) override;
+    virtual bool _set_size(const Size2f size) override;
 
     /** Updates the Claim of this Layout.
      * @return  True, iff the Claim was modified.

@@ -6,6 +6,7 @@
 #include "common/time.hpp"
 #include "common/vector.hpp"
 #include "core/controller.hpp"
+#include "core/item_container.hpp"
 #include "core/widget.hpp"
 #include "core/window.hpp"
 #include "core/window_layout.hpp"
@@ -149,12 +150,11 @@ void RenderManager::_collect_widgets(const ScreenItem* root_item, std::vector<st
 
     // if it is a Layout, start a recursive iteration
     else if (const Layout* layout = dynamic_cast<const Layout*>(root_item)) {
-        LayoutIteratorPtr it = layout->iter_items();
-        while (const Item* child_item = it->next()) {
-            if (const ScreenItem* screen_item = get_screen_item(child_item)) {
-                _collect_widgets(screen_item, widgets);
+        layout->m_children->apply([this, &widgets](const Item* item) -> void {
+            if (const ScreenItem* screen_item = item->get_screen_item()) {
+                this->_collect_widgets(screen_item, widgets);
             }
-        }
+        });
     }
 
     else { // a ScreenItem but not a Layout or a Widget? Something's wrong...

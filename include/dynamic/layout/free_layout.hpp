@@ -12,12 +12,15 @@ namespace notf {
  * The Free Layout does not aggregate a Claim from its Items, nor does it make any effords to lay them out.
  */
 class FreeLayout : public Layout {
-private: // factory ***************************************************************************************************/
-    static std::shared_ptr<FreeLayout> create();
 
-    PROTECTED_EXCEPT_FOR_BINDINGS FreeLayout();
+    /** Constructor. */
+    PROTECTED_EXCEPT_FOR_BINDINGS
+    FreeLayout();
 
 public: // methods ****************************************************************************************************/
+    /** Factory. */
+    static std::shared_ptr<FreeLayout> create();
+
     /** Adds a new Item into the Layout.5
      * @param item     Item to place at the front end of the Layout. If the item is already a child, it is moved.
      */
@@ -32,7 +35,7 @@ private: // methods ************************************************************
 
     virtual Claim _aggregate_claim() override;
 
-    virtual void _relayout() override;
+    virtual void _relayout() override {}
 };
 
 } // namespace notf

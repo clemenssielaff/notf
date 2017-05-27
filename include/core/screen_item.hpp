@@ -134,6 +134,9 @@ using RenderLayerPtr = std::shared_ptr<RenderLayer>;
  * root or an ancestor Layout sets its `is_handled` flag.
  */
 class ScreenItem : public Item {
+    friend class RenderManager;
+    friend class WindowLayout;
+
 protected: // constructor *********************************************************************************************/
     ScreenItem(ItemContainerPtr container);
 
@@ -272,6 +275,8 @@ public: // signals *************************************************************
     Signal<FocusEvent&> on_focus_changed;
 
 protected: // methods *************************************************************************************************/
+    virtual void _update_from_parent() override;
+
     /** Tells the Window that this ScreenItem needs to be redrawn.
      * @returns False, if the ScreenItem did not trigger a redraw because it is invisible.
      */
@@ -286,9 +291,6 @@ protected: // methods **********************************************************
      */
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const = 0;
 
-    /** Sets the parent of this ScreenItem. */
-    virtual void _set_parent(Item* parent) override;
-
     /** Updates the Claim of this Item, may also change its size to comply with the new constraints.
      * @return      True iff the Claim was modified.
      */
@@ -299,8 +301,9 @@ protected: // methods **********************************************************
      * That means when you assign a size that cannot fulfill the claim, the actual size that ends up being set is not
      * the one passed into the function.
      * This function is virtual because Layouts use it to determine how to arrange their children.
+     * @returns Whether or not the ScreenItem's size was updated or not.
      */
-    virtual const Size2f& _set_size(const Size2f size) = 0;
+    virtual bool _set_size(const Size2f size) = 0;
 
     /** Updates the layout transformation of this Item. */
     void _set_layout_transform(const Xform2f transform);
@@ -325,7 +328,7 @@ protected: // static methods ***************************************************
     }
 
     /** Allows ScreenItem subclasses to resize each other. */
-    static const Size2f& _set_size(ScreenItem* screen_item, const Size2f size)
+    static bool _set_size(ScreenItem* screen_item, const Size2f size)
     {
         return screen_item->_set_size(std::move(size));
     }

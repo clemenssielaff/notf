@@ -41,7 +41,7 @@ Item::~Item()
 {
     log_trace << "Destroying Item #" << m_id;
     m_children->clear();
-    if(m_parent){
+    if (m_parent) {
         m_parent->_remove_child(this);
     }
 }
@@ -130,19 +130,27 @@ void Item::_set_parent(Item* parent)
         return;
     }
 
-    if(m_parent){
-        m_parent->_remove_child(this);
+    if (m_parent) {
+//        m_parent->_remove_child(this); // FIXME: Crashbug on shutdown
     }
-
     m_parent = parent;
+
+    _update_from_parent();
+    m_children->apply([](Item* item) -> void {
+        item->_update_from_parent();
+    });
+
+    on_parent_changed(m_parent);
+}
+
+void Item::_update_from_parent()
+{
     if (m_parent) {
         _set_window(m_parent->m_window);
     }
     else {
         _set_window(nullptr);
     }
-
-    on_parent_changed(m_parent);
 }
 
 void Item::_set_window(Window* window)

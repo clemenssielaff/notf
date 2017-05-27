@@ -79,7 +79,6 @@ CONFIG(python) {
         src/ext/python/interpreter.cpp \
         src/ext/python/py_layoutroot.cpp \
         src/ext/python/py_painter.cpp \
-        src/ext/python/py_stacklayout.cpp \
         src/ext/python/py_vector2.cpp \
         src/ext/python/py_widget.cpp \
         src/ext/python/py_window.cpp \
@@ -126,7 +125,6 @@ SOURCES += \
     src/core/render_manager.cpp \
     src/common/color.cpp \
     src/core/layout.cpp \
-    src/dynamic/layout/stack_layout.cpp \
     src/dynamic/controller/scroll_area.cpp \
     src/core/claim.cpp \
     src/graphics/raw_image.cpp \
@@ -169,7 +167,9 @@ SOURCES += \
     src/common/signal.cpp \
     src/core/item_container.cpp \
     src/common/utf.cpp \
-    thirdparty/tinyutf8/tinyutf8.cpp
+    thirdparty/tinyutf8/tinyutf8.cpp \
+    src/dynamic/layout/flex_layout.cpp \
+    src/ext/python/py_flexlayout.cpp
 
 HEADERS += \
     include/core/application.hpp \
@@ -194,7 +194,6 @@ HEADERS += \
     include/core/render_manager.hpp \
     include/common/color.hpp \
     include/core/layout.hpp \
-    include/dynamic/layout/stack_layout.hpp \
     include/dynamic/controller/scroll_area.hpp \
     include/core/claim.hpp \
     include/graphics/raw_image.hpp \
@@ -260,7 +259,8 @@ HEADERS += \
     thirdparty/tinyutf8/tinyutf8.h \
     include/common/warnings.hpp \
     include/common/meta.hpp \
-    include/core/fwds.hpp
+    include/core/fwds.hpp \
+    include/dynamic/layout/flex_layout.hpp
 
 #QMAKE_CXX = ccache g++
 

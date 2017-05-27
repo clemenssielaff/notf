@@ -7,7 +7,7 @@ namespace notf {
 
 class Overlayout;
 class ScrollArea;
-class StackLayout;
+class FlexLayout;
 
 using ScrollAreaPtr = std::shared_ptr<ScrollArea>;
 
@@ -46,8 +46,6 @@ private: // types
 
 public: // methods
     ScrollArea();
-
-    virtual void _initialize() override;
 
     /** Displays the content of the given Controller inside the scroll area.  */
     void set_area_controller(ControllerPtr controller);

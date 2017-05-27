@@ -2,54 +2,17 @@
 
 #include "common/padding.hpp"
 #include "core/layout.hpp"
-
 #include "utils/binding_accessors.hpp"
 
 namespace notf {
 
-class StackLayout;
-
-using StackLayoutPtr = std::shared_ptr<StackLayout>;
-
 /**********************************************************************************************************************/
 
-/** StackLayout Iterator that goes through all items in a Layout in order, from back to front.
- * Iterators must be used up immediately after creation as they might be invalidated by any operation on their Layout.
+/** The FlexLayout class offers a way to arrange items in one or multiple rows or columns.
+ * It behaves similar to the CSS Flex Box Layout.
  */
-class StackLayoutIterator : public LayoutIterator {
-
-public: // methods
-    /** Constructor */
-    StackLayoutIterator(const StackLayout* stack_layout)
-        : m_layout(stack_layout)
-        , m_index(0)
-    {
-    }
-
-    /** Destructor */
-    virtual ~StackLayoutIterator() = default;
-
-    /** Advances the Iterator one step, returns the next Item or nullptr if the iteration has finished. */
-    virtual Item* next() override;
-
-private: // fields
-    /** StackLayout that is iterated over. */
-    const StackLayout* m_layout;
-
-    /** Index of the next Item to return. */
-    size_t m_index;
-};
-
-/**********************************************************************************************************************/
-
-/**
- * @brief The StackLayout class
- */
-class StackLayout : public Layout {
-
-    friend class StackLayoutIterator;
-
-public: // enums
+class FlexLayout : public Layout {
+public: // types ******************************************************************************************************/
     /** Direction in which items in a Layout can be stacked. */
     enum class Direction : unsigned char {
         LEFT_TO_RIGHT,
@@ -75,43 +38,16 @@ public: // enums
         WRAP_REVERSE, // wraps towards the upper-left corner
     };
 
-public: // static methods
-    /** Factory.
-     * @param direction Direction of the stack.
-     */
-    static std::shared_ptr<StackLayout> create(const Direction direction = Direction::LEFT_TO_RIGHT);
-
-private: // constructor
     /** Constructor.
      * @param direction Direction of the stack.
      */
-    PROTECTED_EXCEPT_FOR_BINDINGS StackLayout(const Direction direction);
+    PROTECTED_EXCEPT_FOR_BINDINGS FlexLayout(const Direction direction);
 
-public: // methods
-    /** Tests if a given Item is a child of this Item. */
-    bool has_item(const ItemPtr& item) const;
-
-    /** Checks if this Layout is empty or not. */
-    bool is_empty() const { return m_items.empty(); }
-
-    /** Removes all Items from the Layout. */
-    void clear();
-
-    /** Adds a new Item into the Layout.
-     * @param item  Item to place at the end of the Layout. If the item is already a child, it is moved to the end.
+public: // methods ****************************************************************************************************/
+    /** Factory.
+     * @param direction Direction of the stack.
      */
-    void add_item(ItemPtr item);
-
-    /** Removes a single Item from this Layout.
-     * Does nothing, if the Item is not a child of this Layout.
-     */
-    virtual void remove_item(const ItemPtr& item) override;
-
-    /** Returns the united bounding rect of all Items in the Layout. */
-    virtual Aabrf get_content_aabr() const override;
-
-    /** Returns an iterator that goes over all Items in this Layout in order from back to front. */
-    virtual std::unique_ptr<LayoutIterator> iter_items() const override;
+    static std::shared_ptr<FlexLayout> create(const Direction direction = Direction::LEFT_TO_RIGHT);
 
     /** Direction in which items are stacked. */
     Direction get_direction() const { return m_direction; }
@@ -140,7 +76,7 @@ public: // methods
     /** Spacing between stacks of items if this Layout is wrapped. */
     float get_cross_spacing() const { return m_cross_spacing; }
 
-    /** Defines the direction in which the StackLayout is stacked. */
+    /** Defines the direction in which the FlexLayout is stacked. */
     void set_direction(const Direction direction);
 
     /** Defines the alignment of stack items in the main direction. */
@@ -164,12 +100,12 @@ public: // methods
     /** Defines the spacing between stacks of items if this Layout is wrapped. */
     void set_cross_spacing(float spacing);
 
-protected: // methods
-    virtual Claim _aggregate_claim() override;
+    /** Adds a new Item into the Layout.
+     * @param item  Item to place at the end of the Layout. If the item is already a child, it is moved to the end.
+     */
+    void add_item(ItemPtr item);
 
-    virtual void _relayout() override;
-
-private: // methods
+private: // methods ***************************************************************************************************/
     /** Performs the layout of a single stack.
      * @param stack         Items in the stack.
      * @param total_size    Size of the stack.
@@ -179,10 +115,18 @@ private: // methods
     void _layout_stack(const std::vector<ScreenItem*>& stack, const Size2f total_size,
                        const float main_offset, const float cross_offset);
 
+    virtual void _remove_child(const Item* child_item) override;
+
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
+    virtual Aabrf _get_children_aabr() const override;
+
+    virtual Claim _aggregate_claim() override;
+
+    virtual void _relayout() override;
+
 private: // fields
-    /** Direction in which the StackLayout is stacked. */
+    /** Direction in which the FlexLayout is stacked. */
     Direction m_direction;
 
     /** Alignment of items in the main direction. */
@@ -205,9 +149,6 @@ private: // fields
 
     /** Spacing between stacks, if this Layout wraps. */
     float m_cross_spacing;
-
-    /** All items in this Layout in order from back to front. */
-    std::vector<ItemPtr> m_items;
 };
 
 } // namespace notf

@@ -22,7 +22,7 @@ void produce_claim(pybind11::module& module);
 void produce_window(pybind11::module& module);
 //void produce_widget(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_layout_root(pybind11::module& module, py::detail::generic_type ancestor);
-void produce_stack_layout(pybind11::module& module, py::detail::generic_type ancestor);
+void produce_flex_layout(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_overlayout(pybind11::module& module, py::detail::generic_type ancestor);
 void produce_controller(pybind11::module& module, py::detail::generic_type Py_Item);
 void produce_globals(pybind11::module& module);
@@ -59,7 +59,7 @@ PyObject* produce_pynotf_module()
     py::class_<LayoutItem, std::shared_ptr<LayoutItem>> Py_LayoutItem(module, "_LayoutItem", Py_Item);
 //    produce_widget(module, Py_LayoutItem);
     produce_layout_root(module, Py_LayoutItem);
-    produce_stack_layout(module, Py_LayoutItem);
+    produce_flex_layout(module, Py_LayoutItem);
     produce_overlayout(module, Py_LayoutItem);
 
     return module.ptr();

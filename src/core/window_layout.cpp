@@ -3,23 +3,27 @@
 #include "common/log.hpp"
 #include "core/controller.hpp"
 #include "core/item_container.hpp"
+#include "core/window.hpp"
 
 namespace notf {
 
-std::shared_ptr<WindowLayout> WindowLayout::create(const Window* window)
+std::shared_ptr<WindowLayout> WindowLayout::create(Window* window)
 {
     struct make_shared_enabler : public WindowLayout {
-        make_shared_enabler(const Window* window)
+        make_shared_enabler(Window* window)
             : WindowLayout(window) {}
     };
     return std::make_shared<make_shared_enabler>(window);
 }
 
-WindowLayout::WindowLayout(const Window* window)
+WindowLayout::WindowLayout(Window* window)
     : Layout(std::make_unique<detail::SingleItemContainer>())
-    , m_window(window)
     , m_controller()
 {
+    // the WindowLayout is at the root of the Item hierarchy and therefore special
+    m_window               = window;
+    m_scissor_layout       = this;
+    m_has_explicit_scissor = true;
 }
 
 std::vector<Widget*> WindowLayout::get_widgets_at(const Vector2f& screen_pos)
@@ -44,12 +48,13 @@ void WindowLayout::set_controller(ControllerPtr controller)
     }
 
     detail::SingleItemContainer* container = static_cast<detail::SingleItemContainer*>(m_children.get());
-    container->item = controller;
-    m_controller = controller.get();
+    container->item                        = controller;
+    m_controller                           = controller.get();
     if (m_controller) {
         Item::_set_parent(m_controller, this);
     }
     on_child_added(m_controller);
+    _relayout();
 }
 
 void WindowLayout::_remove_child(const Item* child_item)

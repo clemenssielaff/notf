@@ -81,6 +81,9 @@ namespace std {
 /** std::hash specialization for notf::Padding. */
 template <>
 struct hash<notf::Padding> {
-    size_t operator()(const notf::Padding& padding) const { return notf::hash(padding.top, padding.right, padding.bottom, padding.left); }
+    size_t operator()(const notf::Padding& padding) const
+    {
+        return notf::hash(padding.top, padding.right, padding.bottom, padding.left);
+    }
 };
 }

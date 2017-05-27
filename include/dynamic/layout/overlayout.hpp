@@ -6,50 +6,13 @@
 
 namespace notf {
 
-class Overlayout;
-
-using OverlayoutPtr = std::shared_ptr<Overlayout>;
-
 /**********************************************************************************************************************/
 
-/**
- * @brief Overlayout iterator that goes through all items in a Layout in order, from back to front.
- * Iterators must be used up immediately after creation as they might be invalidated by any operation on their Layout.
- */
-class OverlayoutIterator : public LayoutIterator {
-
-public: // methods
-    /** Constructor */
-    OverlayoutIterator(const Overlayout* overlayout)
-        : m_layout(overlayout)
-        , m_index(0)
-    {
-    }
-
-    /** Destructor */
-    virtual ~OverlayoutIterator() = default;
-
-    /** Advances the Iterator one step, returns the next Item or nullptr if the iteration has finished. */
-    virtual Item* next() override;
-
-private: // fields
-    /** Overlayout that is iterated over. */
-    const Overlayout* m_layout;
-
-    /** Index of the next Item to return. */
-    size_t m_index;
-};
-
-/**********************************************************************************************************************/
-
-/**
- * @brief The Overlayout class
+/** The Overlayout stacks all of its children on top of each other.
+ *
  */
 class Overlayout : public Layout {
-
-    friend class OverlayoutIterator;
-
-public: // enums
+public: // types ******************************************************************************************************/
     /** Horizontal alignment of all items in the Layout. */
     enum class Horizontal : unsigned char {
         LEFT,
@@ -64,51 +27,22 @@ public: // enums
         BOTTOM,
     };
 
-public: // static methods
+    /** Constructor. */
+    PROTECTED_EXCEPT_FOR_BINDINGS
+    Overlayout();
+
+public: // methods ****************************************************************************************************/
     /** Factory. */
     static std::shared_ptr<Overlayout> create();
-
-private: // constructor
-    PROTECTED_EXCEPT_FOR_BINDINGS Overlayout();
-
-public: // methods
-    /** Tests if a given Item is a child of this Item. */
-    bool has_item(const ItemPtr& item) const;
-
-    /** Checks if this Layout is empty or not. */
-    bool is_empty() const { return m_items.empty(); }
-
-    /** Removes all Items from the Layout. */
-    void clear();
-
-    /** Adds a new Item into the Layout.
-     * @param item     Item to place at the front end of the Layout. If the item is already a child, it is moved.
-     */
-    void add_item(ItemPtr item);
-
-    /** Removes a single Item from this Layout.
-     * Does nothing, if the Item is not a child of this Layout.
-     */
-    virtual void remove_item(const ItemPtr& item) override;
-
-    /** Returns the united bounding rect of all Items in the Layout. */
-    virtual Aabrf get_content_aabr() const override;
-
-    virtual std::unique_ptr<LayoutIterator> iter_items() const override;
-
-    /** Padding around the Layout's border. */
-    const Padding& get_padding() const { return m_padding; }
-
-    /** Defines the padding around the Layout's border.
-     * @throw   std::runtime_error if the padding is invalid.
-     */
-    void set_padding(const Padding& padding);
 
     /** Horizontal alignment of all items in the Layout. */
     Horizontal get_horizontal_alignment() const { return m_horizontal_alignment; }
 
     /** Vertical alignment of all items in the Layout. */
     Vertical get_vertical_alignment() const { return m_vertical_alignment; }
+
+    /** Padding around the Layout's border. */
+    const Padding& get_padding() const { return m_padding; }
 
     /** Defines the alignment of each Item in the Layout. */
     void set_alignment(const Horizontal horizontal, const Vertical vertical)
@@ -118,26 +52,36 @@ public: // methods
         _relayout();
     }
 
-protected: // methods
+    /** Defines the padding around the Layout's border.
+     * @throw   std::runtime_error if the padding is invalid.
+     */
+    void set_padding(const Padding& padding);
+
+    /** Adds a new Item into the Layout.
+     * @param item     Item to place at the front end of the Layout. If the item is already a child, it is moved.
+     */
+    void add_item(ItemPtr item);
+
+private: // methods ***************************************************************************************************/
+    virtual void _remove_child(const Item* child_item) override;
+
+    virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
+
+    virtual Aabrf _get_children_aabr() const override;
+
     virtual Claim _aggregate_claim() override;
 
     virtual void _relayout() override;
 
-private: // methods
-    virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
-
-private: // fields
-    /** Padding around the Layout's borders. */
-    Padding m_padding;
-
+private: // fields ****************************************************************************************************/
     /** Horizontal alignment of all items in the Layout. */
     Horizontal m_horizontal_alignment;
 
     /** Vertical alignment of all items in the Layout. */
     Vertical m_vertical_alignment;
 
-    /** All items in this Layout in order. */
-    std::vector<ItemPtr> m_items;
+    /** Padding around the Layout's borders. */
+    Padding m_padding;
 };
 
 } // namespace notf

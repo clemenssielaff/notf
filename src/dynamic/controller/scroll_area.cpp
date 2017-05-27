@@ -3,8 +3,8 @@
 #include "common/log.hpp"
 #include "common/xform2.hpp"
 #include "core/events/mouse_event.hpp"
+#include "dynamic/layout/flex_layout.hpp"
 #include "dynamic/layout/overlayout.hpp"
-#include "dynamic/layout/stack_layout.hpp"
 #include "graphics/cell/painter.hpp"
 
 namespace notf {
@@ -23,7 +23,7 @@ ScrollArea::ScrollBar::ScrollBar(ScrollArea& scroll_area)
 void ScrollArea::ScrollBar::_paint(Painter& painter) const
 {
     // background
-    const Aabrf widget_rect = Aabrf(get_size());
+    const Aabrf widget_rect = Aabrf(_get_size());
     painter.begin_path();
     painter.add_rect(widget_rect);
     painter.set_fill_paint(Color("#454950"));
@@ -53,10 +53,6 @@ ScrollArea::ScrollArea()
     , m_content()
     , m_on_scrollbar_drag()
 {
-}
-
-void ScrollArea::_initialize()
-{
     // the window into the content
     m_area_window = Overlayout::create();
     m_area_window->set_claim(Claim());
@@ -68,13 +64,13 @@ void ScrollArea::_initialize()
     // container inside the area, scissored by the window and containing the content
     m_scroll_container = Overlayout::create();
     m_area_window->add_item(m_scroll_container);
-    m_scroll_container->set_scissor(m_area_window);
+    m_scroll_container->set_scissor(m_area_window.get());
 
     // the scrollbar on the side of the area window
     m_vscrollbar = std::make_shared<ScrollBar>(*this);
 
     // the root layout of this Controller
-    std::shared_ptr<StackLayout> root_layout = StackLayout::create(StackLayout::Direction::LEFT_TO_RIGHT);
+    std::shared_ptr<FlexLayout> root_layout = FlexLayout::create(FlexLayout::Direction::LEFT_TO_RIGHT);
     root_layout->add_item(m_area_window);
     root_layout->add_item(m_vscrollbar);
     _set_root_item(root_layout);
@@ -98,7 +94,7 @@ void ScrollArea::_initialize()
     m_on_scrollbar_drag = connect_signal(
         m_vscrollbar->on_mouse_move,
         [this](MouseEvent& event) -> void {
-            const float area_height = m_scroll_container->get_size().height;
+            const float area_height = m_scroll_container->get_untransformed_aabr().get_size().height;
             if (area_height >= 1) {
                 _update_scrollbar(-event.window_delta.y * _get_content_height() / area_height);
             }
@@ -115,8 +111,8 @@ void ScrollArea::_initialize()
         },
         [this](MouseEvent& event) -> bool {
             const float scroll_bar_top = m_vscrollbar->get_window_transform().get_translation().y
-                + (m_vscrollbar->pos * m_vscrollbar->get_size().height);
-            const float scroll_bar_height = m_vscrollbar->size * m_vscrollbar->get_size().height;
+                + (m_vscrollbar->pos * m_vscrollbar->get_untransformed_aabr().get_size().height);
+            const float scroll_bar_height = m_vscrollbar->size * m_vscrollbar->get_untransformed_aabr().get_size().height;
             return (event.action == MouseAction::PRESS
                     && event.window_pos.y >= scroll_bar_top
                     && event.window_pos.y <= scroll_bar_top + scroll_bar_height);
@@ -138,12 +134,6 @@ void ScrollArea::_initialize()
 
 void ScrollArea::set_area_controller(ControllerPtr controller)
 {
-    controller->initialize(); // TODO: maybe initialize when you add a controller somewhere?
-    if (!controller->get_root_item()) {
-        log_critical << "Cannot initialize Controller " << controller->get_id();
-        return;
-    }
-
     m_content = controller;
 
     m_scroll_container->clear();
@@ -156,7 +146,7 @@ void ScrollArea::_update_scrollbar(float delta_y)
     if (content_height <= precision_high<float>()) {
         return;
     }
-    const float area_height = m_scroll_container->get_size().height;
+    const float area_height = m_scroll_container->get_untransformed_aabr().get_size().height;
     const float overflow    = min(0.f, area_height - content_height);
 
     const float y = min(0.f, max(overflow, m_scroll_container->get_local_transform().get_translation().y + delta_y));
@@ -179,19 +169,12 @@ float ScrollArea::_get_content_height() const
     if (!m_content) {
         return 0;
     }
-    ScreenItemPtr root_item = m_content->get_root_item();
+    const ScreenItem* root_item = m_content->get_root_item();
     if (!root_item) {
         log_warning << "Encountered Controller " << m_content->get_id() << " without a root Item";
         return 0;
     }
-
-    // get content aabr
-    if (LayoutPtr layout = std::dynamic_pointer_cast<Layout>(root_item)) {
-        return layout->get_content_aabr().height();
-    }
-    else {
-        return root_item->get_aarbr().height();
-    }
+    return root_item->get_untransformed_aabr().get_size().height;
 }
 
 } // namespace notf

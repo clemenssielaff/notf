@@ -40,7 +40,7 @@ void Widget::redraw() const
 void Widget::_render(CellCanvas& canvas) const
 {
     // update the Cell if the Widget is dirty
-    if (!m_is_clean) {
+//    if (!m_is_clean) {
         Painter painter(canvas, *m_cell.get());
         try {
             _paint(painter);
@@ -49,7 +49,7 @@ void Widget::_render(CellCanvas& canvas) const
             return;
         }
         m_is_clean = true;
-    }
+//    } // TODO: Widget dirty management
 
     { // paint the Cell
         Scissor scissor;

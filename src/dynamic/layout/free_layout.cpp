@@ -8,6 +8,11 @@
 
 namespace notf {
 
+FreeLayout::FreeLayout()
+    : Layout(std::make_unique<detail::ItemList>())
+{
+}
+
 std::shared_ptr<FreeLayout> FreeLayout::create()
 {
     struct make_shared_enabler : public FreeLayout {
@@ -16,11 +21,6 @@ std::shared_ptr<FreeLayout> FreeLayout::create()
         PADDING(7)
     };
     return std::make_shared<make_shared_enabler>();
-}
-
-FreeLayout::FreeLayout()
-    : Layout(std::make_unique<detail::ItemList>())
-{
 }
 
 void FreeLayout::add_item(ItemPtr item)
@@ -56,10 +56,10 @@ void FreeLayout::_remove_child(const Item* child_item)
 
     std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
 
-    auto it = std::find(std::begin(items), std::end(items),
-                        [child_item](const ItemPtr& item) -> bool {
-                            return item.get() == child_item;
-                        });
+    auto it = std::find_if(std::begin(items), std::end(items),
+                           [child_item](const ItemPtr& it) -> bool {
+                               return it.get() == child_item;
+                           });
 
     if (it == std::end(items)) {
         log_critical << "Cannot remove unknown child Item " << child_item->get_id()
@@ -70,6 +70,7 @@ void FreeLayout::_remove_child(const Item* child_item)
     log_trace << "Removing child Item " << child_item->get_id() << " from FreeLayout " << get_id();
     items.erase(it);
     on_child_removed(child_item);
+    _redraw();
 }
 
 void FreeLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const

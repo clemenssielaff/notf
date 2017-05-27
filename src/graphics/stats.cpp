@@ -66,7 +66,7 @@ void RenderStats::render_stats(CellCanvas& context)
         const float y     = m_aabr.bottom() - ((value / m_max_frame_time) * m_aabr.get_height());
         painter.line_to(x, y);
     }
-    painter.line_to(m_aabr.get_bottom_right());
+    painter.line_to(m_aabr.bottom_right());
     painter.set_fill_color(Color(255, 192, 0, 128));
     painter.fill();
 

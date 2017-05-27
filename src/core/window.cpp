@@ -151,6 +151,7 @@ Window::Window(const WindowInfo& info)
     // create the layout
     m_layout = WindowLayout::create(this);
     m_layout->set_claim(Claim::fixed(get_buffer_size()));
+    m_layout->set_render_layer(m_render_manager->get_default_layer());
 }
 
 Window::~Window()

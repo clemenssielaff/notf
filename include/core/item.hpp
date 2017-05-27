@@ -69,6 +69,7 @@ using ItemID = Id<Item, RawID>;
  */
 class Item : public receive_signals, public std::enable_shared_from_this<Item> {
     friend struct detail::ItemContainer;
+    friend class WindowLayout;
 
 protected: // types ***************************************************************************************************/
     using ItemContainerPtr = std::unique_ptr<detail::ItemContainer>;
@@ -144,7 +145,10 @@ protected: // methods **********************************************************
     virtual void _remove_child(const Item* child_item) = 0;
 
     /** Sets the parent of this Item. */
-    virtual void _set_parent(Item* parent);
+    void _set_parent(Item* parent);
+
+    /** Pulls new value from the parent if it changed. */
+    virtual void _update_from_parent();
 
     /** Changes the Window that this Item is displayed id. */
     void _set_window(Window* window);

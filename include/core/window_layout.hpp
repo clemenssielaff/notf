@@ -13,10 +13,10 @@ class WindowLayout : public Layout {
     friend class Window;
 
 private: // factory ***************************************************************************************************/
-    static std::shared_ptr<WindowLayout> create(const Window* window);
+    static std::shared_ptr<WindowLayout> create(Window* window);
 
     /** @param window   Window owning this RootWidget. */
-    WindowLayout(const Window* window);
+    WindowLayout(Window *window);
 
 public: // methods ****************************************************************************************************/
     /** Returns the Window owning this WindowLayout. */
@@ -43,9 +43,6 @@ private: // methods ************************************************************
     virtual void _relayout() override;
 
 private: // fields
-    /** The Window containing this WindowLayout. */
-    const Window* m_window;
-
     /** The Window Controller. */
     Controller* m_controller;
 };

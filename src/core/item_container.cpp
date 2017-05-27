@@ -38,10 +38,10 @@ void ItemList::apply(std::function<void(Item*)> function)
 
 bool ItemList::contains(const Item* child) const
 {
-    return std::find(std::begin(items), std::end(items),
-                     [child](const ItemPtr& entry) -> bool {
-                         return entry.get() == child;
-                     })
+    return std::find_if(std::begin(items), std::end(items),
+                        [child](const ItemPtr& entry) -> bool {
+                            return entry.get() == child;
+                        })
         != std::end(items);
 }
 

@@ -56,7 +56,7 @@ private: // methods ************************************************************
 
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
-    virtual const Size2f& _set_size(const Size2f size) override { return ScreenItem::_set_size(std::move(size)); }
+    virtual bool _set_size(const Size2f size) override { return ScreenItem::_set_size(std::move(size)); }
 
     // hide Item methods that have no effect for Widgets
     using Item::has_child;
