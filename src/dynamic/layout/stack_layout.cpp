@@ -213,15 +213,6 @@ StackLayout::StackLayout(const Direction direction)
     set_claim({});
 }
 
-StackLayout::~StackLayout()
-{
-    // explicitly unparent all children so they can send the `parent_changed` signal
-    for (ItemPtr& item : m_items) {
-        on_child_removed(item->get_id());
-        _set_parent(item.get(), {});
-    }
-}
-
 bool StackLayout::has_item(const ItemPtr& item) const
 {
     return std::find(m_items.cbegin(), m_items.cbegin(), item) != m_items.cend();
@@ -526,8 +517,6 @@ void StackLayout::_relayout()
             ++i;
         }
     }
-
-    on_layout_changed();
 }
 
 void StackLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size2f total_size,

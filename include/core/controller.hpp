@@ -10,6 +10,7 @@
 
 #include "common/exception.hpp"
 #include "common/string.hpp"
+#include "common/vector2.hpp"
 #include "core/item.hpp"
 #include "core/property.hpp"
 
@@ -26,38 +27,26 @@ class ScreenItem;
  */
 class Controller : public Item {
 
-protected: // methods
-    /** Default Constructor. */
-    Controller() = default;
+protected: // constructor *********************************************************************************************/
+    Controller();
 
-public: // methods
-    /** Destructor. */
-    virtual ~Controller() override;
-
+public: // methods ****************************************************************************************************/
     /** Item at the root of the Controller's branch of the Item hierarchy. */
-    std::shared_ptr<ScreenItem>& get_root_item() { return m_root_item; }
+    ScreenItem* get_root_item() { return m_root_item; }
+    const ScreenItem* get_root_item() const { return const_cast<Controller*>(this)->get_root_item(); }
 
     /** Initializes this Controller if it is uninitialized, otherwise does nothing. */
     void initialize();
 
 protected: // methods
     /** Sets a new root at this Controller's branch of the  Item hierarchy. */
-    void _set_root_item(std::shared_ptr<ScreenItem> item);
+    void _set_root_item(ScreenItemPtr item);
 
-private: // methods
-    /** Initialize this Controller.
-     * Every Controller must create a ScreenItem at its root, even if it is empty.
-     * If this method returns without setting `m_root_item`, the Controller will remain uninitialized.
-     */
-    virtual void _initialize() = 0;
-
-    virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
-
-    virtual void _cascade_render_layer(const RenderLayerPtr& render_layer) override;
+    virtual void _remove_child(const Item* child_item) override;
 
 private: // fields
     /** Item at the root of the Controller's Item hierarchy. */
-    std::shared_ptr<ScreenItem> m_root_item;
+    ScreenItem* m_root_item;
 };
 
 /**********************************************************************************************************************/

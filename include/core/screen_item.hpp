@@ -14,6 +14,8 @@ class MouseEvent;
 class RenderLayer;
 using RenderLayerPtr = std::shared_ptr<RenderLayer>;
 
+/**********************************************************************************************************************/
+
 /**
  *
  * Claims
@@ -121,10 +123,19 @@ using RenderLayerPtr = std::shared_ptr<RenderLayer>;
  * The WindowLayout is part of the default RenderLayer `zero`.
  * If you set an ScreenItem to another RenderLayer (for example `one`) it, and all of its children will be drawn in
  * front of everything in RenderLayer zero.
+ *
+ * Events
+ * ======
+ * All ScreenItems can handle events.
+ * Events are created by the Application in reaction to something happening, like a user input or a system event.
+ * Only Widgets receive events, which means that in order to handle events, a Layout must contain an invisible Widget
+ * in the background (see ScrollArea for an example).
+ * If a Widget receives an event but does not handle it, it is propagated up the ancestry until it either passes the
+ * root or an ancestor Layout sets its `is_handled` flag.
  */
 class ScreenItem : public Item {
 protected: // constructor *********************************************************************************************/
-    ScreenItem(std::unique_ptr<detail::ItemContainer> container);
+    ScreenItem(ItemContainerPtr container);
 
 public: // methods ****************************************************************************************************/
     /** Returns the ScreenItem's effective transformation in parent space. */
@@ -142,9 +153,6 @@ public: // methods *************************************************************
     /** Updates the transformation of this ScreenItem. */
     void set_local_transform(const Xform2f transform);
 
-    /** Returns the unscaled size of this ScreenItem in pixels. */
-    const Size2f& get_size() const { return m_size; }
-
     /** Returns the axis-aligned bounding rect of this ScreenItem in parent space. */
     Aabrf get_aarbr() const;
 
@@ -153,6 +161,16 @@ public: // methods *************************************************************
 
     /** Returns the axis-aligned bounding rect of this ScreenItem in local space. */
     Aabrf get_local_aarbr() const;
+
+    /** Returns the axis-aligned bounding rect of this ScreenItem in Window space. */
+    Aabrf get_window_aarbr() const;
+
+    /** Returns the actual axis-aligned bounding rect of this ScreenItem in non-transformed space.
+     * Widgets simply return their size, Layouts may have more involved methods of determining their effective Aabr.
+     * Note that the Aabr may be larger or smaller than the ScreenItem size, because Layouts may need to accomodate
+     * more children than their size would allow.
+     */
+    virtual Aabrf get_untransformed_aabr() const = 0;
 
     /** The current Claim of this Item. */
     const Claim& get_claim() const { return m_claim; }
@@ -254,15 +272,13 @@ public: // signals *************************************************************
     Signal<FocusEvent&> on_focus_changed;
 
 protected: // methods *************************************************************************************************/
-    /** Tells the Window that this ScreenItem needs to be redrawn. */
-    void _redraw();
-
-    /** Returns the actual axis-aligned bounding rect of this ScreenItem in non-transformed space.
-     * Widgets simply return their size, Layouts may have more involved methods of determining their effective Aabr.
-     * Note that the Aabr may be larger or smaller than the ScreenItem size, because Layouts may need to accomodate
-     * more children than their size would allow.
+    /** Tells the Window that this ScreenItem needs to be redrawn.
+     * @returns False, if the ScreenItem did not trigger a redraw because it is invisible.
      */
-    virtual Aabrf _get_aabr() const = 0;
+    bool _redraw() const;
+
+    /** Unscaled size of this ScreenItem in local space. */
+    const Size2f& _get_size() const { return m_size; }
 
     /** Recursive implementation to find all Widgets at a given position in local space
      * @param local_pos     Local coordinates where to look for a Widget.
@@ -301,6 +317,25 @@ protected: // methods **********************************************************
      */
     void _update_ancestor_layouts();
 
+protected: // static methods ******************************************************************************************/
+    /** Allows ScreenItem subclasses to query Widgets from each other. */
+    static void _get_widgets_at(const ScreenItem* screen_item, const Vector2f& local_pos, std::vector<Widget*>& result)
+    {
+        screen_item->_get_widgets_at(local_pos, result);
+    }
+
+    /** Allows ScreenItem subclasses to resize each other. */
+    static const Size2f& _set_size(ScreenItem* screen_item, const Size2f size)
+    {
+        return screen_item->_set_size(std::move(size));
+    }
+
+    /** Allows ScreenItem subclasses to change each other's layout transformation. */
+    static void _set_layout_transform(ScreenItem* screen_item, const Xform2f transform)
+    {
+        return screen_item->_set_layout_transform(std::move(transform));
+    }
+
 private: // methods ***************************************************************************************************/
     /** Calculates the transformation of this ScreenItem relative to its Window. */
     void _get_window_transform(Xform2f& result) const;
@@ -326,7 +361,10 @@ private: // fields *************************************************************
      */
     Claim m_claim;
 
-    /** Unscaled size of this ScreenItem in local space. */
+    /** Unscaled size of this ScreenItem in local space.
+     * Is an internal field that helps the ScreenItem to realize when its effective size has changed.
+     * Use the Aabr getters to determine the 'real' size of the ScreenItem in the space of you choice.
+     */
     Size2f m_size;
 
     /** Flag indicating whether a ScreenItem should be visble or not.

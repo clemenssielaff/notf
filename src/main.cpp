@@ -77,7 +77,7 @@ public: // methods
 
     virtual void _paint(Painter& painter) const override
     {
-        const Aabrf widget_rect = Aabrf(get_size());
+        const Aabrf widget_rect = Aabrf(_get_size());
         painter.set_scissor(widget_rect);
         painter.begin_path();
         painter.add_rect(widget_rect);
@@ -108,7 +108,7 @@ public: // methods
     StackController(std::shared_ptr<Window>& window)
         : BaseController<StackController>({}, {}), m_graphics_context(window->get_graphics_context()) {}
 
-    virtual void _initialize() override
+    virtual void _initialize()
     {
         StackLayoutPtr stack_layout = StackLayout::create(StackLayout::Direction::LEFT_TO_RIGHT);
         stack_layout->set_spacing(10);
@@ -133,7 +133,7 @@ public: // methods
     MainController(std::shared_ptr<Window> window)
         : BaseController<MainController>({}, {}), m_window(window) {}
 
-    virtual void _initialize() override
+    virtual void _initialize()
     {
         OverlayoutPtr overlayout = Overlayout::create();
         overlayout->set_padding(Padding::all(20));

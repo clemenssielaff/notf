@@ -113,7 +113,7 @@ void RenderManager::render(const Size2i buffer_size)
         _collect_widgets(m_window->get_layout().get(), widgets);
         for (const auto& render_layer : widgets) {
             for (const Widget* widget : render_layer) {
-                widget->paint(cell_context);
+                widget->_render(cell_context);
             }
         }
     }

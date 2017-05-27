@@ -65,24 +65,24 @@ public:
 
     void drawSlider(Painter& painter, const Aabrf& rect, float pos) const
     {
-        float kr = (int)(rect.height() * 0.25f);
+        float kr = (int)(rect.get_height() * 0.25f);
 
         painter.push_state();
 
         // Slot
         Paint bg = Paint::create_box_gradient(Vector2f{rect.left(), rect.y() - 2 + 1},
-                                              Size2f{rect.width(), 4}, 2, 2, Color(0, 0, 0, 32), Color(0, 0, 0, 128));
+                                              Size2f{rect.get_width(), 4}, 2, 2, Color(0, 0, 0, 32), Color(0, 0, 0, 128));
         painter.begin_path();
-        painter.add_rounded_rect(rect.left(), rect.y() - 2, rect.width(), 4, 2);
+        painter.add_rounded_rect(rect.left(), rect.y() - 2, rect.get_width(), 4, 2);
         painter.set_fill_paint(bg);
         painter.fill();
 
         // Knob Shadow
-        bg = Paint::create_radial_gradient(Vector2f{rect.left() + (int)(pos * rect.width()), rect.y() + 1},
+        bg = Paint::create_radial_gradient(Vector2f{rect.left() + (int)(pos * rect.get_width()), rect.y() + 1},
                                            kr - 3, kr + 3, Color(0, 0, 0, 64), Color(0, 0, 0, 0));
         painter.begin_path();
-        painter.add_rect(rect.left() + (int)(pos * rect.width()) - kr - 5, rect.y() - kr - 5, kr * 2 + 5 + 5, kr * 2 + 5 + 5 + 3);
-        painter.add_circle(rect.left() + (int)(pos * rect.width()), rect.y(), kr);
+        painter.add_rect(rect.left() + (int)(pos * rect.get_width()) - kr - 5, rect.y() - kr - 5, kr * 2 + 5 + 5, kr * 2 + 5 + 5 + 3);
+        painter.add_circle(rect.left() + (int)(pos * rect.get_width()), rect.y(), kr);
         painter.set_winding(Painter::Winding::HOLE);
         painter.set_fill_paint(bg);
         painter.fill();
@@ -92,14 +92,14 @@ public:
                                                    Vector2f{rect.left(), rect.y() + kr},
                                                    Color(255, 255, 255, 16), Color(0, 0, 0, 16));
         painter.begin_path();
-        painter.add_circle(rect.left() + (int)(pos * rect.width()), rect.y(), kr - 1);
+        painter.add_circle(rect.left() + (int)(pos * rect.get_width()), rect.y(), kr - 1);
         painter.set_fill_color(Color(40, 43, 48, 255));
         painter.fill();
         painter.set_fill_paint(knob);
         painter.fill();
 
         painter.begin_path();
-        painter.add_circle(rect.left() + (int)(pos * rect.width()), rect.y(), kr - 0.5f);
+        painter.add_circle(rect.left() + (int)(pos * rect.get_width()), rect.y(), kr - 0.5f);
         painter.set_stroke_color(Color(0, 0, 0, 92));
         painter.stroke();
 
@@ -141,7 +141,7 @@ public:
 
         painter.push_state();
 
-        const float outer_radius = rect.shorter_size() * 0.5f - 5.0f;
+        const float outer_radius = rect.get_shorter_side() * 0.5f - 5.0f;
         const float inner_radius = outer_radius - 20.0f;
         if (inner_radius <= 0) {
             return;
@@ -248,18 +248,18 @@ public:
 
     void drawEyes(Painter& painter, const Aabrf& rect, const Vector2f& target, float t) const
     {
-        float ex = rect.width() * 0.23f;
-        float ey = rect.height() * 0.5f;
+        float ex = rect.get_width() * 0.23f;
+        float ey = rect.get_height() * 0.5f;
         float lx = rect.left() + ex;
         float ly = rect.top() + ey;
-        float rx = rect.left() + rect.width() - ex;
+        float rx = rect.left() + rect.get_width() - ex;
         float ry = rect.top() + ey;
         float dx, dy, d;
         float br    = (ex < ey ? ex : ey) * 0.5f;
         float blink = 1 - pow(sinf(t * 0.5f), 200) * 0.8f;
 
-        Paint bg = Paint::create_linear_gradient(Vector2f{rect.left(), rect.top() + rect.height() * 0.5f},
-                                                 Vector2f{rect.left() + rect.width() * 0.1f, rect.top() + rect.height()},
+        Paint bg = Paint::create_linear_gradient(Vector2f{rect.left(), rect.top() + rect.get_height() * 0.5f},
+                                                 Vector2f{rect.left() + rect.get_width() * 0.1f, rect.top() + rect.get_height()},
                                                  Color(0, 0, 0, 32), Color(0, 0, 0, 16));
         painter.begin_path();
         painter.add_ellipse(lx + 3.0f, ly + 16.0f, ex, ey);
@@ -267,8 +267,8 @@ public:
         painter.set_fill_paint(bg);
         painter.fill();
 
-        bg = Paint::create_linear_gradient({rect.left(), rect.top() + rect.height() * 0.25f},
-                                           {rect.left() + rect.width() * 0.1f, rect.top() + rect.height()}, Color(220, 220, 220, 255), Color(128, 128, 128, 255));
+        bg = Paint::create_linear_gradient({rect.left(), rect.top() + rect.get_height() * 0.25f},
+                                           {rect.left() + rect.get_width() * 0.1f, rect.top() + rect.get_height()}, Color(220, 220, 220, 255), Color(128, 128, 128, 255));
         painter.begin_path();
         painter.add_ellipse(lx, ly, ex, ey);
         painter.add_ellipse(rx, ry, ex, ey);
@@ -320,7 +320,7 @@ public:
     {
         float samples[6];
         float sx[6], sy[6];
-        float dx = rect.width() / 5.0f;
+        float dx = rect.get_width() / 5.0f;
         int i;
 
         samples[0] = (1 + sinf(t * 1.2345f + cosf(t * 0.33457f) * 0.44f)) * 0.5f;
@@ -332,7 +332,7 @@ public:
 
         for (i = 0; i < 6; i++) {
             sx[i] = rect.left() + i * dx;
-            sy[i] = rect.top() + rect.height() * samples[i] * 0.8f;
+            sy[i] = rect.top() + rect.get_height() * samples[i] * 0.8f;
         }
 
         // Graph background
@@ -341,8 +341,8 @@ public:
         painter.move_to(sx[0], sy[0]);
         for (i = 1; i < 6; i++)
             painter.bezier_to(sx[i - 1] + dx * 0.5f, sy[i - 1], sx[i] - dx * 0.5f, sy[i], sx[i], sy[i]);
-        painter.line_to(rect.left() + rect.width(), rect.top() + rect.height());
-        painter.line_to(rect.left(), rect.top() + rect.height());
+        painter.line_to(rect.left() + rect.get_width(), rect.top() + rect.get_height());
+        painter.line_to(rect.left(), rect.top() + rect.get_height());
         painter.set_fill_paint(bg);
         painter.fill();
 
@@ -446,7 +446,7 @@ public:
         Painter::LineJoin joins[3] = {Painter::LineJoin::MITER, Painter::LineJoin::ROUND, Painter::LineJoin::BEVEL};
         Painter::LineCap caps[3]   = {Painter::LineCap::BUTT, Painter::LineCap::ROUND, Painter::LineCap::SQUARE};
         const float pad            = 5.0f;
-        const float s              = rect.width() / 9.0f - pad * 2;
+        const float s              = rect.get_width() / 9.0f - pad * 2;
 
         painter.push_state();
 
@@ -462,7 +462,7 @@ public:
 
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
-                const float fx = rect.left() + s * 0.5f + (i * 3 + j) / 9.0f * rect.width() + pad;
+                const float fx = rect.left() + s * 0.5f + (i * 3 + j) / 9.0f * rect.get_width() + pad;
                 const float fy = rect.top() - s * 0.5f + pad;
 
                 painter.set_line_cap(caps[i]);
@@ -496,7 +496,7 @@ public:
 
     void drawTexture(Painter& painter, const Aabrf& rect) const
     {
-        Paint pattern = Paint::create_texture_pattern(rect.top_left(), rect.extend(), test_texture, 0, 1);
+        Paint pattern = Paint::create_texture_pattern(rect.top_left(), rect.get_size(), test_texture, 0, 1);
 
         const float corner_radius = 10;
 

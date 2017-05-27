@@ -4,10 +4,9 @@
 #include <memory>
 #include <vector>
 
-namespace notf {
+#include "core/fwds.hpp"
 
-class Item;
-using ItemPtr = std::shared_ptr<Item>;
+namespace notf {
 
 namespace detail {
 
@@ -24,13 +23,13 @@ struct ItemContainer {
     void clear();
 
     /** Applies a function to all Items in this Container. */
-    virtual void apply(std::function<void(Item*)> function);
+    virtual void apply(std::function<void(Item*)> function) = 0;
 
-    /** Applies a function to all Items in this Container and then recursively down their child hierarchy.
-     * The function is first applied to parents because children are aware of their parents but generally not the other
-     * way around.
-     */
-    void apply_recursive(std::function<void(Item*)> function);
+    /** Checks whether this Container contains a given Item. */
+    virtual bool contains(const Item* item) const = 0;
+
+    /** Checks whether this Container is empty or not. */
+    virtual bool is_empty() const = 0;
 };
 
 /**********************************************************************************************************************/
@@ -38,6 +37,10 @@ struct ItemContainer {
 /** Widgets have no child Items and use this empty Container as a placeholder instead. */
 struct EmptyItemContainer : public ItemContainer {
     virtual void apply(std::function<void(Item*)>) override {}
+
+    virtual bool contains(const Item*) const override { return false; }
+
+    virtual bool is_empty() const override { return true; }
 };
 
 /**********************************************************************************************************************/
@@ -46,9 +49,12 @@ struct EmptyItemContainer : public ItemContainer {
 struct SingleItemContainer : public ItemContainer {
     virtual void apply(std::function<void(Item*)> function) override;
 
-private: // fields ****************************************************************************************************/
+    virtual bool contains(const Item* child) const override { return child == item.get(); }
+
+    virtual bool is_empty() const override { return static_cast<bool>(item); }
+
     /** The singular Item contained in this Container. */
-    ItemPtr m_item;
+    ItemPtr item;
 };
 
 /**********************************************************************************************************************/
@@ -57,9 +63,12 @@ private: // fields *************************************************************
 struct ItemList : public ItemContainer {
     virtual void apply(std::function<void(Item*)> function) override;
 
-private: // fields ****************************************************************************************************/
+    virtual bool contains(const Item* child) const override;
+
+    virtual bool is_empty() const override { return items.empty(); }
+
     /** All Items contained in the list. */
-    std::vector<ItemPtr> m_items;
+    std::vector<ItemPtr> items;
 };
 
 } // namespace detail

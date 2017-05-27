@@ -309,7 +309,7 @@ void Painterpreter::_set_scissor(const Scissor& scissor)
         (current_state.xform * scissor.xform).transform(scissor_aabr);
         scissor_aabr.intersect(base_aabr);
 
-        current_state.scissor.extend = scissor_aabr.extend();
+        current_state.scissor.extend = scissor_aabr.get_size();
         current_state.scissor.xform  = Xform2f::translation(scissor_aabr.top_left());
     }
     else {

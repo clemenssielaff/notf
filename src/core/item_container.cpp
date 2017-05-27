@@ -1,6 +1,8 @@
 #include "core/item_container.hpp"
 
-#include "core/item_new.hpp"
+#include <algorithm>
+
+#include "core/item.hpp"
 
 namespace notf {
 namespace detail {
@@ -16,23 +18,12 @@ void ItemContainer::clear()
     });
 }
 
-void ItemContainer::apply_recursive(std::function<void(Item*)> function)
-{
-    // all top-level Items in the container first
-    apply(function);
-
-    // then their child Items
-    apply([function](Item* item) -> void {
-        item->m_children->apply_recursive(function);
-    });
-}
-
 /**********************************************************************************************************************/
 
 void SingleItemContainer::apply(std::function<void(Item*)> function)
 {
-    if (m_item) {
-        function(m_item.get());
+    if (item) {
+        function(item.get());
     }
 }
 
@@ -40,9 +31,18 @@ void SingleItemContainer::apply(std::function<void(Item*)> function)
 
 void ItemList::apply(std::function<void(Item*)> function)
 {
-    for (const ItemPtr& item : m_items) {
+    for (const ItemPtr& item : items) {
         function(item.get());
     }
+}
+
+bool ItemList::contains(const Item* child) const
+{
+    return std::find(std::begin(items), std::end(items),
+                     [child](const ItemPtr& entry) -> bool {
+                         return entry.get() == child;
+                     })
+        != std::end(items);
 }
 
 } // namespace detail

@@ -34,10 +34,8 @@ template <class Event, typename... Args>
 ScreenItem* propagate_to_hierarchy(Widget* widget, Signal<Args...> ScreenItem::*signal, Event& event,
                                    std::unordered_set<ScreenItem*>& notified_items)
 {
-    ScreenItemPtr handler = make_shared_from(widget);
-    while (handler) {
-        ScreenItem* screen_item = handler.get();
-
+    ScreenItem* screen_item = widget;
+    while (screen_item) {
         // don't propagate the event to items that have already seen (but not handled) it
         if (notified_items.count(screen_item)) {
             return nullptr;
@@ -49,7 +47,7 @@ ScreenItem* propagate_to_hierarchy(Widget* widget, Signal<Args...> ScreenItem::*
         if (event.was_handled()) {
             return screen_item;
         }
-        handler = handler->get_layout();
+        screen_item = screen_item->get_layout();
     }
     return nullptr;
 }
@@ -83,9 +81,6 @@ std::shared_ptr<Window> Window::create(const WindowInfo& info)
 
     // inititalize the window
     Application::get_instance()._register_window(window);
-    window->m_layout = WindowLayout::create(window);
-    window->m_layout->_set_size(window->get_buffer_size());
-
     return window;
 }
 
@@ -152,6 +147,10 @@ Window::Window(const WindowInfo& info)
             log_warning << "Failed to load Window icon '" << icon_path << "'";
         }
     }
+
+    // create the layout
+    m_layout = WindowLayout::create(this);
+    m_layout->set_claim(Claim::fixed(get_buffer_size()));
 }
 
 Window::~Window()
@@ -241,7 +240,7 @@ void Window::_on_resize(int width, int height)
 {
     m_size.width  = width;
     m_size.height = height;
-    m_layout->_set_size(get_buffer_size());
+    m_layout->_set_claim(Claim::fixed(get_buffer_size()));
 }
 
 void Window::_propagate_mouse_event(MouseEvent&& event)
@@ -302,7 +301,7 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
 
                     // do nothing if the item already has the focus
                     WidgetPtr old_focus_widget = m_keyboard_item.lock();
-                    if(new_focus_widget == old_focus_widget){
+                    if (new_focus_widget == old_focus_widget) {
                         return;
                     }
 
@@ -314,7 +313,7 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
                         // let the previously focused Widget know that it lost the focus
                         if (old_focus_widget) {
                             FocusEvent focus_lost_event(*this, FocusAction::LOST, old_focus_widget, new_focus_widget);
-                            ScreenItemPtr handler = old_focus_widget;
+                            ScreenItem* handler = old_focus_widget.get();
                             while (handler) {
                                 handler->on_focus_changed(focus_lost_event);
                                 handler = handler->get_layout();
@@ -322,8 +321,8 @@ void Window::_propagate_mouse_event(MouseEvent&& event)
                         }
 
                         // notify the new focused Widget's hierarchy
-                        m_keyboard_item       = new_focus_widget;
-                        ScreenItemPtr handler = new_focus_widget->get_layout();
+                        m_keyboard_item     = new_focus_widget;
+                        ScreenItem* handler = new_focus_widget->get_layout();
                         while (handler) {
                             handler->on_focus_changed(focus_gained_event);
                             handler = handler->get_layout();

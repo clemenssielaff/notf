@@ -168,9 +168,6 @@ SOURCES += \
     src/nanovg_test.cpp \
     src/common/signal.cpp \
     src/core/item_container.cpp \
-    src/core/widget_new.cpp \
-    src/core/layout_new.cpp \
-    src/core/controller_new.cpp \
     src/common/utf.cpp \
     thirdparty/tinyutf8/tinyutf8.cpp
 
@@ -260,12 +257,10 @@ HEADERS += \
     include/common/utf.hpp \
     include/core/events/focus_event.hpp \
     include/core/item_container.hpp \
-    include/core/widget_new.hpp \
-    include/core/layout_new.hpp \
-    include/core/controller_new.hpp \
     thirdparty/tinyutf8/tinyutf8.h \
     include/common/warnings.hpp \
-    include/common/meta.hpp
+    include/common/meta.hpp \
+    include/core/fwds.hpp
 
 #QMAKE_CXX = ccache g++
 

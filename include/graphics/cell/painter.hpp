@@ -251,11 +251,11 @@ public: // methods
 
     /** Creates a new rectangular Path. */
     void add_rect(const float x, const float y, const float w, const float h);
-    void add_rect(const Aabrf& rect) { add_rect(rect.left(), rect.top(), rect.width(), rect.height()); }
+    void add_rect(const Aabrf& rect) { add_rect(rect.left(), rect.top(), rect.get_width(), rect.get_height()); }
 
     /** Creates a new rectangular Path with rounded corners. */
     void add_rounded_rect(const float x, const float y, const float w, const float h, const float rtl, const float rtr, const float rbr, const float rbl);
-    void add_rounded_rect(const Aabrf& rect, const float radius) { add_rounded_rect(rect.left(), rect.top(), rect.width(), rect.height(), radius, radius, radius, radius); }
+    void add_rounded_rect(const Aabrf& rect, const float radius) { add_rounded_rect(rect.left(), rect.top(), rect.get_width(), rect.get_height(), radius, radius, radius, radius); }
     void add_rounded_rect(const float x, const float y, const float w, const float h, const float radius) { add_rounded_rect(x, y, w, h, radius, radius, radius, radius); }
 
     /** Creates a new elliptic Path. */

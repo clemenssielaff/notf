@@ -1,49 +1,54 @@
 #include "core/layout.hpp"
 
+#include "core/item_container.hpp"
+
 namespace notf {
 
-Layout::Layout()
-    : ScreenItem()
-    , m_override_claim(false)
+Layout::Layout(ItemContainerPtr container)
+    : ScreenItem(std::move(container))
+    , m_has_explicit_claim(false)
 {
+}
+
+Aabrf Layout::get_untransformed_aabr() const
+{
+    if (m_has_explicit_claim) {
+        return Aabrf(_get_size());
+    }
+    else {
+        return _get_children_aabr();
+    }
 }
 
 bool Layout::set_claim(const Claim claim)
 {
     if (claim.is_zero()) {
-        m_override_claim = false;
+        m_has_explicit_claim = false;
         return _set_claim(_aggregate_claim());
     }
     else {
-        m_override_claim = true;
+        m_has_explicit_claim = true;
         return _set_claim(std::move(claim));
     }
 }
 
-bool Layout::_set_size(const Size2f size)
+void Layout::clear()
 {
-    if (ScreenItem::_set_size(std::move(size))) {
-        _relayout();
-        return true;
-    }
-    return false;
+    m_children->clear();
 }
 
-void Layout::_cascade_render_layer(const RenderLayerPtr& render_layer)
+const Size2f& Layout::_set_size(const Size2f size)
 {
-    if(_has_own_render_layer() || render_layer == m_render_layer){
-        return;
+    if (size != ScreenItem::_set_size(size)) {
+        _relayout();
+        on_layout_changed();
     }
-    m_render_layer = render_layer;
-    auto it = iter_items();
-    while (Item* item = it->next()) {
-        Item::_cascade_render_layer(item, render_layer);
-    }
+    return _get_size();
 }
 
 bool Layout::_update_claim()
 {
-    if (m_override_claim) {
+    if (m_has_explicit_claim) {
         return false;
     }
     return _set_claim(_aggregate_claim());

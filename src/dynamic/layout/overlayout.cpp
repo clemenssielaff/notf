@@ -40,15 +40,6 @@ Overlayout::Overlayout()
 {
 }
 
-Overlayout::~Overlayout()
-{
-    // explicitly unparent all children so they can send the `parent_changed` signal
-    for (ItemPtr& item : m_items) {
-        on_child_removed(item->get_id());
-        _set_parent(item.get(), {});
-    }
-}
-
 bool Overlayout::has_item(const ItemPtr& item) const
 {
     return std::find(m_items.cbegin(), m_items.cbegin(), item) != m_items.cend();
@@ -186,7 +177,6 @@ void Overlayout::_relayout()
         }
         _set_layout_transform(screen_item, Xform2f::translation({x, y}));
     }
-    on_layout_changed();
 }
 
 void Overlayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const

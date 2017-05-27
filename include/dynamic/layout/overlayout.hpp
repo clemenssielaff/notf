@@ -69,15 +69,9 @@ public: // static methods
     static std::shared_ptr<Overlayout> create();
 
 private: // constructor
-    // clang-format off
-protected_except_for_bindings:
-    Overlayout();
-    // clang-format on
+    PROTECTED_EXCEPT_FOR_BINDINGS Overlayout();
 
 public: // methods
-    /** Destructor. */
-    virtual ~Overlayout() override;
-
     /** Tests if a given Item is a child of this Item. */
     bool has_item(const ItemPtr& item) const;
 

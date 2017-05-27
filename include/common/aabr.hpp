@@ -194,13 +194,13 @@ struct _Aabr {
     vector_t bottom_right() const { return _max; }
 
     /** The width of this Aabr */
-    value_t width() const { return _max.x - _min.x; }
+    value_t get_width() const { return _max.x - _min.x; }
 
     /** The height of this Aabr */
-    value_t height() const { return _max.y - _min.y; }
+    value_t get_height() const { return _max.y - _min.y; }
 
     /** The area of this Aabr */
-    value_t area() const { return height() * width(); }
+    value_t get_area() const { return get_height() * get_width(); }
 
     /** A valid Aabr has a width and height >= 0. */
     bool is_valid() const { return _min.x <= _max.x && _min.y <= _max.y; }
@@ -235,28 +235,28 @@ struct _Aabr {
     vector_t closest_point_to(const vector_t& target) const
     {
         const vector_t pos        = center();
-        const value_t half_width  = width() / 2;
-        const value_t half_height = height() / 2;
+        const value_t half_width  = get_width() / 2;
+        const value_t half_height = get_height() / 2;
         return {pos.x + clamp(target.x - pos.x, -half_width, half_width),
                 pos.y + clamp(target.y - pos.y, -half_height, half_height)};
     }
 
     /** Returns the extend of this Aabr. */
-    Size2f extend() const { return {width(), height()}; }
+    Size2f get_size() const { return {get_width(), get_height()}; }
 
     /** Returns the length of the longer side of this Aabr. */
-    value_t longer_size() const
+    value_t get_longer_side() const
     {
-        const value_t width  = this->width();
-        const value_t height = this->height();
+        const value_t width  = this->get_width();
+        const value_t height = this->get_height();
         return width > height ? width : height;
     }
 
     /** Returns the length of the shorter side of this Aabr. */
-    value_t shorter_size() const
+    value_t get_shorter_side() const
     {
-        const value_t width  = this->width();
-        const value_t height = this->height();
+        const value_t width  = this->get_width();
+        const value_t height = this->get_height();
         return width < height ? width : height;
     }
 
@@ -282,7 +282,7 @@ struct _Aabr {
     /** Moves this Aabr vertically to the given x-coordinate. */
     _Aabr& set_x(const value_t x)
     {
-        const value_t half_width = width() / 2;
+        const value_t half_width = get_width() / 2;
         _min.x                   = x - half_width;
         _max.x                   = x + half_width;
         return *this;
@@ -291,7 +291,7 @@ struct _Aabr {
     /** Moves this Aabr vertically to the given y-coordinate. */
     _Aabr& set_y(const value_t y)
     {
-        const value_t half_height = height() / 2;
+        const value_t half_height = get_height() / 2;
         _min.y                    = y - half_height;
         _max.y                    = y + half_height;
         return *this;

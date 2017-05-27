@@ -1,63 +1,32 @@
 #include "core/window_layout.hpp"
 
-#include <assert.h>
-
 #include "common/log.hpp"
-#include "common/xform2.hpp"
 #include "core/controller.hpp"
-#include "core/render_manager.hpp"
-#include "core/window.hpp"
+#include "core/item_container.hpp"
 
 namespace notf {
 
-Item* WindowLayoutIterator::next()
-{
-    if (m_layout) {
-        Item* result = m_layout->m_controller.get();
-        m_layout     = nullptr;
-        return result;
-    }
-    return nullptr;
-}
-
-/**********************************************************************************************************************/
-
-WindowLayoutPtr WindowLayout::create(const std::shared_ptr<Window>& window)
+std::shared_ptr<WindowLayout> WindowLayout::create(const Window* window)
 {
     struct make_shared_enabler : public WindowLayout {
-        make_shared_enabler(const std::shared_ptr<Window>& window)
+        make_shared_enabler(const Window* window)
             : WindowLayout(window) {}
     };
     return std::make_shared<make_shared_enabler>(window);
 }
 
-WindowLayout::WindowLayout(const std::shared_ptr<Window>& window)
-    : Layout()
-    , m_window(window.get())
+WindowLayout::WindowLayout(const Window* window)
+    : Layout(std::make_unique<detail::SingleItemContainer>())
+    , m_window(window)
     , m_controller()
 {
-    // the window layout is always in the default render layer
-    m_has_own_render_layer = true;
-    m_render_layer         = window->get_render_manager().get_default_layer();
 }
 
-WindowLayout::~WindowLayout()
+std::vector<Widget*> WindowLayout::get_widgets_at(const Vector2f& screen_pos)
 {
-    // explicitly unparent all children so they can send the `parent_changed` signal
-    on_child_removed(m_controller->get_id());
-    _set_parent(m_controller.get(), {});
-}
-
-bool WindowLayout::has_item(const ItemPtr& item) const
-{
-    return std::static_pointer_cast<Item>(m_controller) == item;
-}
-
-void WindowLayout::clear()
-{
-    if (m_controller) {
-        remove_item(m_controller);
-    }
+    std::vector<Widget*> result;
+    _get_widgets_at(screen_pos, result);
+    return result;
 }
 
 void WindowLayout::set_controller(ControllerPtr controller)
@@ -67,85 +36,72 @@ void WindowLayout::set_controller(ControllerPtr controller)
         return;
     }
 
-    // remove the existing item first
-    if (!is_empty()) {
-        if (m_controller == controller) {
+    if (m_controller) {
+        if (m_controller == controller.get()) {
             return;
         }
-        remove_item(m_controller);
+        _remove_child(m_controller);
     }
 
-    // take ownership of the Item
-    _set_parent(controller.get(), make_shared_from(this));
-    const ItemID child_id = controller->get_id();
-    m_controller          = std::move(controller);
-    on_child_added(child_id);
-
-    // Controllers are initialized the first time they are parented to a Layout
-    m_controller->initialize();
-
-    _relayout();
-    _redraw();
+    detail::SingleItemContainer* container = static_cast<detail::SingleItemContainer*>(m_children.get());
+    container->item = controller;
+    m_controller = controller.get();
+    if (m_controller) {
+        Item::_set_parent(m_controller, this);
+    }
+    on_child_added(m_controller);
 }
 
-void WindowLayout::remove_item(const ItemPtr& item)
+void WindowLayout::_remove_child(const Item* child_item)
 {
-    if (item == m_controller) {
-        on_child_removed(m_controller->get_id());
-        m_controller.reset();
+    if (!child_item) {
+        return;
     }
-    else {
-        log_warning << "Could not remove Controller from WindowLayout " << get_id() << " because it is already emppty";
+
+    if (child_item != m_controller) {
+        log_critical << "Cannot remove unknown child Item " << child_item->get_id()
+                     << " from WindowLayout " << get_id();
+        return;
     }
+
+    log_trace << "Removing controller from WindowLayout " << get_id();
+    m_children->clear();
+    m_controller = nullptr;
+
+    on_child_removed(child_item);
 }
 
-Aabrf WindowLayout::get_content_aabr() const
+void WindowLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
     if (m_controller) {
-        if (ScreenItem* screen_item = get_screen_item(m_controller.get())) {
+        if (ScreenItem* root_item = m_controller->get_root_item()) {
+            ScreenItem::_get_widgets_at(root_item, local_pos, result);
+        }
+    }
+}
+
+Aabrf WindowLayout::_get_children_aabr() const
+{
+    if (m_controller) {
+        if (ScreenItem* screen_item = m_controller->get_screen_item()) {
             return screen_item->get_aarbr();
         }
     }
     return Aabrf::zero();
 }
 
-std::shared_ptr<Window> WindowLayout::get_window() const
+Claim WindowLayout::_aggregate_claim()
 {
-    return m_window->shared_from_this();
-}
-
-std::unique_ptr<LayoutIterator> WindowLayout::iter_items() const
-{
-    return std::make_unique<WindowLayoutIterator>(this);
-}
-
-std::vector<Widget*> WindowLayout::get_widgets_at(const Vector2f& screen_pos) const
-{
-    std::vector<Widget*> result;
-    _get_widgets_at(screen_pos, result);
-    return result;
+    assert(0);
 }
 
 void WindowLayout::_relayout()
 {
-    if (!is_empty()) {
-        _set_size(m_controller->get_root_item().get(), get_size());
+    if (m_controller) {
+        if (ScreenItem* root_item = m_controller->get_root_item()) {
+            ScreenItem::_set_size(root_item, _get_size());
+        }
     }
-    on_layout_changed();
-}
-
-void WindowLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
-{
-    if (is_empty()) {
-        return;
-    }
-    Item::_get_widgets_at(m_controller.get(), local_pos, result);
-}
-
-Claim WindowLayout::_aggregate_claim()
-{
-    const Size2f window_size = m_window->get_window_size();
-    return Claim::fixed(window_size.width, window_size.height);
 }
 
 } // namespace notf

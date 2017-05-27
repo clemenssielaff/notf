@@ -82,18 +82,12 @@ public: // static methods
     static std::shared_ptr<StackLayout> create(const Direction direction = Direction::LEFT_TO_RIGHT);
 
 private: // constructor
-    // clang-format off
-protected_except_for_bindings:
     /** Constructor.
      * @param direction Direction of the stack.
      */
-    StackLayout(const Direction direction);
-    // clang-format on
+    PROTECTED_EXCEPT_FOR_BINDINGS StackLayout(const Direction direction);
 
 public: // methods
-    /** Destructor. */
-    virtual ~StackLayout() override;
-
     /** Tests if a given Item is a child of this Item. */
     bool has_item(const ItemPtr& item) const;
 

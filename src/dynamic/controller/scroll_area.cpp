@@ -31,8 +31,8 @@ void ScrollArea::ScrollBar::_paint(Painter& painter) const
 
     // bar
     if (size < 1) {
-        Aabrf bar_rect(widget_rect.width(), widget_rect.height() * size);
-        bar_rect.move_by({0, widget_rect.height() * pos});
+        Aabrf bar_rect(widget_rect.get_width(), widget_rect.get_height() * size);
+        bar_rect.move_by({0, widget_rect.get_height() * pos});
 
         painter.begin_path();
         painter.add_rect(bar_rect);

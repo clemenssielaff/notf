@@ -25,7 +25,7 @@ ItemID get_next_id()
 
 namespace notf {
 
-Item::Item(std::unique_ptr<detail::ItemContainer> container)
+Item::Item(ItemContainerPtr container)
     : m_children(std::move(container))
     , m_id(get_next_id())
     , m_window()
@@ -41,6 +41,19 @@ Item::~Item()
 {
     log_trace << "Destroying Item #" << m_id;
     m_children->clear();
+    if(m_parent){
+        m_parent->_remove_child(this);
+    }
+}
+
+bool Item::has_child(const Item* child) const
+{
+    return m_children->contains(child);
+}
+
+bool Item::has_children() const
+{
+    return !m_children->is_empty();
 }
 
 bool Item::has_ancestor(const Item* ancestor) const
@@ -116,8 +129,12 @@ void Item::_set_parent(Item* parent)
     if (parent == m_parent) {
         return;
     }
-    m_parent = parent;
 
+    if(m_parent){
+        m_parent->_remove_child(this);
+    }
+
+    m_parent = parent;
     if (m_parent) {
         _set_window(m_parent->m_window);
     }

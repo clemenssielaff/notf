@@ -6,6 +6,8 @@
 
 namespace notf {
 
+/**********************************************************************************************************************/
+
 /** Every ScreenItem has a Claim that determines how much space is alloted for it in its parent Layout.
  * The user can declare Claims manually for both Widgets and Layouts, although Layouts usually have a mechanism to
  * calculate their own Claim based on the combined Claims of their children.
@@ -34,12 +36,8 @@ namespace notf {
  */
 class Claim {
 
-public: // class
-    /** A Claim has two Stretches, one in each direction: horizontal and vertical.
-     * Both need to enforce constraints but both Stretches are largely independent.
-     */
+public: // types ******************************************************************************************************/
     class Stretch {
-
     public: // methods
         /** Default Constructor. */
         Stretch()
@@ -254,6 +252,7 @@ private: // class
 public: // static methods *********************************************************************************************/
     /** Returns a Claim with fixed height and width. */
     static Claim fixed(float width, float height);
+    static Claim fixed(const Size2f& size) { return fixed(size.width, size.height); }
 
     /** Returns a Claim with all limits set to zero. */
     static Claim zero();

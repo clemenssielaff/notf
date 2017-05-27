@@ -6,79 +6,54 @@ namespace notf {
 
 /**********************************************************************************************************************/
 
-/** Abstact Iterator that goes through all items in a Layout in order, from back to front.
- * Iterators must be used up immediately after creation as they might be invalidated by any operation on their Layout.
+/**
+ *
+ *
  */
-class LayoutIterator {
-
-protected: // methods
-    /** Default Constructor. */
-    LayoutIterator() = default;
-
-public: // methods
-    /** Destructor. */
-    virtual ~LayoutIterator() = default;
-
-    /** Advances the Iterator one step, returns the next Item or nullptr if the iteration has finished. */
-    virtual Item* next() = 0;
-};
-
-using LayoutIteratorPtr = std::unique_ptr<LayoutIterator>;
-
-/**********************************************************************************************************************/
-
-/** Abstract Layout baseclass. */
 class Layout : public ScreenItem {
-
-    friend class ScreenItem;
+    friend class ScreenItem; // can call _update_claim() and _relayout()
 
 protected: // constructor  ********************************************************************************************/
-    /** Default Constructor. */
-    Layout();
+    Layout(ItemContainerPtr container);
 
 public: // methods ****************************************************************************************************/
-    /** (Un-)Sets an override Claim for this Layout.
-     * Layouts with an override Claim do not dynamically aggregate one from their children.
-     * To unset an override Claim, pass a zero Claim.
-     * @param claim New override Claim.
+    virtual Aabrf get_untransformed_aabr() const override;
+
+    /** (Un-)Sets an explicit Claim for this Layout.
+     * Layouts with an explicit Claim do not dynamically aggregate one from their children.
+     * To unset an explicit Claim, pass a zero Claim.
+     * @param claim New explicit Claim.
      * @return True iff the Claim was modified.
      */
     bool set_claim(const Claim claim);
 
-    /** Returns an iterator that goes over all Items in this Layout in order from back to front. */
-    virtual std::unique_ptr<LayoutIterator> iter_items() const = 0;
-
-    /** Removes a single Item from this Layout.
-     * Does nothing, if the Item is not a child of this Layout.
-     */
-    virtual void remove_item(const ItemPtr& item) = 0;
-
-    /** Returns the united bounding rect of all Items in the Layout. */
-    virtual Aabrf get_content_aabr() const = 0;
+    /** Removes all Items from the Layout. */
+    void clear();
 
 public: // signals  ***************************************************************************************************/
     /** Emitted when a new child Item was added to this one.
      * @param ItemID of the new child.
      */
-    Signal<ItemID> on_child_added;
+    Signal<const Item*> on_child_added;
 
     /** Emitted when a child Item of this one was removed.
      * @param ItemID of the removed child.
      */
-    Signal<ItemID> on_child_removed;
+    Signal<const Item*> on_child_removed;
 
     /** Emitted when the Layout changed the position of the child Items. */
     Signal<> on_layout_changed;
 
 protected: // methods *************************************************************************************************/
-    virtual bool _set_size(const Size2f size) override;
-
-    virtual void _cascade_render_layer(const RenderLayerPtr& render_layer) override;
+    virtual const Size2f& _set_size(const Size2f size) override;
 
     /** Updates the Claim of this Layout.
      * @return  True, iff the Claim was modified.
      */
     bool _update_claim();
+
+    /** Returns the untransformed union of all child ScreenItem AABRs in the Layout. */
+    virtual Aabrf _get_children_aabr() const = 0;
 
     /** Tells this Layout to create a new Claim for itself from the combined Claims of all of its children.
      * @returns The aggregated Claim.
@@ -90,19 +65,9 @@ protected: // methods **********************************************************
      */
     virtual void _relayout() = 0;
 
-protected: // static methods ******************************************************************************************/
-    /** Allows any Layout subclass to update another Item's parent. */
-    static void _set_parent(Item* item, ItemPtr parent) { item->_set_parent(parent); }
-
-    /** Allows any Layout subclass to call `_set_size` on any other ScreenItem. */
-    static bool _set_size(ScreenItem* item, const Size2f size) { return item->_set_size(std::move(size)); }
-
-    /** Allows any Layout subclass to call `_set_layout_transform` on any other ScreenItem. */
-    static bool _set_layout_transform(ScreenItem* item, const Xform2f transform) { return item->_set_layout_transform(std::move(transform)); }
-
-private: // members ***************************************************************************************************/
+protected: // members *************************************************************************************************/
     /** If true, this Layout provides its own Claim and does not aggregate it from its children. */
-    bool m_override_claim;
+    bool m_has_explicit_claim;
 };
 
 } // namespace notf

@@ -62,11 +62,11 @@ void RenderStats::render_stats(CellCanvas& context)
     painter.move_to(m_aabr.bottom_left());
     for (size_t i = 0; i < m_buffer.size(); i++) {
         const float value = min(m_max_frame_time, m_buffer[(m_head + i) % m_buffer.size()] * 1000.0f);
-        const float x     = m_aabr.left() + (static_cast<float>(i) / (m_buffer.size() - 1)) * m_aabr.width();
-        const float y     = m_aabr.bottom() - ((value / m_max_frame_time) * m_aabr.height());
+        const float x     = m_aabr.left() + (static_cast<float>(i) / (m_buffer.size() - 1)) * m_aabr.get_width();
+        const float y     = m_aabr.bottom() - ((value / m_max_frame_time) * m_aabr.get_height());
         painter.line_to(x, y);
     }
-    painter.line_to(m_aabr.bottom_right());
+    painter.line_to(m_aabr.get_bottom_right());
     painter.set_fill_color(Color(255, 192, 0, 128));
     painter.fill();
 

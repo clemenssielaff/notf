@@ -5,6 +5,7 @@
 #include "common/id.hpp"
 #include "common/meta.hpp"
 #include "common/signal.hpp"
+#include "core/fwds.hpp"
 
 #ifdef NOTF_PYTHON
 #include "ext/python/py_fwd.hpp"
@@ -12,14 +13,6 @@
 #endif
 
 namespace notf {
-
-/* Item hierarchy forward declarations */
-class Controller;
-class Item;
-class Layout;
-class ScreenItem;
-class Widget;
-class Window;
 
 namespace detail {
 struct ItemContainer;
@@ -75,14 +68,15 @@ using ItemID = Id<Item, RawID>;
  * Effectively, this switches the ownership of the two objects, when the Python script execution has finished.
  */
 class Item : public receive_signals, public std::enable_shared_from_this<Item> {
-
     friend struct detail::ItemContainer;
 
+protected: // types ***************************************************************************************************/
+    using ItemContainerPtr = std::unique_ptr<detail::ItemContainer>;
+
 protected: // constructor *********************************************************************************************/
-    Item(std::unique_ptr<detail::ItemContainer> container);
+    Item(ItemContainerPtr container);
 
 public: // methods ****************************************************************************************************/
-    DEFINE_SHARED_POINTER_TYPES(Item)
     DISALLOW_COPY_AND_ASSIGN(Item)
 
     /** Destructor */
@@ -101,6 +95,12 @@ public: // methods *************************************************************
      */
     Item* get_parent() { return m_parent; }
     const Item* get_parent() const { return const_cast<Item*>(this)->get_parent(); }
+
+    /** Checks if this Item is the parent of the given child.*/
+    bool has_child(const Item* child) const;
+
+    /** Checks if this Item has any children at all. */
+    bool has_children() const;
 
     /** Tests, if this Item is a descendant of the given ancestor Item. */
     bool has_ancestor(const Item* ancestor) const;
@@ -140,6 +140,9 @@ public: // signals *************************************************************
     Signal<Window*> on_window_changed;
 
 protected: // methods *************************************************************************************************/
+    /** Removes a child Item from this Item. */
+    virtual void _remove_child(const Item* child_item) = 0;
+
     /** Sets the parent of this Item. */
     virtual void _set_parent(Item* parent);
 
@@ -161,9 +164,13 @@ protected_except_for_bindings : // methods
 #endif
     // clang-format on
 
+protected: // static methods ******************************************************************************************/
+    /** Allows Item subclasses to set each others' parent. */
+    static void _set_parent(Item* item, Item* parent) { item->_set_parent(parent); }
+
 protected: // fields **************************************************************************************************/
     /** All children of this Item. */
-    std::unique_ptr<detail::ItemContainer> m_children;
+    ItemContainerPtr m_children;
 
 private: // fields ****************************************************************************************************/
     /** Application-unique ID of this Item. */

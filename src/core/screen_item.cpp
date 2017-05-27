@@ -14,7 +14,7 @@ const float g_alpha_cutoff = 1.f / (255 * 2);
 
 namespace notf {
 
-ScreenItem::ScreenItem(std::unique_ptr<detail::ItemContainer> container)
+ScreenItem::ScreenItem(ItemContainerPtr container)
     : Item(std::move(container))
     , m_layout_transform(Xform2f::identity())
     , m_local_transform(Xform2f::identity())
@@ -48,22 +48,29 @@ void ScreenItem::set_local_transform(const Xform2f transform)
 
 Aabrf ScreenItem::get_aarbr() const
 {
-    Aabrf aabr = _get_aabr();
+    Aabrf aabr = get_untransformed_aabr();
     m_effective_transform.transform(aabr);
     return aabr;
 }
 
 Aabrf ScreenItem::get_layout_aarbr() const
 {
-    Aabrf aabr = _get_aabr();
+    Aabrf aabr = get_untransformed_aabr();
     m_layout_transform.transform(aabr);
     return aabr;
 }
 
 Aabrf ScreenItem::get_local_aarbr() const
 {
-    Aabrf aabr = _get_aabr();
+    Aabrf aabr = get_untransformed_aabr();
     m_local_transform.transform(aabr);
+    return aabr;
+}
+
+Aabrf ScreenItem::get_window_aarbr() const
+{
+    Aabrf aabr = get_untransformed_aabr();
+    get_window_transform().transform(aabr);
     return aabr;
 }
 
@@ -157,14 +164,15 @@ void ScreenItem::set_render_layer(const RenderLayerPtr& render_layer)
     _set_render_layer(render_layer);
 }
 
-void ScreenItem::_redraw()
+bool ScreenItem::_redraw() const
 {
     if (!is_visible()) {
-        return;
+        return false;
     }
     Window* window = get_window();
     assert(window);
     window->get_render_manager().request_redraw();
+    return true;
 }
 
 void ScreenItem::_set_parent(Item* parent)
