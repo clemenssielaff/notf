@@ -33,9 +33,9 @@ public: // types ***************************************************************
 
     /** How a Layout wraps. */
     enum class Wrap : unsigned char {
-        NO_WRAP,      // no wrap
-        WRAP,         // wraps towards the lower-right corner
-        WRAP_REVERSE, // wraps towards the upper-left corner
+        NO_WRAP, // no wrap
+        WRAP,    // wraps towards the lower-right corner
+        REVERSE, // wraps towards the upper-left corner
     };
 
     /** Constructor.

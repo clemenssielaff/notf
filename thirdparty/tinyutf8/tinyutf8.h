@@ -1057,7 +1057,7 @@ public:
     {
         utf8_string str = *this;
         str.append(summand);
-        return std::move(str);
+        return str;
     }
 
     /**

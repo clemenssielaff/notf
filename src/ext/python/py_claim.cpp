@@ -2,8 +2,7 @@
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
-#include "common/claim.hpp"
-#include "common/string.hpp"
+#include "core/claim.hpp"
 #include "ext/python/docstr.hpp"
 using namespace notf;
 

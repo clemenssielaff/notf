@@ -14,14 +14,14 @@ namespace notf {
 class Overlayout : public Layout {
 public: // types ******************************************************************************************************/
     /** Horizontal alignment of all items in the Layout. */
-    enum class Horizontal : unsigned char {
+    enum class AlignHorizontal : unsigned char {
         LEFT,
         CENTER,
         RIGHT,
     };
 
     /** Vertical alignment of all items in the Layout. */
-    enum class Vertical : unsigned char {
+    enum class AlignVertical : unsigned char {
         TOP,
         CENTER,
         BOTTOM,
@@ -36,16 +36,16 @@ public: // methods *************************************************************
     static std::shared_ptr<Overlayout> create();
 
     /** Horizontal alignment of all items in the Layout. */
-    Horizontal get_horizontal_alignment() const { return m_horizontal_alignment; }
+    AlignHorizontal get_horizontal_alignment() const { return m_horizontal_alignment; }
 
     /** Vertical alignment of all items in the Layout. */
-    Vertical get_vertical_alignment() const { return m_vertical_alignment; }
+    AlignVertical get_vertical_alignment() const { return m_vertical_alignment; }
 
     /** Padding around the Layout's border. */
     const Padding& get_padding() const { return m_padding; }
 
     /** Defines the alignment of each Item in the Layout. */
-    void set_alignment(const Horizontal horizontal, const Vertical vertical)
+    void set_alignment(const AlignHorizontal horizontal, const AlignVertical vertical)
     {
         m_horizontal_alignment = std::move(horizontal);
         m_vertical_alignment   = std::move(vertical);
@@ -75,10 +75,10 @@ private: // methods ************************************************************
 
 private: // fields ****************************************************************************************************/
     /** Horizontal alignment of all items in the Layout. */
-    Horizontal m_horizontal_alignment;
+    AlignHorizontal m_horizontal_alignment;
 
     /** Vertical alignment of all items in the Layout. */
-    Vertical m_vertical_alignment;
+    AlignVertical m_vertical_alignment;
 
     /** Padding around the Layout's borders. */
     Padding m_padding;

@@ -185,13 +185,19 @@ FlexLayout::FlexLayout(const Direction direction)
     , m_spacing(0.f)
     , m_cross_spacing(0.f)
 {
+    // Set an explicit default Claim.
+    // A FlexLayout will most likely be used to arrange elements within an explicitly defined area that is not
+    // determined by the elements itself.
+    // Therefore, it receives a default Claim (with 0 minimum/preferred and infinite maximum) which will allow its
+    // parent to determine its size explicitly.
+    set_claim(Claim());
 }
 
 std::shared_ptr<FlexLayout> FlexLayout::create(const Direction direction)
 {
     struct make_shared_enabler : public FlexLayout {
-        make_shared_enabler(const Direction direction)
-            : FlexLayout(direction) {}
+        make_shared_enabler(const Direction dir)
+            : FlexLayout(dir) {}
     };
     return std::make_shared<make_shared_enabler>(direction);
 }
@@ -316,15 +322,15 @@ void FlexLayout::add_item(ItemPtr item)
 void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size2f total_size,
                                const float main_offset, const float cross_offset)
 {
-    // calculate the actual, availabe size
+    // calculate the actual, available size
     const size_t item_count = stack.size();
     if (item_count == 0) {
         return;
     }
 
-    const bool horizontal        = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
-    const float available_width  = max(0.f, total_size.width - (horizontal ? m_spacing * (item_count - 1) : 0.f));
-    const float available_height = max(0.f, total_size.height - (horizontal ? 0.f : m_spacing * (item_count - 1)));
+    const bool is_horizontal        = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
+    const float available_width  = max(0.f, total_size.width - (is_horizontal ? m_spacing * (item_count - 1) : 0.f));
+    const float available_height = max(0.f, total_size.height - (is_horizontal ? 0.f : m_spacing * (item_count - 1)));
 
     // all elements get at least their minimum size
     float total_min = 0.f;
@@ -332,10 +338,10 @@ void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size
     std::map<int, std::set<ItemAdapter*>> batches;
     for (size_t i = 0; i < stack.size(); ++i) {
         const Claim& claim            = stack[i]->get_claim();
-        const Claim::Stretch& stretch = horizontal ? claim.get_horizontal() : claim.get_vertical();
+        const Claim::Stretch& stretch = is_horizontal ? claim.get_horizontal() : claim.get_vertical();
         const std::pair<float, float> width_to_height = claim.get_width_to_height();
         if (width_to_height.first > 0.f) {
-            if (horizontal) {
+            if (is_horizontal) {
                 adapters[i].upper_bound = min(stretch.get_max(), available_height * width_to_height.second);
             }
             else {
@@ -353,7 +359,7 @@ void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size
     }
 
     // layouting is the process by which the surplus space in the layout is distributed
-    float surplus = max(0.f, horizontal ? available_width - total_min : available_height - total_min);
+    float surplus = max(0.f, is_horizontal ? available_width - total_min : available_height - total_min);
     if (surplus > 0) {
         surplus = distribute_surplus(surplus, batches);
     }
@@ -367,7 +373,7 @@ void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size
     float start_offset, step_factor;
     const bool reverse = (m_direction == Direction::RIGHT_TO_LEFT) || (m_direction == Direction::BOTTOM_TO_TOP);
     if (reverse) {
-        start_offset = (horizontal ? total_size.width : total_size.height) + main_offset;
+        start_offset = (is_horizontal ? total_size.width : total_size.height) + main_offset;
         step_factor  = -1.f;
     }
     else {
@@ -381,7 +387,7 @@ void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size
         const std::pair<float, float> width_to_height = child->get_claim().get_width_to_height();
         assert(adapter.result >= 0.f);
         assert(adapter.result <= adapter.upper_bound);
-        if (horizontal) {
+        if (is_horizontal) {
             const Claim::Stretch& vertical = child->get_claim().get_vertical();
             Size2f item_size(adapter.result, min(vertical.get_max(), available_height));
             if (width_to_height.first > 0.f) {
@@ -450,7 +456,7 @@ void FlexLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
 
 Aabrf FlexLayout::_get_children_aabr() const
 {
-    Aabrf result; // TODO: better FlexLayout::get_content_aabr
+    Aabrf result = Aabrf::wrongest(); // TODO: better FlexLayout::get_content_aabr
     std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
     for (const ItemPtr& item : items) {
         result.unite(item->get_screen_item()->get_aarbr());
@@ -589,8 +595,8 @@ void FlexLayout::_relayout()
     alignment_spacing += m_cross_spacing;
     cross_offset += alignment_start;
 
-    size_t i                = (m_wrap == Wrap::WRAP_REVERSE ? stack_count - 1 : 0);
-    const size_t last_index = (m_wrap == Wrap::WRAP_REVERSE ? 0 : stack_count - 1);
+    size_t i                = (m_wrap == Wrap::REVERSE ? stack_count - 1 : 0);
+    const size_t last_index = (m_wrap == Wrap::REVERSE ? 0 : stack_count - 1);
     while (1) {
         const float stack_width = adapters.empty() ? cross_stretches[i].get_min() : adapters[i].result;
         const Size2f stack_size = is_horizontal ? Size2f{available_main, stack_width} : Size2f{stack_width, available_main};
@@ -599,7 +605,7 @@ void FlexLayout::_relayout()
         if (i == last_index) {
             break;
         }
-        if (m_wrap == Wrap::WRAP_REVERSE) {
+        if (m_wrap == Wrap::REVERSE) {
             --i;
         }
         else {

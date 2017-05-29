@@ -82,6 +82,9 @@ void BlendMode::apply() const
         rgb_dfactor = GL_ONE_MINUS_SRC_ALPHA;
         break;
     case INVALID:
+    default:
+        rgb_sfactor = 0;
+        rgb_dfactor = 0;
         assert(false);
         break;
     }
@@ -135,6 +138,9 @@ void BlendMode::apply() const
         alpha_dfactor = GL_ONE_MINUS_SRC_ALPHA;
         break;
     case INVALID:
+    default:
+        alpha_sfactor = 0;
+        alpha_dfactor = 0;
         assert(false);
         break;
     }

@@ -27,7 +27,7 @@ void produce_padding(pybind11::module& module)
     PyPadding.def_static("all", &Padding::all, DOCSTR("Even padding on all sides."), py::arg("padding"));
     PyPadding.def_static("none", &Padding::none, DOCSTR("No padding."));
     PyPadding.def_static("horizontal", &Padding::horizontal, DOCSTR("Horizontal padding, sets both `left` and `right`."), py::arg("padding"));
-    PyPadding.def_static("vertical", &Padding::vertical, DOCSTR("Vertical padding, sets both `top` and `bottom`."), py::arg("padding"));
+    PyPadding.def_static("vertical", &Padding::vertical, DOCSTR("AlignVertical padding, sets both `top` and `bottom`."), py::arg("padding"));
 
     // properties
     PyPadding.def_readonly("top", &Padding::top);

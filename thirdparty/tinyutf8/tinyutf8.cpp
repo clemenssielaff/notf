@@ -455,7 +455,7 @@ std::string utf8_string::cpp_str_bom() const
 
     delete[] tmp_buffer;
 
-    return move(result);
+    return result;
 }
 
 utf8_string::size_type utf8_string::get_num_required_bytes(const value_type* lit, size_type& num_multibytes)
@@ -766,7 +766,7 @@ std::unique_ptr<utf8_string::value_type[]> utf8_string::wide_literal() const
     while (*source)
         source += decode_utf8(source, *tempDest++);
 
-    return std::move(dest);
+    return dest;
 }
 
 utf8_string::difference_type utf8_string::compare(const utf8_string& str) const

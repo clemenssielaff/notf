@@ -37,7 +37,7 @@ void produce_aabr(pybind11::module& module)
     PyAabr.def_property("top_left", &Aabrf::top_left, &Aabrf::set_top_left);
     PyAabr.def_property("top_right", &Aabrf::top_right, &Aabrf::set_top_right);
     PyAabr.def_property("bottom_left", &Aabrf::bottom_left, &Aabrf::set_bottom_left);
-    PyAabr.def_property("bottom_right", &Aabrf::get_bottom_right, &Aabrf::set_bottom_right);
+    PyAabr.def_property("bottom_right", &Aabrf::bottom_right, &Aabrf::set_bottom_right);
     PyAabr.def_property("width", &Aabrf::get_width, &Aabrf::set_width);
     PyAabr.def_property("height", &Aabrf::get_height, &Aabrf::set_height);
     PyAabr.def_property_readonly("area", &Aabrf::get_area);
@@ -55,7 +55,7 @@ void produce_aabr(pybind11::module& module)
     PyAabr.def("intersection", &Aabrf::get_intersection, DOCSTR("Intersection of this Aabr with `other`."), py::arg("other"));
     PyAabr.def("intersected", &Aabrf::intersect, DOCSTR("Intersection of this Aabr with `other` in-place."), py::arg("other"));
     PyAabr.def("union", &Aabrf::get_union, DOCSTR("Creates the union of this Aabr with `other`."), py::arg("other"));
-    PyAabr.def("united", &Aabrf::united, DOCSTR("Creates the union of this Aabr with `other` in-place."), py::arg("other"));
+    PyAabr.def("united", &Aabrf::unite, DOCSTR("Creates the union of this Aabr with `other` in-place."), py::arg("other"));
 
     // operators
     PyAabr.def(py::self == py::self);

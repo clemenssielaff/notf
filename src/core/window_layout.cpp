@@ -98,6 +98,7 @@ Aabrf WindowLayout::_get_children_aabr() const
 Claim WindowLayout::_aggregate_claim()
 {
     assert(0);
+    return {};
 }
 
 void WindowLayout::_relayout()

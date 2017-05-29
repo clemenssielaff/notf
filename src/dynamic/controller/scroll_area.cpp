@@ -55,7 +55,8 @@ ScrollArea::ScrollArea()
 {
     // the window into the content
     m_area_window = Overlayout::create();
-    m_area_window->set_claim(Claim());
+    m_area_window->set_claim(Claim()); // explicit claim
+    m_area_window->set_alignment(Overlayout::AlignHorizontal::LEFT, Overlayout::AlignVertical::TOP);
 
     // transparent background Widget reacting to scroll events not caught by the ScrollArea's content
     std::shared_ptr<Background> background = std::make_shared<Background>();
@@ -63,6 +64,7 @@ ScrollArea::ScrollArea()
 
     // container inside the area, scissored by the window and containing the content
     m_scroll_container = Overlayout::create();
+    m_scroll_container->set_alignment(Overlayout::AlignHorizontal::LEFT, Overlayout::AlignVertical::TOP);
     m_area_window->add_item(m_scroll_container);
     m_scroll_container->set_scissor(m_area_window.get());
 

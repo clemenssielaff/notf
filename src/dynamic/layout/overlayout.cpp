@@ -10,8 +10,8 @@ namespace notf {
 
 Overlayout::Overlayout()
     : Layout(std::make_unique<detail::ItemList>())
-    , m_horizontal_alignment(Horizontal::CENTER)
-    , m_vertical_alignment(Vertical::CENTER)
+    , m_horizontal_alignment(AlignHorizontal::LEFT)
+    , m_vertical_alignment(AlignVertical::TOP)
     , m_padding(Padding::none())
 {
 }
@@ -106,7 +106,7 @@ void Overlayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
 
 Aabrf Overlayout::_get_children_aabr() const
 {
-    Aabrf result;
+    Aabrf result = Aabrf::wrongest();
     std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
     for (const ItemPtr& item : items) {
         result.unite(item->get_screen_item()->get_aarbr());
@@ -141,26 +141,26 @@ void Overlayout::_relayout()
 
         // the item's transform depends on the Overlayout's alignment
         float x;
-        if (m_horizontal_alignment == Horizontal::LEFT) {
+        if (m_horizontal_alignment == AlignHorizontal::LEFT) {
             x = m_padding.left;
         }
-        else if (m_horizontal_alignment == Horizontal::CENTER) {
+        else if (m_horizontal_alignment == AlignHorizontal::CENTER) {
             x = ((available_size.width - item_size.width) / 2.f) + m_padding.left;
         }
         else {
-            assert(m_horizontal_alignment == Horizontal::RIGHT);
+            assert(m_horizontal_alignment == AlignHorizontal::RIGHT);
             x = total_size.width - m_padding.right - item_size.width;
         }
 
         float y;
-        if (m_vertical_alignment == Vertical::TOP) {
+        if (m_vertical_alignment == AlignVertical::TOP) {
             y = m_padding.top;
         }
-        else if (m_vertical_alignment == Vertical::CENTER) {
+        else if (m_vertical_alignment == AlignVertical::CENTER) {
             y = ((available_size.height - item_size.height) / 2.f) + m_padding.top;
         }
         else {
-            assert(m_vertical_alignment == Vertical::BOTTOM);
+            assert(m_vertical_alignment == AlignVertical::BOTTOM);
             y = total_size.height - m_padding.bottom - item_size.height;
         }
         _set_layout_transform(screen_item, Xform2f::translation({x, y}));

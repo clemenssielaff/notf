@@ -3,7 +3,7 @@
 #include <inttypes.h>
 #include <iostream>
 
-#include "thirdparty/tinyutf8/tinyutf8.h"
+#include "tinyutf8/tinyutf8.h"
 
 namespace notf {
 

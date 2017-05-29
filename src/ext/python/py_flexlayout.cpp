@@ -50,5 +50,5 @@ void produce_flex_layout(pybind11::module& module, py::detail::generic_type Py_L
     py::enum_<FlexLayout::Wrap>(Py_FlexLayout, "Wrap")
         .value("NO_WRAP", FlexLayout::Wrap::NO_WRAP)
         .value("WRAP", FlexLayout::Wrap::WRAP)
-        .value("WRAP_REVERSE", FlexLayout::Wrap::WRAP_REVERSE);
+        .value("WRAP_REVERSE", FlexLayout::Wrap::REVERSE);
 }

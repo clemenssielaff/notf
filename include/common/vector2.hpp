@@ -56,7 +56,7 @@ struct _RealVector2 {
     /*  Inspection  ***************************************************************************************************/
 
     /** Checks, if this Vector2 contains only real, finite values (no INFINITY or NAN). */
-    bool is_real() const { return is_real(x) && is_real(y); }
+    bool is_real() const { return notf::is_real(x) && notf::is_real(y); }
 
     /** Returns true if both coordinates are (approximately) zero.
      * @param epsilon   Largest difference that is still considered to be zero.

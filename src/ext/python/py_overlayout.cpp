@@ -23,13 +23,13 @@ void produce_overlayout(pybind11::module& module, py::detail::generic_type Py_La
 
     Py_Overlayout.def("add_item", &Overlayout::add_item, DOCSTR("Adds a new Item to the front of the Layout."), py::arg("item"));
 
-    py::enum_<Overlayout::Horizontal>(Py_Overlayout, "Horizontal")
-        .value("LEFT", Overlayout::Horizontal::LEFT)
-        .value("CENTER", Overlayout::Horizontal::CENTER)
-        .value("RIGHT", Overlayout::Horizontal::RIGHT);
+    py::enum_<Overlayout::AlignHorizontal>(Py_Overlayout, "AlignHorizontal")
+        .value("LEFT", Overlayout::AlignHorizontal::LEFT)
+        .value("CENTER", Overlayout::AlignHorizontal::CENTER)
+        .value("RIGHT", Overlayout::AlignHorizontal::RIGHT);
 
-    py::enum_<Overlayout::Vertical>(Py_Overlayout, "Vertical")
-        .value("TOP", Overlayout::Vertical::TOP)
-        .value("CENTER", Overlayout::Vertical::CENTER)
-        .value("BOTTOM", Overlayout::Vertical::BOTTOM);
+    py::enum_<Overlayout::AlignVertical>(Py_Overlayout, "AlignVertical")
+        .value("TOP", Overlayout::AlignVertical::TOP)
+        .value("CENTER", Overlayout::AlignVertical::CENTER)
+        .value("BOTTOM", Overlayout::AlignVertical::BOTTOM);
 }

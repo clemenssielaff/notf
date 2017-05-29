@@ -187,6 +187,8 @@ std::shared_ptr<Texture2> Texture2::create_empty(GraphicsContext& context, const
         internal_format = GL_RGBA8;
         break;
     default:
+        gl_format = 0;
+        internal_format = 0;
         assert(0);
     }
 
@@ -320,6 +322,8 @@ void Texture2::fill(const Color& color)
     case Format::RGBA:
         fill_color = color;
         break;
+    default:
+        fill_color = Color::black();
     }
     const uchar r = static_cast<uchar>(roundf(fill_color.r * 255.f));
     const uchar g = static_cast<uchar>(roundf(fill_color.g * 255.f));

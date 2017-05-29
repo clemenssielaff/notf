@@ -123,11 +123,11 @@ bool ScreenItem::is_visible() const
     }
 
     { // fully scissored
-//        Aabrf local_aabr = get_local_aarbr();
-//        transformation_between(this, m_scissor_layout).transform(local_aabr);
-//        if (!m_scissor_layout->get_local_aarbr().intersects(local_aabr)) {
-//            return false;
-//        }
+        Aabrf local_aabr = get_local_aarbr();
+        transformation_between(this, m_scissor_layout).transform(local_aabr);
+        if (!m_scissor_layout->get_local_aarbr().intersects(local_aabr)) {
+            return false;
+        }
     }
 
     // visible
@@ -150,13 +150,13 @@ void ScreenItem::set_scissor(const Layout* scissor_layout)
                      << " because it is not an ancestor of " << get_id();
         scissor_layout = nullptr;
     }
-    m_has_explicit_scissor = static_cast<bool>(scissor_layout);
     if (!scissor_layout) {
         if (ScreenItem* parent = get_layout()) {
             scissor_layout = parent->get_scissor();
         }
     }
     _set_scissor(scissor_layout);
+    m_has_explicit_scissor = static_cast<bool>(scissor_layout);
 }
 
 void ScreenItem::set_render_layer(const RenderLayerPtr& render_layer)
@@ -198,7 +198,7 @@ bool ScreenItem::_set_claim(const Claim claim)
     }
     m_claim = std::move(claim);
 
-    // update the size to accomodate changed Claim constraints
+    // update the size to accommodate changed Claim constraints
     return _set_size(m_size);
 }
 

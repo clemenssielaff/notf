@@ -3,12 +3,12 @@
 #include <memory>
 #include <string>
 
-#include "graphics/gl_forwards.hpp"
 #include "common/meta.hpp"
+#include "graphics/gl_forwards.hpp"
 
 namespace notf {
 
-class Color;
+struct Color;
 class GraphicsContext;
 
 template <typename value_t, FWD_ENABLE_IF_ARITHMETIC(value_t)>
