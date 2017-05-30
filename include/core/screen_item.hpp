@@ -137,6 +137,20 @@ class ScreenItem : public Item {
     friend class RenderManager;
     friend class WindowLayout;
 
+public: // types ******************************************************************************************************/
+    enum class Space : unsigned char {
+        NONE,   // no transformation
+        LOCAL,  // local transformation only
+        LAYOUT, // layout transformation only
+        PARENT, // local and layout transformation
+        WINDOW, // window transformation
+    };
+
+    // TODO: CONTINUE HERE
+    // Remove Space::NONE
+    // Reinstate get_size to a public method
+    // Apply Space Local/ Layout / Parent / Window to the get_transform methods as well
+
 protected: // constructor *********************************************************************************************/
     ScreenItem(ItemContainerPtr container);
 
@@ -156,24 +170,8 @@ public: // methods *************************************************************
     /** Updates the transformation of this ScreenItem. */
     void set_local_transform(const Xform2f transform);
 
-    /** Returns the axis-aligned bounding rect of this ScreenItem in parent space. */
-    Aabrf get_aarbr() const;
-
-    /** Returns the axis-aligned bounding rect of this ScreenItem as transformed by its layout only. */
-    Aabrf get_layout_aarbr() const;
-
-    /** Returns the axis-aligned bounding rect of this ScreenItem in local space. */
-    Aabrf get_local_aarbr() const;
-
-    /** Returns the axis-aligned bounding rect of this ScreenItem in Window space. */
-    Aabrf get_window_aarbr() const;
-
-    /** Returns the actual axis-aligned bounding rect of this ScreenItem in non-transformed space.
-     * Widgets simply return their size, Layouts may have more involved methods of determining their effective Aabr.
-     * Note that the Aabr may be larger or smaller than the ScreenItem size, because Layouts may need to accomodate
-     * more children than their size would allow.
-     */
-    virtual Aabrf get_untransformed_aabr() const = 0;
+    /** Returns the axis-aligned bounding rect of this ScreenItem in the requested space. */
+    Aabrf get_aabr(const Space space) const;
 
     /** The current Claim of this Item. */
     const Claim& get_claim() const { return m_claim; }

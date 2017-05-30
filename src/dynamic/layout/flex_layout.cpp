@@ -202,6 +202,16 @@ std::shared_ptr<FlexLayout> FlexLayout::create(const Direction direction)
     return std::make_shared<make_shared_enabler>(direction);
 }
 
+Aabrf FlexLayout::get_children_aabr() const
+{
+    Aabrf result                = Aabrf::wrongest(); // TODO: better FlexLayout::get_content_aabr
+    std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
+    for (const ItemPtr& item : items) {
+        result.unite(item->get_screen_item()->get_aabr(Space::PARENT));
+    }
+    return result;
+}
+
 void FlexLayout::set_direction(const Direction direction)
 {
     if (m_direction == direction) {
@@ -328,7 +338,7 @@ void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size
         return;
     }
 
-    const bool is_horizontal        = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
+    const bool is_horizontal     = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
     const float available_width  = max(0.f, total_size.width - (is_horizontal ? m_spacing * (item_count - 1) : 0.f));
     const float available_height = max(0.f, total_size.height - (is_horizontal ? 0.f : m_spacing * (item_count - 1)));
 
@@ -446,22 +456,12 @@ void FlexLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
     std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
     for (const ItemPtr& item : items) {
         const ScreenItem* screen_item = item->get_screen_item();
-        if (screen_item && screen_item->get_aarbr().contains(local_pos)) {
+        if (screen_item && screen_item->get_aabr(Space::PARENT).contains(local_pos)) {
             Vector2f item_pos = local_pos;
             screen_item->get_transform().get_inverse().transform(item_pos);
             ScreenItem::_get_widgets_at(screen_item, item_pos, result);
         }
     }
-}
-
-Aabrf FlexLayout::_get_children_aabr() const
-{
-    Aabrf result = Aabrf::wrongest(); // TODO: better FlexLayout::get_content_aabr
-    std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
-    for (const ItemPtr& item : items) {
-        result.unite(item->get_screen_item()->get_aarbr());
-    }
-    return result;
 }
 
 Claim FlexLayout::_aggregate_claim()

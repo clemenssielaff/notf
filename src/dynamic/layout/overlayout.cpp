@@ -26,6 +26,16 @@ std::shared_ptr<Overlayout> Overlayout::create()
     return std::make_shared<make_shared_enabler>();
 }
 
+Aabrf Overlayout::get_children_aabr() const
+{
+    Aabrf result                = Aabrf::wrongest();
+    std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
+    for (const ItemPtr& item : items) {
+        result.unite(item->get_screen_item()->get_aabr(Space::PARENT));
+    }
+    return result;
+}
+
 void Overlayout::set_padding(const Padding& padding)
 {
     if (!padding.is_valid()) {
@@ -96,22 +106,12 @@ void Overlayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
     std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
     for (const ItemPtr& item : reverse(items)) {
         const ScreenItem* screen_item = item->get_screen_item();
-        if (screen_item && screen_item->get_aarbr().contains(local_pos)) {
+        if (screen_item && screen_item->get_aabr(Space::PARENT).contains(local_pos)) {
             Vector2f item_pos = local_pos;
             screen_item->get_transform().get_inverse().transform(item_pos);
             ScreenItem::_get_widgets_at(screen_item, item_pos, result);
         }
     }
-}
-
-Aabrf Overlayout::_get_children_aabr() const
-{
-    Aabrf result = Aabrf::wrongest();
-    std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
-    for (const ItemPtr& item : items) {
-        result.unite(item->get_screen_item()->get_aarbr());
-    }
-    return result;
 }
 
 Claim Overlayout::_aggregate_claim()
@@ -137,7 +137,7 @@ void Overlayout::_relayout()
 
         // the item's size is independent of its placement
         ScreenItem::_set_size(screen_item, available_size);
-        const Size2f item_size = screen_item->get_aarbr().get_size();
+        const Size2f item_size = screen_item->get_aabr(Space::PARENT).get_size();
 
         // the item's transform depends on the Overlayout's alignment
         float x;

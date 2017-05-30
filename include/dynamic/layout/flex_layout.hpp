@@ -76,6 +76,8 @@ public: // methods *************************************************************
     /** Spacing between stacks of items if this Layout is wrapped. */
     float get_cross_spacing() const { return m_cross_spacing; }
 
+    virtual Aabrf get_children_aabr() const override;
+
     /** Defines the direction in which the FlexLayout is stacked. */
     void set_direction(const Direction direction);
 
@@ -118,8 +120,6 @@ private: // methods ************************************************************
     virtual void _remove_child(const Item* child_item) override;
 
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
-
-    virtual Aabrf _get_children_aabr() const override;
 
     virtual Claim _aggregate_claim() override;
 

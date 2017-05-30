@@ -26,6 +26,16 @@ WindowLayout::WindowLayout(Window* window)
     m_has_explicit_scissor = true;
 }
 
+    Aabrf WindowLayout::get_children_aabr() const
+    {
+        if (m_controller) {
+            if (ScreenItem* screen_item = m_controller->get_screen_item()) {
+                return screen_item->get_aabr(Space::PARENT);
+            }
+        }
+        return Aabrf::zero();
+    }
+
 std::vector<Widget*> WindowLayout::get_widgets_at(const Vector2f& screen_pos)
 {
     std::vector<Widget*> result;
@@ -83,16 +93,6 @@ void WindowLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget
             ScreenItem::_get_widgets_at(root_item, local_pos, result);
         }
     }
-}
-
-Aabrf WindowLayout::_get_children_aabr() const
-{
-    if (m_controller) {
-        if (ScreenItem* screen_item = m_controller->get_screen_item()) {
-            return screen_item->get_aarbr();
-        }
-    }
-    return Aabrf::zero();
 }
 
 Claim WindowLayout::_aggregate_claim()

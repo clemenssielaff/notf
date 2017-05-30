@@ -47,31 +47,25 @@ void ScreenItem::set_local_transform(const Xform2f transform)
     _redraw();
 }
 
-Aabrf ScreenItem::get_aarbr() const
+Aabrf ScreenItem::get_aabr(const Space space) const
 {
-    Aabrf aabr = get_untransformed_aabr();
-    m_effective_transform.transform(aabr);
-    return aabr;
-}
-
-Aabrf ScreenItem::get_layout_aarbr() const
-{
-    Aabrf aabr = get_untransformed_aabr();
-    m_layout_transform.transform(aabr);
-    return aabr;
-}
-
-Aabrf ScreenItem::get_local_aarbr() const
-{
-    Aabrf aabr = get_untransformed_aabr();
-    m_local_transform.transform(aabr);
-    return aabr;
-}
-
-Aabrf ScreenItem::get_window_aarbr() const
-{
-    Aabrf aabr = get_untransformed_aabr();
-    get_window_transform().transform(aabr);
+    Aabrf aabr(_get_size());
+    switch (space) {
+    case Space::NONE:
+        break;
+    case Space::LOCAL:
+        m_local_transform.transform(aabr);
+        break;
+    case Space::LAYOUT:
+        m_layout_transform.transform(aabr);
+        break;
+    case Space::PARENT:
+        m_effective_transform.transform(aabr);
+        break;
+    case Space::WINDOW:
+        get_window_transform().transform(aabr);
+        break;
+    }
     return aabr;
 }
 
@@ -123,9 +117,9 @@ bool ScreenItem::is_visible() const
     }
 
     { // fully scissored
-        Aabrf local_aabr = get_local_aarbr();
+        Aabrf local_aabr = get_aabr(Space::LOCAL);
         transformation_between(this, m_scissor_layout).transform(local_aabr);
-        if (!m_scissor_layout->get_local_aarbr().intersects(local_aabr)) {
+        if (!m_scissor_layout->get_aabr(Space::LOCAL).intersects(local_aabr)) {
             return false;
         }
     }

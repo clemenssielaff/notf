@@ -23,6 +23,20 @@ std::shared_ptr<FreeLayout> FreeLayout::create()
     return std::make_shared<make_shared_enabler>();
 }
 
+void FreeLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
+{
+    // just iterate over all items - this is slow but okay for now
+    std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
+    for (const ItemPtr& item : reverse(items)) {
+        const ScreenItem* screen_item = item->get_screen_item();
+        if (screen_item && screen_item->get_aabr(Space::PARENT).contains(local_pos)) {
+            Vector2f item_pos = local_pos;
+            screen_item->get_transform().get_inverse().transform(item_pos);
+            ScreenItem::_get_widgets_at(screen_item, item_pos, result);
+        }
+    }
+}
+
 void FreeLayout::add_item(ItemPtr item)
 {
     if (!item) {
@@ -73,26 +87,12 @@ void FreeLayout::_remove_child(const Item* child_item)
     _redraw();
 }
 
-void FreeLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
-{
-    // just iterate over all items - this is slow but okay for now
-    std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
-    for (const ItemPtr& item : reverse(items)) {
-        const ScreenItem* screen_item = item->get_screen_item();
-        if (screen_item && screen_item->get_aarbr().contains(local_pos)) {
-            Vector2f item_pos = local_pos;
-            screen_item->get_transform().get_inverse().transform(item_pos);
-            ScreenItem::_get_widgets_at(screen_item, item_pos, result);
-        }
-    }
-}
-
-Aabrf FreeLayout::_get_children_aabr() const
+Aabrf FreeLayout::get_children_aabr() const
 {
     Aabrf result;
     std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
     for (const ItemPtr& item : items) {
-        result.unite(item->get_screen_item()->get_aarbr());
+        result.unite(item->get_screen_item()->get_aabr(Space::PARENT));
     }
     return result;
 }

@@ -17,7 +17,8 @@ protected: // constructor  *****************************************************
     Layout(ItemContainerPtr container);
 
 public: // methods ****************************************************************************************************/
-    virtual Aabrf get_untransformed_aabr() const override;
+    /** Returns the untransformed union of all child ScreenItem AABRs in the Layout. */
+    virtual Aabrf get_children_aabr() const = 0;
 
     /** (Un-)Sets an explicit Claim for this Layout.
      * Layouts with an explicit Claim do not dynamically aggregate one from their children.
@@ -51,9 +52,6 @@ protected: // methods **********************************************************
      * @return  True, iff the Claim was modified.
      */
     bool _update_claim();
-
-    /** Returns the untransformed union of all child ScreenItem AABRs in the Layout. */
-    virtual Aabrf _get_children_aabr() const = 0;
 
     /** Tells this Layout to create a new Claim for itself from the combined Claims of all of its children.
      * @returns The aggregated Claim.

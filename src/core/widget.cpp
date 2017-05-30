@@ -16,11 +16,6 @@ Widget::Widget()
 {
 }
 
-Aabrf Widget::get_untransformed_aabr() const
-{
-    return Aabrf(_get_size());
-}
-
 bool Widget::set_claim(const Claim claim)
 {
     bool was_changed = _set_claim(claim);
@@ -56,7 +51,7 @@ void Widget::_render(CellCanvas& canvas) const
         if (const Layout* scissor_layout = get_scissor()) {
             scissor.xform = scissor_layout->get_window_transform();
 
-            auto aabr = scissor_layout->get_untransformed_aabr();
+            auto aabr = scissor_layout->get_aabr(Space::NONE);
             scissor.xform.transform(aabr);
             scissor.extend = aabr.get_size();
         }
@@ -66,7 +61,7 @@ void Widget::_render(CellCanvas& canvas) const
 
 void Widget::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
-    if (get_local_aarbr().contains(local_pos)) {
+    if (get_aabr(Space::LOCAL).contains(local_pos)) {
         result.push_back(const_cast<Widget*>(this));
     }
 }

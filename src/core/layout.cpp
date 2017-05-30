@@ -10,16 +10,6 @@ Layout::Layout(ItemContainerPtr container)
 {
 }
 
-Aabrf Layout::get_untransformed_aabr() const
-{
-    if (m_has_explicit_claim) {
-        return Aabrf(_get_size());
-    }
-    else {
-        return _get_children_aabr();
-    }
-}
-
 bool Layout::set_claim(const Claim claim)
 {
     if (claim.is_zero()) {

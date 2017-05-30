@@ -32,8 +32,6 @@ public: // methods *************************************************************
     /** The Cell used to display the Widget on screen. */
     CellPtr get_cell() const { return m_cell; }
 
-    virtual Aabrf get_untransformed_aabr() const override;
-
     /** Sets a new Claim for this Widget.
      * @return True iff the Claim was modified.
      */

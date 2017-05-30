@@ -116,7 +116,7 @@ public: // methods
 
         FontPtr font = Font::load(m_graphics_context, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 12);
 
-        for (int i = 1; i <= 5; ++i) {
+        for (int i = 1; i <= 50; ++i) {
             std::shared_ptr<RectWidget> rect = std::make_shared<RectWidget>(m_graphics_context, font, Color("#c34200"));
             flex_layout->add_item(rect);
         }

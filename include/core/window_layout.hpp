@@ -12,15 +12,14 @@ namespace notf {
 class WindowLayout : public Layout {
     friend class Window;
 
-private: // factory ***************************************************************************************************/
+protected: // factory *************************************************************************************************/
     static std::shared_ptr<WindowLayout> create(Window* window);
 
     /** @param window   Window owning this RootWidget. */
     WindowLayout(Window *window);
 
 public: // methods ****************************************************************************************************/
-    /** Returns the Window owning this WindowLayout. */
-    const Window* get_window() const { return m_window; }
+    virtual Aabrf get_children_aabr() const override;
 
     /** Find all Widgets at a given position in the Window.
      * @param local_pos     Local coordinates where to look for a Widget.
@@ -35,8 +34,6 @@ private: // methods ************************************************************
     virtual void _remove_child(const Item* child_item) override;
 
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
-
-    virtual Aabrf _get_children_aabr() const override;
 
     virtual Claim _aggregate_claim() override;
 
