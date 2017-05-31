@@ -42,7 +42,6 @@ void Painterpreter::paint(Cell& cell, Xform2f base_xform, Scissor base_scissor)
     _paint(cell);
 }
 
-// TODO: when this draws, revisit this function and see if you find a way to guarantee that there is always a path and point without if-statements all over the place
 void Painterpreter::_paint(Cell& cell)
 {
     // parse the Cell's command buffer
@@ -725,7 +724,6 @@ void Painterpreter::_render_text(const std::string& text, const std::shared_ptr<
     fill_uniforms.type = CellCanvas::ShaderVariables::Type::TEXT;
 
     // make sure that text is always rendered on the pixel grid, not between pixels
-    // TODO: pass transform to font manager - also, full xform of all created vertices (I want 3D spinning widgets!)
     const Vector2f& translation = state.xform.get_translation();
     Glyph::coord_t x            = static_cast<Glyph::coord_t>(roundf(translation.x));
     Glyph::coord_t y            = static_cast<Glyph::coord_t>(roundf(translation.y));
@@ -734,7 +732,7 @@ void Painterpreter::_render_text(const std::string& text, const std::shared_ptr<
         const Glyph& glyph = font->get_glyph(static_cast<codepoint_t>(character));
 
         if (!glyph.rect.width || !glyph.rect.height) {
-            // skip glyphs wihout pixels
+            // skip glyphs without pixels
         }
         else {
             Aabrf uv_rect(static_cast<float>(glyph.rect.x),
@@ -954,8 +952,8 @@ void Painterpreter::_stroke()
     render_call.polygon_offset    = 0;
     render_call.polygon_count     = 0;
 
-    size_t cap_divisions; // TODO: can circles get more coarse the further away they are?
-    {                     // calculate divisions per half circle
+    size_t cap_divisions;
+    { // calculate divisions per half circle
         float da      = acos(stroke_width / (stroke_width + options.tesselation_tolerance)) * 2;
         cap_divisions = max(size_t(2), static_cast<size_t>(ceilf(static_cast<float>(PI) / da)));
     }

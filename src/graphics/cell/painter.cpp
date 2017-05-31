@@ -211,7 +211,6 @@ void Painter::close_path()
 
 void Painter::set_winding(const Winding winding)
 {
-    // TODO: SetWindingCommand has no effect when there's no Path yet. That's not a problem per se, but optimizable? Same goes for close
     m_cell.m_commands.add_command(SetWindingCommand(winding));
 }
 
@@ -403,12 +402,5 @@ const Vector2f& Painter::get_mouse_pos() const
 {
     return m_canvas.get_options().mouse_pos;
 }
-
-// TODO: the Painter might as well optimize the Commands given before sending them off to the cell.
-// For example, if you set a paint, set color a, set color b and fill, setting color a is irrelevant.
-// Also, if you set a complete new paint, it might be better to split it up in several commands that only change
-// what is really changed, so instead of having two set_paint commands where only the fill color differs you have one
-// set_paint command and a set_fill_color command
-// Superfluous path close commands
 
 } // namespace notf

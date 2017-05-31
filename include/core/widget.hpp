@@ -50,6 +50,8 @@ private: // methods ************************************************************
     /** Redraws the Cell with the Widget's current state. */
     virtual void _paint(Painter& painter) const = 0;
 
+    virtual Aabrf _get_content_aabr() const override { return Aabrf(_get_size()); };
+
     virtual void _remove_child(const Item*) override { assert(0); }
 
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;

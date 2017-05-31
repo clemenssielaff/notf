@@ -96,7 +96,7 @@ ScrollArea::ScrollArea()
     m_on_scrollbar_drag = connect_signal(
         m_vscrollbar->on_mouse_move,
         [this](MouseEvent& event) -> void {
-            const float area_height = m_scroll_container->get_aabr(ScreenItem::Space::NONE).get_height();
+            const float area_height = m_area_window->get_aabr().get_height();
             if (area_height >= 1) {
                 _update_scrollbar(-event.window_delta.y * _get_content_height() / area_height);
             }
@@ -112,8 +112,8 @@ ScrollArea::ScrollArea()
             event.set_handled();
         },
         [this](MouseEvent& event) -> bool {
-            const float available_height = m_vscrollbar->get_aabr(ScreenItem::Space::NONE).get_height();
-            const float scroll_bar_top = m_vscrollbar->get_window_transform().get_translation().y
+            const float available_height = m_vscrollbar->get_aabr().get_height();
+            const float scroll_bar_top   = m_vscrollbar->get_window_transform().get_translation().y
                 + (m_vscrollbar->pos * available_height);
             const float scroll_bar_height = m_vscrollbar->size * available_height;
             return (event.action == MouseAction::PRESS
@@ -149,10 +149,11 @@ void ScrollArea::_update_scrollbar(float delta_y)
     if (content_height <= precision_high<float>()) {
         return;
     }
-    const float area_height = m_area_window->get_aabr(ScreenItem::Space::NONE).get_height();
+    const float area_height = m_area_window->get_aabr().get_height();
     const float overflow    = min(0.f, area_height - content_height);
 
-    const float y = min(0.f, max(overflow, m_scroll_container->get_local_transform().get_translation().y + delta_y));
+    const float current_y = m_scroll_container->get_transform(ScreenItem::Space::LOCAL).get_translation().y;
+    const float y         = min(0.f, max(overflow, current_y + delta_y));
     m_scroll_container->set_local_transform(Xform2f::translation({0, y}));
 
     if (overflow <= -0.5f // there must at least be half a pixel to scroll in order for the bar to show up
@@ -173,21 +174,17 @@ float ScrollArea::_get_content_height() const
         return 0;
     }
 
+    return m_scroll_container->get_content_aabr().get_height();
+
     const ScreenItem* root_item = m_content->get_root_item();
     if (!root_item) {
         log_warning << "Encountered Controller " << m_content->get_id() << " without a root Item";
         return 0;
     }
-
-    if(const Widget* widget = dynamic_cast<const Widget*>(root_item)){
-        return widget->get_aabr(ScreenItem::Space::NONE).get_height();
+    if (const Layout* layout = dynamic_cast<const Layout*>(root_item)) {
+        return layout->get_content_aabr().get_height();
     }
-    if(const Layout* layout = dynamic_cast<const Layout*>(root_item)){
-        return layout->get_children_aabr().get_height();
-    }
-
-    assert(0);
-    return 0;
+    return root_item->get_aabr().get_height();
 }
 
 } // namespace notf

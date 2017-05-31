@@ -23,20 +23,6 @@ std::shared_ptr<FreeLayout> FreeLayout::create()
     return std::make_shared<make_shared_enabler>();
 }
 
-void FreeLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
-{
-    // just iterate over all items - this is slow but okay for now
-    std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
-    for (const ItemPtr& item : reverse(items)) {
-        const ScreenItem* screen_item = item->get_screen_item();
-        if (screen_item && screen_item->get_aabr(Space::PARENT).contains(local_pos)) {
-            Vector2f item_pos = local_pos;
-            screen_item->get_transform().get_inverse().transform(item_pos);
-            ScreenItem::_get_widgets_at(screen_item, item_pos, result);
-        }
-    }
-}
-
 void FreeLayout::add_item(ItemPtr item)
 {
     if (!item) {
@@ -60,6 +46,16 @@ void FreeLayout::add_item(ItemPtr item)
         _update_ancestor_layouts();
     }
     _redraw();
+}
+
+Aabrf FreeLayout::_get_content_aabr() const
+{
+    Aabrf result;
+    std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
+    for (const ItemPtr& item : items) {
+        result.unite(item->get_screen_item()->get_content_aabr());
+    }
+    return result;
 }
 
 void FreeLayout::_remove_child(const Item* child_item)
@@ -87,19 +83,23 @@ void FreeLayout::_remove_child(const Item* child_item)
     _redraw();
 }
 
-Aabrf FreeLayout::get_children_aabr() const
+void FreeLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
-    Aabrf result;
+    // just iterate over all items - this is slow but okay for now
     std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
-    for (const ItemPtr& item : items) {
-        result.unite(item->get_screen_item()->get_aabr(Space::PARENT));
+    for (const ItemPtr& item : reverse(items)) {
+        const ScreenItem* screen_item = item->get_screen_item();
+        if (screen_item && screen_item->get_aabr().contains(local_pos)) {
+            Vector2f item_pos = local_pos;
+            screen_item->get_transform().get_inverse().transform(item_pos);
+            ScreenItem::_get_widgets_at(screen_item, item_pos, result);
+        }
     }
-    return result;
 }
 
 Claim FreeLayout::_aggregate_claim()
 {
-    return {}; // TODO: FreeLayout::_aggregate_claim (?)
+    return {};
 }
 
 } // namespace notf

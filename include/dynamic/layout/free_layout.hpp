@@ -21,14 +21,14 @@ public: // methods *************************************************************
     /** Factory. */
     static std::shared_ptr<FreeLayout> create();
 
-    virtual Aabrf get_children_aabr() const override;
-
     /** Adds a new Item into the Layout.5
      * @param item     Item to place at the front end of the Layout. If the item is already a child, it is moved.
      */
     void add_item(ItemPtr item);
 
 private: // methods ***************************************************************************************************/
+    virtual Aabrf _get_content_aabr() const override;
+
     virtual void _remove_child(const Item* child_item) override;
 
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;

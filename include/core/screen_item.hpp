@@ -143,26 +143,30 @@ public: // types ***************************************************************
         LOCAL,  // local transformation only
         LAYOUT, // layout transformation only
         PARENT, // local and layout transformation
-        WINDOW, // window transformation
     };
-
-    // TODO: CONTINUE HERE
-    // Remove Space::NONE
-    // Reinstate get_size to a public method
-    // Apply Space Local/ Layout / Parent / Window to the get_transform methods as well
 
 protected: // constructor *********************************************************************************************/
     ScreenItem(ItemContainerPtr container);
 
 public: // methods ****************************************************************************************************/
-    /** Returns the ScreenItem's effective transformation in parent space. */
-    const Xform2f& get_transform() const { return m_effective_transform; }
-
-    /** 2D transformation of this ScreenItem as determined by its parent Layout. */
-    const Xform2f& get_layout_transform() const { return m_layout_transform; }
-
-    /** 2D transformation of this ScreenItem on top of the layout transformation. */
-    const Xform2f& get_local_transform() const { return m_local_transform; }
+    /** ScreenItem's transformation in the requested space. */
+    const Xform2f& get_transform(const Space space = Space::PARENT) const
+    {
+        static const Xform2f none = Xform2f::identity();
+        switch (space) {
+        case Space::NONE:
+            return none;
+        case Space::LOCAL:
+            return m_local_transform;
+        case Space::LAYOUT:
+            return m_layout_transform;
+        case Space::PARENT:
+            return m_effective_transform;
+        default:
+            assert(0);
+        }
+        return none;
+    }
 
     /** Recursive implementation to produce the ScreenItem's transformation in window space. */
     Xform2f get_window_transform() const;
@@ -171,7 +175,10 @@ public: // methods *************************************************************
     void set_local_transform(const Xform2f transform);
 
     /** Returns the axis-aligned bounding rect of this ScreenItem in the requested space. */
-    Aabrf get_aabr(const Space space) const;
+    Aabrf get_aabr(const Space space = Space::PARENT) const;
+
+    /** The axis-aligned bounding rect of this ScreenItem and all of its children in the requested space. */
+    Aabrf get_content_aabr(const Space space = Space::PARENT) const;
 
     /** The current Claim of this Item. */
     const Claim& get_claim() const { return m_claim; }
@@ -282,6 +289,9 @@ protected: // methods **********************************************************
 
     /** Unscaled size of this ScreenItem in local space. */
     const Size2f& _get_size() const { return m_size; }
+
+    /** The union of all child AABRs in untransformed space. */
+    virtual Aabrf _get_content_aabr() const = 0;
 
     /** Recursive implementation to find all Widgets at a given position in local space
      * @param local_pos     Local coordinates where to look for a Widget.

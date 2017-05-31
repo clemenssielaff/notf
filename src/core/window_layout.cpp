@@ -7,15 +7,6 @@
 
 namespace notf {
 
-std::shared_ptr<WindowLayout> WindowLayout::create(Window* window)
-{
-    struct make_shared_enabler : public WindowLayout {
-        make_shared_enabler(Window* window)
-            : WindowLayout(window) {}
-    };
-    return std::make_shared<make_shared_enabler>(window);
-}
-
 WindowLayout::WindowLayout(Window* window)
     : Layout(std::make_unique<detail::SingleItemContainer>())
     , m_controller()
@@ -26,15 +17,14 @@ WindowLayout::WindowLayout(Window* window)
     m_has_explicit_scissor = true;
 }
 
-    Aabrf WindowLayout::get_children_aabr() const
-    {
-        if (m_controller) {
-            if (ScreenItem* screen_item = m_controller->get_screen_item()) {
-                return screen_item->get_aabr(Space::PARENT);
-            }
-        }
-        return Aabrf::zero();
-    }
+std::shared_ptr<WindowLayout> WindowLayout::create(Window* window)
+{
+    struct make_shared_enabler : public WindowLayout {
+        make_shared_enabler(Window* window)
+            : WindowLayout(window) {}
+    };
+    return std::make_shared<make_shared_enabler>(window);
+}
 
 std::vector<Widget*> WindowLayout::get_widgets_at(const Vector2f& screen_pos)
 {
@@ -65,6 +55,16 @@ void WindowLayout::set_controller(ControllerPtr controller)
     }
     on_child_added(m_controller);
     _relayout();
+}
+
+Aabrf WindowLayout::_get_content_aabr() const
+{
+    if (m_controller) {
+        if (ScreenItem* screen_item = m_controller->get_screen_item()) {
+            return screen_item->get_content_aabr();
+        }
+    }
+    return Aabrf::zero();
 }
 
 void WindowLayout::_remove_child(const Item* child_item)

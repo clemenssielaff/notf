@@ -51,7 +51,7 @@ void Widget::_render(CellCanvas& canvas) const
         if (const Layout* scissor_layout = get_scissor()) {
             scissor.xform = scissor_layout->get_window_transform();
 
-            auto aabr = scissor_layout->get_aabr(Space::NONE);
+            auto aabr = scissor_layout->get_aabr();
             scissor.xform.transform(aabr);
             scissor.extend = aabr.get_size();
         }

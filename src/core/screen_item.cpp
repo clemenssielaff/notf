@@ -62,9 +62,29 @@ Aabrf ScreenItem::get_aabr(const Space space) const
     case Space::PARENT:
         m_effective_transform.transform(aabr);
         break;
-    case Space::WINDOW:
-        get_window_transform().transform(aabr);
+    default:
+        assert(0);
+    }
+    return aabr;
+}
+
+Aabrf ScreenItem::get_content_aabr(const Space space) const
+{
+    Aabrf aabr = _get_content_aabr();
+    switch (space) {
+    case Space::NONE:
         break;
+    case Space::LOCAL:
+        m_local_transform.transform(aabr);
+        break;
+    case Space::LAYOUT:
+        m_layout_transform.transform(aabr);
+        break;
+    case Space::PARENT:
+        m_effective_transform.transform(aabr);
+        break;
+    default:
+        assert(0);
     }
     return aabr;
 }
@@ -117,9 +137,9 @@ bool ScreenItem::is_visible() const
     }
 
     { // fully scissored
-        Aabrf local_aabr = get_aabr(Space::LOCAL);
-        transformation_between(this, m_scissor_layout).transform(local_aabr);
-        if (!m_scissor_layout->get_aabr(Space::LOCAL).intersects(local_aabr)) {
+        Aabrf content_aabr = get_content_aabr(Space::NONE);
+        transformation_between(this, m_scissor_layout).transform(content_aabr);
+        if (!m_scissor_layout->get_aabr().intersects(content_aabr)) {
             return false;
         }
     }

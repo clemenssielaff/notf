@@ -13,14 +13,12 @@ class WindowLayout : public Layout {
     friend class Window;
 
 protected: // factory *************************************************************************************************/
+    /** @param window   Window owning this RootWidget. */
+    WindowLayout(Window* window);
+
     static std::shared_ptr<WindowLayout> create(Window* window);
 
-    /** @param window   Window owning this RootWidget. */
-    WindowLayout(Window *window);
-
 public: // methods ****************************************************************************************************/
-    virtual Aabrf get_children_aabr() const override;
-
     /** Find all Widgets at a given position in the Window.
      * @param local_pos     Local coordinates where to look for a Widget.
      * @return              All Widgets at the given coordinate, ordered from front to back.
@@ -31,6 +29,8 @@ public: // methods *************************************************************
     void set_controller(ControllerPtr controller);
 
 private: // methods ***************************************************************************************************/
+    virtual Aabrf _get_content_aabr() const override;
+
     virtual void _remove_child(const Item* child_item) override;
 
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;

@@ -17,9 +17,6 @@ protected: // constructor  *****************************************************
     Layout(ItemContainerPtr container);
 
 public: // methods ****************************************************************************************************/
-    /** Returns the untransformed union of all child ScreenItem AABRs in the Layout. */
-    virtual Aabrf get_children_aabr() const = 0;
-
     /** (Un-)Sets an explicit Claim for this Layout.
      * Layouts with an explicit Claim do not dynamically aggregate one from their children.
      * To unset an explicit Claim, pass a zero Claim.

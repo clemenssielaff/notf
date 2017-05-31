@@ -44,8 +44,6 @@ public: // methods *************************************************************
     /** Padding around the Layout's border. */
     const Padding& get_padding() const { return m_padding; }
 
-    virtual Aabrf get_children_aabr() const override;
-
     /** Defines the alignment of each Item in the Layout. */
     void set_alignment(const AlignHorizontal horizontal, const AlignVertical vertical)
     {
@@ -65,6 +63,8 @@ public: // methods *************************************************************
     void add_item(ItemPtr item);
 
 private: // methods ***************************************************************************************************/
+    virtual Aabrf _get_content_aabr() const override;
+
     virtual void _remove_child(const Item* child_item) override;
 
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
