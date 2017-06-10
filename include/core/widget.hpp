@@ -59,6 +59,7 @@ private: // methods ************************************************************
     virtual bool _set_size(const Size2f size) override { return ScreenItem::_set_size(std::move(size)); }
 
     // hide Item methods that have no effect for Widgets
+    using ScreenItem::get_content_aabr;
     using Item::has_child;
     using Item::has_children;
 

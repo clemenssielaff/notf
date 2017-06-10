@@ -169,22 +169,10 @@ void ScrollArea::_update_scrollbar(float delta_y)
 
 float ScrollArea::_get_content_height() const
 {
-    // get content
     if (!m_content) {
         return 0;
     }
-
     return m_scroll_container->get_content_aabr().get_height();
-
-    const ScreenItem* root_item = m_content->get_root_item();
-    if (!root_item) {
-        log_warning << "Encountered Controller " << m_content->get_id() << " without a root Item";
-        return 0;
-    }
-    if (const Layout* layout = dynamic_cast<const Layout*>(root_item)) {
-        return layout->get_content_aabr().get_height();
-    }
-    return root_item->get_aabr().get_height();
 }
 
 } // namespace notf

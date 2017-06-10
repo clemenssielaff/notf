@@ -133,9 +133,9 @@ public: // methods
     {
         std::shared_ptr<Overlayout> overlayout = Overlayout::create();
         overlayout->set_padding(Padding::all(20));
-        auto back_rect = std::make_shared<RectWidget>(window->get_graphics_context(), nullptr, Color("#333333"));
-        back_rect->set_claim({});
-        overlayout->add_item(back_rect);
+//        auto back_rect = std::make_shared<RectWidget>(window->get_graphics_context(), nullptr, Color("#333333"));
+//        back_rect->set_claim({});
+//        overlayout->add_item(back_rect);
 
         ScrollAreaPtr scroll_area     = std::make_shared<ScrollArea>();
         ControllerPtr flex_controller = std::make_shared<FlexController>(window);
