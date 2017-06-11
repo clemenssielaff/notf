@@ -57,23 +57,11 @@ void Overlayout::add_item(ItemPtr item)
     on_child_added(item.get());
 
     // update the parent layout if necessary
-    if (_update_claim()) {
-        _update_ancestor_layouts();
-    }
-    else { // otherwise just update the child
-        ScreenItem::_set_size(item->get_screen_item(), _get_size());
+    if (!_update_claim()) {
+        // update the child if we don't need a full Claim update
+        ScreenItem::_set_grant(item->get_screen_item(), get_size());
     }
     _redraw();
-}
-
-Aabrf Overlayout::_get_content_aabr() const
-{
-    Aabrf result                = Aabrf::wrongest();
-    std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
-    for (const ItemPtr& item : items) {
-        result.unite(item->get_screen_item()->get_content_aabr());
-    }
-    return result;
 }
 
 void Overlayout::_remove_child(const Item* child_item)
@@ -85,8 +73,8 @@ void Overlayout::_remove_child(const Item* child_item)
     std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
 
     auto it = std::find_if(std::begin(items), std::end(items),
-                           [child_item](const ItemPtr& it) -> bool {
-                               return it.get() == child_item;
+                           [child_item](const ItemPtr& item) -> bool {
+                               return item.get() == child_item;
                            });
 
     if (it == std::end(items)) {
@@ -106,15 +94,15 @@ void Overlayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
     std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
     for (const ItemPtr& item : reverse(items)) {
         const ScreenItem* screen_item = item->get_screen_item();
-        if (screen_item && screen_item->get_content_aabr().contains(local_pos)) {
+        if (screen_item && screen_item->get_aabr<Space::PARENT>().contains(local_pos)) {
             Vector2f item_pos = local_pos;
-            screen_item->get_transform().get_inverse().transform(item_pos);
+            screen_item->get_xform<Space::PARENT>().get_inverse().transform(item_pos);
             ScreenItem::_get_widgets_at(screen_item, item_pos, result);
         }
     }
 }
 
-Claim Overlayout::_aggregate_claim()
+Claim Overlayout::_consolidate_claim()
 {
     Claim result;
     std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
@@ -126,9 +114,10 @@ Claim Overlayout::_aggregate_claim()
 
 void Overlayout::_relayout()
 {
-    const Size2f& total_size    = _get_size();
-    const Size2f available_size = {total_size.width - m_padding.width(), total_size.height - m_padding.height()};
+    const Size2f& grant         = get_grant();
+    const Size2f available_size = {grant.width - m_padding.width(), grant.height - m_padding.height()};
     std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
+    Size2f new_size = Size2f::wrongest();
     for (ItemPtr& item : items) {
         ScreenItem* screen_item = item->get_screen_item();
         if (!screen_item) {
@@ -136,8 +125,12 @@ void Overlayout::_relayout()
         }
 
         // the item's size is independent of its placement
-        ScreenItem::_set_size(screen_item, available_size);
-        const Size2f item_size = screen_item->get_content_aabr().get_size();
+        ScreenItem::_set_grant(screen_item, available_size);
+        const Size2f item_size = screen_item->get_size();
+
+        // adjust own size
+        new_size.width = std::max(new_size.width, item_size.width);
+        new_size.height = std::max(new_size.height, item_size.height);
 
         // the item's transform depends on the Overlayout's alignment
         float x;
@@ -149,7 +142,7 @@ void Overlayout::_relayout()
         }
         else {
             assert(m_horizontal_alignment == AlignHorizontal::RIGHT);
-            x = total_size.width - m_padding.right - item_size.width;
+            x = grant.width - m_padding.right - item_size.width;
         }
 
         float y;
@@ -161,10 +154,14 @@ void Overlayout::_relayout()
         }
         else {
             assert(m_vertical_alignment == AlignVertical::BOTTOM);
-            y = total_size.height - m_padding.bottom - item_size.height;
+            y = grant.height - m_padding.bottom - item_size.height;
         }
-        _set_layout_transform(screen_item, Xform2f::translation({x, y}));
+        _set_layout_xform(screen_item, Xform2f::translation({x, y}));
     }
+
+    new_size.width += m_padding.width();
+    new_size.height += m_padding.height();
+    _set_size(std::move(new_size));
 }
 
 } // namespace notf

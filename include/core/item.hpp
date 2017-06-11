@@ -18,14 +18,14 @@ namespace detail {
 struct ItemContainer;
 } // namespace detail
 
-/** Unqiue identification token of an Item. */
+/** Unique identification token of an Item. */
 using RawID  = size_t;
 using ItemID = Id<Item, RawID>;
 
 /**********************************************************************************************************************/
 
 /** An Item is the base class for all objects in the `Item hierarchy`.
- * Its three main spezializations are `Widgets`, `Layouts` and `Controllers`.
+ * Its three main specializations are `Widgets`, `Layouts` and `Controllers`.
  *
  * Item Hierarchy
  * ==============
@@ -34,7 +34,7 @@ using ItemID = Id<Item, RawID>;
  *
  * Item IDs
  * ========
- * Each Item has a constant unique integer ID assigned to it upon instanciation.
+ * Each Item has a constant unique integer ID assigned to it upon instantiation.
  * It can be used to identify the Item in a map, for debugging purposes or in conditionals.
  *
  * Items in Python
@@ -147,7 +147,7 @@ protected: // methods **********************************************************
     /** Sets the parent of this Item. */
     void _set_parent(Item* parent);
 
-    /** Pulls new value from the parent if it changed. */
+    /** Pulls new values from the parent if it changed. */
     virtual void _update_from_parent();
 
     /** Changes the Window that this Item is displayed id. */
@@ -194,7 +194,7 @@ private: // fields *************************************************************
 
 /**********************************************************************************************************************/
 
-/** Convenience function to create correctly typed `shared_from_this` shared_ptrs from Item subclasses. */
+/** Convenience function to create a correctly typed `shared_from_this` shared_ptr from Item subclasses. */
 template <typename ItemSubclass, ENABLE_IF_SUBCLASS(ItemSubclass, Item)>
 std::shared_ptr<ItemSubclass> make_shared_from(ItemSubclass* item)
 {

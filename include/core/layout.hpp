@@ -39,26 +39,16 @@ public: // signals  ************************************************************
      */
     Signal<const Item*> on_child_removed;
 
-    /** Emitted when the Layout changed the position of the child Items. */
-    Signal<> on_layout_changed;
-
 protected: // methods *************************************************************************************************/
-    virtual bool _set_size(const Size2f size) override;
-
     /** Updates the Claim of this Layout.
      * @return  True, iff the Claim was modified.
      */
     bool _update_claim();
 
     /** Tells this Layout to create a new Claim for itself from the combined Claims of all of its children.
-     * @returns The aggregated Claim.
+     * @returns The consolidated Claim.
      */
-    virtual Claim _aggregate_claim() = 0;
-
-    /** Updates the layout of Items in this Layout.
-     * Call this function when something about the Layout changed that could cause one or more Items to update.
-     */
-    virtual void _relayout() = 0;
+    virtual Claim _consolidate_claim() = 0;
 
 protected: // members *************************************************************************************************/
     /** If true, this Layout provides its own Claim and does not aggregate it from its children. */

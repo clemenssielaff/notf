@@ -53,6 +53,14 @@ struct _Size2 {
     /** Creates and returns zero Size2 instance. */
     static _Size2 zero() { return {0, 0}; }
 
+    /** The "most wrong" Size2 (maximal negative area).
+     * Is useful as the starting point for defining the union of multiple Size2.
+     */
+    static _Size2 wrongest()
+    {
+        return {std::numeric_limits<value_t>::lowest(), std::numeric_limits<value_t>::lowest()};
+    }
+
     /* Inspection  ****************************************************************************************************/
 
     /** Tests if this Size is valid (>=0) in both dimensions. */

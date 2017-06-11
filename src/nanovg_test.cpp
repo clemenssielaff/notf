@@ -29,7 +29,7 @@ public:
 
     virtual void _paint(Painter& painter) const override
     {
-        const Size2f widget_size = _get_size();
+        const Size2f widget_size = get_size();
         const Aabrf base(widget_size);
         const float margin = 20;
         const float time   = static_cast<float>(painter.get_time().in_seconds());

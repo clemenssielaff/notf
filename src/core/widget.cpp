@@ -5,7 +5,6 @@
 #include "core/layout.hpp"
 #include "graphics/cell/cell.hpp"
 #include "graphics/cell/cell_canvas.hpp"
-#include "graphics/cell/painter.hpp"
 
 namespace notf {
 
@@ -14,15 +13,6 @@ Widget::Widget()
     , m_cell(std::make_shared<Cell>())
     , m_is_clean(false)
 {
-}
-
-bool Widget::set_claim(const Claim claim)
-{
-    bool was_changed = _set_claim(claim);
-    if (was_changed) {
-        _update_ancestor_layouts();
-    }
-    return was_changed;
 }
 
 void Widget::redraw() const
@@ -49,19 +39,28 @@ void Widget::_render(CellCanvas& canvas) const
     { // paint the Cell
         Scissor scissor;
         if (const Layout* scissor_layout = get_scissor()) {
-            scissor.xform = scissor_layout->get_window_transform();
+            scissor.xform = scissor_layout->get_window_xform();
 
-            auto aabr = scissor_layout->get_aabr();
+            Aabrf aabr(scissor_layout->get_grant());
+            scissor_layout->get_xform<Space::PARENT>().transform(aabr);
             scissor.xform.transform(aabr);
             scissor.extend = aabr.get_size();
         }
-        canvas.paint(*m_cell, get_window_transform(), std::move(scissor));
+        canvas.paint(*m_cell, get_window_xform(), std::move(scissor));
     }
+}
+
+void Widget::_relayout()
+{
+    // a Widget is only concerned about its own size
+    Size2f grant = get_grant();
+    get_claim().apply(grant);
+    _set_size(grant);
 }
 
 void Widget::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
-    if (get_aabr(Space::LOCAL).contains(local_pos)) {
+    if (Aabrf(get_size()).contains(local_pos)) {
         result.push_back(const_cast<Widget*>(this));
     }
 }

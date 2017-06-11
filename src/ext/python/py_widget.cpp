@@ -44,7 +44,7 @@ void produce_widget(pybind11::module& module, py::detail::generic_type Py_Layout
 
     Py_Widget.def("get_opacity", &Widget::get_opacity, DOCSTR("Returns the opacity of this Item in the range [0 -> 1]."));
     Py_Widget.def("get_size", &Widget::get_size, DOCSTR("Returns the unscaled size of this Item in pixels."));
-    //    Py_Widget.def("get_transform", &Widget::get_transform, "Returns this Item's transformation in the given space.", py::arg("space"));
+    //    Py_Widget.def("get_transform", &Widget::get_xform, "Returns this Item's transformation in the given space.", py::arg("space"));
     Py_Widget.def("get_claim", &Widget::get_claim, DOCSTR("The current claim of this Widget."));
     Py_Widget.def("get_scissor", &Widget::set_claim, DOCSTR("Returns the Layout used to scissor this Widget."));
     Py_Widget.def("is_visible", &Widget::is_visible, DOCSTR("Checks, if the Item is currently visible."));

@@ -1,7 +1,6 @@
 #include "dynamic/controller/scroll_area.hpp"
 
 #include "common/log.hpp"
-#include "common/xform2.hpp"
 #include "core/events/mouse_event.hpp"
 #include "dynamic/layout/flex_layout.hpp"
 #include "dynamic/layout/overlayout.hpp"
@@ -23,7 +22,7 @@ ScrollArea::ScrollBar::ScrollBar(ScrollArea& scroll_area)
 void ScrollArea::ScrollBar::_paint(Painter& painter) const
 {
     // background
-    const Aabrf widget_rect = Aabrf(_get_size());
+    const Aabrf widget_rect = Aabrf(get_size());
     painter.begin_path();
     painter.add_rect(widget_rect);
     painter.set_fill_paint(Color("#454950"));
@@ -80,8 +79,8 @@ ScrollArea::ScrollArea()
 
     // update the scrollbar, if the container layout changed
     connect_signal(
-        m_scroll_container->on_layout_changed,
-        [this]() -> void {
+        m_scroll_container->on_size_changed,
+        [this](const Size2f&) -> void {
             _update_scrollbar(0);
         });
 
@@ -96,7 +95,7 @@ ScrollArea::ScrollArea()
     m_on_scrollbar_drag = connect_signal(
         m_vscrollbar->on_mouse_move,
         [this](MouseEvent& event) -> void {
-            const float area_height = m_area_window->get_aabr().get_height();
+            const float area_height = m_area_window->get_grant().height;
             if (area_height >= 1) {
                 _update_scrollbar(-event.window_delta.y * _get_content_height() / area_height);
             }
@@ -112,8 +111,8 @@ ScrollArea::ScrollArea()
             event.set_handled();
         },
         [this](MouseEvent& event) -> bool {
-            const float available_height = m_vscrollbar->get_aabr().get_height();
-            const float scroll_bar_top   = m_vscrollbar->get_window_transform().get_translation().y
+            const float available_height = m_vscrollbar->get_size().height;
+            const float scroll_bar_top   = m_vscrollbar->get_window_xform().get_translation().y
                 + (m_vscrollbar->pos * available_height);
             const float scroll_bar_height = m_vscrollbar->size * available_height;
             return (event.action == MouseAction::PRESS
@@ -149,12 +148,12 @@ void ScrollArea::_update_scrollbar(float delta_y)
     if (content_height <= precision_high<float>()) {
         return;
     }
-    const float area_height = m_area_window->get_aabr().get_height();
+    const float area_height = m_area_window->get_grant().height;
     const float overflow    = min(0.f, area_height - content_height);
 
-    const float current_y = m_scroll_container->get_transform(ScreenItem::Space::LOCAL).get_translation().y;
+    const float current_y = m_scroll_container->get_xform<ScreenItem::Space::LOCAL>().get_translation().y;
     const float y         = min(0.f, max(overflow, current_y + delta_y));
-    m_scroll_container->set_local_transform(Xform2f::translation({0, y}));
+    m_scroll_container->set_local_xform(Xform2f::translation({0, y}));
 
     if (overflow <= -0.5f // there must at least be half a pixel to scroll in order for the bar to show up
         && abs(content_height) >= precision_high<float>()) {
@@ -172,7 +171,7 @@ float ScrollArea::_get_content_height() const
     if (!m_content) {
         return 0;
     }
-    return m_scroll_container->get_content_aabr().get_height();
+    return m_scroll_container->get_size().height;
 }
 
 } // namespace notf

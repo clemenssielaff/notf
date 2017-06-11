@@ -35,7 +35,7 @@ public: // methods *************************************************************
     /** Sets a new Claim for this Widget.
      * @return True iff the Claim was modified.
      */
-    bool set_claim(const Claim claim);
+    bool set_claim(const Claim claim) { return _set_claim(std::move(claim)); }
 
     /** Tells the Render Manager that this Widget needs to be redrawn. */
     void redraw() const;
@@ -50,16 +50,13 @@ private: // methods ************************************************************
     /** Redraws the Cell with the Widget's current state. */
     virtual void _paint(Painter& painter) const = 0;
 
-    virtual Aabrf _get_content_aabr() const override { return Aabrf(_get_size()); };
+    virtual void _remove_child(const Item*) override { assert(0); } // should never happen
 
-    virtual void _remove_child(const Item*) override { assert(0); }
+    virtual void _relayout() override;
 
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
-    virtual bool _set_size(const Size2f size) override { return ScreenItem::_set_size(std::move(size)); }
-
     // hide Item methods that have no effect for Widgets
-    using ScreenItem::get_content_aabr;
     using Item::has_child;
     using Item::has_children;
 

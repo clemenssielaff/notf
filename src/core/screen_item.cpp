@@ -20,7 +20,7 @@ ScreenItem::ScreenItem(ItemContainerPtr container)
     , m_local_transform(Xform2f::identity())
     , m_effective_transform(Xform2f::identity())
     , m_claim()
-    , m_size(Size2f::zero())
+    , m_grant(Size2f::zero())
     , m_is_visible(true)
     , m_opacity(1)
     , m_scissor_layout()
@@ -30,14 +30,14 @@ ScreenItem::ScreenItem(ItemContainerPtr container)
 {
 }
 
-Xform2f ScreenItem::get_window_transform() const
+Xform2f ScreenItem::get_window_xform() const
 {
     Xform2f result = Xform2f::identity();
     _get_window_transform(result);
     return result;
 }
 
-void ScreenItem::set_local_transform(const Xform2f transform)
+void ScreenItem::set_local_xform(const Xform2f transform)
 {
     if (transform == m_local_transform) {
         return;
@@ -45,48 +45,6 @@ void ScreenItem::set_local_transform(const Xform2f transform)
     m_local_transform = std::move(transform);
     _update_effective_transform();
     _redraw();
-}
-
-Aabrf ScreenItem::get_aabr(const Space space) const
-{
-    Aabrf aabr(_get_size());
-    switch (space) {
-    case Space::NONE:
-        break;
-    case Space::LOCAL:
-        m_local_transform.transform(aabr);
-        break;
-    case Space::LAYOUT:
-        m_layout_transform.transform(aabr);
-        break;
-    case Space::PARENT:
-        m_effective_transform.transform(aabr);
-        break;
-    default:
-        assert(0);
-    }
-    return aabr;
-}
-
-Aabrf ScreenItem::get_content_aabr(const Space space) const
-{
-    Aabrf aabr = _get_content_aabr();
-    switch (space) {
-    case Space::NONE:
-        break;
-    case Space::LOCAL:
-        m_local_transform.transform(aabr);
-        break;
-    case Space::LAYOUT:
-        m_layout_transform.transform(aabr);
-        break;
-    case Space::PARENT:
-        m_effective_transform.transform(aabr);
-        break;
-    default:
-        assert(0);
-    }
-    return aabr;
 }
 
 float ScreenItem::get_opacity(bool effective) const
@@ -137,9 +95,11 @@ bool ScreenItem::is_visible() const
     }
 
     { // fully scissored
-        Aabrf content_aabr = get_content_aabr(Space::NONE);
+        Aabrf content_aabr(get_size());
         transformation_between(this, m_scissor_layout).transform(content_aabr);
-        if (!m_scissor_layout->get_aabr().intersects(content_aabr)) {
+        Aabrf scissor_aabr(m_scissor_layout->get_grant());
+        m_scissor_layout->get_xform<Space::PARENT>().transform(scissor_aabr);
+        if (!scissor_aabr.intersects(content_aabr)) {
             return false;
         }
     }
@@ -212,23 +172,46 @@ bool ScreenItem::_set_claim(const Claim claim)
     }
     m_claim = std::move(claim);
 
-    // update the size to accommodate changed Claim constraints
-    return _set_size(m_size);
+    // update ancestor layouts
+    Layout* layout = get_layout();
+    while (layout) {
+        // if the parent Layout's Claim changed, we also need to update the grandparent ...
+        if (layout->_update_claim()) {
+            layout = layout->get_layout();
+        }
+
+        // ... otherwise, we have reached the end of the propagation through the ancestry
+        // and continue to relayout all children from the parent downwards
+        else {
+            layout->_relayout();
+            break;
+        }
+    }
+    return true;
+}
+
+bool ScreenItem::_set_grant(const Size2f grant)
+{
+    if (grant == m_grant) {
+        return false;
+    }
+    m_grant = std::move(grant);
+    _relayout();
+    return true;
 }
 
 bool ScreenItem::_set_size(const Size2f size)
 {
-    Size2f actual_size = m_claim.apply(size);
-    if (actual_size != m_size) {
-        m_size = std::move(actual_size);
-        on_size_changed(m_size);
-        _redraw();
-        return true;
+    if(size == m_size){
+        return false;
     }
-    return false;
+    m_size = std::move(size);
+    on_size_changed(m_size);
+    _redraw();
+    return true;
 }
 
-void ScreenItem::_set_layout_transform(const Xform2f transform)
+void ScreenItem::_set_layout_xform(const Xform2f transform)
 {
     if (transform == m_layout_transform) {
         return;
@@ -274,24 +257,6 @@ void ScreenItem::_set_render_layer(const RenderLayerPtr& render_layer)
     _redraw();
 }
 
-void ScreenItem::_update_ancestor_layouts()
-{
-    Layout* layout = get_layout();
-    while (layout) {
-        // if the parent Layout's Claim changed, we also need to update the grandparent ...
-        if (layout->_update_claim()) {
-            layout = layout->get_layout();
-        }
-
-        // ... otherwise, we have reached the end of the propagation through the ancestry
-        // and continue to relayout all children from the parent downwards
-        else {
-            layout->_relayout();
-            return;
-        }
-    }
-}
-
 void ScreenItem::_get_window_transform(Xform2f& result) const
 {
     if (const ScreenItem* layout = get_layout()) {
@@ -303,7 +268,7 @@ void ScreenItem::_get_window_transform(Xform2f& result) const
 void ScreenItem::_update_effective_transform()
 {
     m_effective_transform = m_layout_transform * m_local_transform;
-    on_transform_changed(m_effective_transform);
+    on_xform_changed(m_effective_transform);
 }
 
 /**********************************************************************************************************************/
@@ -319,12 +284,12 @@ Xform2f transformation_between(const ScreenItem* source, const ScreenItem* targe
 
     Xform2f source_branch = Xform2f::identity();
     for (const ScreenItem* it = source; it != common_ancestor; it = it->get_layout()) {
-        source_branch *= it->get_transform();
+        source_branch *= it->get_xform<ScreenItem::Space::PARENT>();
     }
 
     Xform2f target_branch = Xform2f::identity();
     for (const ScreenItem* it = target; it != common_ancestor; it = it->get_layout()) {
-        target_branch *= it->get_transform();
+        target_branch *= it->get_xform<ScreenItem::Space::PARENT>();
     }
     target_branch.invert();
 

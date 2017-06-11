@@ -53,18 +53,9 @@ void WindowLayout::set_controller(ControllerPtr controller)
     if (m_controller) {
         Item::_set_parent(m_controller, this);
     }
-    on_child_added(m_controller);
-    _relayout();
-}
 
-Aabrf WindowLayout::_get_content_aabr() const
-{
-    if (m_controller) {
-        if (ScreenItem* screen_item = m_controller->get_screen_item()) {
-            return screen_item->get_content_aabr();
-        }
-    }
-    return Aabrf::zero();
+    _relayout();
+    on_child_added(m_controller);
 }
 
 void WindowLayout::_remove_child(const Item* child_item)
@@ -95,7 +86,7 @@ void WindowLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget
     }
 }
 
-Claim WindowLayout::_aggregate_claim()
+Claim WindowLayout::_consolidate_claim()
 {
     assert(0);
     return {};
@@ -103,9 +94,11 @@ Claim WindowLayout::_aggregate_claim()
 
 void WindowLayout::_relayout()
 {
+    _set_size(get_grant());
+
     if (m_controller) {
         if (ScreenItem* root_item = m_controller->get_root_item()) {
-            ScreenItem::_set_size(root_item, _get_size());
+            ScreenItem::_set_grant(root_item, get_size());
         }
     }
 }

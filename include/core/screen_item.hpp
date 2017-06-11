@@ -18,29 +18,40 @@ using RenderLayerPtr = std::shared_ptr<RenderLayer>;
 
 /**
  *
- * Claims
- * ================
- * All ScreenItems have a Claim, that is a minimum / preferred / maximum 2D size that it would like to occupy on screen,
- * but Layouts and Widgets use them in different ways:
+ * Layouting
+ * =========
+ * Layouts and Widgets need to "negotiate" the Layout of the application.
+ * NoTF's layout mechanism hinges on three closely related concepts: Claims and Grants and Sizes.
  *
- * For a Widget, the Claim is a hard constraint.
- * It can never shrink beyond its minimum and never grow beyond its maximum.
- * Everything in between is determined by its parent Layout, which should have a tendency to favor the Widget's
- * preferred size if in doubt.
+ * Claim
+ * -----
+ * All ScreenItems have a Claim, that is a minimum / preferred / maximum 2D size, as well as a min/max ratio constraint.
+ * The Claim lets the parent Layout know how much space the ScreenItem would like to occupy.
+ * The children can be as greedy as they want, they don't care about how much space the parent actually owns.
+ * Claim coordinates are in local (untransformed) space.
+ * The min/max sizes of the Claim are hard constraints, meaning that the ScreenItem will never grow beyond its max or
+ * shrink below its min size.
  *
- * Layouts have two modes in which they can operate.
- * By default, a Layout builds up its Claim by accumulating all of its items' Claims in a layout-specific way.
- * In that case, the combined minimum size of all Items becomes the Layout's minimum size - the same goes for the
- * maximum size.
- * Optionally, you can set an explicit Claim on the Layout, which internally causes the Layout to ignore its Items'
- * Claims and provide its own from now on.
- * This way, you can have a scroll area that takes up available space and has its size set in response to its own Claim,
- * rather than to the combined Claims of all of its child Items.
- * If you want to revert to an Item-driven Claim, call `set_claim` with a zero Claim.
+ * Grant
+ * -----
+ * If the child ScreenItems claim more space than is available, the parent Layout will do its best to distribute (grant)
+ * the space as fair as possible - but there is no way to guarantee that all ScreenItems will fit on screen at once.
+ * Often, a Layout will receive a smaller grant than it would require to accommodate all children.
+ * In that case, it will take the grant and calculate the smallest size that would work for all of its children, taking
+ * into account the build-in behaviour of the Layout type.
+ * A wrapping FlexLayout, for example, will respect the horizontal size of the grant and only grow vertically, an
+ * Overlayout will adopt the size of the largest of its Children and a FreeLayout will use the union of all of its
+ * children's bounding rects.
+ * The parts of the Layout's extend that are beyond it's granted space will overflow.
+ * Depending on the scissoring behaviour, they might get cut off or simply take up space outside of the Layout's
+ * allocated space.
+ *
+ * Think of the Grant as the extend that the parent expects its child to have, while its actually size is the extend
+ * that the ScreenItem decides for itself, based on its Claim.
  *
  * Layout negotiation
- * ==================
- * Layouts and Widgets need to "negotiate" the Layout.
+ * ------------------
+ *
  * Whenever a Widget changes its Claim, the parent Layout has to see if it needs to update its Claim accordingly.
  * If its Claim changes, its respective parent Layout might need to update as well - up to the first Layout that does
  * not update its Claim (at the latest, the WindowLayout never updates its Claim).
@@ -50,22 +61,10 @@ using RenderLayerPtr = std::shared_ptr<RenderLayer>;
  *      1. A ScreenItem changes its Claim. Either a Widget claims more/less space in response to an event, a Layout
  *         finds itself with one more child or whatever.
  *      2. The ScreenItem notifies its parent Layout, which in turn updates its Claim and notifies its own parent.
- *         This chain continues, until one Layout finds, that its own Claim did not change after recalculation.
- *      3. The last notified Layout will re-layout all of its children and assign each one a new size and transform.
- *         Layout children will react by themselves re-layouting and potentially resizing their own children.
- *
- * Size
- * ====
- * The size is the visual size of the Widget in untransformed space.
- * If a Widget has a size of 100x100 in an unscaled space, it does not necessarily mean that the Widget takes up
- * 100x100 px in the Window as it might be transformed and / or scissored.
- *
- * A Layout's size is the area in which it can arrange its children.
- * There is no guarantee that all of the children will fit into the size and Layouts will frequently flow over, but
- * the size is the goal that the Layout should fulfill as closely as possible.
- *
- * A Widget's size is the size of its Cell, the area into which it is painted.
- * Like Layouts, Widgets are not bound to their size and can paint into the area outside as well.
+ *         This chain continues, until one Layout finds that its own Claim did not change after recalculation.
+ *      3. The first Layout with a non-changed Claim will re-layout all of its children and assign each one a new grant
+ *         and transform. Layout children will react by themselves re-layouting and potentially resizing their own
+ *         children.
  *
  * Spaces
  * ======
@@ -84,7 +83,7 @@ using RenderLayerPtr = std::shared_ptr<RenderLayer>;
  * ScreenItem twofold, it will appear bigger on screen but the scale will remain invisible to the the parent Layout.
  * That also means that clicking the cursor into the overflow areas will not count as a click inside the ScreenItem,
  * because the parent won't know that it appears bigger on screen.
- * Offsets are useful, for example, to apply a jitter animation or similiar transformations that should not affect the
+ * Offsets are useful, for example, to apply a jitter animation or similar transformations that should not affect the
  * layout.
  *
  * Layout (parent) space
@@ -139,7 +138,6 @@ class ScreenItem : public Item {
 
 public: // types ******************************************************************************************************/
     enum class Space : unsigned char {
-        NONE,   // no transformation
         LOCAL,  // local transformation only
         LAYOUT, // layout transformation only
         PARENT, // local and layout transformation
@@ -150,38 +148,37 @@ protected: // constructor ******************************************************
 
 public: // methods ****************************************************************************************************/
     /** ScreenItem's transformation in the requested space. */
-    const Xform2f& get_transform(const Space space = Space::PARENT) const
+    template <Space space>
+    const Xform2f& get_xform() const
     {
-        static const Xform2f none = Xform2f::identity();
-        switch (space) {
-        case Space::NONE:
-            return none;
-        case Space::LOCAL:
-            return m_local_transform;
-        case Space::LAYOUT:
-            return m_layout_transform;
-        case Space::PARENT:
-            return m_effective_transform;
-        default:
-            assert(0);
-        }
-        return none;
+        static_assert(always_false<Space, space>{}, "Unsupported Space for ScreenItem::get_xform");
+        static const Xform2f error;  // unreachable
+        return error;
     }
 
     /** Recursive implementation to produce the ScreenItem's transformation in window space. */
-    Xform2f get_window_transform() const;
+    Xform2f get_window_xform() const;
 
     /** Updates the transformation of this ScreenItem. */
-    void set_local_transform(const Xform2f transform);
-
-    /** Returns the axis-aligned bounding rect of this ScreenItem in the requested space. */
-    Aabrf get_aabr(const Space space = Space::PARENT) const;
-
-    /** The axis-aligned bounding rect of this ScreenItem and all of its children in the requested space. */
-    Aabrf get_content_aabr(const Space space = Space::PARENT) const;
+    void set_local_xform(const Xform2f transform);
 
     /** The current Claim of this Item. */
     const Claim& get_claim() const { return m_claim; }
+
+    /** Granted size of this ScreenItem in layout space. */
+    const Size2f& get_grant() const { return m_grant; }
+
+    /** Unscaled size of this ScreenItem in local space. */
+    const Size2f& get_size() const { return m_size; }
+
+    /** The axis-aligned bounding rect of this ScreenItem in the requested space. */
+    template <Space space>
+    Aabrf get_aabr() const
+    {
+        Aabrf aabr(get_size());
+        get_xform<space>().transform(aabr);
+        return aabr;
+    }
 
     /** Returns the effective opacity of this ScreenItem in the range [0 -> 1].
      * @param effective By default, the returned opacity will be the product of this ScreenItem's opacity with all of
@@ -237,7 +234,7 @@ public: // signals *************************************************************
     /** Emitted, when the effective transform of this ScreenItem has changed.
      * @param New local transform.
      */
-    Signal<const Xform2f&> on_transform_changed;
+    Signal<const Xform2f&> on_xform_changed;
 
     /** Emitted when the visibility flag was changed by the user.
      * See `set_visible()` for details.
@@ -248,7 +245,7 @@ public: // signals *************************************************************
      * Note that the effective opacity of a ScreenItem is determined through the multiplication of all of its ancestors
      * opacity.
      * If an ancestor changes its opacity, only itself will fire this signal.
-     * @param New visiblity.
+     * @param New visibility.
      */
     Signal<float> on_opacity_changed;
 
@@ -287,11 +284,8 @@ protected: // methods **********************************************************
      */
     bool _redraw() const;
 
-    /** Unscaled size of this ScreenItem in local space. */
-    const Size2f& _get_size() const { return m_size; }
-
-    /** The union of all child AABRs in untransformed space. */
-    virtual Aabrf _get_content_aabr() const = 0;
+    /** Updates the size of this ScreenItem and the layout of all child Items. */
+    virtual void _relayout() = 0;
 
     /** Recursive implementation to find all Widgets at a given position in local space
      * @param local_pos     Local coordinates where to look for a Widget.
@@ -299,34 +293,29 @@ protected: // methods **********************************************************
      */
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const = 0;
 
-    /** Updates the Claim of this Item, may also change its size to comply with the new constraints.
+    /** Updates the Claim of this Item, which might cause a relayout of itself and its ancestor Layouts.
      * @return      True iff the Claim was modified.
      */
     bool _set_claim(const Claim claim);
 
-    /** Updates the size of the ScreenItem.
-     * Note that the ScreenItem's claim is a hard constraint, which is enforced by this method.
-     * That means when you assign a size that cannot fulfill the claim, the actual size that ends up being set is not
-     * the one passed into the function.
-     * This function is virtual because Layouts use it to determine how to arrange their children.
-     * @returns Whether or not the ScreenItem's size was updated or not.
+    /** Updates the Grant of this Item and might cause a relayout.
+     * @return      True iff the Grant was modified.
      */
-    virtual bool _set_size(const Size2f size) = 0;
+    bool _set_grant(const Size2f grant);
+
+    /** Updates the Grant of this Item and .
+     * @return      True iff the Grant was modified.
+     */
+    bool _set_size(const Size2f size);
 
     /** Updates the layout transformation of this Item. */
-    void _set_layout_transform(const Xform2f transform);
+    void _set_layout_xform(const Xform2f transform);
 
     /** Sets a new Scissor for this ScreenItem. */
     void _set_scissor(const Layout* scissor_layout);
 
     /** Sets a new RenderLayer for this ScreenItem. */
     void _set_render_layer(const RenderLayerPtr& render_layer);
-
-    /** Notifies the parent Layout that the Claim of this ScreenItem has changed.
-     * The change propagates up the Item hierarchy until it reaches the first ancestor, that doesn't need to change its
-     * Claim, where it proceeds downwards again to re-layout all changed Items.
-     */
-    void _update_ancestor_layouts();
 
 protected: // static methods ******************************************************************************************/
     /** Allows ScreenItem subclasses to query Widgets from each other. */
@@ -335,16 +324,16 @@ protected: // static methods ***************************************************
         screen_item->_get_widgets_at(local_pos, result);
     }
 
-    /** Allows ScreenItem subclasses to resize each other. */
-    static bool _set_size(ScreenItem* screen_item, const Size2f size)
+    /** Allows Layouts to assign grants to other ScreenItems. */
+    static bool _set_grant(ScreenItem* screen_item, const Size2f grant)
     {
-        return screen_item->_set_size(std::move(size));
+        return screen_item->_set_grant(std::move(grant));
     }
 
     /** Allows ScreenItem subclasses to change each other's layout transformation. */
-    static void _set_layout_transform(ScreenItem* screen_item, const Xform2f transform)
+    static void _set_layout_xform(ScreenItem *screen_item, const Xform2f xform)
     {
-        return screen_item->_set_layout_transform(std::move(transform));
+        return screen_item->_set_layout_xform(std::move(xform));
     }
 
 private: // methods ***************************************************************************************************/
@@ -372,13 +361,18 @@ private: // fields *************************************************************
      */
     Claim m_claim;
 
-    /** Unscaled size of this ScreenItem in local space.
-     * Is an internal field that helps the ScreenItem to realize when its effective size has changed.
-     * Use the Aabr getters to determine the 'real' size of the ScreenItem in the space of you choice.
+    /** The grant of a ScreenItem is how much space is 'granted' to it by its parent Layout.
+     * Depending on the parent Layout, the ScreenItem's Claim can be used to influence the grant.
+     * Note that the grant can also be smaller or bigger than the Claim.
+     */
+    Size2f m_grant;
+
+    /** The size of a ScreenItem is its actual extend, that it calculates for itself from its own Claim and the grant
+     * given from its parent Layout.
      */
     Size2f m_size;
 
-    /** Flag indicating whether a ScreenItem should be visble or not.
+    /** Flag indicating whether a ScreenItem should be visible or not.
      * Note that the ScreenItem is not guaranteed to be visible just because this flag is true.
      * If the flag is false however, the ScreenItem is guaranteed to be invisible.
      */
@@ -410,8 +404,19 @@ private: // fields *************************************************************
 
 /**********************************************************************************************************************/
 
+template <>
+inline const Xform2f& ScreenItem::get_xform<ScreenItem::Space::LOCAL>() const { return m_local_transform; }
+
+template <>
+inline const Xform2f& ScreenItem::get_xform<ScreenItem::Space::LAYOUT>() const { return m_layout_transform; }
+
+template <>
+inline const Xform2f& ScreenItem::get_xform<ScreenItem::Space::PARENT>() const { return m_effective_transform; }
+
+/**********************************************************************************************************************/
+
 /** Calculates a transformation from a given ScreenItem to another one.
- * @param source    ScreenItem prodiving source coordinates in local space.
+ * @param source    ScreenItem providing source coordinates in local space.
  * @param target    ScreenItem into which the coordinates should be transformed.
  * @return          Transformation.
  * @throw           std::runtime_error, if the two ScreenItems do not share a common ancestor.

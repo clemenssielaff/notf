@@ -66,8 +66,8 @@ void window_deleter(GLFWwindow* glfw_window)
 std::shared_ptr<Window> Window::create(const WindowInfo& info)
 {
     struct make_shared_enabler : public Window {
-        make_shared_enabler(const WindowInfo& info)
-            : Window(info) {}
+        make_shared_enabler(const WindowInfo& window_info)
+            : Window(window_info) {}
     };
     std::shared_ptr<Window> window = std::make_shared<make_shared_enabler>(info);
 
@@ -85,7 +85,7 @@ std::shared_ptr<Window> Window::create(const WindowInfo& info)
 }
 
 Window::Window(const WindowInfo& info)
-    : m_glfw_window(nullptr, window_deleter)
+    : m_glfw_window(nullptr, std::move(window_deleter))
     , m_title(info.title)
     , m_layout()
     , m_render_manager() // has to be created after the OpenGL Context
@@ -150,7 +150,7 @@ Window::Window(const WindowInfo& info)
 
     // create the layout
     m_layout = WindowLayout::create(this);
-    m_layout->set_claim(Claim::fixed(get_buffer_size()));
+    m_layout->_set_grant(get_buffer_size());
     m_layout->set_render_layer(m_render_manager->get_default_layer());
 }
 
@@ -241,7 +241,7 @@ void Window::_on_resize(int width, int height)
 {
     m_size.width  = width;
     m_size.height = height;
-    m_layout->_set_claim(Claim::fixed(get_buffer_size()));
+    m_layout->_set_grant(get_buffer_size());
 }
 
 void Window::_propagate_mouse_event(MouseEvent&& event)

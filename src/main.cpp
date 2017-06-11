@@ -77,7 +77,7 @@ public: // methods
 
     virtual void _paint(Painter& painter) const override
     {
-        const Aabrf widget_rect = Aabrf(_get_size());
+        const Aabrf widget_rect = Aabrf(get_size());
 //        painter.set_scissor(widget_rect);
         painter.begin_path();
         painter.add_rect(widget_rect);

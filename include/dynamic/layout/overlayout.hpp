@@ -63,13 +63,11 @@ public: // methods *************************************************************
     void add_item(ItemPtr item);
 
 private: // methods ***************************************************************************************************/
-    virtual Aabrf _get_content_aabr() const override;
-
     virtual void _remove_child(const Item* child_item) override;
 
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
-    virtual Claim _aggregate_claim() override;
+    virtual Claim _consolidate_claim() override;
 
     virtual void _relayout() override;
 
