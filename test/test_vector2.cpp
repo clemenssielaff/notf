@@ -1,7 +1,7 @@
-#include "test/catch.hpp"
+#include "catch.hpp"
+#include "test_utils.hpp"
 
 #include "common/vector2.hpp"
-#include "test/test_utils.hpp"
 using namespace notf;
 
 SCENARIO("Vector2s can be constructed", "[common][vector2]")

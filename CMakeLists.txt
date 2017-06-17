@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.5)
 project(notf)
 
 set(CMAKE_CXX_STANDARD 14)
@@ -8,7 +8,7 @@ INCLUDE_DIRECTORIES(
         thirdparty
         res
         /home/clemens/code/thirdparty/freetype-2.7/INSTALL/include/freetype2/
-        #test
+        test
         #/home/clemens/code/thirdparty/Python-3.6.1/INSTALL/include/python3.6dm/
 )
 
@@ -29,7 +29,7 @@ set(SOURCE_FILES
         src/common/time.cpp
         src/common/utf.cpp
         src/common/vector2.cpp
-        src/common/vector3.cpp
+        src/common/vector4.cpp
         src/common/xform2.cpp
         src/common/xform3.cpp
         src/core/application.cpp
@@ -103,6 +103,26 @@ set(SOURCE_FILES
 
 add_executable(notf ${SOURCE_FILES})
 
+# TEST SUITE ###########################################################################################################
+
+set(TEST_FILES
+        ${SOURCE_FILES}
+        test/test_aabr.cpp
+        test/test_circle.cpp
+        test/test_color.cpp
+        test/test_float.cpp
+        test/test_main.cpp
+        test/test_property.cpp
+        test/test_signal.cpp
+        test/test_string_utils.cpp
+        test/test_utils.hpp
+        test/test_vector2.cpp
+        test/test_xform2.cpp
+)
+LIST(REMOVE_ITEM TEST_FILES src/main.cpp)
+
+add_executable(notf-test ${TEST_FILES})
+
 # LIBRARIES ############################################################################################################
 
 # glfw
@@ -122,3 +142,8 @@ target_link_libraries(${PROJECT_NAME}
         freetype
 )
 
+target_link_libraries(notf-test
+        ${OPENGL_gl_LIBRARY}
+        glfw
+        freetype
+        )

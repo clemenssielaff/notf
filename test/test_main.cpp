@@ -1,5 +1,5 @@
 #define CATCH_CONFIG_RUNNER
-#include "test/catch.hpp"
+#include "catch.hpp"
 
 #include "common/log.hpp"
 #include "core/application.hpp"

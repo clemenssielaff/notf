@@ -152,8 +152,6 @@ public: // methods *************************************************************
     const Xform2f& get_xform() const
     {
         static_assert(always_false<Space, space>{}, "Unsupported Space for ScreenItem::get_xform");
-        static const Xform2f error;  // unreachable
-        return error;
     }
 
     /** Recursive implementation to produce the ScreenItem's transformation in window space. */

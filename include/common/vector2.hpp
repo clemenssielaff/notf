@@ -3,49 +3,59 @@
 #include <assert.h>
 #include <iosfwd>
 
-#include "common/float.hpp"
-#include "common/hash.hpp"
+#include "common/arithmetic.hpp"
 #include "common/meta.hpp"
 
 namespace notf {
 
 //*********************************************************************************************************************/
 
+namespace detail {
+
+/** 2-dimensional value with elements accessible through `x` and `y` fields. */
+template <typename VALUE_TYPE>
+struct Value2 : public Value<VALUE_TYPE, 2> {
+
+    Value2() = default;
+
+    template <typename A, typename B>
+    Value2(A x, B y)
+        : array{{static_cast<VALUE_TYPE>(x), static_cast<VALUE_TYPE>(y)}} {}
+
+    union {
+        std::array<VALUE_TYPE, 2> array;
+        struct {
+            VALUE_TYPE x;
+            VALUE_TYPE y;
+        };
+    };
+};
+
+} // namespace detail
+
+//*********************************************************************************************************************/
+
 /** 2-dimensional mathematical Vector containing real numbers. */
 template <typename Real, ENABLE_IF_REAL(Real)>
-struct _RealVector2 {
+struct _RealVector2 : public detail::Arithmetic<_RealVector2<Real>, detail::Value2<Real>> {
 
-    /* Types **********************************************************************************************************/
-
-    using value_t = Real;
-
-    /* Fields *********************************************************************************************************/
-
-    /** X-coordinate. */
-    value_t x;
-
-    /** Y-coordinate */
-    value_t y;
+    // explitic forwards
+    using super = detail::Arithmetic<_RealVector2<Real>, detail::Value2<Real>>;
+    using super::x;
+    using super::y;
+    using value_t = typename super::value_t;
 
     /* Constructors ***************************************************************************************************/
 
     /** Default (non-initializing) constructor so this struct remains a POD */
     _RealVector2() = default;
 
-    /** Creates a Vector2 with the given components.
-     * @param x     X-coordinate.
-     * @param y     Y-coordinate.
-     */
-    _RealVector2(const value_t x, const value_t y)
-        : x(x), y(y) {}
+    /** Perforect forwarding constructor. */
+    template <typename... T>
+    _RealVector2(T&&... ts)
+        : super{std::forward<T>(ts)...} {}
 
     /* Static Constructors ********************************************************************************************/
-
-    /** A zero Vector2. */
-    static _RealVector2 zero() { return _RealVector2(0, 0); }
-
-    /** Constructs a Vector2 with both coordinates set to the given value. */
-    static _RealVector2 fill(const value_t value) { return _RealVector2(value, value); }
 
     /** Unit Vector2 along the X-axis. */
     static _RealVector2 x_axis() { return _RealVector2(1, 0); }
@@ -54,17 +64,6 @@ struct _RealVector2 {
     static _RealVector2 y_axis() { return _RealVector2(0, 1); }
 
     /*  Inspection  ***************************************************************************************************/
-
-    /** Checks, if this Vector2 contains only real, finite values (no INFINITY or NAN). */
-    bool is_real() const { return notf::is_real(x) && notf::is_real(y); }
-
-    /** Returns true if both coordinates are (approximately) zero.
-     * @param epsilon   Largest difference that is still considered to be zero.
-     */
-    bool is_zero(const value_t epsilon = precision_high<value_t>()) const { return abs(x) <= epsilon && abs(y) <= epsilon; }
-
-    /** Checks, if any component of this Vector2 is a zero. */
-    bool contains_zero() const { return abs(x) <= precision_high<value_t>() || abs(y) <= precision_high<value_t>(); }
 
     /** Checks whether this Vector2 is of unit magnitude. */
     bool is_unit() const { return abs(get_magnitude_sq() - 1) <= precision_high<value_t>(); }
@@ -110,12 +109,6 @@ struct _RealVector2 {
         // normalization required for large absolute differences in vector lengths
         return abs(get_normalized().dot(other.get_normalized())) <= precision_high<value_t>();
     }
-
-    /** Returns the angle (in radians) between the positive x-axis and this Vector2.
-     * The angle is positive for counter-clockwise angles (upper half-plane, y > 0),
-     * and negative for clockwise angles (lower half-plane, y < 0).
-     */
-    value_t angle() const { return atan2(y, x); }
 
     /** Returns the smallest angle (in radians) to the other Vector2.
      * Always returns zero, if one or both of the input Vector2s are of zero magnitude.
@@ -171,137 +164,7 @@ struct _RealVector2 {
         return y / x;
     }
 
-    /** Operators *****************************************************************************************************/
-
-    /** Tests whether two Vector2s are equal. */
-    bool operator==(const _RealVector2& other) const { return (*this - other).is_zero(); }
-
-    /** Tests whether two Vector2s not are equal. */
-    bool operator!=(const _RealVector2& other) const { return !(*this == other); }
-
-    /** Adding another Vector2 moves this Vector2 relative to its previous position. */
-    _RealVector2 operator+(const _RealVector2& other) const { return _RealVector2(x + other.x, y + other.y); }
-
-    /** In-place addition of another Vector2. */
-    _RealVector2& operator+=(const _RealVector2& other)
-    {
-        x += other.x;
-        y += other.y;
-        return *this;
-    }
-
-    /** Subtracting another Vector2 places this Vector2's start point at the other's end. */
-    _RealVector2 operator-(const _RealVector2& other) const { return _RealVector2(x - other.x, y - other.y); }
-
-    /** In-place subtraction of another Vector2. */
-    _RealVector2& operator-=(const _RealVector2& other)
-    {
-        x -= other.x;
-        y -= other.y;
-        return *this;
-    }
-
-    /** Component-wise multiplication of a Vector2 with another Vector2. */
-    _RealVector2 operator*(const _RealVector2& other) const { return _RealVector2(x * other.x, y * other.y); }
-
-    /** In-place component-wise multiplication of a Vector2 with another Vector2. */
-    _RealVector2& operator*=(const _RealVector2& other)
-    {
-        x *= other.x;
-        y *= other.y;
-        return *this;
-    }
-
-    /** Component-wise division of a Vector2 by another Vector2. */
-    _RealVector2 operator/(const _RealVector2& other) const { return {save_div(x, other.x), save_div(y, other.y)}; }
-
-    /** In-place component-wise division of a Vector2 by another Vector2. */
-    _RealVector2& operator/=(const _RealVector2& other)
-    {
-        x = save_div(x, other.x);
-        y = save_div(y, other.y);
-        return *this;
-    }
-
-    /** Multiplication with a scalar scales this Vector2's length. */
-    _RealVector2 operator*(const value_t factor) const { return _RealVector2(x * factor, y * factor); }
-
-    /** In-place multiplication with a scalar. */
-    _RealVector2& operator*=(const value_t factor)
-    {
-        x *= factor;
-        y *= factor;
-        return *this;
-    }
-
-    /** Division by a scalar inversely scales this Vector3's length.
-     * If you know that divisor cannot be zero, calling `vector *= 1/divisor` will save you a 'division-by-zero' test.
-     */
-    _RealVector2 operator/(const value_t divisor) const
-    {
-        if (divisor == 0) {
-            throw division_by_zero();
-        }
-        return _RealVector2(x / divisor, y / divisor);
-    }
-
-    /** In-place division by a scalar value.
-     * If you know that divisor cannot be zero, calling `vector *= 1/divisor` will save you a 'division-by-zero' test.
-     */
-    _RealVector2& operator/=(const value_t divisor)
-    {
-        if (divisor == 0) {
-            throw division_by_zero();
-        }
-        x /= divisor;
-        y /= divisor;
-        return *this;
-    }
-
-    /** Returns an inverted copy of this Vector2. */
-    _RealVector2 operator-() const { return get_inverse(); }
-
-    /** Read-only reference to an entry of the Vector2's internal storage. */
-    template <typename Index, ENABLE_IF_INT(Index)>
-    const value_t& operator[](const Index index) const
-    {
-        assert(0 <= index && index <= 1);
-        return *(&x + index);
-    }
-
-    /** Read-write reference to an entry of the Vector2's internal storage. */
-    template <typename Index, ENABLE_IF_INT(Index)>
-    value_t& operator[](const Index index)
-    {
-        assert(0 <= index && index <= 1);
-        return *(&x + index);
-    }
-
-    /** Read-only pointer to the Vector2's internal storage. */
-    const value_t* as_ptr() const { return &x; }
-
-    /** Read-write pointer to the Vector2's internal storage. */
-    value_t* as_ptr() { return &x; }
-
     /** Modifiers *****************************************************************************************************/
-
-    /** Sets all components to zero. */
-    _RealVector2& set_zero()
-    {
-        x = y = 0;
-        return *this;
-    }
-
-    /** Returns an inverted copy of this Vector2. */
-    _RealVector2 get_inverse() const { return _RealVector2(-x, -y); }
-
-    /** Inverts this Vector2 in-place. */
-    _RealVector2& invert()
-    {
-        x = -x;
-        y = -y;
-        return *this;
-    }
 
     /** Returns the dot product of this Vector2 and another.
      * @param other     Vector2 to the right.
@@ -335,12 +198,14 @@ struct _RealVector2 {
     {
         const value_t mag_sq = get_magnitude_sq();
         if (abs(mag_sq - 1) <= precision_high<value_t>()) {
-            return (*this); // is unit
+            return *this; // is unit
         }
         if (abs(mag_sq) <= precision_high<value_t>()) {
-            return set_zero(); // is zero
+            super::set_zero(); // is zero
+            return *this;
         }
-        return (*this) *= (1 / sqrt(mag_sq));
+        (*this) *= (1 / sqrt(mag_sq));
+        return *this;
     }
 
     /** Creates a projection of this Vector2 onto an infinite line whose direction is specified by other.
@@ -410,33 +275,25 @@ struct _RealVector2 {
 
 /** 2-dimensional mathematical Vector2 containing integers. */
 template <typename Integer, ENABLE_IF_INT(Integer)>
-struct _IntVector2 {
+struct _IntVector2 : public detail::Arithmetic<_IntVector2<Integer>, detail::Value2<Integer>> {
 
-    /** X-coordinate. */
-    Integer x;
-
-    /** Y-coordinate */
-    Integer y;
+    // explitic forwards
+    using super = detail::Arithmetic<_IntVector2<Integer>, detail::Value2<Integer>>;
+    using super::x;
+    using super::y;
+    using value_t = typename super::value_t;
 
     /* Constructors ***************************************************************************************************/
 
     /** Default (non-initializing) constructor so this struct remains a POD */
     _IntVector2() = default;
 
-    /** Creates a Vector2 with the given components.
-     * @param x     X-coordinate.
-     * @param y     Y-coordinate.
-     */
-    _IntVector2(Integer x, Integer y)
-        : x(x), y(y) {}
+    /** Perforect forwarding constructor. */
+    template <typename... T>
+    _IntVector2(T&&... ts)
+        : super{std::forward<T>(ts)...} {}
 
     /* Static Constructors ********************************************************************************************/
-
-    /** A zero Vector2. */
-    static _IntVector2 zero() { return _IntVector2(0, 0); }
-
-    /** Constructs a Vector2 with both coordinates set to the given value. */
-    static _IntVector2 fill(Integer value) { return _IntVector2(value, value); }
 
     /** Unit Vector2 along the X-axis. */
     static _IntVector2 x_axis() { return _IntVector2(1, 0); }
@@ -445,9 +302,6 @@ struct _IntVector2 {
     static _IntVector2 y_axis() { return _IntVector2(0, 1); }
 
     /*  Inspection  ***************************************************************************************************/
-
-    /** Returns true if both coordinates are zero.  */
-    bool is_zero() const { return x == 0 && y == 0; }
 
     /** Tests if this Vector2 is parallel to the X-axis.
      * The zero Vector2 is parallel to every Vector2.
@@ -459,100 +313,7 @@ struct _IntVector2 {
      */
     bool is_vertical() const { return x == 0; }
 
-    /** Checks, if any component of this Vector2 is a zero. */
-    bool contains_zero() const { return x == 0 || y == 0; }
-
-    /** Direct read-only memory access to the Vector2. */
-    template <typename Index, ENABLE_IF_INT(Index)>
-    const Integer& operator[](const Index index) const
-    {
-        assert(0 <= index && index <= 1);
-        return *(&x + index);
-    }
-
-    /** Direct read/write memory access to the Vector2. */
-    template <typename Index, ENABLE_IF_INT(Index)>
-    Integer& operator[](const Index index)
-    {
-        assert(0 <= index && index <= 1);
-        return *(&x + index);
-    }
-
-    /** Operators *****************************************************************************************************/
-
-    /** Tests whether two Vector2s are equal. */
-    bool operator==(const _IntVector2& other) const { return other.x == x && other.y == y; }
-
-    /** Tests whether two Vector2s not are equal. */
-    bool operator!=(const _IntVector2& other) const { return other.x != x || other.y != y; }
-
-    /** Adding another Vector2 moves this Vector2 relative to its previous position. */
-    _IntVector2 operator+(const _IntVector2& other) const { return _IntVector2(x + other.x, y + other.y); }
-
-    /** In-place addition of another Vector2. */
-    _IntVector2& operator+=(const _IntVector2& other)
-    {
-        x += other.x;
-        y += other.y;
-        return *this;
-    }
-
-    /** Subtracting another Vector2 places this Vector2's start point at the other's end. */
-    _IntVector2 operator-(const _IntVector2& other) const { return _IntVector2(x - other.x, y - other.y); }
-
-    /** In-place subtraction of another Vector2. */
-    _IntVector2& operator-=(const _IntVector2& other)
-    {
-        x -= other.x;
-        y -= other.y;
-        return *this;
-    }
-
-    /** Component-wise multiplication of a Vector2 with another Vector2. */
-    _IntVector2 operator*(const _IntVector2& other) const { return _IntVector2(x * other.x, y * other.y); }
-
-    /** In-place component-wise multiplication of a Vector2 with another Vector2. */
-    _IntVector2& operator*=(const _IntVector2& other)
-    {
-        x *= other.x;
-        y *= other.y;
-        return *this;
-    }
-
-    /** Multiplication with a scalar scales this Vector2's length. */
-    _IntVector2 operator*(const Integer factor) const { return _IntVector2(x * factor, y * factor); }
-
-    /** In-place multiplication with a scalar. */
-    _IntVector2& operator*=(const Integer factor)
-    {
-        x *= factor;
-        y *= factor;
-        return *this;
-    }
-
-    /** Returns an inverted copy of this Vector2. */
-    _IntVector2 operator-() const { return get_inverse(); }
-
     /** Modifiers *****************************************************************************************************/
-
-    /** Sets all components to zero. */
-    _IntVector2& set_zero()
-    {
-        x = 0;
-        y = 0;
-        return *this;
-    }
-
-    /** Returns an inverted copy of this Vector2. */
-    _IntVector2 get_inverse() const { return _IntVector2(-x, -y); }
-
-    /** Inverts this Vector2 in-place. */
-    _IntVector2& invert()
-    {
-        x = -x;
-        y = -y;
-        return *this;
-    }
 
     /** Returns a Vector2 orthogonal to this one, by rotating the copy 90 degree counter-clockwise.
      * The resulting Vector2 is of the same magnitude as the original one.
@@ -562,7 +323,7 @@ struct _IntVector2 {
     /** Rotates this Vector2 90 degree counter-clockwise. */
     _IntVector2& orthogonalize()
     {
-        const Integer temp = -y;
+        const value_t temp = -y;
         y                  = x;
         x                  = temp;
         return *this;
@@ -576,17 +337,6 @@ using Vector2d = _RealVector2<double>;
 using Vector2i = _IntVector2<int>;
 
 /* Free Functions *****************************************************************************************************/
-
-/** Linear interpolation between two Vector2s.
- * @param from    Left Vector, full weight at blend <= 0.
- * @param to      Right Vector, full weight at blend >= 1.
- * @param blend   Blend value, clamped to range [0, 1].
- */
-template <typename Real>
-inline _RealVector2<Real> lerp(const _RealVector2<Real>& from, const _RealVector2<Real>& to, const Real blend)
-{
-    return ((to - from) *= clamp(blend, 0, 1)) += from;
-}
 
 /** Prints the contents of a Vector2 into a std::ostream.
  * @param os   Output stream, implicitly passed with the << operator.
@@ -606,13 +356,13 @@ namespace std {
 /** std::hash specialization for notf::_RealVector2. */
 template <typename Real>
 struct hash<notf::_RealVector2<Real>> {
-    size_t operator()(const notf::_RealVector2<Real>& vector) const { return notf::hash(vector.x, vector.y); }
+    size_t operator()(const notf::_RealVector2<Real>& vector) const { return vector.hash(); }
 };
 
 /** std::hash specialization for notf::_IntVector2. */
 template <typename Integer>
 struct hash<notf::_IntVector2<Integer>> {
-    size_t operator()(const notf::_IntVector2<Integer>& vector) const { return notf::hash(vector.x, vector.y); }
+    size_t operator()(const notf::_IntVector2<Integer>& vector) const { return vector.hash(); }
 };
 
 } // namespace std

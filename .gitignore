@@ -1,6 +1,7 @@
 cmake-build-debug
 cmake-build-release
 notf.pro.user
+CMakeLists.txt.user
 .idea
 docs/.sass-cache
 docs/_site

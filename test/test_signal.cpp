@@ -1,4 +1,4 @@
-#include "test/catch.hpp"
+#include "catch.hpp"
 
 #include "common/float.hpp"
 #include "common/signal.hpp"

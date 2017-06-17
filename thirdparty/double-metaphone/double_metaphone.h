@@ -1,11 +1,9 @@
 #ifndef DOUBLE_METAPHONE__H
 #define DOUBLE_METAPHONE__H
 
-#define string std::string 
-#define vector std::vector 
+#include <string>
+#include <vector>
 
-void DoubleMetaphone(const string &str,
-                     vector<string> *codes);
+void DoubleMetaphone(const std::string& str, std::vector<std::string>* codes);
 
 #endif /* DOUBLE_METAPHONE__H */
-

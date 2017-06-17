@@ -1,4 +1,4 @@
-#include "test/catch.hpp"
+#include "catch.hpp"
 
 #include "common/circle.hpp"
 using notf::Circlef;

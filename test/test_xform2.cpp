@@ -1,7 +1,6 @@
-#include "test/catch.hpp"
+#include "catch.hpp"
+#include "test_utils.hpp"
 
-#include "common/xform2.hpp"
-#include "test/test_utils.hpp"
 using namespace notf;
 
 SCENARIO("Working with 2D transformations", "[common][xform2]")
@@ -31,10 +30,12 @@ SCENARIO("Working with 2D transformations", "[common][xform2]")
 
         THEN("they are applied from left to right")
         {
-            const Vector2f result = total_xform.transform(Vector2f::zero());
+            Vector2f result = Vector2f::zero();
+            total_xform.transform(result);
             REQUIRE(result.is_approx(Vector2f(0, 200), precision_low<float>()));
 
-            const Vector2f inline_result = inline_total.transform(Vector2f::zero());
+            Vector2f inline_result = Vector2f::zero();
+            inline_total.transform(inline_result);
             REQUIRE(inline_result.is_approx(Vector2f(0, 200), precision_low<float>()));
         }
     }
@@ -58,11 +59,13 @@ SCENARIO("Working with 2D transformations", "[common][xform2]")
         const Xform2f xform = random_xform2<float>(0, 1000, 0.01f, 2);
         const Vector2f vec  = random_vector<float>(-1000, 1000);
 
-        const Vector2f transformed_vec = xform.transform(vec);
+        Vector2f transformed_vec = vec;
+        xform.transform(transformed_vec);
 
         THEN("the inverse of the transform will bring the vector back into its original position")
         {
-            const Vector2f inversed_vec = xform.get_inverse().transform(transformed_vec);
+            Vector2f inversed_vec = transformed_vec;
+            xform.get_inverse().transform(inversed_vec);
 
             REQUIRE(vec.is_approx(inversed_vec, 0.0002f)); // very imprecise
         }

@@ -1,7 +1,6 @@
-#include "test/catch.hpp"
+#include "catch.hpp"
+#include "test_utils.hpp"
 
-#include "common/float.hpp"
-#include "test/test_utils.hpp"
 using namespace notf;
 
 SCENARIO("Working with angles", "[common][float][arithmetic]")

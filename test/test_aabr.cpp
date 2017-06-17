@@ -1,4 +1,4 @@
-#include "test/catch.hpp"
+#include "catch.hpp"
 
 #include <iostream>
 
@@ -44,7 +44,7 @@ SCENARIO("Aabr can be modified", "[common][aabr]")
         {
             Aabrf aabr_1(top_right, bottom_left);
             Aabrf aabr_2 = aabr_1.get_rotated(static_cast<float>(PI / 4));
-            REQUIRE(aabr_2.width() == approx(2 * sqrt(2.f)));
+            REQUIRE(aabr_2.get_width() == approx(2 * sqrt(2.f)));
         }
     }
 }
