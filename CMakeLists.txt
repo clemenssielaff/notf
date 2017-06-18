@@ -101,7 +101,12 @@ set(SOURCE_FILES
         thirdparty/tinyutf8/tinyutf8.cpp
 )
 
-add_executable(notf ${SOURCE_FILES})
+set(HEADER_FILES
+    include/common/simd/simd_arithmetic4f.hpp
+    include/common/simd/simd_vector4f.hpp
+)
+
+add_executable(notf ${SOURCE_FILES} ${HEADER_FILES})
 
 # TEST SUITE ###########################################################################################################
 

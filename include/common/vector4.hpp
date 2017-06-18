@@ -1,4 +1,5 @@
-#pragma once
+#ifndef NOTF_COMMON_VECTOR4 // pragma once works for the compiler but not clang's live inspector
+#define NOTF_COMMON_VECTOR4
 
 #include <assert.h>
 #include <iosfwd>
@@ -11,7 +12,7 @@ namespace notf {
 //*********************************************************************************************************************/
 
 /** 4-dimensional mathematical Vector containing real numbers. */
-template <typename Real, ENABLE_IF_REAL(Real)>
+template <typename Real, ENABLE_IF_REAL(Real), bool BASE_FOR_PARTIAL = false>
 struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4> {
 
     // explitic forwards
@@ -38,38 +39,38 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4> {
 
     /* Static Constructors ********************************************************************************************/
 
-    /** Unit Vector3 along the X-axis. */
+    /** Unit Vector4 along the X-axis. */
     static _RealVector4 x_axis() { return _RealVector4(1, 0, 0); }
 
-    /** Unit Vector3 along the Y-axis. */
+    /** Unit Vector4 along the Y-axis. */
     static _RealVector4 y_axis() { return _RealVector4(0, 1, 0); }
 
-    /** Unit Vector3 along the Z-axis. */
+    /** Unit Vector4 along the Z-axis. */
     static _RealVector4 z_axis() { return _RealVector4(0, 0, 1); }
 
     /*  Inspection  ***************************************************************************************************/
 
-    /** Checks whether this Vector3 is parallel to other.
-     * The zero Vector3 is parallel to everything.
-     * @param other     Other Vector3.
+    /** Checks whether this Vector4 is parallel to other.
+     * The zero Vector4 is parallel to everything.
+     * @param other     Other Vector4.
      */
     bool is_parallel_to(const _RealVector4& other) const
     {
         return get_crossed(other).get_magnitude_sq() <= precision_high<value_t>();
     }
 
-    /** Checks whether this Vector3 is orthogonal to other.
-     * The zero Vector3 is orthogonal to everything.
-     * @param other     Other Vector3.
+    /** Checks whether this Vector4 is orthogonal to other.
+     * The zero Vector4 is orthogonal to everything.
+     * @param other     Other Vector4.
      */
     bool is_orthogonal_to(const _RealVector4& other) const
     {
         return dot(other) <= precision_high<value_t>();
     }
 
-    /** Calculates the smallest angle between two Vector3s.
-     * Returns zero, if one or both of the input Vector3s are of zero magnitude.
-     * @param other     Vector3 to test against.
+    /** Calculates the smallest angle between two Vector4s.
+     * Returns zero, if one or both of the input Vector4s are of zero magnitude.
+     * @param other     Vector4 to test against.
      * @return Angle in positive radians.
      */
     value_t angle_to(const _RealVector4& other) const
@@ -84,10 +85,10 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4> {
         return acos(dot(other) / sqrt(mag_sq_product));
     }
 
-    /** Tests if the other Vector3 is collinear (1), orthogonal(0), opposite (-1) or something in between.
+    /** Tests if the other Vector4 is collinear (1), orthogonal(0), opposite (-1) or something in between.
      * Similar to `angle`, but saving a call to `acos`.
-     * Returns zero, if one or both of the input Vector3s are of zero magnitude.
-     * @param other     Vector3 to test against.
+     * Returns zero, if one or both of the input Vector4s are of zero magnitude.
+     * @param other     Vector4 to test against.
      */
     Real direction_to(const _RealVector4& other) const
     {
@@ -127,19 +128,20 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4> {
     /** Read-write access to the fourth element in the vector. */
     value_t& w() { return data[3]; }
 
-    /** Returns the dot product of this Vector3 and another.
+    /** Returns the dot product of this Vector4 and another.
      * Allows calculation of the magnitude of one vector in the direction of another.
-     * Can be used to determine in which general direction a Vector3 is positioned
+     * Can be used to determine in which general direction a Vector4 is positioned
      * in relation to another one.
-     * @param other     Other Vector3.
+     * @param other     Other Vector4.
      */
     value_t dot(const _RealVector4& other) const { return (x() * other.x()) + (y() * other.y()) + (z() * other.z()); }
 
-    /** Vector3 cross product.
-     * The cross product is a Vector3 perpendicular to this one and other.
-     * The magnitude of the cross Vector3 is twice the area of the triangle
-     * defined by the two input Vector3s.
-     * @param other     Other Vector3.
+    /** Vector4 cross product.
+     * The cross product is a Vector4 perpendicular to this one and other.
+     * The magnitude of the cross Vector4 is twice the area of the triangle
+     * defined by the two input Vector4s.
+     * The cross product is only defined for 3-dimensional vectors, the `w` element of the result will always be 1.
+     * @param other     Other Vector4.
      */
     _RealVector4 get_crossed(const _RealVector4& other) const
     {
@@ -149,8 +151,8 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4> {
             (x() * other.y()) - (y() * other.x()));
     }
 
-    /** In-place Vector3 cross product.
-     * @param other     Other Vector3.
+    /** In-place Vector4 cross product.
+     * @param other     Other Vector4.
      */
     _RealVector4& cross(const _RealVector4& other)
     {
@@ -163,13 +165,13 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4> {
         return *this;
     }
 
-    /** Creates a projection of this Vector3 onto an infinite line whose direction is specified by other.
-     * If the other Vector3 is not normalized, the projection is scaled alongside with it.
+    /** Creates a projection of this Vector4 onto an infinite line whose direction is specified by other.
+     * If the other Vector4 is not normalized, the projection is scaled alongside with it.
      */
     _RealVector4 get_projected_on(const _RealVector4& other) { return other * dot(other); }
 
-    /** Projects this Vector3 onto an infinite line whose direction is specified by other.
-     * If the other Vector3 is not normalized, the projection is scaled alongside with it.
+    /** Projects this Vector4 onto an infinite line whose direction is specified by other.
+     * If the other Vector4 is not normalized, the projection is scaled alongside with it.
      */
     _RealVector4 project_on(const _RealVector4& other)
     {
@@ -183,13 +185,13 @@ using Vector4d = _RealVector4<double>;
 
 // Free Functions *****************************************************************************************************/
 
-/** Spherical linear interpolation between two Vector3s.
+/** Spherical linear interpolation between two Vector4s.
  * Travels the torque-minimal path at a constant velocity.
  * Taken from http://bulletphysics.org/Bullet/BulletFull/neon_2vec__aos_8h_source.html .
  * @param from      Left Vector, active at fade <= 0.
  * @param to        Right Vector, active at fade >= 1.
  * @param blend     Blend value, clamped to [0, 1].
- * @return          Interpolated Vector3.
+ * @return          Interpolated Vector4.
  */
 template <typename Real>
 _RealVector4<Real> slerp(const _RealVector4<Real>& from, const _RealVector4<Real>& to, Real blend)
@@ -213,9 +215,9 @@ _RealVector4<Real> slerp(const _RealVector4<Real>& from, const _RealVector4<Real
     return (from * scale_0) + (to * scale_1);
 }
 
-/** Prints the contents of a Vector3 into a std::ostream.
+/** Prints the contents of a Vector4 into a std::ostream.
  * @param os   Output stream, implicitly passed with the << operator.
- * @param vec  Vector3 to print.
+ * @param vec  Vector4 to print.
  * @return Output stream for further output.
  */
 template <typename Real>
@@ -227,10 +229,17 @@ namespace std {
 
 // std::hash **********************************************************************************************************/
 
-/** std::hash _RealVector4 for notf::_RealVector3. */
+/** std::hash _RealVector4 for notf::_RealVector4. */
 template <typename Real>
 struct hash<notf::_RealVector4<Real>> {
     size_t operator()(const notf::_RealVector4<Real>& vector) const { return vector.hash(); }
 };
 
 } // namespace std
+
+#ifndef NOTF_NO_SIMD
+#include "common/simd/simd_arithmetic4f.hpp"
+#include "common/simd/simd_vector4f.hpp"
+#endif
+
+#endif // NOTF_COMMON_VECTOR4

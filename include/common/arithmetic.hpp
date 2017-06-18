@@ -6,7 +6,6 @@
 #include "common/hash.hpp"
 
 namespace notf {
-
 namespace detail {
 
 //*********************************************************************************************************************/
@@ -16,7 +15,7 @@ namespace detail {
  * The Arithmetic base class provides naive implementations of each operation.
  * You can override specific functionality for value-specific behaviour or to make use of SIMD instructions.
  */
-template <typename SPECIALIZATION, typename VALUE_TYPE, size_t DIMENSIONS, bool PARTAL = false>
+template <typename SPECIALIZATION, typename VALUE_TYPE, size_t DIMENSIONS, bool BASE_FOR_PARTIAL = false>
 struct Arithmetic {
 
     /* Types and Fields ***********************************************************************************************/
@@ -339,44 +338,4 @@ detail::Arithmetic<SPECIALIZATION, VALUE_TYPE, DIMENSIONS> lerp(
     return ((to - from) *= clamp(blend, 0, 1)) += from;
 }
 
-// SIMD specializations ***********************************************************************************************/
-
-namespace detail {
-
-#ifndef NOTF_NO_SIMD
-#include <emmintrin.h>
-
-template <typename SPECIALIZATION>
-struct Arithmetic<SPECIALIZATION, float, 4, false> : public Arithmetic<SPECIALIZATION, float, 4, true> {
-
-    using super = Arithmetic<SPECIALIZATION, float, 4, true>;
-
-    Arithmetic() = default;
-
-    /** Perforect forwarding constructor. */
-    template <typename... T>
-    Arithmetic(T&&... ts)
-        : super{std::forward<T>(ts)...} {}
-
-    /** The sum of this value with another one. */
-    SPECIALIZATION operator+(const Arithmetic& other) const
-    {
-        SPECIALIZATION result;
-        auto a = _mm_load_ps(this->as_ptr());
-        auto b = _mm_load_ps(other.as_ptr());
-        _mm_storeu_ps(result.as_ptr(), _mm_add_ps(a, b));
-        return result;
-    }
-};
-
-//template <>
-//inline Vector4f& Vector4f::operator+=(const Vector4f& other)
-//{
-//    _mm_store_ps(this->as_ptr(), _mm_add_ps(_mm_load_ps(this->as_ptr()), _mm_load_ps(other.as_ptr())));
-//    return *this;
-//}
-
-#endif
-
-} // namespace detail
 } // namespace notf
