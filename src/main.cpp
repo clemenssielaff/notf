@@ -147,7 +147,7 @@ public: // methods
 
 };
 
-int main(int argc, char* argv[])
+int mainnot(int argc, char* argv[])
 {
     ApplicationInfo app_info;
     app_info.argc         = argc;

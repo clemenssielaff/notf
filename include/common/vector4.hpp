@@ -16,18 +16,22 @@ namespace detail {
 template <typename VALUE_TYPE>
 struct Value4 : public Value<VALUE_TYPE, 4> {
 
+    /** Default (non-initializing) constructor so this struct remains a POD */
     Value4() = default;
 
+    /** Element-wise constructor with 3 arguments and `w` set to 1. */
     template <typename A, typename B, typename C>
     Value4(A x, B y, C z)
         : array{{static_cast<VALUE_TYPE>(x), static_cast<VALUE_TYPE>(y),
                  static_cast<VALUE_TYPE>(z), 1}} {}
 
+    /** Element-wise constructor. */
     template <typename A, typename B, typename C, typename D>
     Value4(A x, B y, C z, D w)
         : array{{static_cast<VALUE_TYPE>(x), static_cast<VALUE_TYPE>(y),
                  static_cast<VALUE_TYPE>(z), static_cast<VALUE_TYPE>(w)}} {}
 
+    /** Value element data. */
     union {
         std::array<VALUE_TYPE, 4> array;
         struct {
@@ -141,7 +145,43 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, detail::Valu
         return clamp(this->dot(other) / sqrt(mag_sq_product), -1., 1.);
     }
 
-    /** Modifiers *****************************************************************************************************/
+    /** Modification **************************************************************************************************/
+
+    /** The sum of this value with another one. */
+    _RealVector4 operator+(const _RealVector4& other) const { return super::operator+(other); }
+
+    /** In-place addition of another value. */
+    _RealVector4& operator+=(const _RealVector4& other) { return super::operator+=(other); }
+
+    /** The difference between this value and another one. */
+    _RealVector4 operator-(const _RealVector4& other) const { return super::operator-(other); }
+
+    /** In-place subtraction of another value. */
+    _RealVector4& operator-=(const _RealVector4& other) { return super::operator-=(other); }
+
+    /** Component-wise multiplication of this value with another. */
+    _RealVector4 operator*(const _RealVector4& other) const { return super::operator*(other); }
+
+    /** In-place component-wise multiplication with another value. */
+    _RealVector4& operator*=(const _RealVector4& other) { return super::operator*=(other); }
+
+    /** Multiplication of this value with a scalar. */
+    _RealVector4 operator*(const value_t factor) const { return super::operator*(factor); }
+
+    /** In-place multiplication with a scalar. */
+    _RealVector4& operator*=(const value_t factor) { return super::operator*=(factor); }
+
+    /** Component-wise division of this value by another. */
+    _RealVector4 operator/(const _RealVector4& other) const { return super::operator/(other); }
+
+    /** In-place component-wise division by another value. */
+    _RealVector4& operator/=(const _RealVector4& other) { return super::operator/=(other); }
+
+    /** Division of this value by a scalar. */
+    _RealVector4 operator/(const value_t divisor) const { return super::operator/(divisor); }
+
+    /** In-place division by a scalar. */
+    _RealVector4& operator/=(const value_t divisor) { return super::operator/=(divisor); }
 
     /** Returns the dot product of this Vector3 and another.
      * Allows calculation of the magnitude of one vector in the direction of another.
@@ -221,12 +261,10 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, detail::Valu
     }
 };
 
-//*********************************************************************************************************************/
-
 using Vector4f = _RealVector4<float>;
 using Vector4d = _RealVector4<double>;
 
-/* Free Functions *****************************************************************************************************/
+// Free Functions *****************************************************************************************************/
 
 /** Spherical linear interpolation between two Vector3s.
  * Travels the torque-minimal path at a constant velocity.
@@ -268,14 +306,39 @@ std::ostream& operator<<(std::ostream& out, const notf::_RealVector4<Real>& vec)
 
 } // namespace notf
 
-/* std::hash **********************************************************************************************************/
-
 namespace std {
 
-/** std::hash specialization for notf::_RealVector3. */
+// std::hash **********************************************************************************************************/
+
+/** std::hash _RealVector4 for notf::_RealVector3. */
 template <typename Real>
 struct hash<notf::_RealVector4<Real>> {
     size_t operator()(const notf::_RealVector4<Real>& vector) const { return vector.hash(); }
 };
 
 } // namespace std
+
+// SIMD specializations ***********************************************************************************************/
+
+#ifndef NOTF_NO_SIMD
+namespace notf {
+
+#include <emmintrin.h>
+
+template <>
+inline Vector4f Vector4f::operator+(const Vector4f& other) const
+{
+    Vector4f result;
+    _mm_store_ps(result.as_ptr(), _mm_add_ps(_mm_load_ps(this->as_ptr()), _mm_load_ps(other.as_ptr())));
+    return result;
+}
+
+template <>
+inline Vector4f& Vector4f::operator+=(const Vector4f& other)
+{
+    _mm_store_ps(this->as_ptr(), _mm_add_ps(_mm_load_ps(this->as_ptr()), _mm_load_ps(other.as_ptr())));
+    return *this;
+}
+
+} // namespace notf
+#endif

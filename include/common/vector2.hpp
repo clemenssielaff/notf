@@ -16,12 +16,15 @@ namespace detail {
 template <typename VALUE_TYPE>
 struct Value2 : public Value<VALUE_TYPE, 2> {
 
+    /** Default (non-initializing) constructor so this struct remains a POD */
     Value2() = default;
 
+    /** Element-wise constructor. */
     template <typename A, typename B>
     Value2(A x, B y)
         : array{{static_cast<VALUE_TYPE>(x), static_cast<VALUE_TYPE>(y)}} {}
 
+    /** Value element data. */
     union {
         std::array<VALUE_TYPE, 2> array;
         struct {
@@ -204,8 +207,7 @@ struct _RealVector2 : public detail::Arithmetic<_RealVector2<Real>, detail::Valu
             super::set_zero(); // is zero
             return *this;
         }
-        (*this) *= (1 / sqrt(mag_sq));
-        return *this;
+        return (*this) *= (1 / sqrt(mag_sq));
     }
 
     /** Creates a projection of this Vector2 onto an infinite line whose direction is specified by other.
