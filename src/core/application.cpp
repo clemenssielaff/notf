@@ -225,9 +225,9 @@ void Application::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
         g_prev_cursor_pos = g_cursor_pos;
 
         Vector2i window_pos;
-        glfwGetWindowPos(glfw_window, &window_pos.x, &window_pos.y);
-        g_cursor_pos.x = static_cast<float>(window_pos.x) + static_cast<float>(x);
-        g_cursor_pos.y = static_cast<float>(window_pos.y) + static_cast<float>(y);
+        glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
+        g_cursor_pos.x() = static_cast<float>(window_pos.x()) + static_cast<float>(x);
+        g_cursor_pos.y() = static_cast<float>(window_pos.y()) + static_cast<float>(y);
     }
 
     // propagate the event
@@ -258,13 +258,13 @@ void Application::_on_mouse_button(GLFWwindow* glfw_window, int button, int acti
     g_key_modifiers = KeyModifiers(modifiers);
 
     Vector2i window_pos;
-    glfwGetWindowPos(glfw_window, &window_pos.x, &window_pos.y);
+    glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
 
     // propagate the event
     MouseEvent mouse_event(
         *window,
-        {g_cursor_pos.x - static_cast<float>(window_pos.x),
-         g_cursor_pos.y - static_cast<float>(window_pos.y)},
+        {g_cursor_pos.x() - static_cast<float>(window_pos.x()),
+         g_cursor_pos.y() - static_cast<float>(window_pos.y())},
         Vector2f::zero(),
         notf_button,
         notf_action,
@@ -280,13 +280,13 @@ void Application::_on_scroll(GLFWwindow* glfw_window, double x, double y)
     assert(window);
 
     Vector2i window_pos;
-    glfwGetWindowPos(glfw_window, &window_pos.x, &window_pos.y);
+    glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
 
     // propagate the event
     MouseEvent mouse_event(
         *window,
-        {g_cursor_pos.x - static_cast<float>(window_pos.x),
-         g_cursor_pos.y - static_cast<float>(window_pos.y)},
+        {g_cursor_pos.x() - static_cast<float>(window_pos.x()),
+         g_cursor_pos.y() - static_cast<float>(window_pos.y())},
         {static_cast<float>(x), static_cast<float>(y)},
         Button::NONE,
         MouseAction::SCROLL,

@@ -2,9 +2,7 @@
 
 #include <array>
 #include <assert.h>
-#include <iosfwd>
 
-#include "common/float.hpp"
 #include "common/hash.hpp"
 
 namespace notf {
@@ -13,45 +11,26 @@ namespace detail {
 
 //*********************************************************************************************************************/
 
-/** Lowest common denominator for all Value types. */
-template <typename VALUE_TYPE, size_t DIMENSIONS>
-struct Value {
-
-    /** Data type of the Value. */
-    using value_t = VALUE_TYPE;
-
-    /** Dimensions of the value. */
-    static constexpr size_t size() { return DIMENSIONS; }
-};
-
-//*********************************************************************************************************************/
-
 /** Base class for all arithmetic value types.
- * `BASE` must provide a `array` field containing all elements of the value.
  *
- * The Arithmetic base class implements the most naive version of each operation.
+ * The Arithmetic base class provides naive implementations of each operation.
  * You can override specific functionality for value-specific behaviour or to make use of SIMD instructions.
  */
-template <typename SPECIALIZATION, typename VALUE_CLASS>
-struct Arithmetic : public VALUE_CLASS {
+template <typename SPECIALIZATION, typename VALUE_TYPE, size_t DIMENSIONS, bool PARTAL = false>
+struct Arithmetic {
 
-    // explitic forwards
-    using VALUE_CLASS::array;
-    using VALUE_CLASS::size;
+    /* Types and Fields ***********************************************************************************************/
 
-    /* Types **********************************************************************************************************/
+    /** Value data type. */
+    using value_t = VALUE_TYPE;
 
-    using value_t = typename VALUE_CLASS::value_t;
+    /** Value data array. */
+    std::array<value_t, DIMENSIONS> data;
 
     /* Constructors ***************************************************************************************************/
 
     /** Default (non-initializing) constructor so this struct remains a POD */
     Arithmetic() = default;
-
-    /** Perforect forwarding constructor. */
-    template <typename... T>
-    Arithmetic(T&&... ts)
-        : VALUE_CLASS{std::forward<T>(ts)...} {}
 
     /* Static Constructors ********************************************************************************************/
 
@@ -62,17 +41,20 @@ struct Arithmetic : public VALUE_CLASS {
     static SPECIALIZATION fill(const value_t value)
     {
         SPECIALIZATION result;
-        result.array.fill(value);
+        result.data.fill(value);
         return result;
     }
 
     /* Inspection  ****************************************************************************************************/
 
+    /** Dimensions of the value. */
+    static constexpr size_t size() { return DIMENSIONS; }
+
     /** Checks, if this value contains only real, finite values (no INFINITY or NAN). */
     bool is_real() const
     {
         for (size_t i = 0; i < size(); ++i) {
-            if (!notf::is_real(array[i])) {
+            if (!notf::is_real(data[i])) {
                 return false;
             }
         }
@@ -85,7 +67,7 @@ struct Arithmetic : public VALUE_CLASS {
     bool is_zero(const value_t epsilon = precision_high<value_t>()) const
     {
         for (size_t i = 0; i < size(); ++i) {
-            if (abs(array[i]) > epsilon) {
+            if (abs(data[i]) > epsilon) {
                 return false;
             }
         }
@@ -96,7 +78,7 @@ struct Arithmetic : public VALUE_CLASS {
     bool contains_zero(const value_t epsilon = precision_high<value_t>()) const
     {
         for (size_t i = 0; i < size(); ++i) {
-            if (abs(array[i]) <= epsilon) {
+            if (abs(data[i]) <= epsilon) {
                 return true;
             }
         }
@@ -110,38 +92,54 @@ struct Arithmetic : public VALUE_CLASS {
     bool is_approx(const SPECIALIZATION& other, const value_t epsilon = precision_high<value_t>()) const
     {
         for (size_t i = 0; i < size(); ++i) {
-            if (abs(array[i] - other[i]) > epsilon) {
+            if (abs(data[i] - other[i]) > epsilon) {
                 return false;
             }
         }
         return true;
     }
 
+    /** Checks whether this value is of unit magnitude. */
+    bool is_unit() const { return abs(get_magnitude_sq() - 1) <= precision_high<value_t>(); }
+
     /** Calculates and returns the hash of this value. */
     size_t hash() const
     {
         std::size_t result = 0;
         for (size_t i = 0; i < size(); ++i) {
-            notf::hash_combine(result, array[i]);
+            notf::hash_combine(result, data[i]);
         }
         return result;
     }
 
     /** Checks whether two values are equal. */
-    bool operator==(const SPECIALIZATION& other) const { return array == other.array; }
+    bool operator==(const SPECIALIZATION& other) const { return data == other.data; }
 
     /** Checks whether two values are not equal. */
-    bool operator!=(const SPECIALIZATION& other) const { return array != other.array; }
+    bool operator!=(const SPECIALIZATION& other) const { return data != other.data; }
 
     /** Read-only reference to an element of this value by index. */
     const value_t& operator[](const size_t index) const
     {
         assert(index < size());
-        return array[index];
+        return data[index];
     }
 
     /** Read-only pointer to the value's internal storage. */
-    const value_t* as_ptr() const { return &array[0]; }
+    const value_t* as_ptr() const { return &data[0]; }
+
+    /** Returns the squared magnitude of this value. */
+    value_t get_magnitude_sq() const
+    {
+        value_t result = 0;
+        for (size_t i = 0; i < size(); ++i) {
+            result += data[i] * data[i];
+        }
+        return result;
+    }
+
+    /** Returns the magnitude of this value. */
+    value_t get_magnitude() const { return sqrt(get_magnitude_sq()); }
 
     /** Modification **************************************************************************************************/
 
@@ -149,17 +147,17 @@ struct Arithmetic : public VALUE_CLASS {
     value_t& operator[](const size_t index)
     {
         assert(index < size());
-        return array[index];
+        return data[index];
     }
 
     /** Read-write pointer to the value's internal storage. */
-    value_t* as_ptr() { return &array[0]; }
+    value_t* as_ptr() { return &data[0]; }
 
     /** Set all elements of this value. */
     SPECIALIZATION& set_all(const value_t value)
     {
         for (size_t i = 0; i < size(); ++i) {
-            array[i] = value;
+            data[i] = value;
         }
         return _specialized_this();
     }
@@ -171,7 +169,7 @@ struct Arithmetic : public VALUE_CLASS {
     SPECIALIZATION operator+(const SPECIALIZATION& other) const
     {
         SPECIALIZATION result;
-        result.array = array;
+        result.data = data;
         for (size_t i = 0; i < size(); ++i) {
             result[i] += other[i];
         }
@@ -182,7 +180,7 @@ struct Arithmetic : public VALUE_CLASS {
     SPECIALIZATION& operator+=(const SPECIALIZATION& other)
     {
         for (size_t i = 0; i < size(); ++i) {
-            array[i] += other[i];
+            data[i] += other[i];
         }
         return _specialized_this();
     }
@@ -191,7 +189,7 @@ struct Arithmetic : public VALUE_CLASS {
     SPECIALIZATION operator-(const SPECIALIZATION& other) const
     {
         SPECIALIZATION result;
-        result.array = array;
+        result.data = data;
         for (size_t i = 0; i < size(); ++i) {
             result[i] -= other[i];
         }
@@ -202,7 +200,7 @@ struct Arithmetic : public VALUE_CLASS {
     SPECIALIZATION& operator-=(const SPECIALIZATION& other)
     {
         for (size_t i = 0; i < size(); ++i) {
-            array[i] -= other[i];
+            data[i] -= other[i];
         }
         return _specialized_this();
     }
@@ -211,7 +209,7 @@ struct Arithmetic : public VALUE_CLASS {
     SPECIALIZATION operator*(const SPECIALIZATION& other) const
     {
         SPECIALIZATION result;
-        result.array = array;
+        result.data = data;
         for (size_t i = 0; i < size(); ++i) {
             result[i] *= other[i];
         }
@@ -222,7 +220,7 @@ struct Arithmetic : public VALUE_CLASS {
     SPECIALIZATION& operator*=(const SPECIALIZATION& other)
     {
         for (size_t i = 0; i < size(); ++i) {
-            array[i] *= other[i];
+            data[i] *= other[i];
         }
         return _specialized_this();
     }
@@ -231,7 +229,7 @@ struct Arithmetic : public VALUE_CLASS {
     SPECIALIZATION operator*(const value_t factor) const
     {
         SPECIALIZATION result;
-        result.array = array;
+        result.data = data;
         for (size_t i = 0; i < size(); ++i) {
             result[i] *= factor;
         }
@@ -242,7 +240,7 @@ struct Arithmetic : public VALUE_CLASS {
     SPECIALIZATION& operator*=(const value_t factor)
     {
         for (size_t i = 0; i < size(); ++i) {
-            array[i] *= factor;
+            data[i] *= factor;
         }
         return _specialized_this();
     }
@@ -251,7 +249,7 @@ struct Arithmetic : public VALUE_CLASS {
     SPECIALIZATION operator/(const SPECIALIZATION& other) const
     {
         SPECIALIZATION result;
-        result.array = array;
+        result.data = data;
         for (size_t i = 0; i < size(); ++i) {
             result[i] /= other[i];
         }
@@ -262,7 +260,7 @@ struct Arithmetic : public VALUE_CLASS {
     SPECIALIZATION& operator/=(const SPECIALIZATION& other)
     {
         for (size_t i = 0; i < size(); ++i) {
-            array[i] /= other[i];
+            data[i] /= other[i];
         }
         return _specialized_this();
     }
@@ -271,7 +269,7 @@ struct Arithmetic : public VALUE_CLASS {
     SPECIALIZATION operator/(const value_t divisor) const
     {
         SPECIALIZATION result;
-        result.array = array;
+        result.data = data;
         for (size_t i = 0; i < size(); ++i) {
             result[i] /= divisor;
         }
@@ -282,7 +280,7 @@ struct Arithmetic : public VALUE_CLASS {
     SPECIALIZATION& operator/=(const value_t divisor)
     {
         for (size_t i = 0; i < size(); ++i) {
-            array[i] /= divisor;
+            data[i] /= divisor;
         }
         return _specialized_this();
     }
@@ -290,26 +288,95 @@ struct Arithmetic : public VALUE_CLASS {
     /** The inverted value. */
     SPECIALIZATION operator-() const { return *this * -1; }
 
-private: // methods
+    /** A normalized copy of this value. */
+    SPECIALIZATION get_normal() const
+    {
+        const value_t mag_sq = get_magnitude_sq();
+        if (abs(mag_sq - 1) <= precision_high<value_t>()) {
+            SPECIALIZATION result;
+            result.data = data;
+            return result; // is unit
+        }
+        if (abs(mag_sq) <= precision_high<value_t>()) {
+            return SPECIALIZATION::zero(); // is zero
+        }
+        return *this / sqrt(mag_sq);
+    }
+
+    /** In-place normalization of this value. */
+    SPECIALIZATION& normalize()
+    {
+        const value_t mag_sq = get_magnitude_sq();
+        if (abs(mag_sq - 1) <= precision_high<value_t>()) {
+            return _specialized_this(); // is unit
+        }
+        if (abs(mag_sq) <= precision_high<value_t>()) {
+            set_zero(); // is zero
+            return _specialized_this();
+        }
+        return *this /= sqrt(mag_sq);
+    }
+
+protected: // methods
     constexpr SPECIALIZATION& _specialized_this() { return *reinterpret_cast<SPECIALIZATION*>(this); }
 };
 
 } // namespace detail
 
-/* Free Functions *****************************************************************************************************/
+// Free Functions *****************************************************************************************************/
 
-/** Linear interpolation between two Vector2s.
+/** Linear interpolation between two values.
  * @param from    Left Vector, full weight at blend <= 0.
  * @param to      Right Vector, full weight at blend >= 1.
  * @param blend   Blend value, clamped to range [0, 1].
  */
-template <typename SPECIALIZATION, typename VALUE_CLASS>
-detail::Arithmetic<SPECIALIZATION, VALUE_CLASS> lerp(
-    const detail::Arithmetic<SPECIALIZATION, VALUE_CLASS>& from,
-    const detail::Arithmetic<SPECIALIZATION, VALUE_CLASS>& to,
-    const typename detail::Arithmetic<SPECIALIZATION, VALUE_CLASS>::value_t blend)
+template <typename SPECIALIZATION, typename VALUE_TYPE, size_t DIMENSIONS>
+detail::Arithmetic<SPECIALIZATION, VALUE_TYPE, DIMENSIONS> lerp(
+    const detail::Arithmetic<SPECIALIZATION, VALUE_TYPE, DIMENSIONS>& from,
+    const detail::Arithmetic<SPECIALIZATION, VALUE_TYPE, DIMENSIONS>& to,
+    const VALUE_TYPE blend)
 {
     return ((to - from) *= clamp(blend, 0, 1)) += from;
 }
 
+// SIMD specializations ***********************************************************************************************/
+
+namespace detail {
+
+#ifndef NOTF_NO_SIMD
+#include <emmintrin.h>
+
+template <typename SPECIALIZATION>
+struct Arithmetic<SPECIALIZATION, float, 4, false> : public Arithmetic<SPECIALIZATION, float, 4, true> {
+
+    using super = Arithmetic<SPECIALIZATION, float, 4, true>;
+
+    Arithmetic() = default;
+
+    /** Perforect forwarding constructor. */
+    template <typename... T>
+    Arithmetic(T&&... ts)
+        : super{std::forward<T>(ts)...} {}
+
+    /** The sum of this value with another one. */
+    SPECIALIZATION operator+(const Arithmetic& other) const
+    {
+        SPECIALIZATION result;
+        auto a = _mm_load_ps(this->as_ptr());
+        auto b = _mm_load_ps(other.as_ptr());
+        _mm_storeu_ps(result.as_ptr(), _mm_add_ps(a, b));
+        return result;
+    }
+};
+
+//template <>
+//inline Vector4f& Vector4f::operator+=(const Vector4f& other)
+//{
+//    _mm_store_ps(this->as_ptr(), _mm_add_ps(_mm_load_ps(this->as_ptr()), _mm_load_ps(other.as_ptr())));
+//    return *this;
+//}
+
+#endif
+
+} // namespace detail
 } // namespace notf

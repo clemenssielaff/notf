@@ -73,11 +73,11 @@ struct Line2 {
      */
     float x_at(float y) const
     {
-        if (_delta.y == approx(0)) {
+        if (_delta.y() == approx(0)) {
             return NAN;
         }
-        const float factor = (y - _start.y) / _delta.y;
-        return _start.x + (_delta.x * factor);
+        const float factor = (y - _start.y()) / _delta.y();
+        return _start.x() + (_delta.x() * factor);
     }
 
     /** The y-coordinate where this Line2 crosses a given x-coordinate as it extendeds into infinity.
@@ -85,11 +85,11 @@ struct Line2 {
      */
     float y_at(float x) const
     {
-        if (_delta.x == approx(0)) {
+        if (_delta.x() == approx(0)) {
             return NAN;
         }
-        const float factor = (x - _start.x) / _delta.x;
-        return _start.y + (_delta.y * factor);
+        const float factor = (x - _start.x()) / _delta.x();
+        return _start.y() + (_delta.y() * factor);
     }
 
     /** The slope of this Line2.

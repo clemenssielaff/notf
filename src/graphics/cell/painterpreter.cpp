@@ -111,10 +111,10 @@ void Painterpreter::_paint(Cell& cell)
                 stylus = pos;
             }
             const BezierCommand& cmd = map_command<BezierCommand>(commands, index);
-            _tesselate_bezier(stylus.x, stylus.y,
-                              cmd.ctrl1.x, cmd.ctrl1.y,
-                              cmd.ctrl2.x, cmd.ctrl2.y,
-                              cmd.end.x, cmd.end.y);
+            _tesselate_bezier(stylus.x(), stylus.y(),
+                              cmd.ctrl1.x(), cmd.ctrl1.y(),
+                              cmd.ctrl2.x(), cmd.ctrl2.y(),
+                              cmd.end.x(), cmd.end.y());
             index += command_size<decltype(cmd)>();
         } break;
 
@@ -325,7 +325,7 @@ float Painterpreter::_get_path_area(const Path& path) const
     for (size_t index = path.first_point + 2; index < path.first_point + path.point_count; ++index) {
         const Point& b = m_points[index - 1];
         const Point& c = m_points[index];
-        area += (c.pos.x - a.pos.x) * (b.pos.y - a.pos.y) - (b.pos.x - a.pos.x) * (c.pos.y - a.pos.y);
+        area += (c.pos.x() - a.pos.x()) * (b.pos.y() - a.pos.y()) - (b.pos.x() - a.pos.x()) * (c.pos.y() - a.pos.y());
     }
     return area / 2;
 }
@@ -418,16 +418,16 @@ Painterpreter::_choose_bevel(bool is_beveling, const Point& prev_point, const Po
 {
     float x0, y0, x1, y1;
     if (is_beveling) {
-        x0 = curr_point.pos.x + prev_point.forward.y * stroke_width;
-        y0 = curr_point.pos.y - prev_point.forward.x * stroke_width;
-        x1 = curr_point.pos.x + curr_point.forward.y * stroke_width;
-        y1 = curr_point.pos.y - curr_point.forward.x * stroke_width;
+        x0 = curr_point.pos.x() + prev_point.forward.y() * stroke_width;
+        y0 = curr_point.pos.y() - prev_point.forward.x() * stroke_width;
+        x1 = curr_point.pos.x() + curr_point.forward.y() * stroke_width;
+        y1 = curr_point.pos.y() - curr_point.forward.x() * stroke_width;
     }
     else {
-        x0 = curr_point.pos.x + curr_point.dm.x * stroke_width;
-        y0 = curr_point.pos.y + curr_point.dm.y * stroke_width;
-        x1 = curr_point.pos.x + curr_point.dm.x * stroke_width;
-        y1 = curr_point.pos.y + curr_point.dm.y * stroke_width;
+        x0 = curr_point.pos.x() + curr_point.dm.x() * stroke_width;
+        y0 = curr_point.pos.y() + curr_point.dm.y() * stroke_width;
+        x1 = curr_point.pos.x() + curr_point.dm.x() * stroke_width;
+        y1 = curr_point.pos.y() + curr_point.dm.y() * stroke_width;
     }
     return std::make_tuple(x0, y0, x1, y1);
 }
@@ -442,31 +442,31 @@ void Painterpreter::_create_bevel_join(const Point& previous_point, const Point&
 
         vertices_out.emplace_back(Vector2f(lx0, ly0),
                                   Vector2f(left_u, 1));
-        vertices_out.emplace_back(Vector2f(current_point.pos.x - previous_point.forward.y * right_w,
-                                           current_point.pos.y + previous_point.forward.x * right_w),
+        vertices_out.emplace_back(Vector2f(current_point.pos.x() - previous_point.forward.y() * right_w,
+                                           current_point.pos.y() + previous_point.forward.x() * right_w),
                                   Vector2f(right_u, 1));
 
         if (current_point.flags & Point::Flags::BEVEL) {
             vertices_out.emplace_back(Vector2f(lx0, ly0),
                                       Vector2f(left_u, 1));
-            vertices_out.emplace_back(Vector2f(current_point.pos.x - previous_point.forward.y * right_w,
-                                               current_point.pos.y + previous_point.forward.x * right_w),
+            vertices_out.emplace_back(Vector2f(current_point.pos.x() - previous_point.forward.y() * right_w,
+                                               current_point.pos.y() + previous_point.forward.x() * right_w),
                                       Vector2f(right_u, 1));
 
             vertices_out.emplace_back(Vector2f(lx1, ly1),
                                       Vector2f(left_u, 1));
-            vertices_out.emplace_back(Vector2f(current_point.pos.x - current_point.forward.y * right_w,
-                                               current_point.pos.y + current_point.forward.x * right_w),
+            vertices_out.emplace_back(Vector2f(current_point.pos.x() - current_point.forward.y() * right_w,
+                                               current_point.pos.y() + current_point.forward.x() * right_w),
                                       Vector2f(right_u, 1));
         }
         else {
-            const float rx0 = current_point.pos.x - current_point.dm.x * right_w;
-            const float ry0 = current_point.pos.y - current_point.dm.y * right_w;
+            const float rx0 = current_point.pos.x() - current_point.dm.x() * right_w;
+            const float ry0 = current_point.pos.y() - current_point.dm.y() * right_w;
 
             vertices_out.emplace_back(current_point.pos,
                                       Vector2f(0.5f, 1));
-            vertices_out.emplace_back(Vector2f(current_point.pos.x - previous_point.forward.y * right_w,
-                                               current_point.pos.y + previous_point.forward.x * right_w),
+            vertices_out.emplace_back(Vector2f(current_point.pos.x() - previous_point.forward.y() * right_w,
+                                               current_point.pos.y() + previous_point.forward.x() * right_w),
                                       Vector2f(right_u, 1));
 
             vertices_out.emplace_back(Vector2f(rx0, ry0),
@@ -476,15 +476,15 @@ void Painterpreter::_create_bevel_join(const Point& previous_point, const Point&
 
             vertices_out.emplace_back(current_point.pos,
                                       Vector2f(0.5f, 1));
-            vertices_out.emplace_back(Vector2f(current_point.pos.x - current_point.forward.y * right_w,
-                                               current_point.pos.y + current_point.forward.x * right_w),
+            vertices_out.emplace_back(Vector2f(current_point.pos.x() - current_point.forward.y() * right_w,
+                                               current_point.pos.y() + current_point.forward.x() * right_w),
                                       Vector2f(right_u, 1));
         }
 
         vertices_out.emplace_back(Vector2f(lx1, ly1),
                                   Vector2f(left_u, 1));
-        vertices_out.emplace_back(Vector2f(current_point.pos.x - current_point.forward.y * right_w,
-                                           current_point.pos.y + current_point.forward.x * right_w),
+        vertices_out.emplace_back(Vector2f(current_point.pos.x() - current_point.forward.y() * right_w,
+                                           current_point.pos.y() + current_point.forward.x() * right_w),
                                   Vector2f(right_u, 1));
     }
 
@@ -494,31 +494,31 @@ void Painterpreter::_create_bevel_join(const Point& previous_point, const Point&
         std::tie(rx0, ry0, rx1, ry1) = _choose_bevel(current_point.flags & Point::Flags::INNERBEVEL,
                                                      previous_point, current_point, -right_w);
 
-        vertices_out.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * left_w,
-                                           current_point.pos.y - previous_point.forward.x * left_w),
+        vertices_out.emplace_back(Vector2f(current_point.pos.x() + previous_point.forward.y() * left_w,
+                                           current_point.pos.y() - previous_point.forward.x() * left_w),
                                   Vector2f(left_u, 1));
         vertices_out.emplace_back(Vector2f(rx0, ry0),
                                   Vector2f(right_u, 1));
 
         if (current_point.flags & Point::Flags::BEVEL) {
-            vertices_out.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * left_w,
-                                               current_point.pos.y - previous_point.forward.x * left_w),
+            vertices_out.emplace_back(Vector2f(current_point.pos.x() + previous_point.forward.y() * left_w,
+                                               current_point.pos.y() - previous_point.forward.x() * left_w),
                                       Vector2f(left_u, 1));
             vertices_out.emplace_back(Vector2f(rx0, ry0),
                                       Vector2f(right_u, 1));
 
-            vertices_out.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * left_w,
-                                               current_point.pos.y - current_point.forward.x * left_w),
+            vertices_out.emplace_back(Vector2f(current_point.pos.x() + current_point.forward.y() * left_w,
+                                               current_point.pos.y() - current_point.forward.x() * left_w),
                                       Vector2f(left_u, 1));
             vertices_out.emplace_back(Vector2f(rx1, ry1),
                                       Vector2f(right_u, 1));
         }
         else {
-            const float lx0 = current_point.pos.x + current_point.dm.x * left_w;
-            const float ly0 = current_point.pos.y + current_point.dm.y * left_w;
+            const float lx0 = current_point.pos.x() + current_point.dm.x() * left_w;
+            const float ly0 = current_point.pos.y() + current_point.dm.y() * left_w;
 
-            vertices_out.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * left_w,
-                                               current_point.pos.y - previous_point.forward.x * left_w),
+            vertices_out.emplace_back(Vector2f(current_point.pos.x() + previous_point.forward.y() * left_w,
+                                               current_point.pos.y() - previous_point.forward.x() * left_w),
                                       Vector2f(left_u, 1));
             vertices_out.emplace_back(current_point.pos,
                                       Vector2f(0.5f, 1));
@@ -528,15 +528,15 @@ void Painterpreter::_create_bevel_join(const Point& previous_point, const Point&
             vertices_out.emplace_back(Vector2f(lx0, ly0),
                                       Vector2f(left_u, 1));
 
-            vertices_out.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * left_w,
-                                               current_point.pos.y - current_point.forward.x * left_w),
+            vertices_out.emplace_back(Vector2f(current_point.pos.x() + current_point.forward.y() * left_w,
+                                               current_point.pos.y() - current_point.forward.x() * left_w),
                                       Vector2f(left_u, 1));
             vertices_out.emplace_back(current_point.pos,
                                       Vector2f(0.5f, 1));
         }
 
-        vertices_out.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * left_w,
-                                           current_point.pos.y - current_point.forward.x * left_w),
+        vertices_out.emplace_back(Vector2f(current_point.pos.x() + current_point.forward.y() * left_w,
+                                           current_point.pos.y() - current_point.forward.x() * left_w),
                                   Vector2f(left_u, 1));
         vertices_out.emplace_back(Vector2f(rx1, ry1),
                                   Vector2f(right_u, 1));
@@ -550,16 +550,16 @@ void Painterpreter::_create_round_join(const Point& previous_point, const Point&
         float lx0, ly0, lx1, ly1;
         std::tie(lx0, ly0, lx1, ly1) = _choose_bevel(
             current_point.flags & Point::Flags::INNERBEVEL, previous_point, current_point, stroke_width);
-        float a0 = atan2(previous_point.forward.x, -previous_point.forward.y);
-        float a1 = atan2(current_point.forward.x, -current_point.forward.y);
+        float a0 = atan2(previous_point.forward.x(), -previous_point.forward.y());
+        float a1 = atan2(current_point.forward.x(), -current_point.forward.y());
         if (a1 > a0) {
             a1 -= TWO_PI;
         }
 
         vertices_out.emplace_back(Vector2f(lx0, ly0),
                                   Vector2f(0, 1));
-        vertices_out.emplace_back(Vector2f(current_point.pos.x - previous_point.forward.y * stroke_width,
-                                           current_point.pos.y + previous_point.forward.x * stroke_width),
+        vertices_out.emplace_back(Vector2f(current_point.pos.x() - previous_point.forward.y() * stroke_width,
+                                           current_point.pos.y() + previous_point.forward.x() * stroke_width),
                                   Vector2f(1, 1));
 
         size_t n = clamp(static_cast<size_t>(ceilf(((a1 - a0) / static_cast<float>(PI)) * divisions)), 2u, divisions);
@@ -568,29 +568,29 @@ void Painterpreter::_create_round_join(const Point& previous_point, const Point&
             const float a = a0 + u * (a1 - a0);
             vertices_out.emplace_back(current_point.pos,
                                       Vector2f(0.5f, 1));
-            vertices_out.emplace_back(Vector2f(current_point.pos.x + cosf(a) * stroke_width,
-                                               current_point.pos.y + sinf(a) * stroke_width),
+            vertices_out.emplace_back(Vector2f(current_point.pos.x() + cosf(a) * stroke_width,
+                                               current_point.pos.y() + sinf(a) * stroke_width),
                                       Vector2f(1, 1));
         }
 
         vertices_out.emplace_back(Vector2f(lx1, ly1),
                                   Vector2f(0, 1));
-        vertices_out.emplace_back(Vector2f(current_point.pos.x - current_point.forward.y * stroke_width,
-                                           current_point.pos.y + current_point.forward.x * stroke_width),
+        vertices_out.emplace_back(Vector2f(current_point.pos.x() - current_point.forward.y() * stroke_width,
+                                           current_point.pos.y() + current_point.forward.x() * stroke_width),
                                   Vector2f(1, 1));
     }
     else {
         float rx0, ry0, rx1, ry1;
         std::tie(rx0, ry0, rx1, ry1) = _choose_bevel(
             current_point.flags & Point::Flags::INNERBEVEL, previous_point, current_point, -stroke_width);
-        float a0 = atan2(-previous_point.forward.x, previous_point.forward.y);
-        float a1 = atan2(-current_point.forward.x, current_point.forward.y);
+        float a0 = atan2(-previous_point.forward.x(), previous_point.forward.y());
+        float a1 = atan2(-current_point.forward.x(), current_point.forward.y());
         if (a1 < a0) {
             a1 += TWO_PI;
         }
 
-        vertices_out.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * stroke_width,
-                                           current_point.pos.y - previous_point.forward.x * stroke_width),
+        vertices_out.emplace_back(Vector2f(current_point.pos.x() + previous_point.forward.y() * stroke_width,
+                                           current_point.pos.y() - previous_point.forward.x() * stroke_width),
                                   Vector2f(0, 1));
         vertices_out.emplace_back(Vector2f(rx0, ry0),
                                   Vector2f(1, 1));
@@ -599,15 +599,15 @@ void Painterpreter::_create_round_join(const Point& previous_point, const Point&
         for (size_t i = 0; i < n; i++) {
             const float u = i / static_cast<float>(n - 1);
             const float a = a0 + u * (a1 - a0);
-            vertices_out.emplace_back(Vector2f(current_point.pos.x + cosf(a) * stroke_width,
-                                               current_point.pos.y + sinf(a) * stroke_width),
+            vertices_out.emplace_back(Vector2f(current_point.pos.x() + cosf(a) * stroke_width,
+                                               current_point.pos.y() + sinf(a) * stroke_width),
                                       Vector2f(0, 1));
             vertices_out.emplace_back(current_point.pos,
                                       Vector2f(0.5f, 1));
         }
 
-        vertices_out.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * stroke_width,
-                                           current_point.pos.y - current_point.forward.x * stroke_width),
+        vertices_out.emplace_back(Vector2f(current_point.pos.x() + current_point.forward.y() * stroke_width,
+                                           current_point.pos.y() - current_point.forward.x() * stroke_width),
                                   Vector2f(0, 1));
         vertices_out.emplace_back(Vector2f(rx1, ry1),
                                   Vector2f(1, 1));
@@ -621,29 +621,29 @@ void Painterpreter::_create_round_cap_start(const Point& point, const Vector2f& 
         const float a  = i / static_cast<float>(divisions - 1) * static_cast<float>(PI);
         const float ax = cos(a) * stroke_width;
         const float ay = sin(a) * stroke_width;
-        vertices_out.emplace_back(Vector2f(point.pos.x - delta.y * ax - delta.x * ay,
-                                           point.pos.y + delta.x * ax - delta.y * ay),
+        vertices_out.emplace_back(Vector2f(point.pos.x() - delta.y() * ax - delta.x() * ay,
+                                           point.pos.y() + delta.x() * ax - delta.y() * ay),
                                   Vector2f(0, 1));
         vertices_out.emplace_back(point.pos,
                                   Vector2f(.5f, 1.f));
     }
 
-    vertices_out.emplace_back(Vector2f(point.pos.x + delta.y * stroke_width,
-                                       point.pos.y - delta.x * stroke_width),
+    vertices_out.emplace_back(Vector2f(point.pos.x() + delta.y() * stroke_width,
+                                       point.pos.y() - delta.x() * stroke_width),
                               Vector2f(0, 1));
-    vertices_out.emplace_back(Vector2f(point.pos.x - delta.y * stroke_width,
-                                       point.pos.y + delta.x * stroke_width),
+    vertices_out.emplace_back(Vector2f(point.pos.x() - delta.y() * stroke_width,
+                                       point.pos.y() + delta.x() * stroke_width),
                               Vector2f(1, 1));
 }
 
 void Painterpreter::_create_round_cap_end(const Point& point, const Vector2f& delta, const float stroke_width,
                                           const size_t divisions, std::vector<Vertex>& vertices_out)
 {
-    vertices_out.emplace_back(Vector2f(point.pos.x + delta.y * stroke_width,
-                                       point.pos.y - delta.x * stroke_width),
+    vertices_out.emplace_back(Vector2f(point.pos.x() + delta.y() * stroke_width,
+                                       point.pos.y() - delta.x() * stroke_width),
                               Vector2f(0, 1));
-    vertices_out.emplace_back(Vector2f(point.pos.x - delta.y * stroke_width,
-                                       point.pos.y + delta.x * stroke_width),
+    vertices_out.emplace_back(Vector2f(point.pos.x() - delta.y() * stroke_width,
+                                       point.pos.y() + delta.x() * stroke_width),
                               Vector2f(1, 1));
 
     for (size_t i = 0; i < divisions; i++) {
@@ -652,8 +652,8 @@ void Painterpreter::_create_round_cap_end(const Point& point, const Vector2f& de
         const float ay = sin(a) * stroke_width;
         vertices_out.emplace_back(point.pos,
                                   Vector2f(.5f, 1.f));
-        vertices_out.emplace_back(Vector2f(point.pos.x - delta.y * ax + delta.x * ay,
-                                           point.pos.y + delta.x * ax + delta.y * ay),
+        vertices_out.emplace_back(Vector2f(point.pos.x() - delta.y() * ax + delta.x() * ay,
+                                           point.pos.y() + delta.x() * ax + delta.y() * ay),
                                   Vector2f(0, 1));
     }
 }
@@ -661,38 +661,38 @@ void Painterpreter::_create_round_cap_end(const Point& point, const Vector2f& de
 void Painterpreter::_create_butt_cap_start(const Point& point, const Vector2f& direction, const float stroke_width,
                                            const float offset, const float fringe_width, std::vector<Vertex>& vertices_out)
 {
-    const float px = point.pos.x - (direction.x * offset);
-    const float py = point.pos.y - (direction.y * offset);
-    vertices_out.emplace_back(Vector2f(px + direction.y * stroke_width - direction.x * fringe_width,
-                                       py + -direction.x * stroke_width - direction.y * fringe_width),
+    const float px = point.pos.x() - (direction.x() * offset);
+    const float py = point.pos.y() - (direction.y() * offset);
+    vertices_out.emplace_back(Vector2f(px + direction.y() * stroke_width - direction.x() * fringe_width,
+                                       py + -direction.x() * stroke_width - direction.y() * fringe_width),
                               Vector2f(0, 0));
-    vertices_out.emplace_back(Vector2f(px - direction.y * stroke_width - direction.x * fringe_width,
-                                       py - -direction.x * stroke_width - direction.y * fringe_width),
+    vertices_out.emplace_back(Vector2f(px - direction.y() * stroke_width - direction.x() * fringe_width,
+                                       py - -direction.x() * stroke_width - direction.y() * fringe_width),
                               Vector2f(1, 0));
-    vertices_out.emplace_back(Vector2f(px + direction.y * stroke_width,
-                                       py + -direction.x * stroke_width),
+    vertices_out.emplace_back(Vector2f(px + direction.y() * stroke_width,
+                                       py + -direction.x() * stroke_width),
                               Vector2f(0, 1));
-    vertices_out.emplace_back(Vector2f(px - direction.y * stroke_width,
-                                       py - -direction.x * stroke_width),
+    vertices_out.emplace_back(Vector2f(px - direction.y() * stroke_width,
+                                       py - -direction.x() * stroke_width),
                               Vector2f(1, 1));
 }
 
 void Painterpreter::_create_butt_cap_end(const Point& point, const Vector2f& delta, const float stroke_width,
                                          const float d, const float fringe_width, std::vector<Vertex>& vertices_out)
 {
-    const float px = point.pos.x + (delta.x * d);
-    const float py = point.pos.y + (delta.y * d);
-    vertices_out.emplace_back(Vector2f(px + delta.y * stroke_width,
-                                       py - delta.x * stroke_width),
+    const float px = point.pos.x() + (delta.x() * d);
+    const float py = point.pos.y() + (delta.y() * d);
+    vertices_out.emplace_back(Vector2f(px + delta.y() * stroke_width,
+                                       py - delta.x() * stroke_width),
                               Vector2f(0, 1));
-    vertices_out.emplace_back(Vector2f(px - delta.y * stroke_width,
-                                       py + delta.x * stroke_width),
+    vertices_out.emplace_back(Vector2f(px - delta.y() * stroke_width,
+                                       py + delta.x() * stroke_width),
                               Vector2f(1, 1));
-    vertices_out.emplace_back(Vector2f(px + delta.y * stroke_width + delta.x * fringe_width,
-                                       py - delta.x * stroke_width + delta.y * fringe_width),
+    vertices_out.emplace_back(Vector2f(px + delta.y() * stroke_width + delta.x() * fringe_width,
+                                       py - delta.x() * stroke_width + delta.y() * fringe_width),
                               Vector2f(0, 0));
-    vertices_out.emplace_back(Vector2f(px - delta.y * stroke_width + delta.x * fringe_width,
-                                       py + delta.x * stroke_width + delta.y * fringe_width),
+    vertices_out.emplace_back(Vector2f(px - delta.y() * stroke_width + delta.x() * fringe_width,
+                                       py + delta.x() * stroke_width + delta.y() * fringe_width),
                               Vector2f(1, 0));
 }
 
@@ -725,8 +725,8 @@ void Painterpreter::_render_text(const std::string& text, const std::shared_ptr<
 
     // make sure that text is always rendered on the pixel grid, not between pixels
     const Vector2f& translation = state.xform.get_translation();
-    Glyph::coord_t x            = static_cast<Glyph::coord_t>(roundf(translation.x));
-    Glyph::coord_t y            = static_cast<Glyph::coord_t>(roundf(translation.y));
+    Glyph::coord_t x            = static_cast<Glyph::coord_t>(roundf(translation.x()));
+    Glyph::coord_t y            = static_cast<Glyph::coord_t>(roundf(translation.y()));
 
     for (const auto character : utf8_text) {
         const Glyph& glyph = font->get_glyph(static_cast<codepoint_t>(character));
@@ -820,11 +820,11 @@ void Painterpreter::_fill()
 
                 // beveling requires an extra vertex
                 else {
-                    m_canvas.m_vertices.emplace_back(Vector2f(current_point.pos.x + previous_point.forward.y * woff,
-                                                              current_point.pos.y - previous_point.forward.x * woff),
+                    m_canvas.m_vertices.emplace_back(Vector2f(current_point.pos.x() + previous_point.forward.y() * woff,
+                                                              current_point.pos.y() - previous_point.forward.x() * woff),
                                                      Vector2f(.5f, 1));
-                    m_canvas.m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.forward.y * woff,
-                                                              current_point.pos.y - current_point.forward.x * woff),
+                    m_canvas.m_vertices.emplace_back(Vector2f(current_point.pos.x() + current_point.forward.y() * woff,
+                                                              current_point.pos.y() - current_point.forward.x() * woff),
                                                      Vector2f(.5f, 1));
                 }
             }
@@ -867,11 +867,11 @@ void Painterpreter::_fill()
                     _create_bevel_join(previous_point, current_point, left_w, right_w, left_u, right_u, m_canvas.m_vertices);
                 }
                 else {
-                    m_canvas.m_vertices.emplace_back(Vector2f(current_point.pos.x + current_point.dm.x * left_w,
-                                                              current_point.pos.y + current_point.dm.y * left_w),
+                    m_canvas.m_vertices.emplace_back(Vector2f(current_point.pos.x() + current_point.dm.x() * left_w,
+                                                              current_point.pos.y() + current_point.dm.y() * left_w),
                                                      Vector2f(left_u, 1));
-                    m_canvas.m_vertices.emplace_back(Vector2f(current_point.pos.x - current_point.dm.x * right_w,
-                                                              current_point.pos.y - current_point.dm.y * right_w),
+                    m_canvas.m_vertices.emplace_back(Vector2f(current_point.pos.x() - current_point.dm.x() * right_w,
+                                                              current_point.pos.y() - current_point.dm.y() * right_w),
                                                      Vector2f(right_u, 1));
                 }
             }
@@ -1125,16 +1125,16 @@ void Painterpreter::_prepare_paths(const float fringe, const Painter::LineJoin j
             }
 
             // calculate extrusions
-            current_point.dm.x    = (previous_point.forward.y + current_point.forward.y) / 2.f;
-            current_point.dm.y    = (previous_point.forward.x + current_point.forward.x) / -2.f;
+            current_point.dm.x()    = (previous_point.forward.y() + current_point.forward.y()) / 2.f;
+            current_point.dm.y()    = (previous_point.forward.x() + current_point.forward.x()) / -2.f;
             const float dm_mag_sq = current_point.dm.get_magnitude_sq();
             if (dm_mag_sq > precision_low<float>()) {
                 float scale = 1.0f / dm_mag_sq;
                 if (scale > 600.0f) { // 600 seems to be an arbitrary value?
                     scale = 600.0f;
                 }
-                current_point.dm.x *= scale;
-                current_point.dm.y *= scale;
+                current_point.dm.x() *= scale;
+                current_point.dm.y() *= scale;
             }
 
             // calculate if we should use bevel or miter for inner join
@@ -1153,10 +1153,10 @@ void Painterpreter::_prepare_paths(const float fringe, const Painter::LineJoin j
             }
 
             // update the bounds
-            m_bounds._min.x = min(m_bounds._min.x, current_point.pos.x);
-            m_bounds._min.y = min(m_bounds._min.y, current_point.pos.y);
-            m_bounds._max.x = max(m_bounds._max.x, current_point.pos.x);
-            m_bounds._max.y = max(m_bounds._max.y, current_point.pos.y);
+            m_bounds._min.x() = min(m_bounds._min.x(), current_point.pos.x());
+            m_bounds._min.y() = min(m_bounds._min.y(), current_point.pos.y());
+            m_bounds._max.x() = max(m_bounds._max.x(), current_point.pos.x());
+            m_bounds._max.y() = max(m_bounds._max.y(), current_point.pos.y());
         }
 
         // setting the path convex allows it to be drawn directly without rendering a stencil into a quat later on

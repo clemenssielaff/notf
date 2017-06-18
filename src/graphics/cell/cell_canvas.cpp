@@ -380,8 +380,8 @@ void CellCanvas::_dump_debug_info() const
     log_format << "==========================================================\n"
                << "== Vertices                                             ==";
     for(const Vertex& vertex : m_vertices){
-        log_trace << "Pos: " << vertex.pos.x << ", " << vertex.pos.y << " | "
-                  << "UV: "<< vertex.uv.x << ", " << vertex.uv.y;
+        log_trace << "Pos: " << vertex.pos.x() << ", " << vertex.pos.y() << " | "
+                  << "UV: "<< vertex.uv.x() << ", " << vertex.uv.y();
     }
 
     log_format << "==========================================================\n"

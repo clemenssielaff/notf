@@ -54,7 +54,7 @@ struct Transform3 {
         return {{{1, 0, 0, 0,
                   0, 1, 0, 0,
                   0, 0, 1, 0,
-                  t.x, t.y, t.z, 1}}};
+                  t.x(), t.y(), t.z(), 1}}};
     }
 
     static Transform3 rotation_y(float radianAngle)
@@ -77,9 +77,9 @@ struct Transform3 {
 
     static Transform3 scale(const Vector4f& scale)
     {
-        return {{{scale.x, 0, 0, 0,
-                  0, scale.y, 0, 0,
-                  0, 0, scale.z, 0,
+        return {{{scale.x(), 0, 0, 0,
+                  0, scale.y(), 0, 0,
+                  0, 0, scale.z(), 0,
                   0, 0, 0, 1}}};
     }
 

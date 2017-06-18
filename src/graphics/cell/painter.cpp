@@ -229,8 +229,8 @@ void Painter::quad_to(const float cx, const float cy, const float tx, const floa
 {
     // convert the quad spline into a bezier
     m_cell.m_commands.add_command(BezierCommand(
-        {m_stylus.x + (2.f / 3.f) * (cx - m_stylus.x),
-         m_stylus.y + (2.f / 3.f) * (cy - m_stylus.y)},
+        {m_stylus.x() + (2.f / 3.f) * (cx - m_stylus.x()),
+         m_stylus.y() + (2.f / 3.f) * (cy - m_stylus.y())},
         {tx + (2.f / 3.f) * (cx - tx),
          ty + (2.f / 3.f) * (cy - ty)},
         {tx, ty}));
@@ -315,17 +315,17 @@ void Painter::arc_to(const Vector2f& tangent, const Vector2f& end, const float r
     float cx, cy, a0, a1;
     Winding dir;
     if (delta1.cross(delta2) < 0) {
-        cx  = tangent.x + delta1.x * d + delta1.y * radius;
-        cy  = tangent.y + delta1.y * d + -delta1.x * radius;
-        a0  = atan2(delta1.x, -delta1.y);
-        a1  = atan2(-delta2.x, delta2.y);
+        cx  = tangent.x() + delta1.x() * d + delta1.y() * radius;
+        cy  = tangent.y() + delta1.y() * d + -delta1.x() * radius;
+        a0  = atan2(delta1.x(), -delta1.y());
+        a1  = atan2(-delta2.x(), delta2.y());
         dir = Winding::CLOCKWISE;
     }
     else {
-        cx  = tangent.x + delta1.x * d + -delta1.y * radius;
-        cy  = tangent.y + delta1.y * d + delta1.x * radius;
-        a0  = atan2(-delta1.x, delta1.y);
-        a1  = atan2(delta2.x, -delta2.y);
+        cx  = tangent.x() + delta1.x() * d + -delta1.y() * radius;
+        cy  = tangent.y() + delta1.y() * d + delta1.x() * radius;
+        a0  = atan2(-delta1.x(), delta1.y());
+        a1  = atan2(delta2.x(), -delta2.y());
         dir = Winding::COUNTERCLOCKWISE;
     }
     arc(cx, cy, radius, a0, a1, dir);

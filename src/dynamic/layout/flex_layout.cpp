@@ -408,8 +408,8 @@ void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size
             ScreenItem::_set_grant(child, item_size);
         }
 
-        new_size.width  = std::max(new_size.width, child->get_xform<Space::LAYOUT>().get_translation().x + item_size.width);
-        new_size.height = std::max(new_size.height, child->get_xform<Space::LAYOUT>().get_translation().y + item_size.height);
+        new_size.width  = std::max(new_size.width, child->get_xform<Space::LAYOUT>().get_translation().x() + item_size.width);
+        new_size.height = std::max(new_size.height, child->get_xform<Space::LAYOUT>().get_translation().y() + item_size.height);
 
         current_offset += (adapter.result + alignment_spacing) * step_factor;
     }

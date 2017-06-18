@@ -88,7 +88,7 @@ ScrollArea::ScrollArea()
     connect_signal(
         root_layout->on_mouse_scroll,
         [this](MouseEvent& event) -> void {
-            _update_scrollbar(16 * event.window_delta.y);
+            _update_scrollbar(16 * event.window_delta.y());
         });
 
     // event handler for when then scrollbar is dragged
@@ -97,7 +97,7 @@ ScrollArea::ScrollArea()
         [this](MouseEvent& event) -> void {
             const float area_height = m_area_window->get_grant().height;
             if (area_height >= 1) {
-                _update_scrollbar(-event.window_delta.y * _get_content_height() / area_height);
+                _update_scrollbar(-event.window_delta.y() * _get_content_height() / area_height);
             }
             event.set_handled();
         });
@@ -112,12 +112,12 @@ ScrollArea::ScrollArea()
         },
         [this](MouseEvent& event) -> bool {
             const float available_height = m_vscrollbar->get_size().height;
-            const float scroll_bar_top   = m_vscrollbar->get_window_xform().get_translation().y
+            const float scroll_bar_top   = m_vscrollbar->get_window_xform().get_translation().y()
                 + (m_vscrollbar->pos * available_height);
             const float scroll_bar_height = m_vscrollbar->size * available_height;
             return (event.action == MouseAction::PRESS
-                    && event.window_pos.y >= scroll_bar_top
-                    && event.window_pos.y <= scroll_bar_top + scroll_bar_height);
+                    && event.window_pos.y() >= scroll_bar_top
+                    && event.window_pos.y() <= scroll_bar_top + scroll_bar_height);
         });
 
     // disable scrollbar dragging again, when the user releases the mouse
@@ -151,7 +151,7 @@ void ScrollArea::_update_scrollbar(float delta_y)
     const float area_height = m_area_window->get_grant().height;
     const float overflow    = min(0.f, area_height - content_height);
 
-    const float current_y = m_scroll_container->get_xform<ScreenItem::Space::LOCAL>().get_translation().y;
+    const float current_y = m_scroll_container->get_xform<ScreenItem::Space::LOCAL>().get_translation().y();
     const float y         = min(0.f, max(overflow, current_y + delta_y));
     m_scroll_container->set_local_xform(Xform2f::translation({0, y}));
 

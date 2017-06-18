@@ -1,11 +1,9 @@
 #if 1
 
-#define NOTF_NO_SIMD
+//#define NOTF_NO_SIMD
 
 #include <common/vector4.hpp>
 #include <iostream>
-
-#include <emmintrin.h>
 
 using namespace notf;
 using V4f = notf::Vector4f;
@@ -16,11 +14,14 @@ int main(int argc, char* argv[])
 {
     V4f a = V4f::fill(4);
     V4f b = V4f::fill(1);
+    V4f c = {238, 1.2, 0.3f};
+    V4f d = b;
+    V4f e(0.1, 1, 0);
 
     //    _mm_store_ps(&a[0], _mm_add_ps(_mm_load_ps(&a.array[0]), _mm_load_ps(&b.array[0])));
 
     //    V4f result;
-    V4f result = a + b;
+    auto result = a + b;
 
     //    _mm_store_ps(&result[0], _mm_add_ps(_mm_load_ps(&a.array[0]), _mm_load_ps(&b.array[0])));
 

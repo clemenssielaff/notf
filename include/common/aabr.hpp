@@ -60,7 +60,7 @@ struct _Aabr {
      */
     _Aabr(const vector_t& position, const value_t width, const value_t height)
         : _min(position)
-        , _max(position.x + width, position.y + height)
+        , _max(position.x() + width, position.y() + height)
     {
     }
 
@@ -70,7 +70,7 @@ struct _Aabr {
      */
     _Aabr(const vector_t& position, const Size2f& size)
         : _min(position)
-        , _max(position.x + size.width, position.y + size.height)
+        , _max(position.x() + size.width, position.y() + size.height)
     {
     }
 
@@ -100,24 +100,24 @@ struct _Aabr {
      */
     _Aabr(const vector_t& a, const vector_t& b)
     {
-        if (a.x < b.x) {
-            if (a.y < b.y) {
+        if (a.x() < b.x()) {
+            if (a.y() < b.y()) {
                 _min = a;
                 _max = b;
             }
             else {
-                _min = {a.x, b.y};
-                _max = {b.x, a.y};
+                _min = {a.x(), b.y()};
+                _max = {b.x(), a.y()};
             }
         }
         else {
-            if (a.y > b.y) {
+            if (a.y() > b.y()) {
                 _min = b;
                 _max = a;
             }
             else {
-                _min = {b.x, a.y};
-                _max = {a.x, b.y};
+                _min = {b.x(), a.y()};
+                _max = {a.x(), b.y()};
             }
         }
     }
@@ -161,49 +161,49 @@ struct _Aabr {
     /*  Inspection  ***************************************************************************************************/
 
     /** X-coordinate of the center point. */
-    value_t x() const { return (_min.x + _max.x) / 2; }
+    value_t x() const { return (_min.x() + _max.x()) / 2; }
 
     /** Y-coordinate of the center point. */
-    value_t y() const { return (_min.y + _max.y) / 2; }
+    value_t y() const { return (_min.y() + _max.y()) / 2; }
 
     /** The center of the Aabr. */
     vector_t center() const { return {x(), y()}; }
 
     /** X-coordinate of the left edge of this Aabr. */
-    value_t left() const { return _min.x; }
+    value_t left() const { return _min.x(); }
 
     /** X-coordinate of the right edge of this Aabr. */
-    value_t right() const { return _max.x; }
+    value_t right() const { return _max.x(); }
 
     /** Y-coordinate of the top edge of this Aabr. */
-    value_t top() const { return _min.y; }
+    value_t top() const { return _min.y(); }
 
     /** Y-coordinate of the bottom edge of this Aabr. */
-    value_t bottom() const { return _max.y; }
+    value_t bottom() const { return _max.y(); }
 
     /** The top left corner of this Aabr. */
     vector_t top_left() const { return _min; }
 
     /** The top right corner of this Aabr. */
-    vector_t top_right() const { return {_max.x, _min.y}; }
+    vector_t top_right() const { return {_max.x(), _min.y()}; }
 
     /** The bottom left corner of this Aabr. */
-    vector_t bottom_left() const { return {_min.x, _max.y}; }
+    vector_t bottom_left() const { return {_min.x(), _max.y()}; }
 
     /** The bottom right corner of this Aabr. */
     vector_t bottom_right() const { return _max; }
 
     /** The width of this Aabr */
-    value_t get_width() const { return _max.x - _min.x; }
+    value_t get_width() const { return _max.x() - _min.x(); }
 
     /** The height of this Aabr */
-    value_t get_height() const { return _max.y - _min.y; }
+    value_t get_height() const { return _max.y() - _min.y(); }
 
     /** The area of this Aabr */
     value_t get_area() const { return get_height() * get_width(); }
 
     /** A valid Aabr has a width and height >= 0. */
-    bool is_valid() const { return _min.x <= _max.x && _min.y <= _max.y; }
+    bool is_valid() const { return _min.x() <= _max.x() && _min.y() <= _max.y(); }
 
     /** Test, if this Aabr is zero.
      * The zero Aabr has no area and is located at zero.
@@ -213,7 +213,7 @@ struct _Aabr {
     /** Checks if this Aabr contains a given point. */
     bool contains(const vector_t& point) const
     {
-        return ((point.x > _min.x) && (point.x < _max.x) && (point.y > _min.y) && (point.y < _max.y));
+        return ((point.x() > _min.x()) && (point.x() < _max.x()) && (point.y() > _min.y()) && (point.y() < _max.y()));
     }
 
     /** Checks if two Aabrs intersect.
@@ -222,8 +222,8 @@ struct _Aabr {
      */
     bool intersects(const _Aabr& other) const
     {
-        return !((_max.x < other._min.x) || (_min.x > other._max.x)
-                 || (_min.y > other._max.y) || (_max.y < other._min.y));
+        return !((_max.x() < other._min.x()) || (_min.x() > other._max.x())
+                 || (_min.y() > other._max.y()) || (_max.y() < other._min.y()));
     }
 
     /** Returns the closest point inside the Aabr to a given target point.
@@ -237,8 +237,8 @@ struct _Aabr {
         const vector_t pos        = center();
         const value_t half_width  = get_width() / 2;
         const value_t half_height = get_height() / 2;
-        return {pos.x + clamp(target.x - pos.x, -half_width, half_width),
-                pos.y + clamp(target.y - pos.y, -half_height, half_height)};
+        return {pos.x() + clamp(target.x() - pos.x(), -half_width, half_width),
+                pos.y() + clamp(target.y() - pos.y(), -half_height, half_height)};
     }
 
     /** Returns the extend of this Aabr. */
@@ -261,7 +261,7 @@ struct _Aabr {
     }
 
     /** Read-only pointer to the Aabr's internal storage. */
-    const value_t* as_ptr() const { return &_min.x; }
+    const value_t* as_ptr() const { return &_min.x(); }
 
     /** Operators *****************************************************************************************************/
 
@@ -283,8 +283,8 @@ struct _Aabr {
     _Aabr& set_x(const value_t x)
     {
         const value_t half_width = get_width() / 2;
-        _min.x                   = x - half_width;
-        _max.x                   = x + half_width;
+        _min.x()                 = x - half_width;
+        _max.x()                 = x + half_width;
         return *this;
     }
 
@@ -292,16 +292,16 @@ struct _Aabr {
     _Aabr& set_y(const value_t y)
     {
         const value_t half_height = get_height() / 2;
-        _min.y                    = y - half_height;
-        _max.y                    = y + half_height;
+        _min.y()                  = y - half_height;
+        _max.y()                  = y + half_height;
         return *this;
     }
 
     /** Moves this Aabr to a new center position. */
     _Aabr& set_center(const vector_t& pos)
     {
-        set_x(pos.x);
-        return set_y(pos.y);
+        set_x(pos.x());
+        return set_y(pos.y());
     }
 
     /** Moves this Aabr by a relative amount. */
@@ -318,8 +318,8 @@ struct _Aabr {
      */
     _Aabr& set_left(const value_t x)
     {
-        _min.x = x;
-        _max.x = _max.x > _min.x ? _max.x : _min.x;
+        _min.x() = x;
+        _max.x() = _max.x() > _min.x() ? _max.x() : _min.x();
         return *this;
     }
 
@@ -329,8 +329,8 @@ struct _Aabr {
      */
     _Aabr& set_right(const value_t x)
     {
-        _max.x = x;
-        _min.x = _min.x < _max.x ? _min.x : _max.x;
+        _max.x() = x;
+        _min.x() = _min.x() < _max.x() ? _min.x() : _max.x();
         return *this;
     }
 
@@ -340,8 +340,8 @@ struct _Aabr {
      */
     _Aabr& set_top(const value_t y)
     {
-        _min.y = y;
-        _max.y = _max.y > _min.y ? _max.y : _min.y;
+        _min.y() = y;
+        _max.y() = _max.y() > _min.y() ? _max.y() : _min.y();
         return *this;
     }
 
@@ -351,8 +351,8 @@ struct _Aabr {
      */
     _Aabr& set_bottom(const value_t y)
     {
-        _max.y = y;
-        _min.y = _min.y < _max.y ? _min.y : _max.y;
+        _max.y() = y;
+        _min.y() = _min.y() < _max.y() ? _min.y() : _max.y();
         return *this;
     }
 
@@ -361,8 +361,8 @@ struct _Aabr {
     */
     _Aabr& set_top_left(const vector_t& point)
     {
-        set_left(point.x);
-        return set_top(point.y);
+        set_left(point.x());
+        return set_top(point.y());
     }
 
     /** Sets a new top-right corner of this Aabr.
@@ -370,8 +370,8 @@ struct _Aabr {
      */
     _Aabr& set_top_right(const vector_t& point)
     {
-        set_right(point.x);
-        return set_top(point.y);
+        set_right(point.x());
+        return set_top(point.y());
     }
 
     /** Sets a new bottom-left corner of this Aabr.
@@ -379,8 +379,8 @@ struct _Aabr {
      */
     _Aabr& set_bottom_left(const vector_t& point)
     {
-        set_left(point.x);
-        return set_bottom(point.y);
+        set_left(point.x());
+        return set_bottom(point.y());
     }
 
     /** Sets a new bottom-right corner of this Aabr.
@@ -388,8 +388,8 @@ struct _Aabr {
      */
     _Aabr& set_bottom_right(const vector_t& point)
     {
-        set_right(point.x);
-        return set_bottom(point.y);
+        set_right(point.x());
+        return set_bottom(point.y());
     }
 
     /** Changes the height of this Aabr in place.
@@ -400,8 +400,8 @@ struct _Aabr {
     {
         const value_t center     = x();
         const value_t half_width = width / 2;
-        _min.x                   = center - half_width;
-        _max.x                   = center + half_width;
+        _min.x()                 = center - half_width;
+        _max.x()                 = center + half_width;
         return *this;
     }
 
@@ -413,8 +413,8 @@ struct _Aabr {
     {
         const value_t center      = y();
         const value_t half_height = height / 2;
-        _min.y                    = center - half_height;
-        _max.y                    = center + half_height;
+        _min.y()                  = center - half_height;
+        _max.y()                  = center + half_height;
         return *this;
     }
 
@@ -432,10 +432,10 @@ struct _Aabr {
      */
     _Aabr& grow(const value_t amount)
     {
-        _min.x -= amount;
-        _min.y -= amount;
-        _max.x += amount;
-        _max.y += amount;
+        _min.x() -= amount;
+        _min.y() -= amount;
+        _max.x() += amount;
+        _max.y() += amount;
         return *this;
     }
 
@@ -453,10 +453,10 @@ struct _Aabr {
      */
     _Aabr& grow_to(const vector_t& point)
     {
-        _min.x = min(_min.x, point.x);
-        _min.y = min(_min.y, point.y);
-        _max.x = max(_max.x, point.x);
-        _max.y = max(_max.y, point.y);
+        _min.x() = min(_min.x(), point.x());
+        _min.y() = min(_min.y(), point.y());
+        _max.x() = max(_max.x(), point.x());
+        _max.y() = max(_max.y(), point.y());
         return *this;
     }
 
@@ -485,8 +485,8 @@ struct _Aabr {
             return _Aabr::zero();
         }
         return _Aabr(
-            vector_t{_min.x > other._min.x ? _min.x : other._min.x, _min.y > other._min.y ? _min.y : other._min.y},
-            vector_t{_max.x < other._max.x ? _max.x : other._max.x, _max.y < other._max.y ? _max.y : other._max.y});
+            vector_t{_min.x() > other._min.x() ? _min.x() : other._min.x(), _min.y() > other._min.y() ? _min.y() : other._min.y()},
+            vector_t{_max.x() < other._max.x() ? _max.x() : other._max.x(), _max.y() < other._max.y() ? _max.y() : other._max.y()});
     }
     _Aabr operator&(const _Aabr& other) const { return get_intersection(other); }
 
@@ -498,10 +498,10 @@ struct _Aabr {
         if (!intersects(other)) {
             return set_zero();
         }
-        _min.x = _min.x > other._min.x ? _min.x : other._min.x;
-        _max.x = _max.x < other._max.x ? _max.x : other._max.x;
-        _min.y = _min.y > other._min.y ? _min.y : other._min.y;
-        _max.y = _max.y < other._max.y ? _max.y : other._max.y;
+        _min.x() = _min.x() > other._min.x() ? _min.x() : other._min.x();
+        _max.x() = _max.x() < other._max.x() ? _max.x() : other._max.x();
+        _min.y() = _min.y() > other._min.y() ? _min.y() : other._min.y();
+        _max.y() = _max.y() < other._max.y() ? _max.y() : other._max.y();
         return *this;
     }
     _Aabr operator&=(const _Aabr& other) { return intersect(other); }
@@ -510,18 +510,18 @@ struct _Aabr {
     _Aabr get_union(const _Aabr& other) const
     {
         return _Aabr(
-            vector_t{_min.x < other._min.x ? _min.x : other._min.x, _min.y < other._min.y ? _min.y : other._min.y},
-            vector_t{_max.x > other._max.x ? _max.x : other._max.x, _max.y > other._max.y ? _max.y : other._max.y});
+            vector_t{_min.x() < other._min.x() ? _min.x() : other._min.x(), _min.y() < other._min.y() ? _min.y() : other._min.y()},
+            vector_t{_max.x() > other._max.x() ? _max.x() : other._max.x(), _max.y() > other._max.y() ? _max.y() : other._max.y()});
     }
     _Aabr operator|(const _Aabr& other) const { return get_union(other); }
 
     /** Creates the union of this Aabr with `other` in-place. */
     _Aabr& unite(const _Aabr& other)
     {
-        _min.x = _min.x < other._min.x ? _min.x : other._min.x;
-        _min.y = _min.y < other._min.y ? _min.y : other._min.y;
-        _max.x = _max.x > other._max.x ? _max.x : other._max.x;
-        _max.y = _max.y > other._max.y ? _max.y : other._max.y;
+        _min.x() = _min.x() < other._min.x() ? _min.x() : other._min.x();
+        _min.y() = _min.y() < other._min.y() ? _min.y() : other._min.y();
+        _max.x() = _max.x() > other._max.x() ? _max.x() : other._max.x();
+        _max.y() = _max.y() > other._max.y() ? _max.y() : other._max.y();
         return *this;
     }
     _Aabr& operator|=(const _Aabr& other) { return unite(other); }
@@ -537,15 +537,15 @@ struct _Aabr {
         const vector_t c = _max.get_rotated_around(angle, pivot);
         const vector_t d = bottom_left().rotate_around(angle, pivot);
         _Aabr result;
-        result._min.x = min(a.x, b.x, c.x, d.x);
-        result._min.y = min(a.y, b.y, c.y, d.y);
-        result._max.x = max(a.x, b.x, c.x, d.x);
-        result._max.y = max(a.y, b.y, c.y, d.y);
+        result._min.x() = min(a.x(), b.x(), c.x(), d.x());
+        result._min.y() = min(a.y(), b.y(), c.y(), d.y());
+        result._max.x() = max(a.x(), b.x(), c.x(), d.x());
+        result._max.y() = max(a.y(), b.y(), c.y(), d.y());
         return result;
     }
 
     /** Read-write pointer to the Aabr's internal storage. */
-    value_t* as_ptr() { return &_min.x; }
+    value_t* as_ptr() { return &_min.x(); }
 };
 
 //*********************************************************************************************************************/

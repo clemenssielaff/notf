@@ -10,21 +10,21 @@ Paint Paint::create_linear_gradient(const Vector2f& start_pos, const Vector2f& e
     Vector2f delta  = end_pos - start_pos;
     const float mag = delta.get_magnitude();
     if (mag == approx(0., 0.0001)) {
-        delta.x = 0;
-        delta.y = 1;
+        delta.x() = 0;
+        delta.y() = 1;
     }
     else {
-        delta.x /= mag;
-        delta.y /= mag;
+        delta.x() /= mag;
+        delta.y() /= mag;
     }
 
     Paint paint;
-    paint.xform[0][0]   = delta.y;
-    paint.xform[0][1]   = -delta.x;
-    paint.xform[1][0]   = delta.x;
-    paint.xform[1][1]   = delta.y;
-    paint.xform[2][0]   = start_pos.x - (delta.x * large_number);
-    paint.xform[2][1]   = start_pos.y - (delta.y * large_number);
+    paint.xform[0][0]   = delta.y();
+    paint.xform[0][1]   = -delta.x();
+    paint.xform[1][0]   = delta.x();
+    paint.xform[1][1]   = delta.y();
+    paint.xform[2][0]   = start_pos.x() - (delta.x() * large_number);
+    paint.xform[2][1]   = start_pos.y() - (delta.y() * large_number);
     paint.radius        = 0.0f;
     paint.feather       = max(1.0f, mag);
     paint.extent.width  = large_number;
@@ -54,7 +54,7 @@ Paint Paint::create_box_gradient(const Vector2f& center, const Size2f& extend,
                                  const Color inner_color, const Color outer_color)
 {
     Paint paint;
-    paint.xform         = Xform2f::translation({center.x + extend.width / 2, center.y + extend.height / 2});
+    paint.xform         = Xform2f::translation({center.x() + extend.width / 2, center.y() + extend.height / 2});
     paint.radius        = radius;
     paint.feather       = max(1.f, feather);
     paint.extent.width  = extend.width / 2;
@@ -70,8 +70,8 @@ Paint Paint::create_texture_pattern(const Vector2f& origin, const Size2f& extend
 {
     Paint paint;
     paint.xform         = Xform2f::rotation(angle);
-    paint.xform[2][0]   = origin.x;
-    paint.xform[2][1]   = origin.y;
+    paint.xform[2][0]   = origin.x();
+    paint.xform[2][1]   = origin.y();
     paint.extent.width  = extend.width;
     paint.extent.height = extend.height;
     paint.texture       = texture;

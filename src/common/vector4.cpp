@@ -9,7 +9,7 @@ namespace notf {
 template <>
 std::ostream& operator<<(std::ostream& out, const Vector4f& vec)
 {
-    return out << "Vector4f(" << vec.x << ", " << vec.y << ", " << vec.z << ")";
+    return out << "Vector4f(" << vec.x() << ", " << vec.y() << ", " << vec.z() << ", " << vec.w() << ")";
 }
 
 static_assert(sizeof(Vector4f) == sizeof(float) * 4,
@@ -24,7 +24,7 @@ static_assert(std::is_pod<Vector4f>::value,
 template <>
 std::ostream& operator<<(std::ostream& out, const Vector4d& vec)
 {
-    return out << "Vector4d(" << vec.x << ", " << vec.y << ", " << vec.z << ")";
+    return out << "Vector4d(" << vec.x() << ", " << vec.y() << ", " << vec.z() << ", " << vec.w() << ")";
 }
 
 static_assert(sizeof(Vector4d) == sizeof(double) * 4,

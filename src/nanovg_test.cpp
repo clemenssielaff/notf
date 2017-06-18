@@ -275,8 +275,8 @@ public:
         painter.set_fill_paint(bg);
         painter.fill();
 
-        dx = (target.x - rx) / (ex * 10);
-        dy = (target.y - ry) / (ey * 10);
+        dx = (target.x() - rx) / (ex * 10);
+        dy = (target.y() - ry) / (ey * 10);
         d  = sqrtf(dx * dx + dy * dy);
         if (d > 1.0f) {
             dx /= d;
@@ -289,8 +289,8 @@ public:
         painter.set_fill_color(Color(32, 32, 32, 255));
         painter.fill();
 
-        dx = (target.x - rx) / (ex * 10);
-        dy = (target.y - ry) / (ey * 10);
+        dx = (target.x() - rx) / (ex * 10);
+        dy = (target.y() - ry) / (ey * 10);
         d  = sqrtf(dx * dx + dy * dy);
         if (d > 1.0f) {
             dx /= d;
@@ -397,13 +397,13 @@ public:
         painter.push_state();
 
         painter.begin_path();
-        painter.arc(center.x, center.y, r0, a0, a1, Painter::Winding::CW);
-        painter.arc(center.x, center.y, r1, a1, a0, Painter::Winding::CCW);
+        painter.arc(center.x(), center.y(), r0, a0, a1, Painter::Winding::CW);
+        painter.arc(center.x(), center.y(), r1, a1, a0, Painter::Winding::CCW);
         painter.close_path();
-        ax          = center.x + cosf(a0) * (r0 + r1) * 0.5f;
-        ay          = center.y + sinf(a0) * (r0 + r1) * 0.5f;
-        bx          = center.x + cosf(a1) * (r0 + r1) * 0.5f;
-        by          = center.y + sinf(a1) * (r0 + r1) * 0.5f;
+        ax          = center.x() + cosf(a0) * (r0 + r1) * 0.5f;
+        ay          = center.y() + sinf(a0) * (r0 + r1) * 0.5f;
+        bx          = center.x() + cosf(a1) * (r0 + r1) * 0.5f;
+        by          = center.y() + sinf(a1) * (r0 + r1) * 0.5f;
         Paint paint = Paint::create_linear_gradient({ax, ay}, {bx, by}, Color(0, 0, 0, 0), Color(0, 0, 0, 128));
         painter.set_fill_paint(paint);
         painter.fill();
@@ -419,12 +419,12 @@ public:
         painter.push_state();
 
         painter.begin_path();
-        painter.add_rect(pos.x - lineWidth / 2, pos.y, width + lineWidth, width + 10);
+        painter.add_rect(pos.x() - lineWidth / 2, pos.y(), width + lineWidth, width + 10);
         painter.set_fill_color(Color(255, 255, 255, 32));
         painter.fill();
 
         painter.begin_path();
-        painter.add_rect(pos.x, pos.y, width, width + 10);
+        painter.add_rect(pos.x(), pos.y(), width, width + 10);
         painter.set_fill_color(Color(255, 255, 255, 32));
         painter.fill();
 
@@ -433,8 +433,8 @@ public:
             painter.set_line_cap(caps[i]);
             painter.set_stroke_color(Color(0, 0, 0, 255));
             painter.begin_path();
-            painter.move_to(pos.x, pos.y + i * 10 + 5);
-            painter.line_to(pos.x + width, pos.y + i * 10 + 5);
+            painter.move_to(pos.x(), pos.y() + i * 10 + 5);
+            painter.line_to(pos.x() + width, pos.y() + i * 10 + 5);
             painter.stroke();
         }
 

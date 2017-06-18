@@ -6,6 +6,8 @@
 #include "common/vector2.hpp"
 #include "common/xform2.hpp"
 
+namespace notf {
+
 namespace detail {
 
 /** The largest screen diagonale that you can reasonably expect NoTF to encounter.
@@ -15,8 +17,6 @@ namespace detail {
 constexpr long double largest_supported_diagonale() { return 11585.2375029603946397834340287258466596427520030879586l; }
 
 } // namespace detail
-
-namespace notf {
 
 template <typename Real>
 constexpr Real lowest_tested() { return static_cast<Real>(-detail::largest_supported_diagonale()); }

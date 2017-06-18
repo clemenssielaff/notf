@@ -29,15 +29,15 @@ bool Line2::intersect(Vector2f& intersection, const Line2& other,
 
     // if this line is vertical, calculate intersection from the other line
     if (_delta.is_vertical()) {
-        intersection.x = _start.x;
-        intersection.y = other.y_at(_start.x);
+        intersection.x() = _start.x();
+        intersection.y() = other.y_at(_start.x());
         return true;
     }
 
     // if the other line is vertical, do the same thing from this one
     if (other.delta().is_vertical()) {
-        intersection.x = other.start().x;
-        intersection.y = y_at(other.start().x);
+        intersection.x() = other.start().x();
+        intersection.y() = y_at(other.start().x());
         return true;
     }
 
@@ -49,13 +49,13 @@ bool Line2::intersect(Vector2f& intersection, const Line2& other,
     // test, if the intersection is within the given boundaries
     if (in_self) {
         float min_x, max_x;
-        if (_delta.x >= 0) {
-            min_x = _start.x;
-            max_x = _start.x + _delta.x;
+        if (_delta.x() >= 0) {
+            min_x = _start.x();
+            max_x = _start.x() + _delta.x();
         }
         else {
-            min_x = _start.x + _delta.x;
-            max_x = _start.x;
+            min_x = _start.x() + _delta.x();
+            max_x = _start.x();
         }
         if ((x_coord < min_x) || (x_coord > max_x)) {
             return false;
@@ -63,13 +63,13 @@ bool Line2::intersect(Vector2f& intersection, const Line2& other,
     }
     if (in_other) {
         float min_x, max_x;
-        if (other.delta().x >= 0) {
-            min_x = other.start().x;
-            max_x = other.start().x + other.delta().x;
+        if (other.delta().x() >= 0) {
+            min_x = other.start().x();
+            max_x = other.start().x() + other.delta().x();
         }
         else {
-            min_x = other.start().x + other.delta().x;
-            max_x = other.start().x;
+            min_x = other.start().x() + other.delta().x();
+            max_x = other.start().x();
         }
         if ((x_coord < min_x) || (x_coord > max_x)) {
             return false;
@@ -77,8 +77,8 @@ bool Line2::intersect(Vector2f& intersection, const Line2& other,
     }
 
     // set the result and return success
-    intersection.x = x_coord;
-    intersection.y = (line_slope * x_coord) + y_intersect;
+    intersection.x() = x_coord;
+    intersection.y() = (line_slope * x_coord) + y_intersect;
     return true;
 }
 
@@ -88,8 +88,8 @@ std::ostream& operator<<(std::ostream& out, const Line2& line)
     const Vector2f end    = line.end();
 
     return out << "Line2(["
-               << start.x << ", " << start.y << "], ["
-               << end.x << ", " << end.y << "])";
+               << start.x() << ", " << start.y() << "], ["
+               << end.x() << ", " << end.y() << "])";
 }
 
 /**

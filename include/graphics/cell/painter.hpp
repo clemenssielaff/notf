@@ -84,7 +84,7 @@ class Painter : public detail::PainterBase {
     friend class Widget;
 
 public: // methods
-     /** Value constructor.
+        /** Value constructor.
      * @param canvas    CellCanvas to paint into.
      * @param cell      Cell to paint.
      */
@@ -228,7 +228,7 @@ public: // methods
 
     /** Moves the stylus to `end` and draws a quadratic spline from the current postion over the given control point. */
     void quad_to(const float cx, const float cy, const float tx, const float ty);
-    void quad_to(const Vector2f& ctrl, const Vector2f& end) { quad_to(ctrl.x, ctrl.y, end.x, end.y); }
+    void quad_to(const Vector2f& ctrl, const Vector2f& end) { quad_to(ctrl.x(), ctrl.y(), end.x(), end.y()); }
 
     /** Moves the stylus to `end` and draws a bezier spline from the current postion over the two control points. */
     void bezier_to(const float c1x, const float c1y, const float c2x, const float c2y, const float tx, const float ty) { bezier_to({c1x, c1y}, {c2x, c2y}, {tx, ty}); }
@@ -238,7 +238,7 @@ public: // methods
      * @see             https://www.w3schools.com/tags/canvas_arc.asp
      */
     void arc(const float x, const float y, const float r, const float start_angle, const float end_angle, const Winding dir = Winding::CCW);
-    void arc(const Vector2f& center, const float radius, const float start_angle, const float end_angle, const Winding dir = Winding::CCW) { arc(center.x, center.y, radius, start_angle, end_angle, dir); }
+    void arc(const Vector2f& center, const float radius, const float start_angle, const float end_angle, const Winding dir = Winding::CCW) { arc(center.x(), center.y(), radius, start_angle, end_angle, dir); }
 
     /** Create an open, arc between two tangents on the canvas.
      * @param tangent   Position defining the start tangent vector (from the current stylus position).
@@ -260,11 +260,11 @@ public: // methods
 
     /** Creates a new elliptic Path. */
     void add_ellipse(const float cx, const float cy, const float rx, const float ry);
-    void add_ellipse(const Vector2f& center, const Size2f& extend) { add_ellipse(center.x, center.y, extend.width, extend.height); }
+    void add_ellipse(const Vector2f& center, const Size2f& extend) { add_ellipse(center.x(), center.y(), extend.width, extend.height); }
 
     /** Creates a new circular Path. */
     void add_circle(const float cx, const float cy, const float radius) { add_ellipse(cx, cy, radius, radius); }
-    void add_circle(const Vector2f& center, const float radius) { add_ellipse(center.x, center.y, radius, radius); }
+    void add_circle(const Vector2f& center, const float radius) { add_ellipse(center.x(), center.y(), radius, radius); }
 
     /* Text ***********************************************************************************************************/
 
