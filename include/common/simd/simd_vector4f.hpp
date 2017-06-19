@@ -10,6 +10,11 @@
 
 namespace notf {
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#endif
+
 template <>
 struct _RealVector4<float, true, false> : public _RealVector4<float, true, true> {
 
@@ -73,5 +78,9 @@ private: // methods
         return add1;
     }
 };
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 } // namespace notf

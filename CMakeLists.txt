@@ -31,7 +31,7 @@ set(SOURCE_FILES
         src/common/vector2.cpp
         src/common/vector4.cpp
         src/common/xform2.cpp
-        src/common/xform3.cpp
+        src/common/xform4.cpp
         src/core/application.cpp
         src/core/claim.cpp
         src/core/controller.cpp
@@ -123,6 +123,7 @@ set(TEST_FILES
         test/test_utils.hpp
         test/test_vector2.cpp
         test/test_xform2.cpp
+        test/test_xform4.cpp
 )
 LIST(REMOVE_ITEM TEST_FILES src/main.cpp)
 
