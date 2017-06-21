@@ -31,6 +31,11 @@ struct Arithmetic {
     /** Default (non-initializing) constructor so this struct remains a POD */
     Arithmetic() = default;
 
+    /** Perfect forwarding constructor. */
+    template <typename... T>
+    Arithmetic(T&&... ts)
+        : data{std::forward<T>(ts)...} {}
+
     /* Static Constructors ********************************************************************************************/
 
     /** Set all elements to zero. */

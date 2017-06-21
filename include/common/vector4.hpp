@@ -1,5 +1,4 @@
-#ifndef NOTF_COMMON_VECTOR4 // pragma once works for the compiler but not clang's live inspector
-#define NOTF_COMMON_VECTOR4
+#pragma once
 
 #include <assert.h>
 #include <iosfwd>
@@ -241,5 +240,3 @@ struct hash<notf::_RealVector4<Real>> {
 #include "common/simd/simd_arithmetic4f.hpp"
 #include "common/simd/simd_vector4f.hpp"
 #endif
-
-#endif // NOTF_COMMON_VECTOR4

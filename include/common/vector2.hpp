@@ -28,7 +28,7 @@ struct _RealVector2 : public detail::Arithmetic<_RealVector2<Real>, Real, 2> {
     /** Element-wise constructor. */
     template <typename A, typename B>
     _RealVector2(A x, B y)
-        : super{{static_cast<value_t>(x), static_cast<value_t>(y)}} {}
+        : super{static_cast<value_t>(x), static_cast<value_t>(y)} {}
 
     /* Static Constructors ********************************************************************************************/
 

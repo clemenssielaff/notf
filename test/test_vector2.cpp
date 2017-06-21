@@ -238,14 +238,14 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
             REQUIRE(!vecd.is_parallel_to(vecd.get_orthogonal()));
 
             REQUIRE(Vector2f::x_axis().is_parallel_to(Vector2f::x_axis() * random_number<float>()));
-            REQUIRE(!Vector2f::x_axis().is_parallel_to(random_vector<float>()));
+            REQUIRE(!Vector2f::x_axis().is_parallel_to(random_vector<Vector2f>()));
             REQUIRE(Vector2f::y_axis().is_parallel_to(Vector2f::y_axis() * random_number<float>()));
-            REQUIRE(!Vector2f::y_axis().is_parallel_to(random_vector<float>()));
+            REQUIRE(!Vector2f::y_axis().is_parallel_to(random_vector<Vector2f>()));
 
             REQUIRE(Vector2d::x_axis().is_parallel_to(Vector2d::x_axis() * random_number<double>()));
-            REQUIRE(!Vector2d::x_axis().is_parallel_to(random_vector<double>()));
+            REQUIRE(!Vector2d::x_axis().is_parallel_to(random_vector<Vector2d>()));
             REQUIRE(Vector2d::y_axis().is_parallel_to(Vector2d::y_axis() * random_number<double>()));
-            REQUIRE(!Vector2d::y_axis().is_parallel_to(random_vector<double>()));
+            REQUIRE(!Vector2d::y_axis().is_parallel_to(random_vector<Vector2d>()));
 
             REQUIRE(lowest_vector<float>().is_parallel_to(lowest_vector<float>()));
             REQUIRE(lowest_vector<float>().is_parallel_to(highest_vector<float>()));
@@ -256,9 +256,9 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
             REQUIRE(highest_vector<float>().is_parallel_to(lowest_vector<float>()));
             REQUIRE(highest_vector<float>().is_parallel_to(Vector2f::zero()));
 
-            REQUIRE(!lowest_vector<float>().is_parallel_to(random_vector<float>()));
+            REQUIRE(!lowest_vector<float>().is_parallel_to(random_vector<Vector2f>()));
             REQUIRE(!lowest_vector<float>().is_parallel_to(lowest_vector<float>().get_orthogonal()));
-            REQUIRE(!highest_vector<float>().is_parallel_to(random_vector<float>()));
+            REQUIRE(!highest_vector<float>().is_parallel_to(random_vector<Vector2f>()));
             REQUIRE(!highest_vector<float>().is_parallel_to(highest_vector<float>().get_orthogonal()));
 
             REQUIRE(lowest_vector<double>().is_parallel_to(lowest_vector<double>()));
@@ -270,17 +270,17 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
             REQUIRE(highest_vector<double>().is_parallel_to(lowest_vector<double>()));
             REQUIRE(highest_vector<double>().is_parallel_to(Vector2d::zero()));
 
-            REQUIRE(!lowest_vector<double>().is_parallel_to(random_vector<double>()));
+            REQUIRE(!lowest_vector<double>().is_parallel_to(random_vector<Vector2d>()));
             REQUIRE(!lowest_vector<double>().is_parallel_to(lowest_vector<double>().get_orthogonal()));
-            REQUIRE(!highest_vector<double>().is_parallel_to(random_vector<double>()));
+            REQUIRE(!highest_vector<double>().is_parallel_to(random_vector<Vector2d>()));
             REQUIRE(!highest_vector<double>().is_parallel_to(highest_vector<double>().get_orthogonal()));
         }
     }
 
     WHEN("you need check if two vector2s are orthogonal")
     {
-        const Vector2f vecf = random_vector<float>();
-        const Vector2d vecd = random_vector<double>();
+        const Vector2f vecf = random_vector<Vector2f>();
+        const Vector2d vecd = random_vector<Vector2d>();
 
         THEN("it will work correctly")
         {
@@ -321,13 +321,13 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
                 REQUIRE(!Vector2f::zero().is_unit());
                 REQUIRE(!Vector2d::zero().is_unit());
 
-                REQUIRE(!random_vector<float>().is_unit());
-                REQUIRE(!random_vector<double>().is_unit());
+                REQUIRE(!random_vector<Vector2f>().is_unit());
+                REQUIRE(!random_vector<Vector2d>().is_unit());
 
-                REQUIRE(random_vector<float>().get_normal().is_unit());
-                REQUIRE(random_vector<double>().get_normal().is_unit());
-                REQUIRE(random_vector<float>().normalize().is_unit());
-                REQUIRE(random_vector<double>().normalize().is_unit());
+                REQUIRE(random_vector<Vector2f>().get_normal().is_unit());
+                REQUIRE(random_vector<Vector2d>().get_normal().is_unit());
+                REQUIRE(random_vector<Vector2f>().normalize().is_unit());
+                REQUIRE(random_vector<Vector2d>().normalize().is_unit());
 
                 REQUIRE(!lowest_vector<float>().is_unit());
                 REQUIRE(lowest_vector<float>().normalize().is_unit());
@@ -348,8 +348,8 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
 
     WHEN("you need check if two vector2s are approximately the same")
     {
-        const Vector2f vecf = random_vector<float>();
-        const Vector2d vecd = random_vector<double>();
+        const Vector2f vecf = random_vector<Vector2f>();
+        const Vector2d vecd = random_vector<Vector2d>();
 
         THEN("it will work correctly")
         {
@@ -359,8 +359,8 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
             REQUIRE(vecf.is_approx(Vector2f(vecf.x(), vecf.y() + precision_high<float>())));
             REQUIRE(vecd.is_approx(Vector2d(vecd.x(), vecd.y() + precision_high<double>())));
 
-            REQUIRE(!random_vector<float>().is_approx(random_vector<float>()));
-            REQUIRE(!random_vector<double>().is_approx(random_vector<double>()));
+            REQUIRE(!random_vector<Vector2f>().is_approx(random_vector<Vector2f>()));
+            REQUIRE(!random_vector<Vector2d>().is_approx(random_vector<Vector2d>()));
         }
     }
 
@@ -379,16 +379,16 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
             REQUIRE(Vector2f::zero().get_magnitude() == approx(0));
             REQUIRE(Vector2d::zero().get_magnitude() == approx(0));
 
-            REQUIRE(random_vector<float>().get_magnitude() != approx(1));
-            REQUIRE(random_vector<double>().get_magnitude() != approx(1));
+            REQUIRE(random_vector<Vector2f>().get_magnitude() != approx(1));
+            REQUIRE(random_vector<Vector2d>().get_magnitude() != approx(1));
 
-            REQUIRE((random_vector<float>().get_normal() * factor_f).get_magnitude() == approx(abs(factor_f)));
-            REQUIRE((random_vector<double>().get_normal() * factor_d).get_magnitude() == approx(abs(factor_d)));
+            REQUIRE((random_vector<Vector2f>().get_normal() * factor_f).get_magnitude() == approx(abs(factor_f)));
+            REQUIRE((random_vector<Vector2d>().get_normal() * factor_d).get_magnitude() == approx(abs(factor_d)));
 
-            REQUIRE(random_vector<float>().get_normal().get_magnitude() == approx(1));
-            REQUIRE(random_vector<double>().get_normal().get_magnitude() == approx(1));
-            REQUIRE(random_vector<float>().normalize().get_magnitude() == approx(1));
-            REQUIRE(random_vector<double>().normalize().get_magnitude() == approx(1));
+            REQUIRE(random_vector<Vector2f>().get_normal().get_magnitude() == approx(1));
+            REQUIRE(random_vector<Vector2d>().get_normal().get_magnitude() == approx(1));
+            REQUIRE(random_vector<Vector2f>().normalize().get_magnitude() == approx(1));
+            REQUIRE(random_vector<Vector2d>().normalize().get_magnitude() == approx(1));
 
             REQUIRE(lowest_vector<float>().get_magnitude() != approx(1));
             REQUIRE(lowest_vector<float>().normalize().get_magnitude() == approx(1));

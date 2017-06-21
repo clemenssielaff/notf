@@ -7,7 +7,7 @@ SCENARIO("Working with 2D transformations", "[common][xform2]")
 {
     WHEN("you transform any vector with an identity transform")
     {
-        Vector2f vec      = random_vector<float>();
+        Vector2f vec      = random_vector<Vector2f>();
         const Vector2f vec_copy = vec;
         Xform2f::identity().transform(vec);
         THEN("nothing happens")
@@ -57,7 +57,7 @@ SCENARIO("Working with 2D transformations", "[common][xform2]")
     WHEN("a random transform is applied to a random vector")
     {
         const Xform2f xform = random_xform2<float>(0, 1000, 0.01f, 2);
-        const Vector2f vec  = random_vector<float>(-1000, 1000);
+        const Vector2f vec  = random_vector<Vector2f>(-1000, 1000);
 
         Vector2f transformed_vec = vec;
         xform.transform(transformed_vec);
@@ -67,7 +67,7 @@ SCENARIO("Working with 2D transformations", "[common][xform2]")
             Vector2f inversed_vec = transformed_vec;
             xform.get_inverse().transform(inversed_vec);
 
-            REQUIRE(vec.is_approx(inversed_vec, 0.0002f)); // very imprecise
+            REQUIRE(vec.is_approx(inversed_vec, 0.0003f)); // very imprecise
         }
     }
 }

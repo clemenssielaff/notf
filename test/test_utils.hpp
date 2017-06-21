@@ -1,10 +1,12 @@
 #pragma once
 
+#include "common/arithmetic.hpp"
 #include "common/float.hpp"
 #include "common/random.hpp"
 #include "common/random.hpp"
 #include "common/vector2.hpp"
 #include "common/xform2.hpp"
+#include "common/xform4.hpp"
 
 namespace notf {
 
@@ -37,17 +39,28 @@ inline _RealVector2<Real> lowest_vector() { return _RealVector2<Real>(lowest_tes
 template <typename Real>
 inline _RealVector2<Real> highest_vector() { return _RealVector2<Real>(highest_tested<Real>(), highest_tested<Real>()); }
 
-template <typename Real>
-inline _RealVector2<Real> random_vector()
+template <typename T>
+inline T random_vector(const typename T::value_t minimum = lowest_tested<typename T::value_t>(),
+                       const typename T::value_t maximum = highest_tested<typename T::value_t>())
 {
-    return _RealVector2<Real>(random_number<Real>(lowest_tested<Real>(), highest_tested<Real>()),
-                              random_number<Real>(lowest_tested<Real>(), highest_tested<Real>()));
+    T result;
+    for (size_t i = 0; i < result.size(); ++i) {
+        result[i] = random_number<typename T::value_t>(minimum, maximum);
+    }
+    return result;
 }
 
-template <typename Real>
-inline _RealVector2<Real> random_vector(const Real minimum, const Real maximum)
+template <typename T>
+inline T random_matrix(const typename T::value_t minimum = lowest_tested<typename T::value_t>(),
+                       const typename T::value_t maximum = highest_tested<typename T::value_t>())
 {
-    return _RealVector2<Real>(random_number<Real>(minimum, maximum), random_number<Real>(minimum, maximum));
+    T result;
+    for (size_t i = 0; i < result.size(); ++i) {
+        for (size_t j = 0; j < result[0].size(); ++j) {
+            result[i][j] = random_number<typename T::value_t>(minimum, maximum);
+        }
+    }
+    return result;
 }
 
 template <typename Real>
@@ -66,4 +79,3 @@ inline _Xform2<Real> random_xform2()
     return random_xform2(lowest_tested<Real>(), highest_tested<Real>(), Real(0), Real(2));
 }
 } // namespace notf
-

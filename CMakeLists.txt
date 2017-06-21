@@ -110,6 +110,9 @@ add_executable(notf ${SOURCE_FILES} ${HEADER_FILES})
 
 # TEST SUITE ###########################################################################################################
 
+
+include_directories(/home/clemens/code/thirdparty/glm-0.9.8.4/include)
+
 set(TEST_FILES
         ${SOURCE_FILES}
         test/test_aabr.cpp
