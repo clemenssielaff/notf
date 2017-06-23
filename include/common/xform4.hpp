@@ -228,19 +228,56 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real>, _RealVector4<Real>, 4>
     /** Returns the inverse of this Xform2. */
     _Xform4 get_inverse() const
     {
-        const value_t det = get_determinant();
-        if (abs(det) <= precision_high<value_t>()) {
-            return _Xform2::identity();
-        }
-        const value_t invdet = 1 / det;
-        _Xform2 result;
-        result[0][0] = +(rows[1][1]) * invdet;
-        result[0][1] = -(rows[0][1]) * invdet;
-        result[1][0] = -(rows[1][0]) * invdet;
-        result[1][1] = +(rows[0][0]) * invdet;
-        result[2][0] = +(rows[1][0] * rows[2][1] - rows[1][1] * rows[2][0]) * invdet;
-        result[2][1] = -(rows[0][0] * rows[2][1] - rows[0][1] * rows[2][0]) * invdet;
-        return result;
+        value_t coef00 = data[2][2] * data[3][3] - data[3][2] * data[2][3];
+        value_t coef02 = data[1][2] * data[3][3] - data[3][2] * data[1][3];
+        value_t coef03 = data[1][2] * data[2][3] - data[2][2] * data[1][3];
+
+        value_t coef04 = data[2][1] * data[3][3] - data[3][1] * data[2][3];
+        value_t coef06 = data[1][1] * data[3][3] - data[3][1] * data[1][3];
+        value_t coef07 = data[1][1] * data[2][3] - data[2][1] * data[1][3];
+
+        value_t coef08 = data[2][1] * data[3][2] - data[3][1] * data[2][2];
+        value_t coef10 = data[1][1] * data[3][2] - data[3][1] * data[1][2];
+        value_t coef11 = data[1][1] * data[2][2] - data[2][1] * data[1][2];
+
+        value_t coef12 = data[2][0] * data[3][3] - data[3][0] * data[2][3];
+        value_t coef14 = data[1][0] * data[3][3] - data[3][0] * data[1][3];
+        value_t coef15 = data[1][0] * data[2][3] - data[2][0] * data[1][3];
+
+        value_t coef16 = data[2][0] * data[3][2] - data[3][0] * data[2][2];
+        value_t coef18 = data[1][0] * data[3][2] - data[3][0] * data[1][2];
+        value_t coef19 = data[1][0] * data[2][2] - data[2][0] * data[1][2];
+
+        value_t coef20 = data[2][0] * data[3][1] - data[3][0] * data[2][1];
+        value_t coef22 = data[1][0] * data[3][1] - data[3][0] * data[1][1];
+        value_t coef23 = data[1][0] * data[2][1] - data[2][0] * data[1][1];
+
+        vector_t fac0(coef00, coef00, coef02, coef03);
+        vector_t fac1(coef04, coef04, coef06, coef07);
+        vector_t fac2(coef08, coef08, coef10, coef11);
+        vector_t fac3(coef12, coef12, coef14, coef15);
+        vector_t fac4(coef16, coef16, coef18, coef19);
+        vector_t fac5(coef20, coef20, coef22, coef23);
+
+        vector_t vec0(data[1][0], data[0][0], data[0][0], data[0][0]);
+        vector_t vec1(data[1][1], data[0][1], data[0][1], data[0][1]);
+        vector_t vec2(data[1][2], data[0][2], data[0][2], data[0][2]);
+        vector_t vec3(data[1][3], data[0][3], data[0][3], data[0][3]);
+
+        vector_t inv0(vec1 * fac0 - vec2 * fac1 + vec3 * fac2);
+        vector_t inv1(vec0 * fac0 - vec2 * fac3 + vec3 * fac4);
+        vector_t inv2(vec0 * fac1 - vec1 * fac3 + vec3 * fac5);
+        vector_t inv3(vec0 * fac2 - vec1 * fac4 + vec2 * fac5);
+
+        vector_t signA(+1, -1, +1, -1);
+        vector_t signB(-1, +1, -1, +1);
+        _Xform4 inverse(inv0 * signA, inv1 * signB, inv2 * signA, inv3 * signB);
+
+        vector_t row0(inverse[0][0], inverse[1][0], inverse[2][0], inverse[3][0]);
+        vector_t dot0(data[0] * row0);
+        value_t dot1 = (dot0.x + dot0.y) + (dot0.z + dot0.w);
+
+        return inverse / dot1;
     }
 
     /** Inverts this Xform in-place. */
