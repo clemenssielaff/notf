@@ -11,11 +11,11 @@ namespace notf {
 //*********************************************************************************************************************/
 
 /** 4-dimensional mathematical Vector containing real numbers. */
-template <typename Real, ENABLE_IF_REAL(Real), bool BASE_FOR_PARTIAL = false>
-struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4> {
+template <typename Real, bool BASE_FOR_PARTIAL = false, ENABLE_IF_REAL(Real)>
+struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4, BASE_FOR_PARTIAL> {
 
     // explitic forwards
-    using super   = detail::Arithmetic<_RealVector4<Real>, Real, 4>;
+    using super   = detail::Arithmetic<_RealVector4<Real>, Real, 4, BASE_FOR_PARTIAL>;
     using value_t = typename super::value_t;
     using super::data;
 
@@ -25,16 +25,12 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4> {
     _RealVector4() = default;
 
     /** Element-wise constructor with 3 arguments and `w` set to 1. */
-    template <typename A, typename B, typename C>
-    _RealVector4(A x, B y, C z)
-        : super({static_cast<value_t>(x), static_cast<value_t>(y),
-                 static_cast<value_t>(z), static_cast<value_t>(1)}) {}
+    _RealVector4(const value_t x, const value_t y, const value_t z)
+        : super({x, y, z, value_t(1)}) {}
 
     /** Element-wise constructor. */
-    template <typename A, typename B, typename C, typename D>
-    _RealVector4(A x, B y, C z, D w)
-        : super({static_cast<value_t>(x), static_cast<value_t>(y),
-                 static_cast<value_t>(z), static_cast<value_t>(w)}) {}
+    _RealVector4(const value_t x, const value_t y, const value_t z, const value_t w)
+        : super({x, y, z, w}) {}
 
     /* Static Constructors ********************************************************************************************/
 

@@ -367,7 +367,7 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
     WHEN("you need the magnitude of a vector2")
     {
         const float factor_f  = random_number<float>(-1, 1);
-        const double factor_d = static_cast<double>(random_number<double>(-1., 1.));
+        const double factor_d = random_number<double>(-1, 1);
 
         THEN("it will work correctly")
         {

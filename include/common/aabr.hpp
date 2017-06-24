@@ -570,10 +570,10 @@ struct _Aabr {
     /** Applies a 3-dimensional transformation to this AABR in-place. */
     _Aabr& transform(const _Xform4<value_t>& xform)
     {
-        vector_t d0 = _min;
-        vector_t d1 = _max;
-        vector_t d2 = {_min.x(), _max.y()};
-        vector_t d3 = {_max.x(), _min.y()};
+        typename _Xform4<value_t>::vector_t d0{_min.x(), _min.y(), 0, 1};
+        typename _Xform4<value_t>::vector_t d1{_max.x(), _max.y(), 0, 1};
+        typename _Xform4<value_t>::vector_t d2{_min.x(), _max.y(), 0, 1};
+        typename _Xform4<value_t>::vector_t d3{_max.x(), _min.y(), 0, 1};
         xform.transform(d0);
         xform.transform(d1);
         xform.transform(d2);

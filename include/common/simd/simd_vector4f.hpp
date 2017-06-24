@@ -16,9 +16,9 @@ namespace notf {
 #endif
 
 template <>
-struct _RealVector4<float, true, false> : public _RealVector4<float, true, true> {
+struct _RealVector4<float, false> : public _RealVector4<float, true> {
 
-    using super = _RealVector4<float, true, true>;
+    using super = _RealVector4<float, true>;
 
     _RealVector4() = default;
 

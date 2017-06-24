@@ -183,7 +183,7 @@ SCENARIO("Xform4 base tests", "[common][xform4]")
             const Xform4f xform = random_matrix<Xform4f>(-10, 10);
 
             const Vector4f mine = xform.transform(vec);
-            glm::vec4 theirs = to_glm_mat4(xform) * glm::vec4(vec.x(), vec.y(), vec.z(), vec.w());
+            glm::vec4 theirs = glm::vec4(vec.x(), vec.y(), vec.z(), vec.w()) * to_glm_mat4(xform) ;
             compare_vec4(mine, theirs);
         }
     }

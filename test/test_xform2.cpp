@@ -67,7 +67,7 @@ SCENARIO("Working with 2D transformations", "[common][xform2]")
             Vector2f inversed_vec = transformed_vec;
             xform.get_inverse().transform(inversed_vec);
 
-            REQUIRE(vec.is_approx(inversed_vec, 0.0003f)); // very imprecise
+            REQUIRE(vec.is_approx(inversed_vec, 0.0004f)); // very imprecise
         }
     }
 }
