@@ -230,7 +230,7 @@ std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<FitReques
 
 void FontAtlas::fill_rect(const Glyph::Rect& rect, const uchar* data)
 {
-    if (rect.height == 0 || rect.width == 0) {
+    if (rect.height == 0 || rect.width == 0 || !data) {
         return;
     }
     if (m_texture->bind()) {

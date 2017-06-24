@@ -10,21 +10,243 @@ namespace detail {
 
 //*********************************************************************************************************************/
 
+/** Helper struct to extract the data type from an element type at compile time. */
+template <typename T, typename = void>
+struct get_value_type {
+    using type = typename T::value_t;
+};
+template <typename T>
+struct get_value_type<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
+    using type = T;
+};
+
+//*********************************************************************************************************************/
+
+/** Base class*/
+template <typename T, typename value_t, typename element_t, size_t dim, typename = void>
+struct ArithmeticImpl;
+
+/** Base class for all arithmetic types that contain only scalars.
+ * Some operations (like normalize) are only defined for vectors, not matrices.
+ */
+template <typename T, typename value_t, typename element_t, size_t dim>
+struct ArithmeticImpl<T, value_t, element_t, dim, std::enable_if_t<std::is_same<value_t, element_t>::value>> {
+
+    /** Value data array. */
+    std::array<element_t, dim> data;
+
+    ArithmeticImpl() = default;
+
+    /** Perfect forwarding constructor. */
+    template <typename... ARGS>
+    ArithmeticImpl(ARGS&&... args)
+        : data{std::forward<ARGS>(args)...} {}
+
+public: // methods
+    /** Returns an instance with all elements set to the given value. */
+    static T fill(value_t value)
+    {
+        T result;
+        result.data.fill(value);
+        return result;
+    }
+
+    /** Checks whether this value is of unit magnitude. */
+    bool is_unit() const { return abs(get_magnitude_sq() - 1) <= precision_high<value_t>(); }
+
+    /** Returns the squared magnitude of this value. */
+    value_t get_magnitude_sq() const
+    {
+        value_t result = 0;
+        for (size_t i = 0; i < dim; ++i) {
+            result += data[i] * data[i];
+        }
+        return result;
+    }
+
+    /** Returns the magnitude of this value. */
+    value_t get_magnitude() const { return sqrt(get_magnitude_sq()); }
+
+    /** A normalized copy of this value. */
+    T get_normal() const
+    {
+        const value_t mag_sq = get_magnitude_sq();
+        if (abs(mag_sq - 1) <= precision_high<value_t>()) {
+            T result;
+            result.data = data;
+            return result; // is unit
+        }
+        if (abs(mag_sq) <= precision_high<value_t>()) {
+            return T::zero(); // is zero
+        }
+        return *reinterpret_cast<const T*>(this) / sqrt(mag_sq);
+    }
+
+    /** In-place normalization of this value. */
+    T& normalize()
+    {
+        const value_t mag_sq = get_magnitude_sq();
+        if (abs(mag_sq - 1) <= precision_high<value_t>()) {
+            return *reinterpret_cast<T*>(this); // is unit
+        }
+        if (abs(mag_sq) <= precision_high<value_t>()) {
+            set_all(0); // is zero
+            return *reinterpret_cast<T*>(this);
+        }
+        return *reinterpret_cast<T*>(this) /= sqrt(mag_sq);
+    }
+
+protected: // methods
+    void set_all(const value_t value)
+    {
+        for (size_t i = 0; i < dim; ++i) {
+            data[i] = value;
+        }
+    }
+
+    bool is_real() const
+    {
+        for (size_t i = 0; i < dim; ++i) {
+            if (!notf::is_real(data[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool is_zero(const value_t epsilon = precision_high<value_t>()) const
+    {
+        for (size_t i = 0; i < dim; ++i) {
+            if (abs(data[i]) > epsilon) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool contains_zero(const value_t epsilon = precision_high<value_t>()) const
+    {
+        for (size_t i = 0; i < dim; ++i) {
+            if (abs(data[i]) <= epsilon) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool is_approx(const T& other, const value_t epsilon = precision_high<value_t>()) const
+    {
+        for (size_t i = 0; i < dim; ++i) {
+            if (abs(data[i] - other[i]) > epsilon) {
+                return false;
+            }
+        }
+        return true;
+    }
+};
+
+/** Vectors containing other vectors. */
+template <typename T, typename value_t, typename element_t, size_t dim>
+struct ArithmeticImpl<T, value_t, element_t, dim, std::enable_if_t<!std::is_same<value_t, element_t>::value>> {
+
+    /** Value data array. */
+    std::array<element_t, dim> data;
+
+    ArithmeticImpl() = default;
+
+    /** Perfect forwarding constructor. */
+    template <typename... ARGS>
+    ArithmeticImpl(ARGS&&... args)
+        : data{std::forward<ARGS>(args)...} {}
+
+public: // methods
+    /** Returns an instance with all elements set to the given value. */
+    static T fill(value_t value)
+    {
+        T result;
+        using Element = element_t;
+        for (size_t i = 0; i < result.size(); ++i) {
+            result[i] = Element::fill(value);
+        }
+        return result;
+    }
+
+protected: // methods
+    void set_all(const value_t value)
+    {
+        for (size_t i = 0; i < dim; ++i) {
+            data[i].set_all(value);
+        }
+    }
+
+    bool is_real() const
+    {
+        for (size_t i = 0; i < dim; ++i) {
+            if (!data[i].is_real()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool is_zero(const value_t epsilon = precision_high<value_t>()) const
+    {
+        for (size_t i = 0; i < dim; ++i) {
+            if (!data[i].is_zero(epsilon)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool contains_zero(const value_t epsilon = precision_high<value_t>()) const
+    {
+        for (size_t i = 0; i < dim; ++i) {
+            if (data[i].contains_zero(epsilon)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool is_approx(const T& other,
+                   const value_t epsilon = precision_high<value_t>()) const
+    {
+        for (size_t i = 0; i < dim; ++i) {
+            if (!is_approx(data[i], other[i], epsilon)) {
+                return false;
+            }
+        }
+        return true;
+    }
+};
+
+//*********************************************************************************************************************/
+
 /** Base class for all arithmetic value types.
  *
  * The Arithmetic base class provides naive implementations of each operation.
  * You can override specific functionality for value-specific behaviour or to make use of SIMD instructions.
  */
-template <typename SPECIALIZATION, typename VALUE_TYPE, size_t DIMENSIONS, bool BASE_FOR_PARTIAL = false>
-struct Arithmetic {
+template <typename SPECIALIZATION, typename ELEMENT, size_t DIMENSIONS, bool BASE_FOR_PARTIAL = false>
+struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_type<ELEMENT>::type, ELEMENT, DIMENSIONS> {
 
-    /* Types and Fields ***********************************************************************************************/
+    /* Types **********************************************************************************************************/
 
-    /** Value data type. */
-    using value_t = VALUE_TYPE;
+    using implementation = ArithmeticImpl<SPECIALIZATION, typename get_value_type<ELEMENT>::type, ELEMENT, DIMENSIONS>;
+
+    /** Element type.
+     * In a vector, this is equal to value_t, in a matrix this is the vector type.
+     */
+    using element_t = ELEMENT;
+
+    /** Data type. */
+    using value_t = typename get_value_type<ELEMENT>::type;
 
     /** Value data array. */
-    std::array<value_t, DIMENSIONS> data;
+    //    std::array<element_t, DIMENSIONS> data;
+
+    using implementation::data;
 
     /* Constructors ***************************************************************************************************/
 
@@ -34,20 +256,12 @@ struct Arithmetic {
     /** Perfect forwarding constructor. */
     template <typename... T>
     Arithmetic(T&&... ts)
-        : data{std::forward<T>(ts)...} {}
+        : implementation{std::forward<T>(ts)...} {}
 
     /* Static Constructors ********************************************************************************************/
 
     /** Set all elements to zero. */
-    static SPECIALIZATION zero() { return fill(0); }
-
-    /** Set all elements to a given value. */
-    static SPECIALIZATION fill(const value_t value)
-    {
-        SPECIALIZATION result;
-        result.data.fill(value);
-        return result;
-    }
+    static SPECIALIZATION zero() { return implementation::fill(0); }
 
     /* Inspection  ****************************************************************************************************/
 
@@ -55,38 +269,20 @@ struct Arithmetic {
     static constexpr size_t size() { return DIMENSIONS; }
 
     /** Checks, if this value contains only real, finite values (no INFINITY or NAN). */
-    bool is_real() const
-    {
-        for (size_t i = 0; i < size(); ++i) {
-            if (!notf::is_real(data[i])) {
-                return false;
-            }
-        }
-        return true;
-    }
+    bool is_real() const { return implementation::is_real(); }
 
     /** Returns true if all elements are (approximately) zero.
      * @param epsilon   Largest difference that is still considered to be zero.
      */
     bool is_zero(const value_t epsilon = precision_high<value_t>()) const
     {
-        for (size_t i = 0; i < size(); ++i) {
-            if (abs(data[i]) > epsilon) {
-                return false;
-            }
-        }
-        return true;
+        return implementation::is_zero(epsilon);
     }
 
     /** Checks, if any element of this value is (approximately) zero. */
     bool contains_zero(const value_t epsilon = precision_high<value_t>()) const
     {
-        for (size_t i = 0; i < size(); ++i) {
-            if (abs(data[i]) <= epsilon) {
-                return true;
-            }
-        }
-        return false;
+        return implementation::contains_zero(epsilon);
     }
 
     /** Component-wise check if this value is approximately the same as another.
@@ -95,16 +291,8 @@ struct Arithmetic {
      */
     bool is_approx(const SPECIALIZATION& other, const value_t epsilon = precision_high<value_t>()) const
     {
-        for (size_t i = 0; i < size(); ++i) {
-            if (abs(data[i] - other[i]) > epsilon) {
-                return false;
-            }
-        }
-        return true;
+        return implementation::is_approx(other, epsilon);
     }
-
-    /** Checks whether this value is of unit magnitude. */
-    bool is_unit() const { return abs(get_magnitude_sq() - 1) <= precision_high<value_t>(); }
 
     /** Calculates and returns the hash of this value. */
     size_t hash() const
@@ -123,7 +311,7 @@ struct Arithmetic {
     bool operator!=(const SPECIALIZATION& other) const { return data != other.data; }
 
     /** Read-only reference to an element of this value by index. */
-    const value_t& operator[](const size_t index) const
+    const element_t& operator[](const size_t index) const
     {
         assert(index < size());
         return data[index];
@@ -132,23 +320,10 @@ struct Arithmetic {
     /** Read-only pointer to the value's internal storage. */
     const value_t* as_ptr() const { return &data[0]; }
 
-    /** Returns the squared magnitude of this value. */
-    value_t get_magnitude_sq() const
-    {
-        value_t result = 0;
-        for (size_t i = 0; i < size(); ++i) {
-            result += data[i] * data[i];
-        }
-        return result;
-    }
-
-    /** Returns the magnitude of this value. */
-    value_t get_magnitude() const { return sqrt(get_magnitude_sq()); }
-
     /** Modification **************************************************************************************************/
 
     /** Read-write reference to an element of this value by index. */
-    value_t& operator[](const size_t index)
+    element_t& operator[](const size_t index)
     {
         assert(index < size());
         return data[index];
@@ -160,9 +335,7 @@ struct Arithmetic {
     /** Set all elements of this value. */
     SPECIALIZATION& set_all(const value_t value)
     {
-        for (size_t i = 0; i < size(); ++i) {
-            data[i] = value;
-        }
+        implementation::set_all(value);
         return _specialized_this();
     }
 
@@ -292,35 +465,6 @@ struct Arithmetic {
     /** The inverted value. */
     SPECIALIZATION operator-() const { return *this * -1; }
 
-    /** A normalized copy of this value. */
-    SPECIALIZATION get_normal() const
-    {
-        const value_t mag_sq = get_magnitude_sq();
-        if (abs(mag_sq - 1) <= precision_high<value_t>()) {
-            SPECIALIZATION result;
-            result.data = data;
-            return result; // is unit
-        }
-        if (abs(mag_sq) <= precision_high<value_t>()) {
-            return SPECIALIZATION::zero(); // is zero
-        }
-        return *this / sqrt(mag_sq);
-    }
-
-    /** In-place normalization of this value. */
-    SPECIALIZATION& normalize()
-    {
-        const value_t mag_sq = get_magnitude_sq();
-        if (abs(mag_sq - 1) <= precision_high<value_t>()) {
-            return _specialized_this(); // is unit
-        }
-        if (abs(mag_sq) <= precision_high<value_t>()) {
-            set_zero(); // is zero
-            return _specialized_this();
-        }
-        return *this /= sqrt(mag_sq);
-    }
-
 protected: // methods
     constexpr SPECIALIZATION& _specialized_this() { return *reinterpret_cast<SPECIALIZATION*>(this); }
 };
@@ -334,11 +478,11 @@ protected: // methods
  * @param to      Right Vector, full weight at blend >= 1.
  * @param blend   Blend value, clamped to range [0, 1].
  */
-template <typename SPECIALIZATION, typename VALUE_TYPE, size_t DIMENSIONS>
-detail::Arithmetic<SPECIALIZATION, VALUE_TYPE, DIMENSIONS> lerp(
-    const detail::Arithmetic<SPECIALIZATION, VALUE_TYPE, DIMENSIONS>& from,
-    const detail::Arithmetic<SPECIALIZATION, VALUE_TYPE, DIMENSIONS>& to,
-    const VALUE_TYPE blend)
+template <typename SPECIALIZATION, typename ELEMENT, size_t DIMENSIONS>
+detail::Arithmetic<SPECIALIZATION, ELEMENT, DIMENSIONS> lerp(
+    const detail::Arithmetic<SPECIALIZATION, ELEMENT, DIMENSIONS>& from,
+    const detail::Arithmetic<SPECIALIZATION, ELEMENT, DIMENSIONS>& to,
+    const typename detail::Arithmetic<SPECIALIZATION, ELEMENT, DIMENSIONS>::value_t blend)
 {
     return ((to - from) *= clamp(blend, 0, 1)) += from;
 }
