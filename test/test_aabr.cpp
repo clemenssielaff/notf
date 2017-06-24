@@ -43,7 +43,7 @@ SCENARIO("Aabr can be modified", "[common][aabr]")
         THEN("the resulting aabr will the the aabr of the rotated rect")
         {
             Aabrf aabr_1(top_right, bottom_left);
-            Aabrf aabr_2 = aabr_1.get_rotated(static_cast<float>(PI / 4));
+            Aabrf aabr_2 = aabr_1.get_rotated(pi<float>() / 4);
             REQUIRE(aabr_2.get_width() == approx(2 * sqrt(2.f)));
         }
     }

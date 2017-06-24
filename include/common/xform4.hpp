@@ -2,6 +2,8 @@
 
 #include "common/vector4.hpp"
 
+#include <emmintrin.h>
+
 namespace notf {
 
 /** A full 3D Transformation Matrix with 4x4 components.
@@ -97,12 +99,12 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real>, _RealVector4<Real>, 4>
 
     //    static Transform3 orthographic(const float width, const float height, const float znear, const float zfar);
 
-    //  INSPECTION  ///////////////////////////////////////////////////////////////////////////////////////////////////
+    /* Inspection *****************************************************************************************************/
 
     /** Returns the translation component of this Xform. */
     const vector_t& get_translation() const { return data[3]; }
 
-    //  MODIFICATION ///////////////////////////////////////////////////////////////////////////////////////////////////
+    /* Modification ***************************************************************************************************/
 
     /** Concatenation of two transformation matrices. */
     _Xform4 operator*(const _Xform4& other) const
@@ -286,8 +288,44 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real>, _RealVector4<Real>, 4>
         *this = get_inverse();
         return *this;
     }
+
+    /* Transforamtion *************************************************************************************************/
+
+    /** Transforms a given Vector in-place.
+     * Modifies the input vector but also returns a reference to it.
+     */
+    vector_t& transform(vector_t& vector) const
+    {
+        const vector_t mov0 = vector_t::fill(vector[0]);
+        const vector_t mov1 = vector_t::fill(vector[1]);
+        const vector_t mul0 = data[0] * mov0;
+        const vector_t mul1 = data[1] * mov1;
+        const vector_t mov2 = vector_t::fill(vector[2]);
+        const vector_t mov3 = vector_t::fill(vector[3]);
+        const vector_t mul2 = data[2] * mov2;
+        const vector_t mul3 = data[3] * mov3;
+
+        const vector_t add0 = mul0 + mul1;
+        const vector_t add1 = mul2 + mul3;
+
+        vector = add0 + add1;
+        return vector;
+    }
+
+    /** Transforms a given Vector and returns a new value. */
+    vector_t transform(const vector_t& vector) const
+    {
+        vector_t result = vector;
+        transform(result);
+        return result;
+    }
 };
 
 using Xform4f = _Xform4<float>;
+using Xform4d = _Xform4<double>;
 
 } // namespace notf
+
+#ifndef NOTF_NO_SIMD
+#include "common/simd/simd_xform4.hpp"
+#endif

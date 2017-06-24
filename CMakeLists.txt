@@ -7,7 +7,7 @@ INCLUDE_DIRECTORIES(
         include
         thirdparty
         res
-        /home/clemens/code/thirdparty/freetype-2.7/INSTALL/include/freetype2/
+        /home/clemens/code/thirdparty/freetype-2.8/include/
         test
         #/home/clemens/code/thirdparty/Python-3.6.1/INSTALL/include/python3.6dm/
 )
@@ -102,16 +102,112 @@ set(SOURCE_FILES
 )
 
 set(HEADER_FILES
+    include/common/aabr.hpp
+    include/common/arithmetic.hpp
+    include/common/circle.hpp
+    include/common/color.hpp
+    include/common/enum.hpp
+    include/common/exception.hpp
+    include/common/float.hpp
+    include/common/hash.hpp
+    include/common/id.hpp
+    include/common/input.hpp
+    include/common/integer.hpp
+    include/common/line2.hpp
+    include/common/log.hpp
+    include/common/meta.hpp
+    include/common/padding.hpp
+    include/common/random.hpp
+    include/common/set.hpp
+    include/common/signal.hpp
     include/common/simd/simd_arithmetic4f.hpp
     include/common/simd/simd_vector4f.hpp
+    include/common/simd/simd_xform4.hpp
+    include/common/size2.hpp
+    include/common/string.hpp
+    include/common/system.hpp
+    include/common/time.hpp
+    include/common/utf.hpp
+    include/common/vector2.hpp
+    include/common/vector4.hpp
+    include/common/vector.hpp
+    include/common/warnings.hpp
+    include/common/xform2.hpp
+    include/common/xform4.hpp
+    include/core/application.hpp
+    include/core/claim.hpp
+    include/core/controller.hpp
+    include/core/events/char_event.hpp
+    include/core/events/focus_event.hpp
+    include/core/events/key_event.hpp
+    include/core/events/mouse_event.hpp
+    include/core/fwds.hpp
+    include/core/glfw.hpp
+    include/core/item_container.hpp
+    include/core/item.hpp
+    include/core/layout.hpp
+    include/core/opengl.hpp
+    include/core/properties.hpp
+    include/core/property.hpp
+    include/core/render_manager.hpp
+    include/core/resource_manager.hpp
+    include/core/screen_item.hpp
+    include/core/widget.hpp
+    include/core/window.hpp
+    include/core/window_layout.hpp
+    include/dynamic/controller/scroll_area.hpp
+    include/dynamic/layout/flex_layout.hpp
+    include/dynamic/layout/free_layout.hpp
+    include/dynamic/layout/overlayout.hpp
+    include/ext/python/docstr.hpp
+    include/ext/python/interpreter.hpp
+    include/ext/python/py_dict_utils.hpp
+    include/ext/python/py_fwd.hpp
+    include/ext/python/py_notf.hpp
+    include/ext/python/py_signal.hpp
+    include/ext/python/type_patches.hpp
+    include/graphics/blend_mode.hpp
+    include/graphics/cell/cell_canvas.hpp
+    include/graphics/cell/cell.hpp
+    include/graphics/cell/command_buffer.hpp
+    include/graphics/cell/commands.hpp
+    include/graphics/cell/painter.hpp
+    include/graphics/cell/painterpreter.hpp
+    include/graphics/cell/paint.hpp
+    include/graphics/gl_errors.hpp
+    include/graphics/gl_forwards.hpp
+    include/graphics/gl_utils.hpp
+    include/graphics/graphics_context.hpp
+    include/graphics/raw_image.hpp
+    include/graphics/scissor.hpp
+    include/graphics/shader.hpp
+    include/graphics/stats.hpp
+    include/graphics/stencil_func.hpp
+    include/graphics/text/font_atlas.hpp
+    include/graphics/text/font.hpp
+    include/graphics/text/font_manager.hpp
+    include/graphics/text/freetype.hpp
+    include/graphics/texture2.hpp
+    include/graphics/vertex.hpp
+    include/utils/apply_tuple.hpp
+    include/utils/binding_accessors.hpp
+    include/utils/debug.hpp
+    include/utils/literals.hpp
+    include/utils/macro_overload.hpp
+    include/utils/make_smart_enabler.hpp
+    include/utils/print_notf.hpp
+    include/utils/range.hpp
+    include/utils/reverse_iterator.hpp
+    test/catch.hpp
+    test/test_utils.hpp
+    thirdparty/randutils/randutils.hpp
 )
 
 add_executable(notf ${SOURCE_FILES} ${HEADER_FILES})
 
 # TEST SUITE ###########################################################################################################
 
-
-include_directories(/home/clemens/code/thirdparty/glm-0.9.8.4/include)
+include_directories(/home/clemens/code/thirdparty/glm-0.9.8.4/include/)
 
 set(TEST_FILES
         ${SOURCE_FILES}
@@ -128,7 +224,7 @@ set(TEST_FILES
         test/test_xform2.cpp
         test/test_xform4.cpp
 )
-LIST(REMOVE_ITEM TEST_FILES src/main.cpp)
+LIST(REMOVE_ITEM TEST_FILES src/main.cpp src/scratch.cpp)
 
 add_executable(notf-test ${TEST_FILES})
 
@@ -143,7 +239,7 @@ add_subdirectory(/home/clemens/code/thirdparty/glfw-3.2.1/ thirdparty/glfw)
 find_package(OpenGL REQUIRED)
 
 # freetype
-add_subdirectory(/home/clemens/code/thirdparty/freetype-2.7/ thirdparty/freetype)
+add_subdirectory(/home/clemens/code/thirdparty/freetype-2.8/ thirdparty/freetype)
 
 target_link_libraries(${PROJECT_NAME}
         ${OPENGL_gl_LIBRARY}

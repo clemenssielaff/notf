@@ -7,15 +7,14 @@ SCENARIO("Working with angles", "[common][float][arithmetic]")
 {
     WHEN("an unormalized real value is given")
     {
-        static const float pi     = static_cast<float>(PI);
-        static const float two_pi = static_cast<float>(TWO_PI);
+        static const float two_pi = pi<float>() * 2;
 
         THEN("it can can be correctly normalized")
         {
             REQUIRE(norm_angle(-two_pi) == approx(two_pi, precision_low<float>()));
-            REQUIRE(norm_angle(-pi) == approx(pi, precision_low<float>()));
+            REQUIRE(norm_angle(-pi<float>()) == approx(pi<float>(), precision_low<float>()));
             REQUIRE(norm_angle(0.) == approx(0.f, precision_low<float>()));
-            REQUIRE(norm_angle(pi) == approx(pi, precision_low<float>()));
+            REQUIRE(norm_angle(pi<float>()) == approx(pi<float>(), precision_low<float>()));
             REQUIRE(norm_angle(two_pi) == approx(0.f, precision_low<float>()));
         }
 

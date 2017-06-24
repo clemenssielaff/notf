@@ -35,14 +35,6 @@
 #include "graphics/cell/cell_canvas.hpp"
 #include "graphics/cell/commands.hpp"
 
-namespace { // anonymous
-using namespace notf;
-
-/** Length of a bezier control vector to draw a circle with radius 1. */
-static const float KAPPAf = static_cast<float>(KAPPA);
-
-} // namespace anonymous
-
 namespace notf {
 
 /**********************************************************************************************************************/
@@ -255,7 +247,7 @@ void Painter::arc(const float cx, const float cy, const float r, const float a0,
         da = -norm_angle(a0 - a1);
     }
     // split the arc into <= 90deg segments
-    const float ndivs = max(1.f, min(ceilf(abs(da) / static_cast<float>(HALF_PI)), 5.f));
+    const float ndivs = max(1.f, min(ceilf(abs(da) / (pi<float>() / 2)), 5.f));
     const float hda   = (da / ndivs) / 2;
     const float kappa = abs(4.f / 3.f * (1.f - cos(hda)) / sin(hda)) * (dir == Winding::CLOCKWISE ? 1 : -1);
 
@@ -355,23 +347,23 @@ void Painter::add_rounded_rect(const float x, const float y, const float w, cons
     const float rxTL = min(rtl, halfw) * sign(w), ryTL = min(rtl, halfh) * sign(h);
     m_cell.m_commands.add_command(MoveCommand({x, y + ryTL}));
     m_cell.m_commands.add_command(LineCommand({x, y + h - ryBL}));
-    m_cell.m_commands.add_command(BezierCommand({x, y + h - ryBL * (1 - KAPPAf)}, {x + rxBL * (1 - KAPPAf), y + h}, {x + rxBL, y + h}));
+    m_cell.m_commands.add_command(BezierCommand({x, y + h - ryBL * (1 - kappa<float>())}, {x + rxBL * (1 - kappa<float>()), y + h}, {x + rxBL, y + h}));
     m_cell.m_commands.add_command(LineCommand({x + w - rxBR, y + h}));
-    m_cell.m_commands.add_command(BezierCommand({x + w - rxBR * (1 - KAPPAf), y + h}, {x + w, y + h - ryBR * (1 - KAPPAf)}, {x + w, y + h - ryBR}));
+    m_cell.m_commands.add_command(BezierCommand({x + w - rxBR * (1 - kappa<float>()), y + h}, {x + w, y + h - ryBR * (1 - kappa<float>())}, {x + w, y + h - ryBR}));
     m_cell.m_commands.add_command(LineCommand({x + w, y + ryTR}));
-    m_cell.m_commands.add_command(BezierCommand({x + w, y + ryTR * (1 - KAPPAf)}, {x + w - rxTR * (1 - KAPPAf), y}, {x + w - rxTR, y}));
+    m_cell.m_commands.add_command(BezierCommand({x + w, y + ryTR * (1 - kappa<float>())}, {x + w - rxTR * (1 - kappa<float>()), y}, {x + w - rxTR, y}));
     m_cell.m_commands.add_command(LineCommand({x + rxTL, y}));
-    m_cell.m_commands.add_command(BezierCommand({x + rxTL * (1 - KAPPAf), y}, {x, y + ryTL * (1 - KAPPAf)}, {x, y + ryTL}));
+    m_cell.m_commands.add_command(BezierCommand({x + rxTL * (1 - kappa<float>()), y}, {x, y + ryTL * (1 - kappa<float>())}, {x, y + ryTL}));
     close_path();
 }
 
 void Painter::add_ellipse(const float cx, const float cy, const float rx, const float ry)
 {
     m_cell.m_commands.add_command(MoveCommand({cx - rx, cy}));
-    m_cell.m_commands.add_command(BezierCommand({cx - rx, cy + ry * KAPPAf}, {cx - rx * KAPPAf, cy + ry}, {cx, cy + ry}));
-    m_cell.m_commands.add_command(BezierCommand({cx + rx * KAPPAf, cy + ry}, {cx + rx, cy + ry * KAPPAf}, {cx + rx, cy}));
-    m_cell.m_commands.add_command(BezierCommand({cx + rx, cy - ry * KAPPAf}, {cx + rx * KAPPAf, cy - ry}, {cx, cy - ry}));
-    m_cell.m_commands.add_command(BezierCommand({cx - rx * KAPPAf, cy - ry}, {cx - rx, cy - ry * KAPPAf}, {cx - rx, cy}));
+    m_cell.m_commands.add_command(BezierCommand({cx - rx, cy + ry * kappa<float>()}, {cx - rx * kappa<float>(), cy + ry}, {cx, cy + ry}));
+    m_cell.m_commands.add_command(BezierCommand({cx + rx * kappa<float>(), cy + ry}, {cx + rx, cy + ry * kappa<float>()}, {cx + rx, cy}));
+    m_cell.m_commands.add_command(BezierCommand({cx + rx, cy - ry * kappa<float>()}, {cx + rx * kappa<float>(), cy - ry}, {cx, cy - ry}));
+    m_cell.m_commands.add_command(BezierCommand({cx - rx * kappa<float>(), cy - ry}, {cx - rx, cy - ry * kappa<float>()}, {cx - rx, cy}));
     close_path();
 }
 

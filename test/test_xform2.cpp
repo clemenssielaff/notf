@@ -7,7 +7,7 @@ SCENARIO("Working with 2D transformations", "[common][xform2]")
 {
     WHEN("you transform any vector with an identity transform")
     {
-        Vector2f vec      = random_vector<Vector2f>();
+        Vector2f vec            = random_vector<Vector2f>();
         const Vector2f vec_copy = vec;
         Xform2f::identity().transform(vec);
         THEN("nothing happens")
@@ -19,7 +19,7 @@ SCENARIO("Working with 2D transformations", "[common][xform2]")
     WHEN("you stack multiple transforms")
     {
         const Xform2f trans_xform    = Xform2f::translation(Vector2f(100, 0));
-        const Xform2f rotation_xform = Xform2f::rotation(static_cast<float>(PI / 2));
+        const Xform2f rotation_xform = Xform2f::rotation(pi<float>() / 2);
         const Xform2f scale_xform    = Xform2f::scale(2);
 
         Xform2f total_xform = trans_xform;

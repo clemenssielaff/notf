@@ -8,6 +8,8 @@
 #include "common/meta.hpp"
 #include "common/size2.hpp"
 #include "common/vector2.hpp"
+#include "common/xform2.hpp"
+#include "common/xform4.hpp"
 
 namespace notf {
 
@@ -546,6 +548,42 @@ struct _Aabr {
 
     /** Read-write pointer to the Aabr's internal storage. */
     value_t* as_ptr() { return &_min.x(); }
+
+    /** Applies a 2-dimensional transformation to this AABR in-place. */
+    _Aabr& transform(const _Xform2<value_t>& xform)
+    {
+        vector_t d0 = _min;
+        vector_t d1 = _max;
+        vector_t d2 = {_min.x(), _max.y()};
+        vector_t d3 = {_max.x(), _min.y()};
+        xform.transform(d0);
+        xform.transform(d1);
+        xform.transform(d2);
+        xform.transform(d3);
+        _min.x() = min(d0.x(), d1.x(), d2.x(), d3.x());
+        _min.y() = min(d0.y(), d1.y(), d2.y(), d3.y());
+        _max.x() = max(d0.x(), d1.x(), d2.x(), d3.x());
+        _max.y() = max(d0.y(), d1.y(), d2.y(), d3.y());
+        return *this;
+    }
+
+    /** Applies a 3-dimensional transformation to this AABR in-place. */
+    _Aabr& transform(const _Xform4<value_t>& xform)
+    {
+        vector_t d0 = _min;
+        vector_t d1 = _max;
+        vector_t d2 = {_min.x(), _max.y()};
+        vector_t d3 = {_max.x(), _min.y()};
+        xform.transform(d0);
+        xform.transform(d1);
+        xform.transform(d2);
+        xform.transform(d3);
+        _min.x() = min(d0.x(), d1.x(), d2.x(), d3.x());
+        _min.y() = min(d0.y(), d1.y(), d2.y(), d3.y());
+        _max.x() = max(d0.x(), d1.x(), d2.x(), d3.x());
+        _max.y() = max(d0.y(), d1.y(), d2.y(), d3.y());
+        return *this;
+    }
 };
 
 //*********************************************************************************************************************/

@@ -4,8 +4,8 @@
 
 #include "common/float.hpp"
 #include "common/hash.hpp"
-#include "common/vector2.hpp"
 #include "common/meta.hpp"
+#include "common/vector2.hpp"
 
 namespace notf {
 
@@ -61,10 +61,10 @@ struct _Circle {
     value_t diameter() const { return radius * 2.f; }
 
     /** The circumenfence of this Circle. */
-    value_t circumfence() const { return PI * radius * 2.f; }
+    value_t circumfence() const { return pi<value_t>() * radius * 2.f; }
 
     /** The area of this Circle. */
-    value_t area() const { return PI * radius * radius; }
+    value_t area() const { return pi<value_t>() * radius * radius; }
 
     /** Checks, if the given point is contained within (or on the border of) this Circle. */
     bool contains(const vector_t& point) const

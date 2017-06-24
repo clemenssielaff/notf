@@ -54,16 +54,21 @@ namespace notf {
 //    return *this;
 //}
 
-
-
 /**
  * Compile-time sanity check.
  */
 static_assert(sizeof(Xform4f) == sizeof(float) * 16,
-              "This compiler seems to inject padding bits into the notf::Transform3 memory layout. "
+              "This compiler seems to inject padding bits into the notf::Xform4f memory layout. "
               "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
 static_assert(std::is_pod<Xform4f>::value,
-              "This compiler does not recognize notf::Transform3 as a POD.");
+              "This compiler does not recognize notf::Xform4f as a POD.");
+
+static_assert(sizeof(Xform4d) == sizeof(double) * 16,
+              "This compiler seems to inject padding bits into the notf::Xform4d memory layout. "
+              "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
+
+static_assert(std::is_pod<Xform4d>::value,
+              "This compiler does not recognize notf::Xform4d as a POD.");
 
 } // namespace notf

@@ -16,9 +16,9 @@ namespace notf {
 
 ScreenItem::ScreenItem(ItemContainerPtr container)
     : Item(std::move(container))
-    , m_layout_transform(Xform4f::identity())
-    , m_local_transform(Xform4f::identity())
-    , m_effective_transform(Xform4f::identity())
+    , m_layout_transform(Xform2f::identity())
+    , m_local_transform(Xform2f::identity())
+    , m_effective_transform(Xform2f::identity())
     , m_claim()
     , m_grant(Size2f::zero())
     , m_is_visible(true)
@@ -30,14 +30,14 @@ ScreenItem::ScreenItem(ItemContainerPtr container)
 {
 }
 
-Xform4f ScreenItem::get_window_xform() const
+Xform2f ScreenItem::get_window_xform() const
 {
-    Xform4f result = Xform4f::identity();
+    Xform2f result = Xform2f::identity();
     _get_window_transform(result);
     return result;
 }
 
-void ScreenItem::set_local_xform(const Xform4f transform)
+void ScreenItem::set_local_xform(const Xform2f transform)
 {
     if (transform == m_local_transform) {
         return;
@@ -96,9 +96,9 @@ bool ScreenItem::is_visible() const
 
     { // fully scissored
         Aabrf content_aabr(get_size());
-        transformation_between(this, m_scissor_layout).transform(content_aabr);
+        content_aabr.transform(transformation_between(this, m_scissor_layout));
         Aabrf scissor_aabr(m_scissor_layout->get_grant());
-        m_scissor_layout->get_xform<Space::PARENT>().transform(scissor_aabr);
+        scissor_aabr.transform(m_scissor_layout->get_xform<Space::PARENT>());
         if (!scissor_aabr.intersects(content_aabr)) {
             return false;
         }
@@ -211,7 +211,7 @@ bool ScreenItem::_set_size(const Size2f size)
     return true;
 }
 
-void ScreenItem::_set_layout_xform(const Xform4f transform)
+void ScreenItem::_set_layout_xform(const Xform2f transform)
 {
     if (transform == m_layout_transform) {
         return;
@@ -257,7 +257,7 @@ void ScreenItem::_set_render_layer(const RenderLayerPtr& render_layer)
     _redraw();
 }
 
-void ScreenItem::_get_window_transform(Xform4f& result) const
+void ScreenItem::_get_window_transform(Xform2f& result) const
 {
     if (const ScreenItem* layout = get_layout()) {
         layout->_get_window_transform(result);
@@ -273,7 +273,7 @@ void ScreenItem::_update_effective_transform()
 
 /**********************************************************************************************************************/
 
-Xform4f transformation_between(const ScreenItem* source, const ScreenItem* target)
+Xform2f transformation_between(const ScreenItem* source, const ScreenItem* target)
 {
     const ScreenItem* common_ancestor = source->get_common_ancestor(target)->get_screen_item();
     if (!common_ancestor) {
@@ -282,12 +282,12 @@ Xform4f transformation_between(const ScreenItem* source, const ScreenItem* targe
         throw std::runtime_error(ss.str());
     }
 
-    Xform4f source_branch = Xform4f::identity();
+    Xform2f source_branch = Xform2f::identity();
     for (const ScreenItem* it = source; it != common_ancestor; it = it->get_layout()) {
         source_branch *= it->get_xform<ScreenItem::Space::PARENT>();
     }
 
-    Xform4f target_branch = Xform4f::identity();
+    Xform2f target_branch = Xform2f::identity();
     for (const ScreenItem* it = target; it != common_ancestor; it = it->get_layout()) {
         target_branch *= it->get_xform<ScreenItem::Space::PARENT>();
     }

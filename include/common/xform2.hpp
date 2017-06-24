@@ -4,7 +4,6 @@
 #include <assert.h>
 #include <iosfwd>
 
-#include "common/aabr.hpp"
 #include "common/float.hpp"
 #include "common/hash.hpp"
 #include "common/meta.hpp"
@@ -241,30 +240,25 @@ struct _Xform2 {
         return result;
     }
 
-    /** Transforms the given Vector2 in-place. */
-    void transform(vector_t& vector) const
+    /** Transforms a given Vector in-place.
+     * Modifies the input vector but also returns a reference to it.
+     */
+    vector_t& transform(vector_t& vector) const
     {
         vector = {
             vector.x() * rows[0][0] + vector.y() * rows[1][0] + rows[2][0],
             vector.x() * rows[0][1] + vector.y() * rows[1][1] + rows[2][1],
         };
+        return vector;
     }
 
-    /** Transforms the given AABR in-place. */
-    void transform(_Aabr<vector_t>& aabr) const
+    /** Transforms a given Vector and returns a new value. */
+    vector_t transform(const vector_t& vector) const
     {
-        vector_t d0 = aabr._min;
-        vector_t d1 = aabr._max;
-        vector_t d2 = {aabr._min.x(), aabr._max.y()};
-        vector_t d3 = {aabr._max.x(), aabr._min.y()};
-        transform(d0);
-        transform(d1);
-        transform(d2);
-        transform(d3);
-        aabr._min.x() = min(d0.x(), d1.x(), d2.x(), d3.x());
-        aabr._min.y() = min(d0.y(), d1.y(), d2.y(), d3.y());
-        aabr._max.x() = max(d0.x(), d1.x(), d2.x(), d3.x());
-        aabr._max.y() = max(d0.y(), d1.y(), d2.y(), d3.y());
+        return {
+            vector.x() * rows[0][0] + vector.y() * rows[1][0] + rows[2][0],
+            vector.x() * rows[0][1] + vector.y() * rows[1][1] + rows[2][1],
+        };
     }
 
     /** Read-write reference to a row of the Xform2's internal matrix. */

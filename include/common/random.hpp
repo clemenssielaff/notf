@@ -3,8 +3,8 @@
 #include <string>
 
 #include "common/float.hpp"
-#include "randutils/randutils.hpp"
 #include "common/meta.hpp"
+#include "randutils/randutils.hpp"
 
 namespace notf {
 
@@ -25,7 +25,7 @@ Type random_number(const Type from, const Type to)
 template <typename Real, ENABLE_IF_REAL(Real)>
 Real random_radian()
 {
-    return random_number(-PI, PI);
+    return random_number(-pi<Real>(), pi<Real>());
 }
 
 /** Generates a random string.

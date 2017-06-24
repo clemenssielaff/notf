@@ -11,19 +11,17 @@
 
 namespace notf {
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-variable"
-#pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
-#endif
-const long double QUARTER_PI = 0.785398163397448309615660845819875721049292349843776455243l;
-const long double HALF_PI    = 1.570796326794896619231321691639751442098584699687552910487l;
-const long double PI         = 3.141592653589793238462643383279502884197169399375105820975l;
-const long double TWO_PI     = 6.283185307179586476925286766559005768394338798750211641949l;
-const long double KAPPA      = 0.552284749830793398402251632279597438092895833835930764235l;
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
+namespace detail {
+constexpr long double PI    = 3.141592653589793238462643383279502884197169399375105820975l;
+constexpr long double KAPPA = 0.552284749830793398402251632279597438092895833835930764235l;
+} // namespace detail
+
+template <typename Real = long double>
+constexpr Real pi() { return static_cast<Real>(detail::PI); }
+
+/** Length of a bezier control vector to draw a circle with radius 1. */
+template <typename Real = long double>
+constexpr Real kappa() { return static_cast<Real>(detail::KAPPA); }
 
 using std::abs;
 using std::sqrt;
@@ -85,11 +83,11 @@ inline Real acos(Real&& value) { return std::acos(clamp(std::forward<Real>(value
 
 /** Degree to Radians. */
 template <typename Real>
-inline Real deg_to_rad(Real&& degrees) { return degrees * (PI / 180.l); }
+inline Real deg_to_rad(Real&& degrees) { return degrees * (detail::PI / 180.l); }
 
 /** Degree to Radians. */
 template <typename Real>
-inline Real rad_to_deg(Real&& radians) { return radians * (180.l / PI); }
+inline Real rad_to_deg(Real&& radians) { return radians * (180.l / detail::PI); }
 
 /** Normalize Radians to a value within [-pi, pi]. */
 template <typename Real>
@@ -98,8 +96,8 @@ inline Real norm_angle(Real alpha)
     if (!is_real(alpha)) {
         throw std::logic_error("Cannot normalize an invalid number");
     }
-    const float modulo = fmod(alpha, TWO_PI);
-    return modulo >= 0 ? modulo : TWO_PI + modulo;
+    const float modulo = fmod(alpha, detail::PI * 2);
+    return modulo >= 0 ? modulo : (detail::PI * 2) + modulo;
 }
 
 /** Save division, throws a std::logic_error if the divisor is 0. */

@@ -476,7 +476,7 @@ SCENARIO("Vector2s can be modified", "[common][vector2]")
 
         THEN("vector2s will be rotated 90degrees counter-clockwise")
         {
-            REQUIRE(norm_angle(random_f.angle_to(ortho_random_f)) == approx(static_cast<float>(HALF_PI), precision_low<float>()));
+            REQUIRE(norm_angle(random_f.angle_to(ortho_random_f)) == approx(pi<float>() / 2, precision_low<float>()));
             REQUIRE(ortho_random_i.x() == -random_i.y());
             REQUIRE(ortho_random_i.y() == random_i.x());
         }

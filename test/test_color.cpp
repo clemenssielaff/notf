@@ -49,7 +49,7 @@ SCENARIO("Colors can be constructed from HSL values", "[common][color]")
 {
     WHEN("a color is constructed from HSL value")
     {
-        Color hsl_1 = Color::from_hsl(static_cast<float>(QUARTER_PI), 0.33f, 0.71f);
+        Color hsl_1 = Color::from_hsl(pi<float>() / 4, 0.33f, 0.71f);
 
         THEN("it has the correct RGB value")
         {

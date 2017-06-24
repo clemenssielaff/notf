@@ -147,6 +147,7 @@ public: // methods
 
 };
 
+#if 0
 int main(int argc, char* argv[])
 {
     ApplicationInfo app_info;
@@ -167,3 +168,4 @@ int main(int argc, char* argv[])
 
     return app.exec();
 }
+#endif

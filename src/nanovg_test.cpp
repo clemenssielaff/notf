@@ -150,8 +150,8 @@ public:
 
         // hue circle
         for (int i = 0; i < 6; i++) {
-            float a0 = static_cast<float>(i) / 6.0f * TWO_PI - aeps;
-            float a1 = static_cast<float>(i + 1) / 6.0f * TWO_PI + aeps;
+            float a0 = static_cast<float>(i) / 6.0f * (pi<float>() * 2) - aeps;
+            float a1 = static_cast<float>(i + 1) / 6.0f * (pi<float>() * 2) + aeps;
             painter.begin_path();
             painter.arc(rect.x(), rect.y(), inner_radius, a0, a1, Painter::Winding::CLOCKWISE);
             painter.arc(rect.x(), rect.y(), outer_radius, a1, a0, Painter::Winding::COUNTERCLOCKWISE);
@@ -176,7 +176,7 @@ public:
         // Selector
         painter.push_state();
         painter.translate(rect.center());
-        painter.rotate(hue * TWO_PI);
+        painter.rotate(hue * (pi<float>() * 2));
 
         // marker on circle
         painter.begin_path();
@@ -198,10 +198,10 @@ public:
 
         // center triangle
         {
-            const float ax = cosf(120.0f / 180.0f * PI) * r;
-            const float ay = sinf(120.0f / 180.0f * PI) * r;
-            const float bx = cosf(-120.0f / 180.0f * PI) * r;
-            const float by = sinf(-120.0f / 180.0f * PI) * r;
+            const float ax = cosf(120.0f / 180.0f * pi<float>()) * r;
+            const float ay = sinf(120.0f / 180.0f * pi<float>()) * r;
+            const float bx = cosf(-120.0f / 180.0f * pi<float>()) * r;
+            const float by = sinf(-120.0f / 180.0f * pi<float>()) * r;
             painter.begin_path();
             painter.move_to(r, 0);
             painter.line_to(ax, ay);
@@ -210,7 +210,7 @@ public:
 
             Vector2f start_pos{r, 0};
             Vector2f end_pos{ax, ay};
-            Color start_color = Color::from_hsl(hue * TWO_PI, 1.0f, 0.5f, 1);
+            Color start_color = Color::from_hsl(hue * (pi<float>() * 2), 1.0f, 0.5f, 1);
             Color end_color   = Color(1, 1, 1, 1.);
             painter.set_fill_paint(Paint::create_linear_gradient(start_pos, end_pos, start_color, end_color));
             painter.fill();
@@ -226,8 +226,8 @@ public:
         }
 
         // Select circle on triangle
-        const float ax = cosf(120.0f / 180.0f * PI) * r * 0.3f;
-        const float ay = sinf(120.0f / 180.0f * PI) * r * 0.4f;
+        const float ax = cosf(120.0f / 180.0f * pi<float>()) * r * 0.3f;
+        const float ay = sinf(120.0f / 180.0f * pi<float>()) * r * 0.4f;
         painter.set_stroke_width(2);
         painter.begin_path();
         painter.add_circle(ax, ay, 5);
@@ -256,7 +256,7 @@ public:
         float ry = rect.top() + ey;
         float dx, dy, d;
         float br    = (ex < ey ? ex : ey) * 0.5f;
-        float blink = 1 - pow(sinf(t * 0.5f), 200) * 0.8f;
+        float blink = 1.f - powf(sinf(t * 0.5f), 200.f) * 0.8f;
 
         Paint bg = Paint::create_linear_gradient(Vector2f{rect.left(), rect.top() + rect.get_height() * 0.5f},
                                                  Vector2f{rect.left() + rect.get_width() * 0.1f, rect.top() + rect.get_height()},
@@ -325,7 +325,7 @@ public:
 
         samples[0] = (1 + sinf(t * 1.2345f + cosf(t * 0.33457f) * 0.44f)) * 0.5f;
         samples[1] = (1 + sinf(t * 0.68363f + cosf(t * 1.3f) * 1.55f)) * 0.5f;
-        samples[2] = (1 + sinf(t * 1.1642f + cosf(t * 0.33457) * 1.24f)) * 0.5f;
+        samples[2] = (1 + sinf(t * 1.1642f + cosf(t * 0.33457f) * 1.24f)) * 0.5f;
         samples[3] = (1 + sinf(t * 0.56345f + cosf(t * 1.63f) * 0.14f)) * 0.5f;
         samples[4] = (1 + sinf(t * 1.6245f + cosf(t * 0.254f) * 0.3f)) * 0.5f;
         samples[5] = (1 + sinf(t * 0.345f + cosf(t * 0.03f) * 0.6f)) * 0.5f;
@@ -389,7 +389,7 @@ public:
     void drawSpinner(Painter& painter, const Vector2f& center, const float radius, float t) const
     {
         float a0 = 0.0f + t * 6;
-        float a1 = PI + t * 6;
+        float a1 = pi<float>() + t * 6;
         float r0 = radius;
         float r1 = radius * 0.75f;
         float ax, ay, bx, by;

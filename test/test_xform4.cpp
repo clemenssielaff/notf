@@ -19,6 +19,13 @@ inline void compare_mat4(const notf::Xform4f& my, const mat4& their)
     }
 }
 
+inline void compare_vec4(const notf::Vector4f& my, const vec4& their)
+{
+    for (size_t col = 0; col < 4; ++col) {
+        REQUIRE(std::abs(my[col] - their[static_cast<int>(col)]) < precision_high<float>());
+    }
+}
+
 glm::mat4 to_glm_mat4(const notf::Xform4f& matrix)
 {
     glm::mat4 result;
@@ -165,6 +172,19 @@ SCENARIO("Xform4 base tests", "[common][xform4]")
             const Xform4f mine = a * b;
             mat4 theirs        = to_glm_mat4(a) * to_glm_mat4(b);
             compare_mat4(mine, theirs);
+        }
+    }
+
+    WHEN("you want to transform with an Xform4")
+    {
+        THEN("you can transform a vector")
+        {
+            const Vector4f vec  = random_vector<Vector4f>();
+            const Xform4f xform = random_matrix<Xform4f>(-10, 10);
+
+            const Vector4f mine = xform.transform(vec);
+            glm::vec4 theirs = to_glm_mat4(xform) * glm::vec4(vec.x(), vec.y(), vec.z(), vec.w());
+            compare_vec4(mine, theirs);
         }
     }
 }
