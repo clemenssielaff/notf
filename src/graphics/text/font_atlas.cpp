@@ -230,6 +230,7 @@ std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<FitReques
 
 void FontAtlas::fill_rect(const Glyph::Rect& rect, const uchar* data)
 {
+//    assert(data); // FIXME: bug here with the linux NVIDIA drivers where the font atlas doesn't work => no text!
     if (rect.height == 0 || rect.width == 0 || !data) {
         return;
     }

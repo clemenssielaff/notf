@@ -392,7 +392,7 @@ void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size
             item_size.height                 = max(item_size.height, vertical.get_min());
             const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.height, available_height);
             const float applied_offset       = reverse ? current_offset - item_size.width : current_offset;
-            _set_layout_xform(child, Xform2f::translation({applied_offset, cross_offset + applied_cross_offset}));
+            _set_layout_xform(child, Xform4f::translation(Vector2f{applied_offset, cross_offset + applied_cross_offset}));
             ScreenItem::_set_grant(child, item_size);
         }
         else { // vertical
@@ -404,7 +404,7 @@ void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size
             item_size.width                  = max(item_size.width, horizontal.get_min());
             const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.width, available_width);
             const float applied_offset       = reverse ? current_offset - item_size.height : current_offset;
-            _set_layout_xform(child, Xform2f::translation({cross_offset + applied_cross_offset, applied_offset}));
+            _set_layout_xform(child, Xform4f::translation(Vector2f{cross_offset + applied_cross_offset, applied_offset}));
             ScreenItem::_set_grant(child, item_size);
         }
 

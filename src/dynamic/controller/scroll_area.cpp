@@ -153,7 +153,7 @@ void ScrollArea::_update_scrollbar(float delta_y)
 
     const float current_y = m_scroll_container->get_xform<ScreenItem::Space::LOCAL>().get_translation().y();
     const float y         = min(0.f, max(overflow, current_y + delta_y));
-    m_scroll_container->set_local_xform(Xform2f::translation({0, y}));
+    m_scroll_container->set_local_xform(Xform4f::translation(Vector2f{0, y}));
 
     if (overflow <= -0.5f // there must at least be half a pixel to scroll in order for the bar to show up
         && abs(content_height) >= precision_high<float>()) {

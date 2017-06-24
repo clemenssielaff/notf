@@ -149,16 +149,16 @@ protected: // constructor ******************************************************
 public: // methods ****************************************************************************************************/
     /** ScreenItem's transformation in the requested space. */
     template <Space space>
-    const Xform2f& get_xform() const
+    const Xform4f& get_xform() const
     {
         static_assert(always_false<Space, space>{}, "Unsupported Space for ScreenItem::get_xform");
     }
 
     /** Recursive implementation to produce the ScreenItem's transformation in window space. */
-    Xform2f get_window_xform() const;
+    Xform4f get_window_xform() const;
 
     /** Updates the transformation of this ScreenItem. */
-    void set_local_xform(const Xform2f transform);
+    void set_local_xform(const Xform4f transform);
 
     /** The current Claim of this Item. */
     const Claim& get_claim() const { return m_claim; }
@@ -232,7 +232,7 @@ public: // signals *************************************************************
     /** Emitted, when the effective transform of this ScreenItem has changed.
      * @param New local transform.
      */
-    Signal<const Xform2f&> on_xform_changed;
+    Signal<const Xform4f&> on_xform_changed;
 
     /** Emitted when the visibility flag was changed by the user.
      * See `set_visible()` for details.
@@ -307,7 +307,7 @@ protected: // methods **********************************************************
     bool _set_size(const Size2f size);
 
     /** Updates the layout transformation of this Item. */
-    void _set_layout_xform(const Xform2f transform);
+    void _set_layout_xform(const Xform4f transform);
 
     /** Sets a new Scissor for this ScreenItem. */
     void _set_scissor(const Layout* scissor_layout);
@@ -329,30 +329,30 @@ protected: // static methods ***************************************************
     }
 
     /** Allows ScreenItem subclasses to change each other's layout transformation. */
-    static void _set_layout_xform(ScreenItem* screen_item, const Xform2f xform)
+    static void _set_layout_xform(ScreenItem* screen_item, const Xform4f xform)
     {
         return screen_item->_set_layout_xform(std::move(xform));
     }
 
 private: // methods ***************************************************************************************************/
     /** Calculates the transformation of this ScreenItem relative to its Window. */
-    void _get_window_transform(Xform2f& result) const;
+    void _get_window_transform(Xform4f& result) const;
 
     /** Updates the ScreenItem's effective transform if either the layout- or local transform changed. */
     void _update_effective_transform();
 
 private: // fields ****************************************************************************************************/
     /** 2D transformation of this ScreenItem as determined by its parent Layout. */
-    Xform2f m_layout_transform;
+    Xform4f m_layout_transform;
 
     /** 2D transformation of this ScreenItem on top of the layout transformation. */
-    Xform2f m_local_transform;
+    Xform4f m_local_transform;
 
     /** effective 2d transformation.
      * This value could be recalculated on-the-fly with `m_layout_transform * m_local_transform`, but usually it is
      * changed once and read many times which is why we store it.
      */
-    Xform2f m_effective_transform;
+    Xform4f m_effective_transform;
 
     /** The Claim of a ScreenItem determines how much space it receives in the parent Layout.
      * Claim values are in untransformed local space.
@@ -403,13 +403,13 @@ private: // fields *************************************************************
 /**********************************************************************************************************************/
 
 template <>
-inline const Xform2f& ScreenItem::get_xform<ScreenItem::Space::LOCAL>() const { return m_local_transform; }
+inline const Xform4f& ScreenItem::get_xform<ScreenItem::Space::LOCAL>() const { return m_local_transform; }
 
 template <>
-inline const Xform2f& ScreenItem::get_xform<ScreenItem::Space::LAYOUT>() const { return m_layout_transform; }
+inline const Xform4f& ScreenItem::get_xform<ScreenItem::Space::LAYOUT>() const { return m_layout_transform; }
 
 template <>
-inline const Xform2f& ScreenItem::get_xform<ScreenItem::Space::PARENT>() const { return m_effective_transform; }
+inline const Xform4f& ScreenItem::get_xform<ScreenItem::Space::PARENT>() const { return m_effective_transform; }
 
 /**********************************************************************************************************************/
 
@@ -419,6 +419,6 @@ inline const Xform2f& ScreenItem::get_xform<ScreenItem::Space::PARENT>() const {
  * @return          Transformation.
  * @throw           std::runtime_error, if the two ScreenItems do not share a common ancestor.
  */
-Xform2f transformation_between(const ScreenItem* source, const ScreenItem* target);
+Xform4f transformation_between(const ScreenItem* source, const ScreenItem* target);
 
 } // namespace notf

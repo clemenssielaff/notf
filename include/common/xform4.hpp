@@ -2,6 +2,7 @@
 
 #include "common/vector2.hpp"
 #include "common/vector4.hpp"
+#include "common/xform2.hpp"
 
 #include <emmintrin.h>
 
@@ -280,8 +281,8 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, BASE_FOR_PARTIAL, true>
         vector_t inv2(vec0 * fac1 - vec1 * fac3 + vec3 * fac5);
         vector_t inv3(vec0 * fac2 - vec1 * fac4 + vec2 * fac5);
 
-        vector_t signA(+1, -1, +1, -1);
-        vector_t signB(-1, +1, -1, +1);
+        vector_t signA(value_t(+1), value_t(-1), value_t(+1), value_t(-1));
+        vector_t signB(value_t(-1), value_t(+1), value_t(-1), value_t(+1));
         _Xform4 inverse(inv0 * signA, inv1 * signB, inv2 * signA, inv3 * signB);
 
         vector_t row0(inverse[0][0], inverse[1][0], inverse[2][0], inverse[3][0]);
@@ -343,7 +344,7 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, BASE_FOR_PARTIAL, true>
      */
     _RealVector2<value_t>& transform(_RealVector2<value_t>& vector) const
     {
-        vector = transform(vector);
+        vector = transform(const_cast<const _RealVector2<value_t>&>(vector));
         return vector;
     }
 
@@ -353,6 +354,12 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, BASE_FOR_PARTIAL, true>
         _RealVector4<value_t> result = {vector.x(), vector.y(), value_t(0), value_t(1)};
         transform(result);
         return _RealVector2<value_t>(result.x(), result.y());
+    }
+
+    _Xform2<value_t> to_xform2() const
+    {
+        const auto t = get_translation(); // TODO: _Xform4::to_xform2();
+        return _Xform2<value_t>::translation(_RealVector2<value_t>(t.x(), t.y()));
     }
 };
 

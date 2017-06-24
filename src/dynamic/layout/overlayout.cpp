@@ -156,7 +156,7 @@ void Overlayout::_relayout()
             assert(m_vertical_alignment == AlignVertical::BOTTOM);
             y = grant.height - m_padding.bottom - item_size.height;
         }
-        _set_layout_xform(screen_item, Xform2f::translation({x, y}));
+        _set_layout_xform(screen_item, Xform4f::translation(Vector2f{x, y}));
     }
 
     new_size.width += m_padding.width();
