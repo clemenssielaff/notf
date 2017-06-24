@@ -343,22 +343,16 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, BASE_FOR_PARTIAL, true>
      */
     _RealVector2<value_t>& transform(_RealVector2<value_t>& vector) const
     {
-        const _RealVector2<value_t> mov0 = _RealVector2<value_t>::fill(vector[0]);
-        const _RealVector2<value_t> mov1 = _RealVector2<value_t>::fill(vector[1]);
-        const _RealVector2<value_t> mul0 = _RealVector2<value_t>(data[0][0], data[0][1]) * mov0;
-        const _RealVector2<value_t> mul1 = _RealVector2<value_t>(data[1][0], data[1][1]) * mov1;
-        const _RealVector2<value_t> add0 = mul0 + mul1;
-
-        vector = add0 + _RealVector2<value_t>(data[3][0], data[3][1]);
+        vector = transform(vector);
         return vector;
     }
 
     /** Transforms a given Vector and returns a new value. */
     _RealVector2<value_t> transform(const _RealVector2<value_t>& vector) const
     {
-        _RealVector2<value_t> result = vector;
+        _RealVector4<value_t> result = {vector.x(), vector.y(), value_t(0), value_t(1)};
         transform(result);
-        return result;
+        return _RealVector2<value_t>(result.x(), result.y());
     }
 };
 
