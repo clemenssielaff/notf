@@ -25,7 +25,7 @@ struct _RealVector4<float, false> : public _RealVector4<float, true> {
     /** Perfect forwarding constructor. */
     template <typename... T>
     _RealVector4(T&&... ts)
-        : super{std::forward<T>(ts)...} {}
+        : super(std::forward<T>(ts)...) {}
 
     // SIMD specializations *******************************************************************************************/
 

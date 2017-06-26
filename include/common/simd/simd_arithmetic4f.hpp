@@ -17,7 +17,7 @@ struct Arithmetic<SPECIALIZATION, float, 4, false> : public Arithmetic<SPECIALIZ
     /** Perfect forwarding constructor. */
     template <typename... T>
     Arithmetic(T&&... ts)
-        : super{std::forward<T>(ts)...} {}
+        : super(std::forward<T>(ts)...) {}
 
     // SIMD specializations *******************************************************************************************/
 

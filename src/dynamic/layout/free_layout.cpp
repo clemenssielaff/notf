@@ -79,7 +79,7 @@ void FreeLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
         const ScreenItem* screen_item = item->get_screen_item();
         if (screen_item && screen_item->get_aabr<Space::PARENT>().contains(local_pos)) {
             Vector2f item_pos = local_pos;
-            screen_item->get_xform<Space::PARENT>().get_inverse().transform(item_pos);
+            screen_item->get_xform<Space::PARENT>().invert().transform(item_pos);
             ScreenItem::_get_widgets_at(screen_item, item_pos, result);
         }
     }

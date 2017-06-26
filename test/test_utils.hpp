@@ -66,7 +66,7 @@ inline T random_matrix(const typename T::value_t minimum = lowest_tested<typenam
 template <typename Real>
 inline _Xform2<Real> random_xform2(const Real min_trans, const Real max_trans, const Real min_scale, const Real max_scale)
 {
-    _Xform2<Real> result = _Xform2<Real>::scale(random_number(min_scale, max_scale));
+    _Xform2<Real> result = _Xform2<Real>::scaling(random_number(min_scale, max_scale));
     result *= _Xform2<Real>::rotation(random_radian<Real>());
     result *= _Xform2<Real>::translation(_RealVector2<Real>(random_number(min_trans, max_trans),
                                                             random_number(min_trans, max_trans)));

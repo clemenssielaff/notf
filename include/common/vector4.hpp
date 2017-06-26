@@ -11,11 +11,11 @@ namespace notf {
 //*********************************************************************************************************************/
 
 /** 4-dimensional mathematical Vector containing real numbers. */
-template <typename Real, bool BASE_FOR_PARTIAL = false, ENABLE_IF_REAL(Real)>
-struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4, BASE_FOR_PARTIAL> {
+template <typename Real, bool SIMD_SPECIALIZATION = false, ENABLE_IF_REAL(Real)>
+struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4, SIMD_SPECIALIZATION> {
 
     // explitic forwards
-    using super   = detail::Arithmetic<_RealVector4<Real>, Real, 4, BASE_FOR_PARTIAL>;
+    using super   = detail::Arithmetic<_RealVector4<Real>, Real, 4, SIMD_SPECIALIZATION>;
     using value_t = typename super::value_t;
     using super::data;
 

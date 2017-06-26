@@ -4,64 +4,70 @@
 #include <assert.h>
 #include <iosfwd>
 
-#include "common/float.hpp"
-#include "common/hash.hpp"
-#include "common/meta.hpp"
 #include "common/vector2.hpp"
 
 namespace notf {
 
 //*********************************************************************************************************************/
 
-/** A 2D (row-major) transformation matrix with 3x3 components.
- * Only the first two columns are actually stored though, the last column is implicit.
- * [[a, b, 0]
- *  [c, d, 0]
- *  [e, f, 1]]
+/** A 2D transformation matrix with 3x3 components.
+ * Only the first two rows are actually stored though, the last row is implicit.
+ * [a, c, e,
+ *  b, d, f
+ *  0, 0, 1]
  */
-template <typename Real, ENABLE_IF_REAL(Real)>
-struct _Xform2 {
 
-    /* Types **********************************************************************************************************/
+template <typename Real, bool SIMD_SPECIALIZATION = false, ENABLE_IF_REAL(Real)>
+struct _Xform2 : public detail::Arithmetic<_Xform2<Real, SIMD_SPECIALIZATION, true>, _RealVector2<Real>, 3, SIMD_SPECIALIZATION> {
 
-    using value_t = Real;
-
-    using vector_t = _RealVector2<value_t>;
-
-    /* Fields *********************************************************************************************************/
-
-    /** First two columns of each Matrix row. */
-    std::array<vector_t, 3> rows;
+    // explitic forwards
+    using super    = detail::Arithmetic<_Xform2<Real>, _RealVector2<Real>, 3, SIMD_SPECIALIZATION>;
+    using vector_t = _RealVector2<Real>;
+    using value_t  = Real;
+    using super::data;
 
     /* Constructors ***************************************************************************************************/
 
     /** Default (non-initializing) constructor so this struct remains a POD */
     _Xform2() = default;
 
+    /** Value constructor defining the diagonal of the matrix. */
+    explicit _Xform2(const value_t a)
+        : super{vector_t{a, 0},
+                vector_t{0, a},
+                vector_t{0, 0}}
+    {
+    }
+
+    /** Column-wise constructor of the matrix. */
+    _Xform2(const vector_t a, const vector_t b, const vector_t c)
+        : super{std::move(a),
+                std::move(b),
+                std::move(c)}
+    {
+    }
+
+    /** Element-wise constructor. */
+    _Xform2(const value_t a, const value_t b,
+            const value_t c, const value_t d,
+            const value_t e, const value_t f)
+        : super{vector_t{a, b},
+                vector_t{c, d},
+                vector_t{e, f}}
+    {
+    }
+
     /* Static Constructors ********************************************************************************************/
 
     /** The identity matrix. */
-    static _Xform2 identity()
-    {
-        return _Xform2{{{{1, 0},
-                         {0, 1},
-                         {0, 0}}}};
-    }
-
-    /** The zero matrix. */
-    static _Xform2 zero()
-    {
-        return _Xform2{{{{0, 0},
-                         {0, 0},
-                         {0, 0}}}};
-    }
+    static _Xform2 identity() { return _Xform2(1); }
 
     /** A translation matrix. */
     static _Xform2 translation(vector_t translation)
     {
-        return _Xform2{{{{1, 0},
-                         {0, 1},
-                         std::move(translation)}}};
+        return _Xform2(vector_t(1, 0),
+                       vector_t(0, 1),
+                       std::move(translation));
     }
 
     /** A rotation matrix.
@@ -71,19 +77,19 @@ struct _Xform2 {
     {
         const value_t sine   = sin(radians);
         const value_t cosine = cos(radians);
-        return _Xform2{{{{cosine, sine},
-                         {-sine, cosine},
-                         {0, 0}}}};
+        return _Xform2(cosine, sine,
+                       -sine, cosine,
+                       0, 0);
     }
 
     /** A uniform scale matrix.
      * @param factor   Uniform scale factor.
      */
-    static _Xform2 scale(const value_t factor)
+    static _Xform2 scaling(const value_t factor)
     {
-        return _Xform2{{{{factor, 0},
-                         {0, factor},
-                         {0, 0}}}};
+        return _Xform2(factor, 0,
+                       0, factor,
+                       0, 0);
     }
 
     /** A non-uniform scale matrix.
@@ -91,11 +97,11 @@ struct _Xform2 {
      * horizontal axis or (-1, -1) for a point-reflection with respect to the origin.
      * @param vector   Non-uniform scale vector.
      */
-    static _Xform2 scale(const vector_t& vec)
+    static _Xform2 scaling(const vector_t& vec)
     {
-        return _Xform2{{{{vec.x, 0},
-                         {0, vec.y},
-                         {0, 0}}}};
+        return _Xform2(vec[0], 0,
+                       0, vec[1],
+                       0, 0);
     }
 
     /** A non-uniform skew matrix.
@@ -103,141 +109,125 @@ struct _Xform2 {
      */
     static _Xform2 skew(const vector_t& vec)
     {
-        return _Xform2{{{{1, tan(vec.y)},
-                         {tan(vec.x), 1},
-                         {0, 0}}}};
+        return _Xform2(1, tan(vec[1]),
+                       tan(vec[0]), 1,
+                       0, 0);
     }
 
     /*  Inspection  ***************************************************************************************************/
 
     /** Returns the translation part of this Xform. */
-    const vector_t& get_translation() const { return rows[2]; }
+    const vector_t& get_translation() const { return data[2]; }
+
+    /** Returns the rotational part of this transformation.
+     * Only works if this is actually a pure rotation matrix!
+     * Use `is_rotation` to test, if in doubt.
+     * @return  Applied rotation in radians.
+     */
+    value_t get_rotation() const
+    {
+        try {
+            return atan2(data[0][1], data[1][1]);
+        } catch (std::domain_error&) {
+            return 0; // in case both values are zero
+        }
+    }
+
+    /** Checks whether the matrix is a pure rotation matrix. */
+    bool is_rotation() const
+    {
+        return (1 - get_determinant()) < precision_high<value_t>();
+    }
 
     /** Scale factor along the x-axis. */
-    value_t get_scale_x() const { return sqrt(rows[0][0] * rows[0][0] + rows[1][0] * rows[1][0]); }
+    value_t get_scale_x() const { return sqrt(data[0][0] * data[0][0] + data[0][1] * data[0][1]) * sign(data[0][0]); }
 
     /** Scale factor along the y-axis. */
-    value_t get_scale_y() const { return sqrt(rows[0][1] * rows[0][1] + rows[1][1] * rows[1][1]); }
+    value_t get_scale_y() const { return sqrt(data[1][0] * data[1][0] + data[1][1] * data[1][1]) * sign(data[1][1]); }
 
     /** Calculates the determinant of the transformation matrix. */
-    value_t get_determinant() const { return (rows[0][0] * rows[1][1]) - (rows[1][0] * rows[0][1]); }
-
-    /** Read-only reference to a row of the Xform2's internal matrix. */
-    template <typename Row, ENABLE_IF_INT(Row)>
-    const vector_t& operator[](const Row row) const
-    {
-        assert(0 <= row && row <= 2);
-        return rows[row];
-    }
-
-    /** Read-only pointer to the Xform2's internal storage. */
-    const value_t* as_ptr() const { return &rows[0][0]; }
-
-    /** Operators *****************************************************************************************************/
-
-    /** Tests whether two Xform2s are equal. */
-    bool operator==(const _Xform2& other) const { return rows == other.rows; }
-
-    /** Tests whether two Xform2s are not equal. */
-    bool operator!=(const _Xform2& other) const { return rows != other.rows; }
-
-    /** Returns True, if other and self are approximately the same Xform2.
-     * @param other     Xform2 to test against.
-     * @param epsilon   Maximal allowed distance between the individual entries in the transform matrix.
-     */
-    bool is_approx(const _Xform2& other, const value_t epsilon = precision_high<value_t>()) const
-    {
-        for (size_t i = 0; i < 6; ++i) {
-            if (abs(as_ptr()[i] - other.as_ptr()[i]) > epsilon) {
-                return false;
-            }
-        }
-        return true;
-    }
+    value_t get_determinant() const { return (data[0][0] * data[1][1]) - (data[1][0] * data[0][1]); }
 
     /** Modifiers *****************************************************************************************************/
 
-    /** Translates the transformation in-place by a given delta vector. */
-    _Xform2& translate(const vector_t& delta) { return premult(_Xform2::translation(delta)); }
-
-    /** Rotates the transformation in-place by a given angle in radians. */
-    _Xform2& rotate(const value_t radians) { return premult(_Xform2::rotation(radians)); }
-
-    /** Multiplication of this Matrix with another. */
+    /** Concatenation of two transformation matrices. */
     _Xform2 operator*(const _Xform2& other) const
     {
-        _Xform2 result = *this;
-        return result *= other;
+        _Xform2 result;
+        result[0][0] = data[0][0] * other[0][0] + data[1][0] * other[0][1],
+        result[0][1] = data[0][1] * other[0][0] + data[1][1] * other[0][1],
+        result[1][0] = data[0][0] * other[1][0] + data[1][0] * other[1][1],
+        result[1][1] = data[0][1] * other[1][0] + data[1][1] * other[1][1],
+        result[2][0] = data[0][0] * other[2][0] + data[1][0] * other[2][1] + data[2][0],
+        result[2][1] = data[0][1] * other[2][0] + data[1][1] * other[2][1] + data[2][1];
+        return result;
     }
 
     /** Applies another Xform to this one in-place. */
     _Xform2& operator*=(const _Xform2& other)
     {
-        value_t* this_array        = this->as_ptr();
-        const value_t* other_array = other.as_ptr();
-
-        const value_t t0 = this_array[0] * other_array[0] + this_array[1] * other_array[2];
-        const value_t t2 = this_array[2] * other_array[0] + this_array[3] * other_array[2];
-        const value_t t4 = this_array[4] * other_array[0] + this_array[5] * other_array[2] + other_array[4];
-
-        this_array[1] = this_array[0] * other_array[1] + this_array[1] * other_array[3];
-        this_array[3] = this_array[2] * other_array[1] + this_array[3] * other_array[3];
-        this_array[5] = this_array[4] * other_array[1] + this_array[5] * other_array[3] + other_array[5];
-        this_array[0] = t0;
-        this_array[2] = t2;
-        this_array[4] = t4;
+        *this = *this * other;
         return *this;
     }
 
-    /** Premultiplies the other Xform with this one in-place (same as `*this = other * this`). */
+    /** Premultiplies the other transform matrix with this one. */
+    _Xform2 premult(const _Xform2& other) const
+    {
+        return other * *this;
+    }
+
+    /** Premultiplies the other transform matrix with this one in-place. */
     _Xform2& premult(const _Xform2& other)
     {
-        value_t* this_array        = this->as_ptr();
-        const value_t* other_array = other.as_ptr();
-
-        const value_t t0 = other_array[0] * this_array[0] + other_array[1] * this_array[2];
-        const value_t t1 = other_array[0] * this_array[1] + other_array[1] * this_array[3];
-        const value_t t3 = other_array[2] * this_array[1] + other_array[3] * this_array[3];
-
-        this_array[4] = other_array[4] * this_array[0] + other_array[5] * this_array[2] + this_array[4];
-        this_array[5] = other_array[4] * this_array[1] + other_array[5] * this_array[3] + this_array[5];
-        this_array[2] = other_array[2] * this_array[0] + other_array[3] * this_array[2];
-        this_array[0] = t0;
-        this_array[1] = t1;
-        this_array[3] = t3;
+        *this = other * *this;
         return *this;
     }
 
-    /** Premultiplies the other Xform with this one (same as `*this = other * this`). */
-    _Xform2 get_premult(const _Xform2& other) const
-    {
-        _Xform2 result = *this;
-        return result.premult(other);
-    }
+    /** Translates the transformation by a given delta vector. */
+    _Xform2 translate(const vector_t delta) const { return _Xform2::translation(std::move(delta)) * *this; }
 
-    /** Inverts this Xform2 in-place. */
-    _Xform2& invert()
-    {
-        *this = (*this).get_inverse();
-        return *this;
-    }
+    /** Translates the transformation by a given delta vector in-place. */
+    _Xform2& translate(const vector_t delta) { return premult(_Xform2::translation(std::move(delta))); }
+
+    /** Rotates the transformation by a given angle in radians in-place. */
+    _Xform2 rotate(const value_t radians) const { return _Xform2::rotation(radians) * *this; }
+
+    /** Rotates the transformation by a given angle in radians in-place. */
+    _Xform2& rotate(const value_t radians) { return premult(_Xform2::rotation(radians)); }
 
     /** Returns the inverse of this Xform2. */
-    _Xform2 get_inverse() const
+    _Xform2 invert() const
     {
         const value_t det = get_determinant();
         if (abs(det) <= precision_high<value_t>()) {
             return _Xform2::identity();
         }
         const value_t invdet = 1 / det;
+
         _Xform2 result;
-        result[0][0] = +(rows[1][1]) * invdet;
-        result[0][1] = -(rows[0][1]) * invdet;
-        result[1][0] = -(rows[1][0]) * invdet;
-        result[1][1] = +(rows[0][0]) * invdet;
-        result[2][0] = +(rows[1][0] * rows[2][1] - rows[1][1] * rows[2][0]) * invdet;
-        result[2][1] = -(rows[0][0] * rows[2][1] - rows[0][1] * rows[2][0]) * invdet;
+        result[0][0] = +(data[1][1]) * invdet;
+        result[1][0] = -(data[1][0]) * invdet;
+        result[2][0] = +(data[1][0] * data[2][1] - data[2][0] * data[1][1]) * invdet;
+        result[0][1] = -(data[0][1]) * invdet;
+        result[1][1] = +(data[0][0]) * invdet;
+        result[2][1] = -(data[0][0] * data[2][1] - data[2][0] * data[0][1]) * invdet;
         return result;
+    }
+
+    /** Inverts this Xform2 in-place. */
+    _Xform2& invert()
+    {
+        *this = const_cast<const _Xform2*>(this)->invert();
+        return *this;
+    }
+
+    /** Transforms a given Vector and returns a new value. */
+    vector_t transform(const vector_t& vector) const
+    {
+        return {
+            data[0][0] * vector[0] + data[1][0] * vector[1] + data[2][0],
+            data[0][1] * vector[0] + data[1][1] * vector[1] + data[2][1],
+        };
     }
 
     /** Transforms a given Vector in-place.
@@ -246,31 +236,11 @@ struct _Xform2 {
     vector_t& transform(vector_t& vector) const
     {
         vector = {
-            vector.x() * rows[0][0] + vector.y() * rows[1][0] + rows[2][0],
-            vector.x() * rows[0][1] + vector.y() * rows[1][1] + rows[2][1],
+            data[0][0] * vector[0] + data[1][0] * vector[1] + data[2][0],
+            data[0][1] * vector[0] + data[1][1] * vector[1] + data[2][1],
         };
         return vector;
     }
-
-    /** Transforms a given Vector and returns a new value. */
-    vector_t transform(const vector_t& vector) const
-    {
-        return {
-            vector.x() * rows[0][0] + vector.y() * rows[1][0] + rows[2][0],
-            vector.x() * rows[0][1] + vector.y() * rows[1][1] + rows[2][1],
-        };
-    }
-
-    /** Read-write reference to a row of the Xform2's internal matrix. */
-    template <typename Row, ENABLE_IF_INT(Row)>
-    vector_t& operator[](const Row row)
-    {
-        assert(0 <= row && row <= 2);
-        return rows[row];
-    }
-
-    /** Read-write pointer to the Xform2's internal storage. */
-    value_t* as_ptr() { return &rows[0][0]; }
 };
 
 //*********************************************************************************************************************/

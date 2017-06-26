@@ -198,8 +198,6 @@ set(HEADER_FILES
     include/utils/print_notf.hpp
     include/utils/range.hpp
     include/utils/reverse_iterator.hpp
-    test/catch.hpp
-    test/test_utils.hpp
     thirdparty/randutils/randutils.hpp
 )
 
@@ -223,6 +221,10 @@ set(TEST_FILES
         test/test_vector2.cpp
         test/test_xform2.cpp
         test/test_xform4.cpp
+
+        test/catch.hpp
+        test/test_utils.hpp
+        test/glm_utils.hpp
 )
 LIST(REMOVE_ITEM TEST_FILES src/main.cpp src/scratch.cpp)
 

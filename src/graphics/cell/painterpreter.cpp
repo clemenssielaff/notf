@@ -107,7 +107,7 @@ void Painterpreter::_paint(Cell& cell)
             }
             else {
                 auto pos = m_points.back().pos;
-                _get_current_state().xform.get_inverse().transform(pos);
+                _get_current_state().xform.invert().transform(pos);
                 stylus = pos;
             }
             const BezierCommand& cmd = map_command<BezierCommand>(commands, index);
@@ -1218,7 +1218,7 @@ void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const 
         frag.type = CellCanvas::ShaderVariables::Type::GRADIENT;
     }
 
-    const Xform2f xinv  = paint.xform.get_inverse();
+    const Xform2f xinv  = paint.xform.invert();
     frag.paint_2x2[0]   = xinv[0][0];
     frag.paint_2x2[1]   = xinv[0][1];
     frag.paint_2x2[2]   = xinv[1][0];

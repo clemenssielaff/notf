@@ -392,7 +392,7 @@ void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size
             item_size.height                 = max(item_size.height, vertical.get_min());
             const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.height, available_height);
             const float applied_offset       = reverse ? current_offset - item_size.width : current_offset;
-            _set_layout_xform(child, Xform4f::translation(Vector2f{applied_offset, cross_offset + applied_cross_offset}));
+            _set_layout_xform(child, Xform2f::translation(Vector2f{applied_offset, cross_offset + applied_cross_offset}));
             ScreenItem::_set_grant(child, item_size);
         }
         else { // vertical
@@ -404,7 +404,7 @@ void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size
             item_size.width                  = max(item_size.width, horizontal.get_min());
             const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.width, available_width);
             const float applied_offset       = reverse ? current_offset - item_size.height : current_offset;
-            _set_layout_xform(child, Xform4f::translation(Vector2f{cross_offset + applied_cross_offset, applied_offset}));
+            _set_layout_xform(child, Xform2f::translation(Vector2f{cross_offset + applied_cross_offset, applied_offset}));
             ScreenItem::_set_grant(child, item_size);
         }
 
@@ -448,7 +448,7 @@ void FlexLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
         const ScreenItem* screen_item = item->get_screen_item();
         if (screen_item && screen_item->get_aabr<Space::PARENT>().contains(local_pos)) {
             Vector2f item_pos = local_pos;
-            screen_item->get_xform<Space::PARENT>().get_inverse().transform(item_pos);
+            screen_item->get_xform<Space::PARENT>().invert().transform(item_pos);
             ScreenItem::_get_widgets_at(screen_item, item_pos, result);
         }
     }

@@ -4,11 +4,9 @@
 #include "common/vector4.hpp"
 #include "common/xform2.hpp"
 
-#include <emmintrin.h>
-
 namespace notf {
 
-/** A full 3D Transformation Matrix with 4x4 components.
+/** A full 3D Transformation matrix with 4x4 components.
  * [a, e, i, m
  *  b, f, j, n
  *  c, g, k, o
@@ -16,11 +14,11 @@ namespace notf {
  * Matrix layout is equivalent to glm's layout, which in turn is equivalent to GLSL's matrix layout for easy
  * compatiblity with OpenGL.
  */
-template <typename Real, bool BASE_FOR_PARTIAL = false, ENABLE_IF_REAL(Real)>
-struct _Xform4 : public detail::Arithmetic<_Xform4<Real, BASE_FOR_PARTIAL, true>, _RealVector4<Real>, 4, BASE_FOR_PARTIAL> {
+template <typename Real, bool SIMD_SPECIALIZATION = false, ENABLE_IF_REAL(Real)>
+struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, true>, _RealVector4<Real>, 4, SIMD_SPECIALIZATION> {
 
     // explitic forwards
-    using super    = detail::Arithmetic<_Xform4<Real>, _RealVector4<Real>, 4, BASE_FOR_PARTIAL>;
+    using super    = detail::Arithmetic<_Xform4<Real>, _RealVector4<Real>, 4, SIMD_SPECIALIZATION>;
     using vector_t = _RealVector4<Real>;
     using value_t  = Real;
     using super::data;
@@ -32,16 +30,19 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, BASE_FOR_PARTIAL, true>
 
     /** Value constructor defining the diagonal of the matrix. */
     explicit _Xform4(const value_t a)
-        : super{vector_t{a, value_t(0), value_t(0), value_t(0)},
-                vector_t{value_t(0), a, value_t(0), value_t(0)},
-                vector_t{value_t(0), value_t(0), a, value_t(0)},
-                vector_t{value_t(0), value_t(0), value_t(0), a}}
+        : super{vector_t(a, 0, 0, 0),
+                vector_t(0, a, 0, 0),
+                vector_t(0, 0, a, 0),
+                vector_t(0, 0, 0, a)}
     {
     }
 
     /** Column-wise constructor of the matrix. */
     _Xform4(const vector_t a, const vector_t b, const vector_t c, const vector_t d)
-        : super{std::move(a), std::move(b), std::move(c), std::move(d)}
+        : super{std::move(a),
+                std::move(b),
+                std::move(c),
+                std::move(d)}
     {
     }
 
@@ -60,43 +61,53 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, BASE_FOR_PARTIAL, true>
     /* Static Constructors ********************************************************************************************/
 
     /** Identity Transform */
-    static _Xform4 identity() { return _Xform4(value_t(1)); }
+    static _Xform4 identity() { return _Xform4(1); }
 
+    /** A 2D translation matrix. */
     static _Xform4 translation(const Vector2f& t)
     {
-        return _Xform4{vector_t(value_t(1), value_t(0), value_t(0), value_t(0)),
-                       vector_t(value_t(0), value_t(1), value_t(0), value_t(0)),
-                       vector_t(value_t(0), value_t(0), value_t(1), value_t(0)),
-                       vector_t(t.x(), t.y(), value_t(0), value_t(1))};
+        return _Xform4(1, 0, 0, 0,
+                       0, 1, 0, 0,
+                       0, 0, 1, 0,
+                       t.x(), t.y(), 0, 1);
     }
 
+    /** A 3D translation matrix. */
     static _Xform4 translation(const Vector4f& t)
     {
-        return _Xform4{vector_t(value_t(1), value_t(0), value_t(0), value_t(0)),
-                       vector_t(value_t(0), value_t(1), value_t(0), value_t(0)),
-                       vector_t(value_t(0), value_t(0), value_t(1), value_t(0)),
-                       vector_t(t.x(), t.y(), t.z(), value_t(1))};
+        return _Xform4(1, 0, 0, 0,
+                       0, 1, 0, 0,
+                       0, 0, 1, 0,
+                       t.x(), t.y(), t.z(), 1);
     }
 
-    static _Xform4 rotation(const value_t radian, const vector_t axis)
+    /** A rotation matrix. */
+    static _Xform4 rotation(const vector_t axis, const value_t radians)
     {
-        return identity().get_rotated(radian, std::move(axis));
+        _Xform4 result = identity();
+        result.rotate(radians, std::move(axis));
+        return result;
     }
 
+    /** A uniform scale matrix.
+     * @param factor   Uniform scale factor.
+     */
     static _Xform4 scaling(const value_t scale)
     {
-        return _Xform4{vector_t(scale, value_t(0), value_t(0), value_t(0)),
-                       vector_t(value_t(0), scale, value_t(0), value_t(0)),
-                       vector_t(value_t(0), value_t(0), scale, value_t(0)),
-                       vector_t(value_t(0), value_t(0), value_t(0), value_t(1))};
+        return _Xform4(scale, 0, 0, 0,
+                       0, scale, 0, 0,
+                       0, 0, scale, 0,
+                       0, 0, 0, 1);
     }
-
+    /** A non-uniform scale matrix.
+     * @param vector   Non-uniform scale vector.
+     */
     static _Xform4 scaling(const vector_t& scale)
     {
-        return _Xform4{vector_t(scale[value_t(0)], value_t(0), value_t(0), value_t(0)),
-                       vector_t(value_t(0), scale[value_t(1)], value_t(0), value_t(0)),
-                       vector_t(value_t(0), value_t(0), scale[2], value_t(0)),
-                       vector_t(value_t(0), value_t(0), value_t(0), value_t(1))};
+        return _Xform4(scale[0], 0, 0, 0,
+                       0, scale[1], 0, 0,
+                       0, 0, scale[2], 0,
+                       0, 0, 0, 1);
     }
 
     //    /** Creates a perspective transformation.
@@ -141,17 +152,6 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, BASE_FOR_PARTIAL, true>
         return *this;
     }
 
-    /** Copy of this transform with an additional translation. */
-    _Xform4 get_translated(const vector_t& delta) const
-    {
-        _Xform4 Result;
-        Result[0] = data[0];
-        Result[1] = data[1];
-        Result[2] = data[2];
-        Result[3] = data[0] * delta[0] + data[1] * delta[1] + data[2] * delta[2] + data[3];
-        return Result;
-    }
-
     /** Applies a right-hand rotation around the given axis to this xform. */
     _Xform4& translate(const vector_t& delta)
     {
@@ -159,8 +159,8 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, BASE_FOR_PARTIAL, true>
         return *this;
     }
 
-    /** Copy of this transform with an additional right-hand rotation around the given axis. */
-    _Xform4 get_rotated(const value_t radian, vector_t axis) const
+    /** Applies a right-hand rotation around the given axis to this xform. */
+    _Xform4& rotate(const value_t radian, vector_t axis)
     {
         const value_t cos_angle = cos(radian);
         const value_t sin_angle = sin(radian);
@@ -187,25 +187,9 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, BASE_FOR_PARTIAL, true>
         result[1] = data[0] * rotation[1][0] + data[1] * rotation[1][1] + data[2] * rotation[1][2];
         result[2] = data[0] * rotation[2][0] + data[1] * rotation[2][1] + data[2] * rotation[2][2];
         result[3] = data[3];
-        return result;
-    }
 
-    /** Applies a right-hand rotation around the given axis to this xform. */
-    _Xform4& rotate(const value_t radian, vector_t axis)
-    {
-        *this = get_rotated(radian, std::move(axis));
+        *this = result;
         return *this;
-    }
-
-    /** Copy of this transform with an additional non-uniform scaling. */
-    _Xform4 get_scaled(const vector_t& factor) const
-    {
-        _Xform4 Result;
-        Result[0] = data[0] * factor[0];
-        Result[1] = data[1] * factor[1];
-        Result[2] = data[2] * factor[2];
-        Result[3] = data[3];
-        return Result;
     }
 
     /** Applies a non-uniform scaling to this xform. */
@@ -215,17 +199,6 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, BASE_FOR_PARTIAL, true>
         data[1] *= factor[1];
         data[2] *= factor[2];
         return *this;
-    }
-
-    /** Copy of this transform with an additional non-uniform scaling. */
-    _Xform4 get_scaled(const value_t& factor) const
-    {
-        _Xform4 Result;
-        Result[0] = data[0] * factor;
-        Result[1] = data[1] * factor;
-        Result[2] = data[2] * factor;
-        Result[3] = data[3];
-        return Result;
     }
 
     /** Applies a non-uniform scaling to this xform. */
@@ -281,8 +254,8 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, BASE_FOR_PARTIAL, true>
         vector_t inv2(vec0 * fac1 - vec1 * fac3 + vec3 * fac5);
         vector_t inv3(vec0 * fac2 - vec1 * fac4 + vec2 * fac5);
 
-        vector_t signA(value_t(+1), value_t(-1), value_t(+1), value_t(-1));
-        vector_t signB(value_t(-1), value_t(+1), value_t(-1), value_t(+1));
+        vector_t signA(+1, -1, +1, -1);
+        vector_t signB(-1, +1, -1, +1);
         _Xform4 inverse(inv0 * signA, inv1 * signB, inv2 * signA, inv3 * signB);
 
         vector_t row0(inverse[0][0], inverse[1][0], inverse[2][0], inverse[3][0]);
@@ -307,27 +280,26 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, BASE_FOR_PARTIAL, true>
     _RealVector4<value_t>& transform(_RealVector4<value_t>& vector) const
     {
         // this is the operation matrix * vector
-        //        const _RealVector4<value_t> mov0 = _RealVector4<value_t>::fill(vector[0]);
-        //        const _RealVector4<value_t> mov1 = _RealVector4<value_t>::fill(vector[1]);
-        //        const _RealVector4<value_t> mul0 = data[0] * mov0;
-        //        const _RealVector4<value_t> mul1 = data[1] * mov1;
-        //        const _RealVector4<value_t> mov2 = _RealVector4<value_t>::fill(vector[2]);
-        //        const _RealVector4<value_t> mov3 = _RealVector4<value_t>::fill(vector[3]);
-        //        const _RealVector4<value_t> mul2 = data[2] * mov2;
-        //        const _RealVector4<value_t> mul3 = data[3] * mov3;
+        const _RealVector4<value_t> mov0 = _RealVector4<value_t>::fill(vector[0]);
+        const _RealVector4<value_t> mov1 = _RealVector4<value_t>::fill(vector[1]);
+        const _RealVector4<value_t> mul0 = data[0] * mov0;
+        const _RealVector4<value_t> mul1 = data[1] * mov1;
+        const _RealVector4<value_t> mov2 = _RealVector4<value_t>::fill(vector[2]);
+        const _RealVector4<value_t> mov3 = _RealVector4<value_t>::fill(vector[3]);
+        const _RealVector4<value_t> mul2 = data[2] * mov2;
+        const _RealVector4<value_t> mul3 = data[3] * mov3;
 
-        //        const _RealVector4<value_t> add0 = mul0 + mul1;
-        //        const _RealVector4<value_t> add1 = mul2 + mul3;
+        const _RealVector4<value_t> add0 = mul0 + mul1;
+        const _RealVector4<value_t> add1 = mul2 + mul3;
 
-        //        vector = add0 + add1;
-        //        return vector;
+        vector = add0 + add1;
 
         // this is the operation vector * matrix
-        vector = vector_t(
-            data[0][0] * vector[0] + data[0][1] * vector[1] + data[0][2] * vector[2] + data[0][3] * vector[3],
-            data[1][0] * vector[0] + data[1][1] * vector[1] + data[1][2] * vector[2] + data[1][3] * vector[3],
-            data[2][0] * vector[0] + data[2][1] * vector[1] + data[2][2] * vector[2] + data[2][3] * vector[3],
-            data[3][0] * vector[0] + data[3][1] * vector[1] + data[3][2] * vector[2] + data[3][3] * vector[3]);
+        //        vector = vector_t(
+        //            data[0][0] * vector[0] + data[0][1] * vector[1] + data[0][2] * vector[2] + data[0][3] * vector[3],
+        //            data[1][0] * vector[0] + data[1][1] * vector[1] + data[1][2] * vector[2] + data[1][3] * vector[3],
+        //            data[2][0] * vector[0] + data[2][1] * vector[1] + data[2][2] * vector[2] + data[2][3] * vector[3],
+        //            data[3][0] * vector[0] + data[3][1] * vector[1] + data[3][2] * vector[2] + data[3][3] * vector[3]);
         return vector;
     }
 
@@ -338,6 +310,7 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, BASE_FOR_PARTIAL, true>
         transform(result);
         return result;
     }
+    // TODO: instead of get_* overloads, use `const` to decide whether to modify or to return a new value
 
     /** Transforms a given Vector in-place.
      * Modifies the input vector but also returns a reference to it.
@@ -354,12 +327,6 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, BASE_FOR_PARTIAL, true>
         _RealVector4<value_t> result = {vector.x(), vector.y(), value_t(0), value_t(1)};
         transform(result);
         return _RealVector2<value_t>(result.x(), result.y());
-    }
-
-    _Xform2<value_t> to_xform2() const
-    {
-        const auto t = get_translation(); // TODO: _Xform4::to_xform2();
-        return _Xform2<value_t>::translation(_RealVector2<value_t>(t.x(), t.y()));
     }
 };
 

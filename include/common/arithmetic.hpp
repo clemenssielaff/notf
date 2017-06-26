@@ -213,7 +213,7 @@ protected: // methods
                    const value_t epsilon = precision_high<value_t>()) const
     {
         for (size_t i = 0; i < dim; ++i) {
-            if (!is_approx(data[i], other[i], epsilon)) {
+            if (!data[i].is_approx(other[i], epsilon)) {
                 return false;
             }
         }
@@ -228,7 +228,7 @@ protected: // methods
  * The Arithmetic base class provides naive implementations of each operation.
  * You can override specific functionality for value-specific behaviour or to make use of SIMD instructions.
  */
-template <typename SPECIALIZATION, typename ELEMENT, size_t DIMENSIONS, bool BASE_FOR_PARTIAL = false>
+template <typename SPECIALIZATION, typename ELEMENT, size_t DIMENSIONS, bool SIMD_SPECIALIZATION = false>
 struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_type<ELEMENT>::type, ELEMENT, DIMENSIONS> {
 
     /* Types **********************************************************************************************************/
