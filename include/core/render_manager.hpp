@@ -89,7 +89,7 @@ public: // methods
      * Cleans the RenderManager and doesn't render if clean to begin with.
      * @param context   The context into which to render.
      */
-    void render(const Size2i buffer_size);
+    void render();
 
 private: // methods
     /** Recursively collects the Widgets to draw in the next call.

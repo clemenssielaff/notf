@@ -1,6 +1,7 @@
 #include "graphics/shader.hpp"
 
 #include <assert.h>
+#include <sstream>
 
 #include "common/log.hpp"
 #include "core/opengl.hpp"
@@ -17,7 +18,7 @@ class ShaderRAII {
 public: // methods
     /** Value Constructor. */
     ShaderRAII(GLuint shader)
-        : m_shader(shader) , m_program(GL_FALSE) { }
+        : m_shader(shader), m_program(GL_FALSE) {}
 
     /** Destructor. */
     ~ShaderRAII()
@@ -86,8 +87,11 @@ GLuint compile_shader(STAGE stage, const std::string& name, const std::string& s
         break;
     case STAGE::INVALID:
     default:
-        log_critical << "Cannot compile " << stage_name(stage) << " shader for program \"" << name << "\"";
-        return 0;
+        std::stringstream ss;
+        ss << "Cannot compile " << stage_name(stage) << " shader for program \"" << name << "\"";
+        const std::string msg = ss.str();
+        log_critical << msg;
+        throw std::runtime_error(msg);
     }
     assert(shader);
 
@@ -107,10 +111,14 @@ GLuint compile_shader(STAGE stage, const std::string& name, const std::string& s
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &error_size);
         std::vector<char> error_message(static_cast<size_t>(error_size));
         glGetShaderInfoLog(shader, error_size, nullptr, &error_message[0]);
-        log_critical << "Failed to compile " << stage_name(stage) << " shader for program \"" << name
-                     << "\"\n\t" << error_message.data();
+
+        std::stringstream ss;
+        ss << "Failed to compile " << stage_name(stage) << " shader for program \"" << name
+           << "\"\n\t" << error_message.data();
+        const std::string msg = ss.str();
+        log_critical << msg;
         glDeleteShader(shader);
-        return 0;
+        throw std::runtime_error(msg);
     }
 }
 
@@ -118,7 +126,7 @@ GLuint compile_shader(STAGE stage, const std::string& name, const std::string& s
 
 namespace notf {
 
-std::shared_ptr<Shader> Shader::build(GraphicsContext &context,
+std::shared_ptr<Shader> Shader::build(GraphicsContext& context,
                                       const std::string& name,
                                       const std::string& vertex_shader_source,
                                       const std::string& fragment_shader_source)
@@ -153,15 +161,19 @@ std::shared_ptr<Shader> Shader::build(GraphicsContext &context,
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &error_size);
         std::vector<char> error_message(static_cast<size_t>(error_size));
         glGetProgramInfoLog(program, error_size, nullptr, &error_message[0]);
-        log_critical << "Failed to link shader program \"" << name << "\" with vertex and fragment shader:"
-                     << "\n\t" << error_message.data();
+
+        std::stringstream ss;
+        ss << "Failed to link shader program \"" << name << "\" with vertex and fragment shader:"
+           << "\n\t" << error_message.data();
+        const std::string msg = ss.str();
+        log_critical << msg;
         glDeleteProgram(program);
-        return {};
+        throw std::runtime_error(msg);
     }
 
     // create the Shader object
     struct make_shared_enabler : public Shader {
-        make_shared_enabler(const GLuint id, GraphicsContext &context, const std::string name)
+        make_shared_enabler(const GLuint id, GraphicsContext& context, const std::string name)
             : Shader(id, context, name) {}
     };
     std::shared_ptr<Shader> shader = std::make_shared<make_shared_enabler>(program, context, name);
@@ -174,7 +186,7 @@ void Shader::unbind()
     glUseProgram(GL_ZERO);
 }
 
-Shader::Shader(const GLuint id, GraphicsContext &context, const std::string name)
+Shader::Shader(const GLuint id, GraphicsContext& context, const std::string name)
     : m_id(id)
     , m_graphics_context(context)
     , m_name(std::move(name))

@@ -13,43 +13,43 @@ INCLUDE_DIRECTORIES(
 )
 
 set(SOURCE_FILES
-        src/common/aabr.cpp
-        src/common/circle.cpp
-        src/common/color.cpp
-        src/common/exception.cpp
-        src/common/input.cpp
-        src/common/line2.cpp
-        src/common/log.cpp
-        src/common/padding.cpp
-        src/common/random.cpp
-        src/common/signal.cpp
-        src/common/size2.cpp
-        src/common/string.cpp
-        src/common/system.cpp
-        src/common/time.cpp
-        src/common/utf.cpp
-        src/common/vector2.cpp
-        src/common/vector4.cpp
-        src/common/xform2.cpp
-        src/common/xform4.cpp
-        src/core/application.cpp
-        src/core/claim.cpp
-        src/core/controller.cpp
-        src/core/item.cpp
-        src/core/item_container.cpp
-        src/core/layout.cpp
-        src/core/properties.cpp
-        src/core/property.cpp
-        src/core/render_manager.cpp
-        src/core/resource_manager.cpp
-        src/core/screen_item.cpp
-        src/core/widget.cpp
-        src/core/window.cpp
-        src/core/window_layout.cpp
-        src/dynamic/controller/scroll_area.cpp
-        src/dynamic/layout/flex_layout.cpp
-        src/dynamic/layout/free_layout.cpp
-        src/dynamic/layout/overlayout.cpp
+    src/common/aabr.cpp
+    src/common/circle.cpp
+    src/common/color.cpp
+    src/common/exception.cpp
+    src/common/input.cpp
+    src/common/line2.cpp
+    src/common/log.cpp
+    src/common/padding.cpp
+    src/common/random.cpp
+    src/common/signal.cpp
+    src/common/size2.cpp
+    src/common/string.cpp
+    src/common/system.cpp
+    src/common/time.cpp
+    src/common/utf.cpp
+    src/common/vector2.cpp
+    src/common/vector4.cpp
+    src/common/xform2.cpp
+    src/common/xform4.cpp
+    src/core/application.cpp
+    src/core/claim.cpp
+    src/core/controller.cpp
+    src/core/item.cpp
+    src/core/item_container.cpp
+    src/core/layout.cpp
+    src/core/properties.cpp
+    src/core/property.cpp
+    src/core/render_manager.cpp
+    src/core/resource_manager.cpp
+    src/core/screen_item.cpp
+    src/core/widget.cpp
+    src/core/window.cpp
+    src/core/window_layout.cpp
+    src/dynamic/controller/scroll_area.cpp
+    src/dynamic/layout/flex_layout.cpp
+    src/dynamic/layout/free_layout.cpp
+    src/dynamic/layout/overlayout.cpp
 #        src/ext/python/interpreter.cpp
 #        src/ext/python/py_aabr.cpp
 #        src/ext/python/py_circle.cpp
@@ -76,29 +76,29 @@ set(SOURCE_FILES
 #        src/ext/python/py_widget.cpp
 #        src/ext/python/py_window.cpp
 #        src/ext/python/type_patches.cpp
-        src/graphics/cell/cell.cpp
-        src/graphics/cell/cell_canvas.cpp
-        src/graphics/cell/paint.cpp
-        src/graphics/cell/painter.cpp
-        src/graphics/cell/painterpreter.cpp
-        src/graphics/text/font.cpp
-        src/graphics/text/font_atlas.cpp
-        src/graphics/text/font_manager.cpp
-        src/graphics/blend_mode.cpp
-        src/graphics/gl_errors.cpp
-        src/graphics/graphics_context.cpp
-        src/graphics/raw_image.cpp
-        src/graphics/shader.cpp
-        src/graphics/stats.cpp
-        src/graphics/stencil_func.cpp
-        src/graphics/texture2.cpp
-        src/graphics/vertex.cpp
-        src/utils/filewatcher.cpp
-        src/main.cpp
-        src/nanovg_test.cpp
-        src/scratch.cpp
-        thirdparty/double-metaphone/double_metaphone.cc
-        thirdparty/tinyutf8/tinyutf8.cpp
+    src/graphics/cell/cell.cpp
+    src/graphics/cell/cell_canvas.cpp
+    src/graphics/cell/paint.cpp
+    src/graphics/cell/painter.cpp
+    src/graphics/cell/painterpreter.cpp
+    src/graphics/text/font.cpp
+    src/graphics/text/font_atlas.cpp
+    src/graphics/text/font_manager.cpp
+    src/graphics/blend_mode.cpp
+    src/graphics/gl_errors.cpp
+    src/graphics/graphics_context.cpp
+    src/graphics/raw_image.cpp
+    src/graphics/shader.cpp
+    src/graphics/stats.cpp
+    src/graphics/stencil_func.cpp
+    src/graphics/texture2.cpp
+    src/graphics/vertex.cpp
+    src/utils/filewatcher.cpp
+    src/main.cpp
+    src/nanovg_test.cpp
+    src/scratch.cpp
+    thirdparty/double-metaphone/double_metaphone.cc
+    thirdparty/tinyutf8/tinyutf8.cpp
 )
 
 set(HEADER_FILES
@@ -201,7 +201,12 @@ set(HEADER_FILES
     thirdparty/randutils/randutils.hpp
 )
 
-add_executable(notf ${SOURCE_FILES} ${HEADER_FILES})
+set(RESOURCE_FILES
+    res/shaders/cell.frag
+    res/shaders/cell.vert
+)
+
+add_executable(notf ${SOURCE_FILES} ${HEADER_FILES} ${RESOURCE_FILES})
 
 # TEST SUITE ###########################################################################################################
 
@@ -226,7 +231,7 @@ set(TEST_FILES
         test/test_utils.hpp
         test/glm_utils.hpp
 )
-LIST(REMOVE_ITEM TEST_FILES src/main.cpp src/scratch.cpp)
+LIST(REMOVE_ITEM TEST_FILES src/main.cpp src/scratch.cpp src/nanovg_test.cpp)
 
 add_executable(notf-test ${TEST_FILES})
 

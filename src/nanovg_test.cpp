@@ -157,8 +157,8 @@ public:
             painter.arc(rect.x(), rect.y(), outer_radius, a1, a0, Painter::Winding::COUNTERCLOCKWISE);
             painter.close_path();
 
-            const Vector2f start_pos{rect.x() + cosf(a0) * (inner_radius + outer_radius) * 0.5f, rect.y() + sinf(a0) * (inner_radius + outer_radius) * 0.5f};
-            const Vector2f end_pos{rect.x() + cosf(a1) * (inner_radius + outer_radius) * 0.5f, rect.y() + sinf(a1) * (inner_radius + outer_radius) * 0.5f};
+            const Vector2f start_pos(rect.x() + cosf(a0) * (inner_radius + outer_radius) * 0.5f, rect.y() + sinf(a0) * (inner_radius + outer_radius) * 0.5f);
+            const Vector2f end_pos(rect.x() + cosf(a1) * (inner_radius + outer_radius) * 0.5f, rect.y() + sinf(a1) * (inner_radius + outer_radius) * 0.5f);
             const Color start_color = Color::from_hsl(a0, 1.0f, 0.55f, 1);
             const Color end_color   = Color::from_hsl(a1, 1.0f, 0.55f, 1);
             painter.set_fill_paint(Paint::create_linear_gradient(start_pos, end_pos, start_color, end_color));
@@ -175,8 +175,8 @@ public:
 
         // Selector
         painter.push_state();
-        painter.translate(rect.center());
         painter.rotate(hue * (pi<float>() * 2));
+        painter.translate(rect.center());
 
         // marker on circle
         painter.begin_path();
@@ -225,7 +225,7 @@ public:
             painter.stroke();
         }
 
-        // Select circle on triangle
+        // select circle on triangle
         const float ax = cosf(120.0f / 180.0f * pi<float>()) * r * 0.3f;
         const float ay = sinf(120.0f / 180.0f * pi<float>()) * r * 0.4f;
         painter.set_stroke_width(2);
@@ -242,7 +242,6 @@ public:
         painter.fill();
 
         painter.pop_state();
-
         painter.pop_state();
     }
 
@@ -524,28 +523,32 @@ void app_main(Window& window)
     window.get_layout()->set_controller(controller);
 }
 
-//int main(int argc, char* argv[])
-//{
-//    ApplicationInfo app_info;
-//    app_info.argc         = argc;
-//    app_info.argv         = argv;
-//    app_info.enable_vsync = false;
-//    Application& app      = Application::initialize(app_info);
+#if 0
 
-//    // window
-//    WindowInfo window_info;
-//    window_info.icon               = "notf.png";
-//    window_info.size               = {800, 600};
-//    window_info.clear_color        = Color("#262a32");
-//    window_info.is_resizeable      = true;
-//    std::shared_ptr<Window> window = Window::create(window_info);
+int main(int argc, char* argv[])
+{
+    ApplicationInfo app_info;
+    app_info.argc         = argc;
+    app_info.argv         = argv;
+    app_info.enable_vsync = false;
+    Application& app      = Application::initialize(app_info);
 
-//    g_graphics_context = &(window->get_graphics_context());
-//    g_font_manager     = &(g_graphics_context->get_font_manager());
+    // window
+    WindowInfo window_info;
+    window_info.icon               = "notf.png";
+    window_info.size               = {800, 600};
+    window_info.clear_color        = Color("#262a32");
+    window_info.is_resizeable      = true;
+    std::shared_ptr<Window> window = Window::create(window_info);
 
-//    g_font = Font::load(*g_graphics_context, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 10);
+    g_graphics_context = &(window->get_graphics_context());
+    g_font_manager     = &(g_graphics_context->get_font_manager());
 
-//    app_main(*window.get());
+    g_font = Font::load(*g_graphics_context, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 10);
 
-//    return app.exec();
-//}
+    app_main(*window.get());
+
+    return app.exec();
+}
+
+#endif

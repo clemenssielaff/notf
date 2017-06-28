@@ -214,7 +214,7 @@ void Window::_update()
 
     // render
     try {
-        m_render_manager->render(buffer_size);
+        m_render_manager->render();
     }
     // if an error bubbled all the way up here, something has gone horribly wrong
     catch (std::runtime_error error) {

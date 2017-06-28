@@ -83,13 +83,13 @@ void Painter::reset_transform()
 void Painter::transform(const Xform2f& transform)
 {
     m_cell.m_commands.add_command(TransformCommand(transform));
-    _get_current_state().xform *= transform;
+    _get_current_state().xform.premult(transform);
 }
 
 void Painter::translate(const Vector2f& delta)
 {
     m_cell.m_commands.add_command(TranslationCommand(delta));
-    _get_current_state().xform *= Xform2f::translation(delta);
+    _get_current_state().xform.premult(Xform2f::translation(delta));
 }
 
 void Painter::rotate(const float angle)
@@ -150,7 +150,7 @@ void Painter::set_fill_paint(Paint paint)
     }
 
     detail::PainterState& current_state = _get_current_state();
-    paint.xform *= current_state.xform;
+    paint.xform.premult(current_state.xform);
     current_state.fill_paint = std::move(paint);
 
     m_cell.m_commands.add_command(FillPaintCommand(current_state.fill_paint));
@@ -170,7 +170,7 @@ void Painter::set_stroke_paint(Paint paint)
     }
 
     detail::PainterState& current_state = _get_current_state();
-    paint.xform *= current_state.xform;
+    paint.xform.premult(current_state.xform);
     current_state.stroke_paint = std::move(paint);
 
     m_cell.m_commands.add_command(StrokePaintCommand(current_state.stroke_paint));

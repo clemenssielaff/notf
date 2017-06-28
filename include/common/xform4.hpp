@@ -118,7 +118,17 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
     //     */
     //    static Transform3 perspective(const float fov, const float aspectRatio, const float znear, const float zfar);
 
-    //    static Transform3 orthographic(const float width, const float height, const float znear, const float zfar);
+    static _Xform4 orthographic(const float width, const float height)
+    {
+        _Xform4 result = identity();
+        if (std::abs(width) <= precision_high<value_t>() || std::abs(height) <= precision_high<value_t>()) {
+            return result;
+        }
+        result[0][0] = 2 / width;
+        result[1][1] = 2 / height;
+        result[3][0] = result[3][1] = -1;
+        return result;
+    }
 
     /* Inspection *****************************************************************************************************/
 

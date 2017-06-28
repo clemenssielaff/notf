@@ -71,7 +71,7 @@ Color hsl_to_rgb(const Hsl& input)
     static const float _60deg  = static_cast<float>(pi<long double>() / 3.l);
     static const float _120deg = static_cast<float>(pi<long double>() * 2.l / 3.l);
     static const float _240deg = static_cast<float>(pi<long double>() * 4.l / 3.l);
-    static const float _360deg = static_cast<float>(pi<long double>());
+    static const float _360deg = static_cast<float>(pi<long double>() * 2.l);
 
     float r, g, b;
     if (input.h < _120deg) {

@@ -166,10 +166,10 @@ int main(int argc, char* argv[])
     auto window               = Window::create(window_info);
 
     window->get_layout()->set_controller(std::make_shared<MainController>(window));
-//    app.on_frame.connect([=]() -> void {
-//        rotator += 0.001;
-//        window->get_layout()->set_local_xform(Xform4f::rotation(rotator, Vector4f(0, 1, 0, 0)));
-//    });
+    //    app.on_frame.connect([=]() -> void {
+    //        rotator += 0.001;
+    //        window->get_layout()->set_local_xform(Xform4f::rotation(rotator, Vector4f(0, 1, 0, 0)));
+    //    });
 
     return app.exec();
 }

@@ -86,15 +86,19 @@ RenderLayerPtr RenderManager::create_layer_below(const RenderLayerPtr& layer)
     return result;
 }
 
-void RenderManager::render(const Size2i buffer_size)
+void RenderManager::render()
 {
     // TODO: optimize case where there's just one layer and you can simply draw them as you iterate through them
 
     Time time_at_start = Time::now();
 
     // prepare the render context
+
+    const Size2i buffer_size  = m_window->get_buffer_size();
+    Xform4f projection_matrix = Xform4f::orthographic(static_cast<float>(buffer_size.width),
+                                                      static_cast<float>(buffer_size.height));
     CellCanvas& cell_context = m_window->get_cell_context();
-    cell_context.begin_frame(buffer_size, time_at_start, m_window->get_mouse_pos());
+    cell_context.begin_frame(projection_matrix, time_at_start, m_window->get_mouse_pos());
 
     { // remove unused layers
         const size_t size_before = m_layers.size();

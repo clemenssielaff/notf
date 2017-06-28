@@ -16,11 +16,13 @@ namespace { // anonymous
 
 // vertex shader source, read from file as described in: http://stackoverflow.com/a/25021520
 const char* cell_vertex_shader =
-#include "shader/cell.vert"
+#include "shaders/cell.vert"
 
 // fragment shader source
 const char* cell_fragment_shader =
-#include "shader/cell.frag"
+#include "shaders/cell.frag"
+
+// clang-format on
 } // namespace anonymous
 
 namespace { // anonymous
@@ -35,7 +37,7 @@ std::pair<std::string, std::string> create_shader_sources(const GraphicsContext&
     if (context.get_options().geometric_aa) {
         ss << "#define GEOMETRY_AA 1\n";
     }
-    if(context.get_options().stencil_strokes){
+    if (context.get_options().stencil_strokes) {
         ss << "#define SAVE_ALPHA_STROKE 1\n";
     }
     ss << "\n";
@@ -67,11 +69,11 @@ CellCanvas::CellCanvas(GraphicsContext& context)
 {
     // create the CellShader
     const std::pair<std::string, std::string> sources = create_shader_sources(m_graphics_context);
-    m_cell_shader.shader        = Shader::build(m_graphics_context, "CellShader", sources.first, sources.second);
-    const GLuint cell_shader_id = m_cell_shader.shader->get_id();
-    m_cell_shader.viewsize      = glGetUniformLocation(cell_shader_id, "viewSize");
-    m_cell_shader.image         = glGetUniformLocation(cell_shader_id, "image");
-    m_cell_shader.variables     = glGetUniformBlockIndex(cell_shader_id, "variables");
+    m_cell_shader.shader            = Shader::build(m_graphics_context, "CellShader", sources.first, sources.second);
+    const GLuint cell_shader_id     = m_cell_shader.shader->get_id();
+    m_cell_shader.projection_matrix = glGetUniformLocation(cell_shader_id, "projection_matrix");
+    m_cell_shader.image             = glGetUniformLocation(cell_shader_id, "image");
+    m_cell_shader.variables         = glGetUniformBlockIndex(cell_shader_id, "variables");
 
     // create dynamic vertex arrays
     glGenVertexArrays(1, &m_vertex_array);
@@ -108,19 +110,18 @@ const FontManager& CellCanvas::get_font_manager() const
     return m_graphics_context.get_font_manager();
 }
 
-void CellCanvas::begin_frame(const Size2i& buffer_size, const Time time, const Vector2f mouse_pos)
+void CellCanvas::begin_frame(const Xform4f projection_matrix, const Time time, const Vector2f mouse_pos)
 {
     reset();
 
-    m_options.distance_tolerance = 0.01f / m_graphics_context.get_options().pixel_ratio;
+    m_options.distance_tolerance    = 0.01f / m_graphics_context.get_options().pixel_ratio;
     m_options.tesselation_tolerance = 0.25f / m_graphics_context.get_options().pixel_ratio;
-    m_options.fringe_width = 1.f / m_graphics_context.get_options().pixel_ratio;
+    m_options.fringe_width          = 1.f / m_graphics_context.get_options().pixel_ratio;
 
-    m_options.geometric_aa = m_graphics_context.get_options().geometric_aa;
+    m_options.geometric_aa    = m_graphics_context.get_options().geometric_aa;
     m_options.stencil_strokes = m_graphics_context.get_options().stencil_strokes;
 
-    m_options.buffer_size.width  = static_cast<float>(buffer_size.width);
-    m_options.buffer_size.height = static_cast<float>(buffer_size.height);
+    m_options.projection_matrix = std::move(projection_matrix);
 
     m_options.mouse_pos = std::move(mouse_pos);
 
@@ -140,13 +141,15 @@ void CellCanvas::finish_frame()
     if (m_calls.empty()) {
         return;
     }
+    assert(m_cell_shader.shader);
+
     m_graphics_context.force_reloads();
 
     // setup GL state
     m_cell_shader.shader->bind();
     m_graphics_context.set_blend_mode(BlendMode::SOURCE_OVER);
     glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
+    glCullFace(GL_FRONT); // FIXME: this should be BACK, as soon as the drawing is correct
     glFrontFace(GL_CCW);
     glEnable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
@@ -173,7 +176,7 @@ void CellCanvas::finish_frame()
 
     // Set view and texture just once per frame.
     glUniform1i(m_cell_shader.image, 0);
-    glUniform2fv(m_cell_shader.viewsize, 1, m_options.buffer_size.as_ptr());
+    glUniformMatrix4fv(m_cell_shader.projection_matrix, 1, false, m_options.projection_matrix[0].as_ptr());
 
     // perform the render calls
     for (const Call& call : m_calls) {
@@ -204,7 +207,7 @@ void CellCanvas::finish_frame()
     check_gl_error();
 }
 
-void CellCanvas::_perform_convex_fill(  const Call& call)
+void CellCanvas::_perform_convex_fill(const Call& call)
 {
     assert(call.path_offset + call.path_count <= m_paths.size());
 
@@ -286,7 +289,7 @@ void CellCanvas::_perform_stroke(const Call& call)
     assert(call.path_offset + call.path_count <= m_paths.size());
     assert(static_cast<size_t>(call.uniform_offset) <= max(size_t(0), m_shader_variables.size() - 1) * fragmentSize());
 
-    if(m_graphics_context.get_options().stencil_strokes){
+    if (m_graphics_context.get_options().stencil_strokes) {
         glEnable(GL_STENCIL_TEST);
         m_graphics_context.set_stencil_mask(0xff);
 
@@ -325,8 +328,8 @@ void CellCanvas::_perform_stroke(const Call& call)
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
         glDisable(GL_STENCIL_TEST);
-
-    } else { // !m_context.get_args().save_alpha_stroke
+    }
+    else { // !m_context.get_args().save_alpha_stroke
         glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset, fragmentSize());
         if (call.texture) {
             call.texture->bind();
@@ -362,7 +365,7 @@ void CellCanvas::_dump_debug_info() const
 
     log_format << "==========================================================\n"
                << "== Calls                                                ==";
-    for(const Call& call : m_calls){
+    for (const Call& call : m_calls) {
         log_trace << "Type: " << static_cast<int>(to_number(call.type)) << " | "
                   << "Path offset:" << call.path_offset << ", Path count: " << call.path_count << " | "
                   << "Uniform offset: " << call.uniform_offset << " | "
@@ -372,22 +375,21 @@ void CellCanvas::_dump_debug_info() const
 
     log_format << "==========================================================\n"
                << "== Paths                                                ==";
-    for(const Path& path : m_paths){
+    for (const Path& path : m_paths) {
         log_trace << "Fill offset: " << path.fill_offset << ", Fill count:" << path.fill_count << " | "
                   << "Stroke offset: " << path.stroke_offset << ", Stroke count" << path.stroke_count;
     }
 
     log_format << "==========================================================\n"
                << "== Vertices                                             ==";
-    for(const Vertex& vertex : m_vertices){
+    for (const Vertex& vertex : m_vertices) {
         log_trace << "Pos: " << vertex.pos.x() << ", " << vertex.pos.y() << " | "
-                  << "UV: "<< vertex.uv.x() << ", " << vertex.uv.y();
+                  << "UV: " << vertex.uv.x() << ", " << vertex.uv.y();
     }
 
     log_format << "==========================================================\n"
                << "== Render Context Dump End                              ==\n"
                << "==========================================================";
 }
-
 
 } // namespace notf

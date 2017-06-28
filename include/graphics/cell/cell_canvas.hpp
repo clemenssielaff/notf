@@ -3,7 +3,6 @@
 #include <memory>
 
 #include "common/color.hpp"
-#include "common/size2.hpp"
 #include "common/time.hpp"
 #include "common/vector2.hpp"
 #include "graphics/cell/painterpreter.hpp"
@@ -43,8 +42,8 @@ struct CellCanvasOptions {
     /** See `GraphicsContextOptions` for details. */
     bool stencil_strokes;
 
-    /** Returns the size of the Window's framebuffer in pixels. */
-    Size2f buffer_size;
+    /** The projection matrix used to draw the CellCanvas on the screen. */
+    Xform4f projection_matrix;
 
     /** The mouse position relative to the Window's top-left corner. */
     Vector2f mouse_pos;
@@ -55,6 +54,9 @@ struct CellCanvasOptions {
 
 /**********************************************************************************************************************/
 
+/** The CellCanvas is the object that all Cells are painted onto.
+ *
+ */
 class CellCanvas {
 
     friend class Painterpreter;
@@ -122,8 +124,8 @@ private: // classes
         /** The actual Cell Shader. */
         std::shared_ptr<Shader> shader;
 
-        /** Location of the `view_size` uniform in the Shader. */
-        GLint viewsize;
+        /** Location of the `projection_matrix` uniform in the Shader. */
+        GLint projection_matrix;
 
         /** Location of the `textures` uniform in the Shader. */
         GLint image;
@@ -147,7 +149,7 @@ public: // methods
     const CellCanvasOptions& get_options() const { return m_options; }
 
     /** Begins a new frame. */
-    void begin_frame(const Size2i& buffer_size, const Time time, const Vector2f mouse_pos);
+    void begin_frame(const Xform4f projection_matrix, const Time time, const Vector2f mouse_pos);
 
     /** Paints a given Cell. */
     void paint(Cell& cell) { m_painterpreter->paint(cell); }

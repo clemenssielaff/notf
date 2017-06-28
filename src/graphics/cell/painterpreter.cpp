@@ -106,8 +106,9 @@ void Painterpreter::_paint(Cell& cell)
                 _add_point(stylus, Point::Flags::CORNER);
             }
             else {
-                auto pos = m_points.back().pos;
-                _get_current_state().xform.invert().transform(pos);
+                Vector2f pos          = m_points.back().pos;
+                Xform2f inverse_xform = _get_current_state().xform;
+                inverse_xform.invert().transform(pos);
                 stylus = pos;
             }
             const BezierCommand& cmd = map_command<BezierCommand>(commands, index);
@@ -314,7 +315,7 @@ void Painterpreter::_set_scissor(const Scissor& scissor)
     else {
         // if there is no valid base scissor, just apply the new one
         current_state.scissor.extend = scissor.extend;
-        current_state.scissor.xform  = _get_current_state().xform * scissor.xform;
+        current_state.scissor.xform  = Xform2f::identity() * scissor.xform;
     }
 }
 
@@ -1194,15 +1195,15 @@ void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const 
         xinv.invert();
 
         frag.scissor_2x2[0]    = xinv[0][0];
-        frag.scissor_2x2[1]    = xinv[0][1];
-        frag.scissor_2x2[2]    = xinv[1][0];
+        frag.scissor_2x2[1]    = xinv[1][0];
+        frag.scissor_2x2[2]    = xinv[0][1];
         frag.scissor_2x2[3]    = xinv[1][1];
         frag.scissor_trans[0]  = xinv[2][0];
         frag.scissor_trans[1]  = xinv[2][1];
         frag.scissor_extent[0] = half_width;
         frag.scissor_extent[1] = half_height;
-        frag.scissor_scale[0]  = sqrt(scissor.xform[0][0] * scissor.xform[0][0] + scissor.xform[1][0] * scissor.xform[1][0]) / fringe;
-        frag.scissor_scale[1]  = sqrt(scissor.xform[0][1] * scissor.xform[0][1] + scissor.xform[1][1] * scissor.xform[1][1]) / fringe;
+        frag.scissor_scale[0]  = scissor.xform.get_scale_x() / fringe;
+        frag.scissor_scale[1]  = scissor.xform.get_scale_y() / fringe;
     }
     frag.paint_extent[0]  = paint.extent.width;
     frag.paint_extent[1]  = paint.extent.height;
