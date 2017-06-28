@@ -148,7 +148,7 @@ public: // methods
 
 float rotator = 0;
 
-#if 1
+#if 0
 int main(int argc, char* argv[])
 {
     ApplicationInfo app_info;

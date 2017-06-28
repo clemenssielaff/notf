@@ -143,6 +143,10 @@ protected: // methods
         }
         return true;
     }
+
+    const value_t* as_ptr() const { return &data[0]; }
+
+    value_t* as_ptr() { return &data[0]; }
 };
 
 /** Vectors containing other vectors. */
@@ -219,6 +223,10 @@ protected: // methods
         }
         return true;
     }
+
+    const value_t* as_ptr() const { return data[0].as_ptr(); }
+
+    value_t* as_ptr() { return data[0].as_ptr(); }
 };
 
 //*********************************************************************************************************************/
@@ -318,7 +326,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     }
 
     /** Read-only pointer to the value's internal storage. */
-    const value_t* as_ptr() const { return &data[0]; }
+    const value_t* as_ptr() const { return implementation::as_ptr(); }
 
     /** Modification **************************************************************************************************/
 
@@ -330,7 +338,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     }
 
     /** Read-write pointer to the value's internal storage. */
-    value_t* as_ptr() { return &data[0]; }
+    value_t* as_ptr() { return implementation::as_ptr(); }
 
     /** Set all elements of this value. */
     SPECIALIZATION& set_all(const value_t value)

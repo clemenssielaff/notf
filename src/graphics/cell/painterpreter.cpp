@@ -10,6 +10,7 @@
 #include "graphics/text/font_manager.hpp"
 #include "graphics/texture2.hpp"
 #include "graphics/vertex.hpp"
+#include "utils/make_const.hpp"
 
 namespace notf {
 
@@ -106,9 +107,8 @@ void Painterpreter::_paint(Cell& cell)
                 _add_point(stylus, Point::Flags::CORNER);
             }
             else {
-                Vector2f pos          = m_points.back().pos;
-                Xform2f inverse_xform = _get_current_state().xform;
-                inverse_xform.invert().transform(pos);
+                Vector2f pos = m_points.back().pos;
+                make_const(_get_current_state()).xform.invert().transform(pos);
                 stylus = pos;
             }
             const BezierCommand& cmd = map_command<BezierCommand>(commands, index);

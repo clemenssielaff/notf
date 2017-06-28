@@ -194,6 +194,7 @@ set(HEADER_FILES
     include/utils/debug.hpp
     include/utils/literals.hpp
     include/utils/macro_overload.hpp
+    include/utils/make_const.hpp
     include/utils/make_smart_enabler.hpp
     include/utils/print_notf.hpp
     include/utils/range.hpp

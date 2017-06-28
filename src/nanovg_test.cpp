@@ -523,7 +523,7 @@ void app_main(Window& window)
     window.get_layout()->set_controller(controller);
 }
 
-#if 0
+#if 1
 
 int main(int argc, char* argv[])
 {

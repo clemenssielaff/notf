@@ -176,7 +176,7 @@ void CellCanvas::finish_frame()
 
     // Set view and texture just once per frame.
     glUniform1i(m_cell_shader.image, 0);
-    glUniformMatrix4fv(m_cell_shader.projection_matrix, 1, false, m_options.projection_matrix[0].as_ptr());
+    glUniformMatrix4fv(m_cell_shader.projection_matrix, 1, false, m_options.projection_matrix.as_ptr());
 
     // perform the render calls
     for (const Call& call : m_calls) {
