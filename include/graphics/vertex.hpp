@@ -25,8 +25,9 @@ struct Vertex {
     Vertex(Vector2f pos, Vector2f uv)
         : pos(std::move(pos)), uv(std::move(uv)) {}
 
-    // TODO: a Vertex constructor that simply takes 4 arguments
-    // TODO: derive Vertex from arithmetic?
+    /** Component Constructor. */
+    Vertex(const float x, const float y, const float u, const float v)
+        : pos(x, y), uv(u, v) {}
 };
 
 /**********************************************************************************************************************/

@@ -16,8 +16,7 @@ namespace notf {
 //*********************************************************************************************************************/
 
 /** A 2D Axis-Aligned-Bounding-Rectangle.
- * Stores two Vectors, the top-left and bottom-right corner (in a coordinate system where +x is right and +y is down,
- * see ScreenItem -> coordinates for details).
+ * Stores two Vectors, the bottom-left and top-right corner.
  * While this does mean that you need to change four instead of two values for repositioning the Aabr, other
  * calculations (like intersections) are faster; and they are usually more relevant.
  */
@@ -32,10 +31,10 @@ struct _Aabr {
 
     /* Fields *********************************************************************************************************/
 
-    /** Top-left corner of the Aabr. */
+    /** Bottom-left corner of the Aabr. */
     vector_t _min;
 
-    /** Bottom-right corner of the Aabr. */
+    /** Top-right corner of the Aabr. */
     vector_t _max;
 
     /* Constructors ***************************************************************************************************/
@@ -43,9 +42,9 @@ struct _Aabr {
     /** Default (non-initializing) constructor so this struct remains a POD */
     _Aabr() = default;
 
-    /** Constructs an Aabr of the given width and height, with the top-left corner at the given `x` and `y` coordinates.
-     * @param x         X-coordinate of the top-left corner.
-     * @param y         Y-coordinate of the top-left corner.
+    /** Constructs an Aabr of the given width and height, with the bottom-left corner at the given coordinates.
+     * @param x         X-coordinate of the bottom-left corner.
+     * @param y         Y-coordinate of the bottom-left corner.
      * @param width     Width of the Aabr.
      * @param height    Height of the Aabr.
      */
@@ -55,8 +54,8 @@ struct _Aabr {
     {
     }
 
-    /** Constructs an Aabr of the given width and height, with the top-left corner at `position`.
-     * @param top-left  Position of the Aabr's top-left corner.
+    /** Constructs an Aabr of the given width and height, with the bottom-left corner at `position`.
+     * @param position  Position of the Aabr's bottom-left corner.
      * @param width     Width of the Aabr.
      * @param height    Height of the Aabr.
      */
@@ -66,8 +65,8 @@ struct _Aabr {
     {
     }
 
-    /** Constructs an Aabr of the given size with the top-left corner at `position`.
-     * @param position  Position of the Aabr's top-left corner.
+    /** Constructs an Aabr of the given size with the bottom-left corner at `position`.
+     * @param position  Position of the Aabr's bottom-left corner.
      * @param size      Size of the Aabr.
      */
     _Aabr(const vector_t& position, const Size2f& size)
@@ -76,7 +75,7 @@ struct _Aabr {
     {
     }
 
-    /** Aabr with a given width and height, and the top-left corner at zero.
+    /** Aabr with a given width and height, and the bottom-left corner at zero.
      * @param width     Width of the Aabr.
      * @param height    Height of the Aabr.
      */
@@ -86,7 +85,7 @@ struct _Aabr {
     {
     }
 
-    /** Constructs an Aabr of the given size with the top-left corner at zero.
+    /** Constructs an Aabr of the given size with the bottom-left corner at zero.
      * @param size  Size of the Aabr.
      */
     _Aabr(const _Size2<value_t>& size)
@@ -178,22 +177,22 @@ struct _Aabr {
     value_t right() const { return _max.x(); }
 
     /** Y-coordinate of the top edge of this Aabr. */
-    value_t top() const { return _min.y(); }
+    value_t top() const { return _max.y(); }
 
     /** Y-coordinate of the bottom edge of this Aabr. */
-    value_t bottom() const { return _max.y(); }
-
-    /** The top left corner of this Aabr. */
-    vector_t top_left() const { return _min; }
-
-    /** The top right corner of this Aabr. */
-    vector_t top_right() const { return {_max.x(), _min.y()}; }
+    value_t bottom() const { return _min.y(); }
 
     /** The bottom left corner of this Aabr. */
-    vector_t bottom_left() const { return {_min.x(), _max.y()}; }
+    const vector_t& bottom_left() const { return _min; }
+
+    /** The top right corner of this Aabr. */
+    const vector_t& top_right() const { return _max; }
+
+    /** The top left corner of this Aabr. */
+    vector_t top_left() const { return {_min.x(), _max.y()}; }
 
     /** The bottom right corner of this Aabr. */
-    vector_t bottom_right() const { return _max; }
+    vector_t bottom_right() const { return {_max.x(), _min.y()}; }
 
     /** The width of this Aabr */
     value_t get_width() const { return _max.x() - _min.x(); }
@@ -342,8 +341,8 @@ struct _Aabr {
      */
     _Aabr& set_top(const value_t y)
     {
-        _min.y() = y;
-        _max.y() = _max.y() > _min.y() ? _max.y() : _min.y();
+        _max.y() = y;
+        _min.y() = _min.y() < _max.y() ? _min.y() : _max.y();
         return *this;
     }
 
@@ -353,8 +352,8 @@ struct _Aabr {
      */
     _Aabr& set_bottom(const value_t y)
     {
-        _max.y() = y;
-        _min.y() = _min.y() < _max.y() ? _min.y() : _max.y();
+        _min.y() = y;
+        _max.y() = _max.y() > _min.y() ? _max.y() : _min.y();
         return *this;
     }
 
@@ -440,6 +439,8 @@ struct _Aabr {
         _max.y() += amount;
         return *this;
     }
+
+    // TODO: const overloads instead of get_* methods for AABR?
 
     /** Returns a grown copy of this Aabr. */
     _Aabr get_grown(const value_t amount) const
@@ -528,24 +529,6 @@ struct _Aabr {
     }
     _Aabr& operator|=(const _Aabr& other) { return unite(other); }
 
-    /** Returns the Aabr of this Aabr rotated counter-clockwise (in radians) around its center. */
-    _Aabr get_rotated(const value_t angle) const { return get_rotated(angle, center()); }
-
-    /** Returns the Aabr of this Aabr rotated counter-clockwise (in radians) around a pivot point. */
-    _Aabr get_rotated(const value_t angle, const vector_t& pivot) const
-    {
-        const vector_t a = _min.get_rotated_around(angle, pivot);
-        const vector_t b = top_right().rotate_around(angle, pivot);
-        const vector_t c = _max.get_rotated_around(angle, pivot);
-        const vector_t d = bottom_left().rotate_around(angle, pivot);
-        _Aabr result;
-        result._min.x() = min(a.x(), b.x(), c.x(), d.x());
-        result._min.y() = min(a.y(), b.y(), c.y(), d.y());
-        result._max.x() = max(a.x(), b.x(), c.x(), d.x());
-        result._max.y() = max(a.y(), b.y(), c.y(), d.y());
-        return result;
-    }
-
     /** Read-write pointer to the Aabr's internal storage. */
     value_t* as_ptr() { return &_min.x(); }
 
@@ -566,6 +549,8 @@ struct _Aabr {
         _max.y() = max(d0.y(), d1.y(), d2.y(), d3.y());
         return *this;
     }
+
+    // TODO: xform.transform(aabr) instead of aabr.transform(xform)!
 
     /** Applies a 3-dimensional transformation to this AABR in-place. */
     _Aabr& transform(const _Xform4<value_t>& xform)
