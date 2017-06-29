@@ -124,7 +124,10 @@ public: // types
         pixel_size_t pixel_size;
 
         /** Equality test operator. f*/
-        bool operator==(const Identifier& rhs) const { return filename == rhs.filename && pixel_size == rhs.pixel_size; }
+        bool operator==(const Identifier& rhs) const
+        {
+            return filename == rhs.filename && pixel_size == rhs.pixel_size;
+        }
     };
 
 public: // static methods
@@ -134,7 +137,8 @@ public: // static methods
      * @param filename      File from which the Font is loaded.
      * @param pixel_size    Nominal size of the loaded Font in pixels.
      */
-    static std::shared_ptr<Font> load(GraphicsContext& context, const std::string filename, const pixel_size_t pixel_size);
+    static std::shared_ptr<Font> load(
+        GraphicsContext& context, const std::string filename, const pixel_size_t pixel_size);
 
 private: // constructor
     /** Constructor.

@@ -23,10 +23,10 @@ using Size2i = _Size2<int, true>;
  * ===========================
  * A Texture needs a valid GraphicsContext (which in turn refers to an OpenGL context), since the Texture class itself
  * does not store any image data, only the OpenGL ID and metadata.
- * You create a Texture by calling `GraphicsContext::load_texture(texture_path)`, which attaches the GraphicsContext to the
- * Texture.
+ * You create a Texture by calling `GraphicsContext::load_texture(texture_path)`, which attaches the GraphicsContext to
+ * the Texture.
  * The return value is a shared pointer, which you own.
- * However, the GraphicsContext does keep a weak pointer to the Texture and will deallocate it when it is itself removed.
+ * However, the GraphicsContext does keep a weak pointer to the Texture and will deallocate it when it's itself removed.
  * In this case, the remaining Texture will become invalid and you'll get a warning message.
  * In a well-behaved program, all Textures should have gone out of scope by the time the GraphicsContext is destroyed.
  * This behaviour is similar to the handling of Shaders.
@@ -109,8 +109,8 @@ public: // methods
     GLuint get_id() const { return m_id; }
 
     /** Checks if the Texture is still valid.
-     * A Texture should always be valid - the only way to get an invalid one is to remove the GraphicsContext while still
-     * holding on to shared pointers of a Texture that lived in the removed GraphicsContext.
+     * A Texture should always be valid - the only way to get an invalid one is to remove the GraphicsContext while
+     * still holding on to shared pointers of a Texture that lived in the removed GraphicsContext.
      */
     bool is_valid() const { return m_id != 0; }
 

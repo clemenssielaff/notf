@@ -6,6 +6,7 @@
 #include "common/enum.hpp"
 #include "common/log.hpp"
 #include "common/size2.hpp"
+#include "common/warnings.hpp"
 #include "core/opengl.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/graphics_context.hpp"
@@ -187,7 +188,7 @@ std::shared_ptr<Texture2> Texture2::create_empty(GraphicsContext& context, const
         internal_format = GL_RGBA8;
         break;
     default:
-        gl_format = 0;
+        gl_format       = 0;
         internal_format = 0;
         assert(0);
     }
@@ -231,6 +232,7 @@ std::shared_ptr<Texture2> Texture2::create(const GLuint id, GraphicsContext& con
         make_shared_enabler(const GLuint id, GraphicsContext& context, const std::string name,
                             const GLint width, const GLint height, const Format format)
             : Texture2(id, context, name, width, height, format) {}
+        PADDING(3)
     };
     return std::make_shared<make_shared_enabler>(id, context, std::move(name), width, height, format);
 }

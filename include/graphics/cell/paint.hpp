@@ -45,6 +45,7 @@ public: // static methods
                                         std::shared_ptr<Texture2> texture,
                                         const float angle, const float alpha);
 
+public: // methods
     /** Turns the Paint into a single solid. */
     void set_color(const Color color)
     {
@@ -55,6 +56,7 @@ public: // static methods
         outer_color = inner_color;
     }
 
+public: //  fields
     /** Local transform of the Paint. */
     Xform2f xform;
 

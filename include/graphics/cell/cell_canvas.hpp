@@ -134,8 +134,9 @@ private: // classes
         GLuint variables;
     };
 
-public: // methods
     /******************************************************************************************************************/
+
+public: // methods
     /** Constructor. */
     CellCanvas(GraphicsContext& context);
 
@@ -214,8 +215,10 @@ private: // fields
     /** Buffer containing all fragment shader uniforms. */
     GLuint m_fragment_buffer;
 
+    /** Vertex array buffer. */
     GLuint m_vertex_array;
 
+    /** Buffer containing all fragment vertices. */
     GLuint m_vertex_buffer;
 };
 

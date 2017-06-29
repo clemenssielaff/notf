@@ -7,6 +7,8 @@
 #include "common/enum.hpp"
 #include "common/meta.hpp"
 
+//*********************************************************************************************************************/
+
 namespace notf {
 
 /* The Command buffer is a vector of `Command` subclasses.
@@ -75,7 +77,7 @@ public: // field
     const byte_t type;
 };
 
-/**********************************************************************************************************************/
+//*********************************************************************************************************************/
 
 #ifdef __GNUC__
 #pragma GCC diagnostic push
@@ -99,7 +101,7 @@ public: // methods
 #pragma GCC diagnostic pop
 #endif
 
-/**********************************************************************************************************************/
+//*********************************************************************************************************************/
 
 /** Convenience function go get the size of a given Subcommand type in units of PainterCommand::command_t. */
 template <typename Subcommand, ENABLE_IF_SUBCLASS(Subcommand, PainterCommand)>
