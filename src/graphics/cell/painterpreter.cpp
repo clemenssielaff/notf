@@ -302,11 +302,11 @@ void Painterpreter::_set_scissor(const Scissor& scissor)
     if (m_base_scissor.extend.is_valid()) {
         // calculate the base scissor AABR
         Aabrf base_aabr = Aabrf(current_state.scissor.extend);
-        base_aabr.transform(current_state.scissor.xform);
+        current_state.scissor.xform.transform(base_aabr);
 
         // ... and intersect it with the proposed scissor's AABR before applying it
         Aabrf scissor_aabr = Aabrf(scissor.extend);
-        scissor_aabr.transform(current_state.xform * scissor.xform);
+        (current_state.xform * scissor.xform).transform(scissor_aabr);
         scissor_aabr.intersect(base_aabr);
 
         current_state.scissor.extend = scissor_aabr.get_size();

@@ -276,6 +276,9 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     /** Dimensions of the value. */
     static constexpr size_t size() { return DIMENSIONS; }
 
+    /** Creates a copy of this instance. */
+    SPECIALIZATION copy() const { return *this; }
+
     /** Checks, if this value contains only real, finite values (no INFINITY or NAN). */
     bool is_real() const { return implementation::is_real(); }
 

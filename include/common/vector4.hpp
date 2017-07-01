@@ -5,6 +5,7 @@
 
 #include "common/arithmetic.hpp"
 #include "common/meta.hpp"
+#include "common/vector2.hpp"
 
 namespace notf {
 
@@ -23,6 +24,9 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4, SIM
 
     /** Default (non-initializing) constructor so this struct remains a POD */
     _RealVector4() = default;
+
+    _RealVector4(const _RealVector2<value_t> vec)
+        : super({vec.x(), vec.y(), value_t(0), value_t(1)}) {}
 
     /** Element-wise constructor with 3 arguments and `w` set to 1. */
     _RealVector4(const value_t x, const value_t y, const value_t z)

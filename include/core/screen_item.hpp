@@ -174,7 +174,7 @@ public: // methods *************************************************************
     Aabrf get_aabr() const
     {
         Aabrf aabr(get_size());
-        aabr.transform(get_xform<space>());
+        get_xform<space>().transform(aabr);
         return aabr;
     }
 

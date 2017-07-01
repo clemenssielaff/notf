@@ -1,7 +1,6 @@
 #include "common/xform2.hpp"
 
 #include <iostream>
-#include <type_traits>
 
 namespace notf {
 

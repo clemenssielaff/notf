@@ -20,14 +20,14 @@ namespace notf {
  * While this does mean that you need to change four instead of two values for repositioning the Aabr, other
  * calculations (like intersections) are faster; and they are usually more relevant.
  */
-template <typename Vector2, ENABLE_IF_SAME_ANY(Vector2, Vector2f, Vector2d, Vector2i)>
+template <typename VECTOR2>
 struct _Aabr {
 
     /* Types **********************************************************************************************************/
 
-    using value_t = typename Vector2::value_t;
+    using value_t = typename VECTOR2::value_t;
 
-    using vector_t = Vector2;
+    using vector_t = VECTOR2;
 
     /* Fields *********************************************************************************************************/
 
@@ -95,7 +95,7 @@ struct _Aabr {
     }
 
     /** Constructs the Aabr from two of its corners.
-     * The corners don't need to be specific, the constructor figures out how to construct an AABR from them.
+     * The corners don't need to be specific, the constructor figures out how to construct an Aabr from them.
      * @param a    One corner point of the Aabr.
      * @param b    Opposite corner point of the Aabr.
      */
@@ -160,6 +160,9 @@ struct _Aabr {
     }
 
     /*  Inspection  ***************************************************************************************************/
+
+    /** Creates a copy of this Aabr. */
+    _Aabr copy() const { return *this; }
 
     /** X-coordinate of the center point. */
     value_t x() const { return (_min.x() + _max.x()) / 2; }
@@ -280,7 +283,7 @@ struct _Aabr {
 
     /** Modifiers *****************************************************************************************************/
 
-    /** Moves this Aabr vertically to the given x-coordinate. */
+    /** Moves the center of this Aabr to the given x-coordinate. */
     _Aabr& set_x(const value_t x)
     {
         const value_t half_width = get_width() / 2;
@@ -289,7 +292,7 @@ struct _Aabr {
         return *this;
     }
 
-    /** Moves this Aabr vertically to the given y-coordinate. */
+    /** Moves the center of this Aabr to the given y-coordinate. */
     _Aabr& set_y(const value_t y)
     {
         const value_t half_height = get_height() / 2;
@@ -440,10 +443,8 @@ struct _Aabr {
         return *this;
     }
 
-    // TODO: const overloads instead of get_* methods for AABR?
-
     /** Returns a grown copy of this Aabr. */
-    _Aabr get_grown(const value_t amount) const
+    _Aabr grow(const value_t amount) const
     {
         _Aabr result(*this);
         result.grow(amount);
@@ -471,10 +472,10 @@ struct _Aabr {
     _Aabr& shrink(const value_t amount) { return grow(-amount); }
 
     /** Returns a shrunken copy of this Aabr. */
-    _Aabr get_shrunken(const value_t amount) const
+    _Aabr shrink(const value_t amount) const
     {
         _Aabr result(*this);
-        result.grow(-amount);
+        result.shrink(amount);
         return result;
     }
 
@@ -482,7 +483,7 @@ struct _Aabr {
      * Intersecting with another Aabr that does not intersect results in the zero Aabr.
      * @return  The intersection Aabr.
      */
-    _Aabr get_intersection(const _Aabr& other) const
+    _Aabr intersect(const _Aabr& other) const
     {
         if (!intersects(other)) {
             return _Aabr::zero();
@@ -510,13 +511,13 @@ struct _Aabr {
     _Aabr operator&=(const _Aabr& other) { return intersect(other); }
 
     /** Creates the union of this Aabr with `other`. */
-    _Aabr get_union(const _Aabr& other) const
+    _Aabr unite(const _Aabr& other) const
     {
         return _Aabr(
             vector_t{_min.x() < other._min.x() ? _min.x() : other._min.x(), _min.y() < other._min.y() ? _min.y() : other._min.y()},
             vector_t{_max.x() > other._max.x() ? _max.x() : other._max.x(), _max.y() > other._max.y() ? _max.y() : other._max.y()});
     }
-    _Aabr operator|(const _Aabr& other) const { return get_union(other); }
+    _Aabr operator|(const _Aabr& other) const { return unite(other); }
 
     /** Creates the union of this Aabr with `other` in-place. */
     _Aabr& unite(const _Aabr& other)
@@ -532,33 +533,14 @@ struct _Aabr {
     /** Read-write pointer to the Aabr's internal storage. */
     value_t* as_ptr() { return &_min.x(); }
 
-    /** Applies a 2-dimensional transformation to this AABR in-place. */
-    _Aabr& transform(const _Xform2<value_t>& xform)
+    /** Applies a transformation to this Aabr in-place. */
+    template <typename XFORM>
+    _Aabr& transformed_by(const XFORM& xform)
     {
-        vector_t d0 = _min;
-        vector_t d1 = _max;
-        vector_t d2 = {_min.x(), _max.y()};
-        vector_t d3 = {_max.x(), _min.y()};
-        xform.transform(d0);
-        xform.transform(d1);
-        xform.transform(d2);
-        xform.transform(d3);
-        _min.x() = min(d0.x(), d1.x(), d2.x(), d3.x());
-        _min.y() = min(d0.y(), d1.y(), d2.y(), d3.y());
-        _max.x() = max(d0.x(), d1.x(), d2.x(), d3.x());
-        _max.y() = max(d0.y(), d1.y(), d2.y(), d3.y());
-        return *this;
-    }
-
-    // TODO: xform.transform(aabr) instead of aabr.transform(xform)!
-
-    /** Applies a 3-dimensional transformation to this AABR in-place. */
-    _Aabr& transform(const _Xform4<value_t>& xform)
-    {
-        typename _Xform4<value_t>::vector_t d0{_min.x(), _min.y(), value_t(0), value_t(1)};
-        typename _Xform4<value_t>::vector_t d1{_max.x(), _max.y(), value_t(0), value_t(1)};
-        typename _Xform4<value_t>::vector_t d2{_min.x(), _max.y(), value_t(0), value_t(1)};
-        typename _Xform4<value_t>::vector_t d3{_max.x(), _min.y(), value_t(0), value_t(1)};
+        typename XFORM::vector_t d0(_min);
+        typename XFORM::vector_t d1(_max);
+        typename XFORM::vector_t d2(vector_t{_min.x(), _max.y()});
+        typename XFORM::vector_t d3(vector_t{_max.x(), _min.y()});
         xform.transform(d0);
         xform.transform(d1);
         xform.transform(d2);
@@ -574,26 +556,53 @@ struct _Aabr {
 //*********************************************************************************************************************/
 
 using Aabrf = _Aabr<Vector2f>;
+using Aabrd = _Aabr<Vector2d>;
 
-/* Free Functions *****************************************************************************************************/
+// Transform specializations ******************************************************************************************/
+
+namespace detail {
+
+template <>
+inline Aabrf& transform2(const Xform2f& xform, Aabrf& aabr) { return aabr.transformed_by(xform); }
+template <>
+inline Aabrf transform2(const Xform2f& xform, const Aabrf& aabr) { return aabr.copy().transformed_by(xform); }
+
+template <>
+inline Aabrd& transform2(const Xform2d& xform, Aabrd& aabr) { return aabr.transformed_by(xform); }
+template <>
+inline Aabrd transform2(const Xform2d& xform, const Aabrd& aabr) { return aabr.copy().transformed_by(xform); }
+
+template <>
+inline Aabrf& transform4(const Xform4f& xform, Aabrf& aabr) { return aabr.transformed_by(xform); }
+template <>
+inline Aabrf transform4(const Xform4f& xform, const Aabrf& aabr) { return aabr.copy().transformed_by(xform); }
+
+template <>
+inline Aabrd& transform4(const Xform4d& xform, Aabrd& aabr) { return aabr.transformed_by(xform); }
+template <>
+inline Aabrd transform4(const Xform4d& xform, const Aabrd& aabr) { return aabr.copy().transformed_by(xform); }
+
+} // namespace detail
+
+// Free Functions *****************************************************************************************************/
 
 /** Prints the contents of this Aabr into a std::ostream.
  * @param out   Output stream, implicitly passed with the << operator.
  * @param aabr  Aabr to print.
  * @return      Output stream for further output.
  */
-template <typename Vector2>
-std::ostream& operator<<(std::ostream& out, const notf::_Aabr<Vector2>& aabr);
+template <typename VECTOR2>
+std::ostream& operator<<(std::ostream& out, const notf::_Aabr<VECTOR2>& aabr);
 
 } // namespace notf
 
-/* std::hash **********************************************************************************************************/
+// std::hash **********************************************************************************************************/
 
 namespace std {
 
 /** std::hash specialization for notf::_Aabr. */
-template <typename Vector2>
-struct hash<notf::_Aabr<Vector2>> {
-    size_t operator()(const notf::_Aabr<Vector2>& aabr) const { return notf::hash(aabr._min, aabr._max); }
+template <typename VECTOR2>
+struct hash<notf::_Aabr<VECTOR2>> {
+    size_t operator()(const notf::_Aabr<VECTOR2>& aabr) const { return notf::hash(aabr._min, aabr._max); }
 };
 }

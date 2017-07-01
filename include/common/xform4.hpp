@@ -6,6 +6,22 @@
 
 namespace notf {
 
+namespace detail {
+
+/** Transforms the given input and returns a new value. */
+template <typename XFORM4, typename INPUT>
+INPUT transform4(const XFORM4&, const INPUT&);
+
+/** Transforms the given input in-place.
+ * Modifies the argument but also returns a reference to it.
+ */
+template <typename XFORM4, typename INPUT>
+INPUT& transform4(const XFORM4&, INPUT&);
+
+} // namespace detail
+
+//*********************************************************************************************************************/
+
 /** A full 3D Transformation matrix with 4x4 components.
  * [a, e, i, m
  *  b, f, j, n
@@ -320,7 +336,6 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
         transform(result);
         return result;
     }
-    // TODO: instead of get_* overloads, use `const` to decide whether to modify or to return a new value
 
     /** Transforms a given Vector in-place.
      * Modifies the input vector but also returns a reference to it.
@@ -338,12 +353,45 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
         transform(result);
         return _RealVector2<value_t>(result.x(), result.y());
     }
+
+    /** Transforms a given value and returns a new instance. */
+    template <typename T>
+    T transform(const T& value) const { return detail::transform4(*this, value); }
+
+    /** Transforms a given value in-place.
+     * Modifies the input but also returns a reference to it.
+     */
+    template <typename T>
+    T& transform(T& value) const { return detail::transform4(*this, value); }
 };
+
+//*********************************************************************************************************************/
 
 using Xform4f = _Xform4<float>;
 using Xform4d = _Xform4<double>;
 
+/* Free Functions *****************************************************************************************************/
+
+/** Prints the contents of this Xform into a std::ostream.
+ * @param out   Output stream, implicitly passed with the << operator.
+ * @param aabr  Aabr to print.
+ * @return      Output stream for further output.
+ */
+template <typename REAL>
+std::ostream& operator<<(std::ostream& out, const notf::_Xform4<REAL>& aabr);
+
 } // namespace notf
+
+/* std::hash **********************************************************************************************************/
+
+namespace std {
+
+/** std::hash specialization for notf::_Aabr. */
+template <typename Real>
+struct hash<notf::_Xform4<Real>> {
+    size_t operator()(const notf::_Xform4<Real>& xform4) const { return notf::hash(xform4[0], xform4[1], xform4[2], xform4[3]); }
+};
+}
 
 #ifndef NOTF_NO_SIMD
 #include "common/simd/simd_xform4.hpp"

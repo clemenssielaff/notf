@@ -96,9 +96,9 @@ bool ScreenItem::is_visible() const
 
     { // fully scissored
         Aabrf content_aabr(get_size());
-        content_aabr.transform(transformation_between(this, m_scissor_layout));
+        transformation_between(this, m_scissor_layout).transform(content_aabr);
         Aabrf scissor_aabr(m_scissor_layout->get_grant());
-        scissor_aabr.transform(m_scissor_layout->get_xform<Space::PARENT>());
+        m_scissor_layout->get_xform<Space::PARENT>().transform(scissor_aabr);
         if (!scissor_aabr.intersects(content_aabr)) {
             return false;
         }
@@ -202,7 +202,7 @@ bool ScreenItem::_set_grant(const Size2f grant)
 
 bool ScreenItem::_set_size(const Size2f size)
 {
-    if(size == m_size){
+    if (size == m_size) {
         return false;
     }
     m_size = std::move(size);

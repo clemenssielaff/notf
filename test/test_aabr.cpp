@@ -17,8 +17,8 @@ SCENARIO("Aabr can be constructed", "[common][aabr]")
 {
     WHEN("you create an Aabr from two vectors")
     {
-        const Vector2f top_right   = {1, -1};
-        const Vector2f bottom_left = {-1, 1};
+        const Vector2f top_right   = {1, 1};
+        const Vector2f bottom_left = {-1, -1};
 
         THEN("the constructor will place the corners correctly")
         {
@@ -26,8 +26,8 @@ SCENARIO("Aabr can be constructed", "[common][aabr]")
             Aabrf aabr_2(bottom_left, top_right);
             REQUIRE(aabr_1.left() == approx(-1));
             REQUIRE(aabr_1.right() == 1.f);
-            REQUIRE(aabr_1.top() == approx(-1));
-            REQUIRE(aabr_1.bottom() == 1.f);
+            REQUIRE(aabr_1.top() == approx(1));
+            REQUIRE(aabr_1.bottom() == approx(-1.f));
             REQUIRE(aabr_1 == aabr_2);
         }
     }
@@ -44,7 +44,7 @@ SCENARIO("Aabr can be modified", "[common][aabr]")
         {
             Aabrf aabr_1(top_right, bottom_left);
             Xform2f rotation = Xform2f::rotation(pi<float>() / 4);
-            Aabrf aabr_2     = aabr_1.transform(rotation);
+            Aabrf aabr_2     = rotation.transform(aabr_1);
             REQUIRE(aabr_2.get_width() == approx(2 * sqrt(2.f)));
         }
     }

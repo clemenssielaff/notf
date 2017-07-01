@@ -8,6 +8,20 @@
 
 namespace notf {
 
+namespace detail {
+
+/** Transforms the given input and returns a new value. */
+template <typename XFORM2, typename INPUT>
+INPUT transform2(const XFORM2&, const INPUT&);
+
+/** Transforms the given input in-place.
+ * Modifies the argument but also returns a reference to it.
+ */
+template <typename XFORM2, typename INPUT>
+INPUT& transform2(const XFORM2&, INPUT&);
+
+} // namespace detail
+
 //*********************************************************************************************************************/
 
 /** A 2D transformation matrix with 3x3 components.
@@ -16,14 +30,14 @@ namespace notf {
  *  b, d, f
  *  0, 0, 1]
  */
-
-template <typename Real, bool SIMD_SPECIALIZATION = false, ENABLE_IF_REAL(Real)>
-struct _Xform2 : public detail::Arithmetic<_Xform2<Real, SIMD_SPECIALIZATION, true>, _RealVector2<Real>, 3, SIMD_SPECIALIZATION> {
+template <typename REAL, bool SIMD_SPECIALIZATION = false, ENABLE_IF_REAL(REAL)>
+struct _Xform2 : public detail::Arithmetic<_Xform2<REAL, SIMD_SPECIALIZATION, true>,
+                                           _RealVector2<REAL>, 3, SIMD_SPECIALIZATION> {
 
     // explitic forwards
-    using super    = detail::Arithmetic<_Xform2<Real>, _RealVector2<Real>, 3, SIMD_SPECIALIZATION>;
-    using vector_t = _RealVector2<Real>;
-    using value_t  = Real;
+    using super    = detail::Arithmetic<_Xform2<REAL>, _RealVector2<REAL>, 3, SIMD_SPECIALIZATION>;
+    using vector_t = _RealVector2<REAL>;
+    using value_t  = REAL;
     using super::data;
 
     /* Constructors ***************************************************************************************************/
@@ -221,6 +235,8 @@ struct _Xform2 : public detail::Arithmetic<_Xform2<Real, SIMD_SPECIALIZATION, tr
         return *this;
     }
 
+    /** Transformation ************************************************************************************************/
+
     /** Transforms a given Vector and returns a new value. */
     vector_t transform(const vector_t& vector) const
     {
@@ -241,6 +257,16 @@ struct _Xform2 : public detail::Arithmetic<_Xform2<Real, SIMD_SPECIALIZATION, tr
         };
         return vector;
     }
+
+    /** Transforms a given value and returns a new instance. */
+    template <typename T>
+    T transform(const T& value) const { return detail::transform2(*this, value); }
+
+    /** Transforms a given value in-place.
+     * Modifies the input but also returns a reference to it.
+     */
+    template <typename T>
+    T& transform(T& value) const { return detail::transform2(*this, value); }
 };
 
 //*********************************************************************************************************************/
@@ -250,13 +276,13 @@ using Xform2d = _Xform2<double>;
 
 /* Free Functions *****************************************************************************************************/
 
-/** Prints the contents of this Aabr into a std::ostream.
+/** Prints the contents of this Xform into a std::ostream.
  * @param out   Output stream, implicitly passed with the << operator.
  * @param aabr  Aabr to print.
  * @return      Output stream for further output.
  */
-template <typename Real>
-std::ostream& operator<<(std::ostream& out, const notf::_Xform2<Real>& aabr);
+template <typename REAL>
+std::ostream& operator<<(std::ostream& out, const notf::_Xform2<REAL>& aabr);
 
 } // namespace notf
 
