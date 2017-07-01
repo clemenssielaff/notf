@@ -149,7 +149,7 @@ void CellCanvas::finish_frame()
     m_cell_shader.shader->bind();
     m_graphics_context.set_blend_mode(BlendMode::SOURCE_OVER);
     glEnable(GL_CULL_FACE);
-    glCullFace(GL_FRONT); // FIXME: this should be BACK, as soon as the drawing is correct
+    glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
     glEnable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);

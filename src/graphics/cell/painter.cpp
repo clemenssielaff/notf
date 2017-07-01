@@ -89,13 +89,13 @@ void Painter::transform(const Xform2f& transform)
 void Painter::translate(const Vector2f& delta)
 {
     m_cell.m_commands.add_command(TranslationCommand(delta));
-    _get_current_state().xform.premult(Xform2f::translation(delta));
+    _get_current_state().xform.translate(delta);
 }
 
 void Painter::rotate(const float angle)
 {
     m_cell.m_commands.add_command(RotationCommand(angle));
-    _get_current_state().xform.premult(Xform2f::rotation(angle));
+    _get_current_state().xform.rotate(angle);
 }
 
 void Painter::set_scissor(const Aabrf& aabr)

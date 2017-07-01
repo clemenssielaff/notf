@@ -76,15 +76,15 @@ struct PainterState {
  * First, you define a "Path" using methods like `add_rect` and `add_circle`.
  * The combination of all Paths will be used to render the shape when calling `fill` or `stroke`.
  * In order to remove the current Path and start a new one call `begin_path`.
- * Calling `close_path` at the end of the Path definition is only necessary, if the current Shape is not already closed.
- * For example, if you construct a Path using bezier or quadratic curves.
+ * Calling `close_path` at the end of the Path definition is only necessary, if the current Shape is not already closed,
+ * for example, if you construct a Path using bezier or quadratic curves.
  */
 class Painter : public detail::PainterBase {
 
     friend class Widget;
 
 public: // methods
-        /** Value constructor.
+    /** Value constructor.
      * @param canvas    CellCanvas to paint into.
      * @param cell      Cell to paint.
      */
@@ -131,15 +131,15 @@ public: // methods
     /** The Scissor currently applied to the Painter. */
     Scissor get_scissor() const { return _get_current_state().scissor; }
 
-    /** Updates Scissor currently applied to the Painter. */
+    /** Updates the Painter's Scissor. */
     void set_scissor(const Aabrf& aabr);
 
-    /** Removes the Scissor currently applied to the Painter. */
+    /** Removes the Painter's Scissor. */
     void remove_scissor();
 
     /* Blend Mode *****************************************/
 
-    /** The current Painter's blend mode. */
+    /** The Painter's current blend mode. */
     BlendMode get_blend_mode() const { return _get_current_state().blend_mode; }
 
     /** Set the Painter's blend mode. */
@@ -251,11 +251,11 @@ public: // methods
 
     /** Creates a new rectangular Path. */
     void add_rect(const float x, const float y, const float w, const float h);
-    void add_rect(const Aabrf& rect) { add_rect(rect.left(), rect.top(), rect.get_width(), rect.get_height()); }
+    void add_rect(const Aabrf& rect) { add_rect(rect.left(), rect.bottom(), rect.get_width(), rect.get_height()); }
 
     /** Creates a new rectangular Path with rounded corners. */
     void add_rounded_rect(const float x, const float y, const float w, const float h, const float rtl, const float rtr, const float rbr, const float rbl);
-    void add_rounded_rect(const Aabrf& rect, const float radius) { add_rounded_rect(rect.left(), rect.top(), rect.get_width(), rect.get_height(), radius, radius, radius, radius); }
+    void add_rounded_rect(const Aabrf& rect, const float radius) { add_rounded_rect(rect.left(), rect.bottom(), rect.get_width(), rect.get_height(), radius, radius, radius, radius); }
     void add_rounded_rect(const float x, const float y, const float w, const float h, const float radius) { add_rounded_rect(x, y, w, h, radius, radius, radius, radius); }
 
     /** Creates a new elliptic Path. */

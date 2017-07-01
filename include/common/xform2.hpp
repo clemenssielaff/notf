@@ -198,10 +198,14 @@ struct _Xform2 : public detail::Arithmetic<_Xform2<REAL, SIMD_SPECIALIZATION, tr
     }
 
     /** Translates the transformation by a given delta vector. */
-    _Xform2 translate(const vector_t delta) const { return _Xform2::translation(std::move(delta)) * *this; }
+    _Xform2 translate(const vector_t& delta) const { return _Xform2(data[0], data[1], data[2] + delta); }
 
     /** Translates the transformation by a given delta vector in-place. */
-    _Xform2& translate(const vector_t delta) { return premult(_Xform2::translation(std::move(delta))); }
+    _Xform2& translate(const vector_t& delta)
+    {
+        data[2] += delta;
+        return *this;
+    }
 
     /** Rotates the transformation by a given angle in radians in-place. */
     _Xform2 rotate(const value_t radians) const { return _Xform2::rotation(radians) * *this; }
