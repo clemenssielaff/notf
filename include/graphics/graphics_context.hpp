@@ -35,13 +35,16 @@ struct GraphicsContextOptions {
      * Also, if you try it out and it does not cause a massive performance hit, you might just as well leave it on
      * because it is the Right Way™ to draw strokes.
      */
-    bool stencil_strokes = false;
+    bool stencil_strokes = true;
 
     /** Pixel ratio of the GraphicsContext.
      * Calculate the pixel ratio using `Window::get_buffer_size().width() / Window::get_window_size().width()`.
      * 1.0 means square pixels.
      */
     float pixel_ratio = 1.f;
+
+    /** Limit of the ration of a joint's miter length to its stroke width. */
+    float miter_limit = 2.4f;
 };
 
 /**********************************************************************************************************************/

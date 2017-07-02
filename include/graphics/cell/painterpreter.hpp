@@ -194,7 +194,7 @@ private: // methods
     void _stroke();
 
     /** Analyzes the Points making up each Path to be drawn in `fill` or `stroke`. */
-    void _prepare_paths(const float fringe, const Painter::LineJoin join, const float miter_limit);
+    void _prepare_paths(const float stroke_width, const Painter::LineJoin join, const float miter_limit);
 
 public: // fields
     /** The Cell Context that is painted into. */

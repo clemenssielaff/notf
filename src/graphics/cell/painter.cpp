@@ -326,9 +326,9 @@ void Painter::arc_to(const Vector2f& tangent, const Vector2f& end, const float r
 void Painter::add_rect(const float x, const float y, const float w, const float h)
 {
     m_cell.m_commands.add_command(MoveCommand({x, y}));
-    m_cell.m_commands.add_command(LineCommand({x, y + h}));
-    m_cell.m_commands.add_command(LineCommand({x + w, y + h}));
     m_cell.m_commands.add_command(LineCommand({x + w, y}));
+    m_cell.m_commands.add_command(LineCommand({x + w, y + h}));
+    m_cell.m_commands.add_command(LineCommand({x, y + h}));
     close_path();
 }
 

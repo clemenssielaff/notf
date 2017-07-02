@@ -125,11 +125,11 @@ void RenderManager::render()
     m_is_clean = true;
 
     // draw the render stats on top
-    if (m_stats) {
-        double time_elapsed = (Time::now().since(time_at_start)).in_seconds();
-        m_stats->update(static_cast<float>(time_elapsed));
-        m_stats->render_stats(cell_context);
-    }
+    //    if (m_stats) {
+    //        double time_elapsed = (Time::now().since(time_at_start)).in_seconds();
+    //        m_stats->update(static_cast<float>(time_elapsed));
+    //        m_stats->render_stats(cell_context);
+    //    }
 
     // flush
     cell_context.finish_frame();

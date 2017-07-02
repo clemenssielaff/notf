@@ -34,10 +34,35 @@ public:
         const float margin = 20;
         const float time   = static_cast<float>(painter.get_time().in_seconds());
 
+                painter.begin_path();
+                painter.add_circle(base.center(), 80);
+                painter.set_fill_paint(Color(255, 0, 0));
+                painter.fill();
+
+        //        painter.move_to(100, 100);
+        //        painter.line_to(400, 100);
+        //        painter.line_to(400, 400);
+        //        painter.line_to(100, 150);
+        //        painter.line_to(120, 110);
+        //        painter.close_path();
+
+        //        Painter::LineCap caps[3]   = {Painter::LineCap::BUTT, Painter::LineCap::ROUND, Painter::LineCap::SQUARE};
+        //        Painter::LineJoin joins[3] = {Painter::LineJoin::MITER, Painter::LineJoin::ROUND, Painter::LineJoin::BEVEL};
+        //        painter.set_line_cap(Painter::LineCap::BUTT);
+        //        painter.set_line_join(Painter::LineJoin::BEVEL);
+
+        //        painter.set_stroke_width(40);
+        //        painter.set_stroke_color(Color(0, 0, 0, 160));
         //        painter.begin_path();
-        //        painter.add_circle(base.center(), 80);
-        //        painter.set_fill_paint(Color(255, 0, 0));
-        //        painter.fill();
+        //        painter.move_to(100, 100);
+        //        painter.line_to(300, 500);
+        //        painter.line_to(500, 100);
+        //        painter.line_to(700, 500);
+        //        painter.stroke();
+
+        //                painter.set_stroke_color(Color(1.f, 1.f, 1.f));
+        //                painter.set_stroke_width(5);
+        //                painter.stroke();
 
         drawGraph(painter, base, time);
 
@@ -51,11 +76,11 @@ public:
 
         drawCaps(painter, Vector2f{10, 200}, 30);
 
-        drawEyes(painter, Aabrf{600, 20, 80, 60}, painter.get_mouse_pos(), time);
+        drawEyes(painter, Aabrf{600, base.top() - 100, 80, 60}, painter.get_mouse_pos(), time);
 
         drawSpinner(painter, base.center(), 100, time);
 
-        drawJoins(painter, Aabrf{120, widget_size.height - 50, 600, 50}, time);
+        drawJoins(painter, Aabrf{120, 50, 600, 50}, time);
 
         drawTexture(painter, Aabrf{400, 100, 200, 200});
 
@@ -109,7 +134,7 @@ public:
     void drawButton(Painter& painter, const Aabrf& rect) const
     {
         const float corner_radius = 4;
-        Paint gradient            = Paint::create_linear_gradient(rect.top_left(), rect.bottom_left(),
+        Paint gradient            = Paint::create_linear_gradient(rect.bottom_left(), rect.top_left(),
                                                        Color(0, 0, 0, 32), Color(255, 255, 255, 32));
 
         painter.begin_path();
@@ -245,20 +270,20 @@ public:
         painter.pop_state();
     }
 
-    void drawEyes(Painter& painter, const Aabrf& rect, const Vector2f& target, float t) const
+    void drawEyes(Painter& painter, const Aabrf& rect, const Vector2f target, float t) const
     {
         float ex = rect.get_width() * 0.23f;
         float ey = rect.get_height() * 0.5f;
         float lx = rect.left() + ex;
-        float ly = rect.top() + ey;
+        float ly = rect.bottom() + ey;
         float rx = rect.left() + rect.get_width() - ex;
-        float ry = rect.top() + ey;
+        float ry = rect.bottom() + ey;
         float dx, dy, d;
         float br    = (ex < ey ? ex : ey) * 0.5f;
         float blink = 1.f - powf(sinf(t * 0.5f), 200.f) * 0.8f;
 
-        Paint bg = Paint::create_linear_gradient(Vector2f{rect.left(), rect.top() + rect.get_height() * 0.5f},
-                                                 Vector2f{rect.left() + rect.get_width() * 0.1f, rect.top() + rect.get_height()},
+        Paint bg = Paint::create_linear_gradient(Vector2f{rect.left(), rect.bottom() + rect.get_height() * 0.5f},
+                                                 Vector2f{rect.left() + rect.get_width() * 0.1f, rect.bottom() + rect.get_height()},
                                                  Color(0, 0, 0, 32), Color(0, 0, 0, 16));
         painter.begin_path();
         painter.add_ellipse(lx + 3.0f, ly + 16.0f, ex, ey);
@@ -266,8 +291,8 @@ public:
         painter.set_fill_paint(bg);
         painter.fill();
 
-        bg = Paint::create_linear_gradient({rect.left(), rect.top() + rect.get_height() * 0.25f},
-                                           {rect.left() + rect.get_width() * 0.1f, rect.top() + rect.get_height()}, Color(220, 220, 220, 255), Color(128, 128, 128, 255));
+        bg = Paint::create_linear_gradient({rect.left(), rect.bottom() + rect.get_height() * 0.25f},
+                                           {rect.left() + rect.get_width() * 0.1f, rect.bottom() + rect.get_height()}, Color(220, 220, 220, 255), Color(128, 128, 128, 255));
         painter.begin_path();
         painter.add_ellipse(lx, ly, ex, ey);
         painter.add_ellipse(rx, ry, ex, ey);
@@ -331,7 +356,7 @@ public:
 
         for (i = 0; i < 6; i++) {
             sx[i] = rect.left() + i * dx;
-            sy[i] = rect.top() + rect.get_height() * samples[i] * 0.8f;
+            sy[i] = rect.bottom() + rect.get_height() * samples[i] * 0.8f;
         }
 
         // Graph background
@@ -340,8 +365,8 @@ public:
         painter.move_to(sx[0], sy[0]);
         for (i = 1; i < 6; i++)
             painter.bezier_to(sx[i - 1] + dx * 0.5f, sy[i - 1], sx[i] - dx * 0.5f, sy[i], sx[i], sy[i]);
-        painter.line_to(rect.left() + rect.get_width(), rect.top() + rect.get_height());
-        painter.line_to(rect.left(), rect.top() + rect.get_height());
+        painter.line_to(rect.left() + rect.get_width(), rect.bottom() + rect.get_height());
+        painter.line_to(rect.left(), rect.bottom() + rect.get_height());
         painter.set_fill_paint(bg);
         painter.fill();
 
@@ -442,8 +467,8 @@ public:
 
     void drawJoins(Painter& painter, const Aabrf& rect, const float time) const
     {
-        Painter::LineJoin joins[3] = {Painter::LineJoin::MITER, Painter::LineJoin::ROUND, Painter::LineJoin::BEVEL};
         Painter::LineCap caps[3]   = {Painter::LineCap::BUTT, Painter::LineCap::ROUND, Painter::LineCap::SQUARE};
+        Painter::LineJoin joins[3] = {Painter::LineJoin::MITER, Painter::LineJoin::ROUND, Painter::LineJoin::BEVEL};
         const float pad            = 5.0f;
         const float s              = rect.get_width() / 9.0f - pad * 2;
 
@@ -461,12 +486,14 @@ public:
 
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
+
                 const float fx = rect.left() + s * 0.5f + (i * 3 + j) / 9.0f * rect.get_width() + pad;
                 const float fy = rect.top() - s * 0.5f + pad;
 
                 painter.set_line_cap(caps[i]);
                 painter.set_line_join(joins[j]);
 
+                //                painter.set_stroke_width(40);
                 painter.set_stroke_width(s * 0.3f);
                 painter.set_stroke_color(Color(0, 0, 0, 160));
                 painter.begin_path();
@@ -489,19 +516,16 @@ public:
                 painter.stroke();
             }
         }
-
         painter.pop_state();
     }
 
     void drawTexture(Painter& painter, const Aabrf& rect) const
     {
-        Paint pattern = Paint::create_texture_pattern(rect.top_left(), rect.get_size(), test_texture, 0, 1);
-
-        const float corner_radius = 10;
+        Paint pattern = Paint::create_texture_pattern(rect.bottom_left(), rect.get_size(), test_texture, 0, 1);
 
         painter.begin_path();
         painter.set_fill_paint(pattern);
-        painter.add_rounded_rect(rect, corner_radius);
+        painter.add_rect(rect);
         painter.fill();
     }
 

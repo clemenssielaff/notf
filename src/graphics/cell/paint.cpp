@@ -73,7 +73,7 @@ Paint Paint::create_texture_pattern(const Vector2f& origin, const Size2f& extend
     paint.xform[2][0]   = origin.x();
     paint.xform[2][1]   = origin.y();
     paint.extent.width  = extend.width;
-    paint.extent.height = extend.height;
+    paint.extent.height = -extend.height;
     paint.texture       = texture;
     paint.inner_color   = Color(1, 1, 1, alpha);
     paint.outer_color   = Color(1, 1, 1, alpha);

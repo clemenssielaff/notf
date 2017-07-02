@@ -36,6 +36,9 @@ struct CellCanvasOptions {
     /** Width of the faint outline around shapes when geometric antialiasing is enabled. */
     float fringe_width;
 
+    /** Limit of the ration of a joint's miter length to its stroke width. */
+    float miter_limit;
+
     /** See `GraphicsContextOptions` for details. */
     bool geometric_aa;
 

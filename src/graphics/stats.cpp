@@ -58,15 +58,18 @@ void RenderStats::render_stats(CellCanvas& context)
      */
 
     // the graph consists of many vertices on the top and two on the bottom
+    // it is drawn from right to left so that the vertices form a counter-clockwise polygon
     painter.begin_path();
-    painter.move_to(m_aabr.bottom_left());
+    painter.move_to(m_aabr.bottom_right());
+    float y = m_aabr.bottom();
     for (size_t i = 0; i < m_buffer.size(); i++) {
-        const float value = min(m_max_frame_time, m_buffer[(m_head + i) % m_buffer.size()] * 1000.0f);
-        const float x     = m_aabr.left() + (static_cast<float>(i) / (m_buffer.size() - 1)) * m_aabr.get_width();
-        const float y     = m_aabr.bottom() + ((value / m_max_frame_time) * m_aabr.get_height());
+        const float value = min(m_max_frame_time, m_buffer[(m_head - i) % m_buffer.size()] * 1000.0f);
+        const float x     = m_aabr.right() - (static_cast<float>(i) / (m_buffer.size() - 1)) * m_aabr.get_width();
+        y                 = m_aabr.bottom() + ((value / m_max_frame_time) * m_aabr.get_height());
         painter.line_to(x, y);
     }
-    painter.line_to(m_aabr.bottom_right());
+    painter.line_to(m_aabr.left() - 1, y); // to avoid a pixel-wide gap on thr right edge of the stats box
+    painter.line_to(m_aabr.bottom_left());
     painter.set_fill_color(Color(255, 192, 0, 128));
     painter.fill();
 

@@ -117,6 +117,7 @@ void CellCanvas::begin_frame(const Xform4f projection_matrix, const Time time, c
     m_options.distance_tolerance    = 0.01f / m_graphics_context.get_options().pixel_ratio;
     m_options.tesselation_tolerance = 0.25f / m_graphics_context.get_options().pixel_ratio;
     m_options.fringe_width          = 1.f / m_graphics_context.get_options().pixel_ratio;
+    m_options.miter_limit           = m_graphics_context.get_options().miter_limit;
 
     m_options.geometric_aa    = m_graphics_context.get_options().geometric_aa;
     m_options.stencil_strokes = m_graphics_context.get_options().stencil_strokes;
