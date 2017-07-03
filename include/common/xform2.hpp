@@ -154,10 +154,10 @@ struct _Xform2 : public detail::Arithmetic<_Xform2<REAL, SIMD_SPECIALIZATION, tr
     }
 
     /** Scale factor along the x-axis. */
-    value_t get_scale_x() const { return sqrt(data[0][0] * data[0][0] + data[0][1] * data[0][1]) * sign(data[0][0]); }
+    value_t get_scale_x() const { return sqrt(data[0][0] * data[0][0] + data[0][1] * data[0][1]); }
 
     /** Scale factor along the y-axis. */
-    value_t get_scale_y() const { return sqrt(data[1][0] * data[1][0] + data[1][1] * data[1][1]) * sign(data[1][1]); }
+    value_t get_scale_y() const { return sqrt(data[1][0] * data[1][0] + data[1][1] * data[1][1]); }
 
     /** Calculates the determinant of the transformation matrix. */
     value_t get_determinant() const { return (data[0][0] * data[1][1]) - (data[1][0] * data[0][1]); }

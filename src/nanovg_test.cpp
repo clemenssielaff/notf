@@ -5,6 +5,7 @@
 
 using namespace notf;
 
+#include "common/log.hpp"
 #include "core/controller.hpp"
 #include "core/render_manager.hpp"
 #include "core/widget.hpp"
@@ -34,10 +35,10 @@ public:
         const float margin = 20;
         const float time   = static_cast<float>(painter.get_time().in_seconds());
 
-                painter.begin_path();
-                painter.add_circle(base.center(), 80);
-                painter.set_fill_paint(Color(255, 0, 0));
-                painter.fill();
+        //        painter.begin_path();
+        //        painter.add_circle(100, base.center().y(), 80);
+        //        painter.set_fill_paint(Color(255, 0, 0));
+        //        painter.fill();
 
         //        painter.move_to(100, 100);
         //        painter.line_to(400, 100);
@@ -84,8 +85,8 @@ public:
 
         drawTexture(painter, Aabrf{400, 100, 200, 200});
 
-        painter.translate(192, 200);
-        painter.write("This is a test text that I would like to see printed on screen please", g_font);
+        painter.translate(192, 450);
+        painter.write("ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz", g_font);
     }
 
     void drawSlider(Painter& painter, const Aabrf& rect, float pos) const
@@ -246,6 +247,7 @@ public:
             end_color   = Color(0, 0, 0, 1.);
             painter.set_fill_paint(Paint::create_linear_gradient(start_pos, end_pos, start_color, end_color));
             painter.fill();
+
             painter.set_stroke_color(Color(0, 0, 0, 64));
             painter.stroke();
         }
@@ -365,8 +367,8 @@ public:
         painter.move_to(sx[0], sy[0]);
         for (i = 1; i < 6; i++)
             painter.bezier_to(sx[i - 1] + dx * 0.5f, sy[i - 1], sx[i] - dx * 0.5f, sy[i], sx[i], sy[i]);
-        painter.line_to(rect.left() + rect.get_width(), rect.bottom() + rect.get_height());
-        painter.line_to(rect.left(), rect.bottom() + rect.get_height());
+        painter.line_to(rect.left() + rect.get_width(), rect.bottom());
+        painter.line_to(rect.left(), rect.bottom());
         painter.set_fill_paint(bg);
         painter.fill();
 
@@ -568,7 +570,7 @@ int main(int argc, char* argv[])
     g_graphics_context = &(window->get_graphics_context());
     g_font_manager     = &(g_graphics_context->get_font_manager());
 
-    g_font = Font::load(*g_graphics_context, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 10);
+    g_font = Font::load(*g_graphics_context, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 16);
 
     app_main(*window.get());
 

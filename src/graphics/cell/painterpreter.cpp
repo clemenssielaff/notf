@@ -748,24 +748,24 @@ void Painterpreter::_render_text(const std::string& text, const std::shared_ptr<
 
             Aabrf quad_rect(
                 (x + glyph.left),
-                (y - glyph.top),
+                (y - glyph.rect.height + glyph.top),
                 static_cast<float>(glyph.rect.width),
                 static_cast<float>(glyph.rect.height));
 
             // create the quad (2*3 vertices) to render the character
             m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.right(), quad_rect.bottom()},
-                                             Vector2f{uv_rect.right(), uv_rect.bottom()});
-            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.left(), quad_rect.top()},
-                                             Vector2f{uv_rect.left(), uv_rect.top()});
-            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.left(), quad_rect.bottom()},
-                                             Vector2f{uv_rect.left(), uv_rect.bottom()});
-
-            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.right(), quad_rect.top()},
                                              Vector2f{uv_rect.right(), uv_rect.top()});
             m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.left(), quad_rect.top()},
+                                             Vector2f{uv_rect.left(), uv_rect.bottom()});
+            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.left(), quad_rect.bottom()},
                                              Vector2f{uv_rect.left(), uv_rect.top()});
-            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.right(), quad_rect.bottom()},
+
+            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.right(), quad_rect.top()},
                                              Vector2f{uv_rect.right(), uv_rect.bottom()});
+            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.left(), quad_rect.top()},
+                                             Vector2f{uv_rect.left(), uv_rect.bottom()});
+            m_canvas.m_vertices.emplace_back(Vector2f{quad_rect.right(), quad_rect.bottom()},
+                                             Vector2f{uv_rect.right(), uv_rect.top()});
         }
 
         // advance to the next character position

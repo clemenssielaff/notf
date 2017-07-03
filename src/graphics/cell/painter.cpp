@@ -360,10 +360,10 @@ void Painter::add_rounded_rect(const float x, const float y, const float w, cons
 void Painter::add_ellipse(const float cx, const float cy, const float rx, const float ry)
 {
     m_cell.m_commands.add_command(MoveCommand({cx - rx, cy}));
-    m_cell.m_commands.add_command(BezierCommand({cx - rx, cy + ry * kappa<float>()}, {cx - rx * kappa<float>(), cy + ry}, {cx, cy + ry}));
-    m_cell.m_commands.add_command(BezierCommand({cx + rx * kappa<float>(), cy + ry}, {cx + rx, cy + ry * kappa<float>()}, {cx + rx, cy}));
-    m_cell.m_commands.add_command(BezierCommand({cx + rx, cy - ry * kappa<float>()}, {cx + rx * kappa<float>(), cy - ry}, {cx, cy - ry}));
-    m_cell.m_commands.add_command(BezierCommand({cx - rx * kappa<float>(), cy - ry}, {cx - rx, cy - ry * kappa<float>()}, {cx - rx, cy}));
+    m_cell.m_commands.add_command(BezierCommand({cx - rx, cy - ry * kappa<float>()}, {cx - rx * kappa<float>(), cy - ry}, {cx, cy - ry}));
+    m_cell.m_commands.add_command(BezierCommand({cx + rx * kappa<float>(), cy - ry}, {cx + rx, cy - ry * kappa<float>()}, {cx + rx, cy}));
+    m_cell.m_commands.add_command(BezierCommand({cx + rx, cy + ry * kappa<float>()}, {cx + rx * kappa<float>(), cy + ry}, {cx, cy + ry}));
+    m_cell.m_commands.add_command(BezierCommand({cx - rx * kappa<float>(), cy + ry}, {cx - rx, cy + ry * kappa<float>()}, {cx - rx, cy}));
     close_path();
 }
 
