@@ -819,7 +819,7 @@ void Painterpreter::_fill()
 
                 // no bevel
                 if (!(current_point.flags & Point::Flags::BEVEL) || current_point.flags & Point::Flags::LEFT) {
-                    m_canvas.m_vertices.emplace_back(current_point.pos + (current_point.dm * woff),
+                    m_canvas.m_vertices.emplace_back(current_point.pos - (current_point.dm * woff),
                                                      Vector2f(.5f, 1));
                 }
 
@@ -848,10 +848,10 @@ void Painterpreter::_fill()
             assert(m_canvas.m_vertices.size() < std::numeric_limits<GLint>::max());
             render_path.stroke_offset = static_cast<GLint>(m_canvas.m_vertices.size());
 
-            const float left_w        = fringe_width + woff;
-            const float left_u        = 0;
-            float right_w = fringe_width - woff;
-            float right_u = 1;
+            const float left_w = fringe_width - woff;
+            const float left_u = 0;
+            float right_w      = fringe_width + woff;
+            float right_u      = 1;
 
             { // create only half a fringe for convex shapes so that the shape can be rendered without stenciling
                 const bool is_convex = m_paths.size() == 1 && m_paths.front().is_convex;
@@ -883,7 +883,6 @@ void Painterpreter::_fill()
 
             // copy the first two vertices from the beginning to form a cohesive loop
             assert(m_canvas.m_vertices.size() >= static_cast<size_t>(render_path.stroke_offset + 2));
-
             m_canvas.m_vertices.emplace_back(m_canvas.m_vertices[static_cast<size_t>(render_path.stroke_offset + 0)].pos,
                                              Vector2f(right_u, 1));
             m_canvas.m_vertices.emplace_back(m_canvas.m_vertices[static_cast<size_t>(render_path.stroke_offset + 1)].pos,

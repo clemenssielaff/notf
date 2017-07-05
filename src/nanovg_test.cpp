@@ -35,10 +35,10 @@ public:
         const float margin = 20;
         const float time   = static_cast<float>(painter.get_time().in_seconds());
 
-        //        painter.begin_path();
-        //        painter.add_circle(100, base.center().y(), 80);
-        //        painter.set_fill_paint(Color(255, 0, 0));
-        //        painter.fill();
+//                painter.begin_path();
+//                painter.add_circle(100, base.center().y(), 80);
+//                painter.set_fill_paint(Color(255, 0, 0));
+//                painter.fill();
 
         //        painter.move_to(100, 100);
         //        painter.line_to(400, 100);
@@ -69,6 +69,8 @@ public:
 
         drawColorwheel(painter, base.shrink(margin), time);
 
+        drawSpinner(painter, base.center(), 100, time);
+
         drawCheckBox(painter, Aabrf{10, 100, 20, 20});
 
         drawButton(painter, Aabrf{10, 130, 150, 30});
@@ -78,8 +80,6 @@ public:
         drawCaps(painter, Vector2f{10, 200}, 30);
 
         drawEyes(painter, Aabrf{600, base.top() - 100, 80, 60}, painter.get_mouse_pos(), time);
-
-        drawSpinner(painter, base.center(), 100, time);
 
         drawJoins(painter, Aabrf{120, 50, 600, 50}, time);
 
@@ -495,7 +495,6 @@ public:
                 painter.set_line_cap(caps[i]);
                 painter.set_line_join(joins[j]);
 
-                //                painter.set_stroke_width(40);
                 painter.set_stroke_width(s * 0.3f);
                 painter.set_stroke_color(Color(0, 0, 0, 160));
                 painter.begin_path();
