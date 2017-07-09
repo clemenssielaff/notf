@@ -162,7 +162,7 @@ protected: // methods **********************************************************
     PyObject* _get_py_object() const { return m_py_object.get(); }
 
     // clang-format off
-protected_except_for_bindings : // methods
+PROTECTED_EXCEPT_FOR_BINDINGS // methods
     /** Stores the Python subclass object of this Item, if it was created through Python. */
     virtual void _set_pyobject(PyObject* object);
 #endif

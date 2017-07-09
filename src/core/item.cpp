@@ -131,7 +131,7 @@ void Item::_set_parent(Item* parent)
     }
 
     if (m_parent) {
-//        m_parent->_remove_child(this); // FIXME: Crashbug on shutdown
+        //        m_parent->_remove_child(this); // FIXME: Crashbug on shutdown
     }
     m_parent = parent;
 
@@ -179,5 +179,16 @@ Type* Item::_get_first_ancestor() const
     }
     return {};
 }
+
+#ifdef NOTF_PYTHON
+
+void Item::_set_pyobject(PyObject* object)
+{
+    assert(!m_py_object); // you should only have to do this once
+    py_incref(object);
+    m_py_object.reset(std::move(object));
+}
+
+#endif
 
 } // namespace notf

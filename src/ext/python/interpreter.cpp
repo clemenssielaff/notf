@@ -81,12 +81,13 @@ void PythonInterpreter::parse_app(const std::string& filename)
     }
 
     // resture the original modules (force-reload all custom ones)
-    static const std::string restore_original_modules_command = "modules_to_remove = []\n"
-                                                                "for module in sys.modules.keys():\n"
-                                                                "    if not module in sys._original_modules:\n"
-                                                                "        modules_to_remove.append(module)\n"
-                                                                "for module in modules_to_remove:\n"
-                                                                "    del(sys.modules[module])\n";
+    static const std::string restore_original_modules_command
+        = "modules_to_remove = []\n"
+          "for module in sys.modules.keys():\n"
+          "    if not module in sys._original_modules:\n"
+          "        modules_to_remove.append(module)\n"
+          "for module in modules_to_remove:\n"
+          "    del(sys.modules[module])\n";
     PyRun_SimpleString(restore_original_modules_command.c_str());
 
     // run the script

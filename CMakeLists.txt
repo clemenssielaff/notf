@@ -9,7 +9,6 @@ INCLUDE_DIRECTORIES(
         res
         /home/clemens/code/thirdparty/freetype-2.8/include/
         test
-        #/home/clemens/code/thirdparty/Python-3.6.1/INSTALL/include/python3.6dm/
 )
 
 set(SOURCE_FILES
@@ -50,32 +49,32 @@ set(SOURCE_FILES
     src/dynamic/layout/flex_layout.cpp
     src/dynamic/layout/free_layout.cpp
     src/dynamic/layout/overlayout.cpp
-#        src/ext/python/interpreter.cpp
-#        src/ext/python/py_aabr.cpp
-#        src/ext/python/py_circle.cpp
-#        src/ext/python/py_claim.cpp
-#        src/ext/python/py_color.cpp
-#        src/ext/python/py_controller.cpp
-#        src/ext/python/py_dict_utils.cpp
-#        src/ext/python/py_event.cpp
-#        src/ext/python/py_flexlayout.cpp
-#        src/ext/python/py_font.cpp
-#        src/ext/python/py_fwd.cpp
-#        src/ext/python/py_globals.cpp
-#        src/ext/python/py_layoutroot.cpp
-#        src/ext/python/py_notf.cpp
-#        src/ext/python/py_overlayout.cpp
-#        src/ext/python/py_padding.cpp
-#        src/ext/python/py_painter.cpp
-#        src/ext/python/py_property.cpp
-#        src/ext/python/py_resourcemanager.cpp
-#        src/ext/python/py_signal.cpp
-#        src/ext/python/py_size.cpp
-#        src/ext/python/py_texture2.cpp
-#        src/ext/python/py_vector2.cpp
-#        src/ext/python/py_widget.cpp
-#        src/ext/python/py_window.cpp
-#        src/ext/python/type_patches.cpp
+    src/ext/python/interpreter.cpp
+#    src/ext/python/py_aabr.cpp
+#    src/ext/python/py_circle.cpp
+#    src/ext/python/py_claim.cpp
+#    src/ext/python/py_color.cpp
+#   src/ext/python/py_controller.cpp
+    src/ext/python/py_dict_utils.cpp
+#    src/ext/python/py_event.cpp
+#    src/ext/python/py_flexlayout.cpp
+#    src/ext/python/py_font.cpp
+    src/ext/python/py_fwd.cpp
+#    src/ext/python/py_globals.cpp
+#    src/ext/python/py_layoutroot.cpp
+    src/ext/python/py_notf.cpp
+#    src/ext/python/py_overlayout.cpp
+#    src/ext/python/py_padding.cpp
+#    src/ext/python/py_painter.cpp
+#    src/ext/python/py_property.cpp
+#    src/ext/python/py_resourcemanager.cpp
+#    src/ext/python/py_signal.cpp
+#    src/ext/python/py_size.cpp
+#    src/ext/python/py_texture2.cpp
+#    src/ext/python/py_vector2.cpp
+#    src/ext/python/py_widget.cpp
+#    src/ext/python/py_window.cpp
+    src/ext/python/type_patches.cpp
     src/graphics/cell/cell.cpp
     src/graphics/cell/cell_canvas.cpp
     src/graphics/cell/paint.cpp
@@ -209,7 +208,7 @@ set(RESOURCE_FILES
 
 add_executable(notf ${SOURCE_FILES} ${HEADER_FILES} ${RESOURCE_FILES})
 
-# TEST SUITE ###########################################################################################################
+# TESTS ################################################################################################################
 
 include_directories(/home/clemens/code/thirdparty/glm-0.9.8.4/include/)
 
@@ -249,16 +248,25 @@ find_package(OpenGL REQUIRED)
 # freetype
 add_subdirectory(/home/clemens/code/thirdparty/freetype-2.8/ thirdparty/freetype)
 
+# python
+find_package(PythonLibs 3 REQUIRED)
+include_directories(${PYTHON_INCLUDE_DIRS})
+add_definitions(-DNOTF_PYTHON)
+
+# TARGETS ##############################################################################################################
+
 target_link_libraries(${PROJECT_NAME}
         ${OPENGL_gl_LIBRARY}
         glfw
         freetype
+        ${PYTHON_LIBRARIES}
 )
 
 target_link_libraries(notf-test
         ${OPENGL_gl_LIBRARY}
         glfw
         freetype
+        ${PYTHON_LIBRARIES}
         )
 
 # CCACHE ###############################################################################################################
