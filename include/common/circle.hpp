@@ -33,14 +33,22 @@ struct _Circle {
 
     /* Constructors ***************************************************************************************************/
 
-    _Circle() = default; // so this data structure remains a POD
+    /** Default (non-initializing) constructor so this struct remains a POD */
+    _Circle() = default;
 
+    /** Constructs a Circle of the given radius, centered at the given coordinates.
+     * @param center    Center position of the Circle.
+     * @param radius    Radius of the Circle.
+     */
     _Circle(vector_t center, const value_t radius)
         : center(std::move(center))
         , radius(radius)
     {
     }
 
+    /** Constructs a Circle of the given radius, centered at the origin.
+     * @param radius    Radius of the Circle.
+     */
     _Circle(const value_t radius)
         : center(vector_t::zero())
         , radius(radius)

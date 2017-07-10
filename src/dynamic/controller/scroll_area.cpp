@@ -25,7 +25,7 @@ void ScrollArea::ScrollBar::_paint(Painter& painter) const
     const Aabrf widget_rect = Aabrf(get_size());
     painter.begin_path();
     painter.add_rect(widget_rect);
-    painter.set_fill_paint(Color("#454950"));
+    painter.set_fill(Color("#454950"));
     painter.fill();
 
     // bar
@@ -35,7 +35,7 @@ void ScrollArea::ScrollBar::_paint(Painter& painter) const
 
         painter.begin_path();
         painter.add_rect(bar_rect);
-        painter.set_fill_paint(Color("#ffba59"));
+        painter.set_fill(Color("#ffba59"));
         painter.fill();
     }
 }

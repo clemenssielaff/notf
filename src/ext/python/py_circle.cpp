@@ -45,7 +45,7 @@ void produce_circle(pybind11::module& module)
 
     // representation
     PyCircle.def("__repr__", [](const Circlef& circle) {
-        return string_format("notf.Circle([%f, %f], %f)", circle.center.x, circle.center.y, circle.radius);
+        return string_format("notf.Circle([%f, %f], %f)", circle.center.x(), circle.center.y(), circle.radius);
     });
 }
 

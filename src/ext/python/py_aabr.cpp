@@ -49,13 +49,10 @@ void produce_aabr(pybind11::module& module)
 
     // modification
     PyAabr.def("set_null", &Aabrf::set_zero, DOCSTR("Sets this Aabr to null."));
-    PyAabr.def("grow", &Aabrf::grow, DOCSTR("Moves each edge of the Aabr a given amount towards the outside."), py::arg("amount"));
-    PyAabr.def("shrink", &Aabrf::shrink, DOCSTR("Moves each edge of the Aabr a given amount towards the inside."), py::arg("amount"));
-    PyAabr.def("shrink", &Aabrf::shrink, DOCSTR("Moves each edge of the Aabr a given amount towards the inside."), py::arg("amount"));
-    PyAabr.def("intersection", &Aabrf::get_intersection, DOCSTR("Intersection of this Aabr with `other`."), py::arg("other"));
-    PyAabr.def("intersected", &Aabrf::intersect, DOCSTR("Intersection of this Aabr with `other` in-place."), py::arg("other"));
-    PyAabr.def("union", &Aabrf::get_union, DOCSTR("Creates the union of this Aabr with `other`."), py::arg("other"));
-    PyAabr.def("united", &Aabrf::unite, DOCSTR("Creates the union of this Aabr with `other` in-place."), py::arg("other"));
+    PyAabr.def("grow", (Aabrf & (Aabrf::*)(float)) & Aabrf::grow, DOCSTR("Moves each edge of the Aabr a given amount towards the outside."), py::arg("amount"));
+    PyAabr.def("shrink", (Aabrf & (Aabrf::*)(float)) & Aabrf::shrink, DOCSTR("Moves each edge of the Aabr a given amount towards the inside."), py::arg("amount"));
+    PyAabr.def("intersect", (Aabrf & (Aabrf::*)(const Aabrf&)) & Aabrf::intersect, DOCSTR("Intersects this Aabr with `other` in-place."), py::arg("other"));
+    PyAabr.def("unite", (Aabrf & (Aabrf::*)(const Aabrf&)) & Aabrf::unite, DOCSTR("Unites this Aabr with `other` in-place."), py::arg("other"));
 
     // operators
     PyAabr.def(py::self == py::self);

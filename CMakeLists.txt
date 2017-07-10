@@ -50,28 +50,28 @@ set(SOURCE_FILES
     src/dynamic/layout/free_layout.cpp
     src/dynamic/layout/overlayout.cpp
     src/ext/python/interpreter.cpp
-#    src/ext/python/py_aabr.cpp
-#    src/ext/python/py_circle.cpp
-#    src/ext/python/py_claim.cpp
-#    src/ext/python/py_color.cpp
+    src/ext/python/py_aabr.cpp
+    src/ext/python/py_circle.cpp
+    src/ext/python/py_claim.cpp
+    src/ext/python/py_color.cpp
 #   src/ext/python/py_controller.cpp
     src/ext/python/py_dict_utils.cpp
 #    src/ext/python/py_event.cpp
 #    src/ext/python/py_flexlayout.cpp
 #    src/ext/python/py_font.cpp
     src/ext/python/py_fwd.cpp
-#    src/ext/python/py_globals.cpp
+    src/ext/python/py_globals.cpp
 #    src/ext/python/py_layoutroot.cpp
     src/ext/python/py_notf.cpp
 #    src/ext/python/py_overlayout.cpp
-#    src/ext/python/py_padding.cpp
-#    src/ext/python/py_painter.cpp
+    src/ext/python/py_padding.cpp
+    src/ext/python/py_painter.cpp
 #    src/ext/python/py_property.cpp
 #    src/ext/python/py_resourcemanager.cpp
 #    src/ext/python/py_signal.cpp
-#    src/ext/python/py_size.cpp
+    src/ext/python/py_size.cpp
 #    src/ext/python/py_texture2.cpp
-#    src/ext/python/py_vector2.cpp
+    src/ext/python/py_vector2.cpp
 #    src/ext/python/py_widget.cpp
 #    src/ext/python/py_window.cpp
     src/ext/python/type_patches.cpp

@@ -47,7 +47,7 @@ void RenderStats::render_stats(CellCanvas& context)
 
     painter.begin_path();
     painter.add_rect(m_aabr);
-    painter.set_fill_color(Color(0, 0, 0, 128));
+    painter.set_fill(Color(0, 0, 0, 128));
     painter.fill();
 
     /*   ++   +  +
@@ -70,7 +70,7 @@ void RenderStats::render_stats(CellCanvas& context)
     }
     painter.line_to(m_aabr.left() - 1, y); // to avoid a pixel-wide gap on thr right edge of the stats box
     painter.line_to(m_aabr.bottom_left());
-    painter.set_fill_color(Color(255, 192, 0, 128));
+    painter.set_fill(Color(255, 192, 0, 128));
     painter.fill();
 
     context.paint(m_cell);

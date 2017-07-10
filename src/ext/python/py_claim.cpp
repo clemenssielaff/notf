@@ -13,7 +13,6 @@ using namespace notf;
 
 void produce_claim(pybind11::module& module)
 {
-
     /* Claim::Stretch ***********************************************************************************************/
 
     py::class_<Claim::Stretch> PyClaimStretch(module, "ClaimStretch");
@@ -83,7 +82,7 @@ void produce_claim(pybind11::module& module)
     // representation
     PyClaim.def("__repr__", [](const Claim& claim) {
         const Claim::Stretch& horizontal = claim.get_horizontal();
-        const Claim::Stretch& vertical = claim.get_horizontal();
+        const Claim::Stretch& vertical   = claim.get_horizontal();
         const std::pair<float, float> ratio = claim.get_width_to_height();
         return string_format(
             "notf.Claim(\n"

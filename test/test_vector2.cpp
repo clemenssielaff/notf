@@ -6,7 +6,6 @@ using namespace notf;
 
 SCENARIO("Vector2s can be constructed", "[common][vector2]")
 {
-
     WHEN("from two values")
     {
         const float fa = random_number<float>();
@@ -225,7 +224,7 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
             REQUIRE(vecf.is_parallel_to(-vecf));
             REQUIRE(vecf.is_parallel_to(Vector2f::zero()));
 
-            REQUIRE(!vecf.is_parallel_to(vecf.get_orthogonal()));
+            REQUIRE(!vecf.is_parallel_to(vecf.orthogonal()));
             REQUIRE(!vecf.is_parallel_to(Vector2f(random_number<float>(), random_number<float>())));
 
             REQUIRE(vecd.is_parallel_to(vecd));
@@ -235,7 +234,7 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
             REQUIRE(vecd.is_parallel_to(Vector2d::zero()));
 
             REQUIRE(!vecd.is_parallel_to(Vector2d(random_number<double>(), random_number<double>())));
-            REQUIRE(!vecd.is_parallel_to(vecd.get_orthogonal()));
+            REQUIRE(!vecd.is_parallel_to(vecd.orthogonal()));
 
             REQUIRE(Vector2f::x_axis().is_parallel_to(Vector2f::x_axis() * random_number<float>()));
             REQUIRE(!Vector2f::x_axis().is_parallel_to(random_vector<Vector2f>()));
@@ -257,9 +256,9 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
             REQUIRE(highest_vector<float>().is_parallel_to(Vector2f::zero()));
 
             REQUIRE(!lowest_vector<float>().is_parallel_to(random_vector<Vector2f>()));
-            REQUIRE(!lowest_vector<float>().is_parallel_to(lowest_vector<float>().get_orthogonal()));
+            REQUIRE(!lowest_vector<float>().is_parallel_to(lowest_vector<float>().orthogonal()));
             REQUIRE(!highest_vector<float>().is_parallel_to(random_vector<Vector2f>()));
-            REQUIRE(!highest_vector<float>().is_parallel_to(highest_vector<float>().get_orthogonal()));
+            REQUIRE(!highest_vector<float>().is_parallel_to(highest_vector<float>().orthogonal()));
 
             REQUIRE(lowest_vector<double>().is_parallel_to(lowest_vector<double>()));
             REQUIRE(lowest_vector<double>().is_parallel_to(highest_vector<double>()));
@@ -271,9 +270,9 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
             REQUIRE(highest_vector<double>().is_parallel_to(Vector2d::zero()));
 
             REQUIRE(!lowest_vector<double>().is_parallel_to(random_vector<Vector2d>()));
-            REQUIRE(!lowest_vector<double>().is_parallel_to(lowest_vector<double>().get_orthogonal()));
+            REQUIRE(!lowest_vector<double>().is_parallel_to(lowest_vector<double>().orthogonal()));
             REQUIRE(!highest_vector<double>().is_parallel_to(random_vector<Vector2d>()));
-            REQUIRE(!highest_vector<double>().is_parallel_to(highest_vector<double>().get_orthogonal()));
+            REQUIRE(!highest_vector<double>().is_parallel_to(highest_vector<double>().orthogonal()));
         }
     }
 
@@ -285,9 +284,9 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
         THEN("it will work correctly")
         {
             REQUIRE(vecf.is_orthogonal_to(Vector2f::zero()));
-            REQUIRE(vecf.is_orthogonal_to(vecf.get_orthogonal()));
-            REQUIRE(vecf.is_orthogonal_to(vecf.get_orthogonal() *= -1));
-            REQUIRE(vecf.is_orthogonal_to(vecf.get_orthogonal() * random_number<float>(0.1f, 2)));
+            REQUIRE(vecf.is_orthogonal_to(vecf.orthogonal()));
+            REQUIRE(vecf.is_orthogonal_to(vecf.orthogonal() *= -1));
+            REQUIRE(vecf.is_orthogonal_to(vecf.orthogonal() * random_number<float>(0.1f, 2)));
 
             REQUIRE(!vecf.is_orthogonal_to(vecf));
             REQUIRE(!vecf.is_orthogonal_to(Vector2f(random_number<float>(), random_number<float>())));
@@ -296,9 +295,9 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
             REQUIRE(!vecf.is_orthogonal_to(-vecf));
 
             REQUIRE(vecd.is_orthogonal_to(Vector2d::zero()));
-            REQUIRE(vecd.is_orthogonal_to(vecd.get_orthogonal()));
-            REQUIRE(vecd.is_orthogonal_to(vecd.get_orthogonal() *= -1));
-            REQUIRE(vecd.is_orthogonal_to(vecd.get_orthogonal() * random_number<double>(0.1, 2)));
+            REQUIRE(vecd.is_orthogonal_to(vecd.orthogonal()));
+            REQUIRE(vecd.is_orthogonal_to(vecd.orthogonal() *= -1));
+            REQUIRE(vecd.is_orthogonal_to(vecd.orthogonal() * random_number<double>(0.1, 2)));
 
             REQUIRE(!vecd.is_orthogonal_to(vecd));
             REQUIRE(!vecd.is_orthogonal_to(Vector2d(random_number<double>(), random_number<double>())));
@@ -471,14 +470,30 @@ SCENARIO("Vector2s can be modified", "[common][vector2]")
         const Vector2f random_f = Vector2f(x_f, y_f);
         const Vector2i random_i = Vector2i(x_i, y_i);
 
-        const Vector2f ortho_random_f = random_f.get_orthogonal();
-        const Vector2i ortho_random_i = random_i.get_orthogonal();
+        const Vector2f ortho_random_f = random_f.orthogonal();
+        const Vector2i ortho_random_i = random_i.orthogonal();
 
         THEN("vector2s will be rotated 90degrees counter-clockwise")
         {
             REQUIRE(norm_angle(random_f.angle_to(ortho_random_f)) == approx(pi<float>() / 2, precision_low<float>()));
             REQUIRE(ortho_random_i.x() == -random_i.y());
             REQUIRE(ortho_random_i.y() == random_i.x());
+        }
+    }
+
+    WHEN("you want to interpolate between two vectors2")
+    {
+        const Vector2f random_f1 = random_vector<Vector2f>();
+        const Vector2f random_f2 = random_vector<Vector2f>();
+        const Vector2i random_i1 = random_vector<Vector2i>();
+        const Vector2i random_i2 = random_vector<Vector2i>();
+
+        THEN("you can lerp them")
+        {
+            const Vector2f full_left  = lerp(random_f1, random_f2, 0);
+            const Vector2f full_right = lerp(random_f1, random_f2, 1);
+            REQUIRE(full_left.is_approx(random_f1, precision_low<float>()));
+            REQUIRE(full_right.is_approx(random_f2, precision_low<float>()));
         }
     }
 }

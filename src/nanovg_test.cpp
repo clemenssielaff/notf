@@ -37,7 +37,7 @@ public:
 
 //                painter.begin_path();
 //                painter.add_circle(100, base.center().y(), 80);
-//                painter.set_fill_paint(Color(255, 0, 0));
+//                painter.set_fill(Color(255, 0, 0));
 //                painter.fill();
 
         //        painter.move_to(100, 100);
@@ -53,7 +53,7 @@ public:
         //        painter.set_line_join(Painter::LineJoin::BEVEL);
 
         //        painter.set_stroke_width(40);
-        //        painter.set_stroke_color(Color(0, 0, 0, 160));
+        //        painter.set_stroke(Color(0, 0, 0, 160));
         //        painter.begin_path();
         //        painter.move_to(100, 100);
         //        painter.line_to(300, 500);
@@ -61,7 +61,7 @@ public:
         //        painter.line_to(700, 500);
         //        painter.stroke();
 
-        //                painter.set_stroke_color(Color(1.f, 1.f, 1.f));
+        //                painter.set_stroke(Color(1.f, 1.f, 1.f));
         //                painter.set_stroke_width(5);
         //                painter.stroke();
 
@@ -100,7 +100,7 @@ public:
                                               Size2f{rect.get_width(), 4}, 2, 2, Color(0, 0, 0, 32), Color(0, 0, 0, 128));
         painter.begin_path();
         painter.add_rounded_rect(rect.left(), rect.y() - 2, rect.get_width(), 4, 2);
-        painter.set_fill_paint(bg);
+        painter.set_fill(bg);
         painter.fill();
 
         // Knob Shadow
@@ -110,7 +110,7 @@ public:
         painter.add_rect(rect.left() + (int)(pos * rect.get_width()) - kr - 5, rect.y() - kr - 5, kr * 2 + 5 + 5, kr * 2 + 5 + 5 + 3);
         painter.add_circle(rect.left() + (int)(pos * rect.get_width()), rect.y(), kr);
         painter.set_winding(Painter::Winding::HOLE);
-        painter.set_fill_paint(bg);
+        painter.set_fill(bg);
         painter.fill();
 
         // Knob
@@ -119,14 +119,14 @@ public:
                                                    Color(255, 255, 255, 16), Color(0, 0, 0, 16));
         painter.begin_path();
         painter.add_circle(rect.left() + (int)(pos * rect.get_width()), rect.y(), kr - 1);
-        painter.set_fill_color(Color(40, 43, 48, 255));
+        painter.set_fill(Color(40, 43, 48, 255));
         painter.fill();
-        painter.set_fill_paint(knob);
+        painter.set_fill(knob);
         painter.fill();
 
         painter.begin_path();
         painter.add_circle(rect.left() + (int)(pos * rect.get_width()), rect.y(), kr - 0.5f);
-        painter.set_stroke_color(Color(0, 0, 0, 92));
+        painter.set_stroke(Color(0, 0, 0, 92));
         painter.stroke();
 
         painter.pop_state();
@@ -139,14 +139,14 @@ public:
                                                        Color(0, 0, 0, 32), Color(255, 255, 255, 32));
 
         painter.begin_path();
-        painter.set_fill_color(Color(0, 96, 128));
+        painter.set_fill(Color(0, 96, 128));
         painter.add_rounded_rect(rect, corner_radius - 1);
         painter.stroke();
         painter.fill();
 
         painter.begin_path();
         painter.add_rounded_rect(rect, corner_radius - 1);
-        painter.set_fill_paint(gradient);
+        painter.set_fill(gradient);
         painter.fill();
     }
 
@@ -157,7 +157,7 @@ public:
         painter.quad_to(100.f, 100.f, 200.f, 200.f);
         painter.begin_path();
         painter.add_rounded_rect(rect.left() + 1, rect.y() - 9, 18, 18, 3);
-        painter.set_fill_paint(gradient);
+        painter.set_fill(gradient);
         painter.fill();
     }
 
@@ -187,7 +187,7 @@ public:
             const Vector2f end_pos(rect.x() + cosf(a1) * (inner_radius + outer_radius) * 0.5f, rect.y() + sinf(a1) * (inner_radius + outer_radius) * 0.5f);
             const Color start_color = Color::from_hsl(a0, 1.0f, 0.55f, 1);
             const Color end_color   = Color::from_hsl(a1, 1.0f, 0.55f, 1);
-            painter.set_fill_paint(Paint::create_linear_gradient(start_pos, end_pos, start_color, end_color));
+            painter.set_fill(Paint::create_linear_gradient(start_pos, end_pos, start_color, end_color));
             painter.fill();
         }
 
@@ -195,7 +195,7 @@ public:
         painter.begin_path();
         painter.add_circle(rect.x(), rect.y(), inner_radius - 0.5f);
         painter.add_circle(rect.x(), rect.y(), outer_radius + 0.5f);
-        painter.set_stroke_color(Color(0, 0, 0, 64));
+        painter.set_stroke(Color(0, 0, 0, 64));
         painter.set_stroke_width(1.0f);
         painter.stroke();
 
@@ -208,7 +208,7 @@ public:
         painter.begin_path();
         painter.add_rect(inner_radius - 2, -3, outer_radius - inner_radius + 4, 6);
         painter.set_stroke_width(2.0f);
-        painter.set_stroke_color(Color(255, 255, 255, 192));
+        painter.set_stroke(Color(255, 255, 255, 192));
         painter.stroke();
 
         painter.begin_path();
@@ -217,7 +217,7 @@ public:
         painter.set_winding(Painter::Winding::HOLE);
         const Vector2f center{inner_radius - 3, -5};
         const Size2f extend{outer_radius - inner_radius + 6, 10};
-        painter.set_fill_paint(Paint::create_box_gradient(center, extend, 2, 4, Color(0, 0, 0, .5), Color(0, 0, 0, 0)));
+        painter.set_fill(Paint::create_box_gradient(center, extend, 2, 4, Color(0, 0, 0, .5), Color(0, 0, 0, 0)));
         painter.fill();
 
         const float r = inner_radius - 6;
@@ -238,17 +238,17 @@ public:
             Vector2f end_pos{ax, ay};
             Color start_color = Color::from_hsl(hue * (pi<float>() * 2), 1.0f, 0.5f, 1);
             Color end_color   = Color(1, 1, 1, 1.);
-            painter.set_fill_paint(Paint::create_linear_gradient(start_pos, end_pos, start_color, end_color));
+            painter.set_fill(Paint::create_linear_gradient(start_pos, end_pos, start_color, end_color));
             painter.fill();
 
             start_pos   = Vector2f{(r + ax) * 0.5f, (0 + ay) * 0.5f};
             end_pos     = Vector2f{bx, by};
             start_color = Color(0, 0, 0, 0.);
             end_color   = Color(0, 0, 0, 1.);
-            painter.set_fill_paint(Paint::create_linear_gradient(start_pos, end_pos, start_color, end_color));
+            painter.set_fill(Paint::create_linear_gradient(start_pos, end_pos, start_color, end_color));
             painter.fill();
 
-            painter.set_stroke_color(Color(0, 0, 0, 64));
+            painter.set_stroke(Color(0, 0, 0, 64));
             painter.stroke();
         }
 
@@ -258,14 +258,14 @@ public:
         painter.set_stroke_width(2);
         painter.begin_path();
         painter.add_circle(ax, ay, 5);
-        painter.set_stroke_color(Color(1, 1, 1, 192));
+        painter.set_stroke(Color(1, 1, 1, 192));
         painter.stroke();
 
         painter.begin_path();
         painter.add_rect(ax - 20, ay - 20, 40, 40);
         painter.add_circle(ax, ay, 7);
         painter.set_winding(Painter::Winding::HOLE);
-        painter.set_fill_paint(Paint::create_radial_gradient(Vector2f{ax, ay}, 7, 9, Color(0, 0, 0, 64), Color(0, 0, 0, 0)));
+        painter.set_fill(Paint::create_radial_gradient(Vector2f{ax, ay}, 7, 9, Color(0, 0, 0, 64), Color(0, 0, 0, 0)));
         painter.fill();
 
         painter.pop_state();
@@ -290,7 +290,7 @@ public:
         painter.begin_path();
         painter.add_ellipse(lx + 3.0f, ly + 16.0f, ex, ey);
         painter.add_ellipse(rx + 3.0f, ry + 16.0f, ex, ey);
-        painter.set_fill_paint(bg);
+        painter.set_fill(bg);
         painter.fill();
 
         bg = Paint::create_linear_gradient({rect.left(), rect.bottom() + rect.get_height() * 0.25f},
@@ -298,7 +298,7 @@ public:
         painter.begin_path();
         painter.add_ellipse(lx, ly, ex, ey);
         painter.add_ellipse(rx, ry, ex, ey);
-        painter.set_fill_paint(bg);
+        painter.set_fill(bg);
         painter.fill();
 
         dx = (target.x() - rx) / (ex * 10);
@@ -312,7 +312,7 @@ public:
         dy *= ey * 0.5f;
         painter.begin_path();
         painter.add_ellipse(lx + dx, ly + dy + ey * 0.25f * (1 - blink), br, br * blink);
-        painter.set_fill_color(Color(32, 32, 32, 255));
+        painter.set_fill(Color(32, 32, 32, 255));
         painter.fill();
 
         dx = (target.x() - rx) / (ex * 10);
@@ -326,19 +326,19 @@ public:
         dy *= ey * 0.5f;
         painter.begin_path();
         painter.add_ellipse(rx + dx, ry + dy + ey * 0.25f * (1 - blink), br, br * blink);
-        painter.set_fill_color(Color(32, 32, 32, 255));
+        painter.set_fill(Color(32, 32, 32, 255));
         painter.fill();
 
         Paint gloss = Paint::create_radial_gradient(Vector2f{lx - ex * 0.25f, ly - ey * 0.5f}, ex * 0.1f, ex * 0.75f, Color(255, 255, 255, 128), Color(255, 255, 255, 0));
         painter.begin_path();
         painter.add_ellipse(lx, ly, ex, ey);
-        painter.set_fill_paint(gloss);
+        painter.set_fill(gloss);
         painter.fill();
 
         gloss = Paint::create_radial_gradient(Vector2f{rx - ex * 0.25f, ry - ey * 0.5f}, ex * 0.1f, ex * 0.75f, Color(255, 255, 255, 128), Color(255, 255, 255, 0));
         painter.begin_path();
         painter.add_ellipse(rx, ry, ex, ey);
-        painter.set_fill_paint(gloss);
+        painter.set_fill(gloss);
         painter.fill();
     }
 
@@ -369,7 +369,7 @@ public:
             painter.bezier_to(sx[i - 1] + dx * 0.5f, sy[i - 1], sx[i] - dx * 0.5f, sy[i], sx[i], sy[i]);
         painter.line_to(rect.left() + rect.get_width(), rect.bottom());
         painter.line_to(rect.left(), rect.bottom());
-        painter.set_fill_paint(bg);
+        painter.set_fill(bg);
         painter.fill();
 
         // Graph line
@@ -377,7 +377,7 @@ public:
         painter.move_to(sx[0], sy[0] + 2);
         for (i = 1; i < 6; i++)
             painter.bezier_to(sx[i - 1] + dx * 0.5f, sy[i - 1] + 2, sx[i] - dx * 0.5f, sy[i] + 2, sx[i], sy[i] + 2);
-        painter.set_stroke_color(Color(0, 0, 0, 32));
+        painter.set_stroke(Color(0, 0, 0, 32));
         painter.set_stroke_width(3.0f);
         painter.stroke();
 
@@ -385,7 +385,7 @@ public:
         painter.move_to(sx[0], sy[0]);
         for (i = 1; i < 6; i++)
             painter.bezier_to(sx[i - 1] + dx * 0.5f, sy[i - 1], sx[i] - dx * 0.5f, sy[i], sx[i], sy[i]);
-        painter.set_stroke_color(Color(0, 160, 192, 255));
+        painter.set_stroke(Color(0, 160, 192, 255));
         painter.set_stroke_width(3.0f);
         painter.stroke();
 
@@ -394,19 +394,19 @@ public:
             bg = Paint::create_radial_gradient(Vector2f{sx[i], sy[i] + 2}, 3.0f, 8.0f, Color(0, 0, 0, 32), Color(0, 0, 0, 0));
             painter.begin_path();
             painter.add_rect(sx[i] - 10, sy[i] - 10 + 2, 20, 20);
-            painter.set_fill_paint(bg);
+            painter.set_fill(bg);
             painter.fill();
         }
 
         painter.begin_path();
         for (i = 0; i < 6; i++)
             painter.add_circle(sx[i], sy[i], 4.0f);
-        painter.set_fill_color(Color(0, 160, 192, 255));
+        painter.set_fill(Color(0, 160, 192, 255));
         painter.fill();
         painter.begin_path();
         for (i = 0; i < 6; i++)
             painter.add_circle(sx[i], sy[i], 2.0f);
-        painter.set_fill_color(Color(220, 220, 220, 255));
+        painter.set_fill(Color(220, 220, 220, 255));
         painter.fill();
 
         painter.set_stroke_width(1.0f);
@@ -431,7 +431,7 @@ public:
         bx          = center.x() + cosf(a1) * (r0 + r1) * 0.5f;
         by          = center.y() + sinf(a1) * (r0 + r1) * 0.5f;
         Paint paint = Paint::create_linear_gradient({ax, ay}, {bx, by}, Color(0, 0, 0, 0), Color(0, 0, 0, 128));
-        painter.set_fill_paint(paint);
+        painter.set_fill(paint);
         painter.fill();
 
         painter.pop_state();
@@ -446,18 +446,18 @@ public:
 
         painter.begin_path();
         painter.add_rect(pos.x() - lineWidth / 2, pos.y(), width + lineWidth, width + 10);
-        painter.set_fill_color(Color(255, 255, 255, 32));
+        painter.set_fill(Color(255, 255, 255, 32));
         painter.fill();
 
         painter.begin_path();
         painter.add_rect(pos.x(), pos.y(), width, width + 10);
-        painter.set_fill_color(Color(255, 255, 255, 32));
+        painter.set_fill(Color(255, 255, 255, 32));
         painter.fill();
 
         painter.set_stroke_width(lineWidth);
         for (int i = 0; i < 3; i++) {
             painter.set_line_cap(caps[i]);
-            painter.set_stroke_color(Color(0, 0, 0, 255));
+            painter.set_stroke(Color(0, 0, 0, 255));
             painter.begin_path();
             painter.move_to(pos.x(), pos.y() + i * 10 + 5);
             painter.line_to(pos.x() + width, pos.y() + i * 10 + 5);
@@ -496,7 +496,7 @@ public:
                 painter.set_line_join(joins[j]);
 
                 painter.set_stroke_width(s * 0.3f);
-                painter.set_stroke_color(Color(0, 0, 0, 160));
+                painter.set_stroke(Color(0, 0, 0, 160));
                 painter.begin_path();
                 painter.move_to(fx + pts[0], fy + pts[1]);
                 painter.line_to(fx + pts[2], fy + pts[3]);
@@ -508,7 +508,7 @@ public:
                 painter.set_line_join(Painter::LineJoin::BEVEL);
 
                 painter.set_stroke_width(1.f);
-                painter.set_stroke_color(Color(0, 192, 255, 255));
+                painter.set_stroke(Color(0, 192, 255, 255));
                 painter.begin_path();
                 painter.move_to(fx + pts[0], fy + pts[1]);
                 painter.line_to(fx + pts[2], fy + pts[3]);
@@ -525,7 +525,7 @@ public:
         Paint pattern = Paint::create_texture_pattern(rect.bottom_left(), rect.get_size(), test_texture, 0, 1);
 
         painter.begin_path();
-        painter.set_fill_paint(pattern);
+        painter.set_fill(pattern);
         painter.add_rect(rect);
         painter.fill();
     }

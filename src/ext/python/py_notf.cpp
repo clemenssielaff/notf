@@ -35,32 +35,32 @@ const char* python_notf_module_name = "notf";
 PyObject* produce_pynotf_module()
 {
     py::module module(python_notf_module_name, DOCSTR("NoTF Python bindings"));
-//    produce_globals(module);
-//    produce_events(module);
-//    produce_size2i(module);
-//    produce_size2f(module);
-//    produce_vector2(module);
-//    produce_aabr(module);
-//    produce_padding(module);
-//    produce_circle(module);
-//    produce_claim(module);
-//    produce_color(module);
-//    produce_resource_manager(module);
-//    produce_texture2(module);
-//    produce_font(module);
-//    produce_painter(module);
-//    produce_window(module);
-//    produce_signals(module);
-//    produce_properties(module);
+    produce_globals(module);
+    //    produce_events(module);
+    produce_size2i(module);
+    produce_size2f(module);
+    produce_vector2(module);
+    produce_aabr(module);
+    produce_padding(module);
+    produce_circle(module);
+    produce_claim(module);
+    produce_color(module);
+    //    produce_resource_manager(module);
+    //    produce_texture2(module);
+    //    produce_font(module);
+    //    produce_painter(module);
+    //    produce_window(module);
+    //    produce_signals(module);
+    //    produce_properties(module);
 
-//    py::class_<Item, ItemPtr> Py_Item(module, "_Item");
-//    produce_controller(module, Py_Item);
+    //    py::class_<Item, ItemPtr> Py_Item(module, "_Item");
+    //    produce_controller(module, Py_Item);
 
-//    py::class_<LayoutItem, std::shared_ptr<LayoutItem>> Py_LayoutItem(module, "_LayoutItem", Py_Item);
-//    produce_widget(module, Py_LayoutItem);
-//    produce_layout_root(module, Py_LayoutItem);
-//    produce_flex_layout(module, Py_LayoutItem);
-//    produce_overlayout(module, Py_LayoutItem);
+    //    py::class_<LayoutItem, std::shared_ptr<LayoutItem>> Py_LayoutItem(module, "_LayoutItem", Py_Item);
+    //    produce_widget(module, Py_LayoutItem);
+    //    produce_layout_root(module, Py_LayoutItem);
+    //    produce_flex_layout(module, Py_LayoutItem);
+    //    produce_overlayout(module, Py_LayoutItem);
 
     return module.ptr();
 }

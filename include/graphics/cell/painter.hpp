@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/aabr.hpp"
+#include "common/circle.hpp"
 #include "common/time.hpp"
 #include "common/xform2.hpp"
 #include "graphics/blend_mode.hpp"
@@ -92,13 +93,13 @@ public: // methods
 
     /* State management ***********************************************************************************************/
 
-    /** Copy the new state and place the copy on the stack.
+    /** Copy the current state and place the copy on the stack.
      * @return  Current stack height.
      */
     size_t push_state();
 
-    /** Restore the previous State from the stack.
-     * Popping below the last State will have no effect.
+    /** Restore the previous state from the stack.
+     * Popping below the last state will have no effect.
      * @return  Current stack height.
      */
     size_t pop_state();
@@ -180,27 +181,27 @@ public: // methods
     /* Fill Paint *****************************************/
 
     /** The current fill Paint. */
-    const Paint& get_fill_paint() { return _get_current_state().fill_paint; }
+    const Paint& get_fill() { return _get_current_state().fill_paint; }
 
     /** Changes the current fill Paint. */
-    void set_fill_paint(Paint paint);
+    void set_fill(Paint paint);
 
     /** Changes the current fill Paint to a solid color. */
-    void set_fill_color(Color color);
+    void set_fill(Color color);
 
     /* Stroke Paint ***************************************/
 
     /** The current fill Paint. */
-    const Paint& get_stroke_paint() { return _get_current_state().stroke_paint; }
-
-    /** Changes the current stroke Paint. */
-    void set_stroke_paint(Paint paint);
-
-    /** Changes the current stroke Paint to a solid color. */
-    void set_stroke_color(Color color);
+    const Paint& get_stroke() { return _get_current_state().stroke_paint; }
 
     /** The stroke width of the Painter. */
     float get_stroke_width() const { return _get_current_state().stroke_width; }
+
+    /** Changes the current stroke Paint. */
+    void set_stroke(Paint paint);
+
+    /** Changes the current stroke Paint to a solid color. */
+    void set_stroke(Color color);
 
     /** Changes the stroke width of the Painter. */
     void set_stroke_width(const float width);
@@ -239,6 +240,7 @@ public: // methods
      */
     void arc(const float x, const float y, const float r, const float start_angle, const float end_angle, const Winding dir = Winding::CCW);
     void arc(const Vector2f& center, const float radius, const float start_angle, const float end_angle, const Winding dir = Winding::CCW) { arc(center.x(), center.y(), radius, start_angle, end_angle, dir); }
+    void arc(const Circlef& circle, const float start_angle, const float end_angle, const Winding dir = Winding::CCW) { arc(circle.center.x(), circle.center.y(), circle.radius, start_angle, end_angle, dir); }
 
     /** Create an open, arc between two tangents on the canvas.
      * @param tangent   Position defining the start tangent vector (from the current stylus position).
@@ -257,6 +259,7 @@ public: // methods
     void add_rounded_rect(const float x, const float y, const float w, const float h, const float rtl, const float rtr, const float rbr, const float rbl);
     void add_rounded_rect(const Aabrf& rect, const float radius) { add_rounded_rect(rect.left(), rect.bottom(), rect.get_width(), rect.get_height(), radius, radius, radius, radius); }
     void add_rounded_rect(const float x, const float y, const float w, const float h, const float radius) { add_rounded_rect(x, y, w, h, radius, radius, radius, radius); }
+    void add_rounded_rect(const Aabrf& rect, const float rtl, const float rtr, const float rbr, const float rbl) { add_rounded_rect(rect.left(), rect.bottom(), rect.get_width(), rect.get_height(), rtl, rtr, rbr, rbl); }
 
     /** Creates a new elliptic Path. */
     void add_ellipse(const float cx, const float cy, const float rx, const float ry);
@@ -265,6 +268,7 @@ public: // methods
     /** Creates a new circular Path. */
     void add_circle(const float cx, const float cy, const float radius) { add_ellipse(cx, cy, radius, radius); }
     void add_circle(const Vector2f& center, const float radius) { add_ellipse(center.x(), center.y(), radius, radius); }
+    void add_circle(const Circlef& circle) { add_ellipse(circle.center.x(), circle.center.y(), circle.radius, circle.radius); }
 
     /* Text ***********************************************************************************************************/
 

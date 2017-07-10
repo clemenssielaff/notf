@@ -1,4 +1,3 @@
-#if 0
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
@@ -24,4 +23,3 @@ void produce_texture2(pybind11::module& module)
         return Application::get_instance().get_resource_manager().fetch_texture(texture_path, flags);
     }, DOCSTR("Retrieves a Texture2 by its path."), py::arg("texture_path"), py::arg("flags") = 1);
 }
-#endif

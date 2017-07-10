@@ -492,7 +492,7 @@ struct _Aabr {
             vector_t{_min.x() > other._min.x() ? _min.x() : other._min.x(), _min.y() > other._min.y() ? _min.y() : other._min.y()},
             vector_t{_max.x() < other._max.x() ? _max.x() : other._max.x(), _max.y() < other._max.y() ? _max.y() : other._max.y()});
     }
-    _Aabr operator&(const _Aabr& other) const { return get_intersection(other); }
+    _Aabr operator&(const _Aabr& other) const { return intersect(other); }
 
     /** Intersection of this Aabr with `other` in-place.
      * Intersecting with another Aabr that does not intersect results in the zero Aabr.

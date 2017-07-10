@@ -81,11 +81,11 @@ public: // methods
         painter.set_scissor(widget_rect);
         painter.begin_path();
         painter.add_rect(widget_rect);
-        painter.set_fill_paint(m_color);
+        painter.set_fill(m_color);
         painter.fill();
 
         if (m_font) {
-            painter.set_fill_paint(Color::white());
+            painter.set_fill(Color::white());
             painter.translate(widget_rect.center());
             painter.write(m_text, m_font);
         }

@@ -489,11 +489,8 @@ protected: // methods
  * @param to      Right Vector, full weight at blend >= 1.
  * @param blend   Blend value, clamped to range [0, 1].
  */
-template <typename SPECIALIZATION, typename ELEMENT, size_t DIMENSIONS>
-detail::Arithmetic<SPECIALIZATION, ELEMENT, DIMENSIONS> lerp(
-    const detail::Arithmetic<SPECIALIZATION, ELEMENT, DIMENSIONS>& from,
-    const detail::Arithmetic<SPECIALIZATION, ELEMENT, DIMENSIONS>& to,
-    const typename detail::Arithmetic<SPECIALIZATION, ELEMENT, DIMENSIONS>::value_t blend)
+template <typename T>
+T lerp(const T& from, const T& to, const typename T::value_t blend)
 {
     return ((to - from) *= clamp(blend, 0, 1)) += from;
 }

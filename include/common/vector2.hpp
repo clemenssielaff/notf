@@ -170,10 +170,10 @@ struct _RealVector2 : public detail::Arithmetic<_RealVector2<Real>, Real, 2> {
     /** Returns a Vector2 orthogonal to this one, by rotating the copy 90 degree counter-clockwise.
      * The resulting Vector2 is of the same magnitude as the original one.
      */
-    _RealVector2 get_orthogonal() const { return _RealVector2(-y(), x()); }
+    _RealVector2 orthogonal() const { return _RealVector2(-y(), x()); }
 
     /** Rotates this Vector2 90 degree counter-clockwise. */
-    _RealVector2& orthogonalize()
+    _RealVector2& orthogonal()
     {
         const value_t temp = -y();
         y()                = x();
@@ -182,7 +182,7 @@ struct _RealVector2 : public detail::Arithmetic<_RealVector2<Real>, Real, 2> {
     }
 
     /** Returns a copy of this 2D Vector, rotated counter-clockwise by a given angle (in radians). */
-    _RealVector2 get_rotated(const value_t angle) const
+    _RealVector2 rotate(const value_t angle) const
     {
         const value_t sin_angle = sin(angle);
         const value_t cos_angle = cos(angle);
@@ -274,10 +274,10 @@ struct _IntVector2 : public detail::Arithmetic<_IntVector2<Integer>, Integer, 2>
     /** Returns a Vector2 orthogonal to this one, by rotating the copy 90 degree counter-clockwise.
      * The resulting Vector2 is of the same magnitude as the original one.
      */
-    _IntVector2 get_orthogonal() const { return _IntVector2(-y(), x()); }
+    _IntVector2 orthogonal() const { return _IntVector2(-y(), x()); }
 
     /** Rotates this Vector2 90 degree counter-clockwise. */
-    _IntVector2& orthogonalize()
+    _IntVector2& orthogonal()
     {
         const value_t temp = -y();
         y()                = x();

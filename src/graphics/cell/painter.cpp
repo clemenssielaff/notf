@@ -143,7 +143,7 @@ void Painter::set_line_join(const LineJoin join)
     _get_current_state().line_join = join;
 }
 
-void Painter::set_fill_paint(Paint paint)
+void Painter::set_fill(Paint paint)
 {
     if (std::shared_ptr<Texture2> texture = paint.texture) {
         m_cell.m_vault.insert(texture);
@@ -156,14 +156,14 @@ void Painter::set_fill_paint(Paint paint)
     m_cell.m_commands.add_command(FillPaintCommand(current_state.fill_paint));
 }
 
-void Painter::set_fill_color(Color color)
+void Painter::set_fill(Color color)
 {
     m_cell.m_commands.add_command(FillColorCommand(color));
     detail::PainterState& current_state = _get_current_state();
     current_state.fill_paint.set_color(std::move(color));
 }
 
-void Painter::set_stroke_paint(Paint paint)
+void Painter::set_stroke(Paint paint)
 {
     if (std::shared_ptr<Texture2> texture = paint.texture) {
         m_cell.m_vault.insert(texture);
@@ -176,7 +176,7 @@ void Painter::set_stroke_paint(Paint paint)
     m_cell.m_commands.add_command(StrokePaintCommand(current_state.stroke_paint));
 }
 
-void Painter::set_stroke_color(Color color)
+void Painter::set_stroke(Color color)
 {
     m_cell.m_commands.add_command(StrokeColorCommand(color));
     detail::PainterState& current_state = _get_current_state();
