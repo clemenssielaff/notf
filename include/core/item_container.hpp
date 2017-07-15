@@ -16,11 +16,14 @@ namespace detail {
  * Used by Item subclasses to contain child Items.
  */
 struct ItemContainer {
+
+    friend class notf::Item;
+
     /** Destructor. */
     virtual ~ItemContainer();
 
     /** Clears all Items from this Container */
-    void clear();
+    virtual void clear() = 0;
 
     /** Applies a function to all Items in this Container. */
     virtual void apply(std::function<void(Item*)> function) = 0;
@@ -30,12 +33,22 @@ struct ItemContainer {
 
     /** Checks whether this Container is empty or not. */
     virtual bool is_empty() const = 0;
+
+protected: // methods
+    /** Sets the parent of all Items to nullptr without evoking proper reparenting.
+     * Is only used by the Item destructor.
+     */
+    void destroy();
 };
 
 /**********************************************************************************************************************/
 
 /** Widgets have no child Items and use this empty Container as a placeholder instead. */
 struct EmptyItemContainer : public ItemContainer {
+    virtual ~EmptyItemContainer() override;
+
+    virtual void clear() override {}
+
     virtual void apply(std::function<void(Item*)>) override {}
 
     virtual bool contains(const Item*) const override { return false; }
@@ -47,6 +60,10 @@ struct EmptyItemContainer : public ItemContainer {
 
 /** Controller (and some Layouts) have a single child Item. */
 struct SingleItemContainer : public ItemContainer {
+    virtual ~SingleItemContainer() override;
+
+    virtual void clear() override;
+
     virtual void apply(std::function<void(Item*)> function) override;
 
     virtual bool contains(const Item* child) const override { return child == item.get(); }
@@ -61,6 +78,10 @@ struct SingleItemContainer : public ItemContainer {
 
 /** Many Layouts keep their child Items in a list. */
 struct ItemList : public ItemContainer {
+    virtual ~ItemList() override;
+
+    virtual void clear() override;
+
     virtual void apply(std::function<void(Item*)> function) override;
 
     virtual bool contains(const Item* child) const override;

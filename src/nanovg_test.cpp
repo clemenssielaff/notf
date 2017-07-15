@@ -548,7 +548,7 @@ void app_main(Window& window)
     window.get_layout()->set_controller(controller);
 }
 
-#if 1
+#if 0
 
 int main(int argc, char* argv[])
 {

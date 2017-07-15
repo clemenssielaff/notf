@@ -56,14 +56,14 @@ set(SOURCE_FILES
     src/ext/python/py_color.cpp
 #   src/ext/python/py_controller.cpp
     src/ext/python/py_dict_utils.cpp
-#    src/ext/python/py_event.cpp
-#    src/ext/python/py_flexlayout.cpp
+    src/ext/python/py_event.cpp
+    src/ext/python/py_flexlayout.cpp
 #    src/ext/python/py_font.cpp
     src/ext/python/py_fwd.cpp
     src/ext/python/py_globals.cpp
-#    src/ext/python/py_layoutroot.cpp
+    src/ext/python/py_layoutroot.cpp
     src/ext/python/py_notf.cpp
-#    src/ext/python/py_overlayout.cpp
+    src/ext/python/py_overlayout.cpp
     src/ext/python/py_padding.cpp
     src/ext/python/py_painter.cpp
 #    src/ext/python/py_property.cpp
@@ -73,7 +73,7 @@ set(SOURCE_FILES
 #    src/ext/python/py_texture2.cpp
     src/ext/python/py_vector2.cpp
 #    src/ext/python/py_widget.cpp
-#    src/ext/python/py_window.cpp
+    src/ext/python/py_window.cpp
     src/ext/python/type_patches.cpp
     src/graphics/cell/cell.cpp
     src/graphics/cell/cell_canvas.cpp

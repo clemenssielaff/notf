@@ -53,12 +53,10 @@ void FreeLayout::_remove_child(const Item* child_item)
     }
 
     std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
-
     auto it = std::find_if(std::begin(items), std::end(items),
                            [child_item](const ItemPtr& item) -> bool {
                                return item.get() == child_item;
                            });
-
     if (it == std::end(items)) {
         log_critical << "Cannot remove unknown child Item " << child_item->get_id()
                      << " from FreeLayout " << get_id();

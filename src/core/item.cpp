@@ -40,7 +40,8 @@ Item::Item(ItemContainerPtr container)
 Item::~Item()
 {
     log_trace << "Destroying Item #" << m_id;
-    m_children->clear();
+    m_children->destroy();
+    m_children.reset();
     if (m_parent) {
         m_parent->_remove_child(this);
     }
@@ -131,7 +132,7 @@ void Item::_set_parent(Item* parent)
     }
 
     if (m_parent) {
-        //        m_parent->_remove_child(this); // FIXME: Crashbug on shutdown
+        m_parent->_remove_child(this);
     }
     m_parent = parent;
 

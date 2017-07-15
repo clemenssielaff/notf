@@ -18,7 +18,31 @@ void ItemContainer::clear()
     });
 }
 
+void ItemContainer::destroy()
+{
+    apply([](Item* item) -> void {
+        item->m_parent = nullptr;
+    });
+}
+
 /**********************************************************************************************************************/
+
+EmptyItemContainer::~EmptyItemContainer()
+{
+}
+
+/**********************************************************************************************************************/
+
+SingleItemContainer::~SingleItemContainer()
+{
+    item.reset();
+}
+
+void SingleItemContainer::clear()
+{
+    ItemContainer::clear();
+    item.reset();
+}
 
 void SingleItemContainer::apply(std::function<void(Item*)> function)
 {
@@ -28,6 +52,17 @@ void SingleItemContainer::apply(std::function<void(Item*)> function)
 }
 
 /**********************************************************************************************************************/
+
+ItemList::~ItemList()
+{
+    items.clear();
+}
+
+void ItemList::clear()
+{
+    ItemContainer::clear();
+    items.clear();
+}
 
 void ItemList::apply(std::function<void(Item*)> function)
 {
