@@ -147,14 +147,14 @@ void Overlayout::_relayout()
 
         float y;
         if (m_vertical_alignment == AlignVertical::TOP) {
-            y = m_padding.top;
+            y = grant.height - m_padding.top  - item_size.height;
         }
         else if (m_vertical_alignment == AlignVertical::CENTER) {
-            y = ((available_size.height - item_size.height) / 2.f) + m_padding.top;
+            y = ((available_size.height - item_size.height) / 2.f) + m_padding.bottom;
         }
         else {
             assert(m_vertical_alignment == AlignVertical::BOTTOM);
-            y = grant.height - m_padding.bottom - item_size.height;
+            y = m_padding.bottom;
         }
         _set_layout_xform(screen_item, Xform2f::translation(Vector2f{x, y}));
     }

@@ -155,9 +155,9 @@ float cross_align_offset(const FlexLayout::Alignment alignment, const float item
     if (available_size > item_size) {
         switch (alignment) {
         case FlexLayout::Alignment::START:
-            return 0;
-        case FlexLayout::Alignment::END:
             return available_size - item_size;
+        case FlexLayout::Alignment::END:
+            return 0;
         case FlexLayout::Alignment::CENTER:
         case FlexLayout::Alignment::SPACE_BETWEEN:
         case FlexLayout::Alignment::SPACE_AROUND:
@@ -422,7 +422,7 @@ void FlexLayout::_remove_child(const Item* child_item)
     }
 
     std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
-    auto it = std::find_if(std::begin(items), std::end(items),
+    auto it                     = std::find_if(std::begin(items), std::end(items),
                            [child_item](const ItemPtr& item) -> bool {
                                return item.get() == child_item;
                            });
@@ -491,19 +491,19 @@ void FlexLayout::_relayout()
     switch (m_direction) {
     case FlexLayout::Direction::LEFT_TO_RIGHT:
         main_offset  = m_padding.left;
-        cross_offset = (m_wrap == FlexLayout::Wrap::WRAP ? m_padding.top : m_padding.bottom);
+        cross_offset = (m_wrap == FlexLayout::Wrap::REVERSE ? m_padding.bottom : m_padding.top);
         break;
     case FlexLayout::Direction::RIGHT_TO_LEFT:
         main_offset  = m_padding.right;
-        cross_offset = (m_wrap == FlexLayout::Wrap::WRAP ? m_padding.top : m_padding.bottom);
+        cross_offset = (m_wrap == FlexLayout::Wrap::REVERSE ? m_padding.bottom : m_padding.top);
         break;
     case FlexLayout::Direction::TOP_TO_BOTTOM:
         main_offset  = m_padding.top;
-        cross_offset = (m_wrap == FlexLayout::Wrap::WRAP ? m_padding.left : m_padding.right);
+        cross_offset = (m_wrap == FlexLayout::Wrap::REVERSE ? m_padding.right : m_padding.left);
         break;
     case FlexLayout::Direction::BOTTOM_TO_TOP:
         main_offset  = m_padding.bottom;
-        cross_offset = (m_wrap == FlexLayout::Wrap::WRAP ? m_padding.left : m_padding.right);
+        cross_offset = (m_wrap == FlexLayout::Wrap::REVERSE ? m_padding.right : m_padding.left);
         break;
     }
 
@@ -585,8 +585,8 @@ void FlexLayout::_relayout()
     alignment_spacing += m_cross_spacing;
     cross_offset += alignment_start;
 
-    size_t i                = (m_wrap == Wrap::REVERSE ? stack_count - 1 : 0);
-    const size_t last_index = (m_wrap == Wrap::REVERSE ? 0 : stack_count - 1);
+    size_t i                = (m_wrap == Wrap::REVERSE ? 0 : stack_count - 1);
+    const size_t last_index = (m_wrap == Wrap::REVERSE ? stack_count - 1 : 0);
     while (1) {
         const float stack_width = adapters.empty() ? cross_stretches[i].get_min() : adapters[i].result;
         const Size2f stack_size = is_horizontal ? Size2f{available_main, stack_width} : Size2f{stack_width, available_main};
@@ -596,10 +596,10 @@ void FlexLayout::_relayout()
             break;
         }
         if (m_wrap == Wrap::REVERSE) {
-            --i;
+            ++i;
         }
         else {
-            ++i;
+            --i;
         }
     }
 

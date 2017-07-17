@@ -108,15 +108,15 @@ public: // methods
     FlexController(std::shared_ptr<Window>& window)
         : BaseController<FlexController>({}, {}), m_graphics_context(window->get_graphics_context())
     {
-        std::shared_ptr<FlexLayout> flex_layout = FlexLayout::create(FlexLayout::Direction::LEFT_TO_RIGHT);
+        std::shared_ptr<FlexLayout> flex_layout = FlexLayout::create(FlexLayout::Direction::TOP_TO_BOTTOM);
         flex_layout->set_spacing(10);
         flex_layout->set_cross_spacing(10);
-        flex_layout->set_wrap(FlexLayout::Wrap::WRAP);
+//        flex_layout->set_wrap(FlexLayout::Wrap::WRAP);
         _set_root_item(flex_layout);
 
         FontPtr font = Font::load(m_graphics_context, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 12);
 
-        for (int i = 1; i <= 50; ++i) {
+        for (int i = 1; i <= 10; ++i) {
             std::shared_ptr<RectWidget> rect = std::make_shared<RectWidget>(m_graphics_context, font, Color("#c34200"));
             flex_layout->add_item(rect);
         }
@@ -133,20 +133,20 @@ public: // methods
     {
         std::shared_ptr<Overlayout> overlayout = Overlayout::create();
         overlayout->set_padding(Padding::all(20));
-        //        auto back_rect = std::make_shared<RectWidget>(window->get_graphics_context(), nullptr, Color("#333333"));
-        //        back_rect->set_claim({});
-        //        overlayout->add_item(back_rect);
+        auto back_rect = std::make_shared<RectWidget>(window->get_graphics_context(), nullptr, Color("#333333"));
+        back_rect->set_claim({});
+        overlayout->add_item(back_rect);
 
-        ScrollAreaPtr scroll_area     = std::make_shared<ScrollArea>();
+        //        ScrollAreaPtr scroll_area     = std::make_shared<ScrollArea>();
+        //        scroll_area->set_area_controller(flex_controller);
+        //        overlayout->add_item(scroll_area);
+
         ControllerPtr flex_controller = std::make_shared<FlexController>(window);
-        scroll_area->set_area_controller(flex_controller);
-        overlayout->add_item(scroll_area);
+        overlayout->add_item(flex_controller);
 
         _set_root_item(overlayout);
     }
 };
-
-float rotator = 0;
 
 #if 1
 int main(int argc, char* argv[])

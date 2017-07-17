@@ -41,7 +41,8 @@ public: // types ***************************************************************
     /** Constructor.
      * @param direction Direction of the stack.
      */
-    PROTECTED_EXCEPT_FOR_BINDINGS FlexLayout(const Direction direction);
+    PROTECTED_EXCEPT_FOR_BINDINGS
+    FlexLayout(const Direction direction);
 
 public: // methods ****************************************************************************************************/
     /** Factory.
