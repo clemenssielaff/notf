@@ -8,6 +8,8 @@
 
 namespace notf {
 
+//*********************************************************************************************************************/
+
 ScrollArea::ScrollBar::ScrollBar(ScrollArea& scroll_area)
     : size(1)
     , pos(0)
@@ -43,6 +45,8 @@ void ScrollArea::ScrollBar::_paint(Painter& painter) const
 void ScrollArea::Background::_paint(Painter&) const
 {
 }
+
+//*********************************************************************************************************************/
 
 ScrollArea::ScrollArea()
     : BaseController<ScrollArea>({}, {})
@@ -88,6 +92,7 @@ ScrollArea::ScrollArea()
     connect_signal(
         root_layout->on_mouse_scroll,
         [this](MouseEvent& event) -> void {
+            log_trace << "Derbness";
             _update_scrollbar(16 * event.window_delta.y());
         });
 
@@ -151,20 +156,21 @@ void ScrollArea::_update_scrollbar(float delta_y)
     const float area_height = m_area_window->get_grant().height;
     const float overflow    = max(0.f, content_height - area_height);
 
-    // there must at least be half a pixel to scroll in order for the bar to show up
-    if (overflow >= 0.5f) {
+//    // there must at least be half a pixel to scroll in order for the bar to show up
+//    if (overflow >= 0.5f) {
 
-        const float container_y     = m_scroll_container->get_xform<ScreenItem::Space::LOCAL>().get_translation().y();
-        const float new_container_y = max(area_height, container_y + delta_y);
-        m_scroll_container->set_local_xform(Xform2f::translation(Vector2f(0, new_container_y)));
+//        const float container_y     = m_scroll_container->get_xform<ScreenItem::Space::LOCAL>().get_translation().y();
+//        const float new_container_y = max(area_height - content_height, container_y + delta_y);
+//        m_scroll_container->set_local_xform(Xform2f::translation(Vector2f(0, new_container_y)));
 
-        m_vscrollbar->size = area_height / content_height;
-        m_vscrollbar->pos  = area_height - (abs(new_container_y) / content_height);
-    }
-    else {
+//        m_vscrollbar->size = area_height / content_height;
+//        m_vscrollbar->pos  = area_height - (abs(new_container_y) / content_height);
+//    }
+//    else {
+        m_scroll_container->set_local_xform(Xform2f::translation(Vector2f(0, 0/*area_height - content_height*/)));
         m_vscrollbar->size = 1;
         m_vscrollbar->pos  = 0;
-    }
+//    }
 }
 
 float ScrollArea::_get_content_height() const

@@ -216,6 +216,7 @@ set(TEST_FILES
         ${SOURCE_FILES}
         test/test_aabr.cpp
         test/test_circle.cpp
+        test/test_claim.cpp
         test/test_color.cpp
         test/test_float.cpp
         test/test_main.cpp
@@ -226,6 +227,8 @@ set(TEST_FILES
         test/test_vector2.cpp
         test/test_xform2.cpp
         test/test_xform4.cpp
+        test/test_overlayout.cpp
+        test/test_utils.cpp
 
         test/catch.hpp
         test/test_utils.hpp

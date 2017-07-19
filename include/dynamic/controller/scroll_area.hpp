@@ -11,7 +11,42 @@ class FlexLayout;
 
 using ScrollAreaPtr = std::shared_ptr<ScrollArea>;
 
-/** Scroll Area Controller. */
+//*********************************************************************************************************************/
+
+/** Scroll Area Controller.
+ * Consists of multiple layouts and a ScrollBar widget.
+ * The ScrollArea has no claim of its own and will use whatever space it is granted by the parent layout.
+ *
+ *  The basic setup is as follows:
+ *
+ * +- RootLayout ------------------------+---+
+ * |                                     | S |
+ * | +- AreaWindow --------------------+ | c |
+ * | | +- ScrollContainer -----------+ | | r |
+ * | | |                             | | | o |
+ * | | |                             | | | l |
+ * | | |                             | | | l |
+ * | | |                             | | | B |
+ * | | +-----------------------------+ | | a |
+ * | +---------------------------------+ | r |
+ * +-------------------------------------+---+
+ *
+ * The ScrollArea controller has a FlexLayout at its root, the *RootLayout*.
+ * Its only job is to place the Scrollbar widget next to the area used to view the scrolled content.
+ *
+ * The FlexLayout contains an Overlayout, the *AreaWindow*, which fullfills two roles:
+ * 1. It has an explicit non-claim, meaning that it will ignore the claims of its children and make use only of the
+ *    space granted by the RootLayout.
+ *    This way, we completely decouple the ScrollArea from its displayed content.
+ * 2. To act as a scissor for the content.
+ *
+ * The deepest nested item, the *ScrollContainer* is another Overlayout used to move the content around within the
+ * AreaWindow.
+ * It doesn't supply its own claim, meaning that it will fit itself tightly around whatever is displayed within.
+ *
+ * Stacked behind the ScrollContainer, in the AreaWindow is another widget, the invisible *Background* widget.
+ * Its job is to catch mouse wheel events that went unhandled by the ScrollArea's content.
+ */
 class ScrollArea : public BaseController<ScrollArea> {
 
 private: // types
@@ -45,6 +80,7 @@ private: // types
     };
 
 public: // methods
+    /** Constructor. */
     ScrollArea();
 
     /** Displays the content of the given Controller inside the scroll area.  */

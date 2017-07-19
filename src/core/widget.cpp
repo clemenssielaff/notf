@@ -54,7 +54,7 @@ void Widget::_relayout()
 {
     // a Widget is only concerned about its own size
     Size2f grant = get_grant();
-    get_claim().apply(grant);
+    grant = get_claim().apply(grant);
     _set_size(grant);
 }
 

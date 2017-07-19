@@ -104,8 +104,8 @@ SCENARIO("Working with 2D transformations", "[common][xform2]")
         {
             const float factor   = random_number(-1000.f, 1000.f);
             const Xform2f matrix = Xform2f::scaling(factor);
-            REQUIRE(matrix.get_scale_x() == approx(factor));
-            REQUIRE(matrix.get_scale_y() == approx(factor));
+            REQUIRE(matrix.get_scale_x() == approx(factor, 0.00001f));
+            REQUIRE(matrix.get_scale_y() == approx(factor, 0.00001f));
         }
     }
 

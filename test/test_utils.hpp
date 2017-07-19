@@ -3,10 +3,10 @@
 #include "common/arithmetic.hpp"
 #include "common/float.hpp"
 #include "common/random.hpp"
-#include "common/random.hpp"
 #include "common/vector2.hpp"
 #include "common/xform2.hpp"
 #include "common/xform4.hpp"
+#include "core/widget.hpp"
 
 namespace notf {
 
@@ -78,4 +78,14 @@ inline _Xform2<Real> random_xform2()
 {
     return random_xform2(lowest_tested<Real>(), highest_tested<Real>(), Real(0), Real(2));
 }
+
+//*********************************************************************************************************************/
+
+/** Rectangular widget with a fixed claim. */
+class RectWidget : public Widget {
+public: // methods
+    RectWidget(const float width, const float height);
+    virtual void _paint(Painter&) const override;
+};
+
 } // namespace notf
