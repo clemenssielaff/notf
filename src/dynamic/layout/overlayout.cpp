@@ -34,6 +34,7 @@ void Overlayout::set_padding(const Padding& padding)
     }
     if (padding != m_padding) {
         m_padding = padding;
+        _update_claim();
         _relayout();
     }
 }
@@ -59,7 +60,10 @@ void Overlayout::add_item(ItemPtr item)
     // update the parent layout if necessary
     if (!_update_claim()) {
         // update the child if we don't need a full Claim update
-        ScreenItem::_set_grant(item->get_screen_item(), get_size());
+        Size2f item_grant = get_size();
+        item_grant.width -= m_padding.width();
+        item_grant.height -= m_padding.height();
+        ScreenItem::_set_grant(item->get_screen_item(), std::move(item_grant));
     }
     _redraw();
 }
@@ -109,16 +113,21 @@ Claim Overlayout::_consolidate_claim()
     for (const ItemPtr& item : items) {
         result.maxed(item->get_screen_item()->get_claim());
     }
+    if (!items.empty()) {
+        result.get_horizontal().add_offset(m_padding.width());
+        result.get_vertical().add_offset(m_padding.height());
+    }
     return result;
 }
 
 void Overlayout::_relayout()
 {
-    const Size2f& grant         = get_grant();
-    const Size2f available_size = {grant.width - m_padding.width(), grant.height - m_padding.height()};
-    std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
+    const Size2f referenceSize  = get_claim().apply(get_grant());
+    const Size2f available_size = {referenceSize.width - m_padding.width(), referenceSize.height - m_padding.height()};
+
+    // update your own size
     Size2f new_size = Size2f::wrongest();
-    for (ItemPtr& item : items) {
+    for (ItemPtr& item : static_cast<detail::ItemList*>(m_children.get())->items) {
         ScreenItem* screen_item = item->get_screen_item();
         if (!screen_item) {
             continue;
@@ -126,13 +135,9 @@ void Overlayout::_relayout()
 
         // the item's size is independent of its placement
         ScreenItem::_set_grant(screen_item, available_size);
-        const Size2f item_size = screen_item->get_size();
+        const Size2f& item_size = screen_item->get_size();
 
-        // adjust own size
-        new_size.width = std::max(new_size.width, item_size.width);
-        new_size.height = std::max(new_size.height, item_size.height);
-
-        // the item's transform depends on the Overlayout's alignment
+        // the item's transform depends on the Overlayout's alignment and grant
         float x;
         if (m_horizontal_alignment == AlignHorizontal::LEFT) {
             x = m_padding.left;
@@ -142,12 +147,12 @@ void Overlayout::_relayout()
         }
         else {
             assert(m_horizontal_alignment == AlignHorizontal::RIGHT);
-            x = grant.width - m_padding.right - item_size.width;
+            x = referenceSize.width - m_padding.right - item_size.width;
         }
 
         float y;
         if (m_vertical_alignment == AlignVertical::TOP) {
-            y = grant.height - m_padding.top  - item_size.height;
+            y = referenceSize.height - m_padding.top - item_size.height;
         }
         else if (m_vertical_alignment == AlignVertical::CENTER) {
             y = ((available_size.height - item_size.height) / 2.f) + m_padding.bottom;
@@ -157,8 +162,11 @@ void Overlayout::_relayout()
             y = m_padding.bottom;
         }
         _set_layout_xform(screen_item, Xform2f::translation(Vector2f{x, y}));
+
+        new_size.maxed(item_size);
     }
 
+    // update your own size
     new_size.width += m_padding.width();
     new_size.height += m_padding.height();
     _set_size(std::move(new_size));

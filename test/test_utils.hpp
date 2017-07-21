@@ -2,6 +2,7 @@
 
 #include "common/arithmetic.hpp"
 #include "common/float.hpp"
+#include "common/padding.hpp"
 #include "common/random.hpp"
 #include "common/vector2.hpp"
 #include "common/xform2.hpp"
@@ -79,12 +80,32 @@ inline _Xform2<Real> random_xform2()
     return random_xform2(lowest_tested<Real>(), highest_tested<Real>(), Real(0), Real(2));
 }
 
+template <typename T>
+inline _Size2<T> random_size(const T from, const T to)
+{
+    return {random_number<T>(from, to), random_number<T>(from, to)};
+}
+
+inline bool random_event(const double probability)
+{
+    return random_number<double>(0, 1) < clamp(probability, 0, 1);
+}
+
+inline Padding random_padding(const float from, const float to)
+{
+    return {
+        random_number<float>(from, to),
+        random_number<float>(from, to),
+        random_number<float>(from, to),
+        random_number<float>(from, to)};
+}
+
 //*********************************************************************************************************************/
 
 /** Rectangular widget with a fixed claim. */
 class RectWidget : public Widget {
 public: // methods
-    RectWidget(const float width, const float height);
+    RectWidget();
     virtual void _paint(Painter&) const override;
 };
 

@@ -104,6 +104,25 @@ struct _Size2 {
         assert(divisor != 0);
         return {width / divisor, height / divisor};
     }
+
+    /** Changes the Size2 by adding another. */
+    _Size2 operator+(const _Size2& other) const { return {width + other.width, height + other.width}; }
+
+    /** Adds another Size2 in-place. */
+    _Size2 operator+=(const _Size2& other)
+    {
+        width += other.width;
+        height += other.height;
+        return *this;
+    }
+
+    /** Changes this Size2 to the maximum width and height of this and other. */
+    _Size2& maxed(const _Size2& other)
+    {
+        width  = max(width, other.width);
+        height = max(height, other.height);
+        return *this;
+    }
 };
 
 //*********************************************************************************************************************/

@@ -492,8 +492,8 @@ SCENARIO("Vector2s can be modified", "[common][vector2]")
         {
             const Vector2f full_left  = lerp(random_f1, random_f2, 0);
             const Vector2f full_right = lerp(random_f1, random_f2, 1);
-            REQUIRE(full_left.is_approx(random_f1, precision_low<float>()));
-            REQUIRE(full_right.is_approx(random_f2, precision_low<float>()));
+            REQUIRE(full_left.is_approx(random_f1, precision_low<float>() * 10));
+            REQUIRE(full_right.is_approx(random_f2, precision_low<float>() * 10));
         }
     }
 }

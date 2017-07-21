@@ -285,6 +285,34 @@ public: // methods *************************************************************
     /** Sets the vertical Stretch of this Claim. */
     void set_vertical(const Stretch& stretch) { m_vertical = stretch; }
 
+    /** Sets the minimal size of the Claim. */
+    void set_min(const Size2f& size)
+    {
+        m_horizontal.set_min(size.width);
+        m_vertical.set_min(size.height);
+    }
+
+    /** Sets the preferred size of the Claim. */
+    void set_preferred(const Size2f& size)
+    {
+        m_horizontal.set_preferred(size.width);
+        m_vertical.set_preferred(size.height);
+    }
+
+    /** Sets the maximum size of the Claim. */
+    void set_max(const Size2f& size)
+    {
+        m_horizontal.set_max(size.width);
+        m_vertical.set_max(size.height);
+    }
+
+    /** Sets the the priority of the Claim. */
+    void set_priority(const int priority)
+    {
+        m_horizontal.set_priority(priority);
+        m_vertical.set_priority(priority);
+    }
+
     /** In-place, horizontal addition operator for Claims. */
     Claim& add_horizontal(const Claim& other)
     {

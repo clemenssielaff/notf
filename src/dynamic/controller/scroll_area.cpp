@@ -79,7 +79,7 @@ ScrollArea::ScrollArea()
     root_layout->add_item(m_area_window);
     root_layout->add_item(m_vscrollbar);
     _set_root_item(root_layout);
-    log_trace << "Root Layout has ID: " << root_layout->get_id();
+    log_trace << "Scroll container has ID: " << m_scroll_container->get_id();
 
     // update the scrollbar, if the container layout changed
     connect_signal(
@@ -156,21 +156,21 @@ void ScrollArea::_update_scrollbar(float delta_y)
     const float area_height = m_area_window->get_grant().height;
     const float overflow    = max(0.f, content_height - area_height);
 
-//    // there must at least be half a pixel to scroll in order for the bar to show up
-//    if (overflow >= 0.5f) {
+    // there must at least be half a pixel to scroll in order for the bar to show up
+    if (overflow >= 0.5f) {
 
-//        const float container_y     = m_scroll_container->get_xform<ScreenItem::Space::LOCAL>().get_translation().y();
-//        const float new_container_y = max(area_height - content_height, container_y + delta_y);
-//        m_scroll_container->set_local_xform(Xform2f::translation(Vector2f(0, new_container_y)));
+        const float container_y     = m_scroll_container->get_xform<ScreenItem::Space::LOCAL>().get_translation().y();
+        const float new_container_y = max(area_height - content_height, container_y + delta_y);
+        m_scroll_container->set_local_xform(Xform2f::translation(Vector2f(0, new_container_y)));
 
-//        m_vscrollbar->size = area_height / content_height;
-//        m_vscrollbar->pos  = area_height - (abs(new_container_y) / content_height);
-//    }
-//    else {
+        m_vscrollbar->size = area_height / content_height;
+        m_vscrollbar->pos  = area_height - (abs(new_container_y) / content_height);
+    }
+    else {
         m_scroll_container->set_local_xform(Xform2f::translation(Vector2f(0, 0/*area_height - content_height*/)));
         m_vscrollbar->size = 1;
         m_vscrollbar->pos  = 0;
-//    }
+    }
 }
 
 float ScrollArea::_get_content_height() const
