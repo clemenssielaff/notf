@@ -9,7 +9,7 @@ namespace notf {
 /**********************************************************************************************************************/
 
 /** The Overlayout stacks all of its children on top of each other.
- *
+ * It is the workhorse layout and the basis for many other, more complex structures.
  */
 class Overlayout : public Layout {
 public: // types ******************************************************************************************************/

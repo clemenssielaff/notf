@@ -49,7 +49,7 @@ struct ApplicationInfo {
      * However, the Application::on_frame signal will fire around `fps` times per second.
      * Also see `enable_vsync`.
      */
-    ushort fps = 100;
+    ushort fps = 0;
 
     /** If vertical synchronization is turned on or off.
      * If enabled, the effective application frame rate will be: min(fps, vsync-rate).

@@ -149,7 +149,7 @@ int Application::exec()
             ++frame_counter;
             anim_counter += fire_animation ? 1 : 0;
             if (time_counter >= Time::frequency()) {
-                log_trace << frame_counter << "fps / " << anim_counter << " animation frames";
+                //                log_trace << frame_counter << "fps / " << anim_counter << " animation frames";
                 frame_counter = 0;
                 anim_counter  = 0;
                 time_counter -= Time::frequency();
@@ -158,13 +158,13 @@ int Application::exec()
         //#endif
 
         // wait for the next event or the next time to fire an animation frame
-        //        if (m_info.fps == 0) {
-        //            glfwWaitEvents();
-        //        }
-        //        else {
-        //            glfwWaitEventsTimeout((next_frame > now.ticks ? next_frame - now.ticks : 0) / static_cast<double>(Time::frequency()));
-        //        }
-        glfwPollEvents();
+        if (m_info.fps == 0) {
+            glfwWaitEvents();
+        }
+        else {
+            glfwWaitEventsTimeout((next_frame > now.ticks ? next_frame - now.ticks : 0) / static_cast<double>(Time::frequency()));
+        }
+        //glfwPollEvents();
     }
 
     _shutdown();

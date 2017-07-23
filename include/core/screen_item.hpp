@@ -160,7 +160,7 @@ public: // methods *************************************************************
     /** Updates the transformation of this ScreenItem. */
     void set_local_xform(const Xform2f transform);
 
-    /** The current Claim of this Item. */
+    /** The Claim of this Item. */
     const Claim& get_claim() const { return m_claim; }
 
     /** Granted size of this ScreenItem in layout space. */
@@ -292,6 +292,8 @@ protected: // methods **********************************************************
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const = 0;
 
     /** Updates the Claim of this Item, which might cause a relayout of itself and its ancestor Layouts.
+     * We do not allow direct access to the Claim because modifying it without updating the ScreenItem hierarchy
+     * has no effect and could cause confusion.
      * @return      True iff the Claim was modified.
      */
     bool _set_claim(const Claim claim);

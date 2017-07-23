@@ -23,20 +23,40 @@ namespace notf {
  * The *Stretch factor* of a Strech determines, how fast a ScreenItem grows in relation to its siblings.
  * Two ScreenItems with Stretch factors of 1 each, will grow at the same rate when more space becomes available.
  * If one of them had a Stretch factor of 2, it would grow twice as fast as the other, until it reaches its maximum.
- * Conversely, a Strecth factor of 0.5 would make it grow only half as fast.
+ * Conversely, a Stretch factor of 0.5 would make it grow only half as fast.
+ * Strecth factors have to be larger than zero, assigning a stretch factor of <= 0 will cause a warning and the factor
+ * will be clamped to a value > 0.
  *
  * The *priority* of a Stretch comes into play, when you want one ScreenItem to fully expand before any others are even
  * considered.
  * If you have 3 ScreenItems A, B and C and C has a priority of 1, while A and B have a priority of 0, then C will take
  * up all available space without giving any to A and B.
- * Only after C has reached its maximum size, is the additional space distributed to A and B (using their individual
+ * Only after C has reached its maximum size is the additional space distributed to A and B (using their individual
  * Stretch factors).
  * Conversely, if the available space should shrink then A and B are the first ones to give up their additional space.
  * C will only shrink after A and B have both reached their minimum size.
+ *
+ * You can modify the two Stretches of a Claim individually, or set them both using the Claim's functions.
+ *
+ * Active and passive Claims
+ * -------------------------
+ * Most Claims are active.
+ * When a ScreenItem with an active Claim is put into a Layout, its Claim will be considered as part of the Layout's
+ * implicit claim.
+ * Usually that means that the parent Layout will have a bigger Claim to accomodate the new child.
+ *
+ * Passive Claims are not considered in the calculation of the parent's implicit Claim and only come into effect when
+ * the parent grants a certain size to its children.
+ *
+ * The use case that prompted the introduction of this distinction is an Overlayout with a rectangular "background"
+ * widget in the back and a FlexLayout in the front.
+ * The background widget should take up as much space as the FlexLayout, but not allocate any space itself.
+ * In that case, only the FlexLayout's Claim would be active, while the background's Claim would be passive.
  */
 class Claim {
 
-public: // types ******************************************************************************************************/
+    //*****************************************************************************************************************/
+public: // type
     class Stretch {
     public: // methods
         /** Default Constructor. */
@@ -45,8 +65,8 @@ public: // types ***************************************************************
 
         /** Value Constructor.
          * @param preferred    Preferred size in local units, is limited to values >= 0.
-         * @param min          (optional) Minimum size, is clamped to 0 <= value <= preferred, defaults to 'preferred'.
-         * @param max          (optional) Maximum size, is clamped to preferred <= value, can be INFINITY, defaults to 'preferred'.
+         * @param min          Minimum size, is clamped to 0 <= value <= preferred, defaults to 'preferred'.
+         * @param max          Maximum size, is clamped to preferred <= value, can be INFINITY, defaults to 'preferred'.
          */
         Stretch(const float preferred, const float min = NAN, const float max = NAN)
             : m_preferred(is_real(preferred) ? notf::max(preferred, 0.f) : 0.f)
@@ -82,26 +102,23 @@ public: // types ***************************************************************
         /** Returns the scale priority. */
         int get_priority() const { return m_priority; }
 
-        /** Test if this stretch is always zero. */
-        bool is_zero() const { return is_fixed() && m_max < precision_high<float>(); }
+        /** Sets a new minimum size, accomodates both the preferred and max size if necessary.
+         * @param min  Minimum size, must be 0 <= size < INFINITY.
+         */
+        void set_min(const float min);
 
         /** Sets a new preferred size, accomodates both the min and max size if necessary.
          * @param preferred    Preferred size, must be 0 <= size < INFINITY.
          */
         void set_preferred(const float preferred);
 
-        /** Sets a new minimal size, accomodates both the preferred and max size if necessary.
-         * @param min  Minimal size, must be 0 <= size < INFINITY.
-         */
-        void set_min(const float min);
-
-        /** Sets a new maximal size, accomodates both the min and preferred size if necessary.
-         * @param max  Maximal size, must be 0 <= size <= INFINITY.
+        /** Sets a new maximum size, accomodates both the min and preferred size if necessary.
+         * @param max  Maximum size, must be 0 <= size <= INFINITY.
          */
         void set_max(const float max);
 
         /** Sets a new scale factor.
-         * @param factor    Scale factor, must be 0 < factor < INFINITY.
+         * @param factor    Scale factor, is clamped to 0 < factor < INFINITY.
          */
         void set_scale_factor(const float factor);
 
@@ -112,12 +129,24 @@ public: // types ***************************************************************
         void set_fixed(const float size) { m_min = m_max = m_preferred = size; }
 
         /** Adds an offset to the min, max and preferred value.
+        * Useful, for example, if you want to add a fixed "spacing" to the Claim of a Layout.
          * The offset can be negative.
          * Fields are truncated to be >= 0, invalid values are ignored.
-         * Useful, for example, if you want to add a fixed "spacing" to the Claim of a Layout.
          */
-        void add_offset(const float offset);
+        void grow_by(const float offset);
 
+        /** In-place max operator. */
+        Stretch& maxed(const Stretch& other)
+        {
+            m_preferred    = max(m_preferred, other.m_preferred);
+            m_min          = max(m_min, other.m_min);
+            m_max          = max(m_max, other.m_max);
+            m_scale_factor = max(m_scale_factor, other.m_scale_factor);
+            m_priority     = max(m_priority, other.m_priority);
+            return *this;
+        }
+
+        /** Assignment operator. */
         Stretch& operator=(const Stretch& other)
         {
             m_preferred    = other.m_preferred;
@@ -128,6 +157,7 @@ public: // types ***************************************************************
             return *this;
         }
 
+        /** Equality comparison operator. */
         bool operator==(const Stretch& other) const
         {
             return (abs(m_preferred - other.m_preferred) < precision_high<float>()
@@ -137,6 +167,7 @@ public: // types ***************************************************************
                     && m_priority == other.m_priority);
         }
 
+        /** Inequality comparison operator. */
         bool operator!=(const Stretch& other) const { return !(*this == other); }
 
         /** In-place addition operator. */
@@ -147,17 +178,6 @@ public: // types ***************************************************************
             m_max += other.m_max;
             m_scale_factor += other.m_scale_factor;
             m_priority = max(m_priority, other.m_priority);
-            return *this;
-        }
-
-        /** In-place max operator. */
-        Stretch& maxed(const Stretch& other)
-        {
-            m_preferred    = max(m_preferred, other.m_preferred);
-            m_min          = max(m_min, other.m_min);
-            m_max          = max(m_max, other.m_max);
-            m_scale_factor = max(m_scale_factor, other.m_scale_factor);
-            m_priority     = max(m_priority, other.m_priority);
             return *this;
         }
 
@@ -178,6 +198,7 @@ public: // types ***************************************************************
         int m_priority = 0;
     };
 
+    //*****************************************************************************************************************/
 private: // class
     /** A height-for-width ratio constraint of the Claim.
      * Is its own class so two Ratios can be properly added.
@@ -249,7 +270,9 @@ private: // class
         float m_height;
     };
 
-public: // static methods *********************************************************************************************/
+    //*****************************************************************************************************************/
+
+public: // static methods
     /** Returns a Claim with fixed height and width. */
     static Claim fixed(float width, float height);
     static Claim fixed(const Size2f& size) { return fixed(size.width, size.height); }
@@ -257,19 +280,17 @@ public: // static methods ******************************************************
     /** Returns a Claim with all limits set to zero. */
     static Claim zero();
 
-public: // methods ****************************************************************************************************/
+public: // methods
     /** Default Constructor. */
-    Claim() = default;
+    Claim()
+        : m_horizontal(), m_vertical(), m_ratios(), m_is_active(true) {}
 
     /** Value Constructor. */
     Claim(Claim::Stretch horizontal, Claim::Stretch vertical)
-        : m_horizontal(std::move(horizontal)), m_vertical(std::move(vertical)), m_ratios() {}
+        : m_horizontal(std::move(horizontal)), m_vertical(std::move(vertical)), m_ratios(), m_is_active(true) {}
 
     /** Copy Constructor. */
     Claim(const Claim& other) = default;
-
-    /** Tests if both Stretches of this Claim are always zero. */
-    bool is_zero() const { return m_horizontal.is_zero() && m_vertical.is_zero(); }
 
     /** Returns the horizontal part of this Claim. */
     Stretch& get_horizontal() { return m_horizontal; }
@@ -279,38 +300,83 @@ public: // methods *************************************************************
     Stretch& get_vertical() { return m_vertical; }
     const Stretch& get_vertical() const { return m_vertical; }
 
-    /** Sets the horizontal Stretch of this Claim. */
-    void set_horizontal(const Stretch& stretch) { m_horizontal = stretch; }
+    /** Test whether this Claim is active or passive. */
+    bool is_active() const { return m_is_active; }
 
-    /** Sets the vertical Stretch of this Claim. */
-    void set_vertical(const Stretch& stretch) { m_vertical = stretch; }
+    /** Tests if both Stretches of this Claim are fixed. */
+    bool is_fixed() const { return m_horizontal.is_fixed() && m_vertical.is_fixed(); }
 
-    /** Sets the minimal size of the Claim. */
-    void set_min(const Size2f& size)
+    /** Sets a new minimum size of both Stretches, accomodates both the preferred and max size if necessary.
+     * @param size  Minimum size, must be 0 <= size < INFINITY.
+     */
+    void set_min(const float width, const float height)
     {
-        m_horizontal.set_min(size.width);
-        m_vertical.set_min(size.height);
+        m_horizontal.set_min(width);
+        m_vertical.set_min(height);
+    }
+    void set_min(const Size2f& size) { set_min(size.width, size.height); }
+
+    /** Sets a new preferred size of both Stretches, accomodates both the min and max size if necessary.
+     * @param size  Preferred size, must be 0 <= size < INFINITY.
+     */
+    void set_preferred(const float width, const float height)
+    {
+        m_horizontal.set_preferred(width);
+        m_vertical.set_preferred(height);
+    }
+    void set_preferred(const Size2f& size) { set_preferred(size.width, size.height); }
+
+    /** Sets a new maximum size of both Stretches, accomodates both the min and preferred size if necessary.
+     * @param size  Maximum size, must be 0 <= size <= INFINITY.
+     */
+    void set_max(const float width, const float height)
+    {
+        m_horizontal.set_max(width);
+        m_vertical.set_max(height);
+    }
+    void set_max(const Size2f& size) { set_max(size.width, size.height); }
+
+    /** Sets the the scale factor of both Stretches.
+     * @param factor    Scale factor, is clamped to 0 < factor < INFINITY.
+     */
+    void set_scale_factor(const float factor)
+    {
+        m_horizontal.set_scale_factor(factor);
+        m_vertical.set_scale_factor(factor);
     }
 
-    /** Sets the preferred size of the Claim. */
-    void set_preferred(const Size2f& size)
-    {
-        m_horizontal.set_preferred(size.width);
-        m_vertical.set_preferred(size.height);
-    }
-
-    /** Sets the maximum size of the Claim. */
-    void set_max(const Size2f& size)
-    {
-        m_horizontal.set_max(size.width);
-        m_vertical.set_max(size.height);
-    }
-
-    /** Sets the the priority of the Claim. */
+    /** Sets the the priority of both Stretches (0 = default). */
     void set_priority(const int priority)
     {
         m_horizontal.set_priority(priority);
         m_vertical.set_priority(priority);
+    }
+
+    /** Updates whether this Claim is active or passive.
+     * @param is_active     True if this Claim is active, false if it is passive.
+     */
+    void set_active(const bool is_active)
+    {
+        m_is_active = is_active;
+    }
+
+    /** Sets both Stretches to a fixed size. */
+    void set_fixed(const float width, const float height)
+    {
+        m_horizontal.set_fixed(width);
+        m_vertical.set_fixed(height);
+    }
+    void set_fixed(const Size2f& size) { set_fixed(size.width, size.height); }
+
+    /** Adds an offset to the min, max and preferred value of both Stretches.
+     * Useful, for example, if you want to add a fixed "spacing" to the Claim of a Layout.
+     * The offset can be negative.
+     * Fields are truncated to be >= 0, invalid values are ignored.
+     */
+    void grow_by(const float offset)
+    {
+        m_horizontal.grow_by(offset);
+        m_vertical.grow_by(offset);
     }
 
     /** In-place, horizontal addition operator for Claims. */
@@ -359,27 +425,35 @@ public: // methods *************************************************************
         const std::pair<float, float> my_ratios    = get_width_to_height();
         const std::pair<float, float> other_ratios = other.get_width_to_height();
         set_width_to_height(min(my_ratios.first, other_ratios.first), max(my_ratios.second, other_ratios.second));
+        m_is_active = m_is_active || other.m_is_active;
         return *this;
     }
 
+    /** Assignment operator. */
     Claim& operator=(const Claim& other)
     {
         m_horizontal = other.m_horizontal;
         m_vertical   = other.m_vertical;
         m_ratios     = other.m_ratios;
+        m_is_active  = other.m_is_active;
         return *this;
     }
 
+    /** Equality comparison operator. */
     bool operator==(const Claim& other) const
     {
         return (m_horizontal == other.m_horizontal
                 && m_vertical == other.m_vertical
-                && m_ratios == other.m_ratios);
+                && m_ratios == other.m_ratios
+                && m_is_active == other.m_is_active);
     }
 
+    /** Inequality comparison operator. */
     bool operator!=(const Claim& other) const { return !(*this == other); }
 
-    /** Applies the constraints of this Claim to a given size value which is modified in-place. */
+    /** Applies the constraints of this Claim to a given size.
+     * @return  Constrainted size.
+     */
     Size2f apply(const Size2f& size) const;
 
 private: // members
@@ -391,6 +465,9 @@ private: // members
 
     /** Minimum and maximum ratio scaling constraint. */
     std::pair<Ratio, Ratio> m_ratios;
+
+    /** Whether this is an active or a passive Claim. */
+    bool m_is_active;
 };
 
 /* Free Functions *****************************************************************************************************/

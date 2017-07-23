@@ -9,6 +9,13 @@ namespace notf {
 /**
  *
  *
+ * Explicit and Implicit Claims
+ * ----------------------------
+ * Claims can either be `explicit` or `implicit`.
+ * An implicit Claim is one that is created by combining multiple child Claims into one and is used only by Layouts.
+ * Widgets always have an `explicit` Claim, meaning that the various Claim values were supplied by the user and must not
+ * be changed by the layouting process.
+ * Layouts can also have an explicit Claim if you want them to ignore their child Claims and provide their own instead.
  */
 class Layout : public ScreenItem {
     friend class ScreenItem; // can call _update_claim() and _relayout()
@@ -17,13 +24,22 @@ protected: // constructor  *****************************************************
     Layout(ItemContainerPtr container);
 
 public: // methods ****************************************************************************************************/
-    /** (Un-)Sets an explicit Claim for this Layout.
+    /** Set an explicit Claim for this Layout.
      * Layouts with an explicit Claim do not dynamically aggregate one from their children.
-     * To unset an explicit Claim, pass a zero Claim.
-     * @param claim New explicit Claim.
-     * @return True iff the Claim was modified.
+     * @param claim     New explicit Claim.
+     * @return          True iff the Claim was modified.
      */
     bool set_claim(const Claim claim);
+
+    /** Unsets an explicit Claim and causes the Layout to aggreate its Claim from its children instead.
+     * @return          True iff the Claim was modified.
+     */
+    bool unset_claim();
+
+    /** Whether or not this Layout has an explicit Claim or not.
+     * Layouts with an implicit Claim recalculate theirs from their children - those with an explict Claim don't.
+     */
+    bool has_explicit_claim() const { return m_has_explicit_claim; }
 
     /** Removes all Items from the Layout. */
     void clear();

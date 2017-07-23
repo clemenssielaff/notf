@@ -172,6 +172,14 @@ bool ScreenItem::_set_claim(const Claim claim)
     }
     m_claim = std::move(claim);
 
+    // when you change a passive Claim, always update yourself first
+    // since the Claim is passive, it won't change the grant of the parent Layout which means that this ScreenItem
+    // will not update its size (because it's grant didn't change).
+    // but we need the size to change in order for the parent to place this item correctly
+    if (!m_claim.is_active()) {
+        _relayout();
+    }
+
     // update ancestor layouts
     Layout* layout = get_layout();
     while (layout) {

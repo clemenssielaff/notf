@@ -15,10 +15,10 @@ ScrollArea::ScrollBar::ScrollBar(ScrollArea& scroll_area)
     , pos(0)
     , m_scroll_area(scroll_area)
 {
-    Claim::Stretch horizontal, vertical;
-    horizontal.set_fixed(10);
-    horizontal.set_priority(1);
-    set_claim({horizontal, vertical});
+    Claim claim;
+    claim.get_horizontal().set_fixed(10);
+    claim.get_horizontal().set_priority(1);
+    set_claim(claim);
 }
 
 void ScrollArea::ScrollBar::_paint(Painter& painter) const
@@ -58,7 +58,7 @@ ScrollArea::ScrollArea()
 {
     // the window into the content
     m_area_window = Overlayout::create();
-    m_area_window->set_claim(Claim()); // explicit non-claim
+    m_area_window->set_claim(Claim()); // do not combine child Claims
     m_area_window->set_alignment(Overlayout::AlignHorizontal::LEFT, Overlayout::AlignVertical::TOP);
 
     // transparent background Widget reacting to scroll events not caught by the ScrollArea's content

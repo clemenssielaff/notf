@@ -109,12 +109,12 @@ public: // methods *************************************************************
 private: // methods ***************************************************************************************************/
     /** Performs the layout of a single stack.
      * @param stack         Items in the stack.
-     * @param grant         Size of the stack.
+     * @param total_size    Total size of the stack (items will overflow if it is not enough).
      * @param main_offset   Start offset of the first item in the main axis.
      * @param cross_offset  Start offset of the first item in the cross axis.
      * @param new_size      (out) New size of the Layout.
      */
-    void _layout_stack(const std::vector<ScreenItem*>& stack, const Size2f grant,
+    void _layout_stack(const std::vector<ScreenItem*>& stack, const Size2f total_size,
                        const float main_offset, const float cross_offset, Size2f& new_size);
 
     virtual void _remove_child(const Item* child_item) override;

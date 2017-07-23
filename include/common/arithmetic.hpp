@@ -492,7 +492,13 @@ protected: // methods
 template <typename T>
 T lerp(const T& from, const T& to, const typename T::value_t blend)
 {
-    return ((to - from) *= clamp(blend, 0, 1)) += from;
+    if (blend <= 0) {
+        return from;
+    }
+    else if (blend >= 1) {
+        return to;
+    }
+    return ((to - from) *= blend) += from;
 }
 
 } // namespace notf

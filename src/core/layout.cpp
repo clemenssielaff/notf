@@ -12,14 +12,14 @@ Layout::Layout(ItemContainerPtr container)
 
 bool Layout::set_claim(const Claim claim)
 {
-    if (claim.is_zero()) {
-        m_has_explicit_claim = false;
-        return _set_claim(_consolidate_claim());
-    }
-    else {
-        m_has_explicit_claim = true;
-        return _set_claim(std::move(claim));
-    }
+    m_has_explicit_claim = true;
+    return _set_claim(std::move(claim));
+}
+
+bool Layout::unset_claim()
+{
+    m_has_explicit_claim = false;
+    return _set_claim(_consolidate_claim());
 }
 
 void Layout::clear()

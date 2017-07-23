@@ -59,13 +59,13 @@ void Overlayout::add_item(ItemPtr item)
 
     // update the parent layout if necessary
     if (!_update_claim()) {
-        // update the child if we don't need a full Claim update
+        // update only the child if we don't need a full Claim update
         Size2f item_grant = get_size();
         item_grant.width -= m_padding.width();
         item_grant.height -= m_padding.height();
         ScreenItem::_set_grant(item->get_screen_item(), std::move(item_grant));
     }
-    _redraw();
+    _relayout();
 }
 
 void Overlayout::_remove_child(const Item* child_item)
@@ -73,14 +73,12 @@ void Overlayout::_remove_child(const Item* child_item)
     if (!child_item) {
         return;
     }
-
     std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
 
     auto it = std::find_if(std::begin(items), std::end(items),
                            [child_item](const ItemPtr& item) -> bool {
                                return item.get() == child_item;
                            });
-
     if (it == std::end(items)) {
         log_critical << "Cannot remove unknown child Item " << child_item->get_id()
                      << " from Overlayout " << get_id();
@@ -108,24 +106,32 @@ void Overlayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
 
 Claim Overlayout::_consolidate_claim()
 {
-    Claim result;
     std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
+    if (items.empty()) {
+        return Claim();
+    }
+
+    Claim result = Claim::zero();
     for (const ItemPtr& item : items) {
-        result.maxed(item->get_screen_item()->get_claim());
+        if (const ScreenItem* screen_item = item->get_screen_item()) {
+            const Claim& claim = screen_item->get_claim();
+            if (claim.is_active()) {
+                result.maxed(claim);
+            }
+        }
     }
-    if (!items.empty()) {
-        result.get_horizontal().add_offset(m_padding.width());
-        result.get_vertical().add_offset(m_padding.height());
-    }
+    result.get_horizontal().grow_by(m_padding.width());
+    result.get_vertical().grow_by(m_padding.height());
     return result;
 }
 
 void Overlayout::_relayout()
 {
-    const Size2f referenceSize  = get_claim().apply(get_grant());
-    const Size2f available_size = {referenceSize.width - m_padding.width(), referenceSize.height - m_padding.height()};
+    const Size2f reference_size = get_claim().apply(get_grant());
+    const Size2f available_size = {reference_size.width - m_padding.width(),
+                                   reference_size.height - m_padding.height()};
 
-    // update your own size
+    // update your children's location
     Size2f new_size = Size2f::wrongest();
     for (ItemPtr& item : static_cast<detail::ItemList*>(m_children.get())->items) {
         ScreenItem* screen_item = item->get_screen_item();
@@ -147,12 +153,12 @@ void Overlayout::_relayout()
         }
         else {
             assert(m_horizontal_alignment == AlignHorizontal::RIGHT);
-            x = referenceSize.width - m_padding.right - item_size.width;
+            x = reference_size.width - m_padding.right - item_size.width;
         }
 
         float y;
         if (m_vertical_alignment == AlignVertical::TOP) {
-            y = referenceSize.height - m_padding.top - item_size.height;
+            y = reference_size.height - m_padding.top - item_size.height;
         }
         else if (m_vertical_alignment == AlignVertical::CENTER) {
             y = ((available_size.height - item_size.height) / 2.f) + m_padding.bottom;
@@ -163,7 +169,9 @@ void Overlayout::_relayout()
         }
         _set_layout_xform(screen_item, Xform2f::translation(Vector2f{x, y}));
 
-        new_size.maxed(item_size);
+        if(screen_item->get_claim().is_active()){
+            new_size.maxed(item_size);
+        }
     }
 
     // update your own size

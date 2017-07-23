@@ -65,23 +65,54 @@ private: // fields
     std::string m_text;
 };
 
+class FlexController : public BaseController<FlexController> {
+public: // methods
+    FlexController()
+        : BaseController<FlexController>({}, {})
+    {
+        std::shared_ptr<Overlayout> overlayout = Overlayout::create();
+        _set_root_item(overlayout);
+
+        std::shared_ptr<RectWidget> back_rect = std::make_shared<RectWidget>(nullptr, Color("#666666"));
+        Claim claim;
+        claim.set_active(false);
+        back_rect->set_claim(claim);
+        overlayout->add_item(back_rect);
+
+        std::shared_ptr<FlexLayout> flex_layout = FlexLayout::create();
+        flex_layout->set_spacing(0);
+        flex_layout->set_alignment(FlexLayout::Alignment::SPACE_EQUAL);
+        back_rect->connect_signal(flex_layout->on_size_changed, [back_rect](const Size2f& size) -> void {
+            Claim claim = Claim::fixed(size);
+            claim.set_active(false);
+            back_rect->set_claim(std::move(claim));
+        });
+        overlayout->add_item(flex_layout);
+
+        for (int i = 0; i < 2; ++i) {
+            std::shared_ptr<RectWidget> rect = std::make_shared<RectWidget>(nullptr, Color("#c34200"));
+            Claim claim                      = rect->get_claim();
+            claim.set_fixed(100, 100);
+            rect->set_claim(claim);
+            flex_layout->add_item(rect);
+        }
+    }
+};
+
 class MainController : public BaseController<MainController> {
 public: // methods
-    MainController(std::shared_ptr<Window> window)
+    MainController()
         : BaseController<MainController>({}, {})
     {
         std::shared_ptr<Overlayout> overlayout = Overlayout::create();
-        overlayout->set_alignment(Overlayout::AlignHorizontal::RIGHT, Overlayout::AlignVertical::TOP);
-//        overlayout->set_padding(Padding::all(20));
-        overlayout->set_claim(Claim::fixed(400, 400));
+        overlayout->set_padding(Padding::all(20));
+        log_info << "Overlayout in question has ID:" << overlayout->get_id();
 
-        auto rect1 = std::make_shared<RectWidget>(nullptr, Color("#333333"));
-        rect1->set_claim(Claim::fixed(100, 100));
-        overlayout->add_item(rect1);
+        std::shared_ptr<RectWidget> back_rect = std::make_shared<RectWidget>(nullptr, Color("#333333"));
+        overlayout->add_item(back_rect);
 
-        auto rect2 = std::make_shared<RectWidget>(nullptr, Color("#ff8611"));
-        rect2->set_claim(Claim::fixed(50, 200));
-        overlayout->add_item(rect2);
+        ControllerPtr flex_controller = std::make_shared<FlexController>();
+        overlayout->add_item(flex_controller);
 
         _set_root_item(overlayout);
     }
@@ -91,10 +122,9 @@ public: // methods
 int main(int argc, char* argv[])
 {
     ApplicationInfo app_info;
-    app_info.argc         = argc;
-    app_info.argv         = argv;
-    app_info.enable_vsync = false;
-    Application& app      = Application::initialize(app_info);
+    app_info.argc    = argc;
+    app_info.argv    = argv;
+    Application& app = Application::initialize(app_info);
 
     // window
     WindowInfo window_info;
@@ -104,7 +134,7 @@ int main(int argc, char* argv[])
     window_info.is_resizeable = true;
     auto window               = Window::create(window_info);
 
-    window->get_layout()->set_controller(std::make_shared<MainController>(window));
+    window->get_layout()->set_controller(std::make_shared<MainController>());
     return app.exec();
 }
 #endif

@@ -36,7 +36,7 @@ void produce_claim(pybind11::module& module)
     PyClaimStretch.def("set_scale_factor", &Claim::Stretch::set_scale_factor, DOCSTR("Sets a new scale factor."), py::arg("factor"));
     PyClaimStretch.def("set_priority", &Claim::Stretch::set_priority, DOCSTR("Sets a new scaling priority."), py::arg("priority"));
     PyClaimStretch.def("set_fixed", &Claim::Stretch::set_fixed, DOCSTR("Sets a fixed size."), py::arg("size"));
-    PyClaimStretch.def("add_offset", &Claim::Stretch::add_offset, DOCSTR("Adds an offset to the min, max and preferred value."), py::arg("offset"));
+    PyClaimStretch.def("grow_by", &Claim::Stretch::grow_by, DOCSTR("Adds an offset to the min, max and preferred value."), py::arg("offset"));
 
     // operators
     PyClaimStretch.def(py::self == py::self);
@@ -69,8 +69,6 @@ void produce_claim(pybind11::module& module)
     PyClaim.def("get_width_to_height", &Claim::get_width_to_height, DOCSTR("Returns the min and max ratio constraints, 0 means no constraint, is: 0 <= min <= max < INFINITY"));
 
     // modifications
-    PyClaim.def("set_horizontal", &Claim::set_horizontal, DOCSTR("Sets the horizontal Stretch of this Claim."), py::arg("stretch"));
-    PyClaim.def("set_vertical", &Claim::set_vertical, DOCSTR("Sets the vertical Stretch of this Claim."), py::arg("stretch"));
     PyClaim.def("add_horizontal", &Claim::add_horizontal, DOCSTR("In-place, horizontal addition operator for Claims."), py::arg("other"));
     PyClaim.def("add_vertical", &Claim::add_vertical, DOCSTR("In-place, vertical addition operator for Claims."), py::arg("other"));
     PyClaim.def("set_width_to_height", &Claim::set_width_to_height, DOCSTR("Sets the ratio constraint."), py::arg("ratio_min"), py::arg("ratio_max") = NAN);

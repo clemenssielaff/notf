@@ -13,23 +13,6 @@ const float MIN_SCALE_FACTOR = 0.00001f;
 
 namespace notf {
 
-void Claim::Stretch::set_preferred(const float preferred)
-{
-    if (!is_real(preferred) || preferred < 0) {
-        log_warning << "Invalid preferred Claim value: " << preferred << " - using 0 instead.";
-        m_preferred = 0;
-    }
-    else {
-        m_preferred = preferred;
-    }
-    if (m_preferred < m_min) {
-        m_min = m_preferred;
-    }
-    if (m_preferred > m_max) {
-        m_max = m_preferred;
-    }
-}
-
 void Claim::Stretch::set_min(const float min)
 {
     if (!is_real(min) || min < 0) {
@@ -44,6 +27,22 @@ void Claim::Stretch::set_min(const float min)
         if (m_min > m_max) {
             m_max = m_min;
         }
+    }
+}
+void Claim::Stretch::set_preferred(const float preferred)
+{
+    if (!is_real(preferred) || preferred < 0) {
+        log_warning << "Invalid preferred Claim value: " << preferred << " - using 0 instead.";
+        m_preferred = 0;
+    }
+    else {
+        m_preferred = preferred;
+    }
+    if (m_preferred < m_min) {
+        m_min = m_preferred;
+    }
+    if (m_preferred > m_max) {
+        m_max = m_preferred;
     }
 }
 
@@ -75,7 +74,7 @@ void Claim::Stretch::set_scale_factor(const float factor)
     }
 }
 
-void Claim::Stretch::add_offset(const float offset)
+void Claim::Stretch::grow_by(const float offset)
 {
     if (!is_real(offset)) {
         log_warning << "Ignored invalid offset value: " << offset;
