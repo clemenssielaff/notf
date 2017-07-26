@@ -65,6 +65,11 @@ void window_deleter(GLFWwindow* glfw_window)
 
 std::shared_ptr<Window> Window::create(const WindowInfo& info)
 {
+    // TODO: remove ALL make_shared_enabler and think of something else
+    // maybe find out and throw an exception (usus in c++17)
+    // or just loose the make_shared_enabler class as described in
+    // https://mortoray.com/2013/08/02/safely-using-enable_shared_from_this/
+    // ... then again, what he proposes is basically what I have without std::make_shared
     struct make_shared_enabler : public Window {
         make_shared_enabler(const WindowInfo& window_info)
             : Window(window_info) {}

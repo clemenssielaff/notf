@@ -17,8 +17,7 @@ namespace notf {
 ScreenItem::ScreenItem(ItemContainerPtr container)
     : Item(std::move(container))
     , m_layout_transform(Xform2f::identity())
-    , m_local_transform(Xform2f::identity())
-    , m_effective_transform(Xform2f::identity())
+    , m_offset_transform(Xform2f::identity())
     , m_claim()
     , m_grant(Size2f::zero())
     , m_is_visible(true)
@@ -30,7 +29,8 @@ ScreenItem::ScreenItem(ItemContainerPtr container)
 {
 }
 
-Xform2f ScreenItem::get_window_xform() const
+template <>
+const Xform2f ScreenItem::get_xform<ScreenItem::Space::WINDOW>() const
 {
     Xform2f result = Xform2f::identity();
     _get_window_transform(result);
@@ -39,11 +39,11 @@ Xform2f ScreenItem::get_window_xform() const
 
 void ScreenItem::set_local_xform(const Xform2f transform)
 {
-    if (transform == m_local_transform) {
+    if (transform == m_offset_transform) {
         return;
     }
-    m_local_transform = std::move(transform);
-    _update_effective_transform();
+    m_offset_transform = std::move(transform);
+    on_xform_changed(m_offset_transform * m_layout_transform);
     _redraw();
 }
 
@@ -225,7 +225,7 @@ void ScreenItem::_set_layout_xform(const Xform2f transform)
         return;
     }
     m_layout_transform = std::move(transform);
-    _update_effective_transform();
+    on_xform_changed(m_offset_transform * m_layout_transform);
     _redraw();
 }
 
@@ -269,14 +269,8 @@ void ScreenItem::_get_window_transform(Xform2f& result) const
 {
     if (const ScreenItem* layout = get_layout()) {
         layout->_get_window_transform(result);
-        result.premult(m_effective_transform);
+        result.premult(m_offset_transform * m_layout_transform);
     }
-}
-
-void ScreenItem::_update_effective_transform()
-{
-    m_effective_transform = m_layout_transform * m_local_transform;
-    on_xform_changed(m_effective_transform);
 }
 
 /**********************************************************************************************************************/

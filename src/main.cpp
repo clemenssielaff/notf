@@ -70,24 +70,25 @@ public: // methods
     FlexController()
         : BaseController<FlexController>({}, {})
     {
-        std::shared_ptr<Overlayout> overlayout = Overlayout::create();
-        _set_root_item(overlayout);
+//        std::shared_ptr<Overlayout> overlayout = Overlayout::create();
+//        _set_root_item(overlayout);
 
-        std::shared_ptr<RectWidget> back_rect = std::make_shared<RectWidget>(nullptr, Color("#666666"));
-        Claim claim;
-        claim.set_active(false);
-        back_rect->set_claim(claim);
-        overlayout->add_item(back_rect);
+//        std::shared_ptr<RectWidget> back_rect = std::make_shared<RectWidget>(nullptr, Color("#666666"));
+//        Claim claim;
+//        claim.set_active(false);
+//        back_rect->set_claim(claim);
+//        overlayout->add_item(back_rect);
 
         std::shared_ptr<FlexLayout> flex_layout = FlexLayout::create();
         flex_layout->set_spacing(0);
-        flex_layout->set_alignment(FlexLayout::Alignment::SPACE_EQUAL);
-        back_rect->connect_signal(flex_layout->on_size_changed, [back_rect](const Size2f& size) -> void {
-            Claim claim = Claim::fixed(size);
-            claim.set_active(false);
-            back_rect->set_claim(std::move(claim));
-        });
-        overlayout->add_item(flex_layout);
+        flex_layout->set_alignment(FlexLayout::Alignment::END);
+//        back_rect->connect_signal(flex_layout->on_size_changed, [back_rect](const Size2f& size) -> void {
+//            Claim claim = Claim::fixed(size);
+//            claim.set_active(false);
+//            back_rect->set_claim(std::move(claim));
+//        });
+//        overlayout->add_item(flex_layout);
+        _set_root_item(flex_layout);
 
         for (int i = 0; i < 2; ++i) {
             std::shared_ptr<RectWidget> rect = std::make_shared<RectWidget>(nullptr, Color("#c34200"));
@@ -106,6 +107,7 @@ public: // methods
     {
         std::shared_ptr<Overlayout> overlayout = Overlayout::create();
         overlayout->set_padding(Padding::all(20));
+//        overlayout->set_alignment(Overlayout::AlignHorizontal::CENTER, Overlayout::AlignVertical::CENTER);
         log_info << "Overlayout in question has ID:" << overlayout->get_id();
 
         std::shared_ptr<RectWidget> back_rect = std::make_shared<RectWidget>(nullptr, Color("#333333"));
@@ -134,7 +136,7 @@ int main(int argc, char* argv[])
     window_info.is_resizeable = true;
     auto window               = Window::create(window_info);
 
-    window->get_layout()->set_controller(std::make_shared<MainController>());
+    window->get_layout()->set_controller(std::make_shared<FlexController>());
     return app.exec();
 }
 #endif

@@ -327,5 +327,4 @@ SCENARIO("An Overlayout aligns its children", "[dynamic][layout]")
     }
 }
 
-// TODO: test for handling of Items with passive Claims
 // TODO: test for hit testing

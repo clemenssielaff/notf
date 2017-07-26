@@ -39,14 +39,14 @@ void Widget::_render(CellCanvas& canvas) const
     { // paint the Cell
         Scissor scissor;
         if (const Layout* scissor_layout = get_scissor()) {
-            scissor.xform = scissor_layout->get_window_xform();
+            scissor.xform = scissor_layout->get_xform<Space::WINDOW>();
 
             Aabrf aabr(scissor_layout->get_grant());
             scissor_layout->get_xform<Space::PARENT>().transform(aabr);
             scissor.xform.transform(aabr);
             scissor.extend = aabr.get_size();
         }
-        canvas.paint(*m_cell, get_window_xform(), std::move(scissor));
+        canvas.paint(*m_cell, get_xform<Space::WINDOW>(), std::move(scissor));
     }
 }
 

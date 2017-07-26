@@ -141,7 +141,10 @@ public: // signals *************************************************************
     Signal<Window*> on_window_changed;
 
 protected: // methods *************************************************************************************************/
-    /** Removes a child Item from this Item. */
+    /** Removes a child Item from this Item.
+     * This needs to be a virtual method, because Layouts will use it to perform a minimal update after an item has been
+     * removed.
+     */
     virtual void _remove_child(const Item* child_item) = 0;
 
     /** Sets the parent of this Item. */

@@ -138,9 +138,10 @@ class ScreenItem : public Item {
 
 public: // types ******************************************************************************************************/
     enum class Space : unsigned char {
-        LOCAL,  // local transformation only
+        OFFSET, // local transformation only
         LAYOUT, // layout transformation only
         PARENT, // local and layout transformation
+        WINDOW, // transformation relative to the Window
     };
 
 protected: // constructor *********************************************************************************************/
@@ -149,13 +150,10 @@ protected: // constructor ******************************************************
 public: // methods ****************************************************************************************************/
     /** ScreenItem's transformation in the requested space. */
     template <Space space>
-    const Xform2f& get_xform() const
+    const Xform2f get_xform() const
     {
         static_assert(always_false<Space, space>{}, "Unsupported Space for ScreenItem::get_xform");
     }
-
-    /** Recursive implementation to produce the ScreenItem's transformation in window space. */
-    Xform2f get_window_xform() const;
 
     /** Updates the transformation of this ScreenItem. */
     void set_local_xform(const Xform2f transform);
@@ -229,8 +227,8 @@ public: // signals *************************************************************
      */
     Signal<const Size2f&> on_size_changed;
 
-    /** Emitted, when the effective transform of this ScreenItem has changed.
-     * @param New local transform.
+    /** Emitted, when the transform of this ScreenItem has changed.
+     * @param New transform in parent space.
      */
     Signal<const Xform2f&> on_xform_changed;
 
@@ -340,21 +338,12 @@ private: // methods ************************************************************
     /** Calculates the transformation of this ScreenItem relative to its Window. */
     void _get_window_transform(Xform2f& result) const;
 
-    /** Updates the ScreenItem's effective transform if either the layout- or local transform changed. */
-    void _update_effective_transform();
-
 private: // fields ****************************************************************************************************/
     /** 2D transformation of this ScreenItem as determined by its parent Layout. */
     Xform2f m_layout_transform;
 
     /** 2D transformation of this ScreenItem on top of the layout transformation. */
-    Xform2f m_local_transform;
-
-    /** effective 2d transformation.
-     * This value could be recalculated on-the-fly with `m_layout_transform * m_local_transform`, but usually it is
-     * changed once and read many times which is why we store it.
-     */
-    Xform2f m_effective_transform;
+    Xform2f m_offset_transform;
 
     /** The Claim of a ScreenItem determines how much space it receives in the parent Layout.
      * Claim values are in untransformed local space.
@@ -405,13 +394,19 @@ private: // fields *************************************************************
 /**********************************************************************************************************************/
 
 template <>
-inline const Xform2f& ScreenItem::get_xform<ScreenItem::Space::LOCAL>() const { return m_local_transform; }
+inline const Xform2f ScreenItem::get_xform<ScreenItem::Space::OFFSET>() const { return m_offset_transform; }
 
 template <>
-inline const Xform2f& ScreenItem::get_xform<ScreenItem::Space::LAYOUT>() const { return m_layout_transform; }
+inline const Xform2f ScreenItem::get_xform<ScreenItem::Space::LAYOUT>() const { return m_layout_transform; }
 
 template <>
-inline const Xform2f& ScreenItem::get_xform<ScreenItem::Space::PARENT>() const { return m_effective_transform; }
+inline const Xform2f ScreenItem::get_xform<ScreenItem::Space::PARENT>() const
+{
+    return m_offset_transform * m_layout_transform;
+}
+
+template <>
+const Xform2f ScreenItem::get_xform<ScreenItem::Space::WINDOW>() const;
 
 /**********************************************************************************************************************/
 
