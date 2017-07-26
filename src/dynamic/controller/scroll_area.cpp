@@ -83,8 +83,8 @@ ScrollArea::ScrollArea()
 
     // update the scrollbar, if the container layout changed
     connect_signal(
-        m_scroll_container->on_size_changed,
-        [this](const Size2f&) -> void {
+        m_scroll_container->on_aabr_changed,
+        [this](const Aabrf&) -> void {
             _update_scrollbar(0);
         });
 

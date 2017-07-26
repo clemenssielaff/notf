@@ -142,8 +142,7 @@ public: // signals *************************************************************
 
 protected: // methods *************************************************************************************************/
     /** Removes a child Item from this Item.
-     * This needs to be a virtual method, because Layouts will use it to perform a minimal update after an item has been
-     * removed.
+     * This needs to be a virtual method, because Items react differently to the removal of a child Item.
      */
     virtual void _remove_child(const Item* child_item) = 0;
 

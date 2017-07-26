@@ -94,7 +94,7 @@ Claim WindowLayout::_consolidate_claim()
 
 void WindowLayout::_relayout()
 {
-    _set_size(get_grant());
+    _set_aabr(get_grant());
 
     if (m_controller) {
         if (ScreenItem* root_item = m_controller->get_root_item()) {

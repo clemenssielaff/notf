@@ -95,7 +95,7 @@ void FreeLayout::_relayout()
     for (const ItemPtr& item : items) {
         result.unite(item->get_screen_item()->get_aabr<Space::PARENT>());
     }
-    _set_size(result.get_size());
+    _set_aabr(std::move(result));
 }
 
 } // namespace notf

@@ -114,10 +114,7 @@ Claim Overlayout::_consolidate_claim()
     Claim result = Claim::zero();
     for (const ItemPtr& item : items) {
         if (const ScreenItem* screen_item = item->get_screen_item()) {
-            const Claim& claim = screen_item->get_claim();
-            if (claim.is_active()) {
-                result.maxed(claim);
-            }
+            result.maxed(screen_item->get_claim());
         }
     }
     result.get_horizontal().grow_by(m_padding.width());
@@ -132,7 +129,7 @@ void Overlayout::_relayout()
                                    reference_size.height - m_padding.height()};
 
     // update your children's location
-    Size2f new_size = Size2f::wrongest();
+    Aabrf new_aabr = Aabrf::zero();
     for (ItemPtr& item : static_cast<detail::ItemList*>(m_children.get())->items) {
         ScreenItem* screen_item = item->get_screen_item();
         if (!screen_item) {
@@ -144,40 +141,39 @@ void Overlayout::_relayout()
         const Size2f& item_size = screen_item->get_size();
 
         // the item's transform depends on the Overlayout's alignment and grant
-        float x;
+        Vector2f pos;
         if (m_horizontal_alignment == AlignHorizontal::LEFT) {
-            x = m_padding.left;
+            pos.x() = m_padding.left;
         }
         else if (m_horizontal_alignment == AlignHorizontal::CENTER) {
-            x = ((available_size.width - item_size.width) / 2.f) + m_padding.left;
+            pos.x() = ((available_size.width - item_size.width) / 2.f) + m_padding.left;
         }
         else {
             assert(m_horizontal_alignment == AlignHorizontal::RIGHT);
-            x = reference_size.width - m_padding.right - item_size.width;
+            pos.x() = reference_size.width - m_padding.right - item_size.width;
         }
 
-        float y;
         if (m_vertical_alignment == AlignVertical::TOP) {
-            y = reference_size.height - m_padding.top - item_size.height;
+            pos.y() = reference_size.height - m_padding.top - item_size.height;
         }
         else if (m_vertical_alignment == AlignVertical::CENTER) {
-            y = ((available_size.height - item_size.height) / 2.f) + m_padding.bottom;
+            pos.y() = ((available_size.height - item_size.height) / 2.f) + m_padding.bottom;
         }
         else {
             assert(m_vertical_alignment == AlignVertical::BOTTOM);
-            y = m_padding.bottom;
+            pos.y() = m_padding.bottom;
         }
-        _set_layout_xform(screen_item, Xform2f::translation(Vector2f{x, y}));
+        _set_layout_xform(screen_item, Xform2f::translation(pos));
 
-        if(screen_item->get_claim().is_active()){
-            new_size.maxed(item_size);
+        if(new_aabr.is_zero()){
+            new_aabr = Aabrf(pos, item_size);
+        } else {
+            new_aabr.unite(Aabrf(pos, item_size));
         }
     }
 
-    // update your own size
-    new_size.width += m_padding.width();
-    new_size.height += m_padding.height();
-    _set_size(std::move(new_size));
+    // update your own aabr
+    _set_aabr(std::move(new_aabr));
 }
 
 } // namespace notf

@@ -20,6 +20,7 @@ ScreenItem::ScreenItem(ItemContainerPtr container)
     , m_offset_transform(Xform2f::identity())
     , m_claim()
     , m_grant(Size2f::zero())
+    , m_aabr(Aabrf::zero())
     , m_is_visible(true)
     , m_opacity(1)
     , m_scissor_layout()
@@ -84,8 +85,8 @@ bool ScreenItem::is_visible() const
     }
     assert(m_scissor_layout);
 
-    // size too small
-    if (m_size.width <= precision_high<float>() || m_size.height <= precision_high<float>()) {
+    // bounding rect too small
+    if (m_aabr.get_area() <= precision_low<float>()) {
         return false;
     }
 
@@ -172,14 +173,6 @@ bool ScreenItem::_set_claim(const Claim claim)
     }
     m_claim = std::move(claim);
 
-    // when you change a passive Claim, always update yourself first
-    // since the Claim is passive, it won't change the grant of the parent Layout which means that this ScreenItem
-    // will not update its size (because it's grant didn't change).
-    // but we need the size to change in order for the parent to place this item correctly
-    if (!m_claim.is_active()) {
-        _relayout();
-    }
-
     // update ancestor layouts
     Layout* layout = get_layout();
     while (layout) {
@@ -208,13 +201,13 @@ bool ScreenItem::_set_grant(const Size2f grant)
     return true;
 }
 
-bool ScreenItem::_set_size(const Size2f size)
+bool ScreenItem::_set_aabr(const Aabrf aabr)
 {
-    if (size == m_size) {
+    if (aabr == m_aabr) {
         return false;
     }
-    m_size = std::move(size);
-    on_size_changed(m_size);
+    m_aabr = std::move(aabr);
+    on_aabr_changed(m_aabr);
     _redraw();
     return true;
 }

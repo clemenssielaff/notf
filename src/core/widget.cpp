@@ -55,7 +55,7 @@ void Widget::_relayout()
     // a Widget is only concerned about its own size
     Size2f grant = get_grant();
     grant = get_claim().apply(grant);
-    _set_size(grant);
+    _set_aabr(grant);
 }
 
 void Widget::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const

@@ -327,4 +327,85 @@ SCENARIO("An Overlayout aligns its children", "[dynamic][layout]")
     }
 }
 
-// TODO: test for hit testing
+SCENARIO("An Overlayout calculates its Aabr", "[dynamic][layout]")
+{
+    std::shared_ptr<Overlayout> overlayout = Overlayout::create();
+    overlayout->set_claim(Claim::fixed(400, 400));
+
+    WHEN("you add multiple widgets to an overlayout")
+    {
+        std::shared_ptr<RectWidget> rect = std::make_shared<RectWidget>();
+        rect->set_claim(Claim::fixed(100, 100));
+        overlayout->add_item(rect);
+
+        std::shared_ptr<RectWidget> wideRect = std::make_shared<RectWidget>();
+        wideRect->set_claim(Claim::fixed(200, 50));
+        overlayout->add_item(wideRect);
+
+        std::shared_ptr<RectWidget> highRect = std::make_shared<RectWidget>();
+        highRect->set_claim(Claim::fixed(50, 200));
+        overlayout->add_item(highRect);
+
+        THEN("the size of the Overlayout's AABR remains the same, no matter the alignment")
+        {
+            WHEN("you don't set an alignment")
+            {
+                REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().get_size() == Size2f(200, 200));
+            }
+            WHEN("you set the alignment to horizontal and vertical center")
+            {
+                overlayout->set_alignment(Overlayout::AlignHorizontal::CENTER, Overlayout::AlignVertical::CENTER);
+                REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().get_size() == Size2f(200, 200));
+            }
+            WHEN("you set the alignment bottom right")
+            {
+                overlayout->set_alignment(Overlayout::AlignHorizontal::RIGHT, Overlayout::AlignVertical::BOTTOM);
+                REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().get_size() == Size2f(200, 200));
+            }
+
+            WHEN("you add padding, it still stays the same")
+            {
+                overlayout->set_padding(Padding::all(20));
+                REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().get_size() == Size2f(200, 200));
+            }
+        }
+
+        THEN("the position of the Overlayout's AABR changes with the alignment")
+        {
+            WHEN("you don't set an alignment")
+            {
+                REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().bottom_left() == Vector2f(0, 200));
+            }
+            WHEN("you set the alignment to horizontal and vertical center")
+            {
+                overlayout->set_alignment(Overlayout::AlignHorizontal::CENTER, Overlayout::AlignVertical::CENTER);
+                REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().bottom_left() == Vector2f(100, 100));
+            }
+            WHEN("you set the alignment bottom right")
+            {
+                overlayout->set_alignment(Overlayout::AlignHorizontal::RIGHT, Overlayout::AlignVertical::BOTTOM);
+                REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().bottom_left() == Vector2f(200, 0));
+            }
+
+            WHEN("you add padding, the position changes accordingly")
+            {
+                overlayout->set_padding(Padding::all(20));
+
+                WHEN("you don't set an alignment")
+                {
+                    REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().bottom_left() == Vector2f(20, 180));
+                }
+                WHEN("you set the alignment to horizontal and vertical center")
+                {
+                    overlayout->set_alignment(Overlayout::AlignHorizontal::CENTER, Overlayout::AlignVertical::CENTER);
+                    REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().bottom_left() == Vector2f(100, 100));
+                }
+                WHEN("you set the alignment bottom right")
+                {
+                    overlayout->set_alignment(Overlayout::AlignHorizontal::RIGHT, Overlayout::AlignVertical::BOTTOM);
+                    REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().bottom_left() == Vector2f(180, 20));
+                }
+            }
+        }
+    }
+}

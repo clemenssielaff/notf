@@ -25,29 +25,29 @@ SCENARIO("A FlexLayout places its children", "[dynamic][layout]")
 
         WHEN("you set no padding")
         {
-            WHEN("you don't set an alignment")
-            {
-                THEN("the default top-left alignment is used")
-                {
-                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
-                    REQUIRE(rect_trans.x() == approx(0));
-                    REQUIRE(rect_trans.y() == approx(300));
+//            WHEN("you don't set an alignment")
+//            {
+//                THEN("the default top-left alignment is used")
+//                {
+//                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+//                    REQUIRE(rect_trans.x() == approx(0));
+//                    REQUIRE(rect_trans.y() == approx(300));
 
-                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
-                    REQUIRE(wideRect_trans.x() == approx(100));
-                    REQUIRE(wideRect_trans.y() == approx(350));
+//                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+//                    REQUIRE(wideRect_trans.x() == approx(100));
+//                    REQUIRE(wideRect_trans.y() == approx(350));
 
-                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
-                    REQUIRE(highRect_trans.x() == approx(300));
-                    REQUIRE(highRect_trans.y() == approx(200));
-                }
+//                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+//                    REQUIRE(highRect_trans.x() == approx(300));
+//                    REQUIRE(highRect_trans.y() == approx(200));
+//                }
 
-                THEN("the size of the FlexLayout is the narrow bounding rect around the 3 items")
-                {
-                    const Size2f size = flexlayout->get_size();
-                    REQUIRE(size == Size2f(350, 200));
-                }
-            }
+//                THEN("the size of the FlexLayout is the narrow bounding rect around the 3 items")
+//                {
+//                    const Size2f size = flexlayout->get_size();
+//                    REQUIRE(size == Size2f(350, 200));
+//                }
+//            }
 
 //            WHEN("you set the alignment to horizontal and vertical center")
 //            {

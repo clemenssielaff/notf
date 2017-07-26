@@ -516,7 +516,7 @@ void FlexLayout::_relayout()
         _layout_stack(screen_items, available_size, main_offset, cross_offset, new_size);
         new_size.width += m_padding.width();
         new_size.height += m_padding.height();
-        _set_size(new_size);
+//        _set_size(new_size);
         return;
     }
 
@@ -602,7 +602,7 @@ void FlexLayout::_relayout()
 
     new_size.width += m_padding.width();
     new_size.height += m_padding.height();
-    _set_size(new_size);
+//    _set_size(new_size);
 }
 
 } // namespace notf

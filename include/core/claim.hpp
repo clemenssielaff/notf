@@ -37,21 +37,6 @@ namespace notf {
  * C will only shrink after A and B have both reached their minimum size.
  *
  * You can modify the two Stretches of a Claim individually, or set them both using the Claim's functions.
- *
- * Active and passive Claims
- * -------------------------
- * Most Claims are active.
- * When a ScreenItem with an active Claim is put into a Layout, its Claim will be considered as part of the Layout's
- * implicit claim.
- * Usually that means that the parent Layout will have a bigger Claim to accomodate the new child.
- *
- * Passive Claims are not considered in the calculation of the parent's implicit Claim and only come into effect when
- * the parent grants a certain size to its children.
- *
- * The use case that prompted the introduction of this distinction is an Overlayout with a rectangular "background"
- * widget in the back and a FlexLayout in the front.
- * The background widget should take up as much space as the FlexLayout, but not allocate any space itself.
- * In that case, only the FlexLayout's Claim would be active, while the background's Claim would be passive.
  */
 class Claim {
 
@@ -283,11 +268,11 @@ public: // static methods
 public: // methods
     /** Default Constructor. */
     Claim()
-        : m_horizontal(), m_vertical(), m_ratios(), m_is_active(true) {}
+        : m_horizontal(), m_vertical(), m_ratios() {}
 
     /** Value Constructor. */
     Claim(Claim::Stretch horizontal, Claim::Stretch vertical)
-        : m_horizontal(std::move(horizontal)), m_vertical(std::move(vertical)), m_ratios(), m_is_active(true) {}
+        : m_horizontal(std::move(horizontal)), m_vertical(std::move(vertical)), m_ratios() {}
 
     /** Copy Constructor. */
     Claim(const Claim& other) = default;
@@ -299,9 +284,6 @@ public: // methods
     /** Returns the vertical part of this Claim. */
     Stretch& get_vertical() { return m_vertical; }
     const Stretch& get_vertical() const { return m_vertical; }
-
-    /** Test whether this Claim is active or passive. */
-    bool is_active() const { return m_is_active; }
 
     /** Tests if both Stretches of this Claim are fixed. */
     bool is_fixed() const { return m_horizontal.is_fixed() && m_vertical.is_fixed(); }
@@ -350,14 +332,6 @@ public: // methods
     {
         m_horizontal.set_priority(priority);
         m_vertical.set_priority(priority);
-    }
-
-    /** Updates whether this Claim is active or passive.
-     * @param is_active     True if this Claim is active, false if it is passive.
-     */
-    void set_active(const bool is_active)
-    {
-        m_is_active = is_active;
     }
 
     /** Sets both Stretches to a fixed size. */
@@ -425,7 +399,6 @@ public: // methods
         const std::pair<float, float> my_ratios    = get_width_to_height();
         const std::pair<float, float> other_ratios = other.get_width_to_height();
         set_width_to_height(min(my_ratios.first, other_ratios.first), max(my_ratios.second, other_ratios.second));
-        m_is_active = m_is_active || other.m_is_active;
         return *this;
     }
 
@@ -435,7 +408,6 @@ public: // methods
         m_horizontal = other.m_horizontal;
         m_vertical   = other.m_vertical;
         m_ratios     = other.m_ratios;
-        m_is_active  = other.m_is_active;
         return *this;
     }
 
@@ -444,8 +416,7 @@ public: // methods
     {
         return (m_horizontal == other.m_horizontal
                 && m_vertical == other.m_vertical
-                && m_ratios == other.m_ratios
-                && m_is_active == other.m_is_active);
+                && m_ratios == other.m_ratios);
     }
 
     /** Inequality comparison operator. */
@@ -465,9 +436,6 @@ private: // members
 
     /** Minimum and maximum ratio scaling constraint. */
     std::pair<Ratio, Ratio> m_ratios;
-
-    /** Whether this is an active or a passive Claim. */
-    bool m_is_active;
 };
 
 /* Free Functions *****************************************************************************************************/
