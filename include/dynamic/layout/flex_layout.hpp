@@ -83,7 +83,9 @@ public: // methods *************************************************************
     /** Defines the alignment of stack items in the main direction. */
     void set_alignment(const Alignment alignment);
 
-    /** Defines the alignment of stack items in the cross direction. */
+    /** Defines the alignment of stack items in the cross direction.
+     * There are only 3 relevant states: START / END and CENTER. Everything else is treated like CENTER.
+     */
     void set_cross_alignment(const Alignment alignment);
 
     /** Defines the cross alignment the entire content if the Layout wraps. */
@@ -112,10 +114,10 @@ private: // methods ************************************************************
      * @param total_size    Total size of the stack (items will overflow if it is not enough).
      * @param main_offset   Start offset of the first item in the main axis.
      * @param cross_offset  Start offset of the first item in the cross axis.
-     * @param new_size      (out) New size of the Layout.
+     * @param new_aabr      (out) New bounding rect of the Layout.
      */
     void _layout_stack(const std::vector<ScreenItem*>& stack, const Size2f total_size,
-                       const float main_offset, const float cross_offset, Size2f& new_size);
+                       const float main_offset, const float cross_offset, Aabrf& new_aabr);
 
     virtual void _remove_child(const Item* child_item) override;
 
@@ -135,7 +137,7 @@ private: // fields
     /** Alignment of items in the cross direction. */
     Alignment m_cross_alignment;
 
-    /** Cross alignment the entire content if the Layout wraps. */
+    /** Cross alignment of the entire content if the Layout wraps. */
     Alignment m_content_alignment;
 
     /** How items in the Layout are wrapped. */

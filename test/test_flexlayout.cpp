@@ -25,49 +25,58 @@ SCENARIO("A FlexLayout places its children", "[dynamic][layout]")
 
         WHEN("you set no padding")
         {
-//            WHEN("you don't set an alignment")
-//            {
-//                THEN("the default top-left alignment is used")
-//                {
-//                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
-//                    REQUIRE(rect_trans.x() == approx(0));
-//                    REQUIRE(rect_trans.y() == approx(300));
+            WHEN("you don't set an alignment")
+            {
+                THEN("the default left-to-right / start / no-wrap alignment is used")
+                {
+                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    REQUIRE(rect_trans.x() == approx(0));
+                    REQUIRE(rect_trans.y() == approx(300));
 
-//                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
-//                    REQUIRE(wideRect_trans.x() == approx(100));
-//                    REQUIRE(wideRect_trans.y() == approx(350));
+                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    REQUIRE(wideRect_trans.x() == approx(100));
+                    REQUIRE(wideRect_trans.y() == approx(350));
 
-//                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
-//                    REQUIRE(highRect_trans.x() == approx(300));
-//                    REQUIRE(highRect_trans.y() == approx(200));
-//                }
+                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    REQUIRE(highRect_trans.x() == approx(300));
+                    REQUIRE(highRect_trans.y() == approx(200));
+                }
 
-//                THEN("the size of the FlexLayout is the narrow bounding rect around the 3 items")
-//                {
-//                    const Size2f size = flexlayout->get_size();
-//                    REQUIRE(size == Size2f(350, 200));
-//                }
-//            }
+                THEN("the size of the FlexLayout is the narrow bounding rect around the 3 items")
+                {
+                    const Size2f size = flexlayout->get_size();
+                    REQUIRE(size == Size2f(350, 200));
+                }
+            }
 
-//            WHEN("you set the alignment to horizontal and vertical center")
-//            {
-//                overlayout->set_alignment(Overlayout::AlignHorizontal::CENTER, Overlayout::AlignVertical::CENTER);
+            WHEN("you set the alignment to right-to-left / start / no-wrap")
+            {
+                flexlayout->set_direction(FlexLayout::Direction::RIGHT_TO_LEFT);
+                flexlayout->set_alignment(FlexLayout::Alignment::START);
+                flexlayout->set_wrap(FlexLayout::Wrap::NO_WRAP);
 
-//                THEN("the widgets will be placed at the center of the overlayout")
-//                {
-//                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
-//                    REQUIRE(rect_trans.x() == approx(150));
-//                    REQUIRE(rect_trans.y() == approx(150));
+                THEN("the widgets will be placed at the top-right corner of the flexlayout")
+                {
+                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    REQUIRE(rect_trans.x() == approx(300));
+                    REQUIRE(rect_trans.y() == approx(300));
 
-//                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
-//                    REQUIRE(wideRect_trans.x() == approx(100));
-//                    REQUIRE(wideRect_trans.y() == approx(175));
+                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    REQUIRE(wideRect_trans.x() == approx(100));
+                    REQUIRE(wideRect_trans.y() == approx(175));
 
-//                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
-//                    REQUIRE(highRect_trans.x() == approx(175));
-//                    REQUIRE(highRect_trans.y() == approx(100));
-//                }
-//            }
+                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    REQUIRE(highRect_trans.x() == approx(175));
+                    REQUIRE(highRect_trans.y() == approx(100));
+                }
+
+                THEN("the size of the FlexLayout is the narrow bounding rect around the 3 items")
+                {
+                    const Size2f size = flexlayout->get_size();
+                    REQUIRE(size == Size2f(350, 200));
+                }
+            }
+
 //            WHEN("you set the alignment bottom right")
 //            {
 //                overlayout->set_alignment(Overlayout::AlignHorizontal::RIGHT, Overlayout::AlignVertical::BOTTOM);

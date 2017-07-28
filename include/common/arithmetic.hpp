@@ -104,6 +104,40 @@ protected: // methods
         }
     }
 
+    T& max(const T& other)
+    {
+        for (size_t i = 0; i < dim; ++i) {
+            data[i] = notf::max(data[i], other[i]);
+        }
+        return *reinterpret_cast<T*>(this);
+    }
+
+    T max(const T& other) const
+    {
+        T result;
+        for (size_t i = 0; i < dim; ++i) {
+            result[i] = notf::max(data[i], other[i]);
+        }
+        return result;
+    }
+
+    T& min(const T& other)
+    {
+        for (size_t i = 0; i < dim; ++i) {
+            data[i] = notf::min(data[i], other[i]);
+        }
+        return *reinterpret_cast<T*>(this);
+    }
+
+    T min(const T& other) const
+    {
+        T result;
+        for (size_t i = 0; i < dim; ++i) {
+            result[i] = notf::min(data[i], other[i]);
+        }
+        return result;
+    }
+
     bool is_real() const
     {
         for (size_t i = 0; i < dim; ++i) {
@@ -183,6 +217,40 @@ protected: // methods
         }
     }
 
+    T& max(const T& other)
+    {
+        for (size_t i = 0; i < dim; ++i) {
+            data[i].max(other[i]);
+        }
+        return *reinterpret_cast<T*>(this);
+    }
+
+    T max(const T& other) const
+    {
+        T result;
+        for (size_t i = 0; i < dim; ++i) {
+            result[i] = data[i].max(other[i]);
+        }
+        return result;
+    }
+
+    T& min(const T& other)
+    {
+        for (size_t i = 0; i < dim; ++i) {
+            data[i].min(other[i]);
+        }
+        return *reinterpret_cast<T*>(this);
+    }
+
+    T min(const T& other) const
+    {
+        T result;
+        for (size_t i = 0; i < dim; ++i) {
+            result[i] = data[i].min(other[i]);
+        }
+        return result;
+    }
+
     bool is_real() const
     {
         for (size_t i = 0; i < dim; ++i) {
@@ -213,8 +281,7 @@ protected: // methods
         return false;
     }
 
-    bool is_approx(const T& other,
-                   const value_t epsilon = precision_high<value_t>()) const
+    bool is_approx(const T& other, const value_t epsilon = precision_high<value_t>()) const
     {
         for (size_t i = 0; i < dim; ++i) {
             if (!data[i].is_approx(other[i], epsilon)) {
@@ -250,9 +317,6 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
 
     /** Data type. */
     using value_t = typename get_value_type<ELEMENT>::type;
-
-    /** Value data array. */
-    //    std::array<element_t, DIMENSIONS> data;
 
     using implementation::data;
 
@@ -475,6 +539,28 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
 
     /** The inverted value. */
     SPECIALIZATION operator-() const { return *this * -1; }
+
+    SPECIALIZATION& max(const SPECIALIZATION& other)
+    {
+        implementation::max(other);
+        return _specialized_this();
+    }
+
+    SPECIALIZATION max(const SPECIALIZATION& other) const
+    {
+        return implementation::max(other);
+    }
+
+    SPECIALIZATION& min(const SPECIALIZATION& other)
+    {
+        implementation::min(other);
+        return _specialized_this();
+    }
+
+    SPECIALIZATION min(const SPECIALIZATION& other) const
+    {
+        return implementation::min(other);
+    }
 
 protected: // methods
     constexpr SPECIALIZATION& _specialized_this() { return *reinterpret_cast<SPECIALIZATION*>(this); }

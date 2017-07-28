@@ -138,11 +138,11 @@ std::tuple<float, float> calculate_alignment(const FlexLayout::Alignment alignme
         alignment_spacing = item_count > 1 ? surplus / static_cast<float>(item_count - 1) : 0.f;
         break;
     case FlexLayout::Alignment::SPACE_AROUND:
-        alignment_start = surplus / static_cast<float>(item_count * 2);
+        alignment_start   = surplus / static_cast<float>(item_count * 2);
         alignment_spacing = alignment_start * 2.f;
         break;
     case FlexLayout::Alignment::SPACE_EQUAL:
-        alignment_start = surplus / static_cast<float>(item_count + 1);
+        alignment_start   = surplus / static_cast<float>(item_count + 1);
         alignment_spacing = alignment_start;
         break;
     }
@@ -311,7 +311,7 @@ void FlexLayout::add_item(ItemPtr item)
 }
 
 void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size2f total_size,
-                               const float main_offset, const float cross_offset, Size2f& new_size)
+                               const float main_offset, const float cross_offset, Aabrf& new_aabr)
 {
     const size_t item_count = stack.size();
     if (item_count == 0) {
@@ -319,7 +319,7 @@ void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size
     }
 
     // calculate the actual available size
-    const bool is_horizontal = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
+    const bool is_horizontal     = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
     const float available_width  = max(0.f, total_size.width - (is_horizontal ? m_spacing * (item_count - 1) : 0.f));
     const float available_height = max(0.f, total_size.height - (is_horizontal ? 0.f : m_spacing * (item_count - 1)));
 
@@ -404,8 +404,9 @@ void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size
             ScreenItem::_set_grant(child, item_size);
         }
 
-        new_size.width  = std::max(new_size.width, child->get_xform<Space::LAYOUT>().get_translation().x() + item_size.width);
-        new_size.height = std::max(new_size.height, child->get_xform<Space::LAYOUT>().get_translation().y() + item_size.height);
+        const Vector2f item_pos = child->get_xform<Space::LAYOUT>().get_translation();
+        new_aabr._min.min(item_pos);
+        new_aabr._max.max(item_pos + Vector2f(item_size.width, item_size.height));
 
         current_offset += (adapter.result + alignment_spacing) * step_factor;
     }
@@ -512,11 +513,9 @@ void FlexLayout::_relayout()
             }
         }
 
-        Size2f new_size = Size2f::wrongest();
-        _layout_stack(screen_items, available_size, main_offset, cross_offset, new_size);
-        new_size.width += m_padding.width();
-        new_size.height += m_padding.height();
-//        _set_size(new_size);
+        Aabrf new_aabr = Aabrf::wrongest();
+        _layout_stack(screen_items, available_size, main_offset, cross_offset, new_aabr);
+        _set_aabr(std::move(new_aabr));
         return;
     }
 
@@ -581,13 +580,13 @@ void FlexLayout::_relayout()
     alignment_spacing += m_cross_spacing;
     cross_offset += alignment_start;
 
-    Size2f new_size         = Size2f::wrongest();
+    Aabrf new_aabr          = Aabrf::wrongest();
     size_t i                = (m_wrap == Wrap::REVERSE ? 0 : stack_count - 1);
     const size_t last_index = (m_wrap == Wrap::REVERSE ? stack_count - 1 : 0);
     while (1) {
         const float stack_width = adapters.empty() ? cross_stretches[i].get_min() : adapters[i].result;
         const Size2f stack_size = is_horizontal ? Size2f{available_main, stack_width} : Size2f{stack_width, available_main};
-        _layout_stack(stacks[i], stack_size, main_offset, cross_offset, new_size);
+        _layout_stack(stacks[i], stack_size, main_offset, cross_offset, new_aabr);
         cross_offset += alignment_spacing + stack_width;
         if (i == last_index) {
             break;
@@ -599,10 +598,7 @@ void FlexLayout::_relayout()
             --i;
         }
     }
-
-    new_size.width += m_padding.width();
-    new_size.height += m_padding.height();
-//    _set_size(new_size);
+    _set_aabr(std::move(new_aabr));
 }
 
 } // namespace notf
