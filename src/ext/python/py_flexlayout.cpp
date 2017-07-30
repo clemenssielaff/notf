@@ -15,7 +15,7 @@ void produce_flex_layout(pybind11::module& module, py::detail::generic_type Py_L
     Py_FlexLayout.def("get_direction", &FlexLayout::get_direction, DOCSTR("Direction in which items are stacked."));
     Py_FlexLayout.def("get_alignment", &FlexLayout::get_alignment, DOCSTR("Alignment of items in the main direction."));
     Py_FlexLayout.def("get_cross_alignment", &FlexLayout::get_cross_alignment, DOCSTR("Alignment of items in the cross direction."));
-    Py_FlexLayout.def("get_content_alignment", &FlexLayout::get_content_alignment, DOCSTR("Cross alignment the entire content if the Layout wraps."));
+    Py_FlexLayout.def("get_content_alignment", &FlexLayout::get_stack_alignment, DOCSTR("Cross alignment the entire content if the Layout wraps."));
     Py_FlexLayout.def("get_wrap", &FlexLayout::get_wrap, DOCSTR("How (and if) overflowing lines are wrapped."));
     Py_FlexLayout.def("is_wrapping", &FlexLayout::is_wrapping, DOCSTR("True if overflowing lines are wrapped."));
     Py_FlexLayout.def("get_padding", &FlexLayout::get_padding, DOCSTR("Padding around the Layout's border."));
@@ -25,7 +25,7 @@ void produce_flex_layout(pybind11::module& module, py::detail::generic_type Py_L
     Py_FlexLayout.def("set_direction", &FlexLayout::set_spacing, DOCSTR("Sets the spacing between items."), py::arg("spacing"));
     Py_FlexLayout.def("set_alignment", &FlexLayout::set_alignment, DOCSTR("Sets the alignment of items in the main direction."), py::arg("alignment"));
     Py_FlexLayout.def("set_cross_alignment", &FlexLayout::set_cross_alignment, DOCSTR("Sets the alignment of items in the cross direction."), py::arg("alignment"));
-    Py_FlexLayout.def("set_content_alignment", &FlexLayout::set_content_alignment, DOCSTR("Defines the cross alignment the entire content if the Layout wraps."), py::arg("alignment"));
+    Py_FlexLayout.def("set_content_alignment", &FlexLayout::set_stack_alignment, DOCSTR("Defines the cross alignment the entire content if the Layout wraps."), py::arg("alignment"));
     Py_FlexLayout.def("set_wrap", &FlexLayout::set_wrap, DOCSTR("Defines how (and if) overflowing lines are wrapped."), py::arg("wrap"));
     Py_FlexLayout.def("set_padding", &FlexLayout::set_padding, DOCSTR("Sets the spacing between items."), py::arg("padding"));
     Py_FlexLayout.def("set_spacing", &FlexLayout::set_spacing, DOCSTR("Sets the spacing between items."), py::arg("spacing"));

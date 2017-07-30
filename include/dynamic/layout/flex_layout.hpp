@@ -56,11 +56,13 @@ public: // methods *************************************************************
     /** Alignment of items in the main direction. */
     Alignment get_alignment() const { return m_main_alignment; }
 
-    /** Alignment of items in the cross direction. */
+    /** Alignment of items in the cross direction.
+     * There are only 3 relevant states: START / END and CENTER. Everything else is treated like CENTER.
+     */
     Alignment get_cross_alignment() const { return m_cross_alignment; }
 
-    /** Cross alignment the entire content if the Layout wraps. */
-    Alignment get_content_alignment() const { return m_content_alignment; }
+    /** Cross alignment of the individual stacks if the Layout wraps. */
+    Alignment get_stack_alignment() const { return m_stack_alignment; }
 
     /** How (and if) overflowing lines are wrapped. */
     Wrap get_wrap() const { return m_wrap; }
@@ -88,8 +90,8 @@ public: // methods *************************************************************
      */
     void set_cross_alignment(const Alignment alignment);
 
-    /** Defines the cross alignment the entire content if the Layout wraps. */
-    void set_content_alignment(const Alignment alignment);
+    /** Defines the cross alignment of the individual stacks if the Layout wraps. */
+    void set_stack_alignment(const Alignment alignment);
 
     /** Defines how (and if) overflowing lines are wrapped. */
     void set_wrap(const Wrap wrap);
@@ -137,8 +139,8 @@ private: // fields
     /** Alignment of items in the cross direction. */
     Alignment m_cross_alignment;
 
-    /** Cross alignment of the entire content if the Layout wraps. */
-    Alignment m_content_alignment;
+    /** Cross alignment of the individual stacks if the Layout wraps. */
+    Alignment m_stack_alignment;
 
     /** How items in the Layout are wrapped. */
     Wrap m_wrap;

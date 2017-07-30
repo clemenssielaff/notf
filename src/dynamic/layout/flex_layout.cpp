@@ -150,14 +150,15 @@ std::tuple<float, float> calculate_alignment(const FlexLayout::Alignment alignme
 }
 
 /** Calculates the cross offset to accomodate the cross alignment constraint. */
-float cross_align_offset(const FlexLayout::Alignment alignment, const float item_size, const float available_size)
+float cross_align_offset(const FlexLayout::Alignment alignment, const float item_size, const float available_size,
+                         const bool cross_is_horizontal)
 {
     if (available_size > item_size) {
         switch (alignment) {
         case FlexLayout::Alignment::START:
-            return available_size - item_size;
+            return cross_is_horizontal ? 0 : available_size - item_size;
         case FlexLayout::Alignment::END:
-            return 0;
+            return cross_is_horizontal ? available_size - item_size : 0;
         case FlexLayout::Alignment::CENTER:
         case FlexLayout::Alignment::SPACE_BETWEEN:
         case FlexLayout::Alignment::SPACE_AROUND:
@@ -179,7 +180,7 @@ FlexLayout::FlexLayout(const Direction direction)
     , m_direction(direction)
     , m_main_alignment(Alignment::START)
     , m_cross_alignment(Alignment::START)
-    , m_content_alignment(Alignment::START)
+    , m_stack_alignment(Alignment::START)
     , m_wrap(Wrap::NO_WRAP)
     , m_padding(Padding::none())
     , m_spacing(0.f)
@@ -208,7 +209,7 @@ void FlexLayout::set_direction(const Direction direction)
         return;
     }
     m_direction = direction;
-    _update_claim();
+    _relayout();
 }
 
 void FlexLayout::set_alignment(const Alignment alignment)
@@ -222,19 +223,25 @@ void FlexLayout::set_alignment(const Alignment alignment)
 
 void FlexLayout::set_cross_alignment(const Alignment alignment)
 {
-    if (alignment == m_cross_alignment) {
+    Alignment effective_alignment = alignment;
+    if (effective_alignment == Alignment::SPACE_BETWEEN
+        || effective_alignment == Alignment::SPACE_AROUND
+        || effective_alignment == Alignment::SPACE_EQUAL) {
+        effective_alignment = Alignment::CENTER;
+    }
+    if (effective_alignment == m_cross_alignment) {
         return;
     }
-    m_cross_alignment = alignment;
+    m_cross_alignment = effective_alignment;
     _relayout();
 }
 
-void FlexLayout::set_content_alignment(const Alignment alignment)
+void FlexLayout::set_stack_alignment(const Alignment alignment)
 {
-    if (alignment == m_content_alignment) {
+    if (alignment == m_stack_alignment) {
         return;
     }
-    m_content_alignment = alignment;
+    m_stack_alignment = alignment;
     _relayout();
 }
 
@@ -244,7 +251,7 @@ void FlexLayout::set_wrap(const Wrap wrap)
         return;
     }
     m_wrap = wrap;
-    _update_claim();
+    _relayout();
 }
 
 void FlexLayout::set_padding(const Padding& padding)
@@ -257,7 +264,7 @@ void FlexLayout::set_padding(const Padding& padding)
         return;
     }
     m_padding = padding;
-    _update_claim();
+    _relayout();
 }
 
 void FlexLayout::set_spacing(float spacing)
@@ -270,7 +277,7 @@ void FlexLayout::set_spacing(float spacing)
         return;
     }
     m_spacing = spacing;
-    _update_claim();
+    _relayout();
 }
 
 void FlexLayout::set_cross_spacing(float spacing)
@@ -283,7 +290,7 @@ void FlexLayout::set_cross_spacing(float spacing)
         return;
     }
     m_cross_spacing = spacing;
-    _update_claim();
+    _relayout();
 }
 
 void FlexLayout::add_item(ItemPtr item)
@@ -305,9 +312,7 @@ void FlexLayout::add_item(ItemPtr item)
     on_child_added(item.get());
 
     // update the item and / or the parent layout
-    _update_claim();
     _relayout();
-    _redraw();
 }
 
 void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size2f total_size,
@@ -386,8 +391,9 @@ void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size
                 item_size.height = min(item_size.height, adapter.result / width_to_height.first);
             }
             item_size.height                 = max(item_size.height, vertical.get_min());
-            const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.height, available_height);
-            const float applied_offset       = reverse ? current_offset - item_size.width : current_offset;
+            const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.height, available_height,
+                                                                  /*cross_is_horizontal*/ false);
+            const float applied_offset = reverse ? current_offset - item_size.width : current_offset;
             _set_layout_xform(child, Xform2f::translation(Vector2f{applied_offset, cross_offset + applied_cross_offset}));
             ScreenItem::_set_grant(child, item_size);
         }
@@ -398,8 +404,9 @@ void FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size
                 item_size.width = min(item_size.width, adapter.result * width_to_height.second);
             }
             item_size.width                  = max(item_size.width, horizontal.get_min());
-            const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.width, available_width);
-            const float applied_offset       = reverse ? current_offset - item_size.height : current_offset;
+            const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.width, available_width,
+                                                                  /*cross_is_horizontal*/ true);
+            const float applied_offset = reverse ? current_offset - item_size.height : current_offset;
             _set_layout_xform(child, Xform2f::translation(Vector2f{cross_offset + applied_cross_offset, applied_offset}));
             ScreenItem::_set_grant(child, item_size);
         }
@@ -516,6 +523,7 @@ void FlexLayout::_relayout()
         Aabrf new_aabr = Aabrf::wrongest();
         _layout_stack(screen_items, available_size, main_offset, cross_offset, new_aabr);
         _set_aabr(std::move(new_aabr));
+        _update_claim();
         return;
     }
 
@@ -576,7 +584,7 @@ void FlexLayout::_relayout()
 
     // determine values for alignment along the cross axis
     float alignment_start, alignment_spacing;
-    std::tie(alignment_start, alignment_spacing) = calculate_alignment(m_content_alignment, stack_count, cross_surplus);
+    std::tie(alignment_start, alignment_spacing) = calculate_alignment(m_stack_alignment, stack_count, cross_surplus);
     alignment_spacing += m_cross_spacing;
     cross_offset += alignment_start;
 
@@ -599,6 +607,7 @@ void FlexLayout::_relayout()
         }
     }
     _set_aabr(std::move(new_aabr));
+    _update_claim();
 }
 
 } // namespace notf
