@@ -80,7 +80,7 @@ public: // methods
 //        overlayout->add_item(back_rect);
 
         std::shared_ptr<FlexLayout> flex_layout = FlexLayout::create();
-        flex_layout->set_spacing(0);
+        flex_layout->set_spacing(10);
         flex_layout->set_alignment(FlexLayout::Alignment::END);
 //        back_rect->connect_signal(flex_layout->on_size_changed, [back_rect](const Size2f& size) -> void {
 //            Claim claim = Claim::fixed(size);

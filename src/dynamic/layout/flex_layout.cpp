@@ -149,14 +149,14 @@ std::tuple<float, float> calculate_alignment(const FlexLayout::Alignment alignme
 
 /** Calculates the cross offset to accomodate the cross alignment constraint. */
 float cross_align_offset(const FlexLayout::Alignment alignment, const float item_size, const float available_size,
-                         const bool stack_grows_positive)
+                         const bool cross_positive)
 {
     if (available_size > item_size) {
         switch (alignment) {
         case FlexLayout::Alignment::START:
-            return stack_grows_positive ? 0 : available_size - item_size;
+            return cross_positive ? 0 : available_size - item_size;
         case FlexLayout::Alignment::END:
-            return stack_grows_positive ? available_size - item_size : 0;
+            return cross_positive ? available_size - item_size : 0;
         case FlexLayout::Alignment::CENTER:
         case FlexLayout::Alignment::SPACE_BETWEEN:
         case FlexLayout::Alignment::SPACE_AROUND:
@@ -552,10 +552,11 @@ Aabrf FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
         return Aabrf::zero();
     }
 
+    const bool horizontal = is_horizontal();
+
     // calculate the actual available size
-    const bool is_horizontal     = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::RIGHT_TO_LEFT);
-    const float available_width  = max(0.f, total_size.width - (is_horizontal ? m_spacing * (item_count - 1) : 0.f));
-    const float available_height = max(0.f, total_size.height - (is_horizontal ? 0.f : m_spacing * (item_count - 1)));
+    const float available_width  = max(0.f, total_size.width - (horizontal ? m_spacing * (item_count - 1) : 0.f));
+    const float available_height = max(0.f, total_size.height - (horizontal ? 0.f : m_spacing * (item_count - 1)));
 
     // all elements get at least their minimum size
     float min_used = 0.f;
@@ -563,10 +564,10 @@ Aabrf FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
     std::map<int, std::set<ItemAdapter*>> batches;
     for (size_t i = 0; i < stack.size(); ++i) {
         const Claim& claim            = stack[i]->get_claim();
-        const Claim::Stretch& stretch = is_horizontal ? claim.get_horizontal() : claim.get_vertical();
+        const Claim::Stretch& stretch = horizontal ? claim.get_horizontal() : claim.get_vertical();
         const std::pair<float, float> width_to_height = claim.get_width_to_height();
         if (width_to_height.first > 0.f) {
-            if (is_horizontal) {
+            if (horizontal) {
                 adapters[i].upper_bound = min(stretch.get_max(), available_height * width_to_height.second);
             }
             else {
@@ -584,27 +585,28 @@ Aabrf FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
     }
 
     // layouting is the process by which the surplus space in the layout is distributed
-    float surplus = max(0.f, is_horizontal ? available_width - min_used : available_height - min_used);
+    float surplus = max(0.f, horizontal ? available_width - min_used : available_height - min_used);
     if (surplus > 0) {
         surplus = distribute_surplus(surplus, batches);
     }
 
     // determine values for alignment along the primary axis
-    float alignment_start, alignment_spacing;
-    std::tie(alignment_start, alignment_spacing) = calculate_alignment(m_main_alignment, item_count, surplus);
-    alignment_spacing += m_spacing;
+    float main_start, main_spacing;
+    std::tie(main_start, main_spacing) = calculate_alignment(m_main_alignment, item_count, surplus);
+    main_spacing += m_spacing;
 
-    // apply the layout
     float start_offset, step_factor;
-    const bool reverse = (m_direction == Direction::RIGHT_TO_LEFT) || (m_direction == Direction::BOTTOM_TO_TOP);
-    if (reverse) {
-        start_offset = (is_horizontal ? total_size.width : total_size.height) + offset.main;
-        step_factor  = -1.f;
-    }
-    else {
-        start_offset = alignment_start + offset.main;
+    const bool main_positive = (m_direction == Direction::LEFT_TO_RIGHT) || (m_direction == Direction::BOTTOM_TO_TOP);
+    if (main_positive) {
+        start_offset = main_start + offset.main;
         step_factor  = 1.f;
     }
+    else {
+        start_offset = (horizontal ? total_size.width : total_size.height) + offset.main;
+        step_factor  = -1.f;
+    }
+
+    // apply the layout
     float current_offset = start_offset;
     Aabrf stack_aabr     = Aabrf::wrongest();
     for (size_t index = 0; index < stack.size(); ++index) {
@@ -613,19 +615,20 @@ Aabrf FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
         const std::pair<float, float> width_to_height = child->get_claim().get_width_to_height();
         assert(adapter.result >= 0.f);
         assert(adapter.result <= adapter.upper_bound);
+
         Size2f item_size;
-        if (is_horizontal) {
+        Vector2f item_pos;
+        if (horizontal) {
             const Claim::Stretch& vertical = child->get_claim().get_vertical();
             item_size                      = Size2f(adapter.result, min(vertical.get_max(), available_height));
             if (width_to_height.first > 0.f) {
                 item_size.height = min(item_size.height, adapter.result / width_to_height.first);
             }
-            item_size.height                 = max(item_size.height, vertical.get_min());
-            const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.height, available_height,
-                                                                  /*stack_grows_positive*/ true);
-            const float applied_offset = reverse ? current_offset - item_size.width : current_offset;
-            _set_layout_xform(child, Xform2f::translation(Vector2f{applied_offset, offset.cross + applied_cross_offset}));
-            ScreenItem::_set_grant(child, item_size);
+            item_size.height = max(item_size.height, vertical.get_min());
+
+            item_pos.x() = main_positive ? current_offset : current_offset - item_size.width;
+            item_pos.y() = offset.cross
+                + cross_align_offset(m_cross_alignment, item_size.height, available_height, /*cross_positive*/ false);
         }
         else { // vertical
             const Claim::Stretch& horizontal = child->get_claim().get_horizontal();
@@ -633,19 +636,19 @@ Aabrf FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
             if (width_to_height.first > 0.f) {
                 item_size.width = min(item_size.width, adapter.result * width_to_height.second);
             }
-            item_size.width                  = max(item_size.width, horizontal.get_min());
-            const float applied_cross_offset = cross_align_offset(m_cross_alignment, item_size.width, available_width,
-                                                                  /*stack_grows_positive*/ false);
-            const float applied_offset = reverse ? current_offset - item_size.height : current_offset;
-            _set_layout_xform(child, Xform2f::translation(Vector2f{offset.cross + applied_cross_offset, applied_offset}));
-            ScreenItem::_set_grant(child, item_size);
-        }
+            item_size.width = max(item_size.width, horizontal.get_min());
 
-        const Vector2f item_pos = child->get_xform<Space::LAYOUT>().get_translation();
+            item_pos.y() = main_positive ? current_offset : current_offset - item_size.height;
+            item_pos.x() = offset.cross
+                + cross_align_offset(m_cross_alignment, item_size.width, available_width, /*cross_positive*/ true);
+        }
+        _set_layout_xform(child, Xform2f::translation(item_pos));
+        ScreenItem::_set_grant(child, item_size);
+
         stack_aabr._min.min(item_pos);
         stack_aabr._max.max(item_pos + Vector2f(item_size.width, item_size.height));
 
-        current_offset += (adapter.result + alignment_spacing) * step_factor;
+        current_offset += (adapter.result + main_spacing) * step_factor;
     }
     return stack_aabr;
 }

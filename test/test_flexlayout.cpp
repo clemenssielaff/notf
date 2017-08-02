@@ -63,11 +63,11 @@ SCENARIO("A FlexLayout places its children", "[dynamic][layout]")
 
                     const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                     REQUIRE(wideRect_trans.x() == approx(100));
-                    REQUIRE(wideRect_trans.y() == approx(175));
+                    REQUIRE(wideRect_trans.y() == approx(350));
 
                     const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
-                    REQUIRE(highRect_trans.x() == approx(175));
-                    REQUIRE(highRect_trans.y() == approx(100));
+                    REQUIRE(highRect_trans.x() == approx(50));
+                    REQUIRE(highRect_trans.y() == approx(200));
                 }
 
                 THEN("the size of the FlexLayout is the narrow bounding rect around the 3 items")
