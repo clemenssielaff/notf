@@ -29,7 +29,6 @@ SCENARIO("A FlexLayout places its children", "[dynamic][layout]")
             {
                 THEN("the default left-to-right / start / no-wrap alignment is used")
                 {
-
                     const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                     REQUIRE(rect_trans.x() == approx(0));
                     REQUIRE(rect_trans.y() == approx(300));
@@ -78,7 +77,7 @@ SCENARIO("A FlexLayout places its children", "[dynamic][layout]")
                 }
             }
 
-            WHEN("you set the alignment to top-to-botom / start / no-wrap")
+            WHEN("you set the alignment to top-to-bottom / start / no-wrap")
             {
                 flexlayout->set_direction(FlexLayout::Direction::TOP_TO_BOTTOM);
                 flexlayout->set_alignment(FlexLayout::Alignment::START);
@@ -97,6 +96,34 @@ SCENARIO("A FlexLayout places its children", "[dynamic][layout]")
                     const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                     REQUIRE(highRect_trans.x() == approx(0));
                     REQUIRE(highRect_trans.y() == approx(50));
+                }
+
+                THEN("the size of the FlexLayout is the narrow bounding rect around the 3 items")
+                {
+                    const Size2f size = flexlayout->get_size();
+                    REQUIRE(size == Size2f(200, 350));
+                }
+            }
+
+            WHEN("you set the alignment to bottom-to-top / start / no-wrap")
+            {
+                flexlayout->set_direction(FlexLayout::Direction::BOTTOM_TO_TOP);
+                flexlayout->set_alignment(FlexLayout::Alignment::START);
+                flexlayout->set_wrap(FlexLayout::Wrap::NO_WRAP);
+
+                THEN("the widgets will be placed vertically at the bottom-left corner of the flexlayout")
+                {
+                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    REQUIRE(rect_trans.x() == approx(0));
+                    REQUIRE(rect_trans.y() == approx(0));
+
+                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    REQUIRE(wideRect_trans.x() == approx(0));
+                    REQUIRE(wideRect_trans.y() == approx(100));
+
+                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    REQUIRE(highRect_trans.x() == approx(0));
+                    REQUIRE(highRect_trans.y() == approx(150));
                 }
 
                 THEN("the size of the FlexLayout is the narrow bounding rect around the 3 items")

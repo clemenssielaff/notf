@@ -6,10 +6,32 @@
 
 namespace notf {
 
+namespace detail {
+
+/** Helper struct denoting two sizes, but instead of width and height we use main and cross. */
+struct FlexSize {
+    float main;
+    float cross;
+};
+
+} // namespace detail
+
 /**********************************************************************************************************************/
 
 /** The FlexLayout class offers a way to arrange items in one or multiple rows or columns.
  * It behaves similar to the CSS Flex Box Layout.
+ *
+ * Claim
+ * =====
+ * The FlexLayout calculates its implicit Claim differently, depending on whether it is wrapping or not.
+ * A non-wrapping FlexLayout will simply add all of its child Claim's either vertically or horizontally.
+ * A wrapping FlexLayout on the other hand, will *always* return the default Claim (0 min/preferred, inf max).
+ * This is because a wrapping FlexLayout will most likely be used to arrange elements within an explicitly defined area
+ * that is not determined its child items themselves.
+ * By using the default Claim, it allows its parent to determine its size explicitly and arrange its children within the
+ * alloted size.
+ *
+ * Explicit Claims still work as expected.
  */
 class FlexLayout : public Layout {
 public: // types ******************************************************************************************************/
@@ -23,9 +45,9 @@ public: // types ***************************************************************
 
     /** Alignment of items in a Layout along the main and cross axis. */
     enum class Alignment : unsigned char {
-        START,         // items stacked towards the start of the parent, no additional spacing
-        END,           // items stacked towards the end of the parent, no additional spacing
-        CENTER,        // items centered in parent, no additional spacing
+        START,         // items stacked from the start, no additional spacing
+        END,           // items stacked from the end, no additional spacing
+        CENTER,        // items centered, no additional spacing
         SPACE_BETWEEN, // equal spacing between items, no spacing between items and border
         SPACE_AROUND,  // single spacing between items and border, double spacing between items
         SPACE_EQUAL,   // equal spacing between the items and the border
@@ -70,10 +92,24 @@ public: // methods *************************************************************
     /** True if overflowing lines are wrapped. */
     bool is_wrapping() const { return m_wrap != Wrap::NO_WRAP; }
 
+    /** Tests whether a FlexLayout stacks horizontally. */
+    bool is_horizontal() const
+    {
+        return (m_direction == FlexLayout::Direction::LEFT_TO_RIGHT
+                || m_direction == FlexLayout::Direction::RIGHT_TO_LEFT);
+    }
+
+    /** Tests whether a FlexLayout stacks vertically. */
+    bool is_vertical() const
+    {
+        return (m_direction == FlexLayout::Direction::TOP_TO_BOTTOM
+                || m_direction == FlexLayout::Direction::BOTTOM_TO_TOP);
+    }
+
     /** Padding around the Layout's border. */
     const Padding& get_padding() const { return m_padding; }
 
-    /** Spacing between items. */
+    /** Additional spacing between items in the main direction. */
     float get_spacing() const { return m_spacing; }
 
     /** Spacing between stacks of items if this Layout is wrapped. */
@@ -88,7 +124,7 @@ public: // methods *************************************************************
     /** Defines the alignment of stack items in the cross direction.
      * There are only 3 relevant states: START / END and CENTER. Everything else is treated like CENTER.
      */
-    void set_cross_alignment(const Alignment alignment);
+    void set_cross_alignment(Alignment alignment);
 
     /** Defines the cross alignment of the individual stacks if the Layout wraps. */
     void set_stack_alignment(const Alignment alignment);
@@ -99,7 +135,7 @@ public: // methods *************************************************************
     /** Defines the padding around the Layout's border. */
     void set_padding(const Padding& padding);
 
-    /** Defines the spacing between items. */
+    /** Defines additional spacing between items. */
     void set_spacing(float spacing);
 
     /** Defines the spacing between stacks of items if this Layout is wrapped. */
@@ -111,16 +147,6 @@ public: // methods *************************************************************
     void add_item(ItemPtr item);
 
 private: // methods ***************************************************************************************************/
-    /** Performs the layout of a single stack.
-     * @param stack         Items in the stack.
-     * @param total_size    Total size of the stack (items will overflow if it is not enough).
-     * @param main_offset   Start offset of the first item in the main axis.
-     * @param cross_offset  Start offset of the first item in the cross axis.
-     * @param new_aabr      (out) New bounding rect of the Layout.
-     */
-    void _layout_stack(const std::vector<ScreenItem*>& stack, const Size2f total_size,
-                       const float main_offset, const float cross_offset, Aabrf& new_aabr);
-
     virtual void _remove_child(const Item* child_item) override;
 
     virtual void _get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
@@ -128,6 +154,21 @@ private: // methods ************************************************************
     virtual Claim _consolidate_claim() override;
 
     virtual void _relayout() override;
+
+    /** Lay out items in 1-n stacks with overflowing items being moved into a new stack.*/
+    void _layout_wrapping();
+
+    /** Lay out all items in a single stack if this FlexLayout doesn't wrap. */
+    void _layout_not_wrapping();
+
+    /** Performs the layout of a single stack.
+     * @param stack         Items in the stack.
+     * @param total_size    Total size of the stack (items will overflow if it is not enough).
+     * @param offset        Offset of the first item in the main axis.
+     * @return              Bounding rect of the stack in untransformed coordinates.
+     */
+    Aabrf _layout_stack(const std::vector<ScreenItem*>& stack, const Size2f total_size,
+                        const detail::FlexSize offset);
 
 private: // fields
     /** Direction in which the FlexLayout is stacked. */
