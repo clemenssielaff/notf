@@ -167,14 +167,6 @@ float cross_align_offset(const FlexLayout::Alignment alignment, const float item
     return 0.f;
 }
 
-/** Returns the size granted to the given FlexLayout minus its padding. */
-Size2f getAvailableSize(const FlexLayout& flex_layout)
-{
-    const Size2f referenceSize = flex_layout.get_claim().apply(flex_layout.get_grant());
-    const Padding& padding     = flex_layout.get_padding();
-    return {referenceSize.width - padding.width(), referenceSize.height - padding.height()};
-}
-
 detail::FlexSize getStartOffsets(const FlexLayout& flex_layout)
 {
     detail::FlexSize offset;
@@ -425,10 +417,14 @@ void FlexLayout::_relayout()
 
 void FlexLayout::_layout_wrapping()
 {
-    const Size2f available_size = getAvailableSize(*this);
-    const detail::FlexSize available{
-        is_horizontal() ? available_size.width : available_size.height,  // main
-        is_horizontal() ? available_size.height : available_size.width}; // cross
+    detail::FlexSize available;
+    {
+        Size2f available_size = get_claim().apply(get_grant());
+        available_size.width -= m_padding.width();
+        available_size.height -= m_padding.height();
+        available.main = is_horizontal() ? available_size.width : available_size.height;
+        available.cross = is_horizontal() ? available_size.height : available_size.width;
+    }
 
     // fill the items into stacks
     std::vector<std::vector<ScreenItem*>> stacks;
@@ -540,7 +536,7 @@ void FlexLayout::_layout_not_wrapping()
         }
     }
 
-    const Aabrf stack_aabr = _layout_stack(screen_items, getAvailableSize(*this), getStartOffsets(*this));
+    const Aabrf stack_aabr = _layout_stack(screen_items, get_claim().apply(get_grant()), getStartOffsets(*this));
     _set_aabr(std::move(stack_aabr));
 }
 
@@ -555,8 +551,8 @@ Aabrf FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
     const bool horizontal = is_horizontal();
 
     // calculate the actual available size
-    const float available_width  = max(0.f, total_size.width - (horizontal ? m_spacing * (item_count - 1) : 0.f));
-    const float available_height = max(0.f, total_size.height - (horizontal ? 0.f : m_spacing * (item_count - 1)));
+    const float available_width  = max(0.f, total_size.width - m_padding.width() - (horizontal ? m_spacing * (item_count - 1) : 0.f));
+    const float available_height = max(0.f, total_size.height - m_padding.height() - (horizontal ? 0.f : m_spacing * (item_count - 1)));
 
     // all elements get at least their minimum size
     float min_used = 0.f;
@@ -602,7 +598,7 @@ Aabrf FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
         step_factor  = 1.f;
     }
     else {
-        start_offset = (horizontal ? total_size.width : total_size.height) + offset.main;
+        start_offset = (horizontal ? total_size.width : total_size.height) - (main_start + offset.main);
         step_factor  = -1.f;
     }
 
