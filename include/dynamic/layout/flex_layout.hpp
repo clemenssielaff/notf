@@ -49,8 +49,8 @@ public: // types ***************************************************************
         END,           // items stacked from the end, no additional spacing
         CENTER,        // items centered, no additional spacing
         SPACE_BETWEEN, // equal spacing between items, no spacing between items and border
-        SPACE_AROUND,  // single spacing between items and border, double spacing between items
         SPACE_EQUAL,   // equal spacing between the items and the border
+        SPACE_AROUND,  // single spacing between items and border, double spacing between items
     };
 
     /** How a Layout wraps. */

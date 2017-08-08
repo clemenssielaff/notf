@@ -95,6 +95,16 @@ struct _Size2 {
             || abs(other.height - height) > precision_high<value_t>();
     }
 
+    /** Returns True, if other and self are approximately the same size.
+     * @param other     Size to test against.
+     * @param epsilon   Maximal allowed distance between any of the two sides.
+     */
+    bool is_approx(const _Size2& other, const value_t epsilon = precision_high<value_t>()) const
+    {
+        return abs(other.width - width) <= epsilon
+            && abs(other.height - height) <= epsilon;
+    }
+
     /** Changes the Size2 by a given factor. */
     _Size2 operator*(const value_t factor) const { return {width * factor, height * factor}; }
 
