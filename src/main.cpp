@@ -107,7 +107,7 @@ public: // methods
     {
         std::shared_ptr<Overlayout> overlayout = Overlayout::create();
         overlayout->set_padding(Padding::all(20));
-//        overlayout->set_alignment(Overlayout::AlignHorizontal::CENTER, Overlayout::AlignVertical::CENTER);
+        overlayout->set_alignment(Overlayout::AlignHorizontal::CENTER, Overlayout::AlignVertical::CENTER);
         log_info << "Overlayout in question has ID:" << overlayout->get_id();
 
         std::shared_ptr<RectWidget> back_rect = std::make_shared<RectWidget>(nullptr, Color("#333333"));
@@ -136,7 +136,7 @@ int main(int argc, char* argv[])
     window_info.is_resizeable = true;
     auto window               = Window::create(window_info);
 
-    window->get_layout()->set_controller(std::make_shared<FlexController>());
+    window->get_layout()->set_controller(std::make_shared<MainController>());
     return app.exec();
 }
 #endif

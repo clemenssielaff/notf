@@ -289,6 +289,9 @@ protected: // methods **********************************************************
     /** Updates the size of this ScreenItem and the layout of all child Items. */
     virtual void _relayout() = 0;
 
+    /** Returns the ScreenItem's Aabr without any added transformation. */
+    const Aabrf& _get_aabr() const { return m_aabr; }
+
     /** Recursive implementation to find all Widgets at a given position in local space
      * @param local_pos     Local coordinates where to look for a Widget.
      * @return              All Widgets at the given coordinate, ordered from front to back.

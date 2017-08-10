@@ -417,9 +417,11 @@ void FlexLayout::_relayout()
 
 void FlexLayout::_layout_wrapping()
 {
+    const Size2f total_size = get_claim().apply(get_grant());
+
     detail::FlexSize available;
     {
-        Size2f available_size = get_claim().apply(get_grant());
+        Size2f available_size = total_size;
         available_size.width -= m_padding.width();
         available_size.height -= m_padding.height();
         available.main  = is_horizontal() ? available_size.width : available_size.height;
@@ -501,9 +503,12 @@ void FlexLayout::_layout_wrapping()
         const float stack_width = adapters.empty() ? cross_stretches[stack_index].get_min() : adapters[stack_index].result;
         const Size2f stack_size = is_horizontal() ? Size2f{available.main, stack_width} : Size2f{stack_width, available.main};
         Aabrf stack_aabr        = _layout_stack(stacks[stack_index], stack_size, offset);
-        if (!stack_aabr.is_zero()) {
+        if(new_aabr.is_zero()){
+            new_aabr = stack_aabr;
+        } else {
             new_aabr.unite(stack_aabr);
         }
+
         offset.cross += cross_spacing + stack_width;
         if (stack_index == last_index) {
             break;
@@ -517,6 +522,8 @@ void FlexLayout::_layout_wrapping()
     }
 
     // update the layout's Aabr
+    Aabrf layout_aabr(total_size);
+
     if (new_aabr.is_valid()) {
         _set_aabr(std::move(new_aabr));
     }
@@ -536,8 +543,22 @@ void FlexLayout::_layout_not_wrapping()
         }
     }
 
-    const Aabrf stack_aabr = _layout_stack(screen_items, get_claim().apply(get_grant()), getStartOffsets(*this));
-    _set_aabr(std::move(stack_aabr));
+    const Size2f total_size = get_claim().apply(get_grant());
+    m_child_aabr = _layout_stack(screen_items, total_size, getStartOffsets(*this));
+
+    Aabrf layout_aabr = Aabrf::zero();
+    if(is_horizontal()){
+        layout_aabr.set_left(min(0.f, m_child_aabr.left()));
+        layout_aabr.set_right(max(total_size.width, m_child_aabr.right()));
+        layout_aabr.set_bottom(m_child_aabr.bottom());
+        layout_aabr.set_top(m_child_aabr.top());
+    } else { // vertical
+        layout_aabr.set_left(m_child_aabr.left());
+        layout_aabr.set_right(m_child_aabr.right());
+        layout_aabr.set_bottom(min(0.f, m_child_aabr.bottom()));
+        layout_aabr.set_top(max(total_size.height, m_child_aabr.top()));
+    }
+    _set_aabr(std::move(layout_aabr));
 }
 
 Aabrf FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size2f total_size, detail::FlexSize offset)

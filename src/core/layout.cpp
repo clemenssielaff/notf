@@ -7,6 +7,7 @@ namespace notf {
 Layout::Layout(ItemContainerPtr container)
     : ScreenItem(std::move(container))
     , m_has_explicit_claim(false)
+    , m_child_aabr(Aabrf::zero())
 {
 }
 

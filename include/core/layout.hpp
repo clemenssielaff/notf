@@ -44,6 +44,9 @@ public: // methods *************************************************************
     /** Removes all Items from the Layout. */
     void clear();
 
+    /** The bounding rect of all child ScreenItems. */
+    const Aabrf& get_child_aabr() const { return m_child_aabr; }
+
 public: // signals  ***************************************************************************************************/
     /** Emitted when a new child Item was added to this one.
      * @param ItemID of the new child.
@@ -69,6 +72,11 @@ protected: // methods **********************************************************
 protected: // members *************************************************************************************************/
     /** If true, this Layout provides its own Claim and does not aggregate it from its children. */
     bool m_has_explicit_claim;
+
+    /** The bounding rect of all child ScreenItems.
+     * Depending on the Layout, the child aabr can be equal to the Layout's own aabr but doesn't have to be.
+     */
+    Aabrf m_child_aabr;
 };
 
 } // namespace notf

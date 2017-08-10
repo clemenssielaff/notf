@@ -129,7 +129,7 @@ void Overlayout::_relayout()
                                    reference_size.height - m_padding.height()};
 
     // update your children's location
-    Aabrf new_aabr = Aabrf::zero();
+    m_child_aabr = Aabrf::zero();
     for (ItemPtr& item : static_cast<detail::ItemList*>(m_children.get())->items) {
         ScreenItem* screen_item = item->get_screen_item();
         if (!screen_item) {
@@ -165,15 +165,15 @@ void Overlayout::_relayout()
         }
         _set_layout_xform(screen_item, Xform2f::translation(pos));
 
-        if(new_aabr.is_zero()){
-            new_aabr = Aabrf(pos, item_size);
+        if(m_child_aabr.is_zero()){
+            m_child_aabr = Aabrf(pos, item_size);
         } else {
-            new_aabr.unite(Aabrf(pos, item_size));
+            m_child_aabr.unite(Aabrf(pos, item_size));
         }
     }
 
     // update your own aabr
-    _set_aabr(std::move(new_aabr));
+    _set_aabr(m_child_aabr);
 }
 
 } // namespace notf

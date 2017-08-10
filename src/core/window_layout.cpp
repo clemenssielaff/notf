@@ -95,6 +95,7 @@ Claim WindowLayout::_consolidate_claim()
 void WindowLayout::_relayout()
 {
     _set_aabr(get_grant());
+    m_child_aabr = _get_aabr();
 
     if (m_controller) {
         if (ScreenItem* root_item = m_controller->get_root_item()) {

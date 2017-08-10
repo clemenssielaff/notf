@@ -237,7 +237,9 @@ add_sources(TEST_SOURCES test
         test_xform2.cpp
         test_xform4.cpp
         test_overlayout.cpp
-        test_flexlayout.cpp
+        test_flexlayout1.cpp
+        test_flexlayout2.cpp
+        test_flexlayout3.cpp
         test_utils.cpp
 
         catch.hpp
