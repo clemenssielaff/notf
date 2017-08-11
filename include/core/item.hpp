@@ -37,6 +37,12 @@ using ItemID = Id<Item, RawID>;
  * Each Item has a constant unique integer ID assigned to it upon instantiation.
  * It can be used to identify the Item in a map, for debugging purposes or in conditionals.
  *
+ * Item name
+ * =========
+ * In addition to the unique ID, each Item can have a name.
+ * The name is always assigned by the user and is not guaranteed to be unique.
+ * By default, the name is empty.
+ *
  * Items in Python
  * ===============
  * When it comes to the lifetime of items, the way that Python and NoTF work together poses an interesting challenge.
@@ -97,6 +103,9 @@ public: // methods *************************************************************
     Item* get_parent() { return m_parent; }
     const Item* get_parent() const { return const_cast<Item*>(this)->get_parent(); }
 
+    /** The (optional) name of this Item. */
+    const std::string& get_name() const { return m_name; }
+
     /** Checks if this Item is the parent of the given child.*/
     bool has_child(const Item* child) const;
 
@@ -128,6 +137,13 @@ public: // methods *************************************************************
     /** Returns the ScreenItem associated with this given Item - either the Item itself or a Controller's root Item. */
     ScreenItem* get_screen_item();
     const ScreenItem* get_screen_item() const { return const_cast<Item*>(this)->get_screen_item(); }
+
+    /** Updates the name of this Item. */
+    const std::string& set_name(const std::string name)
+    {
+        m_name = std::move(name);
+        return m_name;
+    }
 
 public: // signals ****************************************************************************************************/
     /** Emitted when this Item got a new parent.
@@ -187,6 +203,12 @@ private: // fields *************************************************************
 
     /** The parent Item, is guaranteed to be valid iff `m_window` is valid. */
     Item* m_parent;
+
+    /** An optional name of this Item.
+     * The name is always set by the user and is not guaranteed to be unique.
+     * By default, the name is empty.
+     */
+    std::string m_name;
 
 #ifdef NOTF_PYTHON
     /** Python subclass object of this Item, if it was created through Python. */

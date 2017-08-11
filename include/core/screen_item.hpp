@@ -289,6 +289,9 @@ protected: // methods **********************************************************
     /** Updates the size of this ScreenItem and the layout of all child Items. */
     virtual void _relayout() = 0;
 
+    /** Lets the parent Layout know that this ScreenItem has changed at it might have to relayout. */
+    void _update_parent_layout();
+
     /** Returns the ScreenItem's Aabr without any added transformation. */
     const Aabrf& _get_aabr() const { return m_aabr; }
 

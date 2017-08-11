@@ -19,8 +19,8 @@ namespace notf {
  *
  * Child Aabr
  * ----------
- * Every ScreenItem has an Aabr, an associated "Axis Aligned Bounding Rect" that determines an upper bound on the space
- * taken up by the ScreenItem.
+ * Every ScreenItem has an Aabr, an "Axis Aligned Bounding Rect" that determines an upper bound on the space taken up by
+ * the ScreenItem.
  * For Widgets, the Aabr is the size of the Widget's Cell, for Layouts it is the bounding rect around all child items,
  * and optional padding or empty space that is technically part of the layout but does not contain any child items at
  * the time.

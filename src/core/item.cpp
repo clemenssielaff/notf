@@ -30,6 +30,7 @@ Item::Item(ItemContainerPtr container)
     , m_id(get_next_id())
     , m_window()
     , m_parent()
+    , m_name()
 #ifdef NOTF_PYTHON
     , m_py_object(nullptr, py_decref)
 #endif

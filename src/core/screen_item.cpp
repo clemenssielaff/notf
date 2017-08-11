@@ -115,7 +115,8 @@ void ScreenItem::set_visible(bool is_visible)
         return;
     }
     m_is_visible = is_visible;
-    on_visibility_changed(m_is_visible);
+    _update_parent_layout();
+    on_visibility_changed(m_is_visible);   
 }
 
 void ScreenItem::set_scissor(const Layout* scissor_layout)
@@ -166,14 +167,8 @@ bool ScreenItem::_redraw() const
     return true;
 }
 
-bool ScreenItem::_set_claim(const Claim claim)
+void ScreenItem::_update_parent_layout()
 {
-    if (claim == m_claim) {
-        return false;
-    }
-    m_claim = std::move(claim);
-
-    // update ancestor layouts
     Layout* layout = get_layout();
     while (layout) {
         // if the parent Layout's Claim changed, we also need to update the grandparent ...
@@ -188,6 +183,15 @@ bool ScreenItem::_set_claim(const Claim claim)
             break;
         }
     }
+}
+
+bool ScreenItem::_set_claim(const Claim claim)
+{
+    if (claim == m_claim) {
+        return false;
+    }
+    m_claim = std::move(claim);
+    _update_parent_layout();
     return true;
 }
 
