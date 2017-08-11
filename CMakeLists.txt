@@ -240,6 +240,7 @@ add_sources(TEST_SOURCES test
         test_flexlayout1.cpp
         test_flexlayout2.cpp
         test_flexlayout3.cpp
+        test_flexlayout4.cpp
         test_utils.cpp
 
         catch.hpp

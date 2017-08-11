@@ -74,7 +74,7 @@ struct _Size2 {
     }
 
     /** Returns the area of a rectangle of this Size. Always returns 0, if the size is invalid. */
-    value_t get_area() const { return max(value_t(0), width * height); }
+    value_t get_area() const { return max(0, width * height); }
 
     /** Pointer to the first element of the Size2. */
     const value_t* as_ptr() const { return &width; }

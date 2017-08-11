@@ -186,7 +186,7 @@ void Painter::set_stroke(Color color)
 void Painter::set_stroke_width(const float width)
 {
     detail::PainterState& current_state = _get_current_state();
-    current_state.stroke_width          = max(0.f, width);
+    current_state.stroke_width          = max(0, width);
     m_cell.m_commands.add_command(StrokeWidthCommand(current_state.stroke_width));
 }
 
@@ -247,7 +247,7 @@ void Painter::arc(const float cx, const float cy, const float r, const float a0,
         da = -norm_angle(a0 - a1);
     }
     // split the arc into <= 90deg segments
-    const float ndivs = max(1.f, min(ceilf(abs(da) / (pi<float>() / 2)), 5.f));
+    const float ndivs = max(1, min(ceilf(abs(da) / (pi<float>() / 2)), 5));
     const float hda   = (da / ndivs) / 2;
     const float kappa = abs(4.f / 3.f * (1.f - cos(hda)) / sin(hda)) * (dir == Winding::CLOCKWISE ? 1 : -1);
 

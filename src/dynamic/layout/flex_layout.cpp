@@ -470,7 +470,7 @@ void FlexLayout::_layout_wrapping()
 
     // the cross layout of stacks is a regular stack layout in of itself
     std::vector<ItemAdapter> adapters;
-    float cross_surplus = max(0.f, available.cross - used_cross_space);
+    float cross_surplus = max(0, available.cross - used_cross_space);
     if (cross_surplus > 0) {
         adapters = std::vector<ItemAdapter>(stack_count);
         std::map<int, std::set<ItemAdapter*>> batches;
@@ -548,14 +548,14 @@ void FlexLayout::_layout_not_wrapping()
 
     Aabrf layout_aabr = Aabrf::zero();
     if(is_horizontal()){
-        layout_aabr.set_left(min(0.f, m_child_aabr.left()));
+        layout_aabr.set_left(min(0, m_child_aabr.left()));
         layout_aabr.set_right(max(total_size.width, m_child_aabr.right()));
         layout_aabr.set_bottom(m_child_aabr.bottom());
         layout_aabr.set_top(m_child_aabr.top());
     } else { // vertical
         layout_aabr.set_left(m_child_aabr.left());
         layout_aabr.set_right(m_child_aabr.right());
-        layout_aabr.set_bottom(min(0.f, m_child_aabr.bottom()));
+        layout_aabr.set_bottom(min(0, m_child_aabr.bottom()));
         layout_aabr.set_top(max(total_size.height, m_child_aabr.top()));
     }
     _set_aabr(std::move(layout_aabr));
@@ -572,8 +572,8 @@ Aabrf FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
 
     // calculate the actual available size
     const detail::FlexSize available{
-        max(0.f, total_size.width - m_padding.width() - (is_horizontal() ? m_spacing * (item_count - 1) : 0.f)),
-        max(0.f, total_size.height - m_padding.height() - (is_horizontal() ? 0.f : m_spacing * (item_count - 1)))};
+        max(0, total_size.width - m_padding.width() - (is_horizontal() ? m_spacing * (item_count - 1) : 0.f)),
+        max(0, total_size.height - m_padding.height() - (is_horizontal() ? 0.f : m_spacing * (item_count - 1)))};
 
     // determine the size for each item
     std::vector<ItemAdapter> adapters(stack.size());

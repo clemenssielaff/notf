@@ -26,7 +26,7 @@ Paint Paint::create_linear_gradient(const Vector2f& start_pos, const Vector2f& e
     paint.xform[2][0]   = start_pos.x() - (delta.x() * large_number);
     paint.xform[2][1]   = start_pos.y() - (delta.y() * large_number);
     paint.radius        = 0.0f;
-    paint.feather       = max(1.0f, mag);
+    paint.feather       = max(1, mag);
     paint.extent.width  = large_number;
     paint.extent.height = large_number + (mag / 2);
     paint.inner_color   = std::move(start_color);
@@ -41,7 +41,7 @@ Paint Paint::create_radial_gradient(const Vector2f& center,
     Paint paint;
     paint.xform         = Xform2f::translation(center);
     paint.radius        = (inner_radius + outer_radius) * 0.5f;
-    paint.feather       = max(1.f, outer_radius - inner_radius);
+    paint.feather       = max(1, outer_radius - inner_radius);
     paint.extent.width  = paint.radius;
     paint.extent.height = paint.radius;
     paint.inner_color   = std::move(inner_color);
@@ -56,7 +56,7 @@ Paint Paint::create_box_gradient(const Vector2f& center, const Size2f& extend,
     Paint paint;
     paint.xform         = Xform2f::translation({center.x() + extend.width / 2, center.y() + extend.height / 2});
     paint.radius        = radius;
-    paint.feather       = max(1.f, feather);
+    paint.feather       = max(1, feather);
     paint.extent.width  = extend.width / 2;
     paint.extent.height = extend.height / 2;
     paint.inner_color   = std::move(inner_color);

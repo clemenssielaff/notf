@@ -56,12 +56,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -86,12 +80,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(50));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -120,12 +108,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(50));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -150,12 +132,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(150));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -189,12 +165,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -219,12 +189,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(30));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -253,12 +217,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(30));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -283,12 +241,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(170));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -327,12 +279,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -357,12 +303,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(30));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -391,12 +331,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(30));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -421,12 +355,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(170));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -460,12 +388,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -490,12 +412,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(10));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -524,12 +440,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(10));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -554,12 +464,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(190));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -603,12 +507,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -633,12 +531,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(0));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -667,12 +559,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(0));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -697,12 +583,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(200));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -736,12 +616,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -766,12 +640,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(20));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -800,12 +668,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(20));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -830,12 +692,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(180));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -874,12 +730,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -904,12 +754,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(0));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -938,12 +782,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(0));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -968,12 +806,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(200));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -1007,12 +839,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -1037,12 +863,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(20));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -1071,12 +891,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(20));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -1101,12 +915,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(180));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -1150,12 +958,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -1180,12 +982,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(25));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -1214,12 +1010,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(25));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -1244,12 +1034,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(175));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -1283,12 +1067,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -1313,12 +1091,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(25));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -1347,12 +1119,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(25));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -1377,12 +1143,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(175));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -1421,12 +1181,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -1451,12 +1205,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(15));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -1485,12 +1233,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(15));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -1515,12 +1257,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(185));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -1554,12 +1290,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -1584,12 +1314,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(15));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -1618,12 +1342,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(15));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -1648,12 +1366,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(185));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -1697,12 +1409,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -1727,12 +1433,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(0));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -1761,12 +1461,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(0));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -1791,12 +1485,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(200));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -1830,12 +1518,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -1860,12 +1542,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(20));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -1894,12 +1570,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(20));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -1924,12 +1594,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(180));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -1968,12 +1632,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -1998,12 +1656,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(0));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -2032,12 +1684,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(0));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -2062,12 +1708,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(200));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -2101,12 +1741,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -2131,12 +1765,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(20));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -2165,12 +1793,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(20));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -2195,12 +1817,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(180));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -2244,12 +1860,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -2274,12 +1884,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(12.5));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -2308,12 +1912,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(12.5));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -2338,12 +1936,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(187.5));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -2377,12 +1969,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -2407,12 +1993,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(22.5));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -2441,12 +2021,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(22.5));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -2471,12 +2045,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(177.5));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -2515,12 +2083,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -2545,12 +2107,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(7.5));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -2579,12 +2135,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(7.5));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -2609,12 +2159,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(192.5));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -2648,12 +2192,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -2678,12 +2216,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(17.5));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -2712,12 +2244,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(17.5));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -2742,12 +2268,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(182.5));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -2793,12 +2313,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -2823,12 +2337,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(50 - spacing * 5, 0.1f));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -2857,12 +2365,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(50 - spacing * 5, 0.1f));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -2887,12 +2389,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(150 + spacing * 5));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -2928,12 +2424,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -2958,12 +2448,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(30 - spacing * 5));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -2992,12 +2476,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(30 - spacing * 5));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -3022,12 +2500,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(170 + spacing * 5));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -3066,12 +2538,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -3096,12 +2562,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(5));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -3130,12 +2590,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(5));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -3160,12 +2614,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(195));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -3201,12 +2649,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(100));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -3231,12 +2673,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(10 - spacing * 5, 0.1f));
                             REQUIRE(highRect_trans.y() == approx(100));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(400, 200));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
@@ -3265,12 +2701,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             REQUIRE(highRect_trans.y() == approx(10 - spacing * 5, 0.1f));
                         }
 
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
-                        }
-
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")
                         {
                             const Size2f child_size = flexlayout->get_child_aabr().get_size();
@@ -3295,12 +2725,6 @@ SCENARIO("A FlexLayout places its children without wrapping #3", "[dynamic][layo
                             const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                             REQUIRE(highRect_trans.x() == approx(175));
                             REQUIRE(highRect_trans.y() == approx(190 + spacing * 5, 0.1f));
-                        }
-
-                        THEN("the aabr of the FlexLayout is wide in the the main direction and narrow in the cross")
-                        {
-                            const Size2f layout_size = flexlayout->get_size();
-                            REQUIRE(layout_size == Size2f(200, 400));
                         }
 
                         THEN("the child aabr of the FlexLayout is the narrow bounding rect around the 3 items")

@@ -54,8 +54,8 @@ public: // type
          * @param max          Maximum size, is clamped to preferred <= value, can be INFINITY, defaults to 'preferred'.
          */
         Stretch(const float preferred, const float min = NAN, const float max = NAN)
-            : m_preferred(is_real(preferred) ? notf::max(preferred, 0.f) : 0.f)
-            , m_min(is_real(min) ? notf::min(notf::max(0.f, min), m_preferred) : m_preferred)
+            : m_preferred(is_real(preferred) ? notf::max(preferred, 0) : 0.f)
+            , m_min(is_real(min) ? notf::min(notf::max(0, min), m_preferred) : m_preferred)
             , m_max(is_real(preferred) ? (is_nan(max) ? m_preferred : notf::max(max, m_preferred)) : 0.f)
             , m_scale_factor(1.f)
             , m_priority(0)

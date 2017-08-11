@@ -176,9 +176,9 @@ Lab rgb_to_lab(const Color& input)
     }
 
     Lab result;
-    result.l     = max(0.f, (116.f * var_Y) - 16);
-    result.a     = max(-128.f, min(127.f, 500.f * (var_X - var_Y)));
-    result.b     = max(-128.f, min(127.f, 200.f * (var_Y - var_Z)));
+    result.l     = max(0, (116.f * var_Y) - 16);
+    result.a     = max(-128, min(127, 500.f * (var_X - var_Y)));
+    result.b     = max(-128, min(127, 200.f * (var_Y - var_Z)));
     result.alpha = input.a;
     return result;
 }
@@ -244,9 +244,9 @@ Color lab_to_rgb(const Lab& input)
     }
 
     Color result;
-    result.r = max(0.f, min(1.f, var_R));
-    result.g = max(0.f, min(1.f, var_G));
-    result.b = max(0.f, min(1.f, var_B));
+    result.r = max(0, min(1, var_R));
+    result.g = max(0, min(1, var_G));
+    result.b = max(0, min(1, var_B));
     result.a = input.alpha;
     return (result);
 }

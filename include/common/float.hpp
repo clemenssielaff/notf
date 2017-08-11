@@ -36,13 +36,21 @@ using std::roundf;
 template <typename T>
 T&& min(T&& val) { return std::forward<T>(val); }
 template <typename Lhs, typename Rhs, typename... Tail>
-auto min(Lhs&& lhs, Rhs&& rhs, Tail&&... tail) { return std::min(lhs, min(rhs, std::forward<Tail>(tail)...)); }
+typename std::common_type<Lhs, Rhs>::type min(Lhs&& lhs, Rhs&& rhs, Tail&&... tail)
+{
+    const auto rest = min(rhs, std::forward<Tail>(tail)...);
+    return rest < lhs ? rest : lhs; // returns lhs if both are equal
+}
 
 /** Variadic max using auto type deduction. */
 template <typename T>
 T&& max(T&& val) { return std::forward<T>(val); }
 template <typename Lhs, typename Rhs, typename... Tail>
-auto max(Lhs&& lhs, Rhs&& rhs, Tail&&... tail) { return std::max(lhs, max(rhs, std::forward<Tail>(tail)...)); }
+typename std::common_type<Lhs, Rhs>::type max(Lhs&& lhs, Rhs&& rhs, Tail&&... tail)
+{
+    const auto rest = max(rhs, std::forward<Tail>(tail)...);
+    return rest > lhs ? rest : lhs; // returns lhs if both are equal
+}
 
 /** Tests whether a given value is NAN. */
 template <typename Real>

@@ -80,9 +80,9 @@ void Claim::Stretch::grow_by(const float offset)
         log_warning << "Ignored invalid offset value: " << offset;
         return;
     }
-    m_min       = max(0.f, m_min + offset);
-    m_max       = max(0.f, m_max + offset);
-    m_preferred = max(0.f, m_preferred + offset);
+    m_min       = max(0, m_min + offset);
+    m_max       = max(0, m_max + offset);
+    m_preferred = max(0, m_preferred + offset);
 }
 
 Claim Claim::fixed(float width, float height)

@@ -154,7 +154,7 @@ void ScrollArea::_update_scrollbar(float delta_y)
         return;
     }
     const float area_height = m_area_window->get_grant().height;
-    const float overflow    = max(0.f, content_height - area_height);
+    const float overflow    = max(0, content_height - area_height);
 
     // there must at least be half a pixel to scroll in order for the bar to show up
     if (overflow >= 0.5f) {
