@@ -237,10 +237,7 @@ add_sources(TEST_SOURCES test
         test_xform2.cpp
         test_xform4.cpp
         test_overlayout.cpp
-        test_flexlayout1.cpp
-        test_flexlayout2.cpp
-        test_flexlayout3.cpp
-        test_flexlayout4.cpp
+        test_flexlayout.cpp
         test_utils.cpp
 
         catch.hpp
@@ -253,7 +250,7 @@ LIST(REMOVE_ITEM TEST_FILES src/main.cpp src/scratch.cpp src/nanovg_test.cpp)
 
 add_executable(notf-test ${TEST_FILES})
 
-# LIBRARIES ############################################################################################################
+# LIBRARIES ###############################pp#############################################################################
 
 # glfw
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)

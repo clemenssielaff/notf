@@ -503,9 +503,10 @@ void FlexLayout::_layout_wrapping()
         const float stack_width = adapters.empty() ? cross_stretches[stack_index].get_min() : adapters[stack_index].result;
         const Size2f stack_size = is_horizontal() ? Size2f{available.main, stack_width} : Size2f{stack_width, available.main};
         Aabrf stack_aabr        = _layout_stack(stacks[stack_index], stack_size, offset);
-        if(new_aabr.is_zero()){
+        if (new_aabr.is_zero()) {
             new_aabr = stack_aabr;
-        } else {
+        }
+        else {
             new_aabr.unite(stack_aabr);
         }
 
@@ -544,19 +545,20 @@ void FlexLayout::_layout_not_wrapping()
     }
 
     const Size2f total_size = get_claim().apply(get_grant());
-    m_child_aabr = _layout_stack(screen_items, total_size, getStartOffsets(*this));
+    m_child_aabr            = _layout_stack(screen_items, total_size, getStartOffsets(*this));
 
     Aabrf layout_aabr = Aabrf::zero();
-    if(is_horizontal()){
-        layout_aabr.set_left(min(0, m_child_aabr.left()));
-        layout_aabr.set_right(max(total_size.width, m_child_aabr.right()));
-        layout_aabr.set_bottom(m_child_aabr.bottom());
-        layout_aabr.set_top(m_child_aabr.top());
-    } else { // vertical
-        layout_aabr.set_left(m_child_aabr.left());
-        layout_aabr.set_right(m_child_aabr.right());
-        layout_aabr.set_bottom(min(0, m_child_aabr.bottom()));
-        layout_aabr.set_top(max(total_size.height, m_child_aabr.top()));
+    if (is_horizontal()) {
+        layout_aabr.set_left(min(0, m_child_aabr.left() - m_padding.left));
+        layout_aabr.set_right(max(total_size.width, m_child_aabr.right() + m_padding.right));
+        layout_aabr.set_bottom(m_child_aabr.bottom() - m_padding.bottom);
+        layout_aabr.set_top(m_child_aabr.top() + m_padding.top);
+    }
+    else { // vertical
+        layout_aabr.set_left(m_child_aabr.left() - m_padding.left);
+        layout_aabr.set_right(m_child_aabr.right() + m_padding.right);
+        layout_aabr.set_bottom(min(0, m_child_aabr.bottom() - m_padding.bottom));
+        layout_aabr.set_top(max(total_size.height, m_child_aabr.top() + m_padding.top));
     }
     _set_aabr(std::move(layout_aabr));
 }
@@ -625,15 +627,15 @@ Aabrf FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
             alignment_offset = surplus * 0.5f;
             break;
         case FlexLayout::Alignment::SPACE_BETWEEN:
-            spacing += item_count > 1 ? surplus / static_cast<float>(item_count - 1) : 0.f;
+            spacing += max(0, item_count > 1 ? surplus / static_cast<float>(item_count - 1) : 0.f);
             break;
         case FlexLayout::Alignment::SPACE_AROUND:
             alignment_offset = surplus / static_cast<float>(item_count * 2);
-            spacing += alignment_offset * 2.f;
+            spacing += max(0, alignment_offset * 2.f);
             break;
         case FlexLayout::Alignment::SPACE_EQUAL:
             alignment_offset = surplus / static_cast<float>(item_count + 1);
-            spacing += alignment_offset;
+            spacing += max(0, alignment_offset);
             break;
         }
 

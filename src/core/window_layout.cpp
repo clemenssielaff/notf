@@ -48,8 +48,8 @@ void WindowLayout::set_controller(ControllerPtr controller)
     }
 
     detail::SingleItemContainer* container = static_cast<detail::SingleItemContainer*>(m_children.get());
-    container->item                        = controller;
-    m_controller                           = controller.get();
+    container->item = controller;
+    m_controller    = controller.get();
     if (m_controller) {
         Item::_set_parent(m_controller, this);
     }

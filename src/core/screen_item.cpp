@@ -191,6 +191,7 @@ bool ScreenItem::_set_claim(const Claim claim)
         return false;
     }
     m_claim = std::move(claim);
+    _relayout();
     _update_parent_layout();
     return true;
 }

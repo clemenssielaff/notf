@@ -8,9 +8,17 @@ namespace notf {
 
 /**
  *
+ * Relayout
+ * ========
+ * All Layouts must implement the pure virtual method `_relayout`.
+ * It is the main function of a Layout and has multiple responsibilities:
+ *
+ * 1. All visible child ScreenItems must be placed in accordance to the rules of the Layout.
+ * 2. The Layout must determine its own Aabr as well as
+ * 3. ... its child Aabr (see section on 'Child Aabr').
  *
  * Explicit and Implicit Claims
- * ----------------------------
+ * ============================
  * Claims can either be `explicit` or `implicit`.
  * An implicit Claim is one that is created by combining multiple child Claims into one and is used only by Layouts.
  * Widgets always have an `explicit` Claim, meaning that the various Claim values were supplied by the user and must not
@@ -18,7 +26,7 @@ namespace notf {
  * Layouts can also have an explicit Claim if you want them to ignore their child Claims and provide their own instead.
  *
  * Child Aabr
- * ----------
+ * ==========
  * Every ScreenItem has an Aabr, an "Axis Aligned Bounding Rect" that determines an upper bound on the space taken up by
  * the ScreenItem.
  * For Widgets, the Aabr is the size of the Widget's Cell, for Layouts it is the bounding rect around all child items,
