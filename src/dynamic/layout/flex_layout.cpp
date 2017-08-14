@@ -216,11 +216,15 @@ FlexLayout::FlexLayout(const Direction direction)
 
 std::shared_ptr<FlexLayout> FlexLayout::create(const Direction direction)
 {
+#ifdef _DEBUG
+    return std::shared_ptr<FlexLayout>(new FlexLayout(direction));
+#else
     struct make_shared_enabler : public FlexLayout {
         make_shared_enabler(const Direction dir)
             : FlexLayout(dir) {}
     };
     return std::make_shared<make_shared_enabler>(direction);
+#endif
 }
 
 void FlexLayout::set_direction(const Direction direction)
@@ -345,12 +349,12 @@ void FlexLayout::_remove_child(const Item* child_item)
                                return item.get() == child_item;
                            });
     if (it == std::end(items)) {
-        log_critical << "Cannot remove unknown child Item " << child_item->get_id()
-                     << " from FlexLayout " << get_id();
+        log_critical << "Cannot remove unknown child Item " << child_item->get_name()
+                     << " from FlexLayout " << get_name();
         return;
     }
 
-    log_trace << "Removing child Item " << child_item->get_id() << " from FlexLayout " << get_id();
+    log_trace << "Removing child Item " << child_item->get_name() << " from FlexLayout " << get_name();
     items.erase(it);
     on_child_removed(child_item);
 
@@ -422,8 +426,8 @@ void FlexLayout::_layout_wrapping()
     detail::FlexSize available;
     {
         Size2f available_size = total_size;
-        available_size.width -= m_padding.width();
-        available_size.height -= m_padding.height();
+        available_size.width -= m_padding.get_width();
+        available_size.height -= m_padding.get_height();
         available.main  = is_horizontal() ? available_size.width : available_size.height;
         available.cross = is_horizontal() ? available_size.height : available_size.width;
     }
@@ -522,15 +526,7 @@ void FlexLayout::_layout_wrapping()
         }
     }
 
-    // update the layout's Aabr
-    Aabrf layout_aabr(total_size);
-
-    if (new_aabr.is_valid()) {
-        _set_aabr(std::move(new_aabr));
-    }
-    else {
-        _set_aabr(Aabrf::zero());
-    }
+    _set_size(std::move(total_size));
 }
 
 void FlexLayout::_layout_not_wrapping()
@@ -544,23 +540,10 @@ void FlexLayout::_layout_not_wrapping()
         }
     }
 
-    const Size2f total_size = get_claim().apply(get_grant());
-    m_child_aabr            = _layout_stack(screen_items, total_size, getStartOffsets(*this));
-
-    Aabrf layout_aabr = Aabrf::zero();
-    if (is_horizontal()) {
-        layout_aabr.set_left(min(0, m_child_aabr.left() - m_padding.left));
-        layout_aabr.set_right(max(total_size.width, m_child_aabr.right() + m_padding.right));
-        layout_aabr.set_bottom(m_child_aabr.bottom() - m_padding.bottom);
-        layout_aabr.set_top(m_child_aabr.top() + m_padding.top);
-    }
-    else { // vertical
-        layout_aabr.set_left(m_child_aabr.left() - m_padding.left);
-        layout_aabr.set_right(m_child_aabr.right() + m_padding.right);
-        layout_aabr.set_bottom(min(0, m_child_aabr.bottom() - m_padding.bottom));
-        layout_aabr.set_top(max(total_size.height, m_child_aabr.top() + m_padding.top));
-    }
-    _set_aabr(std::move(layout_aabr));
+    const Size2f total_size  = get_claim().apply(get_grant());
+    const Aabrf content_aabr = _layout_stack(screen_items, total_size, getStartOffsets(*this));
+    _set_size(std::move(total_size));
+    _set_content_aabr(std::move(content_aabr));
 }
 
 Aabrf FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Size2f total_size, detail::FlexSize offset)
@@ -574,8 +557,8 @@ Aabrf FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
 
     // calculate the actual available size
     const detail::FlexSize available{
-        max(0, total_size.width - m_padding.width() - (is_horizontal() ? m_spacing * (item_count - 1) : 0.f)),
-        max(0, total_size.height - m_padding.height() - (is_horizontal() ? 0.f : m_spacing * (item_count - 1)))};
+        max(0, total_size.width - m_padding.get_width() - (is_horizontal() ? m_spacing * (item_count - 1) : 0.f)),
+        max(0, total_size.height - m_padding.get_height() - (is_horizontal() ? 0.f : m_spacing * (item_count - 1)))};
 
     // determine the size for each item
     std::vector<ItemAdapter> adapters(stack.size());
@@ -682,11 +665,12 @@ Aabrf FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
             item_pos.x() = offset.cross
                 + cross_align_offset(m_cross_alignment, item_size.width, available.main, /*cross_positive*/ true);
         }
-        _set_layout_xform(child, Xform2f::translation(item_pos));
+
+        const Xform2f child_xform = Xform2f::translation(item_pos);
+        ScreenItem::_set_layout_xform(child, child_xform);
         ScreenItem::_set_grant(child, item_size);
 
-        stack_aabr._min.min(item_pos);
-        stack_aabr._max.max(item_pos + Vector2f(item_size.width, item_size.height));
+        stack_aabr.unite(child_xform.transform(child->get_content_aabr()));
 
         offset.main += (adapter.result + spacing) * (is_positive ? 1 : -1);
     }

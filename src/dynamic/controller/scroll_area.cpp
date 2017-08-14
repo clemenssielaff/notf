@@ -33,7 +33,9 @@ void ScrollArea::ScrollBar::_paint(Painter& painter) const
     // bar
     if (size < 1) {
         Aabrf bar_rect(widget_rect.get_width(), widget_rect.get_height() * size);
-        bar_rect.move_by({0, widget_rect.get_height() * pos});
+        bar_rect.move_by({0, widget_rect.get_height() - bar_rect.get_height()});
+
+        log_trace << "Scrollbar rect: " << bar_rect;
 
         painter.begin_path();
         painter.add_rect(bar_rect);
@@ -44,6 +46,7 @@ void ScrollArea::ScrollBar::_paint(Painter& painter) const
 
 void ScrollArea::Background::_paint(Painter&) const
 {
+    /* noop */
 }
 
 //*********************************************************************************************************************/
@@ -59,42 +62,46 @@ ScrollArea::ScrollArea()
     // the window into the content
     m_area_window = Overlayout::create();
     m_area_window->set_claim(Claim()); // do not combine child Claims
-    m_area_window->set_alignment(Overlayout::AlignHorizontal::LEFT, Overlayout::AlignVertical::TOP);
+    m_area_window->set_alignment(Overlayout::AlignHorizontal::CENTER, Overlayout::AlignVertical::TOP);
+    m_area_window->set_name("AreaWindow");
 
     // transparent background Widget reacting to scroll events not caught by the ScrollArea's content
     std::shared_ptr<Background> background = std::make_shared<Background>();
+    background->set_name("BackgroundWidget");
     m_area_window->add_item(background);
 
     // container inside the area, scissored by the window and containing the content
     m_scroll_container = Overlayout::create();
-    m_scroll_container->set_alignment(Overlayout::AlignHorizontal::LEFT, Overlayout::AlignVertical::TOP);
+    m_scroll_container->set_name("ScrollContainer");
+//    m_scroll_container->set_alignment(Overlayout::AlignHorizontal::LEFT, Overlayout::AlignVertical::TOP);
     m_area_window->add_item(m_scroll_container);
     m_scroll_container->set_scissor(m_area_window.get());
 
     // the scrollbar on the side of the area window
     m_vscrollbar = std::make_shared<ScrollBar>(*this);
+    m_vscrollbar->set_name("VScrollbar");
 
     // the root layout of this Controller
     std::shared_ptr<FlexLayout> root_layout = FlexLayout::create(FlexLayout::Direction::LEFT_TO_RIGHT);
+    root_layout->set_name("RootLayout");
     root_layout->add_item(m_area_window);
     root_layout->add_item(m_vscrollbar);
     _set_root_item(root_layout);
-    log_trace << "Scroll container has ID: " << m_scroll_container->get_id();
 
     // update the scrollbar, if the container layout changed
     connect_signal(
-        m_scroll_container->on_aabr_changed,
-        [this](const Aabrf&) -> void {
+        m_scroll_container->on_size_changed,
+        [this](const Size2f&) -> void {
             _update_scrollbar(0);
         });
 
-    // scroll when scrolling the mouse wheel anywhere over the scroll area
-    connect_signal(
-        root_layout->on_mouse_scroll,
-        [this](MouseEvent& event) -> void {
-            log_trace << "Derbness";
-            _update_scrollbar(16 * event.window_delta.y());
-        });
+//    // scroll when scrolling the mouse wheel anywhere over the scroll area
+//    connect_signal(
+//        root_layout->on_mouse_scroll,
+//        [this](MouseEvent& event) -> void {
+//            log_trace << "Derbness";
+//            _update_scrollbar(16 * event.window_delta.y());
+//        });
 
     //    // event handler for when then scrollbar is dragged
     //    m_on_scrollbar_drag = connect_signal(
@@ -153,13 +160,13 @@ void ScrollArea::_update_scrollbar(float delta_y)
     if (content_height <= precision_high<float>()) {
         return;
     }
-    const float area_height = m_area_window->get_grant().height;
+    const float area_height = m_area_window->get_size().height;
     const float overflow    = max(0, content_height - area_height);
 
     // there must at least be half a pixel to scroll in order for the bar to show up
     if (overflow >= 0.5f) {
 
-        const float container_y     = m_scroll_container->get_xform<ScreenItem::Space::OFFSET>().get_translation().y();
+        const float container_y     = m_scroll_container->get_xform<ScreenItem::Space::PARENT>().get_translation().y();
         const float new_container_y = max(area_height - content_height, container_y + delta_y);
         m_scroll_container->set_local_xform(Xform2f::translation(Vector2f(0, new_container_y)));
 
@@ -178,7 +185,7 @@ float ScrollArea::_get_content_height() const
     if (!m_content) {
         return 0;
     }
-    return m_scroll_container->get_size().height;
+    return m_scroll_container->get_content_aabr().get_height();
 }
 
 } // namespace notf

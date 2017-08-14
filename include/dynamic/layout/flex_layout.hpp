@@ -167,8 +167,7 @@ private: // methods ************************************************************
      * @param offset        Offset of the first item in the main axis.
      * @return              Bounding rect of the stack in untransformed coordinates.
      */
-    Aabrf _layout_stack(const std::vector<ScreenItem*>& stack, const Size2f total_size,
-                        detail::FlexSize offset);
+    Aabrf _layout_stack(const std::vector<ScreenItem*>& stack, const Size2f total_size, detail::FlexSize offset);
 
 private: // fields
     /** Direction in which the FlexLayout is stacked. */

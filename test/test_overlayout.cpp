@@ -75,13 +75,13 @@ SCENARIO("An Overlayout calculates its claim", "[dynamic][layout][claim]")
 
                     THEN("the layout will add the padding to its implicit claim")
                     {
-                        REQUIRE(horizontal.get_min() == approx(min.width + padding.width()));
-                        REQUIRE(horizontal.get_preferred() == approx(preferred.width + padding.width()));
-                        REQUIRE(horizontal.get_max() == approx(max.width + padding.width()));
+                        REQUIRE(horizontal.get_min() == approx(min.width + padding.get_width()));
+                        REQUIRE(horizontal.get_preferred() == approx(preferred.width + padding.get_width()));
+                        REQUIRE(horizontal.get_max() == approx(max.width + padding.get_width()));
 
-                        REQUIRE(vertical.get_min() == approx(min.height + padding.height()));
-                        REQUIRE(vertical.get_preferred() == approx(preferred.height + padding.height()));
-                        REQUIRE(vertical.get_max() == approx(max.height + padding.height()));
+                        REQUIRE(vertical.get_min() == approx(min.height + padding.get_height()));
+                        REQUIRE(vertical.get_preferred() == approx(preferred.height + padding.get_height()));
+                        REQUIRE(vertical.get_max() == approx(max.height + padding.get_height()));
                     }
                 }
             }
@@ -208,27 +208,7 @@ SCENARIO("An Overlayout aligns its children", "[dynamic][layout]")
         {
             WHEN("you don't set an alignment")
             {
-                THEN("the default top-left alignment is used")
-                {
-                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
-                    REQUIRE(rect_trans.x() == approx(0));
-                    REQUIRE(rect_trans.y() == approx(300));
-
-                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
-                    REQUIRE(wideRect_trans.x() == approx(0));
-                    REQUIRE(wideRect_trans.y() == approx(350));
-
-                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
-                    REQUIRE(highRect_trans.x() == approx(0));
-                    REQUIRE(highRect_trans.y() == approx(200));
-                }
-            }
-
-            WHEN("you set the alignment to horizontal and vertical center")
-            {
-                overlayout->set_alignment(Overlayout::AlignHorizontal::CENTER, Overlayout::AlignVertical::CENTER);
-
-                THEN("the widgets will be placed at the center of the overlayout")
+                THEN("the default center alignment is used")
                 {
                     const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                     REQUIRE(rect_trans.x() == approx(150));
@@ -241,6 +221,26 @@ SCENARIO("An Overlayout aligns its children", "[dynamic][layout]")
                     const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                     REQUIRE(highRect_trans.x() == approx(175));
                     REQUIRE(highRect_trans.y() == approx(100));
+                }
+            }
+
+            WHEN("you set the alignment to top left")
+            {
+                overlayout->set_alignment(Overlayout::AlignHorizontal::LEFT, Overlayout::AlignVertical::TOP);
+
+                THEN("the widgets will be placed at the top-left corner of the overlayout")
+                {
+                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    REQUIRE(rect_trans.x() == approx(0));
+                    REQUIRE(rect_trans.y() == approx(300));
+
+                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    REQUIRE(wideRect_trans.x() == approx(0));
+                    REQUIRE(wideRect_trans.y() == approx(350));
+
+                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    REQUIRE(highRect_trans.x() == approx(0));
+                    REQUIRE(highRect_trans.y() == approx(200));
                 }
             }
             WHEN("you set the alignment bottom right")
@@ -269,27 +269,7 @@ SCENARIO("An Overlayout aligns its children", "[dynamic][layout]")
 
             WHEN("you don't set an alignment")
             {
-                THEN("the default top-left alignment is used")
-                {
-                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
-                    REQUIRE(rect_trans.x() == approx(20));
-                    REQUIRE(rect_trans.y() == approx(280));
-
-                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
-                    REQUIRE(wideRect_trans.x() == approx(20));
-                    REQUIRE(wideRect_trans.y() == approx(330));
-
-                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
-                    REQUIRE(highRect_trans.x() == approx(20));
-                    REQUIRE(highRect_trans.y() == approx(180));
-                }
-            }
-
-            WHEN("you set the alignment to horizontal and vertical center")
-            {
-                overlayout->set_alignment(Overlayout::AlignHorizontal::CENTER, Overlayout::AlignVertical::CENTER);
-
-                THEN("the widgets will be placed at the center of the overlayout")
+                THEN("the default center alignment is used")
                 {
                     const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                     REQUIRE(rect_trans.x() == approx(150));
@@ -302,6 +282,26 @@ SCENARIO("An Overlayout aligns its children", "[dynamic][layout]")
                     const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
                     REQUIRE(highRect_trans.x() == approx(175));
                     REQUIRE(highRect_trans.y() == approx(100));
+                }
+            }
+
+            WHEN("you set the alignment to top left")
+            {
+                overlayout->set_alignment(Overlayout::AlignHorizontal::LEFT, Overlayout::AlignVertical::TOP);
+
+                THEN("the widgets will be placed at the top-left corner of the overlayout")
+                {
+                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    REQUIRE(rect_trans.x() == approx(20));
+                    REQUIRE(rect_trans.y() == approx(280));
+
+                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    REQUIRE(wideRect_trans.x() == approx(20));
+                    REQUIRE(wideRect_trans.y() == approx(330));
+
+                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    REQUIRE(highRect_trans.x() == approx(20));
+                    REQUIRE(highRect_trans.y() == approx(180));
                 }
             }
             WHEN("you set the alignment bottom right")
@@ -346,45 +346,45 @@ SCENARIO("An Overlayout calculates its Aabr", "[dynamic][layout]")
         highRect->set_claim(Claim::fixed(50, 200));
         overlayout->add_item(highRect);
 
-        THEN("the size of the Overlayout's AABR remains the same, no matter the alignment")
+        THEN("the size of the Overlayout's child Aabr remains the same, no matter the alignment")
         {
             WHEN("you don't set an alignment")
             {
-                REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().get_size() == Size2f(200, 200));
+                REQUIRE(overlayout->get_content_aabr().get_size() == Size2f(200, 200));
             }
-            WHEN("you set the alignment to horizontal and vertical center")
+            WHEN("you set the alignment to top left")
             {
-                overlayout->set_alignment(Overlayout::AlignHorizontal::CENTER, Overlayout::AlignVertical::CENTER);
-                REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().get_size() == Size2f(200, 200));
+                overlayout->set_alignment(Overlayout::AlignHorizontal::LEFT, Overlayout::AlignVertical::TOP);
+                REQUIRE(overlayout->get_content_aabr().get_size() == Size2f(200, 200));
             }
             WHEN("you set the alignment bottom right")
             {
                 overlayout->set_alignment(Overlayout::AlignHorizontal::RIGHT, Overlayout::AlignVertical::BOTTOM);
-                REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().get_size() == Size2f(200, 200));
+                REQUIRE(overlayout->get_content_aabr().get_size() == Size2f(200, 200));
             }
 
             WHEN("you add padding, it still stays the same")
             {
                 overlayout->set_padding(Padding::all(20));
-                REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().get_size() == Size2f(200, 200));
+                REQUIRE(overlayout->get_content_aabr().get_size() == Size2f(200, 200));
             }
         }
 
-        THEN("the position of the Overlayout's AABR changes with the alignment")
+        THEN("the position of the Overlayout's child Aabr changes with the alignment")
         {
             WHEN("you don't set an alignment")
             {
-                REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().bottom_left() == Vector2f(0, 200));
+                REQUIRE(overlayout->get_content_aabr().bottom_left() == Vector2f(100, 100));
             }
-            WHEN("you set the alignment to horizontal and vertical center")
+            WHEN("you set the alignment to top left")
             {
-                overlayout->set_alignment(Overlayout::AlignHorizontal::CENTER, Overlayout::AlignVertical::CENTER);
-                REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().bottom_left() == Vector2f(100, 100));
+                overlayout->set_alignment(Overlayout::AlignHorizontal::LEFT, Overlayout::AlignVertical::TOP);
+                REQUIRE(overlayout->get_content_aabr().bottom_left() == Vector2f(0, 200));
             }
             WHEN("you set the alignment bottom right")
             {
                 overlayout->set_alignment(Overlayout::AlignHorizontal::RIGHT, Overlayout::AlignVertical::BOTTOM);
-                REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().bottom_left() == Vector2f(200, 0));
+                REQUIRE(overlayout->get_content_aabr().bottom_left() == Vector2f(200, 0));
             }
 
             WHEN("you add padding, the position changes accordingly")
@@ -393,17 +393,17 @@ SCENARIO("An Overlayout calculates its Aabr", "[dynamic][layout]")
 
                 WHEN("you don't set an alignment")
                 {
-                    REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().bottom_left() == Vector2f(20, 180));
+                    REQUIRE(overlayout->get_content_aabr().bottom_left() == Vector2f(100, 100));
                 }
-                WHEN("you set the alignment to horizontal and vertical center")
+                WHEN("you set the alignment to top left")
                 {
-                    overlayout->set_alignment(Overlayout::AlignHorizontal::CENTER, Overlayout::AlignVertical::CENTER);
-                    REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().bottom_left() == Vector2f(100, 100));
+                    overlayout->set_alignment(Overlayout::AlignHorizontal::LEFT, Overlayout::AlignVertical::TOP);
+                    REQUIRE(overlayout->get_content_aabr().bottom_left() == Vector2f(20, 180));
                 }
                 WHEN("you set the alignment bottom right")
                 {
                     overlayout->set_alignment(Overlayout::AlignHorizontal::RIGHT, Overlayout::AlignVertical::BOTTOM);
-                    REQUIRE(overlayout->get_aabr<Overlayout::Space::PARENT>().bottom_left() == Vector2f(180, 20));
+                    REQUIRE(overlayout->get_content_aabr().bottom_left() == Vector2f(180, 20));
                 }
             }
         }

@@ -50,6 +50,7 @@ SCENARIO("A non-wrapping FlexLayout", "[dynamic][layout]")
                         flexlayout->set_padding(Padding::all(padding));
 
                         const float used_main = 350 + (spacing * 2) + (padding * 2);
+                        const float used_cross = 200 + (padding * 2);
 
                         for (const auto direction : std::vector<FlexLayout::Direction>{
                                  FlexLayout::Direction::LEFT_TO_RIGHT,
@@ -73,19 +74,14 @@ SCENARIO("A non-wrapping FlexLayout", "[dynamic][layout]")
                             if (flexlayout->is_horizontal()) {
                                 expected_layout_size = Size2f(
                                     max(random_main, used_main),
-                                    200 + (padding * 2));
+                                    max(random_cross, used_cross));
                             }
                             else {
                                 expected_layout_size = Size2f(
-                                    200 + (padding * 2),
+                                    max(random_cross, used_cross),
                                     max(random_main, used_main));
                             }
                             const Size2f layout_size = flexlayout->get_size();
-                            if(!layout_size.is_approx(expected_layout_size, 0.1f)){
-                                flexlayout->set_spacing(50);
-                                flexlayout->set_spacing(0);
-                                const Size2f new_layout_size = flexlayout->get_size();
-                            }
                             REQUIRE(layout_size.is_approx(expected_layout_size, 0.1f));
 
                             // child aabr
@@ -110,7 +106,7 @@ SCENARIO("A non-wrapping FlexLayout", "[dynamic][layout]")
                                     200,
                                     350 + ((spacing + spacing_offset) * 2));
                             }
-                            const Size2f child_size = flexlayout->get_child_aabr().get_size();
+                            const Size2f child_size = flexlayout->get_content_aabr().get_size();
                             REQUIRE(child_size.is_approx(expected_child_size, 0.1f));
                         }
                     }

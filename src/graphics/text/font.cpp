@@ -37,11 +37,15 @@ std::shared_ptr<Font> Font::load(GraphicsContext& context, const std::string fil
     }
 
     // create and store the new Font in the manager, so it can be re-used
+#ifdef _DEBUG
+    std::shared_ptr<Font> font(new Font(font_manager, filename, pixel_size));
+#else
     struct make_shared_enabler : public Font {
         make_shared_enabler(FontManager& manager, const std::string filename, const pixel_size_t pixel_size)
             : Font(manager, filename, pixel_size) {}
     };
     std::shared_ptr<Font> font = std::make_shared<make_shared_enabler>(font_manager, filename, pixel_size);
+#endif
     font_manager.m_fonts.insert({identifier, font});
     return font;
 }

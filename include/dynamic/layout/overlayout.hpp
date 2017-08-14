@@ -10,6 +10,11 @@ namespace notf {
 
 /** The Overlayout stacks all of its children on top of each other.
  * It is the workhorse layout and the basis for many other, more complex structures.
+ *
+ * Alignment
+ * ---------
+ * If you place another Layout in the Overlayout and don't see any effect of the Overlayout's alignment, consider that
+ * the inner Layout most likely uses up all the available space, rendering the outer Layout's alignment without effect.
  */
 class Overlayout : public Layout {
 public: // types ******************************************************************************************************/
@@ -45,12 +50,7 @@ public: // methods *************************************************************
     const Padding& get_padding() const { return m_padding; }
 
     /** Defines the alignment of each Item in the Layout. */
-    void set_alignment(const AlignHorizontal horizontal, const AlignVertical vertical)
-    {
-        m_horizontal_alignment = std::move(horizontal);
-        m_vertical_alignment   = std::move(vertical);
-        _relayout();
-    }
+    void set_alignment(const AlignHorizontal horizontal, const AlignVertical vertical);
 
     /** Defines the padding around the Layout's border.
      * @throw   std::runtime_error if the padding is invalid.

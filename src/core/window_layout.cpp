@@ -19,11 +19,15 @@ WindowLayout::WindowLayout(Window* window)
 
 std::shared_ptr<WindowLayout> WindowLayout::create(Window* window)
 {
+#ifdef _DEBUG
+    return std::shared_ptr<WindowLayout>(new WindowLayout(window));
+#else
     struct make_shared_enabler : public WindowLayout {
         make_shared_enabler(Window* window)
             : WindowLayout(window) {}
     };
     return std::make_shared<make_shared_enabler>(window);
+#endif
 }
 
 std::vector<Widget*> WindowLayout::get_widgets_at(const Vector2f& screen_pos)
@@ -48,8 +52,8 @@ void WindowLayout::set_controller(ControllerPtr controller)
     }
 
     detail::SingleItemContainer* container = static_cast<detail::SingleItemContainer*>(m_children.get());
-    container->item = controller;
-    m_controller    = controller.get();
+    container->item                        = controller;
+    m_controller                           = controller.get();
     if (m_controller) {
         Item::_set_parent(m_controller, this);
     }
@@ -65,12 +69,12 @@ void WindowLayout::_remove_child(const Item* child_item)
     }
 
     if (child_item != m_controller) {
-        log_critical << "Cannot remove unknown child Item " << child_item->get_id()
-                     << " from WindowLayout " << get_id();
+        log_critical << "Cannot remove unknown child Item " << child_item->get_name()
+                     << " from WindowLayout " << get_name();
         return;
     }
 
-    log_trace << "Removing controller from WindowLayout " << get_id();
+    log_trace << "Removing controller from WindowLayout " << get_name();
     m_children->clear();
     m_controller = nullptr;
 
@@ -94,12 +98,13 @@ Claim WindowLayout::_consolidate_claim()
 
 void WindowLayout::_relayout()
 {
-    _set_aabr(get_grant());
-    m_child_aabr = _get_aabr();
+    _set_size(get_grant());
+    _set_content_aabr(Aabrf::zero());
 
     if (m_controller) {
         if (ScreenItem* root_item = m_controller->get_root_item()) {
             ScreenItem::_set_grant(root_item, get_size());
+            _set_content_aabr(root_item->get_content_aabr());
         }
     }
 }

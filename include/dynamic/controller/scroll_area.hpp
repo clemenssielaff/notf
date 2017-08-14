@@ -20,16 +20,18 @@ using ScrollAreaPtr = std::shared_ptr<ScrollArea>;
  *  The basic setup is as follows:
  *
  * +- RootLayout ------------------------+---+
- * |                                     | S |
- * | +- AreaWindow --------------------+ | c |
- * | | +- ScrollContainer -----------+ | | r |
+ * | +- AreaWindow --------------------+ | S |
+ * | | +- ScrollContainer -----------+ | | c |
+ * | | |                             | | | r |
  * | | |                             | | | o |
  * | | |                             | | | l |
  * | | |                             | | | l |
  * | | |                             | | | B |
- * | | +-----------------------------+ | | a |
- * | +---------------------------------+ | r |
- * +-------------------------------------+---+
+ * | | |                             | | | a |
+ * | +-:-----------------------------:-+ | r |
+ * +---:-----------------------------:---+---+
+ *     |                             |
+ *     +-----------------------------+
  *
  * The ScrollArea controller has a FlexLayout at its root, the *RootLayout*.
  * Its only job is to place the Scrollbar widget next to the area used to view the scrolled content.
@@ -49,7 +51,7 @@ using ScrollAreaPtr = std::shared_ptr<ScrollArea>;
  */
 class ScrollArea : public BaseController<ScrollArea> {
 
-private: // types
+private: // types  ***************************************************************************************************/
     class ScrollBar : public Widget {
 
     public: // methods
@@ -70,6 +72,8 @@ private: // types
         ScrollArea& m_scroll_area;
     };
 
+    // ****************************************************************************************************************/
+
     class Background : public Widget {
     public: // methods
         /** Constructor. */
@@ -79,21 +83,24 @@ private: // types
         virtual void _paint(Painter& painter) const override;
     };
 
-public: // methods
+public: // methods ****************************************************************************************************/
     /** Constructor. */
     ScrollArea();
+
+    /** Controller of the content inside the scroll area. */
+    ControllerPtr get_area_controller() const { return m_content; }
 
     /** Displays the content of the given Controller inside the scroll area.  */
     void set_area_controller(ControllerPtr controller);
 
-private: // methods
+private: // methods  **************************************************************************************************/
     /** Updates the position and size of the scrollbar. */
     void _update_scrollbar(float delta_y);
 
     /** Calculates the height of the ScrollArea's content. */
     float _get_content_height() const;
 
-private: // fields
+private: // fields  ***************************************************************************************************/
     /** Window into the content. */
     std::shared_ptr<Overlayout> m_area_window;
 

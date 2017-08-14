@@ -228,6 +228,9 @@ void Texture2::unbind()
 std::shared_ptr<Texture2> Texture2::create(const GLuint id, GraphicsContext& context, const std::string name,
                                            const GLint width, const GLint height, const Format format)
 {
+#ifdef _DEBUG
+    return std::shared_ptr<Texture2>(new Texture2(id, context, name, width, height, format));
+#else
     struct make_shared_enabler : public Texture2 {
         make_shared_enabler(const GLuint id, GraphicsContext& context, const std::string name,
                             const GLint width, const GLint height, const Format format)
@@ -235,6 +238,7 @@ std::shared_ptr<Texture2> Texture2::create(const GLuint id, GraphicsContext& con
         PADDING(3)
     };
     return std::make_shared<make_shared_enabler>(id, context, std::move(name), width, height, format);
+#endif
 }
 
 Texture2::Texture2(const GLuint id, GraphicsContext& context, const std::string name,

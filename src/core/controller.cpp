@@ -26,12 +26,12 @@ void Controller::_set_root_item(ScreenItemPtr item)
 void Controller::_remove_child(const Item* child_item)
 {
     if (child_item != m_root_item) {
-        log_critical << "Cannot remove unknown child Item " << child_item->get_id()
-                     << " from Controller " << get_id();
+        log_critical << "Cannot remove unknown child Item " << child_item->get_name()
+                     << " from Controller " << get_name();
         return;
     }
 
-    log_trace << "Removing root item from Controller " << get_id();
+    log_trace << "Removing root item from Controller " << get_name();
     m_children->clear();
     m_root_item = nullptr;
 }

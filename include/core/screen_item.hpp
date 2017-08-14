@@ -92,17 +92,6 @@ using RenderLayerPtr = std::shared_ptr<RenderLayer>;
  * Used mostly to position the ScreenItem within the parent Layout.
  * Can also be used as a projection matrix in a scene view ...?
  *
- * Aabr (the Axis-Aligned Bounding Rect)
- * =====================================
- * All ScreenItems provide a narrow Aabr around its content in untransformed space.
- * The Aabr is calculated after the Layout negation has finished and each ScreenItem knows its grant.
- * One of its uses is to determine the true size of a ScreenItem.
- * But a size doesn't suffice, because Layouts regularly place items away from their origin.
- * For example:
- * An Overlayout with a default Claim and a Grant of 100x100, that contains a single Widget of size 50x50, aligned
- * centered both horizontally and vertically, will have a bounding rect with the minimum corner at (25, 25) and the
- * maximum corner at (75, 75).
- *
  * Opacity
  * =======
  * Each ScreenItem has an `opacity` member, which is a float in the range [0 -> 1].
@@ -142,6 +131,11 @@ using RenderLayerPtr = std::shared_ptr<RenderLayer>;
  * in the background (see ScrollArea for an example).
  * If a Widget receives an event but does not handle it, it is propagated up the ancestry until it either passes the
  * root or an ancestor Layout sets its `is_handled` flag.
+ *
+ * Content Aabr
+ * ============
+ * Size is only the size of the Layout itself, how much was claimed and subsequently granted.
+ * The content Aabr is the Aabr of all descendant items in the Layout.
  */
 class ScreenItem : public Item {
     friend class RenderManager;
@@ -173,14 +167,17 @@ public: // methods *************************************************************
     const Claim& get_claim() const { return m_claim; }
 
     /** Granted size of this ScreenItem in layout space. */
-    const Size2f& get_grant() const { return m_grant; }
+    const Size2f& get_grant() const { return m_grant; } // TODO: is get_grant even used, now that we have the size?
 
     /** Unscaled size of this ScreenItem in local space. */
-    Size2f get_size() const { return m_aabr.get_size(); }
+    Size2f get_size() const { return m_size; }
 
     /** The axis-aligned bounding rect of this ScreenItem in the requested space. */
     template <Space space>
-    Aabrf get_aabr() const { return get_xform<space>().transform(m_aabr); }
+    Aabrf get_aabr() const { return get_xform<space>().transform(_get_aabr()); }
+
+    /** The bounding rect of all child ScreenItems. */
+    const Aabrf& get_content_aabr() const { return m_content_aabr; }
 
     /** Returns the effective opacity of this ScreenItem in the range [0 -> 1].
      * @param effective By default, the returned opacity will be the product of this ScreenItem's opacity with all of
@@ -231,7 +228,7 @@ public: // signals *************************************************************
     /** Emitted, when the size of this ScreenItem has changed.
      * @param New size.
      */
-    Signal<const Aabrf&> on_aabr_changed;
+    Signal<const Size2f&> on_size_changed;
 
     /** Emitted, when the transform of this ScreenItem has changed.
      * @param New transform in parent space.
@@ -293,7 +290,7 @@ protected: // methods **********************************************************
     void _update_parent_layout();
 
     /** Returns the ScreenItem's Aabr without any added transformation. */
-    const Aabrf& _get_aabr() const { return m_aabr; }
+    const Aabrf _get_aabr() const { return Aabrf(m_size); }
 
     /** Recursive implementation to find all Widgets at a given position in local space
      * @param local_pos     Local coordinates where to look for a Widget.
@@ -313,10 +310,15 @@ protected: // methods **********************************************************
      */
     bool _set_grant(const Size2f grant);
 
-    /** Updates the bounding rect of this ScreenItem.
-     * @return      True iff the bounding rect was modified.
+    /** Updates the size of this ScreenItem.
+     * @return      True iff the size  was modified.
      */
-    bool _set_aabr(const Aabrf aabr);
+    bool _set_size(const Size2f size);
+
+    /** Updates the ScreenItem's content Aabr.
+     * @param aabr  New content Aabr.
+     */
+    void _set_content_aabr(const Aabrf aabr);
 
     /** Updates the layout transformation of this Item. */
     void _set_layout_xform(const Xform2f transform);
@@ -368,11 +370,11 @@ private: // fields *************************************************************
      */
     Size2f m_grant;
 
-    /** The bounding rect of a ScreenItem is the smallest bounding rect around the content of the Item.
-     * For Layouts it is a tight bounding rect around all children contained in the Layou.
-     * For Widgets it is the size of the Widget's Cell.
-     */
-    Aabrf m_aabr;
+    /** The size of a ScreenItem is how much space the Item claims after receiving a grant from its parent Layout. */
+    Size2f m_size;
+
+    /** The bounding rect of all descendant ScreenItems. */
+    Aabrf m_content_aabr;
 
     /** Flag indicating whether a ScreenItem should be visible or not.
      * Note that the ScreenItem is not guaranteed to be visible just because this flag is true.

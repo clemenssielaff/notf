@@ -10,31 +10,49 @@ namespace notf {
 
 Overlayout::Overlayout()
     : Layout(std::make_unique<detail::ItemList>())
-    , m_horizontal_alignment(AlignHorizontal::LEFT)
-    , m_vertical_alignment(AlignVertical::TOP)
+    , m_horizontal_alignment(AlignHorizontal::CENTER)
+    , m_vertical_alignment(AlignVertical::CENTER)
     , m_padding(Padding::none())
 {
 }
 
 std::shared_ptr<Overlayout> Overlayout::create()
 {
+#ifdef _DEBUG
+    return std::shared_ptr<Overlayout>(new Overlayout());
+#else
     struct make_shared_enabler : public Overlayout {
         make_shared_enabler()
             : Overlayout() {}
         PADDING(4)
     };
     return std::make_shared<make_shared_enabler>();
+#endif
+}
+
+void Overlayout::set_alignment(const AlignHorizontal horizontal, const AlignVertical vertical)
+{
+    if (horizontal == m_horizontal_alignment && vertical == m_vertical_alignment) {
+        return;
+    }
+    m_horizontal_alignment = std::move(horizontal);
+    m_vertical_alignment   = std::move(vertical);
+    if (!_update_claim()) {
+        _relayout();
+    }
 }
 
 void Overlayout::set_padding(const Padding& padding)
 {
     if (!padding.is_valid()) {
         log_critical << "Encountered invalid padding: " << padding;
+        throw std::runtime_error("Encountered invalid padding");
+    }
+    if (padding == m_padding) {
         return;
     }
-    if (padding != m_padding) {
-        m_padding = padding;
-        _update_claim();
+    m_padding = padding;
+    if (!_update_claim()) {
         _relayout();
     }
 }
@@ -56,16 +74,18 @@ void Overlayout::add_item(ItemPtr item)
     items.emplace_back(item);
     Item::_set_parent(item.get(), this);
     on_child_added(item.get());
+    log_trace << "Added child Item " << item->get_name() << " to Overlayout " << get_name();
 
     // update the parent layout if necessary
     if (!_update_claim()) {
         // update only the child if we don't need a full Claim update
         Size2f item_grant = get_size();
-        item_grant.width -= m_padding.width();
-        item_grant.height -= m_padding.height();
+        item_grant.width -= m_padding.get_width();
+        item_grant.height -= m_padding.get_height();
         ScreenItem::_set_grant(item->get_screen_item(), std::move(item_grant));
+
+        _relayout();
     }
-    _relayout();
 }
 
 void Overlayout::_remove_child(const Item* child_item)
@@ -80,14 +100,17 @@ void Overlayout::_remove_child(const Item* child_item)
                                return item.get() == child_item;
                            });
     if (it == std::end(items)) {
-        log_critical << "Cannot remove unknown child Item " << child_item->get_id()
-                     << " from Overlayout " << get_id();
+        log_warning << "Cannot remove unknown child Item " << child_item->get_name()
+                    << " from Overlayout " << get_name();
         return;
     }
 
-    log_trace << "Removing child Item " << child_item->get_id() << " from Overlayout " << get_id();
+    log_trace << "Removing child Item " << child_item->get_name() << " from Overlayout " << get_name();
     items.erase(it);
     on_child_removed(child_item);
+    if (!_update_claim()) {
+        _relayout();
+    }
     _redraw();
 }
 
@@ -117,20 +140,22 @@ Claim Overlayout::_consolidate_claim()
             result.maxed(screen_item->get_claim());
         }
     }
-    result.get_horizontal().grow_by(m_padding.width());
-    result.get_vertical().grow_by(m_padding.height());
+    result.get_horizontal().grow_by(m_padding.get_width());
+    result.get_vertical().grow_by(m_padding.get_height());
     return result;
 }
 
 void Overlayout::_relayout()
 {
-    const Size2f reference_size = get_claim().apply(get_grant());
-    const Size2f available_size = {reference_size.width - m_padding.width(),
-                                   reference_size.height - m_padding.height()};
+    _set_size(get_claim().apply(get_grant())); // TODO: this line is the same in EVERY ScreenItem::_relayout! It should only update in _set_grant (and _set_claim?)
+    const Size2f reference_size = get_size();
+    const Size2f available_size = {reference_size.width - m_padding.get_width(),
+                                   reference_size.height - m_padding.get_height()};
 
     // update your children's location
-    m_child_aabr = Aabrf::zero();
-    for (ItemPtr& item : static_cast<detail::ItemList*>(m_children.get())->items) {
+    detail::ItemList& children = *static_cast<detail::ItemList*>(m_children.get());
+    Aabrf content_aabr         = Aabrf::zero();
+    for (ItemPtr& item : children.items) {
         ScreenItem* screen_item = item->get_screen_item();
         if (!screen_item) {
             continue;
@@ -138,7 +163,8 @@ void Overlayout::_relayout()
 
         // the item's size is independent of its placement
         ScreenItem::_set_grant(screen_item, available_size);
-        const Size2f& item_size = screen_item->get_size();
+        const Aabrf item_aabr   = screen_item->get_aabr<Space::PARENT>();
+        const Size2f& item_size = item_aabr.get_size();
 
         // the item's transform depends on the Overlayout's alignment and grant
         Vector2f pos;
@@ -157,23 +183,24 @@ void Overlayout::_relayout()
             pos.y() = reference_size.height - m_padding.top - item_size.height;
         }
         else if (m_vertical_alignment == AlignVertical::CENTER) {
-            pos.y() = ((available_size.height - item_size.height) / 2.f) + m_padding.bottom;
+            pos.y() = (reference_size.height - item_size.height) / 2.f;
         }
         else {
             assert(m_vertical_alignment == AlignVertical::BOTTOM);
             pos.y() = m_padding.bottom;
         }
-        _set_layout_xform(screen_item, Xform2f::translation(pos));
 
-        if(m_child_aabr.is_zero()){
-            m_child_aabr = Aabrf(pos, item_size);
-        } else {
-            m_child_aabr.unite(Aabrf(pos, item_size));
+        const Xform2f item_xform = Xform2f::translation(pos);
+        ScreenItem::_set_layout_xform(screen_item, item_xform);
+
+        if (content_aabr.is_zero()) {
+            content_aabr = item_xform.transform(screen_item->get_content_aabr());
+        }
+        else {
+            content_aabr.unite(item_xform.transform(screen_item->get_content_aabr()));
         }
     }
-
-    // update your own aabr
-    _set_aabr(m_child_aabr);
+    _set_content_aabr(std::move(content_aabr));
 }
 
 } // namespace notf

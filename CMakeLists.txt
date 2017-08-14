@@ -284,6 +284,8 @@ target_link_libraries(notf-test
         ${PYTHON_LIBRARIES}
         )
 
+set(CMAKE_CXX_FLAGS_DEBUG "-g -D_DEBUG")
+
 # CCACHE ###############################################################################################################
 
 find_program(CCACHE_FOUND ccache)

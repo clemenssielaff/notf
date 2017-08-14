@@ -40,8 +40,8 @@ using ItemID = Id<Item, RawID>;
  * Item name
  * =========
  * In addition to the unique ID, each Item can have a name.
- * The name is always assigned by the user and is not guaranteed to be unique.
- * By default, the name is empty.
+ * The name is assigned by the user and is not guaranteed to be unique.
+ * If the name is not set, it is simply the ID of the Item.
  *
  * Items in Python
  * ===============
@@ -205,8 +205,8 @@ private: // fields *************************************************************
     Item* m_parent;
 
     /** An optional name of this Item.
-     * The name is always set by the user and is not guaranteed to be unique.
-     * By default, the name is empty.
+     * The name is set by the user and is not guaranteed to be unique.
+     * If the name is not set, it is simply the ID of the Item.
      */
     std::string m_name;
 

@@ -19,11 +19,15 @@ namespace notf {
 
 RenderLayerPtr RenderLayer::create(const size_t index)
 {
+#ifdef _DEBUG
+    return std::shared_ptr<RenderLayer>(new RenderLayer(std::forward<const size_t>(index)));
+#else
     struct make_shared_enabler : public RenderLayer {
         make_shared_enabler(const size_t index)
             : RenderLayer(std::forward<const size_t>(index)) {}
     };
     return std::make_shared<make_shared_enabler>(index);
+#endif
 }
 
 /**********************************************************************************************************************/

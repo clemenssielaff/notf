@@ -15,12 +15,16 @@ FreeLayout::FreeLayout()
 
 std::shared_ptr<FreeLayout> FreeLayout::create()
 {
+#ifdef _DEBUG
+    return std::shared_ptr<FreeLayout>(new FreeLayout());
+#else
     struct make_shared_enabler : public FreeLayout {
         make_shared_enabler()
             : FreeLayout() {}
         PADDING(7)
     };
     return std::make_shared<make_shared_enabler>();
+#endif
 }
 
 void FreeLayout::add_item(ItemPtr item)
@@ -58,12 +62,12 @@ void FreeLayout::_remove_child(const Item* child_item)
                                return item.get() == child_item;
                            });
     if (it == std::end(items)) {
-        log_critical << "Cannot remove unknown child Item " << child_item->get_id()
-                     << " from FreeLayout " << get_id();
+        log_critical << "Cannot remove unknown child Item " << child_item->get_name()
+                     << " from FreeLayout " << get_name();
         return;
     }
 
-    log_trace << "Removing child Item " << child_item->get_id() << " from FreeLayout " << get_id();
+    log_trace << "Removing child Item " << child_item->get_name() << " from FreeLayout " << get_name();
     items.erase(it);
     on_child_removed(child_item);
     _redraw();
@@ -90,13 +94,15 @@ Claim FreeLayout::_consolidate_claim()
 
 void FreeLayout::_relayout()
 {
-    Aabrf result;
+    _set_size(get_claim().apply(get_grant()));
+
+    Aabrf content_aabr;
     std::vector<ItemPtr>& items = static_cast<detail::ItemList*>(m_children.get())->items;
     for (const ItemPtr& item : items) {
-        result.unite(item->get_screen_item()->get_aabr<Space::PARENT>());
+        const ScreenItem* screen_item = item->get_screen_item();
+        content_aabr.unite(screen_item->get_xform<Space::PARENT>().transform(screen_item->get_content_aabr()));
     }
-    _set_aabr(std::move(result));
-    m_child_aabr = _get_aabr();
+    _set_content_aabr(std::move(content_aabr));
 }
 
 } // namespace notf

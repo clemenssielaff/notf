@@ -20,7 +20,8 @@ ScreenItem::ScreenItem(ItemContainerPtr container)
     , m_offset_transform(Xform2f::identity())
     , m_claim()
     , m_grant(Size2f::zero())
-    , m_aabr(Aabrf::zero())
+    , m_size(Size2f::zero())
+    , m_content_aabr(Aabrf::zero())
     , m_is_visible(true)
     , m_opacity(1)
     , m_scissor_layout()
@@ -86,7 +87,7 @@ bool ScreenItem::is_visible() const
     assert(m_scissor_layout);
 
     // bounding rect too small
-    if (m_aabr.get_area() <= precision_low<float>()) {
+    if (m_size.get_area() <= precision_low<float>()) {
         return false;
     }
 
@@ -122,8 +123,8 @@ void ScreenItem::set_visible(bool is_visible)
 void ScreenItem::set_scissor(const Layout* scissor_layout)
 {
     if (!has_ancestor(scissor_layout)) {
-        log_critical << "Cannot set Layout " << scissor_layout->get_id() << " as scissor of Item " << get_id()
-                     << " because it is not an ancestor of " << get_id();
+        log_critical << "Cannot set Layout " << scissor_layout->get_name() << " as scissor of Item " << get_name()
+                     << " because it is not an ancestor of " << get_name();
         scissor_layout = nullptr;
     }
     if (!scissor_layout) {
@@ -206,15 +207,20 @@ bool ScreenItem::_set_grant(const Size2f grant)
     return true;
 }
 
-bool ScreenItem::_set_aabr(const Aabrf aabr)
+bool ScreenItem::_set_size(const Size2f size)
 {
-    if (aabr == m_aabr) {
+    if (size == m_size) {
         return false;
     }
-    m_aabr = std::move(aabr);
-    on_aabr_changed(m_aabr);
+    m_size = std::move(size);
+    on_size_changed(m_size);
     _redraw();
     return true;
+}
+
+void ScreenItem::_set_content_aabr(const Aabrf aabr)
+{
+    m_content_aabr = std::move(aabr);
 }
 
 void ScreenItem::_set_layout_xform(const Xform2f transform)
@@ -278,7 +284,7 @@ Xform2f transformation_between(const ScreenItem* source, const ScreenItem* targe
     const ScreenItem* common_ancestor = source->get_common_ancestor(target)->get_screen_item();
     if (!common_ancestor) {
         std::stringstream ss;
-        ss << "Cannot find common ancestor for Items " << source->get_id() << " and " << target->get_id();
+        ss << "Cannot find common ancestor for Items " << source->get_name() << " and " << target->get_name();
         throw std::runtime_error(ss.str());
     }
 

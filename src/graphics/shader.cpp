@@ -172,11 +172,15 @@ std::shared_ptr<Shader> Shader::build(GraphicsContext& context,
     }
 
     // create the Shader object
+#ifdef _DEBUG
+    std::shared_ptr<Shader> shader(new Shader(program, context, name));
+#else
     struct make_shared_enabler : public Shader {
         make_shared_enabler(const GLuint id, GraphicsContext& context, const std::string name)
             : Shader(id, context, name) {}
     };
     std::shared_ptr<Shader> shader = std::make_shared<make_shared_enabler>(program, context, name);
+#endif
     context.m_shaders.emplace_back(shader);
     return shader;
 }

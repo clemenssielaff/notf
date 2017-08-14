@@ -1,6 +1,7 @@
 #include "core/item.hpp"
 
 #include <atomic>
+#include <string>
 #include <unordered_set>
 
 #include "common/log.hpp"
@@ -30,7 +31,7 @@ Item::Item(ItemContainerPtr container)
     , m_id(get_next_id())
     , m_window()
     , m_parent()
-    , m_name()
+    , m_name(std::to_string(static_cast<size_t>(get_id())))
 #ifdef NOTF_PYTHON
     , m_py_object(nullptr, py_decref)
 #endif

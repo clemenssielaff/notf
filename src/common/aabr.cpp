@@ -10,8 +10,8 @@ namespace notf {
 template <>
 std::ostream& operator<<(std::ostream& out, const notf::_Aabr<Vector2f>& aabr)
 {
-    return out << "Aabrf([" << aabr.left() << ", " << aabr.top() << "], ["
-               << aabr.right() << ", " << aabr.bottom() << "])";
+    return out << "Aabrf(pos: [" << aabr.left() << ", " << aabr.bottom() << "], h:"
+               << aabr.get_height() << ", w:" << aabr.get_width() << "])";
 }
 
 static_assert(sizeof(Aabrf) == sizeof(Vector2f) * 2,
