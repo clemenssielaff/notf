@@ -33,9 +33,7 @@ void ScrollArea::ScrollBar::_paint(Painter& painter) const
     // bar
     if (size < 1) {
         Aabrf bar_rect(widget_rect.get_width(), widget_rect.get_height() * size);
-        bar_rect.move_by({0, widget_rect.get_height() - bar_rect.get_height()});
-
-        log_trace << "Scrollbar rect: " << bar_rect;
+        bar_rect.move_by({0, (widget_rect.get_height() - bar_rect.get_height()) * (1 - pos)});
 
         painter.begin_path();
         painter.add_rect(bar_rect);
@@ -62,7 +60,7 @@ ScrollArea::ScrollArea()
     // the window into the content
     m_area_window = Overlayout::create();
     m_area_window->set_claim(Claim()); // do not combine child Claims
-    m_area_window->set_alignment(Overlayout::AlignHorizontal::CENTER, Overlayout::AlignVertical::TOP);
+    m_area_window->set_alignment(Overlayout::AlignHorizontal::LEFT, Overlayout::AlignVertical::TOP);
     m_area_window->set_name("AreaWindow");
 
     // transparent background Widget reacting to scroll events not caught by the ScrollArea's content
@@ -73,7 +71,7 @@ ScrollArea::ScrollArea()
     // container inside the area, scissored by the window and containing the content
     m_scroll_container = Overlayout::create();
     m_scroll_container->set_name("ScrollContainer");
-//    m_scroll_container->set_alignment(Overlayout::AlignHorizontal::LEFT, Overlayout::AlignVertical::TOP);
+    m_scroll_container->set_alignment(Overlayout::AlignHorizontal::LEFT, Overlayout::AlignVertical::TOP);
     m_area_window->add_item(m_scroll_container);
     m_scroll_container->set_scissor(m_area_window.get());
 
@@ -95,55 +93,60 @@ ScrollArea::ScrollArea()
             _update_scrollbar(0);
         });
 
-//    // scroll when scrolling the mouse wheel anywhere over the scroll area
-//    connect_signal(
-//        root_layout->on_mouse_scroll,
-//        [this](MouseEvent& event) -> void {
-//            log_trace << "Derbness";
-//            _update_scrollbar(16 * event.window_delta.y());
-//        });
+    // scroll when scrolling the mouse wheel anywhere over the scroll area
+    connect_signal(
+        root_layout->on_mouse_scroll,
+        [this](MouseEvent& event) -> void {
+            _update_scrollbar(event.window_delta.y() * -16);
+        });
 
-    //    // event handler for when then scrollbar is dragged
-    //    m_on_scrollbar_drag = connect_signal(
-    //        m_vscrollbar->on_mouse_move,
-    //        [this](MouseEvent& event) -> void {
-    //            const float area_height = m_area_window->get_grant().height;
-    //            if (area_height >= 1) {
-    //                _update_scrollbar(event.window_delta.y() * _get_content_height() / area_height);
-    //            }
-    //            event.set_handled();
-    //        });
-    //    m_on_scrollbar_drag.disable();
+    // event handler for when then scrollbar is dragged
+    m_on_scrollbar_drag = connect_signal(
+        m_vscrollbar->on_mouse_move,
+        [this](MouseEvent& event) -> void {
+            const float area_height = m_area_window->get_grant().height;
+            if (area_height >= 1) {
+                _update_scrollbar(event.window_delta.y() * _get_content_height() / area_height);
+            }
+            event.set_handled();
+        });
+    m_on_scrollbar_drag.disable();
 
-    //    // enable scrollbar dragging when the user clicks on the scrollbar
-    //    connect_signal(
-    //        m_vscrollbar->on_mouse_button,
-    //        [this](MouseEvent& event) -> void {
-    //            m_on_scrollbar_drag.enable();
-    //            event.set_handled();
-    //        },
-    //        [this](MouseEvent& event) -> bool {
-    //            const float available_height = m_vscrollbar->get_size().height;
-    //            const float scroll_bar_top   = m_vscrollbar->get_window_xform().get_translation().y()
-    //                + (m_vscrollbar->pos * available_height);
-    //            const float scroll_bar_height = m_vscrollbar->size * available_height;
-    //            return (event.action == MouseAction::PRESS
-    //                    && event.window_pos.y() >= scroll_bar_top
-    //                    && event.window_pos.y() <= scroll_bar_top + scroll_bar_height);
-    //        });
+    // enable scrollbar dragging when the user clicks on the scrollbar
+    connect_signal(
+        m_vscrollbar->on_mouse_button,
+        [this](MouseEvent& event) -> void {
+            log_trace << "Scrollbar pressed";
+            m_on_scrollbar_drag.enable();
+            event.set_handled();
+        },
+        [this](MouseEvent& event) -> bool {
+            if(abs(m_vscrollbar->size - 1.f) < precision_low<float>()){
+                return false;
+            }
+            const Aabrf scroll_bar_aabr = m_vscrollbar->get_aabr<ScreenItem::Space::WINDOW>();
 
-    //    // disable scrollbar dragging again, when the user releases the mouse
-    //    connect_signal(
-    //        m_vscrollbar->on_mouse_button,
-    //        [this](MouseEvent& event) -> void {
-    //            if (m_on_scrollbar_drag.is_enabled()) {
-    //                m_on_scrollbar_drag.disable();
-    //                event.set_handled();
-    //            }
-    //        },
-    //        [this](MouseEvent& event) -> bool {
-    //            return event.action == MouseAction::RELEASE;
-    //        });
+            const float full_height  = scroll_bar_aabr.get_height(); // TODO: Aabrf.bottom() but Aabrf.get_height?
+            const float bar_height = full_height * m_vscrollbar->size;
+            const float top_gap = max(0, (full_height - bar_height) * m_vscrollbar->pos);
+            const float bottom_gap = max(0, full_height - bar_height - top_gap);
+            return (event.action == MouseAction::PRESS
+                    && event.window_pos.y() >= scroll_bar_aabr.bottom() + bottom_gap
+                    && event.window_pos.y() <= scroll_bar_aabr.top() - top_gap);
+        });
+
+    // disable scrollbar dragging again, when the user releases the mouse
+    connect_signal(
+        m_vscrollbar->on_mouse_button,
+        [this](MouseEvent& event) -> void {
+            if (m_on_scrollbar_drag.is_enabled()) {
+                m_on_scrollbar_drag.disable();
+                event.set_handled();
+            }
+        },
+        [this](MouseEvent& event) -> bool {
+            return event.action == MouseAction::RELEASE;
+        });
 }
 
 void ScrollArea::set_area_controller(ControllerPtr controller)
@@ -166,15 +169,16 @@ void ScrollArea::_update_scrollbar(float delta_y)
     // there must at least be half a pixel to scroll in order for the bar to show up
     if (overflow >= 0.5f) {
 
-        const float container_y     = m_scroll_container->get_xform<ScreenItem::Space::PARENT>().get_translation().y();
-        const float new_container_y = max(area_height - content_height, container_y + delta_y);
-        m_scroll_container->set_local_xform(Xform2f::translation(Vector2f(0, new_container_y)));
+        const float min_y           = content_height - area_height;
+        const float container_y     = m_scroll_container->get_xform<ScreenItem::Space::OFFSET>().get_translation().y();
+        const float new_container_y = max(0, min(min_y, container_y + delta_y));
+        m_scroll_container->set_offset_xform(Xform2f::translation(Vector2f(0, new_container_y)));
 
         m_vscrollbar->size = area_height / content_height;
-        m_vscrollbar->pos  = area_height - (abs(new_container_y) / content_height);
+        m_vscrollbar->pos  = new_container_y / min_y;
     }
     else {
-        m_scroll_container->set_local_xform(Xform2f::translation(Vector2f(0, 0/*area_height - content_height*/)));
+        m_scroll_container->set_offset_xform(Xform2f::identity());
         m_vscrollbar->size = 1;
         m_vscrollbar->pos  = 0;
     }

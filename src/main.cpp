@@ -68,10 +68,10 @@ public: // methods
     FlexController()
         : BaseController<FlexController>({}, {})
     {
-        std::shared_ptr<Overlayout> overlayout = Overlayout::create();
-        overlayout->set_alignment(Overlayout::AlignHorizontal::RIGHT, Overlayout::AlignVertical::TOP);
-        overlayout->set_name("Inner OverLayout");
-        _set_root_item(overlayout);
+//        std::shared_ptr<Overlayout> overlayout = Overlayout::create();
+//        overlayout->set_alignment(Overlayout::AlignHorizontal::RIGHT, Overlayout::AlignVertical::TOP);
+//        overlayout->set_name("Inner OverLayout");
+//        _set_root_item(overlayout);
 
         //        std::shared_ptr<RectWidget> back_rect = std::make_shared<RectWidget>(nullptr, Color("#333333"));
         //        overlayout->add_item(back_rect);
@@ -80,7 +80,9 @@ public: // methods
         flex_layout->set_name("FlexLayout");
         flex_layout->set_spacing(10);
         flex_layout->set_alignment(FlexLayout::Alignment::START);
-        overlayout->add_item(flex_layout);
+        flex_layout->set_cross_alignment(FlexLayout::Alignment::START);
+        _set_root_item(flex_layout);
+//        overlayout->add_item(flex_layout);
 
         for (int i = 0; i < 4; ++i) {
             std::shared_ptr<RectWidget> rect = std::make_shared<RectWidget>(nullptr, Color("#c34200"));
@@ -109,24 +111,6 @@ public: // methods
         overlayout->set_padding(Padding::all(20));
         overlayout->set_name("Outer OverLayout");
         _set_root_item(overlayout);
-
-//        std::shared_ptr<Overlayout> inner_overlayout = Overlayout::create();
-//        inner_overlayout->set_alignment(Overlayout::AlignHorizontal::CENTER, Overlayout::AlignVertical::CENTER);
-//        inner_overlayout->set_name("Inner OverLayout");
-//        overlayout->add_item(inner_overlayout);
-
-//        std::shared_ptr<FlexLayout> flex_layout = FlexLayout::create();
-//        flex_layout->set_name("FlexLayout");
-//        flex_layout->set_spacing(10);
-//        flex_layout->set_alignment(FlexLayout::Alignment::START);
-//        inner_overlayout->add_item(flex_layout);
-//        for (int i = 0; i < 2; ++i) {
-//            std::shared_ptr<RectWidget> rect = std::make_shared<RectWidget>(nullptr, Color("#c34200"));
-//            Claim claim                      = rect->get_claim();
-//            claim.set_fixed(100, 400);
-//            rect->set_claim(claim);
-//            flex_layout->add_item(rect);
-//        }
 
         ScrollAreaPtr scroll_area = std::make_shared<ScrollArea>();
         scroll_area->set_name("ScrollArea");

@@ -151,20 +151,17 @@ std::tuple<float, float> calculate_alignment(const FlexLayout::Alignment alignme
 float cross_align_offset(const FlexLayout::Alignment alignment, const float item_size, const float available_size,
                          const bool cross_positive)
 {
-    if (available_size > item_size) {
-        switch (alignment) {
-        case FlexLayout::Alignment::START:
-            return cross_positive ? 0 : available_size - item_size;
-        case FlexLayout::Alignment::END:
-            return cross_positive ? available_size - item_size : 0;
-        case FlexLayout::Alignment::CENTER:
-        case FlexLayout::Alignment::SPACE_BETWEEN:
-        case FlexLayout::Alignment::SPACE_AROUND:
-        case FlexLayout::Alignment::SPACE_EQUAL:
-            return (available_size - item_size) * 0.5f;
-        }
+    switch (alignment) {
+    case FlexLayout::Alignment::START:
+        return cross_positive ? 0 : available_size - item_size;
+    case FlexLayout::Alignment::END:
+        return cross_positive ? available_size - item_size : 0;
+    case FlexLayout::Alignment::CENTER:
+    case FlexLayout::Alignment::SPACE_BETWEEN:
+    case FlexLayout::Alignment::SPACE_AROUND:
+    case FlexLayout::Alignment::SPACE_EQUAL:
+        return (available_size - item_size) * 0.5f;
     }
-    return 0.f;
 }
 
 detail::FlexSize getStartOffsets(const FlexLayout& flex_layout)

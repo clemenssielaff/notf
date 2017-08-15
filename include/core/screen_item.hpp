@@ -161,7 +161,7 @@ public: // methods *************************************************************
     }
 
     /** Updates the transformation of this ScreenItem. */
-    void set_local_xform(const Xform2f transform);
+    void set_offset_xform(const Xform2f transform);
 
     /** The Claim of this Item. */
     const Claim& get_claim() const { return m_claim; }

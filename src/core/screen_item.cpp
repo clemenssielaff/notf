@@ -39,7 +39,7 @@ const Xform2f ScreenItem::get_xform<ScreenItem::Space::WINDOW>() const
     return result;
 }
 
-void ScreenItem::set_local_xform(const Xform2f transform)
+void ScreenItem::set_offset_xform(const Xform2f transform)
 {
     if (transform == m_offset_transform) {
         return;
@@ -97,9 +97,9 @@ bool ScreenItem::is_visible() const
     }
 
     { // fully scissored
-        Aabrf content_aabr(get_size());
+        Aabrf content_aabr = m_content_aabr;
         transformation_between(this, m_scissor_layout).transform(content_aabr);
-        Aabrf scissor_aabr(m_scissor_layout->get_grant());
+        Aabrf scissor_aabr(m_scissor_layout->get_size());
         m_scissor_layout->get_xform<Space::PARENT>().transform(scissor_aabr);
         if (!scissor_aabr.intersects(content_aabr)) {
             return false;
