@@ -221,6 +221,9 @@ void Application::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
     Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
     assert(window);
 
+    // invert the y-coordinate (by default, y grows down)
+    y = window->get_window_size().height - y;
+
     { // update the global state
         g_prev_cursor_pos = g_cursor_pos;
 

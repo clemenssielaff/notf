@@ -104,7 +104,7 @@ ScrollArea::ScrollArea()
     m_on_scrollbar_drag = connect_signal(
         m_vscrollbar->on_mouse_move,
         [this](MouseEvent& event) -> void {
-            const float area_height = m_area_window->get_grant().height;
+            const float area_height = m_area_window->get_size().height;
             if (area_height >= 1) {
                 _update_scrollbar(event.window_delta.y() * _get_content_height() / area_height);
             }
@@ -125,7 +125,6 @@ ScrollArea::ScrollArea()
                 return false;
             }
             const Aabrf scroll_bar_aabr = m_vscrollbar->get_aabr<ScreenItem::Space::WINDOW>();
-
             const float full_height  = scroll_bar_aabr.get_height(); // TODO: Aabrf.bottom() but Aabrf.get_height?
             const float bar_height = full_height * m_vscrollbar->size;
             const float top_gap = max(0, (full_height - bar_height) * m_vscrollbar->pos);
@@ -171,7 +170,7 @@ void ScrollArea::_update_scrollbar(float delta_y)
 
         const float min_y           = content_height - area_height;
         const float container_y     = m_scroll_container->get_xform<ScreenItem::Space::OFFSET>().get_translation().y();
-        const float new_container_y = max(0, min(min_y, container_y + delta_y));
+        const float new_container_y = max(0, min(min_y, container_y - delta_y));
         m_scroll_container->set_offset_xform(Xform2f::translation(Vector2f(0, new_container_y)));
 
         m_vscrollbar->size = area_height / content_height;
