@@ -116,7 +116,6 @@ ScrollArea::ScrollArea()
     connect_signal(
         m_vscrollbar->on_mouse_button,
         [this](MouseEvent& event) -> void {
-            log_trace << "Scrollbar pressed";
             m_on_scrollbar_drag.enable();
             event.set_handled();
         },

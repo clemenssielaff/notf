@@ -221,14 +221,16 @@ void Application::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
     Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
     assert(window);
 
-    // invert the y-coordinate (by default, y grows down)
-    y = window->get_window_size().height - y;
-
     { // update the global state
         g_prev_cursor_pos = g_cursor_pos;
 
+        // invert the y-coordinate (by default, y grows down)
+        const int window_height = window->get_window_size().height;
+        y                       = window_height - y;
         Vector2i window_pos;
         glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
+        window_pos.y() = window_height - window_pos.y();
+
         g_cursor_pos.x() = static_cast<float>(window_pos.x()) + static_cast<float>(x);
         g_cursor_pos.y() = static_cast<float>(window_pos.y()) + static_cast<float>(y);
     }
@@ -260,8 +262,10 @@ void Application::_on_mouse_button(GLFWwindow* glfw_window, int button, int acti
     set_button(g_button_states, notf_button, action);
     g_key_modifiers = KeyModifiers(modifiers);
 
+    // invert the y-coordinate (by default, y grows down)
     Vector2i window_pos;
     glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
+    window_pos.y() = window->get_window_size().height - window_pos.y();
 
     // propagate the event
     MouseEvent mouse_event(
@@ -282,15 +286,17 @@ void Application::_on_scroll(GLFWwindow* glfw_window, double x, double y)
     Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
     assert(window);
 
+    // invert the y-coordinate (by default, y grows down)
     Vector2i window_pos;
     glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
+    window_pos.y() = window->get_window_size().height - window_pos.y();
 
     // propagate the event
     MouseEvent mouse_event(
         *window,
         {g_cursor_pos.x() - static_cast<float>(window_pos.x()),
          g_cursor_pos.y() - static_cast<float>(window_pos.y())},
-        {static_cast<float>(x), static_cast<float>(y)},
+        {static_cast<float>(x), static_cast<float>(-y)},
         Button::NONE,
         MouseAction::SCROLL,
         g_key_modifiers, g_button_states);
