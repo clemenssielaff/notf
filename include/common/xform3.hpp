@@ -9,14 +9,14 @@ namespace notf {
 namespace detail {
 
 /** Transforms the given input and returns a new value. */
-template <typename XFORM4, typename INPUT>
-INPUT transform4(const XFORM4&, const INPUT&);
+template <typename XFORM3, typename INPUT>
+INPUT transform3(const XFORM3&, const INPUT&);
 
 /** Transforms the given input in-place.
  * Modifies the argument but also returns a reference to it.
  */
-template <typename XFORM4, typename INPUT>
-INPUT& transform4(const XFORM4&, INPUT&);
+template <typename XFORM3, typename INPUT>
+INPUT& transform3(const XFORM3&, INPUT&);
 
 } // namespace detail
 
@@ -31,10 +31,10 @@ INPUT& transform4(const XFORM4&, INPUT&);
  * compatiblity with OpenGL.
  */
 template <typename Real, bool SIMD_SPECIALIZATION = false, ENABLE_IF_REAL(Real)>
-struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, true>, _RealVector4<Real>, 4, SIMD_SPECIALIZATION> {
+struct _Xform3 : public detail::Arithmetic<_Xform3<Real, SIMD_SPECIALIZATION, true>, _RealVector4<Real>, 4, SIMD_SPECIALIZATION> {
 
     // explitic forwards
-    using super    = detail::Arithmetic<_Xform4<Real>, _RealVector4<Real>, 4, SIMD_SPECIALIZATION>;
+    using super    = detail::Arithmetic<_Xform3<Real>, _RealVector4<Real>, 4, SIMD_SPECIALIZATION>;
     using vector_t = _RealVector4<Real>;
     using value_t  = Real;
     using super::data;
@@ -42,10 +42,10 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
     /* Constructors ***************************************************************************************************/
 
     /** Default (non-initializing) constructor so this struct remains a POD */
-    _Xform4() = default;
+    _Xform3() = default;
 
     /** Value constructor defining the diagonal of the matrix. */
-    explicit _Xform4(const value_t a)
+    explicit _Xform3(const value_t a)
         : super{vector_t(a, 0, 0, 0),
                 vector_t(0, a, 0, 0),
                 vector_t(0, 0, a, 0),
@@ -54,7 +54,7 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
     }
 
     /** Column-wise constructor of the matrix. */
-    _Xform4(const vector_t a, const vector_t b, const vector_t c, const vector_t d)
+    _Xform3(const vector_t a, const vector_t b, const vector_t c, const vector_t d)
         : super{std::move(a),
                 std::move(b),
                 std::move(c),
@@ -63,7 +63,7 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
     }
 
     /** Element-wise constructor. */
-    _Xform4(const value_t a, const value_t b, const value_t c, const value_t d,
+    _Xform3(const value_t a, const value_t b, const value_t c, const value_t d,
             const value_t e, const value_t f, const value_t g, const value_t h,
             const value_t i, const value_t j, const value_t k, const value_t l,
             const value_t m, const value_t n, const value_t o, const value_t p)
@@ -77,30 +77,30 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
     /* Static Constructors ********************************************************************************************/
 
     /** Identity Transform */
-    static _Xform4 identity() { return _Xform4(1); }
+    static _Xform3 identity() { return _Xform3(1); }
 
     /** A 2D translation matrix. */
-    static _Xform4 translation(const Vector2f& t)
+    static _Xform3 translation(const Vector2f& t)
     {
-        return _Xform4(1, 0, 0, 0,
+        return _Xform3(1, 0, 0, 0,
                        0, 1, 0, 0,
                        0, 0, 1, 0,
                        t.x(), t.y(), 0, 1);
     }
 
     /** A 3D translation matrix. */
-    static _Xform4 translation(const Vector4f& t)
+    static _Xform3 translation(const Vector4f& t)
     {
-        return _Xform4(1, 0, 0, 0,
+        return _Xform3(1, 0, 0, 0,
                        0, 1, 0, 0,
                        0, 0, 1, 0,
                        t.x(), t.y(), t.z(), 1);
     }
 
     /** A rotation matrix. */
-    static _Xform4 rotation(const vector_t axis, const value_t radians)
+    static _Xform3 rotation(const vector_t axis, const value_t radians)
     {
-        _Xform4 result = identity();
+        _Xform3 result = identity();
         result.rotate(radians, std::move(axis));
         return result;
     }
@@ -108,9 +108,9 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
     /** A uniform scale matrix.
      * @param factor   Uniform scale factor.
      */
-    static _Xform4 scaling(const value_t scale)
+    static _Xform3 scaling(const value_t scale)
     {
-        return _Xform4(scale, 0, 0, 0,
+        return _Xform3(scale, 0, 0, 0,
                        0, scale, 0, 0,
                        0, 0, scale, 0,
                        0, 0, 0, 1);
@@ -118,9 +118,9 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
     /** A non-uniform scale matrix.
      * @param vector   Non-uniform scale vector.
      */
-    static _Xform4 scaling(const vector_t& scale)
+    static _Xform3 scaling(const vector_t& scale)
     {
-        return _Xform4(scale[0], 0, 0, 0,
+        return _Xform3(scale[0], 0, 0, 0,
                        0, scale[1], 0, 0,
                        0, 0, scale[2], 0,
                        0, 0, 0, 1);
@@ -134,9 +134,9 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
     //     */
     //    static Transform3 perspective(const float fov, const float aspectRatio, const float znear, const float zfar);
 
-    static _Xform4 orthographic(const float width, const float height)
+    static _Xform3 orthographic(const float width, const float height)
     {
-        _Xform4 result = identity();
+        _Xform3 result = identity();
         if (std::abs(width) <= precision_high<value_t>() || std::abs(height) <= precision_high<value_t>()) {
             return result;
         }
@@ -154,9 +154,9 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
     /* Modification ***************************************************************************************************/
 
     /** Concatenation of two transformation matrices. */
-    _Xform4 operator*(const _Xform4& other) const
+    _Xform3 operator*(const _Xform3& other) const
     {
-        _Xform4 result;
+        _Xform3 result;
         result[0] = data[0] * other[0][0] + data[1] * other[0][1] + data[2] * other[0][2] + data[3] * other[0][3];
         result[1] = data[0] * other[1][0] + data[1] * other[1][1] + data[2] * other[1][2] + data[3] * other[1][3];
         result[2] = data[0] * other[2][0] + data[1] * other[2][1] + data[2] * other[2][2] + data[3] * other[2][3];
@@ -165,28 +165,28 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
     }
 
     /** Applies the other Xform to this one in-place. */
-    _Xform4& operator*=(const _Xform4& other)
+    _Xform3& operator*=(const _Xform3& other)
     {
         *this = *this * other;
         return *this;
     }
 
     /** Premultiplies the other transform matrix with this one in-place. */
-    _Xform4& premult(const _Xform4& other)
+    _Xform3& premult(const _Xform3& other)
     {
         *this = other * *this;
         return *this;
     }
 
     /** Applies a right-hand rotation around the given axis to this xform. */
-    _Xform4& translate(const vector_t& delta)
+    _Xform3& translate(const vector_t& delta)
     {
         data[3] = data[0] * delta[0] + data[1] * delta[1] + data[2] * delta[2] + data[3];
         return *this;
     }
 
     /** Applies a right-hand rotation around the given axis to this xform. */
-    _Xform4& rotate(const value_t radian, vector_t axis)
+    _Xform3& rotate(const value_t radian, vector_t axis)
     {
         const value_t cos_angle = cos(radian);
         const value_t sin_angle = sin(radian);
@@ -195,7 +195,7 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
         axis.normalize();
         const vector_t temp = axis * (1 - cos_angle);
 
-        _Xform4 rotation;
+        _Xform3 rotation;
         rotation[0][0] = cos_angle + temp[0] * axis[0];
         rotation[0][1] = temp[0] * axis[1] + sin_angle * axis[2];
         rotation[0][2] = temp[0] * axis[2] - sin_angle * axis[1];
@@ -208,7 +208,7 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
         rotation[2][1] = temp[2] * axis[1] - sin_angle * axis[0];
         rotation[2][2] = cos_angle + temp[2] * axis[2];
 
-        _Xform4 result;
+        _Xform3 result;
         result[0] = data[0] * rotation[0][0] + data[1] * rotation[0][1] + data[2] * rotation[0][2];
         result[1] = data[0] * rotation[1][0] + data[1] * rotation[1][1] + data[2] * rotation[1][2];
         result[2] = data[0] * rotation[2][0] + data[1] * rotation[2][1] + data[2] * rotation[2][2];
@@ -219,7 +219,7 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
     }
 
     /** Applies a non-uniform scaling to this xform. */
-    _Xform4& scale(const vector_t& factor) const
+    _Xform3& scale(const vector_t& factor) const
     {
         data[0] *= factor[0];
         data[1] *= factor[1];
@@ -228,7 +228,7 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
     }
 
     /** Applies a non-uniform scaling to this xform. */
-    _Xform4& scale(const value_t& factor) const
+    _Xform3& scale(const value_t& factor) const
     {
         data[0] *= factor;
         data[1] *= factor;
@@ -237,7 +237,7 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
     }
 
     /** Returns the inverse of this Xform2. */
-    _Xform4 get_inverse() const
+    _Xform3 get_inverse() const
     {
         value_t coef00 = data[2][2] * data[3][3] - data[3][2] * data[2][3];
         value_t coef02 = data[1][2] * data[3][3] - data[3][2] * data[1][3];
@@ -282,7 +282,7 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
 
         vector_t signA(+1, -1, +1, -1);
         vector_t signB(-1, +1, -1, +1);
-        _Xform4 inverse(inv0 * signA, inv1 * signB, inv2 * signA, inv3 * signB);
+        _Xform3 inverse(inv0 * signA, inv1 * signB, inv2 * signA, inv3 * signB);
 
         vector_t row0(inverse[0][0], inverse[1][0], inverse[2][0], inverse[3][0]);
         vector_t dot0(data[0] * row0);
@@ -292,7 +292,7 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
     }
 
     /** Inverts this Xform in-place. */
-    _Xform4& invert()
+    _Xform3& invert()
     {
         *this = get_inverse();
         return *this;
@@ -356,19 +356,19 @@ struct _Xform4 : public detail::Arithmetic<_Xform4<Real, SIMD_SPECIALIZATION, tr
 
     /** Transforms a given value and returns a new instance. */
     template <typename T>
-    T transform(const T& value) const { return detail::transform4(*this, value); }
+    T transform(const T& value) const { return detail::transform3(*this, value); }
 
     /** Transforms a given value in-place.
      * Modifies the input but also returns a reference to it.
      */
     template <typename T>
-    T& transform(T& value) const { return detail::transform4(*this, value); }
+    T& transform(T& value) const { return detail::transform3(*this, value); }
 };
 
 //*********************************************************************************************************************/
 
-using Xform4f = _Xform4<float>;
-using Xform4d = _Xform4<double>;
+using Xform3f = _Xform3<float>;
+using Xform3d = _Xform3<double>;
 
 /* Free Functions *****************************************************************************************************/
 
@@ -378,7 +378,7 @@ using Xform4d = _Xform4<double>;
  * @return      Output stream for further output.
  */
 template <typename REAL>
-std::ostream& operator<<(std::ostream& out, const notf::_Xform4<REAL>& aabr);
+std::ostream& operator<<(std::ostream& out, const notf::_Xform3<REAL>& aabr);
 
 } // namespace notf
 
@@ -388,11 +388,11 @@ namespace std {
 
 /** std::hash specialization for notf::_Aabr. */
 template <typename Real>
-struct hash<notf::_Xform4<Real>> {
-    size_t operator()(const notf::_Xform4<Real>& xform4) const { return notf::hash(xform4[0], xform4[1], xform4[2], xform4[3]); }
+struct hash<notf::_Xform3<Real>> {
+    size_t operator()(const notf::_Xform3<Real>& xform3) const { return notf::hash(xform3[0], xform3[1], xform3[2], xform3[3]); }
 };
 }
 
 #ifndef NOTF_NO_SIMD
-#include "common/simd/simd_xform4.hpp"
+#include "common/simd/simd_xform3.hpp"
 #endif

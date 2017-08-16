@@ -110,7 +110,7 @@ const FontManager& CellCanvas::get_font_manager() const
     return m_graphics_context.get_font_manager();
 }
 
-void CellCanvas::begin_frame(const Xform4f projection_matrix, const Time time, const Vector2f mouse_pos)
+void CellCanvas::begin_frame(const Xform3f projection_matrix, const Time time, const Vector2f mouse_pos)
 {
     reset();
 

@@ -1,4 +1,4 @@
-#include "common/xform4.hpp"
+#include "common/xform3.hpp"
 
 #include <iostream>
 
@@ -18,42 +18,42 @@ namespace notf {
 //    return result;
 //}
 
-/* Xform4f ************************************************************************************************************/
+/* Xform3f ************************************************************************************************************/
 
 template <>
-std::ostream& operator<<(std::ostream& out, const Xform4f& mat)
+std::ostream& operator<<(std::ostream& out, const Xform3f& mat)
 {
-    return out << "Xform4f(\n"
+    return out << "Xform3f(\n"
                << "\t" << mat[0][0] << ",\t" << mat[1][0] << ",\t" << mat[2][0] << ",\t" << mat[3][0] << "\n"
                << "\t" << mat[0][1] << ",\t" << mat[1][1] << ",\t" << mat[2][1] << ",\t" << mat[3][1] << "\n"
                << "\t" << mat[0][2] << ",\t" << mat[1][2] << ",\t" << mat[2][2] << ",\t" << mat[3][2] << "\n"
                << "\t" << mat[0][3] << ",\t" << mat[1][3] << ",\t" << mat[2][3] << ",\t" << mat[3][3] << ")";
 }
 
-static_assert(sizeof(Xform4f) == sizeof(float) * 16,
-              "This compiler seems to inject padding bits into the notf::Xform4f memory layout. "
+static_assert(sizeof(Xform3f) == sizeof(float) * 16,
+              "This compiler seems to inject padding bits into the notf::Xform3f memory layout. "
               "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
-static_assert(std::is_pod<Xform4f>::value,
-              "This compiler does not recognize notf::Xform4f as a POD.");
+static_assert(std::is_pod<Xform3f>::value,
+              "This compiler does not recognize notf::Xform3f as a POD.");
 
-/* Xform4d ************************************************************************************************************/
+/* Xform3d ************************************************************************************************************/
 
 template <>
-std::ostream& operator<<(std::ostream& out, const Xform4d& mat)
+std::ostream& operator<<(std::ostream& out, const Xform3d& mat)
 {
-    return out << "Xform4d(\n"
+    return out << "Xform3d(\n"
                << "\t" << mat[0][0] << ",\t" << mat[1][0] << ",\t" << mat[2][0] << ",\t" << mat[3][0] << "\n"
                << "\t" << mat[0][1] << ",\t" << mat[1][1] << ",\t" << mat[2][1] << ",\t" << mat[3][1] << "\n"
                << "\t" << mat[0][2] << ",\t" << mat[1][2] << ",\t" << mat[2][2] << ",\t" << mat[3][2] << "\n"
                << "\t" << mat[0][3] << ",\t" << mat[1][3] << ",\t" << mat[2][3] << ",\t" << mat[3][3] << ")";
 }
 
-static_assert(sizeof(Xform4d) == sizeof(double) * 16,
-              "This compiler seems to inject padding bits into the notf::Xform4d memory layout. "
+static_assert(sizeof(Xform3d) == sizeof(double) * 16,
+              "This compiler seems to inject padding bits into the notf::Xform3d memory layout. "
               "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
-static_assert(std::is_pod<Xform4d>::value,
-              "This compiler does not recognize notf::Xform4d as a POD.");
+static_assert(std::is_pod<Xform3d>::value,
+              "This compiler does not recognize notf::Xform3d as a POD.");
 
 } // namespace notf

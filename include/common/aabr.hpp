@@ -9,7 +9,7 @@
 #include "common/size2.hpp"
 #include "common/vector2.hpp"
 #include "common/xform2.hpp"
-#include "common/xform4.hpp"
+#include "common/xform3.hpp"
 
 namespace notf {
 
@@ -573,14 +573,14 @@ template <>
 inline Aabrd transform2(const Xform2d& xform, const Aabrd& aabr) { return aabr.copy().transformed_by(xform); }
 
 template <>
-inline Aabrf& transform4(const Xform4f& xform, Aabrf& aabr) { return aabr.transformed_by(xform); }
+inline Aabrf& transform3(const Xform3f& xform, Aabrf& aabr) { return aabr.transformed_by(xform); }
 template <>
-inline Aabrf transform4(const Xform4f& xform, const Aabrf& aabr) { return aabr.copy().transformed_by(xform); }
+inline Aabrf transform3(const Xform3f& xform, const Aabrf& aabr) { return aabr.copy().transformed_by(xform); }
 
 template <>
-inline Aabrd& transform4(const Xform4d& xform, Aabrd& aabr) { return aabr.transformed_by(xform); }
+inline Aabrd& transform3(const Xform3d& xform, Aabrd& aabr) { return aabr.transformed_by(xform); }
 template <>
-inline Aabrd transform4(const Xform4d& xform, const Aabrd& aabr) { return aabr.copy().transformed_by(xform); }
+inline Aabrd transform3(const Xform3d& xform, const Aabrd& aabr) { return aabr.copy().transformed_by(xform); }
 
 } // namespace detail
 

@@ -46,7 +46,7 @@ struct CellCanvasOptions {
     bool stencil_strokes;
 
     /** The projection matrix used to draw the CellCanvas on the screen. */
-    Xform4f projection_matrix;
+    Xform3f projection_matrix;
 
     /** The mouse position relative to the Window's top-left corner. */
     Vector2f mouse_pos;
@@ -153,7 +153,7 @@ public: // methods
     const CellCanvasOptions& get_options() const { return m_options; }
 
     /** Begins a new frame. */
-    void begin_frame(const Xform4f projection_matrix, const Time time, const Vector2f mouse_pos);
+    void begin_frame(const Xform3f projection_matrix, const Time time, const Vector2f mouse_pos);
 
     /** Paints a given Cell. */
     void paint(Cell& cell) { m_painterpreter->paint(cell); }

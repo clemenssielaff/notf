@@ -4,7 +4,7 @@
 
 #include "utils/debug.hpp"
 #include <common/vector4.hpp>
-#include <common/xform4.hpp>
+#include <common/xform3.hpp>
 #include <iostream>
 
 using namespace notf;
@@ -13,7 +13,7 @@ using namespace notf;
  */
 int main(int argc, char* argv[])
 {
-    Xform4f pm = Xform4f::identity();
+    Xform3f pm = Xform3f::identity();
     pm[0][0]   = 2.0f / 800.0f; // 1.0f;
     pm[0][1]   = 0.0f;
     pm[0][2]   = 0.0f;

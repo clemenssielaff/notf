@@ -37,7 +37,7 @@ add_sources(SOURCE_FILES src
     common/vector2.cpp
     common/vector4.cpp
     common/xform2.cpp
-    common/xform4.cpp
+    common/xform3.cpp
     core/application.cpp
     core/claim.cpp
     core/controller.cpp
@@ -126,7 +126,7 @@ add_sources(HEADER_FILES include
     common/signal.hpp
     common/simd/simd_arithmetic4f.hpp
     common/simd/simd_vector4f.hpp
-    common/simd/simd_xform4.hpp
+    common/simd/simd_xform3.hpp
     common/size2.hpp
     common/string.hpp
     common/system.hpp
@@ -137,7 +137,7 @@ add_sources(HEADER_FILES include
     common/vector.hpp
     common/warnings.hpp
     common/xform2.hpp
-    common/xform4.hpp
+    common/xform3.hpp
     core/application.hpp
     core/claim.hpp
     core/controller.hpp
@@ -235,7 +235,7 @@ add_sources(TEST_SOURCES test
         test_utils.hpp
         test_vector2.cpp
         test_xform2.cpp
-        test_xform4.cpp
+        test_xform3.cpp
         test_overlayout.cpp
         test_flexlayout.cpp
         test_utils.cpp

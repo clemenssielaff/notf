@@ -1,14 +1,14 @@
 #include "catch.hpp"
 
 #include "common/xform2.hpp"
-#include "common/xform4.hpp"
+#include "common/xform3.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat3x2.hpp>
 #include <glm/mat4x4.hpp>
 
-inline void compare_mat4(const notf::Xform4f& my, const glm::mat4& their)
+inline void compare_mat4(const notf::Xform3f& my, const glm::mat4& their)
 {
     for (size_t col = 0; col < 4; ++col) {
         for (size_t row = 0; row < 4; ++row) {
@@ -44,7 +44,7 @@ inline void compare_vec4(const notf::Vector4f& my, const glm::vec4& their)
     }
 }
 
-inline glm::mat4 to_glm_mat4(const notf::Xform4f& matrix)
+inline glm::mat4 to_glm_mat4(const notf::Xform3f& matrix)
 {
     glm::mat4 result;
     for (size_t col = 0; col < 4; ++col) {

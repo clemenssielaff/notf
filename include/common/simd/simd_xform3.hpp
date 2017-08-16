@@ -8,7 +8,7 @@
 
 #include <emmintrin.h>
 
-#include "common/xform4.hpp"
+#include "common/xform3.hpp"
 
 namespace notf {
 
@@ -18,15 +18,15 @@ namespace notf {
 #endif
 
 template <>
-struct _Xform4<float, true, false> : public _Xform4<float, true, true> {
+struct _Xform3<float, true, false> : public _Xform3<float, true, true> {
 
-    using super = _Xform4<float, true, true>;
+    using super = _Xform3<float, true, true>;
 
-    _Xform4() = default;
+    _Xform3() = default;
 
     /** Perfect forwarding constructor. */
     template <typename... T>
-    _Xform4(T&&... ts)
+    _Xform3(T&&... ts)
         : super{std::forward<T>(ts)...} {}
 
     // SIMD specializations *******************************************************************************************/
