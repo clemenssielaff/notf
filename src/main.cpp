@@ -87,6 +87,10 @@ public: // methods
         for (int i = 0; i < 4; ++i) {
             std::shared_ptr<RectWidget> rect = std::make_shared<RectWidget>(nullptr, Color("#c34200"));
 
+            if(i == 1){
+                rect->set_opacity(0.5);
+            }
+
             std::stringstream ss;
             ss << "Rect" << std::to_string(static_cast<size_t>(rect->get_id()));
             rect->set_name(ss.str());
@@ -117,6 +121,8 @@ public: // methods
         scroll_area->set_area_controller(std::make_shared<FlexController>());
         scroll_area->get_area_controller()->set_name("FlexController");
         overlayout->add_item(scroll_area);
+
+        log_trace << overlayout->get_aabr();
     }
 };
 

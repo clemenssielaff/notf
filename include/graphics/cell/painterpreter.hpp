@@ -71,8 +71,8 @@ public: // methods
         _paint(cell);
     }
 
-    /** Paints a given Cell with a base transform and -scissor applied to all paint operations. */
-    void paint(Cell& cell, Xform2f base_xform, Scissor base_scissor);
+    /** Paints a given Cell with some base settings. */
+    void paint(Cell& cell, Xform2f base_xform, Scissor base_scissor, float base_alpha);
 
 private: // methods
     /** Paints a given Cell.*/

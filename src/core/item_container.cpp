@@ -21,7 +21,7 @@ void ItemContainer::clear()
 void ItemContainer::destroy()
 {
     apply([](Item* item) -> void {
-        item->m_parent = nullptr;
+        item->_set_parent(nullptr, /* is_orphaned */ true);
     });
 }
 

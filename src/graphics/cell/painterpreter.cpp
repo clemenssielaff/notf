@@ -29,7 +29,7 @@ Painterpreter::Painterpreter(CellCanvas& context)
     _reset();
 }
 
-void Painterpreter::paint(Cell& cell, Xform2f base_xform, Scissor base_scissor)
+void Painterpreter::paint(Cell& cell, Xform2f base_xform, Scissor base_scissor, float base_alpha)
 {
     _reset();
 
@@ -39,6 +39,7 @@ void Painterpreter::paint(Cell& cell, Xform2f base_xform, Scissor base_scissor)
     PainterState& current_state = _get_current_state();
     current_state.xform         = m_base_xform;
     current_state.scissor       = m_base_scissor;
+    current_state.alpha         = base_alpha;
 
     _paint(cell);
 }

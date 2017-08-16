@@ -143,9 +143,10 @@ class ScreenItem : public Item {
 
 public: // types ******************************************************************************************************/
     enum class Space : unsigned char {
-        OFFSET, // local transformation only
+        LOCAL,  // no transformation
+        OFFSET, // offset transformation only
         LAYOUT, // layout transformation only
-        PARENT, // local and layout transformation
+        PARENT, // offset and layout transformation
         WINDOW, // transformation relative to the Window
     };
 
@@ -173,8 +174,8 @@ public: // methods *************************************************************
     Size2f get_size() const { return m_size; }
 
     /** The axis-aligned bounding rect of this ScreenItem in the requested space. */
-    template <Space space>
-    Aabrf get_aabr() const { return get_xform<space>().transform(_get_aabr()); }
+    template <Space space = Space::LOCAL>
+    Aabrf get_aabr() const { return get_xform<space>().transform(Aabrf(m_size)); }
 
     /** The bounding rect of all child ScreenItems. */
     const Aabrf& get_content_aabr() const { return m_content_aabr; }
@@ -288,9 +289,6 @@ protected: // methods **********************************************************
 
     /** Lets the parent Layout know that this ScreenItem has changed at it might have to relayout. */
     void _update_parent_layout();
-
-    /** Returns the ScreenItem's Aabr without any added transformation. */
-    const Aabrf _get_aabr() const { return Aabrf(m_size); }
 
     /** Recursive implementation to find all Widgets at a given position in local space
      * @param local_pos     Local coordinates where to look for a Widget.
@@ -407,6 +405,9 @@ private: // fields *************************************************************
 };
 
 /**********************************************************************************************************************/
+
+template <>
+inline const Xform2f ScreenItem::get_xform<ScreenItem::Space::LOCAL>() const { return Xform2f::identity(); }
 
 template <>
 inline const Xform2f ScreenItem::get_xform<ScreenItem::Space::OFFSET>() const { return m_offset_transform; }

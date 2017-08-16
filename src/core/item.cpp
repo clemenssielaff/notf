@@ -127,25 +127,6 @@ ScreenItem* Item::get_screen_item()
     return screen_item;
 }
 
-void Item::_set_parent(Item* parent)
-{
-    if (parent == m_parent) {
-        return;
-    }
-
-    if (m_parent) {
-        m_parent->_remove_child(this);
-    }
-    m_parent = parent;
-
-    _update_from_parent();
-    m_children->apply([](Item* item) -> void {
-        item->_update_from_parent();
-    });
-
-    on_parent_changed(m_parent);
-}
-
 void Item::_update_from_parent()
 {
     if (m_parent) {
@@ -193,5 +174,24 @@ void Item::_set_pyobject(PyObject* object)
 }
 
 #endif
+
+void Item::_set_parent(Item* parent, bool is_orphaned)
+{
+    if (parent == m_parent) {
+        return;
+    }
+
+    if (m_parent && !is_orphaned) {
+        m_parent->_remove_child(this);
+    }
+    m_parent = parent;
+
+    _update_from_parent();
+    m_children->apply([](Item* item) -> void {
+        item->_update_from_parent();
+    });
+
+    on_parent_changed(m_parent);
+}
 
 } // namespace notf

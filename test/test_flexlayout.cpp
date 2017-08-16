@@ -50,7 +50,6 @@ SCENARIO("A non-wrapping FlexLayout", "[dynamic][layout]")
                         flexlayout->set_padding(Padding::all(padding));
 
                         const float used_main = 350 + (spacing * 2) + (padding * 2);
-                        const float used_cross = 200 + (padding * 2);
 
                         for (const auto direction : std::vector<FlexLayout::Direction>{
                                  FlexLayout::Direction::LEFT_TO_RIGHT,
@@ -63,23 +62,20 @@ SCENARIO("A non-wrapping FlexLayout", "[dynamic][layout]")
                             // random numbers from too small to accomodate to large enought with surplus
                             const float random_main  = random_number<float>(300, 500);
                             const float random_cross = random_number<float>(150, 250);
-                            if(flexlayout->is_horizontal()){
+                            if (flexlayout->is_horizontal()) {
                                 flexlayout->set_claim(Claim::fixed(random_main, random_cross));
-                            } else {
+                            }
+                            else {
                                 flexlayout->set_claim(Claim::fixed(random_cross, random_main));
                             }
 
                             // layout aabr
                             Size2f expected_layout_size;
                             if (flexlayout->is_horizontal()) {
-                                expected_layout_size = Size2f(
-                                    max(random_main, used_main),
-                                    max(random_cross, used_cross));
+                                expected_layout_size = Size2f(random_main, random_cross);
                             }
                             else {
-                                expected_layout_size = Size2f(
-                                    max(random_cross, used_cross),
-                                    max(random_main, used_main));
+                                expected_layout_size = Size2f(random_cross, random_main);
                             }
                             const Size2f layout_size = flexlayout->get_size();
                             REQUIRE(layout_size.is_approx(expected_layout_size, 0.1f));

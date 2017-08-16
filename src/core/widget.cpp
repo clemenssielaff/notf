@@ -46,7 +46,7 @@ void Widget::_render(CellCanvas& canvas) const
             scissor.xform.transform(aabr);
             scissor.extend = aabr.get_size();
         }
-        canvas.paint(*m_cell, get_xform<Space::WINDOW>(), std::move(scissor));
+        canvas.paint(*m_cell, get_xform<Space::WINDOW>(), std::move(scissor), get_opacity(true));
     }
 }
 

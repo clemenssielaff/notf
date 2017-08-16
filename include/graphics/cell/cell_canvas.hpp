@@ -157,9 +157,9 @@ public: // methods
 
     /** Paints a given Cell. */
     void paint(Cell& cell) { m_painterpreter->paint(cell); }
-    void paint(Cell& cell, Xform2f base_xform, Scissor base_scissor)
+    void paint(Cell& cell, Xform2f base_xform, Scissor base_scissor, float base_alpha)
     {
-        m_painterpreter->paint(cell, std::move(base_xform), std::move(base_scissor));
+        m_painterpreter->paint(cell, std::move(base_xform), std::move(base_scissor), base_alpha);
     }
 
     /** Aborts the drawing of the current frame if something went wrong. */

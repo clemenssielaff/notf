@@ -162,9 +162,6 @@ protected: // methods **********************************************************
      */
     virtual void _remove_child(const Item* child_item) = 0;
 
-    /** Sets the parent of this Item. */
-    void _set_parent(Item* parent);
-
     /** Pulls new values from the parent if it changed. */
     virtual void _update_from_parent();
 
@@ -185,6 +182,12 @@ PROTECTED_EXCEPT_FOR_BINDINGS // methods
     virtual void _set_pyobject(PyObject* object);
 #endif
     // clang-format on
+
+private: // methods ***************************************************************************************************/
+    /** Sets the parent of this Item.
+     * @param is_orphaned   If the parent of the Item has already been deleted, the Item cannot unregister itself.
+     */
+    void _set_parent(Item* parent, bool is_orphaned = false);
 
 protected: // static methods ******************************************************************************************/
     /** Allows Item subclasses to set each others' parent. */
