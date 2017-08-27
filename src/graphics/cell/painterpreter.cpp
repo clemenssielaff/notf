@@ -705,9 +705,9 @@ void Painterpreter::_create_butt_cap_end(const Point& point, const Vector2f& del
 void Painterpreter::_render_text(const std::string& text, const std::shared_ptr<Font> font)
 {
     const utf8_string utf8_text(text);
-    const PainterState& state                     = _get_current_state();
-    const FontManager& font_manager               = m_canvas.m_graphics_context.get_font_manager();
-    const std::shared_ptr<Texture2>& font_texture = font_manager.get_atlas_texture();
+    const PainterState& state       = _get_current_state();
+    const FontManager& font_manager = m_canvas.m_graphics_context.get_font_manager();
+    const Texture2Ptr& font_texture = font_manager.get_atlas_texture();
     assert(font_texture->get_width() == font_texture->get_height());
 
     // get the fill paint

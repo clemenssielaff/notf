@@ -11,6 +11,9 @@ namespace notf {
 struct Color;
 class GraphicsContext;
 
+class Texture2;
+using Texture2Ptr = std::shared_ptr<Texture2>;
+
 template <typename value_t, FWD_ENABLE_IF_ARITHMETIC(value_t)>
 struct _Size2;
 using Size2i = _Size2<int, true>;

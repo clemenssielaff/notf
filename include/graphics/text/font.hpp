@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 
@@ -13,6 +14,9 @@ namespace notf {
 
 class FontManager;
 class GraphicsContext;
+
+class Font;
+using FontPtr = std::shared_ptr<Font>;
 
 /** Data type to identify a single Glyph. */
 using codepoint_t = utf32_t;
@@ -55,7 +59,7 @@ using codepoint_t = utf32_t;
  */
 struct Glyph {
 
-public: // types
+public: // types ******************************************************************************************************/
     /** Integer type to store a single Glyph coordinate. */
     using coord_t = int16_t;
 
@@ -84,7 +88,7 @@ public: // types
             : x(x), y(y), width(width), height(height) {}
     };
 
-public: // fields
+public: // fields *****************************************************************************************************/
     /** Rectangle of the FontAtlas that contains the texture of this Glyph. */
     Rect rect;
 
@@ -130,7 +134,7 @@ public: // types
         }
     };
 
-public: // static methods
+public: // static methods *********************************************************************************************/
     /** Loads a new Font or returns a pointer to an existing font if a font with the same filename / pixel_size-pair
      * has already been loaded.
      * @param context       Render Context in which the Font lives.
@@ -140,7 +144,7 @@ public: // static methods
     static std::shared_ptr<Font> load(
         GraphicsContext& context, const std::string filename, const pixel_size_t pixel_size);
 
-private: // constructor
+private: // constructor ***********************************************************************************************/
     /** Constructor.
      * @param manager       Font manager.
      * @param filename      File from which to load the font.
@@ -148,7 +152,7 @@ private: // constructor
      */
     Font(FontManager& manager, const std::string filename, const pixel_size_t pixel_size);
 
-public: // methods
+public: // methods ****************************************************************************************************/
     /** Returns true if this Font is valid.
      * If the file used to initialize the Font could not be loaded, the Font is invalid.
      */
@@ -157,11 +161,11 @@ public: // methods
     /** Returns the requested Glyph, or an invalid Glyph if the given codepoint is not known. */
     const Glyph& get_glyph(const codepoint_t codepoint) const;
 
-private: // methods
+private: // methods ***************************************************************************************************/
     /** Renders and returns a new Glyph. */
     const Glyph& _allocate_glyph(const codepoint_t codepoint) const;
 
-private: // members
+private: // members ***************************************************************************************************/
     /** Font Manager. */
     FontManager& m_manager;
 

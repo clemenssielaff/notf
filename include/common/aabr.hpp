@@ -557,6 +557,7 @@ struct _Aabr {
 
 using Aabrf = _Aabr<Vector2f>;
 using Aabrd = _Aabr<Vector2d>;
+using Aabri = _Aabr<Vector2i>;
 
 // Transform specializations ******************************************************************************************/
 

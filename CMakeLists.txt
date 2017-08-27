@@ -56,6 +56,7 @@ add_sources(SOURCE_FILES src
     dynamic/layout/flex_layout.cpp
     dynamic/layout/free_layout.cpp
     dynamic/layout/overlayout.cpp
+    dynamic/widget/textwidget.cpp
     ext/python/interpreter.cpp
     ext/python/py_aabr.cpp
     ext/python/py_circle.cpp
@@ -90,6 +91,7 @@ add_sources(SOURCE_FILES src
     graphics/text/font.cpp
     graphics/text/font_atlas.cpp
     graphics/text/font_manager.cpp
+    graphics/text/font_utils.cpp
     graphics/blend_mode.cpp
     graphics/gl_errors.cpp
     graphics/graphics_context.cpp
@@ -163,6 +165,7 @@ add_sources(HEADER_FILES include
     dynamic/layout/flex_layout.hpp
     dynamic/layout/free_layout.hpp
     dynamic/layout/overlayout.hpp
+    dynamic/widget/textwidget.hpp
     ext/python/docstr.hpp
     ext/python/interpreter.hpp
     ext/python/py_dict_utils.hpp
@@ -191,6 +194,7 @@ add_sources(HEADER_FILES include
     graphics/text/font.hpp
     graphics/text/font_manager.hpp
     graphics/text/freetype.hpp
+    graphics/text/font_utils.hpp
     graphics/texture2.hpp
     graphics/vertex.hpp
     utils/apply_tuple.hpp

@@ -192,7 +192,6 @@ bool ScreenItem::_set_claim(const Claim claim)
         return false;
     }
     m_claim = std::move(claim);
-    _relayout();
     _update_parent_layout();
     return true;
 }
@@ -247,7 +246,9 @@ void ScreenItem::_set_scissor(const Layout* scissor_layout)
     m_scissor_layout = scissor_layout;
 
     m_children->apply([scissor_layout](Item* item) -> void {
-        item->get_screen_item()->_set_scissor(scissor_layout);
+        if(ScreenItem* screen_item = item->get_screen_item()){
+            screen_item->_set_scissor(scissor_layout);
+        }
     });
 
     on_scissor_changed(m_scissor_layout);
@@ -262,7 +263,9 @@ void ScreenItem::_set_render_layer(const RenderLayerPtr& render_layer)
     m_render_layer = render_layer;
 
     m_children->apply([render_layer](Item* item) -> void {
-        item->get_screen_item()->_set_render_layer(render_layer);
+        if(ScreenItem* screen_item = item->get_screen_item()){
+            screen_item->_set_render_layer(render_layer);
+        }
     });
 
     on_render_layer_changed(m_render_layer);

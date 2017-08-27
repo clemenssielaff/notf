@@ -56,7 +56,7 @@ struct GraphicsContextOptions {
  * Each RenderManager has a GraphicsContext (or maybe it is shared between Windows ... TBD)
  * The GraphicsContext is a wrapper around the OpenGL context and.
  */
-class GraphicsContext {
+class GraphicsContext { // TODO: we don't need a Font Manager per Window. Why a GraphicsContext per Window? Shared
 
     friend class Shader;
     friend class Texture2;

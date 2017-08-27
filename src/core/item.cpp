@@ -123,7 +123,6 @@ ScreenItem* Item::get_screen_item()
     if (!screen_item) {
         screen_item = dynamic_cast<Controller*>(this)->get_root_item();
     }
-    assert(screen_item);
     return screen_item;
 }
 

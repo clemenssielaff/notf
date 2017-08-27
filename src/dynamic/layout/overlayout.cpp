@@ -78,13 +78,16 @@ void Overlayout::add_item(ItemPtr item)
 
     // update the parent layout if necessary
     if (!_update_claim()) {
-        // update only the child if we don't need a full Claim update
-        Size2f item_grant = get_size();
-        item_grant.width -= m_padding.get_width();
-        item_grant.height -= m_padding.get_height();
-        ScreenItem::_set_grant(item->get_screen_item(), std::move(item_grant));
+        if (ScreenItem* screen_item = item->get_screen_item()) {
 
-        _relayout();
+            // update only the child if we don't need a full Claim update
+            Size2f item_grant = get_size();
+            item_grant.width -= m_padding.get_width();
+            item_grant.height -= m_padding.get_height();
+            ScreenItem::_set_grant(screen_item, std::move(item_grant));
+
+            _relayout();
+        }
     }
 }
 

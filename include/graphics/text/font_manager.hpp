@@ -30,6 +30,8 @@ public: // methods
 
     /** Destructor. */
     ~FontManager();
+
+    /** Direct access to the font atlas texture. */
     std::shared_ptr<Texture2> get_atlas_texture() const;
 
 private: // for Font

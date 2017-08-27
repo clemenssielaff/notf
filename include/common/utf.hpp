@@ -3,7 +3,7 @@
 #include <inttypes.h>
 #include <iostream>
 
-#include "tinyutf8/tinyutf8.h"
+#include "tinyutf8/tinyutf8.h" // TODO: split utf8 into header and body
 
 namespace notf {
 

@@ -134,7 +134,9 @@ public: // methods *************************************************************
     Controller* get_controller();
     const Controller* get_controller() const { return const_cast<Item*>(this)->get_controller(); }
 
-    /** Returns the ScreenItem associated with this given Item - either the Item itself or a Controller's root Item. */
+    /** Returns the ScreenItem associated with this given Item - either the Item itself or a Controller's root Item.
+     * Is empty if this is a Controller without a root Item.
+     */
     ScreenItem* get_screen_item();
     const ScreenItem* get_screen_item() const { return const_cast<Item*>(this)->get_screen_item(); }
 

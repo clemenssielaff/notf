@@ -22,6 +22,14 @@ void Widget::redraw() const
     }
 }
 
+void Widget::_relayout()
+{
+    // a Widget is only concerned about its own size
+    Size2f grant = get_claim().apply(get_grant());
+    _set_size(grant);
+    _set_content_aabr(grant);
+}
+
 void Widget::_render(CellCanvas& canvas) const
 {
     // update the Cell if the Widget is dirty
@@ -48,15 +56,6 @@ void Widget::_render(CellCanvas& canvas) const
         }
         canvas.paint(*m_cell, get_xform<Space::WINDOW>(), std::move(scissor), get_opacity(true));
     }
-}
-
-void Widget::_relayout()
-{
-    // a Widget is only concerned about its own size
-    Size2f grant = get_grant();
-    grant = get_claim().apply(grant);
-    _set_size(grant);
-    _set_content_aabr(grant);
 }
 
 void Widget::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
