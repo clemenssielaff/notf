@@ -4,6 +4,8 @@
 #include "graphics/text/font.hpp"
 #include "graphics/text/font_utils.hpp"
 
+// TODO: textwidget.cppp but text_layout.cpp ?
+
 namespace notf {
 
 void TextWidget::set_text(const std::string text)
@@ -64,7 +66,7 @@ void TextWidget::_update_claim()
 
 void TextWidget::_relayout()
 {
-    Widget::_relayout();
+    Size2f size = get_claim().apply(get_grant());
 
     if (!m_font || !m_font->is_valid()) {
         return;
@@ -72,8 +74,9 @@ void TextWidget::_relayout()
 
     if (m_is_wrapping) {
         m_newlines = split_text_by_with(
-            static_cast<int>(std::ceil(get_size().width)), static_cast<utf32_t>(' '), m_font, m_text);
+            static_cast<int>(std::ceil(size.width)), static_cast<utf32_t>(' '), m_font, m_text);
 
+        size.height = 0;
         m_line_heights.clear();
         for (size_t i = 0; i < m_newlines.size(); ++i) {
             const std::string::const_iterator begin = m_newlines[i];
@@ -82,8 +85,13 @@ void TextWidget::_relayout()
 
             const Aabri aabr = text_aabr(m_font, substring);
             m_line_heights.push_back(aabr.get_height());
+
+            size.height += aabr.get_height();
         }
     }
+
+    _set_size(size);
+    _set_content_aabr(size);
 }
 
 void TextWidget::_paint(Painter& painter) const

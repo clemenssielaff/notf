@@ -83,6 +83,7 @@ struct _Xform2 : public detail::Arithmetic<_Xform2<REAL, SIMD_SPECIALIZATION, tr
                        vector_t(0, 1),
                        std::move(translation));
     }
+    static _Xform2 translation(value_t x, value_t y) { return _Xform2::translation(vector_t(x, y)); }
 
     /** A rotation matrix.
      * @param radians   Counter-clockwise rotation in radians.
@@ -117,6 +118,7 @@ struct _Xform2 : public detail::Arithmetic<_Xform2<REAL, SIMD_SPECIALIZATION, tr
                        0, vec[1],
                        0, 0);
     }
+    static _Xform2 scaling(value_t x, value_t y) { return _Xform2::scaling(vector_t(x, y)); }
 
     /** A non-uniform skew matrix.
      * @param vector   Non-uniform skew vector.
@@ -127,6 +129,7 @@ struct _Xform2 : public detail::Arithmetic<_Xform2<REAL, SIMD_SPECIALIZATION, tr
                        tan(vec[0]), 1,
                        0, 0);
     }
+    static _Xform2 skew(value_t x, value_t y) { return _Xform2::skew(vector_t(x, y)); }
 
     /*  Inspection  ***************************************************************************************************/
 

@@ -1,8 +1,3 @@
-#include "core/application.hpp"
-#include "core/window.hpp"
-#include "core/window_layout.hpp"
-#include "dynamic/controller/scroll_area.hpp"
-
 #include "common/log.hpp"
 #include "common/random.hpp"
 #include "common/warnings.hpp"
@@ -14,8 +9,10 @@
 #include "core/widget.hpp"
 #include "core/window.hpp"
 #include "core/window_layout.hpp"
+#include "dynamic/controller/scroll_area.hpp"
 #include "dynamic/layout/flex_layout.hpp"
 #include "dynamic/layout/overlayout.hpp"
+#include "dynamic/layout/text_layout.hpp"
 #include "dynamic/widget/textwidget.hpp"
 #include "graphics/cell/painter.hpp"
 #include "graphics/graphics_context.hpp"
@@ -125,17 +122,26 @@ public: // methods
         scroll_area->get_area_controller()->set_name("FlexController");
         vertical_layout->add_item(scroll_area);
 
-        TextWidgetPtr text_widget = std::make_shared<TextWidget>(
-            g_font, "\
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce eget cursus elit. Interdum et malesuada fames ac ante ipsum primis in faucibus. Suspendisse pulvinar nisi vitae lacus vestibulum ultricies. Nunc condimentum, mi ac blandit tincidunt, enim eros volutpat risus, in viverra nisi magna accumsan eros. Suspendisse lobortis sodales dignissim. Donec euismod augue et sem pulvinar, non volutpat eros accumsan. Proin dapibus luctus enim, sodales blandit ipsum laoreet in. In faucibus vitae mauris ultricies eleifend. Proin tempor massa vel ligula consequat, id elementum tellus lobortis.\
-");
-//Sed id tellus auctor, elementum risus vestibulum, faucibus urna. Etiam sit amet euismod velit, et finibus nulla. Nulla facilisi. Nunc quis est quis lorem dictum maximus. Maecenas ut sollicitudin orci. Aenean magna erat, ultrices pharetra dignissim vel, bibendum in elit. Nullam at ante est. Proin facilisis posuere orci, sit amet fermentum nibh auctor condimentum. Etiam quis tempor elit, tempus commodo neque. Maecenas semper augue non enim lacinia rutrum. Nam in vestibulum augue. Ut aliquet nulla a odio sodales vestibulum. Vestibulum ac dignissim ipsum, eget dictum neque. Duis efficitur mi ac efficitur porta.\
-//Nam accumsan lorem vitae dapibus faucibus. Aenean pellentesque feugiat ante non porta. Nunc commodo leo in elit molestie volutpat. Donec urna ex, feugiat ac ultricies quis, sodales a massa. Morbi efficitur mi nec dui finibus faucibus. In scelerisque tristique dictum. Aenean porttitor tortor eu sapien vulputate cursus. Nam volutpat pretium neque vitae mollis. Interdum et malesuada fames ac ante ipsum primis in faucibus. Aenean nec aliquam lorem, sit amet tempus justo. Quisque ornare est est, a dictum eros scelerisque cursus. Donec rutrum quam aliquam auctor ultricies. Vestibulum vestibulum sem et mauris auctor, nec aliquet purus molestie. Integer consectetur scelerisque ligula nec venenatis.\
-//Donec rutrum condimentum orci eget cursus. Mauris in sapien vitae felis sollicitudin fermentum eu quis lorem. Nullam rutrum tristique nisi. Sed sed arcu quis odio vulputate varius. Aenean molestie nunc et nulla volutpat tempor. Aliquam fringilla erat a lacus sollicitudin, porttitor accumsan turpis elementum. Nulla sit amet orci quis nibh auctor porta. Curabitur nec posuere nibh. Praesent at vestibulum nisi, sit amet viverra felis. Suspendisse aliquam, massa ac congue vulputate, turpis lectus molestie lectus, sed molestie nisi risus nec nibh. Praesent ex ex, tempus at metus eu, vehicula venenatis odio. Interdum et malesuada fames ac ante ipsum primis in faucibus. Vivamus dignissim dictum porta. Proin sit amet nibh molestie, mollis quam nec, dapibus turpis.\
-//Donec vehicula dapibus leo, non tempus nunc maximus et. Sed non ex est. Pellentesque dictum a felis quis dignissim. Pellentesque ultrices velit ipsum, eget dictum nisi tincidunt sed. Maecenas eget sollicitudin dui, id condimentum ex. Pellentesque velit dui, euismod et turpis sed, ornare tincidunt tortor. Maecenas eu libero consequat, tincidunt augue fermentum, suscipit tellus. Sed at magna neque.\
-
-        text_widget->set_wrapping(true);
-        vertical_layout->add_item(text_widget);
+        std::shared_ptr<TextLayout> text_layout = TextLayout::create();
+        vertical_layout->add_item(text_layout);
+        {
+            TextWidgetPtr text_widget = std::make_shared<TextWidget>(
+                g_font, "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce eget cursus elit. Interdum et malesuada fames ac ante ipsum primis in faucibus. Suspendisse pulvinar nisi vitae lacus vestibulum ultricies. Nunc condimentum, mi ac blandit tincidunt, enim eros volutpat risus, in viverra nisi magna accumsan eros. Suspendisse lobortis sodales dignissim. Donec euismod augue et sem pulvinar, non volutpat eros accumsan. Proin dapibus luctus enim, sodales blandit ipsum laoreet in. In faucibus vitae mauris ultricies eleifend. Proin tempor massa vel ligula consequat, id elementum tellus lobortis.");
+            text_widget->set_wrapping(true);
+            text_layout->add_item(text_widget);
+        }
+        {
+            TextWidgetPtr text_widget = std::make_shared<TextWidget>(
+                g_font, "Nam accumsan rutrum condimentum orci eget cursus. Mauris in sapien vitae felis sollicitudin fermentum eu quis lorem. Nullam rutrum tristique nisi. Sed sed arcu quis odio vulputate varius. Aenean molestie nunc et nulla volutpat tempor. Aliquam fringilla erat a lacus sollicitudin, porttitor accumsan turpis elementum. Nulla sit amet orci quis nibh auctor porta. Curabitur nec posuere nibh. Praesent at vestibulum nisi, sit amet viverra felis. Suspendisse aliquam, massa ac congue vulputate, turpis lectus molestie lectus, sed molestie nisi risus nec nibh. Praesent ex ex, tempus at metus eu, vehicula venenatis odio. Interdum et malesuada fames ac ante ipsum primis in faucibus. Vivamus dignissim dictum porta. Proin sit amet nibh molestie, mollis quam nec, dapibus turpis.");
+            text_widget->set_wrapping(true);
+            text_layout->add_item(text_widget);
+        }
+        {
+            TextWidgetPtr text_widget = std::make_shared<TextWidget>(
+                g_font, "Donec vehicula dapibus leo, non tempus nunc maximus et. Sed non ex est. Pellentesque dictum a felis quis dignissim. Pellentesque ultrices velit ipsum, eget dictum nisi tincidunt sed. Maecenas eget sollicitudin dui, id condimentum ex. Pellentesque velit dui, euismod et turpis sed, ornare tincidunt tortor. Maecenas eu libero consequat, tincidunt augue fermentum, suscipit tellus. Sed at magna neque.");
+            text_widget->set_wrapping(true);
+            text_layout->add_item(text_widget);
+        }
     }
 };
 

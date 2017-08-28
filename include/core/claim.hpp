@@ -161,8 +161,8 @@ public: // type
             m_preferred += other.m_preferred;
             m_min += other.m_min;
             m_max += other.m_max;
-            m_scale_factor += other.m_scale_factor;
-            m_priority = max(m_priority, other.m_priority);
+            m_scale_factor = max(m_scale_factor, other.m_scale_factor);
+            m_priority     = max(m_priority, other.m_priority);
             return *this;
         }
 

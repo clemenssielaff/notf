@@ -56,6 +56,7 @@ add_sources(SOURCE_FILES src
     dynamic/layout/flex_layout.cpp
     dynamic/layout/free_layout.cpp
     dynamic/layout/overlayout.cpp
+    dynamic/layout/text_layout.cpp
     dynamic/widget/textwidget.cpp
     ext/python/interpreter.cpp
     ext/python/py_aabr.cpp
@@ -165,6 +166,7 @@ add_sources(HEADER_FILES include
     dynamic/layout/flex_layout.hpp
     dynamic/layout/free_layout.hpp
     dynamic/layout/overlayout.hpp
+    dynamic/layout/text_layout.hpp
     dynamic/widget/textwidget.hpp
     ext/python/docstr.hpp
     ext/python/interpreter.hpp
