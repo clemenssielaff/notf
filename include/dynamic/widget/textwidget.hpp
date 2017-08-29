@@ -16,20 +16,10 @@ using TextWidgetPtr = std::shared_ptr<TextWidget>;
  */
 class TextWidget : public Widget {
 public: // constructor ************************************************************************************************/
-    TextWidget(FontPtr font, const Color color, const std::string text = "")
-        : Widget()
-        , m_text(std::move(text))
-        , m_font(std::move(font))
-        , m_color(color)
-        , m_is_wrapping(false)
-        , m_newlines()
-        , m_line_heights()
-    {
-        _update_claim();
-    }
+    TextWidget(FontPtr font, const Color color, const std::string text = "");
 
     TextWidget(FontPtr font, const std::string text = "")
-        : TextWidget(font, Color::black(), std::move(text))
+        : TextWidget(font, Color::white(), std::move(text))
     {
     }
 
@@ -58,6 +48,12 @@ public: // methods *************************************************************
     /** Changes whether the text wraps or not. */
     void set_wrapping(bool is_wrapping);
 
+    /** Height of each line as a factor of the font pixel size. */
+    float line_height() const { return m_line_height; }
+
+    /** Set the height of each line as a factor of the font pixel size. */
+    void set_line_height(const float line_height);
+
 private: // methods ***************************************************************************************************/
     /** Updates the Claim of this Widget after the Font or text have changed. */
     void _update_claim();
@@ -79,11 +75,11 @@ private: // fields *************************************************************
     /** Whether the text wraps or not. */
     bool m_is_wrapping;
 
+    /** Height of each line as a factor of the font pixel size. */
+    float m_line_height;
+
     /** Iterator to newlines if the text is wrapping. */
     std::vector<std::string::const_iterator> m_newlines;
-
-    /** Height of each line, if the text is wrapping. */
-    std::vector<float> m_line_heights;
 };
 
 } // namespace notf

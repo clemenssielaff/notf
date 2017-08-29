@@ -161,6 +161,9 @@ public: // methods *************************************************************
     /** Returns the requested Glyph, or an invalid Glyph if the given codepoint is not known. */
     const Glyph& get_glyph(const codepoint_t codepoint) const;
 
+    /** Font base size in pixels. */
+    pixel_size_t pixel_size() const { return m_identifier.pixel_size; }
+
 private: // methods ***************************************************************************************************/
     /** Renders and returns a new Glyph. */
     const Glyph& _allocate_glyph(const codepoint_t codepoint) const;

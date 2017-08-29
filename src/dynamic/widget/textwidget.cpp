@@ -8,6 +8,18 @@
 
 namespace notf {
 
+TextWidget::TextWidget(FontPtr font, const Color color, const std::string text)
+    : Widget()
+    , m_text(std::move(text))
+    , m_font(std::move(font))
+    , m_color(color)
+    , m_is_wrapping(false)
+    , m_line_height(1)
+    , m_newlines()
+{
+    _update_claim();
+}
+
 void TextWidget::set_text(const std::string text)
 {
     if (text == m_text) {
@@ -44,6 +56,15 @@ void TextWidget::set_wrapping(bool is_wrapping)
     _update_claim();
 }
 
+void TextWidget::set_line_height(const float line_height)
+{
+    if (abs(m_line_height - line_height) < precision_low<float>()) {
+        return;
+    }
+    m_line_height = line_height;
+    _update_claim();
+}
+
 void TextWidget::_update_claim()
 {
     if (!m_font || !m_font->is_valid()) {
@@ -55,11 +76,9 @@ void TextWidget::_update_claim()
     }
     else {
         const Aabri aabr = text_aabr(m_font, m_text);
-        m_line_heights.clear();
-        m_line_heights.push_back(aabr.get_height());
 
         Claim claim;
-        claim.set_min(aabr.get_width(), aabr.get_height());
+        claim.set_min(aabr.get_width(), m_font->pixel_size() * m_line_height);
         _set_claim(std::move(claim));
     }
 }
@@ -75,19 +94,7 @@ void TextWidget::_relayout()
     if (m_is_wrapping) {
         m_newlines = split_text_by_with(
             static_cast<int>(std::ceil(size.width)), static_cast<utf32_t>(' '), m_font, m_text);
-
-        size.height = 0;
-        m_line_heights.clear();
-        for (size_t i = 0; i < m_newlines.size(); ++i) {
-            const std::string::const_iterator begin = m_newlines[i];
-            const std::string::const_iterator end   = i == m_newlines.size() - 1 ? std::end(m_text) : m_newlines[i + 1];
-            const std::string substring(begin, end); // TODO: too much string copying (also below)
-
-            const Aabri aabr = text_aabr(m_font, substring);
-            m_line_heights.push_back(aabr.get_height());
-
-            size.height += aabr.get_height();
-        }
+        size.height = m_newlines.size() * m_line_height * m_font->pixel_size();
     }
 
     _set_size(size);
@@ -99,27 +106,26 @@ void TextWidget::_paint(Painter& painter) const
     if (!m_font || !m_font->is_valid()) {
         return;
     }
-    assert(!m_line_heights.empty());
+    assert(!m_newlines.empty());
 
-    painter.set_fill(Color::black());
+    painter.set_fill(m_color);
 
+    const float line_height = m_font->pixel_size() * m_line_height;
     if (m_is_wrapping) {
-        assert(m_line_heights.size() == m_newlines.size());
-
         painter.translate(0, get_size().height);
 
-        for (size_t i = 0; i < m_line_heights.size(); ++i) {
+        for (size_t i = 0; i < m_newlines.size(); ++i) {
             const std::string::const_iterator begin = m_newlines[i];
             const std::string::const_iterator end   = i == m_newlines.size() - 1 ? std::end(m_text) : m_newlines[i + 1];
             const std::string substring(begin, end);
 
-            painter.translate(0, -m_line_heights[i]);
+            painter.translate(0, -line_height);
 
             painter.write(substring, m_font);
         }
     }
     else {
-        painter.translate(0, get_size().height - m_line_heights[0]);
+        painter.translate(0, get_size().height - line_height);
 
         painter.write(m_text, m_font);
     }
