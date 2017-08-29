@@ -29,8 +29,6 @@ class Cell {
     friend class Painter;
 
 public: // methods
-    DEFINE_SHARED_POINTER_TYPES(Cell)
-
     Cell() = default;
 
     /** The Painter Command buffer of this Cell. */

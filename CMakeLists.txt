@@ -142,6 +142,7 @@ add_sources(HEADER_FILES include
     common/xform2.hpp
     common/xform3.hpp
     core/application.hpp
+    core/capability.hpp
     core/claim.hpp
     core/controller.hpp
     core/events/char_event.hpp

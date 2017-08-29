@@ -1,13 +1,14 @@
-#if 0
-#include <iostream>
+#pragma once
+
 #include <memory>
-#include <string>
 #include <typeinfo>
 #include <unordered_map>
 
+#include "common/meta.hpp"
 
-struct Capability;
-using CapabilityPtr = std::shared_ptr<Capability>;
+namespace notf {
+
+DEFINE_SHARED_POINTERS(struct, Capability);
 
 /**********************************************************************************************************************/
 
@@ -21,30 +22,37 @@ protected:
 
 /**********************************************************************************************************************/
 
-/**
+/** Convenience map for storing Capability subclasses by type.
  *
+ * Insert a new Capability subclass instance with:
+ *
+ *     auto my_capability = std::make_shared<MyCapability>();
+ *     map.insert(my_capability);
+ *
+ * and request a given capability with:
+ *
+ *     map.get<MyCapability>();
+ *
+ * If you insert/get something that is not a subclass of Capability, the build will fail.
+ * If you try to get a capability that is not part of the map, a std::out_of_range exception is raised.
  */
 class CapabilityMap { // TODO: maybe replace internal Capability map with a vector?
 
 public: // methods ****************************************************************************************************/
     /** Returns a requested capability by type.
-     * If the map does not contain the requested capability, an empty pointer is returned.
+     * If the map does not contain the requested capability, throws an std::out_of_range exception.
      */
     template <typename CAPABILITY, ENABLE_IF_SUBCLASS(CAPABILITY, Capability)>
     std::shared_ptr<CAPABILITY> get()
     {
-        try {
-            return std::static_pointer_cast<CAPABILITY>(m_capabilities.at(typeid(CAPABILITY).hash_code()));
-        } catch (const std::out_of_range&) {
-            return {};
-        }
+        return std::static_pointer_cast<CAPABILITY>(m_capabilities.at(typeid(CAPABILITY).hash_code()));
     }
 
     /** Returns a requested capability by type.
-     * If the map does not contain the requested capability, an empty pointer is returned.
+     * If the map does not contain the requested capability, throws an std::out_of_range exception.
      */
     template <typename CAPABILITY, ENABLE_IF_SUBCLASS(CAPABILITY, Capability)>
-    const CapabilityPtr get() const { return const_cast<CapabilityMap*>(this)->get<CAPABILITY>(); }
+    std::shared_ptr<const CAPABILITY> get() const { return const_cast<CapabilityMap*>(this)->get<CAPABILITY>(); }
 
     /** Inserts or replaces a capability in the map.
      * @param capability    Capability to insert.
@@ -52,48 +60,12 @@ public: // methods *************************************************************
     template <typename CAPABILITY, ENABLE_IF_SUBCLASS(CAPABILITY, Capability)>
     void insert(std::shared_ptr<CAPABILITY> capability)
     {
-        size_t a = typeid(CAPABILITY).hash_code();
-
-        m_capabilities.insert({a, std::move(capability)});
+        m_capabilities.insert({typeid(CAPABILITY).hash_code(), std::move(capability)});
     }
 
 private: // fields ****************************************************************************************************/
+    /** All capabilties by type (hash). */
     std::unordered_map<size_t, CapabilityPtr> m_capabilities;
 };
 
-struct TextCap : public Capability {
-    std::string text = "Text Capability";
-};
-
-struct MarginCap : public Capability {
-    std::string text = "Margin Capability";
-};
-
-struct Arsch {
-    std::string text = "Arsch";
-};
-
-int main()
-{
-    CapabilityMap map;
-
-    auto textcap   = std::make_shared<TextCap>();
-    auto margincap = std::make_shared<MarginCap>();
-    auto arschcap  = std::make_shared<Arsch>();
-
-    map.insert(textcap);
-    map.insert(margincap);
-    //    map.insert(arschcap);
-
-    auto result = map.get<MarginCap>();
-
-    if (result) {
-        std::cout << "I've got a: " << result->text << std::endl;
-    }
-    else {
-        std::cout << "I've got a: NOPE" << std::endl;
-    }
-
-    return 0;
-}
-#endif
+} // namespace notf

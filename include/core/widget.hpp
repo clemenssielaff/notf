@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/capability.hpp"
 #include "core/screen_item.hpp"
 
 namespace notf {
@@ -7,8 +8,8 @@ namespace notf {
 class CellCanvas;
 class Painter;
 
-class Cell;
-using CellPtr = std::shared_ptr<Cell>;
+DEFINE_SHARED_POINTERS(class, Cell);
+DEFINE_SHARED_POINTERS(class, Widget);
 
 /**********************************************************************************************************************/
 
@@ -31,8 +32,6 @@ using CellPtr = std::shared_ptr<Cell>;
  * This information is therefore separate from the actual Widget, contained in a so-called Widget "Capability".
  * Any Widget that is capable of being displayed inline in a continuous text will have a certain Capability which can
  * be queried by the TextLayout and used to position the Widget correctly.
- * If a Widget does not have the requested Capability, it will throw an exception and it is the caller's job to catch
- * it and react appropriately.
  */
 class Widget : public ScreenItem {
 
@@ -80,6 +79,9 @@ private: // fields *************************************************************
 
     /** Clean Widgets can use their current Cell when rendered, dirty Widgets have to redraw their Cell. */
     mutable bool m_is_clean;
+
+    /** Widget capabilities. */
+    CapabilityMap m_capabilities;
 };
 
 } // namespace notf

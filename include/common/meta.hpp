@@ -62,6 +62,9 @@ struct is_base_of_any<T, Head, Rest...> : std::integral_constant<bool, std::is_b
 #define ENABLE_IF_SUBCLASS(TYPE, PARENT) typename std::enable_if<std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type = true
 #define FWD_ENABLE_IF_SUBCLASS(TYPE, PARENT) typename std::enable_if<std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type
 
+#define DISABLE_IF_SUBCLASS(TYPE, PARENT) typename std::enable_if<!std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type = true
+#define FWD_DISABLE_IF_SUBCLASS(TYPE, PARENT) typename std::enable_if<!std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type
+
 #define ENABLE_IF_SUBCLASS_ANY(TYPE, ...) typename std::enable_if<is_base_of_any<typename std::decay<TYPE>::type, __VA_ARGS__>::value, bool>::type = true
 #define FWD_ENABLE_IF_SUBCLASS_ANY(TYPE, ...) typename std::enable_if<is_base_of_any<typename std::decay<TYPE>::type, __VA_ARGS__>::value, bool>::type
 
@@ -115,6 +118,7 @@ struct always_false : std::false_type {
     void operator=(const Type&) = delete;
 
 /** Convenience macro to define shared pointer types for a given type. */
-#define DEFINE_SHARED_POINTER_TYPES(Type)   \
-    using Ptr      = std::shared_ptr<Type>; \
-    using ConstPtr = std::shared_ptr<const Type>;
+#define DEFINE_SHARED_POINTERS(Tag, Type)         \
+    Tag Type;                                     \
+    using Type##Ptr      = std::shared_ptr<Type>; \
+    using Type##ConstPtr = std::shared_ptr<const Type>;
