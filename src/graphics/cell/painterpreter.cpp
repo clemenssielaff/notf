@@ -735,7 +735,7 @@ void Painterpreter::_render_text(const std::string& text, const std::shared_ptr<
     Glyph::coord_t y            = static_cast<Glyph::coord_t>(roundf(translation.y()));
 
     for (const auto character : utf8_text) {
-        const Glyph& glyph = font->get_glyph(static_cast<codepoint_t>(character));
+        const Glyph& glyph = font->glyph(static_cast<codepoint_t>(character));
 
         if (!glyph.rect.width || !glyph.rect.height) {
             // skip glyphs without pixels

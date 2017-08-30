@@ -57,7 +57,7 @@ add_sources(SOURCE_FILES src
     dynamic/layout/free_layout.cpp
     dynamic/layout/overlayout.cpp
     dynamic/layout/text_layout.cpp
-    dynamic/widget/textwidget.cpp
+    dynamic/widget/text_widget.cpp
     ext/python/interpreter.cpp
     ext/python/py_aabr.cpp
     ext/python/py_circle.cpp
@@ -168,7 +168,8 @@ add_sources(HEADER_FILES include
     dynamic/layout/free_layout.hpp
     dynamic/layout/overlayout.hpp
     dynamic/layout/text_layout.hpp
-    dynamic/widget/textwidget.hpp
+    dynamic/widget/text_widget.hpp
+    dynamic/widget/capability/text_capability.hpp
     ext/python/docstr.hpp
     ext/python/interpreter.hpp
     ext/python/py_dict_utils.hpp

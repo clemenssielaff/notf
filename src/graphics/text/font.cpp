@@ -36,7 +36,7 @@ std::shared_ptr<Font> Font::load(GraphicsContext& context, const std::string fil
         }
     }
 
-    // create and store the new Font in the manager, so it can be re-used
+// create and store the new Font in the manager, so it can be re-used
 #ifdef _DEBUG
     std::shared_ptr<Font> font(new Font(font_manager, filename, pixel_size));
 #else
@@ -70,6 +70,14 @@ Font::Font(FontManager& manager, const std::string filename, const pixel_size_t 
     }
     FT_Set_Pixel_Sizes(m_face, 0, pixel_size);
 
+    { // store font metrics
+        assert(m_face->ascender >= 0);
+        assert(m_face->height >= 0);
+        m_ascender    = static_cast<pixel_size_t>(std::abs(m_face->size->metrics.ascender) / 64);
+        m_descender   = static_cast<pixel_size_t>(std::abs(m_face->size->metrics.descender) / 64);
+        m_line_height = static_cast<pixel_size_t>(std::abs(m_face->size->metrics.height) / 64);
+    }
+
     // create the map of glyphs
     FT_GlyphSlot slot = m_face->glyph;
     std::vector<FontAtlas::FitRequest> fit_atlas_request;
@@ -83,8 +91,8 @@ Font::Font(FontManager& manager, const std::string filename, const pixel_size_t 
         new_glyph.rect      = {0, 0, 0, 0}; // is determined in the next step
         new_glyph.left      = static_cast<Glyph::coord_t>(slot->bitmap_left);
         new_glyph.top       = static_cast<Glyph::coord_t>(slot->bitmap_top);
-        new_glyph.advance_x = static_cast<Glyph::coord_t>(slot->advance.x >> 6);
-        new_glyph.advance_y = static_cast<Glyph::coord_t>(slot->advance.y >> 6);
+        new_glyph.advance_x = static_cast<Glyph::coord_t>(slot->advance.x / 64);
+        new_glyph.advance_y = static_cast<Glyph::coord_t>(slot->advance.y / 64);
         m_glyphs.insert(std::make_pair(codepoint, std::move(new_glyph)));
 
         fit_atlas_request.emplace_back(FontAtlas::FitRequest{
@@ -108,7 +116,7 @@ Font::Font(FontManager& manager, const std::string filename, const pixel_size_t 
     log_trace << "Loaded Font \"" << m_name << "\" from file: " << filename;
 }
 
-const Glyph& Font::get_glyph(const codepoint_t codepoint) const
+const Glyph& Font::glyph(const codepoint_t codepoint) const
 {
     const auto& it = m_glyphs.find(codepoint);
     if (it != std::end(m_glyphs)) {

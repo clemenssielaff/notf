@@ -44,6 +44,18 @@ public: // methods *************************************************************
     /** The Cell used to display the Widget on screen. */
     CellPtr get_cell() const { return m_cell; }
 
+    /** Returns a requested capability by type.
+     * If the map does not contain the requested capability, throws an std::out_of_range exception.
+     */
+    template <typename CAPABILITY, ENABLE_IF_SUBCLASS(CAPABILITY, Capability)>
+    std::shared_ptr<CAPABILITY> capability() { return m_capabilities.get<CAPABILITY>(); }
+
+    /** Inserts or replaces a capability of this widget.
+     * @param capability    Capability to insert.
+     */
+    template <typename CAPABILITY, ENABLE_IF_SUBCLASS(CAPABILITY, Capability)>
+    void set_capability(std::shared_ptr<CAPABILITY> capability) { m_capabilities.insert(std::move(capability)); }
+
     /** Sets a new Claim for this Widget.
      * @return True iff the Claim was modified.
      */

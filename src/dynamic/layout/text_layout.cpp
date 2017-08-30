@@ -4,6 +4,8 @@
 #include "common/vector.hpp"
 #include "common/warnings.hpp"
 #include "core/item_container.hpp"
+#include "core/widget.hpp"
+#include "dynamic/widget/capability/text_capability.hpp"
 #include "utils/reverse_iterator.hpp"
 
 namespace notf {
@@ -129,10 +131,40 @@ void TextLayout::_relayout()
     const float available_width = get_size().width - m_padding.get_width();
     detail::ItemList& children  = *static_cast<detail::ItemList*>(m_children.get());
 
-    // force the minimal vertical size for each child
+    Vector2f stylus(0, get_size().height);
+    bool stylus_on_baseline = false;
     for (ItemPtr& item : children.items) {
-        if (ScreenItem* screen_item = item->get_screen_item()) {
-            ScreenItem::_set_grant(screen_item, Size2f(available_width, 0));
+        ScreenItem* screen_item = item->get_screen_item();
+        if (!screen_item) {
+            continue;
+        }
+
+        Widget* widget = dynamic_cast<Widget*>(screen_item);
+        TextCapabilityPtr text_capability;
+
+        // define the start of the widget's baseline before setting its size
+        if (widget) {
+            text_capability = widget->capability<TextCapability>();
+            if (text_capability) {
+                if (stylus_on_baseline) {
+                    text_capability->baseline_start = stylus;
+                }
+                else {
+                    text_capability->baseline_start = Vector2f(0, stylus.y() - text_capability->font->ascender());
+                }
+            }
+        }
+
+        // force the minimal vertical size for each child
+        ScreenItem::_set_grant(screen_item, Size2f(available_width, 0));
+
+        // advance the stylus
+        if (text_capability) {
+            stylus             = text_capability->baseline_end;
+            stylus_on_baseline = true;
+        } else {
+            stylus             = Vector2f(0, stylus.y() - screen_item->get_size().height);
+            stylus_on_baseline = false;
         }
     }
 

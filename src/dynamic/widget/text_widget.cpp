@@ -1,10 +1,11 @@
-#include "dynamic/widget/textwidget.hpp"
+#include "dynamic/widget/text_widget.hpp"
 
+#include "dynamic/widget/capability/text_capability.hpp"
 #include "graphics/cell/painter.hpp"
 #include "graphics/text/font.hpp"
 #include "graphics/text/font_utils.hpp"
 
-// TODO: textwidget.cppp but text_layout.cpp ?
+// TODO: make sure that all file names are similar (before, this was textwidget.cpp)
 
 namespace notf {
 
@@ -17,6 +18,10 @@ TextWidget::TextWidget(FontPtr font, const Color color, const std::string text)
     , m_line_height(1)
     , m_newlines()
 {
+    TextCapabilityPtr text_capability = std::make_shared<TextCapability>();
+    text_capability->font             = m_font;
+    set_capability(std::move(text_capability));
+
     _update_claim();
 }
 
@@ -78,7 +83,7 @@ void TextWidget::_update_claim()
         const Aabri aabr = text_aabr(m_font, m_text);
 
         Claim claim;
-        claim.set_min(aabr.get_width(), m_font->pixel_size() * m_line_height);
+        claim.set_min(aabr.get_width(), m_font->line_height() * m_line_height);
         _set_claim(std::move(claim));
     }
 }
@@ -94,7 +99,24 @@ void TextWidget::_relayout()
     if (m_is_wrapping) {
         m_newlines = split_text_by_with(
             static_cast<int>(std::ceil(size.width)), static_cast<utf32_t>(' '), m_font, m_text);
-        size.height = m_newlines.size() * m_line_height * m_font->pixel_size();
+
+        size.height = m_font->ascender() + m_font->descender()
+            + ((m_newlines.size() - 1) * m_line_height * m_font->line_height());
+
+        const std::string last_line(m_newlines.back(), std::cend(m_text));
+        capability<TextCapability>()->baseline_end = Vector2f(
+            text_aabr(m_font, last_line).get_width(),
+            m_font->descender());
+    }
+    else { // not wrapping
+        const Aabri line_aabr = text_aabr(m_font, m_text);
+
+        size.height = line_aabr.get_height();
+        size.width  = line_aabr.get_width();
+
+        capability<TextCapability>()->baseline_end = Vector2f(
+            line_aabr.get_width(),
+            m_font->descender());
     }
 
     _set_size(size);
@@ -110,7 +132,7 @@ void TextWidget::_paint(Painter& painter) const
 
     painter.set_fill(m_color);
 
-    const float line_height = m_font->pixel_size() * m_line_height;
+    const float line_height = m_font->line_height() * m_line_height;
     if (m_is_wrapping) {
         painter.translate(0, get_size().height);
 

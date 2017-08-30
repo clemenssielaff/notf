@@ -5,6 +5,7 @@
 #include <unordered_map>
 
 #include "common/hash.hpp"
+#include "common/meta.hpp"
 #include "common/utf.hpp"
 
 struct FT_FaceRec_;
@@ -15,8 +16,7 @@ namespace notf {
 class FontManager;
 class GraphicsContext;
 
-class Font;
-using FontPtr = std::shared_ptr<Font>;
+DEFINE_SHARED_POINTERS(class, Font);
 
 /** Data type to identify a single Glyph. */
 using codepoint_t = utf32_t;
@@ -159,10 +159,19 @@ public: // methods *************************************************************
     bool is_valid() const { return m_face; }
 
     /** Returns the requested Glyph, or an invalid Glyph if the given codepoint is not known. */
-    const Glyph& get_glyph(const codepoint_t codepoint) const;
+    const Glyph& glyph(const codepoint_t codepoint) const;
 
     /** Font base size in pixels. */
     pixel_size_t pixel_size() const { return m_identifier.pixel_size; }
+
+    /** The vertical distance from the horizontal baseline to the hightest ‘character’ coordinate in a font face. */
+    pixel_size_t ascender() { return m_ascender; }
+
+    /** The vertical distance from the horizontal baseline to the lowest ‘character’ coordinate in a font face. */
+    pixel_size_t descender() { return m_descender; }
+
+    /** Default vertical baseline-to-baseline distance. */
+    pixel_size_t line_height() { return m_line_height; }
 
 private: // methods ***************************************************************************************************/
     /** Renders and returns a new Glyph. */
@@ -180,6 +189,17 @@ private: // members ************************************************************
 
     /** Freetype font face. */
     FT_Face m_face;
+
+    /** The vertical distance from the horizontal baseline to the hightest ‘character’ coordinate in a font face. */
+    pixel_size_t m_ascender;
+
+    /** The vertical distance from the horizontal baseline to the lowest ‘character’ coordinate in a font face. */
+    pixel_size_t m_descender;
+
+    /** Default vertical baseline-to-baseline distance, usually larger than the sum of the ascender and descender.
+     * There is no guarantee that no glyphs extend above or below subsequent baselines when using this height.
+     */
+    pixel_size_t m_line_height;
 
     /** Glyphs indixed by code point. */
     mutable std::unordered_map<codepoint_t, Glyph> m_glyphs;

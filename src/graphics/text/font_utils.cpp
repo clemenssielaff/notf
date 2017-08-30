@@ -12,7 +12,7 @@ Aabri text_aabr(const FontPtr& font, const std::string& text)
     Aabri::value_t advance = 0;
     const utf8_string utf8_text(text);
     for (const auto character : utf8_text) {
-        const Glyph& glyph = font->get_glyph(static_cast<codepoint_t>(character));
+        const Glyph& glyph = font->glyph(static_cast<codepoint_t>(character));
 
         result._min.y() = min(result._min.y(), glyph.rect.height - glyph.top);
         result._max.y() = max(result._max.y(), glyph.top);
@@ -35,7 +35,7 @@ split_text_by_with(const int width, const Codepoint delimiter, const FontPtr& fo
     size_t last_delimiter_index = 0;
     const utf8_string utf8_text(text);
     for (auto it = std::begin(utf8_text); it != std::end(utf8_text); ++it) {
-        const Glyph& glyph = font->get_glyph(static_cast<codepoint_t>(*it));
+        const Glyph& glyph = font->glyph(static_cast<codepoint_t>(*it));
 
         if (delimiter.value == 0 || *it == delimiter.value) {
             last_delimiter_index = static_cast<size_t>(it.get_index()) + 1; // include the delimiter
