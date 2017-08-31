@@ -96,16 +96,27 @@ void TextWidget::_relayout()
         return;
     }
 
+    TextCapabilityPtr text_capability = capability<TextCapability>();
+
     if (m_is_wrapping) {
-        m_newlines = split_text_by_with(
-            static_cast<int>(std::ceil(size.width)), static_cast<utf32_t>(' '), m_font, m_text);
+        m_newlines.clear();
+        m_newlines.emplace_back(std::begin(m_text));
+        const float first_width = size.width - text_capability->baseline_start.x();
+        auto first_break        = break_text(static_cast<int>(first_width), m_font, m_text, /*first*/ 0, /*limit*/ 1);
+        if (!first_break.empty()) {
+            m_newlines.emplace_back(first_break.front());
+        }
+        size_t first = static_cast<size_t>(std::distance(std::cbegin(m_text), first_break.front()));
+        for (auto newline : break_text(static_cast<int>(std::floor(size.width)), m_font, m_text, first)) {
+            m_newlines.push_back(newline);
+        }
 
         size.height = m_font->ascender() + m_font->descender()
             + ((m_newlines.size() - 1) * m_line_height * m_font->line_height());
 
         const std::string last_line(m_newlines.back(), std::cend(m_text));
-        capability<TextCapability>()->baseline_end = Vector2f(
-            text_aabr(m_font, last_line).get_width(),
+        text_capability->baseline_end = Vector2f(
+            text_aabr(m_font, last_line).get_width() - size.width,
             m_font->descender());
     }
     else { // not wrapping
@@ -114,9 +125,7 @@ void TextWidget::_relayout()
         size.height = line_aabr.get_height();
         size.width  = line_aabr.get_width();
 
-        capability<TextCapability>()->baseline_end = Vector2f(
-            line_aabr.get_width(),
-            m_font->descender());
+        text_capability->baseline_end = Vector2f(0, m_font->descender());
     }
 
     _set_size(size);
@@ -131,23 +140,29 @@ void TextWidget::_paint(Painter& painter) const
     assert(!m_newlines.empty());
 
     painter.set_fill(m_color);
+    painter.translate(0, get_size().height);
 
     const float line_height = m_font->line_height() * m_line_height;
     if (m_is_wrapping) {
-        painter.translate(0, get_size().height);
-
+        float x = capability<TextCapability>()->baseline_start.x();
         for (size_t i = 0; i < m_newlines.size(); ++i) {
             const std::string::const_iterator begin = m_newlines[i];
             const std::string::const_iterator end   = i == m_newlines.size() - 1 ? std::end(m_text) : m_newlines[i + 1];
             const std::string substring(begin, end);
 
-            painter.translate(0, -line_height);
+            painter.translate(x, -line_height);
+            if (x > 0.0001) {
+                x *= -1;
+            }
+            else if (x < -0.001) {
+                x = 0;
+            }
 
             painter.write(substring, m_font);
         }
     }
     else {
-        painter.translate(0, get_size().height - line_height);
+        painter.translate(capability<TextCapability>()->baseline_start);
 
         painter.write(m_text, m_font);
     }

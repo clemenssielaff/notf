@@ -131,8 +131,7 @@ void TextLayout::_relayout()
     const float available_width = get_size().width - m_padding.get_width();
     detail::ItemList& children  = *static_cast<detail::ItemList*>(m_children.get());
 
-    Vector2f stylus(0, get_size().height);
-    bool stylus_on_baseline = false;
+    float cursor = 0; // horizontal
     for (ItemPtr& item : children.items) {
         ScreenItem* screen_item = item->get_screen_item();
         if (!screen_item) {
@@ -146,40 +145,45 @@ void TextLayout::_relayout()
         if (widget) {
             text_capability = widget->capability<TextCapability>();
             if (text_capability) {
-                if (stylus_on_baseline) {
-                    text_capability->baseline_start = stylus;
-                }
-                else {
-                    text_capability->baseline_start = Vector2f(0, stylus.y() - text_capability->font->ascender());
-                }
+                text_capability->baseline_start.x() = cursor;
+                text_capability->baseline_start.y() = -text_capability->font->ascender();
             }
         }
 
         // force the minimal vertical size for each child
         ScreenItem::_set_grant(screen_item, Size2f(available_width, 0));
 
-        // advance the stylus
+        // advance the cursor
         if (text_capability) {
-            stylus             = text_capability->baseline_end;
-            stylus_on_baseline = true;
-        } else {
-            stylus             = Vector2f(0, stylus.y() - screen_item->get_size().height);
-            stylus_on_baseline = false;
+            cursor = screen_item->get_size().width + text_capability->baseline_end.x();
+        }
+        else {
+            cursor = screen_item->get_size().width;
         }
     }
 
     // update the children's location
-    float offset       = get_size().height;
     Aabrf content_aabr = Aabrf::zero();
+    cursor             = get_size().height; // vertical
     for (ItemPtr& item : children.items) {
         ScreenItem* screen_item = item->get_screen_item();
         if (!screen_item) {
             continue;
         }
 
-        offset -= screen_item->get_size().height;
-        const Xform2f item_xform = Xform2f::translation(m_padding.left, offset);
+        Widget* widget = dynamic_cast<Widget*>(screen_item);
+        TextCapabilityPtr text_capability = widget->capability<TextCapability>();
+
+        cursor -= screen_item->get_size().height;
+
+        const Xform2f item_xform = Xform2f::translation(m_padding.left, cursor);
         ScreenItem::_set_layout_xform(screen_item, item_xform);
+
+        // TODO: CONTINUE HERE
+        // this won't work in the general case (where we might have widgets with two different fonts) and not at all
+        // with non-TextWidgets!
+
+        cursor += text_capability->font->ascender() + text_capability->font->descender();
 
         if (content_aabr.is_zero()) {
             content_aabr = item_xform.transform(screen_item->get_content_aabr());

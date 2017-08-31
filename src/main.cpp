@@ -163,7 +163,7 @@ int main(int argc, char* argv[])
 
     g_font = Font::load(window->get_graphics_context(),
                         "/home/clemens/code/BUILD/notf-debug/res/fonts/Roboto-Regular.ttf",
-                        11);
+                        14);
 
     window->get_layout()->set_controller(std::make_shared<MainController>());
     int result = app.exec();

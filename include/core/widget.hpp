@@ -50,6 +50,9 @@ public: // methods *************************************************************
     template <typename CAPABILITY, ENABLE_IF_SUBCLASS(CAPABILITY, Capability)>
     std::shared_ptr<CAPABILITY> capability() { return m_capabilities.get<CAPABILITY>(); }
 
+    template <typename CAPABILITY, ENABLE_IF_SUBCLASS(CAPABILITY, Capability)>
+    std::shared_ptr<const CAPABILITY> capability() const { return m_capabilities.get<CAPABILITY>(); }
+
     /** Inserts or replaces a capability of this widget.
      * @param capability    Capability to insert.
      */
