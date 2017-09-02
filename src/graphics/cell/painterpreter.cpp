@@ -708,7 +708,7 @@ void Painterpreter::_render_text(const std::string& text, const std::shared_ptr<
     const PainterState& state       = _get_current_state();
     const FontManager& font_manager = m_canvas.m_graphics_context.get_font_manager();
     const Texture2Ptr& font_texture = font_manager.get_atlas_texture();
-    assert(font_texture->get_width() == font_texture->get_height());
+    assert(font_texture->width() == font_texture->height());
 
     // get the fill paint
     Paint fill_paint = state.fill_paint;
@@ -745,7 +745,7 @@ void Painterpreter::_render_text(const std::string& text, const std::shared_ptr<
                           static_cast<float>(glyph.rect.y),
                           static_cast<float>(glyph.rect.width),
                           static_cast<float>(glyph.rect.height));
-            uv_rect = uv_rect * (1.f / static_cast<float>(font_texture->get_width()));
+            uv_rect = uv_rect * (1.f / static_cast<float>(font_texture->width()));
 
             Aabrf quad_rect(
                 (x + glyph.left),

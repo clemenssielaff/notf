@@ -94,17 +94,18 @@ Window::Window(const WindowInfo& info)
     , m_layout()
     , m_render_manager() // has to be created after the OpenGL Context
     , m_graphics_context()
-    , m_cell_context()
+    , m_cell_canvas()
     , m_background_color(info.clear_color)
     , m_size(info.size)
 {
     // make sure that an Application was initialized before instanciating a Window (will exit on failure)
     Application& app = Application::get_instance();
 
-    // NoTF uses OpenGL ES 3.0 for now
+    // NoTF uses OpenGL ES 3.2
+    glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
     glfwWindowHint(GLFW_RESIZABLE, info.is_resizeable ? GL_TRUE : GL_FALSE);
 
     // create the GLFW window
@@ -121,11 +122,10 @@ Window::Window(const WindowInfo& info)
     // create the auxiliary objects
     m_render_manager = std::make_unique<RenderManager>(this);
 
-    GraphicsContextOptions context_args;
-    context_args.pixel_ratio = static_cast<float>(get_buffer_size().width) / static_cast<float>(get_window_size().width);
-    m_graphics_context       = std::make_unique<GraphicsContext>(this, context_args);
-
-    m_cell_context = std::make_unique<CellCanvas>(*m_graphics_context);
+    m_graphics_context = std::make_unique<GraphicsContext>(this);
+    CellCanvasSettings cell_settings;
+    cell_settings.pixel_ratio = static_cast<float>(get_buffer_size().width) / static_cast<float>(get_window_size().width);
+    m_cell_canvas             = std::make_unique<CellCanvas>(*m_graphics_context, cell_settings);
 
     // apply the Window icon
     // In order to show the icon in Ubuntu 16.04 is as bit more complicated:

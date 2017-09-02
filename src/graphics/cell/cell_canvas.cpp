@@ -29,15 +29,15 @@ namespace { // anonymous
 using namespace notf;
 
 /** Loads the shader sources and creates a dynamic header for them. */
-std::pair<std::string, std::string> create_shader_sources(const GraphicsContext& context)
+std::pair<std::string, std::string> create_shader_sources(const CellCanvas& canvas)
 {
     // create the header
     std::stringstream ss;
     ss << "#version 300 es\n";
-    if (context.get_options().geometric_aa) {
+    if (canvas.get_settings().geometric_aa) {
         ss << "#define GEOMETRY_AA 1\n";
     }
-    if (context.get_options().stencil_strokes) {
+    if (canvas.get_settings().stencil_strokes) {
         ss << "#define SAVE_ALPHA_STROKE 1\n";
     }
     ss << "\n";
@@ -54,8 +54,9 @@ const GLuint FRAG_BINDING = 0;
 
 namespace notf {
 
-CellCanvas::CellCanvas(GraphicsContext& context)
+CellCanvas::CellCanvas(GraphicsContext& context, CellCanvasSettings settings)
     : m_graphics_context(context)
+    , m_settings(std::move(settings))
     , m_painterpreter(std::make_unique<Painterpreter>(*this))
     , m_options()
     , m_cell_shader()
@@ -67,10 +68,20 @@ CellCanvas::CellCanvas(GraphicsContext& context)
     , m_vertex_array(0)
     , m_vertex_buffer(0)
 {
+    // make sure the pixel ratio is real and never zero
+    if (!is_real(m_settings.pixel_ratio)) {
+        log_warning << "Pixel ratio cannot be " << m_settings.pixel_ratio << ", defaulting to 1";
+        m_settings.pixel_ratio = 1;
+    }
+    else if (std::abs(m_settings.pixel_ratio) < precision_high<float>()) {
+        log_warning << "Pixel ratio cannot be zero, defaulting to 1";
+        m_settings.pixel_ratio = 1;
+    }
+
     // create the CellShader
-    const std::pair<std::string, std::string> sources = create_shader_sources(m_graphics_context);
+    const std::pair<std::string, std::string> sources = create_shader_sources(*this);
     m_cell_shader.shader            = Shader::build(m_graphics_context, "CellShader", sources.first, sources.second);
-    const GLuint cell_shader_id     = m_cell_shader.shader->get_id();
+    const GLuint cell_shader_id     = m_cell_shader.shader->id();
     m_cell_shader.projection_matrix = glGetUniformLocation(cell_shader_id, "projection_matrix");
     m_cell_shader.image             = glGetUniformLocation(cell_shader_id, "image");
     m_cell_shader.variables         = glGetUniformBlockIndex(cell_shader_id, "variables");
@@ -80,10 +91,8 @@ CellCanvas::CellCanvas(GraphicsContext& context)
     glGenBuffers(1, &m_vertex_buffer);
 
     // create UBOs
-    glUniformBlockBinding(cell_shader_id, m_cell_shader.variables, 0);
+    glUniformBlockBinding(cell_shader_id, m_cell_shader.variables, FRAG_BINDING);
     glGenBuffers(1, &m_fragment_buffer);
-    GLint align = sizeof(float);
-    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &align);
 
     glFinish();
     check_gl_error();
@@ -114,13 +123,13 @@ void CellCanvas::begin_frame(const Xform3f projection_matrix, const Time time, c
 {
     reset();
 
-    m_options.distance_tolerance    = 0.01f / m_graphics_context.get_options().pixel_ratio;
-    m_options.tesselation_tolerance = 0.25f / m_graphics_context.get_options().pixel_ratio;
-    m_options.fringe_width          = 1.f / m_graphics_context.get_options().pixel_ratio;
-    m_options.miter_limit           = m_graphics_context.get_options().miter_limit;
+    m_options.distance_tolerance    = 0.01f / get_settings().pixel_ratio;
+    m_options.tesselation_tolerance = 0.25f / get_settings().pixel_ratio;
+    m_options.fringe_width          = 1.f / get_settings().pixel_ratio;
+    m_options.miter_limit           = get_settings().miter_limit;
 
-    m_options.geometric_aa    = m_graphics_context.get_options().geometric_aa;
-    m_options.stencil_strokes = m_graphics_context.get_options().stencil_strokes;
+    m_options.geometric_aa    = get_settings().geometric_aa;
+    m_options.stencil_strokes = get_settings().stencil_strokes;
 
     m_options.projection_matrix = std::move(projection_matrix);
 
@@ -212,9 +221,8 @@ void CellCanvas::_perform_convex_fill(const Call& call)
 {
     assert(call.path_offset + call.path_count <= m_paths.size());
 
-    check_gl_error();
-
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset, fragmentSize());
+    check_gl_error();
     if (call.texture) {
         call.texture->bind();
     }
@@ -224,7 +232,7 @@ void CellCanvas::_perform_convex_fill(const Call& call)
         assert(static_cast<size_t>(m_paths[i].fill_offset + m_paths[i].fill_count) <= m_vertices.size());
         glDrawArrays(GL_TRIANGLE_FAN, m_paths[i].fill_offset, m_paths[i].fill_count);
     }
-    if (m_graphics_context.get_options().geometric_aa) {
+    if (get_settings().geometric_aa) {
         // draw fringes
         for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
             assert(static_cast<size_t>(m_paths[i].stroke_offset + m_paths[i].stroke_count) <= m_vertices.size());
@@ -265,7 +273,7 @@ void CellCanvas::_perform_fill(const Call& call)
         call.texture->bind();
     }
 
-    if (m_graphics_context.get_options().geometric_aa) {
+    if (get_settings().geometric_aa) {
         m_graphics_context.set_stencil_func(StencilFunc::EQUAL);
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         // draw fringes
@@ -290,7 +298,7 @@ void CellCanvas::_perform_stroke(const Call& call)
     assert(call.path_offset + call.path_count <= m_paths.size());
     assert(static_cast<size_t>(call.uniform_offset) <= max(size_t(0), m_shader_variables.size() - 1) * fragmentSize());
 
-    if (m_graphics_context.get_options().stencil_strokes) {
+    if (get_settings().stencil_strokes) {
         glEnable(GL_STENCIL_TEST);
         m_graphics_context.set_stencil_mask(0xff);
 
@@ -361,8 +369,8 @@ void CellCanvas::_dump_debug_info() const
 
     log_format << "==========================================================\n"
                << "== Arguments                                            ==";
-    log_trace << "Enable geometric AA: " << m_graphics_context.get_options().geometric_aa;
-    log_trace << "Pixel ratio: " << m_graphics_context.get_options().pixel_ratio;
+    log_trace << "Enable geometric AA: " << get_settings().geometric_aa;
+    log_trace << "Pixel ratio: " << get_settings().pixel_ratio;
 
     log_format << "==========================================================\n"
                << "== Calls                                                ==";
@@ -392,5 +400,15 @@ void CellCanvas::_dump_debug_info() const
                << "== Render Context Dump End                              ==\n"
                << "==========================================================";
 }
+
+// See TO DO in cell_canvas.hpp regarding the fragment size
+//GLintptr CellCanvas::fragmentSize()
+//{
+//    GLint align;
+//    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &align);
+//    GLint variable_size = sizeof(ShaderVariables);
+//    static const auto result = variable_size + align - variable_size % align;
+//    return result;
+//}
 
 } // namespace notf

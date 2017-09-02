@@ -70,6 +70,12 @@ namespace notf {
 
 std::shared_ptr<Texture2> Texture2::load_image(GraphicsContext& context, const std::string file_path)
 {
+    if (!context.is_current()) {
+        throw_runtime_error(string_format(
+            "Cannot load texture \"%s\" with a context that is not current",
+            file_path.c_str()));
+    }
+
     // load the texture from file
     RawImage image(file_path);
     if (!image) {
@@ -105,7 +111,6 @@ std::shared_ptr<Texture2> Texture2::load_image(GraphicsContext& context, const s
 
     // load the texture into OpenGL
     GLuint id = 0;
-    context.make_current();
     glGenTextures(1, &id);
     assert(id);
     glBindTexture(GL_TEXTURE_2D, id);
@@ -154,7 +159,7 @@ std::shared_ptr<Texture2> Texture2::load_image(GraphicsContext& context, const s
     }
 
     // return the loaded texture on success
-    std::shared_ptr<Texture2> texture = Texture2::create(
+    std::shared_ptr<Texture2> texture = Texture2::_create(
         id, context, std::move(file_path), image.get_width(), image.get_height(), texture_format);
     context.m_textures.emplace_back(texture);
     return texture;
@@ -163,9 +168,16 @@ std::shared_ptr<Texture2> Texture2::load_image(GraphicsContext& context, const s
 std::shared_ptr<Texture2> Texture2::create_empty(GraphicsContext& context, const std::string name,
                                                  const Size2i& size, const Format format)
 {
+    if (!context.is_current()) {
+        throw_runtime_error(string_format(
+            "Cannot create empty texture \"%s\" with a context that is not current",
+            name.c_str()));
+    }
+
     if (!size.is_valid()) {
-        log_critical << "Cannot create a Texture2 with an invalid size";
-        return {};
+        throw_runtime_error(string_format(
+            "Cannot create a texture with an invalid size: %s",
+            size));
     }
 
     // create the data
@@ -195,7 +207,6 @@ std::shared_ptr<Texture2> Texture2::create_empty(GraphicsContext& context, const
 
     // create the atlas texture
     GLuint id = 0;
-    context.make_current();
     glGenTextures(1, &id);
     assert(id);
     glBindTexture(GL_TEXTURE_2D, id);
@@ -215,7 +226,7 @@ std::shared_ptr<Texture2> Texture2::create_empty(GraphicsContext& context, const
     check_gl_error();
 
     // return the loaded texture on success
-    std::shared_ptr<Texture2> texture = Texture2::create(id, context, std::move(name), size.width, size.height, format);
+    std::shared_ptr<Texture2> texture = Texture2::_create(id, context, std::move(name), size.width, size.height, format);
     context.m_textures.emplace_back(texture);
     return texture;
 }
@@ -225,8 +236,8 @@ void Texture2::unbind()
     glBindTexture(GL_TEXTURE_2D, GL_ZERO);
 }
 
-std::shared_ptr<Texture2> Texture2::create(const GLuint id, GraphicsContext& context, const std::string name,
-                                           const GLint width, const GLint height, const Format format)
+std::shared_ptr<Texture2> Texture2::_create(const GLuint id, GraphicsContext& context, const std::string name,
+                                            const GLint width, const GLint height, const Format format)
 {
 #ifdef _DEBUG
     return std::shared_ptr<Texture2>(new Texture2(id, context, name, width, height, format));
@@ -265,55 +276,50 @@ Texture2::~Texture2()
     _deallocate();
 }
 
-bool Texture2::bind() const
+void Texture2::bind()
 {
-    if (is_valid()) {
-        m_graphics_context.make_current();
-        m_graphics_context._bind_texture(m_id);
-        return true;
+    if (!is_valid()) {
+        throw_runtime_error(string_format(
+            "Cannot bind invalid texture \"%s\"",
+            m_name.c_str()));
     }
-    else {
-        log_critical << "Cannot bind invalid Texture \"" << m_name << "\"";
-        return false;
-    }
+    m_graphics_context.bind_texture(this);
 }
 
 void Texture2::set_min_filter(const MinFilter filter)
 {
-    if (bind()) {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter));
-        m_min_filter = filter;
-    }
+    bind();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter));
+    m_min_filter = filter;
 }
 
 void Texture2::set_mag_filter(const MagFilter filter)
 {
-    if (bind()) {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter));
-        m_mag_filter = filter;
-    }
+    bind();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter));
+    m_mag_filter = filter;
 }
 
 void Texture2::set_wrap_x(const Wrap wrap)
 {
-    if (bind()) {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap));
-        m_wrap_x = wrap;
-    }
+    bind();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap));
+    m_wrap_x = wrap;
 }
 
 void Texture2::set_wrap_y(const Wrap wrap)
 {
-    if (bind()) {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap));
-        m_wrap_y = wrap;
-    }
+    bind();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap));
+    m_wrap_y = wrap;
 }
 
 void Texture2::fill(const Color& color)
 {
-    if (!bind()) {
-        return;
+    if (!m_graphics_context.is_current()) {
+        throw_runtime_error(string_format(
+            "Cannot fill texture \"%s\" with a context that is not current",
+            m_name.c_str()));
     }
 
     // adjust the color to the texture
@@ -367,10 +373,9 @@ void Texture2::fill(const Color& color)
 void Texture2::_deallocate()
 {
     if (m_id) {
-        m_graphics_context.make_current();
+        assert(m_graphics_context.is_current());
         glDeleteTextures(1, &m_id);
         log_trace << "Deleted OpenGL texture with ID: " << m_id;
-        m_id = 0;
     }
 }
 

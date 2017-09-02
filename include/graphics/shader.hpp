@@ -8,6 +8,8 @@
 
 namespace notf {
 
+DEFINE_SHARED_POINTERS(class, Shader);
+
 class GraphicsContext;
 
 //*********************************************************************************************************************/
@@ -30,7 +32,7 @@ class Shader {
 
     friend class GraphicsContext; // creates and finally invalidates all of its Shaders when it is destroyed
 
-public: // static methods
+public: // static methods *********************************************************************************************/
     /** Builds a new OpenGL ES Shader from sources.
      * @param context           Render Context in which the Shader lives.
      * @param shader_name       Name of this Shader.
@@ -45,7 +47,7 @@ public: // static methods
     /** Unbinds any current active Shader. */
     static void unbind();
 
-private: // constructor
+private: // constructor ***********************************************************************************************/
     /** Value Constructor.
      * @param id        OpenGL Shader program ID.
      * @param context   Render Context in which the Shader lives.
@@ -53,14 +55,14 @@ private: // constructor
      */
     Shader(const GLuint id, GraphicsContext& context, const std::string name);
 
-public: // methods
+public: // methods ****************************************************************************************************/
     DISALLOW_COPY_AND_ASSIGN(Shader)
 
     /** Destructor */
     ~Shader();
 
     /** The OpenGL ID of the Shader program. */
-    GLuint get_id() const { return m_id; }
+    GLuint id() const { return m_id; }
 
     /** Checks if the Shader is valid.
      * A Shader should always be valid - the only way to get an invalid one is to remove the GraphicsContext while still
@@ -69,18 +71,18 @@ public: // methods
     bool is_valid() const { return m_id != 0; }
 
     /** The name of this Shader. */
-    const std::string& get_name() const { return m_name; }
+    const std::string& name() const { return m_name; }
 
-    /** Tells OpenGL to use this Shader.
-     * @return  False if this Shader is invalid and cannot be bound.
+    /** Binds this as the current active shader.
+     * @throw   std::runtime_error if the shader's graphics context is not current or this shader is invalid.
      */
-    bool bind();
+    void bind();
 
-private: // methods for GraphicsContext
+private: // methods for GraphicsContext *******************************************************************************/
     /** Deallocates the Shader data and invalidates the Shader. */
     void _deallocate();
 
-private: // fields
+private: // fields ****************************************************************************************************/
     /** ID of the shader program. */
     GLuint m_id;
 

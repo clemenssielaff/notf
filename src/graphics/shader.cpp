@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <sstream>
 
+#include "common/exception.hpp"
 #include "common/log.hpp"
 #include "core/opengl.hpp"
 #include "graphics/graphics_context.hpp"
@@ -131,7 +132,11 @@ std::shared_ptr<Shader> Shader::build(GraphicsContext& context,
                                       const std::string& vertex_shader_source,
                                       const std::string& fragment_shader_source)
 {
-    context.make_current();
+    if (!context.is_current()) {
+        throw_runtime_error(string_format(
+            "Cannot build shader \"%s\" with a context that is not current",
+            name.c_str()));
+    }
 
     // compile the shaders
     GLuint vertex_shader = compile_shader(STAGE::VERTEX, name, vertex_shader_source);
@@ -171,7 +176,7 @@ std::shared_ptr<Shader> Shader::build(GraphicsContext& context,
         throw std::runtime_error(msg);
     }
 
-    // create the Shader object
+// create the Shader object
 #ifdef _DEBUG
     std::shared_ptr<Shader> shader(new Shader(program, context, name));
 #else
@@ -202,26 +207,22 @@ Shader::~Shader()
     _deallocate();
 }
 
-bool Shader::bind()
+void Shader::bind()
 {
-    if (is_valid()) {
-        m_graphics_context.make_current();
-        m_graphics_context._bind_shader(m_id);
-        return true;
+    if (!is_valid()) {
+        throw_runtime_error(string_format(
+            "Cannot bind invalid Shader \"%s\"",
+            m_name.c_str()));
     }
-    else {
-        log_critical << "Cannot bind invalid Shader \"" << m_name << "\"";
-        return false;
-    }
+    m_graphics_context.bind_shader(this);
 }
 
 void Shader::_deallocate()
 {
     if (m_id) {
-        m_graphics_context.make_current();
+        assert(m_graphics_context.is_current());
         glDeleteProgram(m_id);
         log_trace << "Deleted Shader Program \"" << m_name << "\"";
-        m_id = 0;
     }
 }
 

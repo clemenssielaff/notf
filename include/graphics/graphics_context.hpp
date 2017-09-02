@@ -1,8 +1,10 @@
 #pragma once
 
 #include <memory>
+#include <thread>
 #include <vector>
 
+#include "common/meta.hpp"
 #include "graphics/blend_mode.hpp"
 #include "graphics/gl_forwards.hpp"
 #include "graphics/stencil_func.hpp"
@@ -16,55 +18,23 @@ class Window;
 
 /**********************************************************************************************************************/
 
-struct GraphicsContextOptions {
-
-    /** Flag indicating whether the GraphicsContext will provide geometric antialiasing for its 2D shapes or not.
-     * In a purely 2D application, this flag should be set to `true` since geometric antialiasing is cheaper than
-     * full blown multisampling and looks just as good.
-     * However, in a 3D application, you will most likely require true multisampling anyway, in which case we might not
-     * need the redundant geometrical antialiasing on top.
-     */
-    bool geometric_aa = true;
-
-    /** When drawing transparent strokes, this flag will make sure that the stroke has a consistent alpha.
-     * It does so by creating two stroke calls - one for the stencil and one for the actual fill.
-     * This is expensive and becomes even more so, because the fragment shader will have to discard many fragments,
-     * which might cause a massive slowdown on some machines (cuts fps in half on mine).
-     * Since the effect is not visible if you don't draw thick, transparent strokes, this is off by default.
-     * If you do see areas in your stroke that are darker than others you might want to enable it.
-     * Also, if you try it out and it does not cause a massive performance hit, you might just as well leave it on
-     * because it is the Right Way™ to draw strokes.
-     */
-    bool stencil_strokes = true;
-
-    /** Pixel ratio of the GraphicsContext.
-     * Calculate the pixel ratio using `Window::get_buffer_size().width() / Window::get_window_size().width()`.
-     * 1.0 means square pixels.
-     */
-    float pixel_ratio = 1.f;
-
-    /** Limit of the ration of a joint's miter length to its stroke width. */
-    float miter_limit = 2.4f;
-};
-
-/**********************************************************************************************************************/
-
-/** The GraphicsContext.
- *
- * An Application has zero, one or multiple Windows.
- * Each Window has a RenderManager that takes care of the high-level Widget rendering.
- * Each RenderManager has a GraphicsContext (or maybe it is shared between Windows ... TBD)
- * The GraphicsContext is a wrapper around the OpenGL context and.
+/** The GraphicsContext is an abstraction of the OpenGL graphics context.
+ * It is the object owning all NoTF client objects like shaders and textures.
  */
-class GraphicsContext { // TODO: we don't need a Font Manager per Window. Why a GraphicsContext per Window? Shared
+class GraphicsContext {
 
     friend class Shader;
     friend class Texture2;
 
-public: // methods
-    /******************************************************************************************************************/
-    /** Constructor. */
-    GraphicsContext(const Window* window, const GraphicsContextOptions args);
+public: // methods ****************************************************************************************************/
+    DISALLOW_COPY_AND_ASSIGN(GraphicsContext)
+
+    /** Constructor.
+     * @throws  std::runtime_error If the given window is invalid.
+     * @throws  std::runtime_error If another current OpenGL context exits.
+     * @throws  std::runtime_error If the given window does not have a valid and current OpenGL context.
+     */
+    GraphicsContext(const Window* window);
 
     /** Destructor. */
     ~GraphicsContext();
@@ -72,8 +42,8 @@ public: // methods
     /** Makes the OpenGL context of this GraphicsContext current. */
     void make_current();
 
-    /** The curent options of the GraphicsContext. */
-    const GraphicsContextOptions& get_options() const { return m_options; }
+    /** Checks whether this graphics context is current on the calling thread. */
+    bool is_current() const;
 
     /** The Font Manager. */
     FontManager& get_font_manager() const { return *m_font_manager.get(); }
@@ -87,22 +57,26 @@ public: // methods
     /** Applies the given blend mode. */
     void set_blend_mode(const BlendMode mode);
 
+    /** Binds the given texture.
+     * @param   texture     Texture to bind.
+     * @throws              std::runtime_error if the graphics context is not current.
+     */
+    void bind_texture(Texture2* texture);
+
+    /** Binds the Shader with the given ID.
+     * @throws  std::runtime_error if the graphics context is not current.
+     */
+    void bind_shader(Shader* shader);
+
     /** Resets the cached state, forcing the GraphicsContext to explicitly re-bind and re-set all values. */
     void force_reloads();
 
-private: // methods for friends
-    /** Binds the Texture with the given ID, but only if it is not the currently bound one. */
-    void _bind_texture(const GLuint texture_id);
-
-    /** Binds the Shader with the given ID, but only if it is not the currently bound one. */
-    void _bind_shader(const GLuint shader_id);
-
-private: // fields
+private: // fields ****************************************************************************************************/
     /** The Window owning this RenderManager. */
     const Window* m_window;
 
-    /** Argument struct to initialize the GraphicsContext. */
-    GraphicsContextOptions m_options;
+    /** Id of the thread on which the context is current. */
+    std::thread::id m_current_thread;
 
     /* OpenGL state cache *********************************************************************************************/
 

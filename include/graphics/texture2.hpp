@@ -11,8 +11,7 @@ namespace notf {
 struct Color;
 class GraphicsContext;
 
-class Texture2;
-using Texture2Ptr = std::shared_ptr<Texture2>;
+DEFINE_SHARED_POINTERS(class, Texture2);
 
 template <typename value_t, FWD_ENABLE_IF_ARITHMETIC(value_t)>
 struct _Size2;
@@ -38,7 +37,7 @@ class Texture2 {
 
     friend class GraphicsContext; // creates and finally invalidates all of its Textures when it is destroyed
 
-public: // enums
+public: // enums ******************************************************************************************************/
     enum class Format : unsigned char {
         GRAYSCALE = 1, //* one byte per pixel (grayscale)
         RGB       = 3, //* 3 bytes per pixel (color)
@@ -66,7 +65,7 @@ public: // enums
         MIRRORED_REPEAT, //* Like REPEAT when the integer part of c is even, 1 - frac(c) when c is odd
     };
 
-public: // static methods
+public: // static methods *********************************************************************************************/
     /** Loads a texture from a given file.
      * @param context   Render Context in which the Texture lives.
      * @param file_path Path to a texture file.
@@ -86,10 +85,10 @@ public: // static methods
     /** Unbinds any current active Texture. */
     static void unbind();
 
-private: // factory
+private: // constructor ***********************************************************************************************/
     /** Factory. */
-    static std::shared_ptr<Texture2> create(const GLuint id, GraphicsContext& context, const std::string name,
-                                            const GLint width, const GLint height, const Format format);
+    static std::shared_ptr<Texture2> _create(const GLuint id, GraphicsContext& context, const std::string name,
+                                             const GLint width, const GLint height, const Format format);
 
     /** Value Constructor.
      * @param id        OpenGL texture ID.
@@ -102,14 +101,14 @@ private: // factory
     Texture2(const GLuint id, GraphicsContext& context, const std::string name,
              const GLint width, const GLint height, const Format format);
 
-public: // methods
+public: // methods ****************************************************************************************************/
     DISALLOW_COPY_AND_ASSIGN(Texture2)
 
     /** Destructor. */
     ~Texture2();
 
     /** The OpenGL ID of this Texture2. */
-    GLuint get_id() const { return m_id; }
+    GLuint id() const { return m_id; }
 
     /** Checks if the Texture is still valid.
      * A Texture should always be valid - the only way to get an invalid one is to remove the GraphicsContext while
@@ -118,33 +117,33 @@ public: // methods
     bool is_valid() const { return m_id != 0; }
 
     /** The name of this Texture. */
-    const std::string& get_name() const { return m_name; }
-
-    /** Binds this Texture2 as the current active Texture.
-     * @return  False if this Texture is invalid and cannot be bound.
-     */
-    bool bind() const;
+    const std::string& name() const { return m_name; }
 
     /** Width of the loaded image in pixels. */
-    GLint get_width() const { return m_width; }
+    GLint width() const { return m_width; }
 
     /** Height of the loaded image in pixels. */
-    GLint get_height() const { return m_height; }
+    GLint height() const { return m_height; }
 
     /** The format of this Texture. */
-    Format get_format() const { return m_format; }
+    Format format() const { return m_format; }
 
     /** Returns the filter mode when the texture pixels are smaller than scren pixels. */
-    MinFilter get_filter_min() const { return m_min_filter; }
+    MinFilter filter_min() const { return m_min_filter; }
 
     /** Returns the filter mode when the texture pixels are larger than scren pixels. */
-    MagFilter get_filter_mag() const { return m_mag_filter; }
+    MagFilter filter_mag() const { return m_mag_filter; }
 
     /** Returns the horizonal wrap mode. */
-    Wrap get_wrap_x() const { return m_wrap_x; }
+    Wrap wrap_x() const { return m_wrap_x; }
 
     /** Returns the vertical wrap mode. */
-    Wrap get_wrap_y() const { return m_wrap_y; }
+    Wrap wrap_y() const { return m_wrap_y; }
+
+    /** Binds this as the current active texture.
+     * @throw   std::runtime_error if the texture's graphics context is not current or this texture is invalid.
+     */
+    void bind();
 
     /** Sets a new filter mode when the texture pixels are smaller than scren pixels. */
     void set_min_filter(const MinFilter filter);

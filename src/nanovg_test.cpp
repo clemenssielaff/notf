@@ -548,14 +548,14 @@ void app_main(Window& window)
     window.get_layout()->set_controller(controller);
 }
 
-#if 0
+#if 1
 
 int main(int argc, char* argv[])
 {
     ApplicationInfo app_info;
     app_info.argc         = argc;
     app_info.argv         = argv;
-    app_info.enable_vsync = false;
+    app_info.enable_vsync = true;
     Application& app      = Application::initialize(app_info);
 
     // window

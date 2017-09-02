@@ -101,8 +101,8 @@ void RenderManager::render()
     const Size2i buffer_size  = m_window->get_buffer_size();
     Xform3f projection_matrix = Xform3f::orthographic(static_cast<float>(buffer_size.width),
                                                       static_cast<float>(buffer_size.height));
-    CellCanvas& cell_context = m_window->get_cell_context();
-    cell_context.begin_frame(projection_matrix, time_at_start, m_window->get_mouse_pos());
+    CellCanvas& cell_canvas = m_window->get_cell_canvas();
+    cell_canvas.begin_frame(projection_matrix, time_at_start, m_window->get_mouse_pos());
 
     { // remove unused layers
         const size_t size_before = m_layers.size();
@@ -122,7 +122,7 @@ void RenderManager::render()
         _collect_widgets(m_window->get_layout().get(), widgets);
         for (const auto& render_layer : widgets) {
             for (const Widget* widget : render_layer) {
-                widget->_render(cell_context);
+                widget->_render(cell_canvas);
             }
         }
     }
@@ -132,11 +132,11 @@ void RenderManager::render()
     if (m_stats) {
         double time_elapsed = (Time::now().since(time_at_start)).in_seconds();
         m_stats->update(static_cast<float>(time_elapsed));
-        m_stats->render_stats(cell_context);
+        m_stats->render_stats(cell_canvas);
     }
 
     // flush
-    cell_context.finish_frame();
+    cell_canvas.finish_frame();
 }
 
 void RenderManager::_collect_widgets(const ScreenItem* root_item, std::vector<std::vector<const Widget*>>& widgets)

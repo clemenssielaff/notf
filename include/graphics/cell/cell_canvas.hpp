@@ -21,11 +21,44 @@ class Texture2;
 
 /**********************************************************************************************************************/
 
+struct CellCanvasSettings {
+
+    /** Flag indicating whether the GraphicsContext will provide geometric antialiasing for its 2D shapes or not.
+     * In a purely 2D application, this flag should be set to `true` since geometric antialiasing is cheaper than
+     * full blown multisampling and looks just as good.
+     * However, in a 3D application, you will most likely require true multisampling anyway, in which case we might not
+     * need the redundant geometrical antialiasing on top.
+     */
+    bool geometric_aa = true;
+
+    /** When drawing transparent strokes, this flag will make sure that the stroke has a consistent alpha.
+     * It does so by creating two stroke calls - one for the stencil and one for the actual fill.
+     * This is expensive and becomes even more so, because the fragment shader will have to discard many fragments,
+     * which might cause a massive slowdown on some machines (cuts fps in half on mine).
+     * Since the effect is not visible if you don't draw thick, transparent strokes, this is off by default.
+     * If you do see areas in your stroke that are darker than others you might want to enable it.
+     * Also, if you try it out and it does not cause a massive performance hit, you might just as well leave it on
+     * because it is the Right Way™ to draw strokes.
+     */
+    bool stencil_strokes = true;
+
+    /** Pixel ratio of the GraphicsContext.
+     * Calculate the pixel ratio using `Window::get_buffer_size().width() / Window::get_window_size().width()`.
+     * 1.0 means square pixels.
+     */
+    float pixel_ratio = 1.f;
+
+    /** Limit of the ration of a joint's miter length to its stroke width. */
+    float miter_limit = 2.4f;
+};
+
+/**********************************************************************************************************************/
+
 /** All values that determine the paint operations in the painted Cells.
  * We need options to stay the same during a frame, which is why they are collected from various sources at the
  * beginning and do not change until the next frame.
  */
-struct CellCanvasOptions {
+struct CellCanvasOptions { // TODO: rename to "framesettings" or something?
 
     /** Furthest distance between two points in which the second point is considered equal to the first. */
     float distance_tolerance;
@@ -115,7 +148,7 @@ private: // classes
         float stroke_factor;
         float stroke_threshold;
         Type type;
-        float _padding;
+        float _padding[33]; // TODO: this works FOR ME ON MY MACHINE, but it's not good. Is something here to fix that? : https://learnopengl.com/?_escaped_fragment_=Advanced-OpenGL/Advanced-GLSL#!Advanced-OpenGL/Advanced-GLSL
     };
 
     friend void paint_to_frag(ShaderVariables& frag, const Paint& paint, const Scissor& scissor,
@@ -123,7 +156,7 @@ private: // classes
 
     /******************************************************************************************************************/
 
-    struct CellShader {
+    struct CellShader { // TODO: CellShader should be named "program", otherwise it's confusing
         /** The actual Cell Shader. */
         std::shared_ptr<Shader> shader;
 
@@ -141,10 +174,13 @@ private: // classes
 
 public: // methods
     /** Constructor. */
-    CellCanvas(GraphicsContext& context);
+    CellCanvas(GraphicsContext& context, CellCanvasSettings settings);
 
     /** Destructor. */
     ~CellCanvas();
+
+    /** The curent options of the GraphicsContext. */
+    const CellCanvasSettings& get_settings() const { return m_settings; }
 
     /** The Font Manager. */
     const FontManager& get_font_manager() const;
@@ -193,6 +229,9 @@ private: // static methods
 private: // fields
     /** Graphics Context used by the Cell Context. */
     GraphicsContext& m_graphics_context;
+
+    /** Constant settings. */
+    CellCanvasSettings m_settings;
 
     /** The single Painterpreter used to paint in this Cell Context. */
     std::unique_ptr<Painterpreter> m_painterpreter;

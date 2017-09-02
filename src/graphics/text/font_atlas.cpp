@@ -127,7 +127,7 @@ FontAtlas::FontAtlas(GraphicsContext& graphics_context)
     // initialize
     reset();
 
-    log_trace << "Created font atlas of size " << m_width << "x" << m_height << " with texture ID: " << m_texture->get_id();
+    log_trace << "Created font atlas of size " << m_width << "x" << m_height << " with texture ID: " << m_texture->id();
 
     static_assert(std::is_pod<FitRequest>::value, "This compiler does not recognize notf::FontAtlas::FitRequest as a POD.");
     static_assert(std::is_pod<SkylineNode>::value, "This compiler does not recognize notf::FontAtlas::SkylineNode as a POD.");
@@ -136,7 +136,7 @@ FontAtlas::FontAtlas(GraphicsContext& graphics_context)
 
 FontAtlas::~FontAtlas()
 {
-    log_trace << "Deleted font atlas with texture ID: " << m_texture->get_id();
+    log_trace << "Deleted font atlas with texture ID: " << m_texture->id();
 }
 
 void FontAtlas::reset()
@@ -230,15 +230,13 @@ std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<FitReques
 
 void FontAtlas::fill_rect(const Glyph::Rect& rect, const uchar* data)
 {
-//    assert(data); // FIXME: bug here with the linux NVIDIA drivers where the font atlas doesn't work => no text!
     if (rect.height == 0 || rect.width == 0 || !data) {
         return;
     }
-    if (m_texture->bind()) {
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, rect.width);
-        glTexSubImage2D(GL_TEXTURE_2D, /* level = */ 0, rect.x, rect.y, rect.width, rect.height, GL_RED, GL_UNSIGNED_BYTE, data);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, m_texture->get_width());
-    }
+    m_texture->bind();
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, rect.width);
+    glTexSubImage2D(GL_TEXTURE_2D, /* level = */ 0, rect.x, rect.y, rect.width, rect.height, GL_RED, GL_UNSIGNED_BYTE, data);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, m_texture->width());
     check_gl_error();
 }
 

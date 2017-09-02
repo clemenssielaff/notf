@@ -76,7 +76,7 @@ struct LogMessage {
     /** Line of the file at which this LogMessage was created. */
     uint line;
 
-    /** Thread ID of the thread from which this LogMessage originate.s */
+    /** Thread ID of the thread from which this LogMessage originates. */
     std::thread::id thread_id;
 
     /** Name of the file containing the call to create this LogMessage. */
