@@ -153,10 +153,8 @@ void CellCanvas::finish_frame()
     }
     assert(m_cell_shader.shader);
 
-    m_graphics_context.force_reloads();
-
     // setup GL state
-    m_cell_shader.shader->bind();
+    m_graphics_context.push_shader(m_cell_shader.shader);
     m_graphics_context.set_blend_mode(BlendMode::SOURCE_OVER);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
@@ -169,7 +167,6 @@ void CellCanvas::finish_frame()
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     m_graphics_context.set_stencil_func(StencilFunc::ALWAYS);
     glActiveTexture(GL_TEXTURE0);
-    Texture2::unbind();
 
     // upload ubo for frag shaders
     glBindBuffer(GL_UNIFORM_BUFFER, m_fragment_buffer);
@@ -212,7 +209,8 @@ void CellCanvas::finish_frame()
     glBindVertexArray(0);
     glDisable(GL_CULL_FACE);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-    Shader::unbind();
+    m_graphics_context.clear_shader();
+    m_graphics_context.clear_texture();
 
     check_gl_error();
 }
@@ -224,7 +222,7 @@ void CellCanvas::_perform_convex_fill(const Call& call)
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset, fragmentSize());
     check_gl_error();
     if (call.texture) {
-        call.texture->bind();
+        m_graphics_context.push_texture(call.texture);
     }
 
     for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
@@ -270,7 +268,7 @@ void CellCanvas::_perform_fill(const Call& call)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset + fragmentSize(), fragmentSize());
     if (call.texture) {
-        call.texture->bind();
+        m_graphics_context.push_texture(call.texture);
     }
 
     if (get_settings().geometric_aa) {
@@ -307,7 +305,7 @@ void CellCanvas::_perform_stroke(const Call& call)
         glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
         glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset + fragmentSize(), fragmentSize());
         if (call.texture) {
-            call.texture->bind();
+            m_graphics_context.push_texture(call.texture);
         }
         for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
             assert(static_cast<size_t>(m_paths[i].stroke_offset + m_paths[i].stroke_count) <= m_vertices.size());
@@ -317,7 +315,7 @@ void CellCanvas::_perform_stroke(const Call& call)
         // draw anti-aliased pixels
         glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset, fragmentSize());
         if (call.texture) {
-            call.texture->bind();
+            m_graphics_context.push_texture(call.texture);
         }
         m_graphics_context.set_stencil_func(StencilFunc::EQUAL);
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
@@ -341,7 +339,7 @@ void CellCanvas::_perform_stroke(const Call& call)
     else { // !m_context.get_args().save_alpha_stroke
         glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset, fragmentSize());
         if (call.texture) {
-            call.texture->bind();
+            m_graphics_context.push_texture(call.texture);
         }
         for (size_t i = call.path_offset; i < call.path_offset + call.path_count; ++i) {
             glDrawArrays(GL_TRIANGLE_STRIP, m_paths[i].stroke_offset, m_paths[i].stroke_count);
@@ -356,7 +354,7 @@ void CellCanvas::_render_text(const Call& call)
 {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset, fragmentSize());
-    call.texture->bind();
+    m_graphics_context.push_texture(call.texture);
     glDrawArrays(GL_TRIANGLES, call.polygon_offset, call.polygon_count);
     check_gl_error();
 }

@@ -3,6 +3,8 @@
 #include "common/log.hpp"
 #include "common/size2.hpp"
 #include "core/glfw.hpp"
+#include "graphics/graphics_context.hpp"
+#include "graphics/shader.hpp"
 
 using namespace notf;
 
@@ -33,21 +35,27 @@ int test01_main(int /*argc*/, char* /*argv*/ [])
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-    GLFWwindow* window = glfwCreateWindow(800, 600, "NoTF Engine Test", nullptr, nullptr);
-    glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
+    { // open the window
+        GLFWwindow* window = glfwCreateWindow(800, 600, "NoTF Engine Test", nullptr, nullptr);
+        std::unique_ptr<GraphicsContext> context(new GraphicsContext(window));
 
-    // render loop
-    while (!glfwWindowShouldClose(window)) {
-        Size2i buffer_size;
-        glfwGetFramebufferSize(window, &buffer_size.width, &buffer_size.height);
-        glViewport(0, 0, buffer_size.width, buffer_size.height);
+        ShaderPtr shader = Shader::load(
+            *context.get(), "TestShader",
+            "/home/clemens/tutorial/OpenGL-Build-High-Performance-Graphics/Module 1/Chapter01/SimpleTriangle/SimpleTriangle/shaders/shader.vert",
+            "/home/clemens/tutorial/OpenGL-Build-High-Performance-Graphics/Module 1/Chapter01/SimpleTriangle/SimpleTriangle/shaders/shader.frag");
 
-        glClearColor(0, 0, 0, 1);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        // render loop
+        while (!glfwWindowShouldClose(window)) {
+            Size2i buffer_size;
+            glfwGetFramebufferSize(window, &buffer_size.width, &buffer_size.height);
+            glViewport(0, 0, buffer_size.width, buffer_size.height);
 
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+            glClearColor(0, 0, 0, 1);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+            glfwSwapBuffers(window);
+            glfwPollEvents();
+        }
     }
 
     // stop the event loop

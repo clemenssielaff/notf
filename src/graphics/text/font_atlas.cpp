@@ -11,6 +11,7 @@
 #include "common/warnings.hpp"
 #include "core/opengl.hpp"
 #include "graphics/gl_errors.hpp"
+#include "graphics/graphics_context.hpp"
 #include "graphics/texture2.hpp"
 
 namespace { // anonymous
@@ -110,7 +111,8 @@ return_success:
 }
 
 FontAtlas::FontAtlas(GraphicsContext& graphics_context)
-    : m_texture(nullptr)
+    : m_graphics_context(graphics_context)
+    , m_texture(nullptr)
     , m_width(512)
     , m_height(512)
     , m_used_area(0)
@@ -118,7 +120,7 @@ FontAtlas::FontAtlas(GraphicsContext& graphics_context)
     , m_waste()
 {
     // create the atlas texture
-    m_texture = Texture2::create_empty(graphics_context, "__notf_font_atlas", Size2i(m_width, m_height), Texture2::Format::GRAYSCALE);
+    m_texture = Texture2::create_empty(m_graphics_context, "__notf_font_atlas", Size2i(m_width, m_height), Texture2::Format::GRAYSCALE);
     m_texture->set_wrap_x(Texture2::Wrap::CLAMP_TO_EDGE);
     m_texture->set_wrap_y(Texture2::Wrap::CLAMP_TO_EDGE);
     m_texture->set_min_filter(Texture2::MinFilter::LINEAR);
@@ -233,10 +235,11 @@ void FontAtlas::fill_rect(const Glyph::Rect& rect, const uchar* data)
     if (rect.height == 0 || rect.width == 0 || !data) {
         return;
     }
-    m_texture->bind();
+    m_graphics_context.push_texture(m_texture);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, rect.width);
     glTexSubImage2D(GL_TEXTURE_2D, /* level = */ 0, rect.x, rect.y, rect.width, rect.height, GL_RED, GL_UNSIGNED_BYTE, data);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, m_texture->width());
+    m_graphics_context.pop_texture();
     check_gl_error();
 }
 

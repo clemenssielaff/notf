@@ -33,7 +33,7 @@ using Size2i = _Size2<int, true>;
  * In a well-behaved program, all Textures should have gone out of scope by the time the GraphicsContext is destroyed.
  * This behaviour is similar to the handling of Shaders.
  */
-class Texture2 {
+class Texture2 : public std::enable_shared_from_this<Texture2> {
 
     friend class GraphicsContext; // creates and finally invalidates all of its Textures when it is destroyed
 
@@ -81,9 +81,6 @@ public: // static methods ******************************************************
      */
     static std::shared_ptr<Texture2> create_empty(GraphicsContext& context, const std::string name,
                                                   const Size2i& size, const Format format);
-
-    /** Unbinds any current active Texture. */
-    static void unbind();
 
 private: // constructor ***********************************************************************************************/
     /** Factory. */
@@ -139,11 +136,6 @@ public: // methods *************************************************************
 
     /** Returns the vertical wrap mode. */
     Wrap wrap_y() const { return m_wrap_y; }
-
-    /** Binds this as the current active texture.
-     * @throw   std::runtime_error if the texture's graphics context is not current or this texture is invalid.
-     */
-    void bind();
 
     /** Sets a new filter mode when the texture pixels are smaller than scren pixels. */
     void set_min_filter(const MinFilter filter);

@@ -122,7 +122,7 @@ Window::Window(const WindowInfo& info)
     // create the auxiliary objects
     m_render_manager = std::make_unique<RenderManager>(this);
 
-    m_graphics_context = std::make_unique<GraphicsContext>(this);
+    m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window.get());
     CellCanvasSettings cell_settings;
     cell_settings.pixel_ratio = static_cast<float>(get_buffer_size().width) / static_cast<float>(get_window_size().width);
     m_cell_canvas             = std::make_unique<CellCanvas>(*m_graphics_context, cell_settings);
@@ -235,8 +235,10 @@ void Window::close()
         log_trace << "Closing Window \"" << m_title << "\"";
         on_close(*this);
         m_layout.reset();
+        m_cell_canvas.reset();
         Application::get_instance()._unregister_window(shared_from_this());
-        m_glfw_window.reset(nullptr);
+        m_graphics_context.reset();
+        m_glfw_window.reset();
     }
     m_size = Size2i::invalid();
 }

@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "common/meta.hpp"
 #include "graphics/gl_forwards.hpp"
@@ -20,32 +21,70 @@ class GraphicsContext;
  * ==========================
  * A Shader needs a valid GraphicsContext (which in turn refers to an OpenGL context), since the Shader class itself
  * only stores the OpenGL ID of the program.
- * You create a Shader by calling `GraphicsContext::build_shader(name, vert, frag)`, which builds the Shader and attaches
- * the GraphicsContext to it.
+ * You create a Shader by calling `GraphicsContext::build_shader(name, vert, frag)`, which builds the Shader and
+ * attaches the GraphicsContext to it.
  * The return value is a shared pointer, which you own.
  * However, the GraphicsContext does keep a weak pointer to the Shader and will deallocate it when it is itself removed.
  * In this case, the remaining Shader will become invalid and you'll get a warning message.
  * In a well-behaved program, all Shader should have gone out of scope by the time the GraphicsContext is destroyed.
  * This behaviour is similar to the handling of Texture2s.
  */
-class Shader {
+class Shader : public std::enable_shared_from_this<Shader> {
 
     friend class GraphicsContext; // creates and finally invalidates all of its Shaders when it is destroyed
 
+public: // types ******************************************************************************************************/
+    /** Information about a variable (attribute or uniform) of this shader. */
+    struct Variable {
+        /** Location of the variable, used to address the variable in the OpenGL shader program. */
+        GLint location;
+
+        /** Index of the variable - is not the same as its location. */
+        GLuint index;
+
+        /** Type of the variable.
+         * See https://www.khronos.org/opengl/wiki/GLAPI/glGetActiveUniform#Description for details.
+         */
+        GLenum type;
+
+        /** Number of elements in the variable in units of type.
+         * Is always >=1 and only >1 if the variable is an array.
+         */
+        GLint size;
+
+        /** The name of the variable. */
+        std::string name;
+    };
+
 public: // static methods *********************************************************************************************/
+    /** Loads a new OpenGL ES Shader from shader files.
+     * @param context               Render Context in which the Shader lives.
+     * @param shader_name           Name of this Shader.
+     * @param vertex_shader_file    Path to vertex shader.
+     * @param fragment_shader_file  Path to fragment shader.
+     * @param geometry_shader_file  Path to geometry shader.
+     * @throws std::runtime_error   If one of the files could not be loaded.
+     * @throws std::runtime_error   If the compilation / linking failed.
+     * @return                      Shader instance, is empty if the compilation failed.
+     */
+    static std::shared_ptr<Shader> load(GraphicsContext& context, const std::string& name,
+                                        const std::string& vertex_shader_file,
+                                        const std::string& fragment_shader_file,
+                                        const std::string& geometry_shader_file = "");
+
     /** Builds a new OpenGL ES Shader from sources.
-     * @param context           Render Context in which the Shader lives.
-     * @param shader_name       Name of this Shader.
-     * @param vertex_shader     Vertex shader source.
-     * @param fragment_shader   Fragment shader source.
-     * @return                  Shader instance, is empty if the compilation failed.
+     * @param context                   Render Context in which the Shader lives.
+     * @param shader_name               Name of this Shader.
+     * @param vertex_shader_source      Vertex shader source.
+     * @param fragment_shader_source    Fragment shader source.
+     * @param geometry_shader_source    Geometry shader source.
+     * @throws std::runtime_error       If the compilation / linking failed.
+     * @return                          Shader instance.
      */
     static std::shared_ptr<Shader> build(GraphicsContext& context, const std::string& name,
                                          const std::string& vertex_shader_source,
-                                         const std::string& fragment_shader_source);
-
-    /** Unbinds any current active Shader. */
-    static void unbind();
+                                         const std::string& fragment_shader_source,
+                                         const std::string& geometry_shader_source = "");
 
 private: // constructor ***********************************************************************************************/
     /** Value Constructor.
@@ -73,10 +112,21 @@ public: // methods *************************************************************
     /** The name of this Shader. */
     const std::string& name() const { return m_name; }
 
-    /** Binds this as the current active shader.
-     * @throw   std::runtime_error if the shader's graphics context is not current or this shader is invalid.
+    /** Returns the location of the attribute with the given name.
+     * @throws std::runtime_error   If there is no attribute with the given name in this shader.
      */
-    void bind();
+    GLint attribute(const std::string& name) const;
+
+    /** All attribute variables. */
+    const std::vector<Variable>& attributes() { return m_attributes; }
+
+    /** Returns the location of the uniform with the given name.
+     * @throws std::runtime_error   If there is no uniform with the given name in this shader.
+     */
+    GLint uniform(const std::string& name) const;
+
+    /** All uniform variables. */
+    const std::vector<Variable>& uniforms() { return m_uniforms; }
 
 private: // methods for GraphicsContext *******************************************************************************/
     /** Deallocates the Shader data and invalidates the Shader. */
@@ -91,6 +141,16 @@ private: // fields *************************************************************
 
     /** The name of this Shader. */
     const std::string m_name;
+
+    /** All attributes of this shader.
+     * Attributes may change during shader execution across different shader stages (per-vertex attributes for example).
+     */
+    std::vector<Variable> m_attributes;
+
+    /** All uniforms of this shader.
+     * Uniforms remain constant throughout the shader (modelview matrix and texture samplers for example).
+     */
+    std::vector<Variable> m_uniforms;
 };
 
 } // namespace notf

@@ -5,6 +5,7 @@
 
 #include "common/exception.hpp"
 #include "common/log.hpp"
+#include "common/system.hpp"
 #include "core/opengl.hpp"
 #include "graphics/graphics_context.hpp"
 
@@ -17,9 +18,13 @@ namespace { // anonymous
 class ShaderRAII {
 
 public: // methods
-    /** Value Constructor. */
+    /** Default constructor. */
+    ShaderRAII()
+        : m_shader(0), m_program(0) {}
+
+    /** Value constructor. */
     ShaderRAII(GLuint shader)
-        : m_shader(shader), m_program(GL_FALSE) {}
+        : m_shader(shader), m_program(0) {}
 
     /** Destructor. */
     ~ShaderRAII()
@@ -27,8 +32,13 @@ public: // methods
         if (m_program) {
             glDetachShader(m_program, m_shader);
         }
-        glDeleteShader(m_shader);
+        if (m_shader) {
+            glDeleteShader(m_shader);
+        }
     }
+
+    /** Updates the managed shader. */
+    void set_shader(GLuint shader) { m_shader = shader; }
 
     /** If the Shader has been attached to a program, it needs to be detached first before it is removed. */
     void set_program(GLuint program) { m_program = program; }
@@ -46,6 +56,7 @@ enum class STAGE : unsigned char {
     INVALID = 0,
     VERTEX,
     FRAGMENT,
+    GEOMETRY,
 };
 
 /** Returns the human readable name of the given Shader stage.
@@ -56,6 +67,7 @@ const std::string& stage_name(const STAGE stage)
     static const std::string invalid  = "invalid";
     static const std::string vertex   = "vertex";
     static const std::string fragment = "fragment";
+    static const std::string geometry = "geometry";
     static const std::string unknown  = "unknown";
 
     switch (stage) {
@@ -65,6 +77,8 @@ const std::string& stage_name(const STAGE stage)
         return vertex;
     case STAGE::FRAGMENT:
         return fragment;
+    case STAGE::GEOMETRY:
+        return geometry;
     }
     return unknown;
 }
@@ -85,6 +99,9 @@ GLuint compile_shader(STAGE stage, const std::string& name, const std::string& s
         break;
     case STAGE::FRAGMENT:
         shader = glCreateShader(GL_FRAGMENT_SHADER);
+        break;
+    case STAGE::GEOMETRY:
+        shader = glCreateShader(GL_GEOMETRY_SHADER);
         break;
     case STAGE::INVALID:
     default:
@@ -127,10 +144,25 @@ GLuint compile_shader(STAGE stage, const std::string& name, const std::string& s
 
 namespace notf {
 
+std::shared_ptr<Shader> Shader::load(GraphicsContext& context, const std::string& name,
+                                     const std::string& vertex_shader_file,
+                                     const std::string& fragment_shader_file,
+                                     const std::string& geometry_shader_file)
+{
+    const std::string vertex_shader_source   = load_file(vertex_shader_file);
+    const std::string fragment_shader_source = load_file(fragment_shader_file);
+    std::string geometry_shader_source;
+    if (!geometry_shader_file.empty()) {
+        geometry_shader_source = load_file(geometry_shader_file);
+    }
+    return Shader::build(context, name, vertex_shader_source, fragment_shader_source, geometry_shader_source);
+}
+
 std::shared_ptr<Shader> Shader::build(GraphicsContext& context,
                                       const std::string& name,
                                       const std::string& vertex_shader_source,
-                                      const std::string& fragment_shader_source)
+                                      const std::string& fragment_shader_source,
+                                      const std::string& geometry_shader_source)
 {
     if (!context.is_current()) {
         throw_runtime_error(string_format(
@@ -141,25 +173,45 @@ std::shared_ptr<Shader> Shader::build(GraphicsContext& context,
     // compile the shaders
     GLuint vertex_shader = compile_shader(STAGE::VERTEX, name, vertex_shader_source);
     ShaderRAII vertex_shader_raii(vertex_shader);
+    if (!vertex_shader) {
+        return {};
+    }
     GLuint fragment_shader = compile_shader(STAGE::FRAGMENT, name, fragment_shader_source);
     ShaderRAII fragment_shader_raii(fragment_shader);
-    if (!(vertex_shader && fragment_shader)) {
+    if (!fragment_shader) {
         return {};
+    }
+    GLuint geometry_shader = 0;
+    ShaderRAII geometry_shader_raii;
+    if (!geometry_shader_source.empty()) {
+        geometry_shader = compile_shader(STAGE::GEOMETRY, name, geometry_shader_source);
+        if (!geometry_shader) {
+            return {};
+        }
+        geometry_shader_raii.set_shader(geometry_shader);
     }
 
     // link the program
     GLuint program = glCreateProgram();
+
     glAttachShader(program, vertex_shader);
     vertex_shader_raii.set_program(program);
+
     glAttachShader(program, fragment_shader);
     fragment_shader_raii.set_program(program);
+
+    if (geometry_shader) {
+        glAttachShader(program, geometry_shader);
+        geometry_shader_raii.set_program(program);
+    }
+
     glLinkProgram(program);
 
     // check for errors
     GLint success = GL_FALSE;
     glGetProgramiv(program, GL_LINK_STATUS, &success);
     if (success) {
-        log_trace << "Compiled and linked shader program \"" << name << "\" with vertex and fragment shader.";
+        log_trace << "Compiled and linked shader program \"" << name << "\".";
     }
     else {
         GLint error_size;
@@ -168,8 +220,8 @@ std::shared_ptr<Shader> Shader::build(GraphicsContext& context,
         glGetProgramInfoLog(program, error_size, nullptr, &error_message[0]);
 
         std::stringstream ss;
-        ss << "Failed to link shader program \"" << name << "\" with vertex and fragment shader:"
-           << "\n\t" << error_message.data();
+        ss << "Failed to link shader program \"" << name << "\":\n"
+           << error_message.data();
         const std::string msg = ss.str();
         log_critical << msg;
         glDeleteProgram(program);
@@ -190,16 +242,81 @@ std::shared_ptr<Shader> Shader::build(GraphicsContext& context,
     return shader;
 }
 
-void Shader::unbind()
-{
-    glUseProgram(GL_ZERO);
-}
-
 Shader::Shader(const GLuint id, GraphicsContext& context, const std::string name)
     : m_id(id)
     , m_graphics_context(context)
     , m_name(std::move(name))
+    , m_attributes()
+    , m_uniforms()
 {
+    std::vector<GLchar> variable_name;
+    {
+        GLint longest_attribute_length = 0;
+        glGetProgramiv(m_id, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &longest_attribute_length);
+
+        GLint longest_uniform_length = 0;
+        glGetProgramiv(m_id, GL_ACTIVE_UNIFORM_MAX_LENGTH, &longest_uniform_length);
+
+        variable_name.resize(static_cast<size_t>(std::max(longest_attribute_length, longest_uniform_length)));
+    }
+    GLint variable_count = 0;
+
+    { // discover attributes
+        glGetProgramiv(m_id, GL_ACTIVE_ATTRIBUTES, &variable_count);
+        assert(variable_count >= 0);
+        m_attributes.reserve(static_cast<size_t>(variable_count));
+
+        for (GLuint index = 0; index < static_cast<GLuint>(variable_count); ++index) {
+
+            Variable variable;
+            variable.index = index;
+            variable.type  = 0;
+            variable.size  = 0;
+
+            GLsizei name_length = 0;
+            glGetActiveAttrib(m_id, index, static_cast<GLsizei>(variable_name.size()),
+                              &name_length, &variable.size, &variable.type, &variable_name[0]);
+            assert(variable.type);
+            assert(variable.size);
+
+            assert(name_length > 0);
+            variable.name = std::string(&variable_name[0], static_cast<size_t>(name_length));
+
+            variable.location = glGetAttribLocation(m_id, variable.name.c_str());
+
+            log_trace << "Discovered attribute \"" << variable.name << "\" on shader: \"" << m_name << "\"";
+            m_attributes.emplace_back(std::move(variable));
+        }
+        m_attributes.shrink_to_fit();
+    }
+
+    { // discover uniforms
+        glGetProgramiv(m_id, GL_ACTIVE_UNIFORMS, &variable_count);
+        assert(variable_count >= 0);
+        m_uniforms.reserve(static_cast<size_t>(variable_count));
+
+        for (GLuint index = 0; index < static_cast<GLuint>(variable_count); ++index) {
+            Variable variable;
+            variable.index = index;
+            variable.type  = 0;
+            variable.size  = 0;
+
+            GLsizei name_length = 0;
+            glGetActiveUniform(m_id, index, static_cast<GLsizei>(variable_name.size()),
+                               &name_length, &variable.size, &variable.type, &variable_name[0]);
+            assert(variable.type);
+            assert(variable.size);
+
+            assert(name_length > 0);
+            variable.name = std::string(&variable_name[0], static_cast<size_t>(name_length));
+
+            variable.location = glGetUniformLocation(m_id, variable.name.c_str());
+
+            log_trace << "Discovered uniform \"" << variable.name << "\" on shader: \"" << m_name << "\"";
+            m_uniforms.emplace_back(std::move(variable));
+        }
+        m_uniforms.shrink_to_fit();
+    }
 }
 
 Shader::~Shader()
@@ -207,14 +324,24 @@ Shader::~Shader()
     _deallocate();
 }
 
-void Shader::bind()
+GLint Shader::attribute(const std::string& name) const
 {
-    if (!is_valid()) {
-        throw_runtime_error(string_format(
-            "Cannot bind invalid Shader \"%s\"",
-            m_name.c_str()));
+    for (const Variable& variable : m_attributes) {
+        if (variable.name == name) {
+            return variable.location;
+        }
     }
-    m_graphics_context.bind_shader(this);
+    throw_runtime_error(string_format("No attribute named \"$s\" in shader \"\"", name.c_str(), m_name.c_str()));
+}
+
+GLint Shader::uniform(const std::string& name) const
+{
+    for (const Variable& variable : m_uniforms) {
+        if (variable.name == name) {
+            return variable.location;
+        }
+    }
+    throw_runtime_error(string_format("No attribute named \"$s\" in shader \"\"", name.c_str(), m_name.c_str()));
 }
 
 void Shader::_deallocate()
@@ -224,6 +351,7 @@ void Shader::_deallocate()
         glDeleteProgram(m_id);
         log_trace << "Deleted Shader Program \"" << m_name << "\"";
     }
+    m_id = 0;
 }
 
 } // namespace notf

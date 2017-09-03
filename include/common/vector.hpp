@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <stdexcept>
 #include <vector>
 
 namespace notf {
@@ -69,9 +70,9 @@ T& create_back(std::vector<T>& target, Args&&... args)
     return target.back();
 }
 
-/** Appends a vector to another one of the same type. */
+/** Extends a vector with another one of the same type. */
 template <typename T>
-std::vector<T>& append(std::vector<T>& target, const std::vector<T>& source)
+std::vector<T>& extend(std::vector<T>& target, const std::vector<T>& source)
 {
     target.insert(std::end(target), std::cbegin(source), std::cend(source));
     return target;
@@ -104,6 +105,20 @@ std::vector<T> flatten(const std::vector<std::vector<T>>& v)
     for (const auto& sub : v) {
         result.insert(result.end(), sub.begin(), sub.end());
     }
+    return result;
+}
+
+/** Takes and removes the last entry of a vector and returns it.
+ * @throws std::out_of_range exception if the vector is empty.
+ */
+template <typename T>
+T take_back(std::vector<T>& v)
+{
+    if (v.empty()) {
+        throw std::out_of_range("Cannot take last entry of an empty vector");
+    }
+    T result = v.back();
+    v.pop_back();
     return result;
 }
 

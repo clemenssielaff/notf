@@ -9,12 +9,14 @@
 #include "graphics/gl_forwards.hpp"
 #include "graphics/stencil_func.hpp"
 
+class GLFWwindow;
+
 namespace notf {
 
 class FontManager;
-class Shader;
-class Texture2;
-class Window;
+
+DEFINE_SHARED_POINTERS(class, Shader);
+DEFINE_SHARED_POINTERS(class, Texture2);
 
 /**********************************************************************************************************************/
 
@@ -30,11 +32,11 @@ public: // methods *************************************************************
     DISALLOW_COPY_AND_ASSIGN(GraphicsContext)
 
     /** Constructor.
-     * @throws  std::runtime_error If the given window is invalid.
-     * @throws  std::runtime_error If another current OpenGL context exits.
-     * @throws  std::runtime_error If the given window does not have a valid and current OpenGL context.
+     * @param window                GLFW window displaying the contents of this context.
+     * @throws std::runtime_error   If the given window is invalid.
+     * @throws std::runtime_error   If another current OpenGL context exits.
      */
-    GraphicsContext(const Window* window);
+    GraphicsContext(GLFWwindow* window);
 
     /** Destructor. */
     ~GraphicsContext();
@@ -48,37 +50,71 @@ public: // methods *************************************************************
     /** The Font Manager. */
     FontManager& get_font_manager() const { return *m_font_manager.get(); }
 
-    /** Applies a new StencilFunction. */
+    /** En- or disables vsync (enabled by default).
+     * @throws std::runtime_error   If the graphics context is not current.
+     */
+    void set_vsync(const bool enabled);
+
+    /** Applies a new StencilFunction.
+     * @throws std::runtime_error   If the graphics context is not current.
+     */
     void set_stencil_func(const StencilFunc func);
 
-    /** Applies the given stencil mask.  */
+    /** Applies the given stencil mask.
+     * @throws std::runtime_error   If the graphics context is not current.
+     */
     void set_stencil_mask(const GLuint mask);
 
-    /** Applies the given blend mode. */
+    /** Applies the given blend mode.
+     * @throws std::runtime_error   If the graphics context is not current.
+     */
     void set_blend_mode(const BlendMode mode);
 
     /** Binds the given texture.
-     * @param   texture     Texture to bind.
-     * @throws              std::runtime_error if the graphics context is not current.
+     * Only results in an OpenGL call if the texture is not currently bound.
+     * @param   texture             Texture to bind.
+     * @throws std::runtime_error   If the texture is not valid.
+     * @throws std::runtime_error   If the graphics context is not current.
      */
-    void bind_texture(Texture2* texture);
+    void push_texture(Texture2Ptr texture);
 
-    /** Binds the Shader with the given ID.
-     * @throws  std::runtime_error if the graphics context is not current.
+    /** Re-binds the last bound texture.
+     * @throws  std::runtime_error  If the graphics context is not current.
      */
-    void bind_shader(Shader* shader);
+    void pop_texture();
 
-    /** Resets the cached state, forcing the GraphicsContext to explicitly re-bind and re-set all values. */
-    void force_reloads();
+    /** Unbinds the current texture and clears the context's texture stack.
+     * @throws  std::runtime_error  If the graphics context is not current.
+     */
+    void clear_texture();
+
+    /** Binds the given Shader.
+     * Only results in an OpenGL call if the shader is not currently bound.
+     * @param shader                Shader to bind.
+     * @throws std::runtime_error   If the shader is not valid.
+     * @throws std::runtime_error   If the graphics context is not current.
+     */
+    void push_shader(ShaderPtr shader);
+
+    /** Re-binds the last bound shader.
+     * @throws  std::runtime_error  If the graphics context is not current.
+     */
+    void pop_shader();
+
+    /** Unbinds the current shader and clears the context's shader stack.
+     * @throws  std::runtime_error  If the graphics context is not current.
+     */
+    void clear_shader();
 
 private: // fields ****************************************************************************************************/
-    /** The Window owning this RenderManager. */
-    const Window* m_window;
+    /** The GLFW window displaying the contents of this context. */
+    GLFWwindow* m_window;
 
     /** Id of the thread on which the context is current. */
     std::thread::id m_current_thread;
 
-    /* OpenGL state cache *********************************************************************************************/
+    /** True if this context has vsync enabled. */
+    bool m_has_vsync;
 
     /** Cached stencil function to avoid unnecessary rebindings. */
     StencilFunc m_stencil_func;
@@ -89,10 +125,8 @@ private: // fields *************************************************************
     /* Cached blend mode to avoid unnecessary rebindings. */
     BlendMode m_blend_mode;
 
-    /* Textures *******************************************************************************************************/
-
-    /** The ID of the currently bound Texture in order to avoid unnecessary rebindings. */
-    GLuint m_bound_texture;
+    /** Stack with the currently bound Texture on top. */
+    std::vector<Texture2Ptr> m_texture_stack;
 
     /** All Textures managed by this Context.
      * Note that the Context doesn't "own" the textures, they are shared pointers, but the Render Context deallocates
@@ -100,20 +134,16 @@ private: // fields *************************************************************
      */
     std::vector<std::weak_ptr<Texture2>> m_textures;
 
-    /* Shaders ********************************************************************************************************/
-
-    /** The ID of the currently bound Shader in order to avoid unnecessary rebindings. */
-    GLuint m_bound_shader;
+    /** Stack with the currently bound Shader on top. */
+    std::vector<ShaderPtr> m_shader_stack;
 
     /** All Shaders managed by this Context.
      * See `m_textures` for details on management.
      */
     std::vector<std::weak_ptr<Shader>> m_shaders;
 
-    /* Dedicated context managers (at the end so the rest is already initialized when they are created) ***************/
-
     /** The Font Manager. */
-    std::unique_ptr<FontManager> m_font_manager;
+    std::unique_ptr<FontManager> m_font_manager; // TODO: the font manager should reference a GraphicsContext, but not be owned by one
 
 private: // static fields
     /** The current GraphicsContext. */

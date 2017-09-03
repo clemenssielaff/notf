@@ -112,7 +112,7 @@ public: // methods
     DISALLOW_COPY_AND_ASSIGN(FontAtlas)
 
     /** Default constructor. */
-    FontAtlas(GraphicsContext& graphics_contextS);
+    FontAtlas(GraphicsContext& graphics_context);
 
     /** Destructor. */
     ~FontAtlas();
@@ -153,19 +153,22 @@ private: // methods
     void _add_node(const size_t node_index, const Glyph::Rect& rect);
 
 private: //
-    /** Font Atlas Texture. */
+    /** Graphics context owning the texture. */
+    GraphicsContext& m_graphics_context;
+
+    /** Font atlas texture. */
     std::shared_ptr<Texture2> m_texture;
 
-    /** Width of the texture Atlas. */
+    /** Width of the texture atlas. */
     coord_t m_width;
 
-    /** Height of the texture Atlas. */
+    /** Height of the texture atlas. */
     coord_t m_height;
 
-    /** Used surface area in this Atlas. */
+    /** Used surface area in this atlas. */
     area_t m_used_area;
 
-    /** All nodes of the Atlas, used to find free space for new Glyphs. */
+    /** All nodes of the atlas, used to find free space for new glyphs. */
     std::vector<SkylineNode> m_nodes;
 
     /** Separate data structure to keep track of waste undereath the skyline. */

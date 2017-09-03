@@ -133,8 +133,7 @@ std::shared_ptr<Texture2> Texture2::load_image(GraphicsContext& context, const s
     glGenerateMipmap(GL_TEXTURE_2D);
     check_gl_error();
 
-    // log success
-    {
+    { // log success
 #if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_INFO
         static const std::string grayscale = "grayscale";
         static const std::string rgb       = "rgb";
@@ -231,11 +230,6 @@ std::shared_ptr<Texture2> Texture2::create_empty(GraphicsContext& context, const
     return texture;
 }
 
-void Texture2::unbind()
-{
-    glBindTexture(GL_TEXTURE_2D, GL_ZERO);
-}
-
 std::shared_ptr<Texture2> Texture2::_create(const GLuint id, GraphicsContext& context, const std::string name,
                                             const GLint width, const GLint height, const Format format)
 {
@@ -276,42 +270,40 @@ Texture2::~Texture2()
     _deallocate();
 }
 
-void Texture2::bind()
-{
-    if (!is_valid()) {
-        throw_runtime_error(string_format(
-            "Cannot bind invalid texture \"%s\"",
-            m_name.c_str()));
-    }
-    m_graphics_context.bind_texture(this);
-}
-
 void Texture2::set_min_filter(const MinFilter filter)
 {
-    bind();
+    m_graphics_context.push_texture(shared_from_this());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter));
     m_min_filter = filter;
+    m_graphics_context.pop_texture();
+    check_gl_error();
 }
 
 void Texture2::set_mag_filter(const MagFilter filter)
 {
-    bind();
+    m_graphics_context.push_texture(shared_from_this());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter));
     m_mag_filter = filter;
+    m_graphics_context.pop_texture();
+    check_gl_error();
 }
 
 void Texture2::set_wrap_x(const Wrap wrap)
 {
-    bind();
+    m_graphics_context.push_texture(shared_from_this());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap));
     m_wrap_x = wrap;
+    m_graphics_context.pop_texture();
+    check_gl_error();
 }
 
 void Texture2::set_wrap_y(const Wrap wrap)
 {
-    bind();
+    m_graphics_context.push_texture(shared_from_this());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap));
     m_wrap_y = wrap;
+    m_graphics_context.pop_texture();
+    check_gl_error();
 }
 
 void Texture2::fill(const Color& color)
@@ -368,6 +360,7 @@ void Texture2::fill(const Color& color)
         }
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_width, m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, &buffer[0]);
     }
+    check_gl_error();
 }
 
 void Texture2::_deallocate()
@@ -375,8 +368,10 @@ void Texture2::_deallocate()
     if (m_id) {
         assert(m_graphics_context.is_current());
         glDeleteTextures(1, &m_id);
+        check_gl_error();
         log_trace << "Deleted OpenGL texture with ID: " << m_id;
     }
+    m_id = 0;
 }
 
 } // namespace notf
