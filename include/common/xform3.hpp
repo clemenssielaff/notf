@@ -101,7 +101,7 @@ struct _Xform3 : public detail::Arithmetic<_Xform3<Real, SIMD_SPECIALIZATION, tr
     static _Xform3 rotation(const vector_t axis, const value_t radians)
     {
         _Xform3 result = identity();
-        result.rotate(radians, std::move(axis));
+        result.rotate(std::move(axis), radians);
         return result;
     }
 
@@ -186,7 +186,7 @@ struct _Xform3 : public detail::Arithmetic<_Xform3<Real, SIMD_SPECIALIZATION, tr
     }
 
     /** Applies a right-hand rotation around the given axis to this xform. */
-    _Xform3& rotate(const value_t radian, vector_t axis)
+    _Xform3& rotate(vector_t axis, const value_t radian)
     {
         const value_t cos_angle = cos(radian);
         const value_t sin_angle = sin(radian);

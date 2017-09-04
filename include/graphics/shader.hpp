@@ -115,7 +115,7 @@ public: // methods *************************************************************
     /** Returns the location of the attribute with the given name.
      * @throws std::runtime_error   If there is no attribute with the given name in this shader.
      */
-    GLint attribute(const std::string& name) const;
+    GLuint attribute(const std::string& name) const;
 
     /** All attribute variables. */
     const std::vector<Variable>& attributes() { return m_attributes; }
@@ -127,6 +127,8 @@ public: // methods *************************************************************
 
     /** All uniform variables. */
     const std::vector<Variable>& uniforms() { return m_uniforms; }
+
+    // TODO: instead of giving the user access to the variables, use the Variables to offer getter/setters only? (g/set_attribute/uniform)
 
 private: // methods for GraphicsContext *******************************************************************************/
     /** Deallocates the Shader data and invalidates the Shader. */

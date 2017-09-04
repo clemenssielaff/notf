@@ -311,6 +311,7 @@ Shader::Shader(const GLuint id, GraphicsContext& context, const std::string name
             variable.name = std::string(&variable_name[0], static_cast<size_t>(name_length));
 
             variable.location = glGetUniformLocation(m_id, variable.name.c_str());
+            assert(variable.location >= 0);
 
             log_trace << "Discovered uniform \"" << variable.name << "\" on shader: \"" << m_name << "\"";
             m_uniforms.emplace_back(std::move(variable));
@@ -324,11 +325,11 @@ Shader::~Shader()
     _deallocate();
 }
 
-GLint Shader::attribute(const std::string& name) const
+GLuint Shader::attribute(const std::string& name) const
 {
     for (const Variable& variable : m_attributes) {
         if (variable.name == name) {
-            return variable.location;
+            return static_cast<GLuint>(variable.location);
         }
     }
     throw_runtime_error(string_format("No attribute named \"$s\" in shader \"\"", name.c_str(), m_name.c_str()));
