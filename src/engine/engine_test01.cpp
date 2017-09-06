@@ -9,27 +9,34 @@
 #include "graphics/gl_utils.hpp"
 #include "graphics/graphics_context.hpp"
 #include "graphics/shader.hpp"
+#include "graphics/vertex_buffer.hpp"
 
 using namespace notf;
 
-//out vertex struct for interleaved attributes
-struct Vertex {
-    Vector3f position;
-    Vector3f color;
-};
-
 //vertex array and vertex buffer object IDs
 GLuint vaoID;
-GLuint vboVerticesID;
 GLuint vboIndicesID;
 
 //triangle vertices and indices
-Vertex vertices[3];
 GLushort indices[3];
 
 //projection and modelview matrices
 Xform3f P  = Xform3f::identity();
 Xform3f MV = Xform3f::identity();
+
+struct VertexPos {
+    constexpr static StaticString name = "vVertex";
+    constexpr static GLint size        = 3;
+    constexpr static GLenum gl_type    = GL_FLOAT;
+    using value_type                   = Vector3f;
+};
+
+struct VertexColor {
+    constexpr static StaticString name = "vColor";
+    constexpr static GLint size        = 3;
+    constexpr static GLenum gl_type    = GL_FLOAT;
+    using value_type                   = Vector3f;
+};
 
 static void error_callback(int error, const char* description)
 {
@@ -68,43 +75,31 @@ int test01_main(int /*argc*/, char* /*argv*/ [])
             "/home/clemens/tutorial/OpenGL-Build-High-Performance-Graphics/Module 1/Chapter01/SimpleTriangle/SimpleTriangle/shaders/shader.frag");
         context->push_shader(shader);
 
-        //setup triangle vertices
-        vertices[0].position = Vector3f(-1, -1, 0);
-        vertices[1].position = Vector3f(0, 1, 0);
-        vertices[2].position = Vector3f(1, -1, 0);
+        //setup triangle vao
+        glGenVertexArrays(1, &vaoID);
+        glBindVertexArray(vaoID);
 
-        vertices[0].color = Vector3f(1, 0, 0);
-        vertices[1].color = Vector3f(0, 1, 0);
-        vertices[2].color = Vector3f(0, 0, 1);
+        using VertexLayout = VertexBuffer<VertexPos, VertexColor>;
+        std::vector<VertexLayout::Vertex> buffer_vertices;
+        buffer_vertices.reserve(3);
+        buffer_vertices.push_back(std::make_tuple(Vector3f(-1, -1, 0), Vector3f(1, 0, 0)));
+        buffer_vertices.push_back(std::make_tuple(Vector3f(0, 1, 0), Vector3f(0, 1, 0)));
+        buffer_vertices.push_back(std::make_tuple(Vector3f(1, -1, 0), Vector3f(0, 0, 1)));
 
         //setup triangle indices
         indices[0] = 0;
         indices[1] = 1;
         indices[2] = 2;
 
-        //setup triangle vao and vbo stuff
-        glGenVertexArrays(1, &vaoID);
-        glGenBuffers(1, &vboVerticesID);
-        glGenBuffers(1, &vboIndicesID);
-        const GLsizei stride = sizeof(Vertex);
-
-        glBindVertexArray(vaoID);
-
-        //pass triangle verteices to buffer object
-        glBindBuffer(GL_ARRAY_BUFFER, vboVerticesID);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices[0], GL_STATIC_DRAW);
-
-        //enable vertex attribute array for position
-        glEnableVertexAttribArray(shader->attribute("vVertex"));
-        glVertexAttribPointer(shader->attribute("vVertex"), 3, GL_FLOAT, GL_FALSE, stride, 0);
-
-        //enable vertex attribute array for colour
-        glEnableVertexAttribArray(shader->attribute("vColor"));
-        glVertexAttribPointer(shader->attribute("vColor"), 3, GL_FLOAT, GL_FALSE, stride, (const GLvoid*)offsetof(Vertex, color));
-
         //pass indices to element array buffer
+        glGenBuffers(1, &vboIndicesID);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndicesID);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), &indices[0], GL_STATIC_DRAW);
+
+        //setup triangle vao and vbo stuff
+
+        VertexLayout vbuff(shader, std::move(buffer_vertices));
+        vbuff.init();
 
         // render loop
         float angle = 0;
@@ -132,7 +127,6 @@ int test01_main(int /*argc*/, char* /*argv*/ [])
     }
 
     // destroy vao and vbo
-    glDeleteBuffers(1, &vboVerticesID);
     glDeleteBuffers(1, &vboIndicesID);
     glDeleteVertexArrays(1, &vaoID);
 
