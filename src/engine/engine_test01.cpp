@@ -26,16 +26,12 @@ Xform3f MV = Xform3f::identity();
 
 struct VertexPos {
     constexpr static StaticString name = "vVertex";
-    constexpr static GLint size        = 3;
-    constexpr static GLenum gl_type    = GL_FLOAT;
-    using value_type                   = Vector3f;
+    using type                         = Vector3f;
 };
 
 struct VertexColor {
     constexpr static StaticString name = "vColor";
-    constexpr static GLint size        = 3;
-    constexpr static GLenum gl_type    = GL_FLOAT;
-    using value_type                   = Vector3f;
+    using type                         = Vector3f;
 };
 
 static void error_callback(int error, const char* description)
@@ -82,9 +78,9 @@ int test01_main(int /*argc*/, char* /*argv*/ [])
         using VertexLayout = VertexBuffer<VertexPos, VertexColor>;
         std::vector<VertexLayout::Vertex> buffer_vertices;
         buffer_vertices.reserve(3);
-        buffer_vertices.push_back(std::make_tuple(Vector3f(-1, -1, 0), Vector3f(1, 0, 0)));
-        buffer_vertices.push_back(std::make_tuple(Vector3f(0, 1, 0), Vector3f(0, 1, 0)));
-        buffer_vertices.push_back(std::make_tuple(Vector3f(1, -1, 0), Vector3f(0, 0, 1)));
+        buffer_vertices.emplace_back(Vector3f(-1, -1, 0), Vector3f(1, 0, 0));
+        buffer_vertices.emplace_back(Vector3f(0, 1, 0), Vector3f(0, 1, 0));
+        buffer_vertices.emplace_back(Vector3f(1, -1, 0), Vector3f(0, 0, 1));
 
         //setup triangle indices
         indices[0] = 0;
@@ -98,8 +94,8 @@ int test01_main(int /*argc*/, char* /*argv*/ [])
 
         //setup triangle vao and vbo stuff
 
-        VertexLayout vbuff(shader, std::move(buffer_vertices));
-        vbuff.init();
+        VertexLayout vbuff(std::move(buffer_vertices));
+        vbuff.init(shader);
 
         // render loop
         float angle = 0;
