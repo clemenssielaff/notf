@@ -1,11 +1,12 @@
 #pragma once
 
+#include <assert.h>
+#include <iostream>
 #include <tuple>
 #include <vector>
 
 #include "common/exception.hpp"
 #include "common/meta.hpp"
-#include "common/vector3.hpp"
 #include "core/opengl.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/gl_utils.hpp"
@@ -33,9 +34,53 @@ decltype(auto) extract_trait_types(const std::tuple<Ts...>& tuple)
 
 } // namespace detail
 
+//*********************************************************************************************************************/
+//*********************************************************************************************************************/
+
+DEFINE_SHARED_POINTERS(class, VertexBufferType);
+
+/** VertexBuffer baseclass, so other objects can hold pointers to any type of VertexBuffer.
+ */
+class VertexBufferType {
+
+public: // methods ****************************************************************************************************/
+    DISALLOW_COPY_AND_ASSIGN(VertexBufferType)
+
+    /** Destructor. */
+    virtual ~VertexBufferType();
+
+    /** Initializes the VertexBuffer.
+     * @throws std::runtime_error   If the VBO could not be allocated.
+     * @throws std::runtime_error   If no VAO object is currently bound.
+     */
+    virtual void init(ShaderConstPtr shader) = 0;
+
+    /** OpenGL handle of the vertex buffer. */
+    GLuint id() const { return m_vbo_id; }
+
+    /** Number of elements in the buffer. */
+    GLsizei size() const { return m_size; }
+
+protected: // methods *************************************************************************************************/
+    /** Protected Constructor. */
+    VertexBufferType()
+        : m_vbo_id(0)
+        , m_size(0)
+    {
+    }
+
+protected: // fields **************************************************************************************************/
+    /** OpenGL handle of the vertex buffer. */
+    GLuint m_vbo_id;
+
+    /** Number of elements in the buffer. */
+    GLsizei m_size;
+};
+
+//*********************************************************************************************************************/
 //**********************************************************************************************************************
 
-/** An overengineered VertexBuffer class using metaprogramming.
+/** Abstracts an OpenGL VBO.
  *
  * Example usage:
  *
@@ -68,50 +113,49 @@ decltype(auto) extract_trait_types(const std::tuple<Ts...>& tuple)
  * and that's it.
  */
 template <typename... Ts>
-class VertexBuffer {
+class VertexBuffer : public VertexBufferType {
 
 public: // types ******************************************************************************************************/
+    /** Traits defining the buffer. */
+    using Traits = std::tuple<Ts...>;
+
     /** Typdef for a tuple containing the trait types in order. */
-    using Vertex = decltype(detail::extract_trait_types(std::tuple<Ts...>{}));
+    using Vertex = decltype(detail::extract_trait_types(Traits{}));
 
 public: // methods ****************************************************************************************************/
-    DISALLOW_COPY_AND_ASSIGN(VertexBuffer)
-
+    /** Constructor. */
     VertexBuffer(std::vector<Vertex>&& vertices)
-        : m_buffer_id(0)
+        : VertexBufferType()
         , m_vertices(std::move(vertices))
     {
-        glGenBuffers(1, &m_buffer_id);
-        if (!m_buffer_id) {
+        m_size = static_cast<GLsizei>(m_vertices.size());
+    }
+
+    virtual void init(ShaderConstPtr shader) override
+    {
+        if (m_vbo_id) {
+            return;
+        }
+
+        glGenBuffers(1, &m_vbo_id);
+        if (!m_vbo_id) {
             throw_runtime_error("Failed to alocate VertexBuffer");
         }
-    }
 
-    /** Destructor. */
-    ~VertexBuffer()
-    {
-        glDeleteBuffers(1, &m_buffer_id);
-    }
-
-    /** Initializes the VertexBuffer.
-     * @throws std::runtime_error   If no VAO object is currently bound.
-     */
-    void init(ShaderConstPtr shader)
-    {
         { // make sure there is a bound VAO
             GLint current_vao = 0;
             glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao);
             if (!current_vao) {
-                throw_runtime_error("Cannot initialize a VertexBuffer without a bound VertexArrayObject");
+                throw_runtime_error("Cannot initialize a VertexBuffer without a bound VAO");
             }
         }
 
-        glBindBuffer(GL_ARRAY_BUFFER, m_buffer_id);
+        glBindBuffer(GL_ARRAY_BUFFER, m_vbo_id);
         glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(Vertex), &m_vertices[0], GL_STATIC_DRAW);
-
         if (!m_vertices.empty()) {
             _init_buffer<0, Ts...>(std::move(shader));
         }
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         check_gl_error();
     }
@@ -150,10 +194,7 @@ private: // methods ************************************************************
     }
 
 private: // fields ****************************************************************************************************/
-    /** OpenGL handle of the array buffer. */
-    GLuint m_buffer_id;
-
-    /** Content of the array buffer. */
+    /** Vertices stored in the buffer. */
     std::vector<Vertex> m_vertices;
 };
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits>
 #include <type_traits>
 
 /* Extension for variadic compile-time checks.
@@ -68,7 +69,7 @@ struct is_base_of_any<T, Head, Rest...> : std::integral_constant<bool, std::is_b
 #define ENABLE_IF_SUBCLASS_ANY(TYPE, ...) typename std::enable_if<is_base_of_any<typename std::decay<TYPE>::type, __VA_ARGS__>::value, bool>::type = true
 #define FWD_ENABLE_IF_SUBCLASS_ANY(TYPE, ...) typename std::enable_if<is_base_of_any<typename std::decay<TYPE>::type, __VA_ARGS__>::value, bool>::type
 
-/**********************************************************************************************************************/
+//*********************************************************************************************************************/
 
 /** The `always_false` struct can be used to create a templated struct that will always evaluate to `false` when used
  * in a static_assert.
@@ -108,7 +109,7 @@ template <typename T, T val>
 struct always_false : std::false_type {
 };
 
-/**********************************************************************************************************************/
+//*********************************************************************************************************************/
 
 /** Convenience macro to disable the construction of automatic copy- and assign methods.
  * Also disables automatic move constructor/assignment methods, although you might define them yourself, if you want to.
@@ -122,3 +123,13 @@ struct always_false : std::false_type {
     Tag Type;                                     \
     using Type##Ptr      = std::shared_ptr<Type>; \
     using Type##ConstPtr = std::shared_ptr<const Type>;
+
+//*********************************************************************************************************************/
+
+/** Trait containing the type that has a higher numeric limits. */
+template <typename LEFT, typename RIGHT>
+struct larger_type {
+    using type = std::conditional_t<std::numeric_limits<LEFT>::max() <= std::numeric_limits<RIGHT>::max(),
+                                    LEFT,
+                                    RIGHT>;
+};

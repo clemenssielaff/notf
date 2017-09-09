@@ -1,4 +1,6 @@
 #include "engine/engine_test01.hpp"
+#include "engine/engine_test02.hpp"
+#include "engine/engine_test03.hpp"
 
 /*
  * Application.
@@ -11,5 +13,5 @@
  */
 int main(int argc, char* argv[])
 {
-    return test01_main(argc, argv);
+    return test03_main(argc, argv);
 }

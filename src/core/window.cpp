@@ -116,8 +116,6 @@ Window::Window(const WindowInfo& info)
         exit(to_number(Application::RETURN_CODE::GLFW_FAILURE));
     }
     glfwSetWindowUserPointer(m_glfw_window.get(), this);
-    glfwMakeContextCurrent(m_glfw_window.get());
-    glfwSwapInterval(app.get_info().enable_vsync ? 1 : 0);
 
     // create the auxiliary objects
     m_render_manager = std::make_unique<RenderManager>(this);

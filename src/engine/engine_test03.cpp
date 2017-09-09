@@ -1,4 +1,4 @@
-#include "engine/engine_test01.hpp"
+#include "engine/engine_test03.hpp"
 
 #include "common/log.hpp"
 #include "common/size2.hpp"
@@ -10,6 +10,7 @@
 #include "graphics/graphics_context.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/vertex_buffer.hpp"
+#include "graphics/vertex_object.hpp"
 
 using namespace notf;
 
@@ -17,10 +18,6 @@ namespace {
 
 //vertex array and vertex buffer object IDs
 GLuint vaoID;
-GLuint vboIndicesID;
-
-//triangle vertices and indices
-GLushort indices[3];
 
 //projection and modelview matrices
 Xform3f P  = Xform3f::identity();
@@ -41,7 +38,7 @@ static void error_callback(int error, const char* description)
     log_critical << "GLFW error #" << error << ": " << description;
 }
 
-int test01_main(int /*argc*/, char* /*argv*/ [])
+int test03_main(int /*argc*/, char* /*argv*/ [])
 {
     // install the log handler first, to catch errors right away
     auto log_handler = std::make_unique<LogHandler>(128, 200);
@@ -73,10 +70,7 @@ int test01_main(int /*argc*/, char* /*argv*/ [])
             "/home/clemens/tutorial/OpenGL-Build-High-Performance-Graphics/Module 1/Chapter01/SimpleTriangle/SimpleTriangle/shaders/shader.frag");
         context->push_shader(shader);
 
-        //setup triangle vao
-        glGenVertexArrays(1, &vaoID);
-        glBindVertexArray(vaoID);
-
+        // setup vertices
         using VertexLayout = VertexBuffer<VertexPos, VertexColor>;
         std::vector<VertexLayout::Vertex> buffer_vertices;
         buffer_vertices.reserve(3);
@@ -84,20 +78,10 @@ int test01_main(int /*argc*/, char* /*argv*/ [])
         buffer_vertices.emplace_back(Vector3f(0, 1, 0), Vector3f(0, 1, 0));
         buffer_vertices.emplace_back(Vector3f(1, -1, 0), Vector3f(0, 0, 1));
 
-        //setup triangle indices
-        indices[0] = 0;
-        indices[1] = 1;
-        indices[2] = 2;
-
-        //pass indices to element array buffer
-        glGenBuffers(1, &vboIndicesID);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboIndicesID);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), &indices[0], GL_STATIC_DRAW);
-
-        //setup triangle vao and vbo stuff
-
-        VertexLayout vbuff(std::move(buffer_vertices));
-        vbuff.init(shader);
+        VertexObject vertex_object(
+            shader,
+            std::make_shared<VertexLayout>(std::move(buffer_vertices)),
+            create_index_buffer<0, 1, 2>());
 
         // render loop
         float angle = 0;
@@ -112,7 +96,8 @@ int test01_main(int /*argc*/, char* /*argv*/ [])
             //pass the shader uniform
             Xform3f xform = Xform3f::rotation(Vector4f(0, 0, 1, 1), angle);
             glUniformMatrix4fv(shader->uniform("MVP"), 1, GL_FALSE, xform.as_ptr());
-            glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0);
+
+            vertex_object.render();
 
             check_gl_error();
 
@@ -125,7 +110,6 @@ int test01_main(int /*argc*/, char* /*argv*/ [])
     }
 
     // destroy vao and vbo
-    glDeleteBuffers(1, &vboIndicesID);
     glDeleteVertexArrays(1, &vaoID);
 
     // stop the event loop

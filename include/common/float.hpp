@@ -33,22 +33,22 @@ using std::atan2;
 using std::roundf;
 
 /** Variadic min using auto type deduction. */
-template <typename T>
-T&& min(T&& val) { return std::forward<T>(val); }
-template <typename Lhs, typename Rhs, typename... Tail>
-typename std::common_type<Lhs, Rhs>::type min(Lhs&& lhs, Rhs&& rhs, Tail&&... tail)
+template <typename LAST>
+constexpr LAST&& min(LAST&& val) { return std::forward<LAST>(val); }
+template <typename LHS, typename RHS, typename... REST>
+constexpr typename std::common_type<LHS, RHS>::type min(LHS&& lhs, RHS&& rhs, REST&&... tail)
 {
-    const auto rest = min(rhs, std::forward<Tail>(tail)...);
+    const auto rest = min(rhs, std::forward<REST>(tail)...);
     return rest < lhs ? rest : lhs; // returns lhs if both are equal
 }
 
 /** Variadic max using auto type deduction. */
-template <typename T>
-T&& max(T&& val) { return std::forward<T>(val); }
-template <typename Lhs, typename Rhs, typename... Tail>
-typename std::common_type<Lhs, Rhs>::type max(Lhs&& lhs, Rhs&& rhs, Tail&&... tail)
+template <typename LAST>
+constexpr LAST&& max(LAST&& val) { return std::forward<LAST>(val); }
+template <typename LHS, typename RHS, typename... REST>
+constexpr typename std::common_type<LHS, RHS>::type max(LHS&& lhs, RHS&& rhs, REST&&... tail)
 {
-    const auto rest = max(rhs, std::forward<Tail>(tail)...);
+    const auto rest = max(rhs, std::forward<REST>(tail)...);
     return rest > lhs ? rest : lhs; // returns lhs if both are equal
 }
 
