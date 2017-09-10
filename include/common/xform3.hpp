@@ -96,6 +96,13 @@ struct _Xform3 : public detail::Arithmetic<_Xform3<Real, SIMD_SPECIALIZATION, tr
                        0, 0, 1, 0,
                        t.x(), t.y(), t.z(), 1);
     }
+    static _Xform3 translation(const value_t x, const value_t y, const value_t z = 0)
+    {
+        return _Xform3(1, 0, 0, 0,
+                       0, 1, 0, 0,
+                       0, 0, 1, 0,
+                       x, y, z, 1);
+    }
 
     /** A rotation matrix. */
     static _Xform3 rotation(const vector_t axis, const value_t radians)
@@ -134,15 +141,48 @@ struct _Xform3 : public detail::Arithmetic<_Xform3<Real, SIMD_SPECIALIZATION, tr
     //     */
     //    static Transform3 perspective(const float fov, const float aspectRatio, const float znear, const float zfar);
 
-    static _Xform3 orthographic(const float width, const float height)
+    /** Creates an orthographic transformation matrix.
+     * The NDC origin is at the lower left corner and the orthographic rectangle grows towards the upper right.
+     * @param width
+     * @param height
+     * @return
+     */
+    static _Xform3 orthographic(const value_t width, const value_t height)
     {
         _Xform3 result = identity();
-        if (std::abs(width) <= precision_high<value_t>() || std::abs(height) <= precision_high<value_t>()) {
+        if (std::abs(width) <= precision_high<value_t>()
+            || std::abs(height) <= precision_high<value_t>()) {
             return result;
         }
+
         result[0][0] = 2 / width;
         result[1][1] = 2 / height;
+        result[2][2] = -1;
         result[3][0] = result[3][1] = -1;
+        return result;
+    }
+
+    static _Xform3 orthographic(const value_t left, const value_t right, const value_t bottom, const value_t top,
+                                const value_t near, const value_t far)
+    {
+        const value_t width  = right - left;
+        const value_t height = top - bottom;
+        const value_t depth  = far - near;
+
+        _Xform3 result = identity();
+        if (std::abs(width) <= precision_high<value_t>()
+            || std::abs(height) <= precision_high<value_t>()
+            || std::abs(depth) <= precision_high<value_t>()) {
+            return result;
+        }
+
+        result[0][0] = 2 / width;
+        result[1][1] = 2 / height;
+        result[3][0] = -(right + left) / width;
+        result[3][1] = -(top + bottom) / height;
+        result[2][2] = -1 / depth;
+        result[3][2] = -near / depth;
+
         return result;
     }
 

@@ -1,4 +1,4 @@
-#include "engine/engine_test03.hpp"
+#include "engine/engine_test04.hpp"
 
 #include "common/log.hpp"
 #include "common/size2.hpp"
@@ -36,7 +36,7 @@ static void error_callback(int error, const char* description)
     log_critical << "GLFW error #" << error << ": " << description;
 }
 
-int test03_main(int /*argc*/, char* /*argv*/ [])
+int test04_main(int /*argc*/, char* /*argv*/ [])
 {
     // install the log handler first, to catch errors right away
     auto log_handler = std::make_unique<LogHandler>(128, 200);
