@@ -29,7 +29,7 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4, SIM
         : super({vec.x(), vec.y(), value_t(0), value_t(1)}) {}
 
     /** Element-wise constructor with 3 arguments and `w` set to 1. */
-    _RealVector4(const value_t x, const value_t y, const value_t z)
+    _RealVector4(const value_t x, const value_t y = 0, const value_t z = 0)
         : super({x, y, z, value_t(1)}) {}
 
     /** Element-wise constructor. */

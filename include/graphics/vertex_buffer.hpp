@@ -37,6 +37,46 @@ decltype(auto) extract_trait_types(const std::tuple<Ts...>& tuple)
 //*********************************************************************************************************************/
 //*********************************************************************************************************************/
 
+/** Definitions used to identify VertexBuffer traits to the Geometry factory.
+ * Used to tell the GeometryFactory how to construct a VertexBuffer<Traits...>::Vertex instance.
+ * Using an AttributeKind other than AttributeKind::Other determines the Trait's type as well.
+ */
+struct AttributeKind {
+
+    /** Vertex position in model space.
+     * Trait::type must be Vector4f.
+     */
+    struct Position {
+    };
+
+    /** Texture coordinate.
+     * Trait::type must be Vector2f.
+     */
+    struct TexCoord {
+    };
+
+    /** Vertex normal vector.
+     * Trait::type must be Vector4f.
+     */
+    struct Normal {
+    };
+
+    /** Vertex color.
+     * Trait::type must be Vector4f.
+     */
+    struct Color {
+    };
+
+    /** Catch-all for other attribute kinds.
+     * Does not impose any restrictions on the Trait::type.
+     */
+    struct Other {
+    };
+};
+
+//*********************************************************************************************************************/
+//*********************************************************************************************************************/
+
 DEFINE_SHARED_POINTERS(class, VertexBufferType);
 
 /** VertexBuffer baseclass, so other objects can hold pointers to any type of VertexBuffer.
@@ -87,13 +127,16 @@ protected: // fields ***********************************************************
  *     namespace detail {
  *
  *     struct VertexPositionTrait {
- *         constexpr static StaticString name = "vPos";     // matches the name of an attribute in the shader
- *         using type                         = Vector3f;   // attribute value type
+ *         constexpr static StaticString
+ *         name         = "vPos";                     // matches the name of an attribute in the shader
+ *         using type   = Vector3f;                   // attribute value type
+ *         using kind   = AttributeKind::Position;    // attribute value kind (used by GeometryFactory)
  *     };
  *
  *     struct VertexColorTrait {
  *         constexpr static StaticString name = "vColor";
  *         using type                         = Color;
+ *         using kind                         = AttributeKind::Color;
  *     };
  *
  *     } // namespace detail

@@ -5,6 +5,7 @@
 #include "common/vector3.hpp"
 #include "common/xform3.hpp"
 #include "core/glfw.hpp"
+#include "graphics/geometry.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/gl_utils.hpp"
 #include "graphics/graphics_context.hpp"
@@ -23,12 +24,26 @@ Xform3f MV = Xform3f::identity();
 
 struct VertexPos {
     constexpr static StaticString name = "vVertex";
-    using type                         = Vector3f;
+    using type                         = Vector4f;
+    using kind                         = AttributeKind::Position;
 };
 
 struct VertexColor {
     constexpr static StaticString name = "vColor";
-    using type                         = Vector3f;
+    using type                         = Vector4f;
+    using kind                         = AttributeKind::Color;
+};
+
+struct VertexNormal {
+    constexpr static StaticString name = "vNormal";
+    using type                         = Vector4f;
+    using kind                         = AttributeKind::Normal;
+};
+
+struct VertexTexCoord {
+    constexpr static StaticString name = "vTexCoord";
+    using type                         = Vector2f;
+    using kind                         = AttributeKind::TexCoord;
 };
 }
 static void error_callback(int error, const char* description)
@@ -72,9 +87,15 @@ int test04_main(int /*argc*/, char* /*argv*/ [])
         using VertexLayout = VertexBuffer<VertexPos, VertexColor>;
         std::vector<VertexLayout::Vertex> buffer_vertices;
         buffer_vertices.reserve(3);
-        buffer_vertices.emplace_back(Vector3f(-1, -1, 0), Vector3f(1, 0, 0));
-        buffer_vertices.emplace_back(Vector3f(0, 1, 0), Vector3f(0, 1, 0));
-        buffer_vertices.emplace_back(Vector3f(1, -1, 0), Vector3f(0, 0, 1));
+        buffer_vertices.emplace_back(Vector4f(-1, -1, 0), Vector4f(1, 0, 0));
+        buffer_vertices.emplace_back(Vector4f(0, 1, 0), Vector4f(0, 1, 0));
+        buffer_vertices.emplace_back(Vector4f(1, -1, 0), Vector4f(0, 0, 1));
+
+        using OtherVertexLayout = VertexBuffer<VertexPos, VertexTexCoord, VertexNormal>;
+        auto geo                = GeometryFactory<OtherVertexLayout>::produce();
+        for (const OtherVertexLayout::Vertex& vertex : geo) {
+            log_trace << "( " << std::get<0>(vertex) << ", " << std::get<1>(vertex) << ", " << std::get<2>(vertex) << ")";
+        }
 
         VertexObject vertex_object(
             shader,
