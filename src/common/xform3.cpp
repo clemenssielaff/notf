@@ -4,20 +4,6 @@
 
 namespace notf {
 
-//Transform3 Transform3::perspective(const float fov, const float aspectRatio, const float znear, const float zfar)
-//{
-//    const float inv_depth = 1.0f / (zfar - znear);
-//    const float factor    = 1.0f / tan(fov / 2);
-
-//    Transform3 result = Transform3::zero();
-//    result.matrix[0]  = (1.0f / aspectRatio) * factor;
-//    result.matrix[5]  = factor;
-//    result.matrix[10] = -(zfar + znear) * inv_depth;
-//    result.matrix[11] = -1.0f;
-//    result.matrix[14] = -2.0f * zfar * znear * inv_depth;
-//    return result;
-//}
-
 /* Xform3f ************************************************************************************************************/
 
 template <>

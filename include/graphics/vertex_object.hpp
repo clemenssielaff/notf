@@ -9,7 +9,7 @@ namespace notf {
 
 class IndexBufferType;
 
-DEFINE_SHARED_POINTERS(class, VertexBufferType)
+DEFINE_SHARED_POINTERS(class, VertexArrayType)
 DEFINE_SHARED_POINTERS(class, Shader)
 
 //*********************************************************************************************************************/
@@ -36,7 +36,7 @@ public: // methods *************************************************************
     /** Constructor.
      *
      */
-    VertexObject(ShaderPtr shader, VertexBufferTypePtr vertices,
+    VertexObject(ShaderPtr shader, VertexArrayTypePtr vertices,
                  const RenderMode mode = RenderMode::TRIANGLES, std::unique_ptr<IndexBufferType> indices = {});
 
     /** Destructor. */
@@ -60,9 +60,9 @@ private: // fields *************************************************************
     ShaderPtr m_shader;
 
     /** Vertex buffer to draw this object from. */
-    VertexBufferTypePtr m_vertices;
+    VertexArrayTypePtr m_vertices;
 
-    /** Index buffer, laeve empty to draw vertices in the order they appear in the VertexBuffer. */
+    /** Index buffer, laeve empty to draw vertices in the order they appear in the VertexArray. */
     std::unique_ptr<IndexBufferType> m_indices;
 };
 

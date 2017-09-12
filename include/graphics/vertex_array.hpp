@@ -37,8 +37,8 @@ decltype(auto) extract_trait_types(const std::tuple<Ts...>& tuple)
 //*********************************************************************************************************************/
 //*********************************************************************************************************************/
 
-/** Definitions used to identify VertexBuffer traits to the Geometry factory.
- * Used to tell the GeometryFactory how to construct a VertexBuffer<Traits...>::Vertex instance.
+/** Definitions used to identify VertexArray traits to the Geometry factory.
+ * Used to tell the GeometryFactory how to construct a VertexArray<Traits...>::Vertex instance.
  * Using an AttributeKind other than AttributeKind::Other determines the Trait's type as well.
  */
 struct AttributeKind {
@@ -77,19 +77,19 @@ struct AttributeKind {
 //*********************************************************************************************************************/
 //*********************************************************************************************************************/
 
-DEFINE_SHARED_POINTERS(class, VertexBufferType);
+DEFINE_SHARED_POINTERS(class, VertexArrayType);
 
-/** VertexBuffer baseclass, so other objects can hold pointers to any type of VertexBuffer.
+/** VertexArray baseclass, so other objects can hold pointers to any type of VertexArray.
  */
-class VertexBufferType {
+class VertexArrayType {
 
 public: // methods ****************************************************************************************************/
-    DISALLOW_COPY_AND_ASSIGN(VertexBufferType)
+    DISALLOW_COPY_AND_ASSIGN(VertexArrayType)
 
     /** Destructor. */
-    virtual ~VertexBufferType();
+    virtual ~VertexArrayType();
 
-    /** Initializes the VertexBuffer.
+    /** Initializes the VertexArray.
      * @throws std::runtime_error   If the VBO could not be allocated.
      * @throws std::runtime_error   If no VAO object is currently bound.
      */
@@ -98,12 +98,12 @@ public: // methods *************************************************************
     /** OpenGL handle of the vertex buffer. */
     GLuint id() const { return m_vbo_id; }
 
-    /** Number of elements in the buffer. */
+    /** Number of elements in the array. */
     GLsizei size() const { return m_size; }
 
 protected: // methods *************************************************************************************************/
     /** Protected Constructor. */
-    VertexBufferType()
+    VertexArrayType()
         : m_vbo_id(0)
         , m_size(0)
     {
@@ -113,7 +113,7 @@ protected: // fields ***********************************************************
     /** OpenGL handle of the vertex buffer. */
     GLuint m_vbo_id;
 
-    /** Number of elements in the buffer. */
+    /** Number of elements in the array. */
     GLsizei m_size;
 };
 
@@ -141,25 +141,25 @@ protected: // fields ***********************************************************
  *
  *     } // namespace detail
  *
- *     using VertexLayout = VertexBuffer<VertexPositionTrait, VertexColorTrait>;
+ *     using VertexLayout = VertexArray<VertexPositionTrait, VertexColorTrait>;
  *     std::vector<VertexLayout::Vertex> vertices;
  *     vertices.emplace_back(Vector3f(-1, -1, 0), Vector3f(1, 0, 0));
  *     vertices.emplace_back(Vector3f(0, 1, 0), Vector3f(0, 1, 0));
  *     vertices.emplace_back(Vector3f(1, -1, 0), Vector3f(0, 0, 1));
  *
- *     VertexLayout vertex_buffer(std::move(vertices));
+ *     VertexLayout vertex_array(std::move(vertices));
  *
  *     ...
  *
- *     vertex_buffer.init(shader); // make sure that a VAO is bound at this point, otherwise this will throw
+ *     vertex_array.init(shader); // make sure that a VAO is bound at this point, otherwise this will throw
  *
  * and that's it.
  */
 template <typename... Ts>
-class VertexBuffer : public VertexBufferType {
+class VertexArray : public VertexArrayType {
 
 public: // types ******************************************************************************************************/
-    /** Traits defining the buffer. */
+    /** Traits defining the array layout. */
     using Traits = std::tuple<Ts...>;
 
     /** Typdef for a tuple containing the trait types in order. */
@@ -167,8 +167,8 @@ public: // types ***************************************************************
 
 public: // methods ****************************************************************************************************/
     /** Constructor. */
-    VertexBuffer(std::vector<Vertex>&& vertices)
-        : VertexBufferType()
+    VertexArray(std::vector<Vertex>&& vertices)
+        : VertexArrayType()
         , m_vertices(std::move(vertices))
     {
         m_size = static_cast<GLsizei>(m_vertices.size());
@@ -182,21 +182,21 @@ public: // methods *************************************************************
 
         glGenBuffers(1, &m_vbo_id);
         if (!m_vbo_id) {
-            throw_runtime_error("Failed to alocate VertexBuffer");
+            throw_runtime_error("Failed to alocate VertexArray");
         }
 
         { // make sure there is a bound VAO
             GLint current_vao = 0;
             glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao);
             if (!current_vao) {
-                throw_runtime_error("Cannot initialize a VertexBuffer without a bound VAO");
+                throw_runtime_error("Cannot initialize a VertexArray without a bound VAO");
             }
         }
 
         glBindBuffer(GL_ARRAY_BUFFER, m_vbo_id);
         glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(Vertex), &m_vertices[0], GL_STATIC_DRAW);
         if (!m_vertices.empty()) {
-            _init_buffer<0, Ts...>(std::move(shader));
+            _init_array<0, Ts...>(std::move(shader));
         }
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -206,15 +206,15 @@ public: // methods *************************************************************
 private: // methods ***************************************************************************************************/
     /** Recursively define each attribute from the class' traits. */
     template <size_t INDEX, typename FIRST, typename SECOND, typename... REST>
-    void _init_buffer(ShaderConstPtr shader)
+    void _init_array(ShaderConstPtr shader)
     {
         _define_attribute<INDEX, FIRST>(shader);
-        _init_buffer<INDEX + 1, SECOND, REST...>(std::move(shader));
+        _init_array<INDEX + 1, SECOND, REST...>(std::move(shader));
     }
 
     /** Recursion breaker. */
     template <size_t INDEX, typename LAST>
-    void _init_buffer(ShaderConstPtr shader)
+    void _init_array(ShaderConstPtr shader)
     {
         _define_attribute<INDEX, LAST>(shader);
     }
@@ -237,7 +237,7 @@ private: // methods ************************************************************
     }
 
 private: // fields ****************************************************************************************************/
-    /** Vertices stored in the buffer. */
+    /** Vertices stored in the array. */
     std::vector<Vertex> m_vertices;
 };
 

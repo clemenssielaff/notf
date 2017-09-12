@@ -4,11 +4,11 @@
 #include "core/opengl.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/index_buffer.hpp"
-#include "graphics/vertex_buffer.hpp"
+#include "graphics/vertex_array.hpp"
 
 namespace notf {
 
-VertexObject::VertexObject(ShaderPtr shader, VertexBufferTypePtr vertices,
+VertexObject::VertexObject(ShaderPtr shader, VertexArrayTypePtr vertices,
                            const RenderMode mode, std::unique_ptr<IndexBufferType> indices)
     : m_vao_id(0)
     , m_mode(0)

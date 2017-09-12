@@ -9,7 +9,7 @@
 #include "graphics/gl_utils.hpp"
 #include "graphics/graphics_context.hpp"
 #include "graphics/shader.hpp"
-#include "graphics/vertex_buffer.hpp"
+#include "graphics/vertex_array.hpp"
 
 using namespace notf;
 
@@ -77,7 +77,7 @@ int test01_main(int /*argc*/, char* /*argv*/ [])
         glGenVertexArrays(1, &vaoID);
         glBindVertexArray(vaoID);
 
-        using VertexLayout = VertexBuffer<VertexPos, VertexColor>;
+        using VertexLayout = VertexArray<VertexPos, VertexColor>;
         std::vector<VertexLayout::Vertex> buffer_vertices;
         buffer_vertices.reserve(3);
         buffer_vertices.emplace_back(Vector3f(-1, -1, 0), Vector3f(1, 0, 0));

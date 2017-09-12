@@ -10,7 +10,7 @@
 #include "graphics/graphics_context.hpp"
 #include "graphics/index_buffer.hpp"
 #include "graphics/shader.hpp"
-#include "graphics/vertex_buffer.hpp"
+#include "graphics/vertex_array.hpp"
 #include "graphics/vertex_object.hpp"
 
 using namespace notf;
@@ -69,7 +69,7 @@ int test03_main(int /*argc*/, char* /*argv*/ [])
         context->push_shader(shader);
 
         // setup vertices
-        using VertexLayout = VertexBuffer<VertexPos, VertexColor>;
+        using VertexLayout = VertexArray<VertexPos, VertexColor>;
         std::vector<VertexLayout::Vertex> buffer_vertices;
         buffer_vertices.reserve(3);
         buffer_vertices.emplace_back(Vector3f(-1, -1, 0), Vector3f(1, 0, 0));

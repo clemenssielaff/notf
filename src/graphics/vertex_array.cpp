@@ -1,8 +1,8 @@
-#include "graphics/vertex_buffer.hpp"
+#include "graphics/vertex_array.hpp"
 
 namespace notf {
 
-VertexBufferType::~VertexBufferType()
+VertexArrayType::~VertexArrayType()
 {
     glDeleteBuffers(1, &m_vbo_id);
 }
