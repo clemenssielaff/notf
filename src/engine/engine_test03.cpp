@@ -93,7 +93,8 @@ int test03_main(int /*argc*/, char* /*argv*/ [])
             glClear(GL_COLOR_BUFFER_BIT);
 
             //pass the shader uniform
-            Xform3f xform = Xform3f::orthographic(static_cast<float>(buffer_size.width), static_cast<float>(buffer_size.height))
+            Xform3f xform = Xform3f::orthographic(0, static_cast<float>(buffer_size.width),
+                                                  0, static_cast<float>(buffer_size.height), -1, 1)
                 * Xform3f::translation(buffer_size.width / 2.f, buffer_size.height / 2.f)
                 * Xform3f::rotation(Vector4f(0, 0, 1, 1), angle)
                 * Xform3f::scaling(100);

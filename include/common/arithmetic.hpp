@@ -68,7 +68,7 @@ public: // methods
     value_t get_magnitude() const { return sqrt(get_magnitude_sq()); }
 
     /** A normalized copy of this value. */
-    T get_normal() const
+    T normalize() const
     {
         const value_t mag_sq = get_magnitude_sq();
         if (abs(mag_sq - 1) <= precision_high<value_t>()) {

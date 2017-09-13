@@ -47,7 +47,7 @@ struct _RealVector4<float, false> : public _RealVector4<float, true> {
      * The cross product is only defined for 3-dimensional vectors, the `w` element of the result will always be 1.
      * @param other     Other Vector3.
      */
-    _RealVector4 get_crossed(const _RealVector4& other) const
+    _RealVector4 cross(const _RealVector4& other) const
     {
         const auto v1     = _mm_loadu_ps(this->as_ptr());
         const auto v2     = _mm_loadu_ps(other.as_ptr());

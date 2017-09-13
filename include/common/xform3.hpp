@@ -139,76 +139,38 @@ struct _Xform3 : public detail::Arithmetic<_Xform3<Real, SIMD_SPECIALIZATION, tr
      * @param znear     Distance to the near plane in z direction.
      * @param zfar      Distance to the far plane in z direction.
      */
-    static _Xform3 perspective(const value_t fov, const value_t aspect, const value_t znear, const value_t zfar)
+    static _Xform3 perspective(const value_t fov, const value_t aspect, value_t near, value_t far)
     {
+        // near and far planes must be > 0
+        near = max(near, 0.1);
+        far  = max(near, far);
+
         _Xform3 result = _Xform3::zero();
         if (std::abs(aspect) <= precision_high<value_t>()
-            || std::abs(zfar - znear) <= precision_high<value_t>()) {
-            return result;
-        }
-        const value_t tanHalfFovy = tan(fov / 2);
-
-        result[0][0] = 1 / (aspect * tanHalfFovy);
-        result[1][1] = 1 / tanHalfFovy;
-        result[2][3] = -1;
-        result[2][2] = zfar / (znear - zfar);
-        result[3][2] = -(zfar * znear) / (zfar - znear);
-
-        return result;
-    }
-
-    /** Creates an infinite perspective transformation.
-     * @param fov       Horizontal field of view in radians.
-     * @param aspect    Aspect ratio (width / height)
-     * @param znear     Distance to the near plane in z direction.
-     */
-    static _Xform3 infinite_perspective(const value_t fov, const value_t aspect, const value_t znear)
-    {
-        _Xform3 result = _Xform3::zero();
-        if (std::abs(aspect) <= precision_high<value_t>()
-            || std::abs(znear) <= precision_high<value_t>()) {
+            || std::abs(far - near) <= precision_high<value_t>()) {
             return result;
         }
 
-        const value_t range  = tan(fov / 2) * znear;
-        const value_t left   = -range * aspect;
-        const value_t right  = range * aspect;
-        const value_t bottom = -range;
-        const value_t top    = range;
+        const value_t tan_half_fov = tan(fov / 2);
 
-        result[0][0] = (2 * znear) / (right - left);
-        result[1][1] = (2 * znear) / (top - bottom);
-        result[2][2] = -1;
+        result[0][0] = 1 / (aspect * tan_half_fov);
+        result[1][1] = 1 / tan_half_fov;
         result[2][3] = -1;
-        result[3][2] = -2 * znear;
+        result[2][2] = -(far + near) / (far - near);
+        result[3][2] = -(2 * far * near) / (far - near);
 
         return result;
     }
 
     /** Creates an orthographic transformation matrix.
-     * The NDC origin is at the lower left corner and the orthographic rectangle grows towards the upper right.
-     * @param width
-     * @param height
-     * @return
      */
-    static _Xform3 orthographic(const value_t width, const value_t height)
-    {
-        _Xform3 result = identity();
-        if (std::abs(width) <= precision_high<value_t>()
-            || std::abs(height) <= precision_high<value_t>()) {
-            return result;
-        }
-
-        result[0][0] = 2 / width;
-        result[1][1] = 2 / height;
-        result[2][2] = -1;
-        result[3][0] = result[3][1] = -1;
-        return result;
-    }
-
     static _Xform3 orthographic(const value_t left, const value_t right, const value_t bottom, const value_t top,
-                                const value_t near, const value_t far)
+                                value_t near, value_t far)
     {
+        // near and far planes must be > 0
+        near = max(near, 0.1);
+        far  = max(near, far);
+
         const value_t width  = right - left;
         const value_t height = top - bottom;
         const value_t depth  = far - near;
@@ -224,8 +186,8 @@ struct _Xform3 : public detail::Arithmetic<_Xform3<Real, SIMD_SPECIALIZATION, tr
         result[1][1] = 2 / height;
         result[3][0] = -(right + left) / width;
         result[3][1] = -(top + bottom) / height;
-        result[2][2] = -1 / depth;
-        result[3][2] = -near / depth;
+        result[2][2] = -2 / depth;
+        result[3][2] = -(near + far) / depth;
 
         return result;
     }

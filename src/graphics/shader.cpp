@@ -332,7 +332,7 @@ GLuint Shader::attribute(const std::string& name) const
             return static_cast<GLuint>(variable.location);
         }
     }
-    throw_runtime_error(string_format("No attribute named \"$s\" in shader \"\"", name.c_str(), m_name.c_str()));
+    throw_runtime_error(string_format("No attribute named \"%s\" in shader \"%s\"", name.c_str(), m_name.c_str()));
 }
 
 GLint Shader::uniform(const std::string& name) const
@@ -342,7 +342,7 @@ GLint Shader::uniform(const std::string& name) const
             return variable.location;
         }
     }
-    throw_runtime_error(string_format("No attribute named \"$s\" in shader \"\"", name.c_str(), m_name.c_str()));
+    throw_runtime_error(string_format("No attribute named \"%s\" in shader \"%s\"", name.c_str(), m_name.c_str()));
 }
 
 void Shader::_deallocate()

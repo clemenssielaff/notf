@@ -67,7 +67,7 @@ void produce_vector2(pybind11::module& module)
     // modifiers
     Py_Vector2.def("set_null", &Vector2f::set_zero, DOCSTR("Sets all components of the Vector to zero."));
     Py_Vector2.def("dot", &Vector2f::dot, DOCSTR("Vector2 dot product."), py::arg("other"));
-    Py_Vector2.def("normalize", &Vector2f::normalize, DOCSTR("Inverts this Vector2 in-place."));
+//    Py_Vector2.def("normalize", &Vector2f::normalize, DOCSTR("Inverts this Vector2 in-place."));
     Py_Vector2.def("orthogonal", (Vector2f & (Vector2f::*)()) & Vector2f::orthogonal, DOCSTR("In-place rotation of this Vector2 90 degrees counter-clockwise."));
     Py_Vector2.def("rotate", (Vector2f & (Vector2f::*)(float)) & Vector2f::rotate, DOCSTR("Rotates this Vector2 counter-clockwise in-place around its origin by a given angle in radians."), py::arg("angle"));
 

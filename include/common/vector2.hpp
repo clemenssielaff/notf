@@ -71,7 +71,7 @@ struct _RealVector2 : public detail::Arithmetic<_RealVector2<Real>, Real, 2> {
     bool is_orthogonal_to(const _RealVector2& other) const
     {
         // normalization required for large absolute differences in vector lengths
-        return abs(super::get_normal().dot(other.get_normal())) <= precision_high<value_t>();
+        return abs(super::normalize().dot(other.normalize())) <= precision_high<value_t>();
     }
 
     /** Returns the smallest angle (in radians) to the other Vector2.

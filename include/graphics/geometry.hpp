@@ -14,18 +14,18 @@ namespace detail {
 class GeometryFactoryImpl {
 
 public: // types ******************************************************************************************************/
-    //    /** Definition for a rectangular plane.
-    //     * Default is a plane facing towards positive z (up).
-    //     */
-    //    struct RectangularPlaneDefinition {
-    //        Vector4f center = Vector4f::zero();
-    //        Vector4f axisX  = Vector4f::x_axis();
-    //        Vector4f axisY  = Vector4f::y_axis();
-    //        float sizeX     = 1;
-    //        float sizeY     = 1;
-    //        float tileU     = 1;
-    //        float tileV     = 1;
-    //    };
+        //    /** Definition for a rectangular plane.
+        //     * Default is a plane facing towards positive z (up).
+        //     */
+        //    struct RectangularPlaneDefinition {
+        //        Vector4f center = Vector4f::zero();
+        //        Vector4f axisX  = Vector4f::x_axis();
+        //        Vector4f axisY  = Vector4f::y_axis();
+        //        float sizeX     = 1;
+        //        float sizeY     = 1;
+        //        float tileU     = 1;
+        //        float tileV     = 1;
+        //    };
 
     //    /** Definition for a circular plane.
     //     * Default is a plane facing towards positive z.
@@ -40,31 +40,31 @@ public: // types ***************************************************************
     //        float tileV           = 1;
     //    };
 
-    //    /** Definition for a box. */
-    //    struct BoxDefinition {
-    //        Vector4f center     = Vector4f::zero();
-    //        Vector4f upAxis     = Vector4f::y_axis();
-    //        Vector4f orientAxis = Vector4f::x_axis();
-    //        float height        = 1;
-    //        float width         = 1;
-    //        float depth         = 1;
-    //        float tileU         = 1;
-    //        float tileV         = 1;
-    //    };
-
-    /** Definition for a sphere.
-     * Implemented from:
-     *     http://stackoverflow.com/a/26710491/3444217
-     * Spheres are always created with poles in the vertical axis.
-     */
-    struct SphereDefinition {
-        Vector4f center       = Vector4f::zero();
-        float radius          = 1;
-        unsigned int rings    = 12; // latitude
-        unsigned int segments = 24; // longitude
-        float tileU           = 1;
-        float tileV           = 1;
+    /** Definition for a box. */
+    struct BoxDefinition {
+        Vector4f center      = Vector4f::zero();
+        Vector4f up_axis     = Vector4f::y_axis();
+        Vector4f orient_axis = Vector4f::x_axis();
+        float height         = 1;
+        float width          = 1;
+        float depth          = 1;
+        float tileU          = 1;
+        float tileV          = 1;
     };
+
+    //    /** Definition for a sphere.
+    //     * Implemented from:
+    //     *     http://stackoverflow.com/a/26710491/3444217
+    //     * Spheres are always created with poles in the vertical axis.
+    //     */
+    //    struct SphereDefinition {
+    //        Vector4f center       = Vector4f::zero();
+    //        float radius          = 1;
+    //        unsigned int rings    = 12; // latitude
+    //        unsigned int segments = 24; // longitude
+    //        float tileU           = 1;
+    //        float tileV           = 1;
+    //    };
 
     //    /** Definition for a cylinder.
     //     * Default is a cylinder along positive z.
@@ -132,7 +132,7 @@ protected: // types ************************************************************
 
 protected: // methods *************************************************************************************************/
     /** Produce a sphere. */
-    static std::vector<Study> _produce(const SphereDefinition& definition);
+    static std::vector<Study> _produce(const BoxDefinition& def);
 };
 
 } // namespace detail
@@ -150,7 +150,7 @@ class GeometryFactory : public detail::GeometryFactoryImpl {
 
 public: // methods ****************************************************************************************************/
     template <typename Indices = std::make_index_sequence<std::tuple_size<Traits>::value>>
-    static std::vector<Vertex> produce() { return _convert(_produce(SphereDefinition{}), Indices{}); }
+    static std::vector<Vertex> produce() { return _convert(_produce(BoxDefinition{}), Indices{}); }
 
 private: // methods ***************************************************************************************************/
     template <size_t index, typename T>

@@ -55,7 +55,7 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4, SIM
      */
     bool is_parallel_to(const _RealVector4& other) const
     {
-        return get_crossed(other).get_magnitude_sq() <= precision_high<value_t>();
+        return this->cross(other).get_magnitude_sq() <= precision_high<value_t>();
     }
 
     /** Checks whether this Vector4 is orthogonal to other.
@@ -64,7 +64,7 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4, SIM
      */
     bool is_orthogonal_to(const _RealVector4& other) const
     {
-        return dot(other) <= precision_high<value_t>();
+        return this->dot(other) <= precision_high<value_t>();
     }
 
     /** Calculates the smallest angle between two Vector4s.
@@ -142,7 +142,7 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4, SIM
      * The cross product is only defined for 3-dimensional vectors, the `w` element of the result will always be 1.
      * @param other     Other Vector4.
      */
-    _RealVector4 get_crossed(const _RealVector4& other) const
+    _RealVector4 cross(const _RealVector4& other) const
     {
         return _RealVector4(
             (y() * other.z()) - (z() * other.y()),

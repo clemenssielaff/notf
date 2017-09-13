@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "common/exception.hpp"
+#include "common/log.hpp"
 #include "common/meta.hpp"
 #include "core/opengl.hpp"
 #include "graphics/gl_errors.hpp"
@@ -229,7 +230,15 @@ private: // methods ************************************************************
             - reinterpret_cast<std::intptr_t>(&m_vertices[0]);
         assert(offset >= 0);
 
-        const GLuint attribute_id = shader->attribute(std::string(ATTRIBUTE::name.ptr, ATTRIBUTE::name.size));
+        const std::string attribute_name = std::string(ATTRIBUTE::name.ptr, ATTRIBUTE::name.size);
+        GLuint attribute_id;
+        try {
+            attribute_id = shader->attribute(attribute_name);
+        } catch (const std::runtime_error&) {
+            log_warning << "Ignoring unknown attribute: \"" << attribute_name << "\"";
+            return;
+        }
+
         glEnableVertexAttribArray(attribute_id);
         glVertexAttribPointer(
             attribute_id, sizeof(typename ATTRIBUTE::type) / sizeof(float), GL_FLOAT, /*normalized*/ GL_FALSE,
