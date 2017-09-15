@@ -4,9 +4,14 @@
 #include <sstream>
 
 #include "common/exception.hpp"
+#include "common/float.hpp"
 #include "common/log.hpp"
 #include "common/system.hpp"
+#include "common/vector2.hpp"
+#include "common/vector4.hpp"
+#include "common/xform3.hpp"
 #include "core/opengl.hpp"
+#include "graphics/gl_utils.hpp"
 #include "graphics/graphics_context.hpp"
 
 namespace { // anonymous
@@ -107,42 +112,53 @@ GLuint compile_shader(STAGE stage, const std::string& name, const std::string& s
     default:
         std::stringstream ss;
         ss << "Cannot compile " << stage_name(stage) << " shader for program \"" << name << "\"";
-        const std::string msg = ss.str();
-        log_critical << msg;
-        throw std::runtime_error(msg);
+        throw_runtime_error(ss.str());
     }
-    assert(shader);
+    if (!shader) {
+        std::stringstream ss;
+        ss << "Failed to create " << stage_name(stage) << " shader object for for program \"" << name << "\"";
+        throw_runtime_error(ss.str());
+    }
 
     // compile the shader
     char const* code_ptr = source.c_str();
-    glShaderSource(shader, 1, &code_ptr, nullptr);
+    glShaderSource(shader, /*count*/ 1, &code_ptr, /*length*/ 0);
     glCompileShader(shader);
 
     // check for errors
     GLint success = GL_FALSE;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-    if (success) {
-        return shader;
-    }
-    else {
+    if (!success) {
         GLint error_size;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &error_size);
         std::vector<char> error_message(static_cast<size_t>(error_size));
-        glGetShaderInfoLog(shader, error_size, nullptr, &error_message[0]);
+        glGetShaderInfoLog(shader, error_size, /*length*/ 0, &error_message[0]);
+        glDeleteShader(shader);
 
         std::stringstream ss;
-        ss << "Failed to compile " << stage_name(stage) << " shader for program \"" << name
+        ss << "Failed to compile " << stage_name(stage) << " stage for shader \"" << name
            << "\"\n\t" << error_message.data();
-        const std::string msg = ss.str();
-        log_critical << msg;
-        glDeleteShader(shader);
-        throw std::runtime_error(msg);
+        throw_runtime_error(ss.str());
     }
+    return shader;
 }
 
 } // namespace anonymous
 
 namespace notf {
+
+Shader::Scope::Scope(Shader* shader)
+    : m_shader(shader)
+{
+    m_shader->m_graphics_context.push_shader(m_shader->shared_from_this());
+}
+
+Shader::Scope::~Scope()
+{
+    if (m_shader) {
+        m_shader->m_graphics_context.pop_shader();
+    }
+}
 
 std::shared_ptr<Shader> Shader::load(GraphicsContext& context, const std::string& name,
                                      const std::string& vertex_shader_file,
@@ -193,6 +209,11 @@ std::shared_ptr<Shader> Shader::build(GraphicsContext& context,
 
     // link the program
     GLuint program = glCreateProgram();
+    if (!program) {
+        std::stringstream ss;
+        ss << "Failed to create program object for shader \"" << name << "\"";
+        throw_runtime_error(ss.str());
+    }
 
     glAttachShader(program, vertex_shader);
     vertex_shader_raii.set_program(program);
@@ -210,23 +231,19 @@ std::shared_ptr<Shader> Shader::build(GraphicsContext& context,
     // check for errors
     GLint success = GL_FALSE;
     glGetProgramiv(program, GL_LINK_STATUS, &success);
-    if (success) {
-        log_trace << "Compiled and linked shader program \"" << name << "\".";
-    }
-    else {
+    if (!success) {
         GLint error_size;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &error_size);
         std::vector<char> error_message(static_cast<size_t>(error_size));
-        glGetProgramInfoLog(program, error_size, nullptr, &error_message[0]);
+        glGetProgramInfoLog(program, error_size, /*length*/ 0, &error_message[0]);
+        glDeleteProgram(program);
 
         std::stringstream ss;
         ss << "Failed to link shader program \"" << name << "\":\n"
            << error_message.data();
-        const std::string msg = ss.str();
-        log_critical << msg;
-        glDeleteProgram(program);
-        throw std::runtime_error(msg);
+        throw_runtime_error(ss.str());
     }
+    log_trace << "Compiled and linked shader program \"" << name << "\".";
 
 // create the Shader object
 #ifdef _DEBUG
@@ -246,9 +263,10 @@ Shader::Shader(const GLuint id, GraphicsContext& context, const std::string name
     : m_id(id)
     , m_graphics_context(context)
     , m_name(std::move(name))
-    , m_attributes()
     , m_uniforms()
+    , m_attributes()
 {
+    // allocate a string long enough to hold all expected attribute- and uniform names
     std::vector<GLchar> variable_name;
     {
         GLint longest_attribute_length = 0;
@@ -257,45 +275,16 @@ Shader::Shader(const GLuint id, GraphicsContext& context, const std::string name
         GLint longest_uniform_length = 0;
         glGetProgramiv(m_id, GL_ACTIVE_UNIFORM_MAX_LENGTH, &longest_uniform_length);
 
-        variable_name.resize(static_cast<size_t>(std::max(longest_attribute_length, longest_uniform_length)));
-    }
-    GLint variable_count = 0;
-
-    { // discover attributes
-        glGetProgramiv(m_id, GL_ACTIVE_ATTRIBUTES, &variable_count);
-        assert(variable_count >= 0);
-        m_attributes.reserve(static_cast<size_t>(variable_count));
-
-        for (GLuint index = 0; index < static_cast<GLuint>(variable_count); ++index) {
-
-            Variable variable;
-            variable.index = index;
-            variable.type  = 0;
-            variable.size  = 0;
-
-            GLsizei name_length = 0;
-            glGetActiveAttrib(m_id, index, static_cast<GLsizei>(variable_name.size()),
-                              &name_length, &variable.size, &variable.type, &variable_name[0]);
-            assert(variable.type);
-            assert(variable.size);
-
-            assert(name_length > 0);
-            variable.name = std::string(&variable_name[0], static_cast<size_t>(name_length));
-
-            variable.location = glGetAttribLocation(m_id, variable.name.c_str());
-
-            log_trace << "Discovered attribute \"" << variable.name << "\" on shader: \"" << m_name << "\"";
-            m_attributes.emplace_back(std::move(variable));
-        }
-        m_attributes.shrink_to_fit();
+        variable_name.resize(static_cast<size_t>(max(longest_attribute_length, longest_uniform_length)));
     }
 
     { // discover uniforms
-        glGetProgramiv(m_id, GL_ACTIVE_UNIFORMS, &variable_count);
-        assert(variable_count >= 0);
-        m_uniforms.reserve(static_cast<size_t>(variable_count));
+        GLint uniform_count = 0;
+        glGetProgramiv(m_id, GL_ACTIVE_UNIFORMS, &uniform_count);
+        assert(uniform_count >= 0);
+        m_uniforms.reserve(static_cast<size_t>(uniform_count));
 
-        for (GLuint index = 0; index < static_cast<GLuint>(variable_count); ++index) {
+        for (GLuint index = 0; index < static_cast<GLuint>(uniform_count); ++index) {
             Variable variable;
             variable.index = index;
             variable.type  = 0;
@@ -318,6 +307,39 @@ Shader::Shader(const GLuint id, GraphicsContext& context, const std::string name
         }
         m_uniforms.shrink_to_fit();
     }
+
+    // TODO: discover uniform blocks in Shader constructor
+
+    { // discover attributes
+        GLint attribute_count = 0;
+        glGetProgramiv(m_id, GL_ACTIVE_ATTRIBUTES, &attribute_count);
+        assert(attribute_count >= 0);
+        m_attributes.reserve(static_cast<size_t>(attribute_count));
+
+        for (GLuint index = 0; index < static_cast<GLuint>(attribute_count); ++index) {
+
+            Variable variable;
+            variable.index = index;
+            variable.type  = 0;
+            variable.size  = 0;
+
+            GLsizei name_length = 0;
+            glGetActiveAttrib(m_id, index, static_cast<GLsizei>(variable_name.size()),
+                              &name_length, &variable.size, &variable.type, &variable_name[0]);
+            assert(variable.type);
+            assert(variable.size);
+
+            assert(name_length > 0);
+            variable.name = std::string(&variable_name[0], static_cast<size_t>(name_length));
+
+            variable.location = glGetAttribLocation(m_id, variable.name.c_str());
+            assert(variable.location >= 0);
+
+            log_trace << "Discovered attribute \"" << variable.name << "\" on shader: \"" << m_name << "\"";
+            m_attributes.emplace_back(std::move(variable));
+        }
+        m_attributes.shrink_to_fit();
+    }
 }
 
 Shader::~Shader()
@@ -335,14 +357,36 @@ GLuint Shader::attribute(const std::string& name) const
     throw_runtime_error(string_format("No attribute named \"%s\" in shader \"%s\"", name.c_str(), m_name.c_str()));
 }
 
-GLint Shader::uniform(const std::string& name) const
+#ifdef _DEBUG
+bool Shader::validate_now() const
 {
-    for (const Variable& variable : m_uniforms) {
-        if (variable.name == name) {
-            return variable.location;
-        }
+    glValidateProgram(m_id);
+
+    GLint status = GL_FALSE;
+    glGetProgramiv(m_id, GL_VALIDATE_STATUS, &status);
+
+    GLint message_size;
+    glGetProgramiv(m_id, GL_INFO_LOG_LENGTH, &message_size);
+    std::vector<char> message(static_cast<size_t>(message_size));
+    glGetProgramInfoLog(m_id, message_size, /*length*/ 0, &message[0]);
+
+    log_trace << "Validation of shader \"" << m_name << "\" " << (status ? "succeeded" : "failed:\n")
+              << message.data();
+    return status == GL_TRUE;
+}
+#endif
+
+const Shader::Variable& Shader::_uniform(const std::string& name) const
+{
+    auto it = std::find_if(
+        std::begin(m_uniforms), std::end(m_uniforms),
+        [&](const Variable& var) -> bool {
+            return var.name == name;
+        });
+    if (it == std::end(m_uniforms)) {
+        throw_runtime_error(string_format("No uniform named \"%s\" in shader \"%s\"", name.c_str(), m_name.c_str()));
     }
-    throw_runtime_error(string_format("No attribute named \"%s\" in shader \"%s\"", name.c_str(), m_name.c_str()));
+    return *it;
 }
 
 void Shader::_deallocate()
@@ -353,6 +397,67 @@ void Shader::_deallocate()
         log_trace << "Deleted Shader Program \"" << m_name << "\"";
     }
     m_id = 0;
+}
+
+template <>
+void Shader::set_uniform(const std::string& name, const float& value)
+{
+    const Variable& uniform = _uniform(name);
+    Scope _(this);
+    if (uniform.type == GL_FLOAT) {
+        glUniform1f(uniform.location, value);
+    }
+    else {
+        m_graphics_context.pop_shader();
+        throw_runtime_error(string_format(
+            "Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"float\"",
+            name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
+    }
+}
+
+template <>
+void Shader::set_uniform(const std::string& name, const Vector2f& value)
+{
+    const Variable& uniform = _uniform(name);
+    Scope _(this);
+    if (uniform.type == GL_FLOAT_VEC2) {
+        glUniform2fv(uniform.location, /*count*/ 1, value.as_ptr());
+    }
+    else {
+        throw_runtime_error(string_format(
+            "Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"Vector2f\"",
+            name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
+    }
+}
+
+template <>
+void Shader::set_uniform(const std::string& name, const Vector4f& value)
+{
+    const Variable& uniform = _uniform(name);
+    Scope _(this);
+    if (uniform.type == GL_FLOAT_VEC4) {
+        glUniform4fv(uniform.location, /*count*/ 1, value.as_ptr());
+    }
+    else {
+        throw_runtime_error(string_format(
+            "Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"Vector2f\"",
+            name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
+    }
+}
+
+template <>
+void Shader::set_uniform(const std::string& name, const Xform3f& value)
+{
+    const Variable& uniform = _uniform(name);
+    Scope _(this);
+    if (uniform.type == GL_FLOAT_MAT4) {
+        glUniformMatrix4fv(uniform.location, /*count*/ 1, GL_FALSE, value.as_ptr());
+    }
+    else {
+        throw_runtime_error(string_format(
+            "Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"Vector2f\"",
+            name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
+    }
 }
 
 } // namespace notf

@@ -33,6 +33,8 @@ INPUT& transform3(const XFORM3&, INPUT&);
 template <typename Real, bool SIMD_SPECIALIZATION = false, ENABLE_IF_REAL(Real)>
 struct _Xform3 : public detail::Arithmetic<_Xform3<Real, SIMD_SPECIALIZATION, true>, _RealVector4<Real>, 4, SIMD_SPECIALIZATION> {
 
+    // TODO: this whole SIMD_SPECIALIZATION means that you cannot propery forward define _Xform3 anymore ... :/
+
     // explitic forwards
     using super    = detail::Arithmetic<_Xform3<Real>, _RealVector4<Real>, 4, SIMD_SPECIALIZATION>;
     using vector_t = _RealVector4<Real>;
@@ -141,8 +143,8 @@ struct _Xform3 : public detail::Arithmetic<_Xform3<Real, SIMD_SPECIALIZATION, tr
      */
     static _Xform3 perspective(const value_t fov, const value_t aspect, value_t near, value_t far)
     {
-        // near and far planes must be > 0
-        near = max(near, 0.1);
+        // near and far planes must be >= 1
+        near = max(near, 1);
         far  = max(near, far);
 
         _Xform3 result = _Xform3::zero();
@@ -167,8 +169,8 @@ struct _Xform3 : public detail::Arithmetic<_Xform3<Real, SIMD_SPECIALIZATION, tr
     static _Xform3 orthographic(const value_t left, const value_t right, const value_t bottom, const value_t top,
                                 value_t near, value_t far)
     {
-        // near and far planes must be > 0
-        near = max(near, 0.1);
+        // near and far planes must be >= 1
+        near = max(near, 1);
         far  = max(near, far);
 
         const value_t width  = right - left;

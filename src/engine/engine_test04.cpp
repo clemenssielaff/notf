@@ -3,6 +3,7 @@
 #include "common/log.hpp"
 #include "common/size2.hpp"
 #include "common/vector3.hpp"
+#include "common/warnings.hpp"
 #include "common/xform3.hpp"
 #include "core/glfw.hpp"
 #include "graphics/geometry.hpp"
@@ -83,7 +84,8 @@ int test04_main(int /*argc*/, char* /*argv*/ [])
             *context.get(), "Blinn-Phong",
             "/home/clemens/code/notf/res/shaders/blinn_phong.vert",
             "/home/clemens/code/notf/res/shaders/blinn_phong.frag");
-        context->push_shader(blinn_phong_shader);
+        auto shader_scope = blinn_phong_shader->scope();
+        UNUSED(shader_scope);
 
         // setup vertices
         using VertexLayout = VertexArray<VertexPos, VertexNormal>;
@@ -121,16 +123,19 @@ int test04_main(int /*argc*/, char* /*argv*/ [])
             const Xform3f rotate    = Xform3f::rotation(Vector4f(sin(angle), cos(angle)), angle);
             const Xform3f scale     = Xform3f::scaling(100);
             const Xform3f modelview = move * rotate * scale;
-            glUniformMatrix4fv(blinn_phong_shader->uniform("modelview"), 1, GL_FALSE, modelview.as_ptr());
+            blinn_phong_shader->set_uniform("modelview", modelview);
+            //            glUniformMatrix4fv(blinn_phong_shader->uniform("modelview"), 1, GL_FALSE, modelview.as_ptr());
 
             const Xform3f perspective = Xform3f::perspective(deg_to_rad(160), 1, 0, 1000.f);
-            glUniformMatrix4fv(blinn_phong_shader->uniform("projection"), 1, GL_FALSE, perspective.as_ptr());
+            blinn_phong_shader->set_uniform("projection", perspective);
+            //            glUniformMatrix4fv(blinn_phong_shader->uniform("projection"), 1, GL_FALSE, perspective.as_ptr());
 
             //            const Xform3f perspective = Xform3f::orthographic(-400.f, 400.f, -400.f, 400.f, 0.f, 1000.f);
             //            glUniformMatrix4fv(blinn_phong_shader->uniform("projection"), 1, GL_FALSE, perspective.as_ptr());
 
             Xform3f normalMat = rotate;
-            glUniformMatrix4fv(blinn_phong_shader->uniform("normalMat"), 1, GL_FALSE, normalMat.as_ptr());
+            blinn_phong_shader->set_uniform("normalMat", normalMat);
+            //            glUniformMatrix4fv(blinn_phong_shader->uniform("normalMat"), 1, GL_FALSE, normalMat.as_ptr());
 
             vertex_object.render();
 

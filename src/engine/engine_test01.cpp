@@ -110,8 +110,8 @@ int test01_main(int /*argc*/, char* /*argv*/ [])
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
             //pass the shader uniform
-            Xform3f xform = Xform3f::rotation(Vector4f(0, 0, 1, 1), angle);
-            glUniformMatrix4fv(shader->uniform("MVP"), 1, GL_FALSE, xform.as_ptr());
+//            Xform3f xform = Xform3f::rotation(Vector4f(0, 0, 1, 1), angle);
+//            glUniformMatrix4fv(shader->uniform("MVP"), 1, GL_FALSE, xform.as_ptr());
             glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0);
 
             check_gl_error();

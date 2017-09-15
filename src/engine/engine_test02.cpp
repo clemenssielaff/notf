@@ -88,7 +88,7 @@ void render_thread(GLFWwindow* window)
     glClearColor(0, 0, 0, 1);
 
     const Xform3f identityXform = Xform3f::identity();;
-    glUniformMatrix4fv(shader->uniform("MVP"), 1, GL_FALSE, identityXform.as_ptr());
+//    glUniformMatrix4fv(shader->uniform("MVP"), 1, GL_FALSE, identityXform.as_ptr());
 
     using namespace std::chrono_literals;
     auto lasttime = std::chrono::high_resolution_clock::now();

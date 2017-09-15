@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -11,8 +12,21 @@ namespace notf {
 
 DEFINE_SHARED_POINTERS(class, Shader);
 
+template <typename Real, FWD_ENABLE_IF_REAL(Real)>
+struct _RealVector2;
+using Vector2f = _RealVector2<float, true>;
+
+template <typename Real, bool SIMD_SPECIALIZATION, FWD_ENABLE_IF_REAL(Real)>
+struct _RealVector4;
+using Vector4f = _RealVector4<float, false, true>;
+
+template <typename Real, bool SIMD_SPECIALIZATION, FWD_ENABLE_IF_REAL(Real)>
+struct _Xform3;
+using Xform3f = _Xform3<float, false, true>;
+
 class GraphicsContext;
 
+//*********************************************************************************************************************/
 //*********************************************************************************************************************/
 
 /** Manages the compilation, runtime functionality and resources of an OpenGL shader program.
@@ -55,6 +69,30 @@ public: // types ***************************************************************
         /** The name of the variable. */
         std::string name;
     };
+
+    //*****************************************************************************************************************/
+    //*****************************************************************************************************************/
+
+    /** Shader scope RAII helper. */
+    struct Scope {
+
+        /** Constructor, binds the shader. */
+        Scope(Shader* shader);
+
+        /** Move without re-binding. */
+        Scope(Scope&& other)
+            : m_shader(other.m_shader)
+        {
+            other.m_shader = nullptr;
+        }
+
+        /** Destructor, unbinds the shader again. */
+        ~Scope();
+
+        /** Bound shader. */
+        Shader* m_shader;
+    };
+    friend struct Scope;
 
 public: // static methods *********************************************************************************************/
     /** Loads a new OpenGL ES Shader from shader files.
@@ -112,6 +150,19 @@ public: // methods *************************************************************
     /** The name of this Shader. */
     const std::string& name() const { return m_name; }
 
+    /** A scope object that pushes this Shader onto the stack and pops it on destruction. */
+    Scope scope() { return Scope(this); }
+
+    /** Updates the value of a uniform in the shader.
+     * @throws std::runtime_error   If the uniform cannot be found.
+     * @throws std::runtime_error   If the value type and the uniform type are not compatible.
+     */
+    template <typename T>
+    void set_uniform(const std::string&, const T& t)
+    {
+        static_assert(always_false<T, t>{}, "No overload for value type in notf::Shader::set_uniform");
+    }
+
     /** Returns the location of the attribute with the given name.
      * @throws std::runtime_error   If there is no attribute with the given name in this shader.
      */
@@ -120,17 +171,23 @@ public: // methods *************************************************************
     /** All attribute variables. */
     const std::vector<Variable>& attributes() { return m_attributes; }
 
-    /** Returns the location of the uniform with the given name.
-     * @throws std::runtime_error   If there is no uniform with the given name in this shader.
+#ifdef _DEBUG
+    /** Checks whether the shader can execute in the current OpenGL state.
+     * Is expensive and should only be used for debugging!
+     * A validation report is logged, regardless whether the validation succeeded or not.
+     * @return  True if the validation succeeded.
      */
-    GLint uniform(const std::string& name) const;
-
-    /** All uniform variables. */
-    const std::vector<Variable>& uniforms() { return m_uniforms; }
+    bool validate_now() const;
+#endif
 
     // TODO: instead of giving the user access to the variables, use the Variables to offer getter/setters only? (g/set_attribute/uniform)
 
 private: // methods for GraphicsContext *******************************************************************************/
+    /** Returns the uniform with the given name.
+     * @throws std::runtime_error   If there is no uniform with the given name in this shader.
+     */
+    const Variable& _uniform(const std::string& name) const;
+
     /** Deallocates the Shader data and invalidates the Shader. */
     void _deallocate();
 
@@ -144,15 +201,27 @@ private: // fields *************************************************************
     /** The name of this Shader. */
     const std::string m_name;
 
-    /** All attributes of this shader.
-     * Attributes may change during shader execution across different shader stages (per-vertex attributes for example).
-     */
-    std::vector<Variable> m_attributes;
-
     /** All uniforms of this shader.
      * Uniforms remain constant throughout the shader (modelview matrix and texture samplers for example).
      */
     std::vector<Variable> m_uniforms;
+
+    /** All attributes of this shader.
+     * Attributes may change during shader execution across different shader stages (per-vertex attributes for example).
+     */
+    std::vector<Variable> m_attributes;
 };
+
+template <>
+void Shader::set_uniform(const std::string&, const float& value);
+
+template <>
+void Shader::set_uniform(const std::string&, const Vector2f& value);
+
+template <>
+void Shader::set_uniform(const std::string&, const Vector4f& value);
+
+template <>
+void Shader::set_uniform(const std::string&, const Xform3f& value);
 
 } // namespace notf
