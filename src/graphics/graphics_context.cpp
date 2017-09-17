@@ -4,6 +4,7 @@
 #include "common/vector.hpp"
 #include "core/glfw.hpp"
 #include "core/window.hpp"
+#include "graphics/gl_errors.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/text/font_manager.hpp"
 #include "graphics/texture2.hpp"
@@ -233,6 +234,12 @@ void GraphicsContext::clear_shader()
 
     m_shader_stack.clear();
     glUseProgram(0);
+}
+
+void GraphicsContext::release_shader_compiler()
+{
+    glReleaseShaderCompiler();
+    check_gl_error();
 }
 
 } // namespace notf

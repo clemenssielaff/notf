@@ -180,7 +180,7 @@ public: // methods *************************************************************
     bool validate_now() const;
 #endif
 
-    // TODO: instead of giving the user access to the variables, use the Variables to offer getter/setters only? (g/set_attribute/uniform)
+    // TODO: cache compiled shader binaries next to their text files (like python?)
 
 private: // methods for GraphicsContext *******************************************************************************/
     /** Returns the uniform with the given name.

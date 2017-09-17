@@ -1,22 +1,24 @@
 #include "graphics/geometry.hpp"
 
+#include "utils/make_const.hpp"
+
 namespace notf {
 
 namespace detail {
 
 std::vector<GeometryFactoryImpl::Study> GeometryFactoryImpl::_produce(const BoxDefinition& def)
 {
-    Vector4f orient_axis = def.orient_axis;
+    Vector4d orient_axis = def.orient_axis;
     orient_axis.w()      = 0; // TODO: normalization with Vector4 must not use normalize with W
     orient_axis.normalize();
     orient_axis.w() = 1;
 
-    Vector4f up_axis = def.up_axis;
+    Vector4d up_axis = def.up_axis;
     up_axis.w()      = 0;
     up_axis.normalize();
     up_axis.w() = 1;
 
-    Vector4f depth_axis = orient_axis.cross(up_axis);
+    Vector4d depth_axis = make_const(orient_axis).cross(up_axis); // TODO: FUCKING TELL ME WHEN A FUNCTION HAS SIDE EFFECTS - no const / non-const overloading anymore it's shit!
     depth_axis.w()      = 0;
     depth_axis.normalize();
     depth_axis.w() = 1;
@@ -24,14 +26,23 @@ std::vector<GeometryFactoryImpl::Study> GeometryFactoryImpl::_produce(const BoxD
     std::vector<Study> studies(6 * 4);
 
     // vertex positions
-    const Vector4f v0 = def.center - (orient_axis * def.width) - (depth_axis * def.depth) - (up_axis * def.height);
-    const Vector4f v1 = def.center + (orient_axis * def.width) - (depth_axis * def.depth) - (up_axis * def.height);
-    const Vector4f v2 = def.center + (orient_axis * def.width) + (depth_axis * def.depth) - (up_axis * def.height);
-    const Vector4f v3 = def.center - (orient_axis * def.width) + (depth_axis * def.depth) - (up_axis * def.height);
-    const Vector4f v4 = def.center - (orient_axis * def.width) - (depth_axis * def.depth) + (up_axis * def.height);
-    const Vector4f v5 = def.center + (orient_axis * def.width) - (depth_axis * def.depth) + (up_axis * def.height);
-    const Vector4f v6 = def.center + (orient_axis * def.width) + (depth_axis * def.depth) + (up_axis * def.height);
-    const Vector4f v7 = def.center - (orient_axis * def.width) + (depth_axis * def.depth) + (up_axis * def.height);
+    Vector4d v0 = def.center - (orient_axis * def.width) - (depth_axis * def.depth) - (up_axis * def.height);
+    Vector4d v1 = def.center + (orient_axis * def.width) - (depth_axis * def.depth) - (up_axis * def.height);
+    Vector4d v2 = def.center + (orient_axis * def.width) + (depth_axis * def.depth) - (up_axis * def.height);
+    Vector4d v3 = def.center - (orient_axis * def.width) + (depth_axis * def.depth) - (up_axis * def.height);
+    Vector4d v4 = def.center - (orient_axis * def.width) - (depth_axis * def.depth) + (up_axis * def.height);
+    Vector4d v5 = def.center + (orient_axis * def.width) - (depth_axis * def.depth) + (up_axis * def.height);
+    Vector4d v6 = def.center + (orient_axis * def.width) + (depth_axis * def.depth) + (up_axis * def.height);
+    Vector4d v7 = def.center - (orient_axis * def.width) + (depth_axis * def.depth) + (up_axis * def.height);
+
+    v0.w() = 1; // TODO: All this normalization / denormalization is crap. Use a Vector3 here
+    v1.w() = 1;
+    v2.w() = 1;
+    v3.w() = 1;
+    v4.w() = 1;
+    v5.w() = 1;
+    v6.w() = 1;
+    v7.w() = 1;
 
     studies[0].position = v1; // right
     studies[1].position = v2;
@@ -95,35 +106,35 @@ std::vector<GeometryFactoryImpl::Study> GeometryFactoryImpl::_produce(const BoxD
     studies[23].normal = -up_axis;
 
     // texture coordinates
-    studies[0].tex_coord = Vector2f(0, 0); // right
-    studies[1].tex_coord = Vector2f(1, 0);
-    studies[2].tex_coord = Vector2f(1, 1);
-    studies[3].tex_coord = Vector2f(0, 1);
+    studies[0].tex_coord = Vector2d(0, 0); // right
+    studies[1].tex_coord = Vector2d(1, 0);
+    studies[2].tex_coord = Vector2d(1, 1);
+    studies[3].tex_coord = Vector2d(0, 1);
 
-    studies[4].tex_coord = Vector2f(0, 0); // back
-    studies[5].tex_coord = Vector2f(1, 0);
-    studies[6].tex_coord = Vector2f(1, 1);
-    studies[7].tex_coord = Vector2f(0, 1);
+    studies[4].tex_coord = Vector2d(0, 0); // back
+    studies[5].tex_coord = Vector2d(1, 0);
+    studies[6].tex_coord = Vector2d(1, 1);
+    studies[7].tex_coord = Vector2d(0, 1);
 
-    studies[8].tex_coord  = Vector2f(0, 0); // left
-    studies[9].tex_coord  = Vector2f(1, 0);
-    studies[10].tex_coord = Vector2f(1, 1);
-    studies[11].tex_coord = Vector2f(0, 1);
+    studies[8].tex_coord  = Vector2d(0, 0); // left
+    studies[9].tex_coord  = Vector2d(1, 0);
+    studies[10].tex_coord = Vector2d(1, 1);
+    studies[11].tex_coord = Vector2d(0, 1);
 
-    studies[12].tex_coord = Vector2f(0, 0); // front
-    studies[13].tex_coord = Vector2f(1, 0);
-    studies[14].tex_coord = Vector2f(1, 1);
-    studies[15].tex_coord = Vector2f(0, 1);
+    studies[12].tex_coord = Vector2d(0, 0); // front
+    studies[13].tex_coord = Vector2d(1, 0);
+    studies[14].tex_coord = Vector2d(1, 1);
+    studies[15].tex_coord = Vector2d(0, 1);
 
-    studies[16].tex_coord = Vector2f(0, 0); // top
-    studies[17].tex_coord = Vector2f(1, 0);
-    studies[18].tex_coord = Vector2f(1, 1);
-    studies[19].tex_coord = Vector2f(0, 1);
+    studies[16].tex_coord = Vector2d(0, 0); // top
+    studies[17].tex_coord = Vector2d(1, 0);
+    studies[18].tex_coord = Vector2d(1, 1);
+    studies[19].tex_coord = Vector2d(0, 1);
 
-    studies[20].tex_coord = Vector2f(0, 0); // bottom
-    studies[21].tex_coord = Vector2f(1, 0);
-    studies[22].tex_coord = Vector2f(1, 1);
-    studies[23].tex_coord = Vector2f(0, 1);
+    studies[20].tex_coord = Vector2d(0, 0); // bottom
+    studies[21].tex_coord = Vector2d(1, 0);
+    studies[22].tex_coord = Vector2d(1, 1);
+    studies[23].tex_coord = Vector2d(0, 1);
 
     // faces
     //    boxGeo->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS, 0, 4));

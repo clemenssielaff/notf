@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "common/exception.hpp"
+#include "common/half.hpp"
 #include "common/log.hpp"
 #include "common/meta.hpp"
 #include "core/opengl.hpp"
@@ -23,7 +24,9 @@ namespace detail {
 template <typename TUPLE, std::size_t... I>
 decltype(auto) extract_trait_types_impl(const TUPLE&, std::index_sequence<I...>)
 {
-    return std::tuple<typename std::tuple_element<I, TUPLE>::type::type...>{};
+    return std::tuple<std::array<
+        typename std::tuple_element<I, TUPLE>::type::type,
+        std::tuple_element<I, TUPLE>::type::count>...>{};
 }
 
 /** Extracts the value types from a variadic list of traits. */
@@ -44,27 +47,19 @@ decltype(auto) extract_trait_types(const std::tuple<Ts...>& tuple)
  */
 struct AttributeKind {
 
-    /** Vertex position in model space.
-     * Trait::type must be Vector4f.
-     */
+    /** Vertex position in model space. */
     struct Position {
     };
 
-    /** Texture coordinate.
-     * Trait::type must be Vector2f.
-     */
+    /** Texture coordinate. */
     struct TexCoord {
     };
 
-    /** Vertex normal vector.
-     * Trait::type must be Vector4f.
-     */
+    /** Vertex normal vector. */
     struct Normal {
     };
 
-    /** Vertex color.
-     * Trait::type must be Vector4f.
-     */
+    /** Vertex color. */
     struct Color {
     };
 
@@ -121,6 +116,8 @@ protected: // fields ***********************************************************
 //*********************************************************************************************************************/
 //**********************************************************************************************************************
 
+// TODO: update VertexArray docstring
+
 /** Abstracts an OpenGL VBO.
  *
  * Example usage:
@@ -128,16 +125,17 @@ protected: // fields ***********************************************************
  *     namespace detail {
  *
  *     struct VertexPositionTrait {
- *         constexpr static StaticString
- *         name         = "vPos";                     // matches the name of an attribute in the shader
- *         using type   = Vector3f;                   // attribute value type
- *         using kind   = AttributeKind::Position;    // attribute value kind (used by GeometryFactory)
+ *         StaticString name                = "vPos";                  // matches the name of an attribute in the shader
+ *         using type                       = Vector3f;                // attribute value type
+ *         constexpr static GLenum gltype   = GL_FLOAT;                // OpenGL type to store the value
+ *         using kind                       = AttributeKind::Position; // attribute value kind (used by GeometryFactory)
  *     };
  *
  *     struct VertexColorTrait {
- *         constexpr static StaticString name = "vColor";
- *         using type                         = Color;
- *         using kind                         = AttributeKind::Color;
+ *         StaticString name                = "vColor";
+ *         using type                       = Color;
+ *         constexpr static GLenum gltype   = GL_HALF_FLOAT;
+ *         using kind                       = AttributeKind::Color;
  *     };
  *
  *     } // namespace detail
@@ -183,7 +181,7 @@ public: // methods *************************************************************
 
         glGenBuffers(1, &m_vbo_id);
         if (!m_vbo_id) {
-            throw_runtime_error("Failed to alocate VertexArray");
+            throw_runtime_error("Failed to allocate VertexArray");
         }
 
         { // make sure there is a bound VAO
@@ -241,11 +239,15 @@ private: // methods ************************************************************
 
         glEnableVertexAttribArray(attribute_id);
         glVertexAttribPointer(
-            attribute_id, sizeof(typename ATTRIBUTE::type) / sizeof(float), GL_FLOAT, /*normalized*/ GL_FALSE,
-            static_cast<GLsizei>(sizeof(Vertex)), gl_buffer_offset(static_cast<size_t>(offset)));
+            attribute_id,
+            ATTRIBUTE::count,
+            to_gl_type(typename ATTRIBUTE::type{}),
+            /*normalized*/ GL_FALSE,
+            static_cast<GLsizei>(sizeof(Vertex)),
+            gl_buffer_offset(static_cast<size_t>(offset)));
     }
 
-private: // fields ****************************************************************************************************/
+public: // fields ****************************************************************************************************/
     /** Vertices stored in the array. */
     std::vector<Vertex> m_vertices;
 };

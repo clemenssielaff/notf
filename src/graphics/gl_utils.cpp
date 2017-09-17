@@ -1,5 +1,6 @@
 #include "graphics/gl_utils.hpp"
 
+#include "common/half.hpp"
 #include "common/log.hpp"
 #include "core/opengl.hpp"
 
@@ -190,5 +191,14 @@ const std::string& gl_type_name(GLenum type)
     }
     return t_unknown;
 }
+
+GLenum to_gl_type(const char&) { return GL_UNSIGNED_BYTE; }
+GLenum to_gl_type(const unsigned char&) { return GL_BYTE; }
+GLenum to_gl_type(const short&) { return GL_SHORT; }
+GLenum to_gl_type(const unsigned short&) { return GL_UNSIGNED_SHORT; }
+GLenum to_gl_type(const int&) { return GL_INT; }
+GLenum to_gl_type(const unsigned int&) { return GL_UNSIGNED_INT; }
+GLenum to_gl_type(const half&) { return GL_HALF_FLOAT; }
+GLenum to_gl_type(const float&) { return GL_FLOAT; }
 
 } // namespace notf

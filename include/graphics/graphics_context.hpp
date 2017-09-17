@@ -106,6 +106,13 @@ public: // methods *************************************************************
      */
     void clear_shader();
 
+    /** Call this function after the last shader has been compiled.
+     * Might cause the driver to release the resources alocated for the compiler to free up some space, but is not
+     * guaranteed to do so.
+     * If you compile a new shader after calling this function, the driver will reallocate the compiler.
+     */
+    void release_shader_compiler();
+
 private: // fields ****************************************************************************************************/
     /** The GLFW window displaying the contents of this context. */
     GLFWwindow* m_window;
