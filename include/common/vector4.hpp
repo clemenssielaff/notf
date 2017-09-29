@@ -11,7 +11,7 @@ namespace notf {
 
 //*********************************************************************************************************************/
 
-/** 4-dimensional mathematical Vector containing real numbers. */
+/** 4-dimensional mathematical vector containing real numbers. */
 template <typename Real, bool SIMD_SPECIALIZATION = false, ENABLE_IF_REAL(Real)>
 struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4, SIMD_SPECIALIZATION> {
 
@@ -49,13 +49,22 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4, SIM
 
     /*  Inspection  ***************************************************************************************************/
 
+    /** Returns True, if other and self are approximately the same vector.
+     * @param other     Vector4 to test against.
+     * @param epsilon   Maximal allowed distance between the two vector.
+     */
+    bool is_approx(const _RealVector4& other, const value_t epsilon = precision_high<value_t>()) const
+    {
+        return (*this - other).magnitude_sq() <= epsilon * epsilon;
+    }
+
     /** Checks whether this Vector4 is parallel to other.
      * The zero Vector4 is parallel to everything.
      * @param other     Other Vector4.
      */
     bool is_parallel_to(const _RealVector4& other) const
     {
-        return this->cross(other).get_magnitude_sq() <= precision_high<value_t>();
+        return this->cross(other).magnitude_sq() <= precision_high<value_t>();
     }
 
     /** Checks whether this Vector4 is orthogonal to other.
@@ -74,7 +83,7 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4, SIM
      */
     value_t angle_to(const _RealVector4& other) const
     {
-        const value_t mag_sq_product = super::get_magnitude_sq() * other.get_magnitude_sq();
+        const value_t mag_sq_product = super::magnitude_sq() * other.magnitude_sq();
         if (mag_sq_product <= precision_high<value_t>()) {
             return 0.; // one or both are zero
         }
@@ -91,7 +100,7 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4, SIM
      */
     Real direction_to(const _RealVector4& other) const
     {
-        const value_t mag_sq_product = super::get_magnitude_sq() * other.get_magnitude_sq();
+        const value_t mag_sq_product = super::magnitude_sq() * other.magnitude_sq();
         if (mag_sq_product <= precision_high<value_t>()) {
             return 0.; // one or both are zero
         }
@@ -113,7 +122,7 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4, SIM
     /** Read-only access to the fourth element in the vector. */
     const value_t& w() const { return data[3]; }
 
-    /** Modification **************************************************************************************************/
+    /** Operations ****************************************************************************************************/
 
     /** Read-write access to the first element in the vector. */
     value_t& x() { return data[0]; }
@@ -150,33 +159,10 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<Real>, Real, 4, SIM
             (x() * other.y()) - (y() * other.x()));
     }
 
-    /** In-place Vector4 cross product.
-     * @param other     Other Vector4.
-     */
-    _RealVector4& cross(const _RealVector4& other)
-    {
-        const value_t tx = (y() * other.z()) - (z() * other.y());
-        const value_t ty = (z() * other.x()) - (x() * other.z());
-        const value_t tz = (x() * other.y()) - (y() * other.x());
-        x()              = tx;
-        y()              = ty;
-        z()              = tz;
-        return *this;
-    }
-
-    /** Creates a projection of this Vector4 onto an infinite line whose direction is specified by other.
-     * If the other Vector4 is not normalized, the projection is scaled alongside with it.
-     */
-    _RealVector4 get_projected_on(const _RealVector4& other) { return other * dot(other); }
-
     /** Projects this Vector4 onto an infinite line whose direction is specified by other.
      * If the other Vector4 is not normalized, the projection is scaled alongside with it.
      */
-    _RealVector4 project_on(const _RealVector4& other)
-    {
-        *this = other * dot(other);
-        return *this;
-    }
+    _RealVector4 project_on(const _RealVector4& other) const { return other * dot(other); }
 };
 
 using Vector4f = _RealVector4<float>;

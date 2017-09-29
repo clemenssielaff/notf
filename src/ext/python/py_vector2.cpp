@@ -42,8 +42,8 @@ void produce_vector2(pybind11::module& module)
     Py_Vector2.def("is_vertical", &Vector2f::is_vertical, DOCSTR("Tests if this Vector2 is parallel to the y-axis."));
     Py_Vector2.def("is_approx", (bool (Vector2f::*)(const Vector2f&) const) & Vector2f::is_approx, DOCSTR("Returns True, if other and self are approximately the same Vector2."), py::arg("other"));
     Py_Vector2.def("slope", &Vector2f::slope, DOCSTR("Returns the slope of this Vector2."));
-    Py_Vector2.def("magnitude_sq", &Vector2f::get_magnitude_sq, DOCSTR("Returns the squared magnitude of this Vector2."));
-    Py_Vector2.def("magnitude", &Vector2f::get_magnitude, DOCSTR("Returns the magnitude of this Vector2."));
+    Py_Vector2.def("magnitude_sq", &Vector2f::magnitude_sq, DOCSTR("Returns the squared magnitude of this Vector2."));
+    Py_Vector2.def("magnitude", &Vector2f::magnitude, DOCSTR("Returns the magnitude of this Vector2."));
     Py_Vector2.def("is_real", &Vector2f::is_real, DOCSTR("Checks, if this Vector2 contains only real values."));
     Py_Vector2.def("contains_zero", &Vector2f::contains_zero, DOCSTR("Checks, if any component of this Vector2 is a zero."));
 

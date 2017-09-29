@@ -109,6 +109,25 @@ template <typename T, T val>
 struct always_false : std::false_type {
 };
 
+/** Like always_false, but taking a single type only.
+ * This way you can define error overloads that differ by type only:
+ *
+ *    static void convert(const Vector4d& in, std::array<float, 4>& out)
+ *    {
+ *        ...
+ *    }
+ *
+ *    template <typename UNSUPPORTED_TYPE>
+ *    static void convert(const Vector4d& in, UNSUPPORTED_TYPE& out)
+ *    {
+ *        static_assert(always_false_t<T>{}, "Cannot convert a Vector4d into template type T");
+ *    }
+ *
+ */
+template <typename T>
+struct always_false_t : std::false_type {
+};
+
 //*********************************************************************************************************************/
 
 /** Convenience macro to disable the construction of automatic copy- and assign methods.
@@ -133,3 +152,26 @@ struct larger_type {
                                     LEFT,
                                     RIGHT>;
 };
+
+//*********************************************************************************************************************/
+
+/** Definitions for the various versions of C++. */
+
+#ifndef __cplusplus
+#error A C++ compiler is required!
+#else
+
+#if __cplusplus >= 199711L
+#define CPP_97
+#endif
+#if __cplusplus >= 201103L
+#define CPP_11
+#endif
+#if __cplusplus >= 201402L
+#define CPP_14
+#endif
+#if __cplusplus >= 201703L
+#define CPP_17
+#endif
+
+#endif

@@ -77,21 +77,21 @@ struct _Circle {
     /** Checks, if the given point is contained within (or on the border of) this Circle. */
     bool contains(const vector_t& point) const
     {
-        return (point - center).get_magnitude_sq() <= (radius * radius);
+        return (point - center).magnitude_sq() <= (radius * radius);
     }
 
     /** Checks if the other Circle intersects with this one, intersection requires the intersected area to be >= zero. */
     bool intersects(const _Circle& other) const
     {
         const value_t radii = radius + other.radius;
-        return (other.center - center).get_magnitude_sq() < (radii * radii);
+        return (other.center - center).magnitude_sq() < (radii * radii);
     }
 
     /** Returns the closest point inside this Circle to the given target point. */
     vector_t closest_point_to(const vector_t& target) const
     {
         const vector_t delta = target - center;
-        const value_t mag_sq = delta.get_magnitude_sq();
+        const value_t mag_sq = delta.magnitude_sq();
         if (mag_sq <= (radius * radius)) {
             return target;
         }

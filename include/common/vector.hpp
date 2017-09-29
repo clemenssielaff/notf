@@ -70,12 +70,26 @@ T& create_back(std::vector<T>& target, Args&&... args)
     return target.back();
 }
 
-/** Extends a vector with another one of the same type. */
+/** Extends a vector with another one of the same type.
+ * From https://stackoverflow.com/a/41079085/3444217
+ */
 template <typename T>
-std::vector<T>& extend(std::vector<T>& target, const std::vector<T>& source)
+std::vector<T>& extend(std::vector<T>& vector, const std::vector<T>& extension)
 {
-    target.insert(std::end(target), std::cbegin(source), std::cend(source));
-    return target;
+    vector.insert(std::end(vector), std::cbegin(extension), std::cend(extension));
+    return vector;
+}
+template <typename T>
+std::vector<T>& extend(std::vector<T>& vector, std::vector<T>&& extension)
+{
+    if (vector.empty()) {
+        vector = std::move(extension);
+    }
+    else {
+        std::move(std::begin(extension), std::end(extension), std::back_inserter(vector));
+        extension.clear();
+    }
+    return vector;
 }
 
 /** Convenience function to get an iterator to an item at a given index in a vector. */

@@ -370,38 +370,38 @@ SCENARIO("Vector2s can be inspected", "[common][vector2]")
 
         THEN("it will work correctly")
         {
-            REQUIRE(Vector2f::x_axis().get_magnitude() == approx(1));
-            REQUIRE(Vector2f::y_axis().get_magnitude() == approx(1));
-            REQUIRE(Vector2d::x_axis().get_magnitude() == approx(1));
-            REQUIRE(Vector2d::y_axis().get_magnitude() == approx(1));
+            REQUIRE(Vector2f::x_axis().magnitude() == approx(1));
+            REQUIRE(Vector2f::y_axis().magnitude() == approx(1));
+            REQUIRE(Vector2d::x_axis().magnitude() == approx(1));
+            REQUIRE(Vector2d::y_axis().magnitude() == approx(1));
 
-            REQUIRE(Vector2f::zero().get_magnitude() == approx(0));
-            REQUIRE(Vector2d::zero().get_magnitude() == approx(0));
+            REQUIRE(Vector2f::zero().magnitude() == approx(0));
+            REQUIRE(Vector2d::zero().magnitude() == approx(0));
 
-            REQUIRE(random_vector<Vector2f>().get_magnitude() != approx(1));
-            REQUIRE(random_vector<Vector2d>().get_magnitude() != approx(1));
+            REQUIRE(random_vector<Vector2f>().magnitude() != approx(1));
+            REQUIRE(random_vector<Vector2d>().magnitude() != approx(1));
 
-            REQUIRE((random_vector<Vector2f>().normalize() * factor_f).get_magnitude() == approx(abs(factor_f)));
-            REQUIRE((random_vector<Vector2d>().normalize() * factor_d).get_magnitude() == approx(abs(factor_d)));
+            REQUIRE((random_vector<Vector2f>().normalize() * factor_f).magnitude() == approx(abs(factor_f)));
+            REQUIRE((random_vector<Vector2d>().normalize() * factor_d).magnitude() == approx(abs(factor_d)));
 
-            REQUIRE(random_vector<Vector2f>().normalize().get_magnitude() == approx(1));
-            REQUIRE(random_vector<Vector2d>().normalize().get_magnitude() == approx(1));
-            REQUIRE(random_vector<Vector2f>().normalize().get_magnitude() == approx(1));
-            REQUIRE(random_vector<Vector2d>().normalize().get_magnitude() == approx(1));
+            REQUIRE(random_vector<Vector2f>().normalize().magnitude() == approx(1));
+            REQUIRE(random_vector<Vector2d>().normalize().magnitude() == approx(1));
+            REQUIRE(random_vector<Vector2f>().normalize().magnitude() == approx(1));
+            REQUIRE(random_vector<Vector2d>().normalize().magnitude() == approx(1));
 
-            REQUIRE(lowest_vector<float>().get_magnitude() != approx(1));
-            REQUIRE(lowest_vector<float>().normalize().get_magnitude() == approx(1));
-            REQUIRE(lowest_vector<float>().normalize().get_magnitude() == approx(1));
-            REQUIRE(lowest_vector<double>().get_magnitude() != approx(1));
-            REQUIRE(lowest_vector<double>().normalize().get_magnitude() == approx(1));
-            REQUIRE(lowest_vector<double>().normalize().get_magnitude() == approx(1));
+            REQUIRE(lowest_vector<float>().magnitude() != approx(1));
+            REQUIRE(lowest_vector<float>().normalize().magnitude() == approx(1));
+            REQUIRE(lowest_vector<float>().normalize().magnitude() == approx(1));
+            REQUIRE(lowest_vector<double>().magnitude() != approx(1));
+            REQUIRE(lowest_vector<double>().normalize().magnitude() == approx(1));
+            REQUIRE(lowest_vector<double>().normalize().magnitude() == approx(1));
 
-            REQUIRE(highest_vector<float>().get_magnitude() != approx(1));
-            REQUIRE(highest_vector<float>().normalize().get_magnitude() == approx(1));
-            REQUIRE(highest_vector<float>().normalize().get_magnitude() == approx(1));
-            REQUIRE(highest_vector<double>().get_magnitude() != approx(1));
-            REQUIRE(highest_vector<double>().normalize().get_magnitude() == approx(1));
-            REQUIRE(highest_vector<double>().normalize().get_magnitude() == approx(1));
+            REQUIRE(highest_vector<float>().magnitude() != approx(1));
+            REQUIRE(highest_vector<float>().normalize().magnitude() == approx(1));
+            REQUIRE(highest_vector<float>().normalize().magnitude() == approx(1));
+            REQUIRE(highest_vector<double>().magnitude() != approx(1));
+            REQUIRE(highest_vector<double>().normalize().magnitude() == approx(1));
+            REQUIRE(highest_vector<double>().normalize().magnitude() == approx(1));
         }
     }
 }

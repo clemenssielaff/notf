@@ -5,19 +5,14 @@
 #include "common/half.hpp"
 #include "common/log.hpp"
 #include "common/size2.hpp"
-#include "common/vector3.hpp"
-#include "common/vector4.hpp"
 #include "common/warnings.hpp"
-#include "common/xform3.hpp"
 #include "core/glfw.hpp"
-#include "graphics/geometry.hpp"
-#include "graphics/gl_errors.hpp"
-#include "graphics/gl_utils.hpp"
 #include "graphics/graphics_context.hpp"
-#include "graphics/index_buffer.hpp"
+#include "graphics/prefab_factory.hpp"
+#include "graphics/prefab_library.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/vertex_array.hpp"
-#include "graphics/vertex_object.hpp"
+#include "utils/static_string.hpp"
 
 #include "glm_utils.hpp"
 
@@ -52,7 +47,16 @@ struct VertexTexCoord {
     constexpr static size_t count = 2;
     using kind                    = AttributeKind::TexCoord;
 };
+
+struct InstanceXform {
+    StaticString name             = "iOffset";
+    using type                    = float;
+    constexpr static size_t count = 16;
+    using kind                    = AttributeKind::Other;
+};
+
 }
+
 static void error_callback(int error, const char* description)
 {
     log_critical << "GLFW error #" << error << ": " << description;
@@ -69,47 +73,20 @@ void render_thread(GLFWwindow* window)
     auto shader_scope = blinn_phong_shader->scope();
     UNUSED(shader_scope);
 
-    // setup vertices
-    using VertexLayout = VertexArray<VertexPos, VertexNormal>;
-    auto vertex_buffer = std::make_shared<VertexLayout>(GeometryFactory<VertexLayout>::produce());
-    VertexObject vertex_object(
-        blinn_phong_shader,
-        vertex_buffer,
-        VertexObject::RenderMode::TRIANGLES,
-        create_index_buffer<0, 2, 1,
-                            0, 3, 2,
-                            4, 6, 5,
-                            4, 7, 6,
-                            8, 10, 11,
-                            8, 9, 10,
-                            12, 14, 15,
-                            12, 13, 14,
-                            16, 18, 19,
-                            16, 17, 18,
-                            23, 21, 20,
-                            23, 22, 21>());
+    using VertexLayout   = VertexArray<VertexPos, VertexNormal>;
+    using InstanceLayout = VertexArray<InstanceXform>;
+    using Library        = PrefabLibrary<VertexLayout, InstanceLayout>;
+    Library library(blinn_phong_shader);
 
-    {
-        size_t i = 0;
-        for (const VertexLayout::Vertex& vertex : vertex_buffer->m_vertices) {
-            auto first = std::get<0>(vertex);
-            auto second = std::get<1>(vertex);
-            std::stringstream ss;
-            ss << i++ << ": ( ";
+    using Factory = PrefabFactory<Library>;
+    Factory factory(library);
+    factory.add(Factory::Box{});
+    auto box_type     = factory.produce("boxy_the_box");
+    auto box_instance = box_type->create_instance();
 
-            for(size_t j =0; j < 3; ++j){
-                ss << first[j] << ", ";
-            }
-            ss << first[3] << " ), ( ";
+    //    box_instance->data() = std::make_tuple(Xform3f::identity().);
 
-            for(size_t j =0; j < 3; ++j){
-                ss << second[j] << ", ";
-            }
-            ss << second[3] << " )";
-
-            log_trace << ss.str();
-        }
-    }
+    library.init();
 
     glEnable(GL_DEPTH_TEST);
 
@@ -136,14 +113,14 @@ void render_thread(GLFWwindow* window)
         const Xform3f modelview = move * rotate * scale;
         blinn_phong_shader->set_uniform("modelview", modelview);
 
-        const Xform3f perspective = Xform3f::perspective(deg_to_rad(90), 1, 0, 1000.f);
+        const Xform3f perspective = Xform3f::perspective(deg_to_rad(90), 1, 0, 10000.f);
         // const Xform3f perspective = Xform3f::orthographic(-400.f, 400.f, -400.f, 400.f, 0.f, 1000.f);
         blinn_phong_shader->set_uniform("projection", perspective);
 
         Xform3f normalMat = rotate;
         blinn_phong_shader->set_uniform("normalMat", normalMat);
 
-        vertex_object.render();
+        library.render();
 
         check_gl_error();
 

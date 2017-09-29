@@ -86,6 +86,9 @@ struct Color {
     /** White */
     static Color white() { return Color(1., 1., 1., 1.); }
 
+    /** White */
+    static Color grey() { return Color(0.5, 0.5, 0.5, 1.); }
+
     /*  Inspection  ***************************************************************************************************/
 
     /** Checks, if the given string is a valid color value that can be passed to the constructor. */

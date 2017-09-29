@@ -46,7 +46,7 @@ struct _RealVector2 : public detail::Arithmetic<_RealVector2<Real>, Real, 2> {
      */
     bool is_approx(const _RealVector2& other, const value_t epsilon = precision_high<value_t>()) const
     {
-        return (*this - other).get_magnitude_sq() <= epsilon * epsilon;
+        return (*this - other).magnitude_sq() <= epsilon * epsilon;
     }
 
     /** Checks whether this Vector2's direction is parallel to the other.
@@ -80,7 +80,7 @@ struct _RealVector2 : public detail::Arithmetic<_RealVector2<Real>, Real, 2> {
      */
     value_t angle_to(const _RealVector2& other) const
     {
-        const value_t mag_sq_product = super::get_magnitude_sq() * other.get_magnitude_sq();
+        const value_t mag_sq_product = super::magnitude_sq() * other.magnitude_sq();
         if (mag_sq_product <= precision_high<value_t>()) {
             return 0; // one or both are zero
         }
@@ -97,7 +97,7 @@ struct _RealVector2 : public detail::Arithmetic<_RealVector2<Real>, Real, 2> {
      */
     value_t direction_to(const _RealVector2& other) const
     {
-        const value_t mag_sq_product = super::get_magnitude_sq() * other.get_magnitude_sq();
+        const value_t mag_sq_product = super::magnitude_sq() * other.magnitude_sq();
         if (mag_sq_product <= precision_high<value_t>()) {
             return 0; // one or both are zero
         }

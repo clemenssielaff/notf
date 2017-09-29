@@ -52,10 +52,10 @@ public: // methods
     }
 
     /** Checks whether this value is of unit magnitude. */
-    bool is_unit() const { return abs(get_magnitude_sq() - 1) <= precision_high<value_t>(); }
+    bool is_unit() const { return abs(magnitude_sq() - 1) <= precision_high<value_t>(); }
 
     /** Returns the squared magnitude of this value. */
-    value_t get_magnitude_sq() const
+    value_t magnitude_sq() const
     {
         value_t result = 0;
         for (size_t i = 0; i < dim; ++i) {
@@ -65,12 +65,12 @@ public: // methods
     }
 
     /** Returns the magnitude of this value. */
-    value_t get_magnitude() const { return sqrt(get_magnitude_sq()); }
+    value_t magnitude() const { return sqrt(magnitude_sq()); }
 
     /** A normalized copy of this value. */
     T normalize() const
     {
-        const value_t mag_sq = get_magnitude_sq();
+        const value_t mag_sq = magnitude_sq();
         if (abs(mag_sq - 1) <= precision_high<value_t>()) {
             T result;
             result.data = data;
@@ -80,20 +80,6 @@ public: // methods
             return T::zero(); // is zero
         }
         return *reinterpret_cast<const T*>(this) / sqrt(mag_sq);
-    }
-
-    /** In-place normalization of this value. */
-    T& normalize()
-    {
-        const value_t mag_sq = get_magnitude_sq();
-        if (abs(mag_sq - 1) <= precision_high<value_t>()) {
-            return *reinterpret_cast<T*>(this); // is unit
-        }
-        if (abs(mag_sq) <= precision_high<value_t>()) {
-            set_all(0); // is zero
-            return *reinterpret_cast<T*>(this);
-        }
-        return *reinterpret_cast<T*>(this) /= sqrt(mag_sq);
     }
 
 protected: // methods
@@ -540,21 +526,9 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     /** The inverted value. */
     SPECIALIZATION operator-() const { return *this * -1; }
 
-    SPECIALIZATION& max(const SPECIALIZATION& other)
-    {
-        implementation::max(other);
-        return _specialized_this();
-    }
-
     SPECIALIZATION max(const SPECIALIZATION& other) const
     {
         return implementation::max(other);
-    }
-
-    SPECIALIZATION& min(const SPECIALIZATION& other)
-    {
-        implementation::min(other);
-        return _specialized_this();
     }
 
     SPECIALIZATION min(const SPECIALIZATION& other) const

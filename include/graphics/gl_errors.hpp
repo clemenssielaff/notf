@@ -1,7 +1,5 @@
 #pragma once
 
-#include "common/log.hpp"
-
 namespace notf {
 
 /** Checks if there was an OpenGL error and reports it to Signal's logger.
@@ -10,7 +8,7 @@ namespace notf {
  * @param function  Name of the function in which the error occurred.
  * @return          The number of encountered errors.
  */
-int _check_gl_error(uint line, const char* file, const char* function);
+int _check_gl_error(unsigned int line, const char* file, const char* function);
 
 /** Function forcing a check for OpenGL errors, which allows the caller to use the returned value.
  * For a simple error reporting mechanism use `check_gl_error` which is a noop in release.

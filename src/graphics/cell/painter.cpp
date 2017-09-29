@@ -287,7 +287,7 @@ void Painter::arc_to(const Vector2f& tangent, const Vector2f& end, const float r
     if (radius < distance_tolerance
         || m_stylus.is_approx(tangent, distance_tolerance)
         || tangent.is_approx(end, distance_tolerance)
-        || Line2::from_points(m_stylus, end).closest_point(tangent).get_magnitude_sq() < (distance_tolerance * distance_tolerance)) {
+        || Line2::from_points(m_stylus, end).closest_point(tangent).magnitude_sq() < (distance_tolerance * distance_tolerance)) {
         return line_to(end);
     }
 

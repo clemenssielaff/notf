@@ -31,17 +31,17 @@ struct gl_smallest_unsigned_type {
 //*********************************************************************************************************************/
 //*********************************************************************************************************************/
 
-/** IndexBuffer baseclass, so other objects can hold pointers to any type of IndexBuffer.
+/** IndexArray baseclass, so other objects can hold pointers to any type of IndexArray.
  */
-class IndexBufferType {
+class IndexArrayType {
 
 public: // methods ****************************************************************************************************/
-    DISALLOW_COPY_AND_ASSIGN(IndexBufferType)
+    DISALLOW_COPY_AND_ASSIGN(IndexArrayType)
 
     /** Destructor. */
-    virtual ~IndexBufferType();
+    virtual ~IndexArrayType();
 
-    /** Initializes the IndexBuffer.
+    /** Initializes the IndexArray.
      * @throws std::runtime_error   If the VBO could not be allocated.
      * @throws std::runtime_error   If no VAO object is currently bound.
      */
@@ -61,7 +61,7 @@ public: // methods *************************************************************
 
 protected: // methods *************************************************************************************************/
     /** Protected Constructor. */
-    IndexBufferType()
+    IndexArrayType()
         : m_vbo_id(0)
         , m_type(0)
         , m_size(0)
@@ -86,7 +86,13 @@ protected: // fields ***********************************************************
  *
  */
 template <typename INDEX_TYPE>
-class IndexBuffer : public IndexBufferType {
+class IndexArray : public IndexArrayType {
+
+    template <size_t... indices>
+    friend decltype(auto) create_index_buffer();
+
+    template <typename>
+    friend class PrefabFactory;
 
 public: // type *******************************************************************************************************/
     /** Value type of the indices. */
@@ -94,12 +100,10 @@ public: // type ****************************************************************
 
 public: // methods ***************************************************************************************************/
     /** Constructor. */
-    IndexBuffer(std::vector<index_t>&& indices)
-        : IndexBufferType()
-        , m_indices(std::move(indices))
+    IndexArray()
+        : IndexArrayType()
+        , m_indices()
     {
-        m_type = _type();
-        m_size = static_cast<GLsizei>(m_indices.size());
     }
 
     virtual void init() override
@@ -110,21 +114,23 @@ public: // methods *************************************************************
 
         glGenBuffers(1, &m_vbo_id);
         if (!m_vbo_id) {
-            throw_runtime_error("Failed to alocate IndexBuffer");
+            throw_runtime_error("Failed to allocate IndexArray");
         }
+
+        m_type = _type();
+        m_size = static_cast<GLsizei>(m_indices.size());
 
         { // make sure there is a bound VAO
             GLint current_vao = 0;
             glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao);
             if (!current_vao) {
-                throw_runtime_error("Cannot initialize an IndexBuffer without a bound VAO");
+                throw_runtime_error("Cannot initialize an IndexArray without a bound VAO");
             }
         }
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vbo_id);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(index_t), &m_indices[0], GL_STATIC_DRAW);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
         check_gl_error();
     }
 
@@ -150,14 +156,16 @@ private: // fields *************************************************************
 
 // factory ************************************************************************************************************/
 
-/** Creates an IndexBuffer object containing the given indices in their smalles representable form.
+/** Creates an IndexArray object containing the given indices in their smalles representable form.
  * Passing an index less than zero or larger than a GLuint can contain raises an error during compilation.
  */
 template <size_t... indices>
 decltype(auto) create_index_buffer()
 {
     using value_t = typename detail::gl_smallest_unsigned_type<std::max<size_t>({indices...})>::type;
-    return std::make_unique<IndexBuffer<value_t>>(std::vector<value_t>{indices...});
+    auto result = std::make_unique<IndexArray<value_t>>();
+    result->m_indices = std::vector<value_t>{indices...};
+    return result;
 }
 
 } // namespace notf

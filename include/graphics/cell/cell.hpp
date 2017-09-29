@@ -21,7 +21,7 @@ namespace notf {
  * Cell's vault, where it looses its type.
  * It is called a vault because it keeps stuff save inside and also, because once it's in there - you are not getting
  * it out again.
- * The Painter, when drawing into a Cell, clears both the command buffer and the vault, freeing all previously alocated
+ * The Painter, when drawing into a Cell, clears both the command buffer and the vault, freeing all previously allocated
  * memory that has gone out of scope.
  */
 class Cell {

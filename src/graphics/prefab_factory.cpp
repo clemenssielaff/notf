@@ -1,4 +1,4 @@
-#include "graphics/geometry.hpp"
+#include "graphics/prefab_factory.hpp"
 
 #include "utils/make_const.hpp"
 
@@ -6,43 +6,31 @@ namespace notf {
 
 namespace detail {
 
-std::vector<GeometryFactoryImpl::Study> GeometryFactoryImpl::_produce(const BoxDefinition& def)
+PrefabFactoryImpl::Definition::~Definition() {}
+PrefabFactoryImpl::Box::~Box() {}
+
+PrefabFactoryImpl::Product PrefabFactoryImpl::_produce(const Box& def)
 {
-    Vector4d orient_axis = def.orient_axis;
-    orient_axis.w()      = 0; // TODO: normalization with Vector4 must not use normalize with W
+    Vector3d orient_axis = def.orient_axis;
     orient_axis.normalize();
-    orient_axis.w() = 1;
 
-    Vector4d up_axis = def.up_axis;
-    up_axis.w()      = 0;
+    Vector3d up_axis = def.up_axis;
     up_axis.normalize();
-    up_axis.w() = 1;
 
-    Vector4d depth_axis = make_const(orient_axis).cross(up_axis); // TODO: FUCKING TELL ME WHEN A FUNCTION HAS SIDE EFFECTS - no const / non-const overloading anymore it's shit!
-    depth_axis.w()      = 0;
+    Vector3d depth_axis = make_const(orient_axis).cross(up_axis);
     depth_axis.normalize();
-    depth_axis.w() = 1;
 
     std::vector<Study> studies(6 * 4);
 
     // vertex positions
-    Vector4d v0 = def.center - (orient_axis * def.width) - (depth_axis * def.depth) - (up_axis * def.height);
-    Vector4d v1 = def.center + (orient_axis * def.width) - (depth_axis * def.depth) - (up_axis * def.height);
-    Vector4d v2 = def.center + (orient_axis * def.width) + (depth_axis * def.depth) - (up_axis * def.height);
-    Vector4d v3 = def.center - (orient_axis * def.width) + (depth_axis * def.depth) - (up_axis * def.height);
-    Vector4d v4 = def.center - (orient_axis * def.width) - (depth_axis * def.depth) + (up_axis * def.height);
-    Vector4d v5 = def.center + (orient_axis * def.width) - (depth_axis * def.depth) + (up_axis * def.height);
-    Vector4d v6 = def.center + (orient_axis * def.width) + (depth_axis * def.depth) + (up_axis * def.height);
-    Vector4d v7 = def.center - (orient_axis * def.width) + (depth_axis * def.depth) + (up_axis * def.height);
-
-    v0.w() = 1; // TODO: All this normalization / denormalization is crap. Use a Vector3 here
-    v1.w() = 1;
-    v2.w() = 1;
-    v3.w() = 1;
-    v4.w() = 1;
-    v5.w() = 1;
-    v6.w() = 1;
-    v7.w() = 1;
+    Vector3d v0 = def.center - (orient_axis * def.width) - (depth_axis * def.depth) - (up_axis * def.height);
+    Vector3d v1 = def.center + (orient_axis * def.width) - (depth_axis * def.depth) - (up_axis * def.height);
+    Vector3d v2 = def.center + (orient_axis * def.width) + (depth_axis * def.depth) - (up_axis * def.height);
+    Vector3d v3 = def.center - (orient_axis * def.width) + (depth_axis * def.depth) - (up_axis * def.height);
+    Vector3d v4 = def.center - (orient_axis * def.width) - (depth_axis * def.depth) + (up_axis * def.height);
+    Vector3d v5 = def.center + (orient_axis * def.width) - (depth_axis * def.depth) + (up_axis * def.height);
+    Vector3d v6 = def.center + (orient_axis * def.width) + (depth_axis * def.depth) + (up_axis * def.height);
+    Vector3d v7 = def.center - (orient_axis * def.width) + (depth_axis * def.depth) + (up_axis * def.height);
 
     studies[0].position = v1; // right
     studies[1].position = v2;
@@ -136,15 +124,65 @@ std::vector<GeometryFactoryImpl::Study> GeometryFactoryImpl::_produce(const BoxD
     studies[22].tex_coord = Vector2d(1, 1);
     studies[23].tex_coord = Vector2d(0, 1);
 
-    // faces
-    //    boxGeo->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS, 0, 4));
-    //    boxGeo->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS, 4, 4));
-    //    boxGeo->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS, 8, 4));
-    //    boxGeo->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS, 12, 4));
-    //    boxGeo->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS, 16, 4));
-    //    boxGeo->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS, 20, 4));
+    // indices
+    std::vector<GLuint> indices = {
+        0, 2, 1,
+        0, 3, 2,
+        4, 6, 5,
+        4, 7, 6,
+        8, 10, 11,
+        8, 9, 10,
+        12, 14, 15,
+        12, 13, 14,
+        16, 18, 19,
+        16, 17, 18,
+        23, 21, 20,
+        23, 22, 21};
 
-    return studies;
+    Product result;
+    result.studies = std::move(studies);
+    result.indices = std::move(indices);
+    return result;
+}
+
+void PrefabFactoryImpl::_convert(const Vector3d& in, std::array<float, 4>& out)
+{
+    out[0] = static_cast<float>(in[0]);
+    out[1] = static_cast<float>(in[1]);
+    out[2] = static_cast<float>(in[2]);
+    out[3] = 1;
+}
+
+void PrefabFactoryImpl::_convert(const Vector3d& in, std::array<half, 4>& out)
+{
+    out[0] = half(static_cast<float>(in[0]));
+    out[1] = half(static_cast<float>(in[1]));
+    out[2] = half(static_cast<float>(in[2]));
+    out[3] = half(1);
+}
+
+void PrefabFactoryImpl::_convert(const Vector3d& in, std::array<float, 3>& out)
+{
+    out[0] = static_cast<float>(in[0]);
+    out[1] = static_cast<float>(in[1]);
+    out[2] = static_cast<float>(in[2]);
+}
+void PrefabFactoryImpl::_convert(const Vector3d& in, std::array<half, 3>& out)
+{
+    out[0] = half(static_cast<float>(in[0]));
+    out[1] = half(static_cast<float>(in[1]));
+    out[2] = half(static_cast<float>(in[2]));
+}
+
+void PrefabFactoryImpl::_convert(const Vector2d& in, std::array<float, 2>& out)
+{
+    out[0] = static_cast<float>(in[0]);
+    out[1] = static_cast<float>(in[1]);
+}
+void PrefabFactoryImpl::_convert(const Vector2d& in, std::array<half, 2>& out)
+{
+    out[0] = half(static_cast<float>(in[0]));
+    out[1] = half(static_cast<float>(in[1]));
 }
 
 } // namespace detail
