@@ -190,6 +190,11 @@ public: // methods *************************************************************
     {
     }
 
+    /** Initializes the VertexArray.
+     * @param shader                Shader to initialize the attributes.
+     * @throws std::runtime_error   If the VBO could not be allocated.
+     * @throws std::runtime_error   If no VAO object is currently bound.
+     */
     virtual void init(ShaderConstPtr shader) override
     {
         if (m_vbo_id) {
@@ -212,9 +217,48 @@ public: // methods *************************************************************
         m_size = static_cast<GLsizei>(m_vertices.size());
 
         glBindBuffer(GL_ARRAY_BUFFER, m_vbo_id);
-        glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(Vertex), &m_vertices[0], m_args.usage);
-        if (!m_vertices.empty()) {
-            _init_array<0, Ts...>(std::move(shader));
+        glBufferData(GL_ARRAY_BUFFER, m_size * sizeof(Vertex), &m_vertices[0], m_args.usage);
+        _init_array<0, Ts...>(std::move(shader));
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        check_gl_error();
+
+        m_vertices.clear();
+        m_vertices.shrink_to_fit();
+    }
+
+    /** Updates the data in the vertex array.
+     * If you regularly want to update the data, make sure you pass an appropriate `usage` hint in the arguments.
+     * @param data  New data to upload.
+     * @throws std::runtime_error   If the VertexArray is not yet initialized.
+     * @throws std::runtime_error   If no VAO object is currently bound.
+     */
+    void update(std::vector<Vertex>&& data)
+    {
+        if (!m_vbo_id) {
+            throw_runtime_error("Cannot update an unitialized VertexArray");
+        }
+
+        { // make sure there is a bound VAO
+            GLint current_vao = 0;
+            glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao);
+            if (!current_vao) {
+                throw_runtime_error("Cannot update a VertexArray without a bound VAO");
+            }
+        }
+
+        // update vertex array
+        const size_t old_size = m_size;
+        std::swap(m_vertices, data);
+        m_size = static_cast<GLsizei>(m_vertices.size());
+
+        glBindBuffer(GL_ARRAY_BUFFER, m_vbo_id);
+        if (m_size <= old_size) {
+            // if the new data is smaller or of equal size than the last one, we can do a minimal update
+            glBufferSubData(GL_ARRAY_BUFFER, /*offset*/ 0, m_size * sizeof(Vertex), &m_vertices[0]);
+        }
+        else {
+            // otherwise we have to do a full update
+            glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(Vertex), &m_vertices[0], m_args.usage);
         }
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         check_gl_error();
@@ -257,6 +301,7 @@ private: // methods ************************************************************
         }
 
         // not all attribute types fit into a single OpenGL ES attribute
+        // larger types are stored in consecutive attribute locations
         for (size_t multi = 0; multi < (ATTRIBUTE::count / 4) + (ATTRIBUTE::count % 4 ? 1 : 0); ++multi) {
 
             const GLint size = std::min(4, static_cast<int>(ATTRIBUTE::count) - static_cast<int>((multi * 4)));
@@ -279,10 +324,12 @@ private: // methods ************************************************************
         }
     }
 
-    // TODO: make private
-public: // fields ****************************************************************************************************/
+private: // fields ****************************************************************************************************/
     /** Vertices stored in the array. */
     std::vector<Vertex> m_vertices;
+
+    /** Size in bytes of the buffer allocated on the server. */
+    std::size_t m_buffer_size;
 };
 
 } // namespace notf

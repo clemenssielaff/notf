@@ -130,7 +130,7 @@ public: // methods *************************************************************
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vbo_id);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(index_t), &m_indices[0], GL_STATIC_DRAW);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        // keep the buffer bound as it is stored in the VAO
         check_gl_error();
     }
 

@@ -54,7 +54,6 @@ struct InstanceXform {
     constexpr static size_t count = 16;
     using kind                    = AttributeKind::Other;
 };
-
 }
 
 static void error_callback(int error, const char* description)
@@ -80,11 +79,36 @@ void render_thread(GLFWwindow* window)
 
     using Factory = PrefabFactory<Library>;
     Factory factory(library);
-    factory.add(Factory::Box{});
-    auto box_type     = factory.produce("boxy_the_box");
-    auto box_instance = box_type->create_instance();
+    std::shared_ptr<Prefab<Factory::InstanceData>> box_type;
+    {
+        auto box = Factory::Box{};
+        factory.add(box);
+        box_type = factory.produce("boxy_the_box");
+    }
 
-    //    box_instance->data() = std::make_tuple(Xform3f::identity().);
+    std::shared_ptr<Prefab<Factory::InstanceData>> stick_type;
+    {
+        auto stick   = Factory::Box{};
+        stick.width  = 0.5;
+        stick.depth  = 0.5;
+        stick.height = 4;
+        factory.add(stick);
+        stick_type = factory.produce("sticky_the_stick");
+    }
+
+    auto box1 = box_type->create_instance();
+    box1->data() = std::make_tuple(Xform3f::translation(-200, 500, -1000).as_array());
+
+    auto box2 = box_type->create_instance();
+    box2->data() = std::make_tuple(Xform3f::translation(200, 500, -1000).as_array());
+
+    auto box3 = box_type->create_instance();
+    box3->data() = std::make_tuple(Xform3f::translation(-200, -500, -1000).as_array());
+
+    auto box4 = box_type->create_instance();
+    box4->data() = std::make_tuple(Xform3f::translation(200, -500, -1000).as_array());
+
+    //    auto some_stick = stick_type->create_instance();
 
     library.init();
 
@@ -108,7 +132,7 @@ void render_thread(GLFWwindow* window)
 
         // pass the shader uniforms
         const Xform3f move      = Xform3f::translation(0, 0, -500);
-        const Xform3f rotate    = Xform3f::rotation(Vector4f(sin(angle), cos(angle)), angle);
+        const Xform3f rotate    = Xform3f::rotation(Vector4f(1, 0), angle);
         const Xform3f scale     = Xform3f::scaling(100);
         const Xform3f modelview = move * rotate * scale;
         blinn_phong_shader->set_uniform("modelview", modelview);

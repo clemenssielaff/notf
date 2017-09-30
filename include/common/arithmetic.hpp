@@ -83,6 +83,8 @@ public: // methods
     }
 
 protected: // methods
+    static constexpr size_t size() { return dim; }
+
     void set_all(const value_t value)
     {
         for (size_t i = 0; i < dim; ++i) {
@@ -189,13 +191,15 @@ public: // methods
     {
         T result;
         using Element = element_t;
-        for (size_t i = 0; i < result.size(); ++i) {
+        for (size_t i = 0; i < dim; ++i) {
             result[i] = Element::fill(value);
         }
         return result;
     }
 
 protected: // methods
+    static constexpr size_t size() { return dim * element_t::size(); }
+
     void set_all(const value_t value)
     {
         for (size_t i = 0; i < dim; ++i) {
@@ -324,7 +328,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     /* Inspection  ****************************************************************************************************/
 
     /** Dimensions of the value. */
-    static constexpr size_t size() { return DIMENSIONS; }
+    static constexpr size_t size() { return implementation::size(); }
 
     /** Creates a copy of this instance. */
     SPECIALIZATION copy() const { return *this; }
@@ -359,7 +363,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     size_t hash() const
     {
         std::size_t result = 0;
-        for (size_t i = 0; i < size(); ++i) {
+        for (size_t i = 0; i < DIMENSIONS; ++i) {
             notf::hash_combine(result, data[i]);
         }
         return result;
@@ -374,19 +378,25 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     /** Read-only reference to an element of this value by index. */
     const element_t& operator[](const size_t index) const
     {
-        assert(index < size());
+        assert(index < DIMENSIONS);
         return data[index];
     }
 
     /** Read-only pointer to the value's internal storage. */
     const value_t* as_ptr() const { return implementation::as_ptr(); }
 
+    /** The contents of this value as an array. */
+    const std::array<value_t, size()>& as_array() const
+    {
+        *reinterpret_cast<const std::array<value_t, size()>*>(as_ptr());
+    }
+
     /** Modification **************************************************************************************************/
 
     /** Read-write reference to an element of this value by index. */
     element_t& operator[](const size_t index)
     {
-        assert(index < size());
+        assert(index < DIMENSIONS);
         return data[index];
     }
 
@@ -408,7 +418,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     {
         SPECIALIZATION result;
         result.data = data;
-        for (size_t i = 0; i < size(); ++i) {
+        for (size_t i = 0; i < DIMENSIONS; ++i) {
             result[i] += other[i];
         }
         return result;
@@ -417,7 +427,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     /** In-place addition of another value. */
     SPECIALIZATION& operator+=(const SPECIALIZATION& other)
     {
-        for (size_t i = 0; i < size(); ++i) {
+        for (size_t i = 0; i < DIMENSIONS; ++i) {
             data[i] += other[i];
         }
         return _specialized_this();
@@ -428,7 +438,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     {
         SPECIALIZATION result;
         result.data = data;
-        for (size_t i = 0; i < size(); ++i) {
+        for (size_t i = 0; i < DIMENSIONS; ++i) {
             result[i] -= other[i];
         }
         return result;
@@ -437,7 +447,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     /** In-place subtraction of another value. */
     SPECIALIZATION& operator-=(const SPECIALIZATION& other)
     {
-        for (size_t i = 0; i < size(); ++i) {
+        for (size_t i = 0; i < DIMENSIONS; ++i) {
             data[i] -= other[i];
         }
         return _specialized_this();
@@ -448,7 +458,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     {
         SPECIALIZATION result;
         result.data = data;
-        for (size_t i = 0; i < size(); ++i) {
+        for (size_t i = 0; i < DIMENSIONS; ++i) {
             result[i] *= other[i];
         }
         return result;
@@ -457,7 +467,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     /** In-place component-wise multiplication with another value. */
     SPECIALIZATION& operator*=(const SPECIALIZATION& other)
     {
-        for (size_t i = 0; i < size(); ++i) {
+        for (size_t i = 0; i < DIMENSIONS; ++i) {
             data[i] *= other[i];
         }
         return _specialized_this();
@@ -468,7 +478,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     {
         SPECIALIZATION result;
         result.data = data;
-        for (size_t i = 0; i < size(); ++i) {
+        for (size_t i = 0; i < DIMENSIONS; ++i) {
             result[i] *= factor;
         }
         return result;
@@ -477,7 +487,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     /** In-place multiplication with a scalar. */
     SPECIALIZATION& operator*=(const value_t factor)
     {
-        for (size_t i = 0; i < size(); ++i) {
+        for (size_t i = 0; i < DIMENSIONS; ++i) {
             data[i] *= factor;
         }
         return _specialized_this();
@@ -488,7 +498,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     {
         SPECIALIZATION result;
         result.data = data;
-        for (size_t i = 0; i < size(); ++i) {
+        for (size_t i = 0; i < DIMENSIONS; ++i) {
             result[i] /= other[i];
         }
         return result;
@@ -497,7 +507,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     /** In-place component-wise division by another value. */
     SPECIALIZATION& operator/=(const SPECIALIZATION& other)
     {
-        for (size_t i = 0; i < size(); ++i) {
+        for (size_t i = 0; i < DIMENSIONS; ++i) {
             data[i] /= other[i];
         }
         return _specialized_this();
@@ -508,7 +518,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     {
         SPECIALIZATION result;
         result.data = data;
-        for (size_t i = 0; i < size(); ++i) {
+        for (size_t i = 0; i < DIMENSIONS; ++i) {
             result[i] /= divisor;
         }
         return result;
@@ -517,7 +527,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     /** In-place division by a scalar. */
     SPECIALIZATION& operator/=(const value_t divisor)
     {
-        for (size_t i = 0; i < size(); ++i) {
+        for (size_t i = 0; i < DIMENSIONS; ++i) {
             data[i] /= divisor;
         }
         return _specialized_this();

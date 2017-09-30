@@ -73,26 +73,6 @@ public: // methods *************************************************************
             throw_runtime_error("Failed to allocate the PrefabLibary VAO");
         }
 
-        ///////////
-        {
-            const Xform3f move      = Xform3f::translation(0, 500, -1000);
-            std::array<float, 16> offset;
-            for (size_t i = 0; i < 16; ++i) {
-                offset[i] = move.as_ptr()[i];
-            }
-            static_cast<INSTANCE_ARRAY*>(m_instance_array.get())->m_vertices.push_back(std::make_tuple(offset));
-        }
-        {
-            const Xform3f move      = Xform3f::translation(0, -500, -1000);
-            std::array<float, 16> offset;
-            for (size_t i = 0; i < 16; ++i) {
-                offset[i] = move.as_ptr()[i];
-            }
-            static_cast<INSTANCE_ARRAY*>(m_instance_array.get())->m_vertices.push_back(std::make_tuple(offset));
-        }
-
-        ///////////
-
         glBindVertexArray(m_vao_id);
         m_vertex_array->init(m_shader);
         m_index_array->init();
@@ -118,16 +98,30 @@ public: // methods *************************************************************
     void render()
     {
         glBindVertexArray(m_vao_id);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_index_array->id());
-        //glDrawElements(GL_TRIANGLES, m_index_array->size(), m_index_array->type(), 0);
-        glDrawElementsInstanced(GL_TRIANGLES, m_index_array->size(), m_index_array->type(), 0, 2);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        for (const auto& entry : m_prefabs) {
+            const std::shared_ptr<Prefab<InstanceData>>& prefab_type             = entry.second;
+            std::vector<std::shared_ptr<PrefabInstance<InstanceData>>> instances = prefab_type->instances();
+            if (instances.empty()) {
+                continue;
+            }
+
+            { // update the per-instance data
+                std::vector<InstanceData> instance_data;
+                instance_data.reserve(instances.size());
+                for (const std::shared_ptr<PrefabInstance<InstanceData>>& instance : instances) {
+                    instance_data.push_back(instance->data());
+                }
+                static_cast<INSTANCE_ARRAY*>(m_instance_array.get())->update(std::move(instance_data));
+            }
+
+            glDrawElementsInstancedBaseVertex(
+                GL_TRIANGLES, prefab_type->size(), m_index_array->type(), 0, instances.size(), prefab_type->offset());
+        }
         glBindVertexArray(0);
         check_gl_error();
     }
 
 private: // fields ****************************************************************************************************/
-public:  // TODO: TEMP
     /** OpenGL handle of the internal vertex array object. */
     GLuint m_vao_id;
 

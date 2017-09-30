@@ -122,11 +122,12 @@ class PrefabFactory : public detail::PrefabFactoryImpl {
 
     using vertex_array_t = typename library_t::vertex_array_t;
 
-    using Vertex = typename vertex_array_t::Vertex;
-
     using VertexTraits = typename vertex_array_t::Traits;
 
     using VertexTraitIndices = std::make_index_sequence<std::tuple_size<VertexTraits>::value>;
+
+public: // types ****************************************************************************************************/
+    using Vertex = typename vertex_array_t::Vertex;
 
     using InstanceData = typename library_t::instance_array_t::Vertex;
 
@@ -171,18 +172,19 @@ public: // methods *************************************************************
         }
 
         // push the created vertices / indices into the library to create the new prefab type
-        auto& library_vertices = static_cast<vertex_array_t*>(m_library.m_vertex_array.get())->m_vertices;
+        auto& library_vertices     = static_cast<vertex_array_t*>(m_library.m_vertex_array.get())->m_vertices;
+        const size_t prefab_offset = library_vertices.size();
         extend(library_vertices, _studies_to_vertices(VertexTraitIndices{}));
 
-        auto& library_indices     = static_cast<IndexArray<GLuint>*>(m_library.m_index_array.get())->m_indices;
-        const size_t index_size   = m_indices.size();
-        const size_t index_offset = library_indices.size();
+        auto& library_indices    = static_cast<IndexArray<GLuint>*>(m_library.m_index_array.get())->m_indices;
+        const size_t prefab_size = m_indices.size();
         extend(library_indices, std::move(m_indices));
 
-        std::shared_ptr<Prefab<InstanceData>> prefab_type = Prefab<InstanceData>::create(index_offset, index_size);
+        std::shared_ptr<Prefab<InstanceData>> prefab_type = Prefab<InstanceData>::create(prefab_offset, prefab_size);
         m_library.m_prefabs.push_back(std::make_pair(std::move(name), prefab_type));
 
         // reset the factory
+        m_definitions.clear();
         m_studies.clear();
         m_indices.clear();
 

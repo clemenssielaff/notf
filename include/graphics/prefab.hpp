@@ -103,6 +103,30 @@ public: // methods *************************************************************
         return instance;
     }
 
+    size_t offset() const { return m_offset; }
+
+    GLsizei size() const { return m_size; }
+
+    /** Returns all instances of this prefab type.
+     * Also deletes all weak pointers to prefab instances that have gone out of scope.
+     */
+    std::vector<std::shared_ptr<PrefabInstance<InstanceData>>> instances() const
+    {
+        std::vector<std::shared_ptr<PrefabInstance<InstanceData>>> result;
+        result.reserve(m_instances.size());
+        for (size_t i = 0; i < m_instances.size();) {
+            std::shared_ptr<PrefabInstance<InstanceData>> prefab = m_instances[i].lock();
+            if (prefab) {
+                result.emplace_back(std::move(prefab));
+                ++i;
+            }
+            else {
+                m_instances.erase(std::begin(m_instances) + i);
+            }
+        }
+        return result;
+    }
+
 private: // fields ****************************************************************************************************/
     /** Offset into the library's index buffer, where this prefab starts. */
     const size_t m_offset;
@@ -111,7 +135,7 @@ private: // fields *************************************************************
     const GLsizei m_size;
 
     /** All instances of this prefab. */
-    std::vector<std::weak_ptr<PrefabInstance<InstanceData>>> m_instances;
+    mutable std::vector<std::weak_ptr<PrefabInstance<InstanceData>>> m_instances;
 };
 
 } // namespace notf
