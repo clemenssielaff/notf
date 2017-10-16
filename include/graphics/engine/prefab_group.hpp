@@ -4,9 +4,9 @@
 #include <sstream>
 
 #include "common/exception.hpp"
-#include "graphics/index_array.hpp"
-#include "graphics/prefab.hpp"
-#include "graphics/vertex_array.hpp"
+#include "graphics/engine/index_array.hpp"
+#include "graphics/engine/prefab.hpp"
+#include "graphics/engine/vertex_array.hpp"
 
 #include "common/xform3.hpp"
 
@@ -16,12 +16,14 @@ DEFINE_SHARED_POINTERS(class, Shader)
 
 //*********************************************************************************************************************/
 
-/**
- *
+/** A prefab group contains 0-n prefabs that share the same vertex layout, and are rendered with the same shader.
+ * It contains a single vertex buffer containing the vertices of all prefab types and a single index array to store
+ * indices into the vertex buffer.
+ * The group also contains an instance buffer that is repeatedly filled by each prefab type to render its instances.
  */
 template <typename VERTEX_ARRAY, typename INSTANCE_ARRAY,
           ENABLE_IF_SUBCLASS(VERTEX_ARRAY, VertexArrayType), ENABLE_IF_SUBCLASS(INSTANCE_ARRAY, VertexArrayType)>
-class PrefabLibrary {
+class PrefabGroup {
 
     template <typename>
     friend class PrefabFactory;
@@ -34,10 +36,10 @@ public: // types ***************************************************************
     using InstanceData = typename instance_array_t::Vertex;
 
 public: // methods ****************************************************************************************************/
-    DISALLOW_COPY_AND_ASSIGN(PrefabLibrary)
+    DISALLOW_COPY_AND_ASSIGN(PrefabGroup)
 
     /** Constructor. */
-    PrefabLibrary(ShaderPtr shader)
+    PrefabGroup(ShaderPtr shader)
         : m_vao_id(0)
         , m_shader(std::move(shader))
         , m_vertex_array(std::make_unique<VERTEX_ARRAY>())
@@ -52,20 +54,20 @@ public: // methods *************************************************************
     }
 
     /** Destructor. */
-    ~PrefabLibrary()
+    ~PrefabGroup()
     {
         glDeleteVertexArrays(1, &m_vao_id);
     }
 
     /** Initializes the library.
      * Call this method once, after all prefabs have been added using PrefabFactories.
-     * @throws std::runtime_error   If the PrefabLibrary has already been initialized once.
+     * @throws std::runtime_error   If the PrefabGroup has already been initialized once.
      * @throws std::runtime_error   If the OpenGL VAO could not be generated.
      */
     void init()
     {
         if (m_vao_id) {
-            throw_runtime_error("Cannot re-initialize a previously initialized PrefabLibrary.");
+            throw_runtime_error("Cannot re-initialize a previously initialized PrefabGroup.");
         }
 
         glGenVertexArrays(1, &m_vao_id);
@@ -83,11 +85,11 @@ public: // methods *************************************************************
     /** Returns a prefab type by its name.
      * @throws std::runtime_error   If the name is unknown.
      */
-    std::shared_ptr<Prefab<InstanceData>> prefab_type(std::string& name)
+    std::shared_ptr<PrefabType<InstanceData>> prefab_type(std::string& name)
     {
-        for (auto& type : m_prefabs) {
-            if (type.first == name) {
-                return type.second;
+        for (auto& type : m_prefab_types) {
+            if (type->name() == name) {
+                return type;
             }
         }
         std::stringstream ss;
@@ -95,17 +97,21 @@ public: // methods *************************************************************
         throw std::runtime_error(ss.str());
     }
 
+    /** Go through all prefab types of this group and render all instances of each type. */
     void render()
     {
+        // TODO: [engine] No front-to-back sorting of prefabs globally or even just within its group
+
         glBindVertexArray(m_vao_id);
-        for (const auto& entry : m_prefabs) {
-            const std::shared_ptr<Prefab<InstanceData>>& prefab_type             = entry.second;
+        for (const auto& prefab_type : m_prefab_types) {
+
+            // skip prefabs with no instances
             std::vector<std::shared_ptr<PrefabInstance<InstanceData>>> instances = prefab_type->instances();
             if (instances.empty()) {
                 continue;
             }
 
-            { // update the per-instance data
+            { // update the instance buffer
                 std::vector<InstanceData> instance_data;
                 instance_data.reserve(instances.size());
                 for (const std::shared_ptr<PrefabInstance<InstanceData>>& instance : instances) {
@@ -114,6 +120,7 @@ public: // methods *************************************************************
                 static_cast<INSTANCE_ARRAY*>(m_instance_array.get())->update(std::move(instance_data));
             }
 
+            // render all instances
             glDrawElementsInstancedBaseVertex(
                 GL_TRIANGLES, prefab_type->size(), m_index_array->type(), 0, instances.size(), prefab_type->offset());
         }
@@ -138,7 +145,7 @@ private: // fields *************************************************************
     std::unique_ptr<VertexArrayType> m_instance_array;
 
     /** All prefab types contained in this library. */
-    std::vector<std::pair<std::string, std::shared_ptr<Prefab<InstanceData>>>> m_prefabs;
+    std::vector<std::shared_ptr<PrefabType<InstanceData>>> m_prefab_types;
 };
 
 } // namespace notf

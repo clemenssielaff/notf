@@ -15,7 +15,7 @@
 #include "dynamic/layout/text_layout.hpp"
 #include "dynamic/widget/text_widget.hpp"
 #include "graphics/cell/painter.hpp"
-#include "graphics/graphics_context.hpp"
+#include "graphics/engine/graphics_context.hpp"
 #include "graphics/text/font.hpp"
 
 namespace notf {

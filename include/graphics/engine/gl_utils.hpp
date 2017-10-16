@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <string>
 
-#include "graphics/gl_forwards.hpp"
+#include "graphics/engine/gl_forwards.hpp"
 
 namespace notf {
 
@@ -19,13 +19,13 @@ void gl_log_system_info();
 const std::string& gl_type_name(GLenum type);
 
 /** Returns the OpenGL type identifier for selected C++ types. */
-GLenum to_gl_type(const char&);
-GLenum to_gl_type(const unsigned char&);
-GLenum to_gl_type(const short&);
-GLenum to_gl_type(const unsigned short&);
-GLenum to_gl_type(const int&);
-GLenum to_gl_type(const unsigned int&);
+GLenum to_gl_type(const GLbyte&);
+GLenum to_gl_type(const GLubyte &);
+GLenum to_gl_type(const GLshort&);
+GLenum to_gl_type(const GLushort&);
+GLenum to_gl_type(const GLint&);
+GLenum to_gl_type(const GLuint&);
 GLenum to_gl_type(const half&);
-GLenum to_gl_type(const float&);
+GLenum to_gl_type(const GLfloat&);
 
 } // namespace notf

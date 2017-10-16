@@ -1,4 +1,4 @@
-#include "graphics/blend_mode.hpp"
+#include "graphics/engine/blend_mode.hpp"
 
 #include <assert.h>
 #include <utility>

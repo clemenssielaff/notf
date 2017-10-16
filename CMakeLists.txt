@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
+project(notf)
 
 # MACROS ###############################################################################################################
 
@@ -17,8 +18,10 @@ macro(create_module name)
     file(GLOB_RECURSE ${name}_HEADERS RELATIVE ${CMAKE_SOURCE_DIR}
         "include/${name}/*.hpp"
     )
-    set(${name}_MODULE ${${name}_SOURCE} ${${name}_HEADERS})
-    message(${${name}_SOURCE})
+    file(GLOB_RECURSE ${name}_MARKDOWN RELATIVE ${CMAKE_SOURCE_DIR}
+        "include/${name}/*.md"
+    )
+    set(${name}_MODULE ${${name}_SOURCE} ${${name}_HEADERS} ${${name}_MARKDOWN})
 endmacro()
 
 # LIBRARIES ############################################################################################################
@@ -41,7 +44,6 @@ add_definitions(-DNOTF_PYTHON)
 
 # NOTF #################################################################################################################
 
-project(notf)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS_DEBUG "-g -D_DEBUG")
 
@@ -192,7 +194,7 @@ target_link_libraries(notf-test
 create_module(engine)
 
 add_sources(RENDER_SOURCES src
-    render_main.cpp
+    engine_test.cpp
 )
 
 add_executable(render_engine

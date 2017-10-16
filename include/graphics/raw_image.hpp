@@ -24,19 +24,19 @@ public: // methods *************************************************************
     ~RawImage();
 
     /** Width of the image in pixels. */
-    int get_width() const { return m_width; }
+    int width() const { return m_width; }
 
     /** Height of the image in pixels. */
-    int get_height() const { return m_height; }
+    int height() const { return m_height; }
 
-    /** Bytes per pixel. */
-    int get_bytes_per_pixel() const { return m_bytes; }
+    /** Number of channels per pixel. */
+    int channels() const { return m_channels; }
 
     /** Absolute path to the file from which the image was loaded. */
-    const std::string& get_filepath() const { return m_filepath; }
+    const std::string& filepath() const { return m_filepath; }
 
     /** Raw image data. */
-    const uchar* get_data() const { return m_data; }
+    const uchar* data() const { return m_data; }
 
     /** Tests if the image is valid or not. */
     explicit operator bool() const { return static_cast<bool>(m_data); }
@@ -51,8 +51,8 @@ private: // fields *************************************************************
     /** Height of the image in pixels. */
     int m_height;
 
-    /** Bytes per pixel. */
-    int m_bytes;
+    /** Number of channels per pixel. */
+    int m_channels;
 
     /** Raw image data. */
     uchar* m_data;

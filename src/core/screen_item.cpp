@@ -87,7 +87,7 @@ bool ScreenItem::is_visible() const
     assert(m_scissor_layout);
 
     // bounding rect too small
-    if (m_size.get_area() <= precision_low<float>()) {
+    if (m_size.area() <= precision_low<float>()) {
         return false;
     }
 

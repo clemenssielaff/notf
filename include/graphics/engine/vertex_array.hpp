@@ -8,9 +8,9 @@
 #include "common/exception.hpp"
 #include "common/meta.hpp"
 #include "core/opengl.hpp"
-#include "graphics/gl_errors.hpp"
-#include "graphics/gl_utils.hpp"
-#include "graphics/shader.hpp"
+#include "graphics/engine/gl_errors.hpp"
+#include "graphics/engine/gl_utils.hpp"
+#include "graphics/engine/shader.hpp"
 
 //**********************************************************************************************************************
 
@@ -187,6 +187,7 @@ public: // methods *************************************************************
     VertexArray(Args&& args = {})
         : VertexArrayType(std::forward<Args>(args))
         , m_vertices()
+        , m_buffer_size(0)
     {
     }
 
@@ -247,12 +248,11 @@ public: // methods *************************************************************
         }
 
         // update vertex array
-        const size_t old_size = m_size;
         std::swap(m_vertices, data);
         m_size = static_cast<GLsizei>(m_vertices.size());
 
         glBindBuffer(GL_ARRAY_BUFFER, m_vbo_id);
-        if (m_size <= old_size) {
+        if (m_size <= m_buffer_size) {
             // if the new data is smaller or of equal size than the last one, we can do a minimal update
             glBufferSubData(GL_ARRAY_BUFFER, /*offset*/ 0, m_size * sizeof(Vertex), &m_vertices[0]);
         }
@@ -260,6 +260,8 @@ public: // methods *************************************************************
             // otherwise we have to do a full update
             glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(Vertex), &m_vertices[0], m_args.usage);
         }
+        m_buffer_size = std::max(m_buffer_size, m_size);
+
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         check_gl_error();
 
@@ -294,8 +296,7 @@ private: // methods ************************************************************
         assert(offset >= 0);
 
         // find the attribute id
-        const GLuint attribute_id = _get_shader_attribute(
-            shader.get(), std::string(ATTRIBUTE::name.ptr, ATTRIBUTE::name.size));
+        const GLuint attribute_id = _get_shader_attribute(shader.get(), ATTRIBUTE::name);
         if (attribute_id == INVALID_ID) {
             return;
         }
@@ -329,7 +330,7 @@ private: // fields *************************************************************
     std::vector<Vertex> m_vertices;
 
     /** Size in bytes of the buffer allocated on the server. */
-    std::size_t m_buffer_size;
+    GLsizei m_buffer_size;
 };
 
 } // namespace notf

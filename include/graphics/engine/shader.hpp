@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "common/meta.hpp"
-#include "graphics/gl_forwards.hpp"
+#include "graphics/engine/gl_forwards.hpp"
 
 namespace notf {
 
@@ -138,6 +138,9 @@ public: // methods *************************************************************
     /** Destructor */
     ~Shader();
 
+    /** A scope object that pushes this shader onto the stack and pops it on destruction. */
+    Scope scope() { return Scope(this); }
+
     /** The OpenGL ID of the Shader program. */
     GLuint id() const { return m_id; }
 
@@ -150,17 +153,14 @@ public: // methods *************************************************************
     /** The name of this Shader. */
     const std::string& name() const { return m_name; }
 
-    /** A scope object that pushes this Shader onto the stack and pops it on destruction. */
-    Scope scope() { return Scope(this); }
-
     /** Updates the value of a uniform in the shader.
      * @throws std::runtime_error   If the uniform cannot be found.
      * @throws std::runtime_error   If the value type and the uniform type are not compatible.
      */
     template <typename T>
-    void set_uniform(const std::string&, const T& t)
+    void set_uniform(const std::string&, const T&)
     {
-        static_assert(always_false<T, t>{}, "No overload for value type in notf::Shader::set_uniform");
+        static_assert(always_false_t<T>{}, "No overload for value type in notf::Shader::set_uniform");
     }
 
     /** Returns the location of the attribute with the given name.
@@ -211,6 +211,9 @@ private: // fields *************************************************************
      */
     std::vector<Variable> m_attributes;
 };
+
+template <>
+void Shader::set_uniform(const std::string&, const int& value);
 
 template <>
 void Shader::set_uniform(const std::string&, const float& value);

@@ -6,7 +6,7 @@
 #include "common/time.hpp"
 #include "common/vector2.hpp"
 #include "graphics/cell/painterpreter.hpp"
-#include "graphics/gl_forwards.hpp"
+#include "graphics/engine/gl_forwards.hpp"
 #include "graphics/vertex.hpp"
 
 namespace notf {

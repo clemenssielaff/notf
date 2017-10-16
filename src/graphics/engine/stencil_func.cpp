@@ -1,4 +1,4 @@
-#include "graphics/stencil_func.hpp"
+#include "graphics/engine/stencil_func.hpp"
 
 #include <assert.h>
 

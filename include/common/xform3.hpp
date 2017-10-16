@@ -240,7 +240,8 @@ struct _Xform3 : public detail::Arithmetic<_Xform3<Real, SIMD_SPECIALIZATION, tr
         const value_t sin_angle = sin(radian);
 
         axis[3] = 0;
-        axis.normalize();
+        axis.normalize(); // TODO: what to do about V4 normalization?
+        axis[3] = 1;
         const vector_t temp = axis * (1 - cos_angle);
 
         _Xform3 rotation;

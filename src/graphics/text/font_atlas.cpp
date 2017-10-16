@@ -10,9 +10,9 @@
 #include "common/vector.hpp"
 #include "common/warnings.hpp"
 #include "core/opengl.hpp"
-#include "graphics/gl_errors.hpp"
-#include "graphics/graphics_context.hpp"
-#include "graphics/texture2.hpp"
+#include "graphics/engine/gl_errors.hpp"
+#include "graphics/engine/graphics_context.hpp"
+#include "graphics/engine/texture2.hpp"
 
 namespace { // anonymous
 
@@ -120,7 +120,10 @@ FontAtlas::FontAtlas(GraphicsContext& graphics_context)
     , m_waste()
 {
     // create the atlas texture
-    m_texture = Texture2::create_empty(m_graphics_context, "__notf_font_atlas", Size2i(m_width, m_height), Texture2::Format::GRAYSCALE);
+    Texture2::Args tex_args;
+    tex_args.format = Texture2::Format::GRAYSCALE;
+
+    m_texture = Texture2::create_empty(m_graphics_context, "__notf_font_atlas", Size2i(m_width, m_height), tex_args);
     m_texture->set_wrap_x(Texture2::Wrap::CLAMP_TO_EDGE);
     m_texture->set_wrap_y(Texture2::Wrap::CLAMP_TO_EDGE);
     m_texture->set_min_filter(Texture2::MinFilter::LINEAR);

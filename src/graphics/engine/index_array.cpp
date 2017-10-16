@@ -1,4 +1,4 @@
-#include "graphics/index_array.hpp"
+#include "graphics/engine/index_array.hpp"
 
 namespace notf {
 

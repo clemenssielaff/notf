@@ -1,4 +1,4 @@
-#include "graphics/gl_errors.hpp"
+#include "graphics/engine/gl_errors.hpp"
 
 #include "common/log.hpp"
 #include "core/opengl.hpp"
@@ -19,10 +19,10 @@ constexpr const char* gl_error_string(GLenum error_code)
     const char* out_of_memory                 = "GL_OUT_OF_MEMORY";
     const char* invalid_framebuffer_operation = "GL_INVALID_FRAMEBUFFER_OPERATION";
 #ifdef GL_STACK_OVERFLOW
-    const char* stack_overflow = "GL_STACK_OVERFLOW";
+    const char* stack_overflow                = "GL_STACK_OVERFLOW";
 #endif
 #ifdef GL_STACK_UNDERFLOW
-    const char* stack_underflow = "GL_STACK_UNDERFLOW";
+    const char* stack_underflow               = "GL_STACK_UNDERFLOW";
 #endif
 
     switch (error_code) {

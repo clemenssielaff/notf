@@ -4,7 +4,7 @@
 
 #include "common/log.hpp"
 #include "common/string.hpp"
-#include "graphics/graphics_context.hpp"
+#include "graphics/engine/graphics_context.hpp"
 #include "graphics/text/font_manager.hpp"
 #include "graphics/text/freetype.hpp"
 

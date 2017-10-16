@@ -15,8 +15,8 @@
 #include "core/widget.hpp"
 #include "core/window_layout.hpp"
 #include "graphics/cell/cell_canvas.hpp"
-#include "graphics/gl_errors.hpp"
-#include "graphics/graphics_context.hpp"
+#include "graphics/engine/gl_errors.hpp"
+#include "graphics/engine/graphics_context.hpp"
 #include "graphics/raw_image.hpp"
 #include "utils/reverse_iterator.hpp"
 
@@ -137,12 +137,12 @@ Window::Window(const WindowInfo& info)
         const std::string icon_path = app.get_resource_manager().get_texture_directory() + info.icon;
         try {
             RawImage icon(icon_path);
-            if (icon.get_bytes_per_pixel() != 4) {
+            if (icon.channels() != 4) {
                 log_warning << "Icon file '" << icon_path
-                            << "' does not provide the required 4 byte per pixel, but " << icon.get_bytes_per_pixel();
+                            << "' does not provide the required 4 byte per pixel, but " << icon.channels();
             }
             else {
-                const GLFWimage glfw_icon{icon.get_width(), icon.get_height(), const_cast<uchar*>(icon.get_data())};
+                const GLFWimage glfw_icon{icon.width(), icon.height(), const_cast<uchar*>(icon.data())};
                 glfwSetWindowIcon(m_glfw_window.get(), 1, &glfw_icon);
             }
         } catch (std::runtime_error) {

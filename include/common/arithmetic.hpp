@@ -388,7 +388,7 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
     /** The contents of this value as an array. */
     const std::array<value_t, size()>& as_array() const
     {
-        *reinterpret_cast<const std::array<value_t, size()>*>(as_ptr());
+        return *reinterpret_cast<const std::array<value_t, size()>*>(as_ptr());
     }
 
     /** Modification **************************************************************************************************/

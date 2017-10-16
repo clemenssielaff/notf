@@ -4,7 +4,7 @@
 #include <string>
 
 #include "common/meta.hpp"
-#include "graphics/gl_forwards.hpp"
+#include "graphics/engine/gl_forwards.hpp"
 
 namespace notf {
 
@@ -38,12 +38,14 @@ class Texture2 : public std::enable_shared_from_this<Texture2> {
     friend class GraphicsContext; // creates and finally invalidates all of its Textures when it is destroyed
 
 public: // enums ******************************************************************************************************/
+    /** Texture format. */
     enum class Format : unsigned char {
         GRAYSCALE = 1, //* one byte per pixel (grayscale)
         RGB       = 3, //* 3 bytes per pixel (color)
         RGBA      = 4, //* 4 bytes per pixel (color + alpha)
     };
 
+    /** Filter used when sampling the texture and any of its mipmaps. */
     enum class MinFilter : unsigned char {
         NEAREST,                //* Nearest (in Manhattan distance) value to the center of the pixel
         LINEAR,                 //* Weighted average of the four texels closest to the center of the pixel
@@ -53,6 +55,7 @@ public: // enums ***************************************************************
         LINEAR_MIPMAP_LINEAR,   //* Weighted blend of the linearly interpolated (s.a.) texels of the two closest mipmaps
     };
 
+    /** Filter used when only sampling the highest texture level. */
     enum class MagFilter : unsigned char {
         NEAREST, //* Nearest (in Manhattan distance) value to the center of the pixel
         LINEAR,  //* Weighted average of the four texels closest to the center of the pixel
@@ -65,13 +68,70 @@ public: // enums ***************************************************************
         MIRRORED_REPEAT, //* Like REPEAT when the integer part of c is even, 1 - frac(c) when c is odd
     };
 
+    /** Codec used to store the texture in OpenGL. */
+    enum class Codec : unsigned char {
+        RAW,    //* All image formats that are decoded into raw pixels before upload (png, jpg, almost all of them...)
+        ASTC,   //* ASTC compression
+    };
+
+    /** Arguments used to initialize a Texture. */
+    struct Args {
+        /** Filter used when sampling the texture and any of its mipmaps. */
+        MinFilter min_filter = MinFilter::LINEAR_MIPMAP_LINEAR;
+
+        /** Filter used when only sampling the highest texture level. */
+        MagFilter mag_filter = MagFilter::LINEAR;
+
+        /** Horizontal texture wrap. */
+        Wrap wrap_horizontal = Wrap::REPEAT;
+
+        /** Vertical texture wrap. */
+        Wrap wrap_vertical = Wrap::REPEAT;
+
+        /** Automatically generate mipmaps for textures load from a file. */
+        bool generate_mipmaps = true;
+
+        /** Immutable textures provide faster lookup but cannot change their format or size (but content). */
+        bool make_immutable = true;
+
+        /** Format of the created texture, is ignored when loading a texture from file. */
+        Format format = Format::RGB;
+
+        /** Codec used to store the texture in OpenGL. */
+        Codec codec = Codec::RAW;
+    };
+
+public: // types ******************************************************************************************************/
+    /** Texture scope RAII helper. */
+    struct Scope {
+
+        /** Constructor, binds the texture. */
+        Scope(Texture2* texture);
+
+        /** Move without re-binding. */
+        Scope(Scope&& other)
+            : m_texture(other.m_texture)
+        {
+            other.m_texture = nullptr;
+        }
+
+        /** Destructor, unbinds the texture again. */
+        ~Scope();
+
+        /** Bound texture. */
+        Texture2* m_texture;
+    };
+    friend struct Scope;
+
 public: // static methods *********************************************************************************************/
     /** Loads a texture from a given file.
-     * @param context   Render Context in which the Texture lives.
+     * @param context   Render Context in which the texture lives.
      * @param file_path Path to a texture file.
+     * @param args      Arguments to initialize the texture.
      * @return          Texture2 instance, is empty if the texture could not be loaded.
      */
-    static std::shared_ptr<Texture2> load_image(GraphicsContext& context, const std::string file_path);
+    static std::shared_ptr<Texture2> load_image(GraphicsContext& context, const std::string file_path,
+                                                const Args& args = s_default_args);
 
     /** Creates an empty texture in memory.
      * @param context   Render Context in which the Texture lives.
@@ -79,8 +139,8 @@ public: // static methods ******************************************************
      * @param size      Size of the Texture.
      * @param format    Texture format.
      */
-    static std::shared_ptr<Texture2> create_empty(GraphicsContext& context, const std::string name,
-                                                  const Size2i& size, const Format format);
+    static std::shared_ptr<Texture2> create_empty(GraphicsContext& context, const std::string name, const Size2i& size,
+                                                  const Args& args = s_default_args);
 
 private: // constructor ***********************************************************************************************/
     /** Factory. */
@@ -103,6 +163,9 @@ public: // methods *************************************************************
 
     /** Destructor. */
     ~Texture2();
+
+    /** A scope object that pushes this texture onto the stack and pops it on destruction. */
+    Scope scope() { return Scope(this); }
 
     /** The OpenGL ID of this Texture2. */
     GLuint id() const { return m_id; }
@@ -152,11 +215,11 @@ public: // methods *************************************************************
     /** Fills the Texture with a given color. */
     void fill(const Color& color);
 
-private: // methods for GraphicsContext
+private: // methods ***************************************************************************************************/
     /** Deallocates the Texture data and invalidates the Texture. */
     void _deallocate();
 
-private: // fields
+private: // fields ***************************************************************************************************/
     /** OpenGL ID of this Shader. */
     GLuint m_id;
 
@@ -186,6 +249,9 @@ private: // fields
 
     /** The vertical wrap mode. */
     Wrap m_wrap_y;
+
+    /** Default arguments. */
+    static const Args s_default_args;
 };
 
 } // namespace notf

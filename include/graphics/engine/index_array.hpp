@@ -7,7 +7,8 @@
 #include "common/exception.hpp"
 #include "common/meta.hpp"
 #include "core/opengl.hpp"
-#include "graphics/gl_errors.hpp"
+#include "graphics/engine/gl_errors.hpp"
+#include "graphics/engine/gl_utils.hpp"
 
 namespace notf {
 
@@ -26,7 +27,8 @@ struct gl_smallest_unsigned_type {
                                                                          GLushort,
                                                                          GLuint>>;
 };
-}
+
+} // namespace detail
 
 //*********************************************************************************************************************/
 //*********************************************************************************************************************/
@@ -117,7 +119,7 @@ public: // methods *************************************************************
             throw_runtime_error("Failed to allocate IndexArray");
         }
 
-        m_type = _type();
+        m_type = to_gl_type(index_t());
         m_size = static_cast<GLsizei>(m_indices.size());
 
         { // make sure there is a bound VAO
@@ -136,19 +138,6 @@ public: // methods *************************************************************
 
     virtual GLuint restart_index() const override { return static_cast<GLuint>(std::numeric_limits<index_t>::max()); }
 
-private: // methods ***************************************************************************************************/
-    template <bool enable = true>
-    typename std::enable_if<std::is_same<index_t, GLushort>::value && enable, GLenum>::type
-    _type() const { return GL_UNSIGNED_SHORT; }
-
-    template <bool enable = true>
-    typename std::enable_if<std::is_same<index_t, GLubyte>::value && enable, GLenum>::type
-    _type() const { return GL_UNSIGNED_BYTE; }
-
-    template <bool enable = true>
-    typename std::enable_if<std::is_same<index_t, GLuint>::value && enable, GLenum>::type
-    _type() const { return GL_UNSIGNED_INT; }
-
 private: // fields ****************************************************************************************************/
     /** Index data. */
     std::vector<index_t> m_indices;
@@ -162,8 +151,8 @@ private: // fields *************************************************************
 template <size_t... indices>
 decltype(auto) create_index_buffer()
 {
-    using value_t = typename detail::gl_smallest_unsigned_type<std::max<size_t>({indices...})>::type;
-    auto result = std::make_unique<IndexArray<value_t>>();
+    using value_t     = typename detail::gl_smallest_unsigned_type<std::max<size_t>({indices...})>::type;
+    auto result       = std::make_unique<IndexArray<value_t>>();
     result->m_indices = std::vector<value_t>{indices...};
     return result;
 }

@@ -1,13 +1,13 @@
-#include "graphics/graphics_context.hpp"
+#include "graphics/engine/graphics_context.hpp"
 
 #include "common/log.hpp"
 #include "common/vector.hpp"
 #include "core/glfw.hpp"
 #include "core/window.hpp"
-#include "graphics/gl_errors.hpp"
-#include "graphics/shader.hpp"
+#include "graphics/engine/gl_errors.hpp"
+#include "graphics/engine/shader.hpp"
+#include "graphics/engine/texture2.hpp"
 #include "graphics/text/font_manager.hpp"
-#include "graphics/texture2.hpp"
 
 namespace notf {
 
@@ -141,6 +141,7 @@ void GraphicsContext::push_texture(Texture2Ptr texture)
     }
 
     if (m_texture_stack.empty() || texture != m_texture_stack.back()) {
+        //        glActiveTexture(GL_TEXTURE0); // TODO: allow several active textures
         glBindTexture(GL_TEXTURE_2D, texture->id());
     }
     m_texture_stack.emplace_back(std::move(texture));

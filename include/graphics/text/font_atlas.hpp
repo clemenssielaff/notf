@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <vector>
 
-#include "graphics/gl_forwards.hpp"
+#include "graphics/engine/gl_forwards.hpp"
 #include "graphics/text/font.hpp"
 
 namespace notf {

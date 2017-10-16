@@ -9,8 +9,8 @@
 #include "common/vector.hpp"
 #include "common/vector2.hpp"
 #include "common/vector3.hpp"
-#include "graphics/prefab.hpp"
-#include "graphics/prefab_library.hpp"
+#include "graphics/engine/prefab.hpp"
+#include "graphics/engine/prefab_group.hpp"
 
 namespace notf {
 
@@ -40,7 +40,8 @@ protected: // types ************************************************************
 
     /** All Definition kinds. */
     enum class Kind {
-        BOX
+        BOX,
+        SPHERE,
     };
 
     /** Base class of all Definitions so we can keep them all in a vector. */
@@ -70,9 +71,29 @@ public: // types ***************************************************************
         virtual Kind kind() const override { return Kind::BOX; }
     };
 
+    /** Definition for a sphere.
+     * Spheres are created with poles in the vertical axis.
+     */
+    struct Sphere : public Definition {
+        Vector3d center       = Vector3d::zero();
+        double radius         = 1;
+        unsigned int rings    = 12; // latitude
+        unsigned int segments = 24; // longitude
+        double tileU          = 1;
+        double tileV          = 1;
+
+        Sphere()              = default;
+        Sphere(const Sphere&) = default;
+        virtual ~Sphere() override;
+        virtual Kind kind() const override { return Kind::SPHERE; }
+    };
+
 public: // methods ****************************************************************************************************/
     /** Add a box to the factory's production list. */
     void add(const Box definition) { m_definitions.emplace_back(std::make_unique<Box>(std::move(definition))); }
+
+    /** Add a sphere to the factory's production list. */
+    void add(const Sphere definition) { m_definitions.emplace_back(std::make_unique<Sphere>(std::move(definition))); }
 
 protected: // methods *************************************************************************************************/
     /** Constructor. */
@@ -83,6 +104,7 @@ protected: // methods **********************************************************
 
     /** Static production methods. */
     static Product _produce(const Box& def);
+    static Product _produce(const Sphere& def);
 
     /** Convert a study value into the appropriate OpenGL type. */
     static void _convert(const Vector3d& in, std::array<float, 4>& out);
@@ -146,7 +168,7 @@ public: // methods *************************************************************
      * @param name                  Name of the new prefab.
      * @throws std::runtime_error   If the name is already taken in the library.
      */
-    std::shared_ptr<Prefab<InstanceData>> produce(std::string name)
+    std::shared_ptr<PrefabType<InstanceData>> produce(std::string name)
     {
         { // fail without changing the factory's state
             bool name_exists = true;
@@ -168,6 +190,9 @@ public: // methods *************************************************************
             case Kind::BOX:
                 _ingest_product(_produce(*static_cast<Box*>(def.get())));
                 break;
+            case Kind::SPHERE:
+                _ingest_product(_produce(*static_cast<Sphere*>(def.get())));
+                break;
             }
         }
 
@@ -180,8 +205,9 @@ public: // methods *************************************************************
         const size_t prefab_size = m_indices.size();
         extend(library_indices, std::move(m_indices));
 
-        std::shared_ptr<Prefab<InstanceData>> prefab_type = Prefab<InstanceData>::create(prefab_offset, prefab_size);
-        m_library.m_prefabs.push_back(std::make_pair(std::move(name), prefab_type));
+        std::shared_ptr<PrefabType<InstanceData>> prefab_type = PrefabType<InstanceData>::create(
+            std::move(name), prefab_offset, prefab_size);
+        m_library.m_prefab_types.push_back(prefab_type);
 
         // reset the factory
         m_definitions.clear();

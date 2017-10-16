@@ -4,7 +4,7 @@
 #include "common/circle.hpp"
 #include "common/time.hpp"
 #include "common/xform2.hpp"
-#include "graphics/blend_mode.hpp"
+#include "graphics/engine/blend_mode.hpp"
 #include "graphics/cell/paint.hpp"
 #include "graphics/scissor.hpp"
 

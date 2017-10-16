@@ -5,11 +5,11 @@
 #include "common/enum.hpp"
 #include "common/log.hpp"
 #include "core/opengl.hpp"
-#include "graphics/gl_errors.hpp"
-#include "graphics/gl_utils.hpp"
-#include "graphics/graphics_context.hpp"
-#include "graphics/shader.hpp"
-#include "graphics/texture2.hpp"
+#include "graphics/engine/gl_errors.hpp"
+#include "graphics/engine/gl_utils.hpp"
+#include "graphics/engine/graphics_context.hpp"
+#include "graphics/engine/shader.hpp"
+#include "graphics/engine/texture2.hpp"
 
 namespace { // anonymous
 // clang-format off

@@ -142,7 +142,7 @@ Size2f Claim::apply(const Size2f& size) const
     result.height = clamp(size.height, m_vertical.get_min(), m_vertical.get_max());
 
     // apply ratio constraints by shrinking one side within the valid range
-    if (size.get_area() > precision_high<float>() && m_ratios.first.is_valid()) {
+    if (size.area() > precision_high<float>() && m_ratios.first.is_valid()) {
         assert(m_ratios.second.is_valid());
 
         const float current_ratio = size.height / size.width;

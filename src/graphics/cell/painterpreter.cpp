@@ -5,10 +5,10 @@
 #include "graphics/cell/cell.hpp"
 #include "graphics/cell/cell_canvas.hpp"
 #include "graphics/cell/commands.hpp"
-#include "graphics/graphics_context.hpp"
+#include "graphics/engine/graphics_context.hpp"
 #include "graphics/text/font.hpp"
 #include "graphics/text/font_manager.hpp"
-#include "graphics/texture2.hpp"
+#include "graphics/engine/texture2.hpp"
 #include "graphics/vertex.hpp"
 #include "utils/make_const.hpp"
 

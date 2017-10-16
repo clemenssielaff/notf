@@ -5,9 +5,9 @@
 #include <vector>
 
 #include "common/meta.hpp"
-#include "graphics/blend_mode.hpp"
-#include "graphics/gl_forwards.hpp"
-#include "graphics/stencil_func.hpp"
+#include "graphics/engine/blend_mode.hpp"
+#include "graphics/engine/gl_forwards.hpp"
+#include "graphics/engine/stencil_func.hpp"
 
 class GLFWwindow;
 

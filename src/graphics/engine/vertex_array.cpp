@@ -1,4 +1,4 @@
-#include "graphics/vertex_array.hpp"
+#include "graphics/engine/vertex_array.hpp"
 
 #include "common/log.hpp"
 

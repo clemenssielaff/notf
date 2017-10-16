@@ -1,4 +1,4 @@
-#include "graphics/shader.hpp"
+#include "graphics/engine/shader.hpp"
 
 #include <assert.h>
 #include <sstream>
@@ -11,8 +11,8 @@
 #include "common/vector4.hpp"
 #include "common/xform3.hpp"
 #include "core/opengl.hpp"
-#include "graphics/gl_utils.hpp"
-#include "graphics/graphics_context.hpp"
+#include "graphics/engine/gl_utils.hpp"
+#include "graphics/engine/graphics_context.hpp"
 
 namespace { // anonymous
 
@@ -300,15 +300,17 @@ Shader::Shader(const GLuint id, GraphicsContext& context, const std::string name
             variable.name = std::string(&variable_name[0], static_cast<size_t>(name_length));
 
             variable.location = glGetUniformLocation(m_id, variable.name.c_str());
-            assert(variable.location >= 0);
+            if(variable.location == -1){
+                log_warning << "Skipping uniform \"" << variable.name << "\" on shader: \"" << m_name << "\"";
+                // TODO: this is skipping uniforms in a named uniform block
+                continue;
+            }
 
             log_trace << "Discovered uniform \"" << variable.name << "\" on shader: \"" << m_name << "\"";
             m_uniforms.emplace_back(std::move(variable));
         }
         m_uniforms.shrink_to_fit();
     }
-
-    // TODO: discover uniform blocks in Shader constructor
 
     { // discover attributes
         GLint attribute_count = 0;
@@ -397,6 +399,22 @@ void Shader::_deallocate()
         log_trace << "Deleted Shader Program \"" << m_name << "\"";
     }
     m_id = 0;
+}
+
+template <>
+void Shader::set_uniform(const std::string& name, const int& value)
+{
+    const Variable& uniform = _uniform(name);
+    Scope _(this);
+//    if (uniform.type == GL_INT) {
+        glUniform1i(uniform.location, value);
+//    }
+//    else {
+//        m_graphics_context.pop_shader();
+//        throw_runtime_error(string_format(
+//                                "Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"int\"",
+//                                name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
+//    }
 }
 
 template <>

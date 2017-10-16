@@ -1,5 +1,3 @@
-#include "engine/engine_test.hpp"
-
 #include <iostream>
 
 #include "common/half.hpp"
@@ -7,12 +5,12 @@
 #include "common/size2.hpp"
 #include "common/warnings.hpp"
 #include "core/glfw.hpp"
-#include "graphics/graphics_context.hpp"
-#include "graphics/prefab_factory.hpp"
-#include "graphics/prefab_library.hpp"
-#include "graphics/shader.hpp"
-#include "graphics/vertex_array.hpp"
-#include "utils/static_string.hpp"
+#include "graphics/engine/graphics_context.hpp"
+#include "graphics/engine/prefab_factory.hpp"
+#include "graphics/engine/prefab_group.hpp"
+#include "graphics/engine/shader.hpp"
+#include "graphics/engine/texture2.hpp"
+#include "graphics/engine/vertex_array.hpp"
 
 #include "glm_utils.hpp"
 
@@ -21,35 +19,28 @@ using namespace notf;
 namespace {
 
 struct VertexPos {
-    StaticString name             = "vPos";
+    constexpr static auto name    = "a_position";
     using type                    = float;
     constexpr static size_t count = 4;
     using kind                    = AttributeKind::Position;
 };
 
-struct VertexColor {
-    StaticString name             = "vColor";
-    using type                    = float;
-    constexpr static size_t count = 4;
-    using kind                    = AttributeKind::Color;
-};
-
 struct VertexNormal {
-    StaticString name             = "vNormal";
+    constexpr static auto name    = "a_normal";
     using type                    = float;
     constexpr static size_t count = 4;
     using kind                    = AttributeKind::Normal;
 };
 
 struct VertexTexCoord {
-    StaticString name             = "vTexCoord";
+    constexpr static auto name    = "a_texcoord";
     using type                    = float;
     constexpr static size_t count = 2;
     using kind                    = AttributeKind::TexCoord;
 };
 
 struct InstanceXform {
-    StaticString name             = "iOffset";
+    constexpr static auto name    = "i_xform";
     using type                    = float;
     constexpr static size_t count = 16;
     using kind                    = AttributeKind::Other;
@@ -72,47 +63,44 @@ void render_thread(GLFWwindow* window)
     auto shader_scope = blinn_phong_shader->scope();
     UNUSED(shader_scope);
 
-    using VertexLayout   = VertexArray<VertexPos, VertexNormal>;
+    Texture2::Args tex_args;
+    tex_args.codec = Texture2::Codec::ASTC;
+    Texture2Ptr texture = Texture2::load_image(*context.get(), "/home/clemens/code/notf/res/textures/test.astc", tex_args);
+
+    using VertexLayout   = VertexArray<VertexPos, VertexTexCoord>;
     using InstanceLayout = VertexArray<InstanceXform>;
-    using Library        = PrefabLibrary<VertexLayout, InstanceLayout>;
+    using Library        = PrefabGroup<VertexLayout, InstanceLayout>;
     Library library(blinn_phong_shader);
 
     using Factory = PrefabFactory<Library>;
     Factory factory(library);
-    std::shared_ptr<Prefab<Factory::InstanceData>> box_type;
+    std::shared_ptr<PrefabType<Factory::InstanceData>> box_type;
     {
         auto box = Factory::Box{};
         factory.add(box);
         box_type = factory.produce("boxy_the_box");
     }
 
-    std::shared_ptr<Prefab<Factory::InstanceData>> stick_type;
-    {
-        auto stick   = Factory::Box{};
-        stick.width  = 0.5;
-        stick.depth  = 0.5;
-        stick.height = 4;
-        factory.add(stick);
-        stick_type = factory.produce("sticky_the_stick");
-    }
+    auto box1    = box_type->create_instance();
+    box1->data() = std::make_tuple(Xform3f::translation(-500, 500, -1000).as_array());
 
-    auto box1 = box_type->create_instance();
-    box1->data() = std::make_tuple(Xform3f::translation(-200, 500, -1000).as_array());
+    auto box2    = box_type->create_instance();
+    box2->data() = std::make_tuple(Xform3f::translation(500, 500, -1000).as_array());
 
-    auto box2 = box_type->create_instance();
-    box2->data() = std::make_tuple(Xform3f::translation(200, 500, -1000).as_array());
+    auto box3    = box_type->create_instance();
+    box3->data() = std::make_tuple(Xform3f::translation(-500, -500, -1000).as_array());
 
-    auto box3 = box_type->create_instance();
-    box3->data() = std::make_tuple(Xform3f::translation(-200, -500, -1000).as_array());
-
-    auto box4 = box_type->create_instance();
-    box4->data() = std::make_tuple(Xform3f::translation(200, -500, -1000).as_array());
+    auto box4    = box_type->create_instance();
+    box4->data() = std::make_tuple(Xform3f::translation(500, -500, -1000).as_array());
 
     //    auto some_stick = stick_type->create_instance();
 
     library.init();
 
     glEnable(GL_DEPTH_TEST);
+
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
 
     // render loop
     using namespace std::chrono_literals;
@@ -130,19 +118,26 @@ void render_thread(GLFWwindow* window)
         glClearColor(0, 0, 0, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        auto texture_scope = texture->scope();
+        UNUSED(texture_scope);
+
         // pass the shader uniforms
         const Xform3f move      = Xform3f::translation(0, 0, -500);
-        const Xform3f rotate    = Xform3f::rotation(Vector4f(1, 0), angle);
-        const Xform3f scale     = Xform3f::scaling(100);
+//        const Xform3f rotate    = Xform3f::rotation(Vector4f(sin(angle), cos(angle)), angle);
+        const Xform3f rotate    = Xform3f::rotation(Vector4f(0, 1), angle);
+//        const Xform3f rotate    = Xform3f::identity();
+        const Xform3f scale     = Xform3f::scaling(200);
         const Xform3f modelview = move * rotate * scale;
         blinn_phong_shader->set_uniform("modelview", modelview);
 
         const Xform3f perspective = Xform3f::perspective(deg_to_rad(90), 1, 0, 10000.f);
-        // const Xform3f perspective = Xform3f::orthographic(-400.f, 400.f, -400.f, 400.f, 0.f, 1000.f);
+        //         const Xform3f perspective = Xform3f::orthographic(-1000.f, 1000.f, -1000.f, 1000.f, 0.f, 10000.f);
         blinn_phong_shader->set_uniform("projection", perspective);
 
         Xform3f normalMat = rotate;
-        blinn_phong_shader->set_uniform("normalMat", normalMat);
+//        blinn_phong_shader->set_uniform("normalMat", normalMat);
+
+        blinn_phong_shader->set_uniform("s_texture", 0);
 
         library.render();
 
@@ -158,7 +153,7 @@ void render_thread(GLFWwindow* window)
     context->clear_shader();
 }
 
-int test_main(int /*argc*/, char* /*argv*/ [])
+int main(int /*argc*/, char* /*argv*/ [])
 {
     // install the log handler first, to catch errors right away
     auto log_handler = std::make_unique<LogHandler>(128, 200);
