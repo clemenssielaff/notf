@@ -300,7 +300,7 @@ Shader::Shader(const GLuint id, GraphicsContext& context, const std::string name
             variable.name = std::string(&variable_name[0], static_cast<size_t>(name_length));
 
             variable.location = glGetUniformLocation(m_id, variable.name.c_str());
-            if(variable.location == -1){
+            if (variable.location == -1) {
                 log_warning << "Skipping uniform \"" << variable.name << "\" on shader: \"" << m_name << "\"";
                 // TODO: this is skipping uniforms in a named uniform block
                 continue;
@@ -406,15 +406,16 @@ void Shader::set_uniform(const std::string& name, const int& value)
 {
     const Variable& uniform = _uniform(name);
     Scope _(this);
-//    if (uniform.type == GL_INT) {
+    if (uniform.type == GL_INT
+        || uniform.type == GL_SAMPLER_2D) {
         glUniform1i(uniform.location, value);
-//    }
-//    else {
-//        m_graphics_context.pop_shader();
-//        throw_runtime_error(string_format(
-//                                "Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"int\"",
-//                                name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
-//    }
+    }
+    else {
+        m_graphics_context.pop_shader();
+        throw_runtime_error(string_format(
+            "Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"int\"",
+            name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
+    }
 }
 
 template <>
