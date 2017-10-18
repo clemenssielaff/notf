@@ -1,6 +1,9 @@
 #include "graphics/engine/graphics_context.hpp"
 
+#include <set>
+
 #include "common/log.hpp"
+#include "common/string.hpp"
 #include "common/vector.hpp"
 #include "core/glfw.hpp"
 #include "core/window.hpp"
@@ -10,6 +13,30 @@
 #include "graphics/text/font_manager.hpp"
 
 namespace notf {
+
+GLExtensions::GLExtensions()
+{
+    std::set<std::string> extensions;
+    { // create a set of all available extensions
+        const auto gl_extensions = glGetString(GL_EXTENSIONS);
+        if (gl_extensions == nullptr) {
+            throw_runtime_error("Cannot check GL extensions without an OpenGL context");
+        }
+
+        const size_t len = strlen(reinterpret_cast<const char*>(gl_extensions));
+        const std::string extension_string(gl_extensions, gl_extensions + len);
+        std::vector<std::string> vector = tokenize(extension_string, ' ');
+
+        extensions = std::set<std::string>(std::make_move_iterator(vector.begin()),
+                                           std::make_move_iterator(vector.end()));
+    }
+
+    // initialize the members
+    anisotropic_filter = extensions.count("GL_EXT_texture_filter_anisotropic");
+}
+
+//*********************************************************************************************************************/
+//*********************************************************************************************************************/
 
 GraphicsContext* GraphicsContext::s_current_context = nullptr;
 

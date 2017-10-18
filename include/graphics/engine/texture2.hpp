@@ -99,6 +99,11 @@ public: // enums ***************************************************************
 
         /** Codec used to store the texture in OpenGL. */
         Codec codec = Codec::RAW;
+
+        /** Anisotropy factor - is only used if the anisotropic filtering extension is supported.
+         * A value <= 1 means no anisotropic filtering.
+         */
+        float anisotropy = 1.0f;
     };
 
 public: // types ******************************************************************************************************/
@@ -141,6 +146,8 @@ public: // static methods ******************************************************
      */
     static std::shared_ptr<Texture2> create_empty(GraphicsContext& context, const std::string name, const Size2i& size,
                                                   const Args& args = s_default_args);
+
+    // TODO: [engine] a texture streaming method using buffers
 
 private: // constructor ***********************************************************************************************/
     /** Factory. */

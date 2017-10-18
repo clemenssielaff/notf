@@ -65,6 +65,7 @@ void render_thread(GLFWwindow* window)
 
     Texture2::Args tex_args;
     tex_args.codec = Texture2::Codec::ASTC;
+    tex_args.anisotropy = 5;
     Texture2Ptr texture = Texture2::load_image(*context.get(), "/home/clemens/code/notf/res/textures/test.astc", tex_args);
 
     using VertexLayout   = VertexArray<VertexPos, VertexTexCoord>;

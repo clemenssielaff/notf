@@ -70,6 +70,8 @@ GLint magfilter_to_gl(const Texture2::MagFilter filter)
 
 } // namespace anonymous
 
+//********************************************************************************************************************
+
 namespace notf {
 
 const Texture2::Args Texture2::s_default_args = {};
@@ -231,6 +233,13 @@ std::shared_ptr<Texture2> Texture2::load_image(GraphicsContext& context, const s
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(args.wrap_horizontal));
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical));
     check_gl_error();
+
+    // make texture anisotropic, if requested and available
+    if (args.anisotropy > 1.f && GLExtensions::instance().anisotropic_filter) {
+        GLfloat highest_anisotropy;
+        glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &highest_anisotropy);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, min(args.anisotropy, highest_anisotropy));
+    }
 
     { // log success
 #if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_INFO

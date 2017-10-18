@@ -18,7 +18,27 @@ class FontManager;
 DEFINE_SHARED_POINTERS(class, Shader);
 DEFINE_SHARED_POINTERS(class, Texture2);
 
-/**********************************************************************************************************************/
+/** Helper struct that can be used to test whether selected extensions are available in the OpenGL ES driver.
+ * Only tests for extensions on first instantiation.
+ */
+struct GLExtensions {
+    /** Creates and returns an GLExtension instance.*/
+    static const GLExtensions& instance()
+    {
+        static const GLExtensions singleton;
+        return singleton;
+    }
+
+    /** Is anisotropic filtering of textures supported? */
+    bool anisotropic_filter;
+
+private: // methods ***************************************************************************************************/
+    /** Constructor. */
+    GLExtensions();
+};
+
+//*********************************************************************************************************************/
+//*********************************************************************************************************************/
 
 /** The GraphicsContext is an abstraction of the OpenGL graphics context.
  * It is the object owning all NoTF client objects like shaders and textures.
