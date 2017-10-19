@@ -11,6 +11,7 @@
 #include "common/vector4.hpp"
 #include "common/xform3.hpp"
 #include "core/opengl.hpp"
+#include "graphics/engine/gl_errors.hpp"
 #include "graphics/engine/gl_utils.hpp"
 #include "graphics/engine/graphics_context.hpp"
 
@@ -416,6 +417,27 @@ void Shader::set_uniform(const std::string& name, const int& value)
             "Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"int\"",
             name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
     }
+    check_gl_error();
+}
+
+template <>
+void Shader::set_uniform(const std::string& name, const unsigned int& value)
+{
+    const Variable& uniform = _uniform(name);
+    Scope _(this);
+    if (uniform.type == GL_UNSIGNED_INT) {
+        glUniform1ui(uniform.location, value);
+    }
+    else if (uniform.type == GL_SAMPLER_2D) {
+        glUniform1i(uniform.location, static_cast<GLint>(value));
+    }
+    else {
+        m_graphics_context.pop_shader();
+        throw_runtime_error(string_format(
+            "Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"unsigned int\"",
+            name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
+    }
+    check_gl_error();
 }
 
 template <>
@@ -432,6 +454,7 @@ void Shader::set_uniform(const std::string& name, const float& value)
             "Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"float\"",
             name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
     }
+    check_gl_error();
 }
 
 template <>
@@ -447,6 +470,7 @@ void Shader::set_uniform(const std::string& name, const Vector2f& value)
             "Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"Vector2f\"",
             name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
     }
+    check_gl_error();
 }
 
 template <>
@@ -462,6 +486,7 @@ void Shader::set_uniform(const std::string& name, const Vector4f& value)
             "Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"Vector2f\"",
             name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
     }
+    check_gl_error();
 }
 
 template <>
@@ -477,6 +502,7 @@ void Shader::set_uniform(const std::string& name, const Xform3f& value)
             "Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"Vector2f\"",
             name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
     }
+    check_gl_error();
 }
 
 } // namespace notf

@@ -216,6 +216,9 @@ template <>
 void Shader::set_uniform(const std::string&, const int& value);
 
 template <>
+void Shader::set_uniform(const std::string&, const unsigned int& value);
+
+template <>
 void Shader::set_uniform(const std::string&, const float& value);
 
 template <>
