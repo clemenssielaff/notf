@@ -4,9 +4,8 @@
 
 namespace notf {
 
-/* Vector4f ***********************************************************************************************************/
+// Vector4f ==========================================================================================================//
 
-template <>
 std::ostream& operator<<(std::ostream& out, const Vector4f& vec)
 {
     return out << "Vector4f(" << vec.x() << ", " << vec.y() << ", " << vec.z() << ", " << vec.w() << ")";
@@ -19,9 +18,8 @@ static_assert(sizeof(Vector4f) == sizeof(float) * 4,
 static_assert(std::is_pod<Vector4f>::value,
               "This compiler does not recognize notf::Vector4f as a POD.");
 
-/* Vector4d ***********************************************************************************************************/
+// Vector4d ==========================================================================================================//
 
-template <>
 std::ostream& operator<<(std::ostream& out, const Vector4d& vec)
 {
     return out << "Vector4d(" << vec.x() << ", " << vec.y() << ", " << vec.z() << ", " << vec.w() << ")";

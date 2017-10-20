@@ -4,7 +4,7 @@
 
 namespace notf {
 
-/* Vector2f ***********************************************************************************************************/
+// Vector2f ==========================================================================================================//
 
 std::ostream& operator<<(std::ostream& out, const Vector2f& vec)
 {
@@ -18,7 +18,7 @@ static_assert(sizeof(Vector2f) == sizeof(float) * 2,
 static_assert(std::is_pod<Vector2f>::value,
               "This compiler does not recognize notf::Vector2f as a POD.");
 
-/* Vector2d ***********************************************************************************************************/
+// Vector2d ==========================================================================================================//
 
 std::ostream& operator<<(std::ostream& out, const Vector2d& vec)
 {
@@ -32,7 +32,7 @@ static_assert(sizeof(Vector2d) == sizeof(double) * 2,
 static_assert(std::is_pod<Vector2d>::value,
               "This compiler does not recognize notf::Vector2d as a POD.");
 
-/* Vector2i ***********************************************************************************************************/
+// Vector2i ==========================================================================================================//
 
 std::ostream& operator<<(std::ostream& out, const Vector2i& vec)
 {

@@ -101,7 +101,7 @@ void TextLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
         const ScreenItem* screen_item = item->get_screen_item();
         if (screen_item && screen_item->get_aabr<Space::PARENT>().contains(local_pos)) {
             Vector2f item_pos = local_pos;
-            screen_item->get_xform<Space::PARENT>().invert().transform(item_pos);
+            screen_item->get_xform<Space::PARENT>().inverse().transform(item_pos);
             ScreenItem::_get_widgets_at(screen_item, item_pos, result);
         }
     }
@@ -176,7 +176,7 @@ void TextLayout::_relayout()
 
         cursor -= screen_item->get_size().height;
 
-        const Xform2f item_xform = Xform2f::translation(m_padding.left, cursor);
+        const Matrix3f item_xform = Matrix3f::translation(m_padding.left, cursor);
         ScreenItem::_set_layout_xform(screen_item, item_xform);
 
         // TODO: CONTINUE HERE

@@ -3,7 +3,7 @@
 #include "common/aabr.hpp"
 #include "common/circle.hpp"
 #include "common/time.hpp"
-#include "common/xform2.hpp"
+#include "common/matrix3.hpp"
 #include "graphics/engine/blend_mode.hpp"
 #include "graphics/cell/paint.hpp"
 #include "graphics/scissor.hpp"
@@ -49,7 +49,7 @@ struct PainterBase {
 
 /** State used by a Painter (and Painterpreter) to contextualize paint operations. */
 struct PainterState {
-    Xform2f xform                   = Xform2f::identity();
+    Matrix3f xform                   = Matrix3f::identity();
     Scissor scissor                 = Scissor();
     BlendMode blend_mode            = BlendMode::SOURCE_OVER;
     PainterBase::LineCap line_cap   = PainterBase::LineCap::BUTT;
@@ -107,16 +107,16 @@ public: // methods
     /* Transform ******************************************/
 
     /** The Painter's current transform. */
-    const Xform2f& get_transform() const { return _get_current_state().xform; }
+    const Matrix3f& get_transform() const { return _get_current_state().xform; }
 
     /** Sets the transform of the Painter. */
-    void set_transform(const Xform2f& xform);
+    void set_transform(const Matrix3f& xform);
 
     /** Reset the Painter's transform. */
     void reset_transform();
 
     /** Transforms the Painter's transformation matrix. */
-    void transform(const Xform2f& transform);
+    void transform(const Matrix3f& transform);
 
     /** Translates the Painter's transformation matrix. */
     void translate(const float x, const float y) { translate(Vector2f{x, y}); }

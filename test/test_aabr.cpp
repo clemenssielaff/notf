@@ -43,8 +43,8 @@ SCENARIO("Aabr can be modified", "[common][aabr]")
         THEN("the resulting aabr will the the aabr of the rotated rect")
         {
             Aabrf aabr_1(top_right, bottom_left);
-            Xform2f rotation = Xform2f::rotation(pi<float>() / 4);
-            Aabrf aabr_2     = rotation.transform(aabr_1);
+            Matrix3f rotation = Matrix3f::rotation(pi<float>() / 4);
+            Aabrf aabr_2      = rotation.transform(aabr_1);
             REQUIRE(aabr_2.get_width() == approx(2 * sqrt(2.f)));
         }
     }

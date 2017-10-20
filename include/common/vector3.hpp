@@ -1,6 +1,5 @@
 #pragma once
 
-#include <assert.h>
 #include <iosfwd>
 
 #include "common/arithmetic.hpp"
@@ -8,142 +7,112 @@
 
 namespace notf {
 
-//*********************************************************************************************************************/
+//====================================================================================================================//
 
-/** 3-dimensional mathematical vector containing real numbers.
- * While 3D vectors are useful for representing 3D data, use the 4D vector type for calculation and 3d vectors only for
- * storage.
- * Operations on 4D vectors take advantage of SIMD optimization and even in the general case (should not be) slower than
- * the equivalent operations on 3D vector types.
- */
-template <typename Real, ENABLE_IF_REAL(Real)>
-struct _RealVector3 : public detail::Arithmetic<_RealVector3<Real>, Real, 3> {
+/// @brief  3-dimensional mathematical vector containing real numbers.
+template <typename REAL, ENABLE_IF_REAL(REAL)>
+struct _RealVector3 : public detail::Arithmetic<_RealVector3<REAL>, REAL, 3> {
 
-    /* Types **********************************************************************************************************/
+    /// @brief Element type.
+    using element_t = REAL;
 
-    using super   = detail::Arithmetic<_RealVector3<Real>, Real, 3>;
-    using value_t = typename super::value_t;
-    using super::data;
+    /// @brief Arithmetic base type.
+    using super_t = detail::Arithmetic<_RealVector3<REAL>, REAL, 3>;
 
-    /* Constructors ***************************************************************************************************/
+    // members -------------------------------------------------------------------------------------------------------//
+    using super_t::data;
 
-    /** Default (non-initializing) constructor so this struct remains a POD */
+    // methods -------------------------------------------------------------------------------------------------------//
+    /// @brief Default constructor.
     _RealVector3() = default;
 
-    /** Element-wise constructor. */
-    template <typename A, typename B, typename C>
-    _RealVector3(A x, B y, C z)
-        : super{static_cast<value_t>(x), static_cast<value_t>(y), static_cast<value_t>(z)} {}
+    /// @brief Element-wise constructor.
+    /// @param x    First component.
+    /// @param y    Second component (default is 0).
+    /// @param z    Third component (default is 0).
+    _RealVector3(const element_t x, const element_t y = 0, const element_t z = 0)
+        : super_t{x, y, z} {}
 
-    /* Static Constructors ********************************************************************************************/
-
-    /** Unit Vector3 along the X-axis. */
+    /** Unit vector along the X-axis. */
     static _RealVector3 x_axis() { return _RealVector3(1, 0, 0); }
 
-    /** Unit Vector3 along the Y-axis. */
+    /** Unit vector along the Y-axis. */
     static _RealVector3 y_axis() { return _RealVector3(0, 1, 0); }
 
-    /** Unit Vector3 along the Z-axis. */
+    /** Unit vector along the Z-axis. */
     static _RealVector3 z_axis() { return _RealVector3(0, 0, 1); }
 
-    /*  Inspection  ***************************************************************************************************/
+    /// @brief Read-write access to the first element in the vector.
+    element_t& x() { return data[0]; }
 
-    /** Returns True, if other and self are approximately the same Vector3.
-     * @param other     Vector3 to test against.
-     * @param epsilon   Maximal allowed distance between the two Vectors.
-     */
-    bool is_approx(const _RealVector3& other, const value_t epsilon = precision_high<value_t>()) const
+    /// @brief Read-write access to the second element in the vector.
+    element_t& y() { return data[1]; }
+
+    /// @brief Read-write access to the third element in the vector.
+    element_t& z() { return data[2]; }
+
+    /// @brief Read-only access to the first element in the vector.
+    const element_t& x() const { return data[0]; }
+
+    /// @brief Read-only access to the second element in the vector.
+    const element_t& y() const { return data[1]; }
+
+    /// @brief Read-only access to the third element in the vector.
+    const element_t& z() const { return data[2]; }
+
+    /// @brief Returns True, if other and self are approximately the same vector.
+    /// @note Vector3s use distance approximation instead of component-wise approximation.
+    /// @param other     Vector to test against.
+    /// @param epsilon   Maximal allowed squared distance between the two vectors.
+    bool is_approx(const _RealVector3& other, const element_t epsilon = precision_high<element_t>()) const
     {
-        return (*this - other).magnitude_sq() <= epsilon * epsilon;
+        return (*this - other).magnitude_sq() <= epsilon;
     }
 
-    /** Checks whether this vector is parallel to other.
-     * The zero vector is parallel to everything.
-     * @param other     Other Vector3.
-     */
+    /// @brief Checks whether this vector is parallel to other.
+    /// @note The zero vector is parallel to everything.
+    /// @param other    Vector to test against.
     bool is_parallel_to(const _RealVector3& other) const
     {
-        return this->cross(other).magnitude_sq() <= precision_high<value_t>();
+        return cross(other).magnitude_sq() <= precision_high<element_t>();
     }
 
-    /** Checks whether this vector is orthogonal to other.
-     * The zero vector is orthogonal to everything.
-     * @param other     Other Vector3.
-     */
-    bool is_orthogonal_to(const _RealVector3& other) const
+    /// @brief Calculates the smallest angle between two vectors.
+    /// @note Returns zero, if one or both of the input vectors are of zero magnitude.
+    /// @param other     Vector to test against.
+    /// @return Angle in positive radians.
+    element_t angle_to(const _RealVector3& other) const
     {
-        return this->dot(other) <= precision_high<value_t>();
-    }
-
-    /** Calculates the smallest angle between two vectors.
-     * Returns zero, if one or both of the input vectors are of zero magnitude.
-     * @param other     Vector3 to test against.
-     * @return Angle in positive radians.
-     */
-    value_t angle_to(const _RealVector3& other) const
-    {
-        const value_t mag_sq_product = super::magnitude_sq() * other.magnitude_sq();
-        if (mag_sq_product <= precision_high<value_t>()) {
+        const element_t mag_sq_product = super_t::magnitude_sq() * other.magnitude_sq();
+        if (mag_sq_product <= precision_high<element_t>()) {
             return 0.; // one or both are zero
         }
-        if (mag_sq_product - 1 <= precision_high<value_t>()) {
+        if (mag_sq_product - 1 <= precision_high<element_t>()) {
             return acos(dot(other)); // both are unit
         }
         return acos(dot(other) / sqrt(mag_sq_product));
     }
 
-    /** Tests if the other vector is collinear (1), orthogonal(0), opposite (-1) or something in between.
-     * Similar to `angle`, but saving a call to `acos`.
-     * Returns zero, if one or both of the input vectors are of zero magnitude.
-     * @param other     Vector3 to test against.
-     */
-    Real direction_to(const _RealVector3& other) const
+    /// @brief Tests if the other vector is collinear (1), orthogonal(0), opposite (-1) or something in between.
+    /// Similar to `angle`, but saving a call to `acos`.
+    /// @note Returns zero, if one or both of the input vectors are of zero magnitude.
+    /// @param other     Vector to test against.
+    element_t direction_to(const _RealVector3& other) const
     {
-        const value_t mag_sq_product = super::magnitude_sq() * other.magnitude_sq();
-        if (mag_sq_product <= precision_high<value_t>()) {
+        const element_t mag_sq_product = super_t::magnitude_sq() * other.magnitude_sq();
+        if (mag_sq_product <= precision_high<element_t>()) {
             return 0.; // one or both are zero
         }
-        if (mag_sq_product - 1 <= precision_high<value_t>()) {
+        if (mag_sq_product - 1 <= precision_high<element_t>()) {
             return clamp(dot(other), -1., 1.); // both are unit
         }
         return clamp(this->dot(other) / sqrt(mag_sq_product), -1., 1.);
     }
 
-    /** Read-only access to the first element in the vector. */
-    const value_t& x() const { return data[0]; }
-
-    /** Read-only access to the second element in the vector. */
-    const value_t& y() const { return data[1]; }
-
-    /** Read-only access to the third element in the vector. */
-    const value_t& z() const { return data[2]; }
-
-    /** Operations ****************************************************************************************************/
-
-    /** Read-write access to the first element in the vector. */
-    value_t& x() { return data[0]; }
-
-    /** Read-write access to the second element in the vector. */
-    value_t& y() { return data[1]; }
-
-    /** Read-write access to the third element in the vector. */
-    value_t& z() { return data[2]; }
-
-    /** Returns the dot product of this Vector3 and another.
-     * Allows calculation of the magnitude of one vector in the direction of another.
-     * Can be used to determine in which general direction a Vector3 is positioned
-     * in relation to another one.
-     * @param other     Other Vector3.
-     */
-    value_t dot(const _RealVector3& other) const { return (x() * other.x()) + (y() * other.y()) + (z() * other.z()); }
-
-    /** Vector3 cross product.
-     * The cross product is a Vector3 perpendicular to this one and other.
-     * The magnitude of the cross Vector3 is twice the area of the triangle
-     * defined by the two input Vector3s.
-     * The cross product is only defined for 3-dimensional vectors, the `w` element of the result will always be 1.
-     * @param other     Other Vector3.
-     */
+    /// @brief Vector cross product.
+    /// The cross product is a vector perpendicular to this one and other.
+    /// The magnitude of the cross vector is twice the area of the triangle defined by the two input Vector3s.
+    /// @param other     Other vector.
     _RealVector3 cross(const _RealVector3& other) const
     {
         return _RealVector3(
@@ -152,87 +121,116 @@ struct _RealVector3 : public detail::Arithmetic<_RealVector3<Real>, Real, 3> {
             (x() * other.y()) - (y() * other.x()));
     }
 
-    /** Projects this Vector3 onto an infinite line whose direction is specified by other.
-     * If the other Vector3 is not normalized, the projection is scaled alongside with it.
-     */
+    /// @brief Creates a projection of this vector onto an infinite line whose direction is specified by other.
+    /// @param other     Vector to project on. If it is not normalized, the projection is scaled alongside with it.
     _RealVector3 project_on(const _RealVector3& other) const { return other * dot(other); }
 };
 
-//*********************************************************************************************************************/
+//====================================================================================================================//
 
 /** 3-dimensional mathematical vector containing integers. */
-template <typename Integer, ENABLE_IF_INT(Integer)>
-struct _IntVector3 : public detail::Arithmetic<_IntVector3<Integer>, Integer, 3> {
+template <typename INTEGER, ENABLE_IF_INT(INTEGER)>
+struct _IntVector3 : public detail::Arithmetic<_IntVector3<INTEGER>, INTEGER, 3> {
 
-    // explitic forwards
-    using super   = detail::Arithmetic<_IntVector3<Integer>, Integer, 3>;
-    using value_t = typename super::value_t;
-    using super::data;
+    /// @brief Element type.
+    using element_t = INTEGER;
 
-    /* Constructors ***************************************************************************************************/
+    /// @brief Arithmetic base type.
+    using super_t = detail::Arithmetic<_IntVector3<INTEGER>, INTEGER, 3>;
 
-    /** Default (non-initializing) constructor so this struct remains a POD */
+    // members -------------------------------------------------------------------------------------------------------//
+    using super_t::data;
+
+    // methods -------------------------------------------------------------------------------------------------------//
+    /// @brief Default constructor.
     _IntVector3() = default;
 
-    /** Perforect forwarding constructor. */
-    template <typename... T>
-    _IntVector3(T&&... ts)
-        : super{std::forward<T>(ts)...} {}
+    /// @brief Element-wise constructor.
+    /// @param x    First component.
+    /// @param y    Second component (default is 0).
+    /// @param z    Third component (default is 0).
+    _IntVector3(const element_t x, const element_t y = 0, const element_t z = 0)
+        : super_t{x, y, z} {}
 
-    /* Static Constructors ********************************************************************************************/
-
-    /** Unit Vector3 along the X-axis. */
+    /** Unit vector along the X-axis. */
     static _IntVector3 x_axis() { return _IntVector3(1, 0, 0); }
 
-    /** Unit Vector3 along the Y-axis. */
+    /** Unit vector along the Y-axis. */
     static _IntVector3 y_axis() { return _IntVector3(0, 1, 0); }
 
-    /** Unit Vector3 along the Z-axis. */
+    /** Unit vector along the Z-axis. */
     static _IntVector3 z_axis() { return _IntVector3(0, 0, 1); }
 
-    /*  Inspection  ***************************************************************************************************/
+    /// @brief Read-write access to the first element in the vector.
+    element_t& x() { return data[0]; }
 
-    /** Read-only access to the first element in the vector. */
-    const value_t& x() const { return data[0]; }
+    /// @brief Read-write access to the second element in the vector.
+    element_t& y() { return data[1]; }
 
-    /** Read-only access to the second element in the vector. */
-    const value_t& y() const { return data[1]; }
+    /// @brief Read-write access to the third element in the vector.
+    element_t& z() { return data[2]; }
 
-    /** Read-only access to the third element in the vector. */
-    const value_t& z() const { return data[2]; }
+    /// @brief Read-only access to the first element in the vector.
+    const element_t& x() const { return data[0]; }
 
-    /** Modification **************************************************************************************************/
+    /// @brief Read-only access to the second element in the vector.
+    const element_t& y() const { return data[1]; }
 
-    /** Read-write access to the first element in the vector. */
-    value_t& x() { return data[0]; }
-
-    /** Read-write access to the second element in the vector. */
-    value_t& y() { return data[1]; }
-
-    /** Read-write access to the second element in the vector. */
-    value_t& z() { return data[2]; }
+    /// @brief Read-only access to the third element in the vector.
+    const element_t& z() const { return data[2]; }
 };
 
-//*********************************************************************************************************************/
+//====================================================================================================================//
 
 using Vector3f = _RealVector3<float>;
 using Vector3d = _RealVector3<double>;
 using Vector3i = _IntVector3<int>;
 
-/* Free Functions *****************************************************************************************************/
+//====================================================================================================================//
 
-/** Prints the contents of a Vector3 into a std::ostream.
- * @param os   Output stream, implicitly passed with the << operator.
- * @param vec  Vector3 to print.
- * @return Output stream for further output.
- */
+/// @brief Prints the contents of a vector into a std::ostream.
+/// @param os   Output stream, implicitly passed with the << operator.
+/// @param vec  Vector to print.
+/// @return Output stream for further output.
 std::ostream& operator<<(std::ostream& out, const Vector3f& vec);
 std::ostream& operator<<(std::ostream& out, const Vector3d& vec);
 std::ostream& operator<<(std::ostream& out, const Vector3i& vec);
 
+//====================================================================================================================//
+
+/// @brief Spherical linear interpolation between two vectors.
+/// Travels the torque-minimal path at a constant velocity.
+/// Taken from http://bulletphysics.org/Bullet/BulletFull/neon_2vec__aos_8h_source.html .
+/// @param from      Left Vector, active at fade <= 0.
+/// @param to        Right Vector, active at fade >= 1.
+/// @param blend     Blend value, clamped to [0, 1].
+/// @return          Interpolated vector.
+template <typename element_t>
+_RealVector3<element_t> slerp(const _RealVector3<element_t>& from, const _RealVector3<element_t>& to, element_t blend)
+{
+    blend = clamp(blend, 0., 1.);
+
+    const element_t cos_angle = from.dot(to);
+    element_t scale_0, scale_1;
+    // use linear interpolation if the angle is too small
+    if (cos_angle >= 1 - precision_low<element_t>()) {
+        scale_0 = (1.0f - blend);
+        scale_1 = blend;
+    }
+    // otherwise use spherical interpolation
+    else {
+        const element_t angle           = acos(cos_angle);
+        const element_t recip_sin_angle = 1 / sin(angle);
+
+        scale_0 = (sin(((1.0f - blend) * angle)) * recip_sin_angle);
+        scale_1 = (sin((blend * angle)) * recip_sin_angle);
+    }
+    return (from * scale_0) + (to * scale_1);
+}
+
 } // namespace notf
 
-/* std::hash **********************************************************************************************************/
+//====================================================================================================================//
 
 namespace std {
 

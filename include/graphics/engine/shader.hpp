@@ -16,13 +16,13 @@ template <typename Real, FWD_ENABLE_IF_REAL(Real)>
 struct _RealVector2;
 using Vector2f = _RealVector2<float, true>;
 
-template <typename Real, bool SIMD_SPECIALIZATION, FWD_ENABLE_IF_REAL(Real)>
+template <typename Real, FWD_ENABLE_IF_REAL(Real)>
 struct _RealVector4;
-using Vector4f = _RealVector4<float, false, true>;
+using Vector4f = _RealVector4<float, true>;
 
-template <typename Real, bool SIMD_SPECIALIZATION, FWD_ENABLE_IF_REAL(Real)>
-struct _Xform3;
-using Xform3f = _Xform3<float, false, true>;
+template <typename Real, FWD_ENABLE_IF_REAL(Real)>
+struct _Matrix4;
+using Matrix4f = _Matrix4<float, true>;
 
 class GraphicsContext;
 
@@ -228,6 +228,6 @@ template <>
 void Shader::set_uniform(const std::string&, const Vector4f& value);
 
 template <>
-void Shader::set_uniform(const std::string&, const Xform3f& value);
+void Shader::set_uniform(const std::string&, const Matrix4f& value);
 
 } // namespace notf

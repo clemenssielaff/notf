@@ -16,8 +16,8 @@ namespace notf {
 
 ScreenItem::ScreenItem(ItemContainerPtr container)
     : Item(std::move(container))
-    , m_layout_transform(Xform2f::identity())
-    , m_offset_transform(Xform2f::identity())
+    , m_layout_transform(Matrix3f::identity())
+    , m_offset_transform(Matrix3f::identity())
     , m_claim()
     , m_grant(Size2f::zero())
     , m_size(Size2f::zero())
@@ -32,14 +32,14 @@ ScreenItem::ScreenItem(ItemContainerPtr container)
 }
 
 template <>
-const Xform2f ScreenItem::get_xform<ScreenItem::Space::WINDOW>() const
+const Matrix3f ScreenItem::get_xform<ScreenItem::Space::WINDOW>() const
 {
-    Xform2f result = Xform2f::identity();
+    Matrix3f result = Matrix3f::identity();
     _get_window_transform(result);
     return result;
 }
 
-void ScreenItem::set_offset_xform(const Xform2f transform)
+void ScreenItem::set_offset_xform(const Matrix3f transform)
 {
     if (transform == m_offset_transform) {
         return;
@@ -222,7 +222,7 @@ void ScreenItem::_set_content_aabr(const Aabrf aabr)
     m_content_aabr = std::move(aabr);
 }
 
-void ScreenItem::_set_layout_xform(const Xform2f transform)
+void ScreenItem::_set_layout_xform(const Matrix3f transform)
 {
     if (transform == m_layout_transform) {
         return;
@@ -272,7 +272,7 @@ void ScreenItem::_set_render_layer(const RenderLayerPtr& render_layer)
     _redraw();
 }
 
-void ScreenItem::_get_window_transform(Xform2f& result) const
+void ScreenItem::_get_window_transform(Matrix3f& result) const
 {
     if (const ScreenItem* layout = get_layout()) {
         layout->_get_window_transform(result);
@@ -282,7 +282,7 @@ void ScreenItem::_get_window_transform(Xform2f& result) const
 
 /**********************************************************************************************************************/
 
-Xform2f transformation_between(const ScreenItem* source, const ScreenItem* target)
+Matrix3f transformation_between(const ScreenItem* source, const ScreenItem* target)
 {
     const ScreenItem* common_ancestor = source->get_common_ancestor(target)->get_screen_item();
     if (!common_ancestor) {
@@ -291,16 +291,16 @@ Xform2f transformation_between(const ScreenItem* source, const ScreenItem* targe
         throw std::runtime_error(ss.str());
     }
 
-    Xform2f source_branch = Xform2f::identity();
+    Matrix3f source_branch = Matrix3f::identity();
     for (const ScreenItem* it = source; it != common_ancestor; it = it->get_layout()) {
         source_branch *= it->get_xform<ScreenItem::Space::PARENT>();
     }
 
-    Xform2f target_branch = Xform2f::identity();
+    Matrix3f target_branch = Matrix3f::identity();
     for (const ScreenItem* it = target; it != common_ancestor; it = it->get_layout()) {
         target_branch *= it->get_xform<ScreenItem::Space::PARENT>();
     }
-    target_branch.invert();
+    target_branch.inverse();
 
     source_branch *= target_branch;
     return source_branch;

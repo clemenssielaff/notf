@@ -8,7 +8,7 @@
 
 #include <emmintrin.h>
 
-#include "common/xform3.hpp"
+#include "common/matrix4.hpp"
 
 namespace notf {
 

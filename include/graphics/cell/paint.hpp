@@ -2,7 +2,7 @@
 
 #include "common/color.hpp"
 #include "common/size2.hpp"
-#include "common/xform2.hpp"
+#include "common/matrix3.hpp"
 
 namespace notf {
 
@@ -19,7 +19,7 @@ struct Paint {
 
     /** Value Constructor with a single Color. */
     Paint(Color color)
-        : xform(Xform2f::identity())
+        : xform(Matrix3f::identity())
         , extent()
         , radius(0)
         , feather(1)
@@ -49,7 +49,7 @@ public: // methods
     /** Turns the Paint into a single solid. */
     void set_color(const Color color)
     {
-        xform       = Xform2f::identity();
+        xform       = Matrix3f::identity();
         radius      = 0;
         feather     = 1;
         inner_color = std::move(color);
@@ -58,7 +58,7 @@ public: // methods
 
 public: //  fields
     /** Local transform of the Paint. */
-    Xform2f xform;
+    Matrix3f xform;
 
     /** Extend of the Paint. */
     Size2f extent;

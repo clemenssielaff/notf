@@ -365,7 +365,7 @@ void FlexLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
         const ScreenItem* screen_item = item->get_screen_item();
         if (screen_item && screen_item->get_aabr<Space::PARENT>().contains(local_pos)) {
             Vector2f item_pos = local_pos;
-            screen_item->get_xform<Space::PARENT>().invert().transform(item_pos);
+            screen_item->get_xform<Space::PARENT>().inverse().transform(item_pos);
             ScreenItem::_get_widgets_at(screen_item, item_pos, result);
         }
     }
@@ -663,7 +663,7 @@ Aabrf FlexLayout::_layout_stack(const std::vector<ScreenItem*>& stack, const Siz
                 + cross_align_offset(m_cross_alignment, item_size.width, available.main, /*cross_positive*/ true);
         }
 
-        const Xform2f child_xform = Xform2f::translation(item_pos);
+        const Matrix3f child_xform = Matrix3f::translation(item_pos);
         ScreenItem::_set_layout_xform(child, child_xform);
         ScreenItem::_set_grant(child, item_size);
 

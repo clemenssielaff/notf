@@ -159,8 +159,8 @@ add_sources(TEST_SOURCES test
     test_string_utils.cpp
     test_utils.hpp
     test_vector2.cpp
-    test_xform2.cpp
-    test_xform3.cpp
+    test_matrix3.cpp
+    test_matrix4.cpp
     test_overlayout.cpp
     test_flexlayout.cpp
     test_utils.cpp

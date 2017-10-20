@@ -39,7 +39,7 @@ Paint Paint::create_radial_gradient(const Vector2f& center,
                                     const Color inner_color, const Color outer_color)
 {
     Paint paint;
-    paint.xform         = Xform2f::translation(center);
+    paint.xform         = Matrix3f::translation(center);
     paint.radius        = (inner_radius + outer_radius) * 0.5f;
     paint.feather       = max(1, outer_radius - inner_radius);
     paint.extent.width  = paint.radius;
@@ -54,7 +54,7 @@ Paint Paint::create_box_gradient(const Vector2f& center, const Size2f& extend,
                                  const Color inner_color, const Color outer_color)
 {
     Paint paint;
-    paint.xform         = Xform2f::translation({center.x() + extend.width / 2, center.y() + extend.height / 2});
+    paint.xform         = Matrix3f::translation({center.x() + extend.width / 2, center.y() + extend.height / 2});
     paint.radius        = radius;
     paint.feather       = max(1, feather);
     paint.extent.width  = extend.width / 2;
@@ -69,7 +69,7 @@ Paint Paint::create_texture_pattern(const Vector2f& origin, const Size2f& extend
                                     const float angle, const float alpha)
 {
     Paint paint;
-    paint.xform         = Xform2f::rotation(angle);
+    paint.xform         = Matrix3f::rotation(angle);
     paint.xform[2][0]   = origin.x();
     paint.xform[2][1]   = origin.y();
     paint.extent.width  = extend.width;

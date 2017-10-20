@@ -5,27 +5,25 @@
 
 #include "common/float.hpp"
 #include "common/hash.hpp"
+#include "common/matrix3.hpp"
+#include "common/matrix4.hpp"
 #include "common/meta.hpp"
 #include "common/size2.hpp"
 #include "common/vector2.hpp"
-#include "common/xform2.hpp"
-#include "common/xform3.hpp"
 
 namespace notf {
 
-//*********************************************************************************************************************/
-
-/** A 2D Axis-Aligned-Bounding-Rectangle.
- * Stores two Vectors, the bottom-left and top-right corner.
- * While this does mean that you need to change four instead of two values for repositioning the Aabr, other
- * calculations (like intersections) are faster; and they are usually more relevant.
- */
+/// @brief  A 2D Axis-Aligned-Bounding-Rectangle.
+///
+/// Stores two Vectors, the bottom-left and top-right corner.
+/// While this does mean that you need to change four instead of two values for repositioning the Aabr, other
+/// calculations (like intersections) are faster; and they are usually more relevant.
 template <typename VECTOR2>
 struct _Aabr {
 
     /* Types **********************************************************************************************************/
 
-    using value_t = typename VECTOR2::value_t;
+    using value_t = typename VECTOR2::element_t;
 
     using vector_t = VECTOR2;
 
@@ -534,17 +532,17 @@ struct _Aabr {
     value_t* as_ptr() { return &_min.x(); }
 
     /** Applies a transformation to this Aabr in-place. */
-    template <typename XFORM>
-    _Aabr& transformed_by(const XFORM& xform)
+    template <typename MATRIX>
+    _Aabr& transformed_by(const MATRIX& matrix)
     {
-        typename XFORM::vector_t d0(_min);
-        typename XFORM::vector_t d1(_max);
-        typename XFORM::vector_t d2(vector_t{_min.x(), _max.y()});
-        typename XFORM::vector_t d3(vector_t{_max.x(), _min.y()});
-        xform.transform(d0);
-        xform.transform(d1);
-        xform.transform(d2);
-        xform.transform(d3);
+        typename MATRIX::component_t d0(_min[0], _min[1]);
+        typename MATRIX::component_t d1(_max[0], _max[1]);
+        typename MATRIX::component_t d2(_min.x(), _max.y());
+        typename MATRIX::component_t d3(_max.x(), _min.y());
+        matrix.transform(d0);
+        matrix.transform(d1);
+        matrix.transform(d2);
+        matrix.transform(d3);
         _min.x() = min(d0.x(), d1.x(), d2.x(), d3.x());
         _min.y() = min(d0.y(), d1.y(), d2.y(), d3.y());
         _max.x() = max(d0.x(), d1.x(), d2.x(), d3.x());
@@ -564,24 +562,16 @@ using Aabri = _Aabr<Vector2i>;
 namespace detail {
 
 template <>
-inline Aabrf& transform2(const Xform2f& xform, Aabrf& aabr) { return aabr.transformed_by(xform); }
-template <>
-inline Aabrf transform2(const Xform2f& xform, const Aabrf& aabr) { return aabr.copy().transformed_by(xform); }
+inline Aabrf matrix3_transform(const Matrix3f& xform, const Aabrf& aabr) { return aabr.copy().transformed_by(xform); }
 
 template <>
-inline Aabrd& transform2(const Xform2d& xform, Aabrd& aabr) { return aabr.transformed_by(xform); }
-template <>
-inline Aabrd transform2(const Xform2d& xform, const Aabrd& aabr) { return aabr.copy().transformed_by(xform); }
+inline Aabrd matrix3_transform(const Matrix3d& xform, const Aabrd& aabr) { return aabr.copy().transformed_by(xform); }
 
 template <>
-inline Aabrf& transform3(const Xform3f& xform, Aabrf& aabr) { return aabr.transformed_by(xform); }
-template <>
-inline Aabrf transform3(const Xform3f& xform, const Aabrf& aabr) { return aabr.copy().transformed_by(xform); }
+inline Aabrf transform3(const Matrix4f& xform, const Aabrf& aabr) { return aabr.copy().transformed_by(xform); }
 
 template <>
-inline Aabrd& transform3(const Xform3d& xform, Aabrd& aabr) { return aabr.transformed_by(xform); }
-template <>
-inline Aabrd transform3(const Xform3d& xform, const Aabrd& aabr) { return aabr.copy().transformed_by(xform); }
+inline Aabrd transform3(const Matrix4d& xform, const Aabrd& aabr) { return aabr.copy().transformed_by(xform); }
 
 } // namespace detail
 

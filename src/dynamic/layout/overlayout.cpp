@@ -124,7 +124,7 @@ void Overlayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>
         const ScreenItem* screen_item = item->get_screen_item();
         if (screen_item && screen_item->get_aabr<Space::PARENT>().contains(local_pos)) {
             Vector2f item_pos = local_pos;
-            screen_item->get_xform<Space::PARENT>().invert().transform(item_pos);
+            screen_item->get_xform<Space::PARENT>().inverse().transform(item_pos);
             ScreenItem::_get_widgets_at(screen_item, item_pos, result);
         }
     }
@@ -193,7 +193,7 @@ void Overlayout::_relayout()
             pos.y() = m_padding.bottom;
         }
 
-        const Xform2f item_xform = Xform2f::translation(pos);
+        const Matrix3f item_xform = Matrix3f::translation(pos);
         ScreenItem::_set_layout_xform(screen_item, item_xform);
 
         if (content_aabr.is_zero()) {

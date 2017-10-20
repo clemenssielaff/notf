@@ -6,126 +6,174 @@
 #include "common/hash.hpp"
 
 namespace notf {
+
 namespace detail {
 
-//*********************************************************************************************************************/
+//====================================================================================================================//
 
-/** Helper struct to extract the data type from an element type at compile time. */
-template <typename T, typename = void>
-struct get_value_type {
-    using type = typename T::value_t;
-};
-template <typename T>
-struct get_value_type<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
-    using type = T;
-};
-
-//*********************************************************************************************************************/
-
-/** Base class*/
-template <typename T, typename value_t, typename element_t, size_t dim, typename = void>
+/// @brief Empty base for all arithmetic types.
+///
+/// @paragraph Nomenclature.
+///
+/// A `component` is a single element of the arithmetic type.
+/// In a vector it is a scalar, in a matrix, it is a vector.
+///
+/// An `element` on the other hand is always a scalar.
+/// In a vector, the element is equivalent to a component, in a matrix, the element is a component of a component.
+///
+/// @paragraph Design.
+///
+///                        ArithmeticImpl (empty template)
+///
+///                          /                        \
+///                    specializes                specializes
+///                         |                          |
+///
+///               ArithmeticImpl (vector)        ArithmeticImpl (matrix)
+///
+///                              \                  /
+///                             either           ...or
+///                                \              /
+///
+///                            Arithmetic (common base)
+///
+///                                       |
+///                                  specializes
+///                                       |
+///
+///                               Value type<element_t>
+///
+///                                       |
+///                                    typedef
+///                                       |
+///
+///                               Concrete value type
+///
+template <typename self_t, typename element_t, typename component_t, size_t dim, typename = void>
 struct ArithmeticImpl;
 
-/** Base class for all arithmetic types that contain only scalars.
- * Some operations (like normalize) are only defined for vectors, not matrices.
- */
-template <typename T, typename value_t, typename element_t, size_t dim>
-struct ArithmeticImpl<T, value_t, element_t, dim, std::enable_if_t<std::is_same<value_t, element_t>::value>> {
+//====================================================================================================================//
 
-    /** Value data array. */
-    std::array<element_t, dim> data;
+/// @brief Base for all arithmetic types that contain only scalars (i.e. vectors).
+template <typename self_t, typename element_t, typename component_t, size_t dim>
+struct ArithmeticImpl<self_t, element_t, component_t, dim,
+                      std::enable_if_t<std::is_same<element_t, component_t>::value>> {
 
+    // members -------------------------------------------------------------------------------------------------------//
+    /// @brief Value data array.
+    std::array<component_t, dim> data;
+
+    // methods -------------------------------------------------------------------------------------------------------//
+    /// @brief Default constructor.
     ArithmeticImpl() = default;
 
-    /** Perfect forwarding constructor. */
+    /// @brief Perfect forwarding constructor.
     template <typename... ARGS>
     ArithmeticImpl(ARGS&&... args)
         : data{std::forward<ARGS>(args)...} {}
 
-public: // methods
-    /** Returns an instance with all elements set to the given value. */
-    static T fill(value_t value)
+    ArithmeticImpl(std::array<component_t, dim> data)
+        : data(std::move(data)) {}
+
+    /// @brief Create a vector with all elements set to the given value.
+    /// @param value    Value to set.
+    static self_t fill(const element_t value)
     {
-        T result;
+        self_t result;
         result.data.fill(value);
         return result;
     }
 
-    /** Checks whether this value is of unit magnitude. */
-    bool is_unit() const { return abs(magnitude_sq() - 1) <= precision_high<value_t>(); }
+    /// @brief Number of components in this vector.
+    static constexpr size_t size() { return dim; }
 
-    /** Returns the squared magnitude of this value. */
-    value_t magnitude_sq() const
+    /// @brief Check whether this vector is of unit magnitude.
+    bool is_unit() const { return abs(magnitude_sq() - 1) <= precision_high<element_t>(); }
+
+    /// @brief Calculate the squared magnitude of this vector.
+    element_t magnitude_sq() const
     {
-        value_t result = 0;
+        element_t result = 0;
         for (size_t i = 0; i < dim; ++i) {
             result += data[i] * data[i];
         }
         return result;
     }
 
-    /** Returns the magnitude of this value. */
-    value_t magnitude() const { return sqrt(magnitude_sq()); }
+    /// @brief Returns the magnitude of this vector.
+    element_t magnitude() const { return sqrt(magnitude_sq()); }
 
-    /** A normalized copy of this value. */
-    T normalize() const
+    /// @brief Calculate a normalized copy of this vector.
+    self_t normalize() const
     {
-        const value_t mag_sq = magnitude_sq();
-        if (abs(mag_sq - 1) <= precision_high<value_t>()) {
-            T result;
+        const element_t mag_sq = magnitude_sq();
+        if (abs(mag_sq - 1) <= precision_high<element_t>()) {
+            self_t result; // is unit
             result.data = data;
-            return result; // is unit
+            return result;
         }
-        if (abs(mag_sq) <= precision_high<value_t>()) {
-            return T::zero(); // is zero
+        if (abs(mag_sq) <= precision_high<element_t>()) {
+            return self_t::zero(); // is zero
         }
-        return *reinterpret_cast<const T*>(this) / sqrt(mag_sq);
+        return *reinterpret_cast<const self_t*>(this) / sqrt(mag_sq);
     }
 
-protected: // methods
-    static constexpr size_t size() { return dim; }
+    /// @brief Returns the dot product of this vector and another.
+    /// @param other     Other vector.
+    element_t dot(const self_t& other) const
+    {
+        const self_t tmp = *reinterpret_cast<const self_t*>(this) * other;
+        element_t result = 0;
+        for (size_t i = 0; i < dim; ++i) {
+            result += tmp[i];
+        }
+        return result;
+    }
 
-    void set_all(const value_t value)
+    /// @brief Checks whether this vector is orthogonal to the other.
+    /// @note The zero vector is orthogonal to every other vector.
+    /// @param other     Vector to test against.
+    bool is_orthogonal_to(const self_t& other) const
+    {
+        // normalization required for large absolute differences in vector lengths
+        const self_t this_norm  = normalize();
+        const self_t other_norm = other.normalize();
+        return abs(this_norm.dot(other_norm)) <= precision_high<element_t>();
+    }
+
+    /// @brief Set all components of this vector to the given value.
+    /// @param value    Value to set.
+    self_t& set_all(const element_t value)
     {
         for (size_t i = 0; i < dim; ++i) {
             data[i] = value;
         }
+        return *reinterpret_cast<self_t*>(this);
     }
 
-    T& max(const T& other)
+    /// @brief Calulate the a component-wise maximum of this and the other vector.
+    /// @param other    Other vector to max against.
+    self_t max(const self_t& other) const
     {
+        self_t result;
         for (size_t i = 0; i < dim; ++i) {
-            data[i] = notf::max(data[i], other[i]);
-        }
-        return *reinterpret_cast<T*>(this);
-    }
-
-    T max(const T& other) const
-    {
-        T result;
-        for (size_t i = 0; i < dim; ++i) {
-            result[i] = notf::max(data[i], other[i]);
+            result[i] = std::max(data[i], other[i]);
         }
         return result;
     }
 
-    T& min(const T& other)
+    /// @brief Calulate the a component-wise minimum of this and the other vector.
+    /// @param other    Other vector to min against.
+    self_t min(const self_t& other) const
     {
+        self_t result;
         for (size_t i = 0; i < dim; ++i) {
-            data[i] = notf::min(data[i], other[i]);
-        }
-        return *reinterpret_cast<T*>(this);
-    }
-
-    T min(const T& other) const
-    {
-        T result;
-        for (size_t i = 0; i < dim; ++i) {
-            result[i] = notf::min(data[i], other[i]);
+            result[i] = std::min(data[i], other[i]);
         }
         return result;
     }
 
+    /// @brief Tests whether all components of this vector are real values (not NAN, not INFINITY).
     bool is_real() const
     {
         for (size_t i = 0; i < dim; ++i) {
@@ -136,7 +184,9 @@ protected: // methods
         return true;
     }
 
-    bool is_zero(const value_t epsilon = precision_high<value_t>()) const
+    /// @brief Tests whether all components of this vector are close to or equal to, zero.
+    /// @param epsilon  Largest ignored difference.
+    bool is_zero(const element_t epsilon = precision_high<element_t>()) const
     {
         for (size_t i = 0; i < dim; ++i) {
             if (abs(data[i]) > epsilon) {
@@ -146,7 +196,9 @@ protected: // methods
         return true;
     }
 
-    bool contains_zero(const value_t epsilon = precision_high<value_t>()) const
+    /// @brief Tests whether any of the components of this vector is close to or equal to, zero.
+    /// @param epsilon  Largest ignored difference.
+    bool contains_zero(const element_t epsilon = precision_high<element_t>()) const
     {
         for (size_t i = 0; i < dim; ++i) {
             if (abs(data[i]) <= epsilon) {
@@ -156,7 +208,10 @@ protected: // methods
         return false;
     }
 
-    bool is_approx(const T& other, const value_t epsilon = precision_high<value_t>()) const
+    /// @brief Tests whether this vector is component-wise close to the other.
+    /// @param other    Other vector to test against.
+    /// @param epsilon  Largest ignored difference.
+    bool is_approx(const self_t& other, const element_t epsilon = precision_high<element_t>()) const
     {
         for (size_t i = 0; i < dim; ++i) {
             if (abs(data[i] - other[i]) > epsilon) {
@@ -166,81 +221,80 @@ protected: // methods
         return true;
     }
 
-    const value_t* as_ptr() const { return &data[0]; }
+    /// @brief Raw pointer to the first address of the vector's data.
+    element_t* as_ptr() { return &data[0]; }
 
-    value_t* as_ptr() { return &data[0]; }
+    /// @brief Raw const pointer to the first address of the vector's data.
+    const element_t* as_ptr() const { return &data[0]; }
 };
 
-/** Vectors containing other vectors. */
-template <typename T, typename value_t, typename element_t, size_t dim>
-struct ArithmeticImpl<T, value_t, element_t, dim, std::enable_if_t<!std::is_same<value_t, element_t>::value>> {
+//====================================================================================================================//
 
-    /** Value data array. */
-    std::array<element_t, dim> data;
+/// @brief Base for all arithmetic types that contain vectors (i.e. matrices).
+template <typename self_t, typename element_t, typename component_t, size_t dim>
+struct ArithmeticImpl<self_t, element_t, component_t, dim,
+                      std::enable_if_t<!std::is_same<element_t, component_t>::value>> {
 
+    // members -------------------------------------------------------------------------------------------------------//
+    /// @brief Value data array.
+    std::array<component_t, dim> data;
+
+    // methods -------------------------------------------------------------------------------------------------------//
+    /// @brief Default constructor.
     ArithmeticImpl() = default;
 
-    /** Perfect forwarding constructor. */
+    /// @brief Perfect forwarding constructor.
     template <typename... ARGS>
     ArithmeticImpl(ARGS&&... args)
         : data{std::forward<ARGS>(args)...} {}
 
-public: // methods
-    /** Returns an instance with all elements set to the given value. */
-    static T fill(value_t value)
+    /// @brief Create a matrix with all elements set to the given value.
+    /// @param value    Value to set.
+    static self_t fill(const element_t value)
     {
-        T result;
-        using Element = element_t;
+        self_t result;
         for (size_t i = 0; i < dim; ++i) {
-            result[i] = Element::fill(value);
+            result[i].set_all(value);
         }
         return result;
     }
 
-protected: // methods
-    static constexpr size_t size() { return dim * element_t::size(); }
+    /// @brief Number of elements in this matrix.
+    static constexpr size_t size() { return dim * component_t::size(); }
 
-    void set_all(const value_t value)
+    /// @brief Set all elements of this matrix to the given value.
+    /// @param value    Value to set.
+    self_t& set_all(const element_t value)
     {
         for (size_t i = 0; i < dim; ++i) {
             data[i].set_all(value);
         }
+        return *reinterpret_cast<self_t*>(this);
     }
 
-    T& max(const T& other)
+    /// @brief Calulate the a element-wise maximum of this and the other matrix.
+    /// @param other    Other matrix to max against.
+    self_t max(const self_t& other) const
     {
-        for (size_t i = 0; i < dim; ++i) {
-            data[i].max(other[i]);
-        }
-        return *reinterpret_cast<T*>(this);
-    }
-
-    T max(const T& other) const
-    {
-        T result;
+        self_t result;
         for (size_t i = 0; i < dim; ++i) {
             result[i] = data[i].max(other[i]);
         }
         return result;
     }
 
-    T& min(const T& other)
+    /// @brief Calulate the a element-wise minimum of this and the other matrix.
+    /// @param other    Other matrix to min against.
+    self_t min(const self_t& other) const
     {
-        for (size_t i = 0; i < dim; ++i) {
-            data[i].min(other[i]);
-        }
-        return *reinterpret_cast<T*>(this);
-    }
-
-    T min(const T& other) const
-    {
-        T result;
+        self_t result;
         for (size_t i = 0; i < dim; ++i) {
             result[i] = data[i].min(other[i]);
         }
         return result;
     }
 
+    /// @brief Tests whether all elements of this matrix are real values (not NAN, not INFINITY).
     bool is_real() const
     {
         for (size_t i = 0; i < dim; ++i) {
@@ -251,7 +305,9 @@ protected: // methods
         return true;
     }
 
-    bool is_zero(const value_t epsilon = precision_high<value_t>()) const
+    /// @brief Tests whether all elements of this matrix are close to, or equal to, zero.
+    /// @param epsilon  Largest ignored difference.
+    bool is_zero(const element_t epsilon = precision_high<element_t>()) const
     {
         for (size_t i = 0; i < dim; ++i) {
             if (!data[i].is_zero(epsilon)) {
@@ -261,7 +317,9 @@ protected: // methods
         return true;
     }
 
-    bool contains_zero(const value_t epsilon = precision_high<value_t>()) const
+    /// @brief Tests whether any of the elements of this matrix is close to, or equal to, zero.
+    /// @param epsilon  Largest ignored difference.
+    bool contains_zero(const element_t epsilon = precision_high<element_t>()) const
     {
         for (size_t i = 0; i < dim; ++i) {
             if (data[i].contains_zero(epsilon)) {
@@ -271,7 +329,10 @@ protected: // methods
         return false;
     }
 
-    bool is_approx(const T& other, const value_t epsilon = precision_high<value_t>()) const
+    /// @brief Tests whether this matrix is element-wise close to the other.
+    /// @param other    Other matrix to test against.
+    /// @param epsilon  Largest ignored difference.
+    bool is_approx(const self_t& other, const element_t epsilon = precision_high<element_t>()) const
     {
         for (size_t i = 0; i < dim; ++i) {
             if (!data[i].is_approx(other[i], epsilon)) {
@@ -281,85 +342,63 @@ protected: // methods
         return true;
     }
 
-    const value_t* as_ptr() const { return data[0].as_ptr(); }
+    /// @brief Raw pointer to the first address of the matrix's data.
+    element_t* as_ptr() { return data[0].as_ptr(); }
 
-    value_t* as_ptr() { return data[0].as_ptr(); }
+    /// @brief Raw const pointer to the first address of the matrix's data.
+    const element_t* as_ptr() const { return data[0].as_ptr(); }
 };
 
-//*********************************************************************************************************************/
+//====================================================================================================================//
 
-/** Base class for all arithmetic value types.
- *
- * The Arithmetic base class provides naive implementations of each operation.
- * You can override specific functionality for value-specific behaviour or to make use of SIMD instructions.
- */
-template <typename SPECIALIZATION, typename ELEMENT, size_t DIMENSIONS, bool SIMD_SPECIALIZATION = false>
-struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_type<ELEMENT>::type, ELEMENT, DIMENSIONS> {
+/// @brief Helper struct to extract the element type from a component type at compile time.
+template <typename T, typename = void>
+struct get_element_type {
+    using type = typename T::element_t;
+};
+template <typename T>
+struct get_element_type<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
+    using type = T;
+};
 
-    /* Types **********************************************************************************************************/
+/// @brief Base for all arithmetic value types.
+///
+/// The Arithmetic base class provides naive implementations of each operation.
+/// You can override specific functionality for value-specific behaviour or to make use of SIMD instructions.
+template <typename SELF, typename COMPONENT, size_t DIMENSIONS>
+struct Arithmetic : public ArithmeticImpl<SELF, typename get_element_type<COMPONENT>::type, COMPONENT, DIMENSIONS> {
 
-    using implementation = ArithmeticImpl<SPECIALIZATION, typename get_value_type<ELEMENT>::type, ELEMENT, DIMENSIONS>;
+    /// @brief Component type.
+    using component_t = COMPONENT;
 
-    /** Element type.
-     * In a vector, this is equal to value_t, in a matrix this is the vector type.
-     */
-    using element_t = ELEMENT;
+    /// @brief Element type.
+    using element_t = typename get_element_type<component_t>::type;
 
-    /** Data type. */
-    using value_t = typename get_value_type<ELEMENT>::type;
+    /// @brief Actual type constructed through this template.
+    using self_t = SELF;
 
-    using implementation::data;
+    /// @brief Base type, different for vectors and matrices.
+    using super_t = ArithmeticImpl<self_t, element_t, component_t, DIMENSIONS>;
 
-    /* Constructors ***************************************************************************************************/
+    // members -------------------------------------------------------------------------------------------------------//
+    using super_t::data;
 
-    /** Default (non-initializing) constructor so this struct remains a POD */
+    // methods -------------------------------------------------------------------------------------------------------//
+    /// @brief Default constructor.
     Arithmetic() = default;
 
-    /** Perfect forwarding constructor. */
+    /// @brief Perfect forwarding constructor.
     template <typename... T>
     Arithmetic(T&&... ts)
-        : implementation{std::forward<T>(ts)...} {}
+        : super_t{std::forward<T>(ts)...} {}
 
-    /* Static Constructors ********************************************************************************************/
+    /// @brief Set all elements to zero.
+    static self_t zero() { return super_t::fill(0); }
 
-    /** Set all elements to zero. */
-    static SPECIALIZATION zero() { return implementation::fill(0); }
+    /// @brief Creates a copy of this instance.
+    self_t copy() const { return *this; }
 
-    /* Inspection  ****************************************************************************************************/
-
-    /** Dimensions of the value. */
-    static constexpr size_t size() { return implementation::size(); }
-
-    /** Creates a copy of this instance. */
-    SPECIALIZATION copy() const { return *this; }
-
-    /** Checks, if this value contains only real, finite values (no INFINITY or NAN). */
-    bool is_real() const { return implementation::is_real(); }
-
-    /** Returns true if all elements are (approximately) zero.
-     * @param epsilon   Largest difference that is still considered to be zero.
-     */
-    bool is_zero(const value_t epsilon = precision_high<value_t>()) const
-    {
-        return implementation::is_zero(epsilon);
-    }
-
-    /** Checks, if any element of this value is (approximately) zero. */
-    bool contains_zero(const value_t epsilon = precision_high<value_t>()) const
-    {
-        return implementation::contains_zero(epsilon);
-    }
-
-    /** Component-wise check if this value is approximately the same as another.
-     * @param other     Value to test against.
-     * @param epsilon   Maximal allowed distance between the two values.
-     */
-    bool is_approx(const SPECIALIZATION& other, const value_t epsilon = precision_high<value_t>()) const
-    {
-        return implementation::is_approx(other, epsilon);
-    }
-
-    /** Calculates and returns the hash of this value. */
+    /// @brief Calculates and returns the hash of this value.
     size_t hash() const
     {
         std::size_t result = 0;
@@ -369,54 +408,44 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
         return result;
     }
 
-    /** Checks whether two values are equal. */
-    bool operator==(const SPECIALIZATION& other) const { return data == other.data; }
-
-    /** Checks whether two values are not equal. */
-    bool operator!=(const SPECIALIZATION& other) const { return data != other.data; }
-
-    /** Read-only reference to an element of this value by index. */
-    const element_t& operator[](const size_t index) const
+    /// @brief Read-write reference to a component of this value by index.
+    /// @param index    Index of the requested component.
+    component_t& operator[](const size_t index)
     {
         assert(index < DIMENSIONS);
         return data[index];
     }
 
-    /** Read-only pointer to the value's internal storage. */
-    const value_t* as_ptr() const { return implementation::as_ptr(); }
-
-    /** The contents of this value as an array. */
-    const std::array<value_t, size()>& as_array() const
-    {
-        return *reinterpret_cast<const std::array<value_t, size()>*>(as_ptr());
-    }
-
-    /** Modification **************************************************************************************************/
-
-    /** Read-write reference to an element of this value by index. */
-    element_t& operator[](const size_t index)
+    /// @brief Read-only reference to a component of this value by index.
+    /// @param index    Index of the requested component.
+    const component_t& operator[](const size_t index) const
     {
         assert(index < DIMENSIONS);
         return data[index];
     }
 
-    /** Read-write pointer to the value's internal storage. */
-    value_t* as_ptr() { return implementation::as_ptr(); }
-
-    /** Set all elements of this value. */
-    SPECIALIZATION& set_all(const value_t value)
+    /// @brief The contents of this value as a const array.
+    const std::array<element_t, super_t::size()>& as_array() const
     {
-        implementation::set_all(value);
-        return _specialized_this();
+        return *reinterpret_cast<const std::array<element_t, super_t::size()>*>(super_t::as_ptr());
     }
 
-    /** Set all elements to zero. */
-    SPECIALIZATION& set_zero() { return set_all(0); }
+    /// @brief Set all elements to zero.
+    self_t& set_zero() { return super_t::set_all(0); }
 
-    /** The sum of this value with another one. */
-    SPECIALIZATION operator+(const SPECIALIZATION& other) const
+    /// @brief Equality operator.
+    /// @param other    Value to test against.
+    bool operator==(const self_t& other) const { return data == other.data; }
+
+    /// @brief Inequality operator.
+    /// @param other    Value to test against.
+    bool operator!=(const self_t& other) const { return data != other.data; }
+
+    /// @brief Sum of this value with other.
+    /// @param other    Summand.
+    self_t operator+(const self_t& other) const
     {
-        SPECIALIZATION result;
+        self_t result;
         result.data = data;
         for (size_t i = 0; i < DIMENSIONS; ++i) {
             result[i] += other[i];
@@ -424,8 +453,9 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
         return result;
     }
 
-    /** In-place addition of another value. */
-    SPECIALIZATION& operator+=(const SPECIALIZATION& other)
+    /// @brief In-place addition of other to this.
+    /// @param other    Other summand.
+    self_t& operator+=(const self_t& other)
     {
         for (size_t i = 0; i < DIMENSIONS; ++i) {
             data[i] += other[i];
@@ -433,10 +463,11 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
         return _specialized_this();
     }
 
-    /** The difference between this value and another one. */
-    SPECIALIZATION operator-(const SPECIALIZATION& other) const
+    /// @brief Difference between this value and other.
+    /// @param other    Subtrahend.
+    self_t operator-(const self_t& other) const
     {
-        SPECIALIZATION result;
+        self_t result;
         result.data = data;
         for (size_t i = 0; i < DIMENSIONS; ++i) {
             result[i] -= other[i];
@@ -444,8 +475,9 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
         return result;
     }
 
-    /** In-place subtraction of another value. */
-    SPECIALIZATION& operator-=(const SPECIALIZATION& other)
+    /// @brief The in-place difference between this value and other.
+    /// @param other    Subtrahend.
+    self_t& operator-=(const self_t& other)
     {
         for (size_t i = 0; i < DIMENSIONS; ++i) {
             data[i] -= other[i];
@@ -453,10 +485,11 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
         return _specialized_this();
     }
 
-    /** Component-wise multiplication of this value with another. */
-    SPECIALIZATION operator*(const SPECIALIZATION& other) const
+    /// @brief Component-wise multiplication of this value with other.
+    /// @param other    Value to multiply with.
+    self_t operator*(const self_t& other) const
     {
-        SPECIALIZATION result;
+        self_t result;
         result.data = data;
         for (size_t i = 0; i < DIMENSIONS; ++i) {
             result[i] *= other[i];
@@ -464,8 +497,9 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
         return result;
     }
 
-    /** In-place component-wise multiplication with another value. */
-    SPECIALIZATION& operator*=(const SPECIALIZATION& other)
+    /// @brief In-place component-wise multiplication with another value.
+    /// @param other    Value to multiply with.
+    self_t& operator*=(const self_t& other)
     {
         for (size_t i = 0; i < DIMENSIONS; ++i) {
             data[i] *= other[i];
@@ -473,10 +507,11 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
         return _specialized_this();
     }
 
-    /** Multiplication of this value with a scalar. */
-    SPECIALIZATION operator*(const value_t factor) const
+    /// @brief Multiplication of this value with a scalar.
+    /// @param factor   Factor to multiply with.
+    self_t operator*(const element_t factor) const
     {
-        SPECIALIZATION result;
+        self_t result;
         result.data = data;
         for (size_t i = 0; i < DIMENSIONS; ++i) {
             result[i] *= factor;
@@ -484,8 +519,9 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
         return result;
     }
 
-    /** In-place multiplication with a scalar. */
-    SPECIALIZATION& operator*=(const value_t factor)
+    /// @brief In-place multiplication of this value with a scalar.
+    /// @param factor   Factor to multiply with.
+    self_t& operator*=(const element_t factor)
     {
         for (size_t i = 0; i < DIMENSIONS; ++i) {
             data[i] *= factor;
@@ -493,10 +529,11 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
         return _specialized_this();
     }
 
-    /** Component-wise division of this value by another. */
-    SPECIALIZATION operator/(const SPECIALIZATION& other) const
+    /// @brief Component-wise division of this value by other.
+    /// @param other    Value to divide by.
+    self_t operator/(const self_t& other) const
     {
-        SPECIALIZATION result;
+        self_t result;
         result.data = data;
         for (size_t i = 0; i < DIMENSIONS; ++i) {
             result[i] /= other[i];
@@ -504,8 +541,9 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
         return result;
     }
 
-    /** In-place component-wise division by another value. */
-    SPECIALIZATION& operator/=(const SPECIALIZATION& other)
+    /// @brief In-place component-wise division of this value by other.
+    /// @param other    Value to divide by.
+    self_t& operator/=(const self_t& other)
     {
         for (size_t i = 0; i < DIMENSIONS; ++i) {
             data[i] /= other[i];
@@ -513,10 +551,11 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
         return _specialized_this();
     }
 
-    /** Division of this value by a scalar. */
-    SPECIALIZATION operator/(const value_t divisor) const
+    /// @brief Division of this value by a scalar.
+    /// @param divisor  Divisor to divide by.
+    self_t operator/(const element_t divisor) const
     {
-        SPECIALIZATION result;
+        self_t result;
         result.data = data;
         for (size_t i = 0; i < DIMENSIONS; ++i) {
             result[i] /= divisor;
@@ -524,8 +563,9 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
         return result;
     }
 
-    /** In-place division by a scalar. */
-    SPECIALIZATION& operator/=(const value_t divisor)
+    /// @brief In-place division of this value by a scalar.
+    /// @param divisor  Divisor to divide by.
+    self_t& operator/=(const element_t divisor)
     {
         for (size_t i = 0; i < DIMENSIONS; ++i) {
             data[i] /= divisor;
@@ -533,34 +573,25 @@ struct Arithmetic : public ArithmeticImpl<SPECIALIZATION, typename get_value_typ
         return _specialized_this();
     }
 
-    /** The inverted value. */
-    SPECIALIZATION operator-() const { return *this * -1; }
+    /// @brief The inverted value.
+    self_t operator-() const { return *this * -1; }
 
-    SPECIALIZATION max(const SPECIALIZATION& other) const
-    {
-        return implementation::max(other);
-    }
-
-    SPECIALIZATION min(const SPECIALIZATION& other) const
-    {
-        return implementation::min(other);
-    }
-
-protected: // methods
-    constexpr SPECIALIZATION& _specialized_this() { return *reinterpret_cast<SPECIALIZATION*>(this); }
+protected:
+    /// @brief Helper function converting this template into a concrete instance of the actual type.
+    constexpr self_t& _specialized_this() { return *reinterpret_cast<self_t*>(this); }
 };
 
 } // namespace detail
 
-// Free Functions *****************************************************************************************************/
+//====================================================================================================================//
 
-/** Linear interpolation between two values.
- * @param from    Left Vector, full weight at blend <= 0.
- * @param to      Right Vector, full weight at blend >= 1.
- * @param blend   Blend value, clamped to range [0, 1].
- */
-template <typename T>
-T lerp(const T& from, const T& to, const typename T::value_t blend)
+/// @brief Linear interpolation between two values.
+///
+/// @param from    Left value, full weight at blend <= 0.
+/// @param to      Right value, full weight at blend >= 1.
+/// @param blend   Blend value, clamped to range [0, 1].
+template <typename value_t>
+value_t lerp(const value_t& from, const value_t& to, const typename value_t::element_t blend)
 {
     if (blend <= 0) {
         return from;

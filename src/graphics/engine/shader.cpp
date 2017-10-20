@@ -9,7 +9,7 @@
 #include "common/system.hpp"
 #include "common/vector2.hpp"
 #include "common/vector4.hpp"
-#include "common/xform3.hpp"
+#include "common/matrix4.hpp"
 #include "core/opengl.hpp"
 #include "graphics/engine/gl_errors.hpp"
 #include "graphics/engine/gl_utils.hpp"
@@ -490,7 +490,7 @@ void Shader::set_uniform(const std::string& name, const Vector4f& value)
 }
 
 template <>
-void Shader::set_uniform(const std::string& name, const Xform3f& value)
+void Shader::set_uniform(const std::string& name, const Matrix4f& value)
 {
     const Variable& uniform = _uniform(name);
     Scope _(this);

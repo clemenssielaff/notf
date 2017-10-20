@@ -72,7 +72,7 @@ public: // methods
     }
 
     /** Paints a given Cell with some base settings. */
-    void paint(Cell& cell, Xform2f base_xform, Scissor base_scissor, float base_alpha);
+    void paint(Cell& cell, Matrix3f base_xform, Scissor base_scissor, float base_alpha);
 
 private: // methods
     /** Paints a given Cell.*/
@@ -213,7 +213,7 @@ public: // fields
     Aabrf m_bounds;
 
     /** First Xform applied all paint operations. */
-    Xform2f m_base_xform;
+    Matrix3f m_base_xform;
 
     /** Scissor applied to all paint operations. */
     Scissor m_base_scissor;

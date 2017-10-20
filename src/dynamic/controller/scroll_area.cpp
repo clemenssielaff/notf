@@ -168,15 +168,15 @@ void ScrollArea::_update_scrollbar(float delta_y)
     if (overflow >= 0.5f) {
 
         const float min_y           = content_height - area_height;
-        const float container_y     = m_scroll_container->get_xform<ScreenItem::Space::OFFSET>().get_translation().y();
+        const float container_y     = m_scroll_container->get_xform<ScreenItem::Space::OFFSET>().translation().y();
         const float new_container_y = max(0, min(min_y, container_y - delta_y));
-        m_scroll_container->set_offset_xform(Xform2f::translation(Vector2f(0, new_container_y)));
+        m_scroll_container->set_offset_xform(Matrix3f::translation(Vector2f(0, new_container_y)));
 
         m_vscrollbar->size = area_height / content_height;
         m_vscrollbar->pos  = new_container_y / min_y;
     }
     else {
-        m_scroll_container->set_offset_xform(Xform2f::identity());
+        m_scroll_container->set_offset_xform(Matrix3f::identity());
         m_vscrollbar->size = 1;
         m_vscrollbar->pos  = 0;
     }

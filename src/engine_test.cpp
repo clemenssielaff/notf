@@ -3,6 +3,7 @@
 #include "common/half.hpp"
 #include "common/log.hpp"
 #include "common/size2.hpp"
+#include "common/vector3.hpp"
 #include "common/warnings.hpp"
 #include "core/glfw.hpp"
 #include "graphics/engine/graphics_context.hpp"
@@ -19,31 +20,35 @@ using namespace notf;
 namespace {
 
 struct VertexPos {
-    constexpr static auto name    = "a_position";
-    using type                    = float;
-    constexpr static size_t count = 4;
-    using kind                    = AttributeKind::Position;
+    constexpr static auto name     = "a_position";
+    using type                     = float;
+    constexpr static size_t countt = 4;
+    using mytype                   = Vector4f;
+    using kind                     = AttributeKind::Position;
 };
 
 struct VertexNormal {
-    constexpr static auto name    = "a_normal";
-    using type                    = float;
-    constexpr static size_t count = 4;
-    using kind                    = AttributeKind::Normal;
+    constexpr static auto name     = "a_normal";
+    using type                     = float;
+    constexpr static size_t countt = 4;
+    using mytype                   = Vector4f;
+    using kind                     = AttributeKind::Normal;
 };
 
 struct VertexTexCoord {
-    constexpr static auto name    = "a_texcoord";
-    using type                    = float;
-    constexpr static size_t count = 2;
-    using kind                    = AttributeKind::TexCoord;
+    constexpr static auto name     = "a_texcoord";
+    using type                     = float;
+    constexpr static size_t countt = 2;
+    using mytype                   = Vector2f;
+    using kind                     = AttributeKind::TexCoord;
 };
 
 struct InstanceXform {
-    constexpr static auto name    = "i_xform";
-    using type                    = float;
-    constexpr static size_t count = 16;
-    using kind                    = AttributeKind::Other;
+    constexpr static auto name     = "i_xform";
+    using type                     = float;
+    constexpr static size_t countt = 16;
+    using mytype                   = Matrix4f;
+    using kind                     = AttributeKind::Other;
 };
 }
 
@@ -86,19 +91,19 @@ void render_thread(GLFWwindow* window)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-    // bind renderbuffer and create a 16-bit depth buffer
-    // width and height of renderbuffer = width and height of
-    // the texture
-    GLuint depthRenderbuffer;
-    glGenRenderbuffers(1, &depthRenderbuffer);
-    glBindRenderbuffer(GL_RENDERBUFFER, depthRenderbuffer);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, texWidth, texHeight);
+    //    // bind renderbuffer and create a 16-bit depth buffer
+    //    // width and height of renderbuffer = width and height of
+    //    // the texture
+    //    GLuint depthRenderbuffer;
+    //    glGenRenderbuffers(1, &depthRenderbuffer);
+    //    glBindRenderbuffer(GL_RENDERBUFFER, depthRenderbuffer);
+    //    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, texWidth, texHeight);
 
     // specify texture as color attachment
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderTexture, 0);
 
     // specify depth_renderbuffer as depth attachment
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthRenderbuffer);
+    //    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthRenderbuffer);
 
     // check for framebuffer complete
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -136,16 +141,16 @@ void render_thread(GLFWwindow* window)
     }
 
     auto box1    = box_type->create_instance();
-    box1->data() = std::make_tuple(Xform3f::translation(-500, 500, -1000).as_array());
+    box1->data() = std::make_tuple(Matrix4f::translation(-500, 500, -1000).as_array());
 
     auto box2    = box_type->create_instance();
-    box2->data() = std::make_tuple(Xform3f::translation(500, 500, -1000).as_array());
+    box2->data() = std::make_tuple(Matrix4f::translation(500, 500, -1000).as_array());
 
     auto box3    = box_type->create_instance();
-    box3->data() = std::make_tuple(Xform3f::translation(-500, -500, -1000).as_array());
+    box3->data() = std::make_tuple(Matrix4f::translation(-500, -500, -1000).as_array());
 
     auto box4    = box_type->create_instance();
-    box4->data() = std::make_tuple(Xform3f::translation(500, -500, -1000).as_array());
+    box4->data() = std::make_tuple(Matrix4f::translation(500, -500, -1000).as_array());
 
     //    auto some_stick = stick_type->create_instance();
 
@@ -156,7 +161,7 @@ void render_thread(GLFWwindow* window)
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
 
-    blinn_phong_shader->set_uniform("s_texture", 0);
+    //    blinn_phong_shader->set_uniform("s_texture", 0);
 
     // render loop
     using namespace std::chrono_literals;
@@ -181,20 +186,20 @@ void render_thread(GLFWwindow* window)
             UNUSED(texture_scope);
 
             // pass the shader uniforms
-            const Xform3f move = Xform3f::translation(0, 0, -500);
+            const Matrix4f move = Matrix4f::translation(0, 0, -500);
             //        const Xform3f rotate    = Xform3f::rotation(Vector4f(sin(angle), cos(angle)), angle);
-            const Xform3f rotate = Xform3f::rotation(Vector4f(0, 1), angle);
+            const Matrix4f rotate = Matrix4f::rotation(Vector3f(0, 1), angle);
             //        const Xform3f rotate    = Xform3f::identity();
-            const Xform3f scale     = Xform3f::scaling(200);
-            const Xform3f modelview = move * rotate * scale;
+            const Matrix4f scale     = Matrix4f::scaling(200);
+            const Matrix4f modelview = move * rotate * scale;
             blinn_phong_shader->set_uniform("modelview", modelview);
 
-            const Xform3f perspective = Xform3f::perspective(deg_to_rad(90), 1, 0, 10000.f);
+            const Matrix4f perspective = Matrix4f::perspective(deg_to_rad(90), 1, 0, 10000.f);
             //         const Xform3f perspective = Xform3f::orthographic(-1000.f, 1000.f, -1000.f, 1000.f, 0.f, 10000.f);
             blinn_phong_shader->set_uniform("projection", perspective);
 
-            Xform3f normalMat = rotate;
-            //        blinn_phong_shader->set_uniform("normalMat", normalMat);
+            Matrix4f normalMat = rotate;
+            //            blinn_phong_shader->set_uniform("normalMat", normalMat);
 
             library.render();
 
@@ -221,7 +226,7 @@ void render_thread(GLFWwindow* window)
     }
 
     // clean up
-    glDeleteRenderbuffers(1, &depthRenderbuffer);
+    //    glDeleteRenderbuffers(1, &depthRenderbuffer);
     glDeleteFramebuffers(1, &framebuffer);
     glDeleteTextures(1, &renderTexture);
 

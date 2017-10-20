@@ -2,11 +2,11 @@
 
 #include "common/arithmetic.hpp"
 #include "common/float.hpp"
+#include "common/matrix3.hpp"
+#include "common/matrix4.hpp"
 #include "common/padding.hpp"
 #include "common/random.hpp"
 #include "common/vector2.hpp"
-#include "common/xform2.hpp"
-#include "common/xform3.hpp"
 #include "core/widget.hpp"
 
 namespace notf {
@@ -41,43 +41,44 @@ template <typename Real>
 inline _RealVector2<Real> highest_vector() { return _RealVector2<Real>(highest_tested<Real>(), highest_tested<Real>()); }
 
 template <typename T>
-inline T random_vector(const typename T::value_t minimum = lowest_tested<typename T::value_t>(),
-                       const typename T::value_t maximum = highest_tested<typename T::value_t>())
+inline T random_vector(const typename T::element_t minimum = lowest_tested<typename T::element_t>(),
+                       const typename T::element_t maximum = highest_tested<typename T::element_t>())
 {
     T result;
     for (size_t i = 0; i < result.size(); ++i) {
-        result[i] = random_number<typename T::value_t>(minimum, maximum);
+        result[i] = random_number<typename T::element_t>(minimum, maximum);
     }
     return result;
 }
 
 template <typename T>
-inline T random_matrix(const typename T::value_t minimum = lowest_tested<typename T::value_t>(),
-                       const typename T::value_t maximum = highest_tested<typename T::value_t>())
+inline T random_matrix(const typename T::element_t minimum = lowest_tested<typename T::element_t>(),
+                       const typename T::element_t maximum = highest_tested<typename T::element_t>())
 {
     T result;
     for (size_t i = 0; i < result.size(); ++i) {
         for (size_t j = 0; j < result[0].size(); ++j) {
-            result[i][j] = random_number<typename T::value_t>(minimum, maximum);
+            result[i][j] = random_number<typename T::element_t>(minimum, maximum);
         }
     }
     return result;
 }
 
 template <typename Real>
-inline _Xform2<Real> random_xform2(const Real min_trans, const Real max_trans, const Real min_scale, const Real max_scale)
+inline _Matrix3<Real> random_matrix3(const Real min_trans, const Real max_trans,
+                                     const Real min_scale, const Real max_scale)
 {
-    _Xform2<Real> result = _Xform2<Real>::scaling(random_number(min_scale, max_scale));
-    result *= _Xform2<Real>::rotation(random_radian<Real>());
-    result *= _Xform2<Real>::translation(_RealVector2<Real>(random_number(min_trans, max_trans),
-                                                            random_number(min_trans, max_trans)));
+    _Matrix3<Real> result = _Matrix3<Real>::scaling(random_number(min_scale, max_scale));
+    result *= _Matrix3<Real>::rotation(random_radian<Real>());
+    result *= _Matrix3<Real>::translation(_RealVector2<Real>(random_number(min_trans, max_trans),
+                                                             random_number(min_trans, max_trans)));
     return result;
 }
 
 template <typename Real>
-inline _Xform2<Real> random_xform2()
+inline _Matrix3<Real> random_matrix3()
 {
-    return random_xform2(lowest_tested<Real>(), highest_tested<Real>(), Real(0), Real(2));
+    return random_matrix3(lowest_tested<Real>(), highest_tested<Real>(), Real(0), Real(2));
 }
 
 template <typename T>

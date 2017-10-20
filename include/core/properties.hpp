@@ -3,7 +3,7 @@
 #include <iostream>
 
 #include "common/size2.hpp"
-#include "common/xform2.hpp"
+#include "common/matrix3.hpp"
 #include "core/claim.hpp"
 #include "core/property.hpp"
 #include "utils/make_smart_enabler.hpp"
@@ -69,7 +69,7 @@ DEFINE_PROPERTY(IntProperty, int);
 DEFINE_PROPERTY(StringProperty, std::string);
 DEFINE_PROPERTY(ClaimProperty, Claim);
 DEFINE_PROPERTY(Size2Property, Size2f);
-DEFINE_PROPERTY(Transform2Property, Xform2f);
+DEFINE_PROPERTY(Transform2Property, Matrix3f);
 
 #undef _notf_DEFINE_PROPERTY
 #undef DEFINE_PROPERTY
@@ -107,7 +107,7 @@ CREATE_PROPERTY_IMPL(IntProperty, int);
 CREATE_PROPERTY_IMPL(StringProperty, std::string);
 CREATE_PROPERTY_IMPL(ClaimProperty, Claim);
 CREATE_PROPERTY_IMPL(Size2Property, Size2f);
-CREATE_PROPERTY_IMPL(Transform2Property, Xform2f);
+CREATE_PROPERTY_IMPL(Transform2Property, Matrix3f);
 
 #undef CREATE_PROPERTY_IMPL
 #pragma pop_macro("CREATE_PROPERTY_IMPL")

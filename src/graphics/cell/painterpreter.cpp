@@ -29,7 +29,7 @@ Painterpreter::Painterpreter(CellCanvas& context)
     _reset();
 }
 
-void Painterpreter::paint(Cell& cell, Xform2f base_xform, Scissor base_scissor, float base_alpha)
+void Painterpreter::paint(Cell& cell, Matrix3f base_xform, Scissor base_scissor, float base_alpha)
 {
     _reset();
 
@@ -109,7 +109,7 @@ void Painterpreter::_paint(Cell& cell)
             }
             else {
                 Vector2f pos = m_points.back().pos;
-                make_const(_get_current_state()).xform.invert().transform(pos);
+                make_const(_get_current_state()).xform.inverse().transform(pos);
                 stylus = pos;
             }
             const BezierCommand& cmd = map_command<BezierCommand>(commands, index);
@@ -254,7 +254,7 @@ void Painterpreter::_reset()
     m_states.emplace_back(); // always have at least one state
 
     m_bounds       = Aabrf::wrongest();
-    m_base_xform   = Xform2f::identity();
+    m_base_xform   = Matrix3f::identity();
     m_base_scissor = Scissor();
 }
 
@@ -311,7 +311,7 @@ void Painterpreter::_set_scissor(const Scissor& scissor)
         scissor_aabr.intersect(base_aabr);
 
         current_state.scissor.extend = scissor_aabr.get_size();
-        current_state.scissor.xform  = Xform2f::translation(scissor_aabr.bottom_left());
+        current_state.scissor.xform  = Matrix3f::translation(scissor_aabr.bottom_left());
     }
     else {
         // if there is no valid base scissor, just apply the new one
@@ -730,7 +730,7 @@ void Painterpreter::_render_text(const std::string& text, const std::shared_ptr<
     fill_uniforms.type = CellCanvas::ShaderVariables::Type::TEXT;
 
     // make sure that text is always rendered on the pixel grid, not between pixels
-    const Vector2f& translation = state.xform.get_translation();
+    const Vector2f& translation = state.xform.translation();
     Glyph::coord_t x            = static_cast<Glyph::coord_t>(roundf(translation.x()));
     Glyph::coord_t y            = static_cast<Glyph::coord_t>(roundf(translation.y()));
 
@@ -932,7 +932,7 @@ void Painterpreter::_stroke()
     const float fringe_width = options.fringe_width;
     float stroke_width;
     { // create a sane stroke width
-        const float scale = (state.xform.get_scale_x() + state.xform.get_scale_y()) / 2;
+        const float scale = (state.xform.scale_x() + state.xform.scale_y()) / 2;
         stroke_width      = clamp(state.stroke_width * scale, 0, 200); // 200 is arbitrary
         if (stroke_width < fringe_width) {
             // if the stroke width is less than pixel size, use alpha to emulate coverage.
@@ -1195,9 +1195,9 @@ void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const 
     else {
         const float half_width  = scissor.extend.width / 2;
         const float half_height = scissor.extend.height / 2;
-        Xform2f xinv            = scissor.xform;
+        Matrix3f xinv            = scissor.xform;
         xinv.translate({half_width, half_height});
-        xinv.invert();
+        xinv.inverse();
 
         frag.scissor_2x2[0]    = xinv[0][0];
         frag.scissor_2x2[1]    = xinv[0][1];
@@ -1207,8 +1207,8 @@ void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const 
         frag.scissor_trans[1]  = xinv[2][1];
         frag.scissor_extent[0] = half_width;
         frag.scissor_extent[1] = half_height;
-        frag.scissor_scale[0]  = scissor.xform.get_scale_x() / fringe;
-        frag.scissor_scale[1]  = scissor.xform.get_scale_y() / fringe;
+        frag.scissor_scale[0]  = scissor.xform.scale_x() / fringe;
+        frag.scissor_scale[1]  = scissor.xform.scale_y() / fringe;
     }
     frag.paint_extent[0]  = paint.extent.width;
     frag.paint_extent[1]  = paint.extent.height;
@@ -1224,7 +1224,7 @@ void paint_to_frag(CellCanvas::ShaderVariables& frag, const Paint& paint, const 
         frag.type = CellCanvas::ShaderVariables::Type::GRADIENT;
     }
 
-    const Xform2f xinv  = paint.xform.invert();
+    const Matrix3f xinv  = paint.xform.inverse();
     frag.paint_2x2[0]   = xinv[0][0];
     frag.paint_2x2[1]   = xinv[0][1];
     frag.paint_2x2[2]   = xinv[1][0];

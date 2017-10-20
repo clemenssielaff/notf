@@ -25,7 +25,8 @@ decltype(auto) extract_trait_types_impl(const TUPLE&, std::index_sequence<I...>)
 {
     return std::tuple<std::array<
         typename std::tuple_element<I, TUPLE>::type::type,
-        std::tuple_element<I, TUPLE>::type::count>...>{};
+        std::tuple_element<I, TUPLE>::type::countt>...>{};
+//    return std::tuple<typename std::tuple_element<I, TUPLE>::type::mytype...>{};
 }
 
 /** Extracts the value types from a variadic list of traits. */
@@ -179,7 +180,7 @@ public: // types ***************************************************************
     /** Traits defining the array layout. */
     using Traits = std::tuple<Ts...>;
 
-    /** Typdef for a tuple containing the trait types in order. */
+    /** A tuple containing one array for each trait. */
     using Vertex = decltype(detail::extract_trait_types(Traits{}));
 
 public: // methods ****************************************************************************************************/
@@ -303,9 +304,10 @@ private: // methods ************************************************************
 
         // not all attribute types fit into a single OpenGL ES attribute
         // larger types are stored in consecutive attribute locations
-        for (size_t multi = 0; multi < (ATTRIBUTE::count / 4) + (ATTRIBUTE::count % 4 ? 1 : 0); ++multi) {
+        const size_t attribute_count = sizeof(typename ATTRIBUTE::mytype) / sizeof(GLfloat);
+        for (size_t multi = 0; multi < (attribute_count / 4) + (attribute_count % 4 ? 1 : 0); ++multi) {
 
-            const GLint size = std::min(4, static_cast<int>(ATTRIBUTE::count) - static_cast<int>((multi * 4)));
+            const GLint size = std::min(4, static_cast<int>(attribute_count) - static_cast<int>((multi * 4)));
             assert(size >= 1 && size <= 4);
 
             // link the location in the array to the shader's attribute

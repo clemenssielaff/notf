@@ -75,9 +75,9 @@ struct StrokeCommand : public PainterCommand {
 
 /** Command to change the Xform of the current PainterState. */
 struct SetXformCommand : public PainterCommand {
-    SetXformCommand(Xform2f xform)
+    SetXformCommand(Matrix3f xform)
         : PainterCommand(SET_XFORM), xform(std::move(xform)) {}
-    Xform2f xform;
+    Matrix3f xform;
 };
 
 /** Command to reset the Xform of the current PainterState. */
@@ -88,9 +88,9 @@ struct ResetXformCommand : public PainterCommand {
 
 /** Command to transform the current Xform of the current PainterState. */
 struct TransformCommand : public PainterCommand {
-    TransformCommand(Xform2f xform)
+    TransformCommand(Matrix3f xform)
         : PainterCommand(TRANSFORM), xform(std::move(xform)) {}
-    Xform2f xform;
+    Matrix3f xform;
 };
 
 /** Command to add a translation the Xform of the current PainterState. */

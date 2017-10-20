@@ -210,15 +210,15 @@ SCENARIO("An Overlayout aligns its children", "[dynamic][layout]")
             {
                 THEN("the default center alignment is used")
                 {
-                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(rect_trans.x() == approx(150));
                     REQUIRE(rect_trans.y() == approx(150));
 
-                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(wideRect_trans.x() == approx(100));
                     REQUIRE(wideRect_trans.y() == approx(175));
 
-                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(highRect_trans.x() == approx(175));
                     REQUIRE(highRect_trans.y() == approx(100));
                 }
@@ -230,15 +230,15 @@ SCENARIO("An Overlayout aligns its children", "[dynamic][layout]")
 
                 THEN("the widgets will be placed at the top-left corner of the overlayout")
                 {
-                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(rect_trans.x() == approx(0));
                     REQUIRE(rect_trans.y() == approx(300));
 
-                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(wideRect_trans.x() == approx(0));
                     REQUIRE(wideRect_trans.y() == approx(350));
 
-                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(highRect_trans.x() == approx(0));
                     REQUIRE(highRect_trans.y() == approx(200));
                 }
@@ -249,15 +249,15 @@ SCENARIO("An Overlayout aligns its children", "[dynamic][layout]")
 
                 THEN("the widgets will be placed at the bottom-right corner of the overlayout")
                 {
-                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(rect_trans.x() == approx(300));
                     REQUIRE(rect_trans.y() == approx(0));
 
-                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(wideRect_trans.x() == approx(200));
                     REQUIRE(wideRect_trans.y() == approx(0));
 
-                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(highRect_trans.x() == approx(350));
                     REQUIRE(highRect_trans.y() == approx(0));
                 }
@@ -271,15 +271,15 @@ SCENARIO("An Overlayout aligns its children", "[dynamic][layout]")
             {
                 THEN("the default center alignment is used")
                 {
-                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(rect_trans.x() == approx(150));
                     REQUIRE(rect_trans.y() == approx(150));
 
-                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(wideRect_trans.x() == approx(100));
                     REQUIRE(wideRect_trans.y() == approx(175));
 
-                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(highRect_trans.x() == approx(175));
                     REQUIRE(highRect_trans.y() == approx(100));
                 }
@@ -291,15 +291,15 @@ SCENARIO("An Overlayout aligns its children", "[dynamic][layout]")
 
                 THEN("the widgets will be placed at the top-left corner of the overlayout")
                 {
-                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(rect_trans.x() == approx(20));
                     REQUIRE(rect_trans.y() == approx(280));
 
-                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(wideRect_trans.x() == approx(20));
                     REQUIRE(wideRect_trans.y() == approx(330));
 
-                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(highRect_trans.x() == approx(20));
                     REQUIRE(highRect_trans.y() == approx(180));
                 }
@@ -310,15 +310,15 @@ SCENARIO("An Overlayout aligns its children", "[dynamic][layout]")
 
                 THEN("the widgets will be placed at the bottom-right corner of the overlayout")
                 {
-                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f rect_trans = rect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(rect_trans.x() == approx(280));
                     REQUIRE(rect_trans.y() == approx(20));
 
-                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f wideRect_trans = wideRect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(wideRect_trans.x() == approx(180));
                     REQUIRE(wideRect_trans.y() == approx(20));
 
-                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().get_translation();
+                    const Vector2f highRect_trans = highRect->get_xform<ScreenItem::Space::PARENT>().translation();
                     REQUIRE(highRect_trans.x() == approx(330));
                     REQUIRE(highRect_trans.y() == approx(20));
                 }

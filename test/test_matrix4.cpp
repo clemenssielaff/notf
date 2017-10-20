@@ -4,16 +4,16 @@
 
 using namespace notf;
 
-SCENARIO("Xform3 base tests", "[common][xform3]")
+SCENARIO("Matrix4 base tests", "[common][Matrix4]")
 {
-    WHEN("you want to create a Xform3")
+    WHEN("you want to create a Matrix4")
     {
         THEN("you can use the element-wise constructor")
         {
-            const Xform3f matrix(1.f, 2.f, 3.f, 4.f,
-                                 5.f, 6.f, 7.f, 8.f,
-                                 9.f, 10.f, 11.f, 12.f,
-                                 13.f, 14.f, 15.f, 16.f);
+            const Matrix4f matrix(1.f, 2.f, 3.f, 4.f,
+                                  5.f, 6.f, 7.f, 8.f,
+                                  9.f, 10.f, 11.f, 12.f,
+                                  13.f, 14.f, 15.f, 16.f);
             REQUIRE(matrix[0][0] == approx(1.));
             REQUIRE(matrix[0][1] == approx(2.));
             REQUIRE(matrix[0][2] == approx(3.));
@@ -33,10 +33,10 @@ SCENARIO("Xform3 base tests", "[common][xform3]")
         }
         THEN("you can use the element-wise initializer list")
         {
-            const Xform3f matrix{1.f, 2.f, 3.f, 4.f,
-                                 5.f, 6.f, 7.f, 8.f,
-                                 9.f, 10.f, 11.f, 12.f,
-                                 13.f, 14.f, 15.f, 16.f};
+            const Matrix4f matrix{1.f, 2.f, 3.f, 4.f,
+                                  5.f, 6.f, 7.f, 8.f,
+                                  9.f, 10.f, 11.f, 12.f,
+                                  13.f, 14.f, 15.f, 16.f};
             REQUIRE(matrix[0][0] == approx(1.));
             REQUIRE(matrix[0][1] == approx(2.));
             REQUIRE(matrix[0][2] == approx(3.));
@@ -56,10 +56,10 @@ SCENARIO("Xform3 base tests", "[common][xform3]")
         }
         THEN("you can use the element-wise constructor with mixed scalar types")
         {
-            const Xform3f matrix(1.f, 2.f, 3.f, 4,
-                                 5.f, 6.f, 7.f, 8.,
-                                 9.f, 10.f, 11.f, 12.l,
-                                 13.f, 14.f, 15.f, 16.f);
+            const Matrix4f matrix(1.f, 2.f, 3.f, 4,
+                                  5.f, 6.f, 7.f, 8.,
+                                  9.f, 10.f, 11.f, 12.l,
+                                  13.f, 14.f, 15.f, 16.f);
             REQUIRE(matrix[0][0] == approx(1.));
             REQUIRE(matrix[0][1] == approx(2.));
             REQUIRE(matrix[0][2] == approx(3.));
@@ -79,7 +79,7 @@ SCENARIO("Xform3 base tests", "[common][xform3]")
         }
         THEN("you can create an identity matrix")
         {
-            const Xform3f matrix = Xform3f::identity();
+            const Matrix4f matrix = Matrix4f::identity();
             REQUIRE(matrix[0][0] == approx(1.));
             REQUIRE(matrix[0][1] == approx(0.));
             REQUIRE(matrix[0][2] == approx(0.));
@@ -99,61 +99,61 @@ SCENARIO("Xform3 base tests", "[common][xform3]")
         }
         THEN("you can create an translation matrix")
         {
-            const Vector4f translation = random_vector<Vector4f>();
-            const Xform3f matrix       = Xform3f::translation(translation);
-            glm::mat4 their                 = translate(glm::mat4(1.0f), glm::vec3(translation.x(), translation.y(), translation.z()));
+            const Vector3f translation = random_vector<Vector3f>();
+            const Matrix4f matrix      = Matrix4f::translation(translation);
+            glm::mat4 their            = translate(glm::mat4(1.0f), glm::vec3(translation.x(), translation.y(), translation.z()));
             compare_mat4(matrix, their);
         }
         THEN("you can create a rotation matrix")
         {
-            const Vector4f axis  = random_vector<Vector4f>();
-            const float angle    = random_radian<float>();
-            const Xform3f matrix = Xform3f::rotation(axis, angle);
-            glm::mat4 their           = rotate(glm::mat4(1.0f), angle, glm::vec3(axis.x(), axis.y(), axis.z()));
+            const Vector3f axis   = random_vector<Vector3f>();
+            const float angle     = random_radian<float>();
+            const Matrix4f matrix = Matrix4f::rotation(axis, angle);
+            glm::mat4 their       = rotate(glm::mat4(1.0f), angle, glm::vec3(axis.x(), axis.y(), axis.z()));
             compare_mat4(matrix, their);
         }
         THEN("you can create a uniform scale matrix")
         {
-            const float factor   = random_number(0.0001f, 1000.f);
-            const Xform3f matrix = Xform3f::scaling(factor);
-            glm::mat4 their           = scale(glm::mat4(1.0f), glm::vec3(factor, factor, factor));
+            const float factor    = random_number(0.0001f, 1000.f);
+            const Matrix4f matrix = Matrix4f::scaling(factor);
+            glm::mat4 their       = scale(glm::mat4(1.0f), glm::vec3(factor, factor, factor));
             compare_mat4(matrix, their);
         }
         THEN("you can create a non-uniform scale matrix")
         {
-            const Vector4f factor = random_vector<Vector4f>();
-            const Xform3f matrix  = Xform3f::scaling(factor);
-            glm::mat4 their            = scale(glm::mat4(1.0f), glm::vec3(factor.x(), factor.y(), factor.z()));
+            const Vector3f factor = random_vector<Vector3f>();
+            const Matrix4f matrix = Matrix4f::scaling(factor.x(), factor.y(), factor.z());
+            glm::mat4 their       = scale(glm::mat4(1.0f), glm::vec3(factor.x(), factor.y(), factor.z()));
             compare_mat4(matrix, their);
         }
     }
 
-    WHEN("you want to work with multiple Xform3s")
+    WHEN("you want to work with multiple Matrix4s")
     {
         THEN("you can concatenate them by multiplication")
         {
-            const Xform3f a    = random_matrix<Xform3f>(-10, 10);
-            const Xform3f b    = random_matrix<Xform3f>(-10, 10);
-            const Xform3f mine = a * b;
-            glm::mat4 theirs        = to_glm_mat4(a) * to_glm_mat4(b);
+            const Matrix4f a    = random_matrix<Matrix4f>(-10, 10);
+            const Matrix4f b    = random_matrix<Matrix4f>(-10, 10);
+            const Matrix4f mine = a * b;
+            glm::mat4 theirs    = to_glm_mat4(a) * to_glm_mat4(b);
             compare_mat4(mine, theirs);
         }
     }
 
-    WHEN("you want to transform with an Xform3")
+    WHEN("you want to transform with an Matrix4")
     {
         THEN("you can rotate a known vector along a know axis")
         {
-            const Vector4f axis(0, 1, 0, 0);
-            const Xform3f xform = Xform3f::rotation(axis, pi<float>() / 2);
+            const Vector3f axis(0, 1, 0);
+            const Matrix4f xform = Matrix4f::rotation(axis, pi<float>() / 2);
             const Vector4f vector(1, 1, 0, 1);
             const Vector4f result = xform.transform(vector);
             REQUIRE(result.is_approx(Vector4f(0, 1, -1, 1)));
         }
         THEN("you can transform a random vector")
         {
-            const Vector4f vec  = random_vector<Vector4f>();
-            const Xform3f xform = random_matrix<Xform3f>(-10, 10);
+            const Vector4f vec   = random_vector<Vector4f>();
+            const Matrix4f xform = random_matrix<Matrix4f>(-10, 10);
 
             const Vector4f mine = xform.transform(vec);
             glm::vec4 theirs    = to_glm_mat4(xform) * glm::vec4(vec.x(), vec.y(), vec.z(), vec.w());

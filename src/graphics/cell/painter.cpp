@@ -68,7 +68,7 @@ size_t Painter::pop_state()
     return s_states.size();
 }
 
-void Painter::set_transform(const Xform2f& xform)
+void Painter::set_transform(const Matrix3f& xform)
 {
     detail::PainterState& current_state = _get_current_state();
     current_state.xform                 = xform;
@@ -76,11 +76,11 @@ void Painter::set_transform(const Xform2f& xform)
 }
 void Painter::reset_transform()
 {
-    _get_current_state().xform = Xform2f::identity();
+    _get_current_state().xform = Matrix3f::identity();
     m_cell.m_commands.add_command(ResetXformCommand());
 }
 
-void Painter::transform(const Xform2f& transform)
+void Painter::transform(const Matrix3f& transform)
 {
     m_cell.m_commands.add_command(TransformCommand(transform));
     _get_current_state().xform.premult(transform);
@@ -102,7 +102,7 @@ void Painter::set_scissor(const Aabrf& aabr)
 {
     detail::PainterState& current_state = _get_current_state();
 
-    current_state.scissor.xform  = current_state.xform * Xform2f::translation(aabr.bottom_left());
+    current_state.scissor.xform  = current_state.xform * Matrix3f::translation(aabr.bottom_left());
     current_state.scissor.extend = aabr.get_size();
     m_cell.m_commands.add_command(SetScissorCommand(current_state.scissor));
 }

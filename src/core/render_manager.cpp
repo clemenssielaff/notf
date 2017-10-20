@@ -99,7 +99,7 @@ void RenderManager::render()
     // prepare the render context
 
     const Size2i buffer_size  = m_window->get_buffer_size();
-    Xform3f projection_matrix = Xform3f::orthographic(0, static_cast<float>(buffer_size.width),
+    Matrix4f projection_matrix = Matrix4f::orthographic(0, static_cast<float>(buffer_size.width),
                                                       0, static_cast<float>(buffer_size.height), -1, 1);
     CellCanvas& cell_canvas = m_window->get_cell_canvas();
     cell_canvas.begin_frame(projection_matrix, time_at_start, m_window->get_mouse_pos());
