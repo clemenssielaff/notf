@@ -23,6 +23,7 @@
  */
 #include "common/half.hpp"
 
+#include <iostream>
 #include <stdexcept>
 #include <typeinfo>
 
@@ -167,6 +168,13 @@ half::operator float() const
     // assemble the result from the sign, exponent and mantissa
     converter.i = static_cast<uint>((sign << 31) | (exponent << 23) | mantissa);
     return converter.f;
+}
+
+//====================================================================================================================//
+
+std::ostream& operator<<(std::ostream& out, const half& value)
+{
+    return out << static_cast<float>(value);
 }
 
 } // namespace notf

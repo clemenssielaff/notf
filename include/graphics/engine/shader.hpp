@@ -12,17 +12,17 @@ namespace notf {
 
 DEFINE_SHARED_POINTERS(class, Shader);
 
-template <typename Real, FWD_ENABLE_IF_REAL(Real)>
+template <typename Real>
 struct _RealVector2;
-using Vector2f = _RealVector2<float, true>;
+using Vector2f = _RealVector2<float>;
 
-template <typename Real, FWD_ENABLE_IF_REAL(Real)>
+template <typename Real>
 struct _RealVector4;
-using Vector4f = _RealVector4<float, true>;
+using Vector4f = _RealVector4<float>;
 
-template <typename Real, FWD_ENABLE_IF_REAL(Real)>
+template <typename Real>
 struct _Matrix4;
-using Matrix4f = _Matrix4<float, true>;
+using Matrix4f = _Matrix4<float>;
 
 class GraphicsContext;
 

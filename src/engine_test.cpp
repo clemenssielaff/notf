@@ -2,8 +2,10 @@
 
 #include "common/half.hpp"
 #include "common/log.hpp"
+#include "common/matrix4.hpp"
 #include "common/size2.hpp"
 #include "common/vector3.hpp"
+#include "common/vector4.hpp"
 #include "common/warnings.hpp"
 #include "core/glfw.hpp"
 #include "graphics/engine/graphics_context.hpp"
@@ -19,35 +21,27 @@ using namespace notf;
 
 namespace {
 
-struct VertexPos {
-    constexpr static auto name     = "a_position";
-    using type                     = float;
-    constexpr static size_t countt = 4;
-    using mytype                   = Vector4f;
+struct VertexPos : public AttributeTrait {
+    constexpr static uint location = 0;
+    using type                     = Vector4f;
     using kind                     = AttributeKind::Position;
 };
 
-struct VertexNormal {
-    constexpr static auto name     = "a_normal";
-    using type                     = float;
-    constexpr static size_t countt = 4;
-    using mytype                   = Vector4f;
+struct VertexNormal : public AttributeTrait {
+    constexpr static uint location = 1;
+    using type                     = Vector4f;
     using kind                     = AttributeKind::Normal;
 };
 
-struct VertexTexCoord {
-    constexpr static auto name     = "a_texcoord";
-    using type                     = float;
-    constexpr static size_t countt = 2;
-    using mytype                   = Vector2f;
+struct VertexTexCoord : public AttributeTrait {
+    constexpr static uint location = 2;
+    using type                     = Vector2f;
     using kind                     = AttributeKind::TexCoord;
 };
 
-struct InstanceXform {
-    constexpr static auto name     = "i_xform";
-    using type                     = float;
-    constexpr static size_t countt = 16;
-    using mytype                   = Matrix4f;
+struct InstanceXform : public AttributeTrait {
+    constexpr static uint location = 3;
+    using type                     = Matrix4f;
     using kind                     = AttributeKind::Other;
 };
 }
@@ -129,7 +123,7 @@ void render_thread(GLFWwindow* window)
     using VertexLayout   = VertexArray<VertexPos, VertexTexCoord>;
     using InstanceLayout = VertexArray<InstanceXform>;
     using Library        = PrefabGroup<VertexLayout, InstanceLayout>;
-    Library library(blinn_phong_shader);
+    Library library;
 
     using Factory = PrefabFactory<Library>;
     Factory factory(library);
@@ -141,16 +135,16 @@ void render_thread(GLFWwindow* window)
     }
 
     auto box1    = box_type->create_instance();
-    box1->data() = std::make_tuple(Matrix4f::translation(-500, 500, -1000).as_array());
+    box1->data() = std::make_tuple(Matrix4f::translation(-500, 500, -1000));
 
     auto box2    = box_type->create_instance();
-    box2->data() = std::make_tuple(Matrix4f::translation(500, 500, -1000).as_array());
+    box2->data() = std::make_tuple(Matrix4f::translation(500, 500, -1000));
 
     auto box3    = box_type->create_instance();
-    box3->data() = std::make_tuple(Matrix4f::translation(-500, -500, -1000).as_array());
+    box3->data() = std::make_tuple(Matrix4f::translation(-500, -500, -1000));
 
     auto box4    = box_type->create_instance();
-    box4->data() = std::make_tuple(Matrix4f::translation(500, -500, -1000).as_array());
+    box4->data() = std::make_tuple(Matrix4f::translation(500, -500, -1000));
 
     //    auto some_stick = stick_type->create_instance();
 

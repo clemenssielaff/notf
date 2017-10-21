@@ -230,7 +230,33 @@ PrefabFactoryImpl::Product PrefabFactoryImpl::_produce(const Sphere& def)
     return result;
 }
 
-void PrefabFactoryImpl::_convert(const Vector3d& in, std::array<float, 4>& out)
+void PrefabFactoryImpl::_convert(const Vector2d& in, Vector2f& out)
+{
+    out[0] = static_cast<float>(in[0]);
+    out[1] = static_cast<float>(in[1]);
+}
+
+void PrefabFactoryImpl::_convert(const Vector2d& in, Vector2h& out)
+{
+    out[0] = half(static_cast<float>(in[0]));
+    out[1] = half(static_cast<float>(in[1]));
+}
+
+void PrefabFactoryImpl::_convert(const Vector3d& in, Vector3f& out)
+{
+    out[0] = static_cast<float>(in[0]);
+    out[1] = static_cast<float>(in[1]);
+    out[2] = static_cast<float>(in[2]);
+}
+
+void PrefabFactoryImpl::_convert(const Vector3d& in, Vector3h& out)
+{
+    out[0] = half(static_cast<float>(in[0]));
+    out[1] = half(static_cast<float>(in[1]));
+    out[2] = half(static_cast<float>(in[2]));
+}
+
+void PrefabFactoryImpl::_convert(const Vector3d& in, Vector4f& out)
 {
     out[0] = static_cast<float>(in[0]);
     out[1] = static_cast<float>(in[1]);
@@ -238,36 +264,12 @@ void PrefabFactoryImpl::_convert(const Vector3d& in, std::array<float, 4>& out)
     out[3] = 1;
 }
 
-void PrefabFactoryImpl::_convert(const Vector3d& in, std::array<half, 4>& out)
+void PrefabFactoryImpl::_convert(const Vector3d& in, Vector4h& out)
 {
     out[0] = half(static_cast<float>(in[0]));
     out[1] = half(static_cast<float>(in[1]));
     out[2] = half(static_cast<float>(in[2]));
     out[3] = half(1);
-}
-
-void PrefabFactoryImpl::_convert(const Vector3d& in, std::array<float, 3>& out)
-{
-    out[0] = static_cast<float>(in[0]);
-    out[1] = static_cast<float>(in[1]);
-    out[2] = static_cast<float>(in[2]);
-}
-void PrefabFactoryImpl::_convert(const Vector3d& in, std::array<half, 3>& out)
-{
-    out[0] = half(static_cast<float>(in[0]));
-    out[1] = half(static_cast<float>(in[1]));
-    out[2] = half(static_cast<float>(in[2]));
-}
-
-void PrefabFactoryImpl::_convert(const Vector2d& in, std::array<float, 2>& out)
-{
-    out[0] = static_cast<float>(in[0]);
-    out[1] = static_cast<float>(in[1]);
-}
-void PrefabFactoryImpl::_convert(const Vector2d& in, std::array<half, 2>& out)
-{
-    out[0] = half(static_cast<float>(in[0]));
-    out[1] = half(static_cast<float>(in[1]));
 }
 
 } // namespace detail

@@ -1,16 +1,13 @@
 #pragma once
 
-#include <iosfwd>
-
 #include "common/arithmetic.hpp"
-#include "common/meta.hpp"
 
 namespace notf {
 
 //====================================================================================================================//
 
 /// @brief  3-dimensional mathematical vector containing real numbers.
-template <typename REAL, ENABLE_IF_REAL(REAL)>
+template <typename REAL>
 struct _RealVector3 : public detail::Arithmetic<_RealVector3<REAL>, REAL, 3> {
 
     /// @brief Element type.
@@ -19,7 +16,7 @@ struct _RealVector3 : public detail::Arithmetic<_RealVector3<REAL>, REAL, 3> {
     /// @brief Arithmetic base type.
     using super_t = detail::Arithmetic<_RealVector3<REAL>, REAL, 3>;
 
-    // members -------------------------------------------------------------------------------------------------------//
+    // fields --------------------------------------------------------------------------------------------------------//
     using super_t::data;
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -129,7 +126,7 @@ struct _RealVector3 : public detail::Arithmetic<_RealVector3<REAL>, REAL, 3> {
 //====================================================================================================================//
 
 /** 3-dimensional mathematical vector containing integers. */
-template <typename INTEGER, ENABLE_IF_INT(INTEGER)>
+template <typename INTEGER>
 struct _IntVector3 : public detail::Arithmetic<_IntVector3<INTEGER>, INTEGER, 3> {
 
     /// @brief Element type.
@@ -138,7 +135,7 @@ struct _IntVector3 : public detail::Arithmetic<_IntVector3<INTEGER>, INTEGER, 3>
     /// @brief Arithmetic base type.
     using super_t = detail::Arithmetic<_IntVector3<INTEGER>, INTEGER, 3>;
 
-    // members -------------------------------------------------------------------------------------------------------//
+    // fields --------------------------------------------------------------------------------------------------------//
     using super_t::data;
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -184,6 +181,7 @@ struct _IntVector3 : public detail::Arithmetic<_IntVector3<INTEGER>, INTEGER, 3>
 
 using Vector3f = _RealVector3<float>;
 using Vector3d = _RealVector3<double>;
+using Vector3h = _RealVector3<half>;
 using Vector3i = _IntVector3<int>;
 
 //====================================================================================================================//
@@ -194,6 +192,7 @@ using Vector3i = _IntVector3<int>;
 /// @return Output stream for further output.
 std::ostream& operator<<(std::ostream& out, const Vector3f& vec);
 std::ostream& operator<<(std::ostream& out, const Vector3d& vec);
+std::ostream& operator<<(std::ostream& out, const Vector3h& vec);
 std::ostream& operator<<(std::ostream& out, const Vector3i& vec);
 
 //====================================================================================================================//

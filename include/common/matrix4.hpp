@@ -1,7 +1,6 @@
 #pragma once
 
-#include "common/matrix3.hpp"
-//#include "common/vector2.hpp"
+#include "common/vector2.hpp"
 #include "common/vector3.hpp"
 #include "common/vector4.hpp"
 
@@ -29,8 +28,8 @@ INPUT transform3(const MATRIX4&, const INPUT&);
 /// Matrix layout is equivalent to glm's layout, which in turn is equivalent to GLSL's matrix layout for easy
 /// compatiblity with OpenGL.
 
-template <typename REAL, ENABLE_IF_REAL(REAL)>
-struct _Matrix4 : public detail::Arithmetic<_Matrix4<REAL, true>, _RealVector4<REAL>, 4> {
+template <typename REAL>
+struct _Matrix4 : public detail::Arithmetic<_Matrix4<REAL>, _RealVector4<REAL>, 4> {
 
     /// @brief Element type.
     using element_t = REAL;
@@ -41,7 +40,7 @@ struct _Matrix4 : public detail::Arithmetic<_Matrix4<REAL, true>, _RealVector4<R
     /// @brief Arithmetic base type.
     using super_t = detail::Arithmetic<_Matrix4<element_t>, component_t, 4>;
 
-    // members -------------------------------------------------------------------------------------------------------//
+    // fields --------------------------------------------------------------------------------------------------------//
     using super_t::data;
 
     // methods -------------------------------------------------------------------------------------------------------//

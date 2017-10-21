@@ -39,9 +39,8 @@ public: // methods *************************************************************
     DISALLOW_COPY_AND_ASSIGN(PrefabGroup)
 
     /** Constructor. */
-    PrefabGroup(ShaderPtr shader)
+    PrefabGroup()
         : m_vao_id(0)
-        , m_shader(std::move(shader))
         , m_vertex_array(std::make_unique<VERTEX_ARRAY>())
         , m_index_array(std::make_unique<IndexArray<GLuint>>())
         , m_instance_array()
@@ -76,9 +75,9 @@ public: // methods *************************************************************
         }
 
         glBindVertexArray(m_vao_id);
-        m_vertex_array->init(m_shader);
+        m_vertex_array->init();
         m_index_array->init();
-        m_instance_array->init(m_shader);
+        m_instance_array->init();
         glBindVertexArray(0); // TODO: store VAO in the GraphicsContext as a stack (like Shaders)
     }
 
@@ -131,9 +130,6 @@ public: // methods *************************************************************
 private: // fields ****************************************************************************************************/
     /** OpenGL handle of the internal vertex array object. */
     GLuint m_vao_id;
-
-    /** Shader used to draw prefabs from this library. */
-    ShaderPtr m_shader;
 
     /** Attributes for the prefabs' vertices. */
     std::unique_ptr<VertexArrayType> m_vertex_array;

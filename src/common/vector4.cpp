@@ -32,4 +32,18 @@ static_assert(sizeof(Vector4d) == sizeof(double) * 4,
 static_assert(std::is_pod<Vector4f>::value,
               "This compiler does not recognize notf::Vector4d as a POD.");
 
+// Vector4h ==========================================================================================================//
+
+std::ostream& operator<<(std::ostream& out, const Vector4h& vec)
+{
+    return out << "Vector4h(" << vec.x() << ", " << vec.y() << ", " << vec.z() << ", " << vec.w() << ")";
+}
+
+static_assert(sizeof(Vector4h) == sizeof(half) * 4,
+              "This compiler seems to inject padding bits into the notf::Vector4h memory layout. "
+              "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
+
+static_assert(std::is_pod<Vector4f>::value,
+              "This compiler does not recognize notf::Vector4h as a POD.");
+
 } // namespace notf

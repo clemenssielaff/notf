@@ -1,16 +1,13 @@
 #pragma once
 
-#include <iosfwd>
-
 #include "common/arithmetic.hpp"
-#include "common/meta.hpp"
 
 namespace notf {
 
 //====================================================================================================================//
 
 /// @brief 4-dimensional mathematical vector containing real numbers.
-template <typename REAL, ENABLE_IF_REAL(REAL)>
+template <typename REAL>
 struct _RealVector4 : public detail::Arithmetic<_RealVector4<REAL>, REAL, 4> {
 
     /// @brief Element type.
@@ -19,7 +16,7 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<REAL>, REAL, 4> {
     /// @brief Arithmetic base type.
     using super_t = detail::Arithmetic<_RealVector4<REAL>, REAL, 4>;
 
-    // members -------------------------------------------------------------------------------------------------------//
+    // fields --------------------------------------------------------------------------------------------------------//
     using super_t::data;
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -72,6 +69,7 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<REAL>, REAL, 4> {
 
 using Vector4f = _RealVector4<float>;
 using Vector4d = _RealVector4<double>;
+using Vector4h = _RealVector4<half>;
 
 //====================================================================================================================//
 
@@ -81,6 +79,7 @@ using Vector4d = _RealVector4<double>;
 /// @return Output stream for further output.
 std::ostream& operator<<(std::ostream& out, const Vector4f& vec);
 std::ostream& operator<<(std::ostream& out, const Vector4d& vec);
+std::ostream& operator<<(std::ostream& out, const Vector4h& vec);
 
 } // namespace notf
 

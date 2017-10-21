@@ -18,25 +18,6 @@ class FontManager;
 DEFINE_SHARED_POINTERS(class, Shader);
 DEFINE_SHARED_POINTERS(class, Texture2);
 
-/** Helper struct that can be used to test whether selected extensions are available in the OpenGL ES driver.
- * Only tests for extensions on first instantiation.
- */
-struct GLExtensions {
-    /** Creates and returns an GLExtension instance.*/
-    static const GLExtensions& instance()
-    {
-        static const GLExtensions singleton;
-        return singleton;
-    }
-
-    /** Is anisotropic filtering of textures supported? */
-    bool anisotropic_filter;
-
-private: // methods ***************************************************************************************************/
-    /** Constructor. */
-    GLExtensions();
-};
-
 //*********************************************************************************************************************/
 //*********************************************************************************************************************/
 
@@ -47,6 +28,23 @@ class GraphicsContext {
 
     friend class Shader;
     friend class Texture2;
+
+    // types ---------------------------------------------------------------------------------------------------------//
+public:
+    /** Helper struct that can be used to test whether selected extensions are available in the OpenGL ES driver.
+     * Only tests for extensions on first instantiation.
+     */
+    struct GLExtensions {
+
+        friend class GraphicsContext;
+
+        /** Is anisotropic filtering of textures supported? */
+        bool anisotropic_filter;
+
+    private: // methods ***************************************************************************************************/
+        /** Constructor. */
+        GLExtensions();
+    };
 
 public: // methods ****************************************************************************************************/
     DISALLOW_COPY_AND_ASSIGN(GraphicsContext)
@@ -66,6 +64,13 @@ public: // methods *************************************************************
 
     /** Checks whether this graphics context is current on the calling thread. */
     bool is_current() const;
+
+    /// @brief Creates and returns an GLExtension instance.
+    const GLExtensions& extensions() const
+    {
+        static const GLExtensions singleton;
+        return singleton;
+    }
 
     /** The Font Manager. */
     FontManager& get_font_manager() const { return *m_font_manager.get(); }

@@ -1,25 +1,22 @@
 #pragma once
 
-#include <iosfwd>
-
 #include "common/arithmetic.hpp"
-#include "common/meta.hpp"
 
 namespace notf {
 
 //====================================================================================================================//
 
 /// @brief 2-dimensional mathematical Vector containing real numbers.
-template <typename REAL, ENABLE_IF_REAL(REAL)>
+template <typename REAL>
 struct _RealVector2 : public detail::Arithmetic<_RealVector2<REAL>, REAL, 2> {
 
     /// @brief Element type.
     using element_t = REAL;
 
     /// @brief Arithmetic base type.
-    using super_t = detail::Arithmetic<_RealVector2<REAL>, REAL, 2>;
+    using super_t = detail::Arithmetic<_RealVector2<element_t>, element_t, 2>;
 
-    // members -------------------------------------------------------------------------------------------------------//
+    // fields --------------------------------------------------------------------------------------------------------//
     using super_t::data;
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -157,7 +154,7 @@ struct _RealVector2 : public detail::Arithmetic<_RealVector2<REAL>, REAL, 2> {
 //====================================================================================================================//
 
 /** 2-dimensional mathematical vector containing integers. */
-template <typename INTEGER, ENABLE_IF_INT(INTEGER)>
+template <typename INTEGER>
 struct _IntVector2 : public detail::Arithmetic<_IntVector2<INTEGER>, INTEGER, 2> {
 
     /// @brief Element type.
@@ -166,7 +163,7 @@ struct _IntVector2 : public detail::Arithmetic<_IntVector2<INTEGER>, INTEGER, 2>
     /// @brief Arithmetic base type.
     using super_t = detail::Arithmetic<_IntVector2<INTEGER>, INTEGER, 2>;
 
-    // members -------------------------------------------------------------------------------------------------------//
+    // fields --------------------------------------------------------------------------------------------------------//
     using super_t::data;
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -214,6 +211,7 @@ struct _IntVector2 : public detail::Arithmetic<_IntVector2<INTEGER>, INTEGER, 2>
 
 using Vector2f = _RealVector2<float>;
 using Vector2d = _RealVector2<double>;
+using Vector2h = _RealVector2<half>;
 using Vector2i = _IntVector2<int>;
 
 //====================================================================================================================//
@@ -224,6 +222,7 @@ using Vector2i = _IntVector2<int>;
 /// @return Output stream for further output.
 std::ostream& operator<<(std::ostream& out, const Vector2f& vec);
 std::ostream& operator<<(std::ostream& out, const Vector2d& vec);
+std::ostream& operator<<(std::ostream& out, const Vector2h& vec);
 std::ostream& operator<<(std::ostream& out, const Vector2i& vec);
 
 } // namespace notf

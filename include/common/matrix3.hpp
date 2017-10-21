@@ -23,8 +23,8 @@ T matrix3_transform(const MATRIX3&, const T&);
 ///  0, 0, 1]
 ///
 /// Only the first two rows are actually stored though, the last row is implicit.
-template <typename REAL, ENABLE_IF_REAL(REAL)>
-struct _Matrix3 : public detail::Arithmetic<_Matrix3<REAL, true>, _RealVector2<REAL>, 3> {
+template <typename REAL>
+struct _Matrix3 : public detail::Arithmetic<_Matrix3<REAL>, _RealVector2<REAL>, 3> {
 
     /// @brief Element type.
     using element_t = REAL;
@@ -35,7 +35,7 @@ struct _Matrix3 : public detail::Arithmetic<_Matrix3<REAL, true>, _RealVector2<R
     /// @brief Arithmetic base type.
     using super_t = detail::Arithmetic<_Matrix3<element_t>, component_t, 3>;
 
-    // members -------------------------------------------------------------------------------------------------------//
+    // fields --------------------------------------------------------------------------------------------------------//
     using super_t::data;
 
     // methods -------------------------------------------------------------------------------------------------------//

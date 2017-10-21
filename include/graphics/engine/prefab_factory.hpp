@@ -9,6 +9,7 @@
 #include "common/vector.hpp"
 #include "common/vector2.hpp"
 #include "common/vector3.hpp"
+#include "common/vector4.hpp"
 #include "graphics/engine/prefab.hpp"
 #include "graphics/engine/prefab_group.hpp"
 
@@ -107,12 +108,12 @@ protected: // methods **********************************************************
     static Product _produce(const Sphere& def);
 
     /** Convert a study value into the appropriate OpenGL type. */
-    static void _convert(const Vector3d& in, std::array<float, 4>& out);
-    static void _convert(const Vector3d& in, std::array<half, 4>& out);
-    static void _convert(const Vector3d& in, std::array<float, 3>& out);
-    static void _convert(const Vector3d& in, std::array<half, 3>& out);
-    static void _convert(const Vector2d& in, std::array<float, 2>& out);
-    static void _convert(const Vector2d& in, std::array<half, 2>& out);
+    static void _convert(const Vector2d& in, Vector2f& out);
+    static void _convert(const Vector2d& in, Vector2h& out);
+    static void _convert(const Vector3d& in, Vector3f& out);
+    static void _convert(const Vector3d& in, Vector3h& out);
+    static void _convert(const Vector3d& in, Vector4f& out);
+    static void _convert(const Vector3d& in, Vector4h& out);
 
     /** Error overloads for _convert to give helpful error messages. */
     template <typename UNSUPPORTED_TYPE>

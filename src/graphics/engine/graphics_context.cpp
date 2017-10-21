@@ -14,13 +14,15 @@
 
 namespace notf {
 
-GLExtensions::GLExtensions()
+GraphicsContext* GraphicsContext::s_current_context = nullptr;
+
+GraphicsContext::GLExtensions::GLExtensions()
 {
     std::set<std::string> extensions;
     { // create a set of all available extensions
         const auto gl_extensions = glGetString(GL_EXTENSIONS);
         if (gl_extensions == nullptr) {
-            throw_runtime_error("Cannot check GL extensions without an OpenGL context");
+            throw_runtime_error("Cannot check GL extensions without a valid OpenGL context");
         }
 
         const size_t len = strlen(reinterpret_cast<const char*>(gl_extensions));
@@ -34,11 +36,6 @@ GLExtensions::GLExtensions()
     // initialize the members
     anisotropic_filter = extensions.count("GL_EXT_texture_filter_anisotropic");
 }
-
-//*********************************************************************************************************************/
-//*********************************************************************************************************************/
-
-GraphicsContext* GraphicsContext::s_current_context = nullptr;
 
 GraphicsContext::GraphicsContext(GLFWwindow* window)
     : m_window(window)

@@ -1,23 +1,34 @@
 #pragma once
 
+#include <iosfwd>
+
 namespace notf {
 
-/**
- * The `half` type is only used to store the result of floating point operations.
- * No mathematical operations are defined for half
- */
+/// \brief 16bit floating point type.
 struct half {
-    /** Default constructor. */
+
+    // fields --------------------------------------------------------------------------------------------------------//
+    /// @brief Half value.
+    short value;
+
+    // methods -------------------------------------------------------------------------------------------------------//
+    /// @brief Default constructor.
     half() = default;
 
-    /** Value constructor. */
-    half(const float input);
+    /// @brief Value constructor.
+    /// @param value    Float value to convert into a half.
+    half(const float value);
 
-    /** Converts the half back to a float. */
+    /// @brief Converts the half back to a float.
     explicit operator float() const;
-
-    /** Half value. */
-    short value;
 };
+
+//====================================================================================================================//
+
+/// @brief Prints the value of a half into a std::ostream.
+/// @param out      Output stream, implicitly passed with the << operator.
+/// @param value    Half value.
+/// @return Output stream for further output.
+std::ostream& operator<<(std::ostream& out, const half& value);
 
 } // namespace notf

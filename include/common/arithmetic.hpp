@@ -3,6 +3,7 @@
 #include <array>
 #include <assert.h>
 
+#include "common/half.hpp"
 #include "common/hash.hpp"
 
 namespace notf {
@@ -59,7 +60,7 @@ template <typename self_t, typename element_t, typename component_t, size_t dim>
 struct ArithmeticImpl<self_t, element_t, component_t, dim,
                       std::enable_if_t<std::is_same<element_t, component_t>::value>> {
 
-    // members -------------------------------------------------------------------------------------------------------//
+    // fields --------------------------------------------------------------------------------------------------------//
     /// @brief Value data array.
     std::array<component_t, dim> data;
 
@@ -235,7 +236,7 @@ template <typename self_t, typename element_t, typename component_t, size_t dim>
 struct ArithmeticImpl<self_t, element_t, component_t, dim,
                       std::enable_if_t<!std::is_same<element_t, component_t>::value>> {
 
-    // members -------------------------------------------------------------------------------------------------------//
+    // fields --------------------------------------------------------------------------------------------------------//
     /// @brief Value data array.
     std::array<component_t, dim> data;
 
@@ -360,6 +361,10 @@ template <typename T>
 struct get_element_type<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
     using type = T;
 };
+template <>
+struct get_element_type<half> {
+    using type = half;
+};
 
 /// @brief Base for all arithmetic value types.
 ///
@@ -380,7 +385,7 @@ struct Arithmetic : public ArithmeticImpl<SELF, typename get_element_type<COMPON
     /// @brief Base type, different for vectors and matrices.
     using super_t = ArithmeticImpl<self_t, element_t, component_t, DIMENSIONS>;
 
-    // members -------------------------------------------------------------------------------------------------------//
+    // fields --------------------------------------------------------------------------------------------------------//
     using super_t::data;
 
     // methods -------------------------------------------------------------------------------------------------------//

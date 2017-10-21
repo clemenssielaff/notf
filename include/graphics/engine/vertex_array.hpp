@@ -1,20 +1,16 @@
 #pragma once
 
 #include <assert.h>
-#include <iostream>
-#include <tuple>
-#include <vector>
 
 #include "common/exception.hpp"
 #include "common/meta.hpp"
 #include "core/opengl.hpp"
 #include "graphics/engine/gl_errors.hpp"
 #include "graphics/engine/gl_utils.hpp"
-#include "graphics/engine/shader.hpp"
-
-//**********************************************************************************************************************
 
 namespace notf {
+
+//====================================================================================================================//
 
 namespace detail {
 
@@ -23,10 +19,7 @@ class PrefabFactoryImpl;
 template <typename TUPLE, std::size_t... I>
 decltype(auto) extract_trait_types_impl(const TUPLE&, std::index_sequence<I...>)
 {
-    return std::tuple<std::array<
-        typename std::tuple_element<I, TUPLE>::type::type,
-        std::tuple_element<I, TUPLE>::type::countt>...>{};
-//    return std::tuple<typename std::tuple_element<I, TUPLE>::type::mytype...>{};
+    return std::tuple<typename std::tuple_element<I, TUPLE>::type::type...>{};
 }
 
 /** Extracts the value types from a variadic list of traits. */
@@ -38,166 +31,165 @@ decltype(auto) extract_trait_types(const std::tuple<Ts...>& tuple)
 
 } // namespace detail
 
-//*********************************************************************************************************************/
-//*********************************************************************************************************************/
+//====================================================================================================================//
 
-/** Definitions used to identify VertexArray traits to the Geometry factory.
- * Used to tell the GeometryFactory how to construct a VertexArray<Traits...>::Vertex instance.
- * Using an AttributeKind other than AttributeKind::Other determines the Trait's type as well.
- */
+/// @brief Definitions used to identify VertexArray traits to the Geometry factory.
+/// Used to tell the GeometryFactory how to construct a VertexArray<Traits...>::Vertex instance.
 struct AttributeKind {
 
-    /** Vertex position in model space. */
+    /// @brief Vertex position in model space.
     struct Position {
     };
 
-    /** Vertex normal vector. */
+    /// @brief Vertex normal vector.
     struct Normal {
     };
 
-    /** Vertex color. */
+    /// @brief Vertex color.
     struct Color {
     };
 
-    /** Texture coordinate. */
+    /// @brief Texture coordinate.
     struct TexCoord {
     };
 
-    /** Catch-all for other attribute kinds.
-     * Does not impose any restrictions on the Trait::type.
-     */
+    /// @brief Catch-all for other attribute kinds.
+    /// Does not impose any restrictions on the Trait::type.
     struct Other {
     };
 };
 
-//*********************************************************************************************************************/
-//*********************************************************************************************************************/
+//====================================================================================================================//
 
-/** VertexArray baseclass, so other objects can hold pointers to any type of VertexArray.
- */
+/// @brief Base of all attribute kinds.
+struct AttributeTrait {
+
+    /// @brief Location of the attribute in the shader.
+    constexpr static uint location = std::numeric_limits<GLuint>::max();
+
+    /// @brief Whether the value type is normalized or not.
+    /// See https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glVertexAttribPointer.xhtml
+    constexpr static bool normalized = false;
+
+    /// @brief Type used to store the trait value.
+    using type = void;
+
+    /// @brief Attribute kind, is used by the GeometryFactory to identify the trait.
+    using kind = AttributeKind::Other;
+};
+
+//====================================================================================================================//
+
+/// @brief VertexArray baseclass, so other objects can hold pointers to any type of VertexArray.
 class VertexArrayType {
 
-public: // types ******************************************************************************************************/
-    /** Arguments for the vertex array. */
+    // types ---------------------------------------------------------------------------------------------------------//
+public:
+    /// @brief Arguments for the vertex array.
     struct Args {
 
-        /** The expected usage of the data.
-         * Must be one of:
-         * GL_STREAM_DRAW    GL_STATIC_DRAW    GL_DYNAMIC_DRAW
-         * GL_STREAM_READ    GL_STATIC_READ    GL_DYNAMIC_READ
-         * GL_STREAM_COPY    GL_STATIC_COPY    GL_DYNAMIC_COPY
-         */
+        /// @brief The expected usage of the data.
+        /// Must be one of:
+        /// GL_STREAM_DRAW    GL_STATIC_DRAW    GL_DYNAMIC_DRAW
+        /// GL_STREAM_READ    GL_STATIC_READ    GL_DYNAMIC_READ
+        /// GL_STREAM_COPY    GL_STATIC_COPY    GL_DYNAMIC_COPY
         GLenum usage = GL_STATIC_DRAW;
 
-        /** Whether this array is per-vertex or per-instance. */
+        /// @brief Whether this array is per-vertex or per-instance.
         bool per_instance = false;
     };
 
-public: // methods ****************************************************************************************************/
+    // methods -------------------------------------------------------------------------------------------------------//
+public:
     DISALLOW_COPY_AND_ASSIGN(VertexArrayType)
 
-    /** Destructor. */
+    /// @brief Destructor.
     virtual ~VertexArrayType();
 
-    /** Initializes the VertexArray.
-     * @throws std::runtime_error   If the VBO could not be allocated.
-     * @throws std::runtime_error   If no VAO object is currently bound.
-     */
-    virtual void init(ShaderConstPtr shader) = 0;
+    /// @brief Initializes the VertexArray.
+    /// @throws std::runtime_error   If the VBO could not be allocated.
+    /// @throws std::runtime_error   If no VAO object is currently bound.
+    virtual void init() = 0;
 
-    /** OpenGL handle of the vertex buffer. */
+    /// @brief OpenGL handle of the vertex buffer.
     GLuint id() const { return m_vbo_id; }
 
-    /** Number of elements in the array. */
+    /// @brief Number of elements in the array.
     GLsizei size() const { return m_size; }
 
-protected: // methods *************************************************************************************************/
-    /** Protected Constructor. */
+protected:
+    /// @brief Constructor.
     VertexArrayType(Args&& args)
         : m_args(std::move(args))
         , m_vbo_id(0)
-        , m_size(0)
-    {
-    }
+        , m_size(0) {}
 
-    /** Tries to find an attribute in the shader.
-     * Logs a warning message, if the attribute could not be found.
-     * @param attribute_name    Name of the attribute to find.
-     * @return                  Attribute ID or INVALID_ID if the attribute was not found.
-     */
-    GLuint _get_shader_attribute(const Shader* shader, const std::string attribute_name);
-
-protected: // fields **************************************************************************************************/
-    /** Arguments used to initialize the vertex array. */
+    // fields --------------------------------------------------------------------------------------------------------//
+protected:
+    /// @brief Arguments used to initialize the vertex array.
     const Args m_args;
 
-    /** OpenGL handle of the vertex buffer. */
+    /// @brief OpenGL handle of the vertex buffer. */
     GLuint m_vbo_id;
 
-    /** Number of elements in the array. */
+    /// @brief Number of elements in the array. */
     GLsizei m_size;
 
-protected: // static fields *******************************************************************************************/
-    /** Invalid attribute ID. */
+    /// @brief Invalid attribute ID.
     static constexpr GLuint INVALID_ID = std::numeric_limits<GLuint>::max();
 };
 
-//*********************************************************************************************************************/
-//**********************************************************************************************************************
+//====================================================================================================================//
 
-/** The Vertex array manages an array of vertex attributes.
- * The array's layout is defined at compile-time using traits.
- *
- * Example usage:
- *
- *     namespace detail {
- *
- *     struct VertexPositionTrait {
- *         StaticString name             = "vPos";                  // matches the name of an attribute in the shader
- *         using type                    = float;                   // type to store the value (is converted to OpenGL)
- *         using kind                    = AttributeKind::Position; // attribute value kind (used by GeometryFactory)
- *         static constexpr size_t count = 4;                       // number of components in the value (3 for vec3...)
- *     };
- *
- *     struct VertexColorTrait {
- *         StaticString name             = "vColor";
- *         using type                    = float;
- *         using kind                    = AttributeKind::Color;
- *         static constexpr size_t count = 4;
- *     };
- *
- *     } // namespace detail
- *
- *     using VertexLayout = VertexArray<VertexPositionTrait, VertexColorTrait>;
- */
+/// @brief The Vertex array manages an array of vertex attributes.
+/// The array's layout is defined at compile-time using traits.
+///
+/// Example usage:
+///
+///     namespace detail {
+///
+///     struct VertexPositionTrait : public AttributeTrait {
+///         constexpr static uint location = 0;
+///         using type                     = Vector2f;
+///         using kind                     = AttributeKind::Position;
+///     };
+///
+///     struct VertexColorTrait : public AttributeTrait {
+///         constexpr static uint location = 1;
+///         using type                     = Vector4h;
+///         using kind                     = AttributeKind::Color;
+///     };
+///
+///     } // namespace detail
+///
+///     using VertexLayout = VertexArray<VertexPositionTrait, VertexColorTrait>;
+///
 template <typename... Ts>
 class VertexArray : public VertexArrayType {
 
     template <typename>
     friend class PrefabFactory;
 
-public: // types ******************************************************************************************************/
-    /** Traits defining the array layout. */
+    // types ---------------------------------------------------------------------------------------------------------//
+public:
+    /// @brief Traits defining the array layout.
     using Traits = std::tuple<Ts...>;
 
-    /** A tuple containing one array for each trait. */
+    /// @brief A tuple containing one array for each trait.
     using Vertex = decltype(detail::extract_trait_types(Traits{}));
 
-public: // methods ****************************************************************************************************/
-    /** Constructor. */
+    // methods -------------------------------------------------------------------------------------------------------//
+public:
+    /// @brief Constructor.
     VertexArray(Args&& args = {})
         : VertexArrayType(std::forward<Args>(args))
         , m_vertices()
-        , m_buffer_size(0)
-    {
-    }
+        , m_buffer_size(0) {}
 
-    /** Initializes the VertexArray.
-     * @param shader                Shader to initialize the attributes.
-     * @throws std::runtime_error   If the VBO could not be allocated.
-     * @throws std::runtime_error   If no VAO object is currently bound.
-     */
-    virtual void init(ShaderConstPtr shader) override
+    /// @brief Initializes the VertexArray.
+    /// @throws std::runtime_error   If the VBO could not be allocated.
+    /// @throws std::runtime_error   If no VAO object is currently bound.
+    virtual void init() override
     {
         if (m_vbo_id) {
             return;
@@ -220,7 +212,7 @@ public: // methods *************************************************************
 
         glBindBuffer(GL_ARRAY_BUFFER, m_vbo_id);
         glBufferData(GL_ARRAY_BUFFER, m_size * sizeof(Vertex), &m_vertices[0], m_args.usage);
-        _init_array<0, Ts...>(std::move(shader));
+        _init_array<0, Ts...>();
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         check_gl_error();
 
@@ -228,12 +220,11 @@ public: // methods *************************************************************
         m_vertices.shrink_to_fit();
     }
 
-    /** Updates the data in the vertex array.
-     * If you regularly want to update the data, make sure you pass an appropriate `usage` hint in the arguments.
-     * @param data  New data to upload.
-     * @throws std::runtime_error   If the VertexArray is not yet initialized.
-     * @throws std::runtime_error   If no VAO object is currently bound.
-     */
+    /// @brief Updates the data in the vertex array.
+    /// If you regularly want to update the data, make sure you pass an appropriate `usage` hint in the arguments.
+    /// @param data  New data to upload.
+    /// @throws std::runtime_error   If the VertexArray is not yet initialized.
+    /// @throws std::runtime_error   If no VAO object is currently bound.
     void update(std::vector<Vertex>&& data)
     {
         if (!m_vbo_id) {
@@ -270,25 +261,22 @@ public: // methods *************************************************************
         m_vertices.shrink_to_fit();
     }
 
-private: // methods ***************************************************************************************************/
-    /** Recursively define each attribute from the class' traits. */
+private:
+    /// @brief Recursively define each attribute from the class' traits.
     template <size_t INDEX, typename FIRST, typename SECOND, typename... REST>
-    void _init_array(ShaderConstPtr shader)
+    void _init_array()
     {
-        _define_attribute<INDEX, FIRST>(shader);
-        _init_array<INDEX + 1, SECOND, REST...>(std::move(shader));
+        _define_attribute<INDEX, FIRST>();
+        _init_array<INDEX + 1, SECOND, REST...>();
     }
 
-    /** Recursion breaker. */
+    /// @brief Recursion breaker.
     template <size_t INDEX, typename LAST>
-    void _init_array(ShaderConstPtr shader)
-    {
-        _define_attribute<INDEX, LAST>(shader);
-    }
+    void _init_array() { _define_attribute<INDEX, LAST>(); }
 
-    /** Defines a single attribute. */
+    /// @brief Defines a single attribute.
     template <size_t INDEX, typename ATTRIBUTE>
-    void _define_attribute(ShaderConstPtr shader)
+    void _define_attribute()
     {
         // we cannot be sure that the tuple stores its fields in order :/
         // therefore we have to discover the offset for each element
@@ -296,42 +284,37 @@ private: // methods ************************************************************
             - reinterpret_cast<std::intptr_t>(&m_vertices[0]);
         assert(offset >= 0);
 
-        // find the attribute id
-        const GLuint attribute_id = _get_shader_attribute(shader.get(), ATTRIBUTE::name);
-        if (attribute_id == INVALID_ID) {
-            return;
-        }
-
         // not all attribute types fit into a single OpenGL ES attribute
         // larger types are stored in consecutive attribute locations
-        const size_t attribute_count = sizeof(typename ATTRIBUTE::mytype) / sizeof(GLfloat);
+        const size_t attribute_count = sizeof(typename ATTRIBUTE::type) / sizeof(GLfloat);
         for (size_t multi = 0; multi < (attribute_count / 4) + (attribute_count % 4 ? 1 : 0); ++multi) {
 
             const GLint size = std::min(4, static_cast<int>(attribute_count) - static_cast<int>((multi * 4)));
             assert(size >= 1 && size <= 4);
 
             // link the location in the array to the shader's attribute
-            glEnableVertexAttribArray(attribute_id + multi);
+            glEnableVertexAttribArray(ATTRIBUTE::location + multi);
             glVertexAttribPointer(
-                attribute_id + multi,
+                ATTRIBUTE::location + multi,
                 size,
-                to_gl_type(typename ATTRIBUTE::type{}),
-                /*normalized*/ GL_FALSE,
+                to_gl_type(typename ATTRIBUTE::type::element_t{}),
+                ATTRIBUTE::normalized,
                 static_cast<GLsizei>(sizeof(Vertex)),
                 gl_buffer_offset(static_cast<size_t>(offset + (multi * 4 * sizeof(GLfloat)))));
 
             // define the attribute as an instance attribute
             if (m_args.per_instance) {
-                glVertexAttribDivisor(attribute_id + multi, 1);
+                glVertexAttribDivisor(ATTRIBUTE::location + multi, 1);
             }
         }
     }
 
-private: // fields ****************************************************************************************************/
-    /** Vertices stored in the array. */
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
+    /// @brief Vertices stored in the array.
     std::vector<Vertex> m_vertices;
 
-    /** Size in bytes of the buffer allocated on the server. */
+    /// @brief Size in bytes of the buffer allocated on the server.
     GLsizei m_buffer_size;
 };
 

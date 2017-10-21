@@ -235,7 +235,7 @@ std::shared_ptr<Texture2> Texture2::load_image(GraphicsContext& context, const s
     check_gl_error();
 
     // make texture anisotropic, if requested and available
-    if (args.anisotropy > 1.f && GLExtensions::instance().anisotropic_filter) {
+    if (args.anisotropy > 1.f && context.extensions().anisotropic_filter) {
         GLfloat highest_anisotropy;
         glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &highest_anisotropy);
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, min(args.anisotropy, highest_anisotropy));
