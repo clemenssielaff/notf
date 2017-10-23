@@ -1,175 +1,270 @@
-#include "common/log.hpp"
-#include "common/random.hpp"
-#include "common/warnings.hpp"
-#include "core/application.hpp"
-#include "core/controller.hpp"
-#include "core/events/char_event.hpp"
-#include "core/events/focus_event.hpp"
-#include "core/events/mouse_event.hpp"
-#include "core/widget.hpp"
-#include "core/window.hpp"
-#include "core/window_layout.hpp"
-#include "dynamic/controller/scroll_area.hpp"
-#include "dynamic/layout/flex_layout.hpp"
-#include "dynamic/layout/overlayout.hpp"
-#include "dynamic/layout/text_layout.hpp"
-#include "dynamic/widget/text_widget.hpp"
-#include "graphics/cell/painter.hpp"
-#include "graphics/engine/graphics_context.hpp"
-#include "graphics/text/font.hpp"
+#include <iostream>
 
-namespace notf {
-namespace shorthand {
-using WindowPtr     = std::shared_ptr<Window>;
-using FontPtr       = std::shared_ptr<Font>;
-using WidgetPtr     = std::shared_ptr<Widget>;
-using ControllerPtr = std::shared_ptr<Controller>;
-}
-}
+#include "common/half.hpp"
+#include "common/log.hpp"
+#include "common/matrix4.hpp"
+#include "common/size2.hpp"
+#include "common/vector3.hpp"
+#include "common/vector4.hpp"
+#include "common/warnings.hpp"
+#include "core/glfw.hpp"
+#include "graphics/graphics_context.hpp"
+#include "graphics/prefab_factory.hpp"
+#include "graphics/prefab_group.hpp"
+#include "graphics/shader.hpp"
+#include "graphics/texture2.hpp"
+#include "graphics/vertex_array.hpp"
+
+#include "glm_utils.hpp"
 
 using namespace notf;
-using namespace notf::shorthand;
 
-//*********************************************************************************************************************/
+namespace {
 
-static FontPtr g_font;
-
-//*********************************************************************************************************************/
-
-/** Rect Widget.
- */
-class RectWidget : public Widget {
-public: // methods
-    RectWidget(Color color)
-        : Widget(), m_color(color)
-    {
-    }
-
-    virtual void _paint(Painter& painter) const override
-    {
-        const Aabrf widget_rect = Aabrf(get_size());
-        painter.set_scissor(widget_rect);
-        painter.begin_path();
-        painter.add_rect(widget_rect);
-        painter.set_fill(m_color);
-        painter.fill();
-
-        if (g_font && g_font->is_valid()) {
-            painter.set_fill(Color::white());
-            painter.translate(widget_rect.center());
-            painter.write(get_name(), g_font);
-        }
-    }
-
-private: // fields
-    Color m_color;
+struct VertexPos : public AttributeTrait {
+    constexpr static uint location = 0;
+    using type                     = Vector4f;
+    using kind                     = AttributeKind::Position;
 };
 
-class FlexController : public BaseController<FlexController> {
-public: // methods
-    FlexController()
-        : BaseController<FlexController>({}, {})
-    {
-        std::shared_ptr<FlexLayout> flex_layout = FlexLayout::create();
-        flex_layout->set_name("FlexLayout");
-        flex_layout->set_spacing(10);
-        flex_layout->set_alignment(FlexLayout::Alignment::START);
-        flex_layout->set_cross_alignment(FlexLayout::Alignment::START);
-        _set_root_item(flex_layout);
-
-        for (int i = 0; i < 4; ++i) {
-            std::shared_ptr<RectWidget> rect = std::make_shared<RectWidget>(Color("#c34200"));
-
-            if (i == 1) {
-                rect->set_opacity(0.5);
-            }
-
-            std::stringstream ss;
-            ss << "Rect" << std::to_string(static_cast<size_t>(rect->get_id()));
-            rect->set_name(ss.str());
-
-            Claim claim = rect->get_claim();
-            claim.set_fixed(100, 100 * (i + 1));
-            rect->set_claim(claim);
-            flex_layout->add_item(rect);
-        }
-    }
+struct VertexNormal : public AttributeTrait {
+    constexpr static uint location = 1;
+    using type                     = Vector4f;
+    using kind                     = AttributeKind::Normal;
 };
 
-class MainController : public BaseController<MainController> {
-public: // methods
-    MainController()
-        : BaseController<MainController>({}, {})
-    {
-        set_name("MainController");
-
-        std::shared_ptr<Overlayout> overlayout = Overlayout::create();
-        overlayout->set_alignment(Overlayout::AlignHorizontal::CENTER, Overlayout::AlignVertical::CENTER);
-        overlayout->set_padding(Padding::all(50));
-        overlayout->set_name("Outer OverLayout");
-        _set_root_item(overlayout);
-
-        std::shared_ptr<RectWidget> back_rect = std::make_shared<RectWidget>(Color("#333333"));
-        overlayout->add_item(back_rect);
-
-        std::shared_ptr<FlexLayout> vertical_layout = FlexLayout::create(FlexLayout::Direction::TOP_TO_BOTTOM);
-        vertical_layout->set_spacing(20);
-        overlayout->add_item(vertical_layout);
-
-        ScrollAreaPtr scroll_area = std::make_shared<ScrollArea>();
-        scroll_area->set_name("ScrollArea");
-        scroll_area->set_area_controller(std::make_shared<FlexController>());
-        scroll_area->get_area_controller()->set_name("FlexController");
-        vertical_layout->add_item(scroll_area);
-
-        std::shared_ptr<TextLayout> text_layout = TextLayout::create();
-        vertical_layout->add_item(text_layout);
-        {
-            TextWidgetPtr text_widget = std::make_shared<TextWidget>(
-                g_font, "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce eget cursus elit. Interdum et malesuada fames ac ante ipsum primis in faucibus. Suspendisse pulvinar nisi vitae lacus vestibulum ultricies. Nunc condimentum, mi ac blandit tincidunt, enim eros volutpat risus, in viverra nisi magna accumsan eros. Suspendisse lobortis sodales dignissim. Donec euismod augue et sem pulvinar, non volutpat eros accumsan. Proin dapibus luctus enim, sodales blandit ipsum laoreet in. In faucibus vitae mauris ultricies eleifend. Proin tempor massa vel ligula consequat, id elementum tellus lobortis.");
-            text_widget->set_wrapping(true);
-            text_layout->add_item(text_widget);
-        }
-        {
-            TextWidgetPtr text_widget = std::make_shared<TextWidget>(
-                g_font, "Nam accumsan rutrum condimentum orci eget cursus. Mauris in sapien vitae felis sollicitudin fermentum eu quis lorem. Nullam rutrum tristique nisi. Sed sed arcu quis odio vulputate varius. Aenean molestie nunc et nulla volutpat tempor. Aliquam fringilla erat a lacus sollicitudin, porttitor accumsan turpis elementum. Nulla sit amet orci quis nibh auctor porta. Curabitur nec posuere nibh. Praesent at vestibulum nisi, sit amet viverra felis. Suspendisse aliquam, massa ac congue vulputate, turpis lectus molestie lectus, sed molestie nisi risus nec nibh. Praesent ex ex, tempus at metus eu, vehicula venenatis odio. Interdum et malesuada fames ac ante ipsum primis in faucibus. Vivamus dignissim dictum porta. Proin sit amet nibh molestie, mollis quam nec, dapibus turpis.");
-            text_widget->set_wrapping(true);
-            text_layout->add_item(text_widget);
-        }
-        {
-            TextWidgetPtr text_widget = std::make_shared<TextWidget>(
-                g_font, "Donec vehicula dapibus leo, non tempus nunc maximus et. Sed non ex est. Pellentesque dictum a felis quis dignissim. Pellentesque ultrices velit ipsum, eget dictum nisi tincidunt sed. Maecenas eget sollicitudin dui, id condimentum ex. Pellentesque velit dui, euismod et turpis sed, ornare tincidunt tortor. Maecenas eu libero consequat, tincidunt augue fermentum, suscipit tellus. Sed at magna neque.");
-            text_widget->set_wrapping(true);
-            text_layout->add_item(text_widget);
-        }
-    }
+struct VertexTexCoord : public AttributeTrait {
+    constexpr static uint location = 2;
+    using type                     = Vector2f;
+    using kind                     = AttributeKind::TexCoord;
 };
 
-#if 0
-int main(int argc, char* argv[])
-{
-    ApplicationInfo app_info;
-    app_info.argc    = argc;
-    app_info.argv    = argv;
-    Application& app = Application::initialize(app_info);
-
-    // window
-    WindowInfo window_info;
-    window_info.icon          = "notf.png";
-    window_info.size          = {800, 600};
-    window_info.clear_color   = Color("#262a32");
-    window_info.is_resizeable = true;
-    auto window               = Window::create(window_info);
-
-    g_font = Font::load(window->get_graphics_context(),
-                        "/home/clemens/code/BUILD/notf-debug/res/fonts/Roboto-Regular.ttf",
-                        14);
-
-    window->get_layout()->set_controller(std::make_shared<MainController>());
-    int result = app.exec();
-
-    g_font.reset();
-
-    return result;
+struct InstanceXform : public AttributeTrait {
+    constexpr static uint location = 3;
+    using type                     = Matrix4f;
+    using kind                     = AttributeKind::Other;
+};
 }
-#endif
+
+static void error_callback(int error, const char* description)
+{
+    log_critical << "GLFW error #" << error << ": " << description;
+}
+
+void render_thread(GLFWwindow* window)
+{
+    std::unique_ptr<GraphicsContext> context(new GraphicsContext(window));
+
+    //////////////////////////////////
+
+    // check if GL_MAX_RENDERBUFFER_SIZE is >= texWidth and texHeight
+    GLint texWidth = 800, texHeight = 800;
+    GLint maxRenderbufferSize;
+    glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &maxRenderbufferSize);
+    if ((maxRenderbufferSize <= texWidth) || (maxRenderbufferSize <= texHeight)) {
+        // cannot use framebuffer objects, as we need to create
+        // a depth buffer as a renderbuffer object
+        // return with appropriate error
+        throw_runtime_error("Render target too large");
+    }
+
+    // bind the framebuffer
+    GLuint framebuffer;
+    glGenFramebuffers(1, &framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
+    // bind texture and load the texture mip level 0
+    // texels are RGB565
+    // no texels need to be specified as we are going to draw into the texture
+    GLuint renderTexture;
+    glGenTextures(1, &renderTexture);
+    glBindTexture(GL_TEXTURE_2D, renderTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texWidth, texHeight, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    //    // bind renderbuffer and create a 16-bit depth buffer
+    //    // width and height of renderbuffer = width and height of
+    //    // the texture
+    //    GLuint depthRenderbuffer;
+    //    glGenRenderbuffers(1, &depthRenderbuffer);
+    //    glBindRenderbuffer(GL_RENDERBUFFER, depthRenderbuffer);
+    //    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, texWidth, texHeight);
+
+    // specify texture as color attachment
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderTexture, 0);
+
+    // specify depth_renderbuffer as depth attachment
+    //    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthRenderbuffer);
+
+    // check for framebuffer complete
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        throw_runtime_error("UNDERBNESS");
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    /////////////////////////////////////
+
+    ShaderPtr blinn_phong_shader = Shader::load(
+        *context.get(), "Blinn-Phong",
+        "/home/clemens/code/notf/res/shaders/blinn_phong.vert",
+        "/home/clemens/code/notf/res/shaders/blinn_phong.frag");
+    auto shader_scope = blinn_phong_shader->scope();
+    UNUSED(shader_scope);
+
+    Texture2::Args tex_args;
+    tex_args.codec      = Texture2::Codec::ASTC;
+    tex_args.anisotropy = 5;
+    Texture2Ptr texture = Texture2::load_image(*context.get(), "/home/clemens/code/notf/res/textures/test.astc", tex_args);
+
+    using VertexLayout   = VertexArray<VertexPos, VertexTexCoord>;
+    using InstanceLayout = VertexArray<InstanceXform>;
+    using Library        = PrefabGroup<VertexLayout, InstanceLayout>;
+    Library library;
+
+    using Factory = PrefabFactory<Library>;
+    Factory factory(library);
+    std::shared_ptr<PrefabType<Factory::InstanceData>> box_type;
+    {
+        auto box = Factory::Box{};
+        factory.add(box);
+        box_type = factory.produce("boxy_the_box");
+    }
+
+    auto box1    = box_type->create_instance();
+    box1->data() = std::make_tuple(Matrix4f::translation(-500, 500, -1000));
+
+    auto box2    = box_type->create_instance();
+    box2->data() = std::make_tuple(Matrix4f::translation(500, 500, -1000));
+
+    auto box3    = box_type->create_instance();
+    box3->data() = std::make_tuple(Matrix4f::translation(-500, -500, -1000));
+
+    auto box4    = box_type->create_instance();
+    box4->data() = std::make_tuple(Matrix4f::translation(500, -500, -1000));
+
+    //    auto some_stick = stick_type->create_instance();
+
+    library.init();
+
+    glEnable(GL_DEPTH_TEST);
+
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+
+    //    blinn_phong_shader->set_uniform("s_texture", 0);
+
+    // render loop
+    using namespace std::chrono_literals;
+    auto last_frame_start_time = std::chrono::high_resolution_clock::now();
+    float angle                = 0;
+    while (!glfwWindowShouldClose(window)) {
+        auto frame_start_time = std::chrono::high_resolution_clock::now();
+        angle += 0.01 * ((frame_start_time - last_frame_start_time) / 16ms);
+        last_frame_start_time = frame_start_time;
+
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
+        Size2i buffer_size;
+        glfwGetFramebufferSize(window, &buffer_size.width, &buffer_size.height);
+        glViewport(0, 0, buffer_size.width, buffer_size.height);
+
+        glClearColor(0, 0, 0, 1);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        {
+            auto texture_scope = texture->scope();
+            UNUSED(texture_scope);
+
+            // pass the shader uniforms
+            const Matrix4f move = Matrix4f::translation(0, 0, -500);
+            //        const Xform3f rotate    = Xform3f::rotation(Vector4f(sin(angle), cos(angle)), angle);
+            const Matrix4f rotate = Matrix4f::rotation(Vector3f(0, 1), angle);
+            //        const Xform3f rotate    = Xform3f::identity();
+            const Matrix4f scale     = Matrix4f::scaling(200);
+            const Matrix4f modelview = move * rotate * scale;
+            blinn_phong_shader->set_uniform("modelview", modelview);
+
+            const Matrix4f perspective = Matrix4f::perspective(deg_to_rad(90), 1, 0, 10000.f);
+            //         const Xform3f perspective = Xform3f::orthographic(-1000.f, 1000.f, -1000.f, 1000.f, 0.f, 10000.f);
+            blinn_phong_shader->set_uniform("projection", perspective);
+
+            Matrix4f normalMat = rotate;
+            //            blinn_phong_shader->set_uniform("normalMat", normalMat);
+
+            library.render();
+
+            check_gl_error();
+        }
+
+        /////////////////
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, texWidth, texHeight);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, renderTexture);
+
+        library.render();
+
+        /////////////////
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+
+        const auto sleep_time = max(0ms, 16ms - (std::chrono::high_resolution_clock::now() - frame_start_time));
+        std::this_thread::sleep_for(sleep_time);
+    }
+
+    // clean up
+    //    glDeleteRenderbuffers(1, &depthRenderbuffer);
+    glDeleteFramebuffers(1, &framebuffer);
+    glDeleteTextures(1, &renderTexture);
+
+    context->clear_shader();
+}
+
+int main(int /*argc*/, char* /*argv*/ [])
+{
+    // install the log handler first, to catch errors right away
+    auto log_handler = std::make_unique<LogHandler>(128, 200);
+    install_log_message_handler(std::bind(&LogHandler::push_log, log_handler.get(), std::placeholders::_1));
+    log_handler->start();
+    glfwSetErrorCallback(error_callback);
+
+    // initialize GLFW
+    if (!glfwInit()) {
+        log_fatal << "GLFW initialization failed";
+        exit(-1);
+    }
+    log_info << "GLFW version: " << glfwGetVersionString();
+
+    // NoTF uses OpenGL ES 3.2
+    glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+
+    { // open the window
+        GLFWwindow* window = glfwCreateWindow(800, 800, "NoTF Engine Test", nullptr, nullptr);
+        std::thread render_worker(render_thread, window);
+        while (!glfwWindowShouldClose(window)) {
+            glfwWaitEvents();
+        }
+        render_worker.join();
+    }
+
+    // stop the event loop
+    glfwTerminate();
+
+    // stop the logger
+    log_info << "Application shutdown";
+    log_handler->stop();
+    log_handler->join();
+
+    return 0;
+}

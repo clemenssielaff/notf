@@ -2,11 +2,4 @@
 
 namespace notf {
 
-RectWidget::RectWidget()
-    : Widget()
-{
-}
-
-void RectWidget::_paint(Painter&) const {}
-
 } // namespace notf

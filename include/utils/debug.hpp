@@ -24,8 +24,7 @@ class DebugTimer {
 
 public: // methods
     /// @brief Constructor
-    ///
-    /// @param [in] name    Name of the DebugTimer to identify the output.
+    /// @param name    Name of the DebugTimer to identify the output.
     DebugTimer(const std::string& name)
         : m_name(name)
         , m_start(std::chrono::high_resolution_clock::now())

@@ -6,8 +6,8 @@
 #include "common/matrix4.hpp"
 #include "common/padding.hpp"
 #include "common/random.hpp"
+#include "common/size2.hpp"
 #include "common/vector2.hpp"
-#include "core/widget.hpp"
 
 namespace notf {
 
@@ -100,14 +100,5 @@ inline Padding random_padding(const float from, const float to)
         random_number<float>(from, to),
         random_number<float>(from, to)};
 }
-
-//*********************************************************************************************************************/
-
-/** Rectangular widget with a fixed claim. */
-class RectWidget : public Widget {
-public: // methods
-    RectWidget();
-    virtual void _paint(Painter&) const override;
-};
 
 } // namespace notf
