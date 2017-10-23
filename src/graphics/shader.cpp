@@ -181,12 +181,6 @@ std::shared_ptr<Shader> Shader::build(GraphicsContext& context,
                                       const std::string& fragment_shader_source,
                                       const std::string& geometry_shader_source)
 {
-    if (!context.is_current()) {
-        throw_runtime_error(string_format(
-            "Cannot build shader \"%s\" with a context that is not current",
-            name.c_str()));
-    }
-
     // compile the shaders
     GLuint vertex_shader = compile_shader(STAGE::VERTEX, name, vertex_shader_source);
     ShaderRAII vertex_shader_raii(vertex_shader);
@@ -395,7 +389,6 @@ const Shader::Variable& Shader::_uniform(const std::string& name) const
 void Shader::_deallocate()
 {
     if (m_id) {
-        assert(m_graphics_context.is_current());
         glDeleteProgram(m_id);
         log_trace << "Deleted Shader Program \"" << m_name << "\"";
     }

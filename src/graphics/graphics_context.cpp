@@ -9,13 +9,19 @@
 #include "common/string.hpp"
 #include "common/vector.hpp"
 #include "core/glfw.hpp"
+#include "core/opengl.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/texture2.hpp"
 
-namespace notf {
+namespace { // anonymous
 
-GraphicsContext* GraphicsContext::s_current_context = nullptr;
+const uint ALL_ZEROS = 0x00000000;
+const uint ALL_ONES  = 0xffffffff;
+
+} // namespace anonymous
+
+namespace notf {
 
 GraphicsContext::GLExtensions::GLExtensions()
 {
@@ -38,13 +44,15 @@ GraphicsContext::GLExtensions::GLExtensions()
     anisotropic_filter = extensions.count("GL_EXT_texture_filter_anisotropic");
 }
 
+//====================================================================================================================//
+
 GraphicsContext::GraphicsContext(GLFWwindow* window)
     : m_window(window)
     , m_current_thread(0)
     , m_has_vsync(true)
-    , m_stencil_func(StencilFunc::INVALID)
+    , m_stencil_func(StencilFunc::DEFAULT)
     , m_stencil_mask(0)
-    , m_blend_mode(BlendMode::INVALID)
+    , m_blend_mode(BlendMode::DEFAULT)
     , m_textures()
     , m_shader_stack()
     , m_shaders()
@@ -54,14 +62,7 @@ GraphicsContext::GraphicsContext(GLFWwindow* window)
             "Failed to create a new GraphicsContext without a window (given pointer is null).");
     }
 
-    GLFWwindow* current_context = glfwGetCurrentContext();
-    if (current_context) {
-        assert(s_current_context->m_window == current_context);
-        throw_runtime_error(
-            "Failed to create a new GraphicsContext instance with another one being current.");
-    }
-
-    make_current();
+    glfwMakeContextCurrent(m_window);
     glfwSwapInterval(m_has_vsync ? 1 : 0);
 }
 
@@ -88,27 +89,10 @@ GraphicsContext::~GraphicsContext()
     m_shaders.clear();
 }
 
-void GraphicsContext::make_current()
-{
-    if (s_current_context != this) {
-        glfwMakeContextCurrent(m_window);
-        s_current_context = this;
-        m_current_thread  = std::this_thread::get_id();
-    }
-}
-
-bool GraphicsContext::is_current() const
-{
-    return this == s_current_context && m_current_thread == std::this_thread::get_id();
-}
-
 void GraphicsContext::set_vsync(const bool enabled)
 {
     if (enabled == m_has_vsync) {
         return;
-    }
-    if (!is_current()) {
-        throw_runtime_error("Cannot change vsyn of a graphics context that is not current");
     }
     m_has_vsync = enabled;
     glfwSwapInterval(m_has_vsync ? 1 : 0);
@@ -116,20 +100,41 @@ void GraphicsContext::set_vsync(const bool enabled)
 
 void GraphicsContext::set_stencil_func(const StencilFunc func)
 {
-    if (!is_current()) {
-        throw_runtime_error("Cannot change the stencil func of a graphics context that is not current");
+    if (func == m_stencil_func) {
+        return;
     }
-    if (func != m_stencil_func) {
-        m_stencil_func = func;
-        m_stencil_func.apply();
+    m_stencil_func = func;
+
+    switch (func.function) {
+    case StencilFunc::ALWAYS:
+        glStencilFunc(GL_ALWAYS, ALL_ZEROS, ALL_ONES);
+        break;
+    case StencilFunc::NEVER:
+        glStencilFunc(GL_NEVER, ALL_ZEROS, ALL_ONES);
+        break;
+    case StencilFunc::LESS:
+        glStencilFunc(GL_LESS, ALL_ZEROS, ALL_ONES);
+        break;
+    case StencilFunc::LEQUAL:
+        glStencilFunc(GL_LEQUAL, ALL_ZEROS, ALL_ONES);
+        break;
+    case StencilFunc::GREATER:
+        glStencilFunc(GL_GREATER, ALL_ZEROS, ALL_ONES);
+        break;
+    case StencilFunc::GEQUAL:
+        glStencilFunc(GL_GEQUAL, ALL_ZEROS, ALL_ONES);
+        break;
+    case StencilFunc::EQUAL:
+        glStencilFunc(GL_EQUAL, ALL_ZEROS, ALL_ONES);
+        break;
+    case StencilFunc::NOTEQUAL:
+        glStencilFunc(GL_NOTEQUAL, ALL_ZEROS, ALL_ONES);
+        break;
     }
 }
 
 void GraphicsContext::set_stencil_mask(const GLuint mask)
 {
-    if (!is_current()) {
-        throw_runtime_error("Cannot change the stencil mask of a graphics context that is not current");
-    }
     if (mask != m_stencil_mask) {
         m_stencil_mask = mask;
         glStencilMask(mask);
@@ -138,22 +143,125 @@ void GraphicsContext::set_stencil_mask(const GLuint mask)
 
 void GraphicsContext::set_blend_mode(const BlendMode mode)
 {
-    if (!is_current()) {
-        throw_runtime_error("Cannot change the blend mode of a graphics context that is not current");
+    if (mode == m_blend_mode) {
+        return;
     }
-    if (mode != m_blend_mode) {
-        m_blend_mode = mode;
-        m_blend_mode.apply();
+    m_blend_mode = mode;
+
+    // color
+    GLenum rgb_sfactor;
+    GLenum rgb_dfactor;
+    switch (mode.rgb) {
+    case (BlendMode::SOURCE_OVER):
+        rgb_sfactor = GL_ONE;
+        rgb_dfactor = GL_ONE_MINUS_SRC_ALPHA;
+        break;
+    case (BlendMode::SOURCE_IN):
+        rgb_sfactor = GL_DST_ALPHA;
+        rgb_dfactor = GL_ZERO;
+        break;
+    case (BlendMode::SOURCE_OUT):
+        rgb_sfactor = GL_ONE_MINUS_DST_ALPHA;
+        rgb_dfactor = GL_ZERO;
+        break;
+    case (BlendMode::SOURCE_ATOP):
+        rgb_sfactor = GL_DST_ALPHA;
+        rgb_dfactor = GL_ONE_MINUS_SRC_ALPHA;
+        break;
+    case (BlendMode::DESTINATION_OVER):
+        rgb_sfactor = GL_ONE_MINUS_DST_ALPHA;
+        rgb_dfactor = GL_ONE;
+        break;
+    case (BlendMode::DESTINATION_IN):
+        rgb_sfactor = GL_ZERO;
+        rgb_dfactor = GL_SRC_ALPHA;
+        break;
+    case (BlendMode::DESTINATION_OUT):
+        rgb_sfactor = GL_ZERO;
+        rgb_dfactor = GL_ONE_MINUS_SRC_ALPHA;
+        break;
+    case (BlendMode::DESTINATION_ATOP):
+        rgb_sfactor = GL_ONE_MINUS_DST_ALPHA;
+        rgb_dfactor = GL_SRC_ALPHA;
+        break;
+    case (BlendMode::LIGHTER):
+        rgb_sfactor = GL_ONE;
+        rgb_dfactor = GL_ONE;
+        break;
+    case (BlendMode::COPY):
+        rgb_sfactor = GL_ONE;
+        rgb_dfactor = GL_ZERO;
+        break;
+    case (BlendMode::XOR):
+        rgb_sfactor = GL_ONE_MINUS_DST_ALPHA;
+        rgb_dfactor = GL_ONE_MINUS_SRC_ALPHA;
+        break;
+    default:
+        rgb_sfactor = 0;
+        rgb_dfactor = 0;
+        assert(false);
+        break;
     }
+
+    // alpha
+    GLenum alpha_sfactor;
+    GLenum alpha_dfactor;
+    switch (mode.alpha) {
+    case (BlendMode::SOURCE_OVER):
+        alpha_sfactor = GL_ONE;
+        alpha_dfactor = GL_ONE_MINUS_SRC_ALPHA;
+        break;
+    case (BlendMode::SOURCE_IN):
+        alpha_sfactor = GL_DST_ALPHA;
+        alpha_dfactor = GL_ZERO;
+        break;
+    case (BlendMode::SOURCE_OUT):
+        alpha_sfactor = GL_ONE_MINUS_DST_ALPHA;
+        alpha_dfactor = GL_ZERO;
+        break;
+    case (BlendMode::SOURCE_ATOP):
+        alpha_sfactor = GL_DST_ALPHA;
+        alpha_dfactor = GL_ONE_MINUS_SRC_ALPHA;
+        break;
+    case (BlendMode::DESTINATION_OVER):
+        alpha_sfactor = GL_ONE_MINUS_DST_ALPHA;
+        alpha_dfactor = GL_ONE;
+        break;
+    case (BlendMode::DESTINATION_IN):
+        alpha_sfactor = GL_ZERO;
+        alpha_dfactor = GL_SRC_ALPHA;
+        break;
+    case (BlendMode::DESTINATION_OUT):
+        alpha_sfactor = GL_ZERO;
+        alpha_dfactor = GL_ONE_MINUS_SRC_ALPHA;
+        break;
+    case (BlendMode::DESTINATION_ATOP):
+        alpha_sfactor = GL_ONE_MINUS_DST_ALPHA;
+        alpha_dfactor = GL_SRC_ALPHA;
+        break;
+    case (BlendMode::LIGHTER):
+        alpha_sfactor = GL_ONE;
+        alpha_dfactor = GL_ONE;
+        break;
+    case (BlendMode::COPY):
+        alpha_sfactor = GL_ONE;
+        alpha_dfactor = GL_ZERO;
+        break;
+    case (BlendMode::XOR):
+        alpha_sfactor = GL_ONE_MINUS_DST_ALPHA;
+        alpha_dfactor = GL_ONE_MINUS_SRC_ALPHA;
+        break;
+    default:
+        alpha_sfactor = 0;
+        alpha_dfactor = 0;
+        assert(false);
+        break;
+    }
+    glBlendFuncSeparate(rgb_sfactor, rgb_dfactor, alpha_sfactor, alpha_dfactor);
 }
 
 void GraphicsContext::push_texture(Texture2Ptr texture)
 {
-    if (!is_current()) {
-        throw_runtime_error(string_format(
-            "Cannot bind texture \"%s\" with a graphics context that is not current",
-            texture->name().c_str()));
-    }
     if (!texture->is_valid()) {
         throw_runtime_error(string_format(
             "Cannot bind invalid texture \"%s\"",
@@ -173,12 +281,6 @@ void GraphicsContext::pop_texture()
         return; // ignore calls on an empty stack
     }
 
-    if (!is_current()) {
-        throw_runtime_error(string_format(
-            "Cannot bind texture  \"%s\" with a graphics context that is not current",
-            m_texture_stack.back()->name().c_str()));
-    }
-
     const Texture2Ptr last_texture = take_back(m_texture_stack);
     if (m_texture_stack.empty()) {
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -195,21 +297,12 @@ void GraphicsContext::clear_texture()
         return; // ignore calls on an empty stack
     }
 
-    if (!is_current()) {
-        throw_runtime_error("Cannot unbind textures from a graphics context that is not current");
-    }
-
     m_texture_stack.clear();
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void GraphicsContext::push_shader(ShaderPtr shader)
 {
-    if (!is_current()) {
-        throw_runtime_error(string_format(
-            "Cannot bind shader  \"%s\" with a graphics context that is not current",
-            shader->name().c_str()));
-    }
     if (!shader->is_valid()) {
         throw_runtime_error(string_format(
             "Cannot bind invalid shader \"%s\"",
@@ -228,12 +321,6 @@ void GraphicsContext::pop_shader()
         return; // ignore calls on an empty stack
     }
 
-    if (!is_current()) {
-        throw_runtime_error(string_format(
-            "Cannot bind shader  \"%s\" with a graphics context that is not current",
-            m_shader_stack.back()->name().c_str()));
-    }
-
     const ShaderPtr last_shader = take_back(m_shader_stack);
     if (m_shader_stack.empty()) {
         glUseProgram(0);
@@ -247,10 +334,6 @@ void GraphicsContext::clear_shader()
 {
     if (m_shader_stack.empty()) {
         return; // ignore calls on an empty stack
-    }
-
-    if (!is_current()) {
-        throw_runtime_error("Cannot unbind shaders from a graphics context that is not current");
     }
 
     m_shader_stack.clear();

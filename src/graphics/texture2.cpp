@@ -92,12 +92,6 @@ Texture2::Scope::~Scope()
 std::shared_ptr<Texture2> Texture2::load_image(GraphicsContext& context, const std::string file_path,
                                                const Args& args)
 {
-    if (!context.is_current()) {
-        throw_runtime_error(string_format(
-            "Cannot load texture \"%s\" with a context that is not current",
-            file_path.c_str()));
-    }
-
     std::vector<uchar> image_data;
     Size2i image_size;
     Texture2::Format texture_format;
@@ -274,12 +268,6 @@ std::shared_ptr<Texture2> Texture2::load_image(GraphicsContext& context, const s
 std::shared_ptr<Texture2> Texture2::create_empty(GraphicsContext& context, const std::string name, const Size2i& size,
                                                  const Args& args)
 {
-    if (!context.is_current()) {
-        throw_runtime_error(string_format(
-            "Cannot create empty texture \"%s\" with a context that is not current",
-            name.c_str()));
-    }
-
     if (!size.is_valid()) {
         throw_runtime_error(string_format(
             "Cannot create a texture with an invalid size: %s",
@@ -417,11 +405,6 @@ void Texture2::set_wrap_y(const Wrap wrap)
 
 void Texture2::fill(const Color& color)
 {
-    if (!m_graphics_context.is_current()) {
-        throw_runtime_error(string_format(
-            "Cannot fill texture \"%s\" with a context that is not current",
-            m_name.c_str()));
-    }
 
     // adjust the color to the texture
     Color fill_color;
@@ -475,7 +458,6 @@ void Texture2::fill(const Color& color)
 void Texture2::_deallocate()
 {
     if (m_id) {
-        assert(m_graphics_context.is_current());
         glDeleteTextures(1, &m_id);
         check_gl_error();
         log_trace << "Deleted OpenGL texture with ID: " << m_id;
