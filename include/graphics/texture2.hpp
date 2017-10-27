@@ -106,28 +106,6 @@ public: // enums ***************************************************************
         float anisotropy = 1.0f;
     };
 
-public: // types ******************************************************************************************************/
-    /** Texture scope RAII helper. */
-    struct Scope {
-
-        /** Constructor, binds the texture. */
-        Scope(Texture2* texture);
-
-        /** Move without re-binding. */
-        Scope(Scope&& other)
-            : m_texture(other.m_texture)
-        {
-            other.m_texture = nullptr;
-        }
-
-        /** Destructor, unbinds the texture again. */
-        ~Scope();
-
-        /** Bound texture. */
-        Texture2* m_texture;
-    };
-    friend struct Scope;
-
 public: // static methods *********************************************************************************************/
     /** Loads a texture from a given file.
      * @param context   Render Context in which the texture lives.
@@ -170,9 +148,6 @@ public: // methods *************************************************************
 
     /** Destructor. */
     ~Texture2();
-
-    /** A scope object that pushes this texture onto the stack and pops it on destruction. */
-    Scope scope() { return Scope(this); }
 
     /** The OpenGL ID of this Texture2. */
     GLuint id() const { return m_id; }

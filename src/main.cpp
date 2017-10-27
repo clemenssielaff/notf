@@ -53,7 +53,7 @@ static void error_callback(int error, const char* description)
 
 void render_thread(GLFWwindow* window)
 {
-    std::unique_ptr<GraphicsContext> context(new GraphicsContext(window));
+    std::unique_ptr<GraphicsContext> graphics_context(new GraphicsContext(window));
 
     //////////////////////////////////
 
@@ -109,16 +109,15 @@ void render_thread(GLFWwindow* window)
     /////////////////////////////////////
 
     ShaderPtr blinn_phong_shader = Shader::load(
-        *context.get(), "Blinn-Phong",
+        *graphics_context.get(), "Blinn-Phong",
         "/home/clemens/code/notf/res/shaders/blinn_phong.vert",
         "/home/clemens/code/notf/res/shaders/blinn_phong.frag");
-    auto shader_scope = blinn_phong_shader->scope();
-    UNUSED(shader_scope);
+    graphics_context->bind_shader(blinn_phong_shader);
 
     Texture2::Args tex_args;
     tex_args.codec      = Texture2::Codec::ASTC;
     tex_args.anisotropy = 5;
-    Texture2Ptr texture = Texture2::load_image(*context.get(), "/home/clemens/code/notf/res/textures/test.astc", tex_args);
+    Texture2Ptr texture = Texture2::load_image(*graphics_context.get(), "/home/clemens/code/notf/res/textures/test.astc", tex_args);
 
     using VertexLayout   = VertexArray<VertexPos, VertexTexCoord>;
     using InstanceLayout = VertexArray<InstanceXform>;
@@ -176,8 +175,7 @@ void render_thread(GLFWwindow* window)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         {
-            auto texture_scope = texture->scope();
-            UNUSED(texture_scope);
+            graphics_context->bind_texture(texture, 0);
 
             // pass the shader uniforms
             const Matrix4f move = Matrix4f::translation(0, 0, -500);
@@ -197,6 +195,7 @@ void render_thread(GLFWwindow* window)
 
             library.render();
 
+            graphics_context->clear_texture(0);
             check_gl_error();
         }
 
@@ -224,7 +223,7 @@ void render_thread(GLFWwindow* window)
     glDeleteFramebuffers(1, &framebuffer);
     glDeleteTextures(1, &renderTexture);
 
-    context->clear_shader();
+    graphics_context->clear_shader();
 }
 
 int main(int /*argc*/, char* /*argv*/ [])
@@ -243,7 +242,6 @@ int main(int /*argc*/, char* /*argv*/ [])
     log_info << "GLFW version: " << glfwGetVersionString();
 
     // NoTF uses OpenGL ES 3.2
-    glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
@@ -256,6 +254,7 @@ int main(int /*argc*/, char* /*argv*/ [])
             glfwWaitEvents();
         }
         render_worker.join();
+        glfwDestroyWindow(window);
     }
 
     // stop the event loop

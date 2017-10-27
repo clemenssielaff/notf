@@ -79,43 +79,28 @@ struct BlendMode {
 
 //====================================================================================================================//
 
-struct StencilFunc {
+/// @brief Blend mode, can be set for RGB and the alpha channel separately.
+enum class StencilFunc : unsigned char {
+    ALWAYS,   ///< Always passes (default).
+    NEVER,    ///< Always fails.
+    LESS,     ///< Passes if (ref & mask) < (stencil & mask).
+    LEQUAL,   ///< Passes if (ref & mask) <= (stencil & mask).
+    GREATER,  ///< Passes if (ref & mask) > (stencil & mask).
+    GEQUAL,   ///< Passes if (ref & mask) >= (stencil & mask).
+    EQUAL,    ///< Passes if (ref & mask) = (stencil & mask).
+    NOTEQUAL, ///< Passes if (ref & mask) != (stencil & mask).
+    DEFAULT = ALWAYS,
+};
 
-    // types ---------------------------------------------------------------------------------------------------------//
-    /// @brief Blend mode, can be set for RGB and the alpha channel separately.
-    enum Stencil : unsigned char {
-        ALWAYS,   ///< Always passes.
-        NEVER,    ///< Always fails.
-        LESS,     ///< Passes if ( ref & mask ) < ( stencil & mask ).
-        LEQUAL,   ///< Passes if ( ref & mask ) <= ( stencil & mask ).
-        GREATER,  ///< Passes if ( ref & mask ) > ( stencil & mask ).
-        GEQUAL,   ///< Passes if ( ref & mask ) >= ( stencil & mask ).
-        EQUAL,    ///< Passes if ( ref & mask ) = ( stencil & mask ).
-        NOTEQUAL, ///< Passes if ( ref & mask ) != ( stencil & mask ).
-        DEFAULT = ALWAYS,
-    };
+//====================================================================================================================//
 
-    // fields --------------------------------------------------------------------------------------------------------//
-    /// @brief The Stencil function.
-    Stencil function;
-
-    // methods -------------------------------------------------------------------------------------------------------//
-    /// @brief Default constructor.
-    StencilFunc()
-        : function(ALWAYS) {}
-
-    /// @brief Value Constructor.
-    /// @param function Stencil function.
-    StencilFunc(const Stencil function)
-        : function(function) {}
-
-    /// @brief Equality operator.
-    /// @param other    Stencil function to test against.
-    bool operator==(const StencilFunc& other) const { return function == other.function; }
-
-    /// @brief Inequality operator.
-    /// @param other    Stencil function to test against.
-    bool operator!=(const StencilFunc& other) const { return function != other.function; }
+/// @brief Direction to cull in the culling test.
+enum CullFace : unsigned char {
+    BACK,  ///< Do not render back-facing faces (default).
+    FRONT, ///< Do not render front-facing faces.
+    BOTH,  ///< Cull all faces.
+    NONE,  ///< Render bot front- and back-facing faces.
+    DEFAULT = BACK,
 };
 
 //====================================================================================================================//
@@ -130,19 +115,43 @@ class GraphicsContext {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    /** Helper struct that can be used to test whether selected extensions are available in the OpenGL ES driver.
-     * Only tests for extensions on first instantiation.
-     */
-    struct GLExtensions {
-
+    /// @brief Helper struct that can be used to test whether selected extensions are available in the OpenGL ES driver.
+    /// Only tests for extensions on first instantiation.
+    struct Extensions {
         friend class GraphicsContext;
 
-        /** Is anisotropic filtering of textures supported? */
+        /// @brief Is anisotropic filtering of textures supported?
         bool anisotropic_filter;
 
-    private: // methods ***************************************************************************************************/
-        /** Constructor. */
-        GLExtensions();
+        // methods ---------------------------------------------------------------------------------------------------//
+    private:
+        /// @brief Default constructor.
+        Extensions();
+    };
+
+    /// @brief Graphics state
+    struct State {
+        State();
+
+        BlendMode blend_mode;
+
+        CullFace cull_face;
+
+        bool enable_depth;
+
+        bool enable_dithering;
+
+        float polygon_offset;
+
+        bool enable_discard;
+
+        bool enable_scissor;
+
+        StencilFunc m_stencil_func;
+
+        GLuint m_stencil_mask;
+
+        std::vector<Texture2Ptr> texture_slots;
     };
 
 public: // methods ****************************************************************************************************/
@@ -159,20 +168,14 @@ public: // methods *************************************************************
     ~GraphicsContext();
 
     /// @brief Creates and returns an GLExtension instance.
-    const GLExtensions& extensions() const
-    {
-        static const GLExtensions singleton;
-        return singleton;
-    }
+    const Extensions& extensions() const;
 
-    /** En- or disables vsync (enabled by default).
-     * @throws std::runtime_error   If the graphics context is not current.
-     */
+    /// @brief En- or disables vsync (enabled by default).
+    /// @param enabled  Whether to enable or disable vsync.
     void set_vsync(const bool enabled);
 
-    /** Applies a new StencilFunction.
-     * @throws std::runtime_error   If the graphics context is not current.
-     */
+    /// @brief Applies a given stencil function.
+    /// @param func     Stencil function to apply.
     void set_stencil_func(const StencilFunc func);
 
     /** Applies the given stencil mask.
@@ -185,23 +188,18 @@ public: // methods *************************************************************
     /// @throws std::runtime_error   If the graphics context is not current.
     void set_blend_mode(const BlendMode mode);
 
-    /** Binds the given texture.
+    /** Binds the given texture at the given texture slot.
      * Only results in an OpenGL call if the texture is not currently bound.
-     * @param   texture             Texture to bind.
+     * @param texture   Texture to bind.
+     * @param slot      Texture slot to bind the texture to.
      * @throws std::runtime_error   If the texture is not valid.
      * @throws std::runtime_error   If the graphics context is not current.
      */
-    void push_texture(Texture2Ptr texture);
-
-    /** Re-binds the last bound texture.
-     * @throws  std::runtime_error  If the graphics context is not current.
-     */
-    void pop_texture();
+    void bind_texture(Texture2Ptr texture, uint slot);
 
     /** Unbinds the current texture and clears the context's texture stack.
-     * @throws  std::runtime_error  If the graphics context is not current.
      */
-    void clear_texture();
+    void clear_texture(uint slot);
 
     /** Binds the given Shader.
      * Only results in an OpenGL call if the shader is not currently bound.
@@ -209,15 +207,9 @@ public: // methods *************************************************************
      * @throws std::runtime_error   If the shader is not valid.
      * @throws std::runtime_error   If the graphics context is not current.
      */
-    void push_shader(ShaderPtr shader);
+    void bind_shader(ShaderPtr shader);
 
-    /** Re-binds the last bound shader.
-     * @throws  std::runtime_error  If the graphics context is not current.
-     */
-    void pop_shader();
-
-    /** Unbinds the current shader and clears the context's shader stack.
-     * @throws  std::runtime_error  If the graphics context is not current.
+    /** Unbinds the current texture and clears the context's texture stack.
      */
     void clear_shader();
 

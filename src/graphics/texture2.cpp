@@ -76,19 +76,6 @@ namespace notf {
 
 const Texture2::Args Texture2::s_default_args = {};
 
-Texture2::Scope::Scope(Texture2* texture)
-    : m_texture(texture)
-{
-    m_texture->m_graphics_context.push_texture(m_texture->shared_from_this());
-}
-
-Texture2::Scope::~Scope()
-{
-    if (m_texture) {
-        m_texture->m_graphics_context.pop_texture();
-    }
-}
-
 std::shared_ptr<Texture2> Texture2::load_image(GraphicsContext& context, const std::string file_path,
                                                const Args& args)
 {
@@ -369,37 +356,33 @@ Texture2::~Texture2()
 
 void Texture2::set_min_filter(const MinFilter filter)
 {
-    m_graphics_context.push_texture(shared_from_this());
+    m_graphics_context.bind_texture(shared_from_this(), 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter));
     m_min_filter = filter;
-    m_graphics_context.pop_texture();
     check_gl_error();
 }
 
 void Texture2::set_mag_filter(const MagFilter filter)
 {
-    m_graphics_context.push_texture(shared_from_this());
+    m_graphics_context.bind_texture(shared_from_this(), 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter));
     m_mag_filter = filter;
-    m_graphics_context.pop_texture();
     check_gl_error();
 }
 
 void Texture2::set_wrap_x(const Wrap wrap)
 {
-    m_graphics_context.push_texture(shared_from_this());
+    m_graphics_context.bind_texture(shared_from_this(), 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap));
     m_wrap_x = wrap;
-    m_graphics_context.pop_texture();
     check_gl_error();
 }
 
 void Texture2::set_wrap_y(const Wrap wrap)
 {
-    m_graphics_context.push_texture(shared_from_this());
+    m_graphics_context.bind_texture(shared_from_this(), 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap));
     m_wrap_y = wrap;
-    m_graphics_context.pop_texture();
     check_gl_error();
 }
 

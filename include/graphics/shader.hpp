@@ -73,27 +73,6 @@ public: // types ***************************************************************
     //*****************************************************************************************************************/
     //*****************************************************************************************************************/
 
-    /** Shader scope RAII helper. */
-    struct Scope {
-
-        /** Constructor, binds the shader. */
-        Scope(Shader* shader);
-
-        /** Move without re-binding. */
-        Scope(Scope&& other)
-            : m_shader(other.m_shader)
-        {
-            other.m_shader = nullptr;
-        }
-
-        /** Destructor, unbinds the shader again. */
-        ~Scope();
-
-        /** Bound shader. */
-        Shader* m_shader;
-    };
-    friend struct Scope;
-
 public: // static methods *********************************************************************************************/
     /** Loads a new OpenGL ES Shader from shader files.
      * @param context               Render Context in which the Shader lives.
@@ -137,9 +116,6 @@ public: // methods *************************************************************
 
     /** Destructor */
     ~Shader();
-
-    /** A scope object that pushes this shader onto the stack and pops it on destruction. */
-    Scope scope() { return Scope(this); }
 
     /** The OpenGL ID of the Shader program. */
     GLuint id() const { return m_id; }

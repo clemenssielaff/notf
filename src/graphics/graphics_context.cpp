@@ -6,7 +6,6 @@
 
 #include "common/exception.hpp"
 #include "common/log.hpp"
-#include "common/string.hpp"
 #include "common/vector.hpp"
 #include "core/glfw.hpp"
 #include "core/opengl.hpp"
@@ -14,34 +13,58 @@
 #include "graphics/shader.hpp"
 #include "graphics/texture2.hpp"
 
-namespace { // anonymous
+namespace { // anonymous),
 
 const uint ALL_ZEROS = 0x00000000;
 const uint ALL_ONES  = 0xffffffff;
 
 } // namespace anonymous
 
+//====================================================================================================================//
+
+#if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_INFO
+#define CHECK_EXTENSION(member, name)                                                                              \
+    member = extensions.count(name);                                                                               \
+    if (member) {                                                                                                  \
+        notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), "GLExtensions") \
+                .input                                                                                             \
+            << "Found OpenGL extension:\"" << name << "\"";                                                        \
+    }
+#else
+#define CHECK_EXTENSION(member, name) \
+    member = extensions.count(name);
+#endif
+
 namespace notf {
 
-GraphicsContext::GLExtensions::GLExtensions()
+GraphicsContext::Extensions::Extensions()
 {
     std::set<std::string> extensions;
     { // create a set of all available extensions
-        const auto gl_extensions = glGetString(GL_EXTENSIONS);
-        if (gl_extensions == nullptr) {
-            throw_runtime_error("Cannot check GL extensions without a valid OpenGL context");
+        GLint extension_count;
+        glGetIntegerv(GL_NUM_EXTENSIONS, &extension_count);
+        for (GLint i = 0; i < extension_count; ++i) {
+            extensions.emplace(
+                std::string(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i)))));
         }
-
-        const size_t len = strlen(reinterpret_cast<const char*>(gl_extensions));
-        const std::string extension_string(gl_extensions, gl_extensions + len);
-        std::vector<std::string> vector = tokenize(extension_string, ' ');
-
-        extensions = std::set<std::string>(std::make_move_iterator(vector.begin()),
-                                           std::make_move_iterator(vector.end()));
     }
 
     // initialize the members
-    anisotropic_filter = extensions.count("GL_EXT_texture_filter_anisotropic");
+    CHECK_EXTENSION(anisotropic_filter, "GL_EXT_texture_filter_anisotropic");
+}
+
+#undef CHECK_EXTENSION
+
+//====================================================================================================================//
+
+GraphicsContext::State::State()
+{
+    { // texture slots
+        GLint texture_slot_count = 0;
+        glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &texture_slot_count);
+        assert(texture_slot_count > 0);
+        texture_slots = std::vector<Texture2Ptr>(static_cast<size_t>(texture_slot_count));
+    }
 }
 
 //====================================================================================================================//
@@ -89,13 +112,18 @@ GraphicsContext::~GraphicsContext()
     m_shaders.clear();
 }
 
+const GraphicsContext::Extensions& GraphicsContext::extensions() const
+{
+    static const Extensions singleton;
+    return singleton;
+}
+
 void GraphicsContext::set_vsync(const bool enabled)
 {
-    if (enabled == m_has_vsync) {
-        return;
+    if (enabled != m_has_vsync) {
+        m_has_vsync = enabled;
+        glfwSwapInterval(m_has_vsync ? 1 : 0);
     }
-    m_has_vsync = enabled;
-    glfwSwapInterval(m_has_vsync ? 1 : 0);
 }
 
 void GraphicsContext::set_stencil_func(const StencilFunc func)
@@ -105,7 +133,7 @@ void GraphicsContext::set_stencil_func(const StencilFunc func)
     }
     m_stencil_func = func;
 
-    switch (func.function) {
+    switch (func) {
     case StencilFunc::ALWAYS:
         glStencilFunc(GL_ALWAYS, ALL_ZEROS, ALL_ONES);
         break;
@@ -260,8 +288,11 @@ void GraphicsContext::set_blend_mode(const BlendMode mode)
     glBlendFuncSeparate(rgb_sfactor, rgb_dfactor, alpha_sfactor, alpha_dfactor);
 }
 
-void GraphicsContext::push_texture(Texture2Ptr texture)
+void GraphicsContext::bind_texture(Texture2Ptr texture, uint slot)
 {
+    if (!texture) {
+        return clear_texture(slot);
+    }
     if (!texture->is_valid()) {
         throw_runtime_error(string_format(
             "Cannot bind invalid texture \"%s\"",
@@ -275,23 +306,7 @@ void GraphicsContext::push_texture(Texture2Ptr texture)
     m_texture_stack.emplace_back(std::move(texture));
 }
 
-void GraphicsContext::pop_texture()
-{
-    if (m_texture_stack.empty()) {
-        return; // ignore calls on an empty stack
-    }
-
-    const Texture2Ptr last_texture = take_back(m_texture_stack);
-    if (m_texture_stack.empty()) {
-        glBindTexture(GL_TEXTURE_2D, 0);
-    }
-    else if (last_texture != m_texture_stack.back()) {
-        glBindTexture(GL_TEXTURE_2D, 0);
-        glUseProgram(m_texture_stack.back()->id());
-    }
-}
-
-void GraphicsContext::clear_texture()
+void GraphicsContext::clear_texture(uint slot)
 {
     if (m_texture_stack.empty()) {
         return; // ignore calls on an empty stack
@@ -301,7 +316,7 @@ void GraphicsContext::clear_texture()
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void GraphicsContext::push_shader(ShaderPtr shader)
+void GraphicsContext::bind_shader(ShaderPtr shader)
 {
     if (!shader->is_valid()) {
         throw_runtime_error(string_format(
@@ -313,21 +328,6 @@ void GraphicsContext::push_shader(ShaderPtr shader)
         glUseProgram(shader->id());
     }
     m_shader_stack.emplace_back(std::move(shader));
-}
-
-void GraphicsContext::pop_shader()
-{
-    if (m_shader_stack.empty()) {
-        return; // ignore calls on an empty stack
-    }
-
-    const ShaderPtr last_shader = take_back(m_shader_stack);
-    if (m_shader_stack.empty()) {
-        glUseProgram(0);
-    }
-    else if (last_shader != m_shader_stack.back()) {
-        glUseProgram(m_shader_stack.back()->id());
-    }
 }
 
 void GraphicsContext::clear_shader()

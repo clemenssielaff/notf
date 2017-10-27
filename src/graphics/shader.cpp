@@ -148,19 +148,6 @@ GLuint compile_shader(STAGE stage, const std::string& name, const std::string& s
 
 namespace notf {
 
-Shader::Scope::Scope(Shader* shader)
-    : m_shader(shader)
-{
-    m_shader->m_graphics_context.push_shader(m_shader->shared_from_this());
-}
-
-Shader::Scope::~Scope()
-{
-    if (m_shader) {
-        m_shader->m_graphics_context.pop_shader();
-    }
-}
-
 std::shared_ptr<Shader> Shader::load(GraphicsContext& context, const std::string& name,
                                      const std::string& vertex_shader_file,
                                      const std::string& fragment_shader_file,
@@ -399,13 +386,12 @@ template <>
 void Shader::set_uniform(const std::string& name, const int& value)
 {
     const Variable& uniform = _uniform(name);
-    Scope _(this);
+    m_graphics_context.bind_shader(shared_from_this());
     if (uniform.type == GL_INT
         || uniform.type == GL_SAMPLER_2D) {
         glUniform1i(uniform.location, value);
     }
     else {
-        m_graphics_context.pop_shader();
         throw_runtime_error(string_format(
             "Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"int\"",
             name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
@@ -417,7 +403,7 @@ template <>
 void Shader::set_uniform(const std::string& name, const unsigned int& value)
 {
     const Variable& uniform = _uniform(name);
-    Scope _(this);
+    m_graphics_context.bind_shader(shared_from_this());
     if (uniform.type == GL_UNSIGNED_INT) {
         glUniform1ui(uniform.location, value);
     }
@@ -425,7 +411,6 @@ void Shader::set_uniform(const std::string& name, const unsigned int& value)
         glUniform1i(uniform.location, static_cast<GLint>(value));
     }
     else {
-        m_graphics_context.pop_shader();
         throw_runtime_error(string_format(
             "Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"unsigned int\"",
             name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
@@ -437,12 +422,11 @@ template <>
 void Shader::set_uniform(const std::string& name, const float& value)
 {
     const Variable& uniform = _uniform(name);
-    Scope _(this);
+    m_graphics_context.bind_shader(shared_from_this());
     if (uniform.type == GL_FLOAT) {
         glUniform1f(uniform.location, value);
     }
     else {
-        m_graphics_context.pop_shader();
         throw_runtime_error(string_format(
             "Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"float\"",
             name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
@@ -454,7 +438,7 @@ template <>
 void Shader::set_uniform(const std::string& name, const Vector2f& value)
 {
     const Variable& uniform = _uniform(name);
-    Scope _(this);
+    m_graphics_context.bind_shader(shared_from_this());
     if (uniform.type == GL_FLOAT_VEC2) {
         glUniform2fv(uniform.location, /*count*/ 1, value.as_ptr());
     }
@@ -470,7 +454,7 @@ template <>
 void Shader::set_uniform(const std::string& name, const Vector4f& value)
 {
     const Variable& uniform = _uniform(name);
-    Scope _(this);
+    m_graphics_context.bind_shader(shared_from_this());
     if (uniform.type == GL_FLOAT_VEC4) {
         glUniform4fv(uniform.location, /*count*/ 1, value.as_ptr());
     }
@@ -486,7 +470,7 @@ template <>
 void Shader::set_uniform(const std::string& name, const Matrix4f& value)
 {
     const Variable& uniform = _uniform(name);
-    Scope _(this);
+    m_graphics_context.bind_shader(shared_from_this());
     if (uniform.type == GL_FLOAT_MAT4) {
         glUniformMatrix4fv(uniform.location, /*count*/ 1, GL_FALSE, value.as_ptr());
     }

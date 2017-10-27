@@ -326,7 +326,7 @@ struct _NullBuffer {
 ///
 /// The object provided by log_* is a std::stringstream or a _NullBuffer, which accepts all the same inputs.
 #ifndef log_format
-#if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_WARNING
+#if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_TRACE
 #define log_format notf::LogMessageFactory(notf::LogMessage::LEVEL::FORMAT, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_format notf::_NullBuffer()
@@ -336,7 +336,7 @@ struct _NullBuffer {
 #endif
 
 #ifndef log_trace
-#if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_INFO
+#if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_TRACE
 #define log_trace notf::LogMessageFactory(notf::LogMessage::LEVEL::TRACE, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_trace notf::_NullBuffer()
@@ -346,7 +346,7 @@ struct _NullBuffer {
 #endif
 
 #ifndef log_info
-#if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_WARNING
+#if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_INFO
 #define log_info notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_info notf::_NullBuffer()
@@ -356,7 +356,7 @@ struct _NullBuffer {
 #endif
 
 #ifndef log_warning
-#if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_CRITICAL
+#if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_WARNING
 #define log_warning notf::LogMessageFactory(notf::LogMessage::LEVEL::WARNING, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_warning notf::_NullBuffer()
@@ -366,7 +366,7 @@ struct _NullBuffer {
 #endif
 
 #ifndef log_critical
-#if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_FATAL
+#if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_CRITICAL
 #define log_critical notf::LogMessageFactory(notf::LogMessage::LEVEL::CRITICAL, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_critical notf::_NullBuffer()
@@ -376,7 +376,7 @@ struct _NullBuffer {
 #endif
 
 #ifndef log_fatal
-#if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_NONE
+#if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_FATAL
 #define log_fatal notf::LogMessageFactory(notf::LogMessage::LEVEL::FATAL, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
 #define log_fatal notf::_NullBuffer()
