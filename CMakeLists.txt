@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(notf)
 
 # MACROS ###############################################################################################################
@@ -39,7 +39,7 @@ add_subdirectory(/home/clemens/code/thirdparty/freetype-2.8/ thirdparty/freetype
 
 # NOTF #################################################################################################################
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS_DEBUG "-g -D_DEBUG")
 
 include_directories(

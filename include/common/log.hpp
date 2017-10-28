@@ -106,6 +106,7 @@ public: // methods
      * @param file     File in which this constructor is called.
      * @param caller   Name of the function from where this constructor is called.
      */
+    __attribute__ ((noinline))
     LogMessageFactory(LogMessage::LEVEL level, uint line, std::string file, std::string caller) noexcept
         : message(), input()
     {

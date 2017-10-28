@@ -239,8 +239,8 @@ private: // methods ************************************************************
 #ifndef CPP_17
             _apply_studies_recursive<TRAIT_INDEX...>(m_studies[index], result[index]);
 #else // use fold expression from C++17 onwards
-            (_apply_study<TRAIT_INDEX>(typename std::tuple_element<TRAIT_INDEX, Traits>::type::kind{},
-                                       studies[index], result[index]),
+            (_apply_study<TRAIT_INDEX>(typename std::tuple_element<TRAIT_INDEX, VertexTraits>::type::kind{},
+                                       m_studies[index], result[index]),
              ...);
 #endif
         }

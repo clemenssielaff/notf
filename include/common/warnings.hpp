@@ -8,7 +8,7 @@ namespace notf {
 #define UNUSED(x) (void)(x);
 
 /** Useful for manually defining padding bytes in a struct that are only visible to the code model. */
-#ifdef __NOTF_MANUAL_PADDING
+#ifndef __NOTF_NO_MANUAL_PADDING
 #  define PADDING(x) char __notf_manual_padding[x];
 #else
 #  define PADDING(x)
