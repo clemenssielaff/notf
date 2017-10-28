@@ -18,7 +18,9 @@ int _check_gl_error(unsigned int line, const char* file, const char* function);
 #ifdef _DEBUG
 #define check_gl_error() _check_gl_error(__LINE__, notf::basename(__FILE__), __FUNCTION__)
 #else
-#define check_gl_error() do {} while(0)
+#define check_gl_error() \
+	do {                 \
+	} while (0)
 #endif
 
 } // namespace notf

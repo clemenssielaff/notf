@@ -9,9 +9,9 @@ namespace notf {
 
 /** Useful for manually defining padding bytes in a struct that are only visible to the code model. */
 #ifndef __NOTF_NO_MANUAL_PADDING
-#  define PADDING(x) char __notf_manual_padding[x];
+#define PADDING(x) char __notf_manual_padding[x];
 #else
-#  define PADDING(x)
+#define PADDING(x)
 #endif
 
 } // namespace notf

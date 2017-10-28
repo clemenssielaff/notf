@@ -7,11 +7,13 @@ namespace notf {
 namespace detail {
 
 struct _EnumClassHash {
-    template <typename T>
-    std::size_t operator()(T t) const { return static_cast<std::size_t>(t); }
+	template<typename T>
+	std::size_t operator()(T t) const {
+		return static_cast<std::size_t>(t);
+	}
 };
 
-template <typename Key>
+template<typename Key>
 using _HashType = typename std::conditional<std::is_enum<Key>::value, _EnumClassHash, std::hash<Key>>::type;
 
 constexpr size_t _bit_index_recursion(size_t c, size_t v) { return v == 0 ? c : _bit_index_recursion(c + 1, v >> 1); }
@@ -25,7 +27,7 @@ constexpr size_t _bit_index_recursion(size_t c, size_t v) { return v == 0 ? c : 
  * This is apparently a defect in the C++ standard and will be fixed at some point,
  * but it seems like right now it isn't.
  */
-template <typename Key, typename T>
+template<typename Key, typename T>
 using EnumMap = std::unordered_map<Key, T, detail::_HashType<Key>>;
 
 /**
@@ -50,10 +52,9 @@ constexpr size_t bit_index_count(size_t v) { return bit_index(v - 1) + 1; }
 /** Constexpr to use an enum class value as a numeric value.
  * Blatantly copied from "Effective Modern C++ by Scott Mayers': Item #10.
  */
-template <typename Enum>
-constexpr auto to_number(Enum enumerator) noexcept
-{
-    return static_cast<std::underlying_type_t<Enum>>(enumerator);
+template<typename Enum>
+constexpr auto to_number(Enum enumerator) noexcept {
+	return static_cast<std::underlying_type_t<Enum>>(enumerator);
 }
 
 } // namespace notf

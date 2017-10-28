@@ -20,7 +20,7 @@ const std::string& gl_type_name(GLenum type);
 
 /** Returns the OpenGL type identifier for selected C++ types. */
 GLenum to_gl_type(const GLbyte&);
-GLenum to_gl_type(const GLubyte &);
+GLenum to_gl_type(const GLubyte&);
 GLenum to_gl_type(const GLshort&);
 GLenum to_gl_type(const GLushort&);
 GLenum to_gl_type(const GLint&);

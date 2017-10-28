@@ -15,17 +15,16 @@ namespace notf {
  *  });
  *  // foo is now {1, 3, 5, 7 }
  */
-template <typename T, typename Func>
-void erase_conditional(std::set<T>& set, Func condition)
-{
-    for (auto it = set.begin(); it != set.end();) {
-        if (condition(*it)) {
-            it = set.erase(it);
-        }
-        else {
-            ++it;
-        }
-    }
+template<typename T, typename Func>
+void erase_conditional(std::set<T>& set, Func condition) {
+	for (auto it = set.begin(); it != set.end();) {
+		if (condition(*it)) {
+			it = set.erase(it);
+		}
+		else {
+			++it;
+		}
+	}
 }
 
 } // namespace notf

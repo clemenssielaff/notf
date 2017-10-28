@@ -2,9 +2,6 @@
 
 namespace notf {
 
-VertexArrayType::~VertexArrayType()
-{
-    glDeleteBuffers(1, &m_vbo_id);
-}
+VertexArrayType::~VertexArrayType() { glDeleteBuffers(1, &m_vbo_id); }
 
 } // namespace notf

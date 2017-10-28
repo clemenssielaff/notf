@@ -15,17 +15,15 @@ decltype(randutils::default_rng()) & get_random_engine();
  * @param from      Lowest possible number (default is 0)
  * @param to        Highest possible number (defaults to highest representable number)
  */
-template <typename Type>
-Type random_number(const Type from, const Type to)
-{
-    return get_random_engine().uniform(from, to);
+template<typename Type>
+Type random_number(const Type from, const Type to) {
+	return get_random_engine().uniform(from, to);
 }
 
 /** Returns a random angle in radians between -pi and pi. */
-template <typename Real, ENABLE_IF_REAL(Real)>
-Real random_radian()
-{
-    return random_number(-pi<Real>(), pi<Real>());
+template<typename Real, ENABLE_IF_REAL(Real)>
+Real random_radian() {
+	return random_number(-pi<Real>(), pi<Real>());
 }
 
 /** Generates a random string.
@@ -35,8 +33,8 @@ Real random_radian()
  * @param uppercase     Include uppercase letters?
  * @param digits        Include digits?
  */
-std::string random_string(const size_t length,
-                          const bool lowercase = true, const bool uppercase = true, const bool digits = true);
+std::string
+random_string(const size_t length, const bool lowercase = true, const bool uppercase = true, const bool digits = true);
 
 /** Generates a random string from a pool characters.
  * If the pool is empty, the resulting string will be empty.

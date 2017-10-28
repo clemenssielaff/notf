@@ -14,14 +14,13 @@ using ulong     = unsigned long;
 using ulonglong = unsigned long long;
 
 /// @brief Counts the digits in a given integral number.
-template <class Integer, ENABLE_IF_INT(Integer)>
-constexpr ushort count_digits(Integer digits)
-{
-    ushort counter = 1;
-    while ((digits /= 10) >= 1) {
-        ++counter;
-    }
-    return counter;
+template<class Integer, ENABLE_IF_INT(Integer)>
+constexpr ushort count_digits(Integer digits) {
+	ushort counter = 1;
+	while ((digits /= 10) >= 1) {
+		++counter;
+	}
+	return counter;
 }
 
 /** Implements Python's integer modulo operation where negative values wrap around.
@@ -29,10 +28,9 @@ constexpr ushort count_digits(Integer digits)
  * @param M     n % M
  * @return      n % M, while negative values are wrapped (for example -1%3=2).
  */
-template <class Integer, ENABLE_IF_INT(Integer)>
-constexpr Integer wrap_mod(const Integer n, const Integer M)
-{
-    return ((n % M) + M) % M;
+template<class Integer, ENABLE_IF_INT(Integer)>
+constexpr Integer wrap_mod(const Integer n, const Integer M) {
+	return ((n % M) + M) % M;
 }
 
 /** Returns the next interval from a given value.
@@ -44,15 +42,14 @@ constexpr Integer wrap_mod(const Integer n, const Integer M)
  *     value = 61  => interval = 120
  *     ...
  */
-template <class Integer, ENABLE_IF_INT(Integer)>
-constexpr Integer next_interval(Integer value, const Integer interval)
-{
-    if (!interval) {
-        return value;
-    }
-    else {
-        value += interval;
-        return value - (value % interval);
-    }
+template<class Integer, ENABLE_IF_INT(Integer)>
+constexpr Integer next_interval(Integer value, const Integer interval) {
+	if (!interval) {
+		return value;
+	}
+	else {
+		value += interval;
+		return value - (value % interval);
+	}
 }
-}
+} // namespace notf

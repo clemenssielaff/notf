@@ -7,20 +7,20 @@ namespace notf {
 /// \brief 16bit floating point type.
 struct half {
 
-    // fields --------------------------------------------------------------------------------------------------------//
-    /// @brief Half value.
-    short value;
+	// fields --------------------------------------------------------------------------------------------------------//
+	/// @brief Half value.
+	short value;
 
-    // methods -------------------------------------------------------------------------------------------------------//
-    /// @brief Default constructor.
-    half() = default;
+	// methods -------------------------------------------------------------------------------------------------------//
+	/// @brief Default constructor.
+	half() = default;
 
-    /// @brief Value constructor.
-    /// @param value    Float value to convert into a half.
-    half(const float value);
+	/// @brief Value constructor.
+	/// @param value    Float value to convert into a half.
+	half(const float value);
 
-    /// @brief Converts the half back to a float.
-    explicit operator float() const;
+	/// @brief Converts the half back to a float.
+	explicit operator float() const;
 };
 
 //====================================================================================================================//
