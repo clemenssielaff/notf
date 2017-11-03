@@ -5,17 +5,22 @@
 			"path": "."
 		}
 	],
+    
     "build_systems":
     [
         {
-            "name": "NOTF",
-            "working_dir": "/home/clemens/code/BUILD/notf-debug/",
-            "cmd": ["make -j4"],
-            "target": "all",
-            "selector": "source.c++",
-            "shell": true,
-        }
+            "name": "NoTF",
+            "shell_cmd": "cmake ../.. && ninja && ./notf",
+            "working_dir": "/home/clemens/code/notf/build/debug/",
+            "file_regex": "^(?:\\.\\.\\/)*(.*):([0-9]*):([0-9]*): error",
+            "variants": [
+                { "name": "Release",
+                  "working_dir": "/home/clemens/code/notf/build/release/",
+                },
+            ]
+        },
     ],
+
 	"SublimeLinter":
 	{
     	"linters":

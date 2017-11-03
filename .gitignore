@@ -5,3 +5,4 @@ CMakeLists.txt.user
 .idea
 docs/.sass-cache
 docs/_site
+build/
