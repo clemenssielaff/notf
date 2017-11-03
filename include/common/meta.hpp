@@ -3,23 +3,22 @@
 #include <limits>
 #include <type_traits>
 
-/* Extension for variadic compile-time checks.
- * Originally from http://stackoverflow.com/a/17200820/3444217
- */
-
+/// @brief Tests if T is one of the following types.
 template<typename T, typename...>
-struct is_same_any : std::true_type {};
-
+struct is_one_of : std::false_type {
+};
 template<typename T, typename Head, typename... Rest>
-struct is_same_any<T, Head, Rest...>
-    : std::integral_constant<bool, std::is_same<T, Head>::value || is_same_any<T, Rest...>::value> {};
+struct is_one_of<T, Head, Rest...>
+    : std::integral_constant<bool, std::is_same<T, Head>::value || is_one_of<T, Rest...>::value> {
+};
 
+/// @brief Tests if all conditions are true.
 template<typename T, typename...>
-struct is_base_of_any : std::true_type {};
-
+struct all_true : std::true_type {
+};
 template<typename T, typename Head, typename... Rest>
-struct is_base_of_any<T, Head, Rest...>
-    : std::integral_constant<bool, std::is_base_of<T, Head>::value || is_base_of_any<T, Rest...>::value> {};
+struct all_true<T, Head, Rest...> : std::integral_constant<bool, Head::value && all_true<T, Rest...>::value> {
+};
 
 /* At the beginning, the macros here used std::enable_if_t, but typedefs from those templates could not be properly
  * forward defined.
@@ -35,65 +34,65 @@ struct is_base_of_any<T, Head, Rest...>
  */
 
 #define ENABLE_IF_REAL(TYPE) \
-	typename std::enable_if<std::is_floating_point<typename std::decay<TYPE>::type>::value, bool>::type = true
+    typename std::enable_if<std::is_floating_point<typename std::decay<TYPE>::type>::value, bool>::type = true
 #define FWD_ENABLE_IF_REAL(TYPE) \
-	typename std::enable_if<std::is_floating_point<typename std::decay<TYPE>::type>::value, bool>::type
+    typename std::enable_if<std::is_floating_point<typename std::decay<TYPE>::type>::value, bool>::type
 
 #define DISABLE_IF_REAL(TYPE) \
-	typename std::enable_if<!std::is_floating_point<typename std::decay<TYPE>::type>::value, bool>::type = true
+    typename std::enable_if<!std::is_floating_point<typename std::decay<TYPE>::type>::value, bool>::type = true
 #define FWD_DISABLE_IF_REAL(TYPE) \
-	typename std::enable_if<!std::is_floating_point<typename std::decay<TYPE>::type>::value, bool>::type
+    typename std::enable_if<!std::is_floating_point<typename std::decay<TYPE>::type>::value, bool>::type
 
 #define ENABLE_IF_INT(TYPE) \
-	typename std::enable_if<std::is_integral<typename std::decay<TYPE>::type>::value, bool>::type = true
+    typename std::enable_if<std::is_integral<typename std::decay<TYPE>::type>::value, bool>::type = true
 #define FWD_ENABLE_IF_INT(TYPE) \
-	typename std::enable_if<std::is_integral<typename std::decay<TYPE>::type>::value, bool>::type
+    typename std::enable_if<std::is_integral<typename std::decay<TYPE>::type>::value, bool>::type
 
 #define DISABLE_IF_INT(TYPE) \
-	typename std::enable_if<!std::is_integral<typename std::decay<TYPE>::type>::value, bool>::type = true
+    typename std::enable_if<!std::is_integral<typename std::decay<TYPE>::type>::value, bool>::type = true
 #define FWD_DISABLE_IF_INT(TYPE) \
-	typename std::enable_if<!std::is_integral<typename std::decay<TYPE>::type>::value, bool>::type
+    typename std::enable_if<!std::is_integral<typename std::decay<TYPE>::type>::value, bool>::type
 
 #define ENABLE_IF_SAME(TYPE_A, TYPE_B)                                                                                 \
-	typename std::enable_if<std::is_same<typename std::decay<TYPE_A>::type, typename std::decay<TYPE_B>::type>::value, \
-	                        bool>::type                                                                                \
-	    = true
+    typename std::enable_if<std::is_same<typename std::decay<TYPE_A>::type, typename std::decay<TYPE_B>::type>::value, \
+                            bool>::type                                                                                \
+        = true
 #define FWD_ENABLE_IF_SAME(TYPE_A, TYPE_B)                                                                             \
-	typename std::enable_if<std::is_same<typename std::decay<TYPE_A>::type, typename std::decay<TYPE_B>::type>::value, \
-	                        bool>::type
+    typename std::enable_if<std::is_same<typename std::decay<TYPE_A>::type, typename std::decay<TYPE_B>::type>::value, \
+                            bool>::type
 
 #define ENABLE_IF_SAME_ANY(TYPE_A, ...) \
-	typename std::enable_if<is_same_any<typename std::decay<TYPE_A>::type, __VA_ARGS__>::value, bool>::type = true
+    typename std::enable_if<is_same_any<typename std::decay<TYPE_A>::type, __VA_ARGS__>::value, bool>::type = true
 #define FWD_ENABLE_IF_SAME_ANY(TYPE_A, ...) \
-	typename std::enable_if<is_same_any<typename std::decay<TYPE_A>::type, __VA_ARGS__>::value, bool>::type
+    typename std::enable_if<is_same_any<typename std::decay<TYPE_A>::type, __VA_ARGS__>::value, bool>::type
 
 #define ENABLE_IF_DIFFERENT(TYPE_A, TYPE_B)                                                                     \
-	typename std::enable_if<                                                                                    \
-	    !std::is_same<typename std::decay<TYPE_A>::type, typename std::decay<TYPE_B>::type>::value, bool>::type \
-	    = true
+    typename std::enable_if<                                                                                    \
+        !std::is_same<typename std::decay<TYPE_A>::type, typename std::decay<TYPE_B>::type>::value, bool>::type \
+        = true
 #define FWD_ENABLE_IF_DIFFERENT(TYPE_A, TYPE_B) \
-	typename std::enable_if<                    \
-	    !std::is_same<typename std::decay<TYPE_A>::type, typename std::decay<TYPE_B>::type>::value, bool>::type
+    typename std::enable_if<                    \
+        !std::is_same<typename std::decay<TYPE_A>::type, typename std::decay<TYPE_B>::type>::value, bool>::type
 
 #define ENABLE_IF_ARITHMETIC(TYPE) \
-	typename std::enable_if<std::is_arithmetic<typename std::decay<TYPE>::type>::value, bool>::type = true
+    typename std::enable_if<std::is_arithmetic<typename std::decay<TYPE>::type>::value, bool>::type = true
 #define FWD_ENABLE_IF_ARITHMETIC(TYPE) \
-	typename std::enable_if<std::is_arithmetic<typename std::decay<TYPE>::type>::value, bool>::type
+    typename std::enable_if<std::is_arithmetic<typename std::decay<TYPE>::type>::value, bool>::type
 
 #define ENABLE_IF_SUBCLASS(TYPE, PARENT) \
-	typename std::enable_if<std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type = true
+    typename std::enable_if<std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type = true
 #define FWD_ENABLE_IF_SUBCLASS(TYPE, PARENT) \
-	typename std::enable_if<std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type
+    typename std::enable_if<std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type
 
 #define DISABLE_IF_SUBCLASS(TYPE, PARENT) \
-	typename std::enable_if<!std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type = true
+    typename std::enable_if<!std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type = true
 #define FWD_DISABLE_IF_SUBCLASS(TYPE, PARENT) \
-	typename std::enable_if<!std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type
+    typename std::enable_if<!std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type
 
 #define ENABLE_IF_SUBCLASS_ANY(TYPE, ...) \
-	typename std::enable_if<is_base_of_any<typename std::decay<TYPE>::type, __VA_ARGS__>::value, bool>::type = true
+    typename std::enable_if<is_base_of_any<typename std::decay<TYPE>::type, __VA_ARGS__>::value, bool>::type = true
 #define FWD_ENABLE_IF_SUBCLASS_ANY(TYPE, ...) \
-	typename std::enable_if<is_base_of_any<typename std::decay<TYPE>::type, __VA_ARGS__>::value, bool>::type
+    typename std::enable_if<is_base_of_any<typename std::decay<TYPE>::type, __VA_ARGS__>::value, bool>::type
 
 //====================================================================================================================//
 
@@ -132,7 +131,8 @@ struct is_base_of_any<T, Head, Rest...>
  *
  */
 template<typename T, T val>
-struct always_false : std::false_type {};
+struct always_false : std::false_type {
+};
 
 /** Like always_false, but taking a single type only.
  * This way you can define error overloads that differ by type only:
@@ -150,7 +150,8 @@ struct always_false : std::false_type {};
  *
  */
 template<typename T>
-struct always_false_t : std::false_type {};
+struct always_false_t : std::false_type {
+};
 
 //====================================================================================================================//
 
@@ -158,21 +159,22 @@ struct always_false_t : std::false_type {};
  * Also disables automatic move constructor/assignment methods, although you might define them yourself, if you want to.
  */
 #define DISALLOW_COPY_AND_ASSIGN(Type) \
-	Type(const Type&) = delete;        \
-	void operator=(const Type&) = delete;
+    Type(const Type&) = delete;        \
+    void operator=(const Type&) = delete;
 
 /** Convenience macro to define shared pointer types for a given type. */
 #define DEFINE_SHARED_POINTERS(Tag, Type)         \
-	Tag Type;                                     \
-	using Type##Ptr      = std::shared_ptr<Type>; \
-	using Type##ConstPtr = std::shared_ptr<const Type>;
+    Tag Type;                                     \
+    using Type##Ptr      = std::shared_ptr<Type>; \
+    using Type##ConstPtr = std::shared_ptr<const Type>;
 
 //====================================================================================================================//
 
 /** Trait containing the type that has a higher numeric limits. */
 template<typename LEFT, typename RIGHT>
 struct higher_type {
-	using type = std::conditional_t<std::numeric_limits<LEFT>::max() <= std::numeric_limits<RIGHT>::max(), LEFT, RIGHT>;
+    using type = typename std::conditional<std::numeric_limits<LEFT>::max() <= std::numeric_limits<RIGHT>::max(), LEFT,
+                                           RIGHT>::type;
 };
 
 //====================================================================================================================//
@@ -202,7 +204,32 @@ struct higher_type {
 
 /// Forbids the allocation on the heap of a given type.
 #define DISALLOW_HEAP_ALLOCATION(Type)      \
-	void* operator new(size_t)    = delete; \
-	void* operator new[](size_t)  = delete; \
-	void operator delete(void*)   = delete; \
-	void operator delete[](void*) = delete;
+    void* operator new(size_t)    = delete; \
+    void* operator new[](size_t)  = delete; \
+    void operator delete(void*)   = delete; \
+    void operator delete[](void*) = delete;
+
+//====================================================================================================================//
+
+/// @brief Compile-time check whether two types are both signed / both unsigned.
+template<class T, class U>
+struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T>::value == std::is_signed<U>::value> {
+};
+
+//====================================================================================================================//
+
+namespace std {
+
+/// @brief Void type.
+#ifndef CPP_17
+template<class...>
+using void_t = void;
+#endif
+
+} // namespace std
+
+//====================================================================================================================//
+
+/// @brief Takes two macros and concatenates them without whitespace in between
+#define MACRO_CONCAT_(A, B) A##B
+#define MACRO_CONCAT(A, B) MACRO_CONCAT_(A, B)

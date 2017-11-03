@@ -6,8 +6,9 @@ namespace notf {
 
 // Vector4f ==========================================================================================================//
 
-std::ostream& operator<<(std::ostream& out, const Vector4f& vec) {
-	return out << "Vector4f(" << vec.x() << ", " << vec.y() << ", " << vec.z() << ", " << vec.w() << ")";
+std::ostream& operator<<(std::ostream& out, const Vector4f& vec)
+{
+    return out << "Vector4f(" << vec.x() << ", " << vec.y() << ", " << vec.z() << ", " << vec.w() << ")";
 }
 
 static_assert(sizeof(Vector4f) == sizeof(float) * 4,
@@ -18,8 +19,9 @@ static_assert(std::is_pod<Vector4f>::value, "This compiler does not recognize no
 
 // Vector4d ==========================================================================================================//
 
-std::ostream& operator<<(std::ostream& out, const Vector4d& vec) {
-	return out << "Vector4d(" << vec.x() << ", " << vec.y() << ", " << vec.z() << ", " << vec.w() << ")";
+std::ostream& operator<<(std::ostream& out, const Vector4d& vec)
+{
+    return out << "Vector4d(" << vec.x() << ", " << vec.y() << ", " << vec.z() << ", " << vec.w() << ")";
 }
 
 static_assert(sizeof(Vector4d) == sizeof(double) * 4,
@@ -30,8 +32,9 @@ static_assert(std::is_pod<Vector4f>::value, "This compiler does not recognize no
 
 // Vector4h ==========================================================================================================//
 
-std::ostream& operator<<(std::ostream& out, const Vector4h& vec) {
-	return out << "Vector4h(" << vec.x() << ", " << vec.y() << ", " << vec.z() << ", " << vec.w() << ")";
+std::ostream& operator<<(std::ostream& out, const Vector4h& vec)
+{
+    return out << "Vector4h(" << vec.x() << ", " << vec.y() << ", " << vec.z() << ", " << vec.w() << ")";
 }
 
 static_assert(sizeof(Vector4h) == sizeof(half) * 4,

@@ -24,6 +24,10 @@ macro(create_module name)
     set(${name}_MODULE ${${name}_SOURCE} ${${name}_HEADERS} ${${name}_MARKDOWN})
 endmacro()
 
+# OPTIONS ##############################################################################################################
+
+option(USE_LIBCXX "Use LLVM's libc++ instead of libstdc++" OFF)
+
 # LIBRARIES ############################################################################################################
 
 # glfw
@@ -39,8 +43,12 @@ add_subdirectory(/home/clemens/code/thirdparty/freetype-2.8/ thirdparty/freetype
 
 # NOTF #################################################################################################################
 
-set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS_DEBUG "-g -D_DEBUG")
+set(CMAKE_CXX_STANDARD 17)
+
+if(USE_LIBCXX)
+    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-stdlib=libc++")
+endif()
 
 include_directories(
     include/

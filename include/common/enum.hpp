@@ -7,10 +7,11 @@ namespace notf {
 namespace detail {
 
 struct _EnumClassHash {
-	template<typename T>
-	std::size_t operator()(T t) const {
-		return static_cast<std::size_t>(t);
-	}
+    template<typename T>
+    std::size_t operator()(T t) const
+    {
+        return static_cast<std::size_t>(t);
+    }
 };
 
 template<typename Key>
@@ -53,8 +54,9 @@ constexpr size_t bit_index_count(size_t v) { return bit_index(v - 1) + 1; }
  * Blatantly copied from "Effective Modern C++ by Scott Mayers': Item #10.
  */
 template<typename Enum>
-constexpr auto to_number(Enum enumerator) noexcept {
-	return static_cast<std::underlying_type_t<Enum>>(enumerator);
+constexpr auto to_number(Enum enumerator) noexcept
+{
+    return static_cast<std::underlying_type_t<Enum>>(enumerator);
 }
 
 } // namespace notf

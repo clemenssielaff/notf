@@ -22,78 +22,89 @@ constexpr long double largest_supported_diagonale() { return 11585.2375029603946
 } // namespace detail
 
 template<typename Real>
-constexpr Real lowest_tested() {
-	return static_cast<Real>(-detail::largest_supported_diagonale());
+constexpr Real lowest_tested()
+{
+    return static_cast<Real>(-detail::largest_supported_diagonale());
 }
 
 template<typename Real>
-constexpr Real highest_tested() {
-	return static_cast<Real>(detail::largest_supported_diagonale());
+constexpr Real highest_tested()
+{
+    return static_cast<Real>(detail::largest_supported_diagonale());
 }
 
 /** Random number around zero in the range of a size what we'd expect to see as a monitor resolution. */
 template<typename Real>
-inline Real random_number() {
-	return random_number<Real>(lowest_tested<Real>(), highest_tested<Real>());
+inline Real random_number()
+{
+    return random_number<Real>(lowest_tested<Real>(), highest_tested<Real>());
 }
 
 template<typename Real>
-inline _RealVector2<Real> lowest_vector() {
-	return _RealVector2<Real>(lowest_tested<Real>(), lowest_tested<Real>());
+inline _RealVector2<Real> lowest_vector()
+{
+    return _RealVector2<Real>(lowest_tested<Real>(), lowest_tested<Real>());
 }
 
 template<typename Real>
-inline _RealVector2<Real> highest_vector() {
-	return _RealVector2<Real>(highest_tested<Real>(), highest_tested<Real>());
+inline _RealVector2<Real> highest_vector()
+{
+    return _RealVector2<Real>(highest_tested<Real>(), highest_tested<Real>());
 }
 
 template<typename T>
 inline T random_vector(const typename T::element_t minimum = lowest_tested<typename T::element_t>(),
-                       const typename T::element_t maximum = highest_tested<typename T::element_t>()) {
-	T result;
-	for (size_t i = 0; i < result.size(); ++i) {
-		result[i] = random_number<typename T::element_t>(minimum, maximum);
-	}
-	return result;
+                       const typename T::element_t maximum = highest_tested<typename T::element_t>())
+{
+    T result;
+    for (size_t i = 0; i < result.size(); ++i) {
+        result[i] = random_number<typename T::element_t>(minimum, maximum);
+    }
+    return result;
 }
 
 template<typename T>
 inline T random_matrix(const typename T::element_t minimum = lowest_tested<typename T::element_t>(),
-                       const typename T::element_t maximum = highest_tested<typename T::element_t>()) {
-	T result;
-	for (size_t i = 0; i < result.size(); ++i) {
-		for (size_t j = 0; j < result[0].size(); ++j) {
-			result[i][j] = random_number<typename T::element_t>(minimum, maximum);
-		}
-	}
-	return result;
+                       const typename T::element_t maximum = highest_tested<typename T::element_t>())
+{
+    T result;
+    for (size_t i = 0; i < result.size(); ++i) {
+        for (size_t j = 0; j < result[0].size(); ++j) {
+            result[i][j] = random_number<typename T::element_t>(minimum, maximum);
+        }
+    }
+    return result;
 }
 
 template<typename Real>
 inline _Matrix3<Real>
-random_matrix3(const Real min_trans, const Real max_trans, const Real min_scale, const Real max_scale) {
-	_Matrix3<Real> result = _Matrix3<Real>::scaling(random_number(min_scale, max_scale));
-	result *= _Matrix3<Real>::rotation(random_radian<Real>());
-	result *= _Matrix3<Real>::translation(
-	    _RealVector2<Real>(random_number(min_trans, max_trans), random_number(min_trans, max_trans)));
-	return result;
+random_matrix3(const Real min_trans, const Real max_trans, const Real min_scale, const Real max_scale)
+{
+    _Matrix3<Real> result = _Matrix3<Real>::scaling(random_number(min_scale, max_scale));
+    result *= _Matrix3<Real>::rotation(random_radian<Real>());
+    result *= _Matrix3<Real>::translation(
+        _RealVector2<Real>(random_number(min_trans, max_trans), random_number(min_trans, max_trans)));
+    return result;
 }
 
 template<typename Real>
-inline _Matrix3<Real> random_matrix3() {
-	return random_matrix3(lowest_tested<Real>(), highest_tested<Real>(), Real(0), Real(2));
+inline _Matrix3<Real> random_matrix3()
+{
+    return random_matrix3(lowest_tested<Real>(), highest_tested<Real>(), Real(0), Real(2));
 }
 
 template<typename T>
-inline _Size2<T> random_size(const T from, const T to) {
-	return {random_number<T>(from, to), random_number<T>(from, to)};
+inline _Size2<T> random_size(const T from, const T to)
+{
+    return {random_number<T>(from, to), random_number<T>(from, to)};
 }
 
 inline bool random_event(const double probability) { return random_number<double>(0, 1) < clamp(probability, 0, 1); }
 
-inline Padding random_padding(const float from, const float to) {
-	return {random_number<float>(from, to), random_number<float>(from, to), random_number<float>(from, to),
-	        random_number<float>(from, to)};
+inline Padding random_padding(const float from, const float to)
+{
+    return {random_number<float>(from, to), random_number<float>(from, to), random_number<float>(from, to),
+            random_number<float>(from, to)};
 }
 
 } // namespace notf

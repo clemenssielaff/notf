@@ -1,0 +1,401 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"graphi",
+				"graphics_context\tstd::unique_ptr<GraphicsContext> graphics_context"
+			],
+			[
+				"in",
+				"inc\t#include \"…\""
+			],
+			[
+				"blin",
+				"blinn_phong_shader"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "src/main.cpp",
+			"settings":
+			{
+				"buffer_size": 9723,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "notf.sublime-project",
+			"settings":
+			{
+				"buffer_size": 829,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "Packages/Makefile/Make.sublime-build",
+	"build_system_choices":
+	[
+		[
+			[
+				[
+					"Packages/Makefile/Make.sublime-build",
+					""
+				],
+				[
+					"Packages/Makefile/Make.sublime-build",
+					"Clean"
+				]
+			],
+			[
+				"Packages/Makefile/Make.sublime-build",
+				""
+			]
+		]
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 124.0,
+		"last_filter": "install pa",
+		"selected_items":
+		[
+			[
+				"install pa",
+				"Package Control: Install Package"
+			],
+			[
+				"install p",
+				"Package Control: Install Package"
+			],
+			[
+				"clang",
+				"Clang Format: Format Selection"
+			],
+			[
+				"install package",
+				"Package Control: Install Package"
+			],
+			[
+				"isntall",
+				"Package Control: Install Package"
+			],
+			[
+				"show",
+				"SublimeLinter: Show All Errors"
+			],
+			[
+				"remove pack",
+				"Package Control: Remove Package"
+			],
+			[
+				"Package Control: ",
+				"Package Control: Enable Package"
+			],
+			[
+				"package",
+				"Package Control: Remove Package"
+			],
+			[
+				"Package Control: remo",
+				"Package Control: Remove Package"
+			],
+			[
+				"insta",
+				"Install Package Control"
+			]
+		],
+		"width": 488.0
+	},
+	"console":
+	{
+		"height": 292.0,
+		"history":
+		[
+			"sys.version",
+			"dir(sys)",
+			"import sys",
+			"sys.version",
+			"print(version)",
+			"print version",
+			"version",
+			"def touch(fname, times=None):",
+			"touch",
+			"os.touch",
+			"os.mkdir",
+			"import os",
+			"os",
+			"mkdir"
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/home/clemens/code/notf"
+	],
+	"file_history":
+	[
+		"/home/clemens/code/notf/include/graphics/graphics_context.hpp",
+		"/home/clemens/code/notf/CMakeLists.txt",
+		"/home/clemens/code/notf/include/common/vector.hpp",
+		"/home/clemens/code/notf/thirdparty/tinyutf8/tinyutf8.h",
+		"/home/clemens/code/notf/include/utils/debug.hpp",
+		"/home/clemens/code/notf/include/core/test.h",
+		"/home/clemens/code/notf/notf.sublime-project",
+		"/home/clemens/code/notf/src/main.cpp",
+		"/home/clemens/code/notf/src/graphics/graphics_context.cpp",
+		"/home/clemens/.config/sublime-text-3/Packages/User/Default (Linux).sublime-keymap",
+		"/home/clemens/.config/sublime-text-3/Packages/Clang Format/Default (Linux).sublime-keymap",
+		"/home/clemens/.config/sublime-text-3/Packages/Clang Format/clang_format.sublime-settings",
+		"/home/clemens/code/notf/include/core/glfw.hpp",
+		"/home/clemens/code/notf/test/glm_utils.hpp",
+		"/home/clemens/code/notf/include/graphics/frame_buffer.hpp",
+		"/home/clemens/.config/sublime-text-3/Packages/User/clang_format.sublime-settings",
+		"/home/clemens/code/notf/.clang-format",
+		"/home/clemens/.config/sublime-text-3/Packages/Package Control/Package Control.sublime-settings",
+		"/home/clemens/code/notf/include/common/half.hpp",
+		"/home/clemens/.config/sublime-text-3/Packages/SublimeLinter/SublimeLinter.sublime-settings",
+		"/home/clemens/.config/sublime-text-3/Packages/User/SublimeLinter.sublime-settings",
+		"/usr/include/c++/6.3.0/bits/stringfwd.h",
+		"/home/clemens/code/notf/include/common/exception.hpp"
+	],
+	"find":
+	{
+		"height": 26.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"/\",\n"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "src/main.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 9723,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								4294,
+								4294
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1742.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "notf.sublime-project",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 829,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								340,
+								340
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/JavaScript/JSON.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 54.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 26.0
+	},
+	"input":
+	{
+		"height": 38.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.exec":
+	{
+		"height": 120.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "NOTF",
+	"project": "notf.sublime-project",
+	"replace":
+	{
+		"height": 48.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"graphi",
+				"include/graphics/graphics_context.hpp"
+			],
+			[
+				"graphics_cnte",
+				"include/graphics/graphics_context.hpp"
+			],
+			[
+				"vecto",
+				"include/common/vector.hpp"
+			],
+			[
+				"main",
+				"src/main.cpp"
+			],
+			[
+				"graphic",
+				"src/graphics/graphics_context.cpp"
+			],
+			[
+				"clang",
+				".clang-format"
+			],
+			[
+				"frame",
+				"include/graphics/frame_buffer.hpp"
+			],
+			[
+				"glm_u",
+				"test/glm_utils.hpp"
+			],
+			[
+				"glfw",
+				"include/core/glfw.hpp"
+			],
+			[
+				"half.",
+				"include/common/half.hpp"
+			]
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": true,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 230.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

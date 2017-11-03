@@ -1,0 +1,35 @@
+{
+	"folders":
+	[
+		{
+			"path": "."
+		}
+	],
+    "build_systems":
+    [
+        {
+            "name": "NOTF",
+            "working_dir": "/home/clemens/code/BUILD/notf-debug/",
+            "cmd": ["make -j4"],
+            "target": "all",
+            "selector": "source.c++",
+            "shell": true,
+        }
+    ],
+	"SublimeLinter":
+	{
+    	"linters":
+    	{
+        	"clang": {
+                "extra_flags": "-Wall -stdlib=libc++ -std=c++17 -Wno-pragma-once-outside-header",
+                "include_dirs": [
+                	"/usr/local/include/c++/v1/",
+                    "${project_folder}/include/",
+                    "${project_folder}/thirdparty/",
+                    "${project_folder}/test/",
+                    "/home/clemens/code/thirdparty/glm-0.9.8.4/include/",
+                ]
+        	}
+    	}
+	},
+}

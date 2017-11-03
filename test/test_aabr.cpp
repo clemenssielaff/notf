@@ -8,37 +8,44 @@
 using namespace notf;
 
 template<typename T>
-std::ostream& operator<<(std::ostream& out, const _approx<T>& approxed) {
-	return out << approxed.value;
+std::ostream& operator<<(std::ostream& out, const _approx<T>& approxed)
+{
+    return out << approxed.value;
 }
 
-SCENARIO("Aabr can be constructed", "[common][aabr]") {
-	WHEN("you create an Aabr from two vectors") {
-		const Vector2f top_right   = {1, 1};
-		const Vector2f bottom_left = {-1, -1};
+SCENARIO("Aabr can be constructed", "[common][aabr]")
+{
+    WHEN("you create an Aabr from two vectors")
+    {
+        const Vector2f top_right   = {1, 1};
+        const Vector2f bottom_left = {-1, -1};
 
-		THEN("the constructor will place the corners correctly") {
-			Aabrf aabr_1(top_right, bottom_left);
-			Aabrf aabr_2(bottom_left, top_right);
-			REQUIRE(aabr_1.left() == approx(-1));
-			REQUIRE(aabr_1.right() == 1.f);
-			REQUIRE(aabr_1.top() == approx(1));
-			REQUIRE(aabr_1.bottom() == approx(-1.f));
-			REQUIRE(aabr_1 == aabr_2);
-		}
-	}
+        THEN("the constructor will place the corners correctly")
+        {
+            Aabrf aabr_1(top_right, bottom_left);
+            Aabrf aabr_2(bottom_left, top_right);
+            REQUIRE(aabr_1.left() == approx(-1));
+            REQUIRE(aabr_1.right() == 1.f);
+            REQUIRE(aabr_1.top() == approx(1));
+            REQUIRE(aabr_1.bottom() == approx(-1.f));
+            REQUIRE(aabr_1 == aabr_2);
+        }
+    }
 }
 
-SCENARIO("Aabr can be modified", "[common][aabr]") {
-	WHEN("you rotate an Aabr") {
-		const Vector2f bottom_left = {-1, 1};
-		const Vector2f top_right   = {1, -1};
+SCENARIO("Aabr can be modified", "[common][aabr]")
+{
+    WHEN("you rotate an Aabr")
+    {
+        const Vector2f bottom_left = {-1, 1};
+        const Vector2f top_right   = {1, -1};
 
-		THEN("the resulting aabr will the the aabr of the rotated rect") {
-			Aabrf aabr_1(top_right, bottom_left);
-			Matrix3f rotation = Matrix3f::rotation(pi<float>() / 4);
-			Aabrf aabr_2      = rotation.transform(aabr_1);
-			REQUIRE(aabr_2.get_width() == approx(2 * sqrt(2.f)));
-		}
-	}
+        THEN("the resulting aabr will the the aabr of the rotated rect")
+        {
+            Aabrf aabr_1(top_right, bottom_left);
+            Matrix3f rotation = Matrix3f::rotation(pi<float>() / 4);
+            Aabrf aabr_2      = rotation.transform(aabr_1);
+            REQUIRE(aabr_2.get_width() == approx(2 * sqrt(2.f)));
+        }
+    }
 }

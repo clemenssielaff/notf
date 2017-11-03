@@ -4,10 +4,11 @@
 #include "common/log.hpp"
 using namespace notf;
 
-int main(int argc, char* argv[]) {
-	set_log_level(LogMessage::LEVEL::NONE);
+int main(int argc, char* argv[])
+{
+    set_log_level(LogMessage::LEVEL::NONE);
 
-	int result = Catch::Session().run(argc, argv);
+    int result = Catch::Session().run(argc, argv);
 
-	return result;
+    return result;
 }

@@ -8,8 +8,10 @@ namespace notf {
 template<typename T>
 class MakeSmartEnabler : public T { // TODO: get rid of MakeSmartEnabler wherever possible
 public:
-	template<typename... Args>
-	MakeSmartEnabler(Args&&... args) : T(std::forward<Args>(args)...) {}
+    template<typename... Args>
+    MakeSmartEnabler(Args&&... args) : T(std::forward<Args>(args)...)
+    {
+    }
 };
 
 } // namespace notf

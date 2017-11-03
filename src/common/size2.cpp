@@ -7,8 +7,9 @@ namespace notf {
 /* Size2f *************************************************************************************************************/
 
 template<>
-std::ostream& operator<<(std::ostream& out, const Size2f& size) {
-	return out << "Size2f(width: " << size.width << ", height: " << size.height << ")";
+std::ostream& operator<<(std::ostream& out, const Size2f& size)
+{
+    return out << "Size2f(width: " << size.width << ", height: " << size.height << ")";
 }
 
 static_assert(sizeof(Size2f) == sizeof(float) * 2,
@@ -20,8 +21,9 @@ static_assert(std::is_pod<Size2f>::value, "This compiler does not recognize notf
 /* Size2i *************************************************************************************************************/
 
 template<>
-std::ostream& operator<<(std::ostream& out, const Size2i& size) {
-	return out << "Size2i(width: " << size.width << ", height: " << size.height << ")";
+std::ostream& operator<<(std::ostream& out, const Size2i& size)
+{
+    return out << "Size2i(width: " << size.width << ", height: " << size.height << ")";
 }
 
 static_assert(sizeof(Size2i) == sizeof(int) * 2,

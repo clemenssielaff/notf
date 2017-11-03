@@ -18,11 +18,12 @@ std::vector<std::string> tokenize(const std::string& input, const char delimiter
  * @param delimiter     Delimiter character.
  * @return              String tokens.
  */
-inline std::vector<std::string> tokenize(const char* input, const char delimiter) {
-	if (!input) {
-		return {};
-	}
-	return tokenize(std::string(input), delimiter);
+inline std::vector<std::string> tokenize(const char* input, const char delimiter)
+{
+    if (!input) {
+        return {};
+    }
+    return tokenize(std::string(input), delimiter);
 }
 
 /** Tests if a string ends starts a given prefix.
@@ -30,8 +31,9 @@ inline std::vector<std::string> tokenize(const char* input, const char delimiter
  * @param prefix    Prefix to test for.
  * @return True if the first n input string characters match the prefix of size n.
  */
-inline bool starts_with(const std::string& input, const std::string& prefix) {
-	return (input.compare(0, prefix.size(), prefix) == 0);
+inline bool starts_with(const std::string& input, const std::string& prefix)
+{
+    return (input.compare(0, prefix.size(), prefix) == 0);
 }
 
 /** Case insensitive test if a string starts with a given prefix.
@@ -65,11 +67,12 @@ bool icompare(const std::string& left, const std::string& right);
  * Adapted from: http://stackoverflow.com/a/26221725/3444217
  */
 template<typename... Args>
-std::string string_format(const std::string& format, Args... args) {
-	size_t size = std::snprintf(nullptr, 0, format.c_str(), args...) + 1; // Extra space for '\0'
-	std::unique_ptr<char[]> buffer(new char[size]);
-	std::snprintf(buffer.get(), size, format.c_str(), args...);
-	return std::string(buffer.get(), buffer.get() + size - 1); // We don't want the '\0' inside
+std::string string_format(const std::string& format, Args... args)
+{
+    size_t size = std::snprintf(nullptr, 0, format.c_str(), args...) + 1; // Extra space for '\0'
+    std::unique_ptr<char[]> buffer(new char[size]);
+    std::snprintf(buffer.get(), size, format.c_str(), args...);
+    return std::string(buffer.get(), buffer.get() + size - 1); // We don't want the '\0' inside
 }
 
 /** Levenshtein "string distance" algorithm.
@@ -88,14 +91,15 @@ size_t levenshtein_distance(const std::string& s1, const std::string& s2);
  * @return          Only the last part of the path, e.g. basename("/path/to/some/file.cpp", '/') would return
  * "file.cpp".
  */
-constexpr const char* basename(const char* input, const char delimiter = '/') {
-	size_t last_occurrence = 0;
-	for (size_t offset = 0; input[offset]; ++offset) {
-		if (input[offset] == delimiter) {
-			last_occurrence = offset + 1;
-		}
-	}
-	return &input[last_occurrence];
+constexpr const char* basename(const char* input, const char delimiter = '/')
+{
+    size_t last_occurrence = 0;
+    for (size_t offset = 0; input[offset]; ++offset) {
+        if (input[offset] == delimiter) { 
+            last_occurrence = offset + 1;
+        }
+    }
+    return &input[last_occurrence];
 }
 
 } // namespace notf

@@ -13,10 +13,10 @@ using namespace tinyutf8;
 using utf32_t = uint32_t;
 
 struct Codepoint {
-	/** Value contructor. */
-	Codepoint(utf32_t value) : value(value) {}
+    /** Value contructor. */
+    Codepoint(utf32_t value) : value(value) {}
 
-	const utf32_t value;
+    const utf32_t value;
 };
 
 /** Prints a single codepoint into a std::ostream.

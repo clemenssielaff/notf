@@ -11,11 +11,11 @@ namespace notf {
 /** Specialized Exception thrown when you try to destroy the universe. */
 class division_by_zero : public std::logic_error {
 public: // methods
-	/** Default Constructor. */
-	division_by_zero() : std::logic_error("Division by zero!") {}
+    /** Default Constructor. */
+    division_by_zero() : std::logic_error("Division by zero!") {}
 
-	/** Destructor. */
-	virtual ~division_by_zero() override;
+    /** Destructor. */
+    virtual ~division_by_zero() override;
 };
 
 /**********************************************************************************************************************/
@@ -23,16 +23,16 @@ public: // methods
 /** Specialized Exception that logs the message and then behaves like a regular std::runtime_error. */
 class runtime_error : public std::runtime_error {
 public: // methods
-	/** Value Constructor.
-	 * @param message   What has caused this exception?
-	 * @param file      File containing the function throwing the error.
-	 * @param function  Function in which the error was thrown.
-	 * @param line      Line in `file` at which the error was thrown.
-	 */
-	runtime_error(const std::string& message, std::string file, std::string function, uint line);
+    /** Value Constructor.
+     * @param message   What has caused this exception?
+     * @param file      File containing the function throwing the error.
+     * @param function  Function in which the error was thrown.
+     * @param line      Line in `file` at which the error was thrown.
+     */
+    runtime_error(const std::string& message, std::string file, std::string function, uint line);
 
-	/** Destructor. */
-	virtual ~runtime_error() override;
+    /** Destructor. */
+    virtual ~runtime_error() override;
 };
 
 } // namespace notf

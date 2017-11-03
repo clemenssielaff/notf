@@ -6,8 +6,9 @@ namespace notf {
 
 // Vector2f ==========================================================================================================//
 
-std::ostream& operator<<(std::ostream& out, const Vector2f& vec) {
-	return out << "Vector2f(" << vec.x() << ", " << vec.y() << ")";
+std::ostream& operator<<(std::ostream& out, const Vector2f& vec)
+{
+    return out << "Vector2f(" << vec.x() << ", " << vec.y() << ")";
 }
 
 static_assert(sizeof(Vector2f) == sizeof(float) * 2,
@@ -18,8 +19,9 @@ static_assert(std::is_pod<Vector2f>::value, "This compiler does not recognize no
 
 // Vector2d ==========================================================================================================//
 
-std::ostream& operator<<(std::ostream& out, const Vector2d& vec) {
-	return out << "Vector2d(" << vec.x() << ", " << vec.y() << ")";
+std::ostream& operator<<(std::ostream& out, const Vector2d& vec)
+{
+    return out << "Vector2d(" << vec.x() << ", " << vec.y() << ")";
 }
 
 static_assert(sizeof(Vector2d) == sizeof(double) * 2,
@@ -30,8 +32,9 @@ static_assert(std::is_pod<Vector2d>::value, "This compiler does not recognize no
 
 // Vector2h ==========================================================================================================//
 
-std::ostream& operator<<(std::ostream& out, const Vector2h& vec) {
-	return out << "Vector2h(" << vec.x() << ", " << vec.y() << ")";
+std::ostream& operator<<(std::ostream& out, const Vector2h& vec)
+{
+    return out << "Vector2h(" << vec.x() << ", " << vec.y() << ")";
 }
 
 static_assert(sizeof(Vector2h) == sizeof(half) * 2,
@@ -42,8 +45,9 @@ static_assert(std::is_pod<Vector2h>::value, "This compiler does not recognize no
 
 // Vector2i ==========================================================================================================//
 
-std::ostream& operator<<(std::ostream& out, const Vector2i& vec) {
-	return out << "Vector2i(" << vec.x() << ", " << vec.y() << ")";
+std::ostream& operator<<(std::ostream& out, const Vector2i& vec)
+{
+    return out << "Vector2i(" << vec.x() << ", " << vec.y() << ")";
 }
 
 static_assert(sizeof(Vector2i) == sizeof(int) * 2,

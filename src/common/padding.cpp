@@ -5,9 +5,10 @@
 
 namespace notf {
 
-std::ostream& operator<<(std::ostream& out, const Padding& padding) {
-	return out << "Padding(" << padding.top << ", " << padding.right << ", " << padding.bottom << ", " << padding.left
-	           << ")";
+std::ostream& operator<<(std::ostream& out, const Padding& padding)
+{
+    return out << "Padding(" << padding.top << ", " << padding.right << ", " << padding.bottom << ", " << padding.left
+               << ")";
 }
 
 /*

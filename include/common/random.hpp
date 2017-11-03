@@ -16,14 +16,16 @@ decltype(randutils::default_rng()) & get_random_engine();
  * @param to        Highest possible number (defaults to highest representable number)
  */
 template<typename Type>
-Type random_number(const Type from, const Type to) {
-	return get_random_engine().uniform(from, to);
+Type random_number(const Type from, const Type to)
+{
+    return get_random_engine().uniform(from, to);
 }
 
 /** Returns a random angle in radians between -pi and pi. */
 template<typename Real, ENABLE_IF_REAL(Real)>
-Real random_radian() {
-	return random_number(-pi<Real>(), pi<Real>());
+Real random_radian()
+{
+    return random_number(-pi<Real>(), pi<Real>());
 }
 
 /** Generates a random string.
