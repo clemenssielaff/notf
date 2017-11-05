@@ -126,8 +126,14 @@ public:
     /// course of the app.
     struct Environment {
 
-        //@brief Number of texture slots.
+        /// @brief Number of texture slots.
         GLuint texture_slot_count;
+
+        /// @brief Maximum height and width of a render buffer in pixels.
+        GLuint max_render_buffer_size;
+
+        /// @brief Number of available color attachments for a frame buffer.
+        GLuint color_attachment_count;
 
     private:
         friend class GraphicsContext;

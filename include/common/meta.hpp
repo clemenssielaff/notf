@@ -96,73 +96,77 @@ struct all_true<T, Head, Rest...> : std::integral_constant<bool, Head::value && 
 
 //====================================================================================================================//
 
-/** The `always_false` struct can be used to create a templated struct that will always evaluate to `false` when used
- * in a static_assert.
- *
- * Imagine the following scenario: You have a scene graph and a fairly generic operation `calc` on some object class,
- * that you want to be performed in various spaces:
- *
- *     enum class Space {
- *        WORLD,
- *        LOCAL,
- *        SCREEN,
- *     };
- *
- * Instead of passing a `Space` parameter at runtime, or cluttering the interface with `calc_in_world` and
- * `calc_in_local` etc. -operations, you want a template method: `calc<Space>()`.
- * Then you can specialize the template method for various spaces.
- * If a space is *not* supported, you can just not specialize the method for it.
- * The original template method would look this this:
- *
- *     template<Space space>
- *     float calc() {
- *         static_assert(always_false<Space, space>{}, "Unsupported Space");
- *     }
- *
- * And specializations like this:
- *
- *     template<>
- *     float calc<Space:WORLD>() { return 0; }
- *
- * You can now call supported specializations, but unsupported ones will fail at runtime:
- *
- *     calc<Space::WORLD>();  // produces 0
- *     calc<Space::SCREEN>(); // error! static assert: "Unsupported Space"
- *
- */
+/// @brief The `always_false` struct can be used to create a templated struct that will always evaluate to `false` when
+/// used in a static_assert.
+///
+/// Imagine the following scenario: You have a scene graph and a fairly generic operation `calc` on some object class,
+/// that you want to be performed in various spaces:
+///
+///     enum class Space {
+///        WORLD,
+///        LOCAL,
+///        SCREEN,
+///     };
+///
+/// Instead of passing a `Space` parameter at runtime, or cluttering the interface with `calc_in_world` and
+/// `calc_in_local` etc. -operations, you want a template method: `calc<Space>()`. Then you can specialize the template
+/// method for various spaces. If a space is *not* supported, you can just not specialize the method for it. The
+/// original template method would look this this:
+///
+///     template<Space space>
+///     float calc() {
+///         static_assert(always_false<Space, space>{}, "Unsupported Space");
+///     }
+///
+/// And specializations like this:
+///
+///     template<>
+///     float calc<Space:WORLD>() { return 0; }
+///
+/// You can now call supported specializations, but unsupported ones will fail at runtime:
+///
+///     calc<Space::WORLD>();  // produces 0
+///     calc<Space::SCREEN>(); // error! static assert: "Unsupported Space"
+///
 template<typename T, T val>
 struct always_false : std::false_type {
 };
 
-/** Like always_false, but taking a single type only.
- * This way you can define error overloads that differ by type only:
- *
- *    static void convert(const Vector4d& in, std::array<float, 4>& out)
- *    {
- *        ...
- *    }
- *
- *    template <typename UNSUPPORTED_TYPE>
- *    static void convert(const Vector4d& in, UNSUPPORTED_TYPE& out)
- *    {
- *        static_assert(always_false_t<T>{}, "Cannot convert a Vector4d into template type T");
- *    }
- *
- */
+/// @brief Like always_false, but taking a single type only.
+/// This way you can define error overloads that differ by type only:
+///
+///     static void convert(const Vector4d& in, std::array<float, 4>& out)
+///     {
+///         ...
+///     }
+///
+///     template <typename UNSUPPORTED_TYPE>
+///     static void convert(const Vector4d& in, UNSUPPORTED_TYPE& out)
+///     {
+///         static_assert(always_false_t<T>{}, "Cannot convert a Vector4d into template type T");
+///     }
+///
 template<typename T>
 struct always_false_t : std::false_type {
 };
 
 //====================================================================================================================//
 
-/** Convenience macro to disable the construction of automatic copy- and assign methods.
- * Also disables automatic move constructor/assignment methods, although you might define them yourself, if you want to.
- */
+/// @brief Convenience macro to disable the construction of automatic copy- and assign methods.
+/// Implicitly disables move constructor/assignment methods as well, although you might define them yourself if you want
+/// to.
 #define DISALLOW_COPY_AND_ASSIGN(Type) \
     Type(const Type&) = delete;        \
     void operator=(const Type&) = delete;
 
-/** Convenience macro to define shared pointer types for a given type. */
+/// @brief Forbids the allocation on the heap of a given type.
+#define DISALLOW_HEAP_ALLOCATION(Type)      \
+    void* operator new(size_t)    = delete; \
+    void* operator new[](size_t)  = delete; \
+    void operator delete(void*)   = delete; \
+    void operator delete[](void*) = delete;
+
+/// @brief Convenience macro to define shared pointer types for a given type.
 #define DEFINE_SHARED_POINTERS(Tag, Type)         \
     Tag Type;                                     \
     using Type##Ptr      = std::shared_ptr<Type>; \
@@ -175,6 +179,11 @@ template<typename LEFT, typename RIGHT>
 struct higher_type {
     using type = typename std::conditional<std::numeric_limits<LEFT>::max() <= std::numeric_limits<RIGHT>::max(), LEFT,
                                            RIGHT>::type;
+};
+
+/// @brief Compile-time check whether two types are both signed / both unsigned.
+template<class T, class U>
+struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T>::value == std::is_signed<U>::value> {
 };
 
 //====================================================================================================================//
@@ -199,22 +208,6 @@ struct higher_type {
 #endif
 
 #endif
-
-//====================================================================================================================//
-
-/// Forbids the allocation on the heap of a given type.
-#define DISALLOW_HEAP_ALLOCATION(Type)      \
-    void* operator new(size_t)    = delete; \
-    void* operator new[](size_t)  = delete; \
-    void operator delete(void*)   = delete; \
-    void operator delete[](void*) = delete;
-
-//====================================================================================================================//
-
-/// @brief Compile-time check whether two types are both signed / both unsigned.
-template<class T, class U>
-struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T>::value == std::is_signed<U>::value> {
-};
 
 //====================================================================================================================//
 

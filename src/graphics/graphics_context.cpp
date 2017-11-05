@@ -70,6 +70,20 @@ GraphicsContext::Environment::Environment()
         check_gl_error();
         texture_slot_count = narrow_cast<decltype(texture_slot_count)>(_texture_slot_count);
     }
+
+    { // max render buffer size
+        GLint _max_render_buffer_size = -1;
+        glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &_max_render_buffer_size);
+        check_gl_error();
+        max_render_buffer_size = narrow_cast<decltype(texture_slot_count)>(_max_render_buffer_size);
+    }
+
+    { // color attachment count
+        GLint _color_attachment_count = -1;
+        glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &_color_attachment_count);
+        check_gl_error();
+        color_attachment_count = narrow_cast<decltype(texture_slot_count)>(_color_attachment_count);
+    }
 }
 
 //====================================================================================================================//
@@ -395,3 +409,13 @@ void GraphicsContext::_release_shader_compiler()
 }
 
 } // namespace notf
+
+/* Something to think of, courtesy of the OpenGL ES book:
+ * What happens if we are rendering into a texture and at the same time use this texture object as a texture in a
+ * fragment shader? Will the OpenGL ES implementation generate an error when such a situation arises? In some cases, it
+ * is possible for the OpenGL ES implementation to determine if a texture object is being used as a texture input and a
+ * framebuffer attachment into which we are currently drawing. glDrawArrays and glDrawElements could then generate an
+ * error. To ensure that glDrawArrays and glDrawElements can be executed as rapidly as possible, however, these checks
+ * are not performed. Instead of generating an error, in this case rendering results are undefined. It is the
+ * application’s responsibility to make sure that this situation does not occur.
+ */

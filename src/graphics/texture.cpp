@@ -244,8 +244,8 @@ std::shared_ptr<Texture> Texture::load_image(GraphicsContext& context, const std
     }
 
     // return the loaded texture on success
-    std::shared_ptr<Texture> texture
-        = Texture::_create(id, context, std::move(file_path), image_size.width, image_size.height, texture_format);
+    std::shared_ptr<Texture> texture = Texture::_create(id, context, GL_TEXTURE_2D, std::move(file_path),
+                                                        image_size.width, image_size.height, texture_format);
     context.m_textures.emplace_back(texture);
     return texture;
 }
@@ -305,16 +305,17 @@ Texture::create_empty(GraphicsContext& context, const std::string name, const Si
 
     // return the loaded texture on success
     std::shared_ptr<Texture> texture
-        = Texture::_create(id, context, std::move(name), size.width, size.height, args.format);
+        = Texture::_create(id, context, GL_TEXTURE_2D, std::move(name), size.width, size.height, args.format);
     context.m_textures.emplace_back(texture);
     return texture;
 }
 
-std::shared_ptr<Texture> Texture::_create(const GLuint id, GraphicsContext& context, const std::string name,
-                                            const GLint width, const GLint height, const Format format)
+std::shared_ptr<Texture>
+Texture::_create(const GLuint id, GraphicsContext& context, const GLenum target, const std::string name,
+                 const GLint width, const GLint height, const Format format)
 {
 #ifdef _DEBUG
-    return std::shared_ptr<Texture>(new Texture(id, context, name, width, height, format));
+    return std::shared_ptr<Texture>(new Texture(id, context, target, name, width, height, format));
 #else
     struct make_shared_enabler : public Texture {
         make_shared_enabler(const GLuint id, GraphicsContext& context, const std::string name, const GLint width,
@@ -328,10 +329,11 @@ std::shared_ptr<Texture> Texture::_create(const GLuint id, GraphicsContext& cont
 #endif
 }
 
-Texture::Texture(const GLuint id, GraphicsContext& context, const std::string name, const GLint width,
-                   const GLint height, const Format format)
+Texture::Texture(const GLuint id, GraphicsContext& context, const GLenum target, const std::string name,
+                 const GLint width, const GLint height, const Format format)
     : m_id(id)
     , m_graphics_context(context)
+    , m_target(target)
     , m_name(name)
     , m_width(width)
     , m_height(height)
@@ -352,7 +354,7 @@ Texture::~Texture() { _deallocate(); }
 void Texture::set_min_filter(const MinFilter filter)
 {
     m_graphics_context.bind_texture(shared_from_this(), 0);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter));
+    glTexParameteri(m_target, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter));
     m_min_filter = filter;
     check_gl_error();
 }
@@ -360,7 +362,7 @@ void Texture::set_min_filter(const MinFilter filter)
 void Texture::set_mag_filter(const MagFilter filter)
 {
     m_graphics_context.bind_texture(shared_from_this(), 0);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter));
+    glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter));
     m_mag_filter = filter;
     check_gl_error();
 }
@@ -368,7 +370,7 @@ void Texture::set_mag_filter(const MagFilter filter)
 void Texture::set_wrap_x(const Wrap wrap)
 {
     m_graphics_context.bind_texture(shared_from_this(), 0);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap));
+    glTexParameteri(m_target, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap));
     m_wrap_x = wrap;
     check_gl_error();
 }
@@ -376,7 +378,7 @@ void Texture::set_wrap_x(const Wrap wrap)
 void Texture::set_wrap_y(const Wrap wrap)
 {
     m_graphics_context.bind_texture(shared_from_this(), 0);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap));
+    glTexParameteri(m_target, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap));
     m_wrap_y = wrap;
     check_gl_error();
 }
@@ -396,8 +398,6 @@ void Texture::fill(const Color& color)
     case Format::RGBA:
         fill_color = color;
         break;
-    default:
-        fill_color = Color::black();
     }
     const uchar r = static_cast<uchar>(roundf(fill_color.r * 255.f));
     const uchar g = static_cast<uchar>(roundf(fill_color.g * 255.f));
@@ -407,7 +407,7 @@ void Texture::fill(const Color& color)
     // create the source buffer and copy it into the texture
     if (m_format == Format::GRAYSCALE) {
         const std::vector<uchar> buffer(static_cast<size_t>(m_width * m_height * to_number(m_format)), r);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, m_width, m_height, 0, GL_RED, GL_UNSIGNED_BYTE, &buffer[0]);
+        glTexImage2D(m_target, 0, GL_R8, m_width, m_height, 0, GL_RED, GL_UNSIGNED_BYTE, &buffer[0]);
     }
     else if (m_format == Format::RGB) {
         std::vector<uchar> buffer;
@@ -417,7 +417,7 @@ void Texture::fill(const Color& color)
             buffer[i * to_number(Format::RGB) + 1] = g;
             buffer[i * to_number(Format::RGB) + 2] = b;
         }
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_width, m_height, 0, GL_RGB, GL_UNSIGNED_BYTE, &buffer[0]);
+        glTexImage2D(m_target, 0, GL_RGB, m_width, m_height, 0, GL_RGB, GL_UNSIGNED_BYTE, &buffer[0]);
     }
     else if (m_format == Format::RGBA) {
         std::vector<uchar> buffer;
@@ -428,7 +428,7 @@ void Texture::fill(const Color& color)
             buffer[i * to_number(Format::RGBA) + 2] = b;
             buffer[i * to_number(Format::RGBA) + 3] = a;
         }
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_width, m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, &buffer[0]);
+        glTexImage2D(m_target, 0, GL_RGBA, m_width, m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, &buffer[0]);
     }
     check_gl_error();
 }

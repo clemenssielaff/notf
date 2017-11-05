@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/string.hpp"
+
 namespace notf {
 
 /** Checks if there was an OpenGL error and reports it to Signal's logger.

@@ -18,7 +18,11 @@ inline constexpr TARGET narrow_cast(RAW_SOURCE&& value)
         throw std::runtime_error("narrow_cast failed");
     }
 
+#ifdef CPP_17
     if constexpr (!is_same_signedness<TARGET, SOURCE>::value) {
+#else
+    {
+#endif
         if ((result < TARGET{}) != (value < SOURCE{})) {
             throw std::runtime_error("narrow_cast failed");
         }

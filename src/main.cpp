@@ -169,7 +169,7 @@ void render_thread(GLFWwindow* window)
         angle += 0.01 * ((frame_start_time - last_frame_start_time) / 16ms);
         last_frame_start_time = frame_start_time;
 
-        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
 
         Size2i buffer_size;
         glfwGetFramebufferSize(window, &buffer_size.width, &buffer_size.height);
@@ -206,7 +206,7 @@ void render_thread(GLFWwindow* window)
 
         /////////////////
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         glViewport(0, 0, texWidth, texHeight);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glActiveTexture(GL_TEXTURE0);

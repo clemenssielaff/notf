@@ -108,18 +108,21 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 private:
     /// @brief Factory.
-    static std::shared_ptr<Texture> _create(const GLuint id, GraphicsContext& context, const std::string name,
-                                             const GLint width, const GLint height, const Format format);
+    static std::shared_ptr<Texture>
+    _create(const GLuint id, GraphicsContext& context, const GLenum target, const std::string name, const GLint width,
+            const GLint height, const Format format);
 
     /// @brief Value Constructor.
-    /// @param id        OpenGL texture ID.
-    /// @param context   Render Context in which the Texture lives.
-    /// @param name      Human readable name of the Texture.
-    /// @param width     Width of the loaded image in pixels.
-    /// @param height    Height of the loaded image in pixels.
-    /// @param format    Texture format.
-    Texture(const GLuint id, GraphicsContext& context, const std::string name, const GLint width, const GLint height,
-             const Format format);
+    /// @param id       OpenGL texture ID.
+    /// @param context  Render Context in which the Texture lives.
+    /// @param target   How the texture is going to be used by OpenGL.
+    ///                 (see https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glTexImage2D.xhtml)
+    /// @param name     Human readable name of the Texture.
+    /// @param width    Width of the loaded image in pixels.
+    /// @param height   Height of the loaded image in pixels.
+    /// @param format   Texture format.
+    Texture(const GLuint id, GraphicsContext& context, const GLenum target, const std::string name, const GLint width,
+            const GLint height, const Format format);
 
 public:
     /// @brief Loads a texture from a given file.
@@ -134,7 +137,7 @@ public:
     /// @param name     Name of the Texture.* @param size Size of the Texture.
     /// @param format   Texture format.
     static std::shared_ptr<Texture> create_empty(GraphicsContext& context, const std::string name, const Size2i& size,
-                                                  const Args& args = s_default_args);
+                                                 const Args& args = s_default_args);
 
     // TODO: [engine] a texture streaming method using buffers
     // TODO: [engine] 3D texture
@@ -151,6 +154,9 @@ public:
     /// A Texture should always be valid - the only way to get an invalid one is to remove the GraphicsContext while
     /// still holding on to shared pointers of a Texture that lived in the removed GraphicsContext.
     bool is_valid() const { return m_id != 0; }
+
+    /// @brief Texture target, e.g. GL_TEXTURE_2D for standard textures.
+    GLenum target() const { return m_target; }
 
     /// @brief The name of this Texture.
     const std::string& name() const { return m_name; }
@@ -202,6 +208,9 @@ private:
 
     /// @brief Render Context in which the Texture lives.
     GraphicsContext& m_graphics_context;
+
+    /// @brief Texture target, e.g. GL_TEXTURE_2D for standard textures.
+    GLenum m_target;
 
     /// @brief The name of this Texture.
     const std::string m_name;

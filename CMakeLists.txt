@@ -39,15 +39,16 @@ add_subdirectory(/home/clemens/code/thirdparty/glfw-3.2.1/ thirdparty/glfw)
 find_package(OpenGL REQUIRED)
 
 # freetype
-add_subdirectory(/home/clemens/code/thirdparty/freetype-2.8/ thirdparty/freetype)
+add_subdirectory(/home/clemens/code/thirdparty/freetype-2.8.1/ thirdparty/freetype)
 
 # NOTF #################################################################################################################
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g -D_DEBUG")
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 
 if(USE_LIBCXX)
     set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-stdlib=libc++")
+    set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
 endif()
 
 include_directories(
@@ -63,6 +64,7 @@ create_module(core)
 create_module(dynamic)
 create_module(graphics)
 create_module(utils)
+create_module(compat)
 
 add_sources(SOURCE_FILES src
     main.cpp
@@ -85,6 +87,7 @@ add_executable(notf
     ${dynamic_MODULE}
     ${graphics_MODULE}
     ${utils_MODULE}
+    ${compat_MODULE}
     ${SOURCE_FILES}
     ${THIRDPARTY_FILES}
     ${RESOURCE_FILES}
@@ -100,7 +103,7 @@ target_link_libraries(${PROJECT_NAME}
 # TESTS ################################################################################################################
 
 include_directories(
-    /home/clemens/code/thirdparty/glm-0.9.8.4/include/
+    /home/clemens/code/thirdparty/glm-0.9.8.5/include/
 )
 
 add_sources(TEST_SOURCES test
