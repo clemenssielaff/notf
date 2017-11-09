@@ -87,7 +87,7 @@ void render_thread(GLFWwindow* window)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 
     //    // bind renderbuffer and create a 16-bit depth buffer
     //    // width and height of renderbuffer = width and height of
@@ -201,7 +201,7 @@ void render_thread(GLFWwindow* window)
             library.render();
 
             graphics_context->unbind_texture(0);
-            check_gl_error();
+            gl_check_error();
         }
 
         /////////////////
@@ -211,6 +211,7 @@ void render_thread(GLFWwindow* window)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, renderTexture);
+        glGenerateMipmap(GL_TEXTURE_2D);
 
         library.render();
 

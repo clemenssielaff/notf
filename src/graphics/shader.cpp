@@ -380,7 +380,7 @@ void Shader::set_uniform(const std::string& name, const int& value)
             string_format("Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"int\"",
                           name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
     }
-    check_gl_error();
+    gl_check_error();
 }
 
 template<>
@@ -399,7 +399,7 @@ void Shader::set_uniform(const std::string& name, const unsigned int& value)
                                           "type \"unsigned int\"",
                                           name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
     }
-    check_gl_error();
+    gl_check_error();
 }
 
 template<>
@@ -415,7 +415,7 @@ void Shader::set_uniform(const std::string& name, const float& value)
             string_format("Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"float\"",
                           name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
     }
-    check_gl_error();
+    gl_check_error();
 }
 
 template<>
@@ -431,7 +431,7 @@ void Shader::set_uniform(const std::string& name, const Vector2f& value)
                                           "type \"Vector2f\"",
                                           name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
     }
-    check_gl_error();
+    gl_check_error();
 }
 
 template<>
@@ -447,7 +447,7 @@ void Shader::set_uniform(const std::string& name, const Vector4f& value)
                                           "type \"Vector2f\"",
                                           name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
     }
-    check_gl_error();
+    gl_check_error();
 }
 
 template<>
@@ -463,7 +463,7 @@ void Shader::set_uniform(const std::string& name, const Matrix4f& value)
                                           "type \"Vector2f\"",
                                           name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
     }
-    check_gl_error();
+    gl_check_error();
 }
 
 } // namespace notf

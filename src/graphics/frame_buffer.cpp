@@ -84,7 +84,7 @@ RenderBuffer::RenderBuffer(GraphicsContext& context, const Args& args)
     if (m_id == 0) {
         throw_runtime_error("Could not allocate new RenderBuffer");
     }
-    check_gl_error();
+    gl_check_error();
 
     // define renderbuffer
     glBindRenderbuffer(GL_RENDERBUFFER, m_id);
@@ -168,7 +168,7 @@ FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_id(0), m_gra
     if (m_id == 0) {
         throw_runtime_error("Could not allocate new FrameBuffer");
     }
-    check_gl_error();
+    gl_check_error();
 
     // define framebuffer
     glBindFramebuffer(GL_FRAMEBUFFER, m_id);
@@ -181,13 +181,13 @@ FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_id(0), m_gra
             if (const auto& color_buffer = std::get<RenderBufferPtr>(color_target)) {
                 glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + target_id, GL_RENDERBUFFER,
                                           color_buffer->id());
-                check_gl_error();
+                gl_check_error();
             }
         }
         else if (const auto& color_texture = std::get<TexturePtr>(color_target)) {
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + target_id, color_texture->target(),
                                    color_texture->id(), /* level = */ 0);
-            check_gl_error();
+            gl_check_error();
         }
     }
 
@@ -196,19 +196,19 @@ FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_id(0), m_gra
         if (const auto& depth_buffer = std::get<RenderBufferPtr>(m_args.depth_target)) {
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_buffer->id());
             has_depth = true;
-            check_gl_error();
+            gl_check_error();
         }
     }
     else if (const auto& depth_texture = std::get<TexturePtr>(m_args.depth_target)) {
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_texture->target(), depth_texture->id(),
                                /* level = */ 0);
         has_depth = true;
-        check_gl_error();
+        gl_check_error();
     }
 
     if (m_args.stencil_target) {
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_args.stencil_target->id());
-        check_gl_error();
+        gl_check_error();
     }
 
     { // make sure the frame buffer is valid

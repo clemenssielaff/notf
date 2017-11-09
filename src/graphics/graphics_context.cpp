@@ -51,7 +51,7 @@ GraphicsContext::Extensions::Extensions()
             extensions.emplace(
                 std::string(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i)))));
         }
-        check_gl_error();
+        gl_check_error();
     }
 
     // initialize the members
@@ -67,21 +67,21 @@ GraphicsContext::Environment::Environment()
     { // texture slots
         GLint _texture_slot_count = -1;
         glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &_texture_slot_count);
-        check_gl_error();
+        gl_check_error();
         texture_slot_count = narrow_cast<decltype(texture_slot_count)>(_texture_slot_count);
     }
 
     { // max render buffer size
         GLint _max_render_buffer_size = -1;
         glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &_max_render_buffer_size);
-        check_gl_error();
+        gl_check_error();
         max_render_buffer_size = narrow_cast<decltype(texture_slot_count)>(_max_render_buffer_size);
     }
 
     { // color attachment count
         GLint _color_attachment_count = -1;
         glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &_color_attachment_count);
-        check_gl_error();
+        gl_check_error();
         color_attachment_count = narrow_cast<decltype(texture_slot_count)>(_color_attachment_count);
     }
 }
@@ -187,7 +187,7 @@ void GraphicsContext::set_stencil_func(const StencilFunc func)
         glStencilFunc(GL_NOTEQUAL, ALL_ZEROS, ALL_ONES);
         break;
     }
-    check_gl_error();
+    gl_check_error();
 }
 
 void GraphicsContext::set_stencil_mask(const GLuint mask)
@@ -195,7 +195,7 @@ void GraphicsContext::set_stencil_mask(const GLuint mask)
     if (mask != m_state.stencil_mask) {
         m_state.stencil_mask = mask;
         glStencilMask(mask);
-        check_gl_error();
+        gl_check_error();
     }
 }
 
@@ -316,7 +316,7 @@ void GraphicsContext::set_blend_mode(const BlendMode mode)
         break;
     }
     glBlendFuncSeparate(rgb_sfactor, rgb_dfactor, alpha_sfactor, alpha_dfactor);
-    check_gl_error();
+    gl_check_error();
 }
 
 void GraphicsContext::bind_texture(TexturePtr texture, uint slot)
@@ -342,7 +342,7 @@ void GraphicsContext::bind_texture(TexturePtr texture, uint slot)
 
     glActiveTexture(GL_TEXTURE0 + slot);
     glBindTexture(GL_TEXTURE_2D, texture->id());
-    check_gl_error();
+    gl_check_error();
 
     m_state.texture_slots[slot] = std::move(texture);
 }
@@ -362,7 +362,7 @@ void GraphicsContext::unbind_texture(uint slot)
 
     glActiveTexture(GL_TEXTURE0 + slot);
     glBindTexture(GL_TEXTURE_2D, 0);
-    check_gl_error();
+    gl_check_error();
 
     m_state.texture_slots[slot].reset();
 }
@@ -386,7 +386,7 @@ void GraphicsContext::bind_shader(ShaderPtr shader)
 
     if (shader != m_state.shader) {
         glUseProgram(shader->id());
-        check_gl_error();
+        gl_check_error();
 
         m_state.shader = std::move(shader);
     }
@@ -396,7 +396,7 @@ void GraphicsContext::unbind_shader()
 {
     if (m_state.shader) {
         glUseProgram(0);
-        check_gl_error();
+        gl_check_error();
 
         m_state.shader.reset();
     }
@@ -405,7 +405,7 @@ void GraphicsContext::unbind_shader()
 void GraphicsContext::_release_shader_compiler()
 {
     glReleaseShaderCompiler();
-    check_gl_error();
+    gl_check_error();
 }
 
 } // namespace notf

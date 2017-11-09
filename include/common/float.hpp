@@ -197,6 +197,12 @@ constexpr double precision_high<double>()
 }
 
 template<>
+constexpr short precision_high<short>()
+{
+    return 0;
+}
+
+template<>
 constexpr int precision_high<int>()
 {
     return 0;

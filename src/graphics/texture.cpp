@@ -76,6 +76,113 @@ namespace notf {
 
 const Texture::Args Texture::s_default_args = {};
 
+std::shared_ptr<Texture>
+Texture::_create(const GLuint id, GraphicsContext& context, const GLenum target, const std::string name,
+                 const GLint width, const GLint height, const Format format)
+{
+#ifdef _DEBUG
+    return std::shared_ptr<Texture>(new Texture(id, context, target, name, width, height, format));
+#else
+    struct make_shared_enabler : public Texture {
+        make_shared_enabler(const GLuint id, GraphicsContext& context, const std::string name, const GLint width,
+                            const GLint height, const Format format)
+            : Texture(id, context, name, width, height, format)
+        {
+        }
+        PADDING(3)
+    };
+    return std::make_shared<make_shared_enabler>(id, context, std::move(name), width, height, format);
+#endif
+}
+
+Texture::Texture(const GLuint id, GraphicsContext& context, const GLenum target, const std::string name,
+                 const GLint width, const GLint height, const Format format)
+    : m_id(id)
+    , m_graphics_context(context)
+    , m_target(target)
+    , m_name(name)
+    , m_width(width)
+    , m_height(height)
+    , m_format(format)
+    , m_min_filter(MinFilter::LINEAR_MIPMAP_LINEAR)
+    , m_mag_filter(MagFilter::LINEAR)
+    , m_wrap_x(Wrap::REPEAT)
+    , m_wrap_y(Wrap::REPEAT)
+{
+    if (m_width <= 0 || m_height <= 0) {
+        log_critical << "Cannot create a Texture with zero or negative area";
+        _deallocate();
+    }
+}
+
+std::shared_ptr<Texture> Texture::allocate(GraphicsContext& context, const std::string name, const Size2i& size,
+                                           const std::vector<uchar>& data, const Args& args)
+{
+    if (!size.is_valid()) {
+        throw_runtime_error(string_format("Cannot create a texture with an invalid size: %s", size));
+    }
+
+    // translate to OpenGL format
+    GLenum gl_format      = 0;
+    GLint internal_format = 0;
+    GLint alignment       = 0;
+    switch (args.format) {
+    case Format::GRAYSCALE:
+        gl_format       = GL_RED;
+        internal_format = GL_R8;
+        alignment       = 1;
+        break;
+    case Format::RGB:
+        gl_format       = GL_RGB;
+        internal_format = GL_SRGB8;
+        alignment       = 4;
+        break;
+    case Format::RGBA:
+        gl_format       = GL_RGBA;
+        internal_format = GL_SRGB8_ALPHA8;
+        alignment       = 4;
+        break;
+    }
+
+    // create the atlas texture
+    GLuint id = 0;
+    glGenTextures(1, &id);
+    assert(id);
+    glBindTexture(GL_TEXTURE_2D, id);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, size.width);
+    glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, size.height);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+
+    // upload the data if there is any
+    if(!data.empty()){
+        // TODO: how large must data be? Why are we using GL_UNSIGNED_BYTE here all the time?
+    }
+    glTexImage2D(GL_TEXTURE_2D, /* level= */ 0, internal_format, size.width, size.height, BORDER, gl_format,
+                 GL_UNSIGNED_BYTE, (data.empty() ? nullptr : &data[0]));
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(args.min_filter));
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(args.mag_filter));
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(args.wrap_horizontal));
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical));
+    gl_check_error();
+
+    // return the loaded texture on success
+    std::shared_ptr<Texture> texture
+        = Texture::_create(id, context, GL_TEXTURE_2D, std::move(name), size.width, size.height, args.format);
+    context.m_textures.emplace_back(texture);
+    return texture;
+}
+
+std::shared_ptr<Texture>
+Texture::create_empty(GraphicsContext& context, const std::string name, const Size2i& size, const Args& args)
+{
+    std::vector<uchar> data(static_cast<size_t>(size.area()), 0);
+    return allocate(context, std::move(name), size, data, args);
+}
+
 std::shared_ptr<Texture> Texture::load_image(GraphicsContext& context, const std::string file_path, const Args& args)
 {
     std::vector<uchar> image_data;
@@ -149,14 +256,14 @@ std::shared_ptr<Texture> Texture::load_image(GraphicsContext& context, const std
     glGenTextures(1, &id);
     assert(id);
     glBindTexture(GL_TEXTURE_2D, id);
-    check_gl_error();
+    gl_check_error();
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, image_size.width);
     glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, image_size.height);
     glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
     glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-    check_gl_error();
+    gl_check_error();
 
     if (args.make_immutable) {
         // immutable texture
@@ -198,7 +305,7 @@ std::shared_ptr<Texture> Texture::load_image(GraphicsContext& context, const std
             assert(0);
         }
     }
-    check_gl_error();
+    gl_check_error();
 
     // highest quality mip-mapping by default
     if (args.generate_mipmaps) {
@@ -206,12 +313,12 @@ std::shared_ptr<Texture> Texture::load_image(GraphicsContext& context, const std
     }
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(args.min_filter));
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(args.mag_filter));
-    check_gl_error();
+    gl_check_error();
 
     // repeat wrap by default
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(args.wrap_horizontal));
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical));
-    check_gl_error();
+    gl_check_error();
 
     // make texture anisotropic, if requested and available
     if (args.anisotropy > 1.f && context.extensions().anisotropic_filter) {
@@ -250,105 +357,6 @@ std::shared_ptr<Texture> Texture::load_image(GraphicsContext& context, const std
     return texture;
 }
 
-std::shared_ptr<Texture>
-Texture::create_empty(GraphicsContext& context, const std::string name, const Size2i& size, const Args& args)
-{
-    if (!size.is_valid()) {
-        throw_runtime_error(string_format("Cannot create a texture with an invalid size: %s", size));
-    }
-
-    // create the data
-    std::vector<uchar> data(static_cast<size_t>(size.area()), 0);
-
-    // translate to OpenGL format
-    GLenum gl_format      = 0;
-    GLint internal_format = 0;
-    GLint alignment       = 0;
-    switch (args.format) {
-    case Format::GRAYSCALE:
-        gl_format       = GL_RED;
-        internal_format = GL_R8;
-        alignment       = 1;
-        break;
-    case Format::RGB:
-        gl_format       = GL_RGB;
-        internal_format = GL_SRGB8;
-        alignment       = 4;
-        break;
-    case Format::RGBA:
-        gl_format       = GL_RGBA;
-        internal_format = GL_SRGB8_ALPHA8;
-        alignment       = 4;
-        break;
-    }
-
-    // create the atlas texture
-    GLuint id = 0;
-    glGenTextures(1, &id);
-    assert(id);
-    glBindTexture(GL_TEXTURE_2D, id);
-
-    glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, size.width);
-    glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, size.height);
-    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-
-    glTexImage2D(GL_TEXTURE_2D, /* level= */ 0, internal_format, size.width, size.height, BORDER, gl_format,
-                 GL_UNSIGNED_BYTE, &data[0]);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(args.min_filter));
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(args.mag_filter));
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(args.wrap_horizontal));
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical));
-    check_gl_error();
-
-    // return the loaded texture on success
-    std::shared_ptr<Texture> texture
-        = Texture::_create(id, context, GL_TEXTURE_2D, std::move(name), size.width, size.height, args.format);
-    context.m_textures.emplace_back(texture);
-    return texture;
-}
-
-std::shared_ptr<Texture>
-Texture::_create(const GLuint id, GraphicsContext& context, const GLenum target, const std::string name,
-                 const GLint width, const GLint height, const Format format)
-{
-#ifdef _DEBUG
-    return std::shared_ptr<Texture>(new Texture(id, context, target, name, width, height, format));
-#else
-    struct make_shared_enabler : public Texture {
-        make_shared_enabler(const GLuint id, GraphicsContext& context, const std::string name, const GLint width,
-                            const GLint height, const Format format)
-            : Texture(id, context, name, width, height, format)
-        {
-        }
-        PADDING(3)
-    };
-    return std::make_shared<make_shared_enabler>(id, context, std::move(name), width, height, format);
-#endif
-}
-
-Texture::Texture(const GLuint id, GraphicsContext& context, const GLenum target, const std::string name,
-                 const GLint width, const GLint height, const Format format)
-    : m_id(id)
-    , m_graphics_context(context)
-    , m_target(target)
-    , m_name(name)
-    , m_width(width)
-    , m_height(height)
-    , m_format(format)
-    , m_min_filter(MinFilter::LINEAR_MIPMAP_LINEAR)
-    , m_mag_filter(MagFilter::LINEAR)
-    , m_wrap_x(Wrap::REPEAT)
-    , m_wrap_y(Wrap::REPEAT)
-{
-    if (m_width <= 0 || m_height <= 0) {
-        log_critical << "Cannot create a Texture with zero or negative area";
-        _deallocate();
-    }
-}
-
 Texture::~Texture() { _deallocate(); }
 
 void Texture::set_min_filter(const MinFilter filter)
@@ -356,7 +364,7 @@ void Texture::set_min_filter(const MinFilter filter)
     m_graphics_context.bind_texture(shared_from_this(), 0);
     glTexParameteri(m_target, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter));
     m_min_filter = filter;
-    check_gl_error();
+    gl_check_error();
 }
 
 void Texture::set_mag_filter(const MagFilter filter)
@@ -364,7 +372,7 @@ void Texture::set_mag_filter(const MagFilter filter)
     m_graphics_context.bind_texture(shared_from_this(), 0);
     glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter));
     m_mag_filter = filter;
-    check_gl_error();
+    gl_check_error();
 }
 
 void Texture::set_wrap_x(const Wrap wrap)
@@ -372,7 +380,7 @@ void Texture::set_wrap_x(const Wrap wrap)
     m_graphics_context.bind_texture(shared_from_this(), 0);
     glTexParameteri(m_target, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap));
     m_wrap_x = wrap;
-    check_gl_error();
+    gl_check_error();
 }
 
 void Texture::set_wrap_y(const Wrap wrap)
@@ -380,7 +388,7 @@ void Texture::set_wrap_y(const Wrap wrap)
     m_graphics_context.bind_texture(shared_from_this(), 0);
     glTexParameteri(m_target, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap));
     m_wrap_y = wrap;
-    check_gl_error();
+    gl_check_error();
 }
 
 void Texture::fill(const Color& color)
@@ -430,14 +438,14 @@ void Texture::fill(const Color& color)
         }
         glTexImage2D(m_target, 0, GL_RGBA, m_width, m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, &buffer[0]);
     }
-    check_gl_error();
+    gl_check_error();
 }
 
 void Texture::_deallocate()
 {
     if (m_id) {
         glDeleteTextures(1, &m_id);
-        check_gl_error();
+        gl_check_error();
         log_trace << "Deleted OpenGL texture with ID: " << m_id;
     }
     m_id = 0;

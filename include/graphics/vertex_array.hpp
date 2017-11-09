@@ -259,7 +259,7 @@ public:
         glBufferData(GL_ARRAY_BUFFER, m_size * sizeof(Vertex), &m_vertices[0], m_args.usage);
         _init_array<0, Ts...>();
         glBindBuffer(GL_ARRAY_BUFFER, 0);
-        check_gl_error();
+        gl_check_error();
 
         m_vertices.clear();
         m_vertices.shrink_to_fit();
@@ -300,7 +300,7 @@ public:
         m_buffer_size = std::max(m_buffer_size, m_size);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
-        check_gl_error();
+        gl_check_error();
 
         m_vertices.clear();
         m_vertices.shrink_to_fit();

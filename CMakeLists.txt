@@ -45,10 +45,10 @@ add_subdirectory(/home/clemens/code/thirdparty/freetype-2.8.1/ thirdparty/freety
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g -D_DEBUG")
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
 
 if(USE_LIBCXX)
     set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-stdlib=libc++")
-    set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
 endif()
 
 include_directories(

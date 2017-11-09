@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "common/meta.hpp"
 #include "graphics/gl_forwards.hpp"
@@ -16,6 +17,8 @@ DEFINE_SHARED_POINTERS(class, Texture);
 template<typename value_t, FWD_ENABLE_IF_ARITHMETIC(value_t)>
 struct _Size2;
 using Size2i = _Size2<int, true>;
+
+using uchar = unsigned char;
 
 //====================================================================================================================//
 
@@ -125,19 +128,30 @@ private:
             const GLint height, const Format format);
 
 public:
+    /// @brief Allocates a new texture.
+    /// The texture is undefined if read without initializing it first.
+    /// @param context  Render Context in which the Texture lives.
+    /// @param name     Name of the texture.
+    /// @param size     Size of the texture in pixels.
+    /// @param data     Data to allocate the the texture from, may be empty.
+    /// @param args     Texture arguments.
+    static std::shared_ptr<Texture> allocate(GraphicsContext& context, const std::string name, const Size2i& size,
+                                              const std::vector<uchar>& data = {}, const Args& args = s_default_args);
+
+    /// @brief Creates an valid but transparent texture in memory.
+    /// @param context  Render Context in which the Texture lives.
+    /// @param name     Name of the texture.
+    /// @param size     Size of the texture in pixels.
+    /// @param args     Texture arguments.
+    static std::shared_ptr<Texture> create_empty(GraphicsContext& context, const std::string name, const Size2i& size,
+                                                 const Args& args = s_default_args);
+
     /// @brief Loads a texture from a given file.
     /// @param context Render Context in which the texture lives.*@param file_path Path to a texture file.*
     /// @param args Arguments to initialize the texture.
     /// @return Texture instance, is empty if the texture could not be loaded.
     static std::shared_ptr<Texture>
     load_image(GraphicsContext& context, const std::string file_path, const Args& args = s_default_args);
-
-    /// @brief Creates an empty texture in memory.
-    /// @param context  Render Context in which the Texture lives.
-    /// @param name     Name of the Texture.* @param size Size of the Texture.
-    /// @param format   Texture format.
-    static std::shared_ptr<Texture> create_empty(GraphicsContext& context, const std::string name, const Size2i& size,
-                                                 const Args& args = s_default_args);
 
     // TODO: [engine] a texture streaming method using buffers
     // TODO: [engine] 3D texture

@@ -89,10 +89,7 @@ protected:
 
 //====================================================================================================================//
 
-// TODO: framebuffer invalidation
 // TODO: read pixels from framebuffer into raw image
-// TODO: add status constructor for empty texture creation (see tip #3)
-
 class FrameBuffer final {
 
     // types ---------------------------------------------------------------------------------------------------------//

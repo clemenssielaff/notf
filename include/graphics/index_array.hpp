@@ -122,7 +122,7 @@ public: // methods *************************************************************
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vbo_id);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(index_t), &m_indices[0], GL_STATIC_DRAW);
         // keep the buffer bound as it is stored in the VAO
-        check_gl_error();
+        gl_check_error();
     }
 
     virtual GLuint restart_index() const override { return static_cast<GLuint>(std::numeric_limits<index_t>::max()); }

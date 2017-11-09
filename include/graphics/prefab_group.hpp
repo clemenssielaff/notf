@@ -121,7 +121,7 @@ public: // methods *************************************************************
                                               instances.size(), prefab_type->offset());
         }
         glBindVertexArray(0);
-        check_gl_error();
+        gl_check_error();
     }
 
 private: // fields ****************************************************************************************************/
