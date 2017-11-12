@@ -8,11 +8,10 @@
 #include "graphics/prefab.hpp"
 #include "graphics/vertex_array.hpp"
 
+#include "common/forwards.hpp"
 #include "common/matrix4.hpp"
 
 namespace notf {
-
-DEFINE_SHARED_POINTERS(class, Shader)
 
 //*********************************************************************************************************************/
 

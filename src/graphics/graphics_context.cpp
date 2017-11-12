@@ -9,7 +9,9 @@
 #include "common/vector.hpp"
 #include "core/glfw.hpp"
 #include "core/opengl.hpp"
+#include "graphics/frame_buffer.hpp"
 #include "graphics/gl_errors.hpp"
+#include "graphics/pipeline.hpp"
 #include "graphics/shader.hpp"
 #include "graphics/texture.hpp"
 #include "utils/narrow_cast.hpp"
@@ -107,8 +109,9 @@ GraphicsContext::GraphicsContext(GLFWwindow* window)
 GraphicsContext::~GraphicsContext()
 {
     // deallocate and invalidate all remaining Textures
-    for (std::weak_ptr<Texture> texture_weakptr : m_textures) {
-        std::shared_ptr<Texture> texture = texture_weakptr.lock();
+    for (auto itr : m_textures) {
+        std::weak_ptr<Texture>& texture_weakptr = itr.second;
+        std::shared_ptr<Texture> texture        = texture_weakptr.lock();
         if (texture) {
             log_warning << "Deallocating live Texture: \"" << texture->name() << "\"";
             texture->_deallocate();
@@ -117,8 +120,9 @@ GraphicsContext::~GraphicsContext()
     m_textures.clear();
 
     // deallocate and invalidate all remaining Shaders
-    for (std::weak_ptr<Shader> shader_weakptr : m_shaders) {
-        std::shared_ptr<Shader> shader = shader_weakptr.lock();
+    for (auto itr : m_shaders) {
+        std::weak_ptr<Shader>& shader_weakptr = itr.second;
+        std::shared_ptr<Shader> shader        = shader_weakptr.lock();
         if (shader) {
             log_warning << "Deallocating live Shader: \"" << shader->name() << "\"";
             shader->_deallocate();
@@ -319,14 +323,14 @@ void GraphicsContext::set_blend_mode(const BlendMode mode)
     gl_check_error();
 }
 
-void GraphicsContext::bind_texture(TexturePtr texture, uint slot)
+void GraphicsContext::bind_texture(Texture* texture, uint slot)
 {
     if (!texture) {
         return unbind_texture(slot);
     }
 
     try {
-        if (texture == m_state.texture_slots.at(slot)) {
+        if (texture == m_state.texture_slots.at(slot).get()) {
             return;
         }
     }
@@ -344,7 +348,7 @@ void GraphicsContext::bind_texture(TexturePtr texture, uint slot)
     glBindTexture(GL_TEXTURE_2D, texture->id());
     gl_check_error();
 
-    m_state.texture_slots[slot] = std::move(texture);
+    m_state.texture_slots[slot] = texture->shared_from_this();
 }
 
 void GraphicsContext::unbind_texture(uint slot)
@@ -374,31 +378,50 @@ void GraphicsContext::unbind_all_textures()
     }
 }
 
-void GraphicsContext::bind_shader(ShaderPtr shader)
+void GraphicsContext::bind_pipeline(PipelinePtr& pipeline)
 {
-    if (!shader) {
-        return unbind_shader();
+    if (!pipeline) {
+        return unbind_pipeline();
     }
 
-    if (!shader->is_valid()) {
-        throw_runtime_error(string_format("Cannot bind invalid shader \"%s\"", shader->name().c_str()));
-    }
+    if (pipeline != m_state.pipeline) {
+        gl_check(glUseProgram(0));
+        gl_check(glBindProgramPipeline(pipeline->id()));
 
-    if (shader != m_state.shader) {
-        glUseProgram(shader->id());
-        gl_check_error();
-
-        m_state.shader = std::move(shader);
+        m_state.pipeline = pipeline;
     }
 }
 
-void GraphicsContext::unbind_shader()
+void GraphicsContext::unbind_pipeline()
 {
-    if (m_state.shader) {
-        glUseProgram(0);
+    if (m_state.pipeline) {
+        gl_check(glUseProgram(0));
+        gl_check(glBindProgramPipeline(0));
+
+        m_state.pipeline.reset();
+    }
+}
+
+void GraphicsContext::bind_framebuffer(FrameBufferPtr& framebuffer)
+{
+    if (!framebuffer) {
+        return unbind_framebuffer();
+    }
+    if (framebuffer != m_state.framebuffer) {
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->id());
         gl_check_error();
 
-        m_state.shader.reset();
+        m_state.framebuffer = framebuffer;
+    }
+}
+
+void GraphicsContext::unbind_framebuffer()
+{
+    if (m_state.framebuffer) {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        gl_check_error();
+
+        m_state.framebuffer.reset();
     }
 }
 

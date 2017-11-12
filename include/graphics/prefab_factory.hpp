@@ -229,7 +229,7 @@ private: // methods ************************************************************
     {
         std::vector<Vertex> result(m_studies.size());
         for (size_t index = 0; index < m_studies.size(); ++index) {
-#ifndef CPP_17
+#ifndef NOTF_CPP17
             _apply_studies_recursive<TRAIT_INDEX...>(m_studies[index], result[index]);
 #else // use fold expression from C++17 onwards
             (_apply_study<TRAIT_INDEX>(typename std::tuple_element<TRAIT_INDEX, VertexTraits>::type::kind{},
@@ -240,7 +240,7 @@ private: // methods ************************************************************
         return result;
     }
 
-#ifndef CPP_17 // use recursion up to C++14
+#ifndef NOTF_CPP17 // use recursion up to C++14
     /** Find the correct study for each Vertex trait and store it in the vertex. */
     template<size_t FIRST_INDEX, size_t SECOND_INDEX, size_t... REST>
     static void _apply_studies_recursive(const Study& study, Vertex& vertex)

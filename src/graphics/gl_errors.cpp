@@ -55,6 +55,8 @@ constexpr const char* gl_error_string(GLenum error_code)
 
 namespace notf {
 
+namespace detail {
+
 int _gl_check_error(uint line, const char* file, const char* function)
 {
     int error_count = 0;
@@ -67,10 +69,12 @@ int _gl_check_error(uint line, const char* file, const char* function)
     return error_count;
 }
 
-void gl_clear_error()
+void _gl_clear_errors()
 {
     while (glGetError() != GL_NO_ERROR) {
     };
 }
+
+} // namespace detail
 
 } // namespace notf

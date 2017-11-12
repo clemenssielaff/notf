@@ -1,17 +1,15 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
-#include "common/meta.hpp"
+#include "common/forwards.hpp"
 #include "graphics/gl_forwards.hpp"
 
 struct GLFWwindow;
 
 namespace notf {
-
-DEFINE_SHARED_POINTERS(class, Shader);
-DEFINE_SHARED_POINTERS(class, Texture);
 
 //====================================================================================================================//
 
@@ -98,9 +96,8 @@ enum CullFace : unsigned char {
 
 //====================================================================================================================//
 
-/** The GraphicsContext is an abstraction of the OpenGL graphics context.
- * It is the object owning all NoTF client objects like shaders and textures.
- */
+/// @brief The GraphicsContext is an abstraction of the OpenGL graphics context.
+/// It is the object owning all NoTF client objects like shaders and textures.
 class GraphicsContext {
 
     friend class Shader;
@@ -166,7 +163,9 @@ private:
 
         std::vector<TexturePtr> texture_slots = {};
 
-        ShaderPtr shader;
+        PipelinePtr pipeline;
+
+        FrameBufferPtr framebuffer;
 
     }; // TODO: a lot of the variables in Graphics::State could be combined into a bitset
 
@@ -182,6 +181,9 @@ public:
 
     /// Destructor.
     ~GraphicsContext();
+
+    /// @brief Tests whether two Graphics Contexts are the same.
+    bool operator==(const GraphicsContext& other) const { return m_window == other.m_window; }
 
     /// @brief Creates and returns an GLExtension instance.
     static const Extensions& extensions();
@@ -207,38 +209,69 @@ public:
     /// @brief mode Blend mode to apply.
     void set_blend_mode(const BlendMode mode);
 
+    // texture ----------------------------------------------------------------
+
+    /// @brief Checks whether this context contains a Texture with the given name.
+    /// @param name Name of the Texture.
+    bool has_texture(const std::string& name) { return m_shaders.count(name) != 0; }
+
+    /// @brief Finds and returns a Texture of this context by its name.
+    /// @param name                 Name of the Texture.
+    /// @throws std::out_of_range   If the context does not contain a Texture with the given name.
+    TexturePtr texture(const std::string& name) const { return m_textures.at(name).lock(); }
+
     /// @brief Binds the given texture at the given texture slot.
     /// Only results in an OpenGL call if the texture is not currently bound.
-    /// @param texture   Texture to bind.
-    /// @param slot      Texture slot to bind the texture to.
+    /// @param texture              Texture to bind.
+    /// @param slot                 Texture slot to bind the texture to.
     /// @throws std::runtime_error  If the texture is not valid.
     /// @throws std::runtime_error  If slot is >= than the number of texture slots in the environment.
-    void bind_texture(TexturePtr texture, uint slot);
+    void bind_texture(Texture* texture, uint slot);
+    void bind_texture(TexturePtr& texture, uint slot) { bind_texture(texture.get(), slot); }
 
     /// @brief Unbinds the current texture and clears the context's texture stack.
-    /// @param slot     Texture slot to clear.
+    /// @param slot                 Texture slot to clear.
     /// @throws std::runtime_error  If slot is >= than the number of texture slots in the environment.
     void unbind_texture(uint slot);
 
     /// @brief Unbinds bound texures from all slots.
     void unbind_all_textures();
 
-    /// @brief Binds the given Shader.
-    /// Only results in an OpenGL call if the shader is not currently bound.
-    /// @param shader                Shader to bind.
-    /// @throws std::runtime_error   If the shader is not valid.
-    void bind_shader(ShaderPtr shader);
+    // shader -----------------------------------------------------------------
 
-    /// @brief Unbinds the current shader.
-    void unbind_shader();
+    /// @brief Checks whether this context contains a Shader with the given name.
+    /// @param name Name of the Shader.
+    bool has_shader(const std::string& name) { return m_shaders.count(name) != 0; }
+
+    /// @brief Finds and returns a Shader of this context by its name.
+    /// @param name                 Name of the Shader.
+    /// @throws std::out_of_range   If the context does not contain a Shader with the given name.
+    ShaderPtr shader(const std::string& name) const { return m_shaders.at(name).lock(); }
+
+    // pipeline ---------------------------------------------------------------
+
+    /// @brief Binds the given Pipeline, if it is not already bound.
+    /// @param pipeline Pipeline to bind.
+    void bind_pipeline(PipelinePtr& pipeline);
+
+    /// @brief Unbinds the current Pipeline.
+    void unbind_pipeline();
+
+    // frambuffer -------------------------------------------------------------
+
+    /// @brief Binds the given FrameBuffer, if it is not already bound.
+    /// @param framebuffer  FrameBuffer to bind.
+    void bind_framebuffer(FrameBufferPtr& framebuffer);
+
+    /// @brief Unbinds the current FrameBuffer.
+    void unbind_framebuffer();
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
-    /** Call this function after the last shader has been compiled.
-     * Might cause the driver to release the resources allocated for the compiler to free up some space, but is not
-     * guaranteed to do so.
-     * If you compile a new shader after calling th6is function, the driver will reallocate the compiler.
-     */
+    /// @brief Call this function after the last shader has been compiled.
+    /// Might cause the driver to release the resources allocated for the compiler to free up some space, but is not
+    /// guaranteed to do so.
+    /// If you compile a new shader after calling th6is function, the driver will reallocate the compiler.
     void _release_shader_compiler();
 
     // fields --------------------------------------------------------------------------------------------------------//
@@ -255,11 +288,11 @@ private:
     /// @brief All Textures managed by this Context.
     /// Note that the Context doesn't "own" the textures, they are shared pointers, but the Render Context deallocates
     /// all Textures when it is deleted.
-    std::vector<std::weak_ptr<Texture>> m_textures;
+    std::unordered_map<std::string, std::weak_ptr<Texture>> m_textures;
 
     /// @brief All Shaders managed by this Context.
     /// See `m_textures` for details on management.
-    std::vector<std::weak_ptr<Shader>> m_shaders;
+    std::unordered_map<std::string, std::weak_ptr<Shader>> m_shaders;
 };
 
 } // namespace notf

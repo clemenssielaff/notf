@@ -22,7 +22,7 @@ decltype(auto) extract_trait_types_impl(const TUPLE&, std::index_sequence<I...>)
     return std::tuple<typename std::tuple_element<I, TUPLE>::type::type...>{};
 }
 
-/** Extracts the value types from a variadic list of traits. */
+/// @brief Extracts the value types from a variadic list of traits.
 template<typename... Ts, typename Indices = std::make_index_sequence<sizeof...(Ts)>>
 decltype(auto) extract_trait_types(const std::tuple<Ts...>& tuple)
 {
@@ -140,7 +140,7 @@ public:
         /// GL_STREAM_COPY    GL_STATIC_COPY    GL_DYNAMIC_COPY
         GLenum usage = GL_STATIC_DRAW;
 
-        /// @brief Whether this array is per-vertex or per-instance.
+        /// @brief Whether attributes in this array are applied per-vertex or per-instance.
         bool per_instance = false;
     };
 
@@ -171,10 +171,10 @@ protected:
     /// @brief Arguments used to initialize the vertex array.
     const Args m_args;
 
-    /// @brief OpenGL handle of the vertex buffer. */
+    /// @brief OpenGL handle of the vertex buffer.
     GLuint m_vbo_id;
 
-    /// @brief Number of elements in the array. */
+    /// @brief Number of elements in the array.
     GLsizei m_size;
 
     /// @brief Invalid attribute ID.
@@ -233,7 +233,7 @@ public:
 
     /// @brief Initializes the VertexArray.
     /// @throws std::runtime_error   If the VBO could not be allocated.
-    /// @throws std::runtime_error   If no VAO object is currently bound.
+    /// @throws std::runtime_error   If no VAO is currently bound.
     virtual void init() override
     {
         if (m_vbo_id) {
@@ -269,7 +269,7 @@ public:
     /// If you regularly want to update the data, make sure you pass an appropriate `usage` hint in the arguments.
     /// @param data  New data to upload.
     /// @throws std::runtime_error   If the VertexArray is not yet initialized.
-    /// @throws std::runtime_error   If no VAO object is currently bound.
+    /// @throws std::runtime_error   If no VAO is currently bound.
     void update(std::vector<Vertex>&& data)
     {
         if (!m_vbo_id) {
@@ -291,7 +291,7 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, m_vbo_id);
         if (m_size <= m_buffer_size) {
             // if the new data is smaller or of equal size than the last one, we can do a minimal update
-            glBufferSubData(GL_ARRAY_BUFFER, /*offset*/ 0, m_size * sizeof(Vertex), &m_vertices[0]);
+            glBufferSubData(GL_ARRAY_BUFFER, /*offset = */ 0, m_size * sizeof(Vertex), &m_vertices[0]);
         }
         else {
             // otherwise we have to do a full update

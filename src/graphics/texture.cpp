@@ -68,6 +68,32 @@ GLint magfilter_to_gl(const Texture::MagFilter filter)
     return GL_ZERO;
 }
 
+GLenum datatype_to_gl(const Texture::DataType type)
+{
+    switch (type) {
+    case Texture::DataType::BYTE:
+        return GL_BYTE;
+    case Texture::DataType::UBYTE:
+        return GL_UNSIGNED_BYTE;
+    case Texture::DataType::SHORT:
+        return GL_SHORT;
+    case Texture::DataType::USHORT:
+        return GL_UNSIGNED_SHORT;
+    case Texture::DataType::INT:
+        return GL_INT;
+    case Texture::DataType::UINT:
+        return GL_UNSIGNED_INT;
+    case Texture::DataType::HALF:
+        return GL_HALF_FLOAT;
+    case Texture::DataType::FLOAT:
+        return GL_FLOAT;
+    case Texture::DataType::USHORT_5_6_5:
+        return GL_UNSIGNED_SHORT_5_6_5;
+    }
+    assert(0);
+    return GL_ZERO;
+}
+
 } // namespace
 
 //********************************************************************************************************************
@@ -76,50 +102,48 @@ namespace notf {
 
 const Texture::Args Texture::s_default_args = {};
 
-std::shared_ptr<Texture>
-Texture::_create(const GLuint id, GraphicsContext& context, const GLenum target, const std::string name,
-                 const GLint width, const GLint height, const Format format)
+TexturePtr Texture::_create(GraphicsContextPtr& context, const GLuint id, const GLenum target, std::string name,
+                            Size2i size, const Format format)
 {
-#ifdef _DEBUG
-    return std::shared_ptr<Texture>(new Texture(id, context, target, name, width, height, format));
+#ifdef NOTF_DEBUG
+    return TexturePtr(new Texture(context, id, target, name, size, format));
 #else
     struct make_shared_enabler : public Texture {
-        make_shared_enabler(const GLuint id, GraphicsContext& context, const std::string name, const GLint width,
-                            const GLint height, const Format format)
-            : Texture(id, context, name, width, height, format)
-        {
-        }
-        PADDING(3)
+        make_shared_enabler(GraphicsContextPtr& context, const GLuint id, const GLenum target, std::string name,
+                            Size2i size, const Format format)
+            : Texture(context, id, target, std::move(name), std::move(size), format)
+        {}
+        PADDING(7)
     };
-    return std::make_shared<make_shared_enabler>(id, context, std::move(name), width, height, format);
+    return std::make_shared<make_shared_enabler>(context, id, target, std::move(name), std::move(size), format);
 #endif
 }
 
-Texture::Texture(const GLuint id, GraphicsContext& context, const GLenum target, const std::string name,
-                 const GLint width, const GLint height, const Format format)
+Texture::Texture(GraphicsContextPtr& context, const GLuint id, const GLenum target, std::string name, Size2i size,
+                 const Format format)
     : m_id(id)
-    , m_graphics_context(context)
+    , m_graphics_context(*context)
     , m_target(target)
-    , m_name(name)
-    , m_width(width)
-    , m_height(height)
+    , m_name(std::move(name))
+    , m_size(std::move(size))
     , m_format(format)
-    , m_min_filter(MinFilter::LINEAR_MIPMAP_LINEAR)
-    , m_mag_filter(MagFilter::LINEAR)
-    , m_wrap_x(Wrap::REPEAT)
-    , m_wrap_y(Wrap::REPEAT)
 {
-    if (m_width <= 0 || m_height <= 0) {
+    if (!m_size.is_valid() || m_size.area() == 0) {
         log_critical << "Cannot create a Texture with zero or negative area";
         _deallocate();
     }
 }
 
-std::shared_ptr<Texture> Texture::allocate(GraphicsContext& context, const std::string name, const Size2i& size,
-                                           const std::vector<uchar>& data, const Args& args)
+TexturePtr Texture::create_empty(GraphicsContextPtr& context, std::string name, Size2i size, const Args& args)
 {
+    // validate the passed arguments
     if (!size.is_valid()) {
         throw_runtime_error(string_format("Cannot create a texture with an invalid size: %s", size));
+    }
+    if (context->has_texture(name)) {
+        std::stringstream ss;
+        ss << "Cannot create a new Texture with existing name \"" << name << "\"";
+        throw_runtime_error(ss.str());
     }
 
     // translate to OpenGL format
@@ -134,57 +158,52 @@ std::shared_ptr<Texture> Texture::allocate(GraphicsContext& context, const std::
         break;
     case Format::RGB:
         gl_format       = GL_RGB;
-        internal_format = GL_SRGB8;
+        internal_format = args.is_linear ? GL_RGB : GL_SRGB8;
         alignment       = 4;
         break;
     case Format::RGBA:
         gl_format       = GL_RGBA;
-        internal_format = GL_SRGB8_ALPHA8;
+        internal_format = args.is_linear ? GL_RGBA : GL_SRGB8_ALPHA8;
         alignment       = 4;
         break;
     }
 
     // create the atlas texture
     GLuint id = 0;
-    glGenTextures(1, &id);
+    gl_check(glGenTextures(1, &id));
     assert(id);
-    glBindTexture(GL_TEXTURE_2D, id);
+    gl_check(glBindTexture(GL_TEXTURE_2D, id));
 
-    glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, size.width);
-    glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, size.height);
-    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+    gl_check(glPixelStorei(GL_UNPACK_ALIGNMENT, alignment));
+    gl_check(glPixelStorei(GL_UNPACK_ROW_LENGTH, size.width));
+    gl_check(glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, size.height));
+    gl_check(glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0));
+    gl_check(glPixelStorei(GL_UNPACK_SKIP_ROWS, 0));
 
-    // upload the data if there is any
-    if(!data.empty()){
-        // TODO: how large must data be? Why are we using GL_UNSIGNED_BYTE here all the time?
-    }
-    glTexImage2D(GL_TEXTURE_2D, /* level= */ 0, internal_format, size.width, size.height, BORDER, gl_format,
-                 GL_UNSIGNED_BYTE, (data.empty() ? nullptr : &data[0]));
+    gl_check(glTexImage2D(GL_TEXTURE_2D, /* level= */ 0, internal_format, size.width, size.height, BORDER, gl_format,
+                          datatype_to_gl(args.data_type), nullptr));
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(args.min_filter));
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(args.mag_filter));
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(args.wrap_horizontal));
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical));
-    gl_check_error();
+    gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(args.min_filter)));
+    gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(args.mag_filter)));
+    gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(args.wrap_horizontal)));
+    gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical)));
 
     // return the loaded texture on success
-    std::shared_ptr<Texture> texture
-        = Texture::_create(id, context, GL_TEXTURE_2D, std::move(name), size.width, size.height, args.format);
-    context.m_textures.emplace_back(texture);
+    TexturePtr texture = Texture::_create(context, id, GL_TEXTURE_2D, name, std::move(size), args.format);
+    context->m_textures.emplace(std::move(name), texture);
     return texture;
 }
 
-std::shared_ptr<Texture>
-Texture::create_empty(GraphicsContext& context, const std::string name, const Size2i& size, const Args& args)
+TexturePtr
+Texture::load_image(GraphicsContextPtr& context, const std::string& file_path, std::string name, const Args& args)
 {
-    std::vector<uchar> data(static_cast<size_t>(size.area()), 0);
-    return allocate(context, std::move(name), size, data, args);
-}
+    // validate the passed arguments
+    if (context->has_texture(name)) {
+        std::stringstream ss;
+        ss << "Cannot create a new Texture with existing name \"" << name << "\"";
+        throw_runtime_error(ss.str());
+    }
 
-std::shared_ptr<Texture> Texture::load_image(GraphicsContext& context, const std::string file_path, const Args& args)
-{
     std::vector<uchar> image_data;
     Size2i image_size;
     Texture::Format texture_format;
@@ -214,13 +233,13 @@ std::shared_ptr<Texture> Texture::load_image(GraphicsContext& context, const std
         }
         else if (image_bytes == 3) { // color
             gl_format       = GL_RGB;
-            internal_format = GL_SRGB8;
+            internal_format = args.is_linear ? GL_RGB : GL_SRGB8;
             texture_format  = Texture::Format::RGB;
             alignment       = 4;
         }
         else if (image_bytes == 4) { // color + alpha
             gl_format       = GL_RGBA;
-            internal_format = GL_SRGB8_ALPHA8;
+            internal_format = args.is_linear ? GL_RGBA : GL_SRGB8_ALPHA8;
             texture_format  = Texture::Format::RGBA;
             alignment       = 4;
         }
@@ -253,40 +272,39 @@ std::shared_ptr<Texture> Texture::load_image(GraphicsContext& context, const std
 
     // load the texture into OpenGL
     GLuint id = 0;
-    glGenTextures(1, &id);
+    gl_check(glGenTextures(1, &id));
     assert(id);
-    glBindTexture(GL_TEXTURE_2D, id);
-    gl_check_error();
+    gl_check(glBindTexture(GL_TEXTURE_2D, id));
 
-    glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, image_size.width);
-    glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, image_size.height);
-    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-    gl_check_error();
+    gl_check(glPixelStorei(GL_UNPACK_ALIGNMENT, alignment));
+    gl_check(glPixelStorei(GL_UNPACK_ROW_LENGTH, image_size.width));
+    gl_check(glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, image_size.height));
+    gl_check(glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0));
+    gl_check(glPixelStorei(GL_UNPACK_SKIP_ROWS, 0));
 
     if (args.make_immutable) {
         // immutable texture
         const GLsizei max_levels = static_cast<GLsizei>(floor(log2(max(image_size.width, image_size.height)))) + 1;
         const GLsizei levels     = args.generate_mipmaps ? max_levels : 1;
-        glTexStorage2D(GL_TEXTURE_2D, levels, internal_format, image_size.width, image_size.height);
+        gl_check(glTexStorage2D(GL_TEXTURE_2D, levels, internal_format, image_size.width, image_size.height));
 
         if (args.codec == Codec::RAW) {
-            glTexSubImage2D(GL_TEXTURE_2D, /* level= */ 0, /* xoffset= */ 0, /* yoffset= */ 0, image_size.width,
-                            image_size.height, gl_format, GL_UNSIGNED_BYTE, &image_data.front());
+            gl_check(glTexSubImage2D(GL_TEXTURE_2D, /* level= */ 0, /* xoffset= */ 0, /* yoffset= */ 0,
+                                     image_size.width, image_size.height, gl_format, datatype_to_gl(args.data_type),
+                                     &image_data.front()));
         }
         else if (args.codec == Codec::ASTC) {
-            glCompressedTexSubImage2D(GL_TEXTURE_2D, /* level= */ 0, /* xoffset= */ 0, /* yoffset= */ 0,
-                                      image_size.width, image_size.height, internal_format, image_length,
-                                      &image_data.front());
+            gl_check(glCompressedTexSubImage2D(GL_TEXTURE_2D, /* level= */ 0, /* xoffset= */ 0, /* yoffset= */ 0,
+                                               image_size.width, image_size.height, internal_format, image_length,
+                                               &image_data.front()));
         }
         else {
             assert(0);
         }
-#ifdef _DEBUG
+#ifdef NOTF_DEBUG
         {
             GLint is_immutable = 0;
-            glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_IMMUTABLE_FORMAT, &is_immutable);
+            gl_check(glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_IMMUTABLE_FORMAT, &is_immutable));
             assert(is_immutable);
         }
 #endif
@@ -294,12 +312,13 @@ std::shared_ptr<Texture> Texture::load_image(GraphicsContext& context, const std
     else {
         // mutable texture
         if (args.codec == Codec::RAW) {
-            glTexImage2D(GL_TEXTURE_2D, /* level= */ 0, static_cast<GLint>(internal_format), image_size.width,
-                         image_size.height, BORDER, gl_format, GL_UNSIGNED_BYTE, &image_data.front());
+            gl_check(glTexImage2D(GL_TEXTURE_2D, /* level= */ 0, static_cast<GLint>(internal_format), image_size.width,
+                                  image_size.height, BORDER, gl_format, datatype_to_gl(args.data_type),
+                                  &image_data.front()));
         }
         else if (args.codec == Codec::ASTC) {
-            glCompressedTexImage2D(GL_TEXTURE_2D, /* level= */ 0, internal_format, image_size.width, image_size.height,
-                                   BORDER, image_length, &image_data.front());
+            gl_check(glCompressedTexImage2D(GL_TEXTURE_2D, /* level= */ 0, internal_format, image_size.width,
+                                            image_size.height, BORDER, image_length, &image_data.front()));
         }
         else {
             assert(0);
@@ -309,22 +328,21 @@ std::shared_ptr<Texture> Texture::load_image(GraphicsContext& context, const std
 
     // highest quality mip-mapping by default
     if (args.generate_mipmaps) {
-        glGenerateMipmap(GL_TEXTURE_2D);
+        gl_check(glGenerateMipmap(GL_TEXTURE_2D));
     }
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(args.min_filter));
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(args.mag_filter));
-    gl_check_error();
 
     // repeat wrap by default
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(args.wrap_horizontal));
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical));
-    gl_check_error();
+    gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(args.wrap_horizontal)));
+    gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical)));
 
     // make texture anisotropic, if requested and available
-    if (args.anisotropy > 1.f && context.extensions().anisotropic_filter) {
+    if (args.anisotropy > 1.f && context->extensions().anisotropic_filter) {
         GLfloat highest_anisotropy;
-        glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &highest_anisotropy);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, min(args.anisotropy, highest_anisotropy));
+        gl_check(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &highest_anisotropy));
+        gl_check(
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, min(args.anisotropy, highest_anisotropy)));
     }
 
     { // log success
@@ -351,9 +369,8 @@ std::shared_ptr<Texture> Texture::load_image(GraphicsContext& context, const std
     }
 
     // return the loaded texture on success
-    std::shared_ptr<Texture> texture = Texture::_create(id, context, GL_TEXTURE_2D, std::move(file_path),
-                                                        image_size.width, image_size.height, texture_format);
-    context.m_textures.emplace_back(texture);
+    TexturePtr texture = Texture::_create(context, id, GL_TEXTURE_2D, name, image_size, texture_format);
+    context->m_textures.emplace(std::move(name), texture);
     return texture;
 }
 
@@ -361,39 +378,30 @@ Texture::~Texture() { _deallocate(); }
 
 void Texture::set_min_filter(const MinFilter filter)
 {
-    m_graphics_context.bind_texture(shared_from_this(), 0);
-    glTexParameteri(m_target, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter));
-    m_min_filter = filter;
-    gl_check_error();
+    m_graphics_context.bind_texture(this, 0);
+    gl_check(glTexParameteri(m_target, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter)));
 }
 
 void Texture::set_mag_filter(const MagFilter filter)
 {
-    m_graphics_context.bind_texture(shared_from_this(), 0);
-    glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter));
-    m_mag_filter = filter;
-    gl_check_error();
+    m_graphics_context.bind_texture(this, 0);
+    gl_check(glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter)));
 }
 
 void Texture::set_wrap_x(const Wrap wrap)
 {
-    m_graphics_context.bind_texture(shared_from_this(), 0);
-    glTexParameteri(m_target, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap));
-    m_wrap_x = wrap;
-    gl_check_error();
+    m_graphics_context.bind_texture(this, 0);
+    gl_check(glTexParameteri(m_target, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap)));
 }
 
 void Texture::set_wrap_y(const Wrap wrap)
 {
-    m_graphics_context.bind_texture(shared_from_this(), 0);
-    glTexParameteri(m_target, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap));
-    m_wrap_y = wrap;
-    gl_check_error();
+    m_graphics_context.bind_texture(this, 0);
+    gl_check(glTexParameteri(m_target, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap)));
 }
 
 void Texture::fill(const Color& color)
 {
-
     // adjust the color to the texture
     Color fill_color;
     switch (m_format) {
@@ -414,29 +422,32 @@ void Texture::fill(const Color& color)
 
     // create the source buffer and copy it into the texture
     if (m_format == Format::GRAYSCALE) {
-        const std::vector<uchar> buffer(static_cast<size_t>(m_width * m_height * to_number(m_format)), r);
-        glTexImage2D(m_target, 0, GL_R8, m_width, m_height, 0, GL_RED, GL_UNSIGNED_BYTE, &buffer[0]);
+        const std::vector<uchar> buffer(static_cast<size_t>(m_size.width * m_size.height * to_number(m_format)), r);
+        gl_check(
+            glTexImage2D(m_target, 0, GL_R8, m_size.width, m_size.height, 0, GL_RED, GL_UNSIGNED_BYTE, &buffer[0]));
     }
     else if (m_format == Format::RGB) {
         std::vector<uchar> buffer;
-        buffer.reserve(static_cast<size_t>(m_width * m_height * to_number(m_format)));
-        for (size_t i = 0; i < static_cast<size_t>(m_width * m_height); ++i) {
+        buffer.reserve(static_cast<size_t>(m_size.width * m_size.height * to_number(m_format)));
+        for (size_t i = 0; i < static_cast<size_t>(m_size.width * m_size.height); ++i) {
             buffer[i * to_number(Format::RGB) + 0] = r;
             buffer[i * to_number(Format::RGB) + 1] = g;
             buffer[i * to_number(Format::RGB) + 2] = b;
         }
-        glTexImage2D(m_target, 0, GL_RGB, m_width, m_height, 0, GL_RGB, GL_UNSIGNED_BYTE, &buffer[0]);
+        gl_check(
+            glTexImage2D(m_target, 0, GL_RGB, m_size.width, m_size.height, 0, GL_RGB, GL_UNSIGNED_BYTE, &buffer[0]));
     }
     else if (m_format == Format::RGBA) {
         std::vector<uchar> buffer;
-        buffer.reserve(static_cast<size_t>(m_width * m_height * to_number(m_format)));
-        for (size_t i = 0; i < static_cast<size_t>(m_width * m_height); ++i) {
+        buffer.reserve(static_cast<size_t>(m_size.width * m_size.height * to_number(m_format)));
+        for (size_t i = 0; i < static_cast<size_t>(m_size.width * m_size.height); ++i) {
             buffer[i * to_number(Format::RGBA) + 0] = r;
             buffer[i * to_number(Format::RGBA) + 1] = g;
             buffer[i * to_number(Format::RGBA) + 2] = b;
             buffer[i * to_number(Format::RGBA) + 3] = a;
         }
-        glTexImage2D(m_target, 0, GL_RGBA, m_width, m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, &buffer[0]);
+        gl_check(
+            glTexImage2D(m_target, 0, GL_RGBA, m_size.width, m_size.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, &buffer[0]));
     }
     gl_check_error();
 }
@@ -444,8 +455,7 @@ void Texture::fill(const Color& color)
 void Texture::_deallocate()
 {
     if (m_id) {
-        glDeleteTextures(1, &m_id);
-        gl_check_error();
+        gl_check(glDeleteTextures(1, &m_id));
         log_trace << "Deleted OpenGL texture with ID: " << m_id;
     }
     m_id = 0;

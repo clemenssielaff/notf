@@ -4,21 +4,15 @@
 #include <string>
 #include <vector>
 
+#include "common/forwards.hpp"
 #include "common/meta.hpp"
+#include "common/size2.hpp"
 #include "graphics/gl_forwards.hpp"
 
 namespace notf {
 
-struct Color;
-class GraphicsContext;
-
-DEFINE_SHARED_POINTERS(class, Texture);
-
-template<typename value_t, FWD_ENABLE_IF_ARITHMETIC(value_t)>
-struct _Size2;
-using Size2i = _Size2<int, true>;
-
-using uchar = unsigned char;
+// TODO: [engine] a texture streaming method using buffers
+// TODO: [engine] 3D texture
 
 //====================================================================================================================//
 
@@ -28,8 +22,6 @@ using uchar = unsigned char;
 /// ===========================
 /// A Texture needs a valid GraphicsContext (which in turn refers to an OpenGL context), since the Texture class itself
 /// does not store any image data, only the OpenGL ID and metadata.
-/// You create a Texture by calling `GraphicsContext::load_texture(texture_path)`, which attaches the GraphicsContext to
-/// the Texture.
 /// The return value is a shared pointer, which you own.
 /// However, the GraphicsContext does keep a weak pointer to the Texture and will deallocate it when it's itself
 /// removed. In this case, the remaining Texture will become invalid and you'll get a warning message. In a well-behaved
@@ -43,9 +35,9 @@ class Texture : public std::enable_shared_from_this<Texture> {
 public:
     /// @brief Texture format.
     enum class Format : unsigned char {
-        GRAYSCALE = 1, ///< one byte per pixel (grayscale)
-        RGB       = 3, ///< 3 bytes per pixel (color)
-        RGBA      = 4, ///< 4 bytes per pixel (color + alpha)
+        GRAYSCALE = 1, ///< one channel per pixel (grayscale)
+        RGB       = 3, ///< 3 channels per pixel (color)
+        RGBA      = 4, ///< 4 channels per pixel (color + alpha)
     };
 
     /// @brief Filter used when sampling the texture and any of its mipmaps.
@@ -77,6 +69,18 @@ public:
         ASTC, ///< ASTC compression
     };
 
+    enum class DataType : unsigned char {
+        BYTE,
+        UBYTE,
+        SHORT,
+        USHORT,
+        INT,
+        UINT,
+        HALF,
+        FLOAT,
+        USHORT_5_6_5,
+    };
+
     /// @brief Arguments used to initialize a Texture.
     struct Args {
         /// @brief Filter used when sampling the texture and any of its mipmaps.
@@ -100,8 +104,16 @@ public:
         /// @brief Format of the created texture, is ignored when loading a texture from file.
         Format format = Format::RGB;
 
+        /// @brief Type of the data passed into the texture.
+        /// Also used to define the type of data written into a texture attached to a FrameBuffer.
+        DataType data_type = DataType::UBYTE;
+
         /// @brief Codec used to store the texture in OpenGL.
         Codec codec = Codec::RAW;
+
+        /// @brief Use a linear (RGB) or non-linear (SRGB) color-space.
+        /// Usually textures are stored non-linearly, while render targets use a linear color-space.
+        bool is_linear = true;
 
         /// @brief Anisotropy factor - is only used if the anisotropic filtering extension is supported.
         /// A value <= 1 means no anisotropic filtering.
@@ -111,50 +123,44 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 private:
     /// @brief Factory.
-    static std::shared_ptr<Texture>
-    _create(const GLuint id, GraphicsContext& context, const GLenum target, const std::string name, const GLint width,
-            const GLint height, const Format format);
-
-    /// @brief Value Constructor.
-    /// @param id       OpenGL texture ID.
     /// @param context  Render Context in which the Texture lives.
+    /// @param id       OpenGL texture ID.
     /// @param target   How the texture is going to be used by OpenGL.
     ///                 (see https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glTexImage2D.xhtml)
-    /// @param name     Human readable name of the Texture.
-    /// @param width    Width of the loaded image in pixels.
-    /// @param height   Height of the loaded image in pixels.
+    /// @param name     Context-unique name of the Texture.
+    /// @param size     Size of the Texture in pixels.
     /// @param format   Texture format.
-    Texture(const GLuint id, GraphicsContext& context, const GLenum target, const std::string name, const GLint width,
-            const GLint height, const Format format);
+    static TexturePtr _create(GraphicsContextPtr& context, const GLuint id, const GLenum target, std::string name,
+                              Size2i size, const Format format);
+
+    /// @brief Value Constructor.
+    /// @param context  Render Context in which the Texture lives.
+    /// @param id       OpenGL texture ID.
+    /// @param target   How the texture is going to be used by OpenGL.
+    ///                 (see https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glTexImage2D.xhtml)
+    /// @param name     Context-unique name of the Texture.
+    /// @param size     Size of the Texture in pixels.
+    /// @param format   Texture format.
+    Texture(GraphicsContextPtr& context, const GLuint id, const GLenum target, std::string name, Size2i size,
+            const Format format);
 
 public:
-    /// @brief Allocates a new texture.
-    /// The texture is undefined if read without initializing it first.
-    /// @param context  Render Context in which the Texture lives.
-    /// @param name     Name of the texture.
-    /// @param size     Size of the texture in pixels.
-    /// @param data     Data to allocate the the texture from, may be empty.
-    /// @param args     Texture arguments.
-    static std::shared_ptr<Texture> allocate(GraphicsContext& context, const std::string name, const Size2i& size,
-                                              const std::vector<uchar>& data = {}, const Args& args = s_default_args);
-
     /// @brief Creates an valid but transparent texture in memory.
     /// @param context  Render Context in which the Texture lives.
-    /// @param name     Name of the texture.
+    /// @param name     Context-unique name of the Texture.
     /// @param size     Size of the texture in pixels.
     /// @param args     Texture arguments.
-    static std::shared_ptr<Texture> create_empty(GraphicsContext& context, const std::string name, const Size2i& size,
-                                                 const Args& args = s_default_args);
+    static TexturePtr
+    create_empty(GraphicsContextPtr& context, std::string name, Size2i size, const Args& args = s_default_args);
 
     /// @brief Loads a texture from a given file.
-    /// @param context Render Context in which the texture lives.*@param file_path Path to a texture file.*
-    /// @param args Arguments to initialize the texture.
+    /// @param context      Render Context in which the texture lives.
+    /// @param file_path    Path to a texture file.
+    /// @param name         Context-unique name of the Texture.
+    /// @param args         Arguments to initialize the texture.
     /// @return Texture instance, is empty if the texture could not be loaded.
-    static std::shared_ptr<Texture>
-    load_image(GraphicsContext& context, const std::string file_path, const Args& args = s_default_args);
-
-    // TODO: [engine] a texture streaming method using buffers
-    // TODO: [engine] 3D texture
+    static TexturePtr load_image(GraphicsContextPtr& context, const std::string& file_path, std::string name,
+                                 const Args& args = s_default_args);
 
     DISALLOW_COPY_AND_ASSIGN(Texture)
 
@@ -175,26 +181,11 @@ public:
     /// @brief The name of this Texture.
     const std::string& name() const { return m_name; }
 
-    /// @brief Width of the loaded image in pixels.
-    GLint width() const { return m_width; }
-
-    /// @brief Height of the loaded image in pixels.
-    GLint height() const { return m_height; }
+    /// @brief The size of this texture.
+    const Size2i size() const { return m_size; }
 
     /// @brief The format of this Texture.
     Format format() const { return m_format; }
-
-    /// @brief Returns the filter mode when the texture pixels are smaller than scren pixels.
-    MinFilter filter_min() const { return m_min_filter; }
-
-    /// @brief Returns the filter mode when the texture pixels are larger than scren pixels.
-    MagFilter filter_mag() const { return m_mag_filter; }
-
-    /// @brief Returns the horizonal wrap mode.
-    Wrap wrap_x() const { return m_wrap_x; }
-
-    /// @brief Returns the vertical wrap mode.
-    Wrap wrap_y() const { return m_wrap_y; }
 
     /// @brief Sets a new filter mode when the texture pixels are smaller than scren pixels.
     void set_min_filter(const MinFilter filter);
@@ -229,26 +220,11 @@ private:
     /// @brief The name of this Texture.
     const std::string m_name;
 
-    /// @brief Width of the loaded image in pixels.
-    const GLint m_width;
-
-    /// @brief Height of the loaded image in pixels.
-    const GLint m_height;
+    /// @brief The size of this texture.
+    const Size2i m_size;
 
     /// @brief Texture format.
     const Format m_format;
-
-    /// @brief Filter mode when the texture pixels are smaller than scren pixels.
-    MinFilter m_min_filter;
-
-    /// @brief Filter mode when the texture pixels are larger than scren pixels.
-    MagFilter m_mag_filter;
-
-    /// @brief The horizontal wrap mode.
-    Wrap m_wrap_x;
-
-    /// @brief The vertical wrap mode.
-    Wrap m_wrap_y;
 
     /// @brief Default arguments.
     static const Args s_default_args;

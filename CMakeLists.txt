@@ -43,7 +43,7 @@ add_subdirectory(/home/clemens/code/thirdparty/freetype-2.8.1/ thirdparty/freety
 
 # NOTF #################################################################################################################
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g -D_DEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -DNOTF_DEBUG")
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
 
@@ -57,6 +57,7 @@ include_directories(
     res/
     /home/clemens/code/thirdparty/freetype-2.8/include/
     test/
+    src/examples/
 )
 
 create_module(common)

@@ -1,5 +1,6 @@
 #include "graphics/frame_buffer.hpp"
 
+#include <algorithm>
 #include <assert.h>
 #include <set>
 #include <sstream>
@@ -57,8 +58,8 @@ const char* status_to_str(const GLenum status)
 
 namespace notf {
 
-RenderBuffer::RenderBuffer(GraphicsContext& context, const Args& args)
-    : m_id(0), m_graphics_context(context), m_args(args)
+RenderBuffer::RenderBuffer(GraphicsContextPtr& context, const Args& args)
+    : m_id(0), m_graphics_context(*context), m_args(args)
 {
     // check arguments
     const GraphicsContext::Environment& env = m_graphics_context.environment();
@@ -234,6 +235,24 @@ FrameBuffer::~FrameBuffer()
     if (m_id != 0) {
         glDeleteFramebuffers(1, &m_id);
     }
+}
+
+const TexturePtr& FrameBuffer::color_texture(const ushort id)
+{
+    auto itr = std::find_if(std::begin(m_args.color_targets), std::end(m_args.color_targets),
+                            [id](const std::pair<ushort, ColorTarget>& target) -> bool { return target.first == id; });
+    try {
+        if (itr != std::end(m_args.color_targets)) {
+            return std::get<TexturePtr>(itr->second);
+        }
+    }
+    catch (std::bad_variant_access&) {
+        /* ignore */
+    }
+
+    std::stringstream ss;
+    ss << "FrameBuffer has no color attachment: " << id;
+    throw_runtime_error(ss.str());
 }
 
 /// For the rules, check:

@@ -2,17 +2,13 @@
 
 #include <memory>
 
+#include "common/forwards.hpp"
 #include "common/meta.hpp"
 #include "common/size2.hpp"
 #include "compat/variant.hpp"
 #include "graphics/gl_forwards.hpp"
 
 namespace notf {
-
-DEFINE_SHARED_POINTERS(class, Texture)
-DEFINE_SHARED_POINTERS(class, RenderBuffer)
-
-class GraphicsContext;
 
 //====================================================================================================================//
 
@@ -46,10 +42,10 @@ public:
     DISALLOW_COPY_AND_ASSIGN(RenderBuffer)
 
     /// @brief Default constructor.
-    /// @param context  Graphics context owning the render buffer.
-    /// @param args     Render buffer arguments.
+    /// @param context              Graphics context owning the render buffer.
+    /// @param args                 Render buffer arguments.
     /// @throws std::runtime_error  If the arguments fail to validate.
-    RenderBuffer(GraphicsContext& context, const Args& args);
+    RenderBuffer(GraphicsContextPtr& context, const Args& args);
 
     /// @brief Destructor.
     ~RenderBuffer();
@@ -94,6 +90,9 @@ class FrameBuffer final {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
+    using ColorTarget = std::variant<RenderBufferPtr, TexturePtr>;
+    using DepthTarget = std::variant<RenderBufferPtr, TexturePtr>;
+
     /// @brief Arguments used to initialize a Texture.
     /// If you want to set both depth- and stencil targets, both have to refer to the same RenderBuffer and that
     /// RenderBuffer needs a format packing both depth and stencil.
@@ -101,10 +100,10 @@ public:
 
         /// @brief All color targets
         /// A color target consists of a pair of color buffer id / render target.
-        std::vector<std::pair<ushort, std::variant<RenderBufferPtr, TexturePtr>>> color_targets;
+        std::vector<std::pair<ushort, ColorTarget>> color_targets;
 
         /// @brief Depth target.
-        std::variant<RenderBufferPtr, TexturePtr> depth_target;
+        DepthTarget depth_target;
 
         /// @brief Stencil target.
         RenderBufferPtr stencil_target;
@@ -120,6 +119,13 @@ public:
 
     /// @brief Destructor.
     ~FrameBuffer();
+
+    /// @brief The FrameBuffer's id.
+    GLuint id() const { return m_id; }
+
+    /// @brief Texture used as color attachment.
+    /// @throws std::runtime_error  If there is no texture attached as the color target.
+    const TexturePtr& color_texture(const ushort id);
 
 private:
     /// @brief Checks if we can create a valid frame buffer with the given arguments.

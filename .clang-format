@@ -28,6 +28,8 @@ BraceWrapping:
   BeforeCatch:              true
   BeforeElse:               true
   IndentBraces:             false
+  SplitEmptyFunction:       false
+  SplitEmptyRecord:         false
 BreakBeforeBinaryOperators:                 All
 BreakBeforeBraces:                          Custom
 BreakBeforeInheritanceComma:                false

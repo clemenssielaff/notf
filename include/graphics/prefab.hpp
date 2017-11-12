@@ -27,7 +27,7 @@ private: // methods ************************************************************
     /** Factory. */
     static std::shared_ptr<PrefabInstance<InstanceData>> create(std::shared_ptr<PrefabType<InstanceData>> prefab)
     {
-#ifdef _DEBUG
+#ifdef NOTF_DEBUG
         return std::shared_ptr<PrefabInstance<InstanceData>>(new PrefabInstance<InstanceData>(std::move(prefab)));
 #else
         struct make_shared_enabler : public PrefabInstance<InstanceData> {
@@ -78,7 +78,7 @@ protected: // methods **********************************************************
     static std::shared_ptr<PrefabType<InstanceData>>
     create(const std::string name, const size_t offset, const size_t size)
     {
-#ifdef _DEBUG
+#ifdef NOTF_DEBUG
         return std::shared_ptr<PrefabType<InstanceData>>(new PrefabType<InstanceData>(std::move(name), offset, size));
 #else
         struct make_shared_enabler : public PrefabType<InstanceData> {

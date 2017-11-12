@@ -5,20 +5,16 @@
 
 /// @brief Tests if T is one of the following types.
 template<typename T, typename...>
-struct is_one_of : std::false_type {
-};
+struct is_one_of : std::false_type {};
 template<typename T, typename Head, typename... Rest>
 struct is_one_of<T, Head, Rest...>
-    : std::integral_constant<bool, std::is_same<T, Head>::value || is_one_of<T, Rest...>::value> {
-};
+    : std::integral_constant<bool, std::is_same<T, Head>::value || is_one_of<T, Rest...>::value> {};
 
 /// @brief Tests if all conditions are true.
 template<typename T, typename...>
-struct all_true : std::true_type {
-};
+struct all_true : std::true_type {};
 template<typename T, typename Head, typename... Rest>
-struct all_true<T, Head, Rest...> : std::integral_constant<bool, Head::value && all_true<T, Rest...>::value> {
-};
+struct all_true<T, Head, Rest...> : std::integral_constant<bool, Head::value && all_true<T, Rest...>::value> {};
 
 /* At the beginning, the macros here used std::enable_if_t, but typedefs from those templates could not be properly
  * forward defined.
@@ -129,8 +125,7 @@ struct all_true<T, Head, Rest...> : std::integral_constant<bool, Head::value && 
 ///     calc<Space::SCREEN>(); // error! static assert: "Unsupported Space"
 ///
 template<typename T, T val>
-struct always_false : std::false_type {
-};
+struct always_false : std::false_type {};
 
 /// @brief Like always_false, but taking a single type only.
 /// This way you can define error overloads that differ by type only:
@@ -147,8 +142,7 @@ struct always_false : std::false_type {
 ///     }
 ///
 template<typename T>
-struct always_false_t : std::false_type {
-};
+struct always_false_t : std::false_type {};
 
 //====================================================================================================================//
 
@@ -170,7 +164,13 @@ struct always_false_t : std::false_type {
 #define DEFINE_SHARED_POINTERS(Tag, Type)         \
     Tag Type;                                     \
     using Type##Ptr      = std::shared_ptr<Type>; \
-    using Type##ConstPtr = std::shared_ptr<const Type>;
+    using Type##ConstPtr = std::shared_ptr<const Type>
+
+/// @brief Convenience macro to define unique pointer types for a given type.
+#define DEFINE_UNIQUE_POINTERS(Tag, Type)         \
+    Tag Type;                                     \
+    using Type##Ptr      = std::unique_ptr<Type>; \
+    using Type##ConstPtr = std::unique_ptr<const Type>
 
 //====================================================================================================================//
 
@@ -195,16 +195,16 @@ struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T
 #else
 
 #if __cplusplus >= 199711L
-#define CPP_97
+#define NOTF_CPP97
 #endif
 #if __cplusplus >= 201103L
-#define CPP_11
+#define NOTF_CPP11
 #endif
 #if __cplusplus >= 201402L
-#define CPP_14
+#define NOTF_CPP14
 #endif
 #if __cplusplus >= 201703L
-#define CPP_17
+#define NOTF_CPP17
 #endif
 
 #endif
@@ -214,7 +214,7 @@ struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T
 namespace std {
 
 /// @brief Void type.
-#ifndef CPP_17
+#ifndef NOTF_CPP17
 template<class...>
 using void_t = void;
 #endif
@@ -226,3 +226,10 @@ using void_t = void;
 /// @brief Takes two macros and concatenates them without whitespace in between
 #define MACRO_CONCAT_(A, B) A##B
 #define MACRO_CONCAT(A, B) MACRO_CONCAT_(A, B)
+
+//====================================================================================================================//
+
+/// @brief Short names for unsiged in
+using ushort = unsigned short;
+using uint   = unsigned int;
+using ulong  = unsigned long;
