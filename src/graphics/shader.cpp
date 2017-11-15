@@ -101,7 +101,7 @@ size_t longest_attribute_length(const GLuint program)
 
 namespace notf {
 
-ShaderPtr Shader::build(GraphicsContextPtr& context, std::string name, const Pipeline::Stage stage, const char* source)
+ShaderPtr Shader::_build(GraphicsContextPtr& context, std::string name, const Pipeline::Stage stage, const char* source)
 {
     // check if the name is unique
     if (context->has_shader(name)) {
@@ -197,10 +197,10 @@ ShaderPtr Shader::build(GraphicsContextPtr& context, std::string name, const Pip
 }
 
 ShaderPtr
-Shader::load(GraphicsContextPtr& context, std::string name, const Pipeline::Stage stage, const std::string& file)
+Shader::_load(GraphicsContextPtr& context, std::string name, const Pipeline::Stage stage, const std::string& file)
 {
     const std::string shader_source = load_file(file);
-    return Shader::build(context, name, stage, shader_source.c_str());
+    return Shader::_build(context, name, stage, shader_source.c_str());
 }
 
 Shader::Shader(GraphicsContextPtr& context, const GLuint id, std::string name)
@@ -284,9 +284,7 @@ void Shader::set_uniform(const std::string& name, const int& value)
 {
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_INT || uniform.type == GL_SAMPLER_2D) {
-        gl_check(glUseProgram(m_id));
-        gl_check(glUniform1i(uniform.location, value));
-        gl_check(glUseProgram(0));
+        gl_check(glProgramUniform1i(m_id, uniform.location, value));
     }
     else {
         throw_runtime_error(
@@ -300,14 +298,10 @@ void Shader::set_uniform(const std::string& name, const unsigned int& value)
 {
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_UNSIGNED_INT) {
-        gl_check(glUseProgram(m_id));
-        gl_check(glUniform1ui(uniform.location, value));
-        gl_check(glUseProgram(0));
+        gl_check(glProgramUniform1ui(m_id, uniform.location, value));
     }
     else if (uniform.type == GL_SAMPLER_2D) {
-        gl_check(glUseProgram(m_id));
-        gl_check(glUniform1i(uniform.location, static_cast<GLint>(value)));
-        gl_check(glUseProgram(0));
+        gl_check(glProgramUniform1i(m_id, uniform.location, static_cast<GLint>(value)));
     }
     else {
         throw_runtime_error(string_format("Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value "
@@ -321,9 +315,7 @@ void Shader::set_uniform(const std::string& name, const float& value)
 {
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT) {
-        gl_check(glUseProgram(m_id));
-        gl_check(glUniform1f(uniform.location, value));
-        gl_check(glUseProgram(0));
+        gl_check(glProgramUniform1f(m_id, uniform.location, value));
     }
     else {
         throw_runtime_error(
@@ -337,9 +329,7 @@ void Shader::set_uniform(const std::string& name, const Vector2f& value)
 {
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT_VEC2) {
-        gl_check(glUseProgram(m_id));
-        gl_check(glUniform2fv(uniform.location, /*count*/ 1, value.as_ptr()));
-        gl_check(glUseProgram(0));
+        gl_check(glProgramUniform2fv(m_id, uniform.location, /*count*/ 1, value.as_ptr()));
     }
     else {
         throw_runtime_error(string_format("Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value "
@@ -353,9 +343,7 @@ void Shader::set_uniform(const std::string& name, const Vector4f& value)
 {
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT_VEC4) {
-        gl_check(glUseProgram(m_id));
-        gl_check(glUniform4fv(uniform.location, /*count*/ 1, value.as_ptr()));
-        gl_check(glUseProgram(0));
+        gl_check(glProgramUniform4fv(m_id, uniform.location, /*count*/ 1, value.as_ptr()));
     }
     else {
         throw_runtime_error(string_format("Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value "
@@ -369,9 +357,8 @@ void Shader::set_uniform(const std::string& name, const Matrix4f& value)
 {
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT_MAT4) {
-        gl_check(glUseProgram(m_id));
-        gl_check(glUniformMatrix4fv(uniform.location, /*count*/ 1, GL_FALSE, value.as_ptr()));
-        gl_check(glUseProgram(0));
+        gl_check(
+            glProgramUniformMatrix4fv(m_id, uniform.location, /*count*/ 1, /*transpose*/ GL_FALSE, value.as_ptr()));
     }
     else {
         throw_runtime_error(string_format("Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value "

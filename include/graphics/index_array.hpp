@@ -103,7 +103,7 @@ public: // methods *************************************************************
             return;
         }
 
-        glGenBuffers(1, &m_vbo_id);
+        gl_check(glGenBuffers(1, &m_vbo_id));
         if (!m_vbo_id) {
             throw_runtime_error("Failed to allocate IndexArray");
         }
@@ -113,16 +113,16 @@ public: // methods *************************************************************
 
         { // make sure there is a bound VAO
             GLint current_vao = 0;
-            glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao);
+            gl_check(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
             if (!current_vao) {
                 throw_runtime_error("Cannot initialize an IndexArray without a bound VAO");
             }
         }
 
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vbo_id);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(index_t), &m_indices[0], GL_STATIC_DRAW);
+        gl_check(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vbo_id));
+        gl_check(
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(index_t), &m_indices[0], GL_STATIC_DRAW));
         // keep the buffer bound as it is stored in the VAO
-        gl_check_error();
     }
 
     virtual GLuint restart_index() const override { return static_cast<GLuint>(std::numeric_limits<index_t>::max()); }

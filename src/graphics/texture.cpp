@@ -324,14 +324,13 @@ Texture::load_image(GraphicsContextPtr& context, const std::string& file_path, s
             assert(0);
         }
     }
-    gl_check_error();
 
     // highest quality mip-mapping by default
     if (args.generate_mipmaps) {
         gl_check(glGenerateMipmap(GL_TEXTURE_2D));
     }
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(args.min_filter));
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(args.mag_filter));
+    gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(args.min_filter)));
+    gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(args.mag_filter)));
 
     // repeat wrap by default
     gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(args.wrap_horizontal)));
@@ -449,7 +448,6 @@ void Texture::fill(const Color& color)
         gl_check(
             glTexImage2D(m_target, 0, GL_RGBA, m_size.width, m_size.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, &buffer[0]));
     }
-    gl_check_error();
 }
 
 void Texture::_deallocate()

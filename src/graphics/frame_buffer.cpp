@@ -81,22 +81,21 @@ RenderBuffer::RenderBuffer(GraphicsContextPtr& context, const Args& args)
     }
 
     // declare renderbuffer
-    glGenRenderbuffers(1, &m_id);
+    gl_check(glGenRenderbuffers(1, &m_id));
     if (m_id == 0) {
         throw_runtime_error("Could not allocate new RenderBuffer");
     }
-    gl_check_error();
 
     // define renderbuffer
-    glBindRenderbuffer(GL_RENDERBUFFER, m_id);
+    gl_check(glBindRenderbuffer(GL_RENDERBUFFER, m_id));
 
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    gl_check(glBindRenderbuffer(GL_RENDERBUFFER, 0));
 }
 
 RenderBuffer::~RenderBuffer()
 {
     if (m_id != 0) {
-        glDeleteRenderbuffers(1, &m_id);
+        gl_check(glDeleteRenderbuffers(1, &m_id));
     }
 }
 
@@ -165,14 +164,13 @@ FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_id(0), m_gra
     _validate_arguments();
 
     // declare framebuffer
-    glGenFramebuffers(1, &m_id);
+    gl_check(glGenFramebuffers(1, &m_id));
     if (m_id == 0) {
         throw_runtime_error("Could not allocate new FrameBuffer");
     }
-    gl_check_error();
 
     // define framebuffer
-    glBindFramebuffer(GL_FRAMEBUFFER, m_id);
+    gl_check(glBindFramebuffer(GL_FRAMEBUFFER, m_id));
 
     for (const auto& numbered_color_target : m_args.color_targets) {
         const ushort target_id   = numbered_color_target.first;
@@ -180,36 +178,34 @@ FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_id(0), m_gra
 
         if (std::holds_alternative<RenderBufferPtr>(color_target)) {
             if (const auto& color_buffer = std::get<RenderBufferPtr>(color_target)) {
-                glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + target_id, GL_RENDERBUFFER,
-                                          color_buffer->id());
-                gl_check_error();
+                gl_check(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + target_id, GL_RENDERBUFFER,
+                                                   color_buffer->id()));
             }
         }
         else if (const auto& color_texture = std::get<TexturePtr>(color_target)) {
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + target_id, color_texture->target(),
-                                   color_texture->id(), /* level = */ 0);
-            gl_check_error();
+            gl_check(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + target_id, color_texture->target(),
+                                            color_texture->id(), /* level = */ 0));
         }
     }
 
     bool has_depth = false;
     if (std::holds_alternative<RenderBufferPtr>(m_args.depth_target)) {
         if (const auto& depth_buffer = std::get<RenderBufferPtr>(m_args.depth_target)) {
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_buffer->id());
+            gl_check(
+                glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_buffer->id()));
             has_depth = true;
-            gl_check_error();
         }
     }
     else if (const auto& depth_texture = std::get<TexturePtr>(m_args.depth_target)) {
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_texture->target(), depth_texture->id(),
-                               /* level = */ 0);
+        gl_check(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_texture->target(),
+                                        depth_texture->id(),
+                                        /* level = */ 0));
         has_depth = true;
-        gl_check_error();
     }
 
     if (m_args.stencil_target) {
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_args.stencil_target->id());
-        gl_check_error();
+        gl_check(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
+                                           m_args.stencil_target->id()));
     }
 
     { // make sure the frame buffer is valid
@@ -227,13 +223,13 @@ FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_id(0), m_gra
         }
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    gl_check(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 }
 
 FrameBuffer::~FrameBuffer()
 {
     if (m_id != 0) {
-        glDeleteFramebuffers(1, &m_id);
+        gl_check(glDeleteFramebuffers(1, &m_id));
     }
 }
 

@@ -62,28 +62,33 @@ void render_thread(GLFWwindow* window)
 
     /////////////////////////////////////
 
-    FrameBufferPtr framebuffer;
-    TexturePtr render_target;
-    {
-        Texture::Args targs;
-        targs.min_filter = Texture::MinFilter::LINEAR;
-        render_target = Texture::create_empty(graphics_context, "render_target", {800, 800}, targs);
+//    FrameBufferPtr framebuffer;
+//    TexturePtr render_target;
+//    {
+//        Texture::Args targs;
+//        targs.min_filter = Texture::MinFilter::LINEAR;
+//        render_target    = Texture::create_empty(graphics_context, "render_target", {800, 800}, targs);
 
-        FrameBuffer::Args fargs;
-        fargs.color_targets = {std::make_pair(0, FrameBuffer::ColorTarget{render_target})};
+//        FrameBuffer::Args fargs;
+//        fargs.color_targets = {std::make_pair(0, FrameBuffer::ColorTarget{render_target})};
 
-        framebuffer = std::make_shared<FrameBuffer>(*graphics_context, std::move(fargs));
-    }
+//        framebuffer = std::make_shared<FrameBuffer>(*graphics_context, std::move(fargs));
+//    }
 
     /////////////////////////////////////
     /// \brief blinn_phong_shader
     ///
-    ShaderPtr blinn_phong_vert = Shader::load(graphics_context, "Blinn-Phong.vert", Pipeline::Stage::VERTEX,
-                                                "/home/clemens/code/notf/res/shaders/blinn_phong.vert");
-    ShaderPtr blinn_phong_frag = Shader::load(graphics_context, "Blinn-Phong.frag", Pipeline::Stage::FRAGMENT,
-                                                "/home/clemens/code/notf/res/shaders/blinn_phong.frag");
-    PipelinePtr blinn_phong_pipeline = Pipeline::create(graphics_context, blinn_phong_vert, blinn_phong_frag);
+    VertexShaderPtr blinn_phong_vert   = VertexShader::load(graphics_context, "Blinn-Phong.vert",
+                                                          "/home/clemens/code/notf/res/shaders/blinn_phong.vert");
+    FragmentShaderPtr blinn_phong_frag = FragmentShader::load(graphics_context, "Blinn-Phong.frag",
+                                                              "/home/clemens/code/notf/res/shaders/blinn_phong.frag");
+    PipelinePtr blinn_phong_pipeline   = Pipeline::create(graphics_context, blinn_phong_vert, blinn_phong_frag);
     graphics_context->bind_pipeline(blinn_phong_pipeline);
+
+    //    ShaderPtr blinn_phong_shader = Shader::load(*graphics_context.get(), "Blinn-Phong",
+    //                                                "/home/clemens/code/notf/res/shaders/blinn_phong.vert",
+    //                                                "/home/clemens/code/notf/res/shaders/blinn_phong.frag");
+    //    graphics_context->bind_shader(blinn_phong_shader);
 
     Texture::Args tex_args;
     tex_args.codec      = Texture::Codec::ASTC;
@@ -124,10 +129,10 @@ void render_thread(GLFWwindow* window)
 
     glEnable(GL_DEPTH_TEST);
 
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
+//    glEnable(GL_CULL_FACE);
+//    glCullFace(GL_BACK);
 
-    //    blinn_phong_shader->set_uniform("s_texture", 0);
+    blinn_phong_frag->set_uniform("s_texture", 0);
 
     // render loop
     using namespace std::chrono_literals;
@@ -138,7 +143,7 @@ void render_thread(GLFWwindow* window)
         angle += 0.01 * ((frame_start_time - last_frame_start_time) / 16ms);
         last_frame_start_time = frame_start_time;
 
-        graphics_context->bind_framebuffer(framebuffer);
+        //        graphics_context->bind_framebuffer(framebuffer);
 
         Size2i buffer_size;
         glfwGetFramebufferSize(window, &buffer_size.width, &buffer_size.height);
@@ -164,9 +169,10 @@ void render_thread(GLFWwindow* window)
             //         10000.f);
             blinn_phong_vert->set_uniform("projection", perspective);
 
-            Matrix4f normalMat = rotate;
-            //            blinn_phong_shader->set_uniform("normalMat", normalMat);
+//            Matrix4f normalMat = rotate;
+//            blinn_phong_vert->set_uniform("normalMat", normalMat);
 
+//            graphics_context->bind_pipeline(blinn_phong_pipeline);
             library.render();
 
             graphics_context->unbind_texture(0);
@@ -175,15 +181,14 @@ void render_thread(GLFWwindow* window)
 
         /////////////////
 
-        graphics_context->unbind_framebuffer();
+        //        graphics_context->unbind_framebuffer();
+        //        glViewport(0, 0, 800, 800);
+        //        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        //        graphics_context->bind_texture(render_target, 0);
+        //        //        glGenerateMipmap(GL_TEXTURE_2D);
 
-        glViewport(0, 0, 800, 800);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        graphics_context->bind_texture(render_target, 0);
-//        glGenerateMipmap(GL_TEXTURE_2D);
-
-        library.render();
+        //        graphics_context->bind_pipeline(blinn_phong_pipeline);
+        //        library.render();
 
         /////////////////
 
@@ -241,4 +246,3 @@ int framebuffer_main(int /*argc*/, char* /*argv*/ [])
 
     return 0;
 }
-

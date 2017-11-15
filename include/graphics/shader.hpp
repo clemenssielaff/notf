@@ -53,7 +53,7 @@ public:
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
-public:
+protected:
     /// @brief Value Constructor.
     /// @param context  Render Context in which the Shader lives.
     /// @param id       OpenGL Shader program ID.
@@ -69,7 +69,7 @@ public:
     /// @throws std::runtime_error  If the compilation / linking failed.
     /// @return New Shader instance.
     static ShaderPtr
-    build(GraphicsContextPtr& context, std::string name, const Pipeline::Stage stage, const char* source);
+    _build(GraphicsContextPtr& context, std::string name, const Pipeline::Stage stage, const char* source);
 
     /// @brief Loads a new OpenGL ES Shader stage from a shader file.
     /// @param context  Graphics Context in which the Shader lives.
@@ -79,8 +79,13 @@ public:
     /// @throws std::runtime_error  If the compilation / linking failed.
     /// @return New Shader instance.
     static ShaderPtr
-    load(GraphicsContextPtr& context, std::string name, const Pipeline::Stage stage, const std::string& file);
+    _load(GraphicsContextPtr& context, std::string name, const Pipeline::Stage stage, const std::string& file);
 
+    // TODO: Shader::load is the wrong abstraction level
+    // Shader::build should suffice, the loading of files from disc should be managed by a resource manager that ingests
+    // a JSON file
+
+public:
     DISALLOW_COPY_AND_ASSIGN(Shader)
 
     /// @brief Destructor
@@ -176,6 +181,11 @@ protected:
     VertexShader(GraphicsContextPtr& context, const GLuint program, std::string name);
 
 public:
+    static VertexShaderPtr load(GraphicsContextPtr& context, std::string name, const std::string& file)
+    {
+        return std::static_pointer_cast<VertexShader>(_load(context, std::move(name), Pipeline::Stage::VERTEX, file));
+    }
+
     /// @brief Pipeline stage of the Shader.
     virtual Pipeline::Stage stage() const override final { return Pipeline::Stage::VERTEX; }
 
@@ -208,6 +218,12 @@ protected:
     GeometryShader(GraphicsContextPtr& context, const GLuint program, std::string name);
 
 public:
+    static GeometryShaderPtr load(GraphicsContextPtr& context, std::string name, const std::string& file)
+    {
+        return std::static_pointer_cast<GeometryShader>(
+            _load(context, std::move(name), Pipeline::Stage::GEOMETRY, file));
+    }
+
     /// @brief Pipeline stage of the Shader.
     virtual Pipeline::Stage stage() const override final { return Pipeline::Stage::GEOMETRY; }
 };
@@ -228,6 +244,12 @@ protected:
     FragmentShader(GraphicsContextPtr& context, const GLuint program, std::string name);
 
 public:
+    static FragmentShaderPtr load(GraphicsContextPtr& context, std::string name, const std::string& file)
+    {
+        return std::static_pointer_cast<FragmentShader>(
+            _load(context, std::move(name), Pipeline::Stage::FRAGMENT, file));
+    }
+
     /// @brief Pipeline stage of the Shader.
     virtual Pipeline::Stage stage() const override final { return Pipeline::Stage::FRAGMENT; }
 };

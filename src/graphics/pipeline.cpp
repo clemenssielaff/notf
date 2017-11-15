@@ -26,6 +26,8 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Geom
     std::stringstream message;
     message << "Created new Pipline: " << m_id << ",";
 
+    glBindProgramPipeline(m_id);
+
     if (m_vertex_shader) {
         assert(m_vertex_shader->is_valid());
         assert(m_vertex_shader->context() == m_graphics_context);
@@ -50,6 +52,17 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Geom
 
         message << ((m_vertex_shader || m_geometry_shader) ? " and " : " with ");
         message << "fragment shader \"" << m_fragment_shader->name() << "\"";
+    }
+
+    { // validate the pipeline once it has been created
+        gl_check(glValidateProgramPipeline(m_id));
+        GLint is_valid = 0;
+        gl_check(glGetProgramPipelineiv(m_id, GL_VALIDATE_STATUS, &is_valid));
+        if (is_valid) {
+            std::stringstream ss;
+            ss << "Failed to validate pipeline";
+            throw_runtime_error(ss.str());
+        }
     }
 
     log_info << message.str();

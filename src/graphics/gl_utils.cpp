@@ -6,6 +6,8 @@
 
 namespace notf {
 
+bool gl_is_initialized() { return glGetString(GL_VERSION) != nullptr; }
+
 void gl_log_system_info()
 {
     log_info << "OpenGL ES version:    " << glGetString(GL_VERSION);

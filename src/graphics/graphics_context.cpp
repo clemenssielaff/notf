@@ -44,7 +44,7 @@ GraphicsContext::Extensions::Extensions()
     std::set<std::string> extensions;
     { // create a set of all available extensions
         GLint extension_count;
-        glGetIntegerv(GL_NUM_EXTENSIONS, &extension_count);
+        gl_check(glGetIntegerv(GL_NUM_EXTENSIONS, &extension_count));
         for (GLint i = 0; i < extension_count; ++i) {
             extensions.emplace(
                 std::string(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i)))));
@@ -53,7 +53,6 @@ GraphicsContext::Extensions::Extensions()
             extensions.emplace(
                 std::string(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i)))));
         }
-        gl_check_error();
     }
 
     // initialize the members
@@ -68,22 +67,19 @@ GraphicsContext::Environment::Environment()
 {
     { // texture slots
         GLint _texture_slot_count = -1;
-        glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &_texture_slot_count);
-        gl_check_error();
+        gl_check(glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &_texture_slot_count));
         texture_slot_count = narrow_cast<decltype(texture_slot_count)>(_texture_slot_count);
     }
 
     { // max render buffer size
         GLint _max_render_buffer_size = -1;
-        glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &_max_render_buffer_size);
-        gl_check_error();
+        gl_check(glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &_max_render_buffer_size));
         max_render_buffer_size = narrow_cast<decltype(texture_slot_count)>(_max_render_buffer_size);
     }
 
     { // color attachment count
         GLint _color_attachment_count = -1;
-        glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &_color_attachment_count);
-        gl_check_error();
+        gl_check(glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &_color_attachment_count));
         color_attachment_count = narrow_cast<decltype(texture_slot_count)>(_color_attachment_count);
     }
 }
@@ -167,39 +163,37 @@ void GraphicsContext::set_stencil_func(const StencilFunc func)
 
     switch (func) {
     case StencilFunc::ALWAYS:
-        glStencilFunc(GL_ALWAYS, ALL_ZEROS, ALL_ONES);
+        gl_check(glStencilFunc(GL_ALWAYS, ALL_ZEROS, ALL_ONES));
         break;
     case StencilFunc::NEVER:
-        glStencilFunc(GL_NEVER, ALL_ZEROS, ALL_ONES);
+        gl_check(glStencilFunc(GL_NEVER, ALL_ZEROS, ALL_ONES));
         break;
     case StencilFunc::LESS:
-        glStencilFunc(GL_LESS, ALL_ZEROS, ALL_ONES);
+        gl_check(glStencilFunc(GL_LESS, ALL_ZEROS, ALL_ONES));
         break;
     case StencilFunc::LEQUAL:
-        glStencilFunc(GL_LEQUAL, ALL_ZEROS, ALL_ONES);
+        gl_check(glStencilFunc(GL_LEQUAL, ALL_ZEROS, ALL_ONES));
         break;
     case StencilFunc::GREATER:
-        glStencilFunc(GL_GREATER, ALL_ZEROS, ALL_ONES);
+        gl_check(glStencilFunc(GL_GREATER, ALL_ZEROS, ALL_ONES));
         break;
     case StencilFunc::GEQUAL:
-        glStencilFunc(GL_GEQUAL, ALL_ZEROS, ALL_ONES);
+        gl_check(glStencilFunc(GL_GEQUAL, ALL_ZEROS, ALL_ONES));
         break;
     case StencilFunc::EQUAL:
-        glStencilFunc(GL_EQUAL, ALL_ZEROS, ALL_ONES);
+        gl_check(glStencilFunc(GL_EQUAL, ALL_ZEROS, ALL_ONES));
         break;
     case StencilFunc::NOTEQUAL:
-        glStencilFunc(GL_NOTEQUAL, ALL_ZEROS, ALL_ONES);
+        gl_check(glStencilFunc(GL_NOTEQUAL, ALL_ZEROS, ALL_ONES));
         break;
     }
-    gl_check_error();
 }
 
 void GraphicsContext::set_stencil_mask(const GLuint mask)
 {
     if (mask != m_state.stencil_mask) {
         m_state.stencil_mask = mask;
-        glStencilMask(mask);
-        gl_check_error();
+        gl_check(glStencilMask(mask));
     }
 }
 
@@ -319,8 +313,7 @@ void GraphicsContext::set_blend_mode(const BlendMode mode)
         assert(false);
         break;
     }
-    glBlendFuncSeparate(rgb_sfactor, rgb_dfactor, alpha_sfactor, alpha_dfactor);
-    gl_check_error();
+    gl_check(glBlendFuncSeparate(rgb_sfactor, rgb_dfactor, alpha_sfactor, alpha_dfactor));
 }
 
 void GraphicsContext::bind_texture(Texture* texture, uint slot)
@@ -344,9 +337,8 @@ void GraphicsContext::bind_texture(Texture* texture, uint slot)
         throw_runtime_error(string_format("Cannot bind invalid texture \"%s\"", texture->name().c_str()));
     }
 
-    glActiveTexture(GL_TEXTURE0 + slot);
-    glBindTexture(GL_TEXTURE_2D, texture->id());
-    gl_check_error();
+    gl_check(glActiveTexture(GL_TEXTURE0 + slot));
+    gl_check(glBindTexture(GL_TEXTURE_2D, texture->id()));
 
     m_state.texture_slots[slot] = texture->shared_from_this();
 }
@@ -364,9 +356,8 @@ void GraphicsContext::unbind_texture(uint slot)
         throw_runtime_error(ss.str());
     }
 
-    glActiveTexture(GL_TEXTURE0 + slot);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    gl_check_error();
+    gl_check(glActiveTexture(GL_TEXTURE0 + slot));
+    gl_check(glBindTexture(GL_TEXTURE_2D, 0));
 
     m_state.texture_slots[slot].reset();
 }
@@ -380,16 +371,16 @@ void GraphicsContext::unbind_all_textures()
 
 void GraphicsContext::bind_pipeline(PipelinePtr& pipeline)
 {
-    if (!pipeline) {
-        return unbind_pipeline();
-    }
+//    if (!pipeline) {
+//        return unbind_pipeline();
+//    }
 
-    if (pipeline != m_state.pipeline) {
+//    if (pipeline != m_state.pipeline) {
         gl_check(glUseProgram(0));
         gl_check(glBindProgramPipeline(pipeline->id()));
 
         m_state.pipeline = pipeline;
-    }
+//    }
 }
 
 void GraphicsContext::unbind_pipeline()
@@ -408,9 +399,7 @@ void GraphicsContext::bind_framebuffer(FrameBufferPtr& framebuffer)
         return unbind_framebuffer();
     }
     if (framebuffer != m_state.framebuffer) {
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->id());
-        gl_check_error();
-
+        gl_check(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->id()));
         m_state.framebuffer = framebuffer;
     }
 }
@@ -418,18 +407,13 @@ void GraphicsContext::bind_framebuffer(FrameBufferPtr& framebuffer)
 void GraphicsContext::unbind_framebuffer()
 {
     if (m_state.framebuffer) {
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        gl_check_error();
+        gl_check(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 
         m_state.framebuffer.reset();
     }
 }
 
-void GraphicsContext::_release_shader_compiler()
-{
-    glReleaseShaderCompiler();
-    gl_check_error();
-}
+void GraphicsContext::_release_shader_compiler() { gl_check(glReleaseShaderCompiler()); }
 
 } // namespace notf
 

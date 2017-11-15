@@ -52,7 +52,7 @@ public: // methods *************************************************************
     }
 
     /** Destructor. */
-    ~PrefabGroup() { glDeleteVertexArrays(1, &m_vao_id); }
+    ~PrefabGroup() { gl_check(glDeleteVertexArrays(1, &m_vao_id)); }
 
     /** Initializes the library.
      * Call this method once, after all prefabs have been added using PrefabFactories.
@@ -65,16 +65,16 @@ public: // methods *************************************************************
             throw_runtime_error("Cannot re-initialize a previously initialized PrefabGroup.");
         }
 
-        glGenVertexArrays(1, &m_vao_id);
+        gl_check(glGenVertexArrays(1, &m_vao_id));
         if (!m_vao_id) {
             throw_runtime_error("Failed to allocate the PrefabLibary VAO");
         }
 
-        glBindVertexArray(m_vao_id);
+        gl_check(glBindVertexArray(m_vao_id));
         m_vertex_array->init();
         m_index_array->init();
         m_instance_array->init();
-        glBindVertexArray(0); // TODO: store VAO in the GraphicsContext as a stack (like Shaders)
+        gl_check(glBindVertexArray(0)); // TODO: store VAO in the GraphicsContext as a stack (like Shaders)
     }
 
     /** Returns a prefab type by its name.
@@ -97,7 +97,7 @@ public: // methods *************************************************************
     {
         // TODO: [engine] No front-to-back sorting of prefabs globally or even just within its group
 
-        glBindVertexArray(m_vao_id);
+        gl_check(glBindVertexArray(m_vao_id));
         for (const auto& prefab_type : m_prefab_types) {
 
             // skip prefabs with no instances
@@ -116,11 +116,10 @@ public: // methods *************************************************************
             }
 
             // render all instances
-            glDrawElementsInstancedBaseVertex(GL_TRIANGLES, prefab_type->size(), m_index_array->type(), 0,
-                                              instances.size(), prefab_type->offset());
+            gl_check(glDrawElementsInstancedBaseVertex(GL_TRIANGLES, prefab_type->size(), m_index_array->type(), 0,
+                                                       instances.size(), prefab_type->offset()));
         }
-        glBindVertexArray(0);
-        gl_check_error();
+        gl_check(glBindVertexArray(0));
     }
 
 private: // fields ****************************************************************************************************/
