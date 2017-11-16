@@ -26,8 +26,6 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Geom
     std::stringstream message;
     message << "Created new Pipline: " << m_id << ",";
 
-    glBindProgramPipeline(m_id);
-
     if (m_vertex_shader) {
         assert(m_vertex_shader->is_valid());
         assert(m_vertex_shader->context() == m_graphics_context);
@@ -58,10 +56,21 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Geom
         gl_check(glValidateProgramPipeline(m_id));
         GLint is_valid = 0;
         gl_check(glGetProgramPipelineiv(m_id, GL_VALIDATE_STATUS, &is_valid));
-        if (is_valid) {
-            std::stringstream ss;
-            ss << "Failed to validate pipeline";
-            throw_runtime_error(ss.str());
+        if (!is_valid) {
+            GLint log_length = 0;
+            glGetProgramPipelineiv(m_id, GL_INFO_LOG_LENGTH, &log_length);
+            std::string error_message;
+            if (!log_length) {
+                error_message = "Failed to validate the Pipeline";
+            }
+            else {
+                error_message.resize(static_cast<size_t>(log_length), '\0');
+                glGetProgramPipelineInfoLog(m_id, log_length, nullptr, &error_message[0]);
+                if (error_message.compare(0, 7, "error:\t") != 0) { // prettify the message for logging
+                    error_message = error_message.substr(7, error_message.size() - 9);
+                }
+            }
+            throw_runtime_error(error_message);
         }
     }
 

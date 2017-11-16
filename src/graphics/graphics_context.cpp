@@ -371,16 +371,16 @@ void GraphicsContext::unbind_all_textures()
 
 void GraphicsContext::bind_pipeline(PipelinePtr& pipeline)
 {
-//    if (!pipeline) {
-//        return unbind_pipeline();
-//    }
+    if (!pipeline) {
+        return unbind_pipeline();
+    }
 
-//    if (pipeline != m_state.pipeline) {
+    if (pipeline != m_state.pipeline) {
         gl_check(glUseProgram(0));
         gl_check(glBindProgramPipeline(pipeline->id()));
 
         m_state.pipeline = pipeline;
-//    }
+    }
 }
 
 void GraphicsContext::unbind_pipeline()

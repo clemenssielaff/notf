@@ -26,7 +26,7 @@ void _gl_clear_errors();
 #ifdef NOTF_DEBUG
 #define gl_check_error() detail::_gl_check_error(__LINE__, notf::basename(__FILE__), __FUNCTION__)
 #define gl_clear_errors() detail::_gl_clear_errors()
-#define gl_check(A) A; gl_clear_errors()
+#define gl_check(A) A; gl_check_error()
 #else
 #define gl_check_error() do {} while (0)
 #define gl_clear_errors() do {} while (0)
