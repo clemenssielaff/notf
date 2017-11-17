@@ -21,7 +21,7 @@ public:
         INVALID,       ///< Invalid value - no RenderBuffer can be of this type.
         COLOR,         ///< Color buffer.
         DEPTH,         ///< Depth buffer.
-        STENCIL,       ///< Stenicl buffer.
+        STENCIL,       ///< Stencil buffer.
         DEPTH_STENCIL, ///< Buffer combining depth and stencil.
     };
 

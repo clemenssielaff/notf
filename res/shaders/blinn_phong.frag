@@ -1,6 +1,6 @@
 #version 320 es
 
-precision highp float;
+precision mediump float;
 
 in vec3 v_position;
 in vec3 v_normal;

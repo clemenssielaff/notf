@@ -9,9 +9,9 @@ layout(location = 3) in mat4 i_xform;
 
 uniform mat4 projection, modelview, normalMat;
 
-out vec3 v_position;
-out vec3 v_normal;
-out vec2 v_texcoord;
+out mediump vec3 v_position;
+out mediump vec3 v_normal;
+out mediump vec2 v_texcoord;
 
 void main(){
     gl_Position = projection * i_xform * modelview * vec4(a_position.xyz, 1.f);

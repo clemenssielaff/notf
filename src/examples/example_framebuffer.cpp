@@ -9,6 +9,7 @@
 #include "common/vector4.hpp"
 #include "common/warnings.hpp"
 #include "core/glfw.hpp"
+#include "graphics/frame_buffer.hpp"
 #include "graphics/graphics_context.hpp"
 #include "graphics/prefab_factory.hpp"
 #include "graphics/prefab_group.hpp"
@@ -60,76 +61,29 @@ void render_thread(GLFWwindow* window)
 {
     std::unique_ptr<GraphicsContext> graphics_context(new GraphicsContext(window));
 
-    //    ShaderPtr blinn_phong_shader = Shader::load(*graphics_context.get(), "Blinn-Phong",
-    //                                                "/home/clemens/code/notf/res/shaders/blinn_phong.vert",
-    //                                                "/home/clemens/code/notf/res/shaders/blinn_phong.frag");
-    //    graphics_context->bind_shader(blinn_phong_shader);
+    /////////////////////////////////////
 
-    //    VertexShaderPtr blinn_phong_vert   = VertexShader::load(graphics_context, "Blinn-Phong.vert",
-    //                                                          "/home/clemens/code/notf/res/shaders/blinn_phong.vert");
-    //    FragmentShaderPtr blinn_phong_frag = FragmentShader::load(graphics_context, "Blinn-Phong.frag",
-    //                                                              "/home/clemens/code/notf/res/shaders/blinn_phong.frag");
-    //    PipelinePtr blinn_phong_pipeline   = Pipeline::create(graphics_context, blinn_phong_vert, blinn_phong_frag);
-    //    graphics_context->bind_pipeline(blinn_phong_pipeline);
+    FrameBufferPtr framebuffer;
+    TexturePtr render_target;
+    {
+        Texture::Args targs;
+        targs.min_filter = Texture::MinFilter::LINEAR;
+        render_target    = Texture::create_empty(graphics_context, "render_target", {800, 800}, targs);
 
-    std::string vertString = load_file("/home/clemens/code/notf/res/shaders/blinn_phong.vert");
-    std::string fragString = load_file("/home/clemens/code/notf/res/shaders/blinn_phong.frag");
-    const char* vertSrc    = vertString.c_str();
-    const char* fragSrc    = fragString.c_str();
+        FrameBuffer::Args fargs;
+        fargs.color_targets = {std::make_pair(0, FrameBuffer::ColorTarget{render_target})};
 
-#if 1
-    GLuint vertProg = glCreateShaderProgramv(GL_VERTEX_SHADER, 1, &vertSrc);
-    GLuint fragProg = glCreateShaderProgramv(GL_FRAGMENT_SHADER, 1, &fragSrc);
-    GLuint pipeline = 0;
-    gl_check(glGenProgramPipelines(1, &pipeline));
-    gl_check(glUseProgramStages(pipeline, GL_VERTEX_SHADER_BIT, vertProg));
-    gl_check(glUseProgramStages(pipeline, GL_FRAGMENT_SHADER_BIT, fragProg));
-
-    gl_check(glValidateProgramPipeline(pipeline));
-    GLint is_valid = 0;
-    gl_check(glGetProgramPipelineiv(pipeline, GL_VALIDATE_STATUS, &is_valid));
-    if (!is_valid) {
-        GLint log_length = 0;
-        glGetProgramPipelineiv(pipeline, GL_INFO_LOG_LENGTH, &log_length);
-        std::string error_message;
-        if (!log_length) {
-            error_message = "Unknown error while building the Pipeline";
-        }
-        else {
-            error_message.resize(static_cast<size_t>(log_length), '\0');
-            glGetProgramPipelineInfoLog(pipeline, log_length, nullptr, &error_message[0]);
-            if (error_message.compare(0, 7, "error:\t") != 0) { // prettify the message for logging
-                error_message = error_message.substr(7, error_message.size() - 9);
-            }
-        }
-        throw_runtime_error(error_message);
+        framebuffer = std::make_shared<FrameBuffer>(*graphics_context, std::move(fargs));
     }
 
-    glUseProgram(0);
-    glBindProgramPipeline(pipeline);
+    /////////////////////////////////////
 
-    GLint modelviewLoc  = glGetUniformLocation(vertProg, "modelview");
-    GLint projectionLoc = glGetUniformLocation(vertProg, "projection");
-#else
-    GLuint vertexShader   = glCreateShader(GL_VERTEX_SHADER);
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(vertexShader, 1, &vertSrc, 0);
-    glShaderSource(fragmentShader, 1, &fragSrc, 0);
-    glCompileShader(vertexShader);
-    glCompileShader(fragmentShader);
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vertexShader);
-    glAttachShader(program, fragmentShader);
-    glLinkProgram(program);
-    glDetachShader(program, vertexShader);
-    glDetachShader(program, fragmentShader);
-    glUseProgram(program);
-    GLuint vertProg = program;
-    GLuint fragProg = program;
-
-    GLint modelviewLoc  = glGetUniformLocation(program, "modelview");
-    GLint projectionLoc = glGetUniformLocation(program, "projection");
-#endif
+    VertexShaderPtr blinn_phong_vert   = VertexShader::load(graphics_context, "Blinn-Phong.vert",
+                                                          "/home/clemens/code/notf/res/shaders/blinn_phong.vert");
+    FragmentShaderPtr blinn_phong_frag = FragmentShader::load(graphics_context, "Blinn-Phong.frag",
+                                                              "/home/clemens/code/notf/res/shaders/blinn_phong.frag");
+    PipelinePtr blinn_phong_pipeline   = Pipeline::create(graphics_context, blinn_phong_vert, blinn_phong_frag);
+    graphics_context->bind_pipeline(blinn_phong_pipeline);
 
     Texture::Args tex_args;
     tex_args.codec      = Texture::Codec::ASTC;
@@ -179,6 +133,8 @@ void render_thread(GLFWwindow* window)
         angle += 0.01 * ((frame_start_time - last_frame_start_time) / 16ms);
         last_frame_start_time = frame_start_time;
 
+        graphics_context->bind_framebuffer(framebuffer);
+
         Size2i buffer_size;
         glfwGetFramebufferSize(window, &buffer_size.width, &buffer_size.height);
         glViewport(0, 0, buffer_size.width, buffer_size.height);
@@ -196,15 +152,12 @@ void render_thread(GLFWwindow* window)
             //        const Xform3f rotate    = Xform3f::identity();
             const Matrix4f scale     = Matrix4f::scaling(200);
             const Matrix4f modelview = move * rotate * scale;
-            //            blinn_phong_vert->set_uniform("modelview", modelview);
-            glProgramUniformMatrix4fv(vertProg, modelviewLoc, /*count*/ 1, /*transpose*/ GL_FALSE, modelview.as_ptr());
+            blinn_phong_vert->set_uniform("modelview", modelview);
 
             const Matrix4f perspective = Matrix4f::perspective(deg_to_rad(90), 1, 0, 10000.f);
             //         const Xform3f perspective = Xform3f::orthographic(-1000.f, 1000.f, -1000.f, 1000.f, 0.f,
             //         10000.f);
-            //            blinn_phong_vert->set_uniform("projection", perspective);
-            glProgramUniformMatrix4fv(vertProg, projectionLoc, /*count*/ 1, /*transpose*/ GL_FALSE,
-                                      perspective.as_ptr());
+            blinn_phong_vert->set_uniform("projection", perspective);
 
             //            graphics_context->bind_pipeline(blinn_phong_pipeline);
             library.render();
@@ -212,6 +165,20 @@ void render_thread(GLFWwindow* window)
             graphics_context->unbind_texture(0);
             gl_check_error();
         }
+
+        /////////////////
+
+        graphics_context->unbind_framebuffer();
+
+        glViewport(0, 0, 800, 800);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        graphics_context->bind_texture(render_target, 0);
+        //        glGenerateMipmap(GL_TEXTURE_2D);
+
+        library.render();
+
+        /////////////////
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -221,7 +188,9 @@ void render_thread(GLFWwindow* window)
     }
 
     // clean up
-    //    graphics_context->unbind_shader();
+    graphics_context->unbind_all_textures();
+    graphics_context->unbind_framebuffer();
+    graphics_context->unbind_pipeline();
 }
 
 int framebuffer_main(int /*argc*/, char* /*argv*/ [])

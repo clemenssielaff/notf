@@ -80,6 +80,8 @@ add_sources(THIRDPARTY_FILES thirdparty
 add_sources(RESOURCE_FILES res
     shaders/cell.frag
     shaders/cell.vert
+    shaders/blinn_phong.vert
+    shaders/blinn_phong.frag
 )
 
 add_executable(notf
