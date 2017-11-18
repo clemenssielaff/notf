@@ -47,7 +47,6 @@ struct InstanceXform : public AttributeTrait {
     using type                     = Matrix4f;
     using kind                     = AttributeKind::Other;
 };
-} // namespace
 
 static void error_callback(int error, const char* description)
 {
@@ -195,6 +194,8 @@ void render_thread(GLFWwindow* window)
     graphics_context->unbind_framebuffer();
     graphics_context->unbind_pipeline();
 }
+
+} // namespace
 
 int framebuffer_main(int /*argc*/, char* /*argv*/ [])
 {

@@ -347,7 +347,7 @@ private:
     }
 
     // fields --------------------------------------------------------------------------------------------------------//
-private:
+//private:
     /// @brief Vertices stored in the array.
     std::vector<Vertex> m_vertices;
 

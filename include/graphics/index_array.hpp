@@ -127,7 +127,7 @@ public: // methods *************************************************************
 
     virtual GLuint restart_index() const override { return static_cast<GLuint>(std::numeric_limits<index_t>::max()); }
 
-private: // fields ****************************************************************************************************/
+//private: // fields ****************************************************************************************************/
     /** Index data. */
     std::vector<index_t> m_indices;
 };

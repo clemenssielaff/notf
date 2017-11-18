@@ -113,14 +113,14 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
 }
 
 PipelinePtr
-Pipeline::create(GraphicsContext& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
+Pipeline::create(GraphicsContextPtr& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
                  GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader)
 {
 #ifdef NOTF_DEBUG
-    return PipelinePtr(new Pipeline(context, std::move(vertex_shader), std::move(tesselation_shader),
+    return PipelinePtr(new Pipeline(*context, std::move(vertex_shader), std::move(tesselation_shader),
                                     std::move(geometry_shader), std::move(fragment_shader)));
 #else
-    return std::make_shared<make_shared_enabler<Pipeline>>(context, std::move(vertex_shader),
+    return std::make_shared<make_shared_enabler<Pipeline>>(*context, std::move(vertex_shader),
                                                            std::move(tesselation_shader), std::move(geometry_shader),
                                                            std::move(fragment_shader));
 #endif

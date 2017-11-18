@@ -66,6 +66,7 @@ create_module(dynamic)
 create_module(graphics)
 create_module(utils)
 create_module(compat)
+create_module(examples)
 
 add_sources(SOURCE_FILES src
     main.cpp
@@ -82,6 +83,11 @@ add_sources(RESOURCE_FILES res
     shaders/cell.vert
     shaders/blinn_phong.vert
     shaders/blinn_phong.frag
+    shaders/line.vert
+    shaders/line.tess
+    shaders/line.eval
+    shaders/line.geo
+    shaders/line.frag
 )
 
 add_executable(notf
@@ -91,6 +97,7 @@ add_executable(notf
     ${graphics_MODULE}
     ${utils_MODULE}
     ${compat_MODULE}
+    ${examples_MODULE}
     ${SOURCE_FILES}
     ${THIRDPARTY_FILES}
     ${RESOURCE_FILES}

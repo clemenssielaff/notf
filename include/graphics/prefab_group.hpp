@@ -13,13 +13,12 @@
 
 namespace notf {
 
-//*********************************************************************************************************************/
+// ===================================================================================================================//
 
-/** A prefab group contains 0-n prefabs that share the same vertex layout, and are rendered with the same shader.
- * It contains a single vertex buffer containing the vertices of all prefab types and a single index array to store
- * indices into the vertex buffer.
- * The group also contains an instance buffer that is repeatedly filled by each prefab type to render its instances.
- */
+/// A prefab group contains 0-n prefabs that share the same vertex layout, and are rendered with the same shader.
+/// It contains a single vertex buffer containing the vertices of all prefab types and a single index array to store
+/// indices into the vertex buffer.
+/// The group also contains an instance buffer that is repeatedly filled by each prefab type to render its instances.
 template<typename VERTEX_ARRAY, typename INSTANCE_ARRAY, ENABLE_IF_SUBCLASS(VERTEX_ARRAY, VertexArrayType),
          ENABLE_IF_SUBCLASS(INSTANCE_ARRAY, VertexArrayType)>
 class PrefabGroup {
@@ -27,17 +26,19 @@ class PrefabGroup {
     template<typename>
     friend class PrefabFactory;
 
-public: // types ******************************************************************************************************/
+    // types ---------------------------------------------------------------------------------------------------------//
+public:
     using vertex_array_t = VERTEX_ARRAY;
 
     using instance_array_t = INSTANCE_ARRAY;
 
     using InstanceData = typename instance_array_t::Vertex;
 
-public: // methods ****************************************************************************************************/
+    // methods -------------------------------------------------------------------------------------------------------//
+public:
     DISALLOW_COPY_AND_ASSIGN(PrefabGroup)
 
-    /** Constructor. */
+    /// @brief Default constructor.
     PrefabGroup()
         : m_vao_id(0)
         , m_vertex_array(std::make_unique<VERTEX_ARRAY>())
@@ -51,14 +52,13 @@ public: // methods *************************************************************
         m_instance_array           = std::make_unique<INSTANCE_ARRAY>(std::move(instance_args));
     }
 
-    /** Destructor. */
+    /// @brief Destructor.
     ~PrefabGroup() { gl_check(glDeleteVertexArrays(1, &m_vao_id)); }
 
-    /** Initializes the library.
-     * Call this method once, after all prefabs have been added using PrefabFactories.
-     * @throws std::runtime_error   If the PrefabGroup has already been initialized once.
-     * @throws std::runtime_error   If the OpenGL VAO could not be generated.
-     */
+    /// @brief Initializes the library.
+    /// Call this method once, after all prefabs have been added using PrefabFactories.
+    /// @throws std::runtime_error   If the PrefabGroup has already been initialized once.
+    /// @throws std::runtime_error   If the OpenGL VAO could not be generated.
     void init()
     {
         if (m_vao_id) {
@@ -74,12 +74,11 @@ public: // methods *************************************************************
         m_vertex_array->init();
         m_index_array->init();
         m_instance_array->init();
-        gl_check(glBindVertexArray(0)); // TODO: store VAO in the GraphicsContext as a stack (like Shaders)
+        gl_check(glBindVertexArray(0));
     }
 
-    /** Returns a prefab type by its name.
-     * @throws std::runtime_error   If the name is unknown.
-     */
+    /// @brief Returns a prefab type by its name.
+    /// @throws std::runtime_error   If the name is unknown.
     std::shared_ptr<PrefabType<InstanceData>> prefab_type(std::string& name)
     {
         for (auto& type : m_prefab_types) {
@@ -92,7 +91,7 @@ public: // methods *************************************************************
         throw std::runtime_error(ss.str());
     }
 
-    /** Go through all prefab types of this group and render all instances of each type. */
+    /// @brief Go through all prefab types of this group and render all instances of each type.
     void render()
     {
         // TODO: [engine] No front-to-back sorting of prefabs globally or even just within its group
@@ -122,7 +121,8 @@ public: // methods *************************************************************
         gl_check(glBindVertexArray(0));
     }
 
-private: // fields ****************************************************************************************************/
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
     /** OpenGL handle of the internal vertex array object. */
     GLuint m_vao_id;
 

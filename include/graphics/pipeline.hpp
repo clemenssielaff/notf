@@ -7,7 +7,7 @@ namespace notf {
 
 /// @brief Render Pipeline
 /// Is not managed by the context, but keeps their Shaders alive.
-class Pipeline : public std::enable_shared_from_this<Pipeline> {
+class Pipeline final : public std::enable_shared_from_this<Pipeline> {
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
@@ -28,12 +28,19 @@ public:
     /// @param geometry_shader      Geometry shader to use in the Pipeline.
     /// @param fragment_shader      Fragment shader to use in the Pipeline.
     static PipelinePtr
-    create(GraphicsContext& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
+    create(GraphicsContextPtr& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
            GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader);
+
     static PipelinePtr
-    create(std::unique_ptr<GraphicsContext>& context, VertexShaderPtr vertex_shader, FragmentShaderPtr fragment_shader)
+    create(GraphicsContextPtr& context, VertexShaderPtr vertex_shader, FragmentShaderPtr fragment_shader)
     {
-        return create(*context, std::move(vertex_shader), {}, {}, std::move(fragment_shader));
+        return create(context, std::move(vertex_shader), {}, {}, std::move(fragment_shader));
+    }
+
+    static PipelinePtr create(GraphicsContextPtr& context, VertexShaderPtr vertex_shader,
+                              TesselationShaderPtr tesselation_shader, FragmentShaderPtr fragment_shader)
+    {
+        return create(context, std::move(vertex_shader), std::move(tesselation_shader), {}, std::move(fragment_shader));
     }
 
     /// @brief Destructor.

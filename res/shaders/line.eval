@@ -1,0 +1,24 @@
+#version 320 es
+
+precision highp float;
+
+//layout (quads) in;
+layout (triangles, equal_spacing, cw) in;
+
+out vec3 te_patch_distance;
+
+uniform mat4 projection;
+
+void main(void){
+    // quad
+//    vec4 p1 = mix(gl_in[1].gl_Position, gl_in[0].gl_Position, gl_TessCoord.x);
+//    vec4 p2 = mix(gl_in[2].gl_Position, gl_in[3].gl_Position, gl_TessCoord.x);
+//    vec4 pos = mix(p1, p2, gl_TessCoord.y);
+
+    // triangle
+    vec4 pos = (gl_TessCoord.x * gl_in[0].gl_Position + gl_TessCoord.y * gl_in[1].gl_Position + gl_TessCoord.z * gl_in[2].gl_Position);
+
+    gl_Position = projection * pos;
+
+    te_patch_distance = gl_TessCoord;
+}

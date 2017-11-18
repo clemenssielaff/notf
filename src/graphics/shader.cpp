@@ -90,7 +90,7 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
         gl_check(glDeleteShader(shader));
 
         std::stringstream ss;
-        ss << "Failed to compile " << *stage_name << " stage for shader \"" << program_name << "\"\n\t"
+        ss << "Failed to compile " << stage_name << " stage for shader \"" << program_name << "\"\n\t"
            << error_message.data();
         throw_runtime_error(ss.str());
     }
