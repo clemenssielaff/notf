@@ -11,6 +11,7 @@
 #include "core/glfw.hpp"
 #include "graphics/frame_buffer.hpp"
 #include "graphics/graphics_context.hpp"
+#include "graphics/pipeline.hpp"
 #include "graphics/prefab_factory.hpp"
 #include "graphics/prefab_group.hpp"
 #include "graphics/shader.hpp"
@@ -78,11 +79,13 @@ void render_thread(GLFWwindow* window)
 
     /////////////////////////////////////
 
-    VertexShaderPtr blinn_phong_vert   = VertexShader::load(graphics_context, "Blinn-Phong.vert",
-                                                          "/home/clemens/code/notf/res/shaders/blinn_phong.vert");
-    FragmentShaderPtr blinn_phong_frag = FragmentShader::load(graphics_context, "Blinn-Phong.frag",
-                                                              "/home/clemens/code/notf/res/shaders/blinn_phong.frag");
-    PipelinePtr blinn_phong_pipeline   = Pipeline::create(graphics_context, blinn_phong_vert, blinn_phong_frag);
+    const std::string vertex_src     = load_file("/home/clemens/code/notf/res/shaders/blinn_phong.vert");
+    VertexShaderPtr blinn_phong_vert = VertexShader::build(graphics_context, "Blinn-Phong.vert", vertex_src.c_str());
+
+    const std::string frag_src         = load_file("/home/clemens/code/notf/res/shaders/blinn_phong.frag");
+    FragmentShaderPtr blinn_phong_frag = FragmentShader::build(graphics_context, "Blinn-Phong.frag", frag_src.c_str());
+
+    PipelinePtr blinn_phong_pipeline = Pipeline::create(graphics_context, blinn_phong_vert, blinn_phong_frag);
     graphics_context->bind_pipeline(blinn_phong_pipeline);
 
     Texture::Args tex_args;

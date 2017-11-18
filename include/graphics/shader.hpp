@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "./gl_forwards.hpp"
-#include "./pipeline.hpp"
 #include "common/forwards.hpp"
 
 namespace notf {
@@ -52,47 +51,58 @@ public:
         std::string name;
     };
 
+    struct Stage {
+        /// @brief Individual Shader stages.
+        enum Flag : unsigned char {
+            // implicit zero value for default-initialized Stage
+            VERTEX          = 1u << 0, ///< Vertex stage.
+            TESS_CONTROL    = 1u << 1, ///< Tesselation control stage.
+            TESS_EVALUATION = 1u << 2, ///< Tesselation evaluation stage.
+            GEOMETRY        = 1u << 3, ///< Geometry stage.
+            FRAGMENT        = 1u << 4, ///< Fragment stage.
+            COMPUTE         = 1u << 5, ///< Compute shader (not a stage in the pipeline).
+        };
+
+        /// @brief Combination of Shader stages.
+        using Flags = std::underlying_type_t<Flag>;
+    };
+
+protected:
+    /// @brief Construction arguments.
+    struct Args {
+        const char* vertex_source    = nullptr;
+        const char* tess_ctrl_source = nullptr;
+        const char* tess_eval_source = nullptr;
+        const char* geometry_source  = nullptr;
+        const char* fragment_source  = nullptr;
+        const char* compute_source   = nullptr;
+    };
+
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
-    /// @brief Value Constructor.
+    /// @brief Constructor.
     /// @param context  Render Context in which the Shader lives.
     /// @param id       OpenGL Shader program ID.
+    /// @param stages   Pipeline stage/s of the Shader.
     /// @param name     Context-unique name of this Shader.
-    Shader(GraphicsContextPtr& context, const GLuint id, std::string name);
+    Shader(GraphicsContextPtr& context, const GLuint id, Stage::Flags stages, std::string name);
 
-    /// @brief Builds a new OpenGL ES Shader stage from a raw source.
-    /// @param context  Graphics Context in which the Shader lives.
+    /// @brief Factory.
+    /// @param context  Render Context in which the Shader lives.
     /// @param name     Context-unique name of this Shader.
-    /// @param stage    Pipeline stage of the Shader.
-    /// @param source   Shader source.
-    /// @throws std::runtime_error  If the name is not unique.
-    /// @throws std::runtime_error  If the compilation / linking failed.
-    /// @return New Shader instance.
-    static ShaderPtr
-    _build(GraphicsContextPtr& context, std::string name, const Pipeline::Stage stage, const char* source);
+    /// @param args     Construction arguments.
+    /// @return OpenGL Shader program ID.
+    static GLuint _build(GraphicsContextPtr& context, const std::string& name, const Args& args);
 
-    /// @brief Loads a new OpenGL ES Shader stage from a shader file.
-    /// @param context  Graphics Context in which the Shader lives.
-    /// @param name     Context-unique name of this Shader.
-    /// @param stage    Pipeline stage of the Shader.
-    /// @param source   Shader source.
-    /// @throws std::runtime_error  If the compilation / linking failed.
-    /// @return New Shader instance.
-    static ShaderPtr
-    _load(GraphicsContextPtr& context, std::string name, const Pipeline::Stage stage, const std::string& file);
-
-    // TODO: Shader::load is the wrong abstraction level
-    // Shader::build should suffice, the loading of files from disc should be managed by a resource manager that ingests
-    // a JSON file
+    /// @brief Registers the given Shader with its context.
+    /// @param shader   Shader to register.
+    static void _register_with_context(ShaderPtr shader);
 
 public:
     DISALLOW_COPY_AND_ASSIGN(Shader)
 
     /// @brief Destructor
     virtual ~Shader();
-
-    /// @brief Pipeline stage of the Shader.
-    virtual Pipeline::Stage stage() const = 0;
 
     /// @brief Graphics Context in which the Texture lives.
     GraphicsContext& context() const { return m_graphics_context; }
@@ -104,6 +114,9 @@ public:
     /// A Shader should always be valid - the only way to get an invalid one is to remove the GraphicsContext while
     /// still holding on to shared pointers of a Shader that lived in the removed GraphicsContext.
     bool is_valid() const { return m_id != 0; }
+
+    /// @brief Pipeline stage/s of the Shader.
+    Stage::Flags stage() const { return m_stages; }
 
     /// @brief The context-unique name of this Shader.
     const std::string& name() const { return m_name; }
@@ -140,6 +153,9 @@ private:
     //// @brief ID of the shader program.
     GLuint m_id;
 
+    /// @brief All stages contained in this Shader.
+    const Stage::Flags m_stages;
+
     /// @brief The context-unique name of this Shader.
     const std::string m_name;
 
@@ -170,8 +186,6 @@ void Shader::set_uniform(const std::string&, const Matrix4f& value);
 /// @brief Vertex Shader.
 class VertexShader : public Shader {
 
-    friend class Shader;
-
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// @brief Value Constructor.
@@ -181,13 +195,11 @@ protected:
     VertexShader(GraphicsContextPtr& context, const GLuint program, std::string name);
 
 public:
-    static VertexShaderPtr load(GraphicsContextPtr& context, std::string name, const std::string& file)
-    {
-        return std::static_pointer_cast<VertexShader>(_load(context, std::move(name), Pipeline::Stage::VERTEX, file));
-    }
-
-    /// @brief Pipeline stage of the Shader.
-    virtual Pipeline::Stage stage() const override final { return Pipeline::Stage::VERTEX; }
+    /// @brief Factory.
+    /// @param context  Render Context in which the Shader lives.
+    /// @param name     Human readable name of the Shader.
+    /// @param source   Vertex shader source.
+    static VertexShaderPtr build(GraphicsContextPtr& context, std::string name, const char* source);
 
     /// @brief Returns the location of the attribute with the given name.
     /// @throws std::runtime_error   If there is no attribute with the given name in this shader.
@@ -204,10 +216,30 @@ private:
 
 // ===================================================================================================================//
 
+/// @brief Tesselation Shader.
+class TesselationShader : public Shader {
+
+    // methods -------------------------------------------------------------------------------------------------------//
+protected:
+    /// @brief Value Constructor.
+    /// @param context  Render Context in which the Shader lives.
+    /// @param program  OpenGL Shader program ID.
+    /// @param name     Human readable name of the Shader.
+    TesselationShader(GraphicsContextPtr& context, const GLuint program, std::string name);
+
+public:
+    /// @brief Factory.
+    /// @param context  Render Context in which the Shader lives.
+    /// @param name     Human readable name of the Shader.
+    /// @param source   Vertex shader source.
+    static TesselationShaderPtr
+    build(GraphicsContextPtr& context, std::string name, const char* control_source, const char* evaluation_source);
+};
+
+// ===================================================================================================================//
+
 /// @brief Geometry Shader.
 class GeometryShader : public Shader {
-
-    friend class Shader;
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
@@ -218,22 +250,17 @@ protected:
     GeometryShader(GraphicsContextPtr& context, const GLuint program, std::string name);
 
 public:
-    static GeometryShaderPtr load(GraphicsContextPtr& context, std::string name, const std::string& file)
-    {
-        return std::static_pointer_cast<GeometryShader>(
-            _load(context, std::move(name), Pipeline::Stage::GEOMETRY, file));
-    }
-
-    /// @brief Pipeline stage of the Shader.
-    virtual Pipeline::Stage stage() const override final { return Pipeline::Stage::GEOMETRY; }
+    /// @brief Factory.
+    /// @param context  Render Context in which the Shader lives.
+    /// @param name     Human readable name of the Shader.
+    /// @param source   Vertex shader source.
+    static GeometryShaderPtr build(GraphicsContextPtr& context, std::string name, const char* source);
 };
 
 // ===================================================================================================================//
 
 /// @brief Fragment Shader.
 class FragmentShader : public Shader {
-
-    friend class Shader;
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
@@ -244,14 +271,11 @@ protected:
     FragmentShader(GraphicsContextPtr& context, const GLuint program, std::string name);
 
 public:
-    static FragmentShaderPtr load(GraphicsContextPtr& context, std::string name, const std::string& file)
-    {
-        return std::static_pointer_cast<FragmentShader>(
-            _load(context, std::move(name), Pipeline::Stage::FRAGMENT, file));
-    }
-
-    /// @brief Pipeline stage of the Shader.
-    virtual Pipeline::Stage stage() const override final { return Pipeline::Stage::FRAGMENT; }
+    /// @brief Factory.
+    /// @param context  Render Context in which the Shader lives.
+    /// @param name     Human readable name of the Shader.
+    /// @param source   Vertex shader source.
+    static FragmentShaderPtr build(GraphicsContextPtr& context, std::string name, const char* source);
 };
 
 } // namespace notf

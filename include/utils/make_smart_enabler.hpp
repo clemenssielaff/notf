@@ -1,17 +1,17 @@
 #pragma once
 
-#include <memory>
+#include <utility>
 
 namespace notf {
 
-// https://stackoverflow.com/a/8147213/3444217 and https://stackoverflow.com/a/25069711/3444217
+/// @brief Helper struct to allow `std::make_shared` to work with protected constructors.
+/// from:
+///     https://stackoverflow.com/a/8147213/3444217 and https://stackoverflow.com/a/25069711/3444217
 template<typename T>
-class MakeSmartEnabler : public T { // TODO: get rid of MakeSmartEnabler wherever possible
-public:
+struct make_shared_enabler : public T {
     template<typename... Args>
-    MakeSmartEnabler(Args&&... args) : T(std::forward<Args>(args)...)
-    {
-    }
+    make_shared_enabler(Args&&... args) : T(std::forward<Args>(args)...)
+    {}
 };
 
 } // namespace notf

@@ -30,6 +30,7 @@ DEFINE_SHARED_POINTERS(class, VertexShader);
 DEFINE_SHARED_POINTERS(class, FragmentShader);
 DEFINE_SHARED_POINTERS(class, GeometryShader);
 DEFINE_SHARED_POINTERS(class, Texture);
+DEFINE_SHARED_POINTERS(class, TesselationShader);
 DEFINE_SHARED_POINTERS(class, FrameBuffer);
 DEFINE_SHARED_POINTERS(class, RenderBuffer);
 DEFINE_SHARED_POINTERS(class, Pipeline);
