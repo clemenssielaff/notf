@@ -59,11 +59,16 @@ void render_thread(GLFWwindow* window)
     TesselationShaderPtr tess_shader
         = TesselationShader::build(graphics_context, "Line.tess", tess_src.c_str(), eval_src.c_str());
 
+#if 1
     const std::string geom_src   = load_file("/home/clemens/code/notf/res/shaders/line.geo");
     GeometryShaderPtr geo_shader = GeometryShader::build(graphics_context, "Line.geo", geom_src.c_str());
-//    GeometryShaderPtr geo_shader = {};
 
     const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/line.frag");
+#else
+    GeometryShaderPtr geo_shader = {};
+
+    const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/line_no_wf.frag");
+#endif
     FragmentShaderPtr frag_shader = FragmentShader::build(graphics_context, "Line.frag", frag_src.c_str());
 
     PipelinePtr pipeline = Pipeline::create(graphics_context, vertex_shader, tess_shader, geo_shader, frag_shader);
@@ -94,11 +99,16 @@ void render_thread(GLFWwindow* window)
     // render loop
     using namespace std::chrono_literals;
     auto last_frame_start_time = std::chrono::high_resolution_clock::now();
-    float angle                = 0;
+    size_t frame_counter = 0;
     while (!glfwWindowShouldClose(window)) {
         auto frame_start_time = std::chrono::high_resolution_clock::now();
-        angle += 0.01 * ((frame_start_time - last_frame_start_time) / 16ms);
-        last_frame_start_time = frame_start_time;
+        //last_frame_start_time = frame_start_time;
+        if(frame_start_time - last_frame_start_time > 1s){
+            last_frame_start_time = frame_start_time;
+            log_info << frame_counter << "fps";
+            frame_counter = 0;
+        }
+        ++frame_counter;
 
         Size2i buffer_size;
         glfwGetFramebufferSize(window, &buffer_size.width, &buffer_size.height);
@@ -122,8 +132,8 @@ void render_thread(GLFWwindow* window)
         glfwSwapBuffers(window);
         glfwPollEvents();
 
-        const auto sleep_time = max(0ms, 16ms - (std::chrono::high_resolution_clock::now() - frame_start_time));
-        std::this_thread::sleep_for(sleep_time);
+//        const auto sleep_time = max(0ms, 16ms - (std::chrono::high_resolution_clock::now() - frame_start_time));
+//        std::this_thread::sleep_for(sleep_time);
     }
 
     // clean up
@@ -134,7 +144,7 @@ void render_thread(GLFWwindow* window)
 
 } // namespace
 
-int line_main(int /*argc*/, char* /*argv*/ [])
+int wireframe_main(int /*argc*/, char* /*argv*/ [])
 {
     // install the log handler first, to catch errors right away
     auto log_handler = std::make_unique<LogHandler>(128, 200);
