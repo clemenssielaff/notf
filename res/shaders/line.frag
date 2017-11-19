@@ -2,23 +2,34 @@
 
 precision mediump float;
 
-in vec3 g_tri_distance;
-in vec3 g_patch_distance;
+in VertexData {
+    vec2 position;
+    vec3 tri_distance;
+    vec3 patch_distance;
+} v_in;
 
 layout(location=0) out vec4 f_color;
 
-float amplify(float d, float scale, float offset)
-{
-    d = scale * d + offset;
-    d = clamp(d, 0.0f, 1.0f);
-    d = 1.0f - exp2(-2.0f*d*d);
-    return d;
-}
+const float PATCH_LINE_WIDTH = 0.5f;
+const float TRI_LINE_WIDTH = 0.25f;
+const float LINE_AA = 0.75f;
+
+const float TRI_WEIGHT = 0.2f;
+const float PATCH_WEIGHT = 1.0f;
+
+const float ZERO = 0.0f;
+const float ONE = 1.0f;
 
 void main() {
-    vec3 color = vec3(0.5f, 0.5f, 0.5f);
-    float d1 = min(min(g_tri_distance.x, g_tri_distance.y), g_tri_distance.z);
-    float d2 = min(min(g_patch_distance.x, g_patch_distance.y), g_patch_distance.z);
-    color = amplify(d1, 80.0f, -0.5f) * amplify(d2, 120.0f, -0.5f) * color;
-    f_color = vec4(color, 1.0f);
+    vec3 color = vec3(v_in.position / 800.f, ZERO);
+
+    float tri_dist = min(min(v_in.tri_distance.x, v_in.tri_distance.y), v_in.tri_distance.z);
+    float patch_dist = min(min(v_in.patch_distance.x, v_in.patch_distance.y), v_in.patch_distance.z);
+
+    float tri_offset = (ONE - smoothstep(TRI_LINE_WIDTH, TRI_LINE_WIDTH + LINE_AA, tri_dist)) * TRI_WEIGHT;
+    float patch_offset = (ONE - smoothstep(PATCH_LINE_WIDTH, PATCH_LINE_WIDTH + LINE_AA, patch_dist)) * PATCH_WEIGHT;
+
+    color = min(vec3(ONE, ONE, ONE), color + tri_offset + patch_offset);
+
+    f_color = vec4(color, ONE);
 }

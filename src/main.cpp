@@ -3,6 +3,6 @@
 
 int main(int argc, char* argv [])
 {
-    return framebuffer_main(argc, argv);
-//    return line_main(argc, argv);
+//    return framebuffer_main(argc, argv);
+    return line_main(argc, argv);
 }

@@ -5,25 +5,44 @@ precision highp float;
 layout(triangles) in;
 layout(triangle_strip, max_vertices = 3) out;
 
-in vec3 te_patch_distance[3];
+in VertexData {
+    vec2 position;
+    mediump vec3 patch_distance;
+} v_in[];
 
-out mediump vec3 g_tri_distance;
-out mediump vec3 g_patch_distance;
+out VertexData {
+    mediump vec2 position;
+    mediump vec3 tri_distance;
+    mediump vec3 patch_distance;
+} v_out;
+
+const float ZERO = 0.f;
+
+float height(vec2 p, vec2 a, vec2 b)
+{
+    return abs(((b.y - a.y) * p.x) - ((b.x - a.x) * p.y) + (b.x * a.y) - (b.y * a.x)) / length(a - b);
+}
 
 void main()
 {
-    g_patch_distance = te_patch_distance[0];
-    g_tri_distance = vec3(1, 0, 0);
+    v_out.position = v_in[0].position;
+    v_out.tri_distance = vec3(height(v_in[0].position, v_in[1].position, v_in[2].position), ZERO, ZERO);
+    v_out.patch_distance = v_in[0].patch_distance;
+
     gl_Position = gl_in[0].gl_Position;
     EmitVertex();
 
-    g_patch_distance = te_patch_distance[1];
-    g_tri_distance = vec3(0, 1, 0);
+    v_out.position = v_in[1].position;
+    v_out.tri_distance = vec3(ZERO, height(v_in[1].position, v_in[0].position, v_in[2].position), ZERO);
+    v_out.patch_distance = v_in[1].patch_distance;
+
     gl_Position = gl_in[1].gl_Position;
     EmitVertex();
 
-    g_patch_distance = te_patch_distance[2];
-    g_tri_distance = vec3(0, 0, 1);
+    v_out.position = v_in[2].position;
+    v_out.tri_distance = vec3(ZERO, ZERO, height(v_in[2].position, v_in[0].position, v_in[1].position));
+    v_out.patch_distance = v_in[2].patch_distance;
+
     gl_Position = gl_in[2].gl_Position;
     EmitVertex();
 

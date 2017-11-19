@@ -5,20 +5,41 @@ precision highp float;
 //layout (quads) in;
 layout (triangles, equal_spacing, cw) in;
 
-out vec3 te_patch_distance;
+in VertexData {
+    vec2 position;
+} v_in[];
+
+out VertexData {
+    vec2 position;
+    mediump vec3 patch_distance;
+} v_out;
 
 uniform mat4 projection;
 
-void main(void){
+float height(vec2 p, vec2 a, vec2 b)
+{
+    return abs(((b.y - a.y) * p.x) - ((b.x - a.x) * p.y) + (b.x * a.y) - (b.y * a.x)) / length(a - b);
+}
+
+void main(){
     // quad
 //    vec4 p1 = mix(gl_in[1].gl_Position, gl_in[0].gl_Position, gl_TessCoord.x);
 //    vec4 p2 = mix(gl_in[2].gl_Position, gl_in[3].gl_Position, gl_TessCoord.x);
 //    vec4 pos = mix(p1, p2, gl_TessCoord.y);
 
     // triangle
-    vec4 pos = (gl_TessCoord.x * gl_in[0].gl_Position + gl_TessCoord.y * gl_in[1].gl_Position + gl_TessCoord.z * gl_in[2].gl_Position);
+    gl_Position = projection * (
+              gl_TessCoord.x * gl_in[0].gl_Position
+            + gl_TessCoord.y * gl_in[1].gl_Position
+            + gl_TessCoord.z * gl_in[2].gl_Position);
 
-    gl_Position = projection * pos;
+    v_out.position = (
+              gl_TessCoord.x * v_in[0].position
+            + gl_TessCoord.y * v_in[1].position
+            + gl_TessCoord.z * v_in[2].position);
 
-    te_patch_distance = gl_TessCoord;
+    v_out.patch_distance = vec3(
+            gl_TessCoord.x * height(v_in[0].position, v_in[1].position, v_in[2].position),
+            gl_TessCoord.y * height(v_in[1].position, v_in[0].position, v_in[2].position),
+            gl_TessCoord.z * height(v_in[2].position, v_in[0].position, v_in[1].position));
 }
