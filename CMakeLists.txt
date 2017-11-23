@@ -45,9 +45,9 @@ add_subdirectory(/home/clemens/code/thirdparty/freetype-2.8.1/ thirdparty/freety
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g -DNOTF_DEBUG")
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
 
 if(USE_LIBCXX)
+    set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
     set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-stdlib=libc++")
 endif()
 
@@ -151,6 +151,30 @@ target_link_libraries(notf-test
     glfw
     freetype
     ${PYTHON_LIBRARIES}
+)
+
+# BENCHMARK ############################################################################################################
+
+include_directories(
+    /home/clemens/code/thirdparty/benchmark/INSTALL/include/
+)
+
+add_sources(BENCHMARK_SOURCES benchmark
+    bench_vector4.cpp
+    benchmark.cpp
+)
+
+add_executable(notf-benchmark
+    ${common_MODULE}
+    ${utils_MODULE}
+    ${BENCHMARK_SOURCES}
+    ${THIRDPARTY_FILES}
+)
+
+target_link_libraries(notf-benchmark
+    /home/clemens/code/thirdparty/benchmark/INSTALL/lib/libbenchmark.a
+    glfw
+    pthread
 )
 
 # CCACHE ###############################################################################################################

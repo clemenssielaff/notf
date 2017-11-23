@@ -50,6 +50,7 @@ const char* status_to_str(const GLenum status)
     default:
         assert(0);
     }
+    return nullptr;
 }
 
 } // namespace

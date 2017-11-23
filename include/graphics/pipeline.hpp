@@ -7,7 +7,7 @@ namespace notf {
 
 /// @brief Render Pipeline
 /// Is not managed by the context, but keeps their Shaders alive.
-class Pipeline final : public std::enable_shared_from_this<Pipeline> {
+class Pipeline : public std::enable_shared_from_this<Pipeline> {
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:

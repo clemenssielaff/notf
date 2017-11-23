@@ -71,8 +71,7 @@ struct ArithmeticImpl<self_t, element_t, component_t, dim,
     /// @brief Perfect forwarding constructor.
     template<typename... ARGS>
     ArithmeticImpl(ARGS&&... args) : data{std::forward<ARGS>(args)...}
-    {
-    }
+    {}
 
     ArithmeticImpl(std::array<component_t, dim> data) : data(std::move(data)) {}
 
@@ -247,8 +246,7 @@ struct ArithmeticImpl<self_t, element_t, component_t, dim,
     /// @brief Perfect forwarding constructor.
     template<typename... ARGS>
     ArithmeticImpl(ARGS&&... args) : data{std::forward<ARGS>(args)...}
-    {
-    }
+    {}
 
     /// @brief Create a matrix with all elements set to the given value.
     /// @param value    Value to set.
@@ -396,8 +394,7 @@ struct Arithmetic : public ArithmeticImpl<SELF, typename get_element_type<COMPON
     /// @brief Perfect forwarding constructor.
     template<typename... T>
     Arithmetic(T&&... ts) : super_t{std::forward<T>(ts)...}
-    {
-    }
+    {}
 
     /// @brief Set all elements to zero.
     static self_t zero() { return super_t::fill(0); }
@@ -453,9 +450,8 @@ struct Arithmetic : public ArithmeticImpl<SELF, typename get_element_type<COMPON
     self_t operator+(const self_t& other) const
     {
         self_t result;
-        result.data = data;
         for (size_t i = 0; i < DIMENSIONS; ++i) {
-            result[i] += other[i];
+            result[i] = data[i] + other[i];
         }
         return result;
     }
@@ -475,9 +471,8 @@ struct Arithmetic : public ArithmeticImpl<SELF, typename get_element_type<COMPON
     self_t operator-(const self_t& other) const
     {
         self_t result;
-        result.data = data;
         for (size_t i = 0; i < DIMENSIONS; ++i) {
-            result[i] -= other[i];
+            result[i] = data[i] - other[i];
         }
         return result;
     }
@@ -497,9 +492,8 @@ struct Arithmetic : public ArithmeticImpl<SELF, typename get_element_type<COMPON
     self_t operator*(const self_t& other) const
     {
         self_t result;
-        result.data = data;
         for (size_t i = 0; i < DIMENSIONS; ++i) {
-            result[i] *= other[i];
+            result[i] = data[i] * other[i];
         }
         return result;
     }
@@ -519,9 +513,8 @@ struct Arithmetic : public ArithmeticImpl<SELF, typename get_element_type<COMPON
     self_t operator*(const element_t factor) const
     {
         self_t result;
-        result.data = data;
         for (size_t i = 0; i < DIMENSIONS; ++i) {
-            result[i] *= factor;
+            result[i] = data[i] * factor;
         }
         return result;
     }
@@ -541,9 +534,8 @@ struct Arithmetic : public ArithmeticImpl<SELF, typename get_element_type<COMPON
     self_t operator/(const self_t& other) const
     {
         self_t result;
-        result.data = data;
         for (size_t i = 0; i < DIMENSIONS; ++i) {
-            result[i] /= other[i];
+            result[i] = data[i] / other[i];
         }
         return result;
     }
@@ -563,9 +555,8 @@ struct Arithmetic : public ArithmeticImpl<SELF, typename get_element_type<COMPON
     self_t operator/(const element_t divisor) const
     {
         self_t result;
-        result.data = data;
         for (size_t i = 0; i < DIMENSIONS; ++i) {
-            result[i] /= divisor;
+            result[i] = data[i] / divisor;
         }
         return result;
     }

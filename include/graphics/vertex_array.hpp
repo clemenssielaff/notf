@@ -221,8 +221,8 @@ public:
     VertexArray(Args&& args = {}) : VertexArrayType(std::forward<Args>(args)), m_vertices(), m_buffer_size(0)
     {
         static_assert(std::tuple_size<Traits>::value > 0, "A VertexArray must contain at least one Attribute");
-        static_assert(is_trait_tuple<Traits>, "Template arguments to VertexArray must only contain valid "
-                                              "AttributeTrait types.");
+        static_assert(is_trait_tuple(Traits{}), "Template arguments to VertexArray must only contain valid "
+                                                "AttributeTrait types.");
     }
 
     /// @brief Initializes the VertexArray.
