@@ -52,16 +52,16 @@ void render_thread(GLFWwindow* window)
     // Shader ///////////////////////////////////////////////
 
     const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/line.vert");
-    VertexShaderPtr vertex_shader = VertexShader::build(graphics_context, "Line.vert", vertex_src.c_str());
+    VertexShaderPtr vertex_shader = VertexShader::build(graphics_context, "Line.vert", vertex_src);
 
     const std::string tess_src = load_file("/home/clemens/code/notf/res/shaders/line.tess");
     const std::string eval_src = load_file("/home/clemens/code/notf/res/shaders/line.eval");
     TesselationShaderPtr tess_shader
-        = TesselationShader::build(graphics_context, "Line.tess", tess_src.c_str(), eval_src.c_str());
+        = TesselationShader::build(graphics_context, "Line.tess", tess_src.c_str(), eval_src);
 
 #if 1
     const std::string geom_src   = load_file("/home/clemens/code/notf/res/shaders/line.geo");
-    GeometryShaderPtr geo_shader = GeometryShader::build(graphics_context, "Line.geo", geom_src.c_str());
+    GeometryShaderPtr geo_shader = GeometryShader::build(graphics_context, "Line.geo", geom_src);
 
     const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/line.frag");
 #else
@@ -69,7 +69,7 @@ void render_thread(GLFWwindow* window)
 
     const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/line_no_wf.frag");
 #endif
-    FragmentShaderPtr frag_shader = FragmentShader::build(graphics_context, "Line.frag", frag_src.c_str());
+    FragmentShaderPtr frag_shader = FragmentShader::build(graphics_context, "Line.frag", frag_src);
 
     PipelinePtr pipeline = Pipeline::create(graphics_context, vertex_shader, tess_shader, geo_shader, frag_shader);
     graphics_context->bind_pipeline(pipeline);

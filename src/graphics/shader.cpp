@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <assert.h>
+#include <regex>
 #include <sstream>
 
 #include "common/exception.hpp"
@@ -115,11 +116,74 @@ size_t longest_attribute_length(const GLuint program)
     return narrow_cast<size_t>(result);
 }
 
+/// @brief Finds the index in a given GLSL source string where custom `#defines` can be injected.
+size_t find_injection_index(const std::string& source)
+{
+    static const std::regex version_regex(R"==(\n?\s*#version\s*\d{3}\s*es[ \t]*\n)==");
+    static const std::regex extensions_regex(R"==(\n\s*#extension\s*\w*\s*:\s*(?:require|enable|warn|disable)\s*\n)==");
+
+    size_t injection_index = std::string::npos;
+
+    std::smatch extensions;
+    std::regex_search(source, extensions, extensions_regex);
+    if (!extensions.empty()) {
+        // if the shader contains one or more #extension strings, we have to inject the #defines after those
+        injection_index = 0;
+        std::string remainder;
+        do {
+            remainder = extensions.suffix();
+            injection_index += narrow_cast<size_t>(extensions.position(extensions.size() - 1)
+                                                   + extensions.length(extensions.size() - 1));
+            std::regex_search(remainder, extensions, extensions_regex);
+        } while (!extensions.empty());
+    }
+    else {
+        // otherwise, look for the mandatory #version string
+        std::smatch version;
+        std::regex_search(source, version, version_regex);
+        if (!version.empty()) {
+            injection_index
+                = narrow_cast<size_t>(version.position(version.size() - 1) + version.length(version.size() - 1));
+        }
+    }
+
+    return injection_index;
+}
+
+/// @brief Builds a string out of Shader Definitions.
+std::string build_defines(const Shader::Defines& defines)
+{
+    std::stringstream ss;
+    for (const std::pair<std::string, std::string>& define : defines) {
+        ss << "#define " << define.first << " " << define.second << "\n";
+    }
+    return ss.str();
+}
+
+/// @brief Injects a string of custom `#define` statements into a given GLSL source code.
+/// @return Modified source.
+/// @throws std::runtime_error if the injection point could not be found.
+std::string inject_defines(const std::string& source, const std::string& injection)
+{
+    if (injection.empty()) {
+        return source;
+    }
+
+    const size_t injection_index = find_injection_index(source);
+    if (injection_index == std::string::npos) {
+        throw_runtime_error("Could not find injection point in given GLSL code");
+    }
+
+    return source.substr(0, injection_index) + injection + source.substr(injection_index, std::string::npos);
+}
+
 } // namespace
 
 // ===================================================================================================================//
 
 namespace notf {
+
+const Shader::Defines Shader::s_no_defines = {};
 
 Shader::Shader(GraphicsContextPtr& context, const GLuint id, Stage::Flags stages, std::string name)
     : m_graphics_context(*context), m_id(id), m_stages(stages), m_name(std::move(name)), m_uniforms()
@@ -392,8 +456,9 @@ void Shader::set_uniform(const std::string& name, const Matrix4f& value)
 
 // ===================================================================================================================//
 
-VertexShader::VertexShader(GraphicsContextPtr& context, const GLuint program, std::string shader_name)
-    : Shader(context, program, Stage::VERTEX, std::move(shader_name)), m_attributes()
+VertexShader::VertexShader(GraphicsContextPtr& context, const GLuint program, std::string shader_name,
+                           std::string source)
+    : Shader(context, program, Stage::VERTEX, std::move(shader_name)), m_source(std::move(source)), m_attributes()
 {
     // discover attributes
     GLint attribute_count = 0;
@@ -425,16 +490,27 @@ VertexShader::VertexShader(GraphicsContextPtr& context, const GLuint program, st
     m_attributes.shrink_to_fit();
 }
 
-VertexShaderPtr VertexShader::build(GraphicsContextPtr& context, std::string name, const char* source)
+VertexShaderPtr
+VertexShader::build(GraphicsContextPtr& context, std::string name, const std::string& source, const Defines& defines)
 {
+    std::string modified_source;
+    if (defines.empty()) {
+        modified_source = source;
+    }
+    else {
+        modified_source = inject_defines(source, build_defines(defines));
+    }
+
     Args args;
-    args.vertex_source   = source;
+    args.vertex_source   = modified_source.c_str();
     const GLuint program = Shader::_build(context, name, args);
+
     VertexShaderPtr result;
 #ifdef NOTF_DEBUG
-    result = VertexShaderPtr(new VertexShader(context, program, std::move(name)));
+    result = VertexShaderPtr(new VertexShader(context, program, std::move(name), std::move(modified_source)));
 #else
-    result = std::make_shared<make_shared_enabler<VertexShader>>(context, program, std::move(name));
+    result = std::make_shared<make_shared_enabler<VertexShader>>(context, program, std::move(name),
+                                                                 std::move(modified_source));
 #endif
     _register_with_context(result);
     return result;
@@ -453,22 +529,41 @@ GLuint VertexShader::attribute(const std::string& attribute_name) const
 
 // ===================================================================================================================//
 
-TesselationShader::TesselationShader(GraphicsContextPtr& context, const GLuint program, std::string shader_name)
+TesselationShader::TesselationShader(GraphicsContextPtr& context, const GLuint program, std::string shader_name,
+                                     const std::string control_source, const std::string evaluation_source)
     : Shader(context, program, Stage::TESS_CONTROL | Stage::TESS_EVALUATION, std::move(shader_name))
+    , m_control_source(std::move(control_source))
+    , m_evaluation_source(std::move(evaluation_source))
 {}
 
-TesselationShaderPtr TesselationShader::build(GraphicsContextPtr& context, std::string name, const char* control_source,
-                                              const char* evaluation_source)
+TesselationShaderPtr
+TesselationShader::build(GraphicsContextPtr& context, std::string name, const std::string& control_source,
+                         const std::string& evaluation_source, const Defines& defines)
 {
+    std::string modified_control_source;
+    std::string modified_evaluation_source;
+    if (defines.empty()) {
+        modified_control_source    = control_source;
+        modified_evaluation_source = evaluation_source;
+    }
+    else {
+        const std::string injection_string = build_defines(defines);
+        modified_control_source            = inject_defines(control_source, injection_string);
+        modified_evaluation_source         = inject_defines(evaluation_source, injection_string);
+    }
+
     Args args;
-    args.tess_ctrl_source = control_source;
-    args.tess_eval_source = evaluation_source;
+    args.tess_ctrl_source = modified_control_source.c_str();
+    args.tess_eval_source = modified_evaluation_source.c_str();
     const GLuint program  = Shader::_build(context, name, args);
+
     TesselationShaderPtr result;
 #ifdef NOTF_DEBUG
-    result = TesselationShaderPtr(new TesselationShader(context, program, std::move(name)));
+    result = TesselationShaderPtr(new TesselationShader(
+        context, program, std::move(name), std::move(modified_control_source), std::move(modified_evaluation_source)));
 #else
-    result = std::make_shared<make_shared_enabler<TesselationShader>>(context, program, std::move(name));
+    result = std::make_shared<make_shared_enabler<TesselationShader>>(
+        context, program, std::move(name), std::move(modified_control_source), std::move(modified_evaluation_source));
 #endif
     _register_with_context(result);
     return result;
@@ -476,20 +571,32 @@ TesselationShaderPtr TesselationShader::build(GraphicsContextPtr& context, std::
 
 // ===================================================================================================================//
 
-GeometryShader::GeometryShader(GraphicsContextPtr& context, const GLuint program, std::string shader_name)
-    : Shader(context, program, Stage::GEOMETRY, std::move(shader_name))
+GeometryShader::GeometryShader(GraphicsContextPtr& context, const GLuint program, std::string shader_name,
+                               std::string source)
+    : Shader(context, program, Stage::GEOMETRY, std::move(shader_name)), m_source(std::move(source))
 {}
 
-GeometryShaderPtr GeometryShader::build(GraphicsContextPtr& context, std::string name, const char* source)
+GeometryShaderPtr
+GeometryShader::build(GraphicsContextPtr& context, std::string name, const std::string& source, const Defines& defines)
 {
+    std::string modified_source;
+    if (defines.empty()) {
+        modified_source = source;
+    }
+    else {
+        modified_source = inject_defines(source, build_defines(defines));
+    }
+
     Args args;
-    args.geometry_source = source;
+    args.geometry_source = modified_source.c_str();
     const GLuint program = Shader::_build(context, name, args);
+
     GeometryShaderPtr result;
 #ifdef NOTF_DEBUG
-    result = GeometryShaderPtr(new GeometryShader(context, program, std::move(name)));
+    result = GeometryShaderPtr(new GeometryShader(context, program, std::move(name), std::move(modified_source)));
 #else
-    result = std::make_shared<make_shared_enabler<GeometryShader>>(context, program, std::move(name));
+    result = std::make_shared<make_shared_enabler<GeometryShader>>(context, program, std::move(name),
+                                                                   std::move(modified_source));
 #endif
     _register_with_context(result);
     return result;
@@ -497,20 +604,32 @@ GeometryShaderPtr GeometryShader::build(GraphicsContextPtr& context, std::string
 
 // ===================================================================================================================//
 
-FragmentShader::FragmentShader(GraphicsContextPtr& context, const GLuint program, std::string shader_name)
-    : Shader(context, program, Stage::FRAGMENT, std::move(shader_name))
+FragmentShader::FragmentShader(GraphicsContextPtr& context, const GLuint program, std::string shader_name,
+                               std::string source)
+    : Shader(context, program, Stage::FRAGMENT, std::move(shader_name)), m_source(std::move(source))
 {}
 
-FragmentShaderPtr FragmentShader::build(GraphicsContextPtr& context, std::string name, const char* source)
+FragmentShaderPtr
+FragmentShader::build(GraphicsContextPtr& context, std::string name, const std::string& source, const Defines& defines)
 {
+    std::string modified_source;
+    if (defines.empty()) {
+        modified_source = source;
+    }
+    else {
+        modified_source = inject_defines(source, build_defines(defines));
+    }
+
     Args args;
-    args.fragment_source = source;
+    args.fragment_source = modified_source.c_str();
     const GLuint program = Shader::_build(context, name, args);
+
     FragmentShaderPtr result;
 #ifdef NOTF_DEBUG
-    result = FragmentShaderPtr(new FragmentShader(context, program, std::move(name)));
+    result = FragmentShaderPtr(new FragmentShader(context, program, std::move(name), std::move(modified_source)));
 #else
-    result = std::make_shared<make_shared_enabler<FragmentShader>>(context, program, std::move(name));
+    result = std::make_shared<make_shared_enabler<FragmentShader>>(context, program, std::move(name),
+                                                                   std::move(modified_source));
 #endif
     _register_with_context(result);
     return result;

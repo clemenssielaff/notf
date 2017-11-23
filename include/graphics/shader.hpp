@@ -67,7 +67,13 @@ public:
         using Flags = std::underlying_type_t<Flag>;
     };
 
+    /// @brief Defines additional defines to inject into the GLSL code.
+    using Defines = std::vector<std::pair<std::string, std::string>>;
+
 protected:
+    /// @brief Empty Defines used as default argument.
+    static const Defines s_no_defines;
+
     /// @brief Construction arguments.
     struct Args {
         const char* vertex_source    = nullptr;
@@ -192,14 +198,17 @@ protected:
     /// @param context  Render Context in which the Shader lives.
     /// @param program  OpenGL Shader program ID.
     /// @param name     Human readable name of the Shader.
-    VertexShader(GraphicsContextPtr& context, const GLuint program, std::string name);
+    /// @param source   Source of the Shader.
+    VertexShader(GraphicsContextPtr& context, const GLuint program, std::string name, std::string source);
 
 public:
     /// @brief Factory.
     /// @param context  Render Context in which the Shader lives.
     /// @param name     Human readable name of the Shader.
     /// @param source   Vertex shader source.
-    static VertexShaderPtr build(GraphicsContextPtr& context, std::string name, const char* source);
+    /// @param defines  Additional definitions to inject into the shader code.
+    static VertexShaderPtr build(GraphicsContextPtr& context, std::string name, const std::string& source,
+                                 const Defines& defines = s_no_defines);
 
     /// @brief Returns the location of the attribute with the given name.
     /// @throws std::runtime_error   If there is no attribute with the given name in this shader.
@@ -208,8 +217,14 @@ public:
     /// @brief All attribute variables.
     const std::vector<Variable>& attributes() { return m_attributes; }
 
+    /// @brief The vertex shader source code.
+    const std::string& source() const { return m_source; }
+
     // fields --------------------------------------------------------------------------------------------------------//
 private:
+    /// @brief Vertex Shader code (including injections).
+    const std::string m_source;
+
     /// @brief All attributes of this Shader.
     std::vector<Variable> m_attributes;
 };
@@ -222,18 +237,37 @@ class TesselationShader : public Shader {
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// @brief Value Constructor.
-    /// @param context  Render Context in which the Shader lives.
-    /// @param program  OpenGL Shader program ID.
-    /// @param name     Human readable name of the Shader.
-    TesselationShader(GraphicsContextPtr& context, const GLuint program, std::string name);
+    /// @param context              Render Context in which the Shader lives.
+    /// @param program              OpenGL Shader program ID.
+    /// @param name                 Human readable name of the Shader.
+    /// @param control_source       Tesselation control shader source.
+    /// @param evaluation_source    Tesselation evaluation shader source.
+    TesselationShader(GraphicsContextPtr& context, const GLuint program, std::string name,
+                      const std::string control_source, const std::string evaluation_source);
 
 public:
     /// @brief Factory.
-    /// @param context  Render Context in which the Shader lives.
-    /// @param name     Human readable name of the Shader.
-    /// @param source   Vertex shader source.
-    static TesselationShaderPtr
-    build(GraphicsContextPtr& context, std::string name, const char* control_source, const char* evaluation_source);
+    /// @param context              Render Context in which the Shader lives.
+    /// @param name                 Human readable name of the Shader.
+    /// @param control_source       Tesselation control shader source.
+    /// @param evaluation_source    Tesselation evaluation shader source.
+    /// @param defines              Additional definitions to inject into the shader code.
+    static TesselationShaderPtr build(GraphicsContextPtr& context, std::string name, const std::string& control_source,
+                                      const std::string& evaluation_source, const Defines& defines = s_no_defines);
+
+    /// @brief The teselation control shader source code.
+    const std::string& control_source() const { return m_control_source; }
+
+    /// @brief The teselation evaluation shader source code.
+    const std::string& evaluation_source() const { return m_evaluation_source; }
+
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
+    /// @brief Teselation control shader code.
+    const std::string m_control_source;
+
+    /// @brief Teselation evaluation shader code.
+    const std::string m_evaluation_source;
 };
 
 // ===================================================================================================================//
@@ -247,14 +281,25 @@ protected:
     /// @param context  Render Context in which the Shader lives.
     /// @param program  OpenGL Shader program ID.
     /// @param name     Human readable name of the Shader.
-    GeometryShader(GraphicsContextPtr& context, const GLuint program, std::string name);
+    /// @param source   Source of the Shader.
+    GeometryShader(GraphicsContextPtr& context, const GLuint program, std::string name, std::string source);
 
 public:
     /// @brief Factory.
     /// @param context  Render Context in which the Shader lives.
     /// @param name     Human readable name of the Shader.
-    /// @param source   Vertex shader source.
-    static GeometryShaderPtr build(GraphicsContextPtr& context, std::string name, const char* source);
+    /// @param source   Geometry shader source.
+    /// @param defines  Additional definitions to inject into the shader code.
+    static GeometryShaderPtr build(GraphicsContextPtr& context, std::string name, const std::string& source,
+                                   const Defines& defines = s_no_defines);
+
+    /// @brief The geometry shader source code.
+    const std::string& source() const { return m_source; }
+
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
+    /// @brief Geometry Shader code (including injections).
+    const std::string m_source;
 };
 
 // ===================================================================================================================//
@@ -268,14 +313,25 @@ protected:
     /// @param context  Render Context in which the Shader lives.
     /// @param program  OpenGL Shader program ID.
     /// @param name     Human readable name of the Shader.
-    FragmentShader(GraphicsContextPtr& context, const GLuint program, std::string name);
+    /// @param source   Source of the Shader.
+    FragmentShader(GraphicsContextPtr& context, const GLuint program, std::string name, std::string source);
 
 public:
     /// @brief Factory.
     /// @param context  Render Context in which the Shader lives.
     /// @param name     Human readable name of the Shader.
-    /// @param source   Vertex shader source.
-    static FragmentShaderPtr build(GraphicsContextPtr& context, std::string name, const char* source);
+    /// @param source   Fragment shader source.
+    /// @param defines  Additional definitions to inject into the shader code.
+    static FragmentShaderPtr build(GraphicsContextPtr& context, std::string name, const std::string& source,
+                                   const Defines& defines = s_no_defines);
+
+    /// @brief The fragment shader source code.
+    const std::string& source() const { return m_source; }
+
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
+    /// @brief Fragment Shader code (including injections).
+    const std::string m_source;
 };
 
 } // namespace notf
