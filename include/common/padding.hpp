@@ -83,7 +83,8 @@ template<>
 struct hash<notf::Padding> {
     size_t operator()(const notf::Padding& padding) const
     {
-        return notf::hash(padding.top, padding.right, padding.bottom, padding.left);
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::PADDING), padding.top, padding.right,
+                          padding.bottom, padding.left);
     }
 };
 } // namespace std

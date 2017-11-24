@@ -7,12 +7,39 @@
 
 namespace notf {
 
-/** No-op specialization to end the recursion. */
+namespace detail {
+
+/// @brief Changing this value will cause new hashes of the same value (calculated with notf::hash) to differ.
+/// This way, we can differentiate between hashes of the same value that were calculated with different versions of
+/// notf.
+constexpr size_t version_hash() { return 0; }
+
+/// @brief Additional entry to hash different value types with.
+/// Otherwise a Vector4f and a Color value with the same components would produce the same hash.
+enum class HashID : size_t {
+    VECTOR2R,
+    VECTOR2I,
+    VECTOR3R,
+    VECTOR3I,
+    VECTOR4R,
+    MATRIX3,
+    MATRIX4,
+    AABR,
+    PADDING,
+    SIZE2,
+    COLOR,
+    CIRCLE,
+    LINE2,
+};
+
+} // namespace detail
+
+//====================================================================================================================//
+
+/// @brief Buils a hash value from hashing all passed data types in sequence and combining their hashes.
+/// Similar to boost::hash_combine but adaptive to the system's hash value type.
 inline void hash_combine(std::size_t&) {}
 
-/** Buils a hash value from hashing all passed data types in sequence and combining their hashes.
- * Similar to boost::hash_combine but adaptive to the system's hash value type.
- */
 template<typename T, typename... Rest>
 inline void hash_combine(std::size_t& seed, const T& v, Rest&&... rest)
 {
@@ -22,13 +49,12 @@ inline void hash_combine(std::size_t& seed, const T& v, Rest&&... rest)
     hash_combine(seed, std::forward<Rest>(rest)...);
 }
 
-/** Calculates the combined hash of 0-n supplied values.
- * All passed values must be hashable using std::hash.
- */
+/// @brief Calculates the combined hash of 0-n supplied values.
+/// All passed values must be hashable using std::hash.
 template<typename... Values>
 inline size_t hash(Values&&... values)
 {
-    std::size_t result = 0;
+    std::size_t result = detail::version_hash();
     hash_combine(result, std::forward<Values>(values)...);
     return result;
 }

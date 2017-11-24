@@ -597,6 +597,9 @@ namespace std {
 /** std::hash specialization for notf::_Aabr. */
 template<typename VECTOR2>
 struct hash<notf::_Aabr<VECTOR2>> {
-    size_t operator()(const notf::_Aabr<VECTOR2>& aabr) const { return notf::hash(aabr._min, aabr._max); }
+    size_t operator()(const notf::_Aabr<VECTOR2>& aabr) const
+    {
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::AABR), aabr._min, aabr._max);
+    }
 };
 } // namespace std

@@ -51,8 +51,7 @@ struct _Matrix4 : public detail::Arithmetic<_Matrix4<REAL>, _RealVector4<REAL>, 
     /// @param a    Value to put into the diagonal.
     _Matrix4(const element_t a)
         : super_t{component_t(a, 0, 0, 0), component_t(0, a, 0, 0), component_t(0, 0, a, 0), component_t(0, 0, 0, a)}
-    {
-    }
+    {}
 
     /// @brief Column-wise constructor of the matrix.
     /// @param a    First column.
@@ -61,8 +60,7 @@ struct _Matrix4 : public detail::Arithmetic<_Matrix4<REAL>, _RealVector4<REAL>, 
     /// @param d    Fourth column.
     _Matrix4(const component_t a, const component_t b, const component_t c, const component_t d)
         : super_t{std::move(a), std::move(b), std::move(c), std::move(d)}
-    {
-    }
+    {}
 
     /// @brief Element-wise constructor.
     _Matrix4(const element_t a, const element_t b, const element_t c, const element_t d, const element_t e,
@@ -70,8 +68,7 @@ struct _Matrix4 : public detail::Arithmetic<_Matrix4<REAL>, _RealVector4<REAL>, 
              const element_t k, const element_t l, const element_t m, const element_t n, const element_t o,
              const element_t p)
         : super_t{component_t(a, b, c, d), component_t(e, f, g, h), component_t(i, j, k, l), component_t(m, n, o, p)}
-    {
-    }
+    {}
 
     /// @brief The identity matrix.
     static _Matrix4 identity() { return _Matrix4(1); }
@@ -384,11 +381,8 @@ template<typename Real>
 struct hash<notf::_Matrix4<Real>> {
     size_t operator()(const notf::_Matrix4<Real>& matrix) const
     {
-        return notf::hash(matrix[0], matrix[1], matrix[2], matrix[3]);
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::MATRIX4), matrix[0], matrix[1], matrix[2],
+                          matrix[3]);
     }
 };
 } // namespace std
-
-//#ifndef NOTF_NO_SIMD
-//#include "common/simd/simd_xform3.hpp"
-//#endif

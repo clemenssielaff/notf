@@ -138,6 +138,9 @@ namespace std {
 /** std::hash specialization for notf::Line2. */
 template<>
 struct hash<notf::Line2> {
-    size_t operator()(const notf::Line2& line) const { return notf::hash(line.start(), line.end()); }
+    size_t operator()(const notf::Line2& line) const
+    {
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::LINE2), line.start(), line.end());
+    }
 };
 } // namespace std

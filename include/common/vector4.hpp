@@ -91,12 +91,10 @@ namespace std {
 /// @brief std::hash implementation for notf::_RealVector4.
 template<typename Real>
 struct hash<notf::_RealVector4<Real>> {
-    size_t operator()(const notf::_RealVector4<Real>& vector) const { return vector.hash(); }
+    size_t operator()(const notf::_RealVector4<Real>& vector) const
+    {
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR4R), vector.hash());
+    }
 };
 
 } // namespace std
-
-//#ifndef NOTF_NO_SIMD
-//#include "common/simd/simd_arithmetic4f.hpp"
-//#include "common/simd/simd_vector4f.hpp"
-//#endif

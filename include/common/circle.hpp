@@ -130,6 +130,8 @@ namespace std {
 /** std::hash specialization for notf::Circle. */
 template<typename Real>
 struct hash<notf::_Circle<Real>> {
-    size_t operator()(const notf::_Circle<Real>& circle) const { return notf::hash(circle.center, circle.radius); }
+    size_t operator()(const notf::_Circle<Real>& circle) const {
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::CIRCLE), circle.center, circle.radius);
+    }
 };
 } // namespace std

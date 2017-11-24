@@ -368,7 +368,7 @@ struct get_element_type<half> {
 /// @brief Base for all arithmetic value types.
 ///
 /// The Arithmetic base class provides naive implementations of each operation.
-/// You can override specific functionality for value-specific behaviour or to make use of SIMD instructions.
+/// You can override specific functionality for value-specific behaviour.
 template<typename SELF, typename COMPONENT, size_t DIMENSIONS>
 struct Arithmetic : public ArithmeticImpl<SELF, typename get_element_type<COMPONENT>::type, COMPONENT, DIMENSIONS> {
 

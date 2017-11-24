@@ -232,13 +232,19 @@ namespace std {
 /** std::hash specialization for notf::_RealVector3. */
 template<typename Real>
 struct hash<notf::_RealVector3<Real>> {
-    size_t operator()(const notf::_RealVector3<Real>& vector) const { return vector.hash(); }
+    size_t operator()(const notf::_RealVector3<Real>& vector) const
+    {
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR3R), vector.hash());
+    }
 };
 
 /** std::hash specialization for notf::_IntVector3. */
 template<typename Integer>
 struct hash<notf::_IntVector3<Integer>> {
-    size_t operator()(const notf::_IntVector3<Integer>& vector) const { return vector.hash(); }
+    size_t operator()(const notf::_IntVector3<Integer>& vector) const
+    {
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR3I), vector.hash());
+    }
 };
 
 } // namespace std

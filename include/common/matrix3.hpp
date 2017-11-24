@@ -52,15 +52,13 @@ struct _Matrix3 : public detail::Arithmetic<_Matrix3<REAL>, _RealVector2<REAL>, 
     /// @param c    Third column.
     _Matrix3(const component_t a, const component_t b, const component_t c)
         : super_t{std::move(a), std::move(b), std::move(c)}
-    {
-    }
+    {}
 
     /// @brief Element-wise constructor.
     _Matrix3(const element_t a, const element_t b, const element_t c, const element_t d, const element_t e,
              const element_t f)
         : super_t{component_t(a, b), component_t(c, d), component_t(e, f)}
-    {
-    }
+    {}
 
     /// @brief The identity matrix.
     static _Matrix3 identity() { return _Matrix3(1); }
@@ -238,6 +236,11 @@ namespace std {
 /// @brief std::hash specialization for notf::_Matrix3.
 template<typename Real>
 struct hash<notf::_Matrix3<Real>> {
-    size_t operator()(const notf::_Matrix3<Real>& xform2) const { return notf::hash(xform2[0], xform2[1], xform2[2]); }
+    size_t operator()(const notf::_Matrix3<Real>& matrix) const
+    {
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::MATRIX3), matrix[0], matrix[1],
+                          matrix[2]);
+    }
 };
+
 } // namespace std

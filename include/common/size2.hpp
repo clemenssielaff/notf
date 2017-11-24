@@ -140,7 +140,10 @@ namespace std {
 /// @brief std::hash specialization for notf::_RealVector2.
 template<typename value_t>
 struct hash<notf::_Size2<value_t>> {
-    size_t operator()(const notf::_Size2<value_t>& size2) const { return notf::hash(size2.width, size2.height); }
+    size_t operator()(const notf::_Size2<value_t>& size2) const
+    {
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::SIZE2), size2.width, size2.height);
+    }
 };
 
 } // namespace std
