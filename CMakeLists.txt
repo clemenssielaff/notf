@@ -83,6 +83,11 @@ add_sources(RESOURCE_FILES res
     shaders/cell.vert
     shaders/blinn_phong.vert
     shaders/blinn_phong.frag
+    shaders/wireframe.vert
+    shaders/wireframe.tess
+    shaders/wireframe.eval
+    shaders/wireframe.geo
+    shaders/wireframe.frag
     shaders/line.vert
     shaders/line.tess
     shaders/line.eval
@@ -122,12 +127,12 @@ add_sources(TEST_SOURCES test
     test_color.cpp
     test_float.cpp
     test_main.cpp
-    test_signal.cpp
+    test_half.cpp
+#    test_signal.cpp
     test_string_utils.cpp
-    test_utils.hpp
-    test_vector2.cpp
-    test_matrix3.cpp
-    test_matrix4.cpp
+#    test_vector2.cpp
+#    test_matrix3.cpp
+#    test_matrix4.cpp
     test_utils.cpp
 
     catch.hpp

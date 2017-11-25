@@ -530,10 +530,10 @@ struct _Aabr {
         typename MATRIX::component_t d1(_max[0], _max[1]);
         typename MATRIX::component_t d2(_min.x(), _max.y());
         typename MATRIX::component_t d3(_max.x(), _min.y());
-        matrix.transform(d0);
-        matrix.transform(d1);
-        matrix.transform(d2);
-        matrix.transform(d3);
+        d0 = matrix.transform(d0);
+        d1 = matrix.transform(d1);
+        d2 = matrix.transform(d2);
+        d3 = matrix.transform(d3);
         _min.x() = min(d0.x(), d1.x(), d2.x(), d3.x());
         _min.y() = min(d0.y(), d1.y(), d2.y(), d3.y());
         _max.x() = max(d0.x(), d1.x(), d2.x(), d3.x());

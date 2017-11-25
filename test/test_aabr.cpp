@@ -1,51 +1,37 @@
 #include "catch.hpp"
 
-#include <iostream>
-
 #include "common/aabr.hpp"
 #include "common/float.hpp"
 #include "common/vector2.hpp"
 using namespace notf;
 
-template<typename T>
-std::ostream& operator<<(std::ostream& out, const _approx<T>& approxed)
+TEST_CASE("Construct Aabr", "[common][aabr]")
 {
-    return out << approxed.value;
-}
-
-SCENARIO("Aabr can be constructed", "[common][aabr]")
-{
-    WHEN("you create an Aabr from two vectors")
+    SECTION("from two vectors")
     {
         const Vector2f top_right   = {1, 1};
         const Vector2f bottom_left = {-1, -1};
 
-        THEN("the constructor will place the corners correctly")
-        {
-            Aabrf aabr_1(top_right, bottom_left);
-            Aabrf aabr_2(bottom_left, top_right);
-            REQUIRE(aabr_1.left() == approx(-1));
-            REQUIRE(aabr_1.right() == 1.f);
-            REQUIRE(aabr_1.top() == approx(1));
-            REQUIRE(aabr_1.bottom() == approx(-1.f));
-            REQUIRE(aabr_1 == aabr_2);
-        }
+        Aabrf aabr_1(top_right, bottom_left);
+        Aabrf aabr_2(bottom_left, top_right);
+        REQUIRE(aabr_1.left() == approx(-1));
+        REQUIRE(aabr_1.right() == 1.f);
+        REQUIRE(aabr_1.top() == approx(1));
+        REQUIRE(aabr_1.bottom() == approx(-1.f));
+        REQUIRE(aabr_1 == aabr_2);
     }
 }
 
-SCENARIO("Aabr can be modified", "[common][aabr]")
+TEST_CASE("Modify Aabrs", "[common][aabr]")
 {
-    WHEN("you rotate an Aabr")
+    SECTION("rotation")
     {
-        const Vector2f bottom_left = {-1, 1};
-        const Vector2f top_right   = {1, -1};
+        const Vector2f bottom_left = {-1, -1};
+        const Vector2f top_right   = {1, 1};
 
-        THEN("the resulting aabr will the the aabr of the rotated rect")
-        {
-            Aabrf aabr_1(top_right, bottom_left);
-            Matrix3f rotation = Matrix3f::rotation(pi<float>() / 4);
-            Aabrf aabr_2      = rotation.transform(aabr_1);
-            REQUIRE(aabr_2.get_width() == approx(2 * sqrt(2.f)));
-        }
+        Aabrf aabr_1(top_right, bottom_left);
+        Matrix3f rotation = Matrix3f::rotation(pi<float>() / 4);
+        Aabrf aabr_2      = rotation.transform(aabr_1);
+        REQUIRE(aabr_2.get_width() == approx(2 * sqrt(2.f)));
     }
 }

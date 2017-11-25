@@ -2,44 +2,82 @@
 
 precision highp float;
 
-//layout (quads) in;
-layout (triangles, equal_spacing, cw) in;
+layout (quads, fractional_even_spacing) in;
 
 in VertexData {
-    vec2 position;
+    vec2 first_ctrl;
+    vec2 second_ctrl;
 } v_in[];
 
 out VertexData {
-    vec2 position;
-    mediump vec3 patch_distance;
+    mediump vec2 position;
+    mediump vec2 tex_coord;
 } v_out;
 
+uniform float line_width;
 uniform mat4 projection;
 
-float height(vec2 p, vec2 a, vec2 b)
+const float ZERO = 0.0f;
+const float HALF = 0.5f;
+const float EDGE = 0.9f; // 1.0 - epsilon
+const float ONE = 1.0f;
+const float THREE = 3.0f;
+const float SIX = 6.0f;
+const float NINE = 9.0f;
+const float TWELVE = 12.0f;
+
+const float aa_width = ONE;
+
+vec2 quadratic_bezier(float t, vec2 p0, vec2 p1, vec2 p2)
 {
-    return abs(((b.y - a.y) * p.x) - ((b.x - a.x) * p.y) + (b.x * a.y) - (b.y * a.x)) / length(a - b);
+    vec2 a = mix(p0, p1, t);
+    vec2 b = mix(p1, p2, t);
+    return mix(a, b, t);
+}
+
+vec2 cubic_bezier(float t, vec2 p0, vec2 p1, vec2 p2, vec2 p3)
+{
+    vec2 a = mix(p0, p1, t);
+    vec2 b = mix(p1, p2, t);
+    vec2 c = mix(p2, p3, t);
+    return quadratic_bezier(t, a, b, c);
+}
+
+vec2 cubic_bezier_tangent(float t, vec2 a, vec2 b, vec2 c, vec2 d)
+{
+    return normalize((THREE * a * t * t) + (b * (SIX - NINE * t) * t) + (c * (t * (NINE * t - TWELVE) + THREE))
+           + (t * (SIX * d - THREE * d * t)) - (THREE * d));
+}
+
+vec2 cubic_bezier_normal(float t, vec2 a, vec2 b, vec2 c, vec2 d)
+{
+    return cubic_bezier_tangent(t, a, b, c, d).yx * vec2(ONE, -ONE);
 }
 
 void main(){
-    // quad
-//    vec4 p1 = mix(gl_in[1].gl_Position, gl_in[0].gl_Position, gl_TessCoord.x);
-//    vec4 p2 = mix(gl_in[2].gl_Position, gl_in[3].gl_Position, gl_TessCoord.x);
-//    vec4 pos = mix(p1, p2, gl_TessCoord.y);
+    // tex_coord.x grows along the stroke from start = 0 to end = 1
+    v_out.tex_coord.x = gl_TessCoord.x;
 
-    // triangle
-    gl_Position = projection * (
-              gl_TessCoord.x * gl_in[0].gl_Position
-            + gl_TessCoord.y * gl_in[1].gl_Position
-            + gl_TessCoord.z * gl_in[2].gl_Position);
+    // tex_coord.y is 1 within the stroke and 0 at the very edge (geometric anti-aliasing in the normal)
+    v_out.tex_coord.y = ONE - (step(EDGE, gl_TessCoord.y) + step(EDGE, ONE - gl_TessCoord.y));
 
-    v_out.position = (
-              gl_TessCoord.x * v_in[0].position
-            + gl_TessCoord.y * v_in[1].position
-            + gl_TessCoord.z * v_in[2].position);
+    // spline normal vector
+    vec2 normal = cubic_bezier_normal(gl_TessCoord.x,
+                                      gl_in[0].gl_Position.xy,
+                                      gl_in[0].gl_Position.xy + v_in[0].second_ctrl,
+                                      gl_in[1].gl_Position.xy + v_in[1].first_ctrl,
+                                      gl_in[1].gl_Position.xy);
 
-    v_out.patch_distance = vec3(
-            gl_TessCoord.x * height(v_in[0].position, v_in[1].position, v_in[2].position),
-            gl_TessCoord.y * height(v_in[1].position, v_in[0].position, v_in[2].position),
-            gl_TessCoord.z * height(v_in[2].position, v_in[0].position, v_in[1].position));
+    float side = sign(gl_TessCoord.y - HALF);
+
+    // screen space position of the vertex
+    v_out.position = cubic_bezier(gl_TessCoord.x,
+                            gl_in[0].gl_Position.xy,
+                            gl_in[0].gl_Position.xy + v_in[0].second_ctrl,
+                            gl_in[1].gl_Position.xy + v_in[1].first_ctrl,
+                            gl_in[1].gl_Position.xy)
+                    + (normal * (side * ((HALF * line_width) - (v_out.tex_coord.y * aa_width))));
+
+    // clip-space position of the vertex
+    gl_Position = projection * vec4(v_out.position, -ONE, ONE);
 }

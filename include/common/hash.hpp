@@ -14,7 +14,7 @@ namespace detail {
 /// notf.
 constexpr size_t version_hash() { return 0; }
 
-/// @brief Additional entry to hash different value types with.
+/// @brief Additional value for different types to hash with.
 /// Otherwise a Vector4f and a Color value with the same components would produce the same hash.
 enum class HashID : size_t {
     VECTOR2R,

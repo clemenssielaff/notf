@@ -30,9 +30,15 @@ struct VertexPos : public AttributeTrait {
     using kind                     = AttributeKind::Position;
 };
 
-struct InstanceXform : public AttributeTrait {
-    constexpr static uint location = 3;
-    using type                     = Matrix4f;
+struct LeftCtrlPos : public AttributeTrait {
+    constexpr static uint location = 1;
+    using type                     = Vector2f;
+    using kind                     = AttributeKind::Other;
+};
+
+struct RightCtrlPos : public AttributeTrait {
+    constexpr static uint location = 2;
+    using type                     = Vector2f;
     using kind                     = AttributeKind::Other;
 };
 
@@ -41,29 +47,26 @@ static void error_callback(int error, const char* description)
     log_critical << "GLFW error #" << error << ": " << description;
 }
 
-struct Foo {
-    int a, b, c;
-};
-
 void render_thread(GLFWwindow* window)
 {
     std::unique_ptr<GraphicsContext> graphics_context(new GraphicsContext(window));
 
     // Shader ///////////////////////////////////////////////
 
-    const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/wireframe.vert");
-    VertexShaderPtr vertex_shader = VertexShader::build(graphics_context, "wireframe.vert", vertex_src);
+    const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/line.vert");
+    VertexShaderPtr vertex_shader = VertexShader::build(graphics_context, "Line.vert", vertex_src);
 
-    const std::string tess_src = load_file("/home/clemens/code/notf/res/shaders/wireframe.tess");
-    const std::string eval_src = load_file("/home/clemens/code/notf/res/shaders/wireframe.eval");
+    const std::string tess_src = load_file("/home/clemens/code/notf/res/shaders/line.tess");
+    const std::string eval_src = load_file("/home/clemens/code/notf/res/shaders/line.eval");
     TesselationShaderPtr tess_shader
-        = TesselationShader::build(graphics_context, "wireframe.tess", tess_src.c_str(), eval_src);
+        = TesselationShader::build(graphics_context, "Line.tess", tess_src.c_str(), eval_src);
 
-    const std::string geom_src   = load_file("/home/clemens/code/notf/res/shaders/wireframe.geo");
-    GeometryShaderPtr geo_shader = GeometryShader::build(graphics_context, "wireframe.geo", geom_src);
+    //    const std::string geom_src   = load_file("/home/clemens/code/notf/res/shaders/line.geo");
+    //    GeometryShaderPtr geo_shader = GeometryShader::build(graphics_context, "Line.geo", geom_src);
+    GeometryShaderPtr geo_shader = {};
 
-    const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/wireframe.frag");
-    FragmentShaderPtr frag_shader = FragmentShader::build(graphics_context, "wireframe.frag", frag_src);
+    const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/line.frag");
+    FragmentShaderPtr frag_shader = FragmentShader::build(graphics_context, "Line.frag", frag_src);
 
     PipelinePtr pipeline = Pipeline::create(graphics_context, vertex_shader, tess_shader, geo_shader, frag_shader);
     graphics_context->bind_pipeline(pipeline);
@@ -74,30 +77,31 @@ void render_thread(GLFWwindow* window)
     gl_check(glGenVertexArrays(1, &vao));
     gl_check(glBindVertexArray(vao));
 
-    auto vertices = std::make_unique<VertexArray<VertexPos>>();
+    auto vertices = std::make_unique<VertexArray<VertexPos, LeftCtrlPos, RightCtrlPos>>();
     vertices->init();
-    //    vertices->update({Vector2f{50, 50}, Vector2f{100, 750}, Vector2f{150, 50}, Vector2f{200, 750}});
-    vertices->update({Vector2f{50, 50}, Vector2f{750, 50}, Vector2f{750, 750}, Vector2f{50, 750}});
+    vertices->update({{Vector2f{50, 50}, Vector2f{0, 0}, Vector2f{350, 0}},
+                      {Vector2f{750, 750}, Vector2f{-350, 0}, Vector2f{0, 0}},
+                     });
 
-        auto indices       = std::make_unique<IndexArray<GLuint>>();
-        indices->m_indices = {0, 1, 2, 0, 2, 3};
-        indices->init();
+    auto indices       = std::make_unique<IndexArray<GLuint>>();
+    indices->m_indices = {0, 1};
+    indices->init();
 
     // Rendering //////////////////////////////////////////////
 
-    //        glEnable(GL_CULL_FACE);
-    //        glCullFace(GL_BACK);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // render loop
     using namespace std::chrono_literals;
     auto last_frame_start_time = std::chrono::high_resolution_clock::now();
-    size_t frame_counter = 0;
+    size_t frame_counter       = 0;
     while (!glfwWindowShouldClose(window)) {
         auto frame_start_time = std::chrono::high_resolution_clock::now();
-        //last_frame_start_time = frame_start_time;
-        if(frame_start_time - last_frame_start_time > 1s){
+        if (frame_start_time - last_frame_start_time > 1s) {
             last_frame_start_time = frame_start_time;
             log_info << frame_counter << "fps";
             frame_counter = 0;
@@ -115,19 +119,16 @@ void render_thread(GLFWwindow* window)
             // pass the shader uniforms
             const Matrix4f perspective = Matrix4f::orthographic(0.f, 800.f, 0.f, 800.f, 0.f, 10000.f);
             tess_shader->set_uniform("projection", perspective);
+            tess_shader->set_uniform("line_width", 10.f);
 
             // TODO: make sure that GL_PATCH_VERTICES <= GL_MAX_PATCH_VERTICES
-            gl_check(glPatchParameteri(GL_PATCH_VERTICES, 3));
+            gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
 
             glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices->m_indices.size()), GL_UNSIGNED_INT, nullptr);
-//            gl_check(glDrawArrays(GL_PATCHES, 0, 3));
         }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
-
-//        const auto sleep_time = max(0ms, 16ms - (std::chrono::high_resolution_clock::now() - frame_start_time));
-//        std::this_thread::sleep_for(sleep_time);
     }
 
     // clean up
@@ -138,7 +139,7 @@ void render_thread(GLFWwindow* window)
 
 } // namespace
 
-int wireframe_main(int /*argc*/, char* /*argv*/ [])
+int line_main(int /*argc*/, char* /*argv*/ [])
 {
     // install the log handler first, to catch errors right away
     auto log_handler = std::make_unique<LogHandler>(128, 200);
