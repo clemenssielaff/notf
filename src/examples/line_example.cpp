@@ -59,14 +59,10 @@ void render_thread(GLFWwindow* window)
     TesselationShaderPtr tess_shader
         = TesselationShader::build(graphics_context, "Line.tess", tess_src.c_str(), eval_src);
 
-    //    const std::string geom_src   = load_file("/home/clemens/code/notf/res/shaders/line.geo");
-    //    GeometryShaderPtr geo_shader = GeometryShader::build(graphics_context, "Line.geo", geom_src);
-    GeometryShaderPtr geo_shader = {};
-
     const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/line.frag");
     FragmentShaderPtr frag_shader = FragmentShader::build(graphics_context, "Line.frag", frag_src);
 
-    PipelinePtr pipeline = Pipeline::create(graphics_context, vertex_shader, tess_shader, geo_shader, frag_shader);
+    PipelinePtr pipeline = Pipeline::create(graphics_context, vertex_shader, tess_shader, frag_shader);
     graphics_context->bind_pipeline(pipeline);
 
     // Vertices ///////////////////////////////////////////////
@@ -85,8 +81,10 @@ void render_thread(GLFWwindow* window)
     });
 
     auto indices       = std::make_unique<IndexArray<GLuint>>();
-    indices->m_indices = {0, 1, 1, 2, 2, 3};
     indices->init();
+    indices->update({0, 1,
+                     1, 2,
+                     2, 3,});
 
     // Rendering //////////////////////////////////////////////
 
@@ -121,13 +119,14 @@ void render_thread(GLFWwindow* window)
             const Matrix4f perspective = Matrix4f::orthographic(0.f, 800.f, 0.f, 800.f, 0.f, 10000.f);
             tess_shader->set_uniform("projection", perspective);
 
-            // TODO: stroke_width less than 1 should set a uniform that fades the line out and line widths of zero should be ignored
+            // TODO: stroke_width less than 1 should set a uniform that fades the line out and line widths of zero
+            // should be ignored
             tess_shader->set_uniform("stroke_width", 30.f);
 
             // TODO: make sure that GL_PATCH_VERTICES <= GL_MAX_PATCH_VERTICES
             gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
 
-            glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices->m_indices.size()), GL_UNSIGNED_INT, nullptr);
+            glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices->size()), GL_UNSIGNED_INT, nullptr);
         }
 
         glfwSwapBuffers(window);

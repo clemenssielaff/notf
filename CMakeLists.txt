@@ -67,6 +67,7 @@ create_module(graphics)
 create_module(utils)
 create_module(compat)
 create_module(examples)
+create_module(cel)
 
 add_sources(SOURCE_FILES src
     main.cpp
@@ -91,7 +92,6 @@ add_sources(RESOURCE_FILES res
     shaders/line.vert
     shaders/line.tess
     shaders/line.eval
-    shaders/line.geo
     shaders/line.frag
 )
 
@@ -103,6 +103,7 @@ add_executable(notf
     ${utils_MODULE}
     ${compat_MODULE}
     ${examples_MODULE}
+    ${cel_MODULE}
     ${SOURCE_FILES}
     ${THIRDPARTY_FILES}
     ${RESOURCE_FILES}

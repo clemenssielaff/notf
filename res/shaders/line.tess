@@ -16,8 +16,16 @@ out VertexData {
     vec2 second_ctrl;
 } v_out[];
 
+patch out int patch_type;
+
 void main(){
     if (ID == 0){
+        if(gl_in[0].gl_Position == gl_in[1].gl_Position){
+            patch_type = 1;
+        } else {
+            patch_type = 0;
+        }
+
         float tessel_x = 16.0;
         const float tessel_y = 3.0;
 

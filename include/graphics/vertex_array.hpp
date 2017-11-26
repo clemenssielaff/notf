@@ -4,7 +4,7 @@
 
 #include "common/exception.hpp"
 #include "common/meta.hpp"
-#include "core/opengl.hpp"
+#include "core/opengl.hpp" // TODO move opengl header from core to graphics?
 #include "graphics/gl_errors.hpp"
 #include "graphics/gl_utils.hpp"
 
@@ -139,6 +139,16 @@ public:
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
+protected:
+    /// @brief Constructor.
+    /// @throws std::runtime_error  If there is no OpenGL context.
+    VertexArrayType(Args&& args) : m_args(std::move(args)), m_vbo_id(0), m_size(0)
+    {
+        if (!gl_is_initialized()) {
+            throw_runtime_error("Cannot create a VertexArray without an OpenGL context");
+        }
+    }
+
 public:
     DISALLOW_COPY_AND_ASSIGN(VertexArrayType)
 
@@ -155,10 +165,6 @@ public:
 
     /// @brief Number of elements in the array.
     GLsizei size() const { return m_size; }
-
-protected:
-    /// @brief Constructor.
-    VertexArrayType(Args&& args) : m_args(std::move(args)), m_vbo_id(0), m_size(0) {}
 
     // fields --------------------------------------------------------------------------------------------------------//
 protected:
@@ -217,7 +223,8 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// @brief Constructor.
-    /// @param args     VertexArray arguments (defaults to default constructed argument struct).
+    /// @param args                 VertexArray arguments (defaults to default constructed argument struct).
+    /// @throws std::runtime_error  If there is no OpenGL context.
     VertexArray(Args&& args = {}) : VertexArrayType(std::forward<Args>(args)), m_vertices(), m_buffer_size(0)
     {
         static_assert(std::tuple_size<Traits>::value > 0, "A VertexArray must contain at least one Attribute");
@@ -347,7 +354,7 @@ private:
     }
 
     // fields --------------------------------------------------------------------------------------------------------//
-//private:
+private:
     /// @brief Vertices stored in the array.
     std::vector<Vertex> m_vertices;
 
