@@ -18,7 +18,7 @@ out VertexData {
 
 void main(){
     if (ID == 0){
-        float tessel_x = 32.0;
+        float tessel_x = 16.0;
         const float tessel_y = 3.0;
 
         gl_TessLevelInner[0] = tessel_x;

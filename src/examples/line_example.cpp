@@ -33,13 +33,11 @@ struct VertexPos : public AttributeTrait {
 struct LeftCtrlPos : public AttributeTrait {
     constexpr static uint location = 1;
     using type                     = Vector2f;
-    using kind                     = AttributeKind::Other;
 };
 
 struct RightCtrlPos : public AttributeTrait {
     constexpr static uint location = 2;
     using type                     = Vector2f;
-    using kind                     = AttributeKind::Other;
 };
 
 static void error_callback(int error, const char* description)
@@ -79,12 +77,15 @@ void render_thread(GLFWwindow* window)
 
     auto vertices = std::make_unique<VertexArray<VertexPos, LeftCtrlPos, RightCtrlPos>>();
     vertices->init();
-    vertices->update({{Vector2f{50, 50}, Vector2f{0, 0}, Vector2f{350, 0}},
-                      {Vector2f{750, 750}, Vector2f{-350, 0}, Vector2f{0, 0}},
-                     });
+    vertices->update({
+        {Vector2f{100, 070}, Vector2f{-1, +3}.normalize(), Vector2f{1, +3}.normalize()},
+        {Vector2f{180, 310}, Vector2f{-1, -3}.normalize(), Vector2f{1, -3}.normalize()},
+        {Vector2f{260, 070}, Vector2f{-1, +3}.normalize(), Vector2f{1, +3}.normalize()},
+        {Vector2f{340, 310}, Vector2f{-1, -3}.normalize(), Vector2f{1, -3}.normalize()},
+    });
 
     auto indices       = std::make_unique<IndexArray<GLuint>>();
-    indices->m_indices = {0, 1};
+    indices->m_indices = {0, 1, 1, 2, 2, 3};
     indices->init();
 
     // Rendering //////////////////////////////////////////////
@@ -119,7 +120,9 @@ void render_thread(GLFWwindow* window)
             // pass the shader uniforms
             const Matrix4f perspective = Matrix4f::orthographic(0.f, 800.f, 0.f, 800.f, 0.f, 10000.f);
             tess_shader->set_uniform("projection", perspective);
-            tess_shader->set_uniform("line_width", 10.f);
+
+            // TODO: stroke_width less than 1 should set a uniform that fades the line out and line widths of zero should be ignored
+            tess_shader->set_uniform("stroke_width", 30.f);
 
             // TODO: make sure that GL_PATCH_VERTICES <= GL_MAX_PATCH_VERTICES
             gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
