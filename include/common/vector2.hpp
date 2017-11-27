@@ -124,6 +124,8 @@ struct _RealVector2 : public detail::Arithmetic<_RealVector2<REAL>, REAL, 2> {
 
     /// @brief Returns the cross product of this vector and another.
     /// As defined at http://mathworld.wolfram.com/CrossProduct.html
+    /// Treats the 2D vectors like 3D vectors with z-components equal to zeros, takes their cross product, and returns
+    /// the z-component of the result.
     /// @param other     Vector to the right.
     element_t cross(const _RealVector2 other) const { return (x() * other.y()) - (y() * other.x()); }
 

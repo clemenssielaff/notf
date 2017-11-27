@@ -23,6 +23,7 @@ const float ZERO = 0.0f;
 const float HALF = 0.5f;
 const float EDGE = 0.9f; // 1.0 - epsilon
 const float ONE = 1.0f;
+const float TWO = 2.0f;
 const float THREE = 3.0f;
 const float SIX = 6.0f;
 const float NINE = 9.0f;
@@ -30,35 +31,48 @@ const float TWELVE = 12.0f;
 
 const float aa_width = ONE;
 
-vec2 quadratic_bezier(float t, vec2 p0, vec2 p1, vec2 p2)
+vec2 quadratic_bezier2(float t, vec2 p0, vec2 p1, vec2 p2)
 {
     vec2 a = mix(p0, p1, t);
     vec2 b = mix(p1, p2, t);
     return mix(a, b, t);
 }
 
-vec2 cubic_bezier(float t, vec2 p0, vec2 p1, vec2 p2, vec2 p3)
+vec2 cubic_bezier2(float t, vec2 p0, vec2 p1, vec2 p2, vec2 p3)
 {
     vec2 a = mix(p0, p1, t);
     vec2 b = mix(p1, p2, t);
     vec2 c = mix(p2, p3, t);
-    return quadratic_bezier(t, a, b, c);
+    return quadratic_bezier2(t, a, b, c);
 }
 
-vec2 cubic_bezier_tangent(float t, vec2 a, vec2 b, vec2 c, vec2 d)
+vec2 cubic_bezier2_tangent(float t, vec2 a, vec2 b, vec2 c, vec2 d)
 {
     return normalize((THREE * a * t * t) + (b * (SIX - NINE * t) * t) + (c * (t * (NINE * t - TWELVE) + THREE))
            + (t * (SIX * d - THREE * d * t)) - (THREE * d));
 }
 
-vec2 cubic_bezier_normal(float t, vec2 a, vec2 b, vec2 c, vec2 d)
+vec2 cubic_bezier2_deriv1(float t, vec2 a, vec2 b, vec2 c, vec2 d)
 {
-    return cubic_bezier_tangent(t, a, b, c, d).yx * vec2(ONE, -ONE);
+    return (THREE * (ONE - t) * (ONE - t) * (b - a)) + (SIX * t * (ONE - t) * (c - b)) + (THREE * t * t * (d - c));
 }
 
-float cross_2d(vec2 a, vec2 b)
+vec2 cubic_bezier2_deriv2(float t, vec2 a, vec2 b, vec2 c, vec2 d)
 {
-    return (a.x * b.y) - (a.y * b.x);
+    return (SIX * (ONE - t) * (c - (TWO * b) + a)) + (SIX * t * (d - (TWO * c) + b));
+}
+
+float cubic_bezier2_curvature(float t, vec2 a, vec2 b, vec2 c, vec2 d)
+{
+    vec2 deriv1 = cubic_bezier2_deriv1(t, a, b, c, d);
+    vec2 deriv2 = cubic_bezier2_deriv2(t, a, b, c, d);
+    return ((deriv1.x * deriv2.y) - (deriv2.x * deriv1.y))
+            / pow((deriv1.x * deriv1.x) + (deriv1.y * deriv1.y), THREE / TWO);
+}
+
+vec2 cubic_bezier2_normal(float t, vec2 a, vec2 b, vec2 c, vec2 d)
+{
+    return cubic_bezier2_tangent(t, a, b, c, d).yx * vec2(ONE, -ONE);
 }
 
 #define tessel_x (gl_TessLevelInner[0] + 2.0)
@@ -69,14 +83,19 @@ void main(){
     float line_width = max(ZERO, stroke_width - ZERO);
 
     // tex_coord.x grows along the stroke from start = 0 to end = 1
-    v_out.tex_coord.x = gl_TessCoord.x;
-
+//    v_out.tex_coord.x = gl_TessCoord.x;
+    v_out.tex_coord.x = clamp(abs(cubic_bezier2_curvature(
+        gl_TessCoord.x,
+        gl_in[0].gl_Position.xy,
+        gl_in[0].gl_Position.xy + v_in[0].second_ctrl,
+        gl_in[1].gl_Position.xy + v_in[1].first_ctrl,
+        gl_in[1].gl_Position.xy)), ZERO, ONE) * 100.0;
 
     // tex_coord.y is 1 within the stroke and 0 at the very edge (geometric anti-aliasing in the normal)
     v_out.tex_coord.y = ONE - (step(EDGE, gl_TessCoord.y) + step(EDGE, ONE - gl_TessCoord.y));
 
     // spline normal vector
-    vec2 normal = cubic_bezier_normal(gl_TessCoord.x,
+    vec2 normal = cubic_bezier2_normal(gl_TessCoord.x,
                                       gl_in[0].gl_Position.xy,
                                       gl_in[0].gl_Position.xy + v_in[0].second_ctrl,
                                       gl_in[1].gl_Position.xy + v_in[1].first_ctrl,
@@ -85,7 +104,7 @@ void main(){
     float side = sign(gl_TessCoord.y - HALF);
 
     // screen space position of the vertex
-    v_out.position = cubic_bezier(gl_TessCoord.x,
+    v_out.position = cubic_bezier2(gl_TessCoord.x,
                             gl_in[0].gl_Position.xy,
                             gl_in[0].gl_Position.xy + v_in[0].second_ctrl,
                             gl_in[1].gl_Position.xy + v_in[1].first_ctrl,

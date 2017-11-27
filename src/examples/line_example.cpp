@@ -74,17 +74,24 @@ void render_thread(GLFWwindow* window)
     auto vertices = std::make_unique<VertexArray<VertexPos, LeftCtrlPos, RightCtrlPos>>();
     vertices->init();
     vertices->update({
-        {Vector2f{100, 070}, Vector2f{-1, +3}.normalize(), Vector2f{1, +3}.normalize()},
-        {Vector2f{180, 310}, Vector2f{-1, -3}.normalize(), Vector2f{1, -3}.normalize()},
-        {Vector2f{260, 070}, Vector2f{-1, +3}.normalize(), Vector2f{1, +3}.normalize()},
-        {Vector2f{340, 310}, Vector2f{-1, -3}.normalize(), Vector2f{1, -3}.normalize()},
+        //        {Vector2f{100, 070}, Vector2f{-1, +3}.normalize(), Vector2f{1, +3}.normalize()},
+        //        {Vector2f{180, 310}, Vector2f{-1, -3}.normalize(), Vector2f{1, -3}.normalize()},
+        //        {Vector2f{260, 070}, Vector2f{-1, +3}.normalize(), Vector2f{1, +3}.normalize()},
+        //        {Vector2f{340, 310}, Vector2f{-1, -3}.normalize(), Vector2f{1, -3}.normalize()},
+        {Vector2f{100, 100}, Vector2f{-400, 0}, Vector2f{400, 0}},
+        {Vector2f{700, 700}, Vector2f{-400, 0}, Vector2f{400, 0}},
     });
 
-    auto indices       = std::make_unique<IndexArray<GLuint>>();
+    auto indices = std::make_unique<IndexArray<GLuint>>();
     indices->init();
-    indices->update({0, 1,
-                     1, 2,
-                     2, 3,});
+    indices->update({
+        0,
+        1,
+//        1,
+//        2,
+//        2,
+//        3,
+    });
 
     // Rendering //////////////////////////////////////////////
 
@@ -121,7 +128,7 @@ void render_thread(GLFWwindow* window)
 
             // TODO: stroke_width less than 1 should set a uniform that fades the line out and line widths of zero
             // should be ignored
-            tess_shader->set_uniform("stroke_width", 30.f);
+            tess_shader->set_uniform("stroke_width", 10.f);
 
             // TODO: make sure that GL_PATCH_VERTICES <= GL_MAX_PATCH_VERTICES
             gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
