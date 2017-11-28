@@ -37,5 +37,6 @@ DEFINE_SHARED_POINTERS(class, Pipeline);
 
 DEFINE_UNIQUE_POINTERS(class, GraphicsContext);
 DEFINE_UNIQUE_POINTERS(class, VertexArrayType);
+DEFINE_UNIQUE_POINTERS(class, IndexArrayType);
 
 } // namespace notf

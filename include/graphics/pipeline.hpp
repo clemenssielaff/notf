@@ -49,6 +49,19 @@ public:
     /// @brief OpenGL ID of the Pipeline object.
     GLuint id() const { return m_id; }
 
+    /// @brief Vertex shader attached to this Pipeline.
+    const VertexShaderPtr& vertex_shader() const { return m_vertex_shader; }
+
+    /// @brief Tesselation shader attached to this Pipeline.
+    /// The tesselation stage actually contains two shader sources (tesselation control and -evaluation).
+    const TesselationShaderPtr& tesselation_shader() const { return m_tesselation_shader; }
+
+    /// @brief Geometry shader attached to this Pipeline.
+    const GeometryShaderPtr& geometry_shader() const { return m_geometry_shader; }
+
+    /// @brief Fragment shader attached to this Pipeline.
+    const FragmentShaderPtr& fragment_shader() const { return m_fragment_shader; }
+
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// @brief Graphics context containing this Pipeline.

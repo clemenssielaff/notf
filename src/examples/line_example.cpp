@@ -17,6 +17,7 @@
 #include "graphics/shader.hpp"
 #include "graphics/texture.hpp"
 #include "graphics/vertex_array.hpp"
+#include "cel/stroker.hpp"
 
 #include "glm_utils.hpp"
 
@@ -49,49 +50,7 @@ void render_thread(GLFWwindow* window)
 {
     std::unique_ptr<GraphicsContext> graphics_context(new GraphicsContext(window));
 
-    // Shader ///////////////////////////////////////////////
-
-    const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/line.vert");
-    VertexShaderPtr vertex_shader = VertexShader::build(graphics_context, "Line.vert", vertex_src);
-
-    const std::string tess_src = load_file("/home/clemens/code/notf/res/shaders/line.tess");
-    const std::string eval_src = load_file("/home/clemens/code/notf/res/shaders/line.eval");
-    TesselationShaderPtr tess_shader
-        = TesselationShader::build(graphics_context, "Line.tess", tess_src.c_str(), eval_src);
-
-    const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/line.frag");
-    FragmentShaderPtr frag_shader = FragmentShader::build(graphics_context, "Line.frag", frag_src);
-
-    PipelinePtr pipeline = Pipeline::create(graphics_context, vertex_shader, tess_shader, frag_shader);
-    graphics_context->bind_pipeline(pipeline);
-
-    // Vertices ///////////////////////////////////////////////
-
-    GLuint vao;
-    gl_check(glGenVertexArrays(1, &vao));
-    gl_check(glBindVertexArray(vao));
-
-    auto vertices = std::make_unique<VertexArray<VertexPos, LeftCtrlPos, RightCtrlPos>>();
-    vertices->init();
-    vertices->update({
-        //        {Vector2f{100, 070}, Vector2f{-1, +3}.normalize(), Vector2f{1, +3}.normalize()},
-        //        {Vector2f{180, 310}, Vector2f{-1, -3}.normalize(), Vector2f{1, -3}.normalize()},
-        //        {Vector2f{260, 070}, Vector2f{-1, +3}.normalize(), Vector2f{1, +3}.normalize()},
-        //        {Vector2f{340, 310}, Vector2f{-1, -3}.normalize(), Vector2f{1, -3}.normalize()},
-        {Vector2f{100, 100}, Vector2f{-400, 0}, Vector2f{400, 0}},
-        {Vector2f{700, 700}, Vector2f{-400, 0}, Vector2f{400, 0}},
-    });
-
-    auto indices = std::make_unique<IndexArray<GLuint>>();
-    indices->init();
-    indices->update({
-        0,
-        1,
-//        1,
-//        2,
-//        2,
-//        3,
-    });
+    Stroker stroker(graphics_context);
 
     // Rendering //////////////////////////////////////////////
 
@@ -121,20 +80,7 @@ void render_thread(GLFWwindow* window)
         glClearColor(0.2f, 0.3f, 0.5f, 1);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        {
-            // pass the shader uniforms
-            const Matrix4f perspective = Matrix4f::orthographic(0.f, 800.f, 0.f, 800.f, 0.f, 10000.f);
-            tess_shader->set_uniform("projection", perspective);
-
-            // TODO: stroke_width less than 1 should set a uniform that fades the line out and line widths of zero
-            // should be ignored
-            tess_shader->set_uniform("stroke_width", 10.f);
-
-            // TODO: make sure that GL_PATCH_VERTICES <= GL_MAX_PATCH_VERTICES
-            gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
-
-            glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices->size()), GL_UNSIGNED_INT, nullptr);
-        }
+        stroker.render();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
