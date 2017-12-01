@@ -46,6 +46,10 @@ struct _RealVector2 : public detail::Arithmetic<_RealVector2<REAL>, REAL, 2> {
     /// @brief Read-only access to the second element in the vector.
     const element_t& y() const { return data[1]; }
 
+    /// @brief Swizzles.
+    _RealVector2 xy() const { return { data[0], data[1] }; }
+    _RealVector2 yx() const { return { data[1], data[0] }; }
+
     /// @brief Returns True, if other and self are approximately the same vector.
     /// @note Vectors use distance approximation instead of component-wise approximation.
     /// @param other     Vector to test against.

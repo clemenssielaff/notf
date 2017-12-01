@@ -173,6 +173,16 @@ struct ArithmeticImpl<self_t, element_t, component_t, dim,
         return result;
     }
 
+    /// @brief Sum of all components of this vector.
+    element_t sum() const
+    {
+        element_t result = 0;
+        for (size_t i = 0; i < dim; ++i) {
+            result += data[i];
+        }
+        return result;
+    }
+
     /// @brief Tests whether all components of this vector are real values (not NAN, not INFINITY).
     bool is_real() const
     {
@@ -290,6 +300,16 @@ struct ArithmeticImpl<self_t, element_t, component_t, dim,
         self_t result;
         for (size_t i = 0; i < dim; ++i) {
             result[i] = data[i].min(other[i]);
+        }
+        return result;
+    }
+
+    /// @brief Sum of all elements of this matrix.
+    element_t sum() const
+    {
+        element_t result = 0;
+        for (size_t i = 0; i < dim; ++i) {
+            result += data[i].sum();
         }
         return result;
     }

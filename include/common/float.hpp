@@ -37,6 +37,7 @@ using std::roundf;
 using std::sin;
 using std::sqrt;
 using std::tan;
+using std::pow;
 
 /** Variadic min using auto type deduction. */
 template<typename LAST>

@@ -56,6 +56,14 @@ struct _RealVector3 : public detail::Arithmetic<_RealVector3<REAL>, REAL, 3> {
     /// @brief Read-only access to the third element in the vector.
     const element_t& z() const { return data[2]; }
 
+    /// @brief Swizzles.
+    _RealVector3 xyz() const { return { data[0], data[1], data[2] }; }
+    _RealVector3 xzy() const { return { data[0], data[2], data[1] }; }
+    _RealVector3 yxz() const { return { data[1], data[0], data[2] }; }
+    _RealVector3 yzx() const { return { data[1], data[2], data[0] }; }
+    _RealVector3 zxy() const { return { data[2], data[0], data[1] }; }
+    _RealVector3 zyx() const { return { data[2], data[1], data[0] }; }
+
     /// @brief Returns True, if other and self are approximately the same vector.
     /// @note Vector3s use distance approximation instead of component-wise approximation.
     /// @param other     Vector to test against.

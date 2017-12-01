@@ -64,6 +64,32 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<REAL>, REAL, 4> {
 
     /// @brief Read-only access to the fourth element in the vector.
     const element_t& w() const { return data[3]; }
+
+    /// @brief Szizzles.
+    _RealVector4 xyzw() const { return { data[0], data[1], data[2], data[3] }; }
+    _RealVector4 xywz() const { return { data[0], data[1], data[3], data[2] }; }
+    _RealVector4 xzyw() const { return { data[0], data[2], data[1], data[3] }; }
+    _RealVector4 xzwy() const { return { data[0], data[2], data[3], data[1] }; }
+    _RealVector4 xwyz() const { return { data[0], data[3], data[1], data[2] }; }
+    _RealVector4 xwzy() const { return { data[0], data[3], data[2], data[1] }; }
+    _RealVector4 yxzw() const { return { data[1], data[0], data[2], data[3] }; }
+    _RealVector4 yxwz() const { return { data[1], data[0], data[3], data[2] }; }
+    _RealVector4 yzxw() const { return { data[1], data[2], data[0], data[3] }; }
+    _RealVector4 yzwx() const { return { data[1], data[2], data[3], data[0] }; }
+    _RealVector4 ywxz() const { return { data[1], data[3], data[0], data[2] }; }
+    _RealVector4 ywzx() const { return { data[1], data[3], data[2], data[0] }; }
+    _RealVector4 zxyw() const { return { data[2], data[0], data[1], data[3] }; }
+    _RealVector4 zxwy() const { return { data[2], data[0], data[3], data[1] }; }
+    _RealVector4 zyxw() const { return { data[2], data[1], data[0], data[3] }; }
+    _RealVector4 zywx() const { return { data[2], data[1], data[3], data[0] }; }
+    _RealVector4 zwxy() const { return { data[2], data[3], data[0], data[1] }; }
+    _RealVector4 zwyx() const { return { data[2], data[3], data[1], data[0] }; }
+    _RealVector4 wxyz() const { return { data[3], data[0], data[1], data[2] }; }
+    _RealVector4 wxzy() const { return { data[3], data[0], data[2], data[1] }; }
+    _RealVector4 wyxz() const { return { data[3], data[1], data[0], data[2] }; }
+    _RealVector4 wyzx() const { return { data[3], data[1], data[2], data[0] }; }
+    _RealVector4 wzxy() const { return { data[3], data[2], data[0], data[1] }; }
+    _RealVector4 wzyx() const { return { data[3], data[2], data[1], data[0] }; }
 };
 
 //====================================================================================================================//
