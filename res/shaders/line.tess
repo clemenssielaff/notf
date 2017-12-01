@@ -11,19 +11,46 @@ in VertexData {
     vec2 second_ctrl;
 } v_in[];
 
-out VertexData {
-    vec2 first_ctrl;
-    vec2 second_ctrl;
-} v_out[];
+patch out PatchData {
+    vec2 ctrl1;
+    vec2 ctrl2;
+    int type;
+} patch_data;
 
-patch out int patch_type;
+//const float ZERO = 0.0f;
+//const float ONE = 1.0f;
 
 void main(){
     if (ID == 0){
+
+        // control points in screen coordinates
+        patch_data.ctrl1 = gl_in[0].gl_Position.xy + v_in[0].second_ctrl;
+        patch_data.ctrl2 = gl_in[1].gl_Position.xy + v_in[1].first_ctrl;
+
+//        { // aligned bezier
+//            // move the spline so `start` is at the origin
+//            patch_data.ctrl1_aligned = patch_data.ctrl1 - gl_in[0].gl_Position.xy;
+//            patch_data.ctrl2_aligned = patch_data.ctrl2 - gl_in[0].gl_Position.xy;
+//            vec2 end_aligned = gl_in[1].gl_Position.xy - gl_in[0].gl_Position.xy;
+
+//            // rotate the spline so the end is placed onto the x-axis
+//            float end_angle = acos(dot(normalize(end_aligned), vec2(ONE, ZERO)));
+//            float sin_angle = sin(end_angle);
+//            float cos_angle = cos(end_angle);
+//            mat2 rotation = mat2(
+//                        cos_angle, -sin_angle,
+//                        sin_angle, cos_angle);
+
+//            patch_data.ctrl1_aligned = rotation * patch_data.ctrl1_aligned;
+//            patch_data.ctrl2_aligned = rotation * patch_data.ctrl2_aligned;
+//            patch_data.end_aligned_x = (rotation * end_aligned).x;
+//        }
+
+        // patch type
         if(gl_in[0].gl_Position == gl_in[1].gl_Position){
-            patch_type = 1;
+            patch_data.type = 1;
         } else {
-            patch_type = 0;
+            patch_data.type = 0;
         }
 
         float tessel_x = 64.0;
@@ -36,10 +63,8 @@ void main(){
         gl_TessLevelOuter[1] = tessel_x;
         gl_TessLevelOuter[2] = tessel_y;
         gl_TessLevelOuter[3] = tessel_x;
+
     }
 
     gl_out[ID].gl_Position = gl_in[ID].gl_Position;
-
-    v_out[ID].first_ctrl = v_in[ID].first_ctrl;
-    v_out[ID].second_ctrl = v_in[ID].second_ctrl;
 }
