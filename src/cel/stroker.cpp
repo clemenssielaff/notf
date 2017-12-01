@@ -58,6 +58,8 @@ Stroker::Stroker(GraphicsContextPtr& context)
         FragmentShaderPtr frag_shader = FragmentShader::build(context, "line.frag", frag_src);
 
         m_pipeline = Pipeline::create(context, vertex_shader, tess_shader, frag_shader);
+
+        tess_shader->set_uniform("aa_width", 1.5f);
     }
 
     { // vertices
@@ -117,7 +119,7 @@ void Stroker::render()
 
     // TODO: stroke_width less than 1 should set a uniform that fades the line out and line widths of zero
     // should be ignored
-    tess_shader->set_uniform("stroke_width", 10.f);
+    tess_shader->set_uniform("stroke_width", 50.f);
 
     gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
     gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(m_indices->size()), m_indices->type(), nullptr));

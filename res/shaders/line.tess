@@ -11,14 +11,20 @@ in VertexData {
     vec2 second_ctrl;
 } v_in[];
 
+uniform float aa_width;
+
 patch out PatchData {
     vec2 ctrl1;
     vec2 ctrl2;
     int type;
 } patch_data;
 
-//const float ZERO = 0.0f;
-//const float ONE = 1.0f;
+const float ZERO = 0.0f;
+const float HALF = 0.5f;
+const float ONE = 1.0f;
+const float THREE = 3.0f;
+
+const float tessel_x_factor = 0.0001;
 
 void main(){
     if (ID == 0){
@@ -27,25 +33,6 @@ void main(){
         patch_data.ctrl1 = gl_in[0].gl_Position.xy + v_in[0].second_ctrl;
         patch_data.ctrl2 = gl_in[1].gl_Position.xy + v_in[1].first_ctrl;
 
-//        { // aligned bezier
-//            // move the spline so `start` is at the origin
-//            patch_data.ctrl1_aligned = patch_data.ctrl1 - gl_in[0].gl_Position.xy;
-//            patch_data.ctrl2_aligned = patch_data.ctrl2 - gl_in[0].gl_Position.xy;
-//            vec2 end_aligned = gl_in[1].gl_Position.xy - gl_in[0].gl_Position.xy;
-
-//            // rotate the spline so the end is placed onto the x-axis
-//            float end_angle = acos(dot(normalize(end_aligned), vec2(ONE, ZERO)));
-//            float sin_angle = sin(end_angle);
-//            float cos_angle = cos(end_angle);
-//            mat2 rotation = mat2(
-//                        cos_angle, -sin_angle,
-//                        sin_angle, cos_angle);
-
-//            patch_data.ctrl1_aligned = rotation * patch_data.ctrl1_aligned;
-//            patch_data.ctrl2_aligned = rotation * patch_data.ctrl2_aligned;
-//            patch_data.end_aligned_x = (rotation * end_aligned).x;
-//        }
-
         // patch type
         if(gl_in[0].gl_Position == gl_in[1].gl_Position){
             patch_data.type = 1;
@@ -53,8 +40,19 @@ void main(){
             patch_data.type = 0;
         }
 
-        float tessel_x = 64.0;
-        const float tessel_y = 3.0;
+        // tesselation along the length of spline
+        float tessel_x;
+        {
+            vec2 line = gl_in[1].gl_Position.xy - gl_in[0].gl_Position.xy;
+            float line_dot = dot(line, line);
+            tessel_x = floor(length(line) * (
+                length(gl_in[0].gl_Position.xy + line * (dot(patch_data.ctrl1 - gl_in[0].gl_Position.xy, line) / line_dot) - patch_data.ctrl1)
+              + length(gl_in[0].gl_Position.xy + line * (dot(patch_data.ctrl2 - gl_in[0].gl_Position.xy, line) / line_dot) - patch_data.ctrl2)
+                ) * tessel_x_factor) + ONE;
+        }
+
+        // tesselation along the width of spline
+        float tessel_y = (aa_width == ZERO ? ONE : THREE);
 
         gl_TessLevelInner[0] = tessel_x;
         gl_TessLevelInner[1] = tessel_y;
@@ -63,7 +61,6 @@ void main(){
         gl_TessLevelOuter[1] = tessel_x;
         gl_TessLevelOuter[2] = tessel_y;
         gl_TessLevelOuter[3] = tessel_x;
-
     }
 
     gl_out[ID].gl_Position = gl_in[ID].gl_Position;

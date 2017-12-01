@@ -10,22 +10,21 @@ patch in PatchData {
     int type;
 } patch_data;
 
+uniform float stroke_width;
+uniform mat4 projection;
+uniform float aa_width;
+
 out VertexData {
     mediump vec2 position;
     mediump vec2 tex_coord;
 } v_out;
 
-uniform float stroke_width;
-uniform mat4 projection;
-
-const float ZERO = 0.0f;
-const float HALF = 0.5f;
-const float EDGE = 0.9f; // 1.0 - epsilon
-const float ONE = 1.0f;
-const float THREE = 3.0f;
-const float SIX = 6.0f;
-
-const float aa_width = ONE;
+const float ZERO    = 0.0f;
+const float HALF    = 0.5f;
+const float ONE     = 1.0f;
+const float TWO     = 2.0f;
+const float THREE   = 3.0f;
+const float SIX     = 6.0f;
 
 const mat4 BEZIER = mat4(
      ONE,    ZERO,   ZERO,  ZERO,
@@ -54,15 +53,15 @@ void main()
     v_out.tex_coord.x = gl_TessCoord.x;
 
     // tex_coord.y is 1 within the stroke and 0 at the very edge (geometric anti-aliasing in the normal)
-    v_out.tex_coord.y = ONE - (step(EDGE, gl_TessCoord.y) + step(EDGE, ONE - gl_TessCoord.y));
+    v_out.tex_coord.y = aa_width == 0.0 ? 1.0 : ONE - (step(ONE, gl_TessCoord.y) + step(ONE, ONE - gl_TessCoord.y));
 
     // spline normal vector
-    vec2 normal = normalize(mat3x2(ctrl1-start, ctrl2-ctrl1, end-ctrl2) * DERIV * (TVEC.xyy * TVEC.xxy));
+    vec2 normal = normalize(mat3x2(ctrl1-start, ctrl2-ctrl1, end-ctrl2) * DERIV * (TVEC.xyy * TVEC.xxy)).yx * vec2(-ONE, ONE);
 
      // screen space position of the vertex
     v_out.position = (mat4x2(start, ctrl1, ctrl2,end) * BEZIER * (TVEC.xyyy * TVEC.xxyy * TVEC.xxxy)).xy +
-            (normal.yx * vec2(-ONE, ONE))
-             * sign(gl_TessCoord.y - HALF) * ((HALF * line_width) + ((1.0 - v_out.tex_coord.y) * aa_width));
+            normal *
+            (sign(gl_TessCoord.y - HALF) * HALF * (line_width + ((ONE - (v_out.tex_coord.y * TWO)) * aa_width)));
 
     // clip-space position of the vertex
     gl_Position = projection * vec4(v_out.position, -ONE, ONE);
