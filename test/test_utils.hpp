@@ -21,6 +21,10 @@ constexpr long double largest_supported_diagonale() { return 11585.2375029603946
 
 } // namespace detail
 
+using detail::RealVector2;
+using detail::Matrix3;
+using detail::Size2;
+
 template<typename Real>
 constexpr Real lowest_tested()
 {
@@ -41,15 +45,15 @@ inline Real random_number()
 }
 
 template<typename Real>
-inline _RealVector2<Real> lowest_vector()
+inline RealVector2<Real> lowest_vector()
 {
-    return _RealVector2<Real>(lowest_tested<Real>(), lowest_tested<Real>());
+    return RealVector2<Real>(lowest_tested<Real>(), lowest_tested<Real>());
 }
 
 template<typename Real>
-inline _RealVector2<Real> highest_vector()
+inline RealVector2<Real> highest_vector()
 {
-    return _RealVector2<Real>(highest_tested<Real>(), highest_tested<Real>());
+    return RealVector2<Real>(highest_tested<Real>(), highest_tested<Real>());
 }
 
 template<typename T>
@@ -77,24 +81,24 @@ inline T random_matrix(const typename T::element_t minimum = lowest_tested<typen
 }
 
 template<typename Real>
-inline _Matrix3<Real>
+inline Matrix3<Real>
 random_matrix3(const Real min_trans, const Real max_trans, const Real min_scale, const Real max_scale)
 {
-    _Matrix3<Real> result = _Matrix3<Real>::scaling(random_number(min_scale, max_scale));
-    result *= _Matrix3<Real>::rotation(random_radian<Real>());
-    result *= _Matrix3<Real>::translation(
-        _RealVector2<Real>(random_number(min_trans, max_trans), random_number(min_trans, max_trans)));
+    Matrix3<Real> result = Matrix3<Real>::scaling(random_number(min_scale, max_scale));
+    result *= Matrix3<Real>::rotation(random_radian<Real>());
+    result *= Matrix3<Real>::translation(
+        RealVector2<Real>(random_number(min_trans, max_trans), random_number(min_trans, max_trans)));
     return result;
 }
 
 template<typename Real>
-inline _Matrix3<Real> random_matrix3()
+inline Matrix3<Real> random_matrix3()
 {
     return random_matrix3(lowest_tested<Real>(), highest_tested<Real>(), Real(0), Real(2));
 }
 
 template<typename T>
-inline _Size2<T> random_size(const T from, const T to)
+inline Size2<T> random_size(const T from, const T to)
 {
     return {random_number<T>(from, to), random_number<T>(from, to)};
 }

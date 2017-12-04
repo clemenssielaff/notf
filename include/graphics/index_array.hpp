@@ -74,6 +74,9 @@ public:
     /// @brief Number of elements to draw.
     GLsizei size() const { return m_size; }
 
+    /// @brief Checks whether the array is empty.
+    bool is_empty() const { return m_size == 0; }
+
     /// @brief The restart index of the index buffer type.
     virtual GLuint restart_index() const = 0;
 

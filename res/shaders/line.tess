@@ -14,8 +14,10 @@ in VertexData {
 uniform float aa_width;
 
 patch out PatchData {
-    vec2 ctrl1;
-    vec2 ctrl2;
+    float ctrl1_length;
+    float ctrl2_length;
+    vec2 ctrl1_direction;
+    vec2 ctrl2_direction;
     int type;
 } patch_data;
 
@@ -25,30 +27,48 @@ const float ONE = 1.0f;
 const float THREE = 3.0f;
 
 const float tessel_x_factor = 0.0001;
+const float tessel_x_max = 64.0;
 
 void main(){
     if (ID == 0){
 
-        // control points in screen coordinates
-        patch_data.ctrl1 = gl_in[0].gl_Position.xy + v_in[0].second_ctrl;
-        patch_data.ctrl2 = gl_in[1].gl_Position.xy + v_in[1].first_ctrl;
+        // ctrl point delta magnitude
+        patch_data.ctrl1_length = max(ZERO, length(v_in[0].second_ctrl) - ONE);
+        patch_data.ctrl2_length = max(ZERO, length(v_in[1].first_ctrl) - ONE);
 
-        // patch type
-        if(gl_in[0].gl_Position == gl_in[1].gl_Position){
-            patch_data.type = 1;
-        } else {
-            patch_data.type = 0;
-        }
+        // control points in screen coordinates
+        patch_data.ctrl1_direction = normalize(v_in[0].second_ctrl);
+        patch_data.ctrl2_direction = normalize(v_in[1].first_ctrl);
+
+        // bezier spline points
+        #define start (gl_in[0].gl_Position.xy)
+        #define end (gl_in[1].gl_Position.xy)
+        vec2 ctrl1 = start + (patch_data.ctrl1_direction * patch_data.ctrl1_length);
+        vec2 ctrl2 = end + (patch_data.ctrl2_direction * patch_data.ctrl2_length);
+
+//        // patch type
+//        if(gl_in[0].gl_Position == gl_in[1].gl_Position){
+//            if (v_in[1].first_ctrl == vec2(ZERO, ZERO) && v_in[1].second_ctrl == vec2(ZERO, ZERO)){
+//                patch_data.type = 2; // start cap
+//            } else if (v_in[0].first_ctrl == vec2(ZERO, ZERO) && v_in[0].second_ctrl == vec2(ZERO, ZERO)){
+//                patch_data.type = 3; // end cap
+//            } else {
+//                patch_data.type = 1; // joint
+//            }
+//        } else {
+//            patch_data.type = 0; // normal segment
+//        }
 
         // tesselation along the length of spline
         float tessel_x;
         {
-            vec2 line = gl_in[1].gl_Position.xy - gl_in[0].gl_Position.xy;
+            vec2 line = end - start;
             float line_dot = dot(line, line);
-            tessel_x = floor(length(line) * (
-                length(gl_in[0].gl_Position.xy + line * (dot(patch_data.ctrl1 - gl_in[0].gl_Position.xy, line) / line_dot) - patch_data.ctrl1)
-              + length(gl_in[0].gl_Position.xy + line * (dot(patch_data.ctrl2 - gl_in[0].gl_Position.xy, line) / line_dot) - patch_data.ctrl2)
-                ) * tessel_x_factor) + ONE;
+            tessel_x = min(tessel_x_max,
+                           floor(length(line) * (
+                                     length(start + line * (dot(ctrl1 - start, line) / line_dot) - ctrl1) +
+                                     length(start + line * (dot(ctrl2 - start, line) / line_dot) - ctrl2)
+                                     ) * tessel_x_factor) + ONE);
         }
 
         // tesselation along the width of spline

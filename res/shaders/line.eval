@@ -5,8 +5,10 @@ precision highp float;
 layout (quads, fractional_even_spacing) in;
 
 patch in PatchData {
-    vec2 ctrl1;
-    vec2 ctrl2;
+    float ctrl1_length;
+    float ctrl2_length;
+    vec2 ctrl1_direction;
+    vec2 ctrl2_direction;
     int type;
 } patch_data;
 
@@ -41,10 +43,11 @@ void main()
 {
     vec2 TVEC = vec2(ONE, gl_TessCoord.x);
 
+    // bezier spline points
     #define start (gl_in[0].gl_Position.xy)
-    vec2 ctrl1 = patch_data.ctrl1;
-    vec2 ctrl2 = patch_data.ctrl2;
     #define end (gl_in[1].gl_Position.xy)
+    vec2 ctrl1 = start + (patch_data.ctrl1_direction * patch_data.ctrl1_length);
+    vec2 ctrl2 = end + (patch_data.ctrl2_direction * patch_data.ctrl2_length);
 
     // the actual line width is always 1 pixel wider, since even a zero-width line has one pixel of antialiasing
     float line_width = max(ZERO, stroke_width - ZERO);
@@ -59,7 +62,7 @@ void main()
     vec2 normal = normalize(mat3x2(ctrl1-start, ctrl2-ctrl1, end-ctrl2) * DERIV * (TVEC.xyy * TVEC.xxy)).yx * vec2(-ONE, ONE);
 
      // screen space position of the vertex
-    v_out.position = (mat4x2(start, ctrl1, ctrl2,end) * BEZIER * (TVEC.xyyy * TVEC.xxyy * TVEC.xxxy)).xy +
+    v_out.position = (mat4x2(start, ctrl1, ctrl2, end) * BEZIER * (TVEC.xyyy * TVEC.xxyy * TVEC.xxxy)).xy +
             normal *
             (sign(gl_TessCoord.y - HALF) * HALF * (line_width + ((ONE - (v_out.tex_coord.y * TWO)) * aa_width)));
 

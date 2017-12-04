@@ -6,7 +6,7 @@ namespace notf {
 
 namespace detail {
 
-struct _EnumClassHash {
+struct EnumClassHash {
     template<typename T>
     std::size_t operator()(T t) const
     {
@@ -15,7 +15,7 @@ struct _EnumClassHash {
 };
 
 template<typename Key>
-using _HashType = typename std::conditional<std::is_enum<Key>::value, _EnumClassHash, std::hash<Key>>::type;
+using HashType = typename std::conditional<std::is_enum<Key>::value, EnumClassHash, std::hash<Key>>::type;
 
 constexpr size_t _bit_index_recursion(size_t c, size_t v) { return v == 0 ? c : _bit_index_recursion(c + 1, v >> 1); }
 
@@ -29,7 +29,7 @@ constexpr size_t _bit_index_recursion(size_t c, size_t v) { return v == 0 ? c : 
  * but it seems like right now it isn't.
  */
 template<typename Key, typename T>
-using EnumMap = std::unordered_map<Key, T, detail::_HashType<Key>>;
+using EnumMap = std::unordered_map<Key, T, detail::HashType<Key>>;
 
 /// If you have an enum that acts as container for flags and has power-of-two values, you can use this constant
 /// expression to transform the value into an index, for example for a bitset.

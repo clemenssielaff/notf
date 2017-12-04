@@ -30,6 +30,7 @@ enum class HashID : size_t {
     COLOR,
     CIRCLE,
     LINE2,
+    BEZIER,
 };
 
 } // namespace detail

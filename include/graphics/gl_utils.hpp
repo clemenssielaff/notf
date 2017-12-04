@@ -31,4 +31,22 @@ GLenum to_gl_type(const GLuint&);
 GLenum to_gl_type(const half&);
 GLenum to_gl_type(const GLfloat&);
 
+//====================================================================================================================//
+
+/// @brief RAII guard for vector array object bindings.
+struct VaoGuard final {
+
+    // fields --------------------------------------------------------------------------------------------------------//
+    /// @brief Vertex array object ID.
+    const GLuint m_vao;
+
+    // methods -------------------------------------------------------------------------------------------------------//
+    /// @brief Constructor.
+    /// @param vao  Vertex array object ID.
+    VaoGuard(GLuint vao);
+
+    /// @brief Destructor.
+    ~VaoGuard();
+};
+
 } // namespace notf

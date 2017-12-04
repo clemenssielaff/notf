@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/bezier.hpp"
 #include "common/forwards.hpp"
 #include "graphics/gl_forwards.hpp"
 
@@ -11,8 +12,6 @@ namespace notf {
 /// Manages the shader and -invokation, as well as the rendered vertices.
 class Stroker final {
 
-    // types ---------------------------------------------------------------------------------------------------------//
-public:
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     DISALLOW_COPY_AND_ASSIGN(Stroker)
@@ -24,6 +23,17 @@ public:
 
     /// @brief Destructor.
     ~Stroker();
+
+    /// @brief Adds a new Bezier spline to stroke.
+    /// @param spline   Spline to add.
+    void add_spline(CubicBezier2f spline);
+
+    /// @brief Clears the current contents of the Stroker and applies the new ones.
+    /// New strokes are all that have been added via `add_stroke` since the last call to `apply`.
+    void apply_new();
+
+    /// @brief Discards all new strokes added with `apply_new` without applying them.
+    void discard_new() { m_spline_buffer.clear(); }
 
     /// @brief Render the current contents of the Stroker.
     void render();
@@ -44,6 +54,9 @@ private:
 
     /// @brief Index of the vertices.
     IndexArrayTypePtr m_indices;
+
+    /// @brief Buffer into which bezier segments are stored while the UI is drawn (not rendered).
+    std::vector<CubicBezier2f> m_spline_buffer;
 };
 
 } // namespace notf

@@ -166,6 +166,9 @@ public:
     /// @brief Number of elements in the array.
     GLsizei size() const { return m_size; }
 
+    /// @brief Checks whether the array is empty.
+    bool is_empty() const { return m_size == 0; }
+
     // fields --------------------------------------------------------------------------------------------------------//
 protected:
     /// @brief Arguments used to initialize the vertex array.

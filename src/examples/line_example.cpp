@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "cel/stroker.hpp"
 #include "common/half.hpp"
 #include "common/log.hpp"
 #include "common/matrix4.hpp"
@@ -17,7 +18,6 @@
 #include "graphics/shader.hpp"
 #include "graphics/texture.hpp"
 #include "graphics/vertex_array.hpp"
-#include "cel/stroker.hpp"
 
 #include "glm_utils.hpp"
 
@@ -50,7 +50,19 @@ void render_thread(GLFWwindow* window)
 {
     std::unique_ptr<GraphicsContext> graphics_context(new GraphicsContext(window));
 
+    CubicBezier2f spline1({
+        CubicBezier2f::Segment(Vector2f{100, 100}, Vector2f{400, 100}, Vector2f{400, 700}, Vector2f{700, 700}),
+    });
+    CubicBezier2f spline2({
+        CubicBezier2f::Segment::line(Vector2f{100, 100}, Vector2f{200, 200}),
+        CubicBezier2f::Segment::line(Vector2f{200, 200}, Vector2f{300, 100}),
+        CubicBezier2f::Segment::line(Vector2f{300, 100}, Vector2f{400, 200}),
+    });
+
     Stroker stroker(graphics_context);
+    stroker.add_spline(spline1);
+    stroker.add_spline(spline2);
+    stroker.apply_new();
 
     // Rendering //////////////////////////////////////////////
 

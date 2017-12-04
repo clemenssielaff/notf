@@ -9,79 +9,74 @@
 
 namespace notf {
 
-//*********************************************************************************************************************/
+namespace detail {
 
-/**
- * Simple 2D circle shape.
- */
+//====================================================================================================================//
+
+/// @brief 2D Circle shape.
 template<typename Real, ENABLE_IF_REAL(Real)>
-struct _Circle {
+struct Circle {
 
-    /* Types **********************************************************************************************************/
+    /// @brief Element type.
+    using element_t = Real;
 
-    using value_t = Real;
+    /// @brief Component type.
+    using component_t = RealVector2<Real>;
 
-    using vector_t = _RealVector2<Real>;
+    // fields --------------------------------------------------------------------------------------------------------//
+    /// @brief Center position of the Circle.
+    RealVector2<Real> center;
 
-    /* Fields *********************************************************************************************************/
+    /// @brief Radius of the Circle.
+    element_t radius;
 
-    /** Center position of the Circle. */
-    _RealVector2<Real> center;
+    // methods -------------------------------------------------------------------------------------------------------//
+    // @brief Default constructor.
+    Circle() = default;
 
-    /** Radius of the Circle. */
-    value_t radius;
+    /// @brief Constructs a Circle of the given radius, centered at the given coordinates.
+    /// @param center    Center position of the Circle.
+    /// @param radius    Radius of the Circle.
+    Circle(component_t center, const element_t radius) : center(std::move(center)), radius(radius) {}
 
-    /* Constructors ***************************************************************************************************/
+    /// @brief Constructs a Circle of the given radius, centered at the origin.
+    /// @param radius    Radius of the Circle.
+    Circle(const element_t radius) : center(component_t::zero()), radius(radius) {}
 
-    /** Default (non-initializing) constructor so this struct remains a POD */
-    _Circle() = default;
+    /// @brief Produces a zero Circle.
+    static Circle zero() { return {{0, 0}, 0}; }
 
-    /** Constructs a Circle of the given radius, centered at the given coordinates.
-     * @param center    Center position of the Circle.
-     * @param radius    Radius of the Circle.
-     */
-    _Circle(vector_t center, const value_t radius) : center(std::move(center)), radius(radius) {}
-
-    /** Constructs a Circle of the given radius, centered at the origin.
-     * @param radius    Radius of the Circle.
-     */
-    _Circle(const value_t radius) : center(vector_t::zero()), radius(radius) {}
-
-    /* Static Constructors ********************************************************************************************/
-
-    /** Produces a zero Circle. */
-    static _Circle zero() { return {{0, 0}, 0}; }
-
-    /*  Inspection  ***************************************************************************************************/
-
-    /** Checks if this is a zero Circle. */
+    /// @brief Checks if this is a zero Circle.
     bool is_zero() const { return radius == 0.f; }
 
-    /** The diameter of the Circle. */
-    value_t diameter() const { return radius * 2.f; }
+    /// @brief The diameter of the Circle.
+    element_t diameter() const { return radius * 2.f; }
 
-    /** The circumenfence of this Circle. */
-    value_t circumfence() const { return pi<value_t>() * radius * 2.f; }
+    /// @brief The circumenfence of this Circle.
+    element_t circumfence() const { return pi<element_t>() * radius * 2.f; }
 
-    /** The area of this Circle. */
-    value_t area() const { return pi<value_t>() * radius * radius; }
+    /// @brief The area of this Circle.
+    element_t area() const { return pi<element_t>() * radius * radius; }
 
-    /** Checks, if the given point is contained within (or on the border of) this Circle. */
-    bool contains(const vector_t& point) const { return (point - center).magnitude_sq() <= (radius * radius); }
+    /// @brief Checks, if the given point is contained within (or on the border of) this Circle.
+    /// @param point    Point to check.
+    bool contains(const component_t& point) const { return (point - center).magnitude_sq() <= (radius * radius); }
 
-    /** Checks if the other Circle intersects with this one, intersection requires the intersected area to be >= zero.
-     */
-    bool intersects(const _Circle& other) const
+    /// @brief Checks if the other Circle intersects with this one.
+    /// Intersection requires the intersected area to be >= zero.
+    /// @param other    Circle to intersect.
+    bool intersects(const Circle& other) const
     {
-        const value_t radii = radius + other.radius;
+        const element_t radii = radius + other.radius;
         return (other.center - center).magnitude_sq() < (radii * radii);
     }
 
-    /** Returns the closest point inside this Circle to the given target point. */
-    vector_t closest_point_to(const vector_t& target) const
+    /// @brief Returns the closest point inside this Circle to the given target point.
+    /// @param target   Target point.
+    component_t closest_point_to(const component_t& target) const
     {
-        const vector_t delta = target - center;
-        const value_t mag_sq = delta.magnitude_sq();
+        const component_t delta = target - center;
+        const element_t mag_sq  = delta.magnitude_sq();
         if (mag_sq <= (radius * radius)) {
             return target;
         }
@@ -91,15 +86,13 @@ struct _Circle {
         return (delta / sqrt(mag_sq)) * radius;
     }
 
-    /** Operators *****************************************************************************************************/
+    /// @brief Equality operator.
+    bool operator==(const Circle& other) const { return (other.center == center && other.radius == radius); }
 
-    bool operator==(const _Circle& other) const { return (other.center == center && other.radius == radius); }
+    /// @brief Inequality operator.
+    bool operator!=(const Circle& other) const { return (other.center != center || other.radius != radius); }
 
-    bool operator!=(const _Circle& other) const { return (other.center != center || other.radius != radius); }
-
-    /*  Modifiers *****************************************************************************************************/
-
-    /** Sets this Circle to zero. */
+    /// @brief Sets this Circle to zero.
     void set_zero()
     {
         center.set_zero();
@@ -107,31 +100,33 @@ struct _Circle {
     }
 };
 
-//*********************************************************************************************************************/
+} // namespace detail
 
-using Circlef = _Circle<float>;
+//====================================================================================================================//
 
-/* Free Functions *****************************************************************************************************/
+using Circlef = detail::Circle<float>;
 
-/** Prints the contents of this Circle into a std::ostream.
- * @param out       Output stream, implicitly passed with the << operator.
- * @param circle    Circle to print.
- * @return          Output stream for further output.
- */
-template<typename Real>
-std::ostream& operator<<(std::ostream& out, const notf::_Circle<Real>& circle);
+//====================================================================================================================//
+
+/// @brief Prints the contents of a circle into a std::ostream.
+/// @param out      Output stream, implicitly passed with the << operator.
+/// @param circle   Circle to print.
+/// @return Output stream for further output.
+std::ostream& operator<<(std::ostream& out, const Circlef& circle);
 
 } // namespace notf
 
-/* std::hash **********************************************************************************************************/
+//====================================================================================================================//
 
 namespace std {
 
-/** std::hash specialization for notf::Circle. */
+/// @brief std::hash specialization for Circle.
 template<typename Real>
-struct hash<notf::_Circle<Real>> {
-    size_t operator()(const notf::_Circle<Real>& circle) const {
+struct hash<notf::detail::Circle<Real>> {
+    size_t operator()(const notf::detail::Circle<Real>& circle) const
+    {
         return notf::hash(static_cast<size_t>(notf::detail::HashID::CIRCLE), circle.center, circle.radius);
     }
 };
+
 } // namespace std

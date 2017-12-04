@@ -7,8 +7,7 @@ namespace notf {
 
 /* Circlef ************************************************************************************************************/
 
-template<>
-std::ostream& operator<<(std::ostream& out, const notf::_Circle<float>& circle)
+std::ostream& operator<<(std::ostream& out, const Circlef& circle)
 {
     return out << "Circlef([" << circle.center.x() << ", " << circle.center.y() << "], " << circle.radius << ")";
 }

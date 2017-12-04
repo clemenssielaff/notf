@@ -286,21 +286,25 @@ inline LogMessage::LEVEL get_log_level() { return LogMessageFactory::s_log_level
 /** Sets the minimum log level required for a message to be logged. */
 inline void set_log_level(LogMessage::LEVEL level) { LogMessageFactory::s_log_level = level; }
 
+namespace detail {
+
 /** The NullBuffer is a helper class to ignore unwanted logging messages.
  * It is used instead of a LogMessageFactory as target for logging strings when the code was compiled with flags to
  * ignore certain levels of logging calls.
  * For example, if the code was compiled using NOTF_LOG_LEVEL = 3 (warnings and errors only), all log_info and
- * log_trace calls target a _NullBuffer.
- * The _NullBuffer class provides a '<<' operator for all types of inputs but just ignores the argument.
- * This way, input into a _NullBuffer is simply optimized out of existence.
+ * log_trace calls target a NullBuffer.
+ * The NullBuffer class provides a '<<' operator for all types of inputs but just ignores the argument.
+ * This way, input into a NullBuffer is simply optimized out of existence.
  */
-struct _NullBuffer {
+struct NullBuffer {
     template<typename Any>
-    _NullBuffer& operator<<(Any&&)
+    NullBuffer& operator<<(Any&&)
     {
         return *this;
     }
 };
+
+} // namespace detail
 
 } // namespace notf
 
@@ -327,13 +331,13 @@ struct _NullBuffer {
 ///     log_trace << "this is log message: " << 42;
 ///     log_critical << "Caught unhandled error: " << error_object;
 ///
-/// The object provided by log_* is a std::stringstream or a _NullBuffer, which accepts all the same inputs.
+/// The object provided by log_* is a std::stringstream or a NullBuffer, which accepts all the same inputs.
 #ifndef log_format
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_TRACE
 #define log_format \
     notf::LogMessageFactory(notf::LogMessage::LEVEL::FORMAT, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
-#define log_format notf::_NullBuffer()
+#define log_format notf::detail::NullBuffer()
 #endif
 #else
 #warning "Macro 'log_format' is already defined - NoTF's log_format macro will remain disabled."
@@ -344,7 +348,7 @@ struct _NullBuffer {
 #define log_trace \
     notf::LogMessageFactory(notf::LogMessage::LEVEL::TRACE, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
-#define log_trace notf::_NullBuffer()
+#define log_trace notf::detail::NullBuffer()
 #endif
 #else
 #warning "Macro 'log_trace' is already defined - NoTF's log_trace macro will remain disabled."
@@ -355,7 +359,7 @@ struct _NullBuffer {
 #define log_info \
     notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
-#define log_info notf::_NullBuffer()
+#define log_info notf::detail::NullBuffer()
 #endif
 #else
 #warning "Macro 'log_info' is already defined - NoTF's log_info macro will remain disabled."
@@ -366,7 +370,7 @@ struct _NullBuffer {
 #define log_warning \
     notf::LogMessageFactory(notf::LogMessage::LEVEL::WARNING, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
-#define log_warning notf::_NullBuffer()
+#define log_warning notf::detail::NullBuffer()
 #endif
 #else
 #warning "Macro 'log_warning' is already defined - NoTF's log_warning macro will remain disabled."
@@ -377,7 +381,7 @@ struct _NullBuffer {
 #define log_critical \
     notf::LogMessageFactory(notf::LogMessage::LEVEL::CRITICAL, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
-#define log_critical notf::_NullBuffer()
+#define log_critical notf::detail::NullBuffer()
 #endif
 #else
 #warning "Macro 'log_critical' is already defined - NoTF's log_critical macro will remain disabled."
@@ -388,7 +392,7 @@ struct _NullBuffer {
 #define log_fatal \
     notf::LogMessageFactory(notf::LogMessage::LEVEL::FATAL, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
 #else
-#define log_fatal notf::_NullBuffer()
+#define log_fatal notf::detail::NullBuffer()
 #endif
 #else
 #warning "Macro 'log_fatal' is already defined - NoTF's log_fatal macro will remain disabled."

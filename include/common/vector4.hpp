@@ -4,42 +4,44 @@
 
 namespace notf {
 
+namespace detail {
+
 //====================================================================================================================//
 
 /// @brief 4-dimensional mathematical vector containing real numbers.
 template<typename REAL>
-struct _RealVector4 : public detail::Arithmetic<_RealVector4<REAL>, REAL, 4> {
+struct RealVector4 : public detail::Arithmetic<RealVector4<REAL>, REAL, 4> {
 
     /// @brief Element type.
     using element_t = REAL;
 
     /// @brief Arithmetic base type.
-    using super_t = detail::Arithmetic<_RealVector4<REAL>, REAL, 4>;
+    using super_t = detail::Arithmetic<RealVector4<REAL>, REAL, 4>;
 
     // fields --------------------------------------------------------------------------------------------------------//
     using super_t::data;
 
     // methods -------------------------------------------------------------------------------------------------------//
     /// @brief Default constructor.
-    _RealVector4() = default;
+    RealVector4() = default;
 
     /// @brief Element-wise constructor.
     /// @param x    First component.
     /// @param y    Second component (default is 0).
     /// @param z    Third component (default is 0).
     /// @param w    Fourth component (default is 1).
-    _RealVector4(const element_t x, const element_t y = 0, const element_t z = 0, const element_t w = 1)
+    RealVector4(const element_t x, const element_t y = 0, const element_t z = 0, const element_t w = 1)
         : super_t{x, y, z, w}
     {}
 
     /// @brief Unit Vector2 along the X-axis.
-    static _RealVector4 x_axis() { return _RealVector4(1, 0, 0); }
+    static RealVector4 x_axis() { return RealVector4(1, 0, 0); }
 
     /// @brief Unit Vector2 along the Y-axis.
-    static _RealVector4 y_axis() { return _RealVector4(0, 1, 0); }
+    static RealVector4 y_axis() { return RealVector4(0, 1, 0); }
 
     /// @brief Unit Vector2 along the Z-axis.
-    static _RealVector4 z_axis() { return _RealVector4(0, 0, 1); }
+    static RealVector4 z_axis() { return RealVector4(0, 0, 1); }
 
     /// @brief Read-write access to the first element in the vector.
     element_t& x() { return data[0]; }
@@ -66,37 +68,39 @@ struct _RealVector4 : public detail::Arithmetic<_RealVector4<REAL>, REAL, 4> {
     const element_t& w() const { return data[3]; }
 
     /// @brief Szizzles.
-    _RealVector4 xyzw() const { return { data[0], data[1], data[2], data[3] }; }
-    _RealVector4 xywz() const { return { data[0], data[1], data[3], data[2] }; }
-    _RealVector4 xzyw() const { return { data[0], data[2], data[1], data[3] }; }
-    _RealVector4 xzwy() const { return { data[0], data[2], data[3], data[1] }; }
-    _RealVector4 xwyz() const { return { data[0], data[3], data[1], data[2] }; }
-    _RealVector4 xwzy() const { return { data[0], data[3], data[2], data[1] }; }
-    _RealVector4 yxzw() const { return { data[1], data[0], data[2], data[3] }; }
-    _RealVector4 yxwz() const { return { data[1], data[0], data[3], data[2] }; }
-    _RealVector4 yzxw() const { return { data[1], data[2], data[0], data[3] }; }
-    _RealVector4 yzwx() const { return { data[1], data[2], data[3], data[0] }; }
-    _RealVector4 ywxz() const { return { data[1], data[3], data[0], data[2] }; }
-    _RealVector4 ywzx() const { return { data[1], data[3], data[2], data[0] }; }
-    _RealVector4 zxyw() const { return { data[2], data[0], data[1], data[3] }; }
-    _RealVector4 zxwy() const { return { data[2], data[0], data[3], data[1] }; }
-    _RealVector4 zyxw() const { return { data[2], data[1], data[0], data[3] }; }
-    _RealVector4 zywx() const { return { data[2], data[1], data[3], data[0] }; }
-    _RealVector4 zwxy() const { return { data[2], data[3], data[0], data[1] }; }
-    _RealVector4 zwyx() const { return { data[2], data[3], data[1], data[0] }; }
-    _RealVector4 wxyz() const { return { data[3], data[0], data[1], data[2] }; }
-    _RealVector4 wxzy() const { return { data[3], data[0], data[2], data[1] }; }
-    _RealVector4 wyxz() const { return { data[3], data[1], data[0], data[2] }; }
-    _RealVector4 wyzx() const { return { data[3], data[1], data[2], data[0] }; }
-    _RealVector4 wzxy() const { return { data[3], data[2], data[0], data[1] }; }
-    _RealVector4 wzyx() const { return { data[3], data[2], data[1], data[0] }; }
+    RealVector4 xyzw() const { return {data[0], data[1], data[2], data[3]}; }
+    RealVector4 xywz() const { return {data[0], data[1], data[3], data[2]}; }
+    RealVector4 xzyw() const { return {data[0], data[2], data[1], data[3]}; }
+    RealVector4 xzwy() const { return {data[0], data[2], data[3], data[1]}; }
+    RealVector4 xwyz() const { return {data[0], data[3], data[1], data[2]}; }
+    RealVector4 xwzy() const { return {data[0], data[3], data[2], data[1]}; }
+    RealVector4 yxzw() const { return {data[1], data[0], data[2], data[3]}; }
+    RealVector4 yxwz() const { return {data[1], data[0], data[3], data[2]}; }
+    RealVector4 yzxw() const { return {data[1], data[2], data[0], data[3]}; }
+    RealVector4 yzwx() const { return {data[1], data[2], data[3], data[0]}; }
+    RealVector4 ywxz() const { return {data[1], data[3], data[0], data[2]}; }
+    RealVector4 ywzx() const { return {data[1], data[3], data[2], data[0]}; }
+    RealVector4 zxyw() const { return {data[2], data[0], data[1], data[3]}; }
+    RealVector4 zxwy() const { return {data[2], data[0], data[3], data[1]}; }
+    RealVector4 zyxw() const { return {data[2], data[1], data[0], data[3]}; }
+    RealVector4 zywx() const { return {data[2], data[1], data[3], data[0]}; }
+    RealVector4 zwxy() const { return {data[2], data[3], data[0], data[1]}; }
+    RealVector4 zwyx() const { return {data[2], data[3], data[1], data[0]}; }
+    RealVector4 wxyz() const { return {data[3], data[0], data[1], data[2]}; }
+    RealVector4 wxzy() const { return {data[3], data[0], data[2], data[1]}; }
+    RealVector4 wyxz() const { return {data[3], data[1], data[0], data[2]}; }
+    RealVector4 wyzx() const { return {data[3], data[1], data[2], data[0]}; }
+    RealVector4 wzxy() const { return {data[3], data[2], data[0], data[1]}; }
+    RealVector4 wzyx() const { return {data[3], data[2], data[1], data[0]}; }
 };
+
+} // namespace detail
 
 //====================================================================================================================//
 
-using Vector4f = _RealVector4<float>;
-using Vector4d = _RealVector4<double>;
-using Vector4h = _RealVector4<half>;
+using Vector4f = detail::RealVector4<float>;
+using Vector4d = detail::RealVector4<double>;
+using Vector4h = detail::RealVector4<half>;
 
 //====================================================================================================================//
 
@@ -114,10 +118,10 @@ std::ostream& operator<<(std::ostream& out, const Vector4h& vec);
 
 namespace std {
 
-/// @brief std::hash implementation for notf::_RealVector4.
+/// @brief std::hash implementation for RealVector4.
 template<typename Real>
-struct hash<notf::_RealVector4<Real>> {
-    size_t operator()(const notf::_RealVector4<Real>& vector) const
+struct hash<notf::detail::RealVector4<Real>> {
+    size_t operator()(const notf::detail::RealVector4<Real>& vector) const
     {
         return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR4R), vector.hash());
     }
