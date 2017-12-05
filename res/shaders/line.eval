@@ -71,7 +71,15 @@ void main()
                 + (normal * normal_offset);                                                             // along normal
     }
     else if(patch_data.type == JOINT){
+        vec2 normal;
+        if(gl_TessCoord.x == ZERO){
+            normal = (-patch_data.ctrl1_direction).yx * vec2(-ONE, ONE);
+        } else {
+            normal = (-patch_data.ctrl2_direction).yx * vec2(ONE, -ONE);
+        }
+        v_out.position = start + (normal * normal_offset);
 
+        v_out.tex_coord.x = HALF;
     }
     else if(patch_data.type == START_CAP){
         // screen space position of the vertex

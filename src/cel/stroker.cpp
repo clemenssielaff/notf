@@ -205,7 +205,7 @@ void Stroker::apply_new()
 
     { // update line indices
         std::vector<GLuint> indices;
-        indices.reserve(static_cast<size_t>((m_vertices->size()) * 2) + 4);
+        indices.reserve(static_cast<size_t>((m_vertices->size()) * 4) + 2);
 
         // start cap
         indices.emplace_back(0);
@@ -214,10 +214,20 @@ void Stroker::apply_new()
         GLuint next_index = 0;
         for (const CubicBezier2f& spline : m_spline_buffer) {
             const size_t segment_count = spline.segments.size();
-            for (ushort segment_index = 0; segment_index < segment_count; ++segment_index) {
+            for (ushort segment_index = 0; segment_index < segment_count - 1; ++segment_index) {
+                // first -> (n-1) segment
                 indices.emplace_back(next_index++);
                 indices.emplace_back(next_index);
+
+                // cap
+                indices.emplace_back(next_index);
+                indices.emplace_back(next_index);
             }
+
+            // last segment
+            indices.emplace_back(next_index++);
+            indices.emplace_back(next_index);
+
             ++next_index;
         }
 
@@ -246,7 +256,7 @@ void Stroker::render()
 
     // TODO: stroke_width less than 1 should set a uniform that fades the line out and line widths of zero
     // should be ignored
-    tess_shader->set_uniform("stroke_width", 10.f);
+    tess_shader->set_uniform("stroke_width", 3.f);
 
     gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
     gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(m_indices->size()), m_indices->type(), nullptr));

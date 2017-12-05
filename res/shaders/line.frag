@@ -13,5 +13,7 @@ const float ZERO = 0.0f;
 const float ONE = 1.0f;
 
 void main() {
-    f_color = vec4(v_in.tex_coord.x, ZERO, ZERO, smoothstep(ZERO, ONE, v_in.tex_coord.y));
+//    f_color = vec4(v_in.tex_coord.x, ZERO, ZERO, smoothstep(ZERO, ONE, v_in.tex_coord.y));
+    f_color = vec4(ONE, ONE, ONE, smoothstep(ZERO, ONE, v_in.tex_coord.y));
+//    f_color = vec4(ONE, ONE, ONE, 0.40);
 }
