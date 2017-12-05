@@ -141,13 +141,13 @@ void Stroker::add_spline(CubicBezier2f spline)
 ///
 /// For the start cap:
 ///
-///     v1.a1 == v2.a1 && v2.a2 == v2.a3 == (0,0)
+///     v1.a1 == v2.a1 && v2.a2 == (0,0)
 ///
 /// For the end cap:
 ///
-///     v1.a1 == v2.a1 && v1.a2 == v1.a3 == (0,0)
+///     v1.a1 == v2.a1 && v1.a3 == (0,0)
 ///
-/// Thereby increasing the number of vertices per spline by two.
+/// If the tangent at the cap is required, you can simply invert the tangent obtained from the other ctrl point.
 ///
 /// Joints
 /// ------
@@ -173,7 +173,7 @@ void Stroker::apply_new()
                 const CubicBezier2f::Segment& first_segment = spline.segments.front();
                 LineVertexArray::Vertex vertex;
                 set_pos(vertex, first_segment.start);
-                set_first_ctrl(vertex, -(first_segment.tangent(0).normalize()));
+                set_first_ctrl(vertex, Vector2f::zero());
                 set_modified_second_ctrl(vertex, first_segment);
                 vertices.emplace_back(std::move(vertex));
             }
@@ -194,7 +194,7 @@ void Stroker::apply_new()
                 LineVertexArray::Vertex vertex;
                 set_pos(vertex, last_segment.end);
                 set_modified_first_ctrl(vertex, last_segment);
-                set_second_ctrl(vertex, last_segment.tangent(1).normalize());
+                set_second_ctrl(vertex, Vector2f::zero());
                 vertices.emplace_back(std::move(vertex));
             }
         }
@@ -205,7 +205,11 @@ void Stroker::apply_new()
 
     { // update line indices
         std::vector<GLuint> indices;
-        indices.reserve(static_cast<size_t>(m_vertices->size()) * 2);
+        indices.reserve(static_cast<size_t>((m_vertices->size()) * 2) + 4);
+
+        // start cap
+        indices.emplace_back(0);
+        indices.emplace_back(0);
 
         GLuint next_index = 0;
         for (const CubicBezier2f& spline : m_spline_buffer) {
@@ -216,6 +220,10 @@ void Stroker::apply_new()
             }
             ++next_index;
         }
+
+        // end cap
+        indices.emplace_back(--next_index);
+        indices.emplace_back(next_index);
 
         LineIndexArray* line_indices = static_cast<LineIndexArray*>(m_indices.get());
         line_indices->update(std::move(indices));

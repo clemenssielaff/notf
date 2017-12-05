@@ -28,6 +28,14 @@ const float TWO     = 2.0f;
 const float THREE   = 3.0f;
 const float SIX     = 6.0f;
 
+#define SEGMENT     0
+#define JOINT       1
+#define START_CAP   2
+#define END_CAP     3
+
+#define start (gl_in[0].gl_Position.xy)
+#define end   (gl_in[1].gl_Position.xy)
+
 const mat4 BEZIER = mat4(
      ONE,    ZERO,   ZERO,  ZERO,
     -THREE,  THREE,  ZERO,  ZERO,
@@ -43,28 +51,50 @@ void main()
 {
     vec2 TVEC = vec2(ONE, gl_TessCoord.x);
 
-    // bezier spline points
-    #define start (gl_in[0].gl_Position.xy)
-    #define end (gl_in[1].gl_Position.xy)
-    vec2 ctrl1 = start + (patch_data.ctrl1_direction * patch_data.ctrl1_length);
-    vec2 ctrl2 = end + (patch_data.ctrl2_direction * patch_data.ctrl2_length);
-
-    // the actual line width is always 1 pixel wider, since even a zero-width line has one pixel of antialiasing
-    float line_width = max(ZERO, stroke_width - ZERO);
-
-    // tex_coord.x grows along the stroke from start = 0 to end = 1
-    v_out.tex_coord.x = gl_TessCoord.x;
-
     // tex_coord.y is 1 within the stroke and 0 at the very edge (geometric anti-aliasing in the normal)
     v_out.tex_coord.y = aa_width == 0.0 ? 1.0 : ONE - (step(ONE, gl_TessCoord.y) + step(ONE, ONE - gl_TessCoord.y));
 
-    // spline normal vector
-    vec2 normal = normalize(mat3x2(ctrl1-start, ctrl2-ctrl1, end-ctrl2) * DERIV * (TVEC.xyy * TVEC.xxy)).yx * vec2(-ONE, ONE);
+    float normal_offset = sign(gl_TessCoord.y - HALF) * HALF * (max(ZERO, stroke_width) + ((ONE - (v_out.tex_coord.y * TWO)) * aa_width));
+    if(patch_data.type == SEGMENT){
 
-     // screen space position of the vertex
-    v_out.position = (mat4x2(start, ctrl1, ctrl2, end) * BEZIER * (TVEC.xyyy * TVEC.xxyy * TVEC.xxxy)).xy +
-            normal *
-            (sign(gl_TessCoord.y - HALF) * HALF * (line_width + ((ONE - (v_out.tex_coord.y * TWO)) * aa_width)));
+        // bezier control points
+        vec2 ctrl1 = start + (patch_data.ctrl1_direction * patch_data.ctrl1_length);
+        vec2 ctrl2 = end + (patch_data.ctrl2_direction * patch_data.ctrl2_length);
+
+        // tex_coord.x grows along the stroke from start = 0 to end = 1
+        v_out.tex_coord.x = gl_TessCoord.x;
+
+        // screen space position of the vertex
+        vec2 normal = normalize(mat3x2(ctrl1-start, ctrl2-ctrl1, end-ctrl2) * DERIV * (TVEC.xyy * TVEC.xxy)).yx * vec2(-ONE, ONE);
+        v_out.position =
+                (mat4x2(start, ctrl1, ctrl2, end) * BEZIER * (TVEC.xyyy * TVEC.xxyy * TVEC.xxxy)).xy    // along spline
+                + (normal * normal_offset);                                                             // along normal
+    }
+    else if(patch_data.type == JOINT){
+
+    }
+    else if(patch_data.type == START_CAP){
+        // screen space position of the vertex
+        vec2 normal = patch_data.ctrl1_direction.yx * vec2(-ONE, ONE);
+        v_out.position = start
+                + (patch_data.ctrl1_direction * ((gl_TessCoord.x - ONE) * aa_width * TWO))  // along spline
+                + (normal * normal_offset);                                                 // along normal
+
+        // cap texture coordinates
+        v_out.tex_coord.x = ZERO;
+        v_out.tex_coord.y = (gl_TessCoord.x == ONE) ? v_out.tex_coord.y : ZERO;
+    }
+    else if(patch_data.type == END_CAP){
+        // screen space position of the vertex
+        vec2 normal = patch_data.ctrl2_direction.yx * vec2(ONE, -ONE);
+        v_out.position = end
+                + (patch_data.ctrl2_direction * (-gl_TessCoord.x * aa_width * TWO)) // along spline
+                + (normal * normal_offset);                                         // along normal
+
+        // cap texture coordinates
+        v_out.tex_coord.x = ONE;
+        v_out.tex_coord.y = gl_TessCoord.x > 0.9 ? ZERO : v_out.tex_coord.y;
+    }
 
     // clip-space position of the vertex
     gl_Position = projection * vec4(v_out.position, -ONE, ONE);
