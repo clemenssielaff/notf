@@ -12,11 +12,11 @@ namespace detail {
 template<size_t ORDER, typename VECTOR>
 struct Bezier {
 
+    /// @brief Vector type.
+    using vector_t = VECTOR;
+
     /// @brief Element type.
     using element_t = typename VECTOR::element_t;
-
-    /// @brief Component type.
-    using component_t = VECTOR;
 
     /// @brief Order of this Bezier spline.
     static constexpr size_t order() { return ORDER; }
@@ -28,16 +28,16 @@ struct Bezier {
     struct Segment {
         // fields ----------------------------------------------------------------------------------------------------//
         /// @brief Start of the spline, in absolute coordinates.
-        component_t start;
+        vector_t start;
 
         /// @brief First control point, in absolute coordinates.
-        component_t ctrl1;
+        vector_t ctrl1;
 
         /// @brief Second control point, in absolute coordinates.
-        component_t ctrl2;
+        vector_t ctrl2;
 
         /// @brief End of the spline, in absolute coordinates.
-        component_t end;
+        vector_t end;
 
         // TODO: proper bezier template class (dimensions & order)
         // std::array<component_t, order() + 1> points;
@@ -51,20 +51,20 @@ struct Bezier {
         /// @param ctrl1    First control point, in absolute coordinates.
         /// @param ctrl2    Second control point, in absolute coordinates.
         /// @param end      End of the spline, in absolute coordinates.
-        Segment(const component_t a, const component_t b, const component_t c, const component_t d)
+        Segment(const vector_t a, const vector_t b, const vector_t c, const vector_t d)
             : start(std::move(a)), ctrl1(std::move(b)), ctrl2(std::move(c)), end(std::move(d))
         {}
 
         /// @brief Straight line.
         /// @param start    Start of the spline, in absolute coordinates.
         /// @param end      End of the spline, in absolute coordinates.
-        static Segment line(const component_t a, const component_t d)
+        static Segment line(const vector_t a, const vector_t d)
         {
-            const component_t delta_thirds = (d - a) * (1. / 3.);
+            const vector_t delta_thirds = (d - a) * (1. / 3.);
             return Segment(a, a + delta_thirds, a + (delta_thirds * 2), std::move(d));
         }
 
-        component_t tangent(element_t t) const
+        vector_t tangent(element_t t) const
         {
             // the tangent at the very extremes 0 and 1 may not be defined
             static const element_t epsilon = std::numeric_limits<element_t>::epsilon() * 100;

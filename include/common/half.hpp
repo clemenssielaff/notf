@@ -7,7 +7,7 @@
 namespace notf {
 
 /// \brief 16bit floating point type.
-/// If I ever need a full-fledged half type, see:
+/// If you ever need a full-fledged half type, see:
 ///     https://sourceforge.net/p/half/code/HEAD/tree/tags/release-1.12.0/include/half.hpp
 struct half {
 
@@ -27,6 +27,10 @@ struct half {
     explicit operator float() const;
 };
 
+/// @brief Pack two halfs into a 32-bit unsigned integer.
+/// @param a    First half.
+/// @param b    Second half.
+/// @returns    Unsigned int containing two halfs.
 inline unsigned int packHalfs(half a, half b)
 {
     union {
@@ -40,6 +44,9 @@ inline unsigned int packHalfs(half a, half b)
     return converter.out;
 }
 
+/// @brief Unpacks two halfs from a 32-bit unsigned integer.
+/// @param pack Unsigned int to unpack.
+/// @returns    Pair of halfs.
 inline std::pair<half, half> unpackHalfs(unsigned int pack)
 {
     union {

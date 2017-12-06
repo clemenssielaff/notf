@@ -83,6 +83,14 @@ struct RealVector3 : public detail::Arithmetic<RealVector3<REAL>, REAL, 3> {
         return cross(other).magnitude_sq() <= precision_high<element_t>();
     }
 
+    /// @brief Checks whether this vector is orthogonal to other.
+    /// @note The zero vector is orthogonal to everything.
+    /// @param other    Vector to test against.
+    bool is_orthogonal_to(const RealVector3& other) const
+    {
+        return direction_to(other) < precision_high<element_t>();
+    }
+
     /// @brief Calculates the smallest angle between two vectors.
     /// @note Returns zero, if one or both of the input vectors are of zero magnitude.
     /// @param other     Vector to test against.
@@ -242,21 +250,21 @@ slerp(const detail::RealVector3<element_t>& from, const detail::RealVector3<elem
 
 namespace std {
 
-/** std::hash specialization for RealVector3. */
-template<typename Real>
-struct hash<notf::detail::RealVector3<Real>> {
-    size_t operator()(const notf::detail::RealVector3<Real>& vector) const
+/// @brief std::hash specialization for RealVector3.
+template<typename REAL>
+struct hash<notf::detail::RealVector3<REAL>> {
+    size_t operator()(const notf::detail::RealVector3<REAL>& vector) const
     {
-        return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR3R), vector.hash());
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR), vector.hash());
     }
 };
 
-/** std::hash specialization for IntVector3. */
-template<typename Integer>
-struct hash<notf::detail::IntVector3<Integer>> {
-    size_t operator()(const notf::detail::IntVector3<Integer>& vector) const
+/// @brief std::hash specialization for IntVector3.
+template<typename INTEGER>
+struct hash<notf::detail::IntVector3<INTEGER>> {
+    size_t operator()(const notf::detail::IntVector3<INTEGER>& vector) const
     {
-        return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR3I), vector.hash());
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR), vector.hash());
     }
 };
 

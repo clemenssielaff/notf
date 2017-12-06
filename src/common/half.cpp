@@ -1,5 +1,4 @@
 /**
- *
  * Code for the notf half implementation is inspired by glm, in particular:
  * https://github.com/g-truc/glm/blob/master/glm/detail/type_half.inl
  *

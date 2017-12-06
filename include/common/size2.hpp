@@ -143,7 +143,7 @@ template<typename value_t>
 struct hash<notf::detail::Size2<value_t>> {
     size_t operator()(const notf::detail::Size2<value_t>& size2) const
     {
-        return notf::hash(static_cast<size_t>(notf::detail::HashID::SIZE2), size2.width, size2.height);
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::SIZE), size2.width, size2.height);
     }
 };
 

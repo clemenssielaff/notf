@@ -123,7 +123,7 @@ template<typename Real>
 struct hash<notf::detail::RealVector4<Real>> {
     size_t operator()(const notf::detail::RealVector4<Real>& vector) const
     {
-        return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR4R), vector.hash());
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR), vector.hash());
     }
 };
 

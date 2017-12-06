@@ -242,7 +242,7 @@ template<typename Real>
 struct hash<notf::detail::RealVector2<Real>> {
     size_t operator()(const notf::detail::RealVector2<Real>& vector) const
     {
-        return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR2R), vector.hash());
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR), vector.hash());
     }
 };
 
@@ -251,7 +251,7 @@ template<typename Integer>
 struct hash<notf::detail::IntVector2<Integer>> {
     size_t operator()(const notf::detail::IntVector2<Integer>& vector) const
     {
-        return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR2I), vector.hash());
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR), vector.hash());
     }
 };
 

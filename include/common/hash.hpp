@@ -14,23 +14,19 @@ namespace detail {
 /// notf.
 constexpr size_t version_hash() { return 0; }
 
-/// @brief Additional value for different types to hash with.
+/// @brief Additional value for different semantic types to hash with.
 /// Otherwise a Vector4f and a Color value with the same components would produce the same hash.
 enum class HashID : size_t {
-    VECTOR2R,
-    VECTOR2I,
-    VECTOR3R,
-    VECTOR3I,
-    VECTOR4R,
-    MATRIX3,
-    MATRIX4,
+    VECTOR,
+    MATRIX,
     AABR,
     PADDING,
-    SIZE2,
+    SIZE,
     COLOR,
     CIRCLE,
-    LINE2,
+    LINE,
     BEZIER,
+    // ALWAYS APPEND AT THE END - IF YOU CHANGE EXISTING ENUM VALUES, STORED HASHES WILL NO LONGER MATCH
 };
 
 } // namespace detail

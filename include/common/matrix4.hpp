@@ -381,7 +381,7 @@ template<typename Real>
 struct hash<notf::detail::Matrix4<Real>> {
     size_t operator()(const notf::detail::Matrix4<Real>& matrix) const
     {
-        return notf::hash(static_cast<size_t>(notf::detail::HashID::MATRIX4), matrix[0], matrix[1], matrix[2],
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::MATRIX), matrix[0], matrix[1], matrix[2],
                           matrix[3]);
     }
 };

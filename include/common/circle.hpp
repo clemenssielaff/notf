@@ -4,7 +4,6 @@
 
 #include "common/float.hpp"
 #include "common/hash.hpp"
-#include "common/meta.hpp"
 #include "common/vector2.hpp"
 
 namespace notf {
@@ -14,18 +13,18 @@ namespace detail {
 //====================================================================================================================//
 
 /// @brief 2D Circle shape.
-template<typename Real, ENABLE_IF_REAL(Real)>
+template<typename REAL>
 struct Circle {
 
-    /// @brief Element type.
-    using element_t = Real;
+    /// @brief Vector type.
+    using vector_t = RealVector2<REAL>;
 
-    /// @brief Component type.
-    using component_t = RealVector2<Real>;
+    /// @brief Element type.
+    using element_t = REAL;
 
     // fields --------------------------------------------------------------------------------------------------------//
     /// @brief Center position of the Circle.
-    RealVector2<Real> center;
+    vector_t center;
 
     /// @brief Radius of the Circle.
     element_t radius;
@@ -37,11 +36,11 @@ struct Circle {
     /// @brief Constructs a Circle of the given radius, centered at the given coordinates.
     /// @param center    Center position of the Circle.
     /// @param radius    Radius of the Circle.
-    Circle(component_t center, const element_t radius) : center(std::move(center)), radius(radius) {}
+    Circle(vector_t center, const element_t radius) : center(std::move(center)), radius(radius) {}
 
     /// @brief Constructs a Circle of the given radius, centered at the origin.
     /// @param radius    Radius of the Circle.
-    Circle(const element_t radius) : center(component_t::zero()), radius(radius) {}
+    Circle(const element_t radius) : center(vector_t::zero()), radius(radius) {}
 
     /// @brief Produces a zero Circle.
     static Circle zero() { return {{0, 0}, 0}; }
@@ -60,7 +59,7 @@ struct Circle {
 
     /// @brief Checks, if the given point is contained within (or on the border of) this Circle.
     /// @param point    Point to check.
-    bool contains(const component_t& point) const { return (point - center).magnitude_sq() <= (radius * radius); }
+    bool contains(const vector_t& point) const { return (point - center).magnitude_sq() <= (radius * radius); }
 
     /// @brief Checks if the other Circle intersects with this one.
     /// Intersection requires the intersected area to be >= zero.
@@ -73,9 +72,9 @@ struct Circle {
 
     /// @brief Returns the closest point inside this Circle to the given target point.
     /// @param target   Target point.
-    component_t closest_point_to(const component_t& target) const
+    vector_t closest_point_to(const vector_t& target) const
     {
-        const component_t delta = target - center;
+        const vector_t delta = target - center;
         const element_t mag_sq  = delta.magnitude_sq();
         if (mag_sq <= (radius * radius)) {
             return target;
