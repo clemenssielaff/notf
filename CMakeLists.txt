@@ -57,7 +57,7 @@ include_directories(
     res/
     /home/clemens/code/thirdparty/freetype-2.8/include/
     test/
-    src/examples/
+    examples/
 )
 
 create_module(common)
@@ -66,11 +66,16 @@ create_module(dynamic)
 create_module(graphics)
 create_module(utils)
 create_module(compat)
-create_module(examples)
 create_module(cel)
 
 add_sources(SOURCE_FILES src
     main.cpp
+)
+
+add_sources(SOURCE_FILES examples
+    framebuffer_example.cpp
+    line_example.cpp
+    wireframe_example.cpp
 )
 
 add_sources(THIRDPARTY_FILES thirdparty
@@ -102,7 +107,6 @@ add_executable(notf
     ${graphics_MODULE}
     ${utils_MODULE}
     ${compat_MODULE}
-    ${examples_MODULE}
     ${cel_MODULE}
     ${SOURCE_FILES}
     ${THIRDPARTY_FILES}

@@ -1,6 +1,6 @@
-#include "examples/framebuffer_example.hpp"
-#include "examples/line_example.hpp"
-#include "examples/wireframe_example.hpp"
+#include "framebuffer_example.hpp"
+#include "line_example.hpp"
+#include "wireframe_example.hpp"
 
 int main(int argc, char* argv[])
 {

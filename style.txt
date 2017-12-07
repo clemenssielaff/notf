@@ -1,9 +1,0 @@
-mandatory get_* methods
-  CONTRA:
-    1. enforcing a get_* before every getter is exposing the internals in the interface
-    2. it is ugly
-  PRO:
-    1. it is clear what the method is: it should take no parameters, should be const, should return a single value
-    2. resolves ambiguity with english words that could be a noun (in which case, they would be a getter) or a verb (a modifier)
-    ->1. not true, because a getter might also calculate the value, it doesn't have to be a direct field access
-
