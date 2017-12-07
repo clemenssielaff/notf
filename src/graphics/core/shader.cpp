@@ -10,10 +10,10 @@
 #include "common/matrix4.hpp"
 #include "common/vector2.hpp"
 #include "common/vector4.hpp"
-#include "core/opengl.hpp"
 #include "graphics/core/gl_errors.hpp"
 #include "graphics/core/gl_utils.hpp"
 #include "graphics/core/graphics_context.hpp"
+#include "graphics/core/opengl.hpp"
 #include "utils/make_smart_enabler.hpp"
 #include "utils/narrow_cast.hpp"
 

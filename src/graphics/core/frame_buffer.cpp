@@ -7,9 +7,9 @@
 
 #include "common/exception.hpp"
 #include "common/log.hpp"
-#include "core/opengl.hpp"
 #include "graphics/core/gl_errors.hpp"
 #include "graphics/core/graphics_context.hpp"
+#include "graphics/core/opengl.hpp"
 #include "graphics/core/texture.hpp"
 #include "utils/breakable_scope.hpp"
 

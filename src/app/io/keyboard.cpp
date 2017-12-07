@@ -1,7 +1,7 @@
-#include "common/input.hpp"
+#include "app/io/keyboard.hpp"
 
+#include "app/core/glfw.hpp"
 #include "common/log.hpp"
-#include "core/glfw.hpp"
 
 namespace notf {
 

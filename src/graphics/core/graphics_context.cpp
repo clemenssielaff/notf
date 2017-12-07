@@ -4,13 +4,13 @@
 #include <cstring>
 #include <set>
 
+#include "app/core/glfw.hpp"
 #include "common/exception.hpp"
 #include "common/log.hpp"
 #include "common/vector.hpp"
-#include "core/glfw.hpp"
-#include "core/opengl.hpp"
 #include "graphics/core/frame_buffer.hpp"
 #include "graphics/core/gl_errors.hpp"
+#include "graphics/core/opengl.hpp"
 #include "graphics/core/pipeline.hpp"
 #include "graphics/core/shader.hpp"
 #include "graphics/core/texture.hpp"

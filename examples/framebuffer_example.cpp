@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "app/core/glfw.hpp"
 #include "common/half.hpp"
 #include "common/log.hpp"
 #include "common/matrix4.hpp"
@@ -8,7 +9,6 @@
 #include "common/vector3.hpp"
 #include "common/vector4.hpp"
 #include "common/warnings.hpp"
-#include "core/glfw.hpp"
 #include "graphics/core/frame_buffer.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/pipeline.hpp"

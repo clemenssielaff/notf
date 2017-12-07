@@ -61,12 +61,9 @@ include_directories(
 )
 
 create_module(common)
-create_module(core)
-create_module(dynamic)
+create_module(app)
 create_module(graphics)
 create_module(utils)
-create_module(compat)
-create_module(cel)
 
 add_sources(SOURCE_FILES src
     main.cpp
@@ -102,12 +99,9 @@ add_sources(RESOURCE_FILES res
 
 add_executable(notf
     ${common_MODULE}
-    ${core_MODULE}
-    ${dynamic_MODULE}
+    ${app_MODULE}
     ${graphics_MODULE}
     ${utils_MODULE}
-    ${compat_MODULE}
-    ${cel_MODULE}
     ${SOURCE_FILES}
     ${THIRDPARTY_FILES}
     ${RESOURCE_FILES}

@@ -4,9 +4,9 @@
 
 #include "./gl_errors.hpp"
 #include "./gl_utils.hpp"
+#include "./opengl.hpp"
 #include "common/exception.hpp"
 #include "common/meta.hpp"
-#include "core/opengl.hpp"
 
 namespace notf {
 

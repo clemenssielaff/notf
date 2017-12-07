@@ -1,7 +1,7 @@
 #include "graphics/core/gl_errors.hpp"
 
 #include "common/log.hpp"
-#include "core/opengl.hpp"
+#include "graphics/core/opengl.hpp"
 
 namespace { // anonymous
 
