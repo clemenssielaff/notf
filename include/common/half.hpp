@@ -1,8 +1,7 @@
 #pragma once
 
-#include <cstdint>
 #include <iosfwd>
-#include <vector>
+#include <utility>
 
 namespace notf {
 

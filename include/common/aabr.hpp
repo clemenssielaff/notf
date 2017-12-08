@@ -11,6 +11,8 @@
 #include "common/size2.hpp"
 #include "common/vector2.hpp"
 
+// TODO: AABR is used everywhere - why does it include sooo many other includes?
+
 namespace notf {
 
 namespace detail {

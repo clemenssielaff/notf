@@ -2,8 +2,6 @@
 
 #include <iosfwd>
 
-#include "common/float.hpp"
-#include "common/hash.hpp"
 #include "common/vector2.hpp"
 
 namespace notf {
@@ -120,9 +118,9 @@ std::ostream& operator<<(std::ostream& out, const Circlef& circle);
 namespace std {
 
 /// @brief std::hash specialization for Circle.
-template<typename Real>
-struct hash<notf::detail::Circle<Real>> {
-    size_t operator()(const notf::detail::Circle<Real>& circle) const
+template<typename REAL>
+struct hash<notf::detail::Circle<REAL>> {
+    size_t operator()(const notf::detail::Circle<REAL>& circle) const
     {
         return notf::hash(static_cast<size_t>(notf::detail::HashID::CIRCLE), circle.center, circle.radius);
     }

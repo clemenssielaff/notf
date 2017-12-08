@@ -33,11 +33,11 @@ using std::abs;
 using std::atan2;
 using std::cos;
 using std::fmod;
+using std::pow;
 using std::roundf;
 using std::sin;
 using std::sqrt;
 using std::tan;
-using std::pow;
 
 /** Variadic min using auto type deduction. */
 template<typename LAST>
@@ -86,11 +86,10 @@ inline bool is_real(Real&& value)
     return !is_nan(value) && !is_inf(value);
 }
 
-/** Tests, if a value is positive or negative.
- * @return  -1 if the value is negative, 1 if it is zero or above.
- */
-template<typename Real>
-inline typename std::remove_reference<Real>::type sign(Real&& value)
+/// @brief Tests, if a value is positive or negative.
+/// @return  -1 if the value is negative, 1 if it is zero or above.
+template<typename T>
+inline T sign(const T&& value)
 {
     return std::signbit(value) ? -1 : 1;
 }
