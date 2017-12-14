@@ -3,6 +3,7 @@
 #include <iosfwd>
 
 #include "common/aabr.hpp"
+#include "common/triangle.hpp"
 #include "common/vector2.hpp"
 #include "common/vector3.hpp"
 
@@ -12,7 +13,7 @@ namespace detail {
 
 //====================================================================================================================//
 
-/// @brief Baseclass for oriented line Segments.
+/// @brief Baseclass for oriented line Segments both 2D and 3D.
 template<typename VECTOR>
 struct Segment {
 
@@ -24,72 +25,46 @@ struct Segment {
 
     // fields --------------------------------------------------------------------------------------------------------//
     /// @brief Start point of the Segment.
-    vector_t _start;
+    vector_t start;
 
-    /// @brief Vector from the start of the Segment to its end point.
-    vector_t _delta;
+    /// @brief End point of the Segment.
+    vector_t end;
 
     // methods -------------------------------------------------------------------------------------------------------//
     /// @brief Default constructor.
     Segment() = default;
 
-    /// @brief Creates a line Segment from a start- and an end-point.
+    /// @brief Value Constructor.
     /// @param start    Start point.
     /// @param end      End point.
-    static Segment from_points(vector_t start, const vector_t& end) { return {std::move(start), end - start}; }
-
-    /// @brief Start point of the Segment.
-    const vector_t& start() const { return _start; }
+    Segment(vector_t start, const vector_t& end) : start(std::move(start)), end(std::move(end)) {}
 
     /// @brief Difference vector between the end and start point of the Segment.
-    const vector_t& delta() const { return _delta; }
-
-    /// @brief End point of the Segment.
-    vector_t end() const { return _start + _delta; }
+    const vector_t& delta() const { return end - start; }
 
     /// @brief Length of this line Segment.
-    element_t length() const { return _delta.magnitude(); }
+    element_t length() const { return delta().magnitude(); }
 
     /// @brief The squared length of this line Segment.
-    element_t length_sq() const { return _delta.magnitude_sq(); }
+    element_t length_sq() const { return delta().magnitude_sq(); }
 
     /// @brief Has the Segment zero length?
-    bool is_zero() const { return _delta.is_zero(); }
+    bool is_zero() const { return delta().is_zero(); }
 
     /// @brief The AABR of this line Segment.
-    Aabrf bounding_rect() const { return {_start, std::move(end())}; }
-
-    /// @brief Sets a new start point for this Segment.
-    /// Updates the complete Segment - if you have a choice, favor setting the end point rather than the start point.
-    /// @param start    New start point.
-    Segment& set_start(vector_t start)
-    {
-        _delta = end() - start;
-        _start = std::move(start);
-        return *this;
-    }
-
-    /// @brief Sets a new end point for this Segment.
-    /// @param end  New end point.
-    Segment& set_end(const vector_t& end)
-    {
-        _delta = end - _start;
-        return *this;
-    }
+    Aabrf bounding_rect() const { return {start, end}; }
 
     /// @brief Checks whether this Segment is parallel to another.
-    bool is_parallel_to(const Segment& other) const { return _delta.is_parallel_to(other._delta); }
+    bool is_parallel_to(const Segment& other) const { return delta().is_parallel_to(other.delta()); }
 
     /// @brief Checks whether this Segment is orthogonal to another.
-    bool is_orthogonal_to(const Segment& other) const { return _delta.is_orthogonal_to(other._delta); }
+    bool is_orthogonal_to(const Segment& other) const { return delta().is_orthogonal_to(other.delta()); }
 
     /// @brief Checks if this line Segment contains a given point.
     /// @param point    Point to heck.
     bool contains(const vector_t& point) const
     {
-        const vector_t point_delta = point - _start;
-        return abs(_delta.direction_to(point_delta) - 1) <= precision_high<element_t>()
-               && (point_delta.magnitude_sq <= _delta.magnitude_sq());
+        return abs((point - start).direction_to(point - end) + 1) <= precision_high<element_t>();
     }
 };
 
@@ -98,6 +73,7 @@ struct Segment {
 /// @brief 2D line segment.
 template<typename REAL>
 struct Segment2 : public detail::Segment<detail::RealVector2<REAL>> {
+
     /// @brief Base type.
     using super_t = detail::Segment<detail::RealVector2<REAL>>;
 
@@ -109,35 +85,31 @@ struct Segment2 : public detail::Segment<detail::RealVector2<REAL>> {
 
     // fields --------------------------------------------------------------------------------------------------------//
     /// @brief Start point of the Segment.
-    using super_t::_start;
+    using super_t::start;
 
-    /// @brief Vector from the start of the Segment to its end point.
-    using super_t::_delta;
+    /// @brief End point of the Segment.
+    using super_t::end;
 
     // methods -------------------------------------------------------------------------------------------------------//
     /// @brief Default constructor.
     Segment2() = default;
 
-    /// @brief The x-coordinate where this Segment crosses a given y-coordinate as it extendeds into infinity.
-    /// If the Segment is parallel to the x-axis, the returned coordinate is NAN.
-    element_t x_at(element_t y) const
+    /// @brief Checks if this line Segment contains a given point.
+    /// @param point    Point to heck.
+    bool contains(const vector_t& point) const
     {
-        if (_delta.y() == approx(0)) {
-            return NAN;
-        }
-        const element_t factor = (y - _start.y()) / _delta.y();
-        return _start.x() + (_delta.x() * factor);
+        return Triangle<element_t>(start, end, point).is_zero() && ((point - start).dot(point - end) < 0);
     }
 
-    /// @brief The y-coordinate where this Segment crosses a given x-coordinate as it extendeds into infinity.
-    /// If the Segment is parallel to the y-axis, the returned coordinate is NAN.
-    element_t y_at(element_t x) const
+    /// @brief Quick tests if this Segment intersects another one.
+    /// Does not calculate the actual point of intersection, only whether the Segments intersect at all.
+    /// @returns True iff the two Segments intersect.
+    bool is_intersecting(const Segment2& other)
     {
-        if (_delta.x() == approx(0)) {
-            return NAN;
-        }
-        const element_t factor = (x - _start.x()) / _delta.x();
-        return _start.y() + (_delta.y() * factor);
+        return (Triangle<element_t>(start, end, other.start).orientation()
+                != Triangle<element_t>(start, end, other.end).orientation())
+               && (Triangle<element_t>(other.start, other.end, start).orientation()
+                   != Triangle<element_t>(other.start, other.end, end).orientation());
     }
 
     /// @brief Returns the point on this Line that is closest to a given position.
@@ -163,6 +135,7 @@ struct Segment2 : public detail::Segment<detail::RealVector2<REAL>> {
 /// @brief 3D line segment.
 template<typename REAL>
 struct Segment3 : public detail::Segment<detail::RealVector3<REAL>> {
+
     /// @brief Base type.
     using super_t = detail::Segment<detail::RealVector3<REAL>>;
 
@@ -174,10 +147,10 @@ struct Segment3 : public detail::Segment<detail::RealVector3<REAL>> {
 
     // fields --------------------------------------------------------------------------------------------------------//
     /// @brief Start point of the Segment.
-    using super_t::_start;
+    using super_t::start;
 
-    /// @brief Vector from the start of the Segment to its end point.
-    using super_t::_delta;
+    /// @brief End point of the Segment.
+    using super_t::end;
 
     // methods -------------------------------------------------------------------------------------------------------//
     /// @brief Default constructor.
@@ -211,7 +184,7 @@ template<typename VECTOR>
 struct hash<notf::detail::Segment<VECTOR>> {
     size_t operator()(const notf::detail::Segment<VECTOR>& segment) const
     {
-        return notf::hash(static_cast<size_t>(notf::detail::HashID::SEGMENT), segment.start(), segment.delta());
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::SEGMENT), segment.start, segment.end);
     }
 };
 

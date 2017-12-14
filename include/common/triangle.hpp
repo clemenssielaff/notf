@@ -50,6 +50,9 @@ struct Triangle {
     /// @param c    Third point.
     Triangle(vector_t a, vector_t b, vector_t c) : a(std::move(a)), b(std::move(b)), c(std::move(c)) {}
 
+    /// @brief The center point of the Triangle.
+    vector_t center() const { return (a + b + c) / 3; }
+
     /// @brief Checks whether the Triangle has a zero area.
     bool is_zero() const { return abs(_signed_half_area()) < precision_high<element_t>(); }
 

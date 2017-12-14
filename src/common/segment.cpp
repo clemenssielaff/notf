@@ -85,9 +85,8 @@ namespace notf {
 
 std::ostream& operator<<(std::ostream& out, const Segment2f& segment)
 {
-    const Vector2f& start = segment._start;
-    const Vector2f end    = segment.end();
-    return out << "Line2f((" << start.x() << ", " << start.y() << ") -> (" << end.x() << ", " << end.y() << "))";
+    return out << "Line2f((" << segment.start.x() << ", " << segment.start.y() << ") -> (" << segment.end.x() << ", "
+               << segment.end.y() << "))";
 }
 
 static_assert(sizeof(Segment2f) == sizeof(float) * 4,
@@ -100,10 +99,8 @@ static_assert(std::is_pod<Segment2f>::value, "This compiler does not recognize n
 
 std::ostream& operator<<(std::ostream& out, const Segment3f& segment)
 {
-    const Vector3f& start = segment._start;
-    const Vector3f end    = segment.end();
-    return out << "Line3f((" << start.x() << ", " << start.y() << ", " << start.z() << ") -> ("
-               << end.x() << ", " << end.y() << ", " << end.z() << "))";
+    return out << "Line3f((" << segment.start.x() << ", " << segment.start.y() << ", " << segment.start.z() << ") -> ("
+               << segment.end.x() << ", " << segment.end.y() << ", " << segment.end.z() << "))";
 }
 
 static_assert(sizeof(Segment3f) == sizeof(float) * 6,
