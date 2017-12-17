@@ -104,7 +104,7 @@ struct Segment2 : public detail::Segment<detail::RealVector2<REAL>> {
     /// @brief Quick tests if this Segment intersects another one.
     /// Does not calculate the actual point of intersection, only whether the Segments intersect at all.
     /// @returns True iff the two Segments intersect.
-    bool is_intersecting(const Segment2& other)
+    bool intersects(const Segment2& other)
     {
         return (Triangle<element_t>(start, end, other.start).orientation()
                 != Triangle<element_t>(start, end, other.end).orientation())

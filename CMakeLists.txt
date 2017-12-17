@@ -27,8 +27,16 @@ endmacro()
 # OPTIONS ##############################################################################################################
 
 option(USE_LIBCXX "Use LLVM's libc++ instead of libstdc++" OFF)
+option(USE_OPENMP "Use OpenMP" ON)
+option(BUILD_BENCHMARKS "Build benchmarks" OFF)
 
 # LIBRARIES ############################################################################################################
+
+# libcxx
+if(USE_LIBCXX)
+    set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
+    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-stdlib=libc++")
+endif()
 
 # glfw
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
@@ -36,20 +44,30 @@ set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(/home/clemens/code/thirdparty/glfw-3.2.1/ thirdparty/glfw)
 
+# opengl
 find_package(OpenGL REQUIRED)
 
 # freetype
 add_subdirectory(/home/clemens/code/thirdparty/freetype-2.8.1/ thirdparty/freetype)
 
+# benchmark
+if(BUILD_BENCHMARKS)
+    add_subdirectory(/home/clemens/code/thirdparty/benchmark/ thirdparty/benchmark)
+endif()
+
+# OpenMP
+if(USE_OPENMP)
+    find_package(OpenMP)
+    if(OPENMP_FOUND)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    endif()
+endif()
+
 # NOTF #################################################################################################################
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g -DNOTF_DEBUG")
 set(CMAKE_CXX_STANDARD 14)
-
-if(USE_LIBCXX)
-    set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
-    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-stdlib=libc++")
-endif()
 
 include_directories(
     include/
@@ -159,27 +177,31 @@ target_link_libraries(notf-test
 
 # BENCHMARK ############################################################################################################
 
-include_directories(
-    /home/clemens/code/thirdparty/benchmark/INSTALL/include/
-)
+if(BUILD_BENCHMARKS)
 
-add_sources(BENCHMARK_SOURCES benchmark
-    bench_vector4.cpp
-    benchmark.cpp
-)
+    include_directories(
+        /home/clemens/code/thirdparty/benchmark/INSTALL/include/
+    )
 
-add_executable(notf-benchmark
-    ${common_MODULE}
-    ${utils_MODULE}
-    ${BENCHMARK_SOURCES}
-    ${THIRDPARTY_FILES}
-)
+    add_sources(BENCHMARK_SOURCES benchmark
+        bench_vector4.cpp
+        benchmark.cpp
+    )
 
-target_link_libraries(notf-benchmark
-    /home/clemens/code/thirdparty/benchmark/INSTALL/lib/libbenchmark.a
-    glfw
-    pthread
-)
+    add_executable(notf-benchmark
+        ${common_MODULE}
+        ${utils_MODULE}
+        ${BENCHMARK_SOURCES}
+        ${THIRDPARTY_FILES}
+    )
+
+    target_link_libraries(notf-benchmark
+        glfw
+        benchmark
+        pthread
+    )
+
+endif()
 
 # CCACHE ###############################################################################################################
 

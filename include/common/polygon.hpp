@@ -1,7 +1,10 @@
 #pragma once
 
+#include <algorithm>
 #include <iosfwd>
 
+#include "common/exception.hpp"
+#include "common/segment.hpp"
 #include "common/vector2.hpp"
 
 namespace notf {
@@ -10,7 +13,10 @@ namespace detail {
 
 //====================================================================================================================//
 
-/// @brief Baseclass for Polygons.
+/// @brief Baseclass for simple Polygons.
+/// "Simple" means that the Polygon has no (non-consecutive) vertices that share the same position, no intersecting
+/// edges and must contain at least 3 unique points. Polygons are always closed, meaning the last point is always
+/// implicitly connected to the first one.
 template<typename REAL>
 struct Polygon {
 
@@ -20,13 +26,166 @@ struct Polygon {
     /// @brief Element type.
     using element_t = typename vector_t::element_t;
 
+    /// @brief Orientation type.
+    using Orientation = typename Triangle<element_t>::Orientation;
+
     // fields --------------------------------------------------------------------------------------------------------//
     /// @brief Vertices of this Polygon.
-    std::vector<vector_t> vertices;
+    const std::vector<vector_t> vertices;
+
+    /// @brief Orientation of the Polygon.
+    const Orientation orientation;
 
     // methods -------------------------------------------------------------------------------------------------------//
-    /// @brief Default constructor.
-    Polygon() = default;
+    /// @brief Value constructor.
+    /// @param vertices         Vertices from which to construct the Polygon.
+    /// @param orientation      Orientation of the Polygon. Is calculated automatically if left as default.
+    /// @throws runtime_error   If the Polygon does not contain at least 3 unique vertices.
+    /// @throws runtime_error   If two non-consecutive vertices share the same position.
+    /// @throws runtime_error   If two edges of the Polygon intersect.
+    Polygon(std::vector<vector_t> vertices, const Orientation orientation = -1)
+        : vertices(_prepare_vertices(std::move(vertices))), orientation(_prepare_orientation(orientation))
+    {}
+
+    /// @brief Tests if the point is fully contained in the Polygon.
+    /// If the point is on the edge of the Polygon, it is not contained within it.
+    /// @param point    Point to check.
+    bool contains(const vector_t& point) const
+    {
+        // create a line segment from the point to some point on the outside of the polygon
+        const Segment2<element_t> line(
+            point, vector_t(1, 1)
+                       + *(std::max_element(std::begin(vertices), std::end(vertices),
+                                            [](const auto& lhs, const auto& rhs) { return lhs.x() < rhs.x(); })));
+
+        // find the index of the first vertex that does not fall on the line
+        size_t index = 0;
+        while (index < vertices.size() && line.contains(vertices[index])) {
+            ++index;
+        }
+
+        // count the number of intersections with segments of this Polygon
+        uint intersections = 0;
+        while (index < vertices.size()) {
+            const vector_t& last_vertex    = vertices[index++];
+            const vector_t& current_vertex = vertices[index % vertices.size()];
+            if (Segment2<element_t>(last_vertex, current_vertex).intersects(line)) {
+                ++intersections;
+            }
+
+            // if the current vertex falls directly onto the line, the line either crosses or touches it
+            if (line.contains(current_vertex)) {
+                do {
+                    ++index; // skip all vertices that fall on the line
+                } while (line.contains(vertices[index % vertices.size()]));
+                const vector_t& current_vertex = vertices[index % vertices.size()];
+
+                if (Triangle<element_t>(line.start, line.end, last_vertex).orientation()
+                    == Triangle<element_t>(line.start, line.end, current_vertex).orientation()) {
+                    // if the last and the current vertex fall on the same side of the line,
+                    // the point only touches the Polygon
+                    --intersections;
+                }
+            }
+        }
+
+        // the point is contained, if the number of intersections is odd
+        return (intersections % 2) == 0;
+    }
+
+private:
+    /// @brief Enforces the construction of a simple Polygon with unique vertices.
+    /// @param vertices Vertices from which to construct the Polygon.
+    /// @throws runtime_error   If the Polygon does not contain at least 3 unique vertices.
+    /// @throws runtime_error   If two non-consecutive vertices share the same position.
+    /// @throws runtime_error   If two edges of the Polygon intersect.
+    static std::vector<vector_t> _prepare_vertices(std::vector<vector_t>&& vertices)
+    {
+        { // merge non-unique vertices (consecutive vertices that share the same position)
+            size_t first_non_unique = vertices.size();
+            for (size_t i = 1; i < vertices.size(); ++i) {
+                if (vertices[i].is_approx(vertices[i - 1])) {
+                    first_non_unique = i;
+                    break;
+                }
+            }
+            if (first_non_unique != vertices.size()) {
+                std::vector<vector_t> unique_vertices;
+                unique_vertices.reserve(vertices.size() - 1);
+
+                unique_vertices.insert(std::end(unique_vertices), std::cbegin(vertices),
+                                       std::cbegin(vertices) + first_non_unique);
+
+                for (size_t i = first_non_unique + 1; i < vertices.size(); ++i) {
+                    if (!vertices[i].is_approx(vertices[i - 1])) {
+                        unique_vertices.emplace_back(vertices[i]);
+                    }
+                }
+
+                std::swap(vertices, unique_vertices);
+            }
+        }
+        vertices.shrink_to_fit();
+
+        if (vertices.size() < 3) {
+            throw_runtime_error("A Polygon must contain at least 3 unique vertices");
+        }
+
+        for (size_t i = 0; i < vertices.size(); ++i) {
+            for (size_t j = 1; j < vertices.size(); ++j) {
+                if (vertices[i].is_approx(vertices[j])) {
+                    throw_runtime_error("Vertices in a Polygon must not share positions");
+                }
+            }
+        }
+
+        for (size_t i = 1; i < vertices.size(); ++i) {
+            for (size_t j = 2; j < vertices.size(); ++j) {
+                if (Segment2<element_t>(vertices[i - 1], vertices[i])
+                        .intersects(Segment2<element_t>(vertices[j - 1], vertices[j]))) {
+                    throw_runtime_error("Segments in a Polygon may not intersect");
+                }
+            }
+        }
+
+        return vertices;
+    }
+
+    /// @brief Calculates the orientation of the Polygon on request.
+    Orientation _prepare_orientation(Orientation orientation)
+    {
+        // calculate orientation from vertices
+        if (orientation == -1) {
+            // find three consecutive vertices that form a triangle that doesn't contain any other vertices
+            Triangle<element_t> triangle;
+            bool is_empty;
+            for (size_t i = 2; i <= vertices.size(); ++i) {
+                triangle = {vertices[i - 2], vertices[i - 1], vertices[i % vertices.size()]};
+                is_empty = true;
+                for (size_t j = 0; j < vertices.size(); ++j) {
+                    if (triangle.contains(vertices[j])) {
+                        is_empty = false;
+                        break;
+                    }
+                }
+                if (is_empty) {
+                    break;
+                }
+            }
+            assert(is_empty);
+
+            // the Polygon shares the orientation of the triangle if it is contained
+            if (this->contains(triangle.center())) {
+                orientation = triangle.orientation();
+            }
+            else {
+                orientation = (triangle.orientation() == Orientation::CCW) ? Orientation::CW : Orientation::CCW;
+            }
+        }
+
+        assert(orientation == Orientation::CCW || orientation == Orientation::CW);
+        return orientation;
+    }
 };
 
 } // namespace detail
