@@ -91,6 +91,7 @@ add_sources(SOURCE_FILES examples
     framebuffer_example.cpp
     line_example.cpp
     wireframe_example.cpp
+    shape_example.cpp
 )
 
 add_sources(THIRDPARTY_FILES thirdparty
@@ -113,6 +114,8 @@ add_sources(RESOURCE_FILES res
     shaders/line.tess
     shaders/line.eval
     shaders/line.frag
+    shaders/trivial.vert
+    shaders/trivial.frag
 )
 
 add_executable(notf

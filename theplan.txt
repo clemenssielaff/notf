@@ -1,0 +1,8 @@
+=== Graphics ========
+Draw shapes         -
+Draw text           -
+
+=== Properties ======
+Animation / Dirty   -
+Reactive            -
+Threading           -

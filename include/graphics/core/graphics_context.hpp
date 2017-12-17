@@ -71,21 +71,6 @@ struct BlendMode {
 
 //====================================================================================================================//
 
-/// @brief Blend mode, can be set for RGB and the alpha channel separately.
-enum class StencilFunc : unsigned char {
-    ALWAYS,   ///< Always passes (default).
-    NEVER,    ///< Always fails.
-    LESS,     ///< Passes if (ref & mask) < (stencil & mask).
-    LEQUAL,   ///< Passes if (ref & mask) <= (stencil & mask).
-    GREATER,  ///< Passes if (ref & mask) > (stencil & mask).
-    GEQUAL,   ///< Passes if (ref & mask) >= (stencil & mask).
-    EQUAL,    ///< Passes if (ref & mask) = (stencil & mask).
-    NOTEQUAL, ///< Passes if (ref & mask) != (stencil & mask).
-    DEFAULT = ALWAYS,
-};
-
-//====================================================================================================================//
-
 /// @brief Direction to cull in the culling test.
 enum CullFace : unsigned char {
     BACK,  ///< Do not render back-facing faces (default).
@@ -158,8 +143,6 @@ private:
 
         bool enable_scissor = false;
 
-        StencilFunc stencil_func = StencilFunc::DEFAULT;
-
         GLuint stencil_mask = 0xffffffff;
 
         std::vector<TexturePtr> texture_slots = {};
@@ -198,10 +181,6 @@ public:
     /// @brief En- or disables vsync (enabled by default).
     /// @param enabled  Whether to enable or disable vsync.
     void set_vsync(const bool enabled);
-
-    /// @brief Applies a given stencil function.
-    /// @param func     Stencil function to apply.
-    void set_stencil_func(const StencilFunc func);
 
     /// @brief Applies the given stencil mask.
     void set_stencil_mask(const GLuint mask);

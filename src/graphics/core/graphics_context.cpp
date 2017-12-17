@@ -154,41 +154,6 @@ void GraphicsContext::set_vsync(const bool enabled)
     }
 }
 
-void GraphicsContext::set_stencil_func(const StencilFunc func)
-{
-    if (func == m_state.stencil_func) {
-        return;
-    }
-    m_state.stencil_func = func;
-
-    switch (func) {
-    case StencilFunc::ALWAYS:
-        gl_check(glStencilFunc(GL_ALWAYS, ALL_ZEROS, ALL_ONES));
-        break;
-    case StencilFunc::NEVER:
-        gl_check(glStencilFunc(GL_NEVER, ALL_ZEROS, ALL_ONES));
-        break;
-    case StencilFunc::LESS:
-        gl_check(glStencilFunc(GL_LESS, ALL_ZEROS, ALL_ONES));
-        break;
-    case StencilFunc::LEQUAL:
-        gl_check(glStencilFunc(GL_LEQUAL, ALL_ZEROS, ALL_ONES));
-        break;
-    case StencilFunc::GREATER:
-        gl_check(glStencilFunc(GL_GREATER, ALL_ZEROS, ALL_ONES));
-        break;
-    case StencilFunc::GEQUAL:
-        gl_check(glStencilFunc(GL_GEQUAL, ALL_ZEROS, ALL_ONES));
-        break;
-    case StencilFunc::EQUAL:
-        gl_check(glStencilFunc(GL_EQUAL, ALL_ZEROS, ALL_ONES));
-        break;
-    case StencilFunc::NOTEQUAL:
-        gl_check(glStencilFunc(GL_NOTEQUAL, ALL_ZEROS, ALL_ONES));
-        break;
-    }
-}
-
 void GraphicsContext::set_stencil_mask(const GLuint mask)
 {
     if (mask != m_state.stencil_mask) {
