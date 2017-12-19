@@ -114,6 +114,10 @@ add_sources(RESOURCE_FILES res
     shaders/line.tess
     shaders/line.eval
     shaders/line.frag
+    shaders/shape.vert
+    shaders/shape.tess
+    shaders/shape.eval
+    shaders/shape.frag
     shaders/trivial.vert
     shaders/trivial.frag
 )

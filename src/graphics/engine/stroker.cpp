@@ -15,23 +15,23 @@ namespace {
 
 using namespace notf;
 
-struct VertexPosh : public AttributeTrait {
+struct VertexPos : public AttributeTrait {
     constexpr static uint location = 0;
     using type                     = Vector2f;
     using kind                     = AttributeKind::Position;
 };
 
-struct LeftCtrlPosh : public AttributeTrait {
+struct LeftCtrlPos : public AttributeTrait {
     constexpr static uint location = 1;
     using type                     = Vector2f;
 };
 
-struct RightCtrlPosh : public AttributeTrait {
+struct RightCtrlPos : public AttributeTrait {
     constexpr static uint location = 2;
     using type                     = Vector2f;
 };
 
-using LineVertexArray = VertexArray<VertexPosh, LeftCtrlPosh, RightCtrlPosh>;
+using LineVertexArray = VertexArray<VertexPos, LeftCtrlPos, RightCtrlPos>;
 using LineIndexArray  = IndexArray<GLuint>;
 
 void set_pos(LineVertexArray::Vertex& vertex, Vector2f pos) { std::get<0>(vertex) = std::move(pos); }
@@ -72,7 +72,7 @@ Stroker::Stroker(GraphicsContextPtr& context)
 
         const std::string tess_src       = load_file("/home/clemens/code/notf/res/shaders/line.tess");
         const std::string eval_src       = load_file("/home/clemens/code/notf/res/shaders/line.eval");
-        TesselationShaderPtr tess_shader = TesselationShader::build(context, "line.tess", tess_src.c_str(), eval_src);
+        TesselationShaderPtr tess_shader = TesselationShader::build(context, "line.tess", tess_src, eval_src);
 
         const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/line.frag");
         FragmentShaderPtr frag_shader = FragmentShader::build(context, "line.frag", frag_src);

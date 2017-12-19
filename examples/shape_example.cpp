@@ -30,20 +30,19 @@ struct VertexPos : public AttributeTrait {
     using kind                     = AttributeKind::Position;
 };
 
-struct InstanceXform : public AttributeTrait {
-    constexpr static uint location = 3;
-    using type                     = Matrix4f;
-    using kind                     = AttributeKind::Other;
+struct LeftCtrlPos : public AttributeTrait {
+    constexpr static uint location = 1;
+    using type                     = Vector2f;
 };
 
+struct RightCtrlPos : public AttributeTrait {
+    constexpr static uint location = 2;
+    using type                     = Vector2f;
+};
 static void error_callback(int error, const char* description)
 {
     log_critical << "GLFW error #" << error << ": " << description;
 }
-
-struct Foo {
-    int a, b, c;
-};
 
 void render_thread(GLFWwindow* window)
 {
@@ -51,13 +50,17 @@ void render_thread(GLFWwindow* window)
 
     // Shader ///////////////////////////////////////////////
 
-    const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/trivial.vert");
-    VertexShaderPtr vertex_shader = VertexShader::build(graphics_context, "trivial.vert", vertex_src);
+    const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/shape.vert");
+    VertexShaderPtr vertex_shader = VertexShader::build(graphics_context, "shape.vert", vertex_src);
 
-    const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/trivial.frag");
-    FragmentShaderPtr frag_shader = FragmentShader::build(graphics_context, "trivial.frag", frag_src);
+    const std::string tess_src       = load_file("/home/clemens/code/notf/res/shaders/shape.tess");
+    const std::string eval_src       = load_file("/home/clemens/code/notf/res/shaders/shape.eval");
+    TesselationShaderPtr tess_shader = TesselationShader::build(graphics_context, "shape.tess", tess_src, eval_src);
 
-    PipelinePtr pipeline = Pipeline::create(graphics_context, vertex_shader, frag_shader);
+    const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/shape.frag");
+    FragmentShaderPtr frag_shader = FragmentShader::build(graphics_context, "shape.frag", frag_src);
+
+    PipelinePtr pipeline = Pipeline::create(graphics_context, vertex_shader, tess_shader, frag_shader);
     graphics_context->bind_pipeline(pipeline);
 
     // Vertices ///////////////////////////////////////////////
@@ -68,61 +71,74 @@ void render_thread(GLFWwindow* window)
 
 #if 0
 
-    auto vertices = std::make_unique<VertexArray<VertexPos>>();
+    auto vertices = std::make_unique<VertexArray<VertexPos, LeftCtrlPos, RightCtrlPos>>();
     vertices->init();
     vertices->update({
-        Vector2f{565, 800 - 30},
-        Vector2f{40, 800 - 360},
-        Vector2f{330, 800 - 490},
-        Vector2f{150, 800 - 680},
-        Vector2f{460, 800 - 570},
-        Vector2f{770, 800 - 680},
-        Vector2f{250, 800 - 350},
+        { Vector2f{565, 770}, Vector2f{0, 0}, Vector2f{0, 0} },
+        { Vector2f{ 40, 440}, Vector2f{0, 0}, Vector2f{0, 0} },
+        { Vector2f{330, 310}, Vector2f{0, 0}, Vector2f{0, 0} },
+        { Vector2f{150, 120}, Vector2f{0, 0}, Vector2f{0, 0} },
+        { Vector2f{460, 230}, Vector2f{0, 0}, Vector2f{0, 0} },
+        { Vector2f{770, 120}, Vector2f{0, 0}, Vector2f{0, 0} },
+        { Vector2f{250, 450}, Vector2f{0, 0}, Vector2f{0, 0} },
     });
 
     auto indices = std::make_unique<IndexArray<GLuint>>();
     indices->init();
     indices->update({
-        0, 0, 1, 0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0, 5, 6, 0, 6, 0,
+        0, 1,
+        1, 2,
+        2, 3,
+        3, 4,
+        4, 5,
+        5, 6,
+        6, 0,
     });
 
 #else
 
-        auto vertices = std::make_unique<VertexArray<VertexPos>>();
+        auto vertices = std::make_unique<VertexArray<VertexPos, LeftCtrlPos, RightCtrlPos>>();
         vertices->init();
-        vertices->update({Vector2f{50 , 750},
-                          Vector2f{50 , 50},
-                          Vector2f{750, 50},
-                          Vector2f{750, 750},
-                          Vector2f{250, 550},
-                          Vector2f{250, 250},
-                          Vector2f{550, 250},
-                          Vector2f{550, 550},
+        vertices->update({{ Vector2f{100 , 700}, Vector2f{0, 0}, Vector2f{0, 0} },
+                          { Vector2f{50 , 50 }, Vector2f{0, 0}, Vector2f{0, 0} },
+                          { Vector2f{750, 50 }, Vector2f{0, 0}, Vector2f{0, 0} },
+                          { Vector2f{750, 750}, Vector2f{0, 0}, Vector2f{0, 0} },
+                          { Vector2f{250, 550}, Vector2f{0, 0}, Vector2f{0, 0} },
+                          { Vector2f{250, 250}, Vector2f{0, 0}, Vector2f{0, 0} },
+                          { Vector2f{550, 250}, Vector2f{0, 0}, Vector2f{0, 0} },
+                          { Vector2f{550, 550}, Vector2f{0, 0}, Vector2f{0, 0} },
                          });
 
         auto indices = std::make_unique<IndexArray<GLuint>>();
         indices->init();
-        indices->update({0, 0, 1,
-                         0, 1, 2,
-                         0, 2, 3,
-                         0, 3, 0,
-
+        indices->update({
+                         0, 1,
+                         1, 2,
+                         2, 3,
+                         3, 0,
+#if 0
 #if 1 // CW = hole
-                         0, 5, 4,
-                         0, 6, 5,
-                         0, 7, 6,
-                         0, 4, 7,
+                         5, 4,
+                         6, 5,
+                         7, 6,
+                         4, 7,
 #else // CCW = fill
-                         0, 4, 5,
-                         0, 5, 6,
-                         0, 6, 7,
-                         0, 7, 4,
+                         4, 5,
+                         5, 6,
+                         6, 7,
+                         7, 4,
+#endif
 #endif
                         });
 
 #endif
 
     // Rendering //////////////////////////////////////////////
+
+    gl_check(glEnable(GL_BLEND));
+    gl_check(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+    gl_check(glEnable(GL_CULL_FACE));
+    gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
 
     // render loop
     using namespace std::chrono_literals;
@@ -144,13 +160,13 @@ void render_thread(GLFWwindow* window)
         {
             // pass the shader uniforms
             const Matrix4f perspective = Matrix4f::orthographic(0.f, 800.f, 0.f, 800.f, 0.f, 10000.f);
-            vertex_shader->set_uniform("projection", perspective);
+            tess_shader->set_uniform("projection", perspective);
 
-            const Matrix4f move      = Matrix4f::translation(0, 0, -500);
-            const Matrix4f rotate    = Matrix4f::identity();
-            const Matrix4f scale     = Matrix4f::scaling(1);
-            const Matrix4f modelview = move * rotate * scale;
-            vertex_shader->set_uniform("modelview", modelview);
+            // with a purely convex polygon, we can safely put the base vertex into the center of the polygon as it will
+            // always be inside and it should never fall onto an existing polygon
+            tess_shader->set_uniform("base_vertex", Vector2f{400 , 400});
+
+            tess_shader->set_uniform("aa_width", 1.0f);
         }
 
         glClearColor(0.2f, 0.3f, 0.5f, 1);
@@ -158,27 +174,25 @@ void render_thread(GLFWwindow* window)
 
         // perform polygon rendering //////////////////////////////////////////
 
-        glEnable(GL_CULL_FACE);
+        gl_check(glEnable(GL_STENCIL_TEST)); // enable stencil
+        gl_check(glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE)); // do not write into color buffer
+        gl_check(glStencilMask(0xff)); // write to all bits of the stencil buffer
+        gl_check(glStencilFunc(GL_ALWAYS, 0, 1)); //  Always pass (other values are default values and do not matter for GL_ALWAYS)
 
-        glEnable(GL_STENCIL_TEST); // enable stencil
-        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE); // do not write into color buffer
-        glStencilMask(0xff); // write to all bits of the stencil buffer
-        glStencilFunc(GL_ALWAYS, 0, 1); //  Always pass (other values are default values and do not matter for GL_ALWAYS)
+        gl_check(glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP));
+        gl_check(glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP));
+        gl_check(glDisable(GL_CULL_FACE));
+        gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices->size()), GL_UNSIGNED_INT, nullptr));
+        gl_check(glEnable(GL_CULL_FACE));
 
-        glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP);
-        glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP);
-        glDisable(GL_CULL_FACE);
-        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices->size()), GL_UNSIGNED_INT, nullptr);
-        glEnable(GL_CULL_FACE);
-
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); // re-enable color
-        glStencilFunc(GL_NOTEQUAL, 0x00, 0xff); // only write to pixels that are inside the polygon
-        glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO); // reset the stencil buffer (is a lot faster than clearing it at the start)
+        gl_check(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)); // re-enable color
+        gl_check(glStencilFunc(GL_NOTEQUAL, 0x00, 0xff)); // only write to pixels that are inside the polygon
+        gl_check(glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO)); // reset the stencil buffer (is a lot faster than clearing it at the start)
 
         // render colors here, same area as before if you don't want to clear the stencil buffer every time
-        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices->size()), GL_UNSIGNED_INT, nullptr);
+        gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices->size()), GL_UNSIGNED_INT, nullptr));
 
-        glDisable(GL_STENCIL_TEST);
+        gl_check(glDisable(GL_STENCIL_TEST));
 
         ///////////////////////////////////////////////////////////////////////
 

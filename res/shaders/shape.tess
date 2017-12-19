@@ -1,0 +1,41 @@
+#version 320 es
+
+precision highp float;
+
+layout (vertices = 4) out;
+
+#define ID gl_InvocationID
+
+in VertexData {
+    vec2 first_ctrl;
+    vec2 second_ctrl;
+} v_in[];
+
+uniform float aa_width;
+
+const float ZERO = 0.0f;
+const float ONE = 1.0f;
+const float TWO = 2.0f;
+const float THREE = 3.0f;
+
+void main(){
+    if (ID == 0){
+
+        // tesselation defaults
+        float tessel_x = ONE;                               // along spline
+        float tessel_y = TWO; // (aa_width == ZERO ? ONE : THREE);  // along normal
+
+        // apply tesselation
+        gl_TessLevelInner[0] = tessel_x;
+        gl_TessLevelInner[1] = tessel_y;
+
+        gl_TessLevelOuter[0] = tessel_y;
+        gl_TessLevelOuter[1] = tessel_y;
+        gl_TessLevelOuter[2] = tessel_y;
+        gl_TessLevelOuter[3] = tessel_y;
+
+        // tesselation for convex shapes
+    }
+
+    gl_out[ID].gl_Position = gl_in[ID].gl_Position;
+}

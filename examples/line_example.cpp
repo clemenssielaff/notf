@@ -50,6 +50,8 @@ void render_thread(GLFWwindow* window)
 {
     std::unique_ptr<GraphicsContext> graphics_context(new GraphicsContext(window));
 
+    // Stroker ////////////////////////////////////////////////
+
     Stroker stroker(graphics_context);
 
     CubicBezier2f spline1({

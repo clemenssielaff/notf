@@ -77,7 +77,7 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
     }
 
     // compile the shader
-    gl_check(glShaderSource(shader, /*count*/ 1, &source, /*length*/ 0));
+    gl_check(glShaderSource(shader, /*count*/ 1, &source, /*length*/ nullptr));
     gl_check(glCompileShader(shader));
 
     // check for errors
@@ -87,7 +87,7 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
         GLint error_size;
         gl_check(glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &error_size));
         std::vector<char> error_message(static_cast<size_t>(error_size));
-        gl_check(glGetShaderInfoLog(shader, error_size, /*length*/ 0, &error_message[0]));
+        gl_check(glGetShaderInfoLog(shader, error_size, /*length*/ nullptr, &error_message[0]));
         gl_check(glDeleteShader(shader));
 
         std::stringstream ss;
@@ -307,7 +307,7 @@ GLuint Shader::_build(GraphicsContextPtr& context, const std::string& name, cons
             GLint error_size;
             gl_check(glGetProgramiv(program, GL_INFO_LOG_LENGTH, &error_size));
             std::vector<char> error_message(static_cast<size_t>(error_size));
-            gl_check(glGetProgramInfoLog(program, error_size, /*length*/ 0, &error_message[0]));
+            gl_check(glGetProgramInfoLog(program, error_size, /*length*/ nullptr, &error_message[0]));
             gl_check(glDeleteProgram(program));
 
             std::stringstream ss;
@@ -340,7 +340,7 @@ bool Shader::validate_now() const
     GLint message_size;
     gl_check(glGetProgramiv(m_id, GL_INFO_LOG_LENGTH, &message_size));
     std::vector<char> message(static_cast<size_t>(message_size));
-    gl_check(glGetProgramInfoLog(m_id, message_size, /*length*/ 0, &message[0]));
+    gl_check(glGetProgramInfoLog(m_id, message_size, /*length*/ nullptr, &message[0]));
 
     log_trace << "Validation of shader \"" << m_name << "\" " << (status ? "succeeded" : "failed:\n") << message.data();
     return status == GL_TRUE;

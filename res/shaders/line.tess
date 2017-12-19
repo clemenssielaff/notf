@@ -21,9 +21,9 @@ patch out PatchData {
     int type;
 } patch_data;
 
-const float ZERO = 0.0f;
-const float HALF = 0.5f;
-const float ONE = 1.0f;
+const float ZERO  = 0.0f;
+const float HALF  = 0.5f;
+const float ONE   = 1.0f;
 const float THREE = 3.0f;
 
 #define SEGMENT     0
