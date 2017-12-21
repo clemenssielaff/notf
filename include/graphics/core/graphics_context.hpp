@@ -98,6 +98,10 @@ public:
         /// @brief Is anisotropic filtering of textures supported?
         bool anisotropic_filter;
 
+        /// @brief Does the GPU support nVidia GPU shader5 extensions.
+        /// @see   https://www.khronos.org/registry/OpenGL/extensions/NV/NV_gpu_shader5.txt
+        bool nv_gpu_shader5;
+
     private:
         friend class GraphicsContext;
 

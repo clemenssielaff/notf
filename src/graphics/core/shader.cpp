@@ -160,10 +160,105 @@ std::string build_defines(const Shader::Defines& defines)
     return ss.str();
 }
 
-/// @brief Injects a string of custom `#define` statements into a given GLSL source code.
+namespace detail {
+
+std::string build_glsl_header(const GraphicsContextPtr& context)
+{
+    std::string result = "\n//==== notf header ========================================\n\n";
+
+    { // pragmas first ...
+        bool any_pragma = false;
+#ifdef NOTF_DEBUG
+        any_pragma = true;
+        result += "#pragma debug(on)\n";
+#endif
+        if (any_pragma) {
+            result += "\n";
+        }
+    }
+
+    { // ... then extensions ...
+        bool any_extensions = false;
+        if (context->extensions().nv_gpu_shader5) {
+            result += "#extension GL_NV_gpu_shader5 : enable\n";
+            any_extensions = true;
+        }
+        if (any_extensions) {
+            result += "\n";
+        }
+    }
+
+    { // ... and defines last
+        bool any_defines = false;
+        if (!context->extensions().nv_gpu_shader5) {
+            result += "#define int8_t    int \n"
+                      "#define int16_t   int \n"
+                      "#define int32_t   int \n"
+                      "#define int64_t   int \n"
+                      "#define uint8_t   uint \n"
+                      "#define uint16_t  uint \n"
+                      "#define uint32_t  uint \n"
+                      "#define uint64_t  uint \n"
+                      "#define float16_t float \n"
+                      "#define float32_t float \n"
+                      "#define float64_t double \n\n"
+                      "#define i8vec2   ivec2 \n"
+                      "#define i16vec2  ivec2 \n"
+                      "#define i32vec2  ivec2 \n"
+                      "#define i64vec2  ivec2 \n"
+                      "#define u8vec2   uvec2 \n"
+                      "#define u16vec2  uvec2 \n"
+                      "#define u32vec2  uvec2 \n"
+                      "#define u64vec2  uvec2 \n"
+                      "#define f16vec2  vec2 \n"
+                      "#define f32vec2  vec2 \n"
+                      "#define f64vec2  dvec2 \n\n"
+                      "#define i8vec3   ivec3 \n"
+                      "#define i16vec3  ivec3 \n"
+                      "#define i32vec3  ivec3 \n"
+                      "#define i64vec3  ivec3 \n"
+                      "#define u8vec3   uvec3 \n"
+                      "#define u16vec3  uvec3 \n"
+                      "#define u32vec3  uvec3 \n"
+                      "#define u64vec3  uvec3 \n"
+                      "#define f16vec3  vec3 \n"
+                      "#define f32vec3  vec3 \n"
+                      "#define f64vec3  dvec3  \n\n"
+                      "#define i8vec4   ivec4 \n"
+                      "#define i16vec4  ivec4 \n"
+                      "#define i32vec4  ivec4 \n"
+                      "#define i64vec4  ivec4 \n"
+                      "#define u8vec4   uvec4 \n"
+                      "#define u16vec4  uvec4 \n"
+                      "#define u32vec4  uvec4 \n"
+                      "#define u64vec4  uvec4 \n"
+                      "#define f16vec4  vec4 \n"
+                      "#define f32vec4  vec4 \n"
+                      "#define f64vec4  dvec4 \n";
+            any_defines = true;
+        }
+        if (any_defines) {
+            result += "\n";
+        }
+    }
+
+    result += "//=========================================================\n";
+
+    return result;
+}
+
+} // namespace detail
+
+const std::string& glsl_header(const GraphicsContextPtr& context)
+{
+    static const std::string header = detail::build_glsl_header(context);
+    return header;
+}
+
+/// @brief Injects an arbitrary string into a given GLSL source code.
 /// @return Modified source.
 /// @throws std::runtime_error if the injection point could not be found.
-std::string inject_defines(const std::string& source, const std::string& injection)
+std::string inject_header(const std::string& source, const std::string& injection)
 {
     if (injection.empty()) {
         return source;
@@ -493,13 +588,7 @@ VertexShader::VertexShader(GraphicsContextPtr& context, const GLuint program, st
 VertexShaderPtr
 VertexShader::build(GraphicsContextPtr& context, std::string name, const std::string& source, const Defines& defines)
 {
-    std::string modified_source;
-    if (defines.empty()) {
-        modified_source = source;
-    }
-    else {
-        modified_source = inject_defines(source, build_defines(defines));
-    }
+    const std::string modified_source = inject_header(source, glsl_header(context) + build_defines(defines));
 
     Args args;
     args.vertex_source   = modified_source.c_str();
@@ -540,17 +629,9 @@ TesselationShaderPtr
 TesselationShader::build(GraphicsContextPtr& context, std::string name, const std::string& control_source,
                          const std::string& evaluation_source, const Defines& defines)
 {
-    std::string modified_control_source;
-    std::string modified_evaluation_source;
-    if (defines.empty()) {
-        modified_control_source    = control_source;
-        modified_evaluation_source = evaluation_source;
-    }
-    else {
-        const std::string injection_string = build_defines(defines);
-        modified_control_source            = inject_defines(control_source, injection_string);
-        modified_evaluation_source         = inject_defines(evaluation_source, injection_string);
-    }
+    const std::string injection_string           = glsl_header(context) + build_defines(defines);
+    const std::string modified_control_source    = inject_header(control_source, injection_string);
+    const std::string modified_evaluation_source = inject_header(evaluation_source, injection_string);
 
     Args args;
     args.tess_ctrl_source = modified_control_source.c_str();
@@ -579,13 +660,7 @@ GeometryShader::GeometryShader(GraphicsContextPtr& context, const GLuint program
 GeometryShaderPtr
 GeometryShader::build(GraphicsContextPtr& context, std::string name, const std::string& source, const Defines& defines)
 {
-    std::string modified_source;
-    if (defines.empty()) {
-        modified_source = source;
-    }
-    else {
-        modified_source = inject_defines(source, build_defines(defines));
-    }
+    const std::string modified_source = inject_header(source, glsl_header(context) + build_defines(defines));
 
     Args args;
     args.geometry_source = modified_source.c_str();
@@ -612,13 +687,7 @@ FragmentShader::FragmentShader(GraphicsContextPtr& context, const GLuint program
 FragmentShaderPtr
 FragmentShader::build(GraphicsContextPtr& context, std::string name, const std::string& source, const Defines& defines)
 {
-    std::string modified_source;
-    if (defines.empty()) {
-        modified_source = source;
-    }
-    else {
-        modified_source = inject_defines(source, build_defines(defines));
-    }
+    const std::string modified_source = inject_header(source, glsl_header(context) + build_defines(defines));
 
     Args args;
     args.fragment_source = modified_source.c_str();

@@ -67,15 +67,15 @@ Stroker::Stroker(GraphicsContextPtr& context)
     auto vao_guard = VaoGuard(m_vao_id);
 
     { // pipeline
-        const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/line.vert");
-        VertexShaderPtr vertex_shader = VertexShader::build(context, "line.vert", vertex_src);
+        const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/shape.vert");
+        VertexShaderPtr vertex_shader = VertexShader::build(context, "shape.vert", vertex_src);
 
-        const std::string tess_src       = load_file("/home/clemens/code/notf/res/shaders/line.tess");
-        const std::string eval_src       = load_file("/home/clemens/code/notf/res/shaders/line.eval");
-        TesselationShaderPtr tess_shader = TesselationShader::build(context, "line.tess", tess_src, eval_src);
+        const std::string tess_src       = load_file("/home/clemens/code/notf/res/shaders/shape.tess");
+        const std::string eval_src       = load_file("/home/clemens/code/notf/res/shaders/shape.eval");
+        TesselationShaderPtr tess_shader = TesselationShader::build(context, "shape.tess", tess_src, eval_src);
 
-        const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/line.frag");
-        FragmentShaderPtr frag_shader = FragmentShader::build(context, "line.frag", frag_src);
+        const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/shape.frag");
+        FragmentShaderPtr frag_shader = FragmentShader::build(context, "shape.frag", frag_src);
 
         m_pipeline = Pipeline::create(context, vertex_shader, tess_shader, frag_shader);
 
@@ -257,6 +257,8 @@ void Stroker::render()
     // TODO: stroke_width less than 1 should set a uniform that fades the line out and line widths of zero
     // should be ignored
     tess_shader->set_uniform("stroke_width", 3.f);
+
+    tess_shader->set_uniform("patch_type", 3);
 
     gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
     gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(m_indices->size()), m_indices->type(), nullptr));

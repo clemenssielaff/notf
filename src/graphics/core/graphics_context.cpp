@@ -34,6 +34,11 @@ namespace notf {
         notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), "GLExtensions") \
                 .input                                                                                             \
             << "Found OpenGL extension:\"" << name << "\"";                                                        \
+    }                                                                                                              \
+    else {                                                                                                         \
+        notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), "GLExtensions") \
+                .input                                                                                             \
+            << "Could not find OpenGL extension:\"" << name << "\"";                                                        \
     }
 #else
 #define CHECK_EXTENSION(member, name) member = extensions.count(name);
@@ -46,10 +51,7 @@ GraphicsContext::Extensions::Extensions()
         GLint extension_count;
         gl_check(glGetIntegerv(GL_NUM_EXTENSIONS, &extension_count));
         for (GLint i = 0; i < extension_count; ++i) {
-            extensions.emplace(
-                std::string(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i)))));
-            extensions.emplace(
-                std::string(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i)))));
+            //  log_trace << "Found OpenGL extension: " << glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i));
             extensions.emplace(
                 std::string(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i)))));
         }
@@ -57,6 +59,7 @@ GraphicsContext::Extensions::Extensions()
 
     // initialize the members
     CHECK_EXTENSION(anisotropic_filter, "GL_EXT_texture_filter_anisotropic");
+    CHECK_EXTENSION(nv_gpu_shader5, "GL_NV_gpu_shader5");
 }
 
 #undef CHECK_EXTENSION

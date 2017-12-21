@@ -99,10 +99,11 @@ void render_thread(GLFWwindow* window)
 
         auto vertices = std::make_unique<VertexArray<VertexPos, LeftCtrlPos, RightCtrlPos>>();
         vertices->init();
-        vertices->update({{ Vector2f{100 , 700}, Vector2f{0, 0}, Vector2f{0, 0} },
+        vertices->update({{ Vector2f{100 , 700}, Vector2f{100, 0}, Vector2f{0, 0} },
                           { Vector2f{50 , 50 }, Vector2f{0, 0}, Vector2f{0, 0} },
                           { Vector2f{750, 50 }, Vector2f{0, 0}, Vector2f{0, 0} },
                           { Vector2f{750, 750}, Vector2f{0, 0}, Vector2f{0, 0} },
+
                           { Vector2f{250, 550}, Vector2f{0, 0}, Vector2f{0, 0} },
                           { Vector2f{250, 250}, Vector2f{0, 0}, Vector2f{0, 0} },
                           { Vector2f{550, 250}, Vector2f{0, 0}, Vector2f{0, 0} },
@@ -132,6 +133,8 @@ void render_thread(GLFWwindow* window)
                         });
 
 #endif
+
+    log_info << tess_shader->control_source();
 
     // Rendering //////////////////////////////////////////////
 
@@ -166,7 +169,11 @@ void render_thread(GLFWwindow* window)
             // always be inside and it should never fall onto an existing polygon
             tess_shader->set_uniform("base_vertex", Vector2f{400 , 400});
 
-            tess_shader->set_uniform("aa_width", 1.0f);
+            tess_shader->set_uniform("aa_width", 1.2f);
+
+            // I can only be sure that the polygon is convex, if the polygon containing the control points as well
+            // is convex - otherwise a convex polygon can become concave through the bezierness
+            tess_shader->set_uniform("patch_type", 1);
         }
 
         glClearColor(0.2f, 0.3f, 0.5f, 1);
@@ -174,25 +181,25 @@ void render_thread(GLFWwindow* window)
 
         // perform polygon rendering //////////////////////////////////////////
 
-        gl_check(glEnable(GL_STENCIL_TEST)); // enable stencil
-        gl_check(glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE)); // do not write into color buffer
-        gl_check(glStencilMask(0xff)); // write to all bits of the stencil buffer
-        gl_check(glStencilFunc(GL_ALWAYS, 0, 1)); //  Always pass (other values are default values and do not matter for GL_ALWAYS)
+//        gl_check(glEnable(GL_STENCIL_TEST)); // enable stencil
+//        gl_check(glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE)); // do not write into color buffer
+//        gl_check(glStencilMask(0xff)); // write to all bits of the stencil buffer
+//        gl_check(glStencilFunc(GL_ALWAYS, 0, 1)); //  Always pass (other values are default values and do not matter for GL_ALWAYS)
 
-        gl_check(glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP));
-        gl_check(glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP));
-        gl_check(glDisable(GL_CULL_FACE));
-        gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices->size()), GL_UNSIGNED_INT, nullptr));
-        gl_check(glEnable(GL_CULL_FACE));
+//        gl_check(glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP));
+//        gl_check(glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP));
+//        gl_check(glDisable(GL_CULL_FACE));
+//        gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices->size()), GL_UNSIGNED_INT, nullptr));
+//        gl_check(glEnable(GL_CULL_FACE));
 
-        gl_check(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)); // re-enable color
-        gl_check(glStencilFunc(GL_NOTEQUAL, 0x00, 0xff)); // only write to pixels that are inside the polygon
-        gl_check(glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO)); // reset the stencil buffer (is a lot faster than clearing it at the start)
+//        gl_check(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)); // re-enable color
+//        gl_check(glStencilFunc(GL_NOTEQUAL, 0x00, 0xff)); // only write to pixels that are inside the polygon
+//        gl_check(glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO)); // reset the stencil buffer (is a lot faster than clearing it at the start)
 
         // render colors here, same area as before if you don't want to clear the stencil buffer every time
         gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices->size()), GL_UNSIGNED_INT, nullptr));
 
-        gl_check(glDisable(GL_STENCIL_TEST));
+//        gl_check(glDisable(GL_STENCIL_TEST));
 
         ///////////////////////////////////////////////////////////////////////
 
