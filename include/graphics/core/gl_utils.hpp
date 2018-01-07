@@ -13,7 +13,7 @@ struct half;
 bool gl_is_initialized();
 
 /// @brief Modern way of creating a GLvoid buffer offset.
-constexpr char* gl_buffer_offset(size_t offset) { return static_cast<char*>(0) + offset; }
+constexpr char* gl_buffer_offset(size_t offset) { return static_cast<char*>(nullptr) + offset; }
 
 /// @brief Prints all available OpenGL ES system information to the log.
 void gl_log_system_info();
@@ -34,7 +34,7 @@ GLenum to_gl_type(const GLfloat&);
 //====================================================================================================================//
 
 /// @brief RAII guard for vector array object bindings.
-struct VaoGuard final {
+struct VaoBindGuard final {
 
     // fields --------------------------------------------------------------------------------------------------------//
     /// @brief Vertex array object ID.
@@ -43,10 +43,10 @@ struct VaoGuard final {
     // methods -------------------------------------------------------------------------------------------------------//
     /// @brief Constructor.
     /// @param vao  Vertex array object ID.
-    VaoGuard(GLuint vao);
+    VaoBindGuard(GLuint vao);
 
     /// @brief Destructor.
-    ~VaoGuard();
+    ~VaoBindGuard();
 };
 
 } // namespace notf

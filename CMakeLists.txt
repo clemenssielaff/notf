@@ -110,14 +110,10 @@ add_sources(RESOURCE_FILES res
     shaders/wireframe.eval
     shaders/wireframe.geo
     shaders/wireframe.frag
-    shaders/line.vert
-    shaders/line.tess
-    shaders/line.eval
-    shaders/line.frag
-    shaders/shape.vert
-    shaders/shape.tess
-    shaders/shape.eval
-    shaders/shape.frag
+    shaders/plotter.vert
+    shaders/plotter.tess
+    shaders/plotter.eval
+    shaders/plotter.frag
     shaders/trivial.vert
     shaders/trivial.frag
 )

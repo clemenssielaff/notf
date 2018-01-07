@@ -1,4 +1,4 @@
-#include "graphics/engine/stroker.hpp"
+#include "graphics/engine/plotter.hpp"
 
 #include "common/log.hpp"
 #include "common/matrix4.hpp"
@@ -10,6 +10,7 @@
 #include "graphics/core/pipeline.hpp"
 #include "graphics/core/shader.hpp"
 #include "graphics/core/vertex_array.hpp"
+#include "utils/narrow_cast.hpp"
 
 namespace {
 
@@ -31,21 +32,21 @@ struct RightCtrlPos : public AttributeTrait {
     using type                     = Vector2f;
 };
 
-using LineVertexArray = VertexArray<VertexPos, LeftCtrlPos, RightCtrlPos>;
-using LineIndexArray  = IndexArray<GLuint>;
+using PlotVertexArray = VertexArray<VertexPos, LeftCtrlPos, RightCtrlPos>;
+using PlotIndexArray  = IndexArray<GLuint>;
 
-void set_pos(LineVertexArray::Vertex& vertex, Vector2f pos) { std::get<0>(vertex) = std::move(pos); }
-void set_first_ctrl(LineVertexArray::Vertex& vertex, Vector2f pos) { std::get<1>(vertex) = std::move(pos); }
-void set_second_ctrl(LineVertexArray::Vertex& vertex, Vector2f pos) { std::get<2>(vertex) = std::move(pos); }
+void set_pos(PlotVertexArray::Vertex& vertex, Vector2f pos) { std::get<0>(vertex) = std::move(pos); }
+void set_first_ctrl(PlotVertexArray::Vertex& vertex, Vector2f pos) { std::get<1>(vertex) = std::move(pos); }
+void set_second_ctrl(PlotVertexArray::Vertex& vertex, Vector2f pos) { std::get<2>(vertex) = std::move(pos); }
 
-void set_modified_first_ctrl(LineVertexArray::Vertex& vertex, const CubicBezier2f::Segment& left_segment)
+void set_modified_first_ctrl(PlotVertexArray::Vertex& vertex, const CubicBezier2f::Segment& left_segment)
 {
     const Vector2f delta = left_segment.ctrl2 - left_segment.end;
     set_first_ctrl(vertex, delta.is_zero() ? -(left_segment.tangent(1).normalize()) :
                                              delta.normalize() * (delta.magnitude() + 1));
 }
 
-void set_modified_second_ctrl(LineVertexArray::Vertex& vertex, const CubicBezier2f::Segment& right_segment)
+void set_modified_second_ctrl(PlotVertexArray::Vertex& vertex, const CubicBezier2f::Segment& right_segment)
 {
     const Vector2f delta = right_segment.ctrl1 - right_segment.start;
     set_second_ctrl(vertex, delta.is_zero() ? (right_segment.tangent(0).normalize()) :
@@ -56,26 +57,32 @@ void set_modified_second_ctrl(LineVertexArray::Vertex& vertex, const CubicBezier
 
 namespace notf {
 
-Stroker::Stroker(GraphicsContextPtr& context)
-    : m_graphics_context(*context), m_pipeline(), m_vao_id(0), m_vertices(), m_indices(), m_spline_buffer()
+Plotter::Plotter(GraphicsContextPtr& context)
+    : m_graphics_context(*context)
+    , m_pipeline()
+    , m_vao_id(0)
+    , m_vertices()
+    , m_indices()
+    , m_batches()
+    , m_calls()
 {
     // vao
     gl_check(glGenVertexArrays(1, &m_vao_id));
     if (!m_vao_id) {
-        throw_runtime_error("Failed to allocate the Stroker VAO");
+        throw_runtime_error("Failed to allocate the Plotter VAO");
     }
-    auto vao_guard = VaoGuard(m_vao_id);
+    const auto vao_guard = VaoBindGuard(m_vao_id);
 
     { // pipeline
-        const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/shape.vert");
-        VertexShaderPtr vertex_shader = VertexShader::build(context, "shape.vert", vertex_src);
+        const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/plotter.vert");
+        VertexShaderPtr vertex_shader = VertexShader::build(context, "plotter.vert", vertex_src);
 
-        const std::string tess_src       = load_file("/home/clemens/code/notf/res/shaders/shape.tess");
-        const std::string eval_src       = load_file("/home/clemens/code/notf/res/shaders/shape.eval");
-        TesselationShaderPtr tess_shader = TesselationShader::build(context, "shape.tess", tess_src, eval_src);
+        const std::string tess_src       = load_file("/home/clemens/code/notf/res/shaders/plotter.tess");
+        const std::string eval_src       = load_file("/home/clemens/code/notf/res/shaders/plotter.eval");
+        TesselationShaderPtr tess_shader = TesselationShader::build(context, "plotter.tess", tess_src, eval_src);
 
-        const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/shape.frag");
-        FragmentShaderPtr frag_shader = FragmentShader::build(context, "shape.frag", frag_src);
+        const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/plotter.frag");
+        FragmentShaderPtr frag_shader = FragmentShader::build(context, "plotter.frag", frag_src);
 
         m_pipeline = Pipeline::create(context, vertex_shader, tess_shader, frag_shader);
 
@@ -85,28 +92,20 @@ Stroker::Stroker(GraphicsContextPtr& context)
     { // vertices
         VertexArrayType::Args vertex_args;
         vertex_args.usage = GL_DYNAMIC_DRAW;
-        m_vertices        = std::make_unique<LineVertexArray>(std::move(vertex_args));
+        m_vertices        = std::make_unique<PlotVertexArray>(std::move(vertex_args));
         m_vertices->init();
     }
 
     // indices
-    m_indices = std::make_unique<LineIndexArray>();
+    m_indices = std::make_unique<PlotIndexArray>();
     m_indices->init();
 }
 
-Stroker::~Stroker() { gl_check(glDeleteVertexArrays(1, &m_vao_id)); }
+Plotter::~Plotter() { gl_check(glDeleteVertexArrays(1, &m_vao_id)); }
 
-void Stroker::add_spline(CubicBezier2f spline)
-{
-    if (spline.segments.empty()) {
-        return;
-    }
-    m_spline_buffer.emplace_back(std::move(spline));
-}
-
-/// The Stroker uses OpenGL shader tesselation for most of the primitive construction, it only passes the bare minimum
+/// The Plotter uses OpenGL shader tesselation for most of the primitive construction, it only passes the bare minimum
 /// of information on to the GPU. There are however a few things to consider when transforming a Bezier curve into the
-/// Stroker GPU representation.
+/// Plotter GPU representation.
 ///
 /// The shader takes a patch that is made up of two vertices v1 and v2.
 /// Each vertex has 3 attributes:
@@ -152,7 +151,7 @@ void Stroker::add_spline(CubicBezier2f spline)
 /// Joints
 /// ------
 ///
-/// In order to render multiple segments without a visual break, the Stroker adds intermediary joints.
+/// In order to render multiple segments without a visual break, the Plotter adds intermediary joints.
 /// A joint segment also consists of two vertices but imposes additional requirements:
 ///
 ///     v1.a1 == v2.a1
@@ -160,18 +159,59 @@ void Stroker::add_spline(CubicBezier2f spline)
 /// This is easily accomplished by re-using indices of the existing vertices and doesn't increase the size of the
 /// vertex array.
 ///
-void Stroker::apply_new()
+void Plotter::parse()
 {
-    auto vao_guard = VaoGuard(m_vao_id);
+    /// @brief Parses various types of calls.
+    struct Parser {
 
-    { // update line vertices
-        std::vector<LineVertexArray::Vertex> vertices;
-        for (const CubicBezier2f& spline : m_spline_buffer) {
+        // fields ----------------------------------------------------------------------------------------------------//
+
+        /// @brief Vertex target.
+        std::vector<PlotVertexArray::Vertex>& vertices;
+
+        /// @brief Index target.
+        std::vector<GLuint>& indices;
+
+        /// @brief Batch target.
+        std::vector<Batch>& batches;
+
+        // methods ---------------------------------------------------------------------------------------------------//
+
+        /// @brief Parse a stroke call.
+        void operator()(const Stroke& call) const
+        {
+            const CubicBezier2f& spline = call.spline;
             assert(!spline.segments.empty());
+
+            { // update indices
+                GLuint next_index = narrow_cast<GLuint>(vertices.size());
+
+                // start cap
+                indices.emplace_back(next_index);
+                indices.emplace_back(next_index);
+
+                for (ushort segment_index = 0; segment_index < spline.segments.size() - 1; ++segment_index) {
+                    // first -> (n-1) segment
+                    indices.emplace_back(next_index++);
+                    indices.emplace_back(next_index);
+
+                    // joint
+                    indices.emplace_back(next_index);
+                    indices.emplace_back(next_index);
+                }
+
+                // last segment
+                indices.emplace_back(next_index++);
+                indices.emplace_back(next_index);
+
+                // end cap
+                indices.emplace_back(next_index);
+                indices.emplace_back(next_index);
+            }
 
             { // first vertex
                 const CubicBezier2f::Segment& first_segment = spline.segments.front();
-                LineVertexArray::Vertex vertex;
+                PlotVertexArray::Vertex vertex;
                 set_pos(vertex, first_segment.start);
                 set_first_ctrl(vertex, Vector2f::zero());
                 set_modified_second_ctrl(vertex, first_segment);
@@ -182,7 +222,7 @@ void Stroker::apply_new()
             for (size_t i = 0; i < spline.segments.size() - 1; ++i) {
                 const CubicBezier2f::Segment& left_segment  = spline.segments[i];
                 const CubicBezier2f::Segment& right_segment = spline.segments[i + 1];
-                LineVertexArray::Vertex vertex;
+                PlotVertexArray::Vertex vertex;
                 set_pos(vertex, left_segment.end);
                 set_modified_first_ctrl(vertex, left_segment);
                 set_modified_second_ctrl(vertex, right_segment);
@@ -191,7 +231,7 @@ void Stroker::apply_new()
 
             { // last vertex
                 const CubicBezier2f::Segment& last_segment = spline.segments.back();
-                LineVertexArray::Vertex vertex;
+                PlotVertexArray::Vertex vertex;
                 set_pos(vertex, last_segment.end);
                 set_modified_first_ctrl(vertex, last_segment);
                 set_second_ctrl(vertex, Vector2f::zero());
@@ -199,52 +239,38 @@ void Stroker::apply_new()
             }
         }
 
-        LineVertexArray* line_vertices = static_cast<LineVertexArray*>(m_vertices.get());
-        line_vertices->update(std::move(vertices));
+        /// @brief Parse a convex fill call.
+        void operator()(const ConvexFill& /*call*/) const {}
+
+        /// @brief Parse a concave fill call.
+        void operator()(const ConcaveFill& /*call*/) const {}
+    };
+
+    // function begins here ////////////////////////////////////////////////////////////////////////////////////////////
+
+    const auto vao_guard = VaoBindGuard(m_vao_id);
+
+    // TODO: estimate size of targets when adding new calls?
+    std::vector<PlotVertexArray::Vertex> vertices;
+    std::vector<GLuint> indices;
+    std::vector<Batch> batches;
+
+    for (const Call& call : m_calls) {
+        std::visit(Parser{vertices, indices, batches}, call);
     }
 
-    { // update line indices
-        std::vector<GLuint> indices;
-        indices.reserve(static_cast<size_t>((m_vertices->size()) * 4) + 2);
-
-        // start cap
-        indices.emplace_back(0);
-        indices.emplace_back(0);
-
-        GLuint next_index = 0;
-        for (const CubicBezier2f& spline : m_spline_buffer) {
-            const size_t segment_count = spline.segments.size();
-            for (ushort segment_index = 0; segment_index < segment_count - 1; ++segment_index) {
-                // first -> (n-1) segment
-                indices.emplace_back(next_index++);
-                indices.emplace_back(next_index);
-
-                // cap
-                indices.emplace_back(next_index);
-                indices.emplace_back(next_index);
-            }
-
-            // last segment
-            indices.emplace_back(next_index++);
-            indices.emplace_back(next_index);
-
-            ++next_index;
-        }
-
-        // end cap
-        indices.emplace_back(--next_index);
-        indices.emplace_back(next_index);
-
-        LineIndexArray* line_indices = static_cast<LineIndexArray*>(m_indices.get());
-        line_indices->update(std::move(indices));
-    }
-
-    m_spline_buffer.clear();
+    static_cast<PlotVertexArray*>(m_vertices.get())->update(std::move(vertices));
+    static_cast<PlotIndexArray*>(m_indices.get())->update(std::move(indices));
+    std::swap(m_batches, batches);
+    m_calls.clear();
 }
 
-void Stroker::render()
+void Plotter::render()
 {
-    auto vao_guard = VaoGuard(m_vao_id);
+    if (m_indices->is_empty()) {
+        return;
+    }
+    const auto vao_guard = VaoBindGuard(m_vao_id);
 
     m_graphics_context.bind_pipeline(m_pipeline);
 
@@ -256,12 +282,13 @@ void Stroker::render()
 
     // TODO: stroke_width less than 1 should set a uniform that fades the line out and line widths of zero
     // should be ignored
-    tess_shader->set_uniform("stroke_width", 3.f);
+    tess_shader->set_uniform("stroke_width", 30.f);
 
     tess_shader->set_uniform("patch_type", 3);
 
     gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
-    gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(m_indices->size()), m_indices->type(), nullptr));
+    gl_check(
+        glDrawElementsBaseVertex(GL_PATCHES, static_cast<GLsizei>(m_indices->size()), m_indices->type(), nullptr, 0));
 
     m_graphics_context.unbind_pipeline();
 }

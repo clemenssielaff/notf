@@ -58,6 +58,11 @@ using Matrix4d = detail::Matrix4<double>;
 
 struct Color;
 
+using uchar = unsigned char;
+using ushort = unsigned short;
+using uint = unsigned int;
+using ulong = unsigned long;
+
 // graphics ==========================================================================================================//
 
 DEFINE_SHARED_POINTERS(class, Shader);

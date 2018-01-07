@@ -41,13 +41,13 @@ const mat3 DERIV = mat3(
     -SIX,    SIX,  ZERO,
      THREE, -SIX,  THREE);
 
-// patch types
-#define CONVEX      1
-#define CONCAVE     2
-#define SEGMENT     3
-#define JOINT       4
-#define START_CAP   5
-#define END_CAP     6
+ // patch types
+ const int CONVEX    = 1;
+ const int CONCAVE   = 2;
+ const int SEGMENT   = 3;
+ const int JOINT     = 4;
+ const int START_CAP = 5;
+ const int END_CAP   = 6;
 
 #define start (gl_in[0].gl_Position.xy)
 #define end   (gl_in[1].gl_Position.xy)
@@ -65,7 +65,8 @@ void main()
         vec2 delta = mix(gl_in[1].gl_Position.xy, gl_in[0].gl_Position.xy, gl_TessCoord.x) - base_vertex;
         v_out.position = fma(vec2(step(HALF, gl_TessCoord.y) * (length(delta) - (sign(v_out.tex_coord.y - HALF) * aa_width))),
                              normalize(delta), base_vertex);
-    } else {
+    }
+    else { // patch_data.type is some form of line
         // tex_coord.y is 1 within the stroke and 0 at the very edge (geometric anti-aliasing in the normal)
         v_out.tex_coord.y = aa_width == 0.0 ? 1.0 : ONE - (step(ONE, gl_TessCoord.y) + step(ONE, ONE - gl_TessCoord.y));
 

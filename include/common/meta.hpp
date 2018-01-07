@@ -110,8 +110,7 @@ struct always_false_t : std::false_type {};
 //====================================================================================================================//
 
 /// @brief Convenience macro to disable the construction of automatic copy- and assign methods.
-/// Implicitly disables move constructor/assignment methods as well, although you might define them yourself if you want
-/// to.
+/// Implicitly disables move constructor/assignment methods as well, although you can define them yourself if you want.
 #define DISALLOW_COPY_AND_ASSIGN(Type) \
     Type(const Type&) = delete;        \
     void operator=(const Type&) = delete;
@@ -137,7 +136,7 @@ struct always_false_t : std::false_type {};
 
 //====================================================================================================================//
 
-/** Trait containing the type that has a higher numeric limits. */
+/// @brief Trait containing the type that has a higher numeric limits.
 template<typename LEFT, typename RIGHT>
 struct higher_type {
     using type = typename std::conditional<std::numeric_limits<LEFT>::max() <= std::numeric_limits<RIGHT>::max(), LEFT,
@@ -151,7 +150,7 @@ struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T
 
 //====================================================================================================================//
 
-/** Definitions for the various versions of C++. */
+/// @brief Definitions for the various versions of C++.
 
 #ifndef __cplusplus
 #error A C++ compiler is required!
@@ -192,7 +191,10 @@ using void_t = void;
 
 //====================================================================================================================//
 
-/// @brief Short names for unsiged in
-using ushort = unsigned short;
-using uint   = unsigned int;
-using ulong  = unsigned long;
+/// @brief Overload helper to use with std::variant in C++17
+/// For details see:
+///     http://en.cppreference.com/w/cpp/utility/variant/visit
+#ifdef NOTF_CPP17
+template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+#endif

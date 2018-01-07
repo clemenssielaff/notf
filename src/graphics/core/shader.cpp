@@ -502,7 +502,7 @@ void Shader::set_uniform(const std::string& name, const float& value)
     else {
         throw_runtime_error(
             string_format("Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"float\"",
-                          name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
+                             name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
     }
 }
 
