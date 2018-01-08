@@ -17,34 +17,68 @@ namespace notf {
 class Plotter final {
 
     // types ---------------------------------------------------------------------------------------------------------//
+public:
+    /// @brief Information necessary to draw a predefined stroke.
+    struct StrokeInfo {
+        float width;
+    };
+
+    /// @brief Information necessary to draw a predefined shape.
+    struct ConvexFillInfo {
+
+    };
+
+    /// @brief Information necessary to draw a predefined shape.
+    struct ConcaveFillInfo {
+
+    };
+
 private:
-    struct Stroke {
+    /// @brief Unparsed call to draw a stroke.
+    struct StrokeCall {
+        StrokeInfo info;
+
         CubicBezier2f spline;
     };
 
-    struct ConvexFill {};
+    /// @brief Unparsed call to draw a convex shape.
+    struct ConvexFillCall {
+        ConvexFillInfo info;
+    };
 
-    struct ConcaveFill {};
+    /// @brief Unparsed call to draw a concave shape.
+    struct ConcaveFillCall {
+        ConcaveFillInfo info;
+    };
 
     /// @brief Data structure used by the plotter to store abstract draw calls before parsing them.
-    using Call = std::variant<Stroke, ConvexFill, ConcaveFill>;
+    using Call = std::variant<StrokeCall, ConvexFillCall, ConcaveFillCall>;
 
     /// @brief A batch is a sequence of indices, building one or more patches.
     /// Batches are created when Calls are parsed.
     /// This way, we can group subsequent draw calls of the same type into a batch and render them using a single OpenGL
     /// draw call (for example, to render multiple lines).
     struct Batch {
-        /// @brief Type of the patches contained in this batch.
-        int type;
+
+        using Info = std::variant<StrokeInfo, ConvexFillInfo, ConcaveFillInfo>;
+
+        /// @brief Additional information on how to draw the patches contained in this batch.
+        Info info;
 
         /// @brief Offset of the first index of the batch.
-        int offset;
+        uint offset;
 
         /// @brief Number of indices in the batch.
         int size;
     };
 
-    // TODO: continue here by copying `apply_new` into the "stroke case" of `parse`
+    // TODO: continue here
+    struct State {
+
+        int patch_type;
+
+
+    };
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
@@ -59,11 +93,12 @@ public:
     ~Plotter();
 
     /// @brief Adds a new Bezier spline to stroke.
-    /// @param spline   Spline to add.
-    void add_spline(CubicBezier2f spline)
+    /// @param info     Information on how to draw the stroke.
+    /// @param spline   Spline to stroke.
+    void add_stroke(StrokeInfo info, CubicBezier2f spline)
     {
-        if (!spline.segments.empty()) {
-            m_calls.emplace_back(Stroke{std::move(spline)});
+        if (!spline.segments.empty() && info.width > 0.f) {
+            m_calls.emplace_back(StrokeCall{std::move(info), std::move(spline)});
         }
     }
 

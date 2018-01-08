@@ -35,6 +35,8 @@ struct RightCtrlPos : public AttributeTrait {
 using PlotVertexArray = VertexArray<VertexPos, LeftCtrlPos, RightCtrlPos>;
 using PlotIndexArray  = IndexArray<GLuint>;
 
+const GLenum g_index_type = to_gl_type(PlotIndexArray::index_t{});
+
 void set_pos(PlotVertexArray::Vertex& vertex, Vector2f pos) { std::get<0>(vertex) = std::move(pos); }
 void set_first_ctrl(PlotVertexArray::Vertex& vertex, Vector2f pos) { std::get<1>(vertex) = std::move(pos); }
 void set_second_ctrl(PlotVertexArray::Vertex& vertex, Vector2f pos) { std::get<2>(vertex) = std::move(pos); }
@@ -58,13 +60,7 @@ void set_modified_second_ctrl(PlotVertexArray::Vertex& vertex, const CubicBezier
 namespace notf {
 
 Plotter::Plotter(GraphicsContextPtr& context)
-    : m_graphics_context(*context)
-    , m_pipeline()
-    , m_vao_id(0)
-    , m_vertices()
-    , m_indices()
-    , m_batches()
-    , m_calls()
+    : m_graphics_context(*context), m_pipeline(), m_vao_id(0), m_vertices(), m_indices(), m_batches(), m_calls()
 {
     // vao
     gl_check(glGenVertexArrays(1, &m_vao_id));
@@ -178,10 +174,12 @@ void Plotter::parse()
         // methods ---------------------------------------------------------------------------------------------------//
 
         /// @brief Parse a stroke call.
-        void operator()(const Stroke& call) const
+        void operator()(const StrokeCall& call) const
         {
             const CubicBezier2f& spline = call.spline;
             assert(!spline.segments.empty());
+
+            const size_t index_offset = indices.size();
 
             { // update indices
                 GLuint next_index = narrow_cast<GLuint>(vertices.size());
@@ -237,13 +235,17 @@ void Plotter::parse()
                 set_second_ctrl(vertex, Vector2f::zero());
                 vertices.emplace_back(std::move(vertex));
             }
+
+            // batch // TODO: combine batches with same type & info -- that's what batches are there for
+            batches.emplace_back(Batch{std::move(call.info), narrow_cast<uint>(index_offset),
+                                       narrow_cast<int>(indices.size() - index_offset)});
         }
 
         /// @brief Parse a convex fill call.
-        void operator()(const ConvexFill& /*call*/) const {}
+        void operator()(const ConvexFillCall& /*call*/) const {}
 
         /// @brief Parse a concave fill call.
-        void operator()(const ConcaveFill& /*call*/) const {}
+        void operator()(const ConcaveFillCall& /*call*/) const {}
     };
 
     // function begins here ////////////////////////////////////////////////////////////////////////////////////////////
@@ -254,19 +256,52 @@ void Plotter::parse()
     std::vector<PlotVertexArray::Vertex> vertices;
     std::vector<GLuint> indices;
     std::vector<Batch> batches;
-
     for (const Call& call : m_calls) {
         std::visit(Parser{vertices, indices, batches}, call);
     }
+    m_calls.clear();
 
     static_cast<PlotVertexArray*>(m_vertices.get())->update(std::move(vertices));
     static_cast<PlotIndexArray*>(m_indices.get())->update(std::move(indices));
     std::swap(m_batches, batches);
-    m_calls.clear();
 }
 
 void Plotter::render()
 {
+    /// @brief Render various batch types.
+    struct Renderer {
+
+        // fields ----------------------------------------------------------------------------------------------------//
+
+        Pipeline& pipeline;
+
+        /// @brief Batch target.
+        const Batch& batch;
+
+        // methods ---------------------------------------------------------------------------------------------------//
+
+        /// @brief Draw a stroke.
+        void operator()(const StrokeInfo& stroke) const
+        {
+            pipeline.tesselation_shader()->set_uniform("patch_type", 3);
+
+            // TODO: stroke_width less than 1 should set a uniform that fades the line out and line widths of zero
+            // should be ignored
+            pipeline.tesselation_shader()->set_uniform("stroke_width", stroke.width);
+
+            gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
+                                    gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
+        }
+
+        /// @brief Draw convex shape.
+        void operator()(const ConvexFillInfo& /*call*/) const {}
+
+        /// @brief Draw a concave shape.
+        void operator()(const ConcaveFillInfo& /*call*/) const {}
+    };
+
+    // function begins here ////////////////////////////////////////////////////////////////////////////////////////////
+
     if (m_indices->is_empty()) {
         return;
     }
@@ -274,21 +309,17 @@ void Plotter::render()
 
     m_graphics_context.bind_pipeline(m_pipeline);
 
+    gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
+
     // pass the shader uniforms
     // TODO: get the window size from the graphics context?
     const TesselationShaderPtr& tess_shader = m_pipeline->tesselation_shader();
     const Matrix4f perspective              = Matrix4f::orthographic(0.f, 800.f, 0.f, 800.f, 0.f, 10000.f);
     tess_shader->set_uniform("projection", perspective);
 
-    // TODO: stroke_width less than 1 should set a uniform that fades the line out and line widths of zero
-    // should be ignored
-    tess_shader->set_uniform("stroke_width", 30.f);
-
-    tess_shader->set_uniform("patch_type", 3);
-
-    gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
-    gl_check(
-        glDrawElementsBaseVertex(GL_PATCHES, static_cast<GLsizei>(m_indices->size()), m_indices->type(), nullptr, 0));
+    for (const Batch& batch : m_batches) {
+        std::visit(Renderer{*m_pipeline.get(), batch}, batch.info);
+    }
 
     m_graphics_context.unbind_pipeline();
 }

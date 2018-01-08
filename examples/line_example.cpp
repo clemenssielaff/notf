@@ -54,18 +54,29 @@ void render_thread(GLFWwindow* window)
 
     Plotter stroker(graphics_context);
 
-    CubicBezier2f spline1({
-        CubicBezier2f::Segment(Vector2f{100, 200}, Vector2f{400, 100}, Vector2f{400, 700}, Vector2f{700, 700}),
-    });
-    stroker.add_spline(spline1);
+    {
+        Plotter::StrokeInfo stroke_info;
+        stroke_info.width = 1.0;
 
-    CubicBezier2f spline2({
-        CubicBezier2f::Segment::line(Vector2f{100, 100}, Vector2f{200, 150}),
-        CubicBezier2f::Segment::line(Vector2f{200, 150}, Vector2f{300, 100}),
-        CubicBezier2f::Segment::line(Vector2f{300, 100}, Vector2f{400, 200}),
-    });
+        CubicBezier2f spline1({
+            CubicBezier2f::Segment(Vector2f{100, 200}, Vector2f{400, 100}, Vector2f{400, 700}, Vector2f{700, 700}),
+        });
+        stroker.add_stroke(stroke_info, spline1);
+    }
 
-    stroker.add_spline(spline2);
+    {
+        Plotter::StrokeInfo stroke_info;
+        stroke_info.width = 2.0;
+
+        CubicBezier2f spline2({
+            CubicBezier2f::Segment::line(Vector2f{100, 100}, Vector2f{200, 150}),
+            CubicBezier2f::Segment::line(Vector2f{200, 150}, Vector2f{300, 100}),
+            CubicBezier2f::Segment::line(Vector2f{300, 100}, Vector2f{400, 200}),
+        });
+
+        stroker.add_stroke(stroke_info, spline2);
+    }
+
     stroker.parse();
 
     // Rendering //////////////////////////////////////////////
