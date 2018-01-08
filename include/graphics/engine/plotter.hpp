@@ -72,13 +72,28 @@ private:
         int size;
     };
 
-    // TODO: continue here
+    /// @brief Type of the patch to draw.
+    enum PatchType : int {
+        CONVEX      = 1,
+        CONCAVE     = 2,
+        SEGMENT     = 3,
+        JOINT       = 4,
+        START_CAP   = 5,
+        END_CAP     = 6,
+    };
+
+    /// @brief State of the shader pipeline.
+    /// The plotter keeps the state around so it doesn't make any superfluous OpenGL updates.
+    /// Is initialized to all invalid values.
     struct State {
 
-        int patch_type;
+        /// @brief Patch type uniform.
+        PatchType patch_type = static_cast<PatchType>(0);
 
-
+        /// @brief Stroke width uniform.
+        float stroke_width = 0;
     };
+
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
@@ -97,9 +112,11 @@ public:
     /// @param spline   Spline to stroke.
     void add_stroke(StrokeInfo info, CubicBezier2f spline)
     {
-        if (!spline.segments.empty() && info.width > 0.f) {
-            m_calls.emplace_back(StrokeCall{std::move(info), std::move(spline)});
+        if (spline.segments.empty() || info.width <= 0.f) {
+            return; // early out
         }
+        // TODO: stroke_width less than 1 should set a uniform that fades the line out
+        m_calls.emplace_back(StrokeCall{std::move(info), std::move(spline)});
     }
 
     /// @brief Replaces the current list of OpenGL draw calls with one parsed from the buffer.
@@ -129,11 +146,14 @@ private:
     /// @brief Index of the vertices.
     IndexArrayTypePtr m_indices;
 
+    /// @brief Call buffer.
+    std::vector<Call> m_calls;
+
     /// @brief Draw batches.
     std::vector<Batch> m_batches;
 
-    /// @brief Call buffer.
-    std::vector<Call> m_calls;
+    /// @brief State of the plotter pipeline.
+    State m_state;
 };
 
 } // namespace notf

@@ -66,7 +66,7 @@ void render_thread(GLFWwindow* window)
 
     {
         Plotter::StrokeInfo stroke_info;
-        stroke_info.width = 2.0;
+        stroke_info.width = 1.0;
 
         CubicBezier2f spline2({
             CubicBezier2f::Segment::line(Vector2f{100, 100}, Vector2f{200, 150}),

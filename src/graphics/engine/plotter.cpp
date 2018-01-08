@@ -1,5 +1,6 @@
 #include "graphics/engine/plotter.hpp"
 
+#include "common/enum.hpp"
 #include "common/log.hpp"
 #include "common/matrix4.hpp"
 #include "common/vector.hpp"
@@ -60,7 +61,14 @@ void set_modified_second_ctrl(PlotVertexArray::Vertex& vertex, const CubicBezier
 namespace notf {
 
 Plotter::Plotter(GraphicsContextPtr& context)
-    : m_graphics_context(*context), m_pipeline(), m_vao_id(0), m_vertices(), m_indices(), m_batches(), m_calls()
+    : m_graphics_context(*context)
+    , m_pipeline()
+    , m_vao_id(0)
+    , m_vertices()
+    , m_indices()
+    , m_calls()
+    , m_batches()
+    , m_state()
 {
     // vao
     gl_check(glGenVertexArrays(1, &m_vao_id));
@@ -273,7 +281,8 @@ void Plotter::render()
 
         // fields ----------------------------------------------------------------------------------------------------//
 
-        Pipeline& pipeline;
+        /// @brief This plotter.
+        Plotter& plotter;
 
         /// @brief Batch target.
         const Batch& batch;
@@ -283,11 +292,19 @@ void Plotter::render()
         /// @brief Draw a stroke.
         void operator()(const StrokeInfo& stroke) const
         {
-            pipeline.tesselation_shader()->set_uniform("patch_type", 3);
+            Pipeline& pipeline = *plotter.m_pipeline.get();
 
-            // TODO: stroke_width less than 1 should set a uniform that fades the line out and line widths of zero
-            // should be ignored
-            pipeline.tesselation_shader()->set_uniform("stroke_width", stroke.width);
+            // patch type
+            if (plotter.m_state.patch_type != PatchType::SEGMENT) {
+                pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::SEGMENT));
+                plotter.m_state.patch_type = PatchType::SEGMENT;
+            }
+
+            // stroke width
+            if (abs(plotter.m_state.stroke_width - stroke.width) > precision_high<float>()) {
+                pipeline.tesselation_shader()->set_uniform("stroke_width", stroke.width);
+                plotter.m_state.stroke_width = stroke.width;
+            }
 
             gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
                                     gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
@@ -318,7 +335,7 @@ void Plotter::render()
     tess_shader->set_uniform("projection", perspective);
 
     for (const Batch& batch : m_batches) {
-        std::visit(Renderer{*m_pipeline.get(), batch}, batch.info);
+        std::visit(Renderer{*this, batch}, batch.info);
     }
 
     m_graphics_context.unbind_pipeline();
