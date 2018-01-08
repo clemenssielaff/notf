@@ -97,15 +97,24 @@ Plotter::Plotter(GraphicsContextPtr& context)
         VertexArrayType::Args vertex_args;
         vertex_args.usage = GL_DYNAMIC_DRAW;
         m_vertices        = std::make_unique<PlotVertexArray>(std::move(vertex_args));
-        m_vertices->init();
+        static_cast<PlotVertexArray*>(m_vertices.get())->init();
     }
 
     // indices
     m_indices = std::make_unique<PlotIndexArray>();
-    m_indices->init();
+    static_cast<PlotIndexArray*>(m_indices.get())->init();
 }
 
 Plotter::~Plotter() { gl_check(glDeleteVertexArrays(1, &m_vao_id)); }
+
+void Plotter::add_stroke(StrokeInfo info, CubicBezier2f spline)
+{
+    if (spline.segments.empty() || info.width <= 0.f) {
+        return; // early out
+    }
+    // TODO: stroke_width less than 1 should set a uniform that fades the line out
+    m_calls.emplace_back(StrokeCall{std::move(info), std::move(spline)});
+}
 
 /// The Plotter uses OpenGL shader tesselation for most of the primitive construction, it only passes the bare minimum
 /// of information on to the GPU. There are however a few things to consider when transforming a Bezier curve into the
@@ -249,11 +258,8 @@ void Plotter::parse()
                                        narrow_cast<int>(indices.size() - index_offset)});
         }
 
-        /// @brief Parse a convex fill call.
-        void operator()(const ConvexFillCall& /*call*/) const {}
-
-        /// @brief Parse a concave fill call.
-        void operator()(const ConcaveFillCall& /*call*/) const {}
+        /// @brief Parse a fill call.
+        void operator()(const ShapeCall& /*call*/) const {}
     };
 
     // function begins here ////////////////////////////////////////////////////////////////////////////////////////////
@@ -269,8 +275,15 @@ void Plotter::parse()
     }
     m_calls.clear();
 
-    static_cast<PlotVertexArray*>(m_vertices.get())->update(std::move(vertices));
-    static_cast<PlotIndexArray*>(m_indices.get())->update(std::move(indices));
+
+    PlotVertexArray* my_vertices = static_cast<PlotVertexArray*>(m_vertices.get());
+    my_vertices->buffer() = std::move(vertices);
+    my_vertices->init();
+
+    PlotIndexArray* my_indices = static_cast<PlotIndexArray*>(m_indices.get());
+    my_indices->buffer() = std::move(indices);
+    my_indices->init();
+
     std::swap(m_batches, batches);
 }
 
@@ -310,11 +323,8 @@ void Plotter::render()
                                     gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
         }
 
-        /// @brief Draw convex shape.
-        void operator()(const ConvexFillInfo& /*call*/) const {}
-
-        /// @brief Draw a concave shape.
-        void operator()(const ConcaveFillInfo& /*call*/) const {}
+        /// @brief Draw a shape.
+        void operator()(const ShapeInfo& /*call*/) const {}
     };
 
     // function begins here ////////////////////////////////////////////////////////////////////////////////////////////
@@ -324,15 +334,18 @@ void Plotter::render()
     }
     const auto vao_guard = VaoBindGuard(m_vao_id);
 
-    m_graphics_context.bind_pipeline(m_pipeline);
-
     gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
 
-    // pass the shader uniforms
-    // TODO: get the window size from the graphics context?
+    m_graphics_context.bind_pipeline(m_pipeline);
     const TesselationShaderPtr& tess_shader = m_pipeline->tesselation_shader();
-    const Matrix4f perspective              = Matrix4f::orthographic(0.f, 800.f, 0.f, 800.f, 0.f, 10000.f);
-    tess_shader->set_uniform("projection", perspective);
+
+    // screen size
+    const Size2i screen_size = {800, 800}; // TODO: get the window size from the graphics context?
+    if (m_state.screen_size != screen_size) {
+        tess_shader->set_uniform("projection",
+                                 Matrix4f::orthographic(0, screen_size.width, 0, screen_size.height, 0, 2));
+        m_state.screen_size = screen_size;
+    }
 
     for (const Batch& batch : m_batches) {
         std::visit(Renderer{*this, batch}, batch.info);

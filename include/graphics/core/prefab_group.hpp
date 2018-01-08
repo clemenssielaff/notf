@@ -29,6 +29,8 @@ class PrefabGroup {
 public:
     using vertex_array_t = VERTEX_ARRAY;
 
+    using index_array_t = IndexArray<GLuint>;
+
     using instance_array_t = INSTANCE_ARRAY;
 
     using InstanceData = typename instance_array_t::Vertex;
@@ -40,15 +42,15 @@ public:
     /// @brief Default constructor.
     PrefabGroup()
         : m_vao_id(0)
-        , m_vertex_array(std::make_unique<VERTEX_ARRAY>())
-        , m_index_array(std::make_unique<IndexArray<GLuint>>())
+        , m_vertex_array(std::make_unique<vertex_array_t>())
+        , m_index_array(std::make_unique<index_array_t>())
         , m_instance_array()
     {
         // create the per-instance array
         VertexArrayType::Args instance_args;
         instance_args.per_instance = true;
         instance_args.usage        = GL_DYNAMIC_DRAW;
-        m_instance_array           = std::make_unique<INSTANCE_ARRAY>(std::move(instance_args));
+        m_instance_array           = std::make_unique<instance_array_t>(std::move(instance_args));
     }
 
     /// @brief Destructor.
@@ -70,9 +72,9 @@ public:
         }
 
         gl_check(glBindVertexArray(m_vao_id));
-        m_vertex_array->init();
-        m_index_array->init();
-        m_instance_array->init();
+        static_cast<vertex_array_t*>(m_vertex_array.get())->init();
+        static_cast<index_array_t*>(m_index_array.get())->init();
+        static_cast<instance_array_t*>(m_instance_array.get())->init();
         gl_check(glBindVertexArray(0));
     }
 
@@ -110,7 +112,10 @@ public:
                 for (const std::shared_ptr<PrefabInstance<InstanceData>>& instance : instances) {
                     instance_data.push_back(instance->data());
                 }
-                static_cast<INSTANCE_ARRAY*>(m_instance_array.get())->update(std::move(instance_data));
+
+                instance_array_t* instance_array = static_cast<instance_array_t*>(m_instance_array.get());
+                instance_array->buffer() = std::move(instance_data);
+                instance_array->init();
             }
 
             // render all instances

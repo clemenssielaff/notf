@@ -195,7 +195,7 @@ public: // methods *************************************************************
         const size_t prefab_offset = library_vertices.size();
         extend(library_vertices, _studies_to_vertices(VertexTraitIndices{}));
 
-        auto& library_indices    = static_cast<IndexArray<GLuint>*>(m_library.m_index_array.get())->m_indices;
+        auto& library_indices    = static_cast<IndexArray<GLuint>*>(m_library.m_index_array.get())->buffer();
         const size_t prefab_size = m_indices.size();
         extend(library_indices, std::move(m_indices));
 

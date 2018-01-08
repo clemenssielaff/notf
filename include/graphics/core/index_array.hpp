@@ -60,11 +60,6 @@ public:
     /// @brief Destructor.
     virtual ~IndexArrayType();
 
-    /// @brief Initializes the IndexArray.
-    /// @throws std::runtime_error   If the VBO could not be allocated.
-    /// @throws std::runtime_error   If no VAO object is currently bound.
-    virtual void init() = 0;
-
     /// @brief OpenGL handle of the index buffer.
     GLuint id() const { return m_vbo_id; }
 
@@ -101,12 +96,6 @@ protected:
 template<typename INDEX_TYPE>
 class IndexArray : public IndexArrayType {
 
-    template<size_t... indices>
-    friend decltype(auto) create_index_buffer();
-
-    template<typename>
-    friend class PrefabFactory;
-
     // types ---------------------------------------------------------------------------------------------------------//
 public:
     /// @brief Value type of the indices.
@@ -118,13 +107,25 @@ public:
     /// @throws std::runtime_error  If there is no OpenGL context.
     IndexArray(Args&& args = {}) : IndexArrayType(std::forward<Args>(args)), m_indices(), m_buffer_size(0) {}
 
+    /// @brief Write-access to the index buffer.
+    /// Note that you need to `init()` (if it is the first time) or `update()` to apply the contents of the buffer.
+    std::vector<index_t>& buffer() { return m_indices; }
+
     /// @brief Initializes the IndexArray.
     /// @throws std::runtime_error   If the VBO could not be allocated.
     /// @throws std::runtime_error   If no VAO is currently bound.
-    virtual void init() override
-    {
+    void init()
+    {        
+        { // make sure there is a bound VAO
+            GLint current_vao = 0;
+            gl_check(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
+            if (!current_vao) {
+                throw_runtime_error("Cannot initialize an IndexArray without a bound VAO");
+            }
+        }
+
         if (m_vbo_id) {
-            return;
+            return _update();
         }
 
         gl_check(glGenBuffers(1, &m_vbo_id));
@@ -135,14 +136,6 @@ public:
         m_type = to_gl_type(index_t());
         m_size = static_cast<GLsizei>(m_indices.size());
 
-        { // make sure there is a bound VAO
-            GLint current_vao = 0;
-            gl_check(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
-            if (!current_vao) {
-                throw_runtime_error("Cannot initialize an IndexArray without a bound VAO");
-            }
-        }
-
         gl_check(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vbo_id));
         gl_check(
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(index_t), &m_indices[0], m_args.usage));
@@ -152,27 +145,11 @@ public:
         m_indices.shrink_to_fit();
     }
 
+private:
     /// @brief Updates the data in the index array.
     /// If you regularly want to update the data, make sure you pass an appropriate `usage` hint in the arguments.
-    /// @param data  New data to upload.
-    /// @throws std::runtime_error   If the IndexArray is not yet initialized.
-    /// @throws std::runtime_error   If no VAO is currently bound.
-    void update(std::vector<index_t>&& data)
+    void _update()
     {
-        if (!m_vbo_id) {
-            throw_runtime_error("Cannot update an unitialized IndexArray");
-        }
-
-        { // make sure there is a bound VAO
-            GLint current_vao = 0;
-            gl_check(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
-            if (!current_vao) {
-                throw_runtime_error("Cannot update an IndexArray without a bound VAO");
-            }
-        }
-
-        // update vertex array
-        std::swap(m_indices, data);
         m_size = static_cast<GLsizei>(m_indices.size());
 
         gl_check(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vbo_id));
@@ -191,7 +168,7 @@ public:
         m_buffer_size = std::max(m_buffer_size, m_size);
 
         m_indices.clear();
-        m_indices.shrink_to_fit();
+        // do not shrink to size, if you call `update` once you are likely to call it again
     }
 
     /// @brief Value to use as the restart index.
@@ -214,9 +191,9 @@ private:
 template<size_t... INDICES>
 decltype(auto) create_index_buffer()
 {
-    using value_t     = typename detail::gl_smallest_unsigned_type<std::max<size_t>({INDICES...})>::type;
-    auto result       = std::make_unique<IndexArray<value_t>>();
-    result->m_indices = std::vector<value_t>{INDICES...};
+    using value_t    = typename detail::gl_smallest_unsigned_type<std::max<size_t>({INDICES...})>::type;
+    auto result      = std::make_unique<IndexArray<value_t>>();
+    result->buffer() = std::vector<value_t>{INDICES...};
     return result;
 }
 

@@ -75,13 +75,13 @@ void render_thread(GLFWwindow* window)
     gl_check(glBindVertexArray(vao));
 
     auto vertices = std::make_unique<VertexArray<VertexPos>>();
-    vertices->init();
     //    vertices->update({Vector2f{50, 50}, Vector2f{100, 750}, Vector2f{150, 50}, Vector2f{200, 750}});
-    vertices->update({Vector2f{50, 50}, Vector2f{750, 50}, Vector2f{750, 750}, Vector2f{50, 750}});
+    vertices->buffer() = {Vector2f{50, 50}, Vector2f{750, 50}, Vector2f{750, 750}, Vector2f{50, 750}};
+    vertices->init();
 
     auto indices = std::make_unique<IndexArray<GLuint>>();
+    indices->buffer() = {0, 1, 2, 0, 2, 3};
     indices->init();
-    indices->update({0, 1, 2, 0, 2, 3});
 
     // Rendering //////////////////////////////////////////////
 

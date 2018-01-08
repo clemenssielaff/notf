@@ -50,15 +50,15 @@ void render_thread(GLFWwindow* window)
 
     // Shader ///////////////////////////////////////////////
 
-    const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/shape.vert");
-    VertexShaderPtr vertex_shader = VertexShader::build(graphics_context, "shape.vert", vertex_src);
+    const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/plotter.vert");
+    VertexShaderPtr vertex_shader = VertexShader::build(graphics_context, "plotter.vert", vertex_src);
 
-    const std::string tess_src       = load_file("/home/clemens/code/notf/res/shaders/shape.tess");
-    const std::string eval_src       = load_file("/home/clemens/code/notf/res/shaders/shape.eval");
-    TesselationShaderPtr tess_shader = TesselationShader::build(graphics_context, "shape.tess", tess_src, eval_src);
+    const std::string tess_src       = load_file("/home/clemens/code/notf/res/shaders/plotter.tess");
+    const std::string eval_src       = load_file("/home/clemens/code/notf/res/shaders/plotter.eval");
+    TesselationShaderPtr tess_shader = TesselationShader::build(graphics_context, "plotter.tess", tess_src, eval_src);
 
-    const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/shape.frag");
-    FragmentShaderPtr frag_shader = FragmentShader::build(graphics_context, "shape.frag", frag_src);
+    const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/plotter.frag");
+    FragmentShaderPtr frag_shader = FragmentShader::build(graphics_context, "plotter.frag", frag_src);
 
     PipelinePtr pipeline = Pipeline::create(graphics_context, vertex_shader, tess_shader, frag_shader);
     graphics_context->bind_pipeline(pipeline);
@@ -98,41 +98,40 @@ void render_thread(GLFWwindow* window)
 #else
 
         auto vertices = std::make_unique<VertexArray<VertexPos, LeftCtrlPos, RightCtrlPos>>();
-        vertices->init();
-        vertices->update({{ Vector2f{100 , 700}, Vector2f{100, 0}, Vector2f{0, 0} },
-                          { Vector2f{50 , 50 }, Vector2f{0, 0}, Vector2f{0, 0} },
-                          { Vector2f{750, 50 }, Vector2f{0, 0}, Vector2f{0, 0} },
-                          { Vector2f{750, 750}, Vector2f{0, 0}, Vector2f{0, 0} },
+        vertices->buffer() = {{ Vector2f{100 , 700}, Vector2f{100, 0}, Vector2f{0, 0} },
+                                     { Vector2f{50 , 50 }, Vector2f{0, 0}, Vector2f{0, 0} },
+                                     { Vector2f{750, 50 }, Vector2f{0, 0}, Vector2f{0, 0} },
+                                     { Vector2f{750, 750}, Vector2f{0, 0}, Vector2f{0, 0} },
 
-                          { Vector2f{250, 550}, Vector2f{0, 0}, Vector2f{0, 0} },
-                          { Vector2f{250, 250}, Vector2f{0, 0}, Vector2f{0, 0} },
-                          { Vector2f{550, 250}, Vector2f{0, 0}, Vector2f{0, 0} },
-                          { Vector2f{550, 550}, Vector2f{0, 0}, Vector2f{0, 0} },
-                         });
+                                     { Vector2f{250, 550}, Vector2f{0, 0}, Vector2f{0, 0} },
+                                     { Vector2f{250, 250}, Vector2f{0, 0}, Vector2f{0, 0} },
+                                     { Vector2f{550, 250}, Vector2f{0, 0}, Vector2f{0, 0} },
+                                     { Vector2f{550, 550}, Vector2f{0, 0}, Vector2f{0, 0} },
+                                    };
+        vertices->init();
 
         auto indices = std::make_unique<IndexArray<GLuint>>();
-        indices->init();
-        indices->update({
-                         0, 1,
-                         1, 2,
-                         2, 3,
-                         3, 0,
+        indices->buffer() = {
+                             0, 1,
+                             1, 2,
+                             2, 3,
+                             3, 0,
 #if 0
 #if 1 // CW = hole
-                         5, 4,
-                         6, 5,
-                         7, 6,
-                         4, 7,
+                             5, 4,
+                             6, 5,
+                             7, 6,
+                             4, 7,
 #else // CCW = fill
-                         4, 5,
-                         5, 6,
-                         6, 7,
-                         7, 4,
+                             4, 5,
+                             5, 6,
+                             6, 7,
+                             7, 4,
 #endif
 #endif
-                        });
-
+                            };
 #endif
+        indices->init();
 
     log_info << tess_shader->control_source();
 
