@@ -24,10 +24,10 @@ struct Triangle {
 
     /// @brief Orientation of the Triangle.
     enum class Orientation : char {
-        COUNTERCLOCKWISE,
-        CLOCKWISE,
-        CCW = COUNTERCLOCKWISE,
-        CW  = CLOCKWISE,
+        CCW              = 1,
+        CW               = 2,
+        COUNTERCLOCKWISE = CCW,
+        CLOCKWISE        = CW,
     };
 
     // fields --------------------------------------------------------------------------------------------------------//
@@ -54,13 +54,13 @@ struct Triangle {
     vector_t center() const { return (a + b + c) / 3; }
 
     /// @brief Checks whether the Triangle has a zero area.
-    bool is_zero() const { return abs(_signed_half_area()) < precision_high<element_t>(); }
+    bool is_zero() const { return abs(_signed_half_area(a, b, c)) < precision_high<element_t>(); }
 
     /// @brief Area of this Triangle.
-    element_t area() const { return abs(_signed_half_area()) / 2; }
+    element_t area() const { return abs(_signed_half_area(a, b, c)) / 2; }
 
     /// @brief Orientation of this Triangle (zero Triangle is CCW).
-    Orientation orientation() const { return _signed_half_area() >= 0 ? Orientation::CCW : Orientation::CW; }
+    Orientation orientation() const { return _signed_half_area(a, b, c) >= 0 ? Orientation::CCW : Orientation::CW; }
 
     /// @brief Tests whether this Triangle contains a given point.
     /// @param point    Point to test.

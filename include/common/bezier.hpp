@@ -81,6 +81,8 @@ struct Bezier {
 
     Bezier(std::vector<Segment> segments) : segments(std::move(segments)) {}
 
+    // TODO: differentiate between open and closed splines
+
     // fields --------------------------------------------------------------------------------------------------------//
 
     std::vector<Segment> segments;

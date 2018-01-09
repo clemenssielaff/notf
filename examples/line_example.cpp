@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "app/core/glfw.hpp"
+#include "common/bezier.hpp"
 #include "common/half.hpp"
 #include "common/log.hpp"
 #include "common/matrix4.hpp"
@@ -66,7 +67,7 @@ void render_thread(GLFWwindow* window)
 
     {
         Plotter::StrokeInfo stroke_info;
-        stroke_info.width = 1.0;
+        stroke_info.width = 3.0;
 
         CubicBezier2f spline2({
             CubicBezier2f::Segment::line(Vector2f{100, 100}, Vector2f{200, 150}),
@@ -77,7 +78,7 @@ void render_thread(GLFWwindow* window)
         stroker.add_stroke(stroke_info, spline2);
     }
 
-    stroker.parse();
+    stroker.apply();
 
     // Rendering //////////////////////////////////////////////
 

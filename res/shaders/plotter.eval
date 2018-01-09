@@ -44,10 +44,10 @@ const mat3 DERIV = mat3(
  // patch types
  const int CONVEX    = 1;
  const int CONCAVE   = 2;
- const int SEGMENT   = 3;
- const int JOINT     = 4;
- const int START_CAP = 5;
- const int END_CAP   = 6;
+ const int STROKE    = 3;
+ const int JOINT     = 31;
+ const int START_CAP = 32;
+ const int END_CAP   = 33;
 
 #define start (gl_in[0].gl_Position.xy)
 #define end   (gl_in[1].gl_Position.xy)
@@ -66,13 +66,24 @@ void main()
         v_out.position = fma(vec2(step(HALF, gl_TessCoord.y) * (length(delta) - (sign(v_out.tex_coord.y - HALF) * aa_width))),
                              normalize(delta), base_vertex);
     }
+
+    else if (patch_data.type == CONCAVE) {
+        // concave shapes have no defined outer edge that can be smoothed, therefore they have no geometric aa
+        v_out.tex_coord.y = 1.0;
+        v_out.tex_coord.x = gl_TessCoord.x;
+
+        // see comment in the CONVEX branch
+        vec2 delta = mix(gl_in[1].gl_Position.xy, gl_in[0].gl_Position.xy, gl_TessCoord.x) - base_vertex;
+        v_out.position = fma(vec2(step(HALF, gl_TessCoord.y) * length(delta)), normalize(delta), base_vertex);
+    }
+
     else { // patch_data.type is some form of line
         // tex_coord.y is 1 within the stroke and 0 at the very edge (geometric anti-aliasing in the normal)
         v_out.tex_coord.y = aa_width == 0.0 ? 1.0 : ONE - (step(ONE, gl_TessCoord.y) + step(ONE, ONE - gl_TessCoord.y));
 
         float normal_offset = sign(gl_TessCoord.y - HALF) * HALF * (max(ZERO, stroke_width) + ((ONE - (v_out.tex_coord.y * TWO)) * aa_width));
 
-        if(patch_data.type == SEGMENT){
+        if(patch_data.type == STROKE){
             vec2 TVEC = vec2(ONE, gl_TessCoord.x);
 
             // bezier control points
@@ -88,6 +99,7 @@ void main()
                     (mat4x2(start, ctrl1, ctrl2, end) * BEZIER * (TVEC.xyyy * TVEC.xxyy * TVEC.xxxy)).xy    // along spline
                     + (normal * normal_offset);                                                             // along normal
         }
+
         else if(patch_data.type == JOINT){
             vec2 normal;
             if(gl_TessCoord.x == ZERO){
@@ -99,6 +111,7 @@ void main()
 
             v_out.tex_coord.x = HALF;
         }
+
         else if(patch_data.type == START_CAP){
             // screen space position of the vertex
             vec2 normal = patch_data.ctrl1_direction.yx * vec2(-ONE, ONE);
@@ -110,6 +123,7 @@ void main()
             v_out.tex_coord.x = ZERO;
             v_out.tex_coord.y = (gl_TessCoord.x == ONE) ? v_out.tex_coord.y : ZERO;
         }
+
         else if(patch_data.type == END_CAP){
             // screen space position of the vertex
             vec2 normal = patch_data.ctrl2_direction.yx * vec2(ONE, -ONE);

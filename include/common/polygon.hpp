@@ -33,19 +33,54 @@ struct Polygon {
     /// @brief Vertices of this Polygon.
     const std::vector<vector_t> vertices;
 
-    /// @brief Orientation of the Polygon.
-    const Orientation orientation;
-
     // methods -------------------------------------------------------------------------------------------------------//
     /// @brief Value constructor.
     /// @param vertices         Vertices from which to construct the Polygon.
-    /// @param orientation      Orientation of the Polygon. Is calculated automatically if left as default.
     /// @throws runtime_error   If the Polygon does not contain at least 3 unique vertices.
     /// @throws runtime_error   If two non-consecutive vertices share the same position.
     /// @throws runtime_error   If two edges of the Polygon intersect.
-    Polygon(std::vector<vector_t> vertices, const Orientation orientation = -1)
-        : vertices(_prepare_vertices(std::move(vertices))), orientation(_prepare_orientation(orientation))
-    {}
+    Polygon(std::vector<vector_t> vertices) : vertices(_prepare_vertices(std::move(vertices))) {}
+
+    /// @brief Calculates the orientation of the Polygon.
+    Orientation orientation() const
+    {
+        // find three consecutive vertices that form a triangle that doesn't contain any other vertices
+        Triangle<element_t> triangle;
+        bool is_empty;
+        for (size_t i = 2; i <= vertices.size(); ++i) {
+            triangle = {vertices[i - 2], vertices[i - 1], vertices[i % vertices.size()]};
+            is_empty = true;
+            for (size_t j = 0; j < vertices.size(); ++j) {
+                if (triangle.contains(vertices[j])) {
+                    is_empty = false;
+                    break;
+                }
+            }
+            if (is_empty) {
+                break;
+            }
+        }
+        assert(is_empty);
+
+        // the Polygon shares the orientation of the triangle if it is contained
+        if (this->contains(triangle.center())) {
+            return triangle.orientation();
+        }
+        else {
+            return (triangle.orientation() == Orientation::CCW) ? Orientation::CW : Orientation::CCW;
+        }
+    }
+
+    /// @brief The center point of the Polygon.
+    vector_t center() const
+    {
+        vector_t result = vector_t::zero();
+        for (const vector_t& vertex : vertices) {
+            result += vertex;
+        }
+        result /= static_cast<element_t>(vertices.size());
+        return result;
+    }
 
     /// @brief Tests if the point is fully contained in the Polygon.
     /// If the point is on the edge of the Polygon, it is not contained within it.
@@ -93,6 +128,30 @@ struct Polygon {
         return (intersections % 2) == 0;
     }
 
+    /// @brief Checks if this Polygon is convex.
+    bool is_convex() const
+    {
+        // find the first non-zero triangle
+        size_t index = 2;
+        while (index < vertices.size() && Triangle<element_t>(vertices[0], vertices[1], vertices[index]).is_zero()) {
+            ++index;
+        }
+        const Orientation first_orientation
+            = Triangle<element_t>(vertices[0], vertices[1], vertices[index]).orientation();
+
+        // check if subsequent triangles always have the same orientation
+        for (size_t i = index + 1; i <= vertices.size(); ++i) {
+            const Triangle<element_t> triangle(vertices[i - 2], vertices[i - 1], vertices[i % vertices.size()]);
+            if (!triangle.is_zero() && triangle.orientation() != first_orientation) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /// @brief Checks if this Polygon is concave.
+    bool is_concave() const { return !is_convex(); }
+
 private:
     /// @brief Enforces the construction of a simple Polygon with unique vertices.
     /// @param vertices Vertices from which to construct the Polygon.
@@ -132,59 +191,24 @@ private:
         }
 
         for (size_t i = 0; i < vertices.size(); ++i) {
-            for (size_t j = 1; j < vertices.size(); ++j) {
+            for (size_t j = i + 1; j < vertices.size(); ++j) {
                 if (vertices[i].is_approx(vertices[j])) {
                     throw_runtime_error("Vertices in a Polygon must not share positions");
                 }
             }
         }
 
-        for (size_t i = 1; i < vertices.size(); ++i) {
-            for (size_t j = 2; j < vertices.size(); ++j) {
-                if (Segment2<element_t>(vertices[i - 1], vertices[i])
-                        .intersects(Segment2<element_t>(vertices[j - 1], vertices[j]))) {
-                    throw_runtime_error("Segments in a Polygon may not intersect");
-                }
-            }
-        }
+        // TODO: this seems broken
+//        for (size_t i = 1; i < vertices.size(); ++i) {
+//            for (size_t j = i + 1; j < vertices.size(); ++j) {
+//                if (Segment2<element_t>(vertices[i - 1], vertices[i])
+//                        .intersects(Segment2<element_t>(vertices[j - 1], vertices[j]))) {
+//                    throw_runtime_error("Segments in a Polygon may not intersect");
+//                }
+//            }
+//        }
 
         return vertices;
-    }
-
-    /// @brief Calculates the orientation of the Polygon on request.
-    Orientation _prepare_orientation(Orientation orientation)
-    {
-        // calculate orientation from vertices
-        if (orientation == -1) {
-            // find three consecutive vertices that form a triangle that doesn't contain any other vertices
-            Triangle<element_t> triangle;
-            bool is_empty;
-            for (size_t i = 2; i <= vertices.size(); ++i) {
-                triangle = {vertices[i - 2], vertices[i - 1], vertices[i % vertices.size()]};
-                is_empty = true;
-                for (size_t j = 0; j < vertices.size(); ++j) {
-                    if (triangle.contains(vertices[j])) {
-                        is_empty = false;
-                        break;
-                    }
-                }
-                if (is_empty) {
-                    break;
-                }
-            }
-            assert(is_empty);
-
-            // the Polygon shares the orientation of the triangle if it is contained
-            if (this->contains(triangle.center())) {
-                orientation = triangle.orientation();
-            }
-            else {
-                orientation = (triangle.orientation() == Orientation::CCW) ? Orientation::CW : Orientation::CCW;
-            }
-        }
-
-        assert(orientation == Orientation::CCW || orientation == Orientation::CW);
-        return orientation;
     }
 };
 

@@ -29,12 +29,12 @@ const float TWO = 2.0f;
 const float THREE = 3.0f;
 
 // patch types
-#define CONVEX      1
-#define CONCAVE     2
-#define SEGMENT     3
-#define JOINT       4
-#define START_CAP   5
-#define END_CAP     6
+const int CONVEX    = 1;
+const int CONCAVE   = 2;
+const int STROKE    = 3;
+const int JOINT     = 31;
+const int START_CAP = 32;
+const int END_CAP   = 33;
 
 #define start (gl_in[0].gl_Position.xy)
 #define end   (gl_in[1].gl_Position.xy)
@@ -64,12 +64,8 @@ void main(){
         vec2 ctrl1 = start + (patch_data.ctrl1_direction * patch_data.ctrl1_length);
         vec2 ctrl2 = end + (patch_data.ctrl2_direction * patch_data.ctrl2_length);
 
-        // tesselation defaults
-        float tessel_x = ONE;                               // along spline
-        float tessel_y = (aa_width == ZERO ? ONE : THREE);  // along normal
-
-        if(patch_type == CONVEX){
-            gl_TessLevelInner[0] = ONE;
+        if(patch_type == CONVEX || patch_type == CONCAVE){
+            gl_TessLevelInner[0] = ZERO;
             gl_TessLevelInner[1] = ZERO;
 
             gl_TessLevelOuter[0] = ONE;
@@ -78,7 +74,7 @@ void main(){
             gl_TessLevelOuter[3] = ONE;
         }
 
-        else if(patch_type == SEGMENT){
+        else if(patch_type == STROKE){
             // tesselation defaults
             float tessel_x = ONE;                               // along spline
             float tessel_y = (aa_width == ZERO ? ONE : THREE);  // along normal
@@ -112,16 +108,6 @@ void main(){
             gl_TessLevelOuter[1] = tessel_x;
             gl_TessLevelOuter[2] = tessel_y;
             gl_TessLevelOuter[3] = tessel_x;
-        }
-
-        else { // fallback
-            gl_TessLevelInner[0] = ZERO;
-            gl_TessLevelInner[1] = ZERO;
-
-            gl_TessLevelOuter[0] = ZERO;
-            gl_TessLevelOuter[1] = ZERO;
-            gl_TessLevelOuter[2] = ZERO;
-            gl_TessLevelOuter[3] = ZERO;
         }
     }
 }

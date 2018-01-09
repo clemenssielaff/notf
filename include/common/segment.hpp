@@ -94,6 +94,11 @@ struct Segment2 : public detail::Segment<detail::RealVector2<REAL>> {
     /// @brief Default constructor.
     Segment2() = default;
 
+    /// @brief Value constructor.
+    /// @param start    Start point.
+    /// @param end      End point.
+    Segment2(vector_t start, const vector_t& end) : super_t(std::move(start), std::move(end)) {}
+
     /// @brief Checks if this line Segment contains a given point.
     /// @param point    Point to heck.
     bool contains(const vector_t& point) const
