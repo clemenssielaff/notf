@@ -256,6 +256,7 @@ void Plotter::render()
             // concave
             else {
                 // TODO: concave shapes have no antialiasing yet
+                // TODO: this actually covers both single concave and multiple polygons with holes
 
                 gl_check(glEnable(GL_STENCIL_TEST));                           // enable stencil
                 gl_check(glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE)); // do not write into color buffer
