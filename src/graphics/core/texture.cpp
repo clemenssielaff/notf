@@ -102,14 +102,14 @@ namespace notf {
 
 const Texture::Args Texture::s_default_args = {};
 
-TexturePtr Texture::_create(GraphicsContextPtr& context, const GLuint id, const GLenum target, std::string name,
+TexturePtr Texture::_create(GraphicsContext& context, const GLuint id, const GLenum target, std::string name,
                             Size2i size, const Format format)
 {
 #ifdef NOTF_DEBUG
     return TexturePtr(new Texture(context, id, target, name, size, format));
 #else
     struct make_shared_enabler : public Texture {
-        make_shared_enabler(GraphicsContextPtr& context, const GLuint id, const GLenum target, std::string name,
+        make_shared_enabler(GraphicsContext& context, const GLuint id, const GLenum target, std::string name,
                             Size2i size, const Format format)
             : Texture(context, id, target, std::move(name), std::move(size), format)
         {}
@@ -119,10 +119,10 @@ TexturePtr Texture::_create(GraphicsContextPtr& context, const GLuint id, const 
 #endif
 }
 
-Texture::Texture(GraphicsContextPtr& context, const GLuint id, const GLenum target, std::string name, Size2i size,
+Texture::Texture(GraphicsContext& context, const GLuint id, const GLenum target, std::string name, Size2i size,
                  const Format format)
     : m_id(id)
-    , m_graphics_context(*context)
+    , m_graphics_context(context)
     , m_target(target)
     , m_name(std::move(name))
     , m_size(std::move(size))
@@ -134,13 +134,13 @@ Texture::Texture(GraphicsContextPtr& context, const GLuint id, const GLenum targ
     }
 }
 
-TexturePtr Texture::create_empty(GraphicsContextPtr& context, std::string name, Size2i size, const Args& args)
+TexturePtr Texture::create_empty(GraphicsContext& context, std::string name, Size2i size, const Args& args)
 {
     // validate the passed arguments
     if (!size.is_valid()) {
         throw_runtime_error(string_format("Cannot create a texture with an invalid size: %s", size));
     }
-    if (context->has_texture(name)) {
+    if (context.has_texture(name)) {
         std::stringstream ss;
         ss << "Cannot create a new Texture with existing name \"" << name << "\"";
         throw_runtime_error(ss.str());
@@ -190,15 +190,15 @@ TexturePtr Texture::create_empty(GraphicsContextPtr& context, std::string name, 
 
     // return the loaded texture on success
     TexturePtr texture = Texture::_create(context, id, GL_TEXTURE_2D, name, std::move(size), args.format);
-    context->m_textures.emplace(std::move(name), texture);
+    context.m_textures.emplace(std::move(name), texture);
     return texture;
 }
 
 TexturePtr
-Texture::load_image(GraphicsContextPtr& context, const std::string& file_path, std::string name, const Args& args)
+Texture::load_image(GraphicsContext& context, const std::string& file_path, std::string name, const Args& args)
 {
     // validate the passed arguments
-    if (context->has_texture(name)) {
+    if (context.has_texture(name)) {
         std::stringstream ss;
         ss << "Cannot create a new Texture with existing name \"" << name << "\"";
         throw_runtime_error(ss.str());
@@ -337,7 +337,7 @@ Texture::load_image(GraphicsContextPtr& context, const std::string& file_path, s
     gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical)));
 
     // make texture anisotropic, if requested and available
-    if (args.anisotropy > 1.f && context->extensions().anisotropic_filter) {
+    if (args.anisotropy > 1.f && context.extensions().anisotropic_filter) {
         GLfloat highest_anisotropy;
         gl_check(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &highest_anisotropy));
         gl_check(
@@ -369,7 +369,7 @@ Texture::load_image(GraphicsContextPtr& context, const std::string& file_path, s
 
     // return the loaded texture on success
     TexturePtr texture = Texture::_create(context, id, GL_TEXTURE_2D, name, image_size, texture_format);
-    context->m_textures.emplace(std::move(name), texture);
+    context.m_textures.emplace(std::move(name), texture);
     return texture;
 }
 

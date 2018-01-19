@@ -68,7 +68,7 @@ void render_thread(GLFWwindow* window)
     {
         Texture::Args targs;
         targs.min_filter = Texture::MinFilter::LINEAR;
-        render_target    = Texture::create_empty(graphics_context, "render_target", {800, 800}, targs);
+        render_target    = Texture::create_empty(*graphics_context, "render_target", {800, 800}, targs);
 
         FrameBuffer::Args fargs;
         fargs.color_targets = {std::make_pair(0, FrameBuffer::ColorTarget{render_target})};
@@ -90,7 +90,7 @@ void render_thread(GLFWwindow* window)
     Texture::Args tex_args;
     tex_args.codec      = Texture::Codec::ASTC;
     tex_args.anisotropy = 5;
-    TexturePtr texture  = Texture::load_image(graphics_context, "/home/clemens/code/notf/res/textures/test.astc",
+    TexturePtr texture  = Texture::load_image(*graphics_context, "/home/clemens/code/notf/res/textures/test.astc",
                                              "testtexture", tex_args);
 
     using VertexLayout   = VertexArray<VertexPos, VertexTexCoord>;

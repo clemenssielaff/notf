@@ -250,6 +250,11 @@ public:
     /// @brief Unbinds the current FrameBuffer.
     void unbind_framebuffer();
 
+    // text -------------------------------------------------------------------
+
+    /// @brief The Font Manager associated with this context.
+    FontManager& get_font_manager() { return *m_font_manager; }
+
     // methods -------------------------------------------------------------------------------------------------------//
 private:
     /// @brief Call this function after the last shader has been compiled.
@@ -277,6 +282,9 @@ private:
     /// @brief All Shaders managed by this Context.
     /// See `m_textures` for details on management.
     std::unordered_map<std::string, std::weak_ptr<Shader>> m_shaders;
+
+    /// @brief The context owns its own Font Manager that manages the textures and glyph rendering.
+    FontManagerPtr m_font_manager;
 };
 
 } // namespace notf

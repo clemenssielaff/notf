@@ -73,7 +73,7 @@ include_directories(
     include/
     thirdparty/
     res/
-    /home/clemens/code/thirdparty/freetype-2.8/include/
+    /home/clemens/code/thirdparty/freetype-2.8.1/include
     test/
     examples/
 )

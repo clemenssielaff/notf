@@ -14,14 +14,8 @@
 #include "graphics/core/pipeline.hpp"
 #include "graphics/core/shader.hpp"
 #include "graphics/core/texture.hpp"
+#include "graphics/text/font_manager.hpp"
 #include "utils/narrow_cast.hpp"
-
-namespace {
-
-const uint ALL_ZEROS = 0x00000000;
-const uint ALL_ONES  = 0xffffffff;
-
-} // namespace
 
 //====================================================================================================================//
 
@@ -38,7 +32,7 @@ namespace notf {
     else {                                                                                                         \
         notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), "GLExtensions") \
                 .input                                                                                             \
-            << "Could not find OpenGL extension:\"" << name << "\"";                                                        \
+            << "Could not find OpenGL extension:\"" << name << "\"";                                               \
     }
 #else
 #define CHECK_EXTENSION(member, name) member = extensions.count(name);
@@ -90,7 +84,12 @@ GraphicsContext::Environment::Environment()
 //====================================================================================================================//
 
 GraphicsContext::GraphicsContext(GLFWwindow* window)
-    : m_window(window), m_state(), m_has_vsync(true), m_textures(), m_shaders()
+    : m_window(window)
+    , m_state()
+    , m_has_vsync(true)
+    , m_textures()
+    , m_shaders()
+    , m_font_manager()
 {
     if (!window) {
         throw_runtime_error("Failed to create a new GraphicsContext without a window (given pointer is null).");
@@ -99,10 +98,12 @@ GraphicsContext::GraphicsContext(GLFWwindow* window)
     glfwMakeContextCurrent(m_window);
     glfwSwapInterval(m_has_vsync ? 1 : 0);
 
-    glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST);
-    glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_DONT_CARE);
+    gl_check(glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST));
+    gl_check(glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_DONT_CARE));
 
     m_state = create_state();
+
+    m_font_manager = std::make_unique<FontManager>(*this);
 }
 
 GraphicsContext::~GraphicsContext()

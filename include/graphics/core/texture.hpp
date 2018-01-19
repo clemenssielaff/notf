@@ -130,7 +130,7 @@ private:
     /// @param name     Context-unique name of the Texture.
     /// @param size     Size of the Texture in pixels.
     /// @param format   Texture format.
-    static TexturePtr _create(GraphicsContextPtr& context, const GLuint id, const GLenum target, std::string name,
+    static TexturePtr _create(GraphicsContext& context, const GLuint id, const GLenum target, std::string name,
                               Size2i size, const Format format);
 
     /// @brief Value Constructor.
@@ -141,7 +141,7 @@ private:
     /// @param name     Context-unique name of the Texture.
     /// @param size     Size of the Texture in pixels.
     /// @param format   Texture format.
-    Texture(GraphicsContextPtr& context, const GLuint id, const GLenum target, std::string name, Size2i size,
+    Texture(GraphicsContext& context, const GLuint id, const GLenum target, std::string name, Size2i size,
             const Format format);
 
 public:
@@ -151,7 +151,7 @@ public:
     /// @param size     Size of the texture in pixels.
     /// @param args     Texture arguments.
     static TexturePtr
-    create_empty(GraphicsContextPtr& context, std::string name, Size2i size, const Args& args = s_default_args);
+    create_empty(GraphicsContext& context, std::string name, Size2i size, const Args& args = s_default_args);
 
     /// @brief Loads a texture from a given file.
     /// @param context      Render Context in which the texture lives.
@@ -159,7 +159,7 @@ public:
     /// @param name         Context-unique name of the Texture.
     /// @param args         Arguments to initialize the texture.
     /// @return Texture instance, is empty if the texture could not be loaded.
-    static TexturePtr load_image(GraphicsContextPtr& context, const std::string& file_path, std::string name,
+    static TexturePtr load_image(GraphicsContext& context, const std::string& file_path, std::string name,
                                  const Args& args = s_default_args);
 
     DISALLOW_COPY_AND_ASSIGN(Texture)
