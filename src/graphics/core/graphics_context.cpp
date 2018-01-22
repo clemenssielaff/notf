@@ -108,6 +108,9 @@ GraphicsContext::GraphicsContext(GLFWwindow* window)
 
 GraphicsContext::~GraphicsContext()
 {
+    // delete the Font Manager before warning about deallocating live textures
+    m_font_manager.reset();
+
     // deallocate and invalidate all remaining Textures
     for (auto itr : m_textures) {
         std::weak_ptr<Texture>& texture_weakptr = itr.second;

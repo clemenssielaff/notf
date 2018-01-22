@@ -15,7 +15,7 @@ inline constexpr TARGET narrow_cast(RAW_SOURCE&& value)
 
     TARGET result = static_cast<TARGET>(std::forward<RAW_SOURCE>(value));
     if (static_cast<SOURCE>(result) != value) {
-        throw std::runtime_error("narrow_cast failed");
+        throw std::runtime_error("narrow_cast failed"); // TODO: narrow_cast_exception
     }
 
 #ifdef NOTF_CPP17

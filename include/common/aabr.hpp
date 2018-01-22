@@ -48,16 +48,22 @@ struct Aabr {
     /// @param y         Y-coordinate of the bottom-left corner.
     /// @param width     Width of the Aabr.
     /// @param height    Height of the Aabr.
-    Aabr(const element_t x, const element_t y, const element_t width, const element_t height)
-        : _min(x, y), _max(x + width, y + height)
+    template<typename X, typename Y, typename WIDTH, typename HEIGHT>
+    Aabr(const X x, const Y y, const WIDTH width, const HEIGHT height)
+        : _min(static_cast<element_t>(x), static_cast<element_t>(y))
+        , _max(static_cast<element_t>(x) + static_cast<element_t>(width),
+               static_cast<element_t>(y) + static_cast<element_t>(height))
     {}
 
     /// @brief Constructs an Aabr of the given width and height, with the bottom-left corner at `position`.
     /// @param position  Position of the Aabr's bottom-left corner.
     /// @param width     Width of the Aabr.
     /// @param height    Height of the Aabr.
-    Aabr(const vector_t& position, const element_t width, const element_t height)
-        : _min(position), _max(position.x() + width, position.y() + height)
+    template<typename POSITION, typename WIDTH, typename HEIGHT>
+    Aabr(const POSITION& position, const WIDTH width, const HEIGHT height)
+        : _min(static_cast<vector_t>(position))
+        , _max(static_cast<vector_t>(position).x() + static_cast<element_t>(width),
+               static_cast<vector_t>(position).y() + static_cast<element_t>(height))
     {}
 
     /// @brief Constructs an Aabr of the given size with the bottom-left corner at `position`.
@@ -70,7 +76,10 @@ struct Aabr {
     /// @brief Aabr with a given width and height, and the bottom-left corner at zero.
     /// @param width     Width of the Aabr.
     /// @param height    Height of the Aabr.
-    Aabr(const element_t width, const element_t height) : _min(0, 0), _max(width, height) {}
+    template<typename WIDTH, typename HEIGHT>
+    Aabr(const WIDTH width, const HEIGHT height)
+        : _min(0, 0), _max(static_cast<element_t>(width), static_cast<element_t>(height))
+    {}
 
     /// @brief Constructs an Aabr of the given size with the bottom-left corner at zero.
     /// @param size  Size of the Aabr.
@@ -211,7 +220,7 @@ struct Aabr {
     /// @return          Closest point inside the Aabr to the target point.
     vector_t closest_point_to(const vector_t& target) const
     {
-        const vector_t pos       = center();
+        const vector_t pos          = center();
         const element_t half_width  = get_width() / 2;
         const element_t half_height = get_height() / 2;
         return {pos.x() + clamp(target.x() - pos.x(), -half_width, half_width),
@@ -444,9 +453,9 @@ struct Aabr {
             return Aabr::zero();
         }
         return Aabr(vector_t{_min.x() > other._min.x() ? _min.x() : other._min.x(),
-                                _min.y() > other._min.y() ? _min.y() : other._min.y()},
+                             _min.y() > other._min.y() ? _min.y() : other._min.y()},
                     vector_t{_max.x() < other._max.x() ? _max.x() : other._max.x(),
-                                _max.y() < other._max.y() ? _max.y() : other._max.y()});
+                             _max.y() < other._max.y() ? _max.y() : other._max.y()});
     }
     Aabr operator&(const Aabr& other) const { return intersect(other); }
 
@@ -469,9 +478,9 @@ struct Aabr {
     Aabr unite(const Aabr& other) const
     {
         return Aabr(vector_t{_min.x() < other._min.x() ? _min.x() : other._min.x(),
-                                _min.y() < other._min.y() ? _min.y() : other._min.y()},
+                             _min.y() < other._min.y() ? _min.y() : other._min.y()},
                     vector_t{_max.x() > other._max.x() ? _max.x() : other._max.x(),
-                                _max.y() > other._max.y() ? _max.y() : other._max.y()});
+                             _max.y() > other._max.y() ? _max.y() : other._max.y()});
     }
     Aabr operator|(const Aabr& other) const { return unite(other); }
 

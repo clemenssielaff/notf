@@ -182,10 +182,10 @@ public:
     const std::string& name() const { return m_name; }
 
     /// @brief The size of this texture.
-    const Size2i size() const { return m_size; }
+    const Size2i& size() const { return m_size; }
 
     /// @brief The format of this Texture.
-    Format format() const { return m_format; }
+    const Format& format() const { return m_format; }
 
     /// @brief Sets a new filter mode when the texture pixels are smaller than scren pixels.
     void set_min_filter(const MinFilter filter);

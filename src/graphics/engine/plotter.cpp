@@ -54,6 +54,21 @@
 /// This is easily accomplished by re-using indices of the existing vertices and doesn't increase the size of the
 /// vertex array.
 ///
+/// Text
+/// ====
+///
+/// We should be able to render a glyph using a single vertex, because we have 6 vertex attributes available to us,
+/// and we should always have a 1:1 correspondence from screen to texture pixels:
+///
+/// 0           | Screen position of the glyph's lower left corner
+/// 1           |
+/// 2       | Texture coordinate of the glyph's lower left vertex
+/// 3       |
+/// 4   | Height and with of the glyph in pixels, used both for defining the position of the glyph's upper right corner
+/// 5   | as well as its texture coordinate
+///
+/// Glyphs require Font Atlas size as input (maybe where the shape gets the center vertex?)
+///
 
 #include "graphics/engine/plotter.hpp"
 
@@ -62,6 +77,7 @@
 #include "common/log.hpp"
 #include "common/matrix4.hpp"
 #include "common/polygon.hpp"
+#include "common/utf.hpp"
 #include "common/vector.hpp"
 #include "common/vector2.hpp"
 #include "graphics/core/graphics_context.hpp"
@@ -69,7 +85,9 @@
 #include "graphics/core/opengl.hpp"
 #include "graphics/core/pipeline.hpp"
 #include "graphics/core/shader.hpp"
+#include "graphics/core/texture.hpp"
 #include "graphics/core/vertex_array.hpp"
+#include "graphics/text/font_manager.hpp"
 #include "utils/narrow_cast.hpp"
 
 namespace {
@@ -232,7 +250,8 @@ void Plotter::render()
                     pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONVEX));
                     plotter.m_state.patch_type = PatchType::CONVEX;
                 }
-            } else {
+            }
+            else {
                 if (plotter.m_state.patch_type != PatchType::CONCAVE) {
                     pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONCAVE));
                     plotter.m_state.patch_type = PatchType::CONCAVE;
@@ -283,6 +302,26 @@ void Plotter::render()
                 gl_check(glDisable(GL_STENCIL_TEST));
             }
         }
+
+        /// @brief Render text.
+        void operator()(const TextInfo& text) const
+        {
+            Pipeline& pipeline = *plotter.m_pipeline.get();
+
+            const FontManager& font_manager = plotter.m_graphics_context.get_font_manager();
+            const TexturePtr& font_atlas  = font_manager.atlas_texture();
+            const Size2i& atlas_size = font_atlas->size();
+
+            pipeline.tesselation_shader()->set_uniform("base_vertex", Vector2f{atlas_size.width, atlas_size.height});
+
+            //            void CellCanvas::_render_text(const Call& call)
+            //            {
+            //                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            //                glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset,
+            //                fragmentSize()); m_graphics_context.push_texture(call.texture); glDrawArrays(GL_TRIANGLES,
+            //                call.polygon_offset, call.polygon_count); check_gl_error();
+            //            }
+        }
     };
 
     // function begins here ////////////////////////////////////////////////////////////////////////////////////////////
@@ -331,30 +370,26 @@ void Plotter::add_stroke(StrokeInfo info, const CubicBezier2f& spline)
     // TODO: differentiate between closed and open splines
 
     { // update indices
+        indices.reserve(indices.size() + (spline.segments.size() * 4) + 2);
+
         GLuint next_index = narrow_cast<GLuint>(vertices.size());
 
         // start cap
         indices.emplace_back(next_index);
         indices.emplace_back(next_index);
 
-        for (size_t i = 0; i < spline.segments.size() - 1; ++i) {
+        for (size_t i = 0; i < spline.segments.size(); ++i) {
             // first -> (n-1) segment
             indices.emplace_back(next_index++);
             indices.emplace_back(next_index);
 
-            // joint
+            // joint / end cap
             indices.emplace_back(next_index);
             indices.emplace_back(next_index);
         }
-
-        // last segment
-        indices.emplace_back(next_index++);
-        indices.emplace_back(next_index);
-
-        // end cap
-        indices.emplace_back(next_index);
-        indices.emplace_back(next_index);
     }
+
+    vertices.reserve(vertices.size() + spline.segments.size() + 1);
 
     { // first vertex
         const CubicBezier2f::Segment& first_segment = spline.segments.front();
@@ -398,6 +433,8 @@ void Plotter::add_shape(ShapeInfo info, const Polygonf& polygon)
     const size_t index_offset = indices.size();
 
     { // update indices
+        indices.reserve(indices.size() + (polygon.vertices.size() * 2));
+
         const GLuint first_index = narrow_cast<GLuint>(vertices.size());
         GLuint next_index        = first_index;
 
@@ -413,6 +450,7 @@ void Plotter::add_shape(ShapeInfo info, const Polygonf& polygon)
     }
 
     // vertices
+    vertices.reserve(vertices.size() + polygon.vertices.size());
     for (const auto& point : polygon.vertices) {
         PlotVertexArray::Vertex vertex;
         set_pos(vertex, point);
@@ -426,6 +464,57 @@ void Plotter::add_shape(ShapeInfo info, const Polygonf& polygon)
     info.center    = polygon.center();
     m_batch_buffer.emplace_back(
         Batch{std::move(info), narrow_cast<uint>(index_offset), narrow_cast<int>(indices.size() - index_offset)});
+}
+
+void Plotter::add_text(TextInfo info, const std::string& text)
+{
+    std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->buffer();
+    std::vector<GLuint>& indices                   = static_cast<PlotIndexArray*>(m_indices.get())->buffer();
+
+    const GLuint first_index = narrow_cast<GLuint>(vertices.size());
+
+    { // vertices
+        const utf8_string utf8_text(text);
+
+        // make sure that text is always rendered on the pixel grid, not between pixels
+        const Vector2f& translation = info.translation;
+        Glyph::coord_t x            = static_cast<Glyph::coord_t>(roundf(translation.x()));
+        Glyph::coord_t y            = static_cast<Glyph::coord_t>(roundf(translation.y()));
+
+        for (const auto character : utf8_text) {
+            const Glyph& glyph = info.font->glyph(static_cast<codepoint_t>(character));
+
+            if (!glyph.rect.width || !glyph.rect.height) {
+                // skip glyphs without pixels
+            }
+            else {
+
+                // quad which renders the glyph
+                const Aabrf quad((x + glyph.left), (y - glyph.rect.height + glyph.top), glyph.rect.width,
+                                 glyph.rect.height);
+
+                // uv coordinates of the glyph - must be divided by the size of the font texture!
+                const Vector2f uv = Vector2f{glyph.rect.x, glyph.rect.y};
+
+                // create the vertex
+                PlotVertexArray::Vertex vertex;
+                set_pos(vertex, uv);
+                set_first_ctrl(vertex, quad.bottom_left());
+                set_second_ctrl(vertex, quad.top_right());
+                vertices.emplace_back(std::move(vertex));
+            }
+
+            // advance to the next character position
+            x += glyph.advance_x;
+            y += glyph.advance_y;
+        }
+    }
+
+    // indices
+    indices.reserve(indices.size() + (vertices.size() - first_index));
+    for (GLuint i = first_index; i < narrow_cast<GLuint>(vertices.size()); ++i) {
+        indices.emplace_back(i);
+    }
 }
 
 } // namespace notf

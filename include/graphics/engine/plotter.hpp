@@ -23,19 +23,26 @@ public:
     /// @brief Information necessary to draw a predefined stroke.
     struct StrokeInfo {
         float width;
-
-        PADDING(4);
     };
 
     /// @brief Information necessary to draw a predefined shape.
     struct ShapeInfo {
         friend class Plotter;
 
-        PADDING(3);
     private:
+        Vector2f center;
+
         bool is_convex;
 
-        Vector2f center;
+        PADDING(3)
+    };
+
+    struct TextInfo {
+        /// @brief Font to draw the text in.
+        FontPtr font;
+
+        /// @brief Start point of the baseline on which to draw the text.
+        Vector2f translation;
     };
 
 private:
@@ -44,7 +51,7 @@ private:
     /// draw call (for example, to render multiple lines of the same width, color etc.).
     struct Batch {
 
-        using Info = std::variant<StrokeInfo, ShapeInfo>;
+        using Info = std::variant<StrokeInfo, ShapeInfo, TextInfo>;
 
         /// @brief Additional information on how to draw the patches contained in this batch.
         Info info;
@@ -114,6 +121,11 @@ public:
     /// @param info     Information on how to draw the shape.
     /// @param spline   Shape to draw.
     void add_shape(ShapeInfo info, const Polygonf& polygon);
+
+    /// @brief Adds a new line of text to render into the buffer.
+    /// @param info     Information on how to render the text.
+    /// @param text     Text to render.
+    void add_text(TextInfo info, const std::string& text);
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:

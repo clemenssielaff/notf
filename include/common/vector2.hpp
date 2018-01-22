@@ -28,7 +28,8 @@ struct RealVector2 : public detail::Arithmetic<RealVector2<REAL>, REAL, 2> {
     /// @brief Element-wise constructor.
     /// @param x    First component.
     /// @param y    Second component (default is 0).
-    RealVector2(const element_t x, const element_t y = 0) : super_t{x, y} {}
+    template<typename X, typename Y = element_t>
+    RealVector2(const X x, const Y y = 0) : super_t{static_cast<element_t>(x), static_cast<element_t>(y)} {}
 
     /// @brief Unit vector along the X-axis.
     static RealVector2 x_axis() { return RealVector2(1, 0); }
@@ -178,7 +179,8 @@ struct IntVector2 : public detail::Arithmetic<IntVector2<INTEGER>, INTEGER, 2> {
     /// @brief Element-wise constructor.
     /// @param x    First component.
     /// @param y    Second component (default is 0).
-    IntVector2(const element_t x, const element_t y = 0) : super_t{x, y} {}
+    template<typename X, typename Y = element_t>
+    IntVector2(const X x, const Y y = 0) : super_t{static_cast<element_t>(x), static_cast<element_t>(y)} {}
 
     /// @brief Unit vector along the X-axis.
     static IntVector2 x_axis() { return IntVector2(1, 0); }

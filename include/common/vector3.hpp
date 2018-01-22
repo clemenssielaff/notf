@@ -29,7 +29,10 @@ struct RealVector3 : public detail::Arithmetic<RealVector3<REAL>, REAL, 3> {
     /// @param x    First component.
     /// @param y    Second component (default is 0).
     /// @param z    Third component (default is 0).
-    RealVector3(const element_t x, const element_t y = 0, const element_t z = 0) : super_t{x, y, z} {}
+    template<typename X, typename Y = element_t, typename Z = element_t>
+    RealVector3(const X x, const Y y = 0, const Z z = 0)
+        : super_t{static_cast<element_t>(x), static_cast<element_t>(y), static_cast<element_t>(z)}
+    {}
 
     /** Unit vector along the X-axis. */
     static RealVector3 x_axis() { return RealVector3(1, 0, 0); }
@@ -86,10 +89,7 @@ struct RealVector3 : public detail::Arithmetic<RealVector3<REAL>, REAL, 3> {
     /// @brief Checks whether this vector is orthogonal to other.
     /// @note The zero vector is orthogonal to everything.
     /// @param other    Vector to test against.
-    bool is_orthogonal_to(const RealVector3& other) const
-    {
-        return direction_to(other) < precision_high<element_t>();
-    }
+    bool is_orthogonal_to(const RealVector3& other) const { return direction_to(other) < precision_high<element_t>(); }
 
     /// @brief Calculates the smallest angle between two vectors.
     /// @note Returns zero, if one or both of the input vectors are of zero magnitude.
@@ -130,7 +130,7 @@ struct RealVector3 : public detail::Arithmetic<RealVector3<REAL>, REAL, 3> {
     RealVector3 cross(const RealVector3& other) const
     {
         return RealVector3((y() * other.z()) - (z() * other.y()), (z() * other.x()) - (x() * other.z()),
-                            (x() * other.y()) - (y() * other.x()));
+                           (x() * other.y()) - (y() * other.x()));
     }
 
     /// @brief Creates a projection of this vector onto an infinite line whose direction is specified by other.
@@ -161,15 +161,18 @@ struct IntVector3 : public detail::Arithmetic<IntVector3<INTEGER>, INTEGER, 3> {
     /// @param x    First component.
     /// @param y    Second component (default is 0).
     /// @param z    Third component (default is 0).
-    IntVector3(const element_t x, const element_t y = 0, const element_t z = 0) : super_t{x, y, z} {}
+    template<typename X, typename Y = element_t, typename Z = element_t>
+    IntVector3(const X x, const Y y = 0, const Z z = 0)
+        : super_t{static_cast<element_t>(x), static_cast<element_t>(y), static_cast<element_t>(z)}
+    {}
 
-    /** Unit vector along the X-axis. */
+    /// @brief Unit vector along the X-axis.
     static IntVector3 x_axis() { return IntVector3(1, 0, 0); }
 
-    /** Unit vector along the Y-axis. */
+    /// @brief Unit vector along the Y-axis.
     static IntVector3 y_axis() { return IntVector3(0, 1, 0); }
 
-    /** Unit vector along the Z-axis. */
+    /// @brief Unit vector along the Z-axis.
     static IntVector3 z_axis() { return IntVector3(0, 0, 1); }
 
     /// @brief Read-write access to the first element in the vector.

@@ -30,8 +30,10 @@ struct RealVector4 : public detail::Arithmetic<RealVector4<REAL>, REAL, 4> {
     /// @param y    Second component (default is 0).
     /// @param z    Third component (default is 0).
     /// @param w    Fourth component (default is 1).
-    RealVector4(const element_t x, const element_t y = 0, const element_t z = 0, const element_t w = 1)
-        : super_t{x, y, z, w}
+    template<typename X, typename Y = element_t, typename Z = element_t, typename W = element_t>
+    RealVector4(const X x, const Y y = 0, const Z z = 0, const W w = 1)
+        : super_t{static_cast<element_t>(x), static_cast<element_t>(y), static_cast<element_t>(z),
+                  static_cast<element_t>(w)}
     {}
 
     /// @brief Unit Vector2 along the X-axis.

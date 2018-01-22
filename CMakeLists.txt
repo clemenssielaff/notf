@@ -92,6 +92,7 @@ add_sources(SOURCE_FILES examples
     line_example.cpp
     wireframe_example.cpp
     shape_example.cpp
+    text_example.cpp
 )
 
 add_sources(THIRDPARTY_FILES thirdparty

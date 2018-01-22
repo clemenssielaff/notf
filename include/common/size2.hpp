@@ -44,16 +44,16 @@ struct Size2 {
 
     /// @brief The "most wrong" Size2 (maximal negative area).
     /// Is useful as the starting point for defining the union of multiple Size2.
-    static Size2 wrongest()
-    {
-        return {std::numeric_limits<value_t>::lowest(), std::numeric_limits<value_t>::lowest()};
-    }
+    static Size2 wrongest() { return {std::numeric_limits<value_t>::lowest(), std::numeric_limits<value_t>::lowest()}; }
 
     /// @brief Tests if this Size is valid (>=0) in both dimensions.
     bool is_valid() const { return width >= 0 && height >= 0; }
 
     /// @brief Tests if a rectangle of this Size has zero area.
     bool is_zero() const { return abs(width) <= precision_high<value_t>() && abs(height) <= precision_high<value_t>(); }
+
+    /// @brief Checks if the size has the same height and width.
+    bool is_square() const { return (abs(width) - abs(height)) <= precision_high<value_t>(); }
 
     /// @brief Returns the area of a rectangle of this Size. Always returns 0, if the size is invalid.
     value_t area() const { return max(0, width * height); }
