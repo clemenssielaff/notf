@@ -253,7 +253,7 @@ public:
     // text -------------------------------------------------------------------
 
     /// @brief The Font Manager associated with this context.
-    FontManager& get_font_manager() { return *m_font_manager; }
+    FontManager& font_manager() { return *m_font_manager; }
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:

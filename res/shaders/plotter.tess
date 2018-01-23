@@ -32,6 +32,7 @@ const float THREE = 3.0f;
 const int CONVEX    = 1;
 const int CONCAVE   = 2;
 const int STROKE    = 3;
+const int TEXT      = 4;
 const int JOINT     = 31;
 const int START_CAP = 32;
 const int END_CAP   = 33;
@@ -49,22 +50,10 @@ void main(){
 
     if (ID == 0){
 
-        // ctrl point delta magnitude
-        patch_data.ctrl1_length = max(ZERO, length(v_in[0].second_ctrl) - ONE);
-        patch_data.ctrl2_length = max(ZERO, length(v_in[1].first_ctrl) - ONE);
-
-        // control points in screen coordinates
-        patch_data.ctrl1_direction = normalize(v_in[0].second_ctrl);
-        patch_data.ctrl2_direction = normalize(v_in[1].first_ctrl);
-
-        // assume convex / convave / segment for now - segments are further subdivided into segment / joint / cap
+        // assume convex / convave / segment / text for now - segments are further subdivided into segment / joint / cap
         patch_data.type = patch_type;
 
-        // bezier spline points
-        vec2 ctrl1 = start + (patch_data.ctrl1_direction * patch_data.ctrl1_length);
-        vec2 ctrl2 = end + (patch_data.ctrl2_direction * patch_data.ctrl2_length);
-
-        if(patch_type == CONVEX || patch_type == CONCAVE){
+        if(patch_type == TEXT) {
             gl_TessLevelInner[0] = ZERO;
             gl_TessLevelInner[1] = ZERO;
 
@@ -72,42 +61,71 @@ void main(){
             gl_TessLevelOuter[1] = ONE;
             gl_TessLevelOuter[2] = ONE;
             gl_TessLevelOuter[3] = ONE;
+
+            // this holds the position of the glyph's min and max corners
+            patch_data.ctrl1_direction = v_in[0].first_ctrl;
+            patch_data.ctrl2_direction = v_in[0].second_ctrl;
         }
 
-        else if(patch_type == STROKE){
-            // tesselation defaults
-            float tessel_x = ONE;                               // along spline
-            float tessel_y = (aa_width == ZERO ? ONE : THREE);  // along normal
+        // not text
+        else {
+            // ctrl point delta magnitude
+            patch_data.ctrl1_length = max(ZERO, length(v_in[0].second_ctrl) - ONE);
+            patch_data.ctrl2_length = max(ZERO, length(v_in[1].first_ctrl) - ONE);
 
-            // segment sub-types
-            if(gl_in[0].gl_Position == gl_in[1].gl_Position){
-                if (v_in[0].first_ctrl == vec2(ZERO, ZERO)){
-                    patch_data.type = START_CAP;
-                } else if (v_in[1].second_ctrl == vec2(ZERO, ZERO)){
-                    patch_data.type = END_CAP;
-                } else {
-                    patch_data.type = JOINT;
+            // control points in screen coordinates
+            patch_data.ctrl1_direction = normalize(v_in[0].second_ctrl);
+            patch_data.ctrl2_direction = normalize(v_in[1].first_ctrl);
+
+            // bezier spline points
+            vec2 ctrl1 = start + (patch_data.ctrl1_direction * patch_data.ctrl1_length);
+            vec2 ctrl2 = end + (patch_data.ctrl2_direction * patch_data.ctrl2_length);
+
+            if(patch_type == CONVEX || patch_type == CONCAVE){
+                gl_TessLevelInner[0] = ZERO;
+                gl_TessLevelInner[1] = ZERO;
+
+                gl_TessLevelOuter[0] = ONE;
+                gl_TessLevelOuter[1] = ONE;
+                gl_TessLevelOuter[2] = ONE;
+                gl_TessLevelOuter[3] = ONE;
+            }
+
+            else if(patch_type == STROKE){
+                // tesselation defaults
+                float tessel_x = ONE;                               // along spline
+                float tessel_y = (aa_width == ZERO ? ONE : THREE);  // along normal
+
+                // segment sub-types
+                if(gl_in[0].gl_Position == gl_in[1].gl_Position){
+                    if (v_in[0].first_ctrl == vec2(ZERO, ZERO)){
+                        patch_data.type = START_CAP;
+                    } else if (v_in[1].second_ctrl == vec2(ZERO, ZERO)){
+                        patch_data.type = END_CAP;
+                    } else {
+                        patch_data.type = JOINT;
+                    }
                 }
+
+                // segment
+                else {
+                    vec2 line = end - start;
+                    float line_dot = dot(line, line);
+                    tessel_x = min(tessel_x_max, ONE +
+                                   floor(length(line) * tessel_x_factor *
+                                            (length(start + line * (dot(ctrl1 - start, line) / line_dot) - ctrl1) +
+                                             length(start + line * (dot(ctrl2 - start, line) / line_dot) - ctrl2))));
+                }
+
+                // apply tesselation
+                gl_TessLevelInner[0] = tessel_x;
+                gl_TessLevelInner[1] = tessel_y;
+
+                gl_TessLevelOuter[0] = tessel_y;
+                gl_TessLevelOuter[1] = tessel_x;
+                gl_TessLevelOuter[2] = tessel_y;
+                gl_TessLevelOuter[3] = tessel_x;
             }
-
-            // segment
-            else {
-                vec2 line = end - start;
-                float line_dot = dot(line, line);
-                tessel_x = min(tessel_x_max, ONE +
-                               floor(length(line) * tessel_x_factor *
-                                        (length(start + line * (dot(ctrl1 - start, line) / line_dot) - ctrl1) +
-                                         length(start + line * (dot(ctrl2 - start, line) / line_dot) - ctrl2))));
-            }
-
-            // apply tesselation
-            gl_TessLevelInner[0] = tessel_x;
-            gl_TessLevelInner[1] = tessel_y;
-
-            gl_TessLevelOuter[0] = tessel_y;
-            gl_TessLevelOuter[1] = tessel_x;
-            gl_TessLevelOuter[2] = tessel_y;
-            gl_TessLevelOuter[3] = tessel_x;
         }
     }
 }

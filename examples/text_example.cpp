@@ -4,6 +4,7 @@
 #include "common/half.hpp"
 #include "common/log.hpp"
 #include "common/matrix4.hpp"
+#include "common/polygon.hpp"
 #include "common/size2.hpp"
 #include "common/system.hpp"
 #include "common/vector3.hpp"
@@ -17,6 +18,8 @@
 #include "graphics/core/shader.hpp"
 #include "graphics/core/texture.hpp"
 #include "graphics/core/vertex_array.hpp"
+#include "graphics/engine/plotter.hpp"
+#include "graphics/text/font.hpp"
 
 #include "glm_utils.hpp"
 
@@ -24,26 +27,10 @@ using namespace notf;
 
 namespace {
 
-struct VertexPos : public AttributeTrait {
-    constexpr static uint location = 0;
-    using type                     = Vector2f;
-    using kind                     = AttributeKind::Position;
-};
-
-struct InstanceXform : public AttributeTrait {
-    constexpr static uint location = 3;
-    using type                     = Matrix4f;
-    using kind                     = AttributeKind::Other;
-};
-
 static void error_callback(int error, const char* description)
 {
     log_critical << "GLFW error #" << error << ": " << description;
 }
-
-struct Foo {
-    int a, b, c;
-};
 
 void render_thread(GLFWwindow* window)
 {
@@ -51,44 +38,20 @@ void render_thread(GLFWwindow* window)
 
     // Shader ///////////////////////////////////////////////
 
-    const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/wireframe.vert");
-    VertexShaderPtr vertex_shader = VertexShader::build(graphics_context, "wireframe.vert", vertex_src);
+    FontManager& font_manager = graphics_context->font_manager();
+    FontPtr font = Font::load(*graphics_context, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 28);
 
-    const std::string tess_src = load_file("/home/clemens/code/notf/res/shaders/wireframe.tess");
-    const std::string eval_src = load_file("/home/clemens/code/notf/res/shaders/wireframe.eval");
-    TesselationShaderPtr tess_shader
-        = TesselationShader::build(graphics_context, "wireframe.tess", tess_src.c_str(), eval_src);
+    Plotter plotter(graphics_context);
 
-    const std::string geom_src   = load_file("/home/clemens/code/notf/res/shaders/wireframe.geo");
-    GeometryShaderPtr geo_shader = GeometryShader::build(graphics_context, "wireframe.geo", geom_src);
+    Plotter::TextInfo info;
+    info.font        = font;
+    info.translation = Vector2f{100, 100};
 
-    const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/wireframe.frag");
-    FragmentShaderPtr frag_shader = FragmentShader::build(graphics_context, "wireframe.frag", frag_src);
+    plotter.add_text(info, "abp");
 
-    PipelinePtr pipeline = Pipeline::create(graphics_context, vertex_shader, tess_shader, geo_shader, frag_shader);
-    graphics_context->bind_pipeline(pipeline);
-
-    // Vertices ///////////////////////////////////////////////
-
-    GLuint vao;
-    gl_check(glGenVertexArrays(1, &vao));
-    gl_check(glBindVertexArray(vao));
-
-    auto vertices = std::make_unique<VertexArray<VertexPos>>();
-    //    vertices->update({Vector2f{50, 50}, Vector2f{100, 750}, Vector2f{150, 50}, Vector2f{200, 750}});
-    vertices->buffer() = {Vector2f{50, 50}, Vector2f{750, 50}, Vector2f{750, 750}, Vector2f{50, 750}};
-    vertices->init();
-
-    auto indices = std::make_unique<IndexArray<GLuint>>();
-    indices->buffer() = {0, 1, 2, 0, 2, 3};
-    indices->init();
+    plotter.apply();
 
     // Rendering //////////////////////////////////////////////
-
-    //        glEnable(GL_CULL_FACE);
-    //        glCullFace(GL_BACK);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // render loop
     using namespace std::chrono_literals;
@@ -96,7 +59,6 @@ void render_thread(GLFWwindow* window)
     size_t frame_counter       = 0;
     while (!glfwWindowShouldClose(window)) {
         auto frame_start_time = std::chrono::high_resolution_clock::now();
-        // last_frame_start_time = frame_start_time;
         if (frame_start_time - last_frame_start_time > 1s) {
             last_frame_start_time = frame_start_time;
             log_info << frame_counter << "fps";
@@ -111,23 +73,10 @@ void render_thread(GLFWwindow* window)
         glClearColor(0.2f, 0.3f, 0.5f, 1);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        {
-            // pass the shader uniforms
-            const Matrix4f perspective = Matrix4f::orthographic(0.f, 800.f, 0.f, 800.f, 0.f, 10000.f);
-            tess_shader->set_uniform("projection", perspective);
-
-            // TODO: make sure that GL_PATCH_VERTICES <= GL_MAX_PATCH_VERTICES
-            gl_check(glPatchParameteri(GL_PATCH_VERTICES, 3));
-
-            glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices->size()), GL_UNSIGNED_INT, nullptr);
-            //            gl_check(glDrawArrays(GL_PATCHES, 0, 3));
-        }
+        plotter.render();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
-
-        //        const auto sleep_time = max(0ms, 16ms - (std::chrono::high_resolution_clock::now() -
-        //        frame_start_time)); std::this_thread::sleep_for(sleep_time);
     }
 
     // clean up

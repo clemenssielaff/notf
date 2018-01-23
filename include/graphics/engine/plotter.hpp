@@ -16,7 +16,7 @@ namespace notf {
 /// `render`, and the "buffer" one that is in the process of being defined through the various `add_*` functions.
 /// After calling `parse`, the render image is replaced by the new one and the buffer is cleared.
 /// Technically, the conceptual images consist of OpenGl buffers and draw calls.
-class Plotter final {
+class Plotter {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -65,12 +65,13 @@ private:
 
     /// @brief Type of the patch to draw.
     enum PatchType : int {
-        CONVEX    = 1,
-        CONCAVE   = 2,
-        STROKE    = 3,
-//        JOINT     = 31, // internal
-//        START_CAP = 32, // internal
-//        END_CAP   = 33, // internal
+        CONVEX  = 1,
+        CONCAVE = 2,
+        STROKE  = 3,
+        TEXT    = 4,
+        // JOINT     = 31, // internal
+        // START_CAP = 32, // internal
+        // END_CAP   = 33, // internal
     };
 
     /// @brief State of the shader pipeline.
@@ -83,11 +84,15 @@ private:
         /// @brief Patch type uniform.
         PatchType patch_type = static_cast<PatchType>(0);
 
+        /// @brief How many indices to feed into a patch.
+        int patch_vertices = 2;
+
         /// @brief Stroke width uniform.
         float stroke_width = 0;
 
-        /// @brief Base vertex for shapes.
-        Vector2f base_vertex;
+        /// @brief Auxiliary vector2 uniform.
+        /// Used as the base vertex for shapes and the size of the font atlas for text.
+        Vector2f vec2_aux1;
     };
 
     // methods -------------------------------------------------------------------------------------------------------//

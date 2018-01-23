@@ -11,11 +11,16 @@ patch in PatchData {
     vec2 ctrl2_direction;
     int type;
 } patch_data;
+#define glyph_min_corner (patch_data.ctrl1_direction)
+#define glyph_max_corner (patch_data.ctrl2_direction)
 
 uniform float stroke_width;
 uniform mat4 projection;
 uniform float aa_width;
-uniform vec2 base_vertex;
+
+uniform vec2 vec2_aux1;
+#define base_vertex vec2_aux1
+#define atlas_size  vec2_aux1
 
 out VertexData {
     mediump vec2 position;
@@ -45,6 +50,7 @@ const mat3 DERIV = mat3(
  const int CONVEX    = 1;
  const int CONCAVE   = 2;
  const int STROKE    = 3;
+ const int TEXT      = 4;
  const int JOINT     = 31;
  const int START_CAP = 32;
  const int END_CAP   = 33;
@@ -75,6 +81,13 @@ void main()
         // see comment in the CONVEX branch
         vec2 delta = mix(gl_in[1].gl_Position.xy, gl_in[0].gl_Position.xy, gl_TessCoord.x) - base_vertex;
         v_out.position = fma(vec2(step(HALF, gl_TessCoord.y) * length(delta)), normalize(delta), base_vertex);
+    }
+
+    else if (patch_data.type == TEXT) {
+        v_out.tex_coord.y = 1.0;
+        v_out.tex_coord.x = 1.0;
+
+        v_out.position = mix(glyph_min_corner, glyph_max_corner, gl_TessCoord.xy);
     }
 
     else { // patch_data.type is some form of line

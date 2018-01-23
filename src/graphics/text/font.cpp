@@ -30,7 +30,7 @@ Font::Font(FontManager& manager, const std::string filename, const pixel_size_t 
     // load the new Font into freetype
     FT_Library freetype = m_manager.freetype();
     if (FT_New_Face(freetype, filename.c_str(), 0, &m_face)) {
-        log_critical << "Could not load Font from: " << filename;
+        log_critical << "Could not load Font from: \"" << filename << "\"";
         return;
     }
     FT_Set_Pixel_Sizes(m_face, 0, pixel_size);
@@ -81,7 +81,7 @@ Font::Font(FontManager& manager, const std::string filename, const pixel_size_t 
 
 std::shared_ptr<Font> Font::load(GraphicsContext& context, const std::string filename, const pixel_size_t pixel_size)
 {
-    FontManager& font_manager         = context.get_font_manager();
+    FontManager& font_manager         = context.font_manager();
     const Font::Identifier identifier = {filename, pixel_size};
 
     { // check if the given filename/size - pair is already a known (and loaded) font

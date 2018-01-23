@@ -223,6 +223,12 @@ void Plotter::render()
         {
             Pipeline& pipeline = *plotter.m_pipeline.get();
 
+            // patch vertices
+            if (plotter.m_state.patch_vertices != 2) {
+                plotter.m_state.patch_vertices = 2;
+                gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
+            }
+
             // patch type
             if (plotter.m_state.patch_type != PatchType::STROKE) {
                 pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::STROKE));
@@ -244,6 +250,12 @@ void Plotter::render()
         {
             Pipeline& pipeline = *plotter.m_pipeline.get();
 
+            // patch vertices
+            if (plotter.m_state.patch_vertices != 2) {
+                plotter.m_state.patch_vertices = 2;
+                gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
+            }
+
             // patch type
             if (shape.is_convex) {
                 if (plotter.m_state.patch_type != PatchType::CONVEX) {
@@ -259,12 +271,12 @@ void Plotter::render()
             }
 
             // base vertex
-            if (!shape.center.is_approx(plotter.m_state.base_vertex)) {
+            if (!shape.center.is_approx(plotter.m_state.vec2_aux1)) {
                 // with a purely convex polygon, we can safely put the base vertex into the center of the polygon as it
                 // will always be inside and it should never fall onto an existing vertex
                 // this way, we can use antialiasing at the outer edge
-                pipeline.tesselation_shader()->set_uniform("base_vertex", shape.center);
-                plotter.m_state.base_vertex = shape.center;
+                pipeline.tesselation_shader()->set_uniform("vec2_aux1", shape.center);
+                plotter.m_state.vec2_aux1 = shape.center;
             }
 
             if (shape.is_convex) {
@@ -304,23 +316,35 @@ void Plotter::render()
         }
 
         /// @brief Render text.
-        void operator()(const TextInfo& text) const
+        void operator()(const TextInfo& /*text*/) const
         {
             Pipeline& pipeline = *plotter.m_pipeline.get();
 
-            const FontManager& font_manager = plotter.m_graphics_context.get_font_manager();
-            const TexturePtr& font_atlas  = font_manager.atlas_texture();
-            const Size2i& atlas_size = font_atlas->size();
+            // patch vertices
+            if (plotter.m_state.patch_vertices != 1) {
+                plotter.m_state.patch_vertices = 1;
+                gl_check(glPatchParameteri(GL_PATCH_VERTICES, 1));
+            }
 
-            pipeline.tesselation_shader()->set_uniform("base_vertex", Vector2f{atlas_size.width, atlas_size.height});
+            // patch type
+            if (plotter.m_state.patch_type != PatchType::TEXT) {
+                pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::TEXT));
+                plotter.m_state.patch_type = PatchType::TEXT;
+            }
 
-            //            void CellCanvas::_render_text(const Call& call)
-            //            {
-            //                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            //                glBindBufferRange(GL_UNIFORM_BUFFER, FRAG_BINDING, m_fragment_buffer, call.uniform_offset,
-            //                fragmentSize()); m_graphics_context.push_texture(call.texture); glDrawArrays(GL_TRIANGLES,
-            //                call.polygon_offset, call.polygon_count); check_gl_error();
-            //            }
+            const FontManager& font_manager = plotter.m_graphics_context.font_manager();
+            const TexturePtr& font_atlas    = font_manager.atlas_texture();
+            const Size2i& atlas_size        = font_atlas->size();
+
+            // atlas size
+            const Vector2f atlas_size_vec{atlas_size.width, atlas_size.height};
+            if (!atlas_size_vec.is_approx(plotter.m_state.vec2_aux1)) {
+                pipeline.tesselation_shader()->set_uniform("vec2_aux1", atlas_size_vec);
+                plotter.m_state.vec2_aux1 = atlas_size_vec;
+            }
+
+            gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
+                                    gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
         }
     };
 
@@ -332,7 +356,7 @@ void Plotter::render()
     const auto vao_guard = VaoBindGuard(m_vao_id);
 
     gl_check(glEnable(GL_CULL_FACE));
-    gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
+    gl_check(glPatchParameteri(GL_PATCH_VERTICES, m_state.patch_vertices));
     gl_check(glEnable(GL_BLEND));
     gl_check(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
@@ -471,7 +495,13 @@ void Plotter::add_text(TextInfo info, const std::string& text)
     std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->buffer();
     std::vector<GLuint>& indices                   = static_cast<PlotIndexArray*>(m_indices.get())->buffer();
 
-    const GLuint first_index = narrow_cast<GLuint>(vertices.size());
+    const size_t index_offset = indices.size();
+    const GLuint first_index  = narrow_cast<GLuint>(vertices.size());
+
+    if (!info.font) {
+        log_warning << "Cannot add text without a font";
+        return;
+    }
 
     { // vertices
         const utf8_string utf8_text(text);
@@ -512,9 +542,13 @@ void Plotter::add_text(TextInfo info, const std::string& text)
 
     // indices
     indices.reserve(indices.size() + (vertices.size() - first_index));
-    for (GLuint i = first_index; i < narrow_cast<GLuint>(vertices.size()); ++i) {
+    for (GLuint i = first_index, end = narrow_cast<GLuint>(vertices.size()); i < end; ++i) {
         indices.emplace_back(i);
     }
+
+    // batch
+    m_batch_buffer.emplace_back(
+        Batch{std::move(info), narrow_cast<uint>(index_offset), narrow_cast<int>(indices.size() - index_offset)});
 }
 
 } // namespace notf
