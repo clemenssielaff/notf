@@ -1,7 +1,7 @@
 #include "graphics/core/frame_buffer.hpp"
 
 #include <algorithm>
-#include <assert.h>
+#include <cassert>
 #include <set>
 #include <sstream>
 

@@ -5,15 +5,31 @@ precision mediump float;
 in VertexData {
     vec2 position;
     vec2 tex_coord;
+    mediump flat int patch_type;
 } v_in;
 
 layout(location=0) out vec4 f_color;
 
+// patch types
+const int CONVEX    = 1;
+const int CONCAVE   = 2;
+const int STROKE    = 3;
+const int TEXT      = 4;
+const int JOINT     = 31;
+const int START_CAP = 32;
+const int END_CAP   = 33;
+
 const float ZERO = 0.0f;
 const float ONE = 1.0f;
 
+uniform sampler2D font_texture;
+
 void main() {
-//    f_color = vec4(v_in.tex_coord.x, ZERO, ZERO, smoothstep(ZERO, ONE, v_in.tex_coord.y));
-    f_color = vec4(ONE, ONE, ONE, smoothstep(ZERO, ONE, v_in.tex_coord.y));
-//    f_color = vec4(ONE, ONE, ONE, 0.40);
+
+    if(v_in.patch_type == TEXT){
+        f_color = vec4(ONE, ONE, ONE, texture(font_texture, v_in.tex_coord).r);
+    }
+    else {
+        f_color = vec4(ONE, ONE, ONE, smoothstep(ZERO, ONE, v_in.tex_coord.y));
+    }
 }

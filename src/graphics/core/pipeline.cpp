@@ -1,6 +1,6 @@
 #include "graphics/core/pipeline.hpp"
 
-#include <assert.h>
+#include <cassert>
 #include <sstream>
 
 #include "common/exception.hpp"

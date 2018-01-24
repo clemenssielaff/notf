@@ -4,7 +4,7 @@
 #include <fstream>
 #include <iterator>
 
-#include "assert.h"
+#include "cassert"
 
 #include "common/color.hpp"
 #include "common/enum.hpp"

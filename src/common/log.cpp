@@ -1,6 +1,6 @@
 #include "common/log.hpp"
 
-#include <assert.h>
+#include <cassert>
 
 #include "common/integer.hpp"
 

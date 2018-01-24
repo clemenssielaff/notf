@@ -31,7 +31,7 @@
 #pragma once
 
 #include <algorithm>
-#include <assert.h>
+#include <cassert>
 #include <exception>
 #include <functional>
 #include <memory>

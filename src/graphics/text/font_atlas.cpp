@@ -1,6 +1,6 @@
 #include "graphics/text/font_atlas.hpp"
 
-#include <assert.h>
+#include <cassert>
 #include <limits>
 
 #include "common/color.hpp"
@@ -127,10 +127,16 @@ FontAtlas::FontAtlas(GraphicsContext& graphics_context)
     m_texture->set_min_filter(Texture::MinFilter::LINEAR);
     m_texture->set_mag_filter(Texture::MagFilter::LINEAR);
 
+    // permanently bind the atlas texture to its slot (it is reserved and won't be rebound)
+    const GLenum texture_slot = m_graphics_context.environment().font_atlas_texture_slot;
+    gl_check(glActiveTexture(GL_TEXTURE0 + texture_slot));
+    gl_check(glBindTexture(GL_TEXTURE_2D, m_texture->id()));
+
     // initialize
     reset();
 
-    log_trace << "Created font atlas of size " << m_width << "x" << m_height << " with texture ID: " << m_texture->id();
+    log_trace << "Created font atlas of size " << m_width << "x" << m_height << " with texture ID " << m_texture->id()
+              << " bound on slot " << texture_slot;
 
     static_assert(std::is_pod<FitRequest>::value, "This compiler does not recognize notf::FontAtlas::FitRequest as a "
                                                   "POD.");
@@ -197,12 +203,6 @@ std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<FitReques
         for (size_t named_size_index = 0; named_size_index < named_extends.size(); ++named_size_index) {
             const FitRequest& extend = named_extends[named_size_index];
             const ScoredRect scored  = _get_rect(extend.width, extend.height);
-            if (scored.rect.height == 0) {
-                named_extends.erase(iterator_at(named_extends, named_size_index));
-                result.emplace_back(extend.code_point, best_rect);
-                --named_size_index;
-                continue;
-            }
             if (scored.new_height < best_new_height
                 || (scored.new_height == best_new_height && scored.node_width < best_node_width)) {
                 best_rect         = scored.rect;
@@ -216,7 +216,7 @@ std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<FitReques
 
         // return what you got if you cannot fit anymore
         if (best_node_index == INVALID_SIZE_T) {
-            log_critical << "Could not fit new rects into the font atlas";
+            log_critical << "Could not fit all requested rects into the font atlas";
             break;
         }
         assert(best_extend_index != INVALID_SIZE_T);
@@ -236,12 +236,12 @@ void FontAtlas::fill_rect(const Glyph::Rect& rect, const uchar* data)
     if (rect.height == 0 || rect.width == 0 || !data) {
         return;
     }
-    m_graphics_context.bind_texture(m_texture, /* slot = */ 0);
+
+    gl_check(glActiveTexture(GL_TEXTURE0 + m_graphics_context.environment().font_atlas_texture_slot));
     gl_check(glPixelStorei(GL_UNPACK_ROW_LENGTH, rect.width));
     gl_check(glTexSubImage2D(GL_TEXTURE_2D, /* level = */ 0, rect.x, rect.y, rect.width, rect.height, GL_RED,
                              GL_UNSIGNED_BYTE, data));
     gl_check(glPixelStorei(GL_UNPACK_ROW_LENGTH, m_texture->size().width));
-    m_graphics_context.unbind_texture(/* slot = */ 0);
 }
 
 FontAtlas::ScoredRect FontAtlas::_get_rect(const coord_t width, const coord_t height) const

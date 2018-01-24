@@ -168,6 +168,7 @@ Plotter::Plotter(GraphicsContextPtr& context)
         m_pipeline = Pipeline::create(context, vertex_shader, tess_shader, frag_shader);
 
         tess_shader->set_uniform("aa_width", 1.5f);
+        frag_shader->set_uniform("font_texture", m_graphics_context.environment().font_atlas_texture_slot);
     }
 
     { // vertices
@@ -356,6 +357,7 @@ void Plotter::render()
     const auto vao_guard = VaoBindGuard(m_vao_id);
 
     gl_check(glEnable(GL_CULL_FACE));
+    gl_check(glCullFace(GL_BACK));
     gl_check(glPatchParameteri(GL_PATCH_VERTICES, m_state.patch_vertices));
     gl_check(glEnable(GL_BLEND));
     gl_check(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));

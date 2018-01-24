@@ -3406,7 +3406,7 @@ namespace Catch {
 #include <cstring>
 #include <cfloat>
 #include <cstdio>
-#include <assert.h>
+#include <cassert>
 #include <memory>
 
 namespace Catch {
@@ -6208,7 +6208,7 @@ namespace Catch {
 
 #ifdef CATCH_PLATFORM_MAC
 
-    #include <assert.h>
+    #include <cassert>
     #include <stdbool.h>
     #include <sys/types.h>
     #include <unistd.h>
@@ -9043,7 +9043,7 @@ namespace Catch {
 // start catch_test_case_tracker.cpp
 
 #include <algorithm>
-#include <assert.h>
+#include <cassert>
 #include <stdexcept>
 #include <memory>
 
@@ -10156,7 +10156,7 @@ namespace Catch {
 #include <cstring>
 #include <cfloat>
 #include <cstdio>
-#include <assert.h>
+#include <cassert>
 #include <memory>
 
 namespace Catch {
@@ -11129,7 +11129,7 @@ namespace Catch {
 // end catch_reporter_console.cpp
 // start catch_reporter_junit.cpp
 
-#include <assert.h>
+#include <cassert>
 
 #include <ctime>
 #include <algorithm>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <assert.h>
+#include <cassert>
 #include <iterator>
 
 /** Simple Range implementation to be used with std::vectors and other ordered containers. */

@@ -135,7 +135,7 @@ void render_thread(GLFWwindow* window)
         angle += 0.01 * ((frame_start_time - last_frame_start_time) / 16ms);
         last_frame_start_time = frame_start_time;
 
-        graphics_context->bind_framebuffer(framebuffer);
+//        graphics_context->bind_framebuffer(framebuffer);
 
         Size2i buffer_size;
         glfwGetFramebufferSize(window, &buffer_size.width, &buffer_size.height);
@@ -145,7 +145,9 @@ void render_thread(GLFWwindow* window)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         {
-            graphics_context->bind_texture(texture, 0);
+            const uint slot = 0;
+
+            graphics_context->bind_texture(texture, slot);
 
             // pass the shader uniforms
             const Matrix4f move = Matrix4f::translation(0, 0, -500);
@@ -161,26 +163,28 @@ void render_thread(GLFWwindow* window)
             //         10000.f);
             blinn_phong_vert->set_uniform("projection", perspective);
 
+            blinn_phong_frag->set_uniform("s_texture", slot);
+
             //            graphics_context->bind_pipeline(blinn_phong_pipeline);
             library.render();
 
-            graphics_context->unbind_texture(0);
+            graphics_context->unbind_texture(slot);
             gl_check_error();
         }
 
-        /////////////////
+//        /////////////////
 
-        graphics_context->unbind_framebuffer();
+//        graphics_context->unbind_framebuffer();
 
-        glViewport(0, 0, 800, 800);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//        glViewport(0, 0, 800, 800);
+//        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        graphics_context->bind_texture(render_target, 0);
-        //        glGenerateMipmap(GL_TEXTURE_2D);
+//        graphics_context->bind_texture(render_target, 0);
+//        //        glGenerateMipmap(GL_TEXTURE_2D);
 
-        library.render();
+//        library.render();
 
-        /////////////////
+//        /////////////////
 
         glfwSwapBuffers(window);
         glfwPollEvents();

@@ -39,15 +39,16 @@ void render_thread(GLFWwindow* window)
     // Shader ///////////////////////////////////////////////
 
     FontManager& font_manager = graphics_context->font_manager();
-    FontPtr font = Font::load(*graphics_context, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 28);
+    FontPtr font = Font::load(*graphics_context, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 32);
 
     Plotter plotter(graphics_context);
 
     Plotter::TextInfo info;
     info.font        = font;
-    info.translation = Vector2f{100, 100};
+    info.translation = Vector2f{150, 100};
 
-    plotter.add_text(info, "abp");
+    auto what = "NoTF";
+    plotter.add_text(info, what);
 
     plotter.apply();
 

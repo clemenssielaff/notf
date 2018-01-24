@@ -1,6 +1,6 @@
 #include "graphics/core/raw_image.hpp"
 
-#include <assert.h>
+#include <cassert>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image/stb_image.h>

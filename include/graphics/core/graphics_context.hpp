@@ -113,14 +113,22 @@ public:
     /// course of the app.
     struct Environment {
 
-        /// @brief Number of texture slots.
-        GLuint texture_slot_count;
-
         /// @brief Maximum height and width of a render buffer in pixels.
         GLuint max_render_buffer_size;
 
         /// @brief Number of available color attachments for a frame buffer.
         GLuint color_attachment_count;
+
+        /// @brief Number of texture slots, meaning the highest valid slot is texture_slot_count - 1.
+        /// This number will be less than the actual number of texture slots available on the machine, because it
+        /// subtracts slots used for internal purposed (the font atlas texture, for example).
+        GLuint texture_slot_count;
+
+        /// @brief Texture slot reserved for the font atlas texture.
+        /// Note that this is the slot number, not the enum value corresponding to the slot.
+        /// In order to get that use:
+        ///     GL_TEXTURE0 + font_atlas_texture_slot
+        GLuint font_atlas_texture_slot;
 
     private:
         friend class GraphicsContext;

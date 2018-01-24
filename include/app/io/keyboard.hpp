@@ -1,7 +1,7 @@
 #pragma once
 
-#include <assert.h>
 #include <bitset>
+#include <cassert>
 
 #include "common/enum.hpp"
 

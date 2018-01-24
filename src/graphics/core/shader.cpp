@@ -1,7 +1,7 @@
 #include "graphics/core/shader.hpp"
 
 #include <algorithm>
-#include <assert.h>
+#include <cassert>
 #include <regex>
 #include <sstream>
 

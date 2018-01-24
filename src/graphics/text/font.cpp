@@ -1,6 +1,6 @@
 #include "graphics/text/font.hpp"
 
-#include <assert.h>
+#include <cassert>
 
 #include "common/log.hpp"
 #include "common/string.hpp"

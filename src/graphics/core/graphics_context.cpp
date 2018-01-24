@@ -1,6 +1,6 @@
 #include "graphics/core/graphics_context.hpp"
 
-#include <assert.h>
+#include <cassert>
 #include <cstring>
 #include <set>
 
@@ -62,34 +62,35 @@ GraphicsContext::Extensions::Extensions()
 
 GraphicsContext::Environment::Environment()
 {
-    { // texture slots
-        GLint _texture_slot_count = -1;
-        gl_check(glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &_texture_slot_count));
-        texture_slot_count = narrow_cast<decltype(texture_slot_count)>(_texture_slot_count);
-    }
+    constexpr GLint reserved_texture_slots = 1;
 
     { // max render buffer size
-        GLint _max_render_buffer_size = -1;
-        gl_check(glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &_max_render_buffer_size));
-        max_render_buffer_size = narrow_cast<decltype(texture_slot_count)>(_max_render_buffer_size);
+        GLint max_renderbuffer_size = -1;
+        gl_check(glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &max_renderbuffer_size));
+        max_render_buffer_size = narrow_cast<decltype(max_render_buffer_size)>(max_renderbuffer_size);
     }
 
     { // color attachment count
-        GLint _color_attachment_count = -1;
-        gl_check(glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &_color_attachment_count));
-        color_attachment_count = narrow_cast<decltype(texture_slot_count)>(_color_attachment_count);
+        GLint max_color_attachments = -1;
+        gl_check(glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &max_color_attachments));
+        color_attachment_count = narrow_cast<decltype(color_attachment_count)>(max_color_attachments);
+    }
+
+    { // texture slot count
+        GLint max_image_units = -1;
+        gl_check(glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_image_units));
+        texture_slot_count = narrow_cast<decltype(texture_slot_count)>(max_image_units - reserved_texture_slots);
+    }
+
+    { // font atlas texture slot
+        font_atlas_texture_slot = texture_slot_count;
     }
 }
 
 //====================================================================================================================//
 
 GraphicsContext::GraphicsContext(GLFWwindow* window)
-    : m_window(window)
-    , m_state()
-    , m_has_vsync(true)
-    , m_textures()
-    , m_shaders()
-    , m_font_manager()
+    : m_window(window), m_state(), m_has_vsync(true), m_textures(), m_shaders(), m_font_manager()
 {
     if (!window) {
         throw_runtime_error("Failed to create a new GraphicsContext without a window (given pointer is null).");
@@ -294,15 +295,14 @@ void GraphicsContext::bind_texture(Texture* texture, uint slot)
         return unbind_texture(slot);
     }
 
-    try {
-        if (texture == m_state.texture_slots.at(slot).get()) {
-            return;
-        }
-    }
-    catch (std::out_of_range&) {
+    if (slot >= environment().texture_slot_count) {
         std::stringstream ss;
         ss << "Invalid texture slot: " << slot << " - largest texture slot is:" << environment().texture_slot_count - 1;
         throw_runtime_error(ss.str());
+    }
+
+    if (texture == m_state.texture_slots[slot].get()) {
+        return;
     }
 
     if (!texture->is_valid()) {
@@ -317,15 +317,14 @@ void GraphicsContext::bind_texture(Texture* texture, uint slot)
 
 void GraphicsContext::unbind_texture(uint slot)
 {
-    try {
-        if (m_state.texture_slots.at(slot) == nullptr) {
-            return;
-        }
-    }
-    catch (std::out_of_range&) {
+    if (slot >= environment().texture_slot_count) {
         std::stringstream ss;
         ss << "Invalid texture slot: " << slot << " - largest texture slot is:" << environment().texture_slot_count - 1;
         throw_runtime_error(ss.str());
+    }
+
+    if (m_state.texture_slots.at(slot) == nullptr) {
+        return;
     }
 
     gl_check(glActiveTexture(GL_TEXTURE0 + slot));
