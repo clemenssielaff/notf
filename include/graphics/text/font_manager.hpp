@@ -13,7 +13,7 @@ namespace notf {
 
 //====================================================================================================================//
 
-/// @brief Object used to load, render and work with Fonts and rendered text.
+/// Object used to load, render and work with Fonts and rendered text.
 class FontManager {
 
     friend class Font;
@@ -22,38 +22,38 @@ class FontManager {
 public:
     DISALLOW_COPY_AND_ASSIGN(FontManager)
 
-    /// @brief Default constructor.
+    /// Default constructor.
     FontManager(GraphicsContext& graphics_context);
 
-    /// @brief Destructor.
+    /// Destructor.
     ~FontManager();
 
-    /// @brief Direct access to the font atlas texture.
+    /// Direct access to the font atlas texture.
     TexturePtr atlas_texture() const;
 
 private: // for Font
-    /// @brief The Freetype library used by the Manager.
+    /// The Freetype library used by the Manager.
     FT_Library freetype() const { return m_freetype; }
 
-    /// @brief Font Atlas to store Glyphs of all loaded Fonts.
+    /// Font Atlas to store Glyphs of all loaded Fonts.
     FontAtlas& atlas() { return m_atlas; }
 
 private:
-    /// @brief Renders the Font Atlas on screen
+    /// Renders the Font Atlas on screen.
     void _debug_render_atlas();
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// @brief Freetype library used to rasterize the glyphs.
+    /// Freetype library used to rasterize the glyphs.
     FT_Library m_freetype;
 
-    /// @brief Render Context in which the Texture lives.
+    /// Render Context in which the Texture lives.
     GraphicsContext& m_graphics_context;
 
-    /// @brief Font Atlas to store Glyphs of all loaded Fonts.
+    /// Font Atlas to store Glyphs of all loaded Fonts.
     FontAtlas m_atlas;
 
-    /// @brief All managed Fonts, uniquely identified by a filename/size-pair.
+    /// All managed Fonts, uniquely identified by a filename/size-pair.
     std::unordered_map<Font::Identifier, std::weak_ptr<Font>> m_fonts;
 };
 

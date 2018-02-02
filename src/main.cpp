@@ -3,6 +3,7 @@
 #include "wireframe_example.hpp"
 #include "shape_example.hpp"
 #include "text_example.hpp"
+#include "mpsc_example.hpp"
 
 int main(int argc, char* argv[])
 {
@@ -10,5 +11,6 @@ int main(int argc, char* argv[])
 //    return line_main(argc, argv);
 //    return wireframe_main(argc, argv);
 //    return framebuffer_main(argc, argv);
-    return text_main(argc, argv);
+//    return text_main(argc, argv);
+    return mpsc_main(argc, argv);
 }

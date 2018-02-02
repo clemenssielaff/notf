@@ -22,7 +22,7 @@ decltype(auto) extract_trait_types_impl(const TUPLE&, std::index_sequence<I...>)
     return std::tuple<typename std::tuple_element<I, TUPLE>::type::type...>{};
 }
 
-/// @brief Extracts the value types from a variadic list of traits.
+/// Extracts the value types from a variadic list of traits.
 template<typename... Ts, typename Indices = std::make_index_sequence<sizeof...(Ts)>>
 decltype(auto) extract_trait_types(const std::tuple<Ts...>& tuple)
 {
@@ -33,49 +33,49 @@ decltype(auto) extract_trait_types(const std::tuple<Ts...>& tuple)
 
 //====================================================================================================================//
 
-/// @brief Definitions used to identify VertexArray traits to the Geometry factory.
+/// Definitions used to identify VertexArray traits to the Geometry factory.
 /// Used to tell the GeometryFactory how to construct a VertexArray<Traits...>::Vertex instance.
 struct AttributeKind {
 
-    /// @brief Vertex position in model space.
+    /// Vertex position in model space.
     struct Position {};
 
-    /// @brief Vertex normal vector.
+    /// Vertex normal vector.
     struct Normal {};
 
-    /// @brief Vertex color.
+    /// Vertex color.
     struct Color {};
 
-    /// @brief Texture coordinate.
+    /// Texture coordinate.
     struct TexCoord {};
 
-    /// @brief Catch-all for other attribute kinds.
+    /// Catch-all for other attribute kinds.
     /// Does not impose any restrictions on the Trait::type.
     struct Other {};
 };
 
 //====================================================================================================================//
 
-/// @brief Base of all attribute kinds.
+/// Base of all attribute kinds.
 /// The base holds defaults for all trait types - some of which must be overwritten in subclasses in order to
 /// pass `is_attribute_trait`.
 struct AttributeTrait {
 
-    /// @brief Location of the attribute in the shader.
+    /// Location of the attribute in the shader.
     constexpr static uint location = std::numeric_limits<GLuint>::max(); // INVALID DEFAULT
 
-    /// @brief Type used to store the trait value.
+    /// Type used to store the trait value.
     using type = void; // INVALID DEFAULT
 
-    /// @brief Whether the value type is normalized or not.
+    /// Whether the value type is normalized or not.
     /// See https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glVertexAttribPointer.xhtml
     constexpr static bool normalized = false;
 
-    /// @brief Attribute kind, is used by the GeometryFactory to identify the trait.
+    /// Attribute kind, is used by the GeometryFactory to identify the trait.
     using kind = AttributeKind::Other;
 };
 
-/// @brief Trait checker
+/// Trait checker.
 /// Can be used to statically assert whether a given type is indeed an AttributeTrait.
 template<class T, class = void>
 struct is_attribute_trait : std::false_type { // false for all T by default
@@ -109,7 +109,7 @@ constexpr bool is_trait_tuple_impl(const TUPLE&, std::index_sequence<I...>)
 
 } // namespace detail
 
-/// @brief Checks whether a tuple contains only Attribute traits.
+/// Checks whether a tuple contains only Attribute traits.
 /// @param tuple    Tuple to check.
 template<typename... Ts, typename Indices = std::make_index_sequence<sizeof...(Ts)>>
 constexpr inline bool is_trait_tuple(const std::tuple<Ts...>& tuple)
@@ -119,28 +119,28 @@ constexpr inline bool is_trait_tuple(const std::tuple<Ts...>& tuple)
 
 //====================================================================================================================//
 
-/// @brief VertexArray baseclass, so other objects can hold pointers to any type of VertexArray.
+/// VertexArray baseclass, so other objects can hold pointers to any type of VertexArray.
 class VertexArrayType {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    /// @brief Arguments for the vertex array.
+    /// Arguments for the vertex array.
     struct Args {
 
-        /// @brief The expected usage of the data.
+        /// The expected usage of the data.
         /// Must be one of:
         /// GL_STREAM_DRAW    GL_STATIC_DRAW    GL_DYNAMIC_DRAW
         /// GL_STREAM_READ    GL_STATIC_READ    GL_DYNAMIC_READ
         /// GL_STREAM_COPY    GL_STATIC_COPY    GL_DYNAMIC_COPY
         GLenum usage = GL_STATIC_DRAW;
 
-        /// @brief Whether attributes in this array are applied per-vertex or per-instance.
+        /// Whether attributes in this array are applied per-vertex or per-instance.
         bool per_instance = false;
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
-    /// @brief Constructor.
+    /// Constructor.
     /// @throws std::runtime_error  If there is no OpenGL context.
     VertexArrayType(Args&& args) : m_args(std::move(args)), m_vbo_id(0), m_size(0)
     {
@@ -152,36 +152,36 @@ protected:
 public:
     DISALLOW_COPY_AND_ASSIGN(VertexArrayType)
 
-    /// @brief Destructor.
+    /// Destructor.
     virtual ~VertexArrayType();
 
-    /// @brief OpenGL handle of the vertex buffer.
+    /// OpenGL handle of the vertex buffer.
     GLuint id() const { return m_vbo_id; }
 
-    /// @brief Number of elements in the array.
+    /// Number of elements in the array.
     GLsizei size() const { return m_size; }
 
-    /// @brief Checks whether the array is empty.
+    /// Checks whether the array is empty.
     bool is_empty() const { return m_size == 0; }
 
     // fields --------------------------------------------------------------------------------------------------------//
 protected:
-    /// @brief Arguments used to initialize the vertex array.
+    /// Arguments used to initialize the vertex array.
     const Args m_args;
 
-    /// @brief OpenGL handle of the vertex buffer.
+    /// OpenGL handle of the vertex buffer.
     GLuint m_vbo_id;
 
-    /// @brief Number of elements in the array.
+    /// Number of elements in the array.
     GLsizei m_size;
 
-    /// @brief Invalid attribute ID.
+    /// Invalid attribute ID.
     static constexpr GLuint INVALID_ID = std::numeric_limits<GLuint>::max();
 };
 
 //====================================================================================================================//
 
-/// @brief The Vertex array manages an array of vertex attributes.
+/// The Vertex array manages an array of vertex attributes.
 /// The array's layout is defined at compile-time using traits.
 ///
 /// Example usage:
@@ -212,15 +212,15 @@ class VertexArray : public VertexArrayType {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    /// @brief Traits defining the array layout.
+    /// Traits defining the array layout.
     using Traits = std::tuple<Ts...>;
 
-    /// @brief A tuple containing one array for each trait.
+    /// A tuple containing one array for each trait.
     using Vertex = decltype(detail::extract_trait_types(Traits{}));
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    /// @brief Constructor.
+    /// Constructor.
     /// @param args                 VertexArray arguments (defaults to default constructed argument struct).
     /// @throws std::runtime_error  If there is no OpenGL context.
     VertexArray(Args&& args = {}) : VertexArrayType(std::forward<Args>(args)), m_vertices(), m_buffer_size(0)
@@ -230,11 +230,11 @@ public:
                                                 "AttributeTrait types.");
     }
 
-    /// @brief Write-access to the vertex buffer.
+    /// Write-access to the vertex buffer.
     /// Note that you need to `init()` (if it is the first time) or `update()` to apply the contents of the buffer.
     std::vector<Vertex>& buffer() { return m_vertices; }
 
-    /// @brief Initializes the VertexArray with the current contents of `m_vertices`.
+    /// Initializes the VertexArray with the current contents of `m_vertices`.
     /// @throws std::runtime_error   If the VBO could not be allocated.
     /// @throws std::runtime_error   If no VAO is currently bound.
     void init()
@@ -268,7 +268,7 @@ public:
     }
 
 private:
-    /// @brief Updates the data in the vertex array.
+    /// Updates the data in the vertex array.
     /// If you regularly want to update the data, make sure you pass an appropriate `usage` hint in the arguments.
     void _update()
     {
@@ -291,7 +291,7 @@ private:
         // do not shrink to size, if you call `update` once you are likely to call it again
     }
 
-    /// @brief Recursively define each attribute from the class' traits.
+    /// Recursively define each attribute from the class' traits.
     template<size_t INDEX, typename FIRST, typename SECOND, typename... REST>
     void _init_array()
     {
@@ -299,14 +299,14 @@ private:
         _init_array<INDEX + 1, SECOND, REST...>();
     }
 
-    /// @brief Recursion breaker.
+    /// Recursion breaker.
     template<size_t INDEX, typename LAST>
     void _init_array()
     {
         _define_attribute<INDEX, LAST>();
     }
 
-    /// @brief Defines a single attribute.
+    /// Defines a single attribute.
     template<size_t INDEX, typename ATTRIBUTE>
     void _define_attribute()
     {
@@ -340,10 +340,10 @@ private:
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// @brief Vertices stored in the array.
+    /// Vertices stored in the array.
     std::vector<Vertex> m_vertices;
 
-    /// @brief Size in bytes of the buffer allocated on the server.
+    /// Size in bytes of the buffer allocated on the server.
     GLsizei m_buffer_size;
 };
 

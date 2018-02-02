@@ -12,80 +12,81 @@ namespace detail {
 
 //====================================================================================================================//
 
-/// @brief Two-dimensional size.
+/// Two-dimensional size.
 template<typename value_t, ENABLE_IF_ARITHMETIC(value_t)>
 struct Size2 {
 
     // fields --------------------------------------------------------------------------------------------------------//
-    /// @brief Width
+    /// Width.
     value_t width;
 
-    /// @brief Height
+    /// Height.
     value_t height;
 
     // methods -------------------------------------------------------------------------------------------------------//
-    /// @brief Default (non-initializing) constructor so this struct remains a POD
+    /// Default (non-initializing) constructor so this struct remains a POD.
     Size2() = default;
 
-    /// @brief Value constructor.
+    /// Value constructor.
     Size2(const value_t width, const value_t height) : width(width), height(height) {}
 
-    /// @brief Automatic type conversions between integer and real sizes.
+    /// Automatic type conversions between integer and real sizes.
     template<typename Other_t, ENABLE_IF_ARITHMETIC(Other_t)>
     Size2(const Size2<Other_t>& other)
         : width(static_cast<value_t>(other.width)), height(static_cast<value_t>(other.height))
     {}
 
-    /// @brief Creates and returns an invalid Size2 instance.
+    /// Creates and returns an invalid Size2 instance.
     static Size2 invalid() { return {-1, -1}; }
 
-    /// @brief Creates and returns zero Size2 instance.
+    /// Creates and returns zero Size2 instance.
     static Size2 zero() { return {0, 0}; }
 
-    /// @brief The "most wrong" Size2 (maximal negative area).
+    /// The "most wrong" Size2 (maximal negative area).
     /// Is useful as the starting point for defining the union of multiple Size2.
     static Size2 wrongest() { return {std::numeric_limits<value_t>::lowest(), std::numeric_limits<value_t>::lowest()}; }
 
-    /// @brief Tests if this Size is valid (>=0) in both dimensions.
+    /// Tests if this Size is valid (>=0) in both dimensions.
     bool is_valid() const { return width >= 0 && height >= 0; }
 
-    /// @brief Tests if a rectangle of this Size has zero area.
+    /// Tests if a rectangle of this Size has zero area.
     bool is_zero() const { return abs(width) <= precision_high<value_t>() && abs(height) <= precision_high<value_t>(); }
 
-    /// @brief Checks if the size has the same height and width.
+    /// Checks if the size has the same height and width.
     bool is_square() const { return (abs(width) - abs(height)) <= precision_high<value_t>(); }
 
-    /// @brief Returns the area of a rectangle of this Size. Always returns 0, if the size is invalid.
+    /// Returns the area of a rectangle of this Size.
+    /// Always returns 0, if the size is invalid.
     value_t area() const { return max(0, width * height); }
 
-    /// @brief Pointer to the first element of the Size2.
+    /// Pointer to the first element of the Size2.
     const value_t* as_ptr() const { return &width; }
 
-    /// @brief Tests whether two Size2s are equal.
+    /// Tests whether two Size2s are equal.
     bool operator==(const Size2& other) const
     {
         return abs(other.width - width) <= precision_high<value_t>()
                && abs(other.height - height) <= precision_high<value_t>();
     }
 
-    /// @brief Tests whether two not Size2s are equal.
+    /// Tests whether two not Size2s are equal.
     bool operator!=(const Size2& other) const
     {
         return abs(other.width - width) > precision_high<value_t>()
                || abs(other.height - height) > precision_high<value_t>();
     }
 
-    /// @brief Returns True, if other and self are approximately the same size.
+    /// Returns True, if other and self are approximately the same size.
     /// @param other Size to test against.*@param epsilon Maximal allowed distance between any of the two sides.
     bool is_approx(const Size2& other, const value_t epsilon = precision_high<value_t>()) const
     {
         return abs(other.width - width) <= epsilon && abs(other.height - height) <= epsilon;
     }
 
-    /// @brief Changes the Size2 by a given factor.
+    /// Changes the Size2 by a given factor.
     Size2 operator*(const value_t factor) const { return {width * factor, height * factor}; }
 
-    /// @brief Changes the Size2 by a given divisor.
+    /// Changes the Size2 by a given divisor.
     Size2 operator/(const value_t divisor) const
     {
         if (divisor == 0) {
@@ -94,10 +95,10 @@ struct Size2 {
         return {width / divisor, height / divisor};
     }
 
-    /// @brief Changes the Size2 by adding another.
+    /// Changes the Size2 by adding another.
     Size2 operator+(const Size2& other) const { return {width + other.width, height + other.width}; }
 
-    /// @brief Adds another Size2 in-place.
+    /// Adds another Size2 in-place.
     Size2 operator+=(const Size2& other)
     {
         width += other.width;
@@ -105,7 +106,7 @@ struct Size2 {
         return *this;
     }
 
-    /// @brief Changes this Size2 to the maximum width and height of this and other.
+    /// Changes this Size2 to the maximum width and height of this and other.
     Size2& maxed(const Size2& other)
     {
         width  = max(width, other.width);
@@ -124,7 +125,7 @@ using Size2s = detail::Size2<short>;
 
 // Free Functions ====================================================================================================//
 
-/// @brief Prints the contents of this size into a std::ostream.
+/// Prints the contents of this size into a std::ostream.
 /// @param out   Output stream, implicitly passed with the << operator.
 /// @param size  Size2 to print.
 /// @return      Output stream for further output.
@@ -138,7 +139,7 @@ std::ostream& operator<<(std::ostream& out, const Size2s& size);
 
 namespace std {
 
-/// @brief std::hash specialization for notf::_RealVector2.
+/// std::hash specialization for notf::_RealVector2.
 template<typename value_t>
 struct hash<notf::detail::Size2<value_t>> {
     size_t operator()(const notf::detail::Size2<value_t>& size2) const

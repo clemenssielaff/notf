@@ -46,10 +46,10 @@ using EnumMap = std::unordered_map<Key, T, detail::HashType<Key>>;
 ///
 constexpr size_t bit_index(size_t v) { return detail::_bit_index_recursion(0, (v ^ (v - 1)) >> 1); }
 
-/// @brief Convenience constexpr for _LAST members, that don't have a power-of-two value.
+/// Convenience constexpr for _LAST members, that don't have a power-of-two value.
 constexpr size_t bit_index_count(size_t v) { return bit_index(v - 1) + 1; }
 
-/// @brief Constexpr to use an enum class value as a numeric value.
+/// Constexpr to use an enum class value as a numeric value.
 /// From "Effective Modern C++ by Scott Mayers': Item #10.
 template<typename Enum>
 constexpr auto to_number(Enum enumerator) noexcept

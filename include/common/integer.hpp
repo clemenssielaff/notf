@@ -13,7 +13,7 @@ using uint      = unsigned int;
 using ulong     = unsigned long;
 using ulonglong = unsigned long long;
 
-/// @brief Counts the digits in a given integral number.
+/// Counts the digits in a given integral number.
 template<class Integer, ENABLE_IF_INT(Integer)>
 constexpr ushort count_digits(Integer digits)
 {

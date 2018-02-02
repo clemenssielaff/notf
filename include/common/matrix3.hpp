@@ -8,13 +8,13 @@ namespace detail {
 
 //====================================================================================================================//
 
-/// @brief Transforms the given input and returns a new value.
+/// Transforms the given input and returns a new value.
 template<typename MATRIX3, typename T>
 T matrix3_transform(const MATRIX3&, const T&);
 
 //====================================================================================================================//
 
-/// @brief A 2D transformation matrix with 3x3 components.
+/// A 2D transformation matrix with 3x3 components.
 ///
 /// [a, c, e,
 ///  b, d, f
@@ -24,27 +24,27 @@ T matrix3_transform(const MATRIX3&, const T&);
 template<typename REAL>
 struct Matrix3 : public detail::Arithmetic<Matrix3<REAL>, RealVector2<REAL>, 3> {
 
-    /// @brief Element type.
+    /// Element type.
     using element_t = REAL;
 
-    /// @brief Component type.
+    /// Component type.
     using component_t = RealVector2<element_t>;
 
-    /// @brief Arithmetic base type.
+    /// Arithmetic base type.
     using super_t = detail::Arithmetic<Matrix3<element_t>, component_t, 3>;
 
     // fields --------------------------------------------------------------------------------------------------------//
     using super_t::data;
 
     // methods -------------------------------------------------------------------------------------------------------//
-    /// @brief Default constructor.
+    /// Default constructor.
     Matrix3() = default;
 
-    /// @brief Value constructor defining the diagonal of the matrix.
+    /// Value constructor defining the diagonal of the matrix.
     /// @param a    Value to put into the diagonal.
     Matrix3(const element_t a) : super_t{component_t(a, 0), component_t(0, a), component_t(0, 0)} {}
 
-    /// @brief Column-wise constructor of the matrix.
+    /// Column-wise constructor of the matrix.
     /// @param a    First column.
     /// @param b    Second column.
     /// @param c    Third column.
@@ -52,23 +52,23 @@ struct Matrix3 : public detail::Arithmetic<Matrix3<REAL>, RealVector2<REAL>, 3> 
         : super_t{std::move(a), std::move(b), std::move(c)}
     {}
 
-    /// @brief Element-wise constructor.
+    /// Element-wise constructor.
     Matrix3(const element_t a, const element_t b, const element_t c, const element_t d, const element_t e,
              const element_t f)
         : super_t{component_t(a, b), component_t(c, d), component_t(e, f)}
     {}
 
-    /// @brief The identity matrix.
+    /// The identity matrix.
     static Matrix3 identity() { return Matrix3(1); }
 
-    /// @brief A translation matrix.
+    /// A translation matrix.
     /// @param translation  Translation vector.
     static Matrix3 translation(const component_t translation)
     {
         return Matrix3(component_t(1, 0), component_t(0, 1), std::move(translation));
     }
 
-    /// @brief A translation matrix.
+    /// A translation matrix.
     /// @param x    X component of the translation vector.
     /// @param y    Y component of the translation vector.
     static Matrix3 translation(const element_t x, const element_t y)
@@ -76,7 +76,7 @@ struct Matrix3 : public detail::Arithmetic<Matrix3<REAL>, RealVector2<REAL>, 3> 
         return Matrix3::translation(component_t(x, y));
     }
 
-    /// @brief A rotation matrix.
+    /// A rotation matrix.
     /// @param radians   Counter-clockwise rotation in radians.
     static Matrix3 rotation(const element_t radians)
     {
@@ -85,31 +85,31 @@ struct Matrix3 : public detail::Arithmetic<Matrix3<REAL>, RealVector2<REAL>, 3> 
         return Matrix3(cosine, sine, -sine, cosine, 0, 0);
     }
 
-    /// @brief A uniform scale matrix.
+    /// A uniform scale matrix.
     /// @param factor   Uniform scale factor.
     static Matrix3 scaling(const element_t factor) { return Matrix3(factor, 0, 0, factor, 0, 0); }
 
-    /// @brief A non-uniform scale matrix.
+    /// A non-uniform scale matrix.
     /// You can also achieve reflection by passing (-1, 1) for a reflection over the vertical axis, (1, -1) for over the
     /// horizontal axis or (-1, -1) for a point-reflection with respect to the origin.
     /// @param vec  Non-uniform scale vector.
     static Matrix3 scaling(const component_t& vec) { return Matrix3(vec[0], 0, 0, vec[1], 0, 0); }
 
-    /// @brief A non-uniform scale matrix.
+    /// A non-uniform scale matrix.
     /// @param x    X component of the scale vector.
     /// @param y    Y component of the scale vector.
     static Matrix3 scaling(const element_t x, const element_t y) { return Matrix3::scaling(component_t(x, y)); }
 
-    /// @brief A non-uniform skew matrix.
+    /// A non-uniform skew matrix.
     /// @param vec  Non-uniform skew vector.
     static Matrix3 skew(const component_t& vec) { return Matrix3(1, tan(vec[1]), tan(vec[0]), 1, 0, 0); }
 
-    /// @brief A non-uniform skew matrix.
+    /// A non-uniform skew matrix.
     /// @param x    X component of the skew vector.
     /// @param y    Y component of the skew vector.
     static Matrix3 skew(const element_t x, const element_t y) { return Matrix3::skew(component_t(x, y)); }
 
-    /// @brief The translation part of this Xform.
+    /// The translation part of this Xform.
     const component_t& translation() const { return data[2]; }
 
     /** Returns the rotational part of this transformation.
@@ -127,19 +127,19 @@ struct Matrix3 : public detail::Arithmetic<Matrix3<REAL>, RealVector2<REAL>, 3> 
         }
     }
 
-    /// @brief Checks whether the matrix is a pure rotation matrix.
+    /// Checks whether the matrix is a pure rotation matrix.
     bool is_rotation() const { return (1 - determinant()) < precision_high<element_t>(); }
 
-    /// @brief Scale factor along the x-axis.
+    /// Scale factor along the x-axis.
     element_t scale_x() const { return sqrt(data[0][0] * data[0][0] + data[0][1] * data[0][1]); }
 
-    /// @brief Scale factor along the y-axis.
+    /// Scale factor along the y-axis.
     element_t scale_y() const { return sqrt(data[1][0] * data[1][0] + data[1][1] * data[1][1]); }
 
-    /// @brief Calculates the determinant of the transformation matrix.
+    /// Calculates the determinant of the transformation matrix.
     element_t determinant() const { return (data[0][0] * data[1][1]) - (data[1][0] * data[0][1]); }
 
-    /// @brief Concatenation of two transformation matrices.
+    /// Concatenation of two transformation matrices.
     /// @param other    Transformation to concatenate.
     Matrix3 operator*(const Matrix3& other) const
     {
@@ -153,7 +153,7 @@ struct Matrix3 : public detail::Arithmetic<Matrix3<REAL>, RealVector2<REAL>, 3> 
         return result;
     }
 
-    /// @brief Concatenation of another transformation matrix to this one in-place.
+    /// Concatenation of another transformation matrix to this one in-place.
     /// @param other    Transformation to concatenate.
     Matrix3& operator*=(const Matrix3& other)
     {
@@ -161,19 +161,19 @@ struct Matrix3 : public detail::Arithmetic<Matrix3<REAL>, RealVector2<REAL>, 3> 
         return *this;
     }
 
-    /// @brief Concatenate this to another another transformation matrix.
+    /// Concatenate this to another another transformation matrix.
     /// @param other    Transformation to concatenate to.
     Matrix3 premult(const Matrix3& other) const { return other * *this; }
 
-    /// @brief Translates this transformation by a given delta vector.
+    /// Translates this transformation by a given delta vector.
     /// @param delta    Delta translation.
     Matrix3 translate(const component_t& delta) const { return Matrix3(data[0], data[1], data[2] + delta); }
 
-    /// @brief Rotates the transformation by a given angle in radians.
+    /// Rotates the transformation by a given angle in radians.
     /// @param radians  Rotation in radians.
     Matrix3 rotate(const element_t radians) const { return Matrix3::rotation(radians) * *this; }
 
-    /// @brief Returns the inverse of this matrix.
+    /// Returns the inverse of this matrix.
     Matrix3 inverse() const
     {
         const element_t det = determinant();
@@ -192,7 +192,7 @@ struct Matrix3 : public detail::Arithmetic<Matrix3<REAL>, RealVector2<REAL>, 3> 
         return result;
     }
 
-    /// @brief Returns the transformed copy of a given vector.
+    /// Returns the transformed copy of a given vector.
     /// @param vector   Vector to transform.
     component_t transform(const component_t& vector) const
     {
@@ -202,7 +202,7 @@ struct Matrix3 : public detail::Arithmetic<Matrix3<REAL>, RealVector2<REAL>, 3> 
         };
     }
 
-    /// @brief Return the transformed copy of the value.
+    /// Return the transformed copy of the value.
     /// @param value    Value to transform.
     template<typename T>
     T transform(const T& value) const
@@ -220,7 +220,7 @@ using Matrix3d = detail::Matrix3<double>;
 
 //====================================================================================================================//
 
-/// @brief Prints the contents of a matrix into a std::ostream.
+/// Prints the contents of a matrix into a std::ostream.
 /// @param out      Output stream, implicitly passed with the << operator.
 /// @param matrix   Matrix to print.
 /// @return Output stream for further output.
@@ -233,7 +233,7 @@ std::ostream& operator<<(std::ostream& out, const notf::detail::Matrix3<REAL>& m
 
 namespace std {
 
-/// @brief std::hash specialization for Matrix3.
+/// std::hash specialization for Matrix3.
 template<typename Real>
 struct hash<notf::detail::Matrix3<Real>> {
     size_t operator()(const notf::detail::Matrix3<Real>& matrix) const

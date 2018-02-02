@@ -3,14 +3,14 @@
 #include <limits>
 #include <type_traits>
 
-/// @brief Tests if T is one of the following types.
+/// Tests if T is one of the following types.
 template<typename T, typename...>
 struct is_one_of : std::false_type {};
 template<typename T, typename Head, typename... Rest>
 struct is_one_of<T, Head, Rest...>
     : std::integral_constant<bool, std::is_same<T, Head>::value || is_one_of<T, Rest...>::value> {};
 
-/// @brief Tests if all conditions are true.
+/// Tests if all conditions are true.
 template<typename T, typename...>
 struct all_true : std::true_type {};
 template<typename T, typename Head, typename... Rest>
@@ -33,8 +33,8 @@ struct all_true<T, Head, Rest...> : std::integral_constant<bool, Head::value && 
                             bool>::type                                                                                \
         = true
 
-#define ENABLE_IF_SAME_ANY(TYPE_A, ...) \
-    typename std::enable_if<is_same_any<typename std::decay<TYPE_A>::type, __VA_ARGS__>::value, bool>::type = true
+#define ENABLE_IF_ANY(TYPE_A, ...) \
+    typename std::enable_if<is_one_of<typename std::decay<TYPE_A>::type, __VA_ARGS__>::value, bool>::type = true
 
 #define ENABLE_IF_DIFFERENT(TYPE_A, TYPE_B)                                                                     \
     typename std::enable_if<                                                                                    \
@@ -47,15 +47,9 @@ struct all_true<T, Head, Rest...> : std::integral_constant<bool, Head::value && 
 #define ENABLE_IF_SUBCLASS(TYPE, PARENT) \
     typename std::enable_if<std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type = true
 
-#define DISABLE_IF_SUBCLASS(TYPE, PARENT) \
-    typename std::enable_if<!std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type = true
-
-#define ENABLE_IF_SUBCLASS_ANY(TYPE, ...) \
-    typename std::enable_if<is_base_of_any<typename std::decay<TYPE>::type, __VA_ARGS__>::value, bool>::type = true
-
 //====================================================================================================================//
 
-/// @brief The `always_false` struct can be used to create a templated struct that will always evaluate to `false` when
+/// The `always_false` struct can be used to create a templated struct that will always evaluate to `false` when
 /// used in a static_assert.
 ///
 /// Imagine the following scenario: You have a scene graph and a fairly generic operation `calc` on some object class,
@@ -90,7 +84,7 @@ struct all_true<T, Head, Rest...> : std::integral_constant<bool, Head::value && 
 template<typename T, T val>
 struct always_false : std::false_type {};
 
-/// @brief Like always_false, but taking a single type only.
+/// Like always_false, but taking a single type only.
 /// This way you can define error overloads that differ by type only:
 ///
 ///     static void convert(const Vector4d& in, std::array<float, 4>& out)
@@ -109,26 +103,26 @@ struct always_false_t : std::false_type {};
 
 //====================================================================================================================//
 
-/// @brief Convenience macro to disable the construction of automatic copy- and assign methods.
+/// Convenience macro to disable the construction of automatic copy- and assign methods.
 /// Implicitly disables move constructor/assignment methods as well, although you can define them yourself if you want.
 #define DISALLOW_COPY_AND_ASSIGN(Type) \
     Type(const Type&) = delete;        \
     void operator=(const Type&) = delete;
 
-/// @brief Forbids the allocation on the heap of a given type.
+/// Forbids the allocation on the heap of a given type.
 #define DISALLOW_HEAP_ALLOCATION(Type)      \
     void* operator new(size_t)    = delete; \
     void* operator new[](size_t)  = delete; \
     void operator delete(void*)   = delete; \
     void operator delete[](void*) = delete;
 
-/// @brief Convenience macro to define shared pointer types for a given type.
+/// Convenience macro to define shared pointer types for a given type.
 #define DEFINE_SHARED_POINTERS(Tag, Type)         \
     Tag Type;                                     \
     using Type##Ptr      = std::shared_ptr<Type>; \
     using Type##ConstPtr = std::shared_ptr<const Type>
 
-/// @brief Convenience macro to define unique pointer types for a given type.
+/// Convenience macro to define unique pointer types for a given type.
 #define DEFINE_UNIQUE_POINTERS(Tag, Type)         \
     Tag Type;                                     \
     using Type##Ptr      = std::unique_ptr<Type>; \
@@ -136,21 +130,23 @@ struct always_false_t : std::false_type {};
 
 //====================================================================================================================//
 
-/// @brief Trait containing the type that has a higher numeric limits.
+/// Trait containing the type that has a higher numeric limits.
 template<typename LEFT, typename RIGHT>
 struct higher_type {
     using type = typename std::conditional<std::numeric_limits<LEFT>::max() <= std::numeric_limits<RIGHT>::max(), LEFT,
                                            RIGHT>::type;
 };
 
-/// @brief Compile-time check whether two types are both signed / both unsigned.
+/// Compile-time check whether two types are both signed / both unsigned.
 template<class T, class U>
 struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T>::value == std::is_signed<U>::value> {
 };
 
 //====================================================================================================================//
 
-/// @brief Definitions for the various versions of C++.
+/// Definitions for the various versions of C++.
+/// Wherever possible, it is more precise to use feature testing macros described in:
+///     http://en.cppreference.com/w/User:D41D8CD98F/feature_testing_macros
 
 #ifndef __cplusplus
 #error A C++ compiler is required!
@@ -175,26 +171,64 @@ struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T
 
 namespace std {
 
-/// @brief Void type.
-#ifndef NOTF_CPP17
-template<class...>
-using void_t = void;
+/// Void type.
+#ifndef __cpp_lib_void_t
+template<typename... Ts>
+struct make_void {
+    typedef void type;
+};
+template<typename... Ts>
+using void_t = typename make_void<Ts...>::type;
 #endif
 
 } // namespace std
 
 //====================================================================================================================//
 
-/// @brief Takes two macros and concatenates them without whitespace in between
+/// Takes two macros and concatenates them without whitespace in between.
 #define MACRO_CONCAT_(A, B) A##B
 #define MACRO_CONCAT(A, B) MACRO_CONCAT_(A, B)
 
 //====================================================================================================================//
 
-/// @brief Overload helper to use with std::variant in C++17
+/// Overload helper to use with std::variant in C++17.
 /// For details see:
 ///     http://en.cppreference.com/w/cpp/utility/variant/visit
 #ifdef NOTF_CPP17
-template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+template<class... Ts>
+struct overloaded : Ts... {
+    using Ts::operator()...;
+};
+template<class... Ts>
+overloaded(Ts...)->overloaded<Ts...>;
 #endif
+
+//====================================================================================================================//
+
+/// Calling a const getter into a non-const getter.
+/// Use like:
+///     const Type& get() const { ... }
+///     Type& get() { NONCONST_GETTER(get) }
+#define NONCONST_GETTER(METHOD, ...)                                                                    \
+    {                                                                                                   \
+        using const_thisT = typename std::add_const<std::decay<decltype(*this)>::type>::type*;          \
+        using returnT     = typename std::remove_const<                                                 \
+            std::decay<decltype(const_cast<const_thisT>(this)->METHOD(__VA_ARGS__))>::type>::type&; \
+        return const_cast<returnT>(const_cast<const_thisT>(this)->METHOD(__VA_ARGS__));                 \
+    }
+
+//====================================================================================================================//
+
+#ifdef __clang__
+#define NOTF_CLANG
+#else
+#ifdef _MSC_VER
+#define NOTF_MSVC
+#else
+#ifdef __GNUC__
+#define NOTF_GCC
+#endif
+#endif
+#endif
+
+//====================================================================================================================//

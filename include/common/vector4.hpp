@@ -8,24 +8,24 @@ namespace detail {
 
 //====================================================================================================================//
 
-/// @brief 4-dimensional mathematical vector containing real numbers.
+/// 4-dimensional mathematical vector containing real numbers.
 template<typename REAL>
 struct RealVector4 : public detail::Arithmetic<RealVector4<REAL>, REAL, 4> {
 
-    /// @brief Element type.
+    /// Element type.
     using element_t = REAL;
 
-    /// @brief Arithmetic base type.
+    /// Arithmetic base type.
     using super_t = detail::Arithmetic<RealVector4<REAL>, REAL, 4>;
 
     // fields --------------------------------------------------------------------------------------------------------//
     using super_t::data;
 
     // methods -------------------------------------------------------------------------------------------------------//
-    /// @brief Default constructor.
+    /// Default constructor.
     RealVector4() = default;
 
-    /// @brief Element-wise constructor.
+    /// Element-wise constructor.
     /// @param x    First component.
     /// @param y    Second component (default is 0).
     /// @param z    Third component (default is 0).
@@ -36,40 +36,40 @@ struct RealVector4 : public detail::Arithmetic<RealVector4<REAL>, REAL, 4> {
                   static_cast<element_t>(w)}
     {}
 
-    /// @brief Unit Vector2 along the X-axis.
+    /// Unit Vector2 along the X-axis.
     static RealVector4 x_axis() { return RealVector4(1, 0, 0); }
 
-    /// @brief Unit Vector2 along the Y-axis.
+    /// Unit Vector2 along the Y-axis.
     static RealVector4 y_axis() { return RealVector4(0, 1, 0); }
 
-    /// @brief Unit Vector2 along the Z-axis.
+    /// Unit Vector2 along the Z-axis.
     static RealVector4 z_axis() { return RealVector4(0, 0, 1); }
 
-    /// @brief Read-write access to the first element in the vector.
+    /// Read-write access to the first element in the vector.
     element_t& x() { return data[0]; }
 
-    /// @brief Read-write access to the second element in the vector.
+    /// Read-write access to the second element in the vector.
     element_t& y() { return data[1]; }
 
-    /// @brief Read-write access to the third element in the vector.
+    /// Read-write access to the third element in the vector.
     element_t& z() { return data[2]; }
 
-    /// @brief Read-write access to the fourth element in the vector.
+    /// Read-write access to the fourth element in the vector.
     element_t& w() { return data[3]; }
 
-    /// @brief Read-only access to the first element in the vector.
+    /// Read-only access to the first element in the vector.
     const element_t& x() const { return data[0]; }
 
-    /// @brief Read-only access to the second element in the vector.
+    /// Read-only access to the second element in the vector.
     const element_t& y() const { return data[1]; }
 
-    /// @brief Read-only access to the third element in the vector.
+    /// Read-only access to the third element in the vector.
     const element_t& z() const { return data[2]; }
 
-    /// @brief Read-only access to the fourth element in the vector.
+    /// Read-only access to the fourth element in the vector.
     const element_t& w() const { return data[3]; }
 
-    /// @brief Szizzles.
+    /// Szizzles.
     RealVector4 xyzw() const { return {data[0], data[1], data[2], data[3]}; }
     RealVector4 xywz() const { return {data[0], data[1], data[3], data[2]}; }
     RealVector4 xzyw() const { return {data[0], data[2], data[1], data[3]}; }
@@ -106,7 +106,7 @@ using Vector4h = detail::RealVector4<half>;
 
 //====================================================================================================================//
 
-/// @brief Prints the contents of a vector into a std::ostream.
+/// Prints the contents of a vector into a std::ostream.
 /// @param os   Output stream, implicitly passed with the << operator.
 /// @param vec  Vector to print.
 /// @return Output stream for further output.
@@ -120,7 +120,7 @@ std::ostream& operator<<(std::ostream& out, const Vector4h& vec);
 
 namespace std {
 
-/// @brief std::hash implementation for RealVector4.
+/// std::hash implementation for RealVector4.
 template<typename Real>
 struct hash<notf::detail::RealVector4<Real>> {
     size_t operator()(const notf::detail::RealVector4<Real>& vector) const

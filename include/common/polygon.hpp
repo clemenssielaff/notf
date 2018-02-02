@@ -13,35 +13,35 @@ namespace detail {
 
 //====================================================================================================================//
 
-/// @brief Baseclass for simple Polygons.
+/// Baseclass for simple Polygons.
 /// "Simple" means that the Polygon has no (non-consecutive) vertices that share the same position, no intersecting
 /// edges and must contain at least 3 unique points. Polygons are always closed, meaning the last point is always
 /// implicitly connected to the first one.
 template<typename REAL>
 struct Polygon {
 
-    /// @brief Vector type.
+    /// Vector type.
     using vector_t = RealVector2<REAL>;
 
-    /// @brief Element type.
+    /// Element type.
     using element_t = typename vector_t::element_t;
 
-    /// @brief Orientation type.
+    /// Orientation type.
     using Orientation = typename Triangle<element_t>::Orientation;
 
     // fields --------------------------------------------------------------------------------------------------------//
-    /// @brief Vertices of this Polygon.
+    /// Vertices of this Polygon.
     const std::vector<vector_t> vertices;
 
     // methods -------------------------------------------------------------------------------------------------------//
-    /// @brief Value constructor.
+    /// Value constructor.
     /// @param vertices         Vertices from which to construct the Polygon.
     /// @throws runtime_error   If the Polygon does not contain at least 3 unique vertices.
     /// @throws runtime_error   If two non-consecutive vertices share the same position.
     /// @throws runtime_error   If two edges of the Polygon intersect.
     Polygon(std::vector<vector_t> vertices) : vertices(_prepare_vertices(std::move(vertices))) {}
 
-    /// @brief Calculates the orientation of the Polygon.
+    /// Calculates the orientation of the Polygon.
     Orientation orientation() const
     {
         // find three consecutive vertices that form a triangle that doesn't contain any other vertices
@@ -71,7 +71,7 @@ struct Polygon {
         }
     }
 
-    /// @brief The center point of the Polygon.
+    /// The center point of the Polygon.
     vector_t center() const
     {
         vector_t result = vector_t::zero();
@@ -82,7 +82,7 @@ struct Polygon {
         return result;
     }
 
-    /// @brief Tests if the point is fully contained in the Polygon.
+    /// Tests if the point is fully contained in the Polygon.
     /// If the point is on the edge of the Polygon, it is not contained within it.
     /// @param point    Point to check.
     bool contains(const vector_t& point) const
@@ -128,7 +128,7 @@ struct Polygon {
         return (intersections % 2) == 0;
     }
 
-    /// @brief Checks if this Polygon is convex.
+    /// Checks if this Polygon is convex.
     bool is_convex() const
     {
         // find the first non-zero triangle
@@ -149,11 +149,11 @@ struct Polygon {
         return true;
     }
 
-    /// @brief Checks if this Polygon is concave.
+    /// Checks if this Polygon is concave.
     bool is_concave() const { return !is_convex(); }
 
 private:
-    /// @brief Enforces the construction of a simple Polygon with unique vertices.
+    /// Enforces the construction of a simple Polygon with unique vertices.
     /// @param vertices Vertices from which to construct the Polygon.
     /// @throws runtime_error   If the Polygon does not contain at least 3 unique vertices.
     /// @throws runtime_error   If two non-consecutive vertices share the same position.
@@ -220,7 +220,7 @@ using Polygonf = detail::Polygon<float>;
 
 //====================================================================================================================//
 
-/// @brief Prints the contents of a Triangle into a std::ostream.
+/// Prints the contents of a Triangle into a std::ostream.
 /// @param os       Output stream, implicitly passed with the << operator.
 /// @param polygon  Polygon to print.
 /// @return Output stream for further output.
@@ -232,7 +232,7 @@ std::ostream& operator<<(std::ostream& out, const Polygonf& polygon);
 
 namespace std {
 
-/// @brief std::hash specialization for Triangle.
+/// std::hash specialization for Triangle.
 template<typename REAL>
 struct hash<notf::detail::Polygon<REAL>> {
     size_t operator()(const notf::detail::Polygon<REAL>& polygon) const

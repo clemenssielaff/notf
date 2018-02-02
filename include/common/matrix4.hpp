@@ -10,13 +10,13 @@ namespace detail {
 
 //====================================================================================================================//
 
-/// @brief Transforms the given input and returns a new value.
+/// Transforms the given input and returns a new value.
 template<typename MATRIX4, typename INPUT>
 INPUT transform3(const MATRIX4&, const INPUT&);
 
 //====================================================================================================================//
 
-/// @brief A 3D Transformation matrix with 4x4 components.
+/// A 3D Transformation matrix with 4x4 components.
 ///
 /// [a, e, i, m
 ///  b, f, j, n
@@ -29,29 +29,29 @@ INPUT transform3(const MATRIX4&, const INPUT&);
 template<typename REAL>
 struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> {
 
-    /// @brief Element type.
+    /// Element type.
     using element_t = REAL;
 
-    /// @brief Component type.
+    /// Component type.
     using component_t = RealVector4<element_t>;
 
-    /// @brief Arithmetic base type.
+    /// Arithmetic base type.
     using super_t = detail::Arithmetic<Matrix4<element_t>, component_t, 4>;
 
     // fields --------------------------------------------------------------------------------------------------------//
     using super_t::data;
 
     // methods -------------------------------------------------------------------------------------------------------//
-    /// @brief Default constructor.
+    /// Default constructor.
     Matrix4() = default;
 
-    /// @brief Value constructor defining the diagonal of the matrix.
+    /// Value constructor defining the diagonal of the matrix.
     /// @param a    Value to put into the diagonal.
     Matrix4(const element_t a)
         : super_t{component_t(a, 0, 0, 0), component_t(0, a, 0, 0), component_t(0, 0, a, 0), component_t(0, 0, 0, a)}
     {}
 
-    /// @brief Column-wise constructor of the matrix.
+    /// Column-wise constructor of the matrix.
     /// @param a    First column.
     /// @param b    Second column.
     /// @param c    Third column.
@@ -60,7 +60,7 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         : super_t{std::move(a), std::move(b), std::move(c), std::move(d)}
     {}
 
-    /// @brief Element-wise constructor.
+    /// Element-wise constructor.
     Matrix4(const element_t a, const element_t b, const element_t c, const element_t d, const element_t e,
              const element_t f, const element_t g, const element_t h, const element_t i, const element_t j,
              const element_t k, const element_t l, const element_t m, const element_t n, const element_t o,
@@ -68,10 +68,10 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         : super_t{component_t(a, b, c, d), component_t(e, f, g, h), component_t(i, j, k, l), component_t(m, n, o, p)}
     {}
 
-    /// @brief The identity matrix.
+    /// The identity matrix.
     static Matrix4 identity() { return Matrix4(1); }
 
-    /// @brief An element-wise translation matrix.
+    /// An element-wise translation matrix.
     /// @param x    X transformation.
     /// @param y    Y transformation.
     /// @param z    Z transformation (default to 0).
@@ -80,15 +80,15 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         return Matrix4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1);
     }
 
-    /// @brief A 2d translation matrix.
+    /// A 2d translation matrix.
     /// @param translation  2D translation vector.
     static Matrix4 translation(const RealVector2<element_t>& t) { return Matrix4::translation(t.x(), t.y()); }
 
-    /// @brief A 3d translation matrix.
+    /// A 3d translation matrix.
     /// @param translation  3D translation vector.
     static Matrix4 translation(const RealVector3<element_t>& t) { return Matrix4::translation(t.x(), t.y(), t.z()); }
 
-    /// @brief A rotation matrix.
+    /// A rotation matrix.
     /// @param axis     Rotation axis.
     /// @param radians  Rotation in radians.
     static Matrix4 rotation(const RealVector3<element_t> axis, const element_t radians)
@@ -96,11 +96,11 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         return identity().rotate(std::move(axis), radians);
     }
 
-    /// @brief A uniform scale matrix.
+    /// A uniform scale matrix.
     /// @param factor   Uniform scale factor.
     static Matrix4 scaling(const element_t s) { return Matrix4(s, 0, 0, 0, 0, s, 0, 0, 0, 0, s, 0, 0, 0, 0, 1); }
 
-    /// @brief A non-uniform scale matrix.
+    /// A non-uniform scale matrix.
     /// @param x    X component of the scale vector.
     /// @param y    Y component of the scale vector.
     /// @param z    Z component of the scale vector.
@@ -109,7 +109,7 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         return Matrix4(x, 0, 0, 0, 0, y, 0, 0, 0, 0, z, 0, 0, 0, 0, 1);
     }
 
-    /// @brief Creates a perspective transformation.
+    /// Creates a perspective transformation.
     /// @param fov       Horizontal field of view in radians.
     /// @param aspect    Aspect ratio (width / height)
     /// @param znear     Distance to the near plane in z direction.
@@ -136,7 +136,7 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         return result;
     }
 
-    /// @brief Creates an orthographic transformation matrix.
+    /// Creates an orthographic transformation matrix.
     /// @param left     Vertical distance from screen zero to the left edge of the projection.
     /// @param right    Vertical distance from screen zero to the right edge of the projection.
     /// @param bottom   Vertical distance from screen zero to the bottom edge of the projection.
@@ -170,10 +170,10 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         return result;
     }
 
-    /// @brief The translation part of this matrix.
+    /// The translation part of this matrix.
     const component_t& translation() const { return data[3]; }
 
-    /// @brief Concatenation of two transformation matrices.
+    /// Concatenation of two transformation matrices.
     /// @param other    Transformation to concatenate.
     Matrix4 operator*(const Matrix4& other) const
     {
@@ -185,7 +185,7 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         return result;
     }
 
-    /// @brief Concatenation of another transformation matrix to this one in-place.
+    /// Concatenation of another transformation matrix to this one in-place.
     /// @param other    Transformation to concatenate.
     Matrix4& operator*=(const Matrix4& other)
     {
@@ -193,7 +193,7 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         return *this;
     }
 
-    /// @brief Concatenate this to another another transformation matrix.
+    /// Concatenate this to another another transformation matrix.
     /// @param other    Transformation to concatenate to.
     Matrix4& premult(const Matrix4& other)
     {
@@ -201,7 +201,7 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         return *this;
     }
 
-    /// @brief Translates this transformation by a given delta vector.
+    /// Translates this transformation by a given delta vector.
     /// @param delta    Delta translation.
     Matrix4 translate(const component_t& delta) const
     {
@@ -213,7 +213,7 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         return result;
     }
 
-    /// @brief Rotates the transformation by a given angle in radians over a given axis.
+    /// Rotates the transformation by a given angle in radians over a given axis.
     /// @param axis     Rotation axis.
     /// @param radians  Rotation in radians.
     Matrix4 rotate(RealVector3<element_t> axis, const element_t radian) const
@@ -246,8 +246,8 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         return result;
     }
 
-    /// @brief Applies a non-uniform scaling to this matrix.
-    /// @brief scaling  Scaling vector.
+    /// Applies a non-uniform scaling to this matrix.
+    /// scaling  Scaling vector.
     Matrix4 scale(const component_t& scaling) const
     {
         Matrix4 result = *this;
@@ -257,8 +257,8 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         return result;
     }
 
-    /// @brief Applies an uniform scaling to this matrix.
-    /// @brief scaling  Scale factor.
+    /// Applies an uniform scaling to this matrix.
+    /// scaling  Scale factor.
     Matrix4 scale(const element_t factor) const
     {
         Matrix4 result = *this;
@@ -268,7 +268,7 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         return result;
     }
 
-    /// @brief Returns the inverse of this matrix.
+    /// Returns the inverse of this matrix.
     Matrix4 get_inverse() const
     {
         element_t coef00 = data[2][2] * data[3][3] - data[3][2] * data[2][3];
@@ -323,7 +323,7 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         return inverse / dot1;
     }
 
-    /// @brief Returns the transformed copy of a given vector.
+    /// Returns the transformed copy of a given vector.
     /// @param vector   Vector to transform.
     RealVector4<element_t> transform(const RealVector4<element_t>& vector) const
     {
@@ -335,7 +335,7 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         return (mul0 + mul1) + (mul2 + mul3);
     }
 
-    /// @brief Returns the transformed copy of a given vector.
+    /// Returns the transformed copy of a given vector.
     /// @param vector   Vector to transform.
     RealVector2<element_t> transform(const RealVector2<element_t>& vector) const
     {
@@ -345,7 +345,7 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
         return RealVector2<element_t>(result.x(), result.y());
     }
 
-    /// @brief Return the transformed copy of the value.
+    /// Return the transformed copy of the value.
     /// @param value    Value to transform.
     template<typename T>
     T transform(const T& value) const
@@ -363,7 +363,7 @@ using Matrix4d = detail::Matrix4<double>;
 
 //====================================================================================================================//
 
-/// @brief Prints the contents of a matrix into a std::ostream.
+/// Prints the contents of a matrix into a std::ostream.
 /// @param out      Output stream, implicitly passed with the << operator.
 /// @param matrix   Matrix to print.
 /// @return Output stream for further output.
@@ -376,7 +376,7 @@ std::ostream& operator<<(std::ostream& out, const notf::detail::Matrix4<REAL>& m
 
 namespace std {
 
-/// @brief std::hash specialization for Matrix4.
+/// std::hash specialization for Matrix4.
 template<typename Real>
 struct hash<notf::detail::Matrix4<Real>> {
     size_t operator()(const notf::detail::Matrix4<Real>& matrix) const

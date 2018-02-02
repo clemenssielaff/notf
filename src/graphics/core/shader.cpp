@@ -21,7 +21,7 @@ namespace { // anonymous
 
 using namespace notf;
 
-/// @brief Compiles a single shader stage from a given source.
+/// Compiles a single shader stage from a given source.
 /// @param program_name Name of the Shader program (for error messages).
 /// @param stage        Shader stage produced by the source.
 /// @param source       Source to compile.
@@ -100,7 +100,7 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
     return shader;
 }
 
-/// @brief Get the size of the longest uniform name in a program.
+/// Get the size of the longest uniform name in a program.
 size_t longest_uniform_length(const GLuint program)
 {
     GLint result = 0;
@@ -108,7 +108,7 @@ size_t longest_uniform_length(const GLuint program)
     return narrow_cast<size_t>(result);
 }
 
-/// @brief Get the size of the longest attribute name in a program.
+/// Get the size of the longest attribute name in a program.
 size_t longest_attribute_length(const GLuint program)
 {
     GLint result = 0;
@@ -116,7 +116,7 @@ size_t longest_attribute_length(const GLuint program)
     return narrow_cast<size_t>(result);
 }
 
-/// @brief Finds the index in a given GLSL source string where custom `#defines` can be injected.
+/// Finds the index in a given GLSL source string where custom `#defines` can be injected.
 size_t find_injection_index(const std::string& source)
 {
     static const std::regex version_regex(R"==(\n?\s*#version\s*\d{3}\s*es[ \t]*\n)==");
@@ -150,7 +150,7 @@ size_t find_injection_index(const std::string& source)
     return injection_index;
 }
 
-/// @brief Builds a string out of Shader Definitions.
+/// Builds a string out of Shader Definitions.
 std::string build_defines(const Shader::Defines& defines)
 {
     std::stringstream ss;
@@ -255,7 +255,7 @@ const std::string& glsl_header(const GraphicsContextPtr& context)
     return header;
 }
 
-/// @brief Injects an arbitrary string into a given GLSL source code.
+/// Injects an arbitrary string into a given GLSL source code.
 /// @return Modified source.
 /// @throws std::runtime_error if the injection point could not be found.
 std::string inject_header(const std::string& source, const std::string& injection)
@@ -502,7 +502,7 @@ void Shader::set_uniform(const std::string& name, const float& value)
     else {
         throw_runtime_error(
             string_format("Uniform \"%s\" in shader \"%s\" of type \"%s\" is not compatible with value type \"float\"",
-                             name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
+                          name.c_str(), m_name.c_str(), gl_type_name(uniform.type).c_str()));
     }
 }
 

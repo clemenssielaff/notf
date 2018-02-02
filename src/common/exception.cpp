@@ -15,4 +15,6 @@ runtime_error::runtime_error(const std::string& message, std::string file, std::
 
 runtime_error::~runtime_error() {}
 
+bad_deference_error::~bad_deference_error() {}
+
 } // namespace notf

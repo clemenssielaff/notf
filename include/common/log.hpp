@@ -1,7 +1,7 @@
 #pragma once
 
 /*! @file log.hpp
- * @brief NoTF logging mechanism.
+ * NoTF logging mechanism.
  *
  * A very powerful, header-only logging library printing out log messages to std::out.
  *
@@ -324,6 +324,22 @@ struct NullBuffer {
 #define NOTF_LOG_LEVEL NOTF_LOG_LEVEL_ALL
 #endif
 
+#ifdef NOTF_LOG_PRETTY_FUNCTION
+#ifdef NOTF_CLANG
+#define NOTF_FUNCTION __PRETTY_FUNCTION__
+#else
+#ifdef NOTF_MSVC
+#define NOTF_FUNCTION __FUNCTION__
+#else
+#ifdef NOTF_GCC
+#define NOTF_FUNCTION __PRETTY_FUNCTION__
+#endif
+#endif
+#endif
+#else
+#define NOTF_FUNCTION __func__
+#endif
+
 /// Define log_* macros.
 ///
 /// Use these macros like this:
@@ -335,7 +351,7 @@ struct NullBuffer {
 #ifndef log_format
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_TRACE
 #define log_format \
-    notf::LogMessageFactory(notf::LogMessage::LEVEL::FORMAT, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::FORMAT, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
 #else
 #define log_format notf::detail::NullBuffer()
 #endif
@@ -346,7 +362,7 @@ struct NullBuffer {
 #ifndef log_trace
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_TRACE
 #define log_trace \
-    notf::LogMessageFactory(notf::LogMessage::LEVEL::TRACE, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::TRACE, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
 #else
 #define log_trace notf::detail::NullBuffer()
 #endif
@@ -357,7 +373,7 @@ struct NullBuffer {
 #ifndef log_info
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_INFO
 #define log_info \
-    notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
 #else
 #define log_info notf::detail::NullBuffer()
 #endif
@@ -368,7 +384,7 @@ struct NullBuffer {
 #ifndef log_warning
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_WARNING
 #define log_warning \
-    notf::LogMessageFactory(notf::LogMessage::LEVEL::WARNING, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::WARNING, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
 #else
 #define log_warning notf::detail::NullBuffer()
 #endif
@@ -379,7 +395,7 @@ struct NullBuffer {
 #ifndef log_critical
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_CRITICAL
 #define log_critical \
-    notf::LogMessageFactory(notf::LogMessage::LEVEL::CRITICAL, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::CRITICAL, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
 #else
 #define log_critical notf::detail::NullBuffer()
 #endif
@@ -390,7 +406,7 @@ struct NullBuffer {
 #ifndef log_fatal
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_FATAL
 #define log_fatal \
-    notf::LogMessageFactory(notf::LogMessage::LEVEL::FATAL, __LINE__, notf::basename(__FILE__), __FUNCTION__).input
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::FATAL, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
 #else
 #define log_fatal notf::detail::NullBuffer()
 #endif

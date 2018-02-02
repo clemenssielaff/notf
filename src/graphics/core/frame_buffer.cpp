@@ -16,7 +16,7 @@
 namespace { //
 using namespace notf;
 
-/// @brief Human-readable name of a RenderBuffer type.
+/// Human-readable name of a RenderBuffer type.
 const char* type_to_str(const RenderBuffer::Type type)
 {
     switch (type) {
@@ -33,7 +33,7 @@ const char* type_to_str(const RenderBuffer::Type type)
     }
 }
 
-/// @brief Humand-readable error string for status returned by glCheckFramebufferStatus
+/// Humand-readable error string for status returned by glCheckFramebufferStatus.
 const char* status_to_str(const GLenum status)
 {
     switch (status) {

@@ -16,7 +16,7 @@ namespace notf {
 
 //====================================================================================================================//
 
-/// @brief Manages the loading and setup of an OpenGL texture.
+/// Manages the loading and setup of an OpenGL texture.
 ///
 /// Texture and GraphicsContext
 /// ===========================
@@ -33,14 +33,14 @@ class Texture : public std::enable_shared_from_this<Texture> {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    /// @brief Texture format.
+    /// Texture format.
     enum class Format : unsigned char {
         GRAYSCALE = 1, ///< one channel per pixel (grayscale)
         RGB       = 3, ///< 3 channels per pixel (color)
         RGBA      = 4, ///< 4 channels per pixel (color + alpha)
     };
 
-    /// @brief Filter used when sampling the texture and any of its mipmaps.
+    /// Filter used when sampling the texture and any of its mipmaps.
     enum class MinFilter : unsigned char {
         NEAREST,                ///< Nearest (in Manhattan distance) value to the center of the pixel
         LINEAR,                 ///< Weighted average of the four texels closest to the center of the pixel
@@ -50,20 +50,20 @@ public:
         LINEAR_MIPMAP_LINEAR,   ///< Weighted blend of the linearly interpolated texels of the two closest mipmaps
     };
 
-    /// @brief Filter used when only sampling the highest texture level.
+    /// Filter used when only sampling the highest texture level.
     enum class MagFilter : unsigned char {
         NEAREST, ///< Nearest (in Manhattan distance) value to the center of the pixel
         LINEAR,  ///< Weighted average of the four texels closest to the center of the pixel
     };
 
-    /// @brief How a coordinate (c) outside the texture size (n) in a given direcion is handled.
+    /// How a coordinate (c) outside the texture size (n) in a given direcion is handled.
     enum class Wrap : unsigned char {
         REPEAT,          ///< Only uses the fractional part of c, creating a repeating pattern (default)
         CLAMP_TO_EDGE,   ///< Clamps c to [1/2n,  1 - 1/2n]
         MIRRORED_REPEAT, ///< Like REPEAT when the integer part of c is even, 1 - frac(c) when c is odd
     };
 
-    /// @brief Codec used to store the texture in OpenGL.
+    /// Codec used to store the texture in OpenGL.
     enum class Codec : unsigned char {
         RAW,  ///< All image formats that are decoded into raw pixels before upload (png, jpg, almost all of them...)
         ASTC, ///< ASTC compression
@@ -81,48 +81,48 @@ public:
         USHORT_5_6_5,
     };
 
-    /// @brief Arguments used to initialize a Texture.
+    /// Arguments used to initialize a Texture.
     struct Args {
-        /// @brief Filter used when sampling the texture and any of its mipmaps.
+        /// Filter used when sampling the texture and any of its mipmaps.
         MinFilter min_filter = MinFilter::LINEAR_MIPMAP_LINEAR;
 
-        /// @brief Filter used when only sampling the highest texture level.
+        /// Filter used when only sampling the highest texture level.
         MagFilter mag_filter = MagFilter::LINEAR;
 
-        /// @brief Horizontal texture wrap.
+        /// Horizontal texture wrap.
         Wrap wrap_horizontal = Wrap::REPEAT;
 
-        /// @brief Vertical texture wrap.
+        /// Vertical texture wrap.
         Wrap wrap_vertical = Wrap::REPEAT;
 
-        /// @brief Automatically generate mipmaps for textures load from a file.
+        /// Automatically generate mipmaps for textures load from a file.
         bool generate_mipmaps = true;
 
-        /// @brief Immutable textures provide faster lookup but cannot change their format or size (but content).
+        /// Immutable textures provide faster lookup but cannot change their format or size (but content).
         bool make_immutable = true;
 
-        /// @brief Format of the created texture, is ignored when loading a texture from file.
+        /// Format of the created texture, is ignored when loading a texture from file.
         Format format = Format::RGB;
 
-        /// @brief Type of the data passed into the texture.
+        /// Type of the data passed into the texture.
         /// Also used to define the type of data written into a texture attached to a FrameBuffer.
         DataType data_type = DataType::UBYTE;
 
-        /// @brief Codec used to store the texture in OpenGL.
+        /// Codec used to store the texture in OpenGL.
         Codec codec = Codec::RAW;
 
-        /// @brief Use a linear (RGB) or non-linear (SRGB) color-space.
+        /// Use a linear (RGB) or non-linear (SRGB) color-space.
         /// Usually textures are stored non-linearly, while render targets use a linear color-space.
         bool is_linear = true;
 
-        /// @brief Anisotropy factor - is only used if the anisotropic filtering extension is supported.
+        /// Anisotropy factor - is only used if the anisotropic filtering extension is supported.
         /// A value <= 1 means no anisotropic filtering.
         float anisotropy = 1.0f;
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
-    /// @brief Factory.
+    /// Factory.
     /// @param context  Render Context in which the Texture lives.
     /// @param id       OpenGL texture ID.
     /// @param target   How the texture is going to be used by OpenGL.
@@ -133,7 +133,7 @@ private:
     static TexturePtr _create(GraphicsContext& context, const GLuint id, const GLenum target, std::string name,
                               Size2i size, const Format format);
 
-    /// @brief Value Constructor.
+    /// Value Constructor.
     /// @param context  Render Context in which the Texture lives.
     /// @param id       OpenGL texture ID.
     /// @param target   How the texture is going to be used by OpenGL.
@@ -145,7 +145,7 @@ private:
             const Format format);
 
 public:
-    /// @brief Creates an valid but transparent texture in memory.
+    /// Creates an valid but transparent texture in memory.
     /// @param context  Render Context in which the Texture lives.
     /// @param name     Context-unique name of the Texture.
     /// @param size     Size of the texture in pixels.
@@ -153,7 +153,7 @@ public:
     static TexturePtr
     create_empty(GraphicsContext& context, std::string name, Size2i size, const Args& args = s_default_args);
 
-    /// @brief Loads a texture from a given file.
+    /// Loads a texture from a given file.
     /// @param context      Render Context in which the texture lives.
     /// @param file_path    Path to a texture file.
     /// @param name         Context-unique name of the Texture.
@@ -164,69 +164,69 @@ public:
 
     DISALLOW_COPY_AND_ASSIGN(Texture)
 
-    /// @brief Destructor.
+    /// Destructor.
     ~Texture();
 
-    /// @brief The OpenGL ID of this Texture.
+    /// The OpenGL ID of this Texture.
     GLuint id() const { return m_id; }
 
-    /// @brief Checks if the Texture is still valid.
+    /// Checks if the Texture is still valid.
     /// A Texture should always be valid - the only way to get an invalid one is to remove the GraphicsContext while
     /// still holding on to shared pointers of a Texture that lived in the removed GraphicsContext.
     bool is_valid() const { return m_id != 0; }
 
-    /// @brief Texture target, e.g. GL_TEXTURE_2D for standard textures.
+    /// Texture target, e.g. GL_TEXTURE_2D for standard textures.
     GLenum target() const { return m_target; }
 
-    /// @brief The name of this Texture.
+    /// The name of this Texture.
     const std::string& name() const { return m_name; }
 
-    /// @brief The size of this texture.
+    /// The size of this texture.
     const Size2i& size() const { return m_size; }
 
-    /// @brief The format of this Texture.
+    /// The format of this Texture.
     const Format& format() const { return m_format; }
 
-    /// @brief Sets a new filter mode when the texture pixels are smaller than scren pixels.
+    /// Sets a new filter mode when the texture pixels are smaller than scren pixels.
     void set_min_filter(const MinFilter filter);
 
-    /// @brief Sets a new filter mode when the texture pixels are larger than scren pixels.
+    /// Sets a new filter mode when the texture pixels are larger than scren pixels.
     void set_mag_filter(const MagFilter filter);
 
-    /// @brief Sets a new horizonal wrap mode.
+    /// Sets a new horizonal wrap mode.
     void set_wrap_x(const Wrap wrap);
 
-    /// @brief Sets a new vertical wrap mode.
+    /// Sets a new vertical wrap mode.
     void set_wrap_y(const Wrap wrap);
 
-    /// @brief Fills the Texture with a given color.
+    /// Fills the Texture with a given color.
     void fill(const Color& color);
 
 private:
-    /// @brief Deallocates the Texture data and invalidates the Texture.
+    /// Deallocates the Texture data and invalidates the Texture.
     void _deallocate();
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// @brief OpenGL ID of this Shader.
+    /// OpenGL ID of this Shader.
     GLuint m_id;
 
-    /// @brief Render Context in which the Texture lives.
+    /// Render Context in which the Texture lives.
     GraphicsContext& m_graphics_context;
 
-    /// @brief Texture target, e.g. GL_TEXTURE_2D for standard textures.
+    /// Texture target, e.g. GL_TEXTURE_2D for standard textures.
     GLenum m_target;
 
-    /// @brief The name of this Texture.
+    /// The name of this Texture.
     const std::string m_name;
 
-    /// @brief The size of this texture.
+    /// The size of this texture.
     const Size2i m_size;
 
-    /// @brief Texture format.
+    /// Texture format.
     const Format m_format;
 
-    /// @brief Default arguments.
+    /// Default arguments.
     static const Args s_default_args;
 };
 

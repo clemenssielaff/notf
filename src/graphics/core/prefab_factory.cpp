@@ -36,7 +36,7 @@ PrefabFactoryImpl::Product PrefabFactoryImpl::_produce(const Box& def)
     Vector3d up_axis = def.up_axis;
     up_axis.normalize();
 
-    Vector3d depth_axis = make_const(orient_axis).cross(up_axis);
+    Vector3d depth_axis = orient_axis.cross(up_axis);
     depth_axis.normalize();
 
     std::vector<Study> studies(6 * 4);

@@ -4,11 +4,12 @@
 #include <stdexcept>
 #include <vector>
 
+#include "common/meta.hpp"
+
 namespace notf {
 
-/** Removes all occurences of 'element' from 'vector'.
- * @return The number of removed items.
- */
+/// Removes all occurences of 'element' from 'vector'.
+/// @return The number of removed items.
 template<typename T>
 auto remove_all(std::vector<T>& vector, const T& element)
 {
@@ -17,9 +18,8 @@ auto remove_all(std::vector<T>& vector, const T& element)
     return size_before - vector.size();
 }
 
-/** Removes the first occurence of 'element' in 'vector'.
- * @return  True, iff an element was removed.
- */
+/// Removes the first occurence of 'element' in 'vector'.
+/// @return  True, iff an element was removed.
 template<typename T>
 bool remove_one_unordered(std::vector<T>& vector, const T& element)
 {
@@ -32,9 +32,8 @@ bool remove_one_unordered(std::vector<T>& vector, const T& element)
     return true;
 }
 
-/** Returns a vector of all keys in a map.
- * @param map  Map to extract the keys from.
- */
+/// Returns a vector of all keys in a map.
+/// @param map  Map to extract the keys from.
 template<template<typename...> class MAP, class KEY, class VALUE>
 std::vector<KEY> keys(const MAP<KEY, VALUE>& map)
 {
@@ -46,9 +45,8 @@ std::vector<KEY> keys(const MAP<KEY, VALUE>& map)
     return result;
 }
 
-/** Returns a vector of all values in a map.
- * @param map  Map to extract the values from.
- */
+/// Returns a vector of all values in a map.
+/// @param map  Map to extract the values from.
 template<template<typename...> class MAP, class KEY, class VALUE>
 std::vector<VALUE> values(const MAP<KEY, VALUE>& map)
 {
@@ -60,19 +58,19 @@ std::vector<VALUE> values(const MAP<KEY, VALUE>& map)
     return result;
 }
 
-/** Syntax sugar for an `emplace_back(...)`, followed by a `back()` reference.
- * Will be standard in C++17.
- */
+#ifndef NOTF_CPP17
+/// Syntax sugar for an `emplace_back(...)`, followed by a `back()` reference.
+/// Will be standard in C++17.
 template<typename T, typename... Args>
 T& create_back(std::vector<T>& target, Args&&... args)
 {
     target.emplace_back(std::forward<Args>(args)...);
     return target.back();
 }
+#endif
 
-/** Extends a vector with another one of the same type.
- * From https://stackoverflow.com/a/41079085/3444217
- */
+/// Extends a vector with another one of the same type.
+/// From https://stackoverflow.com/a/41079085/3444217
 template<typename T>
 std::vector<T>& extend(std::vector<T>& vector, const std::vector<T>& extension)
 {
@@ -92,7 +90,7 @@ std::vector<T>& extend(std::vector<T>& vector, std::vector<T>&& extension)
     return vector;
 }
 
-/** Convenience function to get an iterator to an item at a given index in a vector. */
+/// Convenience function to get an iterator to an item at a given index in a vector. */
 template<typename T>
 constexpr typename std::vector<T>::const_iterator iterator_at(const std::vector<T>& vector, size_t offset)
 {
@@ -104,9 +102,8 @@ constexpr typename std::vector<T>::iterator iterator_at(std::vector<T>& vector, 
     return vector.begin() + static_cast<typename std::vector<T>::difference_type>(offset);
 }
 
-/** Flattens a 2D nested vector into a single one.
- * As seen on: http://stackoverflow.com/a/17299623/3444217
- */
+/// Flattens a 2D nested vector into a single one.
+/// As seen on: http://stackoverflow.com/a/17299623/3444217
 template<typename T>
 std::vector<T> flatten(const std::vector<std::vector<T>>& v)
 {
@@ -122,9 +119,8 @@ std::vector<T> flatten(const std::vector<std::vector<T>>& v)
     return result;
 }
 
-/** Takes and removes the last entry of a vector and returns it.
- * @throws std::out_of_range exception if the vector is empty.
- */
+/// Takes and removes the last entry of a vector and returns it.
+/// @throws std::out_of_range exception if the vector is empty.
 template<typename T>
 T take_back(std::vector<T>& v)
 {

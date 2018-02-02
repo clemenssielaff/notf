@@ -29,6 +29,7 @@ endmacro()
 option(USE_LIBCXX "Use LLVM's libc++ instead of libstdc++" OFF)
 option(USE_OPENMP "Use OpenMP" ON)
 option(BUILD_BENCHMARKS "Build benchmarks" OFF)
+option(LOG_PRETTY_FUNCTION "Log long function names" OFF)
 
 # LIBRARIES ############################################################################################################
 
@@ -69,6 +70,12 @@ endif()
 set(CMAKE_CXX_FLAGS_DEBUG "-g -DNOTF_DEBUG")
 set(CMAKE_CXX_STANDARD 14)
 
+if(LOG_PRETTY_FUNCTION)
+    add_definitions(-DNOTF_LOG_PRETTY_FUNCTION)
+else(LOG_PRETTY_FUNCTION)
+
+endif()
+
 include_directories(
     include/
     thirdparty/
@@ -93,6 +100,7 @@ add_sources(SOURCE_FILES examples
     wireframe_example.cpp
     shape_example.cpp
     text_example.cpp
+    mpsc_example.cpp
 )
 
 add_sources(THIRDPARTY_FILES thirdparty

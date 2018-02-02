@@ -8,17 +8,17 @@ namespace detail {
 
 //====================================================================================================================//
 
-/// @brief Bezier spline.
+/// Bezier spline.
 template<size_t ORDER, typename VECTOR>
 struct Bezier {
 
-    /// @brief Vector type.
+    /// Vector type.
     using vector_t = VECTOR;
 
-    /// @brief Element type.
+    /// Element type.
     using element_t = typename VECTOR::element_t;
 
-    /// @brief Order of this Bezier spline.
+    /// Order of this Bezier spline.
     static constexpr size_t order() { return ORDER; }
 
     // types ---------------------------------------------------------------------------------------------------------//
@@ -27,26 +27,26 @@ struct Bezier {
 
     struct Segment {
         // fields ----------------------------------------------------------------------------------------------------//
-        /// @brief Start of the spline, in absolute coordinates.
+        /// Start of the spline, in absolute coordinates.
         vector_t start;
 
-        /// @brief First control point, in absolute coordinates.
+        /// First control point, in absolute coordinates.
         vector_t ctrl1;
 
-        /// @brief Second control point, in absolute coordinates.
+        /// Second control point, in absolute coordinates.
         vector_t ctrl2;
 
-        /// @brief End of the spline, in absolute coordinates.
+        /// End of the spline, in absolute coordinates.
         vector_t end;
 
         // TODO: proper bezier template class (dimensions & order)
         // std::array<component_t, order() + 1> points;
 
         // methods ---------------------------------------------------------------------------------------------------//
-        /// @brief Default constructor.
+        /// Default constructor.
         Segment() = default;
 
-        /// @brief Element-wise constructor.
+        /// Element-wise constructor.
         /// @param start    Start of the spline, in absolute coordinates.
         /// @param ctrl1    First control point, in absolute coordinates.
         /// @param ctrl2    Second control point, in absolute coordinates.
@@ -55,7 +55,7 @@ struct Bezier {
             : start(std::move(a)), ctrl1(std::move(b)), ctrl2(std::move(c)), end(std::move(d))
         {}
 
-        /// @brief Straight line.
+        /// Straight line.
         /// @param start    Start of the spline, in absolute coordinates.
         /// @param end      End of the spline, in absolute coordinates.
         static Segment line(const vector_t a, const vector_t d)
@@ -96,7 +96,7 @@ using CubicBezier2f = detail::Bezier<3, Vector2f>;
 
 //====================================================================================================================//
 
-/// @brief Prints the contents of a Bezier spline into a std::ostream.
+/// Prints the contents of a Bezier spline into a std::ostream.
 /// @param os       Output stream, implicitly passed with the << operator.
 /// @param bezier   Bezier spline to print.
 /// @return Output stream for further output.
@@ -108,7 +108,7 @@ std::ostream& operator<<(std::ostream& out, const CubicBezier2f& bezier);
 
 namespace std {
 
-/// @brief std::hash specialization for Bezier.
+/// std::hash specialization for Bezier.
 template<size_t ORDER, typename VECTOR>
 struct hash<notf::detail::Bezier<ORDER, VECTOR>> {
     size_t operator()(const notf::detail::Bezier<ORDER, VECTOR>& bezier) const

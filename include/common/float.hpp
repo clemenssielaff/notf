@@ -86,7 +86,7 @@ inline bool is_real(Real&& value)
     return !is_nan(value) && !is_inf(value);
 }
 
-/// @brief Tests, if a value is positive or negative.
+/// Tests, if a value is positive or negative.
 /// @return  -1 if the value is negative, 1 if it is zero or above.
 template<typename T>
 inline T sign(const T&& value)

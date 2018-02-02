@@ -39,7 +39,7 @@ public:
 public:
     DISALLOW_COPY_AND_ASSIGN(PrefabGroup)
 
-    /// @brief Default constructor.
+    /// Default constructor.
     PrefabGroup()
         : m_vao_id(0)
         , m_vertex_array(std::make_unique<vertex_array_t>())
@@ -53,10 +53,10 @@ public:
         m_instance_array           = std::make_unique<instance_array_t>(std::move(instance_args));
     }
 
-    /// @brief Destructor.
+    /// Destructor.
     ~PrefabGroup() { gl_check(glDeleteVertexArrays(1, &m_vao_id)); }
 
-    /// @brief Initializes the library.
+    /// Initializes the library.
     /// Call this method once, after all prefabs have been added using PrefabFactories.
     /// @throws std::runtime_error   If the PrefabGroup has already been initialized once.
     /// @throws std::runtime_error   If the OpenGL VAO could not be generated.
@@ -78,7 +78,7 @@ public:
         gl_check(glBindVertexArray(0));
     }
 
-    /// @brief Returns a prefab type by its name.
+    /// Returns a prefab type by its name.
     /// @throws std::runtime_error   If the name is unknown.
     std::shared_ptr<PrefabType<InstanceData>> prefab_type(std::string& name)
     {
@@ -92,7 +92,7 @@ public:
         throw std::runtime_error(ss.str());
     }
 
-    /// @brief Go through all prefab types of this group and render all instances of each type.
+    /// Go through all prefab types of this group and render all instances of each type.
     void render()
     {
         // TODO: [engine] No front-to-back sorting of prefabs globally or even just within its group

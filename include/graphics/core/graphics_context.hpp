@@ -14,13 +14,13 @@ namespace notf {
 
 //====================================================================================================================//
 
-/// @brief HTML5 canvas-like approach to blending the results of multiple OpenGL drawings.
+/// HTML5 canvas-like approach to blending the results of multiple OpenGL drawings.
 /// Modelled after the HTML Canvas API as described in https://www.w3.org/TR/2dcontext/#compositing
 /// The source image is the image being rendered, and the destination image the current state of the bitmap.
 struct BlendMode {
 
     // types ---------------------------------------------------------------------------------------------------------//
-    /// @brief Blend mode, can be set for RGB and the alpha channel separately.
+    /// Blend mode, can be set for RGB and the alpha channel separately.
     enum Mode : unsigned char {
         SOURCE_OVER,      ///< Display the source image wherever the source image is opaque, the destination image
                           /// elsewhere (default).
@@ -41,37 +41,37 @@ struct BlendMode {
     };
 
     // fields --------------------------------------------------------------------------------------------------------//
-    /// @brief Blend mode for colors.
+    /// Blend mode for colors.
     Mode rgb;
 
-    /// @brief Blend mode for transparency.
+    /// Blend mode for transparency.
     Mode alpha;
 
     // methods -------------------------------------------------------------------------------------------------------//
-    /// @brief Default constructor.
+    /// Default constructor.
     BlendMode() : rgb(DEFAULT), alpha(DEFAULT) {}
 
-    /// @brief Value constructor.
+    /// Value constructor.
     /// @param mode Single blend mode for both rgb and alpha.
     BlendMode(const Mode mode) : rgb(mode), alpha(mode) {}
 
-    /// @brief Separate blend modes for both rgb and alpha.
+    /// Separate blend modes for both rgb and alpha.
     /// @param color    RGB blend mode.
     /// @param alpha    Alpha blend mode.
     BlendMode(const Mode color, const Mode alpha) : rgb(color), alpha(alpha) {}
 
-    /// @brief Equality operator.
+    /// Equality operator.
     /// @param other    Blend mode to test against.
     bool operator==(const BlendMode& other) const { return rgb == other.rgb && alpha == other.alpha; }
 
-    /// @brief Inequality operator.
+    /// Inequality operator.
     /// @param other    Blend mode to test against.
     bool operator!=(const BlendMode& other) const { return rgb != other.rgb || alpha != other.alpha; }
 };
 
 //====================================================================================================================//
 
-/// @brief Direction to cull in the culling test.
+/// Direction to cull in the culling test.
 enum CullFace : unsigned char {
     BACK,  ///< Do not render back-facing faces (default).
     FRONT, ///< Do not render front-facing faces.
@@ -82,7 +82,7 @@ enum CullFace : unsigned char {
 
 //====================================================================================================================//
 
-/// @brief The GraphicsContext is an abstraction of the OpenGL graphics context.
+/// The GraphicsContext is an abstraction of the OpenGL graphics context.
 /// It is the object owning all NoTF client objects like shaders and textures.
 class GraphicsContext {
 
@@ -91,40 +91,40 @@ class GraphicsContext {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    /// @brief Helper struct that can be used to test whether selected extensions are available in the OpenGL ES driver.
+    /// Helper struct that can be used to test whether selected extensions are available in the OpenGL ES driver.
     /// Only tests for extensions on first instantiation.
     struct Extensions {
 
-        /// @brief Is anisotropic filtering of textures supported?
+        /// Is anisotropic filtering of textures supported?
         bool anisotropic_filter;
 
-        /// @brief Does the GPU support nVidia GPU shader5 extensions.
+        /// Does the GPU support nVidia GPU shader5 extensions.
         /// @see   https://www.khronos.org/registry/OpenGL/extensions/NV/NV_gpu_shader5.txt
         bool nv_gpu_shader5;
 
     private:
         friend class GraphicsContext;
 
-        /// @brief Default constructor.
+        /// Default constructor.
         Extensions();
     };
 
-    /// @brief Helper struct containing variables that need to be read from OpenGL at runtime and won't change over the
+    /// Helper struct containing variables that need to be read from OpenGL at runtime and won't change over the
     /// course of the app.
     struct Environment {
 
-        /// @brief Maximum height and width of a render buffer in pixels.
+        /// Maximum height and width of a render buffer in pixels.
         GLuint max_render_buffer_size;
 
-        /// @brief Number of available color attachments for a frame buffer.
+        /// Number of available color attachments for a frame buffer.
         GLuint color_attachment_count;
 
-        /// @brief Number of texture slots, meaning the highest valid slot is texture_slot_count - 1.
+        /// Number of texture slots, meaning the highest valid slot is texture_slot_count - 1.
         /// This number will be less than the actual number of texture slots available on the machine, because it
         /// subtracts slots used for internal purposed (the font atlas texture, for example).
         GLuint texture_slot_count;
 
-        /// @brief Texture slot reserved for the font atlas texture.
+        /// Texture slot reserved for the font atlas texture.
         /// Note that this is the slot number, not the enum value corresponding to the slot.
         /// In order to get that use:
         ///     GL_TEXTURE0 + font_atlas_texture_slot
@@ -133,12 +133,12 @@ public:
     private:
         friend class GraphicsContext;
 
-        /// @brief Default constructor.
+        /// Default constructor.
         Environment();
     };
 
 private:
-    /// @brief Graphics state
+    /// Graphics state.
     struct State {
 
         BlendMode blend_mode;
@@ -178,41 +178,41 @@ public:
     /// Destructor.
     ~GraphicsContext();
 
-    /// @brief Tests whether two Graphics Contexts are the same.
+    /// Tests whether two Graphics Contexts are the same.
     bool operator==(const GraphicsContext& other) const { return m_window == other.m_window; }
 
-    /// @brief Creates and returns an GLExtension instance.
+    /// Creates and returns an GLExtension instance.
     static const Extensions& extensions();
 
-    /// @brief Creates and initializes information about the graphics environment.
+    /// Creates and initializes information about the graphics environment.
     static const Environment& environment();
 
-    /// @brief Create a new State;
+    /// Create a new State.
     State create_state() const;
 
-    /// @brief En- or disables vsync (enabled by default).
+    /// En- or disables vsync (enabled by default).
     /// @param enabled  Whether to enable or disable vsync.
     void set_vsync(const bool enabled);
 
-    /// @brief Applies the given stencil mask.
+    /// Applies the given stencil mask.
     void set_stencil_mask(const GLuint mask);
 
-    /// @brief Applies the given blend mode to OpenGL.
-    /// @brief mode Blend mode to apply.
+    /// Applies the given blend mode to OpenGL.
+    /// mode Blend mode to apply.
     void set_blend_mode(const BlendMode mode);
 
     // texture ----------------------------------------------------------------
 
-    /// @brief Checks whether this context contains a Texture with the given name.
+    /// Checks whether this context contains a Texture with the given name.
     /// @param name Name of the Texture.
     bool has_texture(const std::string& name) { return m_shaders.count(name) != 0; }
 
-    /// @brief Finds and returns a Texture of this context by its name.
+    /// Finds and returns a Texture of this context by its name.
     /// @param name                 Name of the Texture.
     /// @throws std::out_of_range   If the context does not contain a Texture with the given name.
     TexturePtr texture(const std::string& name) const { return m_textures.at(name).lock(); }
 
-    /// @brief Binds the given texture at the given texture slot.
+    /// Binds the given texture at the given texture slot.
     /// Only results in an OpenGL call if the texture is not currently bound.
     /// @param texture              Texture to bind.
     /// @param slot                 Texture slot to bind the texture to.
@@ -221,51 +221,51 @@ public:
     void bind_texture(Texture* texture, uint slot);
     void bind_texture(TexturePtr& texture, uint slot) { bind_texture(texture.get(), slot); }
 
-    /// @brief Unbinds the current texture and clears the context's texture stack.
+    /// Unbinds the current texture and clears the context's texture stack.
     /// @param slot                 Texture slot to clear.
     /// @throws std::runtime_error  If slot is >= than the number of texture slots in the environment.
     void unbind_texture(uint slot);
 
-    /// @brief Unbinds bound texures from all slots.
+    /// Unbinds bound texures from all slots.
     void unbind_all_textures();
 
     // shader -----------------------------------------------------------------
 
-    /// @brief Checks whether this context contains a Shader with the given name.
+    /// Checks whether this context contains a Shader with the given name.
     /// @param name Name of the Shader.
     bool has_shader(const std::string& name) { return m_shaders.count(name) != 0; }
 
-    /// @brief Finds and returns a Shader of this context by its name.
+    /// Finds and returns a Shader of this context by its name.
     /// @param name                 Name of the Shader.
     /// @throws std::out_of_range   If the context does not contain a Shader with the given name.
     ShaderPtr shader(const std::string& name) const { return m_shaders.at(name).lock(); }
 
     // pipeline ---------------------------------------------------------------
 
-    /// @brief Binds the given Pipeline, if it is not already bound.
+    /// Binds the given Pipeline, if it is not already bound.
     /// @param pipeline Pipeline to bind.
     void bind_pipeline(PipelinePtr& pipeline);
 
-    /// @brief Unbinds the current Pipeline.
+    /// Unbinds the current Pipeline.
     void unbind_pipeline();
 
     // frambuffer -------------------------------------------------------------
 
-    /// @brief Binds the given FrameBuffer, if it is not already bound.
+    /// Binds the given FrameBuffer, if it is not already bound.
     /// @param framebuffer  FrameBuffer to bind.
     void bind_framebuffer(FrameBufferPtr& framebuffer);
 
-    /// @brief Unbinds the current FrameBuffer.
+    /// Unbinds the current FrameBuffer.
     void unbind_framebuffer();
 
     // text -------------------------------------------------------------------
 
-    /// @brief The Font Manager associated with this context.
+    /// The Font Manager associated with this context.
     FontManager& font_manager() { return *m_font_manager; }
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
-    /// @brief Call this function after the last shader has been compiled.
+    /// Call this function after the last shader has been compiled.
     /// Might cause the driver to release the resources allocated for the compiler to free up some space, but is not
     /// guaranteed to do so.
     /// If you compile a new shader after calling th6is function, the driver will reallocate the compiler.
@@ -273,25 +273,25 @@ private:
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// @brief The GLFW window displaying the contents of this context.
+    /// The GLFW window displaying the contents of this context.
     GLFWwindow* m_window;
 
-    /// @brief The current state of the context.
+    /// The current state of the context.
     State m_state;
 
-    /// @brief True if this context has vsync enabled.
+    /// True if this context has vsync enabled.
     bool m_has_vsync;
 
-    /// @brief All Textures managed by this Context.
+    /// All Textures managed by this Context.
     /// Note that the Context doesn't "own" the textures, they are shared pointers, but the Render Context deallocates
     /// all Textures when it is deleted.
     std::unordered_map<std::string, std::weak_ptr<Texture>> m_textures;
 
-    /// @brief All Shaders managed by this Context.
+    /// All Shaders managed by this Context.
     /// See `m_textures` for details on management.
     std::unordered_map<std::string, std::weak_ptr<Shader>> m_shaders;
 
-    /// @brief The context owns its own Font Manager that manages the textures and glyph rendering.
+    /// The context owns its own Font Manager that manages the textures and glyph rendering.
     FontManagerPtr m_font_manager;
 };
 

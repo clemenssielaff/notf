@@ -19,31 +19,31 @@ namespace detail {
 
 //====================================================================================================================//
 
-/// @brief  A 2D Axis-Aligned-Bounding-Rectangle.
+///  A 2D Axis-Aligned-Bounding-Rectangle.
 /// Stores two Vectors, the bottom-left and top-right corner.
 /// While this does mean that you need to change four instead of two values for repositioning the Aabr, other
 /// calculations (like intersections) are faster; and they are usually more relevant.
 template<typename VECTOR2>
 struct Aabr {
 
-    /// @brief Vector type.
+    /// Vector type.
     using vector_t = VECTOR2;
 
-    /// @brief Element type.
+    /// Element type.
     using element_t = typename VECTOR2::element_t;
 
     // fields --------------------------------------------------------------------------------------------------------//
-    /// @brief Bottom-left corner of the Aabr.
+    /// Bottom-left corner of the Aabr.
     vector_t _min;
 
-    /// @brief Top-right corner of the Aabr.
+    /// Top-right corner of the Aabr.
     vector_t _max;
 
     // methods -------------------------------------------------------------------------------------------------------//
-    /// @brief Default constructor.
+    /// Default constructor.
     Aabr() = default;
 
-    /// @brief Constructs an Aabr of the given width and height, with the bottom-left corner at the given coordinates.
+    /// Constructs an Aabr of the given width and height, with the bottom-left corner at the given coordinates.
     /// @param x         X-coordinate of the bottom-left corner.
     /// @param y         Y-coordinate of the bottom-left corner.
     /// @param width     Width of the Aabr.
@@ -55,7 +55,7 @@ struct Aabr {
                static_cast<element_t>(y) + static_cast<element_t>(height))
     {}
 
-    /// @brief Constructs an Aabr of the given width and height, with the bottom-left corner at `position`.
+    /// Constructs an Aabr of the given width and height, with the bottom-left corner at `position`.
     /// @param position  Position of the Aabr's bottom-left corner.
     /// @param width     Width of the Aabr.
     /// @param height    Height of the Aabr.
@@ -66,14 +66,14 @@ struct Aabr {
                static_cast<vector_t>(position).y() + static_cast<element_t>(height))
     {}
 
-    /// @brief Constructs an Aabr of the given size with the bottom-left corner at `position`.
+    /// Constructs an Aabr of the given size with the bottom-left corner at `position`.
     /// @param position  Position of the Aabr's bottom-left corner.
     /// @param size      Size of the Aabr.
     Aabr(const vector_t& position, const Size2f& size)
         : _min(position), _max(position.x() + size.width, position.y() + size.height)
     {}
 
-    /// @brief Aabr with a given width and height, and the bottom-left corner at zero.
+    /// Aabr with a given width and height, and the bottom-left corner at zero.
     /// @param width     Width of the Aabr.
     /// @param height    Height of the Aabr.
     template<typename WIDTH, typename HEIGHT>
@@ -81,11 +81,11 @@ struct Aabr {
         : _min(0, 0), _max(static_cast<element_t>(width), static_cast<element_t>(height))
     {}
 
-    /// @brief Constructs an Aabr of the given size with the bottom-left corner at zero.
+    /// Constructs an Aabr of the given size with the bottom-left corner at zero.
     /// @param size  Size of the Aabr.
     Aabr(const Size2<element_t>& size) : _min(0, 0), _max(size.width, size.height) {}
 
-    /// @brief Constructs the Aabr from two of its corners.
+    /// Constructs the Aabr from two of its corners.
     /// The corners don't need to be specific, the constructor figures out how to construct an Aabr from them.
     /// @param a    One corner point of the Aabr.
     /// @param b    Opposite corner point of the Aabr.
@@ -113,10 +113,10 @@ struct Aabr {
         }
     }
 
-    /// @brief The zero Aabr.
+    /// The zero Aabr.
     static Aabr zero() { return Aabr({0, 0, 0, 0}); }
 
-    /// @brief The largest representable Aabr.
+    /// The largest representable Aabr.
     static Aabr huge()
     {
         Aabr result;
@@ -125,7 +125,7 @@ struct Aabr {
         return result;
     }
 
-    /// @brief The "most wrong" Aabr (maximal negative area).
+    /// The "most wrong" Aabr (maximal negative area).
     /// Is useful as the starting point for defining an Aabr from a set of points.
     static Aabr wrongest()
     {
@@ -135,7 +135,7 @@ struct Aabr {
         return result;
     }
 
-    /// @brief Returns an Aabr of a given size, with zero in the center.
+    /// Returns an Aabr of a given size, with zero in the center.
     static Aabr centered(const Size2<element_t>& size)
     {
         const element_t half_width  = size.width / 2;
@@ -146,65 +146,65 @@ struct Aabr {
         return result;
     }
 
-    /// @brief Creates a copy of this Aabr.
+    /// Creates a copy of this Aabr.
     Aabr copy() const { return *this; }
 
-    /// @brief X-coordinate of the center point.
+    /// X-coordinate of the center point.
     element_t x() const { return (_min.x() + _max.x()) / 2; }
 
-    /// @brief Y-coordinate of the center point.
+    /// Y-coordinate of the center point.
     element_t y() const { return (_min.y() + _max.y()) / 2; }
 
-    /// @brief The center of the Aabr.
+    /// The center of the Aabr.
     vector_t center() const { return {x(), y()}; }
 
-    /// @brief X-coordinate of the left edge of this Aabr.
+    /// X-coordinate of the left edge of this Aabr.
     element_t left() const { return _min.x(); }
 
-    /// @brief X-coordinate of the right edge of this Aabr.
+    /// X-coordinate of the right edge of this Aabr.
     element_t right() const { return _max.x(); }
 
-    /// @brief Y-coordinate of the top edge of this Aabr.
+    /// Y-coordinate of the top edge of this Aabr.
     element_t top() const { return _max.y(); }
 
-    /// @brief Y-coordinate of the bottom edge of this Aabr.
+    /// Y-coordinate of the bottom edge of this Aabr.
     element_t bottom() const { return _min.y(); }
 
-    /// @brief The bottom left corner of this Aabr.
+    /// The bottom left corner of this Aabr.
     const vector_t& bottom_left() const { return _min; }
 
-    /// @brief The top right corner of this Aabr.
+    /// The top right corner of this Aabr.
     const vector_t& top_right() const { return _max; }
 
-    /// @brief The top left corner of this Aabr.
+    /// The top left corner of this Aabr.
     vector_t top_left() const { return {_min.x(), _max.y()}; }
 
-    /// @brief The bottom right corner of this Aabr.
+    /// The bottom right corner of this Aabr.
     vector_t bottom_right() const { return {_max.x(), _min.y()}; }
 
-    /// @brief The width of this Aabr
+    /// The width of this Aabr.
     element_t get_width() const { return _max.x() - _min.x(); }
 
-    /// @brief The height of this Aabr
+    /// The height of this Aabr.
     element_t get_height() const { return _max.y() - _min.y(); }
 
-    /// @brief The area of this Aabr
+    /// The area of this Aabr.
     element_t get_area() const { return get_height() * get_width(); }
 
-    /// @brief A valid Aabr has a width and height >= 0.
+    /// A valid Aabr has a width and height >= 0.
     bool is_valid() const { return _min.x() <= _max.x() && _min.y() <= _max.y(); }
 
-    /// @brief Test, if this Aabr is zero.
+    /// Test, if this Aabr is zero.
     /// The zero Aabr has no area and is located at zero.
     bool is_zero() const { return _min.is_zero() && _max.is_zero(); }
 
-    /// @brief Checks if this Aabr contains a given point.
+    /// Checks if this Aabr contains a given point.
     bool contains(const vector_t& point) const
     {
         return ((point.x() > _min.x()) && (point.x() < _max.x()) && (point.y() > _min.y()) && (point.y() < _max.y()));
     }
 
-    /// @brief Checks if two Aabrs intersect.
+    /// Checks if two Aabrs intersect.
     /// Two Aabrs intersect if their intersection has a non-zero area.
     /// To get the actual intersection Aabr, use Aabr::intersection().
     bool intersects(const Aabr& other) const
@@ -213,7 +213,7 @@ struct Aabr {
                  || (_max.y() < other._min.y()));
     }
 
-    /// @brief Returns the closest point inside the Aabr to a given target point.
+    /// Returns the closest point inside the Aabr to a given target point.
     /// For targets outside the Aabr, the returned point will lay on the Aabr's edge.
     /// Targets inside the Aabr are returned unchanged.
     /// @param target    Target point.
@@ -227,10 +227,10 @@ struct Aabr {
                 pos.y() + clamp(target.y() - pos.y(), -half_height, half_height)};
     }
 
-    /// @brief Returns the extend of this Aabr.
+    /// Returns the extend of this Aabr.
     Size2f get_size() const { return {get_width(), get_height()}; }
 
-    /// @brief Returns the length of the longer side of this Aabr.
+    /// Returns the length of the longer side of this Aabr.
     element_t get_longer_side() const
     {
         const element_t width  = this->get_width();
@@ -238,7 +238,7 @@ struct Aabr {
         return width > height ? width : height;
     }
 
-    /// @brief Returns the length of the shorter side of this Aabr.
+    /// Returns the length of the shorter side of this Aabr.
     element_t get_shorter_side() const
     {
         const element_t width  = this->get_width();
@@ -246,22 +246,22 @@ struct Aabr {
         return width < height ? width : height;
     }
 
-    /// @brief Read-only pointer to the Aabr's internal storage.
+    /// Read-only pointer to the Aabr's internal storage.
     const element_t* as_ptr() const { return &_min.x(); }
 
-    /// @brief Tests whether two Aabrs are equal.
+    /// Tests whether two Aabrs are equal.
     bool operator==(const Aabr& other) const { return (other._min == _min && other._max == _max); }
 
-    /// @brief Tests whether two Aabrs are not equal.
+    /// Tests whether two Aabrs are not equal.
     bool operator!=(const Aabr& other) const { return (other._min != _min || other._max != _max); }
 
-    /// @brief Multiplication with a scalar scales the Aabr in relation to local zero.
+    /// Multiplication with a scalar scales the Aabr in relation to local zero.
     Aabr operator*(const element_t factor) { return {_min * factor, _max * factor}; }
 
-    /// @brief Adding a vector_t to an Aabr moves the Aabr relative to its previous position.
+    /// Adding a vector_t to an Aabr moves the Aabr relative to its previous position.
     Aabr operator+(const vector_t& offset) { return {_min + offset, _max + offset}; }
 
-    /// @brief Moves the center of this Aabr to the given x-coordinate.
+    /// Moves the center of this Aabr to the given x-coordinate.
     Aabr& set_x(const element_t x)
     {
         const element_t half_width = get_width() / 2;
@@ -270,7 +270,7 @@ struct Aabr {
         return *this;
     }
 
-    /// @brief Moves the center of this Aabr to the given y-coordinate.
+    /// Moves the center of this Aabr to the given y-coordinate.
     Aabr& set_y(const element_t y)
     {
         const element_t half_height = get_height() / 2;
@@ -279,14 +279,14 @@ struct Aabr {
         return *this;
     }
 
-    /// @brief Moves this Aabr to a new center position.
+    /// Moves this Aabr to a new center position.
     Aabr& set_center(const vector_t& pos)
     {
         set_x(pos.x());
         return set_y(pos.y());
     }
 
-    /// @brief Moves this Aabr by a relative amount.
+    /// Moves this Aabr by a relative amount.
     Aabr& move_by(const vector_t& pos)
     {
         _min += pos;
@@ -294,7 +294,7 @@ struct Aabr {
         return *this;
     }
 
-    /// @brief Sets the x-coordinate of this Aabr's left edge.
+    /// Sets the x-coordinate of this Aabr's left edge.
     /// If the new position is further right than the Aabr's right edge, the right edge is moved to the same
     /// position, resulting in a Aabr with zero width.
     Aabr& set_left(const element_t x)
@@ -304,7 +304,7 @@ struct Aabr {
         return *this;
     }
 
-    /// @brief Sets the x-coordinate of this Aabr's right edge.
+    /// Sets the x-coordinate of this Aabr's right edge.
     /// If the new position is further left than the Aabr's left edge, the left edge is moved to the same
     /// position, resulting in a Aabr with zero width.
     Aabr& set_right(const element_t x)
@@ -314,7 +314,7 @@ struct Aabr {
         return *this;
     }
 
-    /// @brief Sets the y-coordinate of this Aabr's top edge.
+    /// Sets the y-coordinate of this Aabr's top edge.
     /// If the new position is further down than the Aabr's bottom edge, the bottom edge is moved to the same
     /// position, resulting in a Aabr with zero height.
     Aabr& set_top(const element_t y)
@@ -324,7 +324,7 @@ struct Aabr {
         return *this;
     }
 
-    /// @brief Sets the y-coordinate of this Aabr's bottom edge.
+    /// Sets the y-coordinate of this Aabr's bottom edge.
     /// If the new position is further up than the Aabr's top edge, the top edge is moved to the same
     /// position, resulting in a Aabr with zero height.
     Aabr& set_bottom(const element_t y)
@@ -334,7 +334,7 @@ struct Aabr {
         return *this;
     }
 
-    /// @brief Sets a new top-left corner of this Aabr.
+    /// Sets a new top-left corner of this Aabr.
     /// See set_left and set_top for details.
     Aabr& set_top_left(const vector_t& point)
     {
@@ -342,7 +342,7 @@ struct Aabr {
         return set_top(point.y());
     }
 
-    /// @brief Sets a new top-right corner of this Aabr.
+    /// Sets a new top-right corner of this Aabr.
     /// See set_right and set_top for details.
     Aabr& set_top_right(const vector_t& point)
     {
@@ -350,7 +350,7 @@ struct Aabr {
         return set_top(point.y());
     }
 
-    /// @brief Sets a new bottom-left corner of this Aabr.
+    /// Sets a new bottom-left corner of this Aabr.
     /// See set_left and set_bottom for details.
     Aabr& set_bottom_left(const vector_t& point)
     {
@@ -358,7 +358,7 @@ struct Aabr {
         return set_bottom(point.y());
     }
 
-    /// @brief Sets a new bottom-right corner of this Aabr.
+    /// Sets a new bottom-right corner of this Aabr.
     /// See set_right and set_bottom for details.
     Aabr& set_bottom_right(const vector_t& point)
     {
@@ -366,7 +366,7 @@ struct Aabr {
         return set_bottom(point.y());
     }
 
-    /// @brief Changes the height of this Aabr in place.
+    /// Changes the height of this Aabr in place.
     /// The scaling occurs from the center of the Aabr, meaning its position does not change.
     /// If a width less than zero is specified, the resulting width is zero.
     Aabr& set_width(const element_t width)
@@ -378,7 +378,7 @@ struct Aabr {
         return *this;
     }
 
-    /// @brief Changes the height of this Aabr in place.
+    /// Changes the height of this Aabr in place.
     /// The scaling occurs from the center of the Aabr, meaning its position does not change.
     /// If a height less than zero is specified, the resulting height is zero.
     Aabr& set_height(const element_t height)
@@ -390,7 +390,7 @@ struct Aabr {
         return *this;
     }
 
-    /// @brief Sets this Aabr to zero.
+    /// Sets this Aabr to zero.
     Aabr& set_zero()
     {
         _min.set_zero();
@@ -398,7 +398,7 @@ struct Aabr {
         return *this;
     }
 
-    /// @brief Moves each edge of the Aabr a given amount towards the outside.
+    /// Moves each edge of the Aabr a given amount towards the outside.
     /// Meaning, the width/height of the Aabr will grow by 2*amount.
     /// @param amount    Number of units to move each edge.
     Aabr& grow(const element_t amount)
@@ -410,7 +410,7 @@ struct Aabr {
         return *this;
     }
 
-    /// @brief Returns a grown copy of this Aabr.
+    /// Returns a grown copy of this Aabr.
     Aabr grow(const element_t amount) const
     {
         Aabr result(*this);
@@ -418,7 +418,7 @@ struct Aabr {
         return result;
     }
 
-    /// @brief Grows this Aabr to include the given point.
+    /// Grows this Aabr to include the given point.
     /// If the point is already within the rectangle, this does nothing.
     /// @param point     Point to include in the Aabr.
     Aabr& grow_to(const vector_t& point)
@@ -430,13 +430,13 @@ struct Aabr {
         return *this;
     }
 
-    /// @brief Moves each edge of the Aabr a given amount towards the inside.
+    /// Moves each edge of the Aabr a given amount towards the inside.
     ///  Meaning, the width/height of the Aabr will shrink by 2*amount.
     /// You cannot shrink the Aabr to negative width or height values.
     /// @param amount    Number of units to move each edge.
     Aabr& shrink(const element_t amount) { return grow(-amount); }
 
-    /// @brief Returns a shrunken copy of this Aabr.
+    /// Returns a shrunken copy of this Aabr.
     Aabr shrink(const element_t amount) const
     {
         Aabr result(*this);
@@ -444,7 +444,7 @@ struct Aabr {
         return result;
     }
 
-    /// @brief Intersection of this Aabr with `other`.
+    /// Intersection of this Aabr with `other`.
     /// Intersecting with another Aabr that does not intersect results in the zero Aabr.
     /// @return  The intersection Aabr.
     Aabr intersect(const Aabr& other) const
@@ -459,7 +459,7 @@ struct Aabr {
     }
     Aabr operator&(const Aabr& other) const { return intersect(other); }
 
-    /// @brief Intersection of this Aabr with `other` in-place.
+    /// Intersection of this Aabr with `other` in-place.
     /// Intersecting with another Aabr that does not intersect results in the zero Aabr.
     Aabr& intersect(const Aabr& other)
     {
@@ -474,7 +474,7 @@ struct Aabr {
     }
     Aabr operator&=(const Aabr& other) { return intersect(other); }
 
-    /// @brief Creates the union of this Aabr with `other`.
+    /// Creates the union of this Aabr with `other`.
     Aabr unite(const Aabr& other) const
     {
         return Aabr(vector_t{_min.x() < other._min.x() ? _min.x() : other._min.x(),
@@ -484,7 +484,7 @@ struct Aabr {
     }
     Aabr operator|(const Aabr& other) const { return unite(other); }
 
-    /// @brief Creates the union of this Aabr with `other` in-place.
+    /// Creates the union of this Aabr with `other` in-place.
     Aabr& unite(const Aabr& other)
     {
         _min.x() = _min.x() < other._min.x() ? _min.x() : other._min.x();
@@ -495,10 +495,10 @@ struct Aabr {
     }
     Aabr& operator|=(const Aabr& other) { return unite(other); }
 
-    /// @brief Read-write pointer to the Aabr's internal storage.
+    /// Read-write pointer to the Aabr's internal storage.
     element_t* as_ptr() { return &_min.x(); }
 
-    /// @brief Applies a transformation to this Aabr in-place.
+    /// Applies a transformation to this Aabr in-place.
     template<typename MATRIX>
     Aabr& transformed_by(const MATRIX& matrix)
     {
@@ -558,7 +558,7 @@ inline Aabrd transform3(const Matrix4d& xform, const Aabrd& aabr)
 
 //====================================================================================================================//
 
-/// @brief Prints the contents of an Aabr into a std::ostream.
+/// Prints the contents of an Aabr into a std::ostream.
 /// @param os   Output stream, implicitly passed with the << operator.
 /// @param aabr AABR to print.
 /// @return Output stream for further output.
@@ -572,7 +572,7 @@ std::ostream& operator<<(std::ostream& out, const Aabri& aabr);
 
 namespace std {
 
-/// @brief std::hash specialization for Aabr.
+/// std::hash specialization for Aabr.
 template<typename VECTOR2>
 struct hash<notf::detail::Aabr<VECTOR2>> {
     size_t operator()(const notf::detail::Aabr<VECTOR2>& aabr) const

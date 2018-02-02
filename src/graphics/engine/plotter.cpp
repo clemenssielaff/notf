@@ -206,20 +206,20 @@ void Plotter::clear()
 
 void Plotter::render()
 {
-    /// @brief Render various batch types.
+    /// Render various batch types.
     struct Renderer {
 
         // fields ----------------------------------------------------------------------------------------------------//
 
-        /// @brief This plotter.
+        /// This plotter.
         Plotter& plotter;
 
-        /// @brief Batch target.
+        /// Batch target.
         const Batch& batch;
 
         // methods ---------------------------------------------------------------------------------------------------//
 
-        /// @brief Draw a stroke.
+        /// Draw a stroke.
         void operator()(const StrokeInfo& stroke) const
         {
             Pipeline& pipeline = *plotter.m_pipeline.get();
@@ -246,7 +246,7 @@ void Plotter::render()
                                     gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
         }
 
-        /// @brief Draw a shape.
+        /// Draw a shape.
         void operator()(const ShapeInfo& shape) const
         {
             Pipeline& pipeline = *plotter.m_pipeline.get();
@@ -316,7 +316,7 @@ void Plotter::render()
             }
         }
 
-        /// @brief Render text.
+        /// Render text.
         void operator()(const TextInfo& /*text*/) const
         {
             Pipeline& pipeline = *plotter.m_pipeline.get();

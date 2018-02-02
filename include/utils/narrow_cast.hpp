@@ -6,7 +6,7 @@
 
 namespace notf {
 
-/// @brief Save narrowing cast.
+/// Save narrowing cast.
 /// https://github.com/Microsoft/GSL/blob/master/include/gsl/gsl_util
 template<class TARGET, class RAW_SOURCE>
 inline constexpr TARGET narrow_cast(RAW_SOURCE&& value)

@@ -7,7 +7,7 @@
 
 namespace notf {
 
-/// @brief Simple RAII timer for timing a single function call.
+/// Simple RAII timer for timing a single function call.
 ///
 /// Implemented from:
 ///     http://felix.abecassis.me/2011/09/cpp-timer-raii/
@@ -23,11 +23,11 @@ namespace notf {
 class DebugTimer {
 
 public: // methods
-    /// @brief Constructor
+    /// Constructor
     /// @param name    Name of the DebugTimer to identify the output.
     DebugTimer(const std::string& name) : m_name(name), m_start(std::chrono::high_resolution_clock::now()) {}
 
-    /// @brief Destructor.
+    /// Destructor.
     ~DebugTimer()
     {
         std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
@@ -37,10 +37,10 @@ public: // methods
     }
 
 private: // fields
-    /// @brief Name of the DebugTimer to identify the output.
+    /// Name of the DebugTimer to identify the output.
     std::string m_name;
 
-    /// @brief High-precision construction time of the timer.
+    /// High-precision construction time of the timer.
     std::chrono::high_resolution_clock::time_point m_start;
 };
 

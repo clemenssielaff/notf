@@ -8,24 +8,24 @@ namespace detail {
 
 //====================================================================================================================//
 
-/// @brief  3-dimensional mathematical vector containing real numbers.
+///  3-dimensional mathematical vector containing real numbers.
 template<typename REAL>
 struct RealVector3 : public detail::Arithmetic<RealVector3<REAL>, REAL, 3> {
 
-    /// @brief Element type.
+    /// Element type.
     using element_t = REAL;
 
-    /// @brief Arithmetic base type.
+    /// Arithmetic base type.
     using super_t = detail::Arithmetic<RealVector3<REAL>, REAL, 3>;
 
     // fields --------------------------------------------------------------------------------------------------------//
     using super_t::data;
 
     // methods -------------------------------------------------------------------------------------------------------//
-    /// @brief Default constructor.
+    /// Default constructor.
     RealVector3() = default;
 
-    /// @brief Element-wise constructor.
+    /// Element-wise constructor.
     /// @param x    First component.
     /// @param y    Second component (default is 0).
     /// @param z    Third component (default is 0).
@@ -43,25 +43,25 @@ struct RealVector3 : public detail::Arithmetic<RealVector3<REAL>, REAL, 3> {
     /** Unit vector along the Z-axis. */
     static RealVector3 z_axis() { return RealVector3(0, 0, 1); }
 
-    /// @brief Read-write access to the first element in the vector.
+    /// Read-write access to the first element in the vector.
     element_t& x() { return data[0]; }
 
-    /// @brief Read-write access to the second element in the vector.
+    /// Read-write access to the second element in the vector.
     element_t& y() { return data[1]; }
 
-    /// @brief Read-write access to the third element in the vector.
+    /// Read-write access to the third element in the vector.
     element_t& z() { return data[2]; }
 
-    /// @brief Read-only access to the first element in the vector.
+    /// Read-only access to the first element in the vector.
     const element_t& x() const { return data[0]; }
 
-    /// @brief Read-only access to the second element in the vector.
+    /// Read-only access to the second element in the vector.
     const element_t& y() const { return data[1]; }
 
-    /// @brief Read-only access to the third element in the vector.
+    /// Read-only access to the third element in the vector.
     const element_t& z() const { return data[2]; }
 
-    /// @brief Swizzles.
+    /// Swizzles.
     RealVector3 xyz() const { return {data[0], data[1], data[2]}; }
     RealVector3 xzy() const { return {data[0], data[2], data[1]}; }
     RealVector3 yxz() const { return {data[1], data[0], data[2]}; }
@@ -69,7 +69,7 @@ struct RealVector3 : public detail::Arithmetic<RealVector3<REAL>, REAL, 3> {
     RealVector3 zxy() const { return {data[2], data[0], data[1]}; }
     RealVector3 zyx() const { return {data[2], data[1], data[0]}; }
 
-    /// @brief Returns True, if other and self are approximately the same vector.
+    /// Returns True, if other and self are approximately the same vector.
     /// @note Vector3s use distance approximation instead of component-wise approximation.
     /// @param other     Vector to test against.
     /// @param epsilon   Maximal allowed squared distance between the two vectors.
@@ -78,7 +78,7 @@ struct RealVector3 : public detail::Arithmetic<RealVector3<REAL>, REAL, 3> {
         return (*this - other).magnitude_sq() <= epsilon;
     }
 
-    /// @brief Checks whether this vector is parallel to other.
+    /// Checks whether this vector is parallel to other.
     /// @note The zero vector is parallel to everything.
     /// @param other    Vector to test against.
     bool is_parallel_to(const RealVector3& other) const
@@ -86,12 +86,12 @@ struct RealVector3 : public detail::Arithmetic<RealVector3<REAL>, REAL, 3> {
         return cross(other).magnitude_sq() <= precision_high<element_t>();
     }
 
-    /// @brief Checks whether this vector is orthogonal to other.
+    /// Checks whether this vector is orthogonal to other.
     /// @note The zero vector is orthogonal to everything.
     /// @param other    Vector to test against.
     bool is_orthogonal_to(const RealVector3& other) const { return direction_to(other) < precision_high<element_t>(); }
 
-    /// @brief Calculates the smallest angle between two vectors.
+    /// Calculates the smallest angle between two vectors.
     /// @note Returns zero, if one or both of the input vectors are of zero magnitude.
     /// @param other     Vector to test against.
     /// @return Angle in positive radians.
@@ -107,7 +107,7 @@ struct RealVector3 : public detail::Arithmetic<RealVector3<REAL>, REAL, 3> {
         return acos(dot(other) / sqrt(mag_sq_product));
     }
 
-    /// @brief Tests if the other vector is collinear (1), orthogonal(0), opposite (-1) or something in between.
+    /// Tests if the other vector is collinear (1), orthogonal(0), opposite (-1) or something in between.
     /// Similar to `angle`, but saving a call to `acos`.
     /// @note Returns zero, if one or both of the input vectors are of zero magnitude.
     /// @param other     Vector to test against.
@@ -123,7 +123,7 @@ struct RealVector3 : public detail::Arithmetic<RealVector3<REAL>, REAL, 3> {
         return clamp(this->dot(other) / sqrt(mag_sq_product), -1., 1.);
     }
 
-    /// @brief Vector cross product.
+    /// Vector cross product.
     /// The cross product is a vector perpendicular to this one and other.
     /// The magnitude of the cross vector is twice the area of the triangle defined by the two input Vector3s.
     /// @param other     Other vector.
@@ -133,7 +133,7 @@ struct RealVector3 : public detail::Arithmetic<RealVector3<REAL>, REAL, 3> {
                            (x() * other.y()) - (y() * other.x()));
     }
 
-    /// @brief Creates a projection of this vector onto an infinite line whose direction is specified by other.
+    /// Creates a projection of this vector onto an infinite line whose direction is specified by other.
     /// @param other     Vector to project on. If it is not normalized, the projection is scaled alongside with it.
     RealVector3 project_on(const RealVector3& other) const { return other * dot(other); }
 };
@@ -144,20 +144,20 @@ struct RealVector3 : public detail::Arithmetic<RealVector3<REAL>, REAL, 3> {
 template<typename INTEGER>
 struct IntVector3 : public detail::Arithmetic<IntVector3<INTEGER>, INTEGER, 3> {
 
-    /// @brief Element type.
+    /// Element type.
     using element_t = INTEGER;
 
-    /// @brief Arithmetic base type.
+    /// Arithmetic base type.
     using super_t = detail::Arithmetic<IntVector3<INTEGER>, INTEGER, 3>;
 
     // fields --------------------------------------------------------------------------------------------------------//
     using super_t::data;
 
     // methods -------------------------------------------------------------------------------------------------------//
-    /// @brief Default constructor.
+    /// Default constructor.
     IntVector3() = default;
 
-    /// @brief Element-wise constructor.
+    /// Element-wise constructor.
     /// @param x    First component.
     /// @param y    Second component (default is 0).
     /// @param z    Third component (default is 0).
@@ -166,31 +166,31 @@ struct IntVector3 : public detail::Arithmetic<IntVector3<INTEGER>, INTEGER, 3> {
         : super_t{static_cast<element_t>(x), static_cast<element_t>(y), static_cast<element_t>(z)}
     {}
 
-    /// @brief Unit vector along the X-axis.
+    /// Unit vector along the X-axis.
     static IntVector3 x_axis() { return IntVector3(1, 0, 0); }
 
-    /// @brief Unit vector along the Y-axis.
+    /// Unit vector along the Y-axis.
     static IntVector3 y_axis() { return IntVector3(0, 1, 0); }
 
-    /// @brief Unit vector along the Z-axis.
+    /// Unit vector along the Z-axis.
     static IntVector3 z_axis() { return IntVector3(0, 0, 1); }
 
-    /// @brief Read-write access to the first element in the vector.
+    /// Read-write access to the first element in the vector.
     element_t& x() { return data[0]; }
 
-    /// @brief Read-write access to the second element in the vector.
+    /// Read-write access to the second element in the vector.
     element_t& y() { return data[1]; }
 
-    /// @brief Read-write access to the third element in the vector.
+    /// Read-write access to the third element in the vector.
     element_t& z() { return data[2]; }
 
-    /// @brief Read-only access to the first element in the vector.
+    /// Read-only access to the first element in the vector.
     const element_t& x() const { return data[0]; }
 
-    /// @brief Read-only access to the second element in the vector.
+    /// Read-only access to the second element in the vector.
     const element_t& y() const { return data[1]; }
 
-    /// @brief Read-only access to the third element in the vector.
+    /// Read-only access to the third element in the vector.
     const element_t& z() const { return data[2]; }
 };
 
@@ -205,7 +205,7 @@ using Vector3i = detail::IntVector3<int>;
 
 //====================================================================================================================//
 
-/// @brief Prints the contents of a vector into a std::ostream.
+/// Prints the contents of a vector into a std::ostream.
 /// @param os   Output stream, implicitly passed with the << operator.
 /// @param vec  Vector to print.
 /// @return Output stream for further output.
@@ -216,7 +216,7 @@ std::ostream& operator<<(std::ostream& out, const Vector3i& vec);
 
 //====================================================================================================================//
 
-/// @brief Spherical linear interpolation between two vectors.
+/// Spherical linear interpolation between two vectors.
 /// Travels the torque-minimal path at a constant velocity.
 /// Taken from http://bulletphysics.org/Bullet/BulletFull/neon_2vec__aos_8h_source.html .
 /// @param from      Left Vector, active at fade <= 0.
@@ -253,7 +253,7 @@ slerp(const detail::RealVector3<element_t>& from, const detail::RealVector3<elem
 
 namespace std {
 
-/// @brief std::hash specialization for RealVector3.
+/// std::hash specialization for RealVector3.
 template<typename REAL>
 struct hash<notf::detail::RealVector3<REAL>> {
     size_t operator()(const notf::detail::RealVector3<REAL>& vector) const
@@ -262,7 +262,7 @@ struct hash<notf::detail::RealVector3<REAL>> {
     }
 };
 
-/// @brief std::hash specialization for IntVector3.
+/// std::hash specialization for IntVector3.
 template<typename INTEGER>
 struct hash<notf::detail::IntVector3<INTEGER>> {
     size_t operator()(const notf::detail::IntVector3<INTEGER>& vector) const

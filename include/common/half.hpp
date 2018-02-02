@@ -11,22 +11,22 @@ namespace notf {
 struct half {
 
     // fields --------------------------------------------------------------------------------------------------------//
-    /// @brief Half value.
+    /// Half value.
     short value;
 
     // methods -------------------------------------------------------------------------------------------------------//
-    /// @brief Default constructor.
+    /// Default constructor.
     half() = default;
 
-    /// @brief Value constructor.
+    /// Value constructor.
     /// @param value    Float value to convert into a half.
     half(const float value);
 
-    /// @brief Converts the half back to a float.
+    /// Converts the half back to a float.
     explicit operator float() const;
 };
 
-/// @brief Pack two halfs into a 32-bit unsigned integer.
+/// Pack two halfs into a 32-bit unsigned integer.
 /// @param a    First half.
 /// @param b    Second half.
 /// @returns    Unsigned int containing two halfs.
@@ -43,7 +43,7 @@ inline unsigned int packHalfs(half a, half b)
     return converter.out;
 }
 
-/// @brief Unpacks two halfs from a 32-bit unsigned integer.
+/// Unpacks two halfs from a 32-bit unsigned integer.
 /// @param pack Unsigned int to unpack.
 /// @returns    Pair of halfs.
 inline std::pair<half, half> unpackHalfs(unsigned int pack)
@@ -60,7 +60,7 @@ inline std::pair<half, half> unpackHalfs(unsigned int pack)
 
 //====================================================================================================================//
 
-/// @brief Prints the value of a half into a std::ostream.
+/// Prints the value of a half into a std::ostream.
 /// @param out      Output stream, implicitly passed with the << operator.
 /// @param value    Half value.
 /// @return Output stream for further output.

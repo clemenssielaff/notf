@@ -12,7 +12,7 @@ namespace notf {
 
 // ===================================================================================================================//
 
-/// @brief Manages the loading and compilation of an OpenGL shader.
+/// Manages the loading and compilation of an OpenGL shader.
 ///
 /// Shader baseclass.
 /// Represents a single stage in the shading pipeline.
@@ -34,25 +34,25 @@ class Shader : public std::enable_shared_from_this<Shader> {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    /// @brief Information about a variable (attribute or uniform) of this shader.
+    /// Information about a variable (attribute or uniform) of this shader.
     struct Variable {
-        /// @brief Location of the variable, used to address the variable in the OpenGL shader.
+        /// Location of the variable, used to address the variable in the OpenGL shader.
         GLint location;
 
-        /// @brief Type of the variable.
+        /// Type of the variable.
         /// See https://www.khronos.org/opengl/wiki/GLAPI/glGetActiveUniform#Description for details.
         GLenum type;
 
-        /// @brief Number of elements in the variable in units of type.
+        /// Number of elements in the variable in units of type.
         /// Is always >=1 and only >1 if the variable is an array.
         GLint size;
 
-        /// @brief The name of the variable.
+        /// The name of the variable.
         std::string name;
     };
 
     struct Stage {
-        /// @brief Individual Shader stages.
+        /// Individual Shader stages.
         enum Flag : unsigned char {
             // implicit zero value for default-initialized Stage
             VERTEX          = 1u << 0, ///< Vertex stage.
@@ -63,18 +63,18 @@ public:
             COMPUTE         = 1u << 5, ///< Compute shader (not a stage in the pipeline).
         };
 
-        /// @brief Combination of Shader stages.
+        /// Combination of Shader stages.
         using Flags = std::underlying_type_t<Flag>;
     };
 
-    /// @brief Defines additional defines to inject into the GLSL code.
+    /// Defines additional defines to inject into the GLSL code.
     using Defines = std::vector<std::pair<std::string, std::string>>;
 
 protected:
-    /// @brief Empty Defines used as default argument.
+    /// Empty Defines used as default argument.
     static const Defines s_no_defines;
 
-    /// @brief Construction arguments.
+    /// Construction arguments.
     struct Args {
         const char* vertex_source    = nullptr;
         const char* tess_ctrl_source = nullptr;
@@ -86,48 +86,48 @@ protected:
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
-    /// @brief Constructor.
+    /// Constructor.
     /// @param context  Render Context in which the Shader lives.
     /// @param id       OpenGL Shader program ID.
     /// @param stages   Pipeline stage/s of the Shader.
     /// @param name     Context-unique name of this Shader.
     Shader(GraphicsContextPtr& context, const GLuint id, Stage::Flags stages, std::string name);
 
-    /// @brief Factory.
+    /// Factory.
     /// @param context  Render Context in which the Shader lives.
     /// @param name     Context-unique name of this Shader.
     /// @param args     Construction arguments.
     /// @return OpenGL Shader program ID.
     static GLuint _build(GraphicsContextPtr& context, const std::string& name, const Args& args);
 
-    /// @brief Registers the given Shader with its context.
+    /// Registers the given Shader with its context.
     /// @param shader   Shader to register.
     static void _register_with_context(ShaderPtr shader);
 
 public:
     DISALLOW_COPY_AND_ASSIGN(Shader)
 
-    /// @brief Destructor
+    /// Destructor
     virtual ~Shader();
 
-    /// @brief Graphics Context in which the Texture lives.
+    /// Graphics Context in which the Texture lives.
     GraphicsContext& context() const { return m_graphics_context; }
 
-    /// @brief The OpenGL ID of the Shader program.
+    /// The OpenGL ID of the Shader program.
     GLuint id() const { return m_id; }
 
-    /// @brief Checks if the Shader is valid.
+    /// Checks if the Shader is valid.
     /// A Shader should always be valid - the only way to get an invalid one is to remove the GraphicsContext while
     /// still holding on to shared pointers of a Shader that lived in the removed GraphicsContext.
     bool is_valid() const { return m_id != 0; }
 
-    /// @brief Pipeline stage/s of the Shader.
+    /// Pipeline stage/s of the Shader.
     Stage::Flags stage() const { return m_stages; }
 
-    /// @brief The context-unique name of this Shader.
+    /// The context-unique name of this Shader.
     const std::string& name() const { return m_name; }
 
-    /// @brief Updates the value of a uniform in the shader.
+    /// Updates the value of a uniform in the shader.
     /// @throws std::runtime_error   If the uniform cannot be found.
     /// @throws std::runtime_error   If the value type and the uniform type are not compatible.
     template<typename T>
@@ -137,35 +137,35 @@ public:
     }
 
 #ifdef NOTF_DEBUG
-    /// @brief Checks whether the shader can execute in the current OpenGL state.
+    /// Checks whether the shader can execute in the current OpenGL state.
     /// Is expensive and should only be used for debugging!
     /// @return  True if the validation succeeded.
     bool validate_now() const;
 #endif
 
 private:
-    /// @brief Returns the uniform with the given name.
+    /// Returns the uniform with the given name.
     /// @throws std::runtime_error   If there is no uniform with the given name in this shader.
     const Variable& _uniform(const std::string& name) const;
 
-    /// @brief Deallocates the Shader data and invalidates the Shader.
+    /// Deallocates the Shader data and invalidates the Shader.
     void _deallocate();
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// @brief Graphics Context in which the Texture lives.
+    /// Graphics Context in which the Texture lives.
     GraphicsContext& m_graphics_context;
 
-    //// @brief ID of the shader program.
+    //// ID of the shader program.
     GLuint m_id;
 
-    /// @brief All stages contained in this Shader.
+    /// All stages contained in this Shader.
     const Stage::Flags m_stages;
 
-    /// @brief The context-unique name of this Shader.
+    /// The context-unique name of this Shader.
     const std::string m_name;
 
-    /// @brief  All uniforms of this shader.
+    ///  All uniforms of this shader.
     std::vector<Variable> m_uniforms;
 };
 
@@ -189,12 +189,12 @@ void Shader::set_uniform(const std::string&, const Matrix4f& value);
 
 // ===================================================================================================================//
 
-/// @brief Vertex Shader.
+/// Vertex Shader.
 class VertexShader : public Shader {
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
-    /// @brief Value Constructor.
+    /// Value Constructor.
     /// @param context  Render Context in which the Shader lives.
     /// @param program  OpenGL Shader program ID.
     /// @param name     Human readable name of the Shader.
@@ -202,7 +202,7 @@ protected:
     VertexShader(GraphicsContextPtr& context, const GLuint program, std::string name, std::string source);
 
 public:
-    /// @brief Factory.
+    /// Factory.
     /// @param context  Render Context in which the Shader lives.
     /// @param name     Human readable name of the Shader.
     /// @param source   Vertex shader source.
@@ -210,33 +210,33 @@ public:
     static VertexShaderPtr build(GraphicsContextPtr& context, std::string name, const std::string& source,
                                  const Defines& defines = s_no_defines);
 
-    /// @brief Returns the location of the attribute with the given name.
+    /// Returns the location of the attribute with the given name.
     /// @throws std::runtime_error   If there is no attribute with the given name in this shader.
     GLuint attribute(const std::string& name) const;
 
-    /// @brief All attribute variables.
+    /// All attribute variables.
     const std::vector<Variable>& attributes() { return m_attributes; }
 
-    /// @brief The vertex shader source code.
+    /// The vertex shader source code.
     const std::string& source() const { return m_source; }
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// @brief Vertex Shader code (including injections).
+    /// Vertex Shader code (including injections).
     const std::string m_source;
 
-    /// @brief All attributes of this Shader.
+    /// All attributes of this Shader.
     std::vector<Variable> m_attributes;
 };
 
 // ===================================================================================================================//
 
-/// @brief Tesselation Shader.
+/// Tesselation Shader.
 class TesselationShader : public Shader {
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
-    /// @brief Value Constructor.
+    /// Value Constructor.
     /// @param context              Render Context in which the Shader lives.
     /// @param program              OpenGL Shader program ID.
     /// @param name                 Human readable name of the Shader.
@@ -246,7 +246,7 @@ protected:
                       const std::string control_source, const std::string evaluation_source);
 
 public:
-    /// @brief Factory.
+    /// Factory.
     /// @param context              Render Context in which the Shader lives.
     /// @param name                 Human readable name of the Shader.
     /// @param control_source       Tesselation control shader source.
@@ -255,29 +255,29 @@ public:
     static TesselationShaderPtr build(GraphicsContextPtr& context, std::string name, const std::string& control_source,
                                       const std::string& evaluation_source, const Defines& defines = s_no_defines);
 
-    /// @brief The teselation control shader source code.
+    /// The teselation control shader source code.
     const std::string& control_source() const { return m_control_source; }
 
-    /// @brief The teselation evaluation shader source code.
+    /// The teselation evaluation shader source code.
     const std::string& evaluation_source() const { return m_evaluation_source; }
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// @brief Teselation control shader code.
+    /// Teselation control shader code.
     const std::string m_control_source;
 
-    /// @brief Teselation evaluation shader code.
+    /// Teselation evaluation shader code.
     const std::string m_evaluation_source;
 };
 
 // ===================================================================================================================//
 
-/// @brief Geometry Shader.
+/// Geometry Shader.
 class GeometryShader : public Shader {
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
-    /// @brief Value Constructor.
+    /// Value Constructor.
     /// @param context  Render Context in which the Shader lives.
     /// @param program  OpenGL Shader program ID.
     /// @param name     Human readable name of the Shader.
@@ -285,7 +285,7 @@ protected:
     GeometryShader(GraphicsContextPtr& context, const GLuint program, std::string name, std::string source);
 
 public:
-    /// @brief Factory.
+    /// Factory.
     /// @param context  Render Context in which the Shader lives.
     /// @param name     Human readable name of the Shader.
     /// @param source   Geometry shader source.
@@ -293,23 +293,23 @@ public:
     static GeometryShaderPtr build(GraphicsContextPtr& context, std::string name, const std::string& source,
                                    const Defines& defines = s_no_defines);
 
-    /// @brief The geometry shader source code.
+    /// The geometry shader source code.
     const std::string& source() const { return m_source; }
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// @brief Geometry Shader code (including injections).
+    /// Geometry Shader code (including injections).
     const std::string m_source;
 };
 
 // ===================================================================================================================//
 
-/// @brief Fragment Shader.
+/// Fragment Shader.
 class FragmentShader : public Shader {
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
-    /// @brief Value Constructor.
+    /// Value Constructor.
     /// @param context  Render Context in which the Shader lives.
     /// @param program  OpenGL Shader program ID.
     /// @param name     Human readable name of the Shader.
@@ -317,7 +317,7 @@ protected:
     FragmentShader(GraphicsContextPtr& context, const GLuint program, std::string name, std::string source);
 
 public:
-    /// @brief Factory.
+    /// Factory.
     /// @param context  Render Context in which the Shader lives.
     /// @param name     Human readable name of the Shader.
     /// @param source   Fragment shader source.
@@ -325,12 +325,12 @@ public:
     static FragmentShaderPtr build(GraphicsContextPtr& context, std::string name, const std::string& source,
                                    const Defines& defines = s_no_defines);
 
-    /// @brief The fragment shader source code.
+    /// The fragment shader source code.
     const std::string& source() const { return m_source; }
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// @brief Fragment Shader code (including injections).
+    /// Fragment Shader code (including injections).
     const std::string m_source;
 };
 

@@ -5,13 +5,13 @@
 
 namespace notf {
 
-/// @brief Render Pipeline
+/// Render Pipeline
 /// Is not managed by the context, but keeps their Shaders alive.
 class Pipeline : public std::enable_shared_from_this<Pipeline> {
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
-    /// @brief Value constructor.
+    /// Value constructor.
     /// @param context              Graphics context containing this Pipeline and all of its Shader.
     /// @param vertex_shader        Vertex shader to use in the Pipeline.
     /// @param tesselation_shader   Tesselation shader to use in the Pipeline.
@@ -21,7 +21,7 @@ protected:
              GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader);
 
 public:
-    /// @brief Factory
+    /// Factory.
     /// @param context              Graphics context containing this Pipeline and all of its Shader.
     /// @param vertex_shader        Vertex shader to use in the Pipeline.
     /// @param tesselation_shader   Tesselation shader to use in the Pipeline.
@@ -43,44 +43,44 @@ public:
         return create(context, std::move(vertex_shader), std::move(tesselation_shader), {}, std::move(fragment_shader));
     }
 
-    /// @brief Destructor.
+    /// Destructor.
     ~Pipeline();
 
-    /// @brief OpenGL ID of the Pipeline object.
+    /// OpenGL ID of the Pipeline object.
     GLuint id() const { return m_id; }
 
-    /// @brief Vertex shader attached to this Pipeline.
+    /// Vertex shader attached to this Pipeline.
     const VertexShaderPtr& vertex_shader() const { return m_vertex_shader; }
 
-    /// @brief Tesselation shader attached to this Pipeline.
+    /// Tesselation shader attached to this Pipeline.
     /// The tesselation stage actually contains two shader sources (tesselation control and -evaluation).
     const TesselationShaderPtr& tesselation_shader() const { return m_tesselation_shader; }
 
-    /// @brief Geometry shader attached to this Pipeline.
+    /// Geometry shader attached to this Pipeline.
     const GeometryShaderPtr& geometry_shader() const { return m_geometry_shader; }
 
-    /// @brief Fragment shader attached to this Pipeline.
+    /// Fragment shader attached to this Pipeline.
     const FragmentShaderPtr& fragment_shader() const { return m_fragment_shader; }
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// @brief Graphics context containing this Pipeline.
+    /// Graphics context containing this Pipeline.
     GraphicsContext& m_graphics_context;
 
-    /// @brief OpenGL ID of the Pipeline object.
+    /// OpenGL ID of the Pipeline object.
     GLuint m_id;
 
-    /// @brief Vertex shader attached to this Pipeline.
+    /// Vertex shader attached to this Pipeline.
     VertexShaderPtr m_vertex_shader;
 
-    /// @brief Tesselation shader attached to this Pipeline.
+    /// Tesselation shader attached to this Pipeline.
     /// The tesselation stage actually contains two shader sources (tesselation control and -evaluation).
     TesselationShaderPtr m_tesselation_shader;
 
-    /// @brief Geometry shader attached to this Pipeline.
+    /// Geometry shader attached to this Pipeline.
     GeometryShaderPtr m_geometry_shader;
 
-    /// @brief Fragment shader attached to this Pipeline.
+    /// Fragment shader attached to this Pipeline.
     FragmentShaderPtr m_fragment_shader;
 };
 
