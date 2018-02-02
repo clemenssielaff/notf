@@ -6,9 +6,11 @@
 
 namespace notf {
 
-PropertyGraph::PropertyBase::~PropertyBase() noexcept {}
+namespace detail {
 
-void PropertyGraph::PropertyBase::clear_dependencies()
+PropertyBase::~PropertyBase() noexcept {}
+
+void PropertyBase::clear_dependencies()
 {
     for (PropertyBase* dependency : m_dependencies) {
         const bool should_always_succeed = remove_one_unordered(dependency->m_affected, this);
@@ -17,26 +19,28 @@ void PropertyGraph::PropertyBase::clear_dependencies()
     m_dependencies.clear();
 }
 
-void PropertyGraph::PropertyBase::register_with_dependencies()
+void PropertyBase::freeze_affected()
+{
+    for (PropertyBase* affected : m_affected) {
+        affected->freeze();
+    }
+}
+
+void PropertyBase::_register_with_dependencies()
 {
     for (PropertyBase* dependency : m_dependencies) {
         dependency->m_affected.emplace_back(this);
     }
 }
 
-void PropertyGraph::PropertyBase::set_affected_dirty()
+void PropertyBase::_set_affected_dirty()
 {
     for (PropertyBase* affected : m_affected) {
         affected->m_is_dirty = true;
     }
 }
 
-void PropertyGraph::PropertyBase::freeze_affected()
-{
-    for (PropertyBase* affected : m_affected) {
-        affected->freeze();
-    }
-}
+} // namespace detail
 
 bool PropertyGraph::delete_property(const Id id)
 {
@@ -92,8 +96,7 @@ bool PropertyGraph::_get_properties(const std::vector<Id>& ids, std::vector<Prop
     return false;
 }
 
-bool PropertyGraph::_is_dependency_of_any(const PropertyBase* property,
-                                          const std::vector<const PropertyBase*>& dependencies)
+bool PropertyGraph::_is_dependency_of_any(const PropertyBase* property, const std::vector<PropertyBase*>& dependencies)
 {
     std::set<const PropertyBase*> unchecked, checked;
     std::copy(dependencies.begin(), dependencies.end(), std::inserter(unchecked, unchecked.begin()));
@@ -101,11 +104,12 @@ bool PropertyGraph::_is_dependency_of_any(const PropertyBase* property,
     const PropertyBase* candidate;
     while (pop_one(unchecked, candidate)) {
         if (property == candidate) {
-            return true; // circular dependency found
+            log_critical << "Could not define expression: circular dependency detected";
+            return true;
         }
 
         checked.insert(candidate);
-        for (const PropertyBase* dependency : candidate->dependencies()) {
+        for (const PropertyBase* dependency : candidate->m_dependencies) {
             if (!checked.count(dependency)) {
                 unchecked.emplace(dependency);
             }
