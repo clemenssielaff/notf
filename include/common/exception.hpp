@@ -2,6 +2,7 @@
 
 #include <exception>
 
+#include "common/meta.hpp"
 #include "common/string.hpp"
 
 namespace notf {
@@ -50,7 +51,7 @@ struct notf_exception : public std::exception {
 /// Convenience macro to throw a notf_exception with a message, that additionally contains the line, file and function
 /// where the error occured.
 #ifndef throw_notf_error_msg
-#define throw_notf_error_msg(TYPE, MSG) (throw TYPE(notf::basename(__FILE__), __FUNCTION__, __LINE__, MSG))
+#define throw_notf_error_msg(TYPE, MSG) (throw TYPE(notf::basename(__FILE__), NOTF_FUNCTION, __LINE__, MSG))
 #else
 #warning "Macro 'throw_notf_error_msg' is already defined - NoTF's throw_notf_error_msg macro will remain disabled."
 #endif
@@ -58,7 +59,7 @@ struct notf_exception : public std::exception {
 
 /// Convenience macro to throw a notf_exception with the line, file and function where the error occured.
 #ifndef throw_notf_error
-#define throw_notf_error(TYPE) (throw TYPE(notf::basename(__FILE__), __FUNCTION__, __LINE__))
+#define throw_notf_error(TYPE) (throw TYPE(notf::basename(__FILE__), NOTF_FUNCTION, __LINE__))
 #else
 #warning "Macro 'throw_notf_error' is already defined - NoTF's throw_notf_error macro will remain disabled."
 #endif
@@ -67,7 +68,7 @@ struct notf_exception : public std::exception {
 
 /// Convenience macro to throw a runtime_error that contains the line, file and function where the error occured.
 #ifndef throw_runtime_error
-#define throw_runtime_error(MSG) (throw notf::runtime_error(notf::basename(__FILE__), __FUNCTION__, __LINE__, MSG))
+#define throw_runtime_error(MSG) (throw notf::runtime_error(notf::basename(__FILE__), NOTF_FUNCTION, __LINE__, MSG))
 #else
 #warning "Macro 'throw_runtime_error' is already defined - NoTF's throw_runtime_error macro will remain disabled."
 #endif

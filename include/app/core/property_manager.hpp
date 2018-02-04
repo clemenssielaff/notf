@@ -85,6 +85,11 @@ private:
     /// Command object, used as data type in the MPSC queue.
     struct Command {
 
+        /// First type, used for default constructed (or moved) command types.
+        struct Empty {
+            // no-op
+        };
+
         // Create a new value (only requires the PropertyId).
         struct Create {
             // empty
@@ -106,8 +111,17 @@ private:
             // empty
         };
 
+        /// Default constructor (produces an invalid command).
+        Command() : time(Time::invalid()), property(PropertyId::invalid()), type(Empty{}) {}
+
+        /// Move constructor.
+        Command(Command&& other) : time(other.time), property(other.property), type(std::move(other.type))
+        {
+            other.type = Empty{};
+        }
+
         /// Command type, is a variant of all the possible types of Commands.
-        using Type = std::variant<Create, SetValue, SetExpression, Remove>;
+        using Type = std::variant<Empty, Create, SetValue, SetExpression, Remove>;
 
         /// Creation time of the event issuing the Command.
         /// Is used to order the Commands.
@@ -120,9 +134,59 @@ private:
         Type type;
     };
 
+    using CommandList = std::vector<Command>;
+
+public:
+    /// Events batch up their commands so that we can be certain that either all or none of them are in effect at any
+    /// given time. Otherwise it would be possible to render a frame with some of an event's commands executed and
+    /// others still in the queue.
+    class CommandBatch {
+        friend class PropertyManager;
+
+        // methods ---------------------------------------------------------------------------------------------------//
+    private: // for Property Manager
+        /// Constructor.
+        CommandBatch(PropertyGraph& graph) : m_graph(graph), m_commands() {}
+
+    public:
+        template<typename value_t>
+        PropertyId create_property()
+        {
+            PropertyId id = m_graph.next_id();
+
+            m_graph.add_property<value_t>(id);
+        }
+
+        // fields ----------------------------------------------------------------------------------------------------//
+    private:
+        /// Graph to modify with the commands.
+        PropertyGraph& m_graph;
+
+        /// Commands in this batch.
+        CommandList m_commands;
+
+//        const Time m_time;
+
+        // TODO: continue here
+        // time should be per batch, not per Command. We might need an external and an internal batch type for that
+        // (the external also contains the graph to operate on).
+        // From there on we just need to CRUD operations as methods on the external batch and take it for a psin!
+        // Also, you might want to check if it possible to add another type to the ID type so that not all method
+        // signatures of the external batch need to be qualified with explicit templates.
+    };
+
+    friend class CommandBatch;
+
     // methods -------------------------------------------------------------------------------------------------------//
 public:
+    /// Default constructor.
+    PropertyManager() = default;
 
+    /// Create a new command batch to fill.
+    CommandBatch create_batch() { return CommandBatch{m_graph}; }
+
+    /// Schedule the command batch for execution.
+    void schedule_batch(CommandBatch&& batch) { m_batches.push(std::move(batch.m_commands)); }
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
@@ -130,7 +194,7 @@ private:
     PropertyGraph m_graph;
 
     /// Multiple producer / single consumer queue used for interthread communication.
-//    MpscQueue<Command> m_commands;
+    MpscQueue<CommandList> m_batches;
 };
 
 } // namespace notf

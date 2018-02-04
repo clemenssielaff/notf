@@ -75,7 +75,11 @@ void test_property_graph()
               << std::endl;
 }
 
-void test_property_manager() { PropertyManager manager; }
+void test_property_manager() {
+    PropertyManager manager;
+    auto batch = manager.create_batch();
+    manager.schedule_batch(std::move(batch));
+}
 
 } // namespace
 

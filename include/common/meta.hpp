@@ -232,3 +232,19 @@ overloaded(Ts...)->overloaded<Ts...>;
 #endif
 
 //====================================================================================================================//
+
+#ifdef NOTF_LOG_PRETTY_FUNCTION
+#ifdef NOTF_CLANG
+#define NOTF_FUNCTION __PRETTY_FUNCTION__
+#else
+#ifdef NOTF_MSVC
+#define NOTF_FUNCTION __FUNCTION__
+#else
+#ifdef NOTF_GCC
+#define NOTF_FUNCTION __PRETTY_FUNCTION__
+#endif
+#endif
+#endif
+#else
+#define NOTF_FUNCTION __func__
+#endif

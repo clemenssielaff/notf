@@ -37,18 +37,15 @@ class MpscQueue final {
         std::atomic<Node*> next;
 
         /// Data
-        T data;
+        Data data;
     };
-
-    /// Type used for allocating the memory of a new node.
-    using aligned_node_t = typename std::aligned_storage<sizeof(Node), std::alignment_of<Node>::value>::type;
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     DISALLOW_COPY_AND_ASSIGN(MpscQueue)
 
     /// Constructor.
-    MpscQueue() : m_head(reinterpret_cast<Node*>(new aligned_node_t)), m_tail(m_head.load(std::memory_order_relaxed))
+    MpscQueue() : m_head(new Node), m_tail(m_head.load(std::memory_order_relaxed))
     {
         Node* head = m_head.load(std::memory_order_relaxed);
         head->next.store(nullptr, std::memory_order_relaxed);
@@ -66,9 +63,9 @@ public:
 
     /// Push another item onto the queue.
     /// @param item     New item.
-    void push(Data item)
+    void push(Data&& item)
     {
-        Node* node = reinterpret_cast<Node*>(new aligned_node_t);
+        Node* node = new Node;
         node->data = std::move(item);
         node->next.store(nullptr, std::memory_order_relaxed);
 
@@ -87,7 +84,7 @@ public:
             return false;
         }
 
-        item = next->data;
+        item = std::move(next->data);
         m_tail.store(next, std::memory_order_release);
         delete tail;
         return true;
@@ -98,7 +95,7 @@ private:
     /// Stub item at the front, is moved when a new item is pushed onto the queue.
     std::atomic<Node*> m_head;
 
-    /// Oldest item in the queue.
+    /// Dataless item at the back.
     std::atomic<Node*> m_tail;
 };
 

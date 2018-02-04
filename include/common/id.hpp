@@ -33,6 +33,9 @@ struct IdType {
     /// Value constructor.
     IdType(const underlying_type id) : id(id) {}
 
+    /// Explicit invalid Id generator.
+    static IdType invalid() { return {}; }
+
     /// Equality operator.
     /// @param rhs  Value to test against.
     template<typename OTHER, typename = std::enable_if_t<std::is_same<typename OTHER::type_t, type_t>::value>>
