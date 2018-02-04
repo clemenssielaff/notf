@@ -256,7 +256,7 @@ Color::Color(const std::string& value)
     if (!is_color(value)) {
         const std::string message = string_format("\"%s\" is not a valid color value", value.c_str());
         log_critical << message;
-        throw std::runtime_error(std::move(message));
+        throw_runtime_error(std::move(message));
     }
 
     const size_t start_index = value.at(0) == '#' ? 1 : 0;

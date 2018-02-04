@@ -17,14 +17,14 @@ namespace detail {
 class PrefabFactoryImpl;
 
 template<typename TUPLE, std::size_t... I>
-decltype(auto) extract_trait_types_impl(const TUPLE&, std::index_sequence<I...>)
+constexpr decltype(auto) extract_trait_types_impl(const TUPLE&, std::index_sequence<I...>)
 {
     return std::tuple<typename std::tuple_element<I, TUPLE>::type::type...>{};
 }
 
 /// Extracts the value types from a variadic list of traits.
 template<typename... Ts, typename Indices = std::make_index_sequence<sizeof...(Ts)>>
-decltype(auto) extract_trait_types(const std::tuple<Ts...>& tuple)
+constexpr decltype(auto) extract_trait_types(const std::tuple<Ts...>& tuple)
 {
     return extract_trait_types_impl(tuple, Indices{});
 }

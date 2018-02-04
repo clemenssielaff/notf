@@ -1,11 +1,13 @@
 #pragma once
 
+#include <atomic>
 #include <cassert>
 #include <functional>
-#include <map>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
+#include "app/io/time.hpp"
 #include "common/exception.hpp"
 #include "common/id.hpp"
 
@@ -13,9 +15,27 @@ namespace notf {
 
 class PropertyGraph;
 
+namespace property_graph_detail {
+class PropertyBase;
+} // namespace property_graph_detail
+
 //====================================================================================================================//
 
-namespace detail {
+/// Property id type.
+using PropertyId = IdType<property_graph_detail::PropertyBase, size_t>;
+
+//====================================================================================================================//
+
+/// Exception when a property Id did not match a property in the graph.
+NOTF_EXCEPTION_TYPE(property_lookup_error, "Failed to look up property by id")
+
+/// Exception thrown when a new expression would introduce a cyclic dependency into the graph.
+NOTF_EXCEPTION_TYPE(property_cyclic_dependency_error, "Failed to create property expression which would introduce a "
+                                                      "cyclic dependency")
+
+//====================================================================================================================//
+
+namespace property_graph_detail {
 
 #if defined(NOTF_CLANG) || defined(NOTF_IDE)
 #pragma clang diagnostic push
@@ -28,23 +48,26 @@ class PropertyBase {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    /// Property id type.
-    using id_t = uint;
-
-    /// Property id type.
-    using Id = IdType<PropertyBase, id_t>;
+    /// Underlying (numeric) property id type.
+    using id_t = typename PropertyId::underlying_t;
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
-    /// @param id   Property id.
-    PropertyBase(const id_t id) : m_id(id), m_is_dirty(false), m_dependencies(), m_affected() {}
+    /// @param id       Property id.
+    /// @param graph    Graph containing this property.
+    PropertyBase(const id_t id, const PropertyGraph& graph)
+        : m_id(id), m_graph(graph), m_is_dirty(false), m_time(Time::now()), m_dependencies(), m_affected()
+    {}
 
     /// Destructor.
     virtual ~PropertyBase() noexcept;
 
     /// Id of this property.
-    Id id() const { return m_id; }
+    PropertyId id() const noexcept { return m_id; }
+
+    /// Time when the property was set the last time.
+    Time time() const noexcept { return m_time; }
 
 protected: // for use by Property and PropertyGraph
     /// Freezing a property means removing its expression without changing its value.
@@ -68,8 +91,14 @@ protected:
     /// Property id.
     const id_t m_id;
 
+    /// Graph containing this property.
+    const PropertyGraph& m_graph;
+
     /// Whether the property is dirty (its expression needs to be evaluated).
     mutable bool m_is_dirty;
+
+    /// Time when the property was set the last time.
+    Time m_time;
 
     /// All properties that this one depends on.
     std::vector<PropertyBase*> m_dependencies;
@@ -82,31 +111,32 @@ protected:
 #pragma clang diagnostic pop
 #endif
 
-} // namespace detail
-
 //====================================================================================================================//
 
 /// A typed property with a value and mechanisms required for the property graph.
 template<typename T>
-class Property : public detail::PropertyBase {
-    friend class PropertyGraph;
+class Property : public PropertyBase {
+    friend class ::notf::PropertyGraph;
 
+    // types ---------------------------------------------------------------------------------------------------------//
+private:
     /// Value type.
     using value_t = T;
 
     /// Expression type.
-    using expression_t = std::function<value_t()>;
+    using expression_t = std::function<value_t(const PropertyGraph&)>;
 
     /// Underlying id type.
-    using id_t = typename detail::PropertyBase::id_t;
+    using id_t = typename PropertyBase::id_t;
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
-    /// @param id           Property id.
-    /// @param value        Property value.
-    Property(const id_t id, value_t&& value)
-        : detail::PropertyBase(id), m_expression(), m_value(std::forward<value_t>(value))
+    /// @param id       Property id.
+    /// @param graph    Graph containing this property.
+    /// @param value    Property value.
+    Property(const id_t id, const PropertyGraph& graph, value_t&& value)
+        : PropertyBase(id, graph), m_expression(), m_value(std::forward<value_t>(value))
     {}
 
     /// Destructor.
@@ -118,7 +148,7 @@ public:
     {
         if (m_is_dirty) {
             assert(m_expression);
-            m_value    = m_expression();
+            m_value    = m_expression(m_graph);
             m_is_dirty = false;
         }
         return m_value;
@@ -128,8 +158,16 @@ private: // for use by Property and PropertyGraph
     /// Set the property's value.
     /// Removes an existing expression on the property if it exists.
     /// @param value    New value.
-    void set_value(value_t&& value)
+    /// @param time     If the property's value is newer, it won't update. Is ignored if invalid (the default).
+    void set_value(value_t&& value, Time time = {})
     {
+        if (time) {
+            if (time < m_time) {
+                return;
+            }
+            m_time = std::move(time);
+        }
+
         freeze();
 
         if (value != m_value) {
@@ -141,8 +179,16 @@ private: // for use by Property and PropertyGraph
     /// Set property's expression.
     /// @param expression   Expression.
     /// @param dependencies Properties that the expression depends on.
-    void set_expression(expression_t expression, std::vector<PropertyBase*> dependencies)
+    /// @param time         If the property's value is newer, it won't update. Is ignored if invalid (the default).
+    void set_expression(expression_t expression, std::vector<PropertyBase*> dependencies, Time time = {})
     {
+        if (time) {
+            if (time < m_time) {
+                return;
+            }
+            m_time = std::move(time);
+        }
+
         clear_dependencies();
 
         m_expression   = std::move(expression);
@@ -154,7 +200,7 @@ private: // for use by Property and PropertyGraph
     }
 
     /// Freezing a property means removing its expression without changing its value.
-    virtual void freeze() override final
+    virtual void freeze() noexcept override final
     {
         clear_dependencies();
         m_expression = {};
@@ -162,11 +208,13 @@ private: // for use by Property and PropertyGraph
     }
 
     /// Expression evaluating to a new value for this property.
-    std::function<value_t()> m_expression;
+    expression_t m_expression;
 
     /// Property value.
     mutable value_t m_value;
 };
+
+} // namespace property_graph_detail
 
 //====================================================================================================================//
 
@@ -177,110 +225,116 @@ private: // for use by Property and PropertyGraph
 class PropertyGraph {
 
     /// PropertyBase type.
-    using PropertyBase = detail::PropertyBase;
+    using PropertyBase = property_graph_detail::PropertyBase;
+
+    /// Property type
+    template<typename value_t>
+    using Property = property_graph_detail::Property<value_t>;
 
     /// Underlying id type.
     using id_t = PropertyBase::id_t;
-
-    /// Typed id type.
-    using Id = PropertyBase::Id;
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
     PropertyGraph() : m_next_id(1), m_properties() {}
 
-    /// Checks if the given id identifies a property of this graph.
-    bool has_property(const Id id) const { return m_properties.count(static_cast<id_t>(id)); }
+    /// Returns the next free property id.
+    PropertyId next_id() { return m_next_id++; }
 
-    /// Creates an new property with the given type
-    /// @param value    Value of the new property (can be left empty to zero initialize if the type is specified).
-    /// @returns        Non-owning pointer to the new property.
+    /// Checks if the given id identifies a property of this graph.
+    bool has_property(const PropertyId id) const { return m_properties.count(static_cast<id_t>(id)); }
+
+    /// Creates an new property with the given type and id.
+    /// @param id               Id of the property.
+    /// @throws runtime_error   If the property ID already exists.
     template<typename value_t>
-    const Property<value_t>* add_property(value_t&& value = {})
+    void add_property(const PropertyId id)
     {
-        const id_t id = _next_id();
+        if (has_property(id)) {
+            throw_notf_error_msg(property_lookup_error, "Cannot create a new property with an existing ID!");
+        }
+        const id_t numeric_id = static_cast<id_t>(id);
         const auto result
-            = m_properties.emplace(id, std::make_unique<Property<value_t>>(id, std::forward<value_t>(value)));
+            = m_properties.emplace(numeric_id, std::make_unique<Property<value_t>>(numeric_id, *this, value_t{}));
         assert(result.second);
-        return static_cast<Property<value_t>*>(result.first->second.get());
     }
 
     /// Returns as pointer to a property requested by type and id.
-    /// @return Risky pointer to the property. Is empty if a property with the given id does not exist or is of the
-    /// wrong type.
+    /// @return Pointer to the property.
+    /// @throws property_lookup_error   If a property with the given id does not exist or is of the wrong type.
     template<typename value_t>
-    risky_ptr<const Property<value_t>> property(const Id id) const
+    const value_t& property(const PropertyId id) const
     {
         const auto it = m_properties.find(static_cast<id_t>(id));
         if (it != m_properties.end()) {
             if (const Property<value_t>* property = dynamic_cast<Property<value_t>*>(it->second.get())) {
-                return &property;
+                return property->value();
             }
         }
-        return nullptr;
+        throw_notf_error(property_lookup_error);
     }
 
     /// Define the value of a property identified by its id.
     /// @param expression   Expression.
     /// @param dependencies Properties that the expression depends on.
-    /// @returns            True if the property was updated, false if the id does not identify a property or the
-    /// property's type is wrong.
+    /// @throws property_lookup_error   If a property with the given id does not exist or is of the wrong type.
     template<typename value_t>
-    bool set_property(const Id id, value_t&& value)
+    void set_property(const PropertyId id, value_t&& value, Time time = {})
     {
         auto it = m_properties.find(static_cast<id_t>(id));
         if (it != m_properties.end()) {
             if (Property<value_t>* property = dynamic_cast<Property<value_t>*>(it->second.get())) {
-                property->set_value(std::forward<value_t>(value));
-                return true;
+                property->set_value(std::forward<value_t>(value), time);
+                return;
             }
         }
-        return false;
+        throw_notf_error(property_lookup_error);
     }
 
     /// Define the expression of a property identified by its id.
     /// It is of critical importance, that all properties in the expression are listed.
-    /// @param id       Id of the property to set.
-    /// @param expression New value of the property.
-    /// @returns        True if the property was updated, false if the id does not identify a property or the property's
-    ///                 type is wrong.
+    /// @param id           Id of the property to set.
+    /// @param expression   New value of the property.
+    /// @param time         If the property's value is newer, it won't update. Is ignored if invalid (the default).
+    /// @throws property_lookup_error
+    ///                     If a property with the given id does not exist or is of the wrong type.
+    /// @throws property_cyclic_dependency_error
+    ///                     If the expression would introduce a cyclic dependency into the graph.
     template<typename value_t>
-    bool set_expression(const Id id, std::function<value_t()> expression, const std::vector<Id>& dependencies)
+    void set_expression(const PropertyId id, std::function<value_t(const PropertyGraph&)> expression,
+                        const std::vector<PropertyId>& dependencies, Time time = {})
     {
         auto it = m_properties.find(static_cast<id_t>(id));
         if (it != m_properties.end()) {
             if (Property<value_t>* property = dynamic_cast<Property<value_t>*>(it->second.get())) {
                 std::vector<PropertyBase*> dependent_properties;
                 if (_get_properties(dependencies, dependent_properties)) {
-                    if (!_is_dependency_of_any(property, dependent_properties)) {
-                        property->set_expression(std::move(expression), std::move(dependent_properties));
-                        return true;
+                    if (_is_dependency_of_any(property, dependent_properties)) {
+                        throw_notf_error(property_cyclic_dependency_error);
+                    }
+                    else {
+                        property->set_expression(std::move(expression), std::move(dependent_properties), time);
+                        return;
                     }
                 }
             }
         }
-        return false;
+        throw_notf_error(property_lookup_error);
     }
 
     /// Removes a property from the graph.
     /// All affected properties will have their value set to their current value.
     /// @warning    This deletes the property - all raw pointers to the property will become invalid immediately!
     /// @return     True, iff the id identifies a property in the graph.
-    bool delete_property(const Id id);
+    void delete_property(const PropertyId id);
 
 private:
-    /// Calculates and returns the next free property id.
-    /// Even handles wrap-arounds if we should ever have more than size_t properties (highly! unlikely).
-    /// Does not handle the case where you store more than size_t properties ... but by then, your computer has most
-    /// likely long run out of memory anyway.
-    id_t _next_id();
-
     /// Collects a list of properties from their ids.
     /// @param ids      All ids.
     /// @param result   All properties in this graph identified by an id.
     /// @returns        True if all ids refer to properties in this graph.
-    bool _get_properties(const std::vector<Id>& ids, std::vector<PropertyBase*>& result);
+    bool _get_properties(const std::vector<PropertyId>& ids, std::vector<PropertyBase*>& result);
 
     /// Checks if the given property is a dependency of any of the given dependencies (or their dependencies etc.)
     /// Use this to make sure that new expressions do not introduce circular dependencies.
@@ -292,10 +346,12 @@ private:
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// Id counter to identify new properties.
-    id_t m_next_id;
+    std::atomic<id_t> m_next_id;
 
     /// All properties, accessible by id.
-    std::map<id_t, std::unique_ptr<PropertyBase>> m_properties;
+    /// Uses an unordered map because we need the O(1) lookup and since `id_t` provides a perfect hash function, this
+    /// should be the best option for a busy hashmap.
+    std::unordered_map<id_t, std::unique_ptr<PropertyBase>> m_properties;
 };
 
 } // namespace notf

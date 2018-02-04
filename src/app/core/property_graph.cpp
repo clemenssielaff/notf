@@ -6,7 +6,11 @@
 
 namespace notf {
 
-namespace detail {
+property_lookup_error::~property_lookup_error() {}
+
+property_cyclic_dependency_error::~property_cyclic_dependency_error() {}
+
+namespace property_graph_detail {
 
 PropertyBase::~PropertyBase() noexcept {}
 
@@ -40,13 +44,13 @@ void PropertyBase::_set_affected_dirty()
     }
 }
 
-} // namespace detail
+} // namespace property_graph_detail
 
-bool PropertyGraph::delete_property(const Id id)
+void PropertyGraph::delete_property(const PropertyId id)
 {
     auto it = m_properties.find(static_cast<id_t>(id));
     if (it == m_properties.end()) {
-        return false;
+        return;
     }
 
     PropertyBase* property = it->second.get();
@@ -54,25 +58,15 @@ bool PropertyGraph::delete_property(const Id id)
     property->freeze_affected();
 
     m_properties.erase(it);
-    return true;
 }
 
-PropertyGraph::id_t PropertyGraph::_next_id()
-{
-    id_t new_id;
-    do {
-        new_id = m_next_id++;
-    } while (!new_id or m_properties.count(new_id));
-    return new_id;
-}
-
-bool PropertyGraph::_get_properties(const std::vector<Id>& ids, std::vector<PropertyBase*>& result)
+bool PropertyGraph::_get_properties(const std::vector<PropertyId>& ids, std::vector<PropertyBase*>& result)
 {
     result.reserve(ids.size());
     std::vector<id_t> broken_ids;
 
     // collect properties
-    for (const Id& dependency_id : ids) {
+    for (const PropertyId& dependency_id : ids) {
         auto it = m_properties.find(static_cast<id_t>(dependency_id));
         if (it == m_properties.end()) {
             broken_ids.emplace_back(static_cast<id_t>(dependency_id));

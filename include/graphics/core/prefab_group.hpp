@@ -89,7 +89,7 @@ public:
         }
         std::stringstream ss;
         ss << "Unkown prefab type \"" << name << "\"";
-        throw std::runtime_error(ss.str());
+        throw_runtime_error(ss.str());
     }
 
     /// Go through all prefab types of this group and render all instances of each type.

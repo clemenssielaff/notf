@@ -1,9 +1,9 @@
 #pragma once
 
 #include <algorithm>
-#include <stdexcept>
 #include <vector>
 
+#include "common/exception.hpp"
 #include "common/meta.hpp"
 
 namespace notf {
@@ -125,7 +125,7 @@ template<typename T>
 T take_back(std::vector<T>& v)
 {
     if (v.empty()) {
-        throw std::out_of_range("Cannot take last entry of an empty vector");
+        throw_notf_error_msg(out_of_range, "Cannot take last entry of an empty vector");
     }
     T result = v.back();
     v.pop_back();

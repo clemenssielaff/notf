@@ -37,6 +37,7 @@
 #include <memory>
 #include <vector>
 
+#include "common/exception.hpp"
 #include "common/meta.hpp"
 
 namespace notf {
@@ -144,8 +145,7 @@ private: // struct
         Target(Connection connection, std::function<void(SIGNATURE...)> function,
                std::function<bool(SIGNATURE...)> test_function)
             : connection(std::move(connection)), function(std::move(function)), test_function(std::move(test_function))
-        {
-        }
+        {}
 
         /** Connection through which the Callback is performed. */
         Connection connection;
@@ -250,13 +250,13 @@ public: // methods
      * Arguments to this function are passed to the connected callbacks and must match the signature with which the
      * Signal instance was defined.
      * Build-in type casting works as expected (float -> int etc.).
-     * @throw   std::runtime_error if the Signal is part of a cyclic connection.
+     * @throws  runtime_error if the Signal is part of a cyclic connection.
      */
     template<typename... ARGUMENTS>
     void operator()(ARGUMENTS&&... args) const
     {
         if (m_is_firing) {
-            throw std::runtime_error("Cyclic connection detected!");
+            throw_runtime_error("Cyclic signal connection detected!");
         }
         detail::FlagGuard _(m_is_firing);
 
@@ -292,8 +292,7 @@ private: // struct
     struct Target {
         Target(Connection connection, std::function<void()> function)
             : connection(std::move(connection)), function(std::move(function))
-        {
-        }
+        {}
 
         /** Connection through which the Callback is performed. */
         Connection connection;
@@ -389,12 +388,12 @@ public: // methods
     }
 
     /** Fires (emits) the signal.
-     * @throw   std::runtime_error if the Signal is part of a cyclic connection.
+     * @throws  runtime_error if the Signal is part of a cyclic connection.
      */
     void operator()() const
     {
         if (m_is_firing) {
-            throw std::runtime_error("Cyclic connection detected!");
+            throw_runtime_error("Cyclic signal connection detected!");
         }
         detail::FlagGuard _(m_is_firing);
 

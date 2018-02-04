@@ -90,7 +90,7 @@ struct Size2 {
     Size2 operator/(const value_t divisor) const
     {
         if (divisor == 0) {
-            throw std::domain_error("Division by zero");
+            throw_notf_error_msg(logic_error, "Division by zero");
         }
         return {width / divisor, height / divisor};
     }

@@ -1,8 +1,5 @@
 #include "app/io/time.hpp"
 
-#include <cstdint>
-#include <type_traits>
-
 #include "app/core/glfw.hpp"
 #include "common/log.hpp"
 
