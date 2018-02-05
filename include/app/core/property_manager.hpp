@@ -111,22 +111,22 @@ private:
             // empty
         };
 
-        /// Default constructor (produces an invalid command).
-        Command() : time(Time::invalid()), property(PropertyId::invalid()), type(Empty{}) {}
-
-        /// Move constructor.
-        Command(Command&& other) : time(other.time), property(other.property), type(std::move(other.type))
-        {
-            other.type = Empty{};
-        }
-
         /// Command type, is a variant of all the possible types of Commands.
         using Type = std::variant<Empty, Create, SetValue, SetExpression, Remove>;
 
-        /// Creation time of the event issuing the Command.
-        /// Is used to order the Commands.
-        const Time time;
+        // methods ---------------------------------------------------------------------------------------------------//
+        /// Default constructor (produces an invalid command).
+        Command() : property(PropertyId::invalid()), type(Empty{}) {}
 
+        /// Value Constructor.
+        /// @param id       Property id.
+        /// @param type     Command type.
+        Command(PropertyId id, Type&& type) : property(id), type(std::move(type)) {}
+
+        /// Move constructor.
+        Command(Command&& other) : property(other.property), type(std::move(other.type)) { other.type = Empty{}; }
+
+        // fields ----------------------------------------------------------------------------------------------------//
         /// Property id.
         const PropertyId property;
 
@@ -136,43 +136,76 @@ private:
 
     using CommandList = std::vector<Command>;
 
-public:
     /// Events batch up their commands so that we can be certain that either all or none of them are in effect at any
     /// given time. Otherwise it would be possible to render a frame with some of an event's commands executed and
     /// others still in the queue.
-    class CommandBatch {
+    struct InternalBatch {
+
+        /// Default constructor.
+        InternalBatch() = default;
+
+        /// Value constructor.
+        /// @param commands All commands in the batch.
+        /// @param time     Time of the event that creates the batch.
+        InternalBatch(CommandList&& commands, Time&& time) : commands(std::move(commands)), time(std::move(time)) {}
+
+        // fields ----------------------------------------------------------------------------------------------------//
+        /// Commands in this batch.
+        CommandList commands;
+
+        /// Creation time of the event issuing the batch.
+        /// Is used for ordering.
+        Time time;
+    };
+
+public:
+    /// Public batch object, used to create commands to modify the graph.
+    class CommandBatch : public InternalBatch {
         friend class PropertyManager;
+
+        template<typename value_t>
+        using TypedPropertyId = IdType<PropertyId::type_t, PropertyId::underlying_t, value_t>;
 
         // methods ---------------------------------------------------------------------------------------------------//
     private: // for Property Manager
         /// Constructor.
-        CommandBatch(PropertyGraph& graph) : m_graph(graph), m_commands() {}
+        /// @param graph    Graph to modify with the commands.
+        /// @param time     Time of the event that creates the batch.
+        CommandBatch(PropertyGraph& graph, Time time) : InternalBatch({}, std::move(time)), m_graph(graph) {}
+
+        /// Strips the interal batch out of this public batch type in order to store it in the manager's queue.
+        InternalBatch ingest() { return InternalBatch(std::move(commands), std::move(time)); }
 
     public:
-        template<typename value_t>
-        PropertyId create_property()
+        /// Create a new property of a given type.
+        /// @returns A typed id that contains the value type of the property for ease-of-use.
+        template<typename value_t> // TODO: enable if value_t is any of the property types
+        TypedPropertyId<value_t> create_property()
         {
             PropertyId id = m_graph.next_id();
-
-            m_graph.add_property<value_t>(id);
+            commands.emplace_back(id, Command::Create{});
+            return TypedPropertyId<value_t>(id.value);
         }
 
-        // fields ----------------------------------------------------------------------------------------------------//
+        /// Set a new value for a given property.
+        /// Uses fancy template-foo to allow the user to omit the property type, allow automatic conversion to the
+        /// correct type and also to forbid wrong instantiations, where conversions would fail.
+        /// @param id       Typed property id.
+        /// @param value    New property value.
+        template<typename value_t, typename T,
+                 typename = typename std::enable_if<std::is_convertible<T, value_t>::value>::type>
+        void set_property(TypedPropertyId<value_t> id, T value)
+        {
+            commands.emplace_back(PropertyId(id.value), Command::SetValue{std::move(static_cast<value_t>(value))});
+        }
+
+        // TODO: CONTINUE HERE
+
+        // fields
+        // ----------------------------------------------------------------------------------------------------//
     private:
         /// Graph to modify with the commands.
         PropertyGraph& m_graph;
-
-        /// Commands in this batch.
-        CommandList m_commands;
-
-//        const Time m_time;
-
-        // TODO: continue here
-        // time should be per batch, not per Command. We might need an external and an internal batch type for that
-        // (the external also contains the graph to operate on).
-        // From there on we just need to CRUD operations as methods on the external batch and take it for a psin!
-        // Also, you might want to check if it possible to add another type to the ID type so that not all method
-        // signatures of the external batch need to be qualified with explicit templates.
     };
 
     friend class CommandBatch;
@@ -183,10 +216,10 @@ public:
     PropertyManager() = default;
 
     /// Create a new command batch to fill.
-    CommandBatch create_batch() { return CommandBatch{m_graph}; }
+    CommandBatch create_batch(Time time) { return CommandBatch{m_graph, std::move(time)}; }
 
     /// Schedule the command batch for execution.
-    void schedule_batch(CommandBatch&& batch) { m_batches.push(std::move(batch.m_commands)); }
+    void schedule_batch(CommandBatch&& batch) { m_batches.push(batch.ingest()); }
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
@@ -194,7 +227,7 @@ private:
     PropertyGraph m_graph;
 
     /// Multiple producer / single consumer queue used for interthread communication.
-    MpscQueue<CommandList> m_batches;
+    MpscQueue<InternalBatch> m_batches;
 };
 
 } // namespace notf

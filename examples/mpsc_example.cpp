@@ -75,9 +75,15 @@ void test_property_graph()
               << std::endl;
 }
 
-void test_property_manager() {
+void test_property_manager()
+{
     PropertyManager manager;
-    auto batch = manager.create_batch();
+    PropertyManager::CommandBatch batch = manager.create_batch(Time{});
+
+    auto a = batch.create_property<float>();
+    batch.create_property<float>();
+    batch.set_property(a, 0.4);
+
     manager.schedule_batch(std::move(batch));
 }
 
