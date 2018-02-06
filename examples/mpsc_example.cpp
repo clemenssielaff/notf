@@ -75,14 +75,23 @@ void test_property_graph()
               << std::endl;
 }
 
+struct Arsch {};
+
 void test_property_manager()
 {
     PropertyManager manager;
     PropertyManager::CommandBatch batch = manager.create_batch(Time{});
 
     auto a = batch.create_property<float>();
-    batch.create_property<float>();
     batch.set_property(a, 0.4);
+
+    auto b = batch.create_property<float>();
+    batch.set_property(b, 0.7);
+
+    auto c = batch.create_property<float>();
+    batch.set_expression(c, [a, b](const PropertyGraph& g) { return g.property(a) + g.property(b); }, {a, b});
+
+    batch.delete_property(a);
 
     manager.schedule_batch(std::move(batch));
 }
@@ -91,7 +100,7 @@ void test_property_manager()
 
 int mpsc_main(int /*argc*/, char* /*argv*/ [])
 {
-    test_property_graph();
+    //    test_property_graph();
     test_property_manager();
 
     return 0;

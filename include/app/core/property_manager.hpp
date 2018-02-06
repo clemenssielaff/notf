@@ -12,6 +12,7 @@
 #include "common/matrix3.hpp"
 #include "common/matrix4.hpp"
 #include "common/size2.hpp"
+#include "common/tuple.hpp"
 #include "common/vector2.hpp"
 #include "common/vector3.hpp"
 #include "common/vector4.hpp"
@@ -72,7 +73,7 @@ constexpr decltype(auto) make_function_variant(const std::tuple<Ts...>& tuple)
 
 class PropertyManager {
 
-    // types -------------------------------------------------------------------------------------------------------//
+    // types ---------------------------------------------------------------------------------------------------------//
 private:
     /// All types that a Property can have
     using ValueVariant
@@ -81,6 +82,8 @@ private:
     /// All expression types that a Property can have
     using ExpressionVariant
         = decltype(property_manager_detail::make_function_variant(property_manager_detail::notf_property_types{}));
+
+    //----------------------------------------------------------------------------------------------------------------//
 
     /// Command object, used as data type in the MPSC queue.
     struct Command {
@@ -102,17 +105,17 @@ private:
 
         /// Set expression command, requires the expression alongside its dependencies.
         struct SetExpression {
-            std::function<void()> expression;
+            ExpressionVariant expression;
             std::vector<PropertyId> dependencies;
         };
 
         /// Remove Command (only requires the PropertyId).
-        struct Remove {
+        struct Delete {
             // empty
         };
 
         /// Command type, is a variant of all the possible types of Commands.
-        using Type = std::variant<Empty, Create, SetValue, SetExpression, Remove>;
+        using Type = std::variant<Empty, Create, SetValue, SetExpression, Delete>;
 
         // methods ---------------------------------------------------------------------------------------------------//
         /// Default constructor (produces an invalid command).
@@ -136,20 +139,13 @@ private:
 
     using CommandList = std::vector<Command>;
 
+    //----------------------------------------------------------------------------------------------------------------//
+
     /// Events batch up their commands so that we can be certain that either all or none of them are in effect at any
     /// given time. Otherwise it would be possible to render a frame with some of an event's commands executed and
     /// others still in the queue.
     struct InternalBatch {
 
-        /// Default constructor.
-        InternalBatch() = default;
-
-        /// Value constructor.
-        /// @param commands All commands in the batch.
-        /// @param time     Time of the event that creates the batch.
-        InternalBatch(CommandList&& commands, Time&& time) : commands(std::move(commands)), time(std::move(time)) {}
-
-        // fields ----------------------------------------------------------------------------------------------------//
         /// Commands in this batch.
         CommandList commands;
 
@@ -158,32 +154,32 @@ private:
         Time time;
     };
 
+    //----------------------------------------------------------------------------------------------------------------//
 public:
     /// Public batch object, used to create commands to modify the graph.
-    class CommandBatch : public InternalBatch {
+    class CommandBatch {
         friend class PropertyManager;
-
-        template<typename value_t>
-        using TypedPropertyId = IdType<PropertyId::type_t, PropertyId::underlying_t, value_t>;
 
         // methods ---------------------------------------------------------------------------------------------------//
     private: // for Property Manager
         /// Constructor.
         /// @param graph    Graph to modify with the commands.
         /// @param time     Time of the event that creates the batch.
-        CommandBatch(PropertyGraph& graph, Time time) : InternalBatch({}, std::move(time)), m_graph(graph) {}
+        CommandBatch(PropertyGraph& graph, Time time) : m_graph(graph), m_time(std::move(time)), m_commands() {}
 
         /// Strips the interal batch out of this public batch type in order to store it in the manager's queue.
-        InternalBatch ingest() { return InternalBatch(std::move(commands), std::move(time)); }
+        InternalBatch ingest() { return InternalBatch{std::move(m_commands), std::move(m_time)}; }
 
     public:
         /// Create a new property of a given type.
+        /// Only allows the creation of properties of a type mentioned in the notf_property_types tuple type.
         /// @returns A typed id that contains the value type of the property for ease-of-use.
-        template<typename value_t> // TODO: enable if value_t is any of the property types
+        template<typename value_t, typename = typename std::enable_if<is_one_of_tuple<
+                                       value_t, property_manager_detail::notf_property_types>::value>::type>
         TypedPropertyId<value_t> create_property()
         {
             PropertyId id = m_graph.next_id();
-            commands.emplace_back(id, Command::Create{});
+            m_commands.emplace_back(id, Command::Create{});
             return TypedPropertyId<value_t>(id.value);
         }
 
@@ -194,18 +190,43 @@ public:
         /// @param value    New property value.
         template<typename value_t, typename T,
                  typename = typename std::enable_if<std::is_convertible<T, value_t>::value>::type>
-        void set_property(TypedPropertyId<value_t> id, T value)
+        void set_property(const TypedPropertyId<value_t> id, T value)
         {
-            commands.emplace_back(PropertyId(id.value), Command::SetValue{std::move(static_cast<value_t>(value))});
+            m_commands.emplace_back(id, Command::SetValue{std::move(static_cast<value_t>(value))});
         }
 
-        // TODO: CONTINUE HERE
+        /// Sets a new expression for a given property.
+        /// Until we have some sort of introspection (if C++ allows it at all, that is), you have to manually list all
+        /// dependent property (ids) to ensure that the dirty propagation in the property graph works.
+        /// Uses fancy template-foo to allow the user to omit the property type, allow automatic conversion to the
+        /// correct type and also to forbid wrong instantiations, where conversions would fail.
+        /// @param id           Typed property id.
+        /// @param expression   New property expression
+        /// @param dependencies All other properties that the expression relies on.
+        template<typename value_t, typename T,
+                 typename = typename std::enable_if<
+                     std::is_convertible<T, std::function<value_t(const PropertyGraph&)>>::value>::type>
+        void set_expression(const TypedPropertyId<value_t> id, T&& expression, std::vector<PropertyId>&& dependencies)
+        {
+            m_commands.emplace_back(id, Command::SetExpression{std::move(expression), std::move(dependencies)});
+        }
+
+        /// Deletes the property with the given id.
+        /// @param id   Property to delete.
+        void delete_property(PropertyId id) { m_commands.emplace_back(id, Command::Delete{}); }
 
         // fields
-        // ----------------------------------------------------------------------------------------------------//
+        // -----------------------------------------------------------------------------------------------------------//
     private:
         /// Graph to modify with the commands.
         PropertyGraph& m_graph;
+
+        /// Creation time of the event issuing the batch.
+        /// Is used for ordering.
+        Time m_time;
+
+        /// Commands in this batch.
+        CommandList m_commands;
     };
 
     friend class CommandBatch;

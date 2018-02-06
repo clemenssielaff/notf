@@ -104,7 +104,7 @@ namespace detail {
 template<typename TUPLE, std::size_t... I>
 constexpr bool is_trait_tuple_impl(const TUPLE&, std::index_sequence<I...>)
 {
-    return all_true<is_attribute_trait<typename std::tuple_element<I, TUPLE>::type>...>::value;
+    return std::conjunction<is_attribute_trait<typename std::tuple_element<I, TUPLE>::type>...>::value;
 }
 
 } // namespace detail

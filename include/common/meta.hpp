@@ -3,18 +3,99 @@
 #include <limits>
 #include <type_traits>
 
-/// Tests if T is one of the following types.
-template<typename T, typename...>
-struct is_one_of : std::false_type {};
-template<typename T, typename Head, typename... Rest>
-struct is_one_of<T, Head, Rest...>
-    : std::integral_constant<bool, std::is_same<T, Head>::value || is_one_of<T, Rest...>::value> {};
+//====================================================================================================================//
 
-/// Tests if all conditions are true.
-template<typename T, typename...>
-struct all_true : std::true_type {};
-template<typename T, typename Head, typename... Rest>
-struct all_true<T, Head, Rest...> : std::integral_constant<bool, Head::value && all_true<T, Rest...>::value> {};
+/// Definitions for the various versions of C++.
+/// Wherever possible, it is more precise to use feature testing macros described in:
+///     http://en.cppreference.com/w/User:D41D8CD98F/feature_testing_macros
+
+#ifndef __cplusplus
+#error A C++ compiler is required!
+#else
+
+#if __cplusplus >= 199711L
+#define NOTF_CPP97
+#endif
+#if __cplusplus >= 201103L
+#define NOTF_CPP11
+#endif
+#if __cplusplus >= 201402L
+#define NOTF_CPP14
+#endif
+#if __cplusplus >= 201703L
+#define NOTF_CPP17
+#endif
+
+#endif
+
+//====================================================================================================================//
+
+/// Compiler detection.
+#ifdef __clang__
+#define NOTF_CLANG
+#else
+#ifdef _MSC_VER
+#define NOTF_MSVC
+#else
+#ifdef __GNUC__
+#define NOTF_GCC
+#endif
+#endif
+#endif
+
+//====================================================================================================================//
+
+/// std namespace injections
+namespace std {
+
+#ifndef NOTF_CPP17
+
+/// Variadic logical AND metafunction
+/// http://en.cppreference.com/w/cpp/types/conjunction
+template<typename...>
+struct conjunction : std::true_type {};
+template<typename T>
+struct conjunction<T> : T {};
+template<typename T, typename... TList>
+struct conjunction<T, TList...> : std::conditional<T::value, conjunction<TList...>, T>::type {};
+
+/// Variadic logical OR metafunction
+/// http://en.cppreference.com/w/cpp/types/disjunction
+template<typename...>
+struct disjunction : std::false_type {};
+template<typename T>
+struct disjunction<T> : T {};
+template<typename T, typename... TList>
+struct disjunction<T, TList...> : std::conditional<T::value, T, disjunction<TList...>>::type {};
+
+/// Logical NOT metafunction.
+/// http://en.cppreference.com/w/cpp/types/negation
+template<typename T>
+struct negation : std::integral_constant<bool, !T::value> {};
+
+#endif
+
+#ifndef __cpp_lib_void_t
+
+/// Void type.
+template<typename... Ts>
+struct make_void {
+    typedef void type;
+};
+template<typename... Ts>
+using void_t = typename make_void<Ts...>::type;
+
+#endif
+
+} // namespace std
+
+//====================================================================================================================//
+
+/// Checks if T is any of the variadic types.
+template<typename T, typename... Ts>
+using is_one_of = std::disjunction<std::is_same<T, Ts>...>;
+
+//====================================================================================================================//
 
 #define ENABLE_IF_REAL(TYPE) \
     typename std::enable_if<std::is_floating_point<typename std::decay<TYPE>::type>::value, bool>::type = true
@@ -31,14 +112,6 @@ struct all_true<T, Head, Rest...> : std::integral_constant<bool, Head::value && 
 #define ENABLE_IF_SAME(TYPE_A, TYPE_B)                                                                                 \
     typename std::enable_if<std::is_same<typename std::decay<TYPE_A>::type, typename std::decay<TYPE_B>::type>::value, \
                             bool>::type                                                                                \
-        = true
-
-#define ENABLE_IF_ANY(TYPE_A, ...) \
-    typename std::enable_if<is_one_of<typename std::decay<TYPE_A>::type, __VA_ARGS__>::value, bool>::type = true
-
-#define ENABLE_IF_DIFFERENT(TYPE_A, TYPE_B)                                                                     \
-    typename std::enable_if<                                                                                    \
-        !std::is_same<typename std::decay<TYPE_A>::type, typename std::decay<TYPE_B>::type>::value, bool>::type \
         = true
 
 #define ENABLE_IF_ARITHMETIC(TYPE) \
@@ -144,47 +217,6 @@ struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T
 
 //====================================================================================================================//
 
-/// Definitions for the various versions of C++.
-/// Wherever possible, it is more precise to use feature testing macros described in:
-///     http://en.cppreference.com/w/User:D41D8CD98F/feature_testing_macros
-
-#ifndef __cplusplus
-#error A C++ compiler is required!
-#else
-
-#if __cplusplus >= 199711L
-#define NOTF_CPP97
-#endif
-#if __cplusplus >= 201103L
-#define NOTF_CPP11
-#endif
-#if __cplusplus >= 201402L
-#define NOTF_CPP14
-#endif
-#if __cplusplus >= 201703L
-#define NOTF_CPP17
-#endif
-
-#endif
-
-//====================================================================================================================//
-
-namespace std {
-
-/// Void type.
-#ifndef __cpp_lib_void_t
-template<typename... Ts>
-struct make_void {
-    typedef void type;
-};
-template<typename... Ts>
-using void_t = typename make_void<Ts...>::type;
-#endif
-
-} // namespace std
-
-//====================================================================================================================//
-
 /// Takes two macros and concatenates them without whitespace in between.
 #define MACRO_CONCAT_(A, B) A##B
 #define MACRO_CONCAT(A, B) MACRO_CONCAT_(A, B)
@@ -219,20 +251,7 @@ overloaded(Ts...)->overloaded<Ts...>;
 
 //====================================================================================================================//
 
-#ifdef __clang__
-#define NOTF_CLANG
-#else
-#ifdef _MSC_VER
-#define NOTF_MSVC
-#else
-#ifdef __GNUC__
-#define NOTF_GCC
-#endif
-#endif
-#endif
-
-//====================================================================================================================//
-
+/// Function name macro to use for logging and exceptions.
 #ifdef NOTF_LOG_PRETTY_FUNCTION
 #ifdef NOTF_CLANG
 #define NOTF_FUNCTION __PRETTY_FUNCTION__
@@ -248,3 +267,5 @@ overloaded(Ts...)->overloaded<Ts...>;
 #else
 #define NOTF_FUNCTION __func__
 #endif
+
+//====================================================================================================================//

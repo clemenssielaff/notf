@@ -37,6 +37,11 @@ struct IdType {
     /// Value constructor.
     IdType(const underlying_type id) : value(id) {}
 
+    /// Copy constructor from typed id.
+    template<typename... Ts>
+    IdType(const IdType<type_t, underlying_t, Ts...> id) : value(id.value)
+    {}
+
     /// Explicit invalid Id generator.
     static IdType invalid() { return IdType(INVALID); }
 

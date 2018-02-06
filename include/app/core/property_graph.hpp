@@ -24,6 +24,10 @@ class PropertyBase;
 /// Property id type.
 using PropertyId = IdType<property_graph_detail::PropertyBase, size_t>;
 
+/// Typed property id.
+template<typename value_t>
+using TypedPropertyId = IdType<PropertyId::type_t, PropertyId::underlying_t, value_t>;
+
 //====================================================================================================================//
 
 /// Exception when a property Id did not match a property in the graph.
@@ -239,11 +243,33 @@ public:
     /// Constructor.
     PropertyGraph() : m_next_id(1), m_properties() {}
 
-    /// Returns the next free property id.
-    PropertyId next_id() { return m_next_id++; }
-
     /// Checks if the given id identifies a property of this graph.
     bool has_property(const PropertyId id) const { return m_properties.count(static_cast<id_t>(id)); }
+
+    /// @{
+    /// Returns as pointer to a property requested by type and id.
+    /// @return Pointer to the property.
+    /// @throws property_lookup_error   If a property with the given id does not exist or is of the wrong type.
+    template<typename value_t>
+    const value_t& property(const PropertyId id) const
+    {
+        const auto it = m_properties.find(static_cast<id_t>(id));
+        if (it != m_properties.end()) {
+            if (const Property<value_t>* property = dynamic_cast<Property<value_t>*>(it->second.get())) {
+                return property->value();
+            }
+        }
+        throw_notf_error(property_lookup_error);
+    }
+    template<typename value_t>
+    const value_t& property(const TypedPropertyId<value_t> id) const
+    {
+        return property<value_t>(PropertyId(id));
+    }
+    /// @}
+
+    /// Returns the next free property id.
+    PropertyId next_id() { return m_next_id++; }
 
     /// Creates an new property with the given type and id.
     /// @param id               Id of the property.
@@ -258,21 +284,6 @@ public:
         const auto result
             = m_properties.emplace(numeric_id, std::make_unique<Property<value_t>>(numeric_id, *this, value_t{}));
         assert(result.second);
-    }
-
-    /// Returns as pointer to a property requested by type and id.
-    /// @return Pointer to the property.
-    /// @throws property_lookup_error   If a property with the given id does not exist or is of the wrong type.
-    template<typename value_t>
-    const value_t& property(const PropertyId id) const
-    {
-        const auto it = m_properties.find(static_cast<id_t>(id));
-        if (it != m_properties.end()) {
-            if (const Property<value_t>* property = dynamic_cast<Property<value_t>*>(it->second.get())) {
-                return property->value();
-            }
-        }
-        throw_notf_error(property_lookup_error);
     }
 
     /// Define the value of a property identified by its id.
