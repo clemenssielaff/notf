@@ -5,6 +5,7 @@
 
 #include "app/core/property_graph.hpp"
 #include "app/core/property_manager.hpp"
+#include "common/log.hpp"
 
 using namespace notf;
 
@@ -80,28 +81,51 @@ struct Arsch {};
 void test_property_manager()
 {
     PropertyManager manager;
-    PropertyManager::CommandBatch batch = manager.create_batch(Time{});
+    PropertyGraph& graph = manager.m_graph;
 
-    auto a = batch.create_property<float>();
-    batch.set_property(a, 0.4);
+    PropertyManager::CommandBatch batch1 = manager.create_batch(Time{});
 
-    auto b = batch.create_property<float>();
-    batch.set_property(b, 0.7);
+    auto a = batch1.create_property<float>();
+    batch1.set_property(a, 0.4);
 
-    auto c = batch.create_property<float>();
-    batch.set_expression(c, [a, b](const PropertyGraph& g) { return g.property(a) + g.property(b); }, {a, b});
+    auto b = batch1.create_property(0.7f);
 
-    batch.delete_property(a);
+    auto c = batch1.create_property<float>(0);
+    batch1.set_expression(c, [a, b](const PropertyGraph& g) { return g.property(a) + g.property(b); }, {a, b});
 
-    manager.schedule_batch(std::move(batch));
+    //    batch.delete_property(a);
+
+    manager.schedule_batch(std::move(batch1));
+    manager.execute_batches();
+
+    std::cout << "Value of a (expecting 0.4): " << graph.property(a) << std::endl;
+    std::cout << "Value of b (expecting 0.7): " << graph.property(b) << std::endl;
+    std::cout << "Value of c (expecting 1.1): " << graph.property(c) << std::endl;
+
+    PropertyManager::CommandBatch batch2 = manager.create_batch(Time{});
+
+    batch1.set_expression(a, [b, c](const PropertyGraph& g) { return g.property(b) + g.property(c); }, {b, c});
+
+    manager.schedule_batch(std::move(batch1));
+    manager.execute_batches();
+
+    std::cout << "Value of a (expecting 0.4): " << graph.property(a) << std::endl;
+    std::cout << "Value of b (expecting 0.7): " << graph.property(b) << std::endl;
+    std::cout << "Value of c (expecting 1.1): " << graph.property(c) << std::endl;
 }
 
 } // namespace
 
 int mpsc_main(int /*argc*/, char* /*argv*/ [])
 {
+    auto log_handler = std::make_unique<LogHandler>(128, 200);
+    install_log_message_handler(std::bind(&LogHandler::push_log, log_handler.get(), std::placeholders::_1));
+    log_handler->start();
+
     //    test_property_graph();
     test_property_manager();
 
+    log_handler->stop();
+    log_handler->join();
     return 0;
 }

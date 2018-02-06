@@ -71,7 +71,8 @@ constexpr decltype(auto) make_function_variant(const std::tuple<Ts...>& tuple)
 
 //====================================================================================================================//
 
-class PropertyManager {
+/// Owns a PropertyGraph and the async mechanisms to manage it.
+class PropertyManager final {
 
     // types ---------------------------------------------------------------------------------------------------------//
 private:
@@ -82,6 +83,10 @@ private:
     /// All expression types that a Property can have
     using ExpressionVariant
         = decltype(property_manager_detail::make_function_variant(property_manager_detail::notf_property_types{}));
+
+    /// Expression signature for a property of type `value_t`.
+    template<typename value_t>
+    using expression_t = std::function<value_t(const PropertyGraph&)>;
 
     //----------------------------------------------------------------------------------------------------------------//
 
@@ -95,7 +100,7 @@ private:
 
         // Create a new value (only requires the PropertyId).
         struct Create {
-            // empty
+            ValueVariant value;
         };
 
         // Set property value.
@@ -137,8 +142,6 @@ private:
         Type type;
     };
 
-    using CommandList = std::vector<Command>;
-
     //----------------------------------------------------------------------------------------------------------------//
 
     /// Events batch up their commands so that we can be certain that either all or none of them are in effect at any
@@ -147,7 +150,7 @@ private:
     struct InternalBatch {
 
         /// Commands in this batch.
-        CommandList commands;
+        std::vector<Command> commands;
 
         /// Creation time of the event issuing the batch.
         /// Is used for ordering.
@@ -176,10 +179,10 @@ public:
         /// @returns A typed id that contains the value type of the property for ease-of-use.
         template<typename value_t, typename = typename std::enable_if<is_one_of_tuple<
                                        value_t, property_manager_detail::notf_property_types>::value>::type>
-        TypedPropertyId<value_t> create_property()
+        const TypedPropertyId<value_t> create_property(value_t value = {})
         {
             PropertyId id = m_graph.next_id();
-            m_commands.emplace_back(id, Command::Create{});
+            m_commands.emplace_back(id, Command::Create{std::move(value)});
             return TypedPropertyId<value_t>(id.value);
         }
 
@@ -204,16 +207,17 @@ public:
         /// @param expression   New property expression
         /// @param dependencies All other properties that the expression relies on.
         template<typename value_t, typename T,
-                 typename = typename std::enable_if<
-                     std::is_convertible<T, std::function<value_t(const PropertyGraph&)>>::value>::type>
+                 typename = typename std::enable_if<std::is_convertible<T, expression_t<value_t>>::value>::type>
         void set_expression(const TypedPropertyId<value_t> id, T&& expression, std::vector<PropertyId>&& dependencies)
         {
-            m_commands.emplace_back(id, Command::SetExpression{std::move(expression), std::move(dependencies)});
+            m_commands.emplace_back(
+                id, Command::SetExpression{static_cast<expression_t<value_t>>(std::forward<T>(expression)),
+                                           std::move(dependencies)});
         }
 
         /// Deletes the property with the given id.
         /// @param id   Property to delete.
-        void delete_property(PropertyId id) { m_commands.emplace_back(id, Command::Delete{}); }
+        void delete_property(const PropertyId id) { m_commands.emplace_back(id, Command::Delete{}); }
 
         // fields
         // -----------------------------------------------------------------------------------------------------------//
@@ -226,9 +230,8 @@ public:
         Time m_time;
 
         /// Commands in this batch.
-        CommandList m_commands;
+        std::vector<Command> m_commands;
     };
-
     friend class CommandBatch;
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -240,15 +243,22 @@ public:
     CommandBatch create_batch(Time time) { return CommandBatch{m_graph, std::move(time)}; }
 
     /// Schedule the command batch for execution.
-    void schedule_batch(CommandBatch&& batch) { m_batches.push(batch.ingest()); }
+    void schedule_batch(CommandBatch&& batch) { m_async_queue.push(batch.ingest()); }
+
+    /// Takes all batches from the queue, orders and executes them.
+    void execute_batches();
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
+public:
     /// The managed property graph.
     PropertyGraph m_graph;
 
     /// Multiple producer / single consumer queue used for interthread communication.
-    MpscQueue<InternalBatch> m_batches;
+    MpscQueue<InternalBatch> m_async_queue;
+
+    /// Vector containing the batches read from the queue (only used in `execute_batches`).
+    std::vector<InternalBatch> m_ready_queue;
 };
 
 } // namespace notf

@@ -28,7 +28,7 @@ struct IdType {
     static constexpr underlying_type INVALID = 0;
 
     /// Identifier value of this instance.
-    const underlying_type value;
+    underlying_type value;
 
     // methods -------------------------------------------------------------------------------------------------------//
     /// No default constructor.

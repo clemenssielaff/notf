@@ -98,7 +98,6 @@ bool PropertyGraph::_is_dependency_of_any(const PropertyBase* property, const st
     const PropertyBase* candidate;
     while (pop_one(unchecked, candidate)) {
         if (property == candidate) {
-            log_critical << "Could not define expression: circular dependency detected";
             return true;
         }
 

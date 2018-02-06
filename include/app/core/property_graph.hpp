@@ -23,6 +23,7 @@ class PropertyBase;
 
 /// Property id type.
 using PropertyId = IdType<property_graph_detail::PropertyBase, size_t>;
+static_assert(std::is_pod<PropertyId>::value, "PropertyId is not a POD type");
 
 /// Typed property id.
 template<typename value_t>
@@ -313,7 +314,7 @@ public:
     /// @throws property_cyclic_dependency_error
     ///                     If the expression would introduce a cyclic dependency into the graph.
     template<typename value_t>
-    void set_expression(const PropertyId id, std::function<value_t(const PropertyGraph&)> expression,
+    void set_expression(const PropertyId id, std::function<value_t(const PropertyGraph&)>&& expression,
                         const std::vector<PropertyId>& dependencies, Time time = {})
     {
         auto it = m_properties.find(static_cast<id_t>(id));
