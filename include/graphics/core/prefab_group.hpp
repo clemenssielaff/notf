@@ -78,14 +78,23 @@ public:
         gl_check(glBindVertexArray(0));
     }
 
+    /// Checks if a prefab with the given name exist.
+    /// @param name Prefab name to look for.
+    bool has_prefab_type(const std::string& name) const
+    {
+        const auto it = std::find_if(m_prefab_types.begin(), m_prefab_types.end(),
+                                     [&](const auto& prefab_type) -> bool { return prefab_type->name() == name; });
+        return (it != m_prefab_types.end());
+    }
+
     /// Returns a prefab type by its name.
     /// @throws std::runtime_error   If the name is unknown.
-    std::shared_ptr<PrefabType<InstanceData>> prefab_type(std::string& name)
+    std::shared_ptr<PrefabType<InstanceData>> prefab_type(const std::string& name) const
     {
-        for (auto& type : m_prefab_types) {
-            if (type->name() == name) {
-                return type;
-            }
+        const auto it = std::find_if(m_prefab_types.begin(), m_prefab_types.end(),
+                                     [&](const auto& prefab_type) -> bool { return prefab_type->name() == name; });
+        if (it != m_prefab_types.end()) {
+            return *it;
         }
         std::stringstream ss;
         ss << "Unkown prefab type \"" << name << "\"";
@@ -114,7 +123,7 @@ public:
                 }
 
                 instance_array_t* instance_array = static_cast<instance_array_t*>(m_instance_array.get());
-                instance_array->buffer() = std::move(instance_data);
+                instance_array->buffer()         = std::move(instance_data);
                 instance_array->init();
             }
 

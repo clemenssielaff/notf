@@ -2,7 +2,7 @@
 
 #include "common/meta.hpp"
 
-#ifdef CPP17
+#ifdef NOTF_CPP17
 
 #include <string_view>
 

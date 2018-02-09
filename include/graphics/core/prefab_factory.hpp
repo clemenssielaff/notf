@@ -163,19 +163,10 @@ public: // methods *************************************************************
      */
     std::shared_ptr<PrefabType<InstanceData>> produce(std::string name)
     {
-        { // fail without changing the factory's state
-            bool name_exists = true;
-            try {
-                m_library.prefab_type(name);
-            }
-            catch (std::runtime_error&) {
-                name_exists = false;
-            }
-            if (name_exists) {
-                std::stringstream ss;
-                ss << "Cannot produce new prefab type with existing name \"" << name << "\"";
-                throw_runtime_error(ss.str());
-            }
+        if (m_library.has_prefab_type(name)) {
+            std::stringstream ss;
+            ss << "Cannot produce new prefab type with existing name \"" << name << "\"";
+            throw_runtime_error(ss.str());
         }
 
         // build up the studies from the factory list

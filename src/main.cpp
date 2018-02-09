@@ -2,7 +2,8 @@
 
 #include "framebuffer_example.hpp"
 #include "line_example.hpp"
-#include "mpsc_example.hpp"
+#include "property_example.hpp"
+#include "rendermanager_example.hpp"
 #include "shape_example.hpp"
 #include "text_example.hpp"
 #include "wireframe_example.hpp"
@@ -14,7 +15,8 @@ int main(int argc, char* argv[])
     //    return wireframe_main(argc, argv);
     //    return framebuffer_main(argc, argv);
     //    return text_main(argc, argv);
-    return mpsc_main(argc, argv);
+    //    return property_main(argc, argv);
+    rendermanager_main(argc, argv);
     //    (void)(argc);
     //    (void)(argv);
     //    return 0;

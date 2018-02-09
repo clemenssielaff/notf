@@ -179,11 +179,11 @@ public:
         /// @returns A typed id that contains the value type of the property for ease-of-use.
         template<typename value_t, typename = typename std::enable_if<is_one_of_tuple<
                                        value_t, property_manager_detail::notf_property_types>::value>::type>
-        const TypedPropertyId<value_t> create_property(value_t value = {})
+        TypedPropertyId<value_t> create_property(value_t value = {})
         {
             PropertyId id = m_graph.next_id();
             m_commands.emplace_back(id, Command::Create{std::move(value)});
-            return TypedPropertyId<value_t>(id.value);
+            return TypedPropertyId<value_t>(id.value());
         }
 
         /// Set a new value for a given property.

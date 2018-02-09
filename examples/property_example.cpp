@@ -116,7 +116,7 @@ void test_property_manager()
 
 } // namespace
 
-int mpsc_main(int /*argc*/, char* /*argv*/ [])
+int property_main(int /*argc*/, char* /*argv*/ [])
 {
     auto log_handler = std::make_unique<LogHandler>(128, 200);
     install_log_message_handler(std::bind(&LogHandler::push_log, log_handler.get(), std::placeholders::_1));

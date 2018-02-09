@@ -26,15 +26,15 @@ endmacro()
 
 # OPTIONS ##############################################################################################################
 
-option(USE_LIBCXX "Use LLVM's libc++ instead of libstdc++" OFF)
-option(USE_OPENMP "Use OpenMP" ON)
-option(BUILD_BENCHMARKS "Build benchmarks" OFF)
-option(LOG_PRETTY_FUNCTION "Log long function names" OFF)
+option(NOTF_USE_LIBCXX "Use LLVM's libc++ instead of libstdc++" OFF)
+option(NOTF_USE_OPENMP "Use OpenMP" ON)
+option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
+option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" OFF)
 
 # LIBRARIES ############################################################################################################
 
 # libcxx
-if(USE_LIBCXX)
+if(NOTF_USE_LIBCXX)
     set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
     set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-stdlib=libc++")
 endif()
@@ -52,12 +52,12 @@ find_package(OpenGL REQUIRED)
 add_subdirectory(/home/clemens/code/thirdparty/freetype-2.8.1/ thirdparty/freetype)
 
 # benchmark
-if(BUILD_BENCHMARKS)
+if(NOTF_BUILD_BENCHMARKS)
     add_subdirectory(/home/clemens/code/thirdparty/benchmark/ thirdparty/benchmark)
 endif()
 
 # OpenMP
-if(USE_OPENMP)
+if(NOTF_USE_OPENMP)
     find_package(OpenMP)
     if(OPENMP_FOUND)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -69,10 +69,11 @@ endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g -DNOTF_DEBUG")
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(LOG_PRETTY_FUNCTION)
-    add_definitions(-DNOTF_LOG_PRETTY_FUNCTION)
-else(LOG_PRETTY_FUNCTION)
+if(NOTF_LOG_PRETTY_FUNCTION)
+    add_definitions(-DNOTF_NOTF_LOG_PRETTY_FUNCTION)
+else(NOTF_LOG_PRETTY_FUNCTION)
 
 endif()
 
@@ -100,7 +101,8 @@ add_sources(SOURCE_FILES examples
     wireframe_example.cpp
     shape_example.cpp
     text_example.cpp
-    mpsc_example.cpp
+    property_example.cpp
+    rendermanager_example.cpp
 )
 
 add_sources(THIRDPARTY_FILES thirdparty
@@ -189,7 +191,7 @@ target_link_libraries(notf-test
 
 # BENCHMARK ############################################################################################################
 
-if(BUILD_BENCHMARKS)
+if(NOTF_BUILD_BENCHMARKS)
 
     include_directories(
         /home/clemens/code/thirdparty/benchmark/INSTALL/include/

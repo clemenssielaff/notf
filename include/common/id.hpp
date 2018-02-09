@@ -13,6 +13,8 @@ namespace notf {
 template<typename type, typename underlying_type, typename... aux>
 struct IdType {
 
+    // types ---------------------------------------------------------------------------------------------------------//
+public:
     /// Type identified by the ID.
     using type_t = type;
 
@@ -23,95 +25,90 @@ struct IdType {
     /// Useful, if you want to attach more type information to the ID type.
     using aux_ts = std::tuple<aux...>;
 
+private:
+    /// We cannot use SFINAE in the struct template because of the variadic template parameters, but we can use it here:
+    using fails_if_underlying_type_is_not_integral =
+        typename std::enable_if_t<std::is_integral<underlying_type>::value>;
+
     // fields --------------------------------------------------------------------------------------------------------//
+private:
+    /// Identifier value of this ID.
+    underlying_type m_value;
+
+public:
     /// Invalid Id.
     static constexpr underlying_type INVALID = 0;
 
-    /// Identifier value of this instance.
-    underlying_type value;
-
     // methods -------------------------------------------------------------------------------------------------------//
+public:
     /// No default constructor.
     IdType() = delete;
 
     /// Value constructor.
-    IdType(const underlying_type id) : value(id) {}
+    IdType(const underlying_type value) : m_value(value) {}
 
-    /// Copy constructor from typed id.
+    /// Copy constructor from typed ID.
     template<typename... Ts>
-    IdType(const IdType<type_t, underlying_t, Ts...> id) : value(id.value)
+    IdType(const IdType<type_t, underlying_t, Ts...>& id) : m_value(id.value())
     {}
 
     /// Explicit invalid Id generator.
     static IdType invalid() { return IdType(INVALID); }
 
+    /// Identifier value of this ID.
+    underlying_t value() const { return m_value; }
+
+    /// @{
     /// Equality operator.
-    /// @param rhs  Value to test against.
-    template<typename OTHER, typename = std::enable_if_t<std::is_same<typename OTHER::type_t, type_t>::value>>
-    bool operator==(const OTHER& rhs) const
-    {
-        return value == rhs.id;
-    }
-    bool operator==(const underlying_t& rhs) const { return value == rhs; }
+    /// @param rhs  ID to test against.
+    bool operator==(const IdType& rhs) const { return m_value == rhs.m_value; }
+    bool operator==(const underlying_t& rhs) const { return m_value == rhs; }
+    /// @}
 
+    /// @{
     /// Inequality operator.
-    /// @param rhs  Value to test against.
-    template<typename OTHER, typename = std::enable_if_t<std::is_same<typename OTHER::type_t, type_t>::value>>
-    bool operator!=(const OTHER& rhs) const
-    {
-        return value != rhs.id;
-    }
-    bool operator!=(const underlying_t& rhs) const { return value != rhs; }
+    /// @param rhs  ID to test against.
+    bool operator!=(const IdType& rhs) const { return m_value != rhs.m_value; }
+    bool operator!=(const underlying_t& rhs) const { return m_value != rhs; }
+    /// @}
 
+    /// @{
     /// Lesser-than operator.
     /// @param rhs  Value to test against.
-    template<typename OTHER, typename = std::enable_if_t<std::is_same<typename OTHER::type_t, type_t>::value>>
-    bool operator<(const OTHER& rhs) const
-    {
-        return value < rhs.id;
-    }
-    bool operator<(const underlying_t& rhs) const { return value < rhs; }
+    bool operator<(const IdType& rhs) const { return m_value < rhs.m_value; }
+    bool operator<(const underlying_t& rhs) const { return m_value < rhs; }
+    /// @}
 
+    /// @{
     /// Lesser-or-equal-than operator.
     /// @param rhs  Value to test against.
-    template<typename OTHER, typename = std::enable_if_t<std::is_same<typename OTHER::type_t, type_t>::value>>
-    bool operator<=(const OTHER& rhs) const
-    {
-        return value <= rhs.id;
-    }
-    bool operator<=(const underlying_t& rhs) const { return value <= rhs; }
+    bool operator<=(const IdType& rhs) const { return m_value <= rhs.m_value; }
+    bool operator<=(const underlying_t& rhs) const { return m_value <= rhs; }
+    /// @}
 
+    /// @{
     /// Greater-than operator.
     /// @param rhs  Value to test against.
-    template<typename OTHER, typename = std::enable_if_t<std::is_same<typename OTHER::type_t, type_t>::value>>
-    bool operator>(const OTHER& rhs) const
-    {
-        return value > rhs.id;
-    }
-    bool operator>(const underlying_t& rhs) const { return value > rhs; }
+    bool operator>(const IdType& rhs) const { return m_value > rhs.m_value; }
+    bool operator>(const underlying_t& rhs) const { return m_value > rhs; }
+    /// @}
 
+    /// @{
     /// Greater-or-equal-than operator.
     /// @param rhs  Value to test against.
-    template<typename OTHER, typename = std::enable_if_t<std::is_same<typename OTHER::type_t, type_t>::value>>
-    bool operator>=(const OTHER& rhs) const
-    {
-        return value >= rhs.id;
-    }
-    bool operator>=(const underlying_t& rhs) const { return value >= rhs; }
+    bool operator>=(const IdType& rhs) const { return m_value >= rhs.m_value; }
+    bool operator>=(const underlying_t& rhs) const { return m_value >= rhs; }
+    /// @}
 
     /// Checks if this Id is valid or not.
-    bool is_valid() const { return value != INVALID; }
+    bool is_valid() const { return m_value != INVALID; }
+
+    /// Checks if this Id is valid or not.
     explicit operator bool() const { return is_valid(); }
 
     /// Cast back to the underlying type.
     /// Must be explicit to avoid comparison between different Id types.
-    explicit operator underlying_type() const { return value; }
-
-    // types ---------------------------------------------------------------------------------------------------------//
-private:
-    /// We cannot use SFINAE in the struct template because of the variadic template parameters, but we can use it here:
-    using fails_if_underlying_type_is_not_integral =
-        typename std::enable_if_t<std::is_integral<underlying_type>::value>;
+    explicit operator underlying_type() const { return m_value; }
 };
 
 //====================================================================================================================//
@@ -120,10 +117,10 @@ private:
 /// @param os   Output stream, implicitly passed with the << operator.
 /// @param id   Id to print.
 /// @return Output stream for further output.
-template<typename Type, typename underlying_type>
-std::ostream& operator<<(std::ostream& out, const IdType<Type, underlying_type>& id)
+template<typename Type, typename underlying_type, typename... aux>
+std::ostream& operator<<(std::ostream& out, const IdType<Type, underlying_type, aux...>& id)
 {
-    return out << id.value;
+    return out << id.m_value;
 }
 
 } // namespace notf
