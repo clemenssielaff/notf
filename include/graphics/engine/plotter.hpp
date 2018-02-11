@@ -100,8 +100,8 @@ public:
     DISALLOW_COPY_AND_ASSIGN(Plotter)
 
     /// Construct a new Plotter.
-    /// @param context  Graphics context.
-    /// @throws std::runtime_error   If the OpenGL VAO could not be generated.
+    /// @param context          Graphics context.
+    /// @throws runtime_error   If the OpenGL VAO could not be generated.
     Plotter(GraphicsContextPtr& context);
 
     /// Destructor.

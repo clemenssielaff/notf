@@ -10,8 +10,7 @@ namespace notf {
 namespace detail {
 
 /// Changing this value will cause new hashes of the same value (calculated with notf::hash) to differ.
-/// This way, we can differentiate between hashes of the same value that were calculated with different versions of
-/// notf.
+/// This way, we can differentiate between hashes of the same value that were generated with different versions of NoTF.
 constexpr size_t version_hash() { return 0; }
 
 /// Additional value for different semantic types to hash with.

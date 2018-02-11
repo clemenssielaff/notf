@@ -254,9 +254,7 @@ Color lab_to_rgb(const Lab& input)
 Color::Color(const std::string& value)
 {
     if (!is_color(value)) {
-        const std::string message = string_format("\"%s\" is not a valid color value", value.c_str());
-        log_critical << message;
-        throw_runtime_error(std::move(message));
+        notf_throw_format(runtime_error, "\"" << value << "\" is not a valid color value");
     }
 
     const size_t start_index = value.at(0) == '#' ? 1 : 0;

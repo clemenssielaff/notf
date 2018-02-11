@@ -35,9 +35,9 @@ struct notf_exception : public std::exception {
 /// Note that this declares but does not implement the virtual destructor, in order to avoid warnings about emitting the
 /// class' v-table into every unit, you'll have to implement the (empty) destructor somewhere manually.
 #ifndef NOTF_EXCEPTION_TYPE
-#define NOTF_EXCEPTION_TYPE(TYPE, MSG)                                                             \
+#define NOTF_EXCEPTION_TYPE(TYPE)                                                                  \
     struct TYPE : public notf::notf_exception {                                                    \
-        TYPE(std::string file, std::string function, uint line, std::string message = MSG)         \
+        TYPE(std::string file, std::string function, uint line, std::string message)               \
             : notf::notf_exception(std::move(file), std::move(function), line, std::move(message)) \
         {}                                                                                         \
         virtual ~TYPE() override;                                                                  \
@@ -50,42 +50,46 @@ struct notf_exception : public std::exception {
 
 /// Convenience macro to throw a notf_exception with a message, that additionally contains the line, file and function
 /// where the error occured.
-#ifndef throw_notf_error_msg
-#define throw_notf_error_msg(TYPE, MSG) (throw TYPE(notf::basename(__FILE__), NOTF_FUNCTION, __LINE__, MSG))
+#ifndef notf_throw_format
+#define notf_throw_format(TYPE, MSG)                                             \
+    {                                                                            \
+        std::stringstream ss;                                                    \
+        ss << MSG;                                                               \
+        throw TYPE(notf::basename(__FILE__), NOTF_FUNCTION, __LINE__, ss.str()); \
+    }
 #else
-#warning "Macro 'throw_notf_error_msg' is already defined - NoTF's throw_notf_error_msg macro will remain disabled."
-#endif
-//====================================================================================================================//
-
-/// Convenience macro to throw a notf_exception with the line, file and function where the error occured.
-#ifndef throw_notf_error
-#define throw_notf_error(TYPE) (throw TYPE(notf::basename(__FILE__), NOTF_FUNCTION, __LINE__))
-#else
-#warning "Macro 'throw_notf_error' is already defined - NoTF's throw_notf_error macro will remain disabled."
+#warning "Macro 'notf_throw_format' is already defined - NoTF's notf_throw_format macro will remain disabled."
 #endif
 
 //====================================================================================================================//
 
-/// Convenience macro to throw a runtime_error that contains the line, file and function where the error occured.
-#ifndef throw_runtime_error
-#define throw_runtime_error(MSG) (throw notf::runtime_error(notf::basename(__FILE__), NOTF_FUNCTION, __LINE__, MSG))
+/// Convenience macro to trow a notf_exception with a message from a constexpr function.
+#ifndef notf_throw
+#define notf_throw(TYPE, MSG) (throw TYPE(notf::basename(__FILE__), NOTF_FUNCTION, __LINE__, MSG))
 #else
-#warning "Macro 'throw_runtime_error' is already defined - NoTF's throw_runtime_error macro will remain disabled."
+#warning "Macro 'notf_throw' is already defined -"
+" NoTF's notf_throw macro will remain disabled."
 #endif
 
 //====================================================================================================================//
 
 /// Specialized exception that logs the message and then behaves like a regular std::runtime_error.
-NOTF_EXCEPTION_TYPE(runtime_error, {})
+NOTF_EXCEPTION_TYPE(runtime_error)
 
 /// Exception type for logical (math) errors.
-NOTF_EXCEPTION_TYPE(logic_error, {})
+NOTF_EXCEPTION_TYPE(logic_error)
 
 /// Exception type for out of bounds errors.
-NOTF_EXCEPTION_TYPE(out_of_range, {})
+NOTF_EXCEPTION_TYPE(out_of_range)
+
+/// Exception type for access to invalid resources.
+NOTF_EXCEPTION_TYPE(resource_error)
+
+/// Error thrown when something went wrong that really shouldn't have ...
+NOTF_EXCEPTION_TYPE(internal_error)
 
 /// Error thrown by risky_ptr, when you try to dereference a nullptr.
-NOTF_EXCEPTION_TYPE(bad_deference_error, "Failed to dereference an empty pointer!")
+NOTF_EXCEPTION_TYPE(bad_deference_error)
 
 //====================================================================================================================//
 
@@ -104,7 +108,7 @@ struct risky_ptr {
     T* operator->()
     {
         if (!raw) {
-            throw_notf_error(bad_deference_error);
+            notf_throw(bad_deference_error, "Failed to dereference an empty pointer!");
         }
         return raw;
     }
@@ -116,7 +120,7 @@ struct risky_ptr {
     T& operator*()
     {
         if (!raw) {
-            throw_notf_error(bad_deference_error);
+            notf_throw(bad_deference_error, "Failed to dereference an empty pointer!");
         }
         return *raw;
     }

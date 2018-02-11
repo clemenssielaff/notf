@@ -125,7 +125,7 @@ template<typename T>
 T take_back(std::vector<T>& v)
 {
     if (v.empty()) {
-        throw_notf_error_msg(out_of_range, "Cannot take last entry of an empty vector");
+        notf_throw(out_of_range, "Cannot take last entry of an empty vector");
     }
     T result = v.back();
     v.pop_back();

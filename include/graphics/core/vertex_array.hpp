@@ -141,11 +141,11 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Constructor.
-    /// @throws std::runtime_error  If there is no OpenGL context.
+    /// @throws runtime_error   If there is no OpenGL context.
     VertexArrayType(Args&& args) : m_args(std::move(args)), m_vbo_id(0), m_size(0)
     {
         if (!gl_is_initialized()) {
-            throw_runtime_error("Cannot create a VertexArray without an OpenGL context");
+            notf_throw(runtime_error, "Cannot create a VertexArray without an OpenGL context");
         }
     }
 
@@ -221,8 +221,8 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
-    /// @param args                 VertexArray arguments (defaults to default constructed argument struct).
-    /// @throws std::runtime_error  If there is no OpenGL context.
+    /// @param args             VertexArray arguments (defaults to default constructed argument struct).
+    /// @throws runtime_error   If there is no OpenGL context.
     VertexArray(Args&& args = {}) : VertexArrayType(std::forward<Args>(args)), m_vertices(), m_buffer_size(0)
     {
         static_assert(std::tuple_size<Traits>::value > 0, "A VertexArray must contain at least one Attribute");
@@ -235,15 +235,15 @@ public:
     std::vector<Vertex>& buffer() { return m_vertices; }
 
     /// Initializes the VertexArray with the current contents of `m_vertices`.
-    /// @throws std::runtime_error   If the VBO could not be allocated.
-    /// @throws std::runtime_error   If no VAO is currently bound.
+    /// @throws runtime_error   If the VBO could not be allocated.
+    /// @throws runtime_error   If no VAO is currently bound.
     void init()
     {
         { // make sure there is a bound VAO
             GLint current_vao = 0;
             gl_check(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
             if (!current_vao) {
-                throw_runtime_error("Cannot initialize a VertexArray without a bound VAO");
+                notf_throw(runtime_error, "Cannot initialize a VertexArray without a bound VAO");
             }
         }
 
@@ -253,7 +253,7 @@ public:
 
         gl_check(glGenBuffers(1, &m_vbo_id));
         if (!m_vbo_id) {
-            throw_runtime_error("Failed to allocate VertexArray");
+            notf_throw(runtime_error, "Failed to allocate VertexArray");
         }
 
         m_size = static_cast<GLsizei>(m_vertices.size());

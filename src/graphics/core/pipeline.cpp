@@ -22,8 +22,14 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
     , m_geometry_shader(std::move(geometry_shader))
     , m_fragment_shader(std::move(fragment_shader))
 {
-    gl_check(glGenProgramPipelines(1, &m_id));
-    assert(m_id);
+    { // generate new pipeline id
+        PipelineId::underlying_t id = 0;
+        gl_check(glGenProgramPipelines(1, &id));
+        m_id = id;
+        if (m_id == 0) {
+            notf_throw(runtime_error, "Could not allocate new Pipeline");
+        }
+    }
 
     std::vector<std::string> attached_stages;
     attached_stages.reserve(4);
@@ -31,7 +37,7 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
     if (m_vertex_shader) {
         assert(m_vertex_shader->is_valid());
         assert(m_vertex_shader->context() == m_graphics_context);
-        gl_check(glUseProgramStages(m_id, GL_VERTEX_SHADER_BIT, m_vertex_shader->id()));
+        gl_check(glUseProgramStages(m_id.value(), GL_VERTEX_SHADER_BIT, m_vertex_shader->id().value()));
 
         std::stringstream ss;
         ss << "vertex shader \"" << m_vertex_shader->name() << "\"";
@@ -41,8 +47,8 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
     if (m_tesselation_shader) {
         assert(m_tesselation_shader->is_valid());
         assert(m_tesselation_shader->context() == m_graphics_context);
-        gl_check(glUseProgramStages(m_id, GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT,
-                                    m_tesselation_shader->id()));
+        gl_check(glUseProgramStages(m_id.value(), GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT,
+                                    m_tesselation_shader->id().value()));
 
         std::stringstream ss;
         ss << "tesselation shader \"" << m_tesselation_shader->name() << "\"";
@@ -52,7 +58,7 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
     if (m_geometry_shader) {
         assert(m_geometry_shader->is_valid());
         assert(m_geometry_shader->context() == m_graphics_context);
-        gl_check(glUseProgramStages(m_id, GL_GEOMETRY_SHADER_BIT, m_geometry_shader->id()));
+        gl_check(glUseProgramStages(m_id.value(), GL_GEOMETRY_SHADER_BIT, m_geometry_shader->id().value()));
 
         std::stringstream ss;
         ss << "geometry shader \"" << m_geometry_shader->name() << "\"";
@@ -62,7 +68,7 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
     if (m_fragment_shader) {
         assert(m_fragment_shader->is_valid());
         assert(m_fragment_shader->context() == m_graphics_context);
-        gl_check(glUseProgramStages(m_id, GL_FRAGMENT_SHADER_BIT, m_fragment_shader->id()));
+        gl_check(glUseProgramStages(m_id.value(), GL_FRAGMENT_SHADER_BIT, m_fragment_shader->id().value()));
 
         std::stringstream ss;
         ss << "fragment shader \"" << m_fragment_shader->name() << "\"";
@@ -70,24 +76,24 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
     }
 
     { // validate the pipeline once it has been created
-        gl_check(glValidateProgramPipeline(m_id));
+        gl_check(glValidateProgramPipeline(m_id.value()));
         GLint is_valid = 0;
-        gl_check(glGetProgramPipelineiv(m_id, GL_VALIDATE_STATUS, &is_valid));
+        gl_check(glGetProgramPipelineiv(m_id.value(), GL_VALIDATE_STATUS, &is_valid));
         if (!is_valid) {
             GLint log_length = 0;
-            glGetProgramPipelineiv(m_id, GL_INFO_LOG_LENGTH, &log_length);
+            glGetProgramPipelineiv(m_id.value(), GL_INFO_LOG_LENGTH, &log_length);
             std::string error_message;
             if (!log_length) {
                 error_message = "Failed to validate the Pipeline";
             }
             else {
                 error_message.resize(static_cast<size_t>(log_length), '\0');
-                glGetProgramPipelineInfoLog(m_id, log_length, nullptr, &error_message[0]);
+                glGetProgramPipelineInfoLog(m_id.value(), log_length, nullptr, &error_message[0]);
                 if (error_message.compare(0, 7, "error:\t") != 0) { // prettify the message for logging
                     error_message = error_message.substr(7, error_message.size() - 9);
                 }
             }
-            throw_runtime_error(error_message);
+            notf_throw(runtime_error, error_message);
         }
     }
 
@@ -129,10 +135,10 @@ Pipeline::create(GraphicsContextPtr& context, VertexShaderPtr vertex_shader, Tes
 Pipeline::~Pipeline()
 {
     if (m_id) {
-        gl_check(glDeleteProgramPipelines(1, &m_id));
+        gl_check(glDeleteProgramPipelines(1, &m_id.value()));
         log_trace << "Deleted Pipeline: " << m_id;
+        m_id = PipelineId::invalid();
     }
-    m_id = 0;
 }
 
 } // namespace notf

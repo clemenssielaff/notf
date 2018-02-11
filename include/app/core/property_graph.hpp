@@ -32,11 +32,10 @@ using TypedPropertyId = IdType<PropertyId::type_t, PropertyId::underlying_t, val
 //====================================================================================================================//
 
 /// Exception when a property Id did not match a property in the graph.
-NOTF_EXCEPTION_TYPE(property_lookup_error, "Failed to look up property by id")
+NOTF_EXCEPTION_TYPE(property_lookup_error)
 
 /// Exception thrown when a new expression would introduce a cyclic dependency into the graph.
-NOTF_EXCEPTION_TYPE(property_cyclic_dependency_error, "Failed to create property expression which would introduce a "
-                                                      "cyclic dependency")
+NOTF_EXCEPTION_TYPE(property_cyclic_dependency_error)
 
 //====================================================================================================================//
 
@@ -260,7 +259,7 @@ public:
                 return property->value();
             }
         }
-        throw_notf_error(property_lookup_error);
+        notf_throw(property_lookup_error, "Failed to look up property by id");
     }
     template<typename value_t>
     const value_t& property(const TypedPropertyId<value_t> id) const
@@ -279,7 +278,7 @@ public:
     void add_property(const PropertyId id)
     {
         if (has_property(id)) {
-            throw_notf_error_msg(property_lookup_error, "Cannot create a new property with an existing ID!");
+            notf_throw(property_lookup_error, "Cannot create a new property with an existing ID!");
         }
         const id_t numeric_id = static_cast<id_t>(id);
         const auto result
@@ -301,7 +300,7 @@ public:
                 return;
             }
         }
-        throw_notf_error(property_lookup_error);
+        notf_throw(property_lookup_error, "Failed to look up property by id");
     }
 
     /// Define the expression of a property identified by its id.
@@ -323,7 +322,9 @@ public:
                 std::vector<PropertyBase*> dependent_properties;
                 if (_get_properties(dependencies, dependent_properties)) {
                     if (_is_dependency_of_any(property, dependent_properties)) {
-                        throw_notf_error(property_cyclic_dependency_error);
+                        notf_throw(property_cyclic_dependency_error,
+                                             "Failed to create property expression which would introduce a "
+                                             "cyclic dependency");
                     }
                     else {
                         property->set_expression(std::move(expression), std::move(dependent_properties), time);
@@ -332,7 +333,7 @@ public:
                 }
             }
         }
-        throw_notf_error(property_lookup_error);
+        notf_throw(property_lookup_error, "Failed to look up property by id");
     }
 
     /// Removes a property from the graph.

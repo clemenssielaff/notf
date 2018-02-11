@@ -158,15 +158,13 @@ public: // methods *************************************************************
     PrefabFactory(library_t& library) : m_library(library), m_studies(), m_indices() {}
 
     /** Produces a new prefab from the current state of the factory.
-     * @param name                  Name of the new prefab.
-     * @throws std::runtime_error   If the name is already taken in the library.
+     * @param name              Name of the new prefab.
+     * @throws runtime_error    If the name is already taken in the library.
      */
     std::shared_ptr<PrefabType<InstanceData>> produce(std::string name)
     {
         if (m_library.has_prefab_type(name)) {
-            std::stringstream ss;
-            ss << "Cannot produce new prefab type with existing name \"" << name << "\"";
-            throw_runtime_error(ss.str());
+            notf_throw_format(runtime_error, "Cannot produce new prefab type with existing name \"" << name << "\"");
         }
 
         // build up the studies from the factory list

@@ -5,10 +5,17 @@
 
 #include "./gl_forwards.hpp"
 #include "common/forwards.hpp"
+#include "common/id.hpp"
 
 namespace notf {
 
 // TODO: cache compiled shader binaries next to their text files (like python?)
+
+//====================================================================================================================//
+
+/// Shader ID type.
+using ShaderId = IdType<Shader, GLuint>;
+static_assert(std::is_pod<ShaderId>::value, "ShaderId is not a POD type");
 
 // ===================================================================================================================//
 
@@ -90,19 +97,8 @@ protected:
     /// @param context  Render Context in which the Shader lives.
     /// @param id       OpenGL Shader program ID.
     /// @param stages   Pipeline stage/s of the Shader.
-    /// @param name     Context-unique name of this Shader.
+    /// @param name     Name of this Shader.
     Shader(GraphicsContextPtr& context, const GLuint id, Stage::Flags stages, std::string name);
-
-    /// Factory.
-    /// @param context  Render Context in which the Shader lives.
-    /// @param name     Context-unique name of this Shader.
-    /// @param args     Construction arguments.
-    /// @return OpenGL Shader program ID.
-    static GLuint _build(GraphicsContextPtr& context, const std::string& name, const Args& args);
-
-    /// Registers the given Shader with its context.
-    /// @param shader   Shader to register.
-    static void _register_with_context(ShaderPtr shader);
 
 public:
     DISALLOW_COPY_AND_ASSIGN(Shader)
@@ -114,22 +110,22 @@ public:
     GraphicsContext& context() const { return m_graphics_context; }
 
     /// The OpenGL ID of the Shader program.
-    GLuint id() const { return m_id; }
+    ShaderId id() const { return m_id; }
 
     /// Checks if the Shader is valid.
     /// A Shader should always be valid - the only way to get an invalid one is to remove the GraphicsContext while
     /// still holding on to shared pointers of a Shader that lived in the removed GraphicsContext.
-    bool is_valid() const { return m_id != 0; }
+    bool is_valid() const { return m_id.is_valid(); }
 
     /// Pipeline stage/s of the Shader.
     Stage::Flags stage() const { return m_stages; }
 
-    /// The context-unique name of this Shader.
+    /// The name of this Shader.
     const std::string& name() const { return m_name; }
 
     /// Updates the value of a uniform in the shader.
-    /// @throws std::runtime_error   If the uniform cannot be found.
-    /// @throws std::runtime_error   If the value type and the uniform type are not compatible.
+    /// @throws runtime_error   If the uniform cannot be found.
+    /// @throws runtime_error   If the value type and the uniform type are not compatible.
     template<typename T>
     void set_uniform(const std::string&, const T&)
     {
@@ -143,9 +139,21 @@ public:
     bool validate_now() const;
 #endif
 
+protected:
+    /// Factory.
+    /// @param name     Name of this Shader.
+    /// @param args     Construction arguments.
+    /// @return OpenGL Shader program ID.
+    static GLuint _build(const std::string& name, const Args& args);
+
+    /// Registers the given Shader with its context.
+    /// @param shader           Shader to register.
+    /// @throws internal_error  If another Shader with the same ID already exists.
+    static void _register_with_context(ShaderPtr shader);
+
 private:
     /// Returns the uniform with the given name.
-    /// @throws std::runtime_error   If there is no uniform with the given name in this shader.
+    /// @throws runtime_error   If there is no uniform with the given name in this shader.
     const Variable& _uniform(const std::string& name) const;
 
     /// Deallocates the Shader data and invalidates the Shader.
@@ -157,12 +165,12 @@ private:
     GraphicsContext& m_graphics_context;
 
     //// ID of the shader program.
-    GLuint m_id;
+    ShaderId m_id;
 
     /// All stages contained in this Shader.
     const Stage::Flags m_stages;
 
-    /// The context-unique name of this Shader.
+    /// The name of this Shader.
     const std::string m_name;
 
     ///  All uniforms of this shader.
@@ -203,15 +211,16 @@ protected:
 
 public:
     /// Factory.
-    /// @param context  Render Context in which the Shader lives.
-    /// @param name     Human readable name of the Shader.
-    /// @param source   Vertex shader source.
-    /// @param defines  Additional definitions to inject into the shader code.
-    static VertexShaderPtr build(GraphicsContextPtr& context, std::string name, const std::string& source,
-                                 const Defines& defines = s_no_defines);
+    /// @param context          Render Context in which the Shader lives.
+    /// @param name             Human readable name of the Shader.
+    /// @param source           Vertex shader source.
+    /// @param defines          Additional definitions to inject into the shader code.
+    /// @throws internal_error  If another Shader with the same ID already exists.
+    static VertexShaderPtr create(GraphicsContextPtr& context, std::string name, const std::string& source,
+                                  const Defines& defines = s_no_defines);
 
     /// Returns the location of the attribute with the given name.
-    /// @throws std::runtime_error   If there is no attribute with the given name in this shader.
+    /// @throws runtime_error   If there is no attribute with the given name in this shader.
     GLuint attribute(const std::string& name) const;
 
     /// All attribute variables.
@@ -252,8 +261,9 @@ public:
     /// @param control_source       Tesselation control shader source.
     /// @param evaluation_source    Tesselation evaluation shader source.
     /// @param defines              Additional definitions to inject into the shader code.
-    static TesselationShaderPtr build(GraphicsContextPtr& context, std::string name, const std::string& control_source,
-                                      const std::string& evaluation_source, const Defines& defines = s_no_defines);
+    /// @throws internal_error      If another Shader with the same ID already exists.
+    static TesselationShaderPtr create(GraphicsContextPtr& context, std::string name, const std::string& control_source,
+                                       const std::string& evaluation_source, const Defines& defines = s_no_defines);
 
     /// The teselation control shader source code.
     const std::string& control_source() const { return m_control_source; }
@@ -286,12 +296,13 @@ protected:
 
 public:
     /// Factory.
-    /// @param context  Render Context in which the Shader lives.
-    /// @param name     Human readable name of the Shader.
-    /// @param source   Geometry shader source.
-    /// @param defines  Additional definitions to inject into the shader code.
-    static GeometryShaderPtr build(GraphicsContextPtr& context, std::string name, const std::string& source,
-                                   const Defines& defines = s_no_defines);
+    /// @param context          Render Context in which the Shader lives.
+    /// @param name             Human readable name of the Shader.
+    /// @param source           Geometry shader source.
+    /// @param defines          Additional definitions to inject into the shader code.
+    /// @throws internal_error  If another Shader with the same ID already exists.
+    static GeometryShaderPtr create(GraphicsContextPtr& context, std::string name, const std::string& source,
+                                    const Defines& defines = s_no_defines);
 
     /// The geometry shader source code.
     const std::string& source() const { return m_source; }
@@ -318,12 +329,13 @@ protected:
 
 public:
     /// Factory.
-    /// @param context  Render Context in which the Shader lives.
-    /// @param name     Human readable name of the Shader.
-    /// @param source   Fragment shader source.
-    /// @param defines  Additional definitions to inject into the shader code.
-    static FragmentShaderPtr build(GraphicsContextPtr& context, std::string name, const std::string& source,
-                                   const Defines& defines = s_no_defines);
+    /// @param context          Render Context in which the Shader lives.
+    /// @param name             Human readable name of the Shader.
+    /// @param source           Fragment shader source.
+    /// @param defines          Additional definitions to inject into the shader code.
+    /// @throws internal_error  If another Shader with the same ID already exists.
+    static FragmentShaderPtr create(GraphicsContextPtr& context, std::string name, const std::string& source,
+                                    const Defines& defines = s_no_defines);
 
     /// The fragment shader source code.
     const std::string& source() const { return m_source; }

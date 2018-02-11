@@ -2,8 +2,17 @@
 
 #include "./gl_forwards.hpp"
 #include "common/forwards.hpp"
+#include "common/id.hpp"
 
 namespace notf {
+
+//====================================================================================================================//
+
+/// Pipeline ID type.
+using PipelineId = IdType<Pipeline, GLuint>;
+static_assert(std::is_pod<PipelineId>::value, "PipelineId is not a POD type");
+
+// ===================================================================================================================//
 
 /// Render Pipeline
 /// Is not managed by the context, but keeps their Shaders alive.
@@ -47,7 +56,7 @@ public:
     ~Pipeline();
 
     /// OpenGL ID of the Pipeline object.
-    GLuint id() const { return m_id; }
+    PipelineId id() const { return m_id; }
 
     /// Vertex shader attached to this Pipeline.
     const VertexShaderPtr& vertex_shader() const { return m_vertex_shader; }
@@ -68,7 +77,7 @@ private:
     GraphicsContext& m_graphics_context;
 
     /// OpenGL ID of the Pipeline object.
-    GLuint m_id;
+    PipelineId m_id;
 
     /// Vertex shader attached to this Pipeline.
     VertexShaderPtr m_vertex_shader;

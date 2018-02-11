@@ -148,7 +148,7 @@ private: // static fields
 class LogHandler {
 
 public: // methods
-    /** Default constructor.
+    /** Constructor.
      * @param initial_buffer   Initial size of the buffers.
      * @param flush_interval   How often the read- and write-buffers are swapped in milliseconds.
      */

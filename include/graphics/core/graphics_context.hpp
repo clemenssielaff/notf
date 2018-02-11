@@ -7,10 +7,18 @@
 
 #include "./gl_forwards.hpp"
 #include "common/forwards.hpp"
+#include "common/id.hpp"
 
 struct GLFWwindow;
 
 namespace notf {
+
+//====================================================================================================================//
+
+// forward declaration of relevant ID types
+using FrameBufferId = IdType<FrameBuffer, GLuint>;
+using ShaderId      = IdType<Shader, GLuint>;
+using TextureId     = IdType<Texture, GLuint>;
 
 //====================================================================================================================//
 
@@ -86,8 +94,10 @@ enum CullFace : unsigned char {
 /// It is the object owning all NoTF client objects like shaders and textures.
 class GraphicsContext {
 
+    // managed classes have access to the GraphicsContext's internals to register themselves
     friend class Shader;
     friend class Texture;
+    friend class FrameBuffer;
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -170,9 +180,9 @@ public:
     DISALLOW_COPY_AND_ASSIGN(GraphicsContext)
 
     /// Constructor.
-    /// @param window                GLFW window displaying the contents of this context.
-    /// @throws std::runtime_error   If the given window is invalid.
-    /// @throws std::runtime_error   If another current OpenGL context exits.
+    /// @param window           GLFW window displaying the contents of this context.
+    /// @throws runtime_error   If the given window is invalid.
+    /// @throws runtime_error   If another current OpenGL context exits.
     GraphicsContext(GLFWwindow* window);
 
     /// Destructor.
@@ -203,27 +213,27 @@ public:
 
     // texture ----------------------------------------------------------------
 
-    /// Checks whether this context contains a Texture with the given name.
-    /// @param name Name of the Texture.
-    bool has_texture(const std::string& name) { return m_shaders.count(name) != 0; }
+    /// Checks whether this context contains a Texture with the given ID.
+    /// @param id   ID of the Texture.
+    bool has_texture(const TextureId& id) { return m_textures.count(id) != 0; }
 
     /// Finds and returns a Texture of this context by its name.
-    /// @param name                 Name of the Texture.
-    /// @throws std::out_of_range   If the context does not contain a Texture with the given name.
-    TexturePtr texture(const std::string& name) const { return m_textures.at(name).lock(); }
+    /// @param id               ID of the Texture.
+    /// @throws out_of_range    If the context does not contain a Texture with the given id.
+    TexturePtr texture(const TextureId& id) const;
 
     /// Binds the given texture at the given texture slot.
     /// Only results in an OpenGL call if the texture is not currently bound.
-    /// @param texture              Texture to bind.
-    /// @param slot                 Texture slot to bind the texture to.
-    /// @throws std::runtime_error  If the texture is not valid.
-    /// @throws std::runtime_error  If slot is >= than the number of texture slots in the environment.
+    /// @param texture          Texture to bind.
+    /// @param slot             Texture slot to bind the texture to.
+    /// @throws runtime_error   If the texture is not valid.
+    /// @throws runtime_error   If slot is >= than the number of texture slots in the environment.
     void bind_texture(Texture* texture, uint slot);
     void bind_texture(TexturePtr& texture, uint slot) { bind_texture(texture.get(), slot); }
 
     /// Unbinds the current texture and clears the context's texture stack.
-    /// @param slot                 Texture slot to clear.
-    /// @throws std::runtime_error  If slot is >= than the number of texture slots in the environment.
+    /// @param slot             Texture slot to clear.
+    /// @throws runtime_error   If slot is >= than the number of texture slots in the environment.
     void unbind_texture(uint slot);
 
     /// Unbinds bound texures from all slots.
@@ -231,14 +241,14 @@ public:
 
     // shader -----------------------------------------------------------------
 
-    /// Checks whether this context contains a Shader with the given name.
-    /// @param name Name of the Shader.
-    bool has_shader(const std::string& name) { return m_shaders.count(name) != 0; }
+    /// Checks whether this context contains a Shader with the given ID.
+    /// @param id   ID of the Shader.
+    bool has_shader(const ShaderId& id) { return m_shaders.count(id) != 0; }
 
-    /// Finds and returns a Shader of this context by its name.
-    /// @param name                 Name of the Shader.
-    /// @throws std::out_of_range   If the context does not contain a Shader with the given name.
-    ShaderPtr shader(const std::string& name) const { return m_shaders.at(name).lock(); }
+    /// Finds and returns a Shader of this context by its ID.
+    /// @param id               ID of the Shader.
+    /// @throws out_of_range    If the context does not contain a Shader with the given id.
+    ShaderPtr shader(const ShaderId& id) const;
 
     // pipeline ---------------------------------------------------------------
 
@@ -250,6 +260,15 @@ public:
     void unbind_pipeline();
 
     // frambuffer -------------------------------------------------------------
+
+    /// Checks whether this context contains a FrameBuffer with the given ID.
+    /// @param id   ID of the FrameBuffer.
+    bool has_framebuffer(const FrameBufferId& id) { return m_framebuffers.count(id) != 0; }
+
+    /// Finds and returns a FrameBuffer of this context by its ID.
+    /// @param id               ID of the FrameBuffer.
+    /// @throws out_of_range    If the context does not contain a FrameBuffer with the given id.
+    FrameBufferPtr framebuffer(const FrameBufferId& id) const;
 
     /// Binds the given FrameBuffer, if it is not already bound.
     /// @param framebuffer  FrameBuffer to bind.
@@ -265,11 +284,26 @@ public:
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
+    /// Registers a new Texture with this GraphicsContext.
+    /// @param texture          New Texture to register.
+    /// @throws internal_error  If another Texture with the same ID already exists.
+    void register_new(TexturePtr texture);
+
+    /// Registers a new Shader with this GraphicsContext.
+    /// @param texture          New Shader to register.
+    /// @throws internal_error  If another Shader with the same ID already exists.
+    void register_new(ShaderPtr shader);
+
+    /// Registers a new FrameBuffer with this GraphicsContext.
+    /// @param texture          New FrameBuffer to register.
+    /// @throws internal_error  If another FrameBuffer with the same ID already exists.
+    void register_new(FrameBufferPtr framebuffer);
+
     /// Call this function after the last shader has been compiled.
     /// Might cause the driver to release the resources allocated for the compiler to free up some space, but is not
     /// guaranteed to do so.
-    /// If you compile a new shader after calling th6is function, the driver will reallocate the compiler.
-    void _release_shader_compiler();
+    /// If you compile a new shader after calling this function, the driver will reallocate the compiler.
+    void release_shader_compiler();
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
@@ -285,11 +319,15 @@ private:
     /// All Textures managed by this Context.
     /// Note that the Context doesn't "own" the textures, they are shared pointers, but the Render Context deallocates
     /// all Textures when it is deleted.
-    std::unordered_map<std::string, std::weak_ptr<Texture>> m_textures;
+    std::unordered_map<TextureId, std::weak_ptr<Texture>> m_textures;
 
     /// All Shaders managed by this Context.
     /// See `m_textures` for details on management.
-    std::unordered_map<std::string, std::weak_ptr<Shader>> m_shaders;
+    std::unordered_map<ShaderId, std::weak_ptr<Shader>> m_shaders;
+
+    /// All FrameBuffers managed by this Context.
+    /// See `m_textures` for details on management.
+    std::unordered_map<FrameBufferId, std::weak_ptr<FrameBuffer>> m_framebuffers;
 
     /// The context owns its own Font Manager that manages the textures and glyph rendering.
     FontManagerPtr m_font_manager;

@@ -46,11 +46,11 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Constructor.
-    /// @throws std::runtime_error  If there is no OpenGL context.
+    /// @throws runtime_error   If there is no OpenGL context.
     IndexArrayType(Args&& args) : m_args(std::move(args)), m_vbo_id(0), m_type(0), m_size(0)
     {
         if (!gl_is_initialized()) {
-            throw_runtime_error("Cannot create an IndexArray without an OpenGL context");
+            notf_throw(runtime_error, "Cannot create an IndexArray without an OpenGL context");
         }
     }
 
@@ -104,7 +104,7 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
-    /// @throws std::runtime_error  If there is no OpenGL context.
+    /// @throws runtime_error   If there is no OpenGL context.
     IndexArray(Args&& args = {}) : IndexArrayType(std::forward<Args>(args)), m_indices(), m_buffer_size(0) {}
 
     /// Write-access to the index buffer.
@@ -112,15 +112,15 @@ public:
     std::vector<index_t>& buffer() { return m_indices; }
 
     /// Initializes the IndexArray.
-    /// @throws std::runtime_error   If the VBO could not be allocated.
-    /// @throws std::runtime_error   If no VAO is currently bound.
+    /// @throws runtime_error   If the VBO could not be allocated.
+    /// @throws runtime_error   If no VAO is currently bound.
     void init()
     {        
         { // make sure there is a bound VAO
             GLint current_vao = 0;
             gl_check(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
             if (!current_vao) {
-                throw_runtime_error("Cannot initialize an IndexArray without a bound VAO");
+                notf_throw(runtime_error, "Cannot initialize an IndexArray without a bound VAO");
             }
         }
 
@@ -130,7 +130,7 @@ public:
 
         gl_check(glGenBuffers(1, &m_vbo_id));
         if (!m_vbo_id) {
-            throw_runtime_error("Failed to allocate IndexArray");
+            notf_throw(runtime_error, "Failed to allocate IndexArray");
         }
 
         m_type = to_gl_type(index_t());

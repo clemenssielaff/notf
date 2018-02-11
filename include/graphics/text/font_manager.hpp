@@ -22,7 +22,7 @@ class FontManager {
 public:
     DISALLOW_COPY_AND_ASSIGN(FontManager)
 
-    /// Default constructor.
+    /// Constructor.
     FontManager(GraphicsContext& graphics_context);
 
     /// Destructor.

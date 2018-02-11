@@ -93,7 +93,7 @@ GraphicsContext::GraphicsContext(GLFWwindow* window)
     : m_window(window), m_state(), m_has_vsync(true), m_textures(), m_shaders(), m_font_manager()
 {
     if (!window) {
-        throw_runtime_error("Failed to create a new GraphicsContext without a window (given pointer is null).");
+        notf_throw(runtime_error, "Failed to create a new GraphicsContext without a window (given pointer is null).");
     }
 
     glfwMakeContextCurrent(m_window);
@@ -112,11 +112,14 @@ GraphicsContext::~GraphicsContext()
     // delete the Font Manager before warning about deallocating live textures
     m_font_manager.reset();
 
+    // release all resources that are bound by the context
+    unbind_all_textures();
+    unbind_pipeline();
+    unbind_framebuffer();
+
     // deallocate and invalidate all remaining Textures
     for (auto itr : m_textures) {
-        std::weak_ptr<Texture>& texture_weakptr = itr.second;
-        std::shared_ptr<Texture> texture        = texture_weakptr.lock();
-        if (texture) {
+        if (TexturePtr texture = itr.second.lock()) {
             log_warning << "Deallocating live Texture: \"" << texture->name() << "\"";
             texture->_deallocate();
         }
@@ -125,14 +128,21 @@ GraphicsContext::~GraphicsContext()
 
     // deallocate and invalidate all remaining Shaders
     for (auto itr : m_shaders) {
-        std::weak_ptr<Shader>& shader_weakptr = itr.second;
-        std::shared_ptr<Shader> shader        = shader_weakptr.lock();
-        if (shader) {
+        if (ShaderPtr shader = itr.second.lock()) {
             log_warning << "Deallocating live Shader: \"" << shader->name() << "\"";
             shader->_deallocate();
         }
     }
     m_shaders.clear();
+
+    // deallocate and invalidate all remaining FrameBuffers
+    for (auto itr : m_framebuffers) {
+        if (FrameBufferPtr framebuffer = itr.second.lock()) {
+            log_warning << "Deallocating live FrameBuffer: \"" << framebuffer->id() << "\"";
+            framebuffer->_deallocate();
+        }
+    }
+    m_framebuffers.clear();
 }
 
 const GraphicsContext::Extensions& GraphicsContext::extensions()
@@ -289,6 +299,15 @@ void GraphicsContext::set_blend_mode(const BlendMode mode)
     gl_check(glBlendFuncSeparate(rgb_sfactor, rgb_dfactor, alpha_sfactor, alpha_dfactor));
 }
 
+TexturePtr GraphicsContext::texture(const TextureId& id) const
+{
+    auto it = m_textures.find(id);
+    if (it == m_textures.end()) {
+        notf_throw_format(out_of_range, "GraphicsContext does not contain a Texture with ID \"" << id << "\"");
+    }
+    return it->second.lock();
+}
+
 void GraphicsContext::bind_texture(Texture* texture, uint slot)
 {
     if (!texture) {
@@ -296,9 +315,8 @@ void GraphicsContext::bind_texture(Texture* texture, uint slot)
     }
 
     if (slot >= environment().texture_slot_count) {
-        std::stringstream ss;
-        ss << "Invalid texture slot: " << slot << " - largest texture slot is:" << environment().texture_slot_count - 1;
-        throw_runtime_error(ss.str());
+        notf_throw_format(runtime_error, "Invalid texture slot: " << slot << " - largest texture slot is:"
+                                                                  << environment().texture_slot_count - 1);
     }
 
     if (texture == m_state.texture_slots[slot].get()) {
@@ -306,11 +324,11 @@ void GraphicsContext::bind_texture(Texture* texture, uint slot)
     }
 
     if (!texture->is_valid()) {
-        throw_runtime_error(string_format("Cannot bind invalid texture \"%s\"", texture->name().c_str()));
+        notf_throw_format(runtime_error, "Cannot bind invalid texture \"" << texture->name() << "\"");
     }
 
     gl_check(glActiveTexture(GL_TEXTURE0 + slot));
-    gl_check(glBindTexture(GL_TEXTURE_2D, texture->id()));
+    gl_check(glBindTexture(GL_TEXTURE_2D, texture->id().value()));
 
     m_state.texture_slots[slot] = texture->shared_from_this();
 }
@@ -318,9 +336,8 @@ void GraphicsContext::bind_texture(Texture* texture, uint slot)
 void GraphicsContext::unbind_texture(uint slot)
 {
     if (slot >= environment().texture_slot_count) {
-        std::stringstream ss;
-        ss << "Invalid texture slot: " << slot << " - largest texture slot is:" << environment().texture_slot_count - 1;
-        throw_runtime_error(ss.str());
+        notf_throw_format(runtime_error, "Invalid texture slot: " << slot << " - largest texture slot is:"
+                                                                  << environment().texture_slot_count - 1);
     }
 
     if (m_state.texture_slots.at(slot) == nullptr) {
@@ -340,6 +357,15 @@ void GraphicsContext::unbind_all_textures()
     }
 }
 
+ShaderPtr GraphicsContext::shader(const ShaderId& id) const
+{
+    auto it = m_shaders.find(id);
+    if (it == m_shaders.end()) {
+        notf_throw_format(out_of_range, "GraphicsContext does not contain a Shader with ID \"" << id << "\"");
+    }
+    return it->second.lock();
+}
+
 void GraphicsContext::bind_pipeline(PipelinePtr& pipeline)
 {
     if (!pipeline) {
@@ -348,7 +374,7 @@ void GraphicsContext::bind_pipeline(PipelinePtr& pipeline)
 
     if (pipeline != m_state.pipeline) {
         gl_check(glUseProgram(0));
-        gl_check(glBindProgramPipeline(pipeline->id()));
+        gl_check(glBindProgramPipeline(pipeline->id().value()));
 
         m_state.pipeline = pipeline;
     }
@@ -364,13 +390,22 @@ void GraphicsContext::unbind_pipeline()
     }
 }
 
+FrameBufferPtr GraphicsContext::framebuffer(const FrameBufferId& id) const
+{
+    auto it = m_framebuffers.find(id);
+    if (it == m_framebuffers.end()) {
+        notf_throw_format(out_of_range, "GraphicsContext does not contain a FrameBuffer with ID \"" << id << "\"");
+    }
+    return it->second.lock();
+}
+
 void GraphicsContext::bind_framebuffer(FrameBufferPtr& framebuffer)
 {
     if (!framebuffer) {
         return unbind_framebuffer();
     }
     if (framebuffer != m_state.framebuffer) {
-        gl_check(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->id()));
+        gl_check(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->id().value()));
         m_state.framebuffer = framebuffer;
     }
 }
@@ -384,7 +419,52 @@ void GraphicsContext::unbind_framebuffer()
     }
 }
 
-void GraphicsContext::_release_shader_compiler() { gl_check(glReleaseShaderCompiler()); }
+void GraphicsContext::register_new(TexturePtr texture)
+{
+    auto it = m_textures.find(texture->id());
+    if (it == m_textures.end()) {
+        m_textures.emplace(texture->id(), texture); // insert new
+    }
+    else if (it->second.expired()) {
+        it->second = texture; // update expired
+    }
+    else {
+        notf_throw_format(internal_error, "Failed to register a new texture with the same ID as an existing texture: \""
+                                              << texture->id() << "\"");
+    }
+}
+
+void GraphicsContext::register_new(ShaderPtr shader)
+{
+    auto it = m_shaders.find(shader->id());
+    if (it == m_shaders.end()) {
+        m_shaders.emplace(shader->id(), shader); // insert new
+    }
+    else if (it->second.expired()) {
+        it->second = shader; // update expired
+    }
+    else {
+        notf_throw_format(internal_error, "Failed to register a new shader with the same ID as an existing shader: \""
+                                              << shader->id() << "\"");
+    }
+}
+
+void GraphicsContext::register_new(FrameBufferPtr framebuffer)
+{
+    auto it = m_framebuffers.find(framebuffer->id());
+    if (it == m_framebuffers.end()) {
+        m_framebuffers.emplace(framebuffer->id(), framebuffer); // insert new
+    }
+    else if (it->second.expired()) {
+        it->second = framebuffer; // update expired
+    }
+    else {
+        notf_throw_format(internal_error, "Failed to register a new framebuffer with the same ID as an existing "
+                                              << "framebuffer: \"" << framebuffer->id() << "\"");
+    }
+}
+
+void GraphicsContext::release_shader_compiler() { gl_check(glReleaseShaderCompiler()); }
 
 } // namespace notf
 

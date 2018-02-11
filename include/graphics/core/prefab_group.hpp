@@ -58,24 +58,25 @@ public:
 
     /// Initializes the library.
     /// Call this method once, after all prefabs have been added using PrefabFactories.
-    /// @throws std::runtime_error   If the PrefabGroup has already been initialized once.
-    /// @throws std::runtime_error   If the OpenGL VAO could not be generated.
+    /// @throws runtime_error   If the PrefabGroup has already been initialized once.
+    /// @throws runtime_error   If the OpenGL VAO could not be generated.
     void init()
     {
         if (m_vao_id) {
-            throw_runtime_error("Cannot re-initialize a previously initialized PrefabGroup.");
+            notf_throw(runtime_error, "Cannot re-initialize a previously initialized PrefabGroup.");
         }
 
         gl_check(glGenVertexArrays(1, &m_vao_id));
         if (!m_vao_id) {
-            throw_runtime_error("Failed to allocate the PrefabLibary VAO");
+            notf_throw(runtime_error, "Failed to allocate the PrefabLibary VAO");
         }
 
-        gl_check(glBindVertexArray(m_vao_id));
-        static_cast<vertex_array_t*>(m_vertex_array.get())->init();
-        static_cast<index_array_t*>(m_index_array.get())->init();
-        static_cast<instance_array_t*>(m_instance_array.get())->init();
-        gl_check(glBindVertexArray(0));
+        {
+            VaoBindGuard _(m_vao_id);
+            static_cast<vertex_array_t*>(m_vertex_array.get())->init();
+            static_cast<index_array_t*>(m_index_array.get())->init();
+            static_cast<instance_array_t*>(m_instance_array.get())->init();
+        }
     }
 
     /// Checks if a prefab with the given name exist.
@@ -88,7 +89,7 @@ public:
     }
 
     /// Returns a prefab type by its name.
-    /// @throws std::runtime_error   If the name is unknown.
+    /// @throws runtime_error   If the name is unknown.
     std::shared_ptr<PrefabType<InstanceData>> prefab_type(const std::string& name) const
     {
         const auto it = std::find_if(m_prefab_types.begin(), m_prefab_types.end(),
@@ -96,17 +97,14 @@ public:
         if (it != m_prefab_types.end()) {
             return *it;
         }
-        std::stringstream ss;
-        ss << "Unkown prefab type \"" << name << "\"";
-        throw_runtime_error(ss.str());
+        notf_throw_format(runtime_error, "Unkown prefab type \"" << name << "\"");
     }
 
     /// Go through all prefab types of this group and render all instances of each type.
     void render()
     {
         // TODO: [engine] No front-to-back sorting of prefabs globally or even just within its group
-
-        gl_check(glBindVertexArray(m_vao_id));
+        VaoBindGuard _(m_vao_id);
         for (const auto& prefab_type : m_prefab_types) {
 
             // skip prefabs with no instances
@@ -131,7 +129,6 @@ public:
             gl_check(glDrawElementsInstancedBaseVertex(GL_TRIANGLES, prefab_type->size(), m_index_array->type(), 0,
                                                        instances.size(), prefab_type->offset()));
         }
-        gl_check(glBindVertexArray(0));
     }
 
     // fields --------------------------------------------------------------------------------------------------------//

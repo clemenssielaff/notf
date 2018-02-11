@@ -52,18 +52,18 @@ void render_thread(GLFWwindow* window)
     // Shader ///////////////////////////////////////////////
 
     const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/wireframe.vert");
-    VertexShaderPtr vertex_shader = VertexShader::build(graphics_context, "wireframe.vert", vertex_src);
+    VertexShaderPtr vertex_shader = VertexShader::create(graphics_context, "wireframe.vert", vertex_src);
 
     const std::string tess_src = load_file("/home/clemens/code/notf/res/shaders/wireframe.tess");
     const std::string eval_src = load_file("/home/clemens/code/notf/res/shaders/wireframe.eval");
     TesselationShaderPtr tess_shader
-        = TesselationShader::build(graphics_context, "wireframe.tess", tess_src.c_str(), eval_src);
+        = TesselationShader::create(graphics_context, "wireframe.tess", tess_src.c_str(), eval_src);
 
     const std::string geom_src   = load_file("/home/clemens/code/notf/res/shaders/wireframe.geo");
-    GeometryShaderPtr geo_shader = GeometryShader::build(graphics_context, "wireframe.geo", geom_src);
+    GeometryShaderPtr geo_shader = GeometryShader::create(graphics_context, "wireframe.geo", geom_src);
 
     const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/wireframe.frag");
-    FragmentShaderPtr frag_shader = FragmentShader::build(graphics_context, "wireframe.frag", frag_src);
+    FragmentShaderPtr frag_shader = FragmentShader::create(graphics_context, "wireframe.frag", frag_src);
 
     PipelinePtr pipeline = Pipeline::create(graphics_context, vertex_shader, tess_shader, geo_shader, frag_shader);
     graphics_context->bind_pipeline(pipeline);

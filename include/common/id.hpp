@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <iostream>
 #include <type_traits>
 
@@ -56,7 +57,7 @@ public:
     static IdType invalid() { return IdType(INVALID); }
 
     /// Identifier value of this ID.
-    underlying_t value() const { return m_value; }
+    const underlying_t& value() const { return m_value; }
 
     /// @{
     /// Equality operator.
@@ -120,7 +121,22 @@ public:
 template<typename Type, typename underlying_type, typename... aux>
 std::ostream& operator<<(std::ostream& out, const IdType<Type, underlying_type, aux...>& id)
 {
-    return out << id.m_value;
+    return out << id.value();
 }
 
 } // namespace notf
+
+//====================================================================================================================//
+
+namespace std {
+
+/// std::hash specialization for IdTypes.
+template<typename type, typename underlying_type, typename... aux>
+struct hash<notf::IdType<type, underlying_type, aux...>> {
+    size_t operator()(const notf::IdType<type, underlying_type, aux...>& id) const
+    {
+        return static_cast<size_t>(id.value());
+    }
+};
+
+} // namespace std

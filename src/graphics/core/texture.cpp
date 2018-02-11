@@ -94,6 +94,18 @@ GLenum datatype_to_gl(const Texture::DataType type)
     return GL_ZERO;
 }
 
+#ifdef NOTF_DEBUG
+void assert_is_valid(const Texture& texture)
+{
+    if (!texture.is_valid()) {
+        notf_throw_format(resource_error, "Texture \"" << texture.name()
+                                                       << "\" was deallocated! Has the GraphicsContext been deleted?");
+    }
+}
+#else
+void assert_valid_id(const Texture&) {} // noop
+#endif
+
 } // namespace
 
 //********************************************************************************************************************
@@ -138,12 +150,7 @@ TexturePtr Texture::create_empty(GraphicsContext& context, std::string name, Siz
 {
     // validate the passed arguments
     if (!size.is_valid()) {
-        throw_runtime_error(string_format("Cannot create a texture with an invalid size: %s", size));
-    }
-    if (context.has_texture(name)) {
-        std::stringstream ss;
-        ss << "Cannot create a new Texture with existing name \"" << name << "\"";
-        throw_runtime_error(ss.str());
+        notf_throw_format(runtime_error, "Cannot create a texture with an invalid size: " << size);
     }
 
     // translate to OpenGL format
@@ -189,21 +196,14 @@ TexturePtr Texture::create_empty(GraphicsContext& context, std::string name, Siz
     gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical)));
 
     // return the loaded texture on success
-    TexturePtr texture = Texture::_create(context, id, GL_TEXTURE_2D, name, std::move(size), args.format);
-    context.m_textures.emplace(std::move(name), texture);
+    TexturePtr texture = Texture::_create(context, id, GL_TEXTURE_2D, std::move(name), std::move(size), args.format);
+    context.register_new(texture);
     return texture;
 }
 
 TexturePtr
 Texture::load_image(GraphicsContext& context, const std::string& file_path, std::string name, const Args& args)
 {
-    // validate the passed arguments
-    if (context.has_texture(name)) {
-        std::stringstream ss;
-        ss << "Cannot create a new Texture with existing name \"" << name << "\"";
-        throw_runtime_error(ss.str());
-    }
-
     std::vector<uchar> image_data;
     Size2i image_size;
     Texture::Format texture_format;
@@ -244,14 +244,14 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
             alignment       = 4;
         }
         else {
-            throw_runtime_error(
-                string_format("Cannot load texture with %i bytes per pixel (must be 1, 3 or 4)", image_bytes));
+            notf_throw_format(runtime_error,
+                              "Cannot load texture with " << image_bytes << " bytes per pixel (must be 1, 3 or 4)");
         }
     }
     else if (args.codec == Codec::ASTC) {
         std::ifstream image_file(file_path, std::ios::in | std::ios::binary);
         if (!image_file.good()) {
-            throw_runtime_error(string_format("Failed to read texture file: %s", file_path.c_str()));
+            notf_throw_format(runtime_error, "Failed to read texture file: \"" << file_path << "\"");
         }
         image_data = std::vector<uchar>(std::istreambuf_iterator<char>(image_file), std::istreambuf_iterator<char>());
 
@@ -368,8 +368,9 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
     }
 
     // return the loaded texture on success
-    TexturePtr texture = Texture::_create(context, id, GL_TEXTURE_2D, name, image_size, texture_format);
-    context.m_textures.emplace(std::move(name), texture);
+    TexturePtr texture
+        = Texture::_create(context, id, GL_TEXTURE_2D, std::move(name), std::move(image_size), texture_format);
+    context.register_new(texture);
     return texture;
 }
 
@@ -377,30 +378,36 @@ Texture::~Texture() { _deallocate(); }
 
 void Texture::set_min_filter(const MinFilter filter)
 {
+    assert_is_valid(*this);
     m_graphics_context.bind_texture(this, 0);
     gl_check(glTexParameteri(m_target, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter)));
 }
 
 void Texture::set_mag_filter(const MagFilter filter)
 {
+    assert_is_valid(*this);
     m_graphics_context.bind_texture(this, 0);
     gl_check(glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter)));
 }
 
 void Texture::set_wrap_x(const Wrap wrap)
 {
+    assert_is_valid(*this);
     m_graphics_context.bind_texture(this, 0);
     gl_check(glTexParameteri(m_target, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap)));
 }
 
 void Texture::set_wrap_y(const Wrap wrap)
 {
+    assert_is_valid(*this);
     m_graphics_context.bind_texture(this, 0);
     gl_check(glTexParameteri(m_target, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap)));
 }
 
 void Texture::fill(const Color& color)
 {
+    assert_is_valid(*this);
+
     // adjust the color to the texture
     Color fill_color;
     switch (m_format) {
@@ -452,11 +459,11 @@ void Texture::fill(const Color& color)
 
 void Texture::_deallocate()
 {
-    if (m_id) {
-        gl_check(glDeleteTextures(1, &m_id));
+    if (m_id.is_valid()) {
+        gl_check(glDeleteTextures(1, &m_id.value()));
         log_trace << "Deleted OpenGL texture with ID: " << m_id;
+        m_id = TextureId::invalid();
     }
-    m_id = 0;
 }
 
 } // namespace notf

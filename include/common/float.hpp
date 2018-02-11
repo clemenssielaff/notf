@@ -140,7 +140,7 @@ template<typename Real>
 inline Real norm_angle(Real alpha)
 {
     if (!is_real(alpha)) {
-        throw_notf_error_msg(logic_error, "Cannot normalize an invalid number");
+        notf_throw(logic_error, "Cannot normalize an invalid number");
     }
     const float modulo = fmod(alpha, float_detail::PI * 2);
     return modulo >= 0 ? modulo : (float_detail::PI * 2) + modulo;
@@ -151,7 +151,7 @@ template<typename Real>
 inline Real save_div(const Real divident, const Real divisor)
 {
     if (divisor == 0) {
-        throw_notf_error_msg(logic_error, "Division by zero");
+        notf_throw(logic_error, "Division by zero");
     }
     return divident / divisor;
 }

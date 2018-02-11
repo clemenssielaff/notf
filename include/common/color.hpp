@@ -49,10 +49,9 @@ struct Color {
     {
     }
 
-    /** Creates a color from a color value string.
-     * Valid formattings are "#0099aa", "#0099aaff", "0099aa" or "0099aaff", string is parsed case-insensitive.
-     * @throws std::runtime_error   If the given string is not a valid value string.
-     */
+    /// Creates a color from a color value string.
+    /// Valid formattings are "#0099aa", "#0099aaff", "0099aa" or "0099aaff", string is parsed case-insensitive.
+    /// @throws runtime_error   If the given string is not a valid value string.
     Color(const std::string& value);
 
     /* Static Constructors ********************************************************************************************/

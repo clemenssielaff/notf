@@ -98,7 +98,7 @@ private:
 public:
     DISALLOW_COPY_AND_ASSIGN(FontAtlas)
 
-    /// Default constructor.
+    /// Constructor.
     FontAtlas(GraphicsContext& graphics_context);
 
     /// Destructor.

@@ -71,18 +71,17 @@ void render_thread(GLFWwindow* window)
         render_target    = Texture::create_empty(*graphics_context, "render_target", {800, 800}, targs);
 
         FrameBuffer::Args fargs;
-        fargs.color_targets = {std::make_pair(0, FrameBuffer::ColorTarget{render_target})};
-
-        framebuffer = std::make_shared<FrameBuffer>(*graphics_context, std::move(fargs));
+        fargs.set_color_target(0, render_target);
+        framebuffer = FrameBuffer::create(*graphics_context, std::move(fargs));
     }
 
     /////////////////////////////////////
 
     const std::string vertex_src     = load_file("/home/clemens/code/notf/res/shaders/blinn_phong.vert");
-    VertexShaderPtr blinn_phong_vert = VertexShader::build(graphics_context, "Blinn-Phong.vert", vertex_src);
+    VertexShaderPtr blinn_phong_vert = VertexShader::create(graphics_context, "Blinn-Phong.vert", vertex_src);
 
     const std::string frag_src         = load_file("/home/clemens/code/notf/res/shaders/blinn_phong.frag");
-    FragmentShaderPtr blinn_phong_frag = FragmentShader::build(graphics_context, "Blinn-Phong.frag", frag_src);
+    FragmentShaderPtr blinn_phong_frag = FragmentShader::create(graphics_context, "Blinn-Phong.frag", frag_src);
 
     PipelinePtr blinn_phong_pipeline = Pipeline::create(graphics_context, blinn_phong_vert, blinn_phong_frag);
     graphics_context->bind_pipeline(blinn_phong_pipeline);
@@ -194,9 +193,9 @@ void render_thread(GLFWwindow* window)
     }
 
     // clean up
-    graphics_context->unbind_all_textures();
-    graphics_context->unbind_framebuffer();
-    graphics_context->unbind_pipeline();
+//    graphics_context->unbind_all_textures();
+//    graphics_context->unbind_framebuffer();
+//    graphics_context->unbind_pipeline();
 }
 
 } // namespace

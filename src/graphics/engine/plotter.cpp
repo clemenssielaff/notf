@@ -150,20 +150,20 @@ Plotter::Plotter(GraphicsContextPtr& context)
     // vao
     gl_check(glGenVertexArrays(1, &m_vao_id));
     if (!m_vao_id) {
-        throw_runtime_error("Failed to allocate the Plotter VAO");
+        notf_throw(runtime_error, "Failed to allocate the Plotter VAO");
     }
     const auto vao_guard = VaoBindGuard(m_vao_id);
 
     { // pipeline
         const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/plotter.vert");
-        VertexShaderPtr vertex_shader = VertexShader::build(context, "plotter.vert", vertex_src);
+        VertexShaderPtr vertex_shader = VertexShader::create(context, "plotter.vert", vertex_src);
 
         const std::string tess_src       = load_file("/home/clemens/code/notf/res/shaders/plotter.tess");
         const std::string eval_src       = load_file("/home/clemens/code/notf/res/shaders/plotter.eval");
-        TesselationShaderPtr tess_shader = TesselationShader::build(context, "plotter.tess", tess_src, eval_src);
+        TesselationShaderPtr tess_shader = TesselationShader::create(context, "plotter.tess", tess_src, eval_src);
 
         const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/plotter.frag");
-        FragmentShaderPtr frag_shader = FragmentShader::build(context, "plotter.frag", frag_src);
+        FragmentShaderPtr frag_shader = FragmentShader::create(context, "plotter.frag", frag_src);
 
         m_pipeline = Pipeline::create(context, vertex_shader, tess_shader, frag_shader);
 

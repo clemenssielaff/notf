@@ -187,13 +187,13 @@ private:
         vertices.shrink_to_fit();
 
         if (vertices.size() < 3) {
-            throw_runtime_error("A Polygon must contain at least 3 unique vertices");
+            notf_throw(runtime_error, "A Polygon must contain at least 3 unique vertices");
         }
 
         for (size_t i = 0; i < vertices.size(); ++i) {
             for (size_t j = i + 1; j < vertices.size(); ++j) {
                 if (vertices[i].is_approx(vertices[j])) {
-                    throw_runtime_error("Vertices in a Polygon must not share positions");
+                    notf_throw(runtime_error, "Vertices in a Polygon must not share positions");
                 }
             }
         }
@@ -203,7 +203,7 @@ private:
 //            for (size_t j = i + 1; j < vertices.size(); ++j) {
 //                if (Segment2<element_t>(vertices[i - 1], vertices[i])
 //                        .intersects(Segment2<element_t>(vertices[j - 1], vertices[j]))) {
-//                    throw_runtime_error("Segments in a Polygon may not intersect");
+//                    notf_throw(runtime_error, "Segments in a Polygon may not intersect");
 //                }
 //            }
 //        }

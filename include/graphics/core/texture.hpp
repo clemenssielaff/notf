@@ -6,6 +6,7 @@
 
 #include "./gl_forwards.hpp"
 #include "common/forwards.hpp"
+#include "common/id.hpp"
 #include "common/meta.hpp"
 #include "common/size2.hpp"
 
@@ -13,6 +14,12 @@ namespace notf {
 
 // TODO: [engine] a texture streaming method using buffers
 // TODO: [engine] 3D texture
+
+//====================================================================================================================//
+
+/// Texture ID type.
+using TextureId = IdType<Texture, GLuint>;
+static_assert(std::is_pod<TextureId>::value, "TextureId is not a POD type");
 
 //====================================================================================================================//
 
@@ -146,18 +153,20 @@ private:
 
 public:
     /// Creates an valid but transparent texture in memory.
-    /// @param context  Render Context in which the Texture lives.
-    /// @param name     Context-unique name of the Texture.
-    /// @param size     Size of the texture in pixels.
-    /// @param args     Texture arguments.
+    /// @param context          Render Context in which the Texture lives.
+    /// @param name             Context-unique name of the Texture.
+    /// @param size             Size of the texture in pixels.
+    /// @param args             Texture arguments.
+    /// @throws internal_error  If another Texture with the same ID already exists.
     static TexturePtr
     create_empty(GraphicsContext& context, std::string name, Size2i size, const Args& args = s_default_args);
 
     /// Loads a texture from a given file.
-    /// @param context      Render Context in which the texture lives.
-    /// @param file_path    Path to a texture file.
-    /// @param name         Context-unique name of the Texture.
-    /// @param args         Arguments to initialize the texture.
+    /// @param context          Render Context in which the texture lives.
+    /// @param file_path        Path to a texture file.
+    /// @param name             Context-unique name of the Texture.
+    /// @param args             Arguments to initialize the texture.
+    /// @throws internal_error  If another Texture with the same ID already exists.
     /// @return Texture instance, is empty if the texture could not be loaded.
     static TexturePtr load_image(GraphicsContext& context, const std::string& file_path, std::string name,
                                  const Args& args = s_default_args);
@@ -168,12 +177,12 @@ public:
     ~Texture();
 
     /// The OpenGL ID of this Texture.
-    GLuint id() const { return m_id; }
+    TextureId id() const { return m_id; }
 
     /// Checks if the Texture is still valid.
     /// A Texture should always be valid - the only way to get an invalid one is to remove the GraphicsContext while
     /// still holding on to shared pointers of a Texture that lived in the removed GraphicsContext.
-    bool is_valid() const { return m_id != 0; }
+    bool is_valid() const { return m_id.is_valid(); }
 
     /// Texture target, e.g. GL_TEXTURE_2D for standard textures.
     GLenum target() const { return m_target; }
@@ -209,7 +218,7 @@ private:
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// OpenGL ID of this Shader.
-    GLuint m_id;
+    TextureId m_id;
 
     /// Render Context in which the Texture lives.
     GraphicsContext& m_graphics_context;

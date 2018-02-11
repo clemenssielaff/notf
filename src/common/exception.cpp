@@ -19,6 +19,10 @@ logic_error::~logic_error() {}
 
 out_of_range::~out_of_range() {}
 
+resource_error::~resource_error() {}
+
+internal_error::~internal_error() {}
+
 bad_deference_error::~bad_deference_error() {}
 
 } // namespace notf
