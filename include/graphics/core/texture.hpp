@@ -103,7 +103,7 @@ public:
         Wrap wrap_vertical = Wrap::REPEAT;
 
         /// Automatically generate mipmaps for textures load from a file.
-        bool generate_mipmaps = true;
+        bool create_mipmaps = true;
 
         /// Immutable textures provide faster lookup but cannot change their format or size (but content).
         bool make_immutable = true;
@@ -124,7 +124,7 @@ public:
 
         /// Anisotropy factor - is only used if the anisotropic filtering extension is supported.
         /// A value <= 1 means no anisotropic filtering.
-        float anisotropy = 1.0f;
+        float anisotropy = 1;
     };
 
     // methods -------------------------------------------------------------------------------------------------------//

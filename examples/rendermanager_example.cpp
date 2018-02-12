@@ -67,7 +67,7 @@ void render_thread(GLFWwindow* window)
     TexturePtr render_target;
     {
         Texture::Args targs;
-        targs.min_filter = Texture::MinFilter::LINEAR;
+        targs.min_filter = Texture::MinFilter::NEAREST;
         render_target    = Texture::create_empty(*graphics_context, "render_target", {800, 800}, targs);
 
         FrameBuffer::Args fargs;

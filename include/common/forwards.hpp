@@ -81,6 +81,7 @@ DEFINE_SHARED_POINTERS(class, GeometryShader);
 DEFINE_SHARED_POINTERS(class, Pipeline);
 DEFINE_SHARED_POINTERS(class, PostEffect);
 DEFINE_SHARED_POINTERS(class, RenderBuffer);
+DEFINE_SHARED_POINTERS(class, RenderTarget);
 DEFINE_SHARED_POINTERS(class, Shader);
 DEFINE_SHARED_POINTERS(class, TesselationShader);
 DEFINE_SHARED_POINTERS(class, Texture);

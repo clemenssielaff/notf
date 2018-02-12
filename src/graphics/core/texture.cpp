@@ -15,6 +15,7 @@
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/opengl.hpp"
 #include "graphics/core/raw_image.hpp"
+#include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
 using namespace notf;
@@ -120,14 +121,8 @@ TexturePtr Texture::_create(GraphicsContext& context, const GLuint id, const GLe
 #ifdef NOTF_DEBUG
     return TexturePtr(new Texture(context, id, target, name, size, format));
 #else
-    struct make_shared_enabler : public Texture {
-        make_shared_enabler(GraphicsContext& context, const GLuint id, const GLenum target, std::string name,
-                            Size2i size, const Format format)
-            : Texture(context, id, target, std::move(name), std::move(size), format)
-        {}
-        PADDING(7)
-    };
-    return std::make_shared<make_shared_enabler>(context, id, target, std::move(name), std::move(size), format);
+    return std::make_shared<make_shared_enabler<Texture>>(context, id, target, std::move(name), std::move(size),
+                                                          format);
 #endif
 }
 
@@ -285,7 +280,7 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
     if (args.make_immutable) {
         // immutable texture
         const GLsizei max_levels = static_cast<GLsizei>(floor(log2(max(image_size.width, image_size.height)))) + 1;
-        const GLsizei levels     = args.generate_mipmaps ? max_levels : 1;
+        const GLsizei levels     = args.create_mipmaps ? max_levels : 1;
         gl_check(glTexStorage2D(GL_TEXTURE_2D, levels, internal_format, image_size.width, image_size.height));
 
         if (args.codec == Codec::RAW) {
@@ -326,7 +321,7 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
     }
 
     // highest quality mip-mapping by default
-    if (args.generate_mipmaps) {
+    if (args.create_mipmaps) {
         gl_check(glGenerateMipmap(GL_TEXTURE_2D));
     }
     gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(args.min_filter)));
