@@ -308,7 +308,7 @@ TexturePtr GraphicsContext::texture(const TextureId& id) const
     return it->second.lock();
 }
 
-void GraphicsContext::bind_texture(Texture* texture, uint slot)
+void GraphicsContext::bind_texture(const Texture* texture, uint slot)
 {
     if (!texture) {
         return unbind_texture(slot);
@@ -366,7 +366,7 @@ ShaderPtr GraphicsContext::shader(const ShaderId& id) const
     return it->second.lock();
 }
 
-void GraphicsContext::bind_pipeline(PipelinePtr& pipeline)
+void GraphicsContext::bind_pipeline(const PipelinePtr& pipeline)
 {
     if (!pipeline) {
         return unbind_pipeline();
@@ -399,7 +399,7 @@ FrameBufferPtr GraphicsContext::framebuffer(const FrameBufferId& id) const
     return it->second.lock();
 }
 
-void GraphicsContext::bind_framebuffer(FrameBufferPtr& framebuffer)
+void GraphicsContext::bind_framebuffer(const FrameBufferPtr& framebuffer)
 {
     if (!framebuffer) {
         return unbind_framebuffer();

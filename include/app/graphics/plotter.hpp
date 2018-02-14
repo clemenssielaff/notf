@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/graphics/renderer.hpp"
 #include "common/forwards.hpp"
 #include "common/size2.hpp"
 #include "common/variant.hpp"
@@ -16,7 +17,7 @@ namespace notf {
 /// `render`, and the "buffer" one that is in the process of being defined through the various `add_*` functions.
 /// After calling `parse`, the render image is replaced by the new one and the buffer is cleared.
 /// Technically, the conceptual images consist of OpenGl buffers and draw calls.
-class Plotter {
+class Plotter final : public Renderer {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -105,7 +106,10 @@ public:
     Plotter(GraphicsContextPtr& context);
 
     /// Destructor.
-    ~Plotter();
+    virtual ~Plotter() override;
+
+    /// Unique type of this Renderer subclass.
+    virtual Type render_type() const override { return Type::PLOTTER; }
 
     /// Replaces the current list of OpenGL draw calls with one parsed from the buffer.
     /// Clears the buffer.
@@ -115,7 +119,7 @@ public:
     void clear();
 
     /// Render the current contents of the Plotter.
-    void render();
+    virtual void render() const override;
 
     /// Adds a new Bezier spline to stroke into the bufffer.
     /// @param info     Information on how to draw the stroke.
@@ -156,7 +160,7 @@ private:
     std::vector<Batch> m_batch_buffer;
 
     /// State of the Plotter pipeline.
-    State m_state;
+    mutable State m_state;
 };
 
 } // namespace notf

@@ -86,10 +86,12 @@ DEFINE_SHARED_POINTERS(class, Shader);
 DEFINE_SHARED_POINTERS(class, TesselationShader);
 DEFINE_SHARED_POINTERS(class, Texture);
 DEFINE_SHARED_POINTERS(class, VertexShader);
+DEFINE_SHARED_POINTERS(class, Plate);
 
 DEFINE_UNIQUE_POINTERS(class, GraphicsContext);
 DEFINE_UNIQUE_POINTERS(class, VertexArrayType);
 DEFINE_UNIQUE_POINTERS(class, IndexArrayType);
 DEFINE_UNIQUE_POINTERS(class, FontManager);
+DEFINE_UNIQUE_POINTERS(class, Renderer);
 
 } // namespace notf

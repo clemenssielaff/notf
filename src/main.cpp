@@ -8,8 +8,6 @@
 #include "text_example.hpp"
 #include "wireframe_example.hpp"
 
-#include "common/exception.hpp"
-
 int main(int argc, char* argv[])
 {
     //    return shape_main(argc, argv);

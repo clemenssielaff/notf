@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "app/core/glfw.hpp"
+#include "app/graphics/plotter.hpp"
 #include "common/half.hpp"
 #include "common/log.hpp"
 #include "common/matrix4.hpp"
@@ -18,7 +19,6 @@
 #include "graphics/core/shader.hpp"
 #include "graphics/core/texture.hpp"
 #include "graphics/core/vertex_array.hpp"
-#include "graphics/engine/plotter.hpp"
 
 #include "glm_utils.hpp"
 
@@ -55,15 +55,15 @@ void render_thread(GLFWwindow* window)
     Plotter plotter(graphics_context);
 
     Polygonf polygon({Vector2f{100, 700}, Vector2f{50, 200}, Vector2f{50, 50}, Vector2f{750, 50}, Vector2f{750, 750}});
-//    Polygonf polygon({
-//        Vector2f{565, 770},
-//        Vector2f{040, 440},
-//        Vector2f{330, 310},
-//        Vector2f{150, 120},
-//        Vector2f{460, 230},
-//        Vector2f{770, 120},
-//        Vector2f{250, 450},
-//    });
+    //    Polygonf polygon({
+    //        Vector2f{565, 770},
+    //        Vector2f{040, 440},
+    //        Vector2f{330, 310},
+    //        Vector2f{150, 120},
+    //        Vector2f{460, 230},
+    //        Vector2f{770, 120},
+    //        Vector2f{250, 450},
+    //    });
 
     Plotter::ShapeInfo info;
 

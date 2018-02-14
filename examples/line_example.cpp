@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "app/core/glfw.hpp"
+#include "app/graphics/plotter.hpp"
 #include "common/bezier.hpp"
 #include "common/half.hpp"
 #include "common/log.hpp"
@@ -18,7 +19,6 @@
 #include "graphics/core/shader.hpp"
 #include "graphics/core/texture.hpp"
 #include "graphics/core/vertex_array.hpp"
-#include "graphics/engine/plotter.hpp"
 
 #include "glm_utils.hpp"
 

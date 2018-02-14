@@ -70,7 +70,7 @@
 /// Glyphs require Font Atlas size as input (maybe where the shape gets the center vertex?)
 ///
 
-#include "graphics/engine/plotter.hpp"
+#include "app/graphics/plotter.hpp"
 
 #include "common/bezier.hpp"
 #include "common/enum.hpp"
@@ -204,7 +204,7 @@ void Plotter::clear()
     m_batch_buffer.clear();
 }
 
-void Plotter::render()
+void Plotter::render() const
 {
     /// Render various batch types.
     struct Renderer {
@@ -212,7 +212,7 @@ void Plotter::render()
         // fields ----------------------------------------------------------------------------------------------------//
 
         /// This plotter.
-        Plotter& plotter;
+        const Plotter& plotter;
 
         /// Batch target.
         const Batch& batch;

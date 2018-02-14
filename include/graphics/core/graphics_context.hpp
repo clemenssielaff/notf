@@ -167,7 +167,7 @@ private:
 
         GLuint stencil_mask = 0xffffffff;
 
-        std::vector<TexturePtr> texture_slots = {};
+        std::vector<TextureConstPtr> texture_slots = {};
 
         PipelinePtr pipeline;
 
@@ -228,8 +228,8 @@ public:
     /// @param slot             Texture slot to bind the texture to.
     /// @throws runtime_error   If the texture is not valid.
     /// @throws runtime_error   If slot is >= than the number of texture slots in the environment.
-    void bind_texture(Texture* texture, uint slot);
-    void bind_texture(TexturePtr& texture, uint slot) { bind_texture(texture.get(), slot); }
+    void bind_texture(const Texture* texture, uint slot);
+    void bind_texture(const TexturePtr& texture, uint slot) { bind_texture(texture.get(), slot); }
 
     /// Unbinds the current texture and clears the context's texture stack.
     /// @param slot             Texture slot to clear.
@@ -254,7 +254,7 @@ public:
 
     /// Binds the given Pipeline, if it is not already bound.
     /// @param pipeline Pipeline to bind.
-    void bind_pipeline(PipelinePtr& pipeline);
+    void bind_pipeline(const PipelinePtr& pipeline);
 
     /// Unbinds the current Pipeline.
     void unbind_pipeline();
@@ -272,7 +272,7 @@ public:
 
     /// Binds the given FrameBuffer, if it is not already bound.
     /// @param framebuffer  FrameBuffer to bind.
-    void bind_framebuffer(FrameBufferPtr& framebuffer);
+    void bind_framebuffer(const FrameBufferPtr& framebuffer);
 
     /// Unbinds the current FrameBuffer.
     void unbind_framebuffer();

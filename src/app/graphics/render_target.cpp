@@ -1,4 +1,4 @@
-#include "graphics/engine/render_target.hpp"
+#include "app/graphics/render_target.hpp"
 
 #include "graphics/core/frame_buffer.hpp"
 #include "graphics/core/graphics_context.hpp"
@@ -7,7 +7,8 @@
 
 namespace notf {
 
-RenderTarget::RenderTarget(Args&& args) : m_context(args.context), m_name(std::move(args.name)), m_framebuffer()
+RenderTarget::RenderTarget(GraphicsContext& context, Args&& args)
+    : m_name(std::move(args.name)), m_framebuffer(), m_renderers(std::move(args.renderers))
 {
     // create the texture arguments
     Texture::Args texture_args;
@@ -34,22 +35,29 @@ RenderTarget::RenderTarget(Args&& args) : m_context(args.context), m_name(std::m
 
     // create the framebuffer
     FrameBuffer::Args framebuffer_args;
-    framebuffer_args.set_color_target(0, Texture::create_empty(args.context, m_name, std::move(args.size),
+    framebuffer_args.set_color_target(0, Texture::create_empty(context, m_name, std::move(args.size),
                                                                std::move(texture_args)));
-    m_framebuffer = FrameBuffer::create(args.context, std::move(framebuffer_args));
+    m_framebuffer = FrameBuffer::create(context, std::move(framebuffer_args));
 }
 
-RenderTargetPtr RenderTarget::create(Args&& args)
+RenderTargetPtr RenderTarget::create(GraphicsContext& context, Args&& args)
 {
 #ifdef NOTF_DEBUG
-    return RenderTargetPtr(new RenderTarget(std::move(args)));
+    return RenderTargetPtr(new RenderTarget(context, std::move(args)));
 #else
-    return std::make_shared<make_shared_enabler<RenderTarget>>(std::move(args));
+    return std::make_shared<make_shared_enabler<RenderTarget>>(context, std::move(args));
 #endif
 }
 
-void RenderTarget::bind_as_framebuffer() { m_context.bind_framebuffer(m_framebuffer); }
+const TexturePtr& RenderTarget::texture() const { return m_framebuffer->color_texture(0); }
 
-void RenderTarget::bind_as_texture(uint slot) { m_context.bind_texture(m_framebuffer->color_texture(0).get(), slot); }
+void RenderTarget::update()
+{
+    // TODO: continue here
+    // bind the framebuffer to render
+    // clear
+    // render all
+    // unbind framebuffer
+}
 
 } // namespace notf
