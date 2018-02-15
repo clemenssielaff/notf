@@ -6,8 +6,10 @@
 #include <vector>
 
 #include "./gl_forwards.hpp"
+#include "common/color.hpp"
 #include "common/forwards.hpp"
 #include "common/id.hpp"
+#include "common/size2.hpp"
 
 struct GLFWwindow;
 
@@ -147,31 +149,30 @@ public:
         Environment();
     };
 
+    enum Buffer : unsigned char { COLOR = 1u << 1, DEPTH = 1u << 2, STENCIL = 1u << 3 };
+    using BufferFlags = std::underlying_type<Buffer>::type;
+
 private:
     /// Graphics state.
     struct State {
 
-        BlendMode blend_mode;
+        BlendMode blend_mode = BlendMode::DEFAULT;
 
         CullFace cull_face = CullFace::DEFAULT;
-
-        bool enable_depth = false;
-
-        bool enable_dithering = true;
-
-        float polygon_offset = 0;
-
-        bool enable_discard = false;
-
-        bool enable_scissor = false;
 
         GLuint stencil_mask = 0xffffffff;
 
         std::vector<TextureConstPtr> texture_slots = {};
 
-        PipelinePtr pipeline;
+        PipelinePtr pipeline = {};
 
-        FrameBufferPtr framebuffer;
+        FrameBufferPtr framebuffer = {};
+
+        /// Color applied when the bound framebuffer is cleared.
+        Color clear_color = Color::black();
+
+        /// Size of the screen in pixels.
+        Size2i window_size;
 
     }; // TODO: a lot of the variables in Graphics::State could be combined into a bitset
 
@@ -197,6 +198,9 @@ public:
     /// Creates and initializes information about the graphics environment.
     static const Environment& environment();
 
+    /// Returns the size of the context's window in pixels.
+    Size2i window_size() const;
+
     /// Create a new State.
     State create_state() const;
 
@@ -205,11 +209,26 @@ public:
     void set_vsync(const bool enabled);
 
     /// Applies the given stencil mask.
-    void set_stencil_mask(const GLuint mask);
+    /// @param mask     Mask to apply.
+    /// @param force    Ignore the current state and always make the OpenGL call.
+    void set_stencil_mask(const GLuint mask, const bool force = false);
 
     /// Applies the given blend mode to OpenGL.
-    /// mode Blend mode to apply.
-    void set_blend_mode(const BlendMode mode);
+    /// @param mode     Blend mode to apply.
+    /// @param force    Ignore the current state and always make the OpenGL call.
+    void set_blend_mode(const BlendMode mode, const bool force = false);
+
+    /// Updates the size of the OpenGL viewport.
+    /// This changes the size of the 2D coordinate system that is rendered into.
+    /// @param buffer_size  New render size.
+    /// @param force        Ignore the current state and always make the OpenGL call.
+    void set_render_size(Size2i buffer_size, const bool force = false);
+
+    /// Sets the new clear color.
+    /// @param color    Color to apply.
+    /// @param buffers  Buffers to clear.
+    /// @param force    Ignore the current state and always make the OpenGL call.
+    void clear(Color color, const BufferFlags buffers = Buffer::COLOR, const bool force = false);
 
     // texture ----------------------------------------------------------------
 

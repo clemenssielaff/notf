@@ -14,6 +14,8 @@ namespace notf {
 /// Renderers in order.
 class RenderTarget {
 
+    // TODO: RenderTargets may be dependent on other RenderTargets.
+
     // fields --------------------------------------------------------------------------------------------------------//
 public:
     /// Render Target arguments.
@@ -73,11 +75,15 @@ public:
         return false;
     }
 
-    /// Evokes all Renderers in order.
-    void update();
+    /// Evokes all Renderers in order, "cleaning" the target.
+    /// If the target is clean to begin with, this does nothing.
+    void clean();
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
+    /// The GraphicsContext containing the graphic objects.
+    GraphicsContext& m_context;
+
     /// Name of the RenderTarget, unique within the RenderManager.
     std::string m_name;
 

@@ -68,7 +68,7 @@ void render_thread(GLFWwindow* window)
     {
         Texture::Args targs;
         targs.min_filter = Texture::MinFilter::NEAREST;
-        render_target    = Texture::create_empty(*graphics_context, "render_target", {800, 800}, targs);
+        render_target    = Texture::create_empty(*graphics_context, "render_target", {200, 200}, targs);
 
         FrameBuffer::Args fargs;
         fargs.set_color_target(0, render_target);
@@ -136,13 +136,10 @@ void render_thread(GLFWwindow* window)
 
         graphics_context->bind_framebuffer(framebuffer);
 
-        Size2i buffer_size;
-        glfwGetFramebufferSize(window, &buffer_size.width, &buffer_size.height);
-        glViewport(0, 0, buffer_size.width, buffer_size.height);
-
         glClearColor(0, 0, 0, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        glViewport(0, 0, 200, 200);
         {
             const uint slot = 0;
 

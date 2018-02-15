@@ -8,7 +8,7 @@
 namespace notf {
 
 RenderTarget::RenderTarget(GraphicsContext& context, Args&& args)
-    : m_name(std::move(args.name)), m_framebuffer(), m_renderers(std::move(args.renderers))
+    : m_context(context), m_name(std::move(args.name)), m_framebuffer(), m_renderers(std::move(args.renderers))
 {
     // create the texture arguments
     Texture::Args texture_args;
@@ -35,9 +35,9 @@ RenderTarget::RenderTarget(GraphicsContext& context, Args&& args)
 
     // create the framebuffer
     FrameBuffer::Args framebuffer_args;
-    framebuffer_args.set_color_target(0, Texture::create_empty(context, m_name, std::move(args.size),
+    framebuffer_args.set_color_target(0, Texture::create_empty(m_context, m_name, std::move(args.size),
                                                                std::move(texture_args)));
-    m_framebuffer = FrameBuffer::create(context, std::move(framebuffer_args));
+    m_framebuffer = FrameBuffer::create(m_context, std::move(framebuffer_args));
 }
 
 RenderTargetPtr RenderTarget::create(GraphicsContext& context, Args&& args)
@@ -51,13 +51,23 @@ RenderTargetPtr RenderTarget::create(GraphicsContext& context, Args&& args)
 
 const TexturePtr& RenderTarget::texture() const { return m_framebuffer->color_texture(0); }
 
-void RenderTarget::update()
+void RenderTarget::clean()
 {
-    // TODO: continue here
-    // bind the framebuffer to render
-    // clear
-    // render all
-    // unbind framebuffer
+    if(!is_dirty()){
+        return;
+    }
+
+    // prepare the graphic state
+    m_context.bind_framebuffer(m_framebuffer);
+    m_context.set_render_size(texture()->size()); // TODO: maybe the renderers should set the render size themselves?
+    m_context.clear(Color::black());
+
+    // render everything
+    for (const RendererPtr& renderer : m_renderers) {
+        renderer->render();
+    }
+
+    m_context.unbind_framebuffer();
 }
 
 } // namespace notf

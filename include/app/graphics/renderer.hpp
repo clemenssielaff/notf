@@ -5,10 +5,8 @@ namespace notf {
 // ===================================================================================================================//
 
 /// Base class for Renderers.
-class Renderer {
+struct Renderer {
 
-    // types ---------------------------------------------------------------------------------------------------------//
-public:
     /// Renderer subclasses must identify themselves to the RenderManager, so it can try to minimize graphics state
     /// changes when rendering multiple Renderers in sequence.
     enum class Type {
@@ -16,8 +14,6 @@ public:
         PROCEDURAL,
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
-public:
     /// Destructor.
     virtual ~Renderer();
 
@@ -28,16 +24,7 @@ public:
     virtual void render() const = 0;
 
     /// Whether the Renderer is currently dirty or not.
-    bool is_dirty() const { return m_is_dirty; }
-
-protected:
-    /// Marks the Renderer as dirty.
-    void _set_dirty() { m_is_dirty = true; }
-
-    // fields --------------------------------------------------------------------------------------------------------//
-private:
-    /// Whether the Renderer is currently dirty or not.
-    bool m_is_dirty;
+    virtual bool is_dirty() const = 0;
 };
 
 } // namespace notf

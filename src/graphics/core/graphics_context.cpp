@@ -96,14 +96,21 @@ GraphicsContext::GraphicsContext(GLFWwindow* window)
         notf_throw(runtime_error, "Failed to create a new GraphicsContext without a window (given pointer is null).");
     }
 
+    // GLFW defaults
     glfwMakeContextCurrent(m_window);
     glfwSwapInterval(m_has_vsync ? 1 : 0);
 
+    // OpenGL defaults
     gl_check(glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST));
     gl_check(glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_DONT_CARE));
 
+    // apply the default state
     m_state = create_state();
+    set_stencil_mask(m_state.stencil_mask, /* force = */ true);
+    set_blend_mode(m_state.blend_mode, /* force = */ true);
+    clear(m_state.clear_color, Buffer::COLOR, /* force = */ true);
 
+    // create the FontManager.
     m_font_manager = std::make_unique<FontManager>(*this);
 }
 
@@ -157,10 +164,23 @@ const GraphicsContext::Environment& GraphicsContext::environment()
     return singleton;
 }
 
+Size2i GraphicsContext::window_size() const
+{
+    Size2i result;
+    glfwGetFramebufferSize(m_window, &result.width, &result.height);
+    return result;
+}
+
 GraphicsContext::State GraphicsContext::create_state() const
 {
-    State result;
+    State result; // default constructed
+
+    // query number of texture slots
     result.texture_slots.resize(environment().texture_slot_count);
+
+    // query current window size
+    result.window_size = window_size();
+
     return result;
 }
 
@@ -172,17 +192,18 @@ void GraphicsContext::set_vsync(const bool enabled)
     }
 }
 
-void GraphicsContext::set_stencil_mask(const GLuint mask)
+void GraphicsContext::set_stencil_mask(const GLuint mask, const bool force)
 {
-    if (mask != m_state.stencil_mask) {
-        m_state.stencil_mask = mask;
-        gl_check(glStencilMask(mask));
+    if (mask == m_state.stencil_mask && !force) {
+        return;
     }
+    m_state.stencil_mask = mask;
+    gl_check(glStencilMask(mask));
 }
 
-void GraphicsContext::set_blend_mode(const BlendMode mode)
+void GraphicsContext::set_blend_mode(const BlendMode mode, const bool force)
 {
-    if (mode == m_state.blend_mode) {
+    if (mode == m_state.blend_mode && !force) {
         return;
     }
     m_state.blend_mode = mode;
@@ -297,6 +318,38 @@ void GraphicsContext::set_blend_mode(const BlendMode mode)
         break;
     }
     gl_check(glBlendFuncSeparate(rgb_sfactor, rgb_dfactor, alpha_sfactor, alpha_dfactor));
+}
+
+void GraphicsContext::set_render_size(Size2i buffer_size, const bool force)
+{
+    if (!buffer_size.is_valid()) {
+        notf_throw(runtime_error, "Cannot set render size to invalid size");
+    }
+    if (buffer_size != m_state.window_size || force) {
+        m_state.window_size = buffer_size;
+        gl_check(glViewport(0, 0, buffer_size.width, buffer_size.height));
+    }
+}
+
+void GraphicsContext::clear(Color color, const BufferFlags buffers, const bool force)
+{
+    if (color != m_state.clear_color || force) {
+        m_state.clear_color = std::move(color);
+        gl_check(
+            glClearColor(m_state.clear_color.r, m_state.clear_color.g, m_state.clear_color.b, m_state.clear_color.a));
+    }
+
+    GLenum gl_flags = 0;
+    if (buffers & Buffer::COLOR) {
+        gl_flags |= GL_COLOR_BUFFER_BIT;
+    }
+    if (buffers & Buffer::DEPTH) {
+        gl_flags |= GL_DEPTH_BUFFER_BIT;
+    }
+    if (buffers & Buffer::STENCIL) {
+        gl_flags |= GL_STENCIL_BUFFER_BIT;
+    }
+    gl_check(glClear(gl_flags));
 }
 
 TexturePtr GraphicsContext::texture(const TextureId& id) const
@@ -429,7 +482,8 @@ void GraphicsContext::register_new(TexturePtr texture)
         it->second = texture; // update expired
     }
     else {
-        notf_throw_format(internal_error, "Failed to register a new texture with the same ID as an existing texture: \""
+        notf_throw_format(internal_error, "Failed to register a new texture with the same ID as an existing "
+                                          "texture: \""
                                               << texture->id() << "\"");
     }
 }
@@ -444,8 +498,9 @@ void GraphicsContext::register_new(ShaderPtr shader)
         it->second = shader; // update expired
     }
     else {
-        notf_throw_format(internal_error, "Failed to register a new shader with the same ID as an existing shader: \""
-                                              << shader->id() << "\"");
+        notf_throw_format(internal_error, "Failed to register a new shader with the same ID as an existing shader: "
+                                          "\"" << shader->id()
+                                               << "\"");
     }
 }
 

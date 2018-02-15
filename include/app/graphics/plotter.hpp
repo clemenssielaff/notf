@@ -121,6 +121,9 @@ public:
     /// Render the current contents of the Plotter.
     virtual void render() const override;
 
+    /// Whether the Renderer is currently dirty or not.
+    virtual bool is_dirty() const override { return false; } // TODO: Plotter:is_dirty
+
     /// Adds a new Bezier spline to stroke into the bufffer.
     /// @param info     Information on how to draw the stroke.
     /// @param spline   Spline to stroke.

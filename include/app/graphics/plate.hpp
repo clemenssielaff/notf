@@ -13,14 +13,16 @@ namespace notf {
 /// (like blur) that are applied in order to the RenderTarget's texture.
 class Plate {
 
+    // TODO: Plate should also be fed using REnderers
+
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
     /// @param render_target    Render Target defining the content of the Plate.
     Plate(RenderTargetPtr render_target) : m_render_target(std::move(render_target)), m_effects() {}
 
-    /// The RenderTarget displayed in the Plate.
-    const RenderTargetPtr& render_target() const { return m_render_target; }
+    /// Render the plate with all of its effects.
+    void render();
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
