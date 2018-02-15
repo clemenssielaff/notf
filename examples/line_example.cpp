@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include "app/core/glfw.hpp"
-#include "app/graphics/plotter.hpp"
+#include "graphics/engine/plotter.hpp"
 #include "common/bezier.hpp"
 #include "common/half.hpp"
 #include "common/log.hpp"

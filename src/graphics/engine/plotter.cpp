@@ -70,7 +70,7 @@
 /// Glyphs require Font Atlas size as input (maybe where the shape gets the center vertex?)
 ///
 
-#include "app/graphics/plotter.hpp"
+#include "graphics/engine/plotter.hpp"
 
 #include "common/bezier.hpp"
 #include "common/enum.hpp"

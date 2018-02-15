@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "app/graphics/renderer.hpp"
+#include "graphics/engine/renderer.hpp"
 #include "common/forwards.hpp"
 #include "common/size2.hpp"
 

@@ -1,6 +1,6 @@
-#include "app/graphics/plate.hpp"
+#include "graphics/engine/plate.hpp"
 
-#include "app/graphics/render_target.hpp"
+#include "graphics/engine/render_target.hpp"
 
 namespace notf {
 
