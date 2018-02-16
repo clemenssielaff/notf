@@ -1,7 +1,6 @@
 #include <iostream>
 
 #include "app/core/glfw.hpp"
-#include "graphics/engine/plotter.hpp"
 #include "common/half.hpp"
 #include "common/log.hpp"
 #include "common/matrix4.hpp"
@@ -19,6 +18,8 @@
 #include "graphics/core/shader.hpp"
 #include "graphics/core/texture.hpp"
 #include "graphics/core/vertex_array.hpp"
+#include "graphics/producer/plotter.hpp"
+#include "graphics/text/font_manager.hpp"
 
 #include "glm_utils.hpp"
 
@@ -49,10 +50,11 @@ static void error_callback(int error, const char* description)
 void render_thread(GLFWwindow* window)
 {
     std::unique_ptr<GraphicsContext> graphics_context(new GraphicsContext(window));
+    FontManagerPtr font_manager = FontManager::create(*graphics_context);
 
     // Shader ///////////////////////////////////////////////
 
-    Plotter plotter(graphics_context);
+    Plotter plotter(graphics_context, font_manager);
 
     Polygonf polygon({Vector2f{100, 700}, Vector2f{50, 200}, Vector2f{50, 50}, Vector2f{750, 50}, Vector2f{750, 750}});
     //    Polygonf polygon({

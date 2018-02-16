@@ -171,10 +171,9 @@ private:
         /// Color applied when the bound framebuffer is cleared.
         Color clear_color = Color::black();
 
-        /// Size of the screen in pixels.
-        Size2i window_size;
-
-    }; // TODO: a lot of the variables in Graphics::State could be combined into a bitset
+        /// Render size in pixels.
+        Size2i render_size;
+    };
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
@@ -298,11 +297,6 @@ public:
     /// Unbinds the current FrameBuffer.
     void unbind_framebuffer();
 
-    // text -------------------------------------------------------------------
-
-    /// The Font Manager associated with this context.
-    FontManager& font_manager() { return *m_font_manager; }
-
     // methods -------------------------------------------------------------------------------------------------------//
 private:
     /// Create a new State.
@@ -352,9 +346,6 @@ private:
     /// All FrameBuffers managed by this Context.
     /// See `m_textures` for details on management.
     std::unordered_map<FrameBufferId, std::weak_ptr<FrameBuffer>> m_framebuffers;
-
-    /// The context owns its own Font Manager that manages the textures and glyph rendering.
-    FontManagerPtr m_font_manager;
 };
 
 } // namespace notf

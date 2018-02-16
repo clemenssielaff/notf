@@ -70,7 +70,7 @@
 /// Glyphs require Font Atlas size as input (maybe where the shape gets the center vertex?)
 ///
 
-#include "graphics/engine/plotter.hpp"
+#include "graphics/producer/plotter.hpp"
 
 #include "common/bezier.hpp"
 #include "common/enum.hpp"
@@ -137,8 +137,9 @@ void set_modified_second_ctrl(PlotVertexArray::Vertex& vertex, const CubicBezier
 
 namespace notf {
 
-Plotter::Plotter(GraphicsContextPtr& context)
+Plotter::Plotter(GraphicsContextPtr& context, FontManagerPtr& font_manager)
     : m_graphics_context(*context)
+    , m_font_manager(*font_manager)
     , m_pipeline()
     , m_vao_id(0)
     , m_vertices()
@@ -207,7 +208,7 @@ void Plotter::clear()
 void Plotter::render() const
 {
     /// Render various batch types.
-    struct Renderer {
+    struct GraphicsProducer {
 
         // fields ----------------------------------------------------------------------------------------------------//
 
@@ -333,9 +334,8 @@ void Plotter::render() const
                 plotter.m_state.patch_type = PatchType::TEXT;
             }
 
-            const FontManager& font_manager = plotter.m_graphics_context.font_manager();
-            const TexturePtr& font_atlas    = font_manager.atlas_texture();
-            const Size2i& atlas_size        = font_atlas->size();
+            const TexturePtr& font_atlas = plotter.m_font_manager.atlas_texture();
+            const Size2i& atlas_size     = font_atlas->size();
 
             // atlas size
             const Vector2f atlas_size_vec{atlas_size.width, atlas_size.height};
@@ -374,7 +374,7 @@ void Plotter::render() const
     }
 
     for (const Batch& batch : m_batches) {
-        std::visit(Renderer{*this, batch}, batch.info);
+        std::visit(GraphicsProducer{*this, batch}, batch.info);
     }
 
     m_graphics_context.unbind_pipeline();

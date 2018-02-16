@@ -14,7 +14,6 @@
 #include "graphics/core/pipeline.hpp"
 #include "graphics/core/shader.hpp"
 #include "graphics/core/texture.hpp"
-#include "graphics/text/font_manager.hpp"
 #include "utils/narrow_cast.hpp"
 
 //====================================================================================================================//
@@ -90,7 +89,7 @@ GraphicsContext::Environment::Environment()
 //====================================================================================================================//
 
 GraphicsContext::GraphicsContext(GLFWwindow* window)
-    : m_window(window), m_state(), m_has_vsync(true), m_textures(), m_shaders(), m_font_manager()
+    : m_window(window), m_state(), m_has_vsync(true), m_textures(), m_shaders()
 {
     if (!window) {
         notf_throw(runtime_error, "Failed to create a new GraphicsContext without a window (given pointer is null).");
@@ -109,16 +108,10 @@ GraphicsContext::GraphicsContext(GLFWwindow* window)
     set_stencil_mask(m_state.stencil_mask, /* force = */ true);
     set_blend_mode(m_state.blend_mode, /* force = */ true);
     clear(m_state.clear_color, Buffer::COLOR, /* force = */ true);
-
-    // create the FontManager.
-    m_font_manager = std::make_unique<FontManager>(*this);
 }
 
 GraphicsContext::~GraphicsContext()
 {
-    // delete the Font Manager before warning about deallocating live textures
-    m_font_manager.reset();
-
     // release all resources that are bound by the context
     unbind_all_textures();
     unbind_pipeline();
@@ -312,8 +305,8 @@ void GraphicsContext::set_render_size(Size2i buffer_size, const bool force)
     if (!buffer_size.is_valid()) {
         notf_throw(runtime_error, "Cannot set render size to invalid size");
     }
-    if (buffer_size != m_state.window_size || force) {
-        m_state.window_size = buffer_size;
+    if (buffer_size != m_state.render_size || force) {
+        m_state.render_size = buffer_size;
         gl_check(glViewport(0, 0, buffer_size.width, buffer_size.height));
     }
 }
@@ -467,7 +460,7 @@ GraphicsContext::State GraphicsContext::_create_state() const
     result.texture_slots.resize(environment().texture_slot_count);
 
     // query current window size
-    result.window_size = window_size();
+    result.render_size = window_size();
 
     return result;
 }

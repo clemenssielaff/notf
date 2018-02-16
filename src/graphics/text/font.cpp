@@ -4,9 +4,9 @@
 
 #include "common/log.hpp"
 #include "common/string.hpp"
-#include "graphics/core/graphics_context.hpp"
 #include "graphics/text/font_manager.hpp"
 #include "graphics/text/freetype.hpp"
+#include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
 using namespace notf;
@@ -79,35 +79,29 @@ Font::Font(FontManager& manager, const std::string filename, const pixel_size_t 
     log_trace << "Loaded Font \"" << m_name << "\" from file: " << filename;
 }
 
-std::shared_ptr<Font> Font::load(GraphicsContext& context, const std::string filename, const pixel_size_t pixel_size)
+FontPtr Font::load(FontManagerPtr& font_manager, const std::string filename, const pixel_size_t pixel_size)
 {
-    FontManager& font_manager         = context.font_manager();
     const Font::Identifier identifier = {filename, pixel_size};
 
     { // check if the given filename/size - pair is already a known (and loaded) font
-        auto it = font_manager.m_fonts.find(identifier);
-        if (it != font_manager.m_fonts.end()) {
-            if (std::shared_ptr<Font> font = it->second.lock()) {
+        auto it = font_manager->m_fonts.find(identifier);
+        if (it != font_manager->m_fonts.end()) {
+            if (FontPtr font = it->second.lock()) {
                 return font;
             }
             else {
-                font_manager.m_fonts.erase(it);
+                font_manager->m_fonts.erase(it);
             }
         }
     }
 
 // create and store the new Font in the manager, so it can be re-used
-#ifdef _DEBUG
-    std::shared_ptr<Font> font(new Font(font_manager, filename, pixel_size));
+#ifdef NOTF_DEBUG
+    FontPtr font(new Font(*font_manager, filename, pixel_size));
 #else
-    struct make_shared_enabler : public Font {
-        make_shared_enabler(FontManager& manager, const std::string filename, const pixel_size_t pixel_size)
-            : Font(manager, filename, pixel_size)
-        {}
-    };
-    std::shared_ptr<Font> font = std::make_shared<make_shared_enabler>(font_manager, filename, pixel_size);
+    FontPtr font = std::make_shared<make_shared_enabler<Font>>(*font_manager, filename, pixel_size);
 #endif
-    font_manager.m_fonts.insert({identifier, font});
+    font_manager->m_fonts.insert({identifier, font});
     return font;
 }
 

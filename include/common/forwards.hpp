@@ -79,19 +79,18 @@ DEFINE_SHARED_POINTERS(class, FragmentShader);
 DEFINE_SHARED_POINTERS(class, FrameBuffer);
 DEFINE_SHARED_POINTERS(class, GeometryShader);
 DEFINE_SHARED_POINTERS(class, Pipeline);
-DEFINE_SHARED_POINTERS(class, PostEffect);
 DEFINE_SHARED_POINTERS(class, RenderBuffer);
 DEFINE_SHARED_POINTERS(class, RenderTarget);
 DEFINE_SHARED_POINTERS(class, Shader);
 DEFINE_SHARED_POINTERS(class, TesselationShader);
 DEFINE_SHARED_POINTERS(class, Texture);
 DEFINE_SHARED_POINTERS(class, VertexShader);
-DEFINE_SHARED_POINTERS(class, Plate);
+DEFINE_SHARED_POINTERS(class, Layer);
 
 DEFINE_UNIQUE_POINTERS(class, GraphicsContext);
 DEFINE_UNIQUE_POINTERS(class, VertexArrayType);
 DEFINE_UNIQUE_POINTERS(class, IndexArrayType);
 DEFINE_UNIQUE_POINTERS(class, FontManager);
-DEFINE_UNIQUE_POINTERS(class, Renderer);
+DEFINE_UNIQUE_POINTERS(class, GraphicsProducer);
 
 } // namespace notf

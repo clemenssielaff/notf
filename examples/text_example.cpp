@@ -1,7 +1,6 @@
 #include <iostream>
 
 #include "app/core/glfw.hpp"
-#include "graphics/engine/plotter.hpp"
 #include "common/half.hpp"
 #include "common/log.hpp"
 #include "common/matrix4.hpp"
@@ -19,7 +18,9 @@
 #include "graphics/core/shader.hpp"
 #include "graphics/core/texture.hpp"
 #include "graphics/core/vertex_array.hpp"
+#include "graphics/producer/plotter.hpp"
 #include "graphics/text/font.hpp"
+#include "graphics/text/font_manager.hpp"
 
 #include "glm_utils.hpp"
 
@@ -35,13 +36,13 @@ static void error_callback(int error, const char* description)
 void render_thread(GLFWwindow* window)
 {
     std::unique_ptr<GraphicsContext> graphics_context(new GraphicsContext(window));
+    FontManagerPtr font_manager = FontManager::create(*graphics_context);
 
     // Shader ///////////////////////////////////////////////
 
-    FontManager& font_manager = graphics_context->font_manager();
-    FontPtr font = Font::load(*graphics_context, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 32);
+    FontPtr font = Font::load(font_manager, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 32);
 
-    Plotter plotter(graphics_context);
+    Plotter plotter(graphics_context, font_manager);
 
     Plotter::TextInfo info;
     info.font        = font;

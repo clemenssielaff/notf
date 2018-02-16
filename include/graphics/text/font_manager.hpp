@@ -19,11 +19,17 @@ class FontManager {
     friend class Font;
 
     // methods -------------------------------------------------------------------------------------------------------//
+protected:
+    /// Constructor.
+    /// @param context  Graphics context within which the FontManager operates.
+    FontManager(GraphicsContext& context);
+
 public:
     DISALLOW_COPY_AND_ASSIGN(FontManager)
 
-    /// Constructor.
-    FontManager(GraphicsContext& graphics_context);
+    /// Factory
+    /// @param context  Graphics context within which the FontManager operates.
+    static FontManagerPtr create(GraphicsContext& context);
 
     /// Destructor.
     ~FontManager();

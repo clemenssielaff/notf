@@ -14,9 +14,9 @@ int main(int argc, char* argv[])
     //    return line_main(argc, argv);
     //    return wireframe_main(argc, argv);
     //    return framebuffer_main(argc, argv);
-    //    return text_main(argc, argv);
+        return text_main(argc, argv);
     //    return property_main(argc, argv);
-    rendermanager_main(argc, argv);
+//    rendermanager_main(argc, argv);
     //    (void)(argc);
     //    (void)(argv);
     //    return 0;

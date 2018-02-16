@@ -1,12 +1,12 @@
 #pragma once
 
-#include "graphics/engine/renderer.hpp"
 #include "common/forwards.hpp"
 #include "common/size2.hpp"
 #include "common/variant.hpp"
 #include "common/vector2.hpp"
 #include "common/warnings.hpp"
 #include "graphics/core/gl_forwards.hpp"
+#include "graphics/engine/graphics_producer.hpp"
 
 namespace notf {
 
@@ -17,7 +17,7 @@ namespace notf {
 /// `render`, and the "buffer" one that is in the process of being defined through the various `add_*` functions.
 /// After calling `parse`, the render image is replaced by the new one and the buffer is cleared.
 /// Technically, the conceptual images consist of OpenGl buffers and draw calls.
-class Plotter final : public Renderer {
+class Plotter final : public GraphicsProducer {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -102,13 +102,14 @@ public:
 
     /// Construct a new Plotter.
     /// @param context          Graphics context.
+    /// @param font_manager     Font Manager used to render text.
     /// @throws runtime_error   If the OpenGL VAO could not be generated.
-    Plotter(GraphicsContextPtr& context);
+    Plotter(GraphicsContextPtr& context, FontManagerPtr& font_manager);
 
     /// Destructor.
     virtual ~Plotter() override;
 
-    /// Unique type of this Renderer subclass.
+    /// Unique type of this GraphicsProducer subclass.
     virtual Type render_type() const override { return Type::PLOTTER; }
 
     /// Replaces the current list of OpenGL draw calls with one parsed from the buffer.
@@ -121,7 +122,7 @@ public:
     /// Render the current contents of the Plotter.
     virtual void render() const override;
 
-    /// Whether the Renderer is currently dirty or not.
+    /// Whether the GraphicsProducer is currently dirty or not.
     virtual bool is_dirty() const override { return false; } // TODO: Plotter:is_dirty
 
     /// Adds a new Bezier spline to stroke into the bufffer.
@@ -143,6 +144,9 @@ public:
 private:
     /// Graphics Context in which the Plotter lives.
     GraphicsContext& m_graphics_context;
+
+    /// Font Manager used to render text.
+    FontManager& m_font_manager;
 
     /// Shader pipeline used to render the strokes, shapes and glyphs.
     PipelinePtr m_pipeline;

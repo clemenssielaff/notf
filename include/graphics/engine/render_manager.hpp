@@ -14,8 +14,12 @@ class RenderManager {
 public:
     /// Complete state of the Render Buffer.
     struct State {
-        std::vector<PlatePtr> plates;
+        std::vector<LayerPtr> layers;
     };
+
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
+
 };
 
 } // namespace notf

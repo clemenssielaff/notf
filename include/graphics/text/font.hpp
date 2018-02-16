@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "common/forwards.hpp"
 #include "common/hash.hpp"
 #include "common/meta.hpp"
 #include "common/utf.hpp"
@@ -142,11 +143,10 @@ private:
 public:
     /// Loads a new Font or returns a pointer to an existing font if a font with the same filename /
     /// pixel_size-pair has already been loaded.
-    /// @param context       Render Context in which the Font lives.
-    /// @param filename      File from which the Font is loaded.
-    /// @param pixel_size    Nominal size of the loaded Font in pixels.
-    static std::shared_ptr<Font>
-    load(GraphicsContext& context, const std::string filename, const pixel_size_t pixel_size);
+    /// @param font_manager     Manager of the loaded Font.
+    /// @param filename         File from which the Font is loaded.
+    /// @param pixel_size       Nominal size of the loaded Font in pixels.
+    static FontPtr load(FontManagerPtr& font_manager, const std::string filename, const pixel_size_t pixel_size);
 
     /// Returns true if this Font is valid.
     /// If the file used to initialize the Font could not be loaded, the Font is invalid.
