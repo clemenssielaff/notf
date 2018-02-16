@@ -198,11 +198,13 @@ public:
     /// Creates and initializes information about the graphics environment.
     static const Environment& environment();
 
-    /// Returns the size of the context's window in pixels.
-    Size2i window_size() const;
+    /// The current state of the context.
+    const State& state() const { return m_state; }
 
-    /// Create a new State.
-    State create_state() const;
+    /// Returns the size of the context's window in pixels.
+    /// Note that this might not be the current render size. For example, if you are currently rendering into a
+    /// FrameBuffer that has a color texture of size 128x128, the window size is most likely much larger than that.
+    Size2i window_size() const;
 
     /// En- or disables vsync (enabled by default).
     /// @param enabled  Whether to enable or disable vsync.
@@ -303,6 +305,9 @@ public:
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
+    /// Create a new State.
+    State _create_state() const;
+
     /// Registers a new Texture with this GraphicsContext.
     /// @param texture          New Texture to register.
     /// @throws internal_error  If another Texture with the same ID already exists.

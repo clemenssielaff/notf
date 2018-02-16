@@ -59,7 +59,7 @@ void RenderTarget::clean()
 
     // prepare the graphic state
     m_context.bind_framebuffer(m_framebuffer);
-    m_context.set_render_size(texture()->size()); // TODO: maybe the renderers should set the render size themselves?
+    m_context.set_render_size(texture()->size());
     m_context.clear(Color::black());
 
     // render everything

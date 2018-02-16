@@ -105,7 +105,7 @@ GraphicsContext::GraphicsContext(GLFWwindow* window)
     gl_check(glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_DONT_CARE));
 
     // apply the default state
-    m_state = create_state();
+    m_state = _create_state();
     set_stencil_mask(m_state.stencil_mask, /* force = */ true);
     set_blend_mode(m_state.blend_mode, /* force = */ true);
     clear(m_state.clear_color, Buffer::COLOR, /* force = */ true);
@@ -168,19 +168,6 @@ Size2i GraphicsContext::window_size() const
 {
     Size2i result;
     glfwGetFramebufferSize(m_window, &result.width, &result.height);
-    return result;
-}
-
-GraphicsContext::State GraphicsContext::create_state() const
-{
-    State result; // default constructed
-
-    // query number of texture slots
-    result.texture_slots.resize(environment().texture_slot_count);
-
-    // query current window size
-    result.window_size = window_size();
-
     return result;
 }
 
@@ -470,6 +457,19 @@ void GraphicsContext::unbind_framebuffer()
 
         m_state.framebuffer.reset();
     }
+}
+
+GraphicsContext::State GraphicsContext::_create_state() const
+{
+    State result; // default constructed
+
+    // query number of texture slots
+    result.texture_slots.resize(environment().texture_slot_count);
+
+    // query current window size
+    result.window_size = window_size();
+
+    return result;
 }
 
 void GraphicsContext::register_new(TexturePtr texture)
