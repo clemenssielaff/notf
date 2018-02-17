@@ -49,12 +49,11 @@ static void error_callback(int error, const char* description)
 
 void render_thread(GLFWwindow* window)
 {
-    std::unique_ptr<GraphicsContext> graphics_context(new GraphicsContext(window));
-    FontManagerPtr font_manager = FontManager::create(*graphics_context);
+    RenderManager render_manager(window);
 
     // Shader ///////////////////////////////////////////////
 
-    Plotter plotter(graphics_context, font_manager);
+    PlotterPtr plotter = Plotter::create(render_manager);
 
     Polygonf polygon({Vector2f{100, 700}, Vector2f{50, 200}, Vector2f{50, 50}, Vector2f{750, 50}, Vector2f{750, 750}});
     //    Polygonf polygon({
@@ -69,9 +68,9 @@ void render_thread(GLFWwindow* window)
 
     Plotter::ShapeInfo info;
 
-    plotter.add_shape(info, polygon);
+    plotter->add_shape(info, polygon);
 
-    plotter.apply();
+    plotter->apply();
 
     // Rendering //////////////////////////////////////////////
 
@@ -119,18 +118,13 @@ void render_thread(GLFWwindow* window)
 
         //        gl_check(glDisable(GL_STENCIL_TEST));
 
-        plotter.render();
+        plotter->render();
 
         ///////////////////////////////////////////////////////////////////////
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-
-    // clean up
-    graphics_context->unbind_all_textures();
-    graphics_context->unbind_framebuffer();
-    graphics_context->unbind_pipeline();
 }
 
 } // namespace

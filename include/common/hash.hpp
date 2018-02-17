@@ -3,7 +3,6 @@
 #include <functional>
 
 #include "common/float.hpp"
-#include "common/system.hpp"
 
 namespace notf {
 

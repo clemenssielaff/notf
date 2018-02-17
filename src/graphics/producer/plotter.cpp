@@ -77,6 +77,7 @@
 #include "common/log.hpp"
 #include "common/matrix4.hpp"
 #include "common/polygon.hpp"
+#include "common/system.hpp"
 #include "common/utf.hpp"
 #include "common/vector.hpp"
 #include "common/vector2.hpp"
@@ -87,6 +88,7 @@
 #include "graphics/core/shader.hpp"
 #include "graphics/core/texture.hpp"
 #include "graphics/core/vertex_array.hpp"
+#include "graphics/engine/render_manager.hpp"
 #include "graphics/text/font_manager.hpp"
 #include "utils/narrow_cast.hpp"
 
@@ -137,16 +139,17 @@ void set_modified_second_ctrl(PlotVertexArray::Vertex& vertex, const CubicBezier
 
 namespace notf {
 
-Plotter::Plotter(GraphicsContextPtr& context, FontManagerPtr& font_manager)
-    : m_graphics_context(*context)
-    , m_font_manager(*font_manager)
+Plotter::Plotter(const Token& token, RenderManager& render_manager)
+    : GraphicsProducer(token)
+    , m_graphics_context(*render_manager.graphics_context())
+    , m_font_manager(*render_manager.font_manager())
     , m_pipeline()
     , m_vao_id(0)
+    , m_state()
     , m_vertices()
     , m_indices()
     , m_batches()
     , m_batch_buffer()
-    , m_state()
 {
     // vao
     gl_check(glGenVertexArrays(1, &m_vao_id));
@@ -156,6 +159,8 @@ Plotter::Plotter(GraphicsContextPtr& context, FontManagerPtr& font_manager)
     const auto vao_guard = VaoBindGuard(m_vao_id);
 
     { // pipeline
+        GraphicsContextPtr& context = render_manager.graphics_context();
+
         const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/plotter.vert");
         VertexShaderPtr vertex_shader = VertexShader::create(context, "plotter.vert", vertex_src);
 

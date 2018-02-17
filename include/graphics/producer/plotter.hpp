@@ -18,6 +18,7 @@ namespace notf {
 /// After calling `parse`, the render image is replaced by the new one and the buffer is cleared.
 /// Technically, the conceptual images consist of OpenGl buffers and draw calls.
 class Plotter final : public GraphicsProducer {
+    friend class GraphicsProducer;
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -97,14 +98,19 @@ private:
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
+protected:
+    /// Construct a new Plotter.
+    /// @param token            Token to make sure that the instance can only be created by a call to `_create`.
+    /// @param render_manager   RenderManager.
+    /// @throws runtime_error   If the OpenGL VAO could not be generated.
+    Plotter(const Token& token, RenderManager& render_manager);
+
 public:
     DISALLOW_COPY_AND_ASSIGN(Plotter)
 
-    /// Construct a new Plotter.
-    /// @param context          Graphics context.
-    /// @param font_manager     Font Manager used to render text.
-    /// @throws runtime_error   If the OpenGL VAO could not be generated.
-    Plotter(GraphicsContextPtr& context, FontManagerPtr& font_manager);
+    /// Factory.
+    /// @param render_manager   RenderManager.
+    static PlotterPtr create(RenderManager& render_manager) { return _create<Plotter>(render_manager); }
 
     /// Destructor.
     virtual ~Plotter() override;
@@ -154,6 +160,9 @@ private:
     /// OpenGL handle of the internal vertex array object.
     GLuint m_vao_id;
 
+    /// State of the Plotter pipeline.
+    mutable State m_state;
+
     /// Patch vertices.
     VertexArrayTypePtr m_vertices;
 
@@ -165,9 +174,6 @@ private:
 
     /// Buffer for new batches.
     std::vector<Batch> m_batch_buffer;
-
-    /// State of the Plotter pipeline.
-    mutable State m_state;
 };
 
 } // namespace notf

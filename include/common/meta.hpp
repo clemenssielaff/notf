@@ -1,6 +1,8 @@
 #pragma once
 
+#include <limits.h>
 #include <limits>
+#include <stddef.h>
 #include <type_traits>
 
 //====================================================================================================================//
@@ -214,6 +216,13 @@ struct higher_type {
 template<class T, class U>
 struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T>::value == std::is_signed<U>::value> {
 };
+
+/// Like sizeof, but a returns the size of the type in bits not bytes.
+template<typename T>
+constexpr size_t bitsizeof()
+{
+    return sizeof(T) * CHAR_BIT;
+}
 
 //====================================================================================================================//
 

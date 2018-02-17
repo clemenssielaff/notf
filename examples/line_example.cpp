@@ -19,6 +19,7 @@
 #include "graphics/core/texture.hpp"
 #include "graphics/core/vertex_array.hpp"
 #include "graphics/producer/plotter.hpp"
+#include "graphics/engine/render_manager.hpp"
 #include "graphics/text/font_manager.hpp"
 
 #include "glm_utils.hpp"
@@ -50,12 +51,11 @@ static void error_callback(int error, const char* description)
 
 void render_thread(GLFWwindow* window)
 {
-    std::unique_ptr<GraphicsContext> graphics_context(new GraphicsContext(window));
-    FontManagerPtr font_manager = FontManager::create(*graphics_context);
+    RenderManager render_manager(window);
 
     // Stroker ////////////////////////////////////////////////
 
-    Plotter stroker(graphics_context, font_manager);
+    PlotterPtr stroker = Plotter::create(render_manager);
 
     {
         Plotter::StrokeInfo stroke_info;
@@ -64,7 +64,7 @@ void render_thread(GLFWwindow* window)
         CubicBezier2f spline1({
             CubicBezier2f::Segment(Vector2f{100, 200}, Vector2f{400, 100}, Vector2f{400, 700}, Vector2f{700, 700}),
         });
-        stroker.add_stroke(stroke_info, spline1);
+        stroker->add_stroke(stroke_info, spline1);
     }
 
     {
@@ -77,10 +77,10 @@ void render_thread(GLFWwindow* window)
             CubicBezier2f::Segment::line(Vector2f{300, 100}, Vector2f{400, 200}),
         });
 
-        stroker.add_stroke(stroke_info, spline2);
+        stroker->add_stroke(stroke_info, spline2);
     }
 
-    stroker.apply();
+    stroker->apply();
 
     // Rendering //////////////////////////////////////////////
 
@@ -110,16 +110,11 @@ void render_thread(GLFWwindow* window)
         glClearColor(0.2f, 0.3f, 0.5f, 1);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        stroker.render();
+        stroker->render();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-
-    // clean up
-    graphics_context->unbind_all_textures();
-    graphics_context->unbind_framebuffer();
-    graphics_context->unbind_pipeline();
 }
 
 } // namespace

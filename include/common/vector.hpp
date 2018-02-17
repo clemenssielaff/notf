@@ -132,4 +132,21 @@ T take_back(std::vector<T>& v)
     return result;
 }
 
+/// Finds the index of a given value in vector.
+/// @param vector   Vector to search in.
+/// @param value    Value to look for.
+/// @param result   [out] Will contain the index, if `value` was found in the `vector`.
+/// @returns        True, iff the value was found - false otherwise.
+template<typename T>
+bool index_of(const std::vector<T>& vector, const T& value, size_t& result)
+{
+    for (size_t i = 0, end = vector.size(); i < end; ++i) {
+        if (vector[i] == value) {
+            result = i;
+            return true;
+        }
+    }
+    return false;
+}
+
 } // namespace notf

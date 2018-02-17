@@ -1,20 +1,23 @@
 #pragma once
 
-#include <vector>
-
 #include "common/forwards.hpp"
+#include "common/id.hpp"
 #include "common/size2.hpp"
-#include "graphics/engine/graphics_producer.hpp"
 
 namespace notf {
+
+// ===================================================================================================================//
+
+/// RenderTarget id type.
+using RenderTargetId = IdType<RenderTarget, size_t>;
+
+// ===================================================================================================================//
 
 /// A RenderTarget is a 2D image of arbitrary size that is produced (and potentially consumed) by one or more
 /// GraphicsProducers. Interally, they have a framebuffer with a single texture attached as color target. When one or
 /// more of the target's GraphicsProducers are "dirty", the whole target has to be "cleaned" by evoking all of its
 /// GraphicsProducers in order.
 class RenderTarget {
-
-    // TODO: RenderTargets may be dependent on other RenderTargets.
 
     // fields --------------------------------------------------------------------------------------------------------//
 public:
@@ -37,8 +40,8 @@ public:
         /// A value <= 1 means no anisotropic filtering.
         float anisotropy = 1;
 
-        /// All GraphicsProducers that define the contents of the target.
-        std::vector<GraphicsProducerPtr> producers;
+        /// The GraphicsProducer that define the contents of the target.
+        GraphicsProducerPtr producer;
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -55,6 +58,9 @@ public:
     /// @param args Arguments.
     static RenderTargetPtr create(GraphicsContext& context, Args&& args);
 
+    /// Id of this RenderTarget.
+    RenderTargetId id() const noexcept { return m_id; }
+
     /// Name of the RenderTarget, unique within the RenderManager.
     const std::string& name() const { return m_name; }
 
@@ -65,22 +71,21 @@ public:
     const TexturePtr& texture() const;
 
     /// Whether the target is dirty or not.
-    bool is_dirty() const
-    {
-        for (const auto& producer : m_producers) {
-            if (producer->is_dirty()) {
-                return true;
-            }
-        }
-        return false;
-    }
+    bool is_dirty() const;
 
-    /// Evokes all GraphicsProducers in order, "cleaning" the target.
+    /// Evokes the GraphicsProducers, "cleaning" the target.
     /// If the target is clean to begin with, this does nothing.
     void clean();
 
+private:
+    /// Generate the next available RenderTargetId.
+    static RenderTargetId _next_id();
+
     // fields --------------------------------------------------------------------------------------------------------//
 private:
+    /// GraphicsProducer id.
+    const RenderTargetId m_id;
+
     /// The GraphicsContext containing the graphic objects.
     GraphicsContext& m_context;
 
@@ -90,8 +95,8 @@ private:
     /// Framebuffer to render into.
     FrameBufferPtr m_framebuffer;
 
-    /// All GraphicsProducers that define the contents of the target.
-    std::vector<GraphicsProducerPtr> m_producers;
+    /// The GraphicsProducer that defines the contents of the target.
+    GraphicsProducerPtr m_producer;
 };
 
 } // namespace notf

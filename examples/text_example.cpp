@@ -35,23 +35,23 @@ static void error_callback(int error, const char* description)
 
 void render_thread(GLFWwindow* window)
 {
-    std::unique_ptr<GraphicsContext> graphics_context(new GraphicsContext(window));
-    FontManagerPtr font_manager = FontManager::create(*graphics_context);
+    RenderManager render_manager(window);
 
     // Shader ///////////////////////////////////////////////
 
-    FontPtr font = Font::load(font_manager, "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 32);
+    PlotterPtr plotter = Plotter::create(render_manager);
 
-    Plotter plotter(graphics_context, font_manager);
+    FontPtr font
+        = Font::load(render_manager.font_manager(), "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 32);
 
     Plotter::TextInfo info;
     info.font        = font;
     info.translation = Vector2f{150, 100};
 
     auto what = "NoTF";
-    plotter.add_text(info, what);
+    plotter->add_text(info, what);
 
-    plotter.apply();
+    plotter->apply();
 
     // Rendering //////////////////////////////////////////////
 
@@ -75,16 +75,11 @@ void render_thread(GLFWwindow* window)
         glClearColor(0.2f, 0.3f, 0.5f, 1);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        plotter.render();
+        plotter->render();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-
-    // clean up
-    graphics_context->unbind_all_textures();
-    graphics_context->unbind_framebuffer();
-    graphics_context->unbind_pipeline();
 }
 
 } // namespace

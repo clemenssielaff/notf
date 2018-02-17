@@ -63,10 +63,10 @@ using Matrix4d = detail::Matrix4<double>;
 
 struct Color;
 
-using uchar = unsigned char;
+using uchar  = unsigned char;
 using ushort = unsigned short;
-using uint = unsigned int;
-using ulong = unsigned long;
+using uint   = unsigned int;
+using ulong  = unsigned long;
 
 using CubicBezier2f = detail::Bezier<3, Vector2f>;
 
@@ -86,11 +86,13 @@ DEFINE_SHARED_POINTERS(class, TesselationShader);
 DEFINE_SHARED_POINTERS(class, Texture);
 DEFINE_SHARED_POINTERS(class, VertexShader);
 DEFINE_SHARED_POINTERS(class, Layer);
+DEFINE_SHARED_POINTERS(class, GraphicsProducer);
+DEFINE_SHARED_POINTERS(class, Plotter);
 
 DEFINE_UNIQUE_POINTERS(class, GraphicsContext);
 DEFINE_UNIQUE_POINTERS(class, VertexArrayType);
 DEFINE_UNIQUE_POINTERS(class, IndexArrayType);
 DEFINE_UNIQUE_POINTERS(class, FontManager);
-DEFINE_UNIQUE_POINTERS(class, GraphicsProducer);
+DEFINE_UNIQUE_POINTERS(class, RenderManager);
 
 } // namespace notf

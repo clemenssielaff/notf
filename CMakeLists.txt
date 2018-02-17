@@ -165,6 +165,7 @@ add_sources(TEST_SOURCES test
 #    test_matrix3.cpp
 #    test_matrix4.cpp
     test_utils.cpp
+    test_dag.cpp
 
     catch.hpp
     test_utils.hpp

@@ -3,12 +3,17 @@
 #include "graphics/core/frame_buffer.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/texture.hpp"
+#include "graphics/engine/graphics_producer.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 namespace notf {
 
 RenderTarget::RenderTarget(GraphicsContext& context, Args&& args)
-    : m_context(context), m_name(std::move(args.name)), m_framebuffer(), m_producers(std::move(args.producers))
+    : m_id(_next_id())
+    , m_context(context)
+    , m_name(std::move(args.name))
+    , m_framebuffer()
+    , m_producer(std::move(args.producer))
 {
     // create the texture arguments
     Texture::Args texture_args;
@@ -51,23 +56,29 @@ RenderTargetPtr RenderTarget::create(GraphicsContext& context, Args&& args)
 
 const TexturePtr& RenderTarget::texture() const { return m_framebuffer->color_texture(0); }
 
+bool RenderTarget::is_dirty() const { return m_producer->is_dirty(); }
+
 void RenderTarget::clean()
 {
-    if(!is_dirty()){
+    if (!is_dirty()) {
         return;
     }
 
     // prepare the graphic state
-    m_context.bind_framebuffer(m_framebuffer);
+    m_context.bind_framebuffer(m_framebuffer); // TODO: FrameBufferGuard
     m_context.set_render_size(texture()->size());
     m_context.clear(Color::black());
 
     // render everything
-    for (const GraphicsProducerPtr& producer : m_producers) {
-        producer->render();
-    }
+    m_producer->render();
 
     m_context.unbind_framebuffer();
+}
+
+RenderTargetId RenderTarget::_next_id()
+{
+    static RenderTargetId::underlying_t next = 1;
+    return RenderTargetId(next++);
 }
 
 } // namespace notf
