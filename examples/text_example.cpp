@@ -76,7 +76,7 @@ void render_thread(GLFWwindow* window)
         glClear(GL_COLOR_BUFFER_BIT);
 
         plotter->set_dirty();
-        plotter->render();
+//        plotter->render();
 
         glfwSwapBuffers(window);
         glfwPollEvents();

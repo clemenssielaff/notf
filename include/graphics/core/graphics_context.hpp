@@ -231,6 +231,12 @@ public:
     /// @param force    Ignore the current state and always make the OpenGL call.
     void clear(Color color, const BufferFlags buffers = Buffer::COLOR, const bool force = false);
 
+    /// Begins the render of a frame.
+    void begin_frame();
+
+    /// Finishes the render of a frame.
+    void finish_frame();
+
     // texture ----------------------------------------------------------------
 
     /// Checks whether this context contains a Texture with the given ID.

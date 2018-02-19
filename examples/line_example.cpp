@@ -111,7 +111,7 @@ void render_thread(GLFWwindow* window)
         glClear(GL_COLOR_BUFFER_BIT);
 
         stroker->set_dirty();
-        stroker->render();
+//        stroker->render();
 
         glfwSwapBuffers(window);
         glfwPollEvents();

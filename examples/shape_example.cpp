@@ -119,7 +119,7 @@ void render_thread(GLFWwindow* window)
         //        gl_check(glDisable(GL_STENCIL_TEST));
 
         plotter->set_dirty();
-        plotter->render();
+//        plotter->render();
 
         ///////////////////////////////////////////////////////////////////////
 

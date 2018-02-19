@@ -156,8 +156,23 @@ private:
 // ===================================================================================================================//
 
 template<>
-class GraphicsProducer::Private<RenderManager> {
-    friend class RenderManager;
+class GraphicsProducer::Private<Layer> {
+    friend class Layer;
+
+    /// Constructor.
+    /// @param producer     The GraphicsProducer to access.
+    Private(GraphicsProducer& producer) : m_producer(producer) {}
+
+    /// Renders the GraphicsProducer, if it is dirty.
+    void render() { m_producer.render(); }
+
+    /// The GraphicsProducer to access.
+    GraphicsProducer& m_producer;
+};
+
+template<>
+class GraphicsProducer::Private<RenderTarget> {
+    friend class RenderTarget;
 
     /// Constructor.
     /// @param producer     The GraphicsProducer to access.

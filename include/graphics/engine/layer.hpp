@@ -14,11 +14,21 @@ namespace notf {
 class Layer {
 
     // methods -------------------------------------------------------------------------------------------------------//
-public:
+protected:
     /// Constructor.
     /// Constructs a full-screen, visible Layer.
+    /// @param manager      RenderManager owning this Layer.
     /// @param producer     GraphicsProducer that renders into this Layer.
-    Layer(GraphicsProducerPtr producer);
+    Layer(RenderManagerPtr& manager, GraphicsProducerPtr producer);
+
+public:
+    DISALLOW_COPY_AND_ASSIGN(Layer)
+
+    /// Factory.
+    /// Constructs a full-screen, visible Layer.
+    /// @param manager      RenderManager owning this Layer.
+    /// @param producer     GraphicsProducer that renders into this Layer.
+    static LayerPtr create(RenderManagerPtr& manager, GraphicsProducerPtr producer);
 
     /// Render the Layer with all of its effects.
     void render();
@@ -50,6 +60,9 @@ public:
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
+    /// RenderManager owning this Layer.
+    RenderManager& m_render_manager;
+
     /// GraphicsProducer that renders into this Layer.
     GraphicsProducerPtr m_producer;
 

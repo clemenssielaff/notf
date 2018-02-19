@@ -332,6 +332,16 @@ void GraphicsContext::clear(Color color, const BufferFlags buffers, const bool f
     gl_check(glClear(gl_flags));
 }
 
+void GraphicsContext::begin_frame()
+{
+    clear(m_state.clear_color, Buffer::COLOR | Buffer::DEPTH | Buffer::STENCIL);
+}
+
+void GraphicsContext::finish_frame()
+{
+    glfwSwapBuffers(m_window);
+}
+
 TexturePtr GraphicsContext::texture(const TextureId& id) const
 {
     auto it = m_textures.find(id);

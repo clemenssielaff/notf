@@ -3,8 +3,10 @@
 #include <sstream>
 
 #include "common/hash.hpp"
+#include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/engine/graphics_producer.hpp"
+#include "graphics/engine/layer.hpp"
 #include "graphics/engine/render_target.hpp"
 #include "graphics/text/font_manager.hpp"
 #include "utils/make_smart_enabler.hpp"
@@ -38,12 +40,15 @@ void RenderDag::reset() { m_new_hash = 0; }
 
 //====================================================================================================================//
 
+const RenderManager::State RenderManager::s_default_state = {};
+
 RenderManager::RenderManager(GLFWwindow* window)
     : m_graphics_context(std::make_unique<GraphicsContext>(window))
     , m_font_manager(FontManager::create(*m_graphics_context))
     , m_dependencies()
     , m_graphics_producer()
     , m_render_targets()
+    , m_state(&s_default_state)
 {}
 
 RenderManagerPtr RenderManager::create(GLFWwindow* window)
@@ -56,6 +61,62 @@ RenderManagerPtr RenderManager::create(GLFWwindow* window)
 }
 
 RenderManager::~RenderManager() = default;
+
+RenderManager::StateId RenderManager::add_state(State&& state)
+{
+    StateId new_id = _next_id();
+    m_states.emplace(std::make_pair(new_id, std::move(state)));
+    return new_id;
+}
+
+const RenderManager::State& RenderManager::state(const StateId id) const
+{
+    auto it = m_states.find(id);
+    if (it == m_states.end()) {
+        notf_throw_format(resource_error, "RenderManager has no State with the ID \"" << id << "\"");
+    }
+    return it->second;
+}
+
+void RenderManager::enter_state(const StateId id)
+{
+    auto it = m_states.find(id);
+    if (it == m_states.end()) {
+        notf_throw_format(resource_error, "RenderManager has no State with the ID \"" << id << "\"");
+    }
+    m_state = &it->second;
+}
+
+void RenderManager::remove_state(const StateId id)
+{
+    auto it = m_states.find(id);
+    if (it == m_states.end()) {
+        notf_throw_format(resource_error, "RenderManager has no State with the ID \"" << id << "\"");
+    }
+    if (m_state == &it->second) {
+        log_warning << "Removing current RenderManager state \"" << it->first
+                    << "\" - falling back to the default state";
+        m_state = &s_default_state;
+    }
+    m_states.erase(it);
+}
+
+void RenderManager::render()
+{
+    if (m_state == &s_default_state) {
+        log_trace << "Ignoring RenderManager::render with the default State";
+        return;
+    }
+
+    m_graphics_context->begin_frame();
+
+    // render all Layers
+    for (const LayerPtr& layer : m_state->layers) {
+        layer->render();
+    }
+
+    m_graphics_context->finish_frame();
+}
 
 void RenderManager::register_new(GraphicsProducerPtr graphics_producer)
 {

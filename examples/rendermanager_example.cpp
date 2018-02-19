@@ -2,6 +2,7 @@
 
 #include "app/core/glfw.hpp"
 #include "common/log.hpp"
+#include "graphics/engine/layer.hpp"
 #include "graphics/engine/render_manager.hpp"
 #include "graphics/producer/plotter.hpp"
 #include "graphics/text/font.hpp"
@@ -32,23 +33,22 @@ void render_thread(GLFWwindow* window)
 
     auto what = "NoTF";
     plotter->add_text(info, what);
-
     plotter->apply();
+
+    // Render State //////////////////////////////////////////////
+
+    RenderManager::State state;
+    state.layers = {Layer::create(render_manager, plotter)};
+
+    RenderManager::StateId state_id = render_manager->add_state(std::move(state));
+    render_manager->enter_state(state_id);
 
     // Rendering //////////////////////////////////////////////
 
     while (!glfwWindowShouldClose(window)) {
-        Size2i buffer_size;
-        glfwGetFramebufferSize(window, &buffer_size.width, &buffer_size.height);
-        glViewport(0, 0, buffer_size.width, buffer_size.height);
 
-        glClearColor(0.2f, 0.3f, 0.5f, 1);
-        glClear(GL_COLOR_BUFFER_BIT);
+        render_manager->render();
 
-        plotter->set_dirty();
-        plotter->render();
-
-        glfwSwapBuffers(window);
         glfwPollEvents();
     }
 }

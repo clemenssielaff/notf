@@ -135,20 +135,29 @@ public:
     /// Adds a new State to the RenderManager.
     /// @param state    New State to add.
     /// @returns        Id of the new state.
-    StateId addState(State&& state);
+    StateId add_state(State&& state);
 
     /// Checks if the Manager knows about a State with the given ID.
-    bool has_state(const StateId id) const;
+    bool has_state(const StateId id) const { return m_states.count(id) != 0; }
+
+    /// Read-only access to the current State of the RenderManager.
+    const State& current_state() const { return *m_state; }
 
     /// Read-only access to a State by its ID.
     /// @throws resource_error  If no State with the given ID is known.
     const State& state(const StateId id) const;
 
-    /// Enters a State with a given DI.
+    /// Enters a State with a given ID.
     /// @throws resource_error  If no State with the given ID is known.
     void enter_state(const StateId id);
 
-    // TODO: CONTINUE HERE by implementing the State functions
+    /// Removes the State with the given ID.
+    /// If the State to remove is the curren State, the RenderManager will fall back to the default state.
+    /// @throws resource_error  If no State with the given ID is known.
+    void remove_state(const StateId id);
+
+    /// Renders a single frame with the current State of the RenderManager.
+    void render();
 
 private:
     /// Registers a new GraphicsProducer.
@@ -181,6 +190,12 @@ private:
 
     /// All RenderTargets that are registered with this RenderTargets by their ID.
     std::unordered_map<RenderTargetId, RenderTargetPtr> m_render_targets;
+
+    /// The current state of the RenderManager.
+    const State* m_state;
+
+    /// The default State is assumed, whenever the RenderManager would otherwise be stateless.
+    static const State s_default_state;
 };
 
 // ===================================================================================================================//

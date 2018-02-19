@@ -73,7 +73,7 @@ void RenderTarget::clean()
     m_context.clear(Color::black());
 
     // render everything
-    m_producer->render();
+    GraphicsProducer::Private<RenderTarget>(*m_producer).render();
 
     m_context.unbind_framebuffer();
 }
