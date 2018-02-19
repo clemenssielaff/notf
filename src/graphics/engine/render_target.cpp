@@ -4,13 +4,14 @@
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/texture.hpp"
 #include "graphics/engine/graphics_producer.hpp"
+#include "graphics/engine/render_manager.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 namespace notf {
 
-RenderTarget::RenderTarget(GraphicsContext& context, Args&& args)
+RenderTarget::RenderTarget(RenderManager& render_manager, Args&& args)
     : m_id(_next_id())
-    , m_context(context)
+    , m_context(*render_manager.graphics_context())
     , m_name(std::move(args.name))
     , m_framebuffer()
     , m_producer(std::move(args.producer))
@@ -45,13 +46,15 @@ RenderTarget::RenderTarget(GraphicsContext& context, Args&& args)
     m_framebuffer = FrameBuffer::create(m_context, std::move(framebuffer_args));
 }
 
-RenderTargetPtr RenderTarget::create(GraphicsContext& context, Args&& args)
+RenderTargetPtr RenderTarget::create(RenderManager& manager, Args&& args)
 {
 #ifdef NOTF_DEBUG
-    return RenderTargetPtr(new RenderTarget(context, std::move(args)));
+    auto result = RenderTargetPtr(new RenderTarget(manager, std::move(args)));
 #else
-    return std::make_shared<make_shared_enabler<RenderTarget>>(context, std::move(args));
+    auto result = std::make_shared<make_shared_enabler<RenderTarget>>(manager, std::move(args));
 #endif
+    RenderManager::Private<RenderTarget>(manager).register_new(result);
+    return result;
 }
 
 const TexturePtr& RenderTarget::texture() const { return m_framebuffer->color_texture(0); }

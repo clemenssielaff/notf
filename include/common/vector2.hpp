@@ -221,6 +221,7 @@ using Vector2f = detail::RealVector2<float>;
 using Vector2d = detail::RealVector2<double>;
 using Vector2h = detail::RealVector2<half>;
 using Vector2i = detail::IntVector2<int>;
+using Vector2s = detail::IntVector2<short>;
 
 //====================================================================================================================//
 
@@ -232,6 +233,7 @@ std::ostream& operator<<(std::ostream& out, const Vector2f& vec);
 std::ostream& operator<<(std::ostream& out, const Vector2d& vec);
 std::ostream& operator<<(std::ostream& out, const Vector2h& vec);
 std::ostream& operator<<(std::ostream& out, const Vector2i& vec);
+std::ostream& operator<<(std::ostream& out, const Vector2s& vec);
 
 } // namespace notf
 

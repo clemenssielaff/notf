@@ -139,17 +139,17 @@ void set_modified_second_ctrl(PlotVertexArray::Vertex& vertex, const CubicBezier
 
 namespace notf {
 
-Plotter::Plotter(const Token& token, RenderManager& render_manager)
+Plotter::Plotter(const Token& token, RenderManagerPtr& render_manager)
     : GraphicsProducer(token)
-    , m_graphics_context(*render_manager.graphics_context())
-    , m_font_manager(*render_manager.font_manager())
-    , m_pipeline()
     , m_vao_id(0)
-    , m_state()
+    , m_graphics_context(*render_manager->graphics_context())
+    , m_font_manager(*render_manager->font_manager())
+    , m_pipeline()
     , m_vertices()
     , m_indices()
     , m_batches()
     , m_batch_buffer()
+    , m_state()
 {
     // vao
     gl_check(glGenVertexArrays(1, &m_vao_id));
@@ -159,7 +159,7 @@ Plotter::Plotter(const Token& token, RenderManager& render_manager)
     const auto vao_guard = VaoBindGuard(m_vao_id);
 
     { // pipeline
-        GraphicsContextPtr& context = render_manager.graphics_context();
+        GraphicsContextPtr& context = render_manager->graphics_context();
 
         const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/plotter.vert");
         VertexShaderPtr vertex_shader = VertexShader::create(context, "plotter.vert", vertex_src);
@@ -208,181 +208,6 @@ void Plotter::clear()
     static_cast<PlotVertexArray*>(m_vertices.get())->buffer().clear();
     static_cast<PlotIndexArray*>(m_indices.get())->buffer().clear();
     m_batch_buffer.clear();
-}
-
-void Plotter::render() const
-{
-    /// Render various batch types.
-    struct GraphicsProducer {
-
-        // fields ----------------------------------------------------------------------------------------------------//
-
-        /// This plotter.
-        const Plotter& plotter;
-
-        /// Batch target.
-        const Batch& batch;
-
-        // methods ---------------------------------------------------------------------------------------------------//
-
-        /// Draw a stroke.
-        void operator()(const StrokeInfo& stroke) const
-        {
-            Pipeline& pipeline = *plotter.m_pipeline.get();
-
-            // patch vertices
-            if (plotter.m_state.patch_vertices != 2) {
-                plotter.m_state.patch_vertices = 2;
-                gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
-            }
-
-            // patch type
-            if (plotter.m_state.patch_type != PatchType::STROKE) {
-                pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::STROKE));
-                plotter.m_state.patch_type = PatchType::STROKE;
-            }
-
-            // stroke width
-            if (abs(plotter.m_state.stroke_width - stroke.width) > precision_high<float>()) {
-                pipeline.tesselation_shader()->set_uniform("stroke_width", stroke.width);
-                plotter.m_state.stroke_width = stroke.width;
-            }
-
-            gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
-                                    gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
-        }
-
-        /// Draw a shape.
-        void operator()(const ShapeInfo& shape) const
-        {
-            Pipeline& pipeline = *plotter.m_pipeline.get();
-
-            // patch vertices
-            if (plotter.m_state.patch_vertices != 2) {
-                plotter.m_state.patch_vertices = 2;
-                gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
-            }
-
-            // patch type
-            if (shape.is_convex) {
-                if (plotter.m_state.patch_type != PatchType::CONVEX) {
-                    pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONVEX));
-                    plotter.m_state.patch_type = PatchType::CONVEX;
-                }
-            }
-            else {
-                if (plotter.m_state.patch_type != PatchType::CONCAVE) {
-                    pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONCAVE));
-                    plotter.m_state.patch_type = PatchType::CONCAVE;
-                }
-            }
-
-            // base vertex
-            if (!shape.center.is_approx(plotter.m_state.vec2_aux1)) {
-                // with a purely convex polygon, we can safely put the base vertex into the center of the polygon as it
-                // will always be inside and it should never fall onto an existing vertex
-                // this way, we can use antialiasing at the outer edge
-                pipeline.tesselation_shader()->set_uniform("vec2_aux1", shape.center);
-                plotter.m_state.vec2_aux1 = shape.center;
-            }
-
-            if (shape.is_convex) {
-                gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
-                                        gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
-            }
-
-            // concave
-            else {
-                // TODO: concave shapes have no antialiasing yet
-                // TODO: this actually covers both single concave and multiple polygons with holes
-
-                gl_check(glEnable(GL_STENCIL_TEST));                           // enable stencil
-                gl_check(glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE)); // do not write into color buffer
-                gl_check(glStencilMask(0xff));            // write to all bits of the stencil buffer
-                gl_check(glStencilFunc(GL_ALWAYS, 0, 1)); //  Always pass (other values are default values and do not
-                                                          //  matter for GL_ALWAYS)
-
-                gl_check(glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP));
-                gl_check(glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP));
-                gl_check(glDisable(GL_CULL_FACE));
-                gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
-                                        gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
-                gl_check(glEnable(GL_CULL_FACE));
-
-                gl_check(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)); // re-enable color
-                gl_check(glStencilFunc(GL_NOTEQUAL, 0x00, 0xff)); // only write to pixels that are inside the polygon
-                gl_check(glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO)); // reset the stencil buffer (is a lot faster than
-                                                                  // clearing it at the start)
-
-                // render colors here, same area as before if you don't want to clear the stencil buffer every time
-                gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
-                                        gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
-
-                gl_check(glDisable(GL_STENCIL_TEST));
-            }
-        }
-
-        /// Render text.
-        void operator()(const TextInfo& /*text*/) const
-        {
-            Pipeline& pipeline = *plotter.m_pipeline.get();
-
-            // patch vertices
-            if (plotter.m_state.patch_vertices != 1) {
-                plotter.m_state.patch_vertices = 1;
-                gl_check(glPatchParameteri(GL_PATCH_VERTICES, 1));
-            }
-
-            // patch type
-            if (plotter.m_state.patch_type != PatchType::TEXT) {
-                pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::TEXT));
-                plotter.m_state.patch_type = PatchType::TEXT;
-            }
-
-            const TexturePtr& font_atlas = plotter.m_font_manager.atlas_texture();
-            const Size2i& atlas_size     = font_atlas->size();
-
-            // atlas size
-            const Vector2f atlas_size_vec{atlas_size.width, atlas_size.height};
-            if (!atlas_size_vec.is_approx(plotter.m_state.vec2_aux1)) {
-                pipeline.tesselation_shader()->set_uniform("vec2_aux1", atlas_size_vec);
-                plotter.m_state.vec2_aux1 = atlas_size_vec;
-            }
-
-            gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
-                                    gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
-        }
-    };
-
-    // function begins here ////////////////////////////////////////////////////////////////////////////////////////////
-
-    if (m_indices->is_empty()) {
-        return;
-    }
-    const auto vao_guard = VaoBindGuard(m_vao_id);
-
-    gl_check(glEnable(GL_CULL_FACE));
-    gl_check(glCullFace(GL_BACK));
-    gl_check(glPatchParameteri(GL_PATCH_VERTICES, m_state.patch_vertices));
-    gl_check(glEnable(GL_BLEND));
-    gl_check(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-
-    m_graphics_context.bind_pipeline(m_pipeline);
-    const TesselationShaderPtr& tess_shader = m_pipeline->tesselation_shader();
-
-    // screen size
-    const Size2i screen_size = {800, 800}; // TODO: get the window size from the graphics context?
-    if (m_state.screen_size != screen_size) {
-        tess_shader->set_uniform("projection",
-                                 Matrix4f::orthographic(0, screen_size.width, 0, screen_size.height, 0, 2));
-        m_state.screen_size = screen_size;
-    }
-
-    for (const Batch& batch : m_batches) {
-        std::visit(GraphicsProducer{*this, batch}, batch.info);
-    }
-
-    m_graphics_context.unbind_pipeline();
 }
 
 void Plotter::add_stroke(StrokeInfo info, const CubicBezier2f& spline)
@@ -556,6 +381,181 @@ void Plotter::add_text(TextInfo info, const std::string& text)
     // batch
     m_batch_buffer.emplace_back(
         Batch{std::move(info), narrow_cast<uint>(index_offset), narrow_cast<int>(indices.size() - index_offset)});
+}
+
+void Plotter::_render() const
+{
+    /// Render various batch types.
+    struct GraphicsProducer {
+
+        // fields ----------------------------------------------------------------------------------------------------//
+
+        /// This plotter.
+        const Plotter& plotter;
+
+        /// Batch target.
+        const Batch& batch;
+
+        // methods ---------------------------------------------------------------------------------------------------//
+
+        /// Draw a stroke.
+        void operator()(const StrokeInfo& stroke) const
+        {
+            Pipeline& pipeline = *plotter.m_pipeline.get();
+
+            // patch vertices
+            if (plotter.m_state.patch_vertices != 2) {
+                plotter.m_state.patch_vertices = 2;
+                gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
+            }
+
+            // patch type
+            if (plotter.m_state.patch_type != PatchType::STROKE) {
+                pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::STROKE));
+                plotter.m_state.patch_type = PatchType::STROKE;
+            }
+
+            // stroke width
+            if (abs(plotter.m_state.stroke_width - stroke.width) > precision_high<float>()) {
+                pipeline.tesselation_shader()->set_uniform("stroke_width", stroke.width);
+                plotter.m_state.stroke_width = stroke.width;
+            }
+
+            gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
+                                    gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
+        }
+
+        /// Draw a shape.
+        void operator()(const ShapeInfo& shape) const
+        {
+            Pipeline& pipeline = *plotter.m_pipeline.get();
+
+            // patch vertices
+            if (plotter.m_state.patch_vertices != 2) {
+                plotter.m_state.patch_vertices = 2;
+                gl_check(glPatchParameteri(GL_PATCH_VERTICES, 2));
+            }
+
+            // patch type
+            if (shape.is_convex) {
+                if (plotter.m_state.patch_type != PatchType::CONVEX) {
+                    pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONVEX));
+                    plotter.m_state.patch_type = PatchType::CONVEX;
+                }
+            }
+            else {
+                if (plotter.m_state.patch_type != PatchType::CONCAVE) {
+                    pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONCAVE));
+                    plotter.m_state.patch_type = PatchType::CONCAVE;
+                }
+            }
+
+            // base vertex
+            if (!shape.center.is_approx(plotter.m_state.vec2_aux1)) {
+                // with a purely convex polygon, we can safely put the base vertex into the center of the polygon as it
+                // will always be inside and it should never fall onto an existing vertex
+                // this way, we can use antialiasing at the outer edge
+                pipeline.tesselation_shader()->set_uniform("vec2_aux1", shape.center);
+                plotter.m_state.vec2_aux1 = shape.center;
+            }
+
+            if (shape.is_convex) {
+                gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
+                                        gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
+            }
+
+            // concave
+            else {
+                // TODO: concave shapes have no antialiasing yet
+                // TODO: this actually covers both single concave and multiple polygons with holes
+
+                gl_check(glEnable(GL_STENCIL_TEST));                           // enable stencil
+                gl_check(glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE)); // do not write into color buffer
+                gl_check(glStencilMask(0xff));            // write to all bits of the stencil buffer
+                gl_check(glStencilFunc(GL_ALWAYS, 0, 1)); //  Always pass (other values are default values and do not
+                                                          //  matter for GL_ALWAYS)
+
+                gl_check(glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP));
+                gl_check(glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP));
+                gl_check(glDisable(GL_CULL_FACE));
+                gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
+                                        gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
+                gl_check(glEnable(GL_CULL_FACE));
+
+                gl_check(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)); // re-enable color
+                gl_check(glStencilFunc(GL_NOTEQUAL, 0x00, 0xff)); // only write to pixels that are inside the polygon
+                gl_check(glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO)); // reset the stencil buffer (is a lot faster than
+                                                                  // clearing it at the start)
+
+                // render colors here, same area as before if you don't want to clear the stencil buffer every time
+                gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
+                                        gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
+
+                gl_check(glDisable(GL_STENCIL_TEST));
+            }
+        }
+
+        /// Render text.
+        void operator()(const TextInfo& /*text*/) const
+        {
+            Pipeline& pipeline = *plotter.m_pipeline.get();
+
+            // patch vertices
+            if (plotter.m_state.patch_vertices != 1) {
+                plotter.m_state.patch_vertices = 1;
+                gl_check(glPatchParameteri(GL_PATCH_VERTICES, 1));
+            }
+
+            // patch type
+            if (plotter.m_state.patch_type != PatchType::TEXT) {
+                pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::TEXT));
+                plotter.m_state.patch_type = PatchType::TEXT;
+            }
+
+            const TexturePtr& font_atlas = plotter.m_font_manager.atlas_texture();
+            const Size2i& atlas_size     = font_atlas->size();
+
+            // atlas size
+            const Vector2f atlas_size_vec{atlas_size.width, atlas_size.height};
+            if (!atlas_size_vec.is_approx(plotter.m_state.vec2_aux1)) {
+                pipeline.tesselation_shader()->set_uniform("vec2_aux1", atlas_size_vec);
+                plotter.m_state.vec2_aux1 = atlas_size_vec;
+            }
+
+            gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
+                                    gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
+        }
+    };
+
+    // function begins here ////////////////////////////////////////////////////////////////////////////////////////////
+
+    if (m_indices->is_empty()) {
+        return;
+    }
+    const auto vao_guard = VaoBindGuard(m_vao_id);
+
+    gl_check(glEnable(GL_CULL_FACE));
+    gl_check(glCullFace(GL_BACK));
+    gl_check(glPatchParameteri(GL_PATCH_VERTICES, m_state.patch_vertices));
+    gl_check(glEnable(GL_BLEND));
+    gl_check(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+
+    m_graphics_context.bind_pipeline(m_pipeline);
+    const TesselationShaderPtr& tess_shader = m_pipeline->tesselation_shader();
+
+    // screen size
+    const Size2i screen_size = {800, 800}; // TODO: get the window size from the graphics context?
+    if (m_state.screen_size != screen_size) {
+        tess_shader->set_uniform("projection",
+                                 Matrix4f::orthographic(0, screen_size.width, 0, screen_size.height, 0, 2));
+        m_state.screen_size = screen_size;
+    }
+
+    for (const Batch& batch : m_batches) {
+        std::visit(GraphicsProducer{*this, batch}, batch.info);
+    }
+
+    m_graphics_context.unbind_pipeline();
 }
 
 } // namespace notf

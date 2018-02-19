@@ -49,7 +49,7 @@ static void error_callback(int error, const char* description)
 
 void render_thread(GLFWwindow* window)
 {
-    RenderManager render_manager(window);
+    RenderManagerPtr render_manager = RenderManager::create(window);
 
     // Shader ///////////////////////////////////////////////
 
@@ -118,6 +118,7 @@ void render_thread(GLFWwindow* window)
 
         //        gl_check(glDisable(GL_STENCIL_TEST));
 
+        plotter->set_dirty();
         plotter->render();
 
         ///////////////////////////////////////////////////////////////////////

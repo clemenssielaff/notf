@@ -91,7 +91,7 @@ std::ostream& operator<<(std::ostream& out, const Segment2f& segment)
 
 static_assert(sizeof(Segment2f) == sizeof(float) * 4,
               "This compiler seems to inject padding bits into the notf::Line2f memory layout. "
-              "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
+              "You may be able to use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
 static_assert(std::is_pod<Segment2f>::value, "This compiler does not recognize notf::Line2f as a POD.");
 
@@ -105,7 +105,7 @@ std::ostream& operator<<(std::ostream& out, const Segment3f& segment)
 
 static_assert(sizeof(Segment3f) == sizeof(float) * 6,
               "This compiler seems to inject padding bits into the notf::Line3f memory layout. "
-              "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
+              "You may be able to use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
 static_assert(std::is_pod<Segment3f>::value, "This compiler does not recognize notf::Line3f as a POD.");
 

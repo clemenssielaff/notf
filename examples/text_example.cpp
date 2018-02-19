@@ -35,14 +35,14 @@ static void error_callback(int error, const char* description)
 
 void render_thread(GLFWwindow* window)
 {
-    RenderManager render_manager(window);
+    RenderManagerPtr render_manager = RenderManager::create(window);
 
     // Shader ///////////////////////////////////////////////
 
     PlotterPtr plotter = Plotter::create(render_manager);
 
     FontPtr font
-        = Font::load(render_manager.font_manager(), "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 32);
+        = Font::load(render_manager->font_manager(), "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 32);
 
     Plotter::TextInfo info;
     info.font        = font;
@@ -75,6 +75,7 @@ void render_thread(GLFWwindow* window)
         glClearColor(0.2f, 0.3f, 0.5f, 1);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        plotter->set_dirty();
         plotter->render();
 
         glfwSwapBuffers(window);

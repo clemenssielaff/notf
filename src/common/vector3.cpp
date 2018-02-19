@@ -13,7 +13,7 @@ std::ostream& operator<<(std::ostream& out, const Vector3f& vec)
 
 static_assert(sizeof(Vector3f) == sizeof(float) * 3,
               "This compiler seems to inject padding bits into the notf::Vector3f memory layout. "
-              "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
+              "You may be able to use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
 static_assert(std::is_pod<Vector3f>::value, "This compiler does not recognize notf::Vector3f as a POD.");
 
@@ -26,7 +26,7 @@ std::ostream& operator<<(std::ostream& out, const Vector3d& vec)
 
 static_assert(sizeof(Vector3d) == sizeof(double) * 3,
               "This compiler seems to inject padding bits into the notf::Vector3d memory layout. "
-              "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
+              "You may be able to use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
 static_assert(std::is_pod<Vector3d>::value, "This compiler does not recognize notf::Vector3d as a POD.");
 
@@ -39,7 +39,7 @@ std::ostream& operator<<(std::ostream& out, const Vector3h& vec)
 
 static_assert(sizeof(Vector3h) == sizeof(half) * 3,
               "This compiler seems to inject padding bits into the notf::Vector3h memory layout. "
-              "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
+              "You may be able to use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
 static_assert(std::is_pod<Vector3h>::value, "This compiler does not recognize notf::Vector3h as a POD.");
 
@@ -52,7 +52,7 @@ std::ostream& operator<<(std::ostream& out, const Vector3i& vec)
 
 static_assert(sizeof(Vector3i) == sizeof(int) * 3,
               "This compiler seems to inject padding bits into the notf::Vector3i memory layout. "
-              "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
+              "You may be able to use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
 static_assert(std::is_pod<Vector3i>::value, "This compiler does not recognize notf::Vector3i as a POD.");
 

@@ -17,7 +17,7 @@ std::ostream& operator<<(std::ostream& out, const Trianglef& triangle)
 
 static_assert(sizeof(Trianglef) == sizeof(Vector2f) * 3,
               "This compiler seems to inject padding bits into the notf::Trianglef memory layout. "
-              "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
+              "You may be able to use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
 static_assert(std::is_pod<Trianglef>::value, "This compiler does not recognize notf::Trianglef as a POD.");
 

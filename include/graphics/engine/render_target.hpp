@@ -19,7 +19,7 @@ using RenderTargetId = IdType<RenderTarget, size_t>;
 /// GraphicsProducers in order.
 class RenderTarget {
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // types ---------------------------------------------------------------------------------------------------------//
 public:
     /// Render Target arguments.
     struct Args {
@@ -47,16 +47,17 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Constructor.
-    /// @param context  Graphics context.
+    /// @param manager  The RenderManager that the RenderTarget is registered with.
     /// @param args     Arguments.
-    RenderTarget(GraphicsContext& context, Args&& args);
+    RenderTarget(RenderManager& render_manager, Args&& args);
 
 public:
     DISALLOW_COPY_AND_ASSIGN(RenderTarget)
 
     /// Factory.
-    /// @param args Arguments.
-    static RenderTargetPtr create(GraphicsContext& context, Args&& args);
+    /// @param manager  The RenderManager that the RenderTarget is registered with.
+    /// @param args     Arguments.
+    static RenderTargetPtr create(RenderManager &manager, Args&& args);
 
     /// Id of this RenderTarget.
     RenderTargetId id() const noexcept { return m_id; }

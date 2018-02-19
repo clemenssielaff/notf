@@ -103,14 +103,14 @@ protected:
     /// @param token            Token to make sure that the instance can only be created by a call to `_create`.
     /// @param render_manager   RenderManager.
     /// @throws runtime_error   If the OpenGL VAO could not be generated.
-    Plotter(const Token& token, RenderManager& render_manager);
+    Plotter(const Token& token, RenderManagerPtr& render_manager);
 
 public:
     DISALLOW_COPY_AND_ASSIGN(Plotter)
 
     /// Factory.
     /// @param render_manager   RenderManager.
-    static PlotterPtr create(RenderManager& render_manager) { return _create<Plotter>(render_manager); }
+    static PlotterPtr create(RenderManagerPtr& render_manager) { return _create<Plotter>(render_manager); }
 
     /// Destructor.
     virtual ~Plotter() override;
@@ -124,12 +124,6 @@ public:
 
     /// Clears the buffer without parsing it.
     void clear();
-
-    /// Render the current contents of the Plotter.
-    virtual void render() const override;
-
-    /// Whether the GraphicsProducer is currently dirty or not.
-    virtual bool is_dirty() const override { return false; } // TODO: Plotter:is_dirty
 
     /// Adds a new Bezier spline to stroke into the bufffer.
     /// @param info     Information on how to draw the stroke.
@@ -146,8 +140,15 @@ public:
     /// @param text     Text to render.
     void add_text(TextInfo info, const std::string& text);
 
+private:
+    /// Render the current contents of the Plotter.
+    virtual void _render() const override;
+
     // fields --------------------------------------------------------------------------------------------------------//
 private:
+    /// OpenGL handle of the internal vertex array object.
+    GLuint m_vao_id;
+
     /// Graphics Context in which the Plotter lives.
     GraphicsContext& m_graphics_context;
 
@@ -156,12 +157,6 @@ private:
 
     /// Shader pipeline used to render the strokes, shapes and glyphs.
     PipelinePtr m_pipeline;
-
-    /// OpenGL handle of the internal vertex array object.
-    GLuint m_vao_id;
-
-    /// State of the Plotter pipeline.
-    mutable State m_state;
 
     /// Patch vertices.
     VertexArrayTypePtr m_vertices;
@@ -174,6 +169,9 @@ private:
 
     /// Buffer for new batches.
     std::vector<Batch> m_batch_buffer;
+
+    /// State of the Plotter pipeline.
+    mutable State m_state;
 };
 
 } // namespace notf

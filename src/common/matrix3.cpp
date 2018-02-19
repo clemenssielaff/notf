@@ -17,7 +17,7 @@ std::ostream& operator<<(std::ostream& out, const Matrix3f& mat)
 
 static_assert(sizeof(Matrix3f) == sizeof(float) * 6,
               "This compiler seems to inject padding bits into the notf::Matrix3f memory layout. "
-              "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
+              "You may be able to use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
 static_assert(std::is_pod<Matrix3f>::value, "This compiler does not recognize notf::Matrix3f as a POD.");
 
@@ -34,7 +34,7 @@ std::ostream& operator<<(std::ostream& out, const Matrix3d& mat)
 
 static_assert(sizeof(Matrix3d) == sizeof(double) * 6,
               "This compiler seems to inject padding bits into the notf::Matrix3d memory layout. "
-              "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
+              "You may be able to use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
 static_assert(std::is_pod<Matrix3d>::value, "This compiler does not recognize notf::Matrix3d as a POD.");
 

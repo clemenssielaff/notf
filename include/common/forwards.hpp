@@ -45,6 +45,7 @@ using Vector2f = detail::RealVector2<float>;
 using Vector2d = detail::RealVector2<double>;
 using Vector2h = detail::RealVector2<half>;
 using Vector2i = detail::IntVector2<int>;
+using Vector2s = detail::IntVector2<short>;
 
 using Vector3f = detail::RealVector3<float>;
 using Vector3d = detail::RealVector3<double>;

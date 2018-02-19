@@ -51,7 +51,7 @@ static void error_callback(int error, const char* description)
 
 void render_thread(GLFWwindow* window)
 {
-    RenderManager render_manager(window);
+    RenderManagerPtr render_manager = RenderManager::create(window);
 
     // Stroker ////////////////////////////////////////////////
 
@@ -110,6 +110,7 @@ void render_thread(GLFWwindow* window)
         glClearColor(0.2f, 0.3f, 0.5f, 1);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        stroker->set_dirty();
         stroker->render();
 
         glfwSwapBuffers(window);

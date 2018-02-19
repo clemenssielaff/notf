@@ -315,7 +315,7 @@ std::ostream& operator<<(std::ostream& out, const Color& color)
  */
 static_assert(sizeof(Color) == sizeof(float) * 4,
               "This compiler seems to inject padding bits into the notf::Color memory layout. "
-              "You should use compiler-specific #pragmas to enforce a contiguous memory layout.");
+              "You may be able to use compiler-specific #pragmas to enforce a contiguous memory layout.");
 
 static_assert(std::is_pod<Color>::value, "This compiler does not recognize notf::Color as a POD.");
 

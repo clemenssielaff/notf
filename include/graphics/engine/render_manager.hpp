@@ -1,14 +1,13 @@
 #pragma once
 
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 #include "common/dag.hpp"
 #include "common/forwards.hpp"
 #include "common/id.hpp"
 
-class GLFWwindow;
-
+struct GLFWwindow;
 namespace notf {
 
 using GraphicsProducerId = IdType<GraphicsProducer, size_t>; // TODO: id type forwards somewhere? in forwards.hpp?
@@ -20,13 +19,13 @@ namespace detail {
 
 /// Helper class used by the RenderManager to make sure that each Producer is called after the RenderTargets that they
 /// depend on are clean, and that RenderTargets are cleaned using the smallest number of OpenGL state changes possible.
-class RenderTargetDependencies {
+class RenderDag {
     friend class notf::RenderManager;
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
     /// Default constructor.
-    RenderTargetDependencies() : m_dag(), m_dependencies(), m_new_hash(0), m_last_hash(0) {}
+    RenderDag() : m_dag(), m_dependencies(), m_new_hash(0), m_last_hash(0) {}
 
 public:
     /// Adds a new RenderTarget to the dependency list of a GraphicsProducer.
@@ -103,31 +102,88 @@ public:
         std::vector<LayerPtr> layers;
     };
 
+    /// Ids for RenderManager states.
+    using StateId = IdType<State, size_t>;
+
     // methods ------------------------------------------------------------------------------------------------------ //
-public:
+protected:
+    /// Constructor.
+    /// @param window   GLFWwindow providing the OpenGL context.
     RenderManager(GLFWwindow* window);
 
+public:
+    /// Factory.
+    /// @param window   GLFWwindow providing the OpenGL context.
+    static RenderManagerPtr create(GLFWwindow* window);
+
+    /// Destructor.
+    /// Need, because otherwise we'd have to include types contained in member unique_ptrs in the header.
+    ~RenderManager();
+
+    ///@{
+    /// Internal GraphicsContext.
     GraphicsContextPtr& graphics_context() { return m_graphics_context; }
     const GraphicsContextPtr& graphics_context() const { return m_graphics_context; }
+    ///@}
 
+    ///@{
+    /// FontManager used to render text.
     FontManagerPtr& font_manager() { return m_font_manager; }
     const FontManagerPtr& font_manager() const { return m_font_manager; }
+    ///@}
+
+    /// Adds a new State to the RenderManager.
+    /// @param state    New State to add.
+    /// @returns        Id of the new state.
+    StateId addState(State&& state);
+
+    /// Checks if the Manager knows about a State with the given ID.
+    bool has_state(const StateId id) const;
+
+    /// Read-only access to a State by its ID.
+    /// @throws resource_error  If no State with the given ID is known.
+    const State& state(const StateId id) const;
+
+    /// Enters a State with a given DI.
+    /// @throws resource_error  If no State with the given ID is known.
+    void enter_state(const StateId id);
+
+    // TODO: CONTINUE HERE by implementing the State functions
 
 private:
     /// Registers a new GraphicsProducer.
     /// @throws runtime_error   If a GraphicsProducer with the same ID is already registered.
     void register_new(GraphicsProducerPtr graphics_producer);
 
+    /// Registers a new RenderTarget.
+    /// @throws runtime_error   If a RenderTarget with the same ID is already registered.
+    void register_new(RenderTargetPtr render_target);
+
+private:
+    /// Generate the next available StateId.
+    static StateId _next_id();
+
     // fields --------------------------------------------------------------------------------------------------------//
 private:
+    /// Internal GraphicsContext.
     GraphicsContextPtr m_graphics_context;
 
+    /// FontManager used to render text.
     FontManagerPtr m_font_manager;
 
-    detail::RenderTargetDependencies m_dependencies;
+    detail::RenderDag m_dependencies;
 
+    /// All States that the RenderManager knows.
+    std::unordered_map<StateId, State> m_states;
+
+    /// All GraphicsProducer that are registered with this RenderManager by their ID.
     std::unordered_map<GraphicsProducerId, GraphicsProducerPtr> m_graphics_producer;
+
+    /// All RenderTargets that are registered with this RenderTargets by their ID.
+    std::unordered_map<RenderTargetId, RenderTargetPtr> m_render_targets;
 };
+
+// ===================================================================================================================//
 
 template<>
 class RenderManager::Private<GraphicsProducer> {
@@ -139,10 +195,23 @@ class RenderManager::Private<GraphicsProducer> {
 
     /// Registers a new GraphicsProducer.
     /// @throws runtime_error   If a GraphicsProducer with the same ID is already registered.
-    void register_new(GraphicsProducerPtr graphics_producer)
-    {
-        m_render_manager.register_new(std::move(graphics_producer));
-    }
+    void register_new(GraphicsProducerPtr producer) { m_render_manager.register_new(std::move(producer)); }
+
+    /// The RenderManager to access.
+    RenderManager& m_render_manager;
+};
+
+template<>
+class RenderManager::Private<RenderTarget> {
+    friend class RenderTarget;
+
+    /// Constructor.
+    /// @param render_manager   RenderManager to access.
+    Private(RenderManager& render_manager) : m_render_manager(render_manager) {}
+
+    /// Registers a new RenderTarget.
+    /// @throws runtime_error   If a RenderTarget with the same ID is already registered.
+    void register_new(RenderTargetPtr render_target) { m_render_manager.register_new(std::move(render_target)); }
 
     /// The RenderManager to access.
     RenderManager& m_render_manager;
