@@ -133,7 +133,7 @@ public: // types
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
-private:
+protected:
     /// Constructor.
     /// @param manager       Font manager.
     /// @param filename      File from which to load the font.

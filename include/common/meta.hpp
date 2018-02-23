@@ -47,6 +47,26 @@
 
 //====================================================================================================================//
 
+/// Compiler attribute detection, as described in:
+///     https://clang.llvm.org/docs/LanguageExtensions.html#has-cpp-attribute
+#ifndef __has_cpp_attribute      // Optional of course.
+#define __has_cpp_attribute(x) 0 // Compatibility with non-clang compilers.
+#endif
+
+/// NODISCARD attribute to make sure that the return value of a function is not immediately discarded.
+/// Example:
+///     int NODISCARD guard() { ...
+///     class NODISCARD Guard { ...
+#if __has_cpp_attribute(nodiscard)
+#define NODISCARD [[nodiscard]]
+#elif __has_cpp_attribute(gnu::warn_unused_result)
+#define NODISCARD [[gnu::warn_unused_result]]
+#else
+#define NODISCARD
+#endif
+
+//====================================================================================================================//
+
 /// std namespace injections
 namespace std {
 

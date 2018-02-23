@@ -251,9 +251,9 @@ FrameBufferPtr FrameBuffer::create(GraphicsContext& context, Args&& args)
 #ifdef NOTF_DEBUG
     framebuffer = FrameBufferPtr(new FrameBuffer(context, std::move(args)));
 #else
-    result = std::make_shared<make_shared_enabler<FrameBuffer>>(context, std::move(args));
+    framebuffer = std::make_shared<make_shared_enabler<FrameBuffer>>(context, std::move(args));
 #endif
-    context.register_new(framebuffer);
+    GraphicsContext::Private<FrameBuffer>(context).register_new(framebuffer);
     return framebuffer;
 }
 

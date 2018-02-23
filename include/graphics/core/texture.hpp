@@ -140,6 +140,7 @@ private:
     static TexturePtr _create(GraphicsContext& context, const GLuint id, const GLenum target, std::string name,
                               Size2i size, const Format format);
 
+protected:
     /// Value Constructor.
     /// @param context  Render Context in which the Texture lives.
     /// @param id       OpenGL texture ID.

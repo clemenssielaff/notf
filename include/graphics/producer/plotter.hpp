@@ -17,7 +17,7 @@ namespace notf {
 /// `render`, and the "buffer" one that is in the process of being defined through the various `add_*` functions.
 /// After calling `parse`, the render image is replaced by the new one and the buffer is cleared.
 /// Technically, the conceptual images consist of OpenGl buffers and draw calls.
-class Plotter final : public GraphicsProducer {
+class Plotter : public GraphicsProducer {
     friend class GraphicsProducer;
 
     // types ---------------------------------------------------------------------------------------------------------//
@@ -101,16 +101,16 @@ private:
 protected:
     /// Construct a new Plotter.
     /// @param token            Token to make sure that the instance can only be created by a call to `_create`.
-    /// @param render_manager   RenderManager.
+    /// @param manager   RenderManager.
     /// @throws runtime_error   If the OpenGL VAO could not be generated.
-    Plotter(const Token& token, RenderManagerPtr& render_manager);
+    Plotter(const Token& token, RenderManagerPtr& manager);
 
 public:
     DISALLOW_COPY_AND_ASSIGN(Plotter)
 
     /// Factory.
-    /// @param render_manager   RenderManager.
-    static PlotterPtr create(RenderManagerPtr& render_manager) { return _create<Plotter>(render_manager); }
+    /// @param manager  RenderManager.
+    static PlotterPtr create(RenderManagerPtr& manager) { return _create<Plotter>(manager); }
 
     /// Destructor.
     virtual ~Plotter() override;
@@ -143,9 +143,6 @@ private:
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// OpenGL handle of the internal vertex array object.
-    GLuint m_vao_id;
-
     /// Graphics Context in which the Plotter lives.
     GraphicsContext& m_graphics_context;
 
@@ -166,6 +163,9 @@ private:
 
     /// Buffer for new batches.
     std::vector<Batch> m_batch_buffer;
+
+    /// OpenGL handle of the internal vertex array object.
+    GLuint m_vao_id;
 
     /// State of the Plotter pipeline.
     mutable State m_state;

@@ -1,5 +1,3 @@
-//#include <iostream>
-
 #include "app/core/glfw.hpp"
 #include "common/bezier.hpp"
 #include "common/log.hpp"

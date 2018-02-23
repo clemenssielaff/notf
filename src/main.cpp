@@ -13,8 +13,8 @@ int main(int argc, char* argv[])
 //    return shape_main(argc, argv);
 //    return line_main(argc, argv);
 //    return wireframe_main(argc, argv);
-//    return framebuffer_main(argc, argv);
-    return text_main(argc, argv);
+    return framebuffer_main(argc, argv);
+//    return text_main(argc, argv);
 //    return property_main(argc, argv);
 //    return rendermanager_main(argc, argv);
 //    (void)(argc);

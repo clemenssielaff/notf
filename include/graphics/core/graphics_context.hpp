@@ -96,30 +96,35 @@ enum CullFace : unsigned char {
 /// It is the object owning all NoTF client objects like shaders and textures.
 class GraphicsContext {
 
-    // managed classes have access to the GraphicsContext's internals to register themselves
-    friend class Shader;
-    friend class Texture;
-    friend class FrameBuffer;
-
     // types ---------------------------------------------------------------------------------------------------------//
 public:
+    /// Private access type template.
+    /// Used for finer grained friend control and is compiled away completely (if you should worry).
+    template<typename T>
+    class Private {
+        static_assert(always_false_t<T>{}, "No Private access for requested type");
+    };
+
+    //================================================================================================================//
+
     /// Helper struct that can be used to test whether selected extensions are available in the OpenGL ES driver.
     /// Only tests for extensions on first instantiation.
-    struct Extensions {
+    class Extensions {
+        friend class GraphicsContext;
 
+        /// Default constructor.
+        Extensions();
+
+    public:
         /// Is anisotropic filtering of textures supported?
         bool anisotropic_filter;
 
         /// Does the GPU support nVidia GPU shader5 extensions.
         /// @see   https://www.khronos.org/registry/OpenGL/extensions/NV/NV_gpu_shader5.txt
         bool nv_gpu_shader5;
-
-    private:
-        friend class GraphicsContext;
-
-        /// Default constructor.
-        Extensions();
     };
+
+    //================================================================================================================//
 
     /// Helper struct containing variables that need to be read from OpenGL at runtime and won't change over the
     /// course of the app.
@@ -149,8 +154,119 @@ public:
         Environment();
     };
 
+    //================================================================================================================//
+
+    /// Buffers to clear in a call to `clear`.
     enum Buffer : unsigned char { COLOR = 1u << 1, DEPTH = 1u << 2, STENCIL = 1u << 3 };
     using BufferFlags = std::underlying_type<Buffer>::type;
+
+    //================================================================================================================//
+
+    /// RAII guard to make sure that a bound Pipeline is always properly unbound after use.
+    /// You can nest multiple guards, each will restore the previously bound pipeline.
+    class NODISCARD PipelineGuard {
+        friend class GraphicsContext;
+
+        DISALLOW_COPY_AND_ASSIGN(PipelineGuard)
+        DISALLOW_HEAP_ALLOCATION(PipelineGuard)
+
+        /// Constructor.
+        /// @param context  Context that created the guard.
+        /// @param pipeline Pipeline to bind and unbind.
+        PipelineGuard(GraphicsContext& context, const PipelinePtr& pipeline)
+            : m_context(context), m_guarded_pipeline(pipeline), m_previous_pipeline(context.m_state.pipeline)
+        {
+            context._bind_pipeline(m_guarded_pipeline);
+        }
+
+    public:
+        /// Explicit move Constructor.
+        /// @param other    Pipeline to move from.
+        PipelineGuard(PipelineGuard&& other)
+            : m_context(other.m_context)
+            , m_guarded_pipeline(std::move(other.m_guarded_pipeline))
+            , m_previous_pipeline(std::move(other.m_previous_pipeline))
+        {
+            other.m_guarded_pipeline.reset();
+            other.m_previous_pipeline.reset();
+        }
+
+        /// Destructor.
+        ~PipelineGuard()
+        {
+            m_context._unbind_pipeline(m_guarded_pipeline);
+            if (m_previous_pipeline) {
+                m_context._bind_pipeline(m_previous_pipeline);
+            }
+        }
+
+    private:
+        /// Context that created the guard.
+        GraphicsContext& m_context;
+
+        /// Pipeline to bind and unbind.
+        PipelinePtr m_guarded_pipeline;
+
+        /// Previously bound Pipeline, is restored on guard destruction.
+        PipelinePtr m_previous_pipeline;
+    };
+    friend class PipelineGuard;
+
+    //================================================================================================================//
+
+    /// RAII guard to make sure that a bound FrameBuffer is always properly unbound after use.
+    /// You can nest multiple guards, each will restore the previously bound pipeline.
+    class NODISCARD FramebufferGuard {
+        friend class GraphicsContext;
+
+        DISALLOW_COPY_AND_ASSIGN(FramebufferGuard)
+        DISALLOW_HEAP_ALLOCATION(FramebufferGuard)
+
+        /// Constructor.
+        /// @param context      Context that created the guard.
+        /// @param framebuffer  FrameBuffer to bind and unbind.
+        FramebufferGuard(GraphicsContext& context, const FrameBufferPtr& framebuffer)
+            : m_context(context)
+            , m_guarded_framebuffer(framebuffer)
+            , m_previous_framebuffer(context.m_state.framebuffer)
+        {
+            context._bind_framebuffer(m_guarded_framebuffer);
+        }
+
+    public:
+        /// Explicit move Constructor.
+        /// @param other    Framebuffer to move from.
+        FramebufferGuard(FramebufferGuard&& other)
+            : m_context(other.m_context)
+            , m_guarded_framebuffer(std::move(other.m_guarded_framebuffer))
+            , m_previous_framebuffer(std::move(other.m_previous_framebuffer))
+        {
+            other.m_guarded_framebuffer.reset();
+            other.m_previous_framebuffer.reset();
+        }
+
+        /// Destructor.
+        ~FramebufferGuard()
+        {
+            m_context._unbind_framebuffer(m_guarded_framebuffer);
+            if (m_previous_framebuffer) {
+                m_context._bind_framebuffer(m_previous_framebuffer);
+            }
+        }
+
+    private:
+        /// Context that created the guard.
+        GraphicsContext& m_context;
+
+        /// FrameBuffer to bind and unbind.
+        FrameBufferPtr m_guarded_framebuffer;
+
+        /// Previously bound FrameBuffer, is restored on guard destruction.
+        FrameBufferPtr m_previous_framebuffer;
+    };
+    friend class FramebufferGuard;
+
+    //================================================================================================================//
 
 private:
     /// Graphics state.
@@ -278,14 +394,12 @@ public:
 
     // pipeline ---------------------------------------------------------------
 
-    /// Binds the given Pipeline, if it is not already bound.
+    /// Binds the given Pipeline.
     /// @param pipeline Pipeline to bind.
-    void bind_pipeline(const PipelinePtr& pipeline);
+    /// @returns Guard, making sure that the Pipline is properly unbound and the previous one restored after use.
+    PipelineGuard bind_pipeline(const PipelinePtr& pipeline);
 
-    /// Unbinds the current Pipeline.
-    void unbind_pipeline();
-
-    // frambuffer -------------------------------------------------------------
+    // framebuffer ------------------------------------------------------------
 
     /// Checks whether this context contains a FrameBuffer with the given ID.
     /// @param id   ID of the FrameBuffer.
@@ -298,30 +412,54 @@ public:
 
     /// Binds the given FrameBuffer, if it is not already bound.
     /// @param framebuffer  FrameBuffer to bind.
-    void bind_framebuffer(const FrameBufferPtr& framebuffer);
-
-    /// Unbinds the current FrameBuffer.
-    void unbind_framebuffer();
+    /// @returns Guard, making sure that the FrameBuffer is properly unbound and the previous one restored after use.
+    FramebufferGuard bind_framebuffer(const FrameBufferPtr& framebuffer);
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
+    // state ------------------------------------------------------------------
+
     /// Create a new State.
     State _create_state() const;
+
+    // pipeline ---------------------------------------------------------------
+
+    /// Binds the given Pipeline, if it is not already bound.
+    /// @param pipeline Pipeline to bind.
+    void _bind_pipeline(const PipelinePtr& pipeline);
+
+    /// Unbinds the current Pipeline.
+    /// @param pipeline Only unbind the current Pipeline, if it is equal to the one given. If empty (default), the
+    ///                 current Pipeline is always unbound.
+    void _unbind_pipeline(const PipelinePtr& pipeline = {});
+
+    // framebuffer ------------------------------------------------------------
+
+    /// Binds the given FrameBuffer, if it is not already bound.
+    /// @param framebuffer  FrameBuffer to bind.
+    void _bind_framebuffer(const FrameBufferPtr& framebuffer);
+
+    /// Unbinds the current FrameBuffer.
+    /// @param framebuffer  Only unbind the current FrameBuffer, if it is equal to the one given. If empty (default), the
+    ///                     current FrameBuffer is always unbound.
+    void _unbind_framebuffer(const FrameBufferPtr& framebuffer = {});
+
+    // registration -----------------------------------------------------------
 
     /// Registers a new Texture with this GraphicsContext.
     /// @param texture          New Texture to register.
     /// @throws internal_error  If another Texture with the same ID already exists.
-    void register_new(TexturePtr texture);
+    void _register_new(TexturePtr texture);
 
     /// Registers a new Shader with this GraphicsContext.
-    /// @param texture          New Shader to register.
+    /// @param shader           New Shader to register.
     /// @throws internal_error  If another Shader with the same ID already exists.
-    void register_new(ShaderPtr shader);
+    void _register_new(ShaderPtr shader);
 
     /// Registers a new FrameBuffer with this GraphicsContext.
-    /// @param texture          New FrameBuffer to register.
+    /// @param framebuffer      New FrameBuffer to register.
     /// @throws internal_error  If another FrameBuffer with the same ID already exists.
-    void register_new(FrameBufferPtr framebuffer);
+    void _register_new(FrameBufferPtr framebuffer);
 
     /// Call this function after the last shader has been compiled.
     /// Might cause the driver to release the resources allocated for the compiler to free up some space, but is not
@@ -352,6 +490,63 @@ private:
     /// All FrameBuffers managed by this Context.
     /// See `m_textures` for details on management.
     std::unordered_map<FrameBufferId, std::weak_ptr<FrameBuffer>> m_framebuffers;
+};
+
+// ===================================================================================================================//
+
+template<>
+class GraphicsContext::Private<Texture> {
+    friend class Texture;
+
+    /// Constructor.
+    /// @param context  GraphicsContext to access.
+    Private(GraphicsContext& context) : m_context(context) {}
+
+    /// Registers a new Texture.
+    /// @param texture          New Texture to register.
+    /// @throws internal_error  If another Texture with the same ID already exists.
+    void register_new(TexturePtr texture) { m_context._register_new(std::move(texture)); }
+
+    /// The GraphicsContext to access.
+    GraphicsContext& m_context;
+};
+
+template<>
+class GraphicsContext::Private<Shader> {
+    friend class Shader;
+
+    /// Constructor.
+    /// @param context  GraphicsContext to access.
+    // managed classes have access to the GraphicsContext's internals to register themselves
+    friend class Shader;
+    friend class Texture;
+    friend class FrameBuffer;
+    Private(GraphicsContext& context) : m_context(context) {}
+
+    /// Registers a new Shader.
+    /// @param shader           New Shader to register.
+    /// @throws internal_error  If another Shader with the same ID already exists.
+    void register_new(ShaderPtr shader) { m_context._register_new(std::move(shader)); }
+
+    /// The GraphicsContext to access.
+    GraphicsContext& m_context;
+};
+
+template<>
+class GraphicsContext::Private<FrameBuffer> {
+    friend class FrameBuffer;
+
+    /// Constructor.
+    /// @param context  GraphicsContext to access.
+    Private(GraphicsContext& context) : m_context(context) {}
+
+    /// Registers a new FrameBuffer.
+    /// @param framebuffer      New FrameBuffer to register.
+    /// @throws internal_error  If another FrameBuffer with the same ID already exists.
+    void register_new(FrameBufferPtr framebuffer) { m_context._register_new(std::move(framebuffer)); }
+
+    /// The GraphicsContext to access.
+    GraphicsContext& m_context;
 };
 
 } // namespace notf

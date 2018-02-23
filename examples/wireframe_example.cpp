@@ -66,7 +66,7 @@ void render_thread(GLFWwindow* window)
     FragmentShaderPtr frag_shader = FragmentShader::create(graphics_context, "wireframe.frag", frag_src);
 
     PipelinePtr pipeline = Pipeline::create(graphics_context, vertex_shader, tess_shader, geo_shader, frag_shader);
-    graphics_context->bind_pipeline(pipeline);
+    const auto pipeline_guard = graphics_context->bind_pipeline(pipeline);
 
     // Vertices ///////////////////////////////////////////////
 
@@ -132,8 +132,6 @@ void render_thread(GLFWwindow* window)
 
     // clean up
     graphics_context->unbind_all_textures();
-    graphics_context->unbind_framebuffer();
-    graphics_context->unbind_pipeline();
 }
 
 } // namespace

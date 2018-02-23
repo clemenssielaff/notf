@@ -19,6 +19,40 @@ using GraphicsProducerId = IdType<GraphicsProducer, size_t>;
 // ===================================================================================================================//
 
 /// Base class for GraphicsProducer.
+///
+/// We need to make sure that the GraphicsProducer is properly registered with its RenderManager. For that, we delegate
+/// the construction of *all* GraphicsProducer instances to the baseclass. In order to make this work, subclasses need
+/// to follow a certain structure:
+///
+/// First, they need to befriend their GraphicsProduer baseclass:
+///
+/// ```
+///     class MyProducer : public GraphicsProducer {
+///         friend class GraphicsProducer;
+///     ...
+/// ```
+///
+/// Next, they need to declare a *protected* constructor that has a const `Token` reference as first parameter and a
+/// mutable RenderManagerPtr reference as the second:
+///
+/// ```
+///     MyProducer(const Token& token, RenderManagerPtr& manager, bool myVeryOwnParameter, ...);
+/// ```
+///
+/// The remaining parameters can be whatever.
+///
+/// The user creates instances via a factory method, that requires  the RenderManager as the first argument and
+/// forwards all additional arguments to the subclass' constructor.
+///
+/// ```
+///     static std::shared_ptr<MyProducer> create(RenderManagerPtr& manager, bool myVeryOwnParameter, ...)
+///     {
+///         return _create<MyProducer>(manager, myVeryOwnParameter, ...);
+///     }
+/// ```
+///
+/// And finally, you need to implement the pure virtual method `_render`.
+///
 class GraphicsProducer {
 
     // types ---------------------------------------------------------------------------------------------------------//

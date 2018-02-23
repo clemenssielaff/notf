@@ -84,7 +84,7 @@ void render_thread(GLFWwindow* window)
     FragmentShaderPtr blinn_phong_frag = FragmentShader::create(graphics_context, "Blinn-Phong.frag", frag_src);
 
     PipelinePtr blinn_phong_pipeline = Pipeline::create(graphics_context, blinn_phong_vert, blinn_phong_frag);
-    graphics_context->bind_pipeline(blinn_phong_pipeline);
+    const auto pipeline_guard = graphics_context->bind_pipeline(blinn_phong_pipeline);
 
     Texture::Args tex_args;
     tex_args.codec      = Texture::Codec::ASTC;

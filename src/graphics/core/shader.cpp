@@ -278,7 +278,7 @@ void assert_is_valid(const Shader& shader)
     }
 }
 #else
-void assert_valid_id(const Shader&) {} // noop
+void assert_is_valid(const Shader&) {} // noop
 #endif
 
 } // namespace
@@ -440,7 +440,7 @@ GLuint Shader::_build(const std::string& name, const Args& args)
 void Shader::_register_with_context(ShaderPtr shader)
 {
     assert(shader && shader->is_valid());
-    shader->m_graphics_context.register_new(shader);
+    GraphicsContext::Private<Shader>(shader->m_graphics_context).register_new(shader);
 }
 
 const Shader::Variable& Shader::_uniform(const std::string& name) const
@@ -585,6 +585,11 @@ VertexShader::VertexShader(GraphicsContextPtr& context, const GLuint program, st
         assert(name_length > 0);
         variable.name = std::string(&uniform_name[0], static_cast<size_t>(name_length));
 
+        // some variable names are pre-defined by the language and cannot be set by the user
+        if (variable.name == "gl_VertexID") {
+            continue;
+        }
+
         variable.location = glGetAttribLocation(id().value(), variable.name.c_str());
         assert(variable.location >= 0);
 
@@ -636,7 +641,7 @@ TesselationShader::TesselationShader(GraphicsContextPtr& context, const GLuint p
 
 TesselationShaderPtr
 TesselationShader::create(GraphicsContextPtr& context, std::string name, const std::string& control_source,
-                         const std::string& evaluation_source, const Defines& defines)
+                          const std::string& evaluation_source, const Defines& defines)
 {
     const std::string injection_string           = glsl_header(context) + build_defines(defines);
     const std::string modified_control_source    = inject_header(control_source, injection_string);

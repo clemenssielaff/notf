@@ -116,6 +116,7 @@ add_sources(RESOURCE_FILES res
     shaders/cell.vert
     shaders/blinn_phong.vert
     shaders/blinn_phong.frag
+    shaders/fullscreen.vert
     shaders/wireframe.vert
     shaders/wireframe.tess
     shaders/wireframe.eval

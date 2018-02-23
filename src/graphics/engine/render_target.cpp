@@ -67,14 +67,12 @@ void RenderTarget::clean()
     }
 
     // prepare the graphic state
-    m_context.bind_framebuffer(m_framebuffer); // TODO: FrameBufferGuard
+    const auto framebuffer_guard = m_context.bind_framebuffer(m_framebuffer);
     m_context.set_render_area(texture()->size());
     m_context.clear(Color::black());
 
     // render everything
     GraphicsProducer::Private<RenderTarget>(*m_producer).render();
-
-    m_context.unbind_framebuffer();
 }
 
 RenderTargetId RenderTarget::_next_id()

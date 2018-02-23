@@ -104,7 +104,7 @@ void assert_is_valid(const Texture& texture)
     }
 }
 #else
-void assert_valid_id(const Texture&) {} // noop
+void assert_is_valid(const Texture&) {} // noop
 #endif
 
 } // namespace
@@ -192,7 +192,7 @@ TexturePtr Texture::create_empty(GraphicsContext& context, std::string name, Siz
 
     // return the loaded texture on success
     TexturePtr texture = Texture::_create(context, id, GL_TEXTURE_2D, std::move(name), std::move(size), args.format);
-    context.register_new(texture);
+    GraphicsContext::Private<Texture>(context).register_new(texture);
     return texture;
 }
 
@@ -365,7 +365,7 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
     // return the loaded texture on success
     TexturePtr texture
         = Texture::_create(context, id, GL_TEXTURE_2D, std::move(name), std::move(image_size), texture_format);
-    context.register_new(texture);
+    GraphicsContext::Private<Texture>(context).register_new(texture);
     return texture;
 }
 

@@ -121,7 +121,7 @@ void RenderManager::render()
     m_graphics_context->finish_frame();
 }
 
-void RenderManager::register_new(GraphicsProducerPtr graphics_producer)
+void RenderManager::_register_new(GraphicsProducerPtr graphics_producer)
 {
     if (m_graphics_producer.count(graphics_producer->id())) {
         notf_throw_format(runtime_error, "Failed to register GraphicsProducer with duplicate ID: \""
@@ -130,7 +130,7 @@ void RenderManager::register_new(GraphicsProducerPtr graphics_producer)
     m_graphics_producer.emplace(std::make_pair(graphics_producer->id(), graphics_producer));
 }
 
-void RenderManager::register_new(RenderTargetPtr render_target)
+void RenderManager::_register_new(RenderTargetPtr render_target)
 {
     if (m_render_targets.count(render_target->id())) {
         notf_throw_format(runtime_error,

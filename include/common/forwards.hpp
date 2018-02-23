@@ -89,6 +89,7 @@ DEFINE_SHARED_POINTERS(class, VertexShader);
 DEFINE_SHARED_POINTERS(class, Layer);
 DEFINE_SHARED_POINTERS(class, GraphicsProducer);
 DEFINE_SHARED_POINTERS(class, Plotter);
+DEFINE_SHARED_POINTERS(class, FragmentProducer);
 
 DEFINE_UNIQUE_POINTERS(class, GraphicsContext);
 DEFINE_UNIQUE_POINTERS(class, VertexArrayType);

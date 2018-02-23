@@ -5,8 +5,7 @@
 #include "common/polygon.hpp"
 #include "graphics/engine/layer.hpp"
 #include "graphics/engine/render_manager.hpp"
-#include "graphics/producer/plotter.hpp"
-#include "graphics/text/font.hpp"
+#include "graphics/producer/fragment_producer.hpp"
 
 using namespace notf;
 
@@ -19,46 +18,30 @@ static void error_callback(int error, const char* description)
 
 void render_thread(GLFWwindow* window)
 {
-    RenderManagerPtr render_manager = RenderManager::create(window);
+    RenderManagerPtr manager = RenderManager::create(window);
 
     // Producer ///////////////////////////////////////////////
 
-    PlotterPtr plotter = Plotter::create(render_manager);
-
-    Polygonf polygon({Vector2f{0, 0}, Vector2f{100, 0}, Vector2f{100, 100}, Vector2f{0, 100}});
-
-    FontPtr font
-        = Font::load(render_manager->font_manager(), "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 32);
-
-    Plotter::ShapeInfo shape_info;
-    plotter->add_shape(shape_info, polygon);
-
-    //    Plotter::TextInfo text_info;
-    //    text_info.font        = font;
-    //    text_info.translation = Vector2f{10, 10};
-    //    plotter->add_text(text_info, "NoTF");
-
-    plotter->apply();
+    FragmentProducerPtr producer
+        = FragmentProducer::create(manager, "/home/clemens/code/notf/res/shaders/trivial.frag");
 
     // Render State //////////////////////////////////////////////
 
-    LayerPtr layer = Layer::create(render_manager, plotter);
-    layer->set_fullscreen(false);
-    layer->set_area(Aabri(-50, 100, 200, 200));
+    LayerPtr layer = Layer::create(manager, producer);
 
     RenderManager::State state;
     state.layers = {layer};
 
-    RenderManager::StateId state_id = render_manager->add_state(std::move(state));
-    render_manager->enter_state(state_id);
+    RenderManager::StateId state_id = manager->add_state(std::move(state));
+    manager->enter_state(state_id);
 
     // Rendering //////////////////////////////////////////////
 
     while (!glfwWindowShouldClose(window)) {
 
-        render_manager->render();
+        manager->render();
 
-        glfwPollEvents();
+        glfwWaitEvents();
     }
 }
 

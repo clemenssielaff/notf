@@ -162,11 +162,11 @@ public:
 private:
     /// Registers a new GraphicsProducer.
     /// @throws runtime_error   If a GraphicsProducer with the same ID is already registered.
-    void register_new(GraphicsProducerPtr graphics_producer);
+    void _register_new(GraphicsProducerPtr graphics_producer);
 
     /// Registers a new RenderTarget.
     /// @throws runtime_error   If a RenderTarget with the same ID is already registered.
-    void register_new(RenderTargetPtr render_target);
+    void _register_new(RenderTargetPtr render_target);
 
 private:
     /// Generate the next available StateId.
@@ -210,7 +210,7 @@ class RenderManager::Private<GraphicsProducer> {
 
     /// Registers a new GraphicsProducer.
     /// @throws runtime_error   If a GraphicsProducer with the same ID is already registered.
-    void register_new(GraphicsProducerPtr producer) { m_render_manager.register_new(std::move(producer)); }
+    void register_new(GraphicsProducerPtr producer) { m_render_manager._register_new(std::move(producer)); }
 
     /// The RenderManager to access.
     RenderManager& m_render_manager;
@@ -226,7 +226,7 @@ class RenderManager::Private<RenderTarget> {
 
     /// Registers a new RenderTarget.
     /// @throws runtime_error   If a RenderTarget with the same ID is already registered.
-    void register_new(RenderTargetPtr render_target) { m_render_manager.register_new(std::move(render_target)); }
+    void register_new(RenderTargetPtr render_target) { m_render_manager._register_new(std::move(render_target)); }
 
     /// The RenderManager to access.
     RenderManager& m_render_manager;

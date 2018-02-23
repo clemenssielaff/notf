@@ -114,8 +114,8 @@ GraphicsContext::~GraphicsContext()
 {
     // release all resources that are bound by the context
     unbind_all_textures();
-    unbind_pipeline();
-    unbind_framebuffer();
+    _unbind_pipeline();
+    _unbind_framebuffer();
 
     // deallocate and invalidate all remaining Textures
     for (auto itr : m_textures) {
@@ -404,28 +404,10 @@ ShaderPtr GraphicsContext::shader(const ShaderId& id) const
     return it->second.lock();
 }
 
-void GraphicsContext::bind_pipeline(const PipelinePtr& pipeline)
+GraphicsContext::PipelineGuard GraphicsContext::bind_pipeline(const PipelinePtr& pipeline)
 {
-    if (!pipeline) {
-        return unbind_pipeline();
-    }
-
-    if (pipeline != m_state.pipeline) {
-        gl_check(glUseProgram(0));
-        gl_check(glBindProgramPipeline(pipeline->id().value()));
-
-        m_state.pipeline = pipeline;
-    }
-}
-
-void GraphicsContext::unbind_pipeline()
-{
-    if (m_state.pipeline) {
-        gl_check(glUseProgram(0));
-        gl_check(glBindProgramPipeline(0));
-
-        m_state.pipeline.reset();
-    }
+    _bind_pipeline(pipeline);
+    return PipelineGuard(*this, pipeline);
 }
 
 FrameBufferPtr GraphicsContext::framebuffer(const FrameBufferId& id) const
@@ -437,24 +419,10 @@ FrameBufferPtr GraphicsContext::framebuffer(const FrameBufferId& id) const
     return it->second.lock();
 }
 
-void GraphicsContext::bind_framebuffer(const FrameBufferPtr& framebuffer)
+GraphicsContext::FramebufferGuard GraphicsContext::bind_framebuffer(const FrameBufferPtr& framebuffer)
 {
-    if (!framebuffer) {
-        return unbind_framebuffer();
-    }
-    if (framebuffer != m_state.framebuffer) {
-        gl_check(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->id().value()));
-        m_state.framebuffer = framebuffer;
-    }
-}
-
-void GraphicsContext::unbind_framebuffer()
-{
-    if (m_state.framebuffer) {
-        gl_check(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-
-        m_state.framebuffer.reset();
-    }
+    _bind_framebuffer(framebuffer);
+    return FramebufferGuard(*this, framebuffer);
 }
 
 GraphicsContext::State GraphicsContext::_create_state() const
@@ -470,7 +438,55 @@ GraphicsContext::State GraphicsContext::_create_state() const
     return result;
 }
 
-void GraphicsContext::register_new(TexturePtr texture)
+void GraphicsContext::_bind_pipeline(const PipelinePtr& pipeline)
+{
+    if (!pipeline) {
+        _unbind_pipeline();
+    }
+    else if (pipeline != m_state.pipeline) {
+        gl_check(glUseProgram(0));
+        gl_check(glBindProgramPipeline(pipeline->id().value()));
+        m_state.pipeline = pipeline;
+    }
+}
+
+void GraphicsContext::_unbind_pipeline(const PipelinePtr& pipeline)
+{
+    if (pipeline && pipeline != m_state.pipeline) {
+        log_critical << "Did not find expected Pipeline \"" << pipeline->id() << "\" to unbind, ignoring";
+        return;
+    }
+    if (m_state.pipeline) {
+        gl_check(glUseProgram(0));
+        gl_check(glBindProgramPipeline(0));
+        m_state.pipeline.reset();
+    }
+}
+
+void GraphicsContext::_bind_framebuffer(const FrameBufferPtr& framebuffer)
+{
+    if (!framebuffer) {
+        _unbind_framebuffer();
+    }
+    else if (framebuffer != m_state.framebuffer) {
+        gl_check(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->id().value()));
+        m_state.framebuffer = framebuffer;
+    }
+}
+
+void GraphicsContext::_unbind_framebuffer(const FrameBufferPtr& framebuffer)
+{
+    if (framebuffer && framebuffer != m_state.framebuffer) {
+        log_critical << "Did not find expected FrameBuffer \"" << framebuffer->id() << "\" to unbind, ignoring";
+        return;
+    }
+    if (m_state.framebuffer) {
+        gl_check(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+        m_state.framebuffer.reset();
+    }
+}
+
+void GraphicsContext::_register_new(TexturePtr texture)
 {
     auto it = m_textures.find(texture->id());
     if (it == m_textures.end()) {
@@ -486,7 +502,7 @@ void GraphicsContext::register_new(TexturePtr texture)
     }
 }
 
-void GraphicsContext::register_new(ShaderPtr shader)
+void GraphicsContext::_register_new(ShaderPtr shader)
 {
     auto it = m_shaders.find(shader->id());
     if (it == m_shaders.end()) {
@@ -502,7 +518,7 @@ void GraphicsContext::register_new(ShaderPtr shader)
     }
 }
 
-void GraphicsContext::register_new(FrameBufferPtr framebuffer)
+void GraphicsContext::_register_new(FrameBufferPtr framebuffer)
 {
     auto it = m_framebuffers.find(framebuffer->id());
     if (it == m_framebuffers.end()) {

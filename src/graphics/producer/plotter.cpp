@@ -139,16 +139,16 @@ void set_modified_second_ctrl(PlotVertexArray::Vertex& vertex, const CubicBezier
 
 namespace notf {
 
-Plotter::Plotter(const Token& token, RenderManagerPtr& render_manager)
+Plotter::Plotter(const Token& token, RenderManagerPtr& manager)
     : GraphicsProducer(token)
-    , m_vao_id(0)
-    , m_graphics_context(*render_manager->graphics_context())
-    , m_font_manager(*render_manager->font_manager())
+    , m_graphics_context(*manager->graphics_context())
+    , m_font_manager(*manager->font_manager())
     , m_pipeline()
     , m_vertices()
     , m_indices()
     , m_batches()
     , m_batch_buffer()
+    , m_vao_id(0)
     , m_state()
 {
     // vao
@@ -159,7 +159,7 @@ Plotter::Plotter(const Token& token, RenderManagerPtr& render_manager)
     const auto vao_guard = VaoBindGuard(m_vao_id);
 
     { // pipeline
-        GraphicsContextPtr& context = render_manager->graphics_context();
+        GraphicsContextPtr& context = manager->graphics_context();
 
         const std::string vertex_src  = load_file("/home/clemens/code/notf/res/shaders/plotter.vert");
         VertexShaderPtr vertex_shader = VertexShader::create(context, "plotter.vert", vertex_src);
@@ -540,23 +540,20 @@ void Plotter::_render() const
     gl_check(glEnable(GL_BLEND));
     gl_check(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-    m_graphics_context.bind_pipeline(m_pipeline);
+    auto pipeline_guard                     = m_graphics_context.bind_pipeline(m_pipeline);
     const TesselationShaderPtr& tess_shader = m_pipeline->tesselation_shader();
 
     // screen size
     const Aabri& render_area = m_graphics_context.render_area();
     if (m_state.screen_size != render_area.size()) {
         m_state.screen_size = render_area.size();
-        tess_shader->set_uniform("projection",
-                                 Matrix4f::orthographic(0, m_state.screen_size.width,
-                                                        0, m_state.screen_size.height, 0, 2));
+        tess_shader->set_uniform("projection", Matrix4f::orthographic(0, m_state.screen_size.width, 0,
+                                                                      m_state.screen_size.height, 0, 2));
     }
 
     for (const Batch& batch : m_batches) {
         std::visit(GraphicsProducer{*this, batch}, batch.info);
     }
-
-    m_graphics_context.unbind_pipeline();
 }
 
 } // namespace notf
