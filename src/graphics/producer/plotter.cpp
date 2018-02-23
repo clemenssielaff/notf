@@ -544,11 +544,12 @@ void Plotter::_render() const
     const TesselationShaderPtr& tess_shader = m_pipeline->tesselation_shader();
 
     // screen size
-    const Size2i screen_size = {800, 800}; // TODO: get the window size from the graphics context?
-    if (m_state.screen_size != screen_size) {
+    const Aabri& render_area = m_graphics_context.render_area();
+    if (m_state.screen_size != render_area.size()) {
+        m_state.screen_size = render_area.size();
         tess_shader->set_uniform("projection",
-                                 Matrix4f::orthographic(0, screen_size.width, 0, screen_size.height, 0, 2));
-        m_state.screen_size = screen_size;
+                                 Matrix4f::orthographic(0, m_state.screen_size.width,
+                                                        0, m_state.screen_size.height, 0, 2));
     }
 
     for (const Batch& batch : m_batches) {

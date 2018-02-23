@@ -1,7 +1,7 @@
 #pragma once
 
+#include "common/aabr.hpp"
 #include "common/forwards.hpp"
-#include "common/size2.hpp"
 #include "common/variant.hpp"
 #include "common/vector2.hpp"
 #include "common/warnings.hpp"

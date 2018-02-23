@@ -32,6 +32,6 @@ TEST_CASE("Modify Aabrs", "[common][aabr]")
         Aabrf aabr_1(top_right, bottom_left);
         Matrix3f rotation = Matrix3f::rotation(pi<float>() / 4);
         Aabrf aabr_2      = rotation.transform(aabr_1);
-        REQUIRE(aabr_2.get_width() == approx(2 * sqrt(2.f)));
+        REQUIRE(aabr_2.width() == approx(2 * sqrt(2.f)));
     }
 }

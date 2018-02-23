@@ -6,10 +6,10 @@
 #include <vector>
 
 #include "./gl_forwards.hpp"
+#include "common/aabr.hpp"
 #include "common/color.hpp"
 #include "common/forwards.hpp"
 #include "common/id.hpp"
-#include "common/size2.hpp"
 
 struct GLFWwindow;
 
@@ -171,8 +171,8 @@ private:
         /// Color applied when the bound framebuffer is cleared.
         Color clear_color = Color::black();
 
-        /// Render size in pixels.
-        Size2i render_size;
+        /// Area that is rendered into.
+        Aabri render_area;
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -197,13 +197,13 @@ public:
     /// Creates and initializes information about the graphics environment.
     static const Environment& environment();
 
-    /// The current state of the context.
-    const State& state() const { return m_state; }
-
     /// Returns the size of the context's window in pixels.
     /// Note that this might not be the current render size. For example, if you are currently rendering into a
     /// FrameBuffer that has a color texture of size 128x128, the window size is most likely much larger than that.
     Size2i window_size() const;
+
+    /// Area that is rendered into.
+    const Aabri& render_area() const { return m_state.render_area; }
 
     /// En- or disables vsync (enabled by default).
     /// @param enabled  Whether to enable or disable vsync.
@@ -219,11 +219,11 @@ public:
     /// @param force    Ignore the current state and always make the OpenGL call.
     void set_blend_mode(const BlendMode mode, const bool force = false);
 
-    /// Updates the size of the OpenGL viewport.
-    /// This changes the size of the 2D coordinate system that is rendered into.
-    /// @param buffer_size  New render size.
-    /// @param force        Ignore the current state and always make the OpenGL call.
-    void set_render_size(Size2i buffer_size, const bool force = false);
+    /// Define a new area that is rendered into.
+    /// @param offset   New area.
+    /// @param force    Ignore the current state and always make the OpenGL call.
+    /// @throws runtime_error   If the given area is invalid.
+    void set_render_area(Aabri area, const bool force = false);
 
     /// Sets the new clear color.
     /// @param color    Color to apply.

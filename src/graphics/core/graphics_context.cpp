@@ -300,14 +300,14 @@ void GraphicsContext::set_blend_mode(const BlendMode mode, const bool force)
     gl_check(glBlendFuncSeparate(rgb_sfactor, rgb_dfactor, alpha_sfactor, alpha_dfactor));
 }
 
-void GraphicsContext::set_render_size(Size2i buffer_size, const bool force)
+void GraphicsContext::set_render_area(Aabri area, const bool force)
 {
-    if (!buffer_size.is_valid()) {
-        notf_throw(runtime_error, "Cannot set render size to invalid size");
+    if (!area.is_valid()) {
+        notf_throw(runtime_error, "Cannot set to an invalid render area");
     }
-    if (buffer_size != m_state.render_size || force) {
-        m_state.render_size = buffer_size;
-        gl_check(glViewport(0, 0, buffer_size.width, buffer_size.height));
+    if (area != m_state.render_area || force) {
+        gl_check(glViewport(area.left(), area.bottom(), area.width(), area.height()));
+        m_state.render_area = std::move(area);
     }
 }
 
@@ -332,15 +332,10 @@ void GraphicsContext::clear(Color color, const BufferFlags buffers, const bool f
     gl_check(glClear(gl_flags));
 }
 
-void GraphicsContext::begin_frame()
-{
-    clear(m_state.clear_color, Buffer::COLOR | Buffer::DEPTH | Buffer::STENCIL);
-}
+// TODO: access control for begin_ and end_frame
+void GraphicsContext::begin_frame() { clear(m_state.clear_color, Buffer::COLOR | Buffer::DEPTH | Buffer::STENCIL); }
 
-void GraphicsContext::finish_frame()
-{
-    glfwSwapBuffers(m_window);
-}
+void GraphicsContext::finish_frame() { glfwSwapBuffers(m_window); }
 
 TexturePtr GraphicsContext::texture(const TextureId& id) const
 {
@@ -470,7 +465,7 @@ GraphicsContext::State GraphicsContext::_create_state() const
     result.texture_slots.resize(environment().texture_slot_count);
 
     // query current window size
-    result.render_size = window_size();
+    result.render_area = Aabri(window_size());
 
     return result;
 }

@@ -2,6 +2,7 @@
 
 #include "app/core/glfw.hpp"
 #include "common/log.hpp"
+#include "common/polygon.hpp"
 #include "graphics/engine/layer.hpp"
 #include "graphics/engine/render_manager.hpp"
 #include "graphics/producer/plotter.hpp"
@@ -24,21 +25,29 @@ void render_thread(GLFWwindow* window)
 
     PlotterPtr plotter = Plotter::create(render_manager);
 
+    Polygonf polygon({Vector2f{0, 0}, Vector2f{100, 0}, Vector2f{100, 100}, Vector2f{0, 100}});
+
     FontPtr font
         = Font::load(render_manager->font_manager(), "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 32);
 
-    Plotter::TextInfo info;
-    info.font        = font;
-    info.translation = Vector2f{150, 100};
+    Plotter::ShapeInfo shape_info;
+    plotter->add_shape(shape_info, polygon);
 
-    auto what = "NoTF";
-    plotter->add_text(info, what);
+    //    Plotter::TextInfo text_info;
+    //    text_info.font        = font;
+    //    text_info.translation = Vector2f{10, 10};
+    //    plotter->add_text(text_info, "NoTF");
+
     plotter->apply();
 
     // Render State //////////////////////////////////////////////
 
+    LayerPtr layer = Layer::create(render_manager, plotter);
+    layer->set_fullscreen(false);
+    layer->set_area(Aabri(-50, 100, 200, 200));
+
     RenderManager::State state;
-    state.layers = {Layer::create(render_manager, plotter)};
+    state.layers = {layer};
 
     RenderManager::StateId state_id = render_manager->add_state(std::move(state));
     render_manager->enter_state(state_id);

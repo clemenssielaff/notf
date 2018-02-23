@@ -108,6 +108,8 @@ void RenderManager::render()
         return;
     }
 
+    // TODO: clean all the render targets here
+
     m_graphics_context->begin_frame();
 
     // render all Layers

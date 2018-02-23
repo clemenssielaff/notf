@@ -69,7 +69,7 @@ void RenderTarget::clean()
 
     // prepare the graphic state
     m_context.bind_framebuffer(m_framebuffer); // TODO: FrameBufferGuard
-    m_context.set_render_size(texture()->size());
+    m_context.set_render_area(texture()->size());
     m_context.clear(Color::black());
 
     // render everything
