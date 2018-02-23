@@ -1,27 +1,14 @@
 #include <iostream>
 
 #include "app/core/glfw.hpp"
-#include "common/half.hpp"
 #include "common/log.hpp"
-#include "common/matrix4.hpp"
 #include "common/polygon.hpp"
-#include "common/size2.hpp"
-#include "common/system.hpp"
-#include "common/vector3.hpp"
-#include "common/vector4.hpp"
-#include "common/warnings.hpp"
-#include "graphics/core/frame_buffer.hpp"
 #include "graphics/core/graphics_context.hpp"
-#include "graphics/core/pipeline.hpp"
-#include "graphics/core/prefab_factory.hpp"
-#include "graphics/core/prefab_group.hpp"
-#include "graphics/core/shader.hpp"
-#include "graphics/core/texture.hpp"
 #include "graphics/core/vertex_array.hpp"
+#include "graphics/engine/layer.hpp"
 #include "graphics/producer/plotter.hpp"
-#include "graphics/text/font_manager.hpp"
 
-#include "glm_utils.hpp"
+#pragma clang diagnostic ignored "-Wunused-variable"
 
 using namespace notf;
 
@@ -55,75 +42,43 @@ void render_thread(GLFWwindow* window)
 
     PlotterPtr plotter = Plotter::create(render_manager);
 
+#if 0
     Polygonf polygon({Vector2f{100, 700}, Vector2f{50, 200}, Vector2f{50, 50}, Vector2f{750, 50}, Vector2f{750, 750}});
-    //    Polygonf polygon({
-    //        Vector2f{565, 770},
-    //        Vector2f{040, 440},
-    //        Vector2f{330, 310},
-    //        Vector2f{150, 120},
-    //        Vector2f{460, 230},
-    //        Vector2f{770, 120},
-    //        Vector2f{250, 450},
-    //    });
-
+#else
+    Polygonf polygon({
+        Vector2f{565, 770},
+        Vector2f{040, 440},
+        Vector2f{330, 310},
+        Vector2f{150, 120},
+        Vector2f{460, 230},
+        Vector2f{770, 120},
+        Vector2f{250, 450},
+    });
+#endif
     Plotter::ShapeInfo info;
 
     plotter->add_shape(info, polygon);
 
     plotter->apply();
 
+    // Render State //////////////////////////////////////////////
+
+    LayerPtr layer = Layer::create(render_manager, plotter);
+
+    RenderManager::State state;
+    state.layers = {layer};
+
+    RenderManager::StateId state_id = render_manager->add_state(std::move(state));
+    render_manager->enter_state(state_id);
+
     // Rendering //////////////////////////////////////////////
 
-    // render loop
-    using namespace std::chrono_literals;
-    auto last_frame_start_time = std::chrono::high_resolution_clock::now();
-    size_t frame_counter       = 0;
+    render_manager->graphics_context()->clear(Color(0.2f, 0.3f, 0.5f, 1));
+
     while (!glfwWindowShouldClose(window)) {
-        auto frame_start_time = std::chrono::high_resolution_clock::now();
-        if (frame_start_time - last_frame_start_time > 1s) {
-            last_frame_start_time = frame_start_time;
-            log_info << frame_counter << "fps";
-            frame_counter = 0;
-        }
-        ++frame_counter;
 
-        Size2i buffer_size;
-        glfwGetFramebufferSize(window, &buffer_size.width, &buffer_size.height);
-        glViewport(0, 0, buffer_size.width, buffer_size.height);
+        render_manager->render();
 
-        glClearColor(0.2f, 0.3f, 0.5f, 1);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        // perform polygon rendering //////////////////////////////////////////
-
-        //        gl_check(glEnable(GL_STENCIL_TEST)); // enable stencil
-        //        gl_check(glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE)); // do not write into color buffer
-        //        gl_check(glStencilMask(0xff)); // write to all bits of the stencil buffer
-        //        gl_check(glStencilFunc(GL_ALWAYS, 0, 1)); //  Always pass (other values are default values and do not
-        //        matter for GL_ALWAYS)
-
-        //        gl_check(glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP));
-        //        gl_check(glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP));
-        //        gl_check(glDisable(GL_CULL_FACE));
-        //        gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices->size()), GL_UNSIGNED_INT, nullptr));
-        //        gl_check(glEnable(GL_CULL_FACE));
-
-        //        gl_check(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)); // re-enable color
-        //        gl_check(glStencilFunc(GL_NOTEQUAL, 0x00, 0xff)); // only write to pixels that are inside the polygon
-        //        gl_check(glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO)); // reset the stencil buffer (is a lot faster than
-        //        clearing it at the start)
-
-        // render colors here, same area as before if you don't want to clear the stencil buffer every time
-        //        gl_check(glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices->size()), GL_UNSIGNED_INT, nullptr));
-
-        //        gl_check(glDisable(GL_STENCIL_TEST));
-
-        plotter->set_dirty();
-//        plotter->render();
-
-        ///////////////////////////////////////////////////////////////////////
-
-        glfwSwapBuffers(window);
         glfwPollEvents();
     }
 }

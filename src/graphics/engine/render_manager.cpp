@@ -109,6 +109,7 @@ void RenderManager::render()
     }
 
     // TODO: clean all the render targets here
+    // in order to sort them, use typeid(*ptr).hash_code()
 
     m_graphics_context->begin_frame();
 

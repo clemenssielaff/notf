@@ -21,7 +21,7 @@ class RenderTarget {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    /// Render Target arguments.
+    /// RenderTarget arguments.
     struct Args {
         /// Name of the RenderTarget, unique within the RenderManager.
         std::string name;
@@ -72,7 +72,7 @@ public:
     const TexturePtr& texture() const;
 
     /// Whether the target is dirty or not.
-    bool is_dirty() const;
+    bool is_dirty() const { return m_is_dirty; }
 
     /// Evokes the GraphicsProducers, "cleaning" the target.
     /// If the target is clean to begin with, this does nothing.
@@ -98,6 +98,9 @@ private:
 
     /// The GraphicsProducer that defines the contents of the target.
     GraphicsProducerPtr m_producer;
+
+    /// Whether the RenderTarget is currently dirty or not.
+    bool m_is_dirty;
 };
 
 } // namespace notf

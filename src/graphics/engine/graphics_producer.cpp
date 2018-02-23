@@ -9,9 +9,6 @@ GraphicsProducer::~GraphicsProducer() {}
 
 void GraphicsProducer::render() const
 {
-    if (!is_dirty()) {
-        return;
-    }
     try {
         _render();
     }
@@ -19,7 +16,6 @@ void GraphicsProducer::render() const
         log_warning << "Caught notf exception while rendering GraphicsProducer \"" << name() << "\"";
         throw;
     }
-    m_dirtyness = DirtynessLevel::CLEAN;
 }
 
 GraphicsProducerId GraphicsProducer::_next_id()

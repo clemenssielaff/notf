@@ -29,23 +29,6 @@ protected:
         Token() = default;
     };
 
-    /// Instead of a simple flag, the "dirtyness" of a GraphicsProducer is a little more nuanced.
-    /// While the producer is allowed to decide that it is no longer "programatically" dirty after (for example) all of
-    /// its inputs have been set back as they were when the last frame was rendered, the only way to clean "user"
-    /// dirtyness is by calling `render`.
-    enum class DirtynessLevel {
-        CLEAN,        ///< not dirty
-        PROGRAMMATIC, ///< dirty by "choice"
-        USER,         ///< dirty because the user requests a redraw
-    };
-
-    /// GraphicsProducer subclasses must identify themselves to the RenderManager, so it can try to minimize graphics
-    /// state changes when rendering multiple GraphicsProducers in sequence.
-    enum class Type {
-        PLOTTER,
-        PROCEDURAL,
-    };
-
 public:
     /// Private access type template.
     /// Used for finer grained friend control and is compiled away completely (if you should worry).
@@ -88,17 +71,6 @@ public:
     /// Human-readable name of this GraphicsProducer.
     const std::string& name() const { return m_name; }
 
-    /// Whether the GraphicsProducer is currently dirty or not.
-    bool is_dirty() const { return m_dirtyness != DirtynessLevel::CLEAN; }
-
-    /// Makes the GraphicsProducer dirty and requires a call to `render` to clean again.
-    /// Do not (necessarily) call this method from subclasses, as you'll have finer-grained control over the dirtyness
-    /// level with the protected `_set_dirty` and _set_clean` methods.
-    void set_dirty() { m_dirtyness = DirtynessLevel::USER; }
-
-    /// Unique type of this GraphicsProducer subclass.
-    virtual Type render_type() const = 0;
-
     /// Report all RenderTargets that this Producer depends on.
     /// The default implementation does nothing, it is the subclass' responsibility to add *all* of its dependencies.
     /// @param dependencies     [out] Dependencies to add yours to.
@@ -108,31 +80,6 @@ private:
     /// Renders the GraphicsProducer, if it is dirty.
     /// Is only callable from the RenderManager.
     void render() const;
-
-protected:
-    /// The dirtyness level of this GraphicsProducer.
-    DirtynessLevel _dirtyness() const { return m_dirtyness; }
-
-    /// Sets the GraphicsProducer "programmatically" dirty - but only if it is not already "user" dirty.
-    void _set_dirty()
-    {
-        if (m_dirtyness == DirtynessLevel::CLEAN) {
-            m_dirtyness = DirtynessLevel::PROGRAMMATIC;
-        }
-    }
-
-    /// Sets the GraphicsProducer clean, but only if it was just "programmatically" dirty.
-    /// This allows the producer finer-grained control over its own dirtyness.
-    /// For example, if a producer has a single boolean input, it may decide that it is dirty whenever the input
-    /// changed, but clean again when it is set back before a frame was actually rendered.
-    /// If however anybody calls `set_dirty` via the public interface, the GraphicsProducer cannot "clean" itself
-    /// without invoking "render".
-    void _set_clean()
-    {
-        if (m_dirtyness == DirtynessLevel::PROGRAMMATIC) {
-            m_dirtyness = DirtynessLevel::CLEAN;
-        }
-    }
 
 private:
     /// Subclass-defined implementation of the GraphicsProducer's rendering.
@@ -148,9 +95,6 @@ private:
 
     /// Human readable name of this GraphicsProducer.
     const std::string m_name;
-
-    /// Producer's dirtyness level.
-    mutable DirtynessLevel m_dirtyness;
 };
 
 // ===================================================================================================================//

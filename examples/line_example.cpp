@@ -1,28 +1,15 @@
-#include <iostream>
+//#include <iostream>
 
 #include "app/core/glfw.hpp"
 #include "common/bezier.hpp"
-#include "common/half.hpp"
 #include "common/log.hpp"
-#include "common/matrix4.hpp"
-#include "common/size2.hpp"
-#include "common/system.hpp"
-#include "common/vector3.hpp"
-#include "common/vector4.hpp"
-#include "common/warnings.hpp"
-#include "graphics/core/frame_buffer.hpp"
 #include "graphics/core/graphics_context.hpp"
-#include "graphics/core/pipeline.hpp"
-#include "graphics/core/prefab_factory.hpp"
-#include "graphics/core/prefab_group.hpp"
-#include "graphics/core/shader.hpp"
-#include "graphics/core/texture.hpp"
 #include "graphics/core/vertex_array.hpp"
-#include "graphics/producer/plotter.hpp"
+#include "graphics/engine/layer.hpp"
 #include "graphics/engine/render_manager.hpp"
-#include "graphics/text/font_manager.hpp"
+#include "graphics/producer/plotter.hpp"
 
-#include "glm_utils.hpp"
+#pragma clang diagnostic ignored "-Wunused-variable"
 
 using namespace notf;
 
@@ -82,38 +69,24 @@ void render_thread(GLFWwindow* window)
 
     stroker->apply();
 
+    // Render State //////////////////////////////////////////////
+
+    LayerPtr layer = Layer::create(render_manager, stroker);
+
+    RenderManager::State state;
+    state.layers = {layer};
+
+    RenderManager::StateId state_id = render_manager->add_state(std::move(state));
+    render_manager->enter_state(state_id);
+
     // Rendering //////////////////////////////////////////////
 
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
+    render_manager->graphics_context()->clear(Color(0.2f, 0.3f, 0.5f, 1));
 
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    // render loop
-    using namespace std::chrono_literals;
-    auto last_frame_start_time = std::chrono::high_resolution_clock::now();
-    size_t frame_counter       = 0;
     while (!glfwWindowShouldClose(window)) {
-        auto frame_start_time = std::chrono::high_resolution_clock::now();
-        if (frame_start_time - last_frame_start_time > 1s) {
-            last_frame_start_time = frame_start_time;
-            log_info << frame_counter << "fps";
-            frame_counter = 0;
-        }
-        ++frame_counter;
 
-        Size2i buffer_size;
-        glfwGetFramebufferSize(window, &buffer_size.width, &buffer_size.height);
-        glViewport(0, 0, buffer_size.width, buffer_size.height);
+        render_manager->render();
 
-        glClearColor(0.2f, 0.3f, 0.5f, 1);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        stroker->set_dirty();
-//        stroker->render();
-
-        glfwSwapBuffers(window);
         glfwPollEvents();
     }
 }

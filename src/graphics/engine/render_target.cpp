@@ -15,6 +15,7 @@ RenderTarget::RenderTarget(RenderManager& render_manager, Args&& args)
     , m_name(std::move(args.name))
     , m_framebuffer()
     , m_producer(std::move(args.producer))
+    , m_is_dirty(true)
 {
     // create the texture arguments
     Texture::Args texture_args;
@@ -58,8 +59,6 @@ RenderTargetPtr RenderTarget::create(RenderManager& manager, Args&& args)
 }
 
 const TexturePtr& RenderTarget::texture() const { return m_framebuffer->color_texture(0); }
-
-bool RenderTarget::is_dirty() const { return m_producer->is_dirty(); }
 
 void RenderTarget::clean()
 {

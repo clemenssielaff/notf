@@ -47,8 +47,6 @@ void Layer::render()
         context.set_render_area(m_area);
     }
 
-    // TODO: are producers dirty? I would guess that RenderTargets are dirty, not producers...
-    m_producer->set_dirty(); // force the producer to render
     GraphicsProducer::Private<Layer>(*m_producer).render();
 }
 

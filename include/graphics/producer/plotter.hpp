@@ -115,9 +115,6 @@ public:
     /// Destructor.
     virtual ~Plotter() override;
 
-    /// Unique type of this GraphicsProducer subclass.
-    virtual Type render_type() const override { return Type::PLOTTER; }
-
     /// Replaces the current list of OpenGL draw calls with one parsed from the buffer.
     /// Clears the buffer.
     void apply();
