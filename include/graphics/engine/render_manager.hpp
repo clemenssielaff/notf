@@ -5,6 +5,7 @@
 
 #include "common/dag.hpp"
 #include "common/forwards.hpp"
+#include "graphics/forwards.hpp"
 #include "common/id.hpp"
 
 struct GLFWwindow;

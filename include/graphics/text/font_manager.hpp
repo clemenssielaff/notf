@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "graphics/forwards.hpp"
 #include "graphics/text/font.hpp"
 #include "graphics/text/font_atlas.hpp"
 

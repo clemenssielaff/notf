@@ -10,7 +10,6 @@
 #include "common/enum.hpp"
 #include "common/log.hpp"
 #include "common/size2.hpp"
-#include "common/warnings.hpp"
 #include "graphics/core/gl_errors.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/opengl.hpp"

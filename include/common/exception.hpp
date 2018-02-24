@@ -40,6 +40,7 @@ struct notf_exception : public std::exception {
         TYPE(std::string file, std::string function, uint line, std::string message)               \
             : notf::notf_exception(std::move(file), std::move(function), line, std::move(message)) \
         {}                                                                                         \
+        TYPE(const TYPE&) = default;                                                               \
         virtual ~TYPE() override;                                                                  \
     };
 #else

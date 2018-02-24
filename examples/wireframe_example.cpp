@@ -8,7 +8,6 @@
 #include "common/system.hpp"
 #include "common/vector3.hpp"
 #include "common/vector4.hpp"
-#include "common/warnings.hpp"
 #include "graphics/core/frame_buffer.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/pipeline.hpp"

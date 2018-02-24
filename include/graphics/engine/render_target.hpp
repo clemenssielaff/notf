@@ -3,6 +3,7 @@
 #include "common/forwards.hpp"
 #include "common/id.hpp"
 #include "common/size2.hpp"
+#include "graphics/forwards.hpp"
 
 namespace notf {
 
@@ -57,7 +58,7 @@ public:
     /// Factory.
     /// @param manager  The RenderManager that the RenderTarget is registered with.
     /// @param args     Arguments.
-    static RenderTargetPtr create(RenderManager &manager, Args&& args);
+    static RenderTargetPtr create(RenderManager& manager, Args&& args);
 
     /// Id of this RenderTarget.
     RenderTargetId id() const noexcept { return m_id; }

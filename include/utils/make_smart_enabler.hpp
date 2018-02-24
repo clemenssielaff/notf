@@ -14,4 +14,6 @@ struct make_shared_enabler : public T {
     {}
 };
 
+// TODO: maybe make constructor of classes that use make_shared_enabler private and befriend mse?
+
 } // namespace notf

@@ -1,11 +1,11 @@
 #pragma once
 
-#include "./gl_forwards.hpp"
 #include "common/forwards.hpp"
 #include "common/id.hpp"
 #include "common/meta.hpp"
 #include "common/size2.hpp"
 #include "common/variant.hpp"
+#include "graphics/forwards.hpp"
 
 namespace notf {
 

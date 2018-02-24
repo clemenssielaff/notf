@@ -6,8 +6,6 @@
 
 namespace notf {
 
-// common ============================================================================================================//
-
 namespace detail {
 
 template<typename REAL>
@@ -73,28 +71,6 @@ using CubicBezier2f = detail::Bezier<3, Vector2f>;
 
 using Polygonf = detail::Polygon<float>;
 
-// graphics ==========================================================================================================//
-
-DEFINE_SHARED_POINTERS(class, Font);
-DEFINE_SHARED_POINTERS(class, FragmentShader);
-DEFINE_SHARED_POINTERS(class, FrameBuffer);
-DEFINE_SHARED_POINTERS(class, GeometryShader);
-DEFINE_SHARED_POINTERS(class, Pipeline);
-DEFINE_SHARED_POINTERS(class, RenderBuffer);
-DEFINE_SHARED_POINTERS(class, RenderTarget);
-DEFINE_SHARED_POINTERS(class, Shader);
-DEFINE_SHARED_POINTERS(class, TesselationShader);
-DEFINE_SHARED_POINTERS(class, Texture);
-DEFINE_SHARED_POINTERS(class, VertexShader);
-DEFINE_SHARED_POINTERS(class, Layer);
-DEFINE_SHARED_POINTERS(class, GraphicsProducer);
-DEFINE_SHARED_POINTERS(class, Plotter);
-DEFINE_SHARED_POINTERS(class, FragmentProducer);
-
-DEFINE_UNIQUE_POINTERS(class, GraphicsContext);
-DEFINE_UNIQUE_POINTERS(class, VertexArrayType);
-DEFINE_UNIQUE_POINTERS(class, IndexArrayType);
-DEFINE_UNIQUE_POINTERS(class, FontManager);
-DEFINE_UNIQUE_POINTERS(class, RenderManager);
+DEFINE_UNIQUE_POINTERS(class, LogHandler);
 
 } // namespace notf

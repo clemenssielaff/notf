@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 
-#include "./gl_forwards.hpp"
+#include "graphics/forwards.hpp"
 
 namespace notf {
 

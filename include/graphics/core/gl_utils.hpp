@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <string>
 
-#include "./gl_forwards.hpp"
+#include "graphics/forwards.hpp"
 
 namespace notf {
 

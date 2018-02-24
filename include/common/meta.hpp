@@ -65,6 +65,17 @@
 #define NODISCARD
 #endif
 
+/// Signifies that a value is (probably) unused and you don't want warnings about it.
+/// Example:
+///     UNUSED int answer = 42;
+#if __has_cpp_attribute(maybe_unused)
+#define UNUSED [[maybe_unused]]
+#elif __has_cpp_attribute(gnu::unused)
+#define UNUSED [[gnu::unused]]
+#else
+#define UNUSED
+#endif
+
 //====================================================================================================================//
 
 /// std namespace injections

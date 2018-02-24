@@ -5,11 +5,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include "./gl_forwards.hpp"
 #include "common/aabr.hpp"
 #include "common/color.hpp"
 #include "common/forwards.hpp"
 #include "common/id.hpp"
+#include "graphics/forwards.hpp"
 
 struct GLFWwindow;
 
@@ -440,7 +440,8 @@ private:
     void _bind_framebuffer(const FrameBufferPtr& framebuffer);
 
     /// Unbinds the current FrameBuffer.
-    /// @param framebuffer  Only unbind the current FrameBuffer, if it is equal to the one given. If empty (default), the
+    /// @param framebuffer  Only unbind the current FrameBuffer, if it is equal to the one given. If empty (default),
+    /// the
     ///                     current FrameBuffer is always unbound.
     void _unbind_framebuffer(const FrameBufferPtr& framebuffer = {});
 

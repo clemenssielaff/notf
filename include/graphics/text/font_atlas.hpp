@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "common/forwards.hpp"
-#include "graphics/core/gl_forwards.hpp"
+#include "graphics/forwards.hpp"
 #include "graphics/text/font.hpp"
 
 namespace notf {

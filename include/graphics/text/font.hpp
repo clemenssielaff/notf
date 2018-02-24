@@ -8,6 +8,7 @@
 #include "common/hash.hpp"
 #include "common/meta.hpp"
 #include "common/utf.hpp"
+#include "graphics/forwards.hpp"
 
 struct FT_FaceRec_;
 typedef struct FT_FaceRec_* FT_Face;

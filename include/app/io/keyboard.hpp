@@ -7,9 +7,8 @@
 
 namespace notf {
 
-/** All keys recognized by GLFW.
- * Can be used as indices for a KeyStateSet object.
- */
+/// All keys recognized by GLFW.
+/// Can be used as indices for a KeyStateSet object.
 enum class Key : unsigned char {
     __first = 0,
     SPACE   = __first,
@@ -136,9 +135,8 @@ enum class Key : unsigned char {
     __last  = MENU,
 };
 
-/** All mouse buttons recognized by GLFW.
- * Can be used as indices for a ButtonStateSet object.
- */
+/// All mouse buttons recognized by GLFW.
+/// Can be used as indices for a ButtonStateSet object.
 enum class Button : unsigned char {
     __first  = 0,
     BUTTON_1 = __first,
@@ -157,14 +155,14 @@ enum class Button : unsigned char {
     __last  = BUTTON_8,
 };
 
-/** Actions you can do with a key. */
+/// Actions you can do with a key.
 enum class KeyAction : unsigned char {
     RELEASE = 0,
     PRESS,
     REPEAT,
 };
 
-/** Actions you can do with a mouse. */
+/// Actions you can do with a mouse.
 enum class MouseAction : unsigned char {
     RELEASE = 0,
     PRESS,
@@ -172,10 +170,9 @@ enum class MouseAction : unsigned char {
     SCROLL,
 };
 
-/** Modifier keys.
- * If you hold down more than one key of the same modifier (both shift-keys, for example),
- * the flag is still set only once (meaning there is no double-shift modifier).
- */
+/// Modifier keys.
+/// If you hold down more than one key of the same modifier (both shift-keys, for example),
+/// the flag is still set only once (meaning there is no double-shift modifier).
 enum KeyModifiers : unsigned char {
     NONE  = 0,
     SHIFT = 1,
@@ -184,66 +181,60 @@ enum KeyModifiers : unsigned char {
     SUPER = 8,
 };
 
-/** Converts a GLFW key to a notf::Key. */
+/// Converts a GLFW key to a notf::Key.
 Key from_glfw_key(int key);
 
-/** The state of all regonized keys in a compact bitset.
- * True means pressed, false unpressed.
- * Use Key enum values as index to access individual key states.
- */
+/// The state of all regonized keys in a compact bitset.
+/// True means pressed, false unpressed.
+/// Use Key enum values as index to access individual key states.
 using KeyStateSet = std::bitset<to_number(Key::__last)>;
 
-/** Checks the state of a given key in the KeyStateSet.
- * @param state_set KeyStateSet to test.
- * @param key       Key to test.
- * @return          True iff the key is pressed, false otherwise.
- */
+/// Checks the state of a given key in the KeyStateSet.
+/// @param state_set KeyStateSet to test.
+/// @param key       Key to test.
+/// @return          True iff the key is pressed, false otherwise.
 inline bool test_key(const KeyStateSet& state_set, Key key)
 {
     assert(key >= Key::__first && key <= Key::__last);
     return state_set.test(static_cast<size_t>(to_number(key)));
 }
 
-/** Sets the state of a given key in the KeyStateSet.
- * @param state_set    KeyStateSet to change.
- * @param key          Key to modify.
- * @param pressed      Whether the key is pressed or not.
- */
+/// Sets the state of a given key in the KeyStateSet.
+/// @param state_set    KeyStateSet to change.
+/// @param key          Key to modify.
+/// @param pressed      Whether the key is pressed or not.
 inline void set_key(KeyStateSet& state_set, Key key, bool pressed)
 {
     assert(key >= Key::__first && key <= Key::__last);
     state_set.set(static_cast<size_t>(to_number(key)), pressed);
 }
 
-/** The state of all regonized buttons in a compact bitset.
- * True means pressed, false unpressed.
- * Use Button enum values as index to access individual button states.
- */
+/// The state of all regonized buttons in a compact bitset.
+/// True means pressed, false unpressed.
+/// Use Button enum values as index to access individual button states.
 using ButtonStateSet = std::bitset<to_number(Button::__last)>;
 
-/** Checks the state of a given button in the ButtonStateSet.
- * @param state_set ButtonStateSet to test.
- * @param button    Button to test.
- * @return          True iff the button is pressed, false otherwise.
- */
+/// Checks the state of a given button in the ButtonStateSet.
+/// @param state_set ButtonStateSet to test.
+/// @param button    Button to test.
+/// @return          True iff the button is pressed, false otherwise.
 inline bool test_button(const ButtonStateSet& state_set, Button button)
 {
     assert(button >= Button::__first && button <= Button::__last);
     return state_set.test(static_cast<size_t>(to_number(button)));
 }
 
-/** Sets the state of a given button in the ButtonStateSet.
- * @param state_set    ButtonStateSet to change.
- * @param button       Button to modify.
- * @param pressed      Whether the button is pressed or not.
- */
+/// Sets the state of a given button in the ButtonStateSet.
+/// @param state_set    ButtonStateSet to change.
+/// @param button       Button to modify.
+/// @param pressed      Whether the button is pressed or not.
 inline void set_button(ButtonStateSet& state_set, Button button, bool pressed)
 {
     assert(button >= Button::__first && button <= Button::__last);
     state_set.set(static_cast<size_t>(to_number(button)), pressed);
 }
 
-/** Things the focus can do. */
+/// Things the focus can do.
 enum class FocusAction : unsigned char {
     LOST = 0,
     GAINED,

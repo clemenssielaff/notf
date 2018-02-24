@@ -4,6 +4,7 @@
 
 #include "common/aabr.hpp"
 #include "common/forwards.hpp"
+#include "graphics/forwards.hpp"
 
 namespace notf {
 

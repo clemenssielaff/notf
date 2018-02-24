@@ -1,8 +1,8 @@
 #pragma once
 
-#include "./gl_forwards.hpp"
 #include "common/forwards.hpp"
 #include "common/id.hpp"
+#include "graphics/forwards.hpp"
 
 namespace notf {
 

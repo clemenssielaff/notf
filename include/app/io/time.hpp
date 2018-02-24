@@ -7,6 +7,8 @@ namespace notf {
 
 //====================================================================================================================//
 
+// TODO: time should be in common, some sort of TimER should be in app/io
+
 /// Time class using GLFW's representation of `ticks`.
 class Time {
     friend class Application; // to set the frequency at the start
