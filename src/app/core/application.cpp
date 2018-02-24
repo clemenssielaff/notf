@@ -353,6 +353,7 @@ void Application::_set_current_window(Window* window)
 
 void Application::_shutdown()
 {
+    // you can only close the application once
     static bool is_running = true;
     if (!is_running) {
         return;

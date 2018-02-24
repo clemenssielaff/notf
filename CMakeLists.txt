@@ -103,6 +103,7 @@ add_sources(SOURCE_FILES examples
     text_example.cpp
     property_example.cpp
     rendermanager_example.cpp
+    renderthread_example.cpp
 )
 
 add_sources(THIRDPARTY_FILES thirdparty
@@ -128,6 +129,7 @@ add_sources(RESOURCE_FILES res
     shaders/plotter.frag
     shaders/trivial.vert
     shaders/trivial.frag
+    shaders/clouds.frag
 )
 
 add_executable(notf
