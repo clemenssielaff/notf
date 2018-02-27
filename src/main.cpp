@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include "framebuffer_example.hpp"
 #include "line_example.hpp"
 #include "property_example.hpp"

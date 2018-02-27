@@ -23,13 +23,11 @@ class Application {
 public:
     /// Private access type template.
     /// Used for finer grained friend control and is compiled away completely (if you should worry).
-    template<typename T>
-    class Private {
-        static_assert(always_false_t<T>{}, "No Private access for requested type");
-    };
+    template<typename T, typename = typename std::enable_if<is_one_of<T, Window>::value>::type>
+    class Private;
 
     //================================================================================================================//
-
+public:
     /// Application arguments.
     ///
     /// argv and arc
@@ -82,7 +80,9 @@ public:
     DISALLOW_HEAP_ALLOCATION(Application)
 
     /// Desctructor
-    ~Application();
+    ~Application() { _shutdown(); }
+
+    // initialization  --------------------------------------------------------
 
     /// Initializes the Application through an user-defined ApplicationInfo object.
     /// @throws application_initialization_error    When the Application intialization failed.
@@ -98,20 +98,23 @@ public:
         return _instance(std::move(args));
     }
 
+    /// Starts the application's main loop.
+    /// Can only be called once.
+    /// @return  The application's return value after it has finished.
+    int exec();
+
+    // global state -----------------------------------------------------------
+
     /// The singleton Application instance.
     /// @returns    The Application singleton.
     /// @throws application_initialization_error    When the Application intialization failed.
     static Application& instance() { return _instance(); }
 
-    /// Starts the application's main loop.
-    /// @return  The application's return value after it has finished.
-    int exec();
-
-    /// Returns the Application's Resource Manager.
+    /// The Application's Resource Manager.
     ResourceManager& resource_manager() { return *m_resource_manager; }
 
-    /// Returns the current Window.
-    WindowPtr current_window() { return m_current_window; }
+    /// The Application's thread pool.
+    ThreadPool& thread_pool() { return *m_thread_pool; }
 
 private:
     /// Static (private) function holding the actual Application instance.
@@ -198,7 +201,10 @@ private:
     LogHandlerPtr m_log_handler;
 
     /// The Application's resource manager.
-    std::unique_ptr<ResourceManager> m_resource_manager;
+    ResourceManagerPtr m_resource_manager;
+
+    /// The global thread pool.
+    ThreadPoolPtr m_thread_pool;
 
     /// All Windows known the the Application.
     std::vector<WindowPtr> m_windows;

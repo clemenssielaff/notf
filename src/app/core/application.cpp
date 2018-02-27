@@ -1,7 +1,7 @@
 #include "app/core/application.hpp"
 
 #include "app/core/events/char_event.hpp"
-//#include "app/core/events/focus_event.hpp"
+#include "common/thread_pool.hpp"
 #include "app/core/events/key_event.hpp"
 #include "app/core/events/mouse_event.hpp"
 #include "app/core/glfw.hpp"
@@ -9,7 +9,6 @@
 #include "app/core/window.hpp"
 #include "app/io/keyboard.hpp"
 #include "app/io/time.hpp"
-//#include "common/enum.hpp"
 #include "common/log.hpp"
 #include "common/vector2.hpp"
 
@@ -46,6 +45,7 @@ const Application::Args Application::s_invalid_args;
 Application::Application(const Args& application_args)
     : m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
     , m_resource_manager()
+    , m_thread_pool(std::make_unique<ThreadPool>())
     , m_windows()
     , m_current_window()
 {
@@ -85,8 +85,6 @@ Application::Application(const Args& application_args)
     // initialize other NoTF mechanisms
     Time::initialize();
 }
-
-Application::~Application() { _shutdown(); }
 
 int Application::exec()
 {

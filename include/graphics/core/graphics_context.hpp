@@ -5,13 +5,12 @@
 #include <unordered_map>
 #include <vector>
 
+#include "app/forwards.hpp"
 #include "common/aabr.hpp"
 #include "common/color.hpp"
 #include "common/forwards.hpp"
 #include "common/id.hpp"
 #include "graphics/forwards.hpp"
-
-struct GLFWwindow;
 
 namespace notf {
 
@@ -100,10 +99,8 @@ class GraphicsContext {
 public:
     /// Private access type template.
     /// Used for finer grained friend control and is compiled away completely (if you should worry).
-    template<typename T>
-    class Private {
-        static_assert(always_false_t<T>{}, "No Private access for requested type");
-    };
+    template<typename T, typename = typename std::enable_if<is_one_of<T, Texture, Shader, FrameBuffer>::value>::type>
+    class Private;
 
     //================================================================================================================//
 
@@ -518,10 +515,6 @@ class GraphicsContext::Private<Shader> {
 
     /// Constructor.
     /// @param context  GraphicsContext to access.
-    // managed classes have access to the GraphicsContext's internals to register themselves
-    friend class Shader;
-    friend class Texture;
-    friend class FrameBuffer;
     Private(GraphicsContext& context) : m_context(context) {}
 
     /// Registers a new Shader.

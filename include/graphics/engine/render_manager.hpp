@@ -5,8 +5,8 @@
 
 #include "common/dag.hpp"
 #include "common/forwards.hpp"
-#include "graphics/forwards.hpp"
 #include "common/id.hpp"
+#include "graphics/forwards.hpp"
 
 struct GLFWwindow;
 namespace notf {
@@ -65,6 +65,11 @@ private:
 // ===================================================================================================================//
 
 ///
+/// 
+/// State
+/// =====
+/// 
+/// The RenderManager has a STATE that defines how to render a frame.
 /// A State is made up of a list of Layers.
 /// Layers define an AABR (potentially full-screen) that are rendered into the screen buffer on each frame.
 /// Each Layer has a single GraphicsProducer (short: Producer) that define their content.
@@ -87,16 +92,47 @@ private:
 ///                                              |
 ///                                          Producer5
 ///
-/// The Render manager has a STATE that defines how to render a frame.
+/// Threading
+/// =========
+/// 
+/// One important design decision concerned the threading model with regards to rendering.
+/// Obviously we need the actual rendering (OpenGL calls) made from a dedicated thread, in case OpenGL blocks to draw
+/// a more complicated frame. During that time, even though the UI cannot update visually, we need the rest of the
+/// application to remain responsive.
+/// 
+/// Ideally, that is all that the render thread does - take some sort of fixed state, compile the best arrangement of
+/// OpenGL calls to satisfy the requirements imposed by the state and execute those calls.
+/// Practically however, this is a bit more complicated.
+/// 
+/// Some GraphicsProducer may require only properties in order to draw: the "smoke" FragmentProducer for example, 
+/// requires only the screen resolution and the time to update.
+/// In that case, it is enough for the Application to update the PropertyManager with all of its accumulated updates
+/// from various threads and then kick off the RenderManager of each Window.
+///   
+///                     +
+///                     |     (owned by Application)         (owned by Window)
+///                     |              |                            |
+///           +---+     |              v                            v
+///               |     |     +------------------+          +-----------------+
+///     various   |   async   |                  |   sync   |                 |
+///               +----------->  PropertyManager +---------->  RenderManager  |
+///     threads   |   update  |                  |   query  |                 |
+///               |     |     +------------------+          +-----------------+
+///           +---+     |
+///                     |
+///                     +
+///               thread barrier
+///                  
+/// This works well, as long as each Producer only requires the PropertyManager to remain unchanged 
+/// 
 class RenderManager {
+
     // types ---------------------------------------------------------------------------------------------------------//
 public:
     /// Private access type template.
     /// Used for finer grained friend control and is compiled away completely (if you should worry).
-    template<typename T>
-    class Private {
-        static_assert(always_false_t<T>{}, "No Private access for requested type");
-    };
+    template<typename T, typename = typename std::enable_if<is_one_of<T, GraphicsProducer, RenderTarget>::value>::type>
+    class Private;
 
     /// Complete state of the Render Buffer.
     struct State {
@@ -234,3 +270,4 @@ class RenderManager::Private<RenderTarget> {
 };
 
 } // namespace notf
+

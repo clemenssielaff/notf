@@ -72,5 +72,6 @@ using CubicBezier2f = detail::Bezier<3, Vector2f>;
 using Polygonf = detail::Polygon<float>;
 
 DEFINE_UNIQUE_POINTERS(class, LogHandler);
+DEFINE_UNIQUE_POINTERS(class, ThreadPool);
 
 } // namespace notf

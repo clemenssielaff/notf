@@ -56,19 +56,17 @@ using GraphicsProducerId = IdType<GraphicsProducer, size_t>;
 class GraphicsProducer {
 
     // types ---------------------------------------------------------------------------------------------------------//
+public:
+    /// Private access type template.
+    /// Used for finer grained friend control and is compiled away completely (if you should worry).
+    template<typename T, typename = typename std::enable_if<is_one_of<T, Layer, RenderTarget>::value>::type>
+    class Private;
+
 protected:
     /// Token object to make sure that object instances can only be created by a call to `_create`.
     class Token {
         friend class GraphicsProducer;
         Token() = default;
-    };
-
-public:
-    /// Private access type template.
-    /// Used for finer grained friend control and is compiled away completely (if you should worry).
-    template<typename T>
-    class Private {
-        static_assert(always_false_t<T>{}, "No Private access for requested type");
     };
 
     // methods -------------------------------------------------------------------------------------------------------//

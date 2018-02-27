@@ -58,10 +58,8 @@ class Window : public std::enable_shared_from_this<Window> {
 public:
     /// Private access type template.
     /// Used for finer grained friend control and is compiled away completely (if you should worry).
-    template<typename T>
-    class Private {
-        static_assert(always_false_t<T>{}, "No Private access for requested type");
-    };
+    template<typename T, typename = typename std::enable_if<is_one_of<T, Application>::value>::type>
+    class Private;
 
     //================================================================================================================//
 
