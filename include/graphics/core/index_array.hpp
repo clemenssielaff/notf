@@ -55,7 +55,7 @@ protected:
     }
 
 public:
-    DISALLOW_COPY_AND_ASSIGN(IndexArrayType)
+    NO_COPY_AND_ASSIGN(IndexArrayType)
 
     /// Destructor.
     virtual ~IndexArrayType();

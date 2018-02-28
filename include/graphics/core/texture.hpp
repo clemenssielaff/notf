@@ -172,7 +172,7 @@ public:
     static TexturePtr load_image(GraphicsContext& context, const std::string& file_path, std::string name,
                                  const Args& args = s_default_args);
 
-    DISALLOW_COPY_AND_ASSIGN(Texture)
+    NO_COPY_AND_ASSIGN(Texture)
 
     /// Destructor.
     ~Texture();

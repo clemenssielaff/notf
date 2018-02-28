@@ -102,7 +102,7 @@ protected:
     Window(const Args& args);
 
 public:
-    DISALLOW_COPY_AND_ASSIGN(Window)
+    NO_COPY_AND_ASSIGN(Window)
 
     /// Factory.
     /// @param info  WindowInfo providing initialization arguments.

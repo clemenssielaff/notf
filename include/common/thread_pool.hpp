@@ -21,9 +21,10 @@ NOTF_EXCEPTION_TYPE(thread_pool_finished)
 ///     http://roar11.com/2016/01/a-platform-independent-thread-pool-using-c14/
 ///
 class ThreadPool {
+
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    DISALLOW_COPY_AND_ASSIGN(ThreadPool)
+    NO_COPY_AND_ASSIGN(ThreadPool)
 
     /// Constructor.
     /// @param thread_count     Number of threads in the pool.

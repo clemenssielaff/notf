@@ -211,12 +211,12 @@ struct always_false_t : std::false_type {};
 
 /// Convenience macro to disable the construction of automatic copy- and assign methods.
 /// Implicitly disables move constructor/assignment methods as well, although you can define them yourself if you want.
-#define DISALLOW_COPY_AND_ASSIGN(Type) \
-    Type(const Type&) = delete;        \
+#define NO_COPY_AND_ASSIGN(Type) \
+    Type(const Type&) = delete;  \
     void operator=(const Type&) = delete;
 
 /// Forbids the allocation on the heap of a given type.
-#define DISALLOW_HEAP_ALLOCATION(Type)      \
+#define NO_HEAP_ALLOCATION(Type)            \
     void* operator new(size_t)    = delete; \
     void* operator new[](size_t)  = delete; \
     void operator delete(void*)   = delete; \

@@ -35,7 +35,7 @@ public:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    DISALLOW_COPY_AND_ASSIGN(ResourceManager)
+    NO_COPY_AND_ASSIGN(ResourceManager)
 
     /// Construction.
     /// @param args Arguments.

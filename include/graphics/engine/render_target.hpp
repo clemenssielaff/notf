@@ -53,7 +53,7 @@ protected:
     RenderTarget(RenderManager& render_manager, Args&& args);
 
 public:
-    DISALLOW_COPY_AND_ASSIGN(RenderTarget)
+    NO_COPY_AND_ASSIGN(RenderTarget)
 
     /// Factory.
     /// @param manager  The RenderManager that the RenderTarget is registered with.

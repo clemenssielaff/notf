@@ -16,7 +16,7 @@ protected:
     FragmentProducer(const Token& token, RenderManagerPtr& manager, const std::string& shader);
 
 public:
-    DISALLOW_COPY_AND_ASSIGN(FragmentProducer)
+    NO_COPY_AND_ASSIGN(FragmentProducer)
 
     /// Factory.
     /// @param manager  RenderManager.

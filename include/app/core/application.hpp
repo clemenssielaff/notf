@@ -76,11 +76,11 @@ private:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    DISALLOW_COPY_AND_ASSIGN(Application)
-    DISALLOW_HEAP_ALLOCATION(Application)
+    NO_COPY_AND_ASSIGN(Application)
+    NO_HEAP_ALLOCATION(Application)
 
     /// Desctructor
-    ~Application() { _shutdown(); }
+    ~Application();
 
     // initialization  --------------------------------------------------------
 

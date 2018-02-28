@@ -150,7 +150,7 @@ protected:
     }
 
 public:
-    DISALLOW_COPY_AND_ASSIGN(VertexArrayType)
+    NO_COPY_AND_ASSIGN(VertexArrayType)
 
     /// Destructor.
     virtual ~VertexArrayType();

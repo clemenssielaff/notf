@@ -25,7 +25,7 @@ protected:
     Layer(RenderManagerPtr& manager, GraphicsProducerPtr producer);
 
 public:
-    DISALLOW_COPY_AND_ASSIGN(Layer)
+    NO_COPY_AND_ASSIGN(Layer)
 
     /// Factory.
     /// Constructs a full-screen, visible Layer.

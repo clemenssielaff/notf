@@ -37,7 +37,7 @@ public:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    DISALLOW_COPY_AND_ASSIGN(PrefabGroup)
+    NO_COPY_AND_ASSIGN(PrefabGroup)
 
     /// Default constructor.
     PrefabGroup()

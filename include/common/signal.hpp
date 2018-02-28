@@ -158,7 +158,7 @@ private: // struct
     };
 
 public: // methods
-    DISALLOW_COPY_AND_ASSIGN(Signal)
+    NO_COPY_AND_ASSIGN(Signal)
 
     /** Constructor. */
     Signal() = default;
@@ -302,7 +302,7 @@ private: // struct
     };
 
 public: // methods
-    DISALLOW_COPY_AND_ASSIGN(Signal)
+    NO_COPY_AND_ASSIGN(Signal)
 
     Signal() = default;
 
@@ -418,7 +418,7 @@ private: // fields
 class receive_signals {
 
 public: // methods
-    DISALLOW_COPY_AND_ASSIGN(receive_signals)
+    NO_COPY_AND_ASSIGN(receive_signals)
 
     /** Constructor. */
     receive_signals() = default;

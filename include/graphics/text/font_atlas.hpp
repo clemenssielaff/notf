@@ -96,7 +96,7 @@ private:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    DISALLOW_COPY_AND_ASSIGN(FontAtlas)
+    NO_COPY_AND_ASSIGN(FontAtlas)
 
     /// Constructor.
     FontAtlas(GraphicsContext& graphics_context);

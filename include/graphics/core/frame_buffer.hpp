@@ -59,7 +59,7 @@ protected:
     RenderBuffer(GraphicsContextPtr& context, Args&& args);
 
 public:
-    DISALLOW_COPY_AND_ASSIGN(RenderBuffer)
+    NO_COPY_AND_ASSIGN(RenderBuffer)
 
     /// Factory.
     /// @param context         Graphics context owning the render buffer.
@@ -151,7 +151,7 @@ protected:
     FrameBuffer(GraphicsContext& context, Args&& args);
 
 public:
-    DISALLOW_COPY_AND_ASSIGN(FrameBuffer)
+    NO_COPY_AND_ASSIGN(FrameBuffer)
 
     /// Factory.
     /// @param context          Graphics context owning the frane buffer.

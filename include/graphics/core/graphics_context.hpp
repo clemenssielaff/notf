@@ -164,8 +164,8 @@ public:
     class NODISCARD PipelineGuard {
         friend class GraphicsContext;
 
-        DISALLOW_COPY_AND_ASSIGN(PipelineGuard)
-        DISALLOW_HEAP_ALLOCATION(PipelineGuard)
+        NO_COPY_AND_ASSIGN(PipelineGuard)
+        NO_HEAP_ALLOCATION(PipelineGuard)
 
         /// Constructor.
         /// @param context  Context that created the guard.
@@ -216,8 +216,8 @@ public:
     class NODISCARD FramebufferGuard {
         friend class GraphicsContext;
 
-        DISALLOW_COPY_AND_ASSIGN(FramebufferGuard)
-        DISALLOW_HEAP_ALLOCATION(FramebufferGuard)
+        NO_COPY_AND_ASSIGN(FramebufferGuard)
+        NO_HEAP_ALLOCATION(FramebufferGuard)
 
         /// Constructor.
         /// @param context      Context that created the guard.
@@ -290,7 +290,7 @@ private:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    DISALLOW_COPY_AND_ASSIGN(GraphicsContext)
+    NO_COPY_AND_ASSIGN(GraphicsContext)
 
     /// Constructor.
     /// @param window           GLFW window displaying the contents of this context.

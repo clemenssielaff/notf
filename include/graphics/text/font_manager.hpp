@@ -26,7 +26,7 @@ protected:
     FontManager(GraphicsContext& context);
 
 public:
-    DISALLOW_COPY_AND_ASSIGN(FontManager)
+    NO_COPY_AND_ASSIGN(FontManager)
 
     /// Factory
     /// @param context  Graphics context within which the FontManager operates.

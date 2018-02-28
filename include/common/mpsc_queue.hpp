@@ -42,7 +42,7 @@ class MpscQueue final {
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    DISALLOW_COPY_AND_ASSIGN(MpscQueue)
+    NO_COPY_AND_ASSIGN(MpscQueue)
 
     /// Constructor.
     MpscQueue() : m_head(new Node), m_tail(m_head.load(std::memory_order_relaxed))

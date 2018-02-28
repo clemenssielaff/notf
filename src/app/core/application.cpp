@@ -1,7 +1,6 @@
 #include "app/core/application.hpp"
 
 #include "app/core/events/char_event.hpp"
-#include "common/thread_pool.hpp"
 #include "app/core/events/key_event.hpp"
 #include "app/core/events/mouse_event.hpp"
 #include "app/core/glfw.hpp"
@@ -10,6 +9,7 @@
 #include "app/io/keyboard.hpp"
 #include "app/io/time.hpp"
 #include "common/log.hpp"
+#include "common/thread_pool.hpp"
 #include "common/vector2.hpp"
 
 namespace { // anonymous
@@ -85,6 +85,8 @@ Application::Application(const Args& application_args)
     // initialize other NoTF mechanisms
     Time::initialize();
 }
+
+Application::~Application() { _shutdown(); }
 
 int Application::exec()
 {

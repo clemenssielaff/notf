@@ -102,7 +102,7 @@ struct LogMessageFactory {
     friend void set_log_level(LogMessage::LEVEL level);
 
 public: // methods
-    DISALLOW_HEAP_ALLOCATION(LogMessageFactory)
+    NO_HEAP_ALLOCATION(LogMessageFactory)
 
     /** Value constructor.
      * @param level    Level of the LogMessage;

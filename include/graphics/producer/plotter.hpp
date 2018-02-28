@@ -109,7 +109,7 @@ protected:
     Plotter(const Token& token, RenderManagerPtr& manager);
 
 public:
-    DISALLOW_COPY_AND_ASSIGN(Plotter)
+    NO_COPY_AND_ASSIGN(Plotter)
 
     /// Factory.
     /// @param manager  RenderManager.

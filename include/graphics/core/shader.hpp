@@ -101,7 +101,7 @@ protected:
     Shader(GraphicsContextPtr& context, const GLuint id, Stage::Flags stages, std::string name);
 
 public:
-    DISALLOW_COPY_AND_ASSIGN(Shader)
+    NO_COPY_AND_ASSIGN(Shader)
 
     /// Destructor
     virtual ~Shader();
