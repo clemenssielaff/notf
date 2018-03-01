@@ -132,7 +132,7 @@ private:
 
     /// Registers a new Window in this Application.
     /// @throws window_initialization_error     If the Window has no valid associated OpenGL context.
-    void _register_window(WindowPtr window);
+    void _register_window(const WindowPtr& window);
 
     /// Unregisters an existing Window from this Application.
     void _unregister_window(Window* window);

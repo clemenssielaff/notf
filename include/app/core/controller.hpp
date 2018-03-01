@@ -6,12 +6,11 @@
 #pragma once
 
 #include <map>
+#include <sstream>
 
 #include "app/core/item.hpp"
 #include "app/core/property_graph.hpp"
 #include "common/exception.hpp"
-#include "common/string.hpp"
-#include "common/vector2.hpp"
 
 namespace notf {
 
@@ -29,21 +28,21 @@ protected: // constructor ******************************************************
     Controller();
 
 public: // methods ****************************************************************************************************/
-    /// Item at the root of the Controller's branch of the Item hierarchy. */
-    ScreenItem* get_root_item() { return m_root_item; }
-    const ScreenItem* get_root_item() const { return const_cast<Controller*>(this)->get_root_item(); }
+    /// Item at the root of the Controller's branch of the Item hierarchy.
+    ScreenItem* root_item() { return m_root_item; }
+    const ScreenItem* root_item() const { return const_cast<Controller*>(this)->root_item(); }
 
-    /// Initializes this Controller if it is uninitialized, otherwise does nothing. */
+    /// Initializes this Controller if it is uninitialized, otherwise does nothing.
     void initialize();
 
 protected: // methods
-    /// Sets a new root at this Controller's branch of the  Item hierarchy. */
-    void _set_root_item(ScreenItemPtr item);
+    /// Sets a new root at this Controller's branch of the  Item hierarchy.
+    void _set_root_item(const ScreenItemPtr& item);
 
     virtual void _remove_child(const Item* child_item) override;
 
 private: // fields
-    /// Item at the root of the Controller's Item hierarchy. */
+    /// Item at the root of the Controller's Item hierarchy.
     ScreenItem* m_root_item;
 };
 
@@ -61,12 +60,13 @@ private: // fields
 template<typename ControllerSubclass>
 class BaseController : public Controller {
 
-protected: // types
+    // types ---------------------------------------------------------------------------------------------------------//
+protected:
     class State;
     using StateMap   = std::map<std::string, std::unique_ptr<State>>;
     using Transition = std::function<void(ControllerSubclass&)>;
 
-    /******************************************************************************************************************/
+    //=======================================================================//
 
     /// A Controller State is a pair of functions (enter and leave) that both take the instance as mutable argument.
     /// This approach seems to be the most general, since the State can not only describe a set of absolute Property
@@ -74,91 +74,89 @@ protected: // types
     class State {
 
     public: // methods
-        /// Value Constructor. */
+        /// Value Constructor.
         State(Transition enter, Transition leave, typename StateMap::const_iterator it)
             : m_enter(std::move(enter)), m_leave(std::move(leave)), m_it(std::move(it))
         {}
 
-        /// Called when the Controller enters this State. */
+        /// Called when the Controller enters this State.
         void enter(ControllerSubclass& controller) const { m_enter(controller); }
 
-        /// Called when the Controller leaves this State. */
+        /// Called when the Controller leaves this State.
         void leave(ControllerSubclass& controller) const { m_leave(controller); }
 
-        /// The name of this State. */
+        /// The name of this State.
         const std::string& name() const { return m_it->first; }
 
     private: // fields
-        /// Function called when entering the State. */
+        /// Function called when entering the State.
         const Transition m_enter;
 
-        /// Function called when leaving the State. */
+        /// Function called when leaving the State.
         const Transition m_leave;
 
-        /// Iterator used to reference the name of this State. */
+        /// Iterator used to reference the name of this State.
         const typename StateMap::const_iterator m_it;
     };
 
-    /******************************************************************************************************************/
+    //=======================================================================//
 
-    /// A State Machine is a collection of named States. */
+    /// A State Machine is a collection of named States.
     class StateMachine {
 
     public: // methods
         NO_COPY_AND_ASSIGN(StateMachine)
 
-        /// Default Constructor. */
+        /// Default Constructor.
         StateMachine() = default;
 
-        /// Move Constructor. */
+        /// Move Constructor.
         StateMachine(StateMachine&& other) : m_states() { std::swap(m_states, other.m_states); }
 
         /// Adds a new State to the StateMachine.
-        /// @return                      The new State.
-        /// @throw std::runtime_error    If the State could not be added.
+        /// @return                 The new State.
+        /// @throws runtime_error   If the State could not be added.
         const State* add_state(std::string name, Transition enter, Transition leave)
         {
             if (name.empty()) {
-                throw_runtime_error("Cannot add a State without a name to the StateMachine");
+                notf_throw(runtime_error, "Cannot add a State without a name to the StateMachine");
             }
             typename StateMap::iterator it;
             bool success;
             std::tie(it, success) = m_states.emplace(std::make_pair(std::move(name), nullptr));
             if (!success) {
-                throw_runtime_error(
-                    string_format("Cannot replace existing State \"%s\" in StateMachine", name.c_str()));
+                notf_throw_format(runtime_error, "Cannot replace existing State \"" << name << "\" in StateMachine");
             }
             it->second.reset(new State(enter, leave, it));
             return it->second.get();
         }
 
-        /// Checks if the StateMachine has a State with the given name. */
+        /// Checks if the StateMachine has a State with the given name.
         bool has_state(const std::string& name) const { return m_states.find(name) != m_states.end(); }
 
         /// Returns a State by name.
         /// @return                      The new requested State.
         /// @throw std::runtime_error    If the State could not be found.
-        const State* get_state(const std::string& name) const
+        const State* state(const std::string& name) const
         {
             auto it = m_states.find(name);
             if (it == m_states.end()) {
-                throw_runtime_error(string_format("Unknown State \"%s\" requested", name.c_str()));
+                notf_throw_format(runtime_error, "Unknown State \"" << name << "\" requested");
             }
             return it->second.get();
         }
 
     private: // fields
-        /// All States in this StateMachine. */
+        /// All States in this StateMachine.
         StateMap m_states;
     };
 
-    /******************************************************************************************************************/
-
-protected: // methods
+    // methods -------------------------------------------------------------------------------------------------------//
+protected:
     /// Value Constructor.
     /// @param state_machine     StateMachine of this Controller.
     /// @param properties        All Properties of this Controller.
-    BaseController(StateMachine&& state_machine, PropertyMap&& properties)
+    BaseController(StateMachine&& state_machine, std::unordered_map<std::string, PropertyId>&& properties)
         : Controller()
         , m_state_machine(std::move(state_machine))
         , m_property_map(std::move(properties))
@@ -171,7 +169,7 @@ protected: // methods
     void transition_to(const State* next)
     {
         if (!next) {
-            throw_runtime_error("Cannot transition to null state");
+            notf_throw(runtime_error, "Cannot transition to null state");
         }
         if (m_current_state) {
             m_current_state->leave(static_cast<ControllerSubclass&>(*this));
@@ -183,23 +181,24 @@ protected: // methods
     /// Overload to transition to a new State by name.
     /// @param state                 Name of the State to transition to.
     /// @throw std::runtime_error    If a State by the given name could not be found.
-    void transition_to(const std::string& state) { transition_to(m_state_machine.get_state(state)); }
+    void transition_to(const std::string& state) { transition_to(m_state_machine.state(state)); }
 
-    /// Returns the name of the current State or an empty string, if the Controller doesn't have a State. */
-    const std::string& get_current_state_name() const
+    /// Returns the name of the current State or an empty string, if the Controller doesn't have a State.
+    const std::string& current_state_name() const
     {
         static const std::string empty;
-        return m_current_state ? m_current_state->get_name() : empty;
+        return m_current_state ? m_current_state->name() : empty;
     }
 
-private: // fields
-    /// The Controller's StateMachine. */
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
+    /// The Controller's StateMachine.
     const StateMachine m_state_machine;
 
-    /// Map of all the Properties of this Controller. */
-    const PropertyMap m_property_map;
+    /// Map of all the Properties of this Controller.
+    const std::unordered_map<std::string, PropertyId> m_property_map;
 
-    /// State that the Controller is currently in. */
+    /// State that the Controller is currently in.
     const State* m_current_state;
 };
 
@@ -217,13 +216,13 @@ public:
     Dynamite()
         : Controller<Dynamite>(init_state_machine())
     {
-        cout << "Starting in State: " << get_current_state_name() << endl;
+        cout << "Starting in State: " << current_state_name() << endl;
         transition_to(m_state_calm);
     }
 
     void go_boom() { transition_to(m_state_boom); }
 private:
-    const std::string& get_explosive() const
+    const std::string& explosive() const
     {
         static const std::string explosive = "dynamite";
         return explosive;
@@ -235,7 +234,7 @@ private:
 
         m_state_calm = state_machine.add_state(
             "calm",
-            [](Dynamite& self) { cout << "I'm loaded with " << self.get_explosive() << endl; }, // enter
+            [](Dynamite& self) { cout << "I'm loaded with " << self.explosive() << endl; }, // enter
             [](Dynamite&) { cout << "Tick tick tick..." << endl; }); // leave
 
         m_state_boom = state_machine.add_state(

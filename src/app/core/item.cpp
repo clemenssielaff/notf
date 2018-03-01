@@ -1,21 +1,17 @@
 #include "app/core/item.hpp"
 
 #include <atomic>
-#include <string>
 #include <unordered_set>
 
+#include "app/core/controller.hpp"
+#include "app/core/layout.hpp"
 #include "common/log.hpp"
-//#include "core/controller.hpp"
-//#include "core/item_container.hpp"
-//#include "core/layout.hpp"
-//#include "core/window_layout.hpp"
 
 namespace { // anonymous
 using namespace notf;
 
-/** Returns the next available ItemID.
- * Is thread-safe and ever-increasing.
- */
+/// Returns the next available ItemID.
+/// Is thread-safe and ever-increasing.
 ItemID next_id()
 {
     static std::atomic<size_t> g_nextID(1);
@@ -158,12 +154,14 @@ ItemContainer::~ItemContainer() {}
 
 void ItemContainer::clear()
 {
-    apply([](Item* item) -> void { item->_set_parent(nullptr); });
+    apply(
+        [](Item* item) -> void { Item::Private<ItemContainer>(*item).set_parent(nullptr, /* is_orphaned = */ false); });
 }
 
 void ItemContainer::destroy()
 {
-    apply([](Item* item) -> void { item->_set_parent(nullptr, /* is_orphaned = */ true); });
+    apply(
+        [](Item* item) -> void { Item::Private<ItemContainer>(*item).set_parent(nullptr, /* is_orphaned = */ true); });
 }
 
 //====================================================================================================================//

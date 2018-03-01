@@ -48,7 +48,7 @@ resource_manager_initialization_error::~resource_manager_initialization_error() 
 
 ResourceManager::ResourceManager(Args&& args) : m_texture_directory(), m_shader_directory(), m_font_directory()
 {
-    const std::string executable_directory = args.executable_path.substr(0, args.executable_path.find_last_of("/") + 1);
+    const std::string executable_directory = args.executable_path.substr(0, args.executable_path.find_last_of('/') + 1);
 
     m_texture_directory = make_absolute(args.texture_directory, executable_directory);
     m_shader_directory  = make_absolute(args.shader_directory, executable_directory);

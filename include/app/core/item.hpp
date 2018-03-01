@@ -2,7 +2,6 @@
 
 #include "app/forwards.hpp"
 #include "common/id.hpp"
-#include "common/meta.hpp"
 #include "common/signal.hpp"
 
 namespace notf {
@@ -33,39 +32,15 @@ using ItemID = IdType<Item, size_t>;
 /// The name is assigned by the user and is not guaranteed to be unique.
 /// If the name is not set, it is simply the ID of the Item.
 ///
-/// Items in Python
-/// ===============
-/// When it comes to the lifetime of items, the way that Python and NoTF work together poses an interesting challenge.
-///
-/// Within NoTF's C++ codebase, Items (Layouts, Widgets, Controllers) are owned by their parent item through a shared
-/// pointer.
-/// There may be other shared pointers at any given time that keep an Item alive but they are usually short-lived and
-/// only serve as a fail-save mechanism to ensure that the item stays valid between function calls.
-/// When instancing a Item subclass in Python, a `PyObject` is generated, whose lifetime is managed by Python.
-/// In order to have save access to the underlying NoTF Item, the `PyObject` keeps a shared pointer to it.
-///
-/// The difficulties arise, when Python execution of the app's `main.py` has finished.
-/// By that time, all `PyObject`s are deallocated and release their shared pointers.
-/// Items that are connected into the Item hierarchy stay alive, Items that are only referenced by a `PyObject` (and are
-/// not part of the Item hierarchy) are deleted.
-/// Usually that is what we would want, but in order to be able to call overridden virtual methods of Item subclasses
-/// created in Python, we need to keep the `PyObject` alive for as long as the corresponding NoTF Item is alive.
-///
-/// To do that, Items can keep a `PyObject` around, making sure that it is alive as long as they are.
-/// However, since the `PyObject` also has a shared pointer to the item, they own each other and will therefore never
-/// be deleted.
-/// Something has to give.
-/// We cannot *not* keep a `PyObject` around, and we cannot allow the `PyObject` to have anything but a strong (owning)
-/// pointer to an Item, because it would be destroyed immediately after creation from Python.
-/// Therefore, all Python bindings of `Item` subclasses are outfitted with a custom deallocator function that
-/// automatically stores a fresh reference to the `PyObject` in the `Item` instance, just as the `PyObject` would go out
-/// of scope, if (and only if) there is another shared owner of the `Item` at the time of the `PyObjects` deallocation.
-///
-/// Effectively, this switches the ownership of the two objects, when the Python script execution has finished.
-///
 class Item : public receive_signals, public std::enable_shared_from_this<Item> {
-    friend struct detail::ItemContainer;
-    friend class WindowLayout;
+
+    // types ---------------------------------------------------------------------------------------------------------//
+public:
+    /// Private access type template.
+    /// Used for finer grained friend control and is compiled away completely (if you should worry).
+    template<typename T,
+             typename = typename std::enable_if<is_one_of<T, detail::ItemContainer, WindowLayout>::value>::type>
+    class Private;
 
     // signals -------------------------------------------------------------------------------------------------------//
 public:
@@ -106,7 +81,7 @@ public:
     /// The (optional) name of this Item.
     const std::string& name() const { return m_name; }
 
-    /// Checks if this Item is the parent of the given child.*/
+    /// Checks if this Item is the parent of the given child.
     bool has_child(const Item* child) const;
 
     /// Checks if this Item has any children at all.
@@ -146,7 +121,7 @@ public:
     ///@}
 
     /// Updates the name of this Item.
-    const std::string& set_name(const std::string name)
+    const std::string& set_name(std::string name)
     {
         m_name = std::move(name);
         return m_name;
@@ -178,12 +153,12 @@ protected:
     }
 
     /// Allows Item subclasses to set each others' parent.
-    static void _set_parent(Item* item, Item* parent) { item->_set_parent(parent); }
+    static void _set_parent(Item* item, Item* parent) { item->_set_parent(parent, /* is_orphaned = */ false); }
 
 private:
     /// Sets the parent of this Item.
     /// @param is_orphaned   If the parent of the Item has already been deleted, the Item cannot unregister itself.
-    void _set_parent(Item* parent, bool is_orphaned = false);
+    void _set_parent(Item* parent, bool is_orphaned);
 
     // fields --------------------------------------------------------------------------------------------------------//
 protected:
@@ -219,8 +194,6 @@ std::shared_ptr<ItemSubclass> make_shared_from(ItemSubclass* item)
 
 namespace detail {
 
-//====================================================================================================================//
-
 /// Abstract Item Container.
 /// Used by Item subclasses to contain child Items.
 struct ItemContainer {
@@ -241,7 +214,7 @@ struct ItemContainer {
     /// Checks whether this Container is empty or not.
     virtual bool is_empty() const = 0;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Sets the parent of all Items to nullptr without evoking proper reparenting.
     /// Is only used by the Item destructor.
@@ -251,7 +224,7 @@ protected:
 //====================================================================================================================//
 
 /// Widgets have no child Items and use this empty Container as a placeholder instead.
-struct EmptyItemContainer : public ItemContainer {
+struct EmptyItemContainer final : public ItemContainer {
     virtual ~EmptyItemContainer() override;
 
     virtual void clear() override {}
@@ -266,7 +239,7 @@ struct EmptyItemContainer : public ItemContainer {
 //====================================================================================================================//
 
 /// Controller (and some Layouts) have a single child Item.
-struct SingleItemContainer : public ItemContainer {
+struct SingleItemContainer final : public ItemContainer {
     virtual ~SingleItemContainer() override;
 
     virtual void clear() override;
@@ -284,7 +257,7 @@ struct SingleItemContainer : public ItemContainer {
 //====================================================================================================================//
 
 /// Many Layouts keep their child Items in a list.
-struct ItemList : public ItemContainer {
+struct ItemList final : public ItemContainer {
     virtual ~ItemList() override;
 
     virtual void clear() override;
@@ -300,5 +273,39 @@ struct ItemList : public ItemContainer {
 };
 
 } // namespace detail
+
+// ===================================================================================================================//
+
+template<>
+class Item::Private<detail::ItemContainer> {
+    friend struct detail::ItemContainer;
+
+    /// Constructor.
+    Private(Item& item) : m_item(item) {}
+
+    /// Sets the parent of this Item.
+    /// @param is_orphaned   If the parent of the Item has already been deleted, the Item cannot unregister itself.
+    void set_parent(Item* parent, bool is_orphaned) { m_item._set_parent(parent, is_orphaned); }
+
+    /// The Item to access.
+    Item& m_item;
+};
+
+// ===================================================================================================================//
+
+template<>
+class Item::Private<WindowLayout> {
+    friend class WindowLayout;
+
+    /// Constructor.
+    Private(Item& item) : m_item(item) {}
+
+    /// Sets the parent of this Item.
+    /// @param is_orphaned   If the parent of the Item has already been deleted, the Item cannot unregister itself.
+    void set_window(Window* window) { m_item.m_window = window; }
+
+    /// The Item to access.
+    Item& m_item;
+};
 
 } // namespace notf

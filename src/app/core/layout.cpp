@@ -2,9 +2,9 @@
 
 namespace notf {
 
-Layout::~Layout(){};
-
 Layout::Layout(detail::ItemContainerPtr container) : ScreenItem(std::move(container)), m_has_explicit_claim(false) {}
+
+Layout::~Layout(){};
 
 bool Layout::set_claim(const Claim claim)
 {

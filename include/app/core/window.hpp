@@ -137,6 +137,9 @@ public:
     /// Returns zero if the GLFW window was already closed.
     Vector2f mouse_pos() const;
 
+    /// Requests a redraw of this Window at the next possibility.
+    void request_redraw() const;
+
     /// Closes this Window.
     void close();
 

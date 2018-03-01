@@ -81,7 +81,7 @@ struct Arsch {};
 void test_property_manager()
 {
     PropertyManager manager;
-    PropertyGraph& graph = manager.m_graph;
+    const PropertyGraph& graph = manager.graph();
 
     PropertyManager::CommandBatch batch1 = manager.create_batch(Time{});
 

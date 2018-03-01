@@ -1,43 +1,36 @@
-#include "core/window_layout.hpp"
+#include "app/core/window_layout.hpp"
 
+#include "app/core/controller.hpp"
+#include "app/core/window.hpp"
 #include "common/log.hpp"
-#include "core/controller.hpp"
-#include "core/item_container.hpp"
-#include "core/window.hpp"
+#include "utils/make_smart_enabler.hpp"
 
 namespace notf {
 
-WindowLayout::WindowLayout(Window* window)
-    : Layout(std::make_unique<detail::SingleItemContainer>())
-    , m_controller()
+WindowLayout::WindowLayout(Window* window) : Layout(std::make_unique<detail::SingleItemContainer>()), m_controller()
 {
     // the WindowLayout is at the root of the Item hierarchy and therefore special
-    m_window               = window;
-    m_scissor_layout       = this;
-    m_has_explicit_scissor = true;
+    Item::Private<WindowLayout>(*this).set_window(window);
+    ScreenItem::Private<WindowLayout>(*this).be_own_scissor(this);
 }
 
-std::shared_ptr<WindowLayout> WindowLayout::create(Window* window)
+WindowLayoutPtr WindowLayout::create(Window* window)
 {
-#ifdef _DEBUG
-    return std::shared_ptr<WindowLayout>(new WindowLayout(window));
+#ifdef NOTF_DEBUG
+    return WindowLayoutPtr(new WindowLayout(window));
 #else
-    struct make_shared_enabler : public WindowLayout {
-        make_shared_enabler(Window* window)
-            : WindowLayout(window) {}
-    };
-    return std::make_shared<make_shared_enabler>(window);
+    return std::make_shared<make_shared_enabler<WindowLayout>>(window);
 #endif
 }
 
-std::vector<Widget*> WindowLayout::get_widgets_at(const Vector2f& screen_pos)
+std::vector<Widget*> WindowLayout::widgets_at(const Vector2f& screen_pos)
 {
     std::vector<Widget*> result;
-    _get_widgets_at(screen_pos, result);
+    _widgets_at(screen_pos, result);
     return result;
 }
 
-void WindowLayout::set_controller(ControllerPtr controller)
+void WindowLayout::set_controller(const ControllerPtr& controller)
 {
     if (!controller) {
         log_warning << "Cannot add an empty Controller pointer to a Layout";
@@ -69,23 +62,22 @@ void WindowLayout::_remove_child(const Item* child_item)
     }
 
     if (child_item != m_controller) {
-        log_critical << "Cannot remove unknown child Item " << child_item->get_name()
-                     << " from WindowLayout " << get_name();
+        log_critical << "Cannot remove unknown child Item " << child_item->name() << " from WindowLayout " << name();
         return;
     }
 
-    log_trace << "Removing controller from WindowLayout " << get_name();
+    log_trace << "Removing controller from WindowLayout " << name();
     m_children->clear();
     m_controller = nullptr;
 
     on_child_removed(child_item);
 }
 
-void WindowLayout::_get_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
+void WindowLayout::_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
     if (m_controller) {
-        if (ScreenItem* root_item = m_controller->get_root_item()) {
-            ScreenItem::_get_widgets_at(root_item, local_pos, result);
+        if (ScreenItem* root_item = m_controller->root_item()) {
+            ScreenItem::_widgets_at(root_item, local_pos, result);
         }
     }
 }
@@ -98,13 +90,13 @@ Claim WindowLayout::_consolidate_claim()
 
 void WindowLayout::_relayout()
 {
-    _set_size(get_grant());
+    _set_size(grant());
     _set_content_aabr(Aabrf::zero());
 
     if (m_controller) {
-        if (ScreenItem* root_item = m_controller->get_root_item()) {
-            ScreenItem::_set_grant(root_item, get_size());
-            _set_content_aabr(root_item->get_content_aabr());
+        if (ScreenItem* root_item = m_controller->root_item()) {
+            ScreenItem::_set_grant(root_item, size());
+            _set_content_aabr(root_item->content_aabr());
         }
     }
 }

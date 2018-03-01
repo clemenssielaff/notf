@@ -15,19 +15,19 @@
 namespace { // anonymous
 using namespace notf;
 
-/** The current state of all keyboard keys. */
+/// The current state of all keyboard keys.
 KeyStateSet g_key_states;
 
-/** Currently pressed key modifiers. */
+/// Currently pressed key modifiers.
 KeyModifiers g_key_modifiers;
 
-/** The current state of all mouse buttons. */
+/// The current state of all mouse buttons.
 ButtonStateSet g_button_states;
 
-/** Current position of the mouse cursor in screen coordinates. */
+/// Current position of the mouse cursor in screen coordinates.
 Vector2f g_cursor_pos;
 
-/** Previous position of the mouse cursor in screen coordinates. */
+/// Previous position of the mouse cursor in screen coordinates.
 Vector2f g_prev_cursor_pos;
 
 } // namespace
@@ -290,7 +290,7 @@ void Application::_on_window_resize(GLFWwindow* glfw_window, int width, int heig
     Window::Private<Application>(*window).resize({width, height});
 }
 
-void Application::_register_window(WindowPtr window)
+void Application::_register_window(const WindowPtr& window)
 {
     assert(window);
     GLFWwindow* glfw_window = Window::Private<Application>(*window).glfw_window();

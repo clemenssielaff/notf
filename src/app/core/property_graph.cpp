@@ -6,13 +6,13 @@
 
 namespace notf {
 
-property_lookup_error::~property_lookup_error() {}
+property_lookup_error::~property_lookup_error() = default;
 
-property_cyclic_dependency_error::~property_cyclic_dependency_error() {}
+property_cyclic_dependency_error::~property_cyclic_dependency_error() = default;
 
 namespace property_graph_detail {
 
-PropertyBase::~PropertyBase() noexcept {}
+PropertyBase::~PropertyBase() noexcept = default;
 
 void PropertyBase::clear_dependencies()
 {

@@ -3,6 +3,7 @@
 #include "app/core/application.hpp"
 #include "app/core/glfw.hpp"
 #include "app/core/resource_manager.hpp"
+#include "app/core/window_layout.hpp"
 #include "common/log.hpp"
 #include "graphics/core/raw_image.hpp"
 #include "graphics/engine/render_manager.hpp"
@@ -88,7 +89,7 @@ Window::Window(const Args& args)
     Application& app = Application::instance();
 
     // NoTF uses OpenGL ES 3.2
-//    glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
+    //    glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
@@ -132,9 +133,8 @@ Window::Window(const Args& args)
     }
 
     // create the layout
-    //    m_layout = WindowLayout::create(this);
-    //    m_layout->_set_grant(get_buffer_size());
-    //    m_layout->set_render_layer(m_render_manager->get_default_layer());
+    m_layout = WindowLayout::Private<Window>::create(this);
+    WindowLayout::Private<Window>(*m_layout).set_grant(buffer_size());
 }
 
 Window::~Window() { close(); }
@@ -170,6 +170,11 @@ Vector2f Window::mouse_pos() const
     double mouse_x, mouse_y;
     glfwGetCursorPos(m_glfw_window.get(), &mouse_x, &mouse_y);
     return {static_cast<float>(mouse_x), static_cast<float>(mouse_y)};
+}
+
+void Window::request_redraw() const
+{
+    // TODO: Window::request_redraw
 }
 
 void Window::close()

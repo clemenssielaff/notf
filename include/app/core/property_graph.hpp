@@ -41,11 +41,6 @@ NOTF_EXCEPTION_TYPE(property_cyclic_dependency_error)
 
 namespace property_graph_detail {
 
-#if defined(NOTF_CLANG) || defined(NOTF_IDE)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
-#endif
-
 /// Base type of all properties.
 class PropertyBase {
     friend class ::notf::PropertyGraph;
@@ -60,9 +55,7 @@ public:
     /// Constructor.
     /// @param id       Property id.
     /// @param graph    Graph containing this property.
-    PropertyBase(const id_t id, const PropertyGraph& graph)
-        : m_id(id), m_graph(graph), m_is_dirty(false), m_time(Time::now()), m_dependencies(), m_affected()
-    {}
+    PropertyBase(const id_t id, const PropertyGraph& graph) : m_id(id), m_graph(graph) {}
 
     /// Destructor.
     virtual ~PropertyBase() noexcept;
@@ -98,22 +91,18 @@ protected:
     /// Graph containing this property.
     const PropertyGraph& m_graph;
 
-    /// Whether the property is dirty (its expression needs to be evaluated).
-    mutable bool m_is_dirty;
-
     /// Time when the property was set the last time.
-    Time m_time;
+    Time m_time = Time::now();
 
     /// All properties that this one depends on.
     std::vector<PropertyBase*> m_dependencies;
 
     /// Properties affected by this one through expressions.
     std::vector<PropertyBase*> m_affected;
-};
 
-#if defined(NOTF_CLANG) || defined(NOTF_IDE)
-#pragma clang diagnostic pop
-#endif
+    /// Whether the property is dirty (its expression needs to be evaluated).
+    mutable bool m_is_dirty = false;
+};
 
 //====================================================================================================================//
 
@@ -144,7 +133,7 @@ public:
     {}
 
     /// Destructor.
-    virtual ~Property() noexcept override {}
+    ~Property() noexcept override = default;
 
     /// The property's value.
     /// If the property is defined by an expression, this might evaluate the expression.
@@ -204,7 +193,7 @@ private: // for use by Property and PropertyGraph
     }
 
     /// Freezing a property means removing its expression without changing its value.
-    virtual void freeze() noexcept override final
+    void freeze() noexcept final
     {
         clear_dependencies();
         m_expression = {};
@@ -241,14 +230,14 @@ class PropertyGraph {
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
-    PropertyGraph() : m_next_id(1), m_properties() {}
+    PropertyGraph() : m_next_id(1) {}
 
     /// Checks if the given id identifies a property of this graph.
-    bool has_property(const PropertyId id) const { return m_properties.count(static_cast<id_t>(id)); }
+    bool has_property(const PropertyId id) const { return m_properties.count(static_cast<id_t>(id)) != 0; }
 
     /// @{
-    /// Returns as pointer to a property requested by type and id.
-    /// @return Pointer to the property.
+    /// Returns the value of the property requested by type and id.
+    /// @return Value of the property.
     /// @throws property_lookup_error   If a property with the given id does not exist or is of the wrong type.
     template<typename value_t>
     const value_t& property(const PropertyId id) const
@@ -280,7 +269,7 @@ public:
         if (has_property(id)) {
             notf_throw(property_lookup_error, "Cannot create a new property with an existing ID!");
         }
-        const id_t numeric_id = static_cast<id_t>(id);
+        const auto numeric_id = static_cast<id_t>(id);
         const auto result
             = m_properties.emplace(numeric_id, std::make_unique<Property<value_t>>(numeric_id, *this, value_t{}));
         assert(result.second);
@@ -295,7 +284,7 @@ public:
     {
         auto it = m_properties.find(static_cast<id_t>(id));
         if (it != m_properties.end()) {
-            if (Property<value_t>* property = dynamic_cast<Property<value_t>*>(it->second.get())) {
+            if (auto* property = dynamic_cast<Property<value_t>*>(it->second.get())) {
                 property->set_value(std::forward<value_t>(value), time);
                 return;
             }
@@ -318,13 +307,13 @@ public:
     {
         auto it = m_properties.find(static_cast<id_t>(id));
         if (it != m_properties.end()) {
-            if (Property<value_t>* property = dynamic_cast<Property<value_t>*>(it->second.get())) {
+            if (auto* property = dynamic_cast<Property<value_t>*>(it->second.get())) {
                 std::vector<PropertyBase*> dependent_properties;
                 if (_get_properties(dependencies, dependent_properties)) {
                     if (_is_dependency_of_any(property, dependent_properties)) {
                         notf_throw(property_cyclic_dependency_error,
-                                             "Failed to create property expression which would introduce a "
-                                             "cyclic dependency");
+                                   "Failed to create property expression which would introduce a "
+                                   "cyclic dependency");
                     }
                     else {
                         property->set_expression(std::move(expression), std::move(dependent_properties), time);
@@ -340,7 +329,7 @@ public:
     /// All affected properties will have their value set to their current value.
     /// @warning    This deletes the property - all raw pointers to the property will become invalid immediately!
     /// @return     True, iff the id identifies a property in the graph.
-    void delete_property(const PropertyId id);
+    void delete_property(PropertyId id);
 
 private:
     /// Collects a list of properties from their ids.

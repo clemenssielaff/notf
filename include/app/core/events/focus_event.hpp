@@ -1,7 +1,5 @@
 #pragma once
 
-//#include <memory>
-
 #include "app/forwards.hpp"
 #include "app/io/keyboard.hpp"
 
@@ -15,14 +13,13 @@ namespace notf {
 class FocusEvent {
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-
     // TODO: FocusEvent is probably outdated when we have a hierarchy of focus-handling controllers...?
 
-    FocusEvent(Window& window, FocusAction action/*, WidgetPtr old_focus, WidgetPtr new_focus*/)
+    FocusEvent(Window& window, FocusAction action, WidgetPtr old_focus, WidgetPtr new_focus)
         : window(window)
         , action(action)
-//        , old_focus(std::move(old_focus))
-//        , new_focus(std::move(new_focus))
+        , old_focus(std::move(old_focus))
+        , new_focus(std::move(new_focus))
         , m_was_handled(action == FocusAction::LOST)
     {}
 
@@ -41,10 +38,10 @@ public:
     const FocusAction action;
 
     /// Widget that lost the focus - may be empty.
-//    WidgetPtr const old_focus;
+    WidgetPtr const old_focus;
 
     /// Widget that gained the focus - may be empty.
-//    WidgetPtr const new_focus;
+    WidgetPtr const new_focus;
 
 private:
     /// True iff this event was already handled.

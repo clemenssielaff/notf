@@ -248,9 +248,11 @@ public:
     /// Takes all batches from the queue, orders and executes them.
     void execute_batches();
 
+    /// The managed PropertyGraph.
+    const PropertyGraph& graph() const { return m_graph; }
+
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-public:
     /// The managed property graph.
     PropertyGraph m_graph;
 

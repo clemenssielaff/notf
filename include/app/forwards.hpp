@@ -12,6 +12,7 @@ class Application;
 class MouseEvent;
 class KeyEvent;
 class CharEvent;
+class FocusEvent;
 
 DEFINE_SHARED_POINTERS(struct, Capability);
 DEFINE_SHARED_POINTERS(class, Controller);

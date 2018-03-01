@@ -1,16 +1,14 @@
 #include "app/core/screen_item.hpp"
 
-#include "common/log.hpp"
-//#include "core/item_container.hpp"
-//#include "core/layout.hpp"
-//#include "core/render_manager.hpp"
+#include "app/core/layout.hpp"
 #include "app/core/window.hpp"
+#include "common/log.hpp"
 
 namespace { // anonymous
 
-const float g_alpha_cutoff = 1.f / (255 * 2);
+static constexpr float g_alpha_cutoff = 1.f / (255 * 2);
 
-} // namespace anonymous
+} // namespace
 
 namespace notf {
 
@@ -26,16 +24,13 @@ ScreenItem::ScreenItem(detail::ItemContainerPtr container)
     , m_opacity(1)
     , m_scissor_layout()
     , m_has_explicit_scissor(false)
-    , m_render_layer()
-    , m_has_explicit_render_layer(false)
-{
-}
+{}
 
-template <>
-const Matrix3f ScreenItem::get_xform<ScreenItem::Space::WINDOW>() const
+template<>
+const Matrix3f ScreenItem::xform<ScreenItem::Space::WINDOW>() const
 {
     Matrix3f result = Matrix3f::identity();
-    _get_window_transform(result);
+    _window_transform(result);
     return result;
 }
 
@@ -49,14 +44,14 @@ void ScreenItem::set_offset_xform(const Matrix3f transform)
     _redraw();
 }
 
-float ScreenItem::get_opacity(bool effective) const
+float ScreenItem::opacity(bool effective) const
 {
     if (abs(m_opacity) < g_alpha_cutoff) {
         return 0;
     }
     if (effective) {
-        if (const Layout* parent_layout = get_layout()) {
-            return m_opacity * parent_layout->get_opacity();
+        if (const Layout* parent_layout = layout()) {
+            return m_opacity * parent_layout->opacity();
         }
     }
     return m_opacity;
@@ -81,7 +76,7 @@ bool ScreenItem::is_visible() const
     }
 
     // no window
-    if (!get_window()) {
+    if (!window()) {
         return false;
     }
     assert(m_scissor_layout);
@@ -92,15 +87,15 @@ bool ScreenItem::is_visible() const
     }
 
     // fully transparent
-    if (get_opacity() < g_alpha_cutoff) {
+    if (opacity() < g_alpha_cutoff) {
         return false;
     }
 
     { // fully scissored
         Aabrf content_aabr = m_content_aabr;
         transformation_between(this, m_scissor_layout).transform(content_aabr);
-        Aabrf scissor_aabr(m_scissor_layout->get_size());
-        m_scissor_layout->get_xform<Space::PARENT>().transform(scissor_aabr);
+        Aabrf scissor_aabr(m_scissor_layout->size());
+        m_scissor_layout->xform<Space::PARENT>().transform(scissor_aabr);
         if (!scissor_aabr.intersects(content_aabr)) {
             return false;
         }
@@ -117,42 +112,35 @@ void ScreenItem::set_visible(bool is_visible)
     }
     m_is_visible = is_visible;
     _update_parent_layout();
-    on_visibility_changed(m_is_visible);   
+    on_visibility_changed(m_is_visible);
 }
 
 void ScreenItem::set_scissor(const Layout* scissor_layout)
 {
     if (!has_ancestor(scissor_layout)) {
-        log_critical << "Cannot set Layout " << scissor_layout->get_name() << " as scissor of Item " << get_name()
-                     << " because it is not an ancestor of " << get_name();
+        log_critical << "Cannot set Layout " << scissor_layout->name() << " as scissor of Item " << name()
+                     << " because it is not an ancestor of " << name();
         scissor_layout = nullptr;
     }
     if (!scissor_layout) {
-        if (ScreenItem* parent = get_layout()) {
-            scissor_layout = parent->get_scissor();
+        if (ScreenItem* parent = layout()) {
+            scissor_layout = parent->scissor();
         }
     }
     _set_scissor(scissor_layout);
     m_has_explicit_scissor = static_cast<bool>(scissor_layout);
 }
 
-void ScreenItem::set_render_layer(const RenderLayerPtr& render_layer)
-{
-    _set_render_layer(render_layer);
-    m_has_explicit_render_layer = static_cast<bool>(render_layer);
-}
-
 void ScreenItem::_update_from_parent()
 {
     Item::_update_from_parent();
-    if (Item* parent = get_parent()) {
-        Layout* parent_layout = parent->get_layout();
+    if (Item* parent_item = parent()) {
+        Layout* parent_layout = parent_item->layout();
         if (!parent_layout) { // if the parent is the WindowLayout it won't have a parent itself
-            parent_layout = dynamic_cast<Layout*>(parent);
+            parent_layout = dynamic_cast<Layout*>(parent_item);
         }
         if (parent_layout) { // parent may be a Controller without a parent itself
-            _set_scissor(parent_layout->get_scissor());
-            _set_render_layer(parent_layout->get_render_layer());
+            _set_scissor(parent_layout->scissor());
         }
     }
 }
@@ -162,25 +150,25 @@ bool ScreenItem::_redraw() const
     if (!is_visible()) {
         return false;
     }
-    Window* window = get_window();
-    assert(window);
-    window->get_render_manager().request_redraw();
+    Window* my_window = window();
+    assert(my_window);
+    my_window->request_redraw();
     return true;
 }
 
 void ScreenItem::_update_parent_layout()
 {
-    Layout* layout = get_layout();
-    while (layout) {
+    Layout* parent_layout = layout();
+    while (parent_layout) {
         // if the parent Layout's Claim changed, we also need to update the grandparent ...
-        if (layout->_update_claim()) {
-            layout = layout->get_layout();
+        if (Layout::Private<ScreenItem>(*parent_layout).update_claim()) {
+            parent_layout = parent_layout->layout();
         }
 
         // ... otherwise, we have reached the end of the propagation through the ancestry
         // and continue to relayout all children from the parent downwards
         else {
-            layout->_relayout();
+            parent_layout->_relayout();
             break;
         }
     }
@@ -217,10 +205,7 @@ bool ScreenItem::_set_size(const Size2f size)
     return true;
 }
 
-void ScreenItem::_set_content_aabr(const Aabrf aabr)
-{
-    m_content_aabr = std::move(aabr);
-}
+void ScreenItem::_set_content_aabr(const Aabrf aabr) { m_content_aabr = std::move(aabr); }
 
 void ScreenItem::_set_layout_xform(const Matrix3f transform)
 {
@@ -246,7 +231,7 @@ void ScreenItem::_set_scissor(const Layout* scissor_layout)
     m_scissor_layout = scissor_layout;
 
     m_children->apply([scissor_layout](Item* item) -> void {
-        if(ScreenItem* screen_item = item->get_screen_item()){
+        if (ScreenItem* screen_item = item->screen_item()) {
             screen_item->_set_scissor(scissor_layout);
         }
     });
@@ -255,54 +240,37 @@ void ScreenItem::_set_scissor(const Layout* scissor_layout)
     _redraw();
 }
 
-void ScreenItem::_set_render_layer(const RenderLayerPtr& render_layer)
+void ScreenItem::_window_transform(Matrix3f& result) const
 {
-    if (m_has_explicit_render_layer || render_layer == m_render_layer) {
-        return;
-    }
-    m_render_layer = render_layer;
-
-    m_children->apply([render_layer](Item* item) -> void {
-        if(ScreenItem* screen_item = item->get_screen_item()){
-            screen_item->_set_render_layer(render_layer);
-        }
-    });
-
-    on_render_layer_changed(m_render_layer);
-    _redraw();
-}
-
-void ScreenItem::_get_window_transform(Matrix3f& result) const
-{
-    if (const ScreenItem* layout = get_layout()) {
-        layout->_get_window_transform(result);
+    if (const ScreenItem* parent_layout = layout()) {
+        parent_layout->_window_transform(result);
         result.premult(m_offset_transform * m_layout_transform);
     }
 }
 
-/**********************************************************************************************************************/
+//====================================================================================================================//
 
 Matrix3f transformation_between(const ScreenItem* source, const ScreenItem* target)
 {
-    const ScreenItem* common_ancestor = source->get_common_ancestor(target)->get_screen_item();
+    const ScreenItem* common_ancestor = source->common_ancestor(target)->screen_item();
     if (!common_ancestor) {
         std::stringstream ss;
-        ss << "Cannot find common ancestor for Items " << source->get_name() << " and " << target->get_name();
+        ss << "Cannot find common ancestor for Items " << source->name() << " and " << target->name();
         throw std::runtime_error(ss.str());
     }
 
     Matrix3f source_branch = Matrix3f::identity();
-    for (const ScreenItem* it = source; it != common_ancestor; it = it->get_layout()) {
-        source_branch *= it->get_xform<ScreenItem::Space::PARENT>();
+    for (const ScreenItem* it = source; it != common_ancestor; it = it->layout()) {
+        source_branch *= it->xform<ScreenItem::Space::PARENT>();
     }
 
-    Matrix3f target_branch = Matrix3f::identity();
-    for (const ScreenItem* it = target; it != common_ancestor; it = it->get_layout()) {
-        target_branch *= it->get_xform<ScreenItem::Space::PARENT>();
+    Matrix3f tarbranch = Matrix3f::identity();
+    for (const ScreenItem* it = target; it != common_ancestor; it = it->layout()) {
+        tarbranch *= it->xform<ScreenItem::Space::PARENT>();
     }
-    target_branch.inverse();
+    tarbranch.inverse();
 
-    source_branch *= target_branch;
+    source_branch *= tarbranch;
     return source_branch;
 }
 
