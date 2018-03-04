@@ -77,7 +77,7 @@ void render_thread(GLFWwindow* window)
 
     while (!glfwWindowShouldClose(window)) {
 
-        manager->render();
+        manager->request_redraw();
 
         glfwPollEvents();
     }

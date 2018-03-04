@@ -62,22 +62,6 @@ window_initialization_error::~window_initialization_error() {}
 
 //====================================================================================================================//
 
-std::shared_ptr<Window> Window::create(const Args& args)
-{
-    WindowPtr window;
-#ifdef NOTF_DEBUG
-    window = WindowPtr(new Window(args));
-#else
-    window = std::make_shared<make_shared_enabler<Window>>(args);
-#endif
-    log_info << "Created Window '" << window->title() << "' "
-             << "using OpenGl version: " << glGetString(GL_VERSION);
-
-    // inititalize the window
-    Application::Access<Window>().register_new(window);
-    return window;
-}
-
 Window::Window(const Args& args)
     : m_glfw_window(nullptr, detail::window_deleter)
     , m_title(args.title)
@@ -135,6 +119,22 @@ Window::Window(const Args& args)
     // create the layout
     m_layout = WindowLayout::Access<Window>::create(this);
     WindowLayout::Access<Window>(*m_layout).set_grant(buffer_size());
+
+    log_info << "Created Window '" << title() << "' using OpenGl version: " << glGetString(GL_VERSION);
+}
+
+std::shared_ptr<Window> Window::create(const Args& args)
+{
+    WindowPtr window;
+#ifdef NOTF_DEBUG
+    window = WindowPtr(new Window(args));
+#else
+    window = std::make_shared<make_shared_enabler<Window>>(args);
+#endif
+
+    // inititalize the window
+    Application::Access<Window>().register_new(window);
+    return window;
 }
 
 Window::~Window() { close(); }
@@ -172,10 +172,7 @@ Vector2f Window::mouse_pos() const
     return {static_cast<float>(mouse_x), static_cast<float>(mouse_y)};
 }
 
-void Window::request_redraw() const
-{
-    // TODO: Window::request_redraw
-}
+void Window::update() const { m_scene_manager->request_redraw(); }
 
 void Window::close()
 {
@@ -193,7 +190,8 @@ void Window::close()
 void Window::_resize(Size2i size)
 {
     m_size = std::move(size);
-    //    m_layout->_set_grant(get_buffer_size());
+
+    WindowLayout::Access<Window>(*m_layout).set_grant(buffer_size());
 }
 
 void Window::_propagate(MouseEvent&& event)
@@ -345,12 +343,9 @@ void Window::_update()
     //        return;
     //    }
 
-    // make the window current
-    Application::Access<Window>().set_current(this);
-
     // render
     try {
-        m_scene_manager->render();
+        m_scene_manager->request_redraw();
     }
     // if an error bubbled all the way up here, something has gone horribly wrong
     catch (const notf_exception& error) {

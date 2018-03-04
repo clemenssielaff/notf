@@ -2,7 +2,6 @@
 
 #include "app/forwards.hpp"
 #include "common/exception.hpp"
-#include "common/forwards.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -23,8 +22,6 @@ class Application {
 public:
     NOTF_ACCESS_TYPES(Window)
 
-    //================================================================================================================//
-public:
     /// Application arguments.
     ///
     /// argv and arc
@@ -112,6 +109,9 @@ public:
 
     /// The Application's thread pool.
     ThreadPool& thread_pool() { return *m_thread_pool; }
+
+    /// The Application's PropertyManager.
+    PropertyManager& property_manager() { return *m_property_manager; }
 
 private:
     /// Static (private) function holding the actual Application instance.
@@ -203,11 +203,11 @@ private:
     /// The global thread pool.
     ThreadPoolPtr m_thread_pool;
 
+    /// PropertyManager.
+    PropertyManagerPtr m_property_manager;
+
     /// All Windows known the the Application.
     std::vector<WindowPtr> m_windows;
-
-    /// The Window with the current OpenGL context.
-    WindowPtr m_current_window;
 
     /// Invalid arguments, used when you call `get_instance` without initializing the Application first.
     static const Args s_invalid_args;
@@ -227,9 +227,6 @@ class Application::Access<Window> {
 
     /// Unregisters an existing Window from this Application.
     void unregister(Window* window) { m_application._unregister_window(std::move(window)); }
-
-    /// Changes the current Window of the Application.
-    void set_current(Window* window) { m_application._set_current_window(std::move(window)); }
 
     /// The Application to access.
     Application& m_application;

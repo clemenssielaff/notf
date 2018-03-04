@@ -5,7 +5,7 @@
 #include "common/meta.hpp"
 
 NOTF_OPEN_NAMESPACE
-namespace tuple_detail {
+namespace detail {
 
 template<typename FUNC, typename TUPLE, std::size_t... I>
 auto apply_impl(FUNC&& f, TUPLE&& t, std::index_sequence<I...>)
@@ -13,7 +13,7 @@ auto apply_impl(FUNC&& f, TUPLE&& t, std::index_sequence<I...>)
     return std::forward<FUNC>(f)(std::get<I>(std::forward<TUPLE>(t))...);
 }
 
-} // namespace tuple_detail
+} // namespace detail
 NOTF_CLOSE_NAMESPACE
 
 #ifndef NOTF_CPP17
@@ -29,7 +29,7 @@ template<typename FUNC, typename TUPLE>
 auto apply(FUNC&& f, TUPLE&& t)
 {
     using Indices = std::make_index_sequence<std::tuple_size<std::decay_t<TUPLE>>::value>;
-    return notf::tuple_detail::apply_impl(std::forward<FUNC>(f), std::forward<TUPLE>(t), Indices());
+    return notf::detail::apply_impl(std::forward<FUNC>(f), std::forward<TUPLE>(t), Indices());
 }
 
 } // namespace std

@@ -21,7 +21,7 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
-namespace property_manager_detail {
+namespace detail {
 
 /// Tuple type containing all types that properties can contain.
 /// Add new types here if you need to put another type into a property.
@@ -67,7 +67,7 @@ constexpr decltype(auto) make_function_variant(const std::tuple<Ts...>& tuple)
     return make_function_variant_impl(tuple, Indices{});
 }
 
-} // namespace property_manager_detail
+} // namespace detail
 
 //====================================================================================================================//
 
@@ -78,11 +78,11 @@ class PropertyManager final {
 private:
     /// All types that a Property can have
     using ValueVariant
-        = decltype(property_manager_detail::make_value_variant(property_manager_detail::notf_property_types{}));
+        = decltype(detail::make_value_variant(detail::notf_property_types{}));
 
     /// All expression types that a Property can have
     using ExpressionVariant
-        = decltype(property_manager_detail::make_function_variant(property_manager_detail::notf_property_types{}));
+        = decltype(detail::make_function_variant(detail::notf_property_types{}));
 
     /// Expression signature for a property of type `value_t`.
     template<typename value_t>
@@ -179,7 +179,7 @@ public:
         /// @returns A typed id that contains the value type of the property for ease-of-use.
         template<typename value_t,
                  typename
-                 = std::enable_if_t<is_one_of_tuple<value_t, property_manager_detail::notf_property_types>::value>>
+                 = std::enable_if_t<is_one_of_tuple<value_t, detail::notf_property_types>::value>>
         TypedPropertyId<value_t> create_property(value_t value = {})
         {
             PropertyId id = m_graph.next_id();

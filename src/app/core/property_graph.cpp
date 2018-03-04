@@ -10,7 +10,7 @@ property_lookup_error::~property_lookup_error() = default;
 
 property_cyclic_dependency_error::~property_cyclic_dependency_error() = default;
 
-namespace property_graph_detail {
+namespace detail {
 
 PropertyBase::~PropertyBase() noexcept = default;
 
@@ -44,7 +44,7 @@ void PropertyBase::_set_affected_dirty()
     }
 }
 
-} // namespace property_graph_detail
+} // namespace detail
 
 void PropertyGraph::delete_property(const PropertyId id)
 {

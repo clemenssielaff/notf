@@ -2,7 +2,6 @@
 
 #include <exception>
 
-#include "common/meta.hpp"
 #include "common/string.hpp"
 
 NOTF_OPEN_NAMESPACE

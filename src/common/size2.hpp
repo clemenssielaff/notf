@@ -4,7 +4,6 @@
 
 #include "common/float.hpp"
 #include "common/hash.hpp"
-#include "common/meta.hpp"
 
 NOTF_OPEN_NAMESPACE
 

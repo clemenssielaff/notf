@@ -13,11 +13,9 @@ NOTF_OPEN_NAMESPACE
 
 /// RenderBuffer ID type.
 using RenderBufferId = IdType<RenderBuffer, GLuint>;
-static_assert(std::is_pod<RenderBufferId>::value, "RenderBufferId is not a POD type");
 
 /// FrameBuffer ID type.
 using FrameBufferId = IdType<FrameBuffer, GLuint>;
-static_assert(std::is_pod<FrameBufferId>::value, "FrameBufferId is not a POD type");
 
 //====================================================================================================================//
 

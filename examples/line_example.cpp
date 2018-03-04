@@ -83,7 +83,7 @@ void render_thread(GLFWwindow* window)
 
     while (!glfwWindowShouldClose(window)) {
 
-        scene_manager->render();
+        scene_manager->request_redraw();
 
         glfwPollEvents();
     }

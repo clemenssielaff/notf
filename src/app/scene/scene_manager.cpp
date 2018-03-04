@@ -101,7 +101,7 @@ void SceneManager::remove_state(const StateId id)
     m_states.erase(it);
 }
 
-void SceneManager::render()
+void SceneManager::_render()
 {
     if (m_state == &s_default_state) {
         log_trace << "Ignoring SceneManager::render with the default State";

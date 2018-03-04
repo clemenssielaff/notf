@@ -4,6 +4,8 @@
 #include <iostream>
 #include <type_traits>
 
+#include "common/meta.hpp"
+
 NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//

@@ -51,13 +51,11 @@ void window_deleter(GLFWwindow* glfw_window);
 //====================================================================================================================//
 
 /// The Window is a OS window containing an OpenGL context.
-class Window : public std::enable_shared_from_this<Window> {
+class Window {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
     NOTF_ACCESS_TYPES(Application)
-
-    //================================================================================================================//
 
     /// Helper struct to create a Window instance.
     struct Args {
@@ -101,9 +99,10 @@ public:
     NOTF_NO_COPY_OR_ASSIGN(Window)
 
     /// Factory.
-    /// @param info  WindowInfo providing initialization arguments.
-    /// @return      The created Window, pointer is empty on error.
-    static WindowPtr create(const Args& info = s_default_args);
+    /// @param args     Initialization arguments.
+    /// @throws window_initialization_error         If the OpenGL context creation for this Window failed
+    /// @throws application_initialization_error    When you try to instantiate a Window without an Application.
+    static WindowPtr create(const Args& args = s_default_args);
 
     /// Destructor.
     virtual ~Window();
@@ -112,7 +111,7 @@ public:
     const std::string& title() const { return m_title; }
 
     /// The invisible root Layout of this Window.
-    WindowLayoutPtr layout() const { return m_layout; }
+    const WindowLayoutPtr& layout() const { return m_layout; }
 
     /// Returns the Application's Scene Manager.
     SceneManager& scene_manager() { return *m_scene_manager; }
@@ -134,7 +133,7 @@ public:
     Vector2f mouse_pos() const;
 
     /// Requests a redraw of this Window at the next possibility.
-    void request_redraw() const;
+    void update() const;
 
     /// Closes this Window.
     void close();
@@ -174,10 +173,10 @@ private:
     std::string m_title;
 
     /// The Root Layout of this Window.
-    WindowLayoutPtr m_layout;
+    WindowLayoutPtr m_layout; // TODO: windows don't have a top-level layout anymore, but a scene
 
     /// The Window's Scene manager.
-    std::unique_ptr<SceneManager> m_scene_manager;
+    SceneManagerPtr m_scene_manager;
 
     /// The Window size.
     Size2i m_size;

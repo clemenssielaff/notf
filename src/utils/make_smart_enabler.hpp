@@ -2,6 +2,8 @@
 
 #include <utility>
 
+#include "common/meta.hpp"
+
 NOTF_OPEN_NAMESPACE
 
 /// Helper struct to allow `std::make_shared` to work with protected constructors.

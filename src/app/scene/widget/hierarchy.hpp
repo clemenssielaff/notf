@@ -49,4 +49,8 @@
  * Time to get going!
  */
 
-NOTF_OPEN_NAMESPACE}
+#include "app/scene/scene.hpp"
+
+NOTF_OPEN_NAMESPACE
+
+NOTF_CLOSE_NAMESPACE

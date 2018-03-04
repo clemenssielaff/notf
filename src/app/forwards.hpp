@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "common/forwards.hpp"
 #include "common/meta.hpp"
 #include "graphics/forwards.hpp"
 
@@ -32,6 +33,7 @@ NOTF_DEFINE_SHARED_POINTERS(class, Scene);
 
 NOTF_DEFINE_UNIQUE_POINTERS(class, SceneManager);
 NOTF_DEFINE_UNIQUE_POINTERS(class, ResourceManager);
+NOTF_DEFINE_UNIQUE_POINTERS(class, PropertyManager);
 
 namespace detail {
 

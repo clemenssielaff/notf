@@ -1,6 +1,7 @@
 #include "app/core/application.hpp"
 
 #include "app/core/glfw.hpp"
+#include "app/core/property_manager.hpp"
 #include "app/core/resource_manager.hpp"
 #include "app/core/window.hpp"
 #include "app/io/char_event.hpp"
@@ -46,8 +47,8 @@ Application::Application(const Args& application_args)
     : m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
     , m_resource_manager()
     , m_thread_pool(std::make_unique<ThreadPool>())
+    , m_property_manager(std::make_unique<PropertyManager>())
     , m_windows()
-    , m_current_window()
 {
     // install the log handler first, to catch errors right away
     install_log_message_handler(std::bind(&LogHandler::push_log, m_log_handler.get(), std::placeholders::_1));
@@ -315,11 +316,6 @@ void Application::_register_window(const WindowPtr& window)
 
     glfwSetWindowCloseCallback(glfw_window, _on_window_close);
     glfwSetWindowSizeCallback(glfw_window, _on_window_resize);
-
-    // if this is the first Window, it is also the current one
-    if (!m_current_window) {
-        m_current_window = window;
-    }
 }
 
 void Application::_unregister_window(Window* window)
@@ -340,17 +336,6 @@ void Application::_unregister_window(Window* window)
     m_windows.erase(it);
 }
 
-void Application::_set_current_window(Window* window)
-{
-    assert(window);
-    if (m_current_window.get() != window) {
-        GLFWwindow* glfw_window = Window::Access<Application>(*window).glfw_window();
-        assert(glfw_window);
-        glfwMakeContextCurrent(glfw_window);
-        m_current_window = window->shared_from_this();
-    }
-}
-
 void Application::_shutdown()
 {
     // you can only close the application once
@@ -364,6 +349,7 @@ void Application::_shutdown()
     for (WindowPtr& window : m_windows) {
         window->close();
     }
+    m_windows.clear();
 
     // release all resources and objects
     m_resource_manager->clear();

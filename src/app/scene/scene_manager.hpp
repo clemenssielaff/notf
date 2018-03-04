@@ -1,5 +1,6 @@
 #pragma once
 
+#include <condition_variable>
 #include <unordered_map>
 #include <vector>
 
@@ -7,11 +8,14 @@
 #include "common/dag.hpp"
 #include "common/forwards.hpp"
 #include "common/id.hpp"
+#include "common/size2.hpp"
+#include "common/thread.hpp"
 
-struct GLFWwindow;
 NOTF_OPEN_NAMESPACE
 
-using GraphicsProducerId = IdType<GraphicsProducer, size_t>; // TODO: id type forwards somewhere? in forwards.hpp?
+// ===================================================================================================================//
+
+using GraphicsProducerId = IdType<GraphicsProducer, size_t>;
 using RenderTargetId     = IdType<RenderTarget, size_t>;
 
 // ===================================================================================================================//
@@ -139,6 +143,22 @@ public:
     /// Ids for SceneManager states.
     using StateId = IdType<State, size_t>;
 
+    // ========================================================================
+private:
+    struct RenderThread {
+        // TODO: CONTINUE HERE
+        // By adapting the renderthread_example.
+        // Then move event propagation into the scene manager, who just forwards them to the scene of each Layer
+        // Then copy window event propagation into the widget/hierarchy and remove the WindowLayout from the WIndow.
+
+        // fields -------------------------------------------------------------
+    private:
+        ScopedThread m_thread;
+        std::mutex m_mutex;
+        std::condition_variable m_condition;
+        bool m_next_frame_ready = false;
+    };
+
     // methods ------------------------------------------------------------------------------------------------------ //
 protected:
     /// Constructor.
@@ -166,6 +186,11 @@ public:
     const FontManagerPtr& font_manager() const { return m_font_manager; }
     ///@}
 
+    /// Renders a single frame with the current State of the SceneManager.
+    void request_redraw() { _render(); }
+
+    // state management -------------------------------------------------------
+
     /// Adds a new State to the SceneManager.
     /// @param state    New State to add.
     /// @returns        Id of the new state.
@@ -190,10 +215,32 @@ public:
     /// @throws resource_error  If no State with the given ID is known.
     void remove_state(const StateId id);
 
-    /// Renders a single frame with the current State of the SceneManager.
-    void render();
+    // event propagation ------------------------------------------------------
+
+    /// Called when the a mouse button is pressed or released, the mouse is moved inside the Window, the mouse wheel
+    /// scrolled or the cursor enters or exists the client area of a Window.
+    /// @param event    MouseEvent.
+    /// @returns        True iff the Scene handled the event and it doesn't need to be propagated further.
+    void propagate(MouseEvent&& event);
+
+    /// Called when a key is pressed, repeated or released.
+    /// @param event    KeyEvent.
+    /// @returns        True iff the Scene handled the event and it doesn't need to be propagated further.
+    void propagate(KeyEvent&& event);
+
+    /// Called when an unicode code point is generated.
+    /// @param event    CharEvent.
+    /// @returns        True iff the Scene handled the event and it doesn't need to be propagated further.
+    void propagate(CharEvent&& event);
+
+    /// Called when the Window containing the Scene is resized.
+    /// @param size     New size.
+    void resize(Size2i size);
 
 private:
+    /// Renders a single frame with the current State of the SceneManager.
+    void _render();
+
     /// Registers a new GraphicsProducer.
     /// @throws runtime_error   If a GraphicsProducer with the same ID is already registered.
     void _register_new(GraphicsProducerPtr graphics_producer);
@@ -202,7 +249,6 @@ private:
     /// @throws runtime_error   If a RenderTarget with the same ID is already registered.
     void _register_new(RenderTargetPtr render_target);
 
-private:
     /// Generate the next available StateId.
     static StateId _next_id();
 

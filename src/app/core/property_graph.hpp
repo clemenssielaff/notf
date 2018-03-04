@@ -15,14 +15,14 @@ NOTF_OPEN_NAMESPACE
 
 class PropertyGraph;
 
-namespace property_graph_detail {
+namespace detail {
 class PropertyBase;
-} // namespace property_graph_detail
+} // namespace detail
 
 //====================================================================================================================//
 
 /// Property id type.
-using PropertyId = IdType<property_graph_detail::PropertyBase, size_t>;
+using PropertyId = IdType<detail::PropertyBase, size_t>;
 static_assert(std::is_pod<PropertyId>::value, "PropertyId is not a POD type");
 
 /// Typed property id.
@@ -39,7 +39,7 @@ NOTF_EXCEPTION_TYPE(property_cyclic_dependency_error)
 
 //====================================================================================================================//
 
-namespace property_graph_detail {
+namespace detail {
 
 /// Base type of all properties.
 class PropertyBase {
@@ -207,7 +207,7 @@ private: // for use by Property and PropertyGraph
     mutable value_t m_value;
 };
 
-} // namespace property_graph_detail
+} // namespace detail
 
 //====================================================================================================================//
 
@@ -218,11 +218,11 @@ private: // for use by Property and PropertyGraph
 class PropertyGraph {
 
     /// PropertyBase type.
-    using PropertyBase = property_graph_detail::PropertyBase;
+    using PropertyBase = detail::PropertyBase;
 
     /// Property type
     template<typename value_t>
-    using Property = property_graph_detail::Property<value_t>;
+    using Property = detail::Property<value_t>;
 
     /// Underlying id type.
     using id_t = PropertyBase::id_t;

@@ -11,26 +11,26 @@
 
 NOTF_OPEN_NAMESPACE
 
-namespace float_detail {
+namespace detail {
 
 constexpr long double PI    = 3.141592653589793238462643383279502884197169399375105820975l;
 constexpr long double KAPPA = 0.552284749830793398402251632279597438092895833835930764235l;
 
-} // namespace float_detail
+} // namespace detail
 
 //====================================================================================================================//
 
 template<typename Real = long double>
 constexpr Real pi()
 {
-    return static_cast<Real>(float_detail::PI);
+    return static_cast<Real>(detail::PI);
 }
 
 /// Length of a bezier control vector to draw a circle with radius 1.
 template<typename Real = long double>
 constexpr Real kappa()
 {
-    return static_cast<Real>(float_detail::KAPPA);
+    return static_cast<Real>(detail::KAPPA);
 }
 
 using std::abs;
@@ -125,14 +125,14 @@ inline Real acos(Real&& value)
 template<typename Real>
 inline Real deg_to_rad(Real&& degrees)
 {
-    return degrees * (float_detail::PI / 180.l);
+    return degrees * (detail::PI / 180.l);
 }
 
 /// Degree to Radians.
 template<typename Real>
 inline Real rad_to_deg(Real&& radians)
 {
-    return radians * (180.l / float_detail::PI);
+    return radians * (180.l / detail::PI);
 }
 
 /// Normalize Radians to a value within [-pi, pi].
@@ -142,8 +142,8 @@ inline Real norm_angle(Real alpha)
     if (!is_real(alpha)) {
         notf_throw(logic_error, "Cannot normalize an invalid number");
     }
-    const float modulo = fmod(alpha, float_detail::PI * 2);
-    return modulo >= 0 ? modulo : (float_detail::PI * 2) + modulo;
+    const float modulo = fmod(alpha, detail::PI * 2);
+    return modulo >= 0 ? modulo : (detail::PI * 2) + modulo;
 }
 
 /// Save division, throws a std::logic_error if the divisor is 0.
