@@ -128,8 +128,8 @@ FontAtlas::FontAtlas(GraphicsContext& graphics_context)
 
     // permanently bind the atlas texture to its slot (it is reserved and won't be rebound)
     const GLenum texture_slot = m_graphics_context.environment().font_atlas_texture_slot;
-    gl_check(glActiveTexture(GL_TEXTURE0 + texture_slot));
-    gl_check(glBindTexture(GL_TEXTURE_2D, m_texture->id().value()));
+    notf_check_gl(glActiveTexture(GL_TEXTURE0 + texture_slot));
+    notf_check_gl(glBindTexture(GL_TEXTURE_2D, m_texture->id().value()));
 
     // initialize
     reset();
@@ -236,11 +236,11 @@ void FontAtlas::fill_rect(const Glyph::Rect& rect, const uchar* data)
         return;
     }
 
-    gl_check(glActiveTexture(GL_TEXTURE0 + m_graphics_context.environment().font_atlas_texture_slot));
-    gl_check(glPixelStorei(GL_UNPACK_ROW_LENGTH, rect.width));
-    gl_check(glTexSubImage2D(GL_TEXTURE_2D, /* level = */ 0, rect.x, rect.y, rect.width, rect.height, GL_RED,
+    notf_check_gl(glActiveTexture(GL_TEXTURE0 + m_graphics_context.environment().font_atlas_texture_slot));
+    notf_check_gl(glPixelStorei(GL_UNPACK_ROW_LENGTH, rect.width));
+    notf_check_gl(glTexSubImage2D(GL_TEXTURE_2D, /* level = */ 0, rect.x, rect.y, rect.width, rect.height, GL_RED,
                              GL_UNSIGNED_BYTE, data));
-    gl_check(glPixelStorei(GL_UNPACK_ROW_LENGTH, m_texture->size().width));
+    notf_check_gl(glPixelStorei(GL_UNPACK_ROW_LENGTH, m_texture->size().width));
 }
 
 FontAtlas::ScoredRect FontAtlas::_get_rect(const coord_t width, const coord_t height) const

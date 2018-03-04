@@ -57,7 +57,7 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-int _gl_check_error(uint line, const char* file, const char* function)
+int _notf_check_gl_error(uint line, const char* file, const char* function)
 {
     int error_count = 0;
     GLenum error_code;
@@ -69,7 +69,7 @@ int _gl_check_error(uint line, const char* file, const char* function)
     return error_count;
 }
 
-void _gl_clear_errors()
+void _notf_clear_gl_errors()
 {
     while (glGetError() != GL_NO_ERROR) {
     };

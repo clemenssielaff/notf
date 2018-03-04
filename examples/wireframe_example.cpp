@@ -68,8 +68,8 @@ void render_thread(GLFWwindow* window)
     // Vertices ///////////////////////////////////////////////
 
     GLuint vao;
-    gl_check(glGenVertexArrays(1, &vao));
-    gl_check(glBindVertexArray(vao));
+    notf_check_gl(glGenVertexArrays(1, &vao));
+    notf_check_gl(glBindVertexArray(vao));
 
     auto vertices = std::make_unique<VertexArray<VertexPos>>();
     //    vertices->update({Vector2f{50, 50}, Vector2f{100, 750}, Vector2f{150, 50}, Vector2f{200, 750}});
@@ -114,10 +114,10 @@ void render_thread(GLFWwindow* window)
             tess_shader->set_uniform("projection", perspective);
 
             // TODO: make sure that GL_PATCH_VERTICES <= GL_MAX_PATCH_VERTICES
-            gl_check(glPatchParameteri(GL_PATCH_VERTICES, 3));
+            notf_check_gl(glPatchParameteri(GL_PATCH_VERTICES, 3));
 
             glDrawElements(GL_PATCHES, static_cast<GLsizei>(indices->size()), GL_UNSIGNED_INT, nullptr);
-            //            gl_check(glDrawArrays(GL_PATCHES, 0, 3));
+            //            notf_check_gl(glDrawArrays(GL_PATCHES, 0, 3));
         }
 
         glfwSwapBuffers(window);

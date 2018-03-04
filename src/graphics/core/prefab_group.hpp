@@ -55,7 +55,7 @@ public:
     }
 
     /// Destructor.
-    ~PrefabGroup() { gl_check(glDeleteVertexArrays(1, &m_vao_id)); }
+    ~PrefabGroup() { notf_check_gl(glDeleteVertexArrays(1, &m_vao_id)); }
 
     /// Initializes the library.
     /// Call this method once, after all prefabs have been added using PrefabFactories.
@@ -67,7 +67,7 @@ public:
             notf_throw(runtime_error, "Cannot re-initialize a previously initialized PrefabGroup.");
         }
 
-        gl_check(glGenVertexArrays(1, &m_vao_id));
+        notf_check_gl(glGenVertexArrays(1, &m_vao_id));
         if (!m_vao_id) {
             notf_throw(runtime_error, "Failed to allocate the PrefabLibary VAO");
         }
@@ -127,7 +127,7 @@ public:
             }
 
             // render all instances
-            gl_check(glDrawElementsInstancedBaseVertex(GL_TRIANGLES, prefab_type->size(), m_index_array->type(), 0,
+            notf_check_gl(glDrawElementsInstancedBaseVertex(GL_TRIANGLES, prefab_type->size(), m_index_array->type(), 0,
                                                        instances.size(), prefab_type->offset()));
         }
     }

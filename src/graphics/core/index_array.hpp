@@ -119,7 +119,7 @@ public:
     {
         { // make sure there is a bound VAO
             GLint current_vao = 0;
-            gl_check(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
+            notf_check_gl(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
             if (!current_vao) {
                 notf_throw(runtime_error, "Cannot initialize an IndexArray without a bound VAO");
             }
@@ -129,7 +129,7 @@ public:
             return _update();
         }
 
-        gl_check(glGenBuffers(1, &m_vbo_id));
+        notf_check_gl(glGenBuffers(1, &m_vbo_id));
         if (!m_vbo_id) {
             notf_throw(runtime_error, "Failed to allocate IndexArray");
         }
@@ -137,8 +137,8 @@ public:
         m_type = to_gl_type(index_t());
         m_size = static_cast<GLsizei>(m_indices.size());
 
-        gl_check(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vbo_id));
-        gl_check(
+        notf_check_gl(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vbo_id));
+        notf_check_gl(
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(index_t), &m_indices[0], m_args.usage));
         // keep the buffer bound as it is stored in the VAO
 
@@ -153,15 +153,15 @@ private:
     {
         m_size = static_cast<GLsizei>(m_indices.size());
 
-        gl_check(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vbo_id));
+        notf_check_gl(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vbo_id));
         if (m_size <= m_buffer_size) {
             // if the new data is smaller or of equal size than the last one, we can do a minimal update
-            gl_check(
+            notf_check_gl(
                 glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, /*offset = */ 0, m_size * sizeof(index_t), &m_indices[0]));
         }
         else {
             // otherwise we have to do a full update
-            gl_check(
+            notf_check_gl(
                 glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(index_t), &m_indices[0], m_args.usage));
         }
         // keep the buffer bound as it is stored in the VAO

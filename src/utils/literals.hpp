@@ -2,28 +2,36 @@
 
 #include <string>
 
-#define DEG_TO_RAD 0.017453292519943295769236907684886127134428718885417254560L
+#include "common/meta.hpp"
 
 NOTF_OPEN_NAMESPACE
+
 namespace literals {
 
-/** Floating point literal to convert degrees to radians. */
-constexpr long double operator"" _deg(long double deg) { return deg * DEG_TO_RAD; }
+namespace detail {
+inline constexpr auto deg_to_rad() { return 0.017453292519943295769236907684886127134428718885417254560L; }
+} // namespace detail
 
-/** Integer literal to convert degrees to radians. */
-constexpr long double operator"" _deg(unsigned long long int deg) { return static_cast<long double>(deg) * DEG_TO_RAD; }
+/// Floating point literal to convert degrees to radians.
+constexpr long double operator"" _deg(long double deg) { return deg * detail::deg_to_rad(); }
 
-/** String literal for os-aware paths. */
+/// Integer literal to convert degrees to radians.
+constexpr long double operator"" _deg(unsigned long long int deg)
+{
+    return static_cast<long double>(deg) * detail::deg_to_rad();
+}
+
+/// String literal for os-aware paths.
 std::string operator"" _path(const char* input, size_t)
 {
-#ifdef __linux__
+#ifdef NOTF_LINUX
     static const char wrong = '\\';
     static const char right = '/';
-#elif _WIN32
+#else
+#    ifdef NOTF_WINDOWS
     static const char wrong = '/';
     static const char right = '\\';
-#else
-    static_assert(false, "Unknown operating system detected");
+#    endif
 #endif
     std::string result = input;
     std::size_t found  = result.find_first_of(wrong);
@@ -35,6 +43,5 @@ std::string operator"" _path(const char* input, size_t)
 }
 
 } // namespace literals
-NOTF_CLOSE_NAMESPACE
 
-#undef DEG_TO_RAD
+NOTF_CLOSE_NAMESPACE

@@ -171,23 +171,23 @@ TexturePtr Texture::create_empty(GraphicsContext& context, std::string name, Siz
 
     // create the atlas texture
     GLuint id = 0;
-    gl_check(glGenTextures(1, &id));
+    notf_check_gl(glGenTextures(1, &id));
     assert(id);
-    gl_check(glBindTexture(GL_TEXTURE_2D, id));
+    notf_check_gl(glBindTexture(GL_TEXTURE_2D, id));
 
-    gl_check(glPixelStorei(GL_UNPACK_ALIGNMENT, alignment));
-    gl_check(glPixelStorei(GL_UNPACK_ROW_LENGTH, size.width));
-    gl_check(glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, size.height));
-    gl_check(glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0));
-    gl_check(glPixelStorei(GL_UNPACK_SKIP_ROWS, 0));
+    notf_check_gl(glPixelStorei(GL_UNPACK_ALIGNMENT, alignment));
+    notf_check_gl(glPixelStorei(GL_UNPACK_ROW_LENGTH, size.width));
+    notf_check_gl(glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, size.height));
+    notf_check_gl(glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0));
+    notf_check_gl(glPixelStorei(GL_UNPACK_SKIP_ROWS, 0));
 
-    gl_check(glTexImage2D(GL_TEXTURE_2D, /* level= */ 0, internal_format, size.width, size.height, BORDER, gl_format,
+    notf_check_gl(glTexImage2D(GL_TEXTURE_2D, /* level= */ 0, internal_format, size.width, size.height, BORDER, gl_format,
                           datatype_to_gl(args.data_type), nullptr));
 
-    gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(args.min_filter)));
-    gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(args.mag_filter)));
-    gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(args.wrap_horizontal)));
-    gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical)));
+    notf_check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(args.min_filter)));
+    notf_check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(args.mag_filter)));
+    notf_check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(args.wrap_horizontal)));
+    notf_check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical)));
 
     // return the loaded texture on success
     TexturePtr texture = Texture::_create(context, id, GL_TEXTURE_2D, std::move(name), std::move(size), args.format);
@@ -266,29 +266,29 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
 
     // load the texture into OpenGL
     GLuint id = 0;
-    gl_check(glGenTextures(1, &id));
+    notf_check_gl(glGenTextures(1, &id));
     assert(id);
-    gl_check(glBindTexture(GL_TEXTURE_2D, id));
+    notf_check_gl(glBindTexture(GL_TEXTURE_2D, id));
 
-    gl_check(glPixelStorei(GL_UNPACK_ALIGNMENT, alignment));
-    gl_check(glPixelStorei(GL_UNPACK_ROW_LENGTH, image_size.width));
-    gl_check(glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, image_size.height));
-    gl_check(glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0));
-    gl_check(glPixelStorei(GL_UNPACK_SKIP_ROWS, 0));
+    notf_check_gl(glPixelStorei(GL_UNPACK_ALIGNMENT, alignment));
+    notf_check_gl(glPixelStorei(GL_UNPACK_ROW_LENGTH, image_size.width));
+    notf_check_gl(glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, image_size.height));
+    notf_check_gl(glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0));
+    notf_check_gl(glPixelStorei(GL_UNPACK_SKIP_ROWS, 0));
 
     if (args.make_immutable) {
         // immutable texture
         const GLsizei max_levels = static_cast<GLsizei>(floor(log2(max(image_size.width, image_size.height)))) + 1;
         const GLsizei levels     = args.create_mipmaps ? max_levels : 1;
-        gl_check(glTexStorage2D(GL_TEXTURE_2D, levels, internal_format, image_size.width, image_size.height));
+        notf_check_gl(glTexStorage2D(GL_TEXTURE_2D, levels, internal_format, image_size.width, image_size.height));
 
         if (args.codec == Codec::RAW) {
-            gl_check(glTexSubImage2D(GL_TEXTURE_2D, /* level= */ 0, /* xoffset= */ 0, /* yoffset= */ 0,
+            notf_check_gl(glTexSubImage2D(GL_TEXTURE_2D, /* level= */ 0, /* xoffset= */ 0, /* yoffset= */ 0,
                                      image_size.width, image_size.height, gl_format, datatype_to_gl(args.data_type),
                                      &image_data.front()));
         }
         else if (args.codec == Codec::ASTC) {
-            gl_check(glCompressedTexSubImage2D(GL_TEXTURE_2D, /* level= */ 0, /* xoffset= */ 0, /* yoffset= */ 0,
+            notf_check_gl(glCompressedTexSubImage2D(GL_TEXTURE_2D, /* level= */ 0, /* xoffset= */ 0, /* yoffset= */ 0,
                                                image_size.width, image_size.height, internal_format, image_length,
                                                &image_data.front()));
         }
@@ -298,7 +298,7 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
 #ifdef NOTF_DEBUG
         {
             GLint is_immutable = 0;
-            gl_check(glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_IMMUTABLE_FORMAT, &is_immutable));
+            notf_check_gl(glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_IMMUTABLE_FORMAT, &is_immutable));
             assert(is_immutable);
         }
 #endif
@@ -306,12 +306,12 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
     else {
         // mutable texture
         if (args.codec == Codec::RAW) {
-            gl_check(glTexImage2D(GL_TEXTURE_2D, /* level= */ 0, static_cast<GLint>(internal_format), image_size.width,
+            notf_check_gl(glTexImage2D(GL_TEXTURE_2D, /* level= */ 0, static_cast<GLint>(internal_format), image_size.width,
                                   image_size.height, BORDER, gl_format, datatype_to_gl(args.data_type),
                                   &image_data.front()));
         }
         else if (args.codec == Codec::ASTC) {
-            gl_check(glCompressedTexImage2D(GL_TEXTURE_2D, /* level= */ 0, internal_format, image_size.width,
+            notf_check_gl(glCompressedTexImage2D(GL_TEXTURE_2D, /* level= */ 0, internal_format, image_size.width,
                                             image_size.height, BORDER, image_length, &image_data.front()));
         }
         else {
@@ -321,20 +321,20 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
 
     // highest quality mip-mapping by default
     if (args.create_mipmaps) {
-        gl_check(glGenerateMipmap(GL_TEXTURE_2D));
+        notf_check_gl(glGenerateMipmap(GL_TEXTURE_2D));
     }
-    gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(args.min_filter)));
-    gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(args.mag_filter)));
+    notf_check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(args.min_filter)));
+    notf_check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(args.mag_filter)));
 
     // repeat wrap by default
-    gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(args.wrap_horizontal)));
-    gl_check(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical)));
+    notf_check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(args.wrap_horizontal)));
+    notf_check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical)));
 
     // make texture anisotropic, if requested and available
     if (args.anisotropy > 1.f && context.extensions().anisotropic_filter) {
         GLfloat highest_anisotropy;
-        gl_check(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &highest_anisotropy));
-        gl_check(
+        notf_check_gl(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &highest_anisotropy));
+        notf_check_gl(
             glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, min(args.anisotropy, highest_anisotropy)));
     }
 
@@ -374,28 +374,28 @@ void Texture::set_min_filter(const MinFilter filter)
 {
     assert_is_valid(*this);
     m_graphics_context.bind_texture(this, 0);
-    gl_check(glTexParameteri(m_target, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter)));
+    notf_check_gl(glTexParameteri(m_target, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter)));
 }
 
 void Texture::set_mag_filter(const MagFilter filter)
 {
     assert_is_valid(*this);
     m_graphics_context.bind_texture(this, 0);
-    gl_check(glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter)));
+    notf_check_gl(glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter)));
 }
 
 void Texture::set_wrap_x(const Wrap wrap)
 {
     assert_is_valid(*this);
     m_graphics_context.bind_texture(this, 0);
-    gl_check(glTexParameteri(m_target, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap)));
+    notf_check_gl(glTexParameteri(m_target, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap)));
 }
 
 void Texture::set_wrap_y(const Wrap wrap)
 {
     assert_is_valid(*this);
     m_graphics_context.bind_texture(this, 0);
-    gl_check(glTexParameteri(m_target, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap)));
+    notf_check_gl(glTexParameteri(m_target, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap)));
 }
 
 void Texture::fill(const Color& color)
@@ -423,7 +423,7 @@ void Texture::fill(const Color& color)
     // create the source buffer and copy it into the texture
     if (m_format == Format::GRAYSCALE) {
         const std::vector<uchar> buffer(static_cast<size_t>(m_size.width * m_size.height * to_number(m_format)), r);
-        gl_check(
+        notf_check_gl(
             glTexImage2D(m_target, 0, GL_R8, m_size.width, m_size.height, 0, GL_RED, GL_UNSIGNED_BYTE, &buffer[0]));
     }
     else if (m_format == Format::RGB) {
@@ -434,7 +434,7 @@ void Texture::fill(const Color& color)
             buffer[i * to_number(Format::RGB) + 1] = g;
             buffer[i * to_number(Format::RGB) + 2] = b;
         }
-        gl_check(
+        notf_check_gl(
             glTexImage2D(m_target, 0, GL_RGB, m_size.width, m_size.height, 0, GL_RGB, GL_UNSIGNED_BYTE, &buffer[0]));
     }
     else if (m_format == Format::RGBA) {
@@ -446,7 +446,7 @@ void Texture::fill(const Color& color)
             buffer[i * to_number(Format::RGBA) + 2] = b;
             buffer[i * to_number(Format::RGBA) + 3] = a;
         }
-        gl_check(
+        notf_check_gl(
             glTexImage2D(m_target, 0, GL_RGBA, m_size.width, m_size.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, &buffer[0]));
     }
 }
@@ -454,7 +454,7 @@ void Texture::fill(const Color& color)
 void Texture::_deallocate()
 {
     if (m_id.is_valid()) {
-        gl_check(glDeleteTextures(1, &m_id.value()));
+        notf_check_gl(glDeleteTextures(1, &m_id.value()));
         log_trace << "Deleted OpenGL texture with ID: " << m_id;
         m_id = TextureId::invalid();
     }

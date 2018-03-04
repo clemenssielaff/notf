@@ -42,7 +42,7 @@ GraphicsContext::Extensions::Extensions()
     std::set<std::string> extensions;
     { // create a set of all available extensions
         GLint extension_count;
-        gl_check(glGetIntegerv(GL_NUM_EXTENSIONS, &extension_count));
+        notf_check_gl(glGetIntegerv(GL_NUM_EXTENSIONS, &extension_count));
         for (GLint i = 0; i < extension_count; ++i) {
             //  log_trace << "Found OpenGL extension: " << glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i));
             extensions.emplace(
@@ -65,19 +65,19 @@ GraphicsContext::Environment::Environment()
 
     { // max render buffer size
         GLint max_renderbuffer_size = -1;
-        gl_check(glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &max_renderbuffer_size));
+        notf_check_gl(glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &max_renderbuffer_size));
         max_render_buffer_size = narrow_cast<decltype(max_render_buffer_size)>(max_renderbuffer_size);
     }
 
     { // color attachment count
         GLint max_color_attachments = -1;
-        gl_check(glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &max_color_attachments));
+        notf_check_gl(glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &max_color_attachments));
         color_attachment_count = narrow_cast<decltype(color_attachment_count)>(max_color_attachments);
     }
 
     { // texture slot count
         GLint max_image_units = -1;
-        gl_check(glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_image_units));
+        notf_check_gl(glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_image_units));
         texture_slot_count = narrow_cast<decltype(texture_slot_count)>(max_image_units - reserved_texture_slots);
     }
 
@@ -100,8 +100,8 @@ GraphicsContext::GraphicsContext(GLFWwindow* window)
     glfwSwapInterval(m_has_vsync ? 1 : 0);
 
     // OpenGL defaults
-    gl_check(glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST));
-    gl_check(glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_DONT_CARE));
+    notf_check_gl(glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST));
+    notf_check_gl(glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_DONT_CARE));
 
     // apply the default state
     m_state = _create_state();
@@ -178,7 +178,7 @@ void GraphicsContext::set_stencil_mask(const GLuint mask, const bool force)
         return;
     }
     m_state.stencil_mask = mask;
-    gl_check(glStencilMask(mask));
+    notf_check_gl(glStencilMask(mask));
 }
 
 void GraphicsContext::set_blend_mode(const BlendMode mode, const bool force)
@@ -297,7 +297,7 @@ void GraphicsContext::set_blend_mode(const BlendMode mode, const bool force)
         assert(false);
         break;
     }
-    gl_check(glBlendFuncSeparate(rgb_sfactor, rgb_dfactor, alpha_sfactor, alpha_dfactor));
+    notf_check_gl(glBlendFuncSeparate(rgb_sfactor, rgb_dfactor, alpha_sfactor, alpha_dfactor));
 }
 
 void GraphicsContext::set_render_area(Aabri area, const bool force)
@@ -306,7 +306,7 @@ void GraphicsContext::set_render_area(Aabri area, const bool force)
         notf_throw(runtime_error, "Cannot set to an invalid render area");
     }
     if (area != m_state.render_area || force) {
-        gl_check(glViewport(area.left(), area.bottom(), area.width(), area.height()));
+        notf_check_gl(glViewport(area.left(), area.bottom(), area.width(), area.height()));
         m_state.render_area = std::move(area);
     }
 }
@@ -315,7 +315,7 @@ void GraphicsContext::clear(Color color, const BufferFlags buffers, const bool f
 {
     if (color != m_state.clear_color || force) {
         m_state.clear_color = std::move(color);
-        gl_check(
+        notf_check_gl(
             glClearColor(m_state.clear_color.r, m_state.clear_color.g, m_state.clear_color.b, m_state.clear_color.a));
     }
 
@@ -329,7 +329,7 @@ void GraphicsContext::clear(Color color, const BufferFlags buffers, const bool f
     if (buffers & Buffer::STENCIL) {
         gl_flags |= GL_STENCIL_BUFFER_BIT;
     }
-    gl_check(glClear(gl_flags));
+    notf_check_gl(glClear(gl_flags));
 }
 
 // TODO: access control for begin_ and end_frame
@@ -365,8 +365,8 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot)
         notf_throw_format(runtime_error, "Cannot bind invalid texture \"" << texture->name() << "\"");
     }
 
-    gl_check(glActiveTexture(GL_TEXTURE0 + slot));
-    gl_check(glBindTexture(GL_TEXTURE_2D, texture->id().value()));
+    notf_check_gl(glActiveTexture(GL_TEXTURE0 + slot));
+    notf_check_gl(glBindTexture(GL_TEXTURE_2D, texture->id().value()));
 
     m_state.texture_slots[slot] = texture->shared_from_this();
 }
@@ -382,8 +382,8 @@ void GraphicsContext::unbind_texture(uint slot)
         return;
     }
 
-    gl_check(glActiveTexture(GL_TEXTURE0 + slot));
-    gl_check(glBindTexture(GL_TEXTURE_2D, 0));
+    notf_check_gl(glActiveTexture(GL_TEXTURE0 + slot));
+    notf_check_gl(glBindTexture(GL_TEXTURE_2D, 0));
 
     m_state.texture_slots[slot].reset();
 }
@@ -444,8 +444,8 @@ void GraphicsContext::_bind_pipeline(const PipelinePtr& pipeline)
         _unbind_pipeline();
     }
     else if (pipeline != m_state.pipeline) {
-        gl_check(glUseProgram(0));
-        gl_check(glBindProgramPipeline(pipeline->id().value()));
+        notf_check_gl(glUseProgram(0));
+        notf_check_gl(glBindProgramPipeline(pipeline->id().value()));
         m_state.pipeline = pipeline;
     }
 }
@@ -457,8 +457,8 @@ void GraphicsContext::_unbind_pipeline(const PipelinePtr& pipeline)
         return;
     }
     if (m_state.pipeline) {
-        gl_check(glUseProgram(0));
-        gl_check(glBindProgramPipeline(0));
+        notf_check_gl(glUseProgram(0));
+        notf_check_gl(glBindProgramPipeline(0));
         m_state.pipeline.reset();
     }
 }
@@ -469,7 +469,7 @@ void GraphicsContext::_bind_framebuffer(const FrameBufferPtr& framebuffer)
         _unbind_framebuffer();
     }
     else if (framebuffer != m_state.framebuffer) {
-        gl_check(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->id().value()));
+        notf_check_gl(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->id().value()));
         m_state.framebuffer = framebuffer;
     }
 }
@@ -481,7 +481,7 @@ void GraphicsContext::_unbind_framebuffer(const FrameBufferPtr& framebuffer)
         return;
     }
     if (m_state.framebuffer) {
-        gl_check(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+        notf_check_gl(glBindFramebuffer(GL_FRAMEBUFFER, 0));
         m_state.framebuffer.reset();
     }
 }
@@ -533,7 +533,7 @@ void GraphicsContext::_register_new(FrameBufferPtr framebuffer)
     }
 }
 
-void GraphicsContext::release_shader_compiler() { gl_check(glReleaseShaderCompiler()); }
+void GraphicsContext::release_shader_compiler() { notf_check_gl(glReleaseShaderCompiler()); }
 
 NOTF_CLOSE_NAMESPACE
 

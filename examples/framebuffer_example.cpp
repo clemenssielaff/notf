@@ -165,7 +165,7 @@ void render_thread(GLFWwindow* window)
             library.render();
 
             graphics_context->unbind_texture(slot);
-            gl_check_error();
+            notf_check_gl_error();
         }
 
         //        /////////////////

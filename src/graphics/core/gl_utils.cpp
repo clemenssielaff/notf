@@ -208,8 +208,8 @@ GLenum to_gl_type(const GLfloat&) { return GL_FLOAT; }
 
 //====================================================================================================================//
 
-VaoBindGuard::VaoBindGuard(GLuint vao) : m_vao(vao) { gl_check(glBindVertexArray(m_vao)); }
+VaoBindGuard::VaoBindGuard(GLuint vao) : m_vao(vao) { notf_check_gl(glBindVertexArray(m_vao)); }
 
-VaoBindGuard::~VaoBindGuard() { gl_check(glBindVertexArray(0)); }
+VaoBindGuard::~VaoBindGuard() { notf_check_gl(glBindVertexArray(0)); }
 
 NOTF_CLOSE_NAMESPACE

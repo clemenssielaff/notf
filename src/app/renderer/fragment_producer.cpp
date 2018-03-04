@@ -27,7 +27,7 @@ FragmentProducer::FragmentProducer(const Token& token, SceneManagerPtr& manager,
 void FragmentProducer::_render() const
 {
     const auto pipeline_guard = m_context.bind_pipeline(m_pipeline);
-    gl_check(glDrawArrays(GL_TRIANGLES, 0, 3));
+    notf_check_gl(glDrawArrays(GL_TRIANGLES, 0, 3));
 }
 
 NOTF_CLOSE_NAMESPACE

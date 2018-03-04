@@ -76,18 +76,18 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
     }
 
     // compile the shader
-    gl_check(glShaderSource(shader, /*count*/ 1, &source, /*length*/ nullptr));
-    gl_check(glCompileShader(shader));
+    notf_check_gl(glShaderSource(shader, /*count*/ 1, &source, /*length*/ nullptr));
+    notf_check_gl(glCompileShader(shader));
 
     // check for errors
     GLint success = GL_FALSE;
-    gl_check(glGetShaderiv(shader, GL_COMPILE_STATUS, &success));
+    notf_check_gl(glGetShaderiv(shader, GL_COMPILE_STATUS, &success));
     if (!success) {
         GLint error_size;
-        gl_check(glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &error_size));
+        notf_check_gl(glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &error_size));
         std::vector<char> error_message(static_cast<size_t>(error_size));
-        gl_check(glGetShaderInfoLog(shader, error_size, /*length*/ nullptr, &error_message[0]));
-        gl_check(glDeleteShader(shader));
+        notf_check_gl(glGetShaderInfoLog(shader, error_size, /*length*/ nullptr, &error_message[0]));
+        notf_check_gl(glDeleteShader(shader));
 
         notf_throw_format(runtime_error, "Failed to compile " << stage_name << " stage for shader \"" << program_name
                                                               << "\"\n\t" << error_message.data());
@@ -101,7 +101,7 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
 size_t longest_uniform_length(const GLuint program)
 {
     GLint result = 0;
-    gl_check(glGetProgramiv(program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &result));
+    notf_check_gl(glGetProgramiv(program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &result));
     return narrow_cast<size_t>(result);
 }
 
@@ -109,7 +109,7 @@ size_t longest_uniform_length(const GLuint program)
 size_t longest_attribute_length(const GLuint program)
 {
     GLint result = 0;
-    gl_check(glGetProgramiv(program, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &result));
+    notf_check_gl(glGetProgramiv(program, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &result));
     return narrow_cast<size_t>(result);
 }
 
@@ -294,7 +294,7 @@ Shader::Shader(GraphicsContextPtr& context, const GLuint id, Stage::Flags stages
 {
     // discover uniforms
     GLint uniform_count = 0;
-    gl_check(glGetProgramiv(m_id.value(), GL_ACTIVE_UNIFORMS, &uniform_count));
+    notf_check_gl(glGetProgramiv(m_id.value(), GL_ACTIVE_UNIFORMS, &uniform_count));
     assert(uniform_count >= 0);
     m_uniforms.reserve(static_cast<size_t>(uniform_count));
 
@@ -305,7 +305,7 @@ Shader::Shader(GraphicsContextPtr& context, const GLuint id, Stage::Flags stages
         variable.size = 0;
 
         GLsizei name_length = 0;
-        gl_check(glGetActiveUniform(m_id.value(), index, static_cast<GLsizei>(uniform_name.size()), &name_length,
+        notf_check_gl(glGetActiveUniform(m_id.value(), index, static_cast<GLsizei>(uniform_name.size()), &name_length,
                                     &variable.size, &variable.type, &uniform_name[0]));
         assert(variable.type);
         assert(variable.size);
@@ -333,15 +333,15 @@ bool Shader::validate_now() const
 {
     assert_is_valid(*this);
 
-    gl_check(glValidateProgram(m_id.value()));
+    notf_check_gl(glValidateProgram(m_id.value()));
 
     GLint status = GL_FALSE;
-    gl_check(glGetProgramiv(m_id.value(), GL_VALIDATE_STATUS, &status));
+    notf_check_gl(glGetProgramiv(m_id.value(), GL_VALIDATE_STATUS, &status));
 
     GLint message_size;
-    gl_check(glGetProgramiv(m_id.value(), GL_INFO_LOG_LENGTH, &message_size));
+    notf_check_gl(glGetProgramiv(m_id.value(), GL_INFO_LOG_LENGTH, &message_size));
     std::vector<char> message(static_cast<size_t>(message_size));
-    gl_check(glGetProgramInfoLog(m_id.value(), message_size, /*length*/ nullptr, &message[0]));
+    notf_check_gl(glGetProgramInfoLog(m_id.value(), message_size, /*length*/ nullptr, &message[0]));
 
     log_trace << "Validation of shader \"" << m_name << "\" " << (status ? "succeeded" : "failed:\n") << message.data();
     return status == GL_TRUE;
@@ -350,7 +350,7 @@ bool Shader::validate_now() const
 
 GLuint Shader::_build(const std::string& name, const Args& args)
 {
-    gl_clear_errors();
+    notf_clear_gl_errors();
 
     // create the program
     // We don't use `glCreateShaderProgramv` so we could pass additional pre-link parameters.
@@ -360,7 +360,7 @@ GLuint Shader::_build(const std::string& name, const Args& args)
     if (!program) {
         notf_throw_format(runtime_error, "Failed to create program object for shader \"" << name << "\"");
     }
-    gl_check(glProgramParameteri(program, GL_PROGRAM_SEPARABLE, GL_TRUE));
+    notf_check_gl(glProgramParameteri(program, GL_PROGRAM_SEPARABLE, GL_TRUE));
 
     { // create and attach the shader stages
         GLuint vertex_stage    = compile_stage(name, Shader::Stage::VERTEX, args.vertex_source);
@@ -371,61 +371,61 @@ GLuint Shader::_build(const std::string& name, const Args& args)
         GLuint compute_stage   = compile_stage(name, Shader::Stage::COMPUTE, args.compute_source);
 
         if (vertex_stage) {
-            gl_check(glAttachShader(program, vertex_stage));
+            notf_check_gl(glAttachShader(program, vertex_stage));
         }
         if (tess_ctrl_stage) {
-            gl_check(glAttachShader(program, tess_ctrl_stage));
+            notf_check_gl(glAttachShader(program, tess_ctrl_stage));
         }
         if (tess_eval_stage) {
-            gl_check(glAttachShader(program, tess_eval_stage));
+            notf_check_gl(glAttachShader(program, tess_eval_stage));
         }
         if (geometry_stage) {
-            gl_check(glAttachShader(program, geometry_stage));
+            notf_check_gl(glAttachShader(program, geometry_stage));
         }
         if (fragment_stage) {
-            gl_check(glAttachShader(program, fragment_stage));
+            notf_check_gl(glAttachShader(program, fragment_stage));
         }
         if (compute_stage) {
-            gl_check(glAttachShader(program, compute_stage));
+            notf_check_gl(glAttachShader(program, compute_stage));
         }
 
-        gl_check(glLinkProgram(program));
+        notf_check_gl(glLinkProgram(program));
 
         if (vertex_stage) {
-            gl_check(glDetachShader(program, vertex_stage));
-            gl_check(glDeleteShader(vertex_stage));
+            notf_check_gl(glDetachShader(program, vertex_stage));
+            notf_check_gl(glDeleteShader(vertex_stage));
         }
         if (tess_ctrl_stage) {
-            gl_check(glDetachShader(program, tess_ctrl_stage));
-            gl_check(glDeleteShader(tess_ctrl_stage));
+            notf_check_gl(glDetachShader(program, tess_ctrl_stage));
+            notf_check_gl(glDeleteShader(tess_ctrl_stage));
         }
         if (tess_eval_stage) {
-            gl_check(glDetachShader(program, tess_eval_stage));
-            gl_check(glDeleteShader(tess_eval_stage));
+            notf_check_gl(glDetachShader(program, tess_eval_stage));
+            notf_check_gl(glDeleteShader(tess_eval_stage));
         }
         if (geometry_stage) {
-            gl_check(glDetachShader(program, geometry_stage));
-            gl_check(glDeleteShader(geometry_stage));
+            notf_check_gl(glDetachShader(program, geometry_stage));
+            notf_check_gl(glDeleteShader(geometry_stage));
         }
         if (fragment_stage) {
-            gl_check(glDetachShader(program, fragment_stage));
-            gl_check(glDeleteShader(fragment_stage));
+            notf_check_gl(glDetachShader(program, fragment_stage));
+            notf_check_gl(glDeleteShader(fragment_stage));
         }
         if (compute_stage) {
-            gl_check(glDetachShader(program, compute_stage));
-            gl_check(glDeleteShader(compute_stage));
+            notf_check_gl(glDetachShader(program, compute_stage));
+            notf_check_gl(glDeleteShader(compute_stage));
         }
     }
 
     { // check for errors
         GLint success = GL_FALSE;
-        gl_check(glGetProgramiv(program, GL_LINK_STATUS, &success));
+        notf_check_gl(glGetProgramiv(program, GL_LINK_STATUS, &success));
         if (!success) {
             GLint error_size;
-            gl_check(glGetProgramiv(program, GL_INFO_LOG_LENGTH, &error_size));
+            notf_check_gl(glGetProgramiv(program, GL_INFO_LOG_LENGTH, &error_size));
             std::vector<char> error_message(static_cast<size_t>(error_size));
-            gl_check(glGetProgramInfoLog(program, error_size, /*length*/ nullptr, &error_message[0]));
-            gl_check(glDeleteProgram(program));
+            notf_check_gl(glGetProgramInfoLog(program, error_size, /*length*/ nullptr, &error_message[0]));
+            notf_check_gl(glDeleteProgram(program));
 
             notf_throw_format(runtime_error, "Failed to link shader program \"" << name << "\":\n"
                                                                                 << error_message.data());
@@ -458,7 +458,7 @@ const Shader::Variable& Shader::_uniform(const std::string& name) const
 void Shader::_deallocate()
 {
     if (m_id.value()) {
-        gl_check(glDeleteProgram(m_id.value()));
+        notf_check_gl(glDeleteProgram(m_id.value()));
         log_trace << "Deleted Shader Program \"" << m_name << "\"";
         m_id = ShaderId::invalid();
     }
@@ -470,7 +470,7 @@ void Shader::set_uniform(const std::string& name, const int& value)
     assert_is_valid(*this);
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_INT || uniform.type == GL_SAMPLER_2D) {
-        gl_check(glProgramUniform1i(m_id.value(), uniform.location, value));
+        notf_check_gl(glProgramUniform1i(m_id.value(), uniform.location, value));
     }
     else {
         notf_throw_format(runtime_error, "Uniform \"" << name << "\" in shader \"" << m_name << "\" of type \""
@@ -485,10 +485,10 @@ void Shader::set_uniform(const std::string& name, const unsigned int& value)
     assert_is_valid(*this);
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_UNSIGNED_INT) {
-        gl_check(glProgramUniform1ui(m_id.value(), uniform.location, value));
+        notf_check_gl(glProgramUniform1ui(m_id.value(), uniform.location, value));
     }
     else if (uniform.type == GL_SAMPLER_2D) {
-        gl_check(glProgramUniform1i(m_id.value(), uniform.location, static_cast<GLint>(value)));
+        notf_check_gl(glProgramUniform1i(m_id.value(), uniform.location, static_cast<GLint>(value)));
     }
     else {
         notf_throw_format(runtime_error, "Uniform \"" << name << "\" in shader \"" << m_name << "\" of type \""
@@ -503,7 +503,7 @@ void Shader::set_uniform(const std::string& name, const float& value)
     assert_is_valid(*this);
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT) {
-        gl_check(glProgramUniform1f(m_id.value(), uniform.location, value));
+        notf_check_gl(glProgramUniform1f(m_id.value(), uniform.location, value));
     }
     else {
         notf_throw_format(runtime_error, "Uniform \"" << name << "\" in shader \"" << m_name << "\" of type \""
@@ -518,7 +518,7 @@ void Shader::set_uniform(const std::string& name, const Vector2f& value)
     assert_is_valid(*this);
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT_VEC2) {
-        gl_check(glProgramUniform2fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
+        notf_check_gl(glProgramUniform2fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
     }
     else {
         notf_throw_format(runtime_error, "Uniform \"" << name << "\" in shader \"" << m_name << "\" of type \""
@@ -533,7 +533,7 @@ void Shader::set_uniform(const std::string& name, const Vector4f& value)
     assert_is_valid(*this);
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT_VEC4) {
-        gl_check(glProgramUniform4fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
+        notf_check_gl(glProgramUniform4fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
     }
     else {
         notf_throw_format(runtime_error, "Uniform \"" << name << "\" in shader \"" << m_name << "\" of type \""
@@ -548,7 +548,7 @@ void Shader::set_uniform(const std::string& name, const Matrix4f& value)
     assert_is_valid(*this);
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT_MAT4) {
-        gl_check(glProgramUniformMatrix4fv(m_id.value(), uniform.location, /*count*/ 1, /*transpose*/ GL_FALSE,
+        notf_check_gl(glProgramUniformMatrix4fv(m_id.value(), uniform.location, /*count*/ 1, /*transpose*/ GL_FALSE,
                                            value.as_ptr()));
     }
     else {
@@ -566,7 +566,7 @@ VertexShader::VertexShader(GraphicsContextPtr& context, const GLuint program, st
 {
     // discover attributes
     GLint attribute_count = 0;
-    gl_check(glGetProgramiv(id().value(), GL_ACTIVE_ATTRIBUTES, &attribute_count));
+    notf_check_gl(glGetProgramiv(id().value(), GL_ACTIVE_ATTRIBUTES, &attribute_count));
     assert(attribute_count >= 0);
     m_attributes.reserve(static_cast<size_t>(attribute_count));
 
@@ -577,7 +577,7 @@ VertexShader::VertexShader(GraphicsContextPtr& context, const GLuint program, st
         variable.size = 0;
 
         GLsizei name_length = 0;
-        gl_check(glGetActiveAttrib(id().value(), index, static_cast<GLsizei>(uniform_name.size()), &name_length,
+        notf_check_gl(glGetActiveAttrib(id().value(), index, static_cast<GLsizei>(uniform_name.size()), &name_length,
                                    &variable.size, &variable.type, &uniform_name[0]));
         assert(variable.type);
         assert(variable.size);

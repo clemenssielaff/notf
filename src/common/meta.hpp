@@ -36,7 +36,22 @@
 #    else
 #        ifdef __GNUC__
 #            define NOTF_GCC
+#        else
+#            error Unknown compiler detected (searching for __clang__, _MSC_VER and __GNUC__)
 #        endif
+#    endif
+#endif
+
+//====================================================================================================================//
+
+/// OS detection
+#ifdef __linux__
+#    define NOTF_LINUX
+#else
+#    ifdef _WIN32
+#        define NOTF_WINDOWS
+#    else
+#        error Unknown operating system detected (searching for __linux__ and _WIN32)
 #    endif
 #endif
 
