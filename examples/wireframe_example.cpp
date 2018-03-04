@@ -17,8 +17,6 @@
 #include "graphics/core/texture.hpp"
 #include "graphics/core/vertex_array.hpp"
 
-#include "glm_utils.hpp"
-
 using namespace notf;
 
 namespace {
@@ -64,7 +62,7 @@ void render_thread(GLFWwindow* window)
     const std::string frag_src    = load_file("/home/clemens/code/notf/res/shaders/wireframe.frag");
     FragmentShaderPtr frag_shader = FragmentShader::create(graphics_context, "wireframe.frag", frag_src);
 
-    PipelinePtr pipeline = Pipeline::create(graphics_context, vertex_shader, tess_shader, geo_shader, frag_shader);
+    PipelinePtr pipeline      = Pipeline::create(graphics_context, vertex_shader, tess_shader, geo_shader, frag_shader);
     const auto pipeline_guard = graphics_context->bind_pipeline(pipeline);
 
     // Vertices ///////////////////////////////////////////////
@@ -78,7 +76,7 @@ void render_thread(GLFWwindow* window)
     vertices->buffer() = {Vector2f{50, 50}, Vector2f{750, 50}, Vector2f{750, 750}, Vector2f{50, 750}};
     vertices->init();
 
-    auto indices = std::make_unique<IndexArray<GLuint>>();
+    auto indices      = std::make_unique<IndexArray<GLuint>>();
     indices->buffer() = {0, 1, 2, 0, 2, 3};
     indices->init();
 

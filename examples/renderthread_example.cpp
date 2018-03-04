@@ -1,9 +1,9 @@
 #include "renderthread_example.hpp"
 
+#include <chrono>
 #include <condition_variable>
 #include <iostream>
 #include <thread>
-#include <chrono>
 
 #include "app/core/glfw.hpp"
 #include "common/log.hpp"
@@ -25,7 +25,7 @@ void render_thread(GLFWwindow* window)
 
         { // Wait until main() sends data
             std::unique_lock<std::mutex> lock_guard(render_mutex);
-            if(!next_frame_ready){
+            if (!next_frame_ready) {
                 render_condition_variable.wait(lock_guard, [] { return next_frame_ready; });
             }
             next_frame_ready = false;

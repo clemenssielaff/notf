@@ -1,11 +1,11 @@
 #include "app/core/glfw.hpp"
+#include "app/renderer/plotter.hpp"
+#include "app/scene/layer.hpp"
+#include "app/scene/scene_manager.hpp"
 #include "common/bezier.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/vertex_array.hpp"
-#include "graphics/engine/layer.hpp"
-#include "graphics/engine/render_manager.hpp"
-#include "graphics/producer/plotter.hpp"
 
 #pragma clang diagnostic ignored "-Wunused-variable"
 
@@ -36,11 +36,11 @@ static void error_callback(int error, const char* description)
 
 void render_thread(GLFWwindow* window)
 {
-    RenderManagerPtr render_manager = RenderManager::create(window);
+    SceneManagerPtr scene_manager = SceneManager::create(window);
 
     // Stroker ////////////////////////////////////////////////
 
-    PlotterPtr stroker = Plotter::create(render_manager);
+    PlotterPtr stroker = Plotter::create(scene_manager);
 
     {
         Plotter::StrokeInfo stroke_info;
@@ -69,21 +69,21 @@ void render_thread(GLFWwindow* window)
 
     // Render State //////////////////////////////////////////////
 
-    LayerPtr layer = Layer::create(render_manager, stroker);
+    LayerPtr layer = Layer::create(scene_manager, stroker);
 
-    RenderManager::State state;
+    SceneManager::State state;
     state.layers = {layer};
 
-    RenderManager::StateId state_id = render_manager->add_state(std::move(state));
-    render_manager->enter_state(state_id);
+    SceneManager::StateId state_id = scene_manager->add_state(std::move(state));
+    scene_manager->enter_state(state_id);
 
     // Rendering //////////////////////////////////////////////
 
-    render_manager->graphics_context()->clear(Color(0.2f, 0.3f, 0.5f, 1));
+    scene_manager->graphics_context()->clear(Color(0.2f, 0.3f, 0.5f, 1));
 
     while (!glfwWindowShouldClose(window)) {
 
-        render_manager->render();
+        scene_manager->render();
 
         glfwPollEvents();
     }

@@ -1,11 +1,11 @@
 #include <iostream>
 
 #include "app/core/glfw.hpp"
+#include "app/renderer/fragment_producer.hpp"
+#include "app/scene/layer.hpp"
+#include "app/scene/scene_manager.hpp"
 #include "common/log.hpp"
 #include "common/polygon.hpp"
-#include "graphics/engine/layer.hpp"
-#include "graphics/engine/render_manager.hpp"
-#include "graphics/producer/fragment_producer.hpp"
 
 using namespace notf;
 
@@ -18,7 +18,7 @@ static void error_callback(int error, const char* description)
 
 void render_thread(GLFWwindow* window)
 {
-    RenderManagerPtr manager = RenderManager::create(window);
+    SceneManagerPtr manager = SceneManager::create(window);
 
     // Producer ///////////////////////////////////////////////
 
@@ -29,10 +29,10 @@ void render_thread(GLFWwindow* window)
 
     LayerPtr layer = Layer::create(manager, producer);
 
-    RenderManager::State state;
+    SceneManager::State state;
     state.layers = {layer};
 
-    RenderManager::StateId state_id = manager->add_state(std::move(state));
+    SceneManager::StateId state_id = manager->add_state(std::move(state));
     manager->enter_state(state_id);
 
     // Rendering //////////////////////////////////////////////

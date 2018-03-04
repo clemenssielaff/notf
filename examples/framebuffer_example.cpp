@@ -17,8 +17,6 @@
 #include "graphics/core/texture.hpp"
 #include "graphics/core/vertex_array.hpp"
 
-#include "glm_utils.hpp"
-
 using namespace notf;
 
 namespace {
@@ -83,7 +81,7 @@ void render_thread(GLFWwindow* window)
     FragmentShaderPtr blinn_phong_frag = FragmentShader::create(graphics_context, "Blinn-Phong.frag", frag_src);
 
     PipelinePtr blinn_phong_pipeline = Pipeline::create(graphics_context, blinn_phong_vert, blinn_phong_frag);
-    const auto pipeline_guard = graphics_context->bind_pipeline(blinn_phong_pipeline);
+    const auto pipeline_guard        = graphics_context->bind_pipeline(blinn_phong_pipeline);
 
     Texture::Args tex_args;
     tex_args.codec      = Texture::Codec::ASTC;
@@ -133,7 +131,7 @@ void render_thread(GLFWwindow* window)
         angle += 0.01 * ((frame_start_time - last_frame_start_time) / 16ms);
         last_frame_start_time = frame_start_time;
 
-//        graphics_context->bind_framebuffer(framebuffer);
+        //        graphics_context->bind_framebuffer(framebuffer);
 
         Size2i buffer_size;
         glfwGetFramebufferSize(window, &buffer_size.width, &buffer_size.height);
@@ -170,19 +168,19 @@ void render_thread(GLFWwindow* window)
             gl_check_error();
         }
 
-//        /////////////////
+        //        /////////////////
 
-//        graphics_context->unbind_framebuffer();
+        //        graphics_context->unbind_framebuffer();
 
-//        glViewport(0, 0, 800, 800);
-//        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        //        glViewport(0, 0, 800, 800);
+        //        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-//        graphics_context->bind_texture(render_target, 0);
-//        //        glGenerateMipmap(GL_TEXTURE_2D);
+        //        graphics_context->bind_texture(render_target, 0);
+        //        //        glGenerateMipmap(GL_TEXTURE_2D);
 
-//        library.render();
+        //        library.render();
 
-//        /////////////////
+        //        /////////////////
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -192,9 +190,9 @@ void render_thread(GLFWwindow* window)
     }
 
     // clean up
-//    graphics_context->unbind_all_textures();
-//    graphics_context->unbind_framebuffer();
-//    graphics_context->unbind_pipeline();
+    //    graphics_context->unbind_all_textures();
+    //    graphics_context->unbind_framebuffer();
+    //    graphics_context->unbind_pipeline();
 }
 
 } // namespace

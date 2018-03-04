@@ -1,10 +1,10 @@
 #include <iostream>
 
 #include "app/core/glfw.hpp"
+#include "app/renderer/plotter.hpp"
+#include "app/scene/layer.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
-#include "graphics/engine/layer.hpp"
-#include "graphics/producer/plotter.hpp"
 #include "graphics/text/font.hpp"
 
 #pragma clang diagnostic ignored "-Wunused-variable"
@@ -20,14 +20,13 @@ static void error_callback(int error, const char* description)
 
 void render_thread(GLFWwindow* window)
 {
-    RenderManagerPtr render_manager = RenderManager::create(window);
+    SceneManagerPtr manager = SceneManager::create(window);
 
     // Shader ///////////////////////////////////////////////
 
-    PlotterPtr plotter = Plotter::create(render_manager);
+    PlotterPtr plotter = Plotter::create(manager);
 
-    FontPtr font
-        = Font::load(render_manager->font_manager(), "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 32);
+    FontPtr font = Font::load(manager->font_manager(), "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf", 32);
 
     Plotter::TextInfo info;
     info.font        = font;
@@ -40,21 +39,21 @@ void render_thread(GLFWwindow* window)
 
     // Render State //////////////////////////////////////////////
 
-    LayerPtr layer = Layer::create(render_manager, plotter);
+    LayerPtr layer = Layer::create(manager, plotter);
 
-    RenderManager::State state;
+    SceneManager::State state;
     state.layers = {layer};
 
-    RenderManager::StateId state_id = render_manager->add_state(std::move(state));
-    render_manager->enter_state(state_id);
+    SceneManager::StateId state_id = manager->add_state(std::move(state));
+    manager->enter_state(state_id);
 
     // Rendering //////////////////////////////////////////////
 
-    render_manager->graphics_context()->clear(Color(0.2f, 0.3f, 0.5f, 1));
+    manager->graphics_context()->clear(Color(0.2f, 0.3f, 0.5f, 1));
 
     while (!glfwWindowShouldClose(window)) {
 
-        render_manager->render();
+        manager->render();
 
         glfwPollEvents();
     }

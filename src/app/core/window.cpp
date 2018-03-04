@@ -3,10 +3,10 @@
 #include "app/core/application.hpp"
 #include "app/core/glfw.hpp"
 #include "app/core/resource_manager.hpp"
-#include "app/core/window_layout.hpp"
+#include "app/scene/scene_manager.hpp"
+#include "app/scene/widget/window_layout.hpp"
 #include "common/log.hpp"
 #include "graphics/core/raw_image.hpp"
-#include "graphics/engine/render_manager.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
@@ -82,7 +82,7 @@ Window::Window(const Args& args)
     : m_glfw_window(nullptr, detail::window_deleter)
     , m_title(args.title)
     , m_layout()
-    , m_render_manager() // has to be created after the OpenGL Context
+    , m_scene_manager() // has to be created after the OpenGL Context
     , m_size(args.size)
 {
     // make sure that an Application was initialized before instanciating a Window (will throw on failure)
@@ -104,7 +104,7 @@ Window::Window(const Args& args)
     glfwSetWindowUserPointer(m_glfw_window.get(), this);
 
     // create the auxiliary objects
-    m_render_manager = RenderManager::create(m_glfw_window.get());
+    m_scene_manager = SceneManager::create(m_glfw_window.get());
 
     // apply the Window icon
     // In order to show the icon in Ubuntu 16.04 is as bit more complicated:
@@ -184,7 +184,7 @@ void Window::close()
         on_close(*this);
         Application::Access<Window>().unregister(this);
         m_layout.reset();
-        m_render_manager.reset();
+        m_scene_manager.reset();
         m_glfw_window.reset();
     }
     m_size = Size2i::invalid();
@@ -341,7 +341,7 @@ void Window::_update()
     assert(m_glfw_window);
 
     // do nothing, if there are no Widgets in need to be redrawn
-    //    if (m_render_manager->is_clean()) { // TODO: dirty mechanism for RenderManager
+    //    if (m_render_manager->is_clean()) { // TODO: dirty mechanism for SceneManager
     //        return;
     //    }
 
@@ -350,7 +350,7 @@ void Window::_update()
 
     // render
     try {
-        m_render_manager->render();
+        m_scene_manager->render();
     }
     // if an error bubbled all the way up here, something has gone horribly wrong
     catch (const notf_exception& error) {

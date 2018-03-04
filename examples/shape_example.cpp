@@ -1,12 +1,12 @@
 #include <iostream>
 
 #include "app/core/glfw.hpp"
+#include "app/renderer/plotter.hpp"
+#include "app/scene/layer.hpp"
 #include "common/log.hpp"
 #include "common/polygon.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/vertex_array.hpp"
-#include "graphics/engine/layer.hpp"
-#include "graphics/producer/plotter.hpp"
 
 #pragma clang diagnostic ignored "-Wunused-variable"
 
@@ -36,11 +36,11 @@ static void error_callback(int error, const char* description)
 
 void render_thread(GLFWwindow* window)
 {
-    RenderManagerPtr render_manager = RenderManager::create(window);
+    SceneManagerPtr manager = SceneManager::create(window);
 
     // Shader ///////////////////////////////////////////////
 
-    PlotterPtr plotter = Plotter::create(render_manager);
+    PlotterPtr plotter = Plotter::create(manager);
 
 #if 0
     Polygonf polygon({Vector2f{100, 700}, Vector2f{50, 200}, Vector2f{50, 50}, Vector2f{750, 50}, Vector2f{750, 750}});
@@ -63,21 +63,21 @@ void render_thread(GLFWwindow* window)
 
     // Render State //////////////////////////////////////////////
 
-    LayerPtr layer = Layer::create(render_manager, plotter);
+    LayerPtr layer = Layer::create(manager, plotter);
 
-    RenderManager::State state;
+    SceneManager::State state;
     state.layers = {layer};
 
-    RenderManager::StateId state_id = render_manager->add_state(std::move(state));
-    render_manager->enter_state(state_id);
+    SceneManager::StateId state_id = manager->add_state(std::move(state));
+    manager->enter_state(state_id);
 
     // Rendering //////////////////////////////////////////////
 
-    render_manager->graphics_context()->clear(Color(0.2f, 0.3f, 0.5f, 1));
+    manager->graphics_context()->clear(Color(0.2f, 0.3f, 0.5f, 1));
 
     while (!glfwWindowShouldClose(window)) {
 
-        render_manager->render();
+        manager->render();
 
         glfwPollEvents();
     }

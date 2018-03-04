@@ -16,10 +16,10 @@ macro(create_module name)
         "src/${name}/*.cpp"
     )
     file(GLOB_RECURSE ${name}_HEADERS RELATIVE ${CMAKE_SOURCE_DIR}
-        "include/${name}/*.hpp"
+        "src/${name}/*.hpp"
     )
     file(GLOB_RECURSE ${name}_MARKDOWN RELATIVE ${CMAKE_SOURCE_DIR}
-        "include/${name}/*.md"
+        "src/${name}/*.md"
     )
     set(${name}_MODULE ${${name}_SOURCE} ${${name}_HEADERS} ${${name}_MARKDOWN})
 endmacro()
@@ -28,6 +28,7 @@ endmacro()
 
 option(NOTF_USE_LIBCXX "Use LLVM's libc++ instead of libstdc++" OFF)
 option(NOTF_USE_OPENMP "Use OpenMP" ON)
+option(NOTF_BUILD_TESTS "Build tests" OFF)
 option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
 option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" OFF)
 
@@ -73,16 +74,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(NOTF_LOG_PRETTY_FUNCTION)
     add_definitions(-DNOTF_NOTF_LOG_PRETTY_FUNCTION)
-else(NOTF_LOG_PRETTY_FUNCTION)
-
 endif()
 
 include_directories(
-    include/
+    src/
     thirdparty/
     res/
     /home/clemens/code/thirdparty/freetype-2.8.1/include
-    test/
     examples/
 )
 
@@ -151,47 +149,51 @@ target_link_libraries(${PROJECT_NAME}
 
 # TESTS ################################################################################################################
 
-include_directories(
-    /home/clemens/code/thirdparty/glm-0.9.8.5/include/
-)
+if(NOTF_BUILD_TESTS)
 
-add_sources(TEST_SOURCES test
-    test_aabr.cpp
-    test_circle.cpp
-    test_color.cpp
-    test_float.cpp
-    test_main.cpp
-    test_half.cpp
-#    test_signal.cpp
-    test_string_utils.cpp
-#    test_vector2.cpp
-#    test_matrix3.cpp
-#    test_matrix4.cpp
-    test_utils.cpp
-    test_dag.cpp
+    include_directories(
+        /home/clemens/code/thirdparty/glm-0.9.8.5/include/
+    )
 
-    catch.hpp
-    test_utils.hpp
-    glm_utils.hpp
-)
+    add_sources(TEST_SOURCES test
+        test_aabr.cpp
+        test_circle.cpp
+        test_color.cpp
+        test_float.cpp
+        test_main.cpp
+        test_half.cpp
+    #    test_signal.cpp
+        test_string_utils.cpp
+    #    test_vector2.cpp
+    #    test_matrix3.cpp
+    #    test_matrix4.cpp
+        test_utils.cpp
+        test_dag.cpp
 
-add_executable(notf-test
-    ${common_MODULE}
-    ${core_MODULE}
-    ${dynamic_MODULE}
-    ${graphics_MODULE}
-    ${utils_MODULE}
-    ${TEST_SOURCES}
-    ${THIRDPARTY_FILES}
-    ${RESOURCE_FILES}
-)
+        catch.hpp
+        test_utils.hpp
+        glm_utils.hpp
+    )
 
-target_link_libraries(notf-test
-    ${OPENGL_gl_LIBRARY}
-    glfw
-    freetype
-    ${PYTHON_LIBRARIES}
-)
+    add_executable(notf-test
+        ${common_MODULE}
+        ${core_MODULE}
+        ${dynamic_MODULE}
+        ${graphics_MODULE}
+        ${utils_MODULE}
+        ${TEST_SOURCES}
+        ${THIRDPARTY_FILES}
+        ${RESOURCE_FILES}
+    )
+
+    target_link_libraries(notf-test
+        ${OPENGL_gl_LIBRARY}
+        glfw
+        freetype
+        ${PYTHON_LIBRARIES}
+    )
+
+endif()
 
 # BENCHMARK ############################################################################################################
 
