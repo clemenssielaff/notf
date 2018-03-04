@@ -77,7 +77,7 @@ struct notf_exception : public std::exception {
 /// Specialized exception that logs the message and then behaves like a regular std::runtime_error.
 NOTF_EXCEPTION_TYPE(runtime_error)
 
-/// Exception type for logical (math) errors.
+/// Exception type for logical errors.
 NOTF_EXCEPTION_TYPE(logic_error)
 
 /// Exception type for out of bounds errors.
@@ -94,6 +94,8 @@ NOTF_EXCEPTION_TYPE(bad_deference_error)
 
 //====================================================================================================================//
 
+#ifdef NOTF_DEBUG
+
 /// Pointer wrapper to make sure that if a function can return a nullptr, the user either checks it before dereferencing
 /// or doesn't use it.
 template<typename T>
@@ -101,60 +103,107 @@ struct risky_ptr {
 
     /// Constructor
     /// @param ptr  Pointer to wrap.
-    risky_ptr(T* ptr) : raw(ptr) {}
+    risky_ptr(T* ptr) : m_raw(ptr) {}
+
+    /// Assignment operator.
+    risky_ptr& operator=(T* ptr) { m_raw = ptr; }
+
+    /// Allows implicit conversion between compatible risky pointer types.
+    template<typename OTHER, typename = typename std::enable_if<std::is_convertible<T*, OTHER*>::value>::type>
+    operator risky_ptr<OTHER>() const
+    {
+        return risky_ptr<OTHER>(static_cast<OTHER*>(m_raw));
+    }
 
     /// @{
     /// Access the value pointed to by the wrapped pointer.
     /// @throws bad_deference_error If the wrapped pointer is empty.
     T* operator->()
     {
-        if (!raw) {
+        if (!m_raw) {
             notf_throw(bad_deference_error, "Failed to dereference an empty pointer!");
         }
-        return raw;
+        return m_raw;
     }
-    const T* operator->() const { return const_cast<risky_ptr<T>*>(this); }
+    const T* operator->() const { return const_cast<risky_ptr<T>*>(this)->operator->(); }
     /// @}
 
     /// Dereferences the wrapped pointer.
     /// @throws bad_deference_error If the wrapped pointer is empty.
     T& operator*()
     {
-        if (!raw) {
+        if (!m_raw) {
             notf_throw(bad_deference_error, "Failed to dereference an empty pointer!");
         }
-        return *raw;
+        return *m_raw;
     }
-    const T& operator*() const { return *const_cast<risky_ptr<T>*>(this); }
+    const T& operator*() const { return const_cast<risky_ptr<T>*>(this)->operator*(); }
     /// @}
 
     /// @{
     /// Equality operator
-    bool operator==(const T* rhs) const noexcept { return raw == rhs; }
-    bool operator==(const risky_ptr* rhs) const noexcept { return raw == rhs->raw; }
+    bool operator==(const T* rhs) const noexcept { return m_raw == rhs; }
+    bool operator==(const risky_ptr& rhs) const noexcept { return m_raw == rhs.m_raw; }
     /// @}
 
     /// @{
     /// Inequality operator.
-    bool operator!=(const T* rhs) const noexcept { return raw != rhs; }
-    bool operator!=(const risky_ptr* rhs) const noexcept { return raw != rhs->raw; }
+    bool operator!=(const T* rhs) const noexcept { return m_raw != rhs; }
+    bool operator!=(const risky_ptr& rhs) const noexcept { return m_raw != rhs.m_raw; }
     /// @}
 
     /// Tests if the contained pointer is save.
-    explicit operator bool() const noexcept { return raw != nullptr; }
+    explicit operator bool() const noexcept { return m_raw != nullptr; }
 
     /// Tests if the contained pointer is empty.
-    bool operator!() const noexcept { return raw == nullptr; }
+    bool operator!() const noexcept { return m_raw == nullptr; }
 
-    /// Tests if the contained pointer is save.
-    bool is_save() const noexcept { return raw != nullptr; }
-
-    /// Tests if the contained pointer is empty.
-    bool is_empty() const noexcept { return raw == nullptr; }
-
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
     /// Wrapped pointer.
-    T* const raw;
+    T* m_raw;
+
+    // friends -------------------------------------------------------------------------------------------------------//
+    template<typename U>
+    friend U* make_raw(risky_ptr<U>&) noexcept;
+
+    template<typename U>
+    friend const U* make_raw(const risky_ptr<U>&) noexcept;
 };
+
+/// @{
+/// Unwraps the a raw pointer from a risky_ptr.
+/// @throws bad_deference_error If the wrapped pointer is empty.
+template<typename T>
+inline T* make_raw(risky_ptr<T>& risky) noexcept
+{
+    return risky.m_raw;
+}
+template<typename T>
+inline const T* make_raw(const risky_ptr<T>& risky) noexcept
+{
+    return risky.m_raw;
+}
+/// @}
+
+#else
+
+    /// In release-mode the risky_ptr is a simple typedef that is compiled away to a raw pointer.
+    template<typename T>
+    using risky_ptr = T*;
+
+template<typename T>
+inline T* make_raw(risky_ptr<T>& risky) noexcept
+{
+    return risky;
+}
+template<typename T>
+inline const T* make_raw(const risky_ptr<T>& risky) noexcept
+{
+    return risky;
+}
+
+#endif
 
 //====================================================================================================================//
 

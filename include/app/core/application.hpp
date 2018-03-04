@@ -21,10 +21,7 @@ class Application {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    /// Private access type template.
-    /// Used for finer grained friend control and is compiled away completely (if you should worry).
-    template<typename T, typename = typename std::enable_if<is_one_of<T, Window>::value>::type>
-    class Private;
+    NOTF_ACCESS_TYPES(Window)
 
     //================================================================================================================//
 public:
@@ -219,11 +216,11 @@ private:
 // ===================================================================================================================//
 
 template<>
-class Application::Private<Window> {
+class Application::Access<Window> {
     friend class Window;
 
     /// Constructor.
-    Private() : m_application(Application::instance()) {}
+    Access() : m_application(Application::instance()) {}
 
     /// Registers a new Window in this Application.
     void register_new(WindowPtr window) { m_application._register_window(std::move(window)); }

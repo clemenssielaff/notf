@@ -167,7 +167,7 @@ void Application::_on_token_key(GLFWwindow* glfw_window, int key, UNUSED int sca
     g_key_modifiers = KeyModifiers(modifiers);
 
     // let the window handle the event
-    Window::Private<Application>(*window).propagate(
+    Window::Access<Application>(*window).propagate(
         KeyEvent(*window, notf_key, KeyAction(action), KeyModifiers(modifiers), g_key_states));
 }
 
@@ -178,7 +178,7 @@ void Application::_on_char_input(GLFWwindow* glfw_window, uint codepoint, int mo
     assert(window);
 
     // let the window handle the event
-    Window::Private<Application>(*window).propagate(
+    Window::Access<Application>(*window).propagate(
         CharEvent(*window, codepoint, KeyModifiers(modifiers), g_key_states));
 }
 
@@ -223,7 +223,7 @@ void Application::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
                            g_cursor_pos - g_prev_cursor_pos,               // delta in window coordinates
                            Button::NONE,                                   // move events are triggered by no button
                            MouseAction::MOVE, g_key_modifiers, g_button_states);
-    Window::Private<Application>(*window).propagate(std::move(mouse_event));
+    Window::Access<Application>(*window).propagate(std::move(mouse_event));
 }
 
 void Application::_on_mouse_button(GLFWwindow* glfw_window, int button, int action, int modifiers)
@@ -251,7 +251,7 @@ void Application::_on_mouse_button(GLFWwindow* glfw_window, int button, int acti
                            {g_cursor_pos.x() - static_cast<float>(window_pos.x()),
                             g_cursor_pos.y() - static_cast<float>(window_pos.y())},
                            Vector2f::zero(), notf_button, notf_action, g_key_modifiers, g_button_states);
-    Window::Private<Application>(*window).propagate(std::move(mouse_event));
+    Window::Access<Application>(*window).propagate(std::move(mouse_event));
 }
 
 void Application::_on_scroll(GLFWwindow* glfw_window, double x, double y)
@@ -271,7 +271,7 @@ void Application::_on_scroll(GLFWwindow* glfw_window, double x, double y)
                             g_cursor_pos.y() - static_cast<float>(window_pos.y())},
                            {static_cast<float>(x), static_cast<float>(-y)}, Button::NONE, MouseAction::SCROLL,
                            g_key_modifiers, g_button_states);
-    Window::Private<Application>(*window).propagate(std::move(mouse_event));
+    Window::Access<Application>(*window).propagate(std::move(mouse_event));
 }
 
 void Application::_on_window_close(GLFWwindow* glfw_window)
@@ -287,13 +287,13 @@ void Application::_on_window_resize(GLFWwindow* glfw_window, int width, int heig
     assert(glfw_window);
     Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
     assert(window);
-    Window::Private<Application>(*window).resize({width, height});
+    Window::Access<Application>(*window).resize({width, height});
 }
 
 void Application::_register_window(const WindowPtr& window)
 {
     assert(window);
-    GLFWwindow* glfw_window = Window::Private<Application>(*window).glfw_window();
+    GLFWwindow* glfw_window = Window::Access<Application>(*window).glfw_window();
     if (!glfw_window) {
         _shutdown();
         notf_throw_format(window_initialization_error,
@@ -327,7 +327,7 @@ void Application::_unregister_window(Window* window)
     assert(window);
 
     // disconnect the window callbacks
-    GLFWwindow* glfw_window = Window::Private<Application>(*window).glfw_window();
+    GLFWwindow* glfw_window = Window::Access<Application>(*window).glfw_window();
     assert(glfw_window);
     glfwSetWindowCloseCallback(glfw_window, nullptr);
     glfwSetKeyCallback(glfw_window, nullptr);
@@ -344,7 +344,7 @@ void Application::_set_current_window(Window* window)
 {
     assert(window);
     if (m_current_window.get() != window) {
-        GLFWwindow* glfw_window = Window::Private<Application>(*window).glfw_window();
+        GLFWwindow* glfw_window = Window::Access<Application>(*window).glfw_window();
         assert(glfw_window);
         glfwMakeContextCurrent(glfw_window);
         m_current_window = window->shared_from_this();

@@ -7,11 +7,10 @@
 
 namespace notf {
 
-WindowLayout::WindowLayout(Window* window) : Layout(std::make_unique<detail::SingleItemContainer>()), m_controller()
+WindowLayout::WindowLayout(Window* window)
+    : Layout(std::make_unique<detail::SingleItemContainer>()), m_window(window), m_controller()
 {
-    // the WindowLayout is at the root of the Item hierarchy and therefore special
-    Item::Private<WindowLayout>(*this).set_window(window);
-    ScreenItem::Private<WindowLayout>(*this).be_own_scissor(this);
+    ScreenItem::Access<WindowLayout>(*this).be_own_scissor(this);
 }
 
 WindowLayoutPtr WindowLayout::create(Window* window)

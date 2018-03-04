@@ -57,10 +57,7 @@ class GraphicsProducer {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    /// Private access type template.
-    /// Used for finer grained friend control and is compiled away completely (if you should worry).
-    template<typename T, typename = typename std::enable_if<is_one_of<T, Layer, RenderTarget>::value>::type>
-    class Private;
+    NOTF_ACCESS_TYPES(Layer, RenderTarget)
 
 protected:
     /// Token object to make sure that object instances can only be created by a call to `_create`.
@@ -89,7 +86,7 @@ protected:
 #else
         auto result = std::make_shared<make_shared_enabler<T>>(token, render_manager, std::forward<Ts>(args)...);
 #endif
-        RenderManager::Private<GraphicsProducer>(*render_manager).register_new(result);
+        RenderManager::Access<GraphicsProducer>(*render_manager).register_new(result);
         return result;
     }
 
@@ -132,12 +129,12 @@ private:
 // ===================================================================================================================//
 
 template<>
-class GraphicsProducer::Private<Layer> {
+class GraphicsProducer::Access<Layer> {
     friend class Layer;
 
     /// Constructor.
     /// @param producer     The GraphicsProducer to access.
-    Private(GraphicsProducer& producer) : m_producer(producer) {}
+    Access(GraphicsProducer& producer) : m_producer(producer) {}
 
     /// Renders the GraphicsProducer, if it is dirty.
     void render() { m_producer.render(); }
@@ -147,12 +144,12 @@ class GraphicsProducer::Private<Layer> {
 };
 
 template<>
-class GraphicsProducer::Private<RenderTarget> {
+class GraphicsProducer::Access<RenderTarget> {
     friend class RenderTarget;
 
     /// Constructor.
     /// @param producer     The GraphicsProducer to access.
-    Private(GraphicsProducer& producer) : m_producer(producer) {}
+    Access(GraphicsProducer& producer) : m_producer(producer) {}
 
     /// Renders the GraphicsProducer, if it is dirty.
     void render() { m_producer.render(); }

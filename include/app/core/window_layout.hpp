@@ -11,16 +11,17 @@ class WindowLayout : public Layout {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    /// Private access type template.
-    /// Used for finer grained friend control and is compiled away completely (if you should worry).
-    template<typename T, typename = typename std::enable_if<is_one_of<T, Window>::value>::type>
-    class Private;
+    NOTF_ACCESS_TYPES(Window)
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Constructor.
     /// @param window   Window owning this RootWidget.
     WindowLayout(Window* window);
+
+    /// The Window containing the hierarchy that this Item is a part of.
+    /// Is invalid if this Item is not part of a rooted hierarchy.
+    Window* window() const { return m_window; }
 
     /// Factory.
     /// @param window   Window owning this RootWidget.
@@ -49,6 +50,9 @@ private:
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
+    /// The Window containing the hierarchy that this Item is the root of.
+    Window* m_window;
+
     /// The Window Controller.
     Controller* m_controller;
 };
@@ -56,12 +60,12 @@ private:
 // ===================================================================================================================//
 
 template<>
-class WindowLayout::Private<Window> {
+class WindowLayout::Access<Window> {
     friend class Window;
 
     /// Constructor.
     /// @param window_layout    WindowLayout to access.
-    Private(WindowLayout& window_layout) : m_window_layout(window_layout) {}
+    Access(WindowLayout& window_layout) : m_window_layout(window_layout) {}
 
     /// Factory.
     /// @param window   Window owning this RootWidget.

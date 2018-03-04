@@ -24,10 +24,12 @@ class ScreenItem;
 /// Property expressions.
 class Controller : public Item {
 
-protected: // constructor *********************************************************************************************/
+    // methods -------------------------------------------------------------------------------------------------------//
+protected:
+    /// Constructor.
     Controller();
 
-public: // methods ****************************************************************************************************/
+public:
     /// Item at the root of the Controller's branch of the Item hierarchy.
     ScreenItem* root_item() { return m_root_item; }
     const ScreenItem* root_item() const { return const_cast<Controller*>(this)->root_item(); }
@@ -35,13 +37,14 @@ public: // methods *************************************************************
     /// Initializes this Controller if it is uninitialized, otherwise does nothing.
     void initialize();
 
-protected: // methods
-    /// Sets a new root at this Controller's branch of the  Item hierarchy.
+protected:
+    /// Sets a new root at this Controller's branch of the Item hierarchy.
     void _set_root_item(const ScreenItemPtr& item);
 
     virtual void _remove_child(const Item* child_item) override;
 
-private: // fields
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
     /// Item at the root of the Controller's Item hierarchy.
     ScreenItem* m_root_item;
 };

@@ -74,7 +74,7 @@ std::shared_ptr<Window> Window::create(const Args& args)
              << "using OpenGl version: " << glGetString(GL_VERSION);
 
     // inititalize the window
-    Application::Private<Window>().register_new(window);
+    Application::Access<Window>().register_new(window);
     return window;
 }
 
@@ -133,8 +133,8 @@ Window::Window(const Args& args)
     }
 
     // create the layout
-    m_layout = WindowLayout::Private<Window>::create(this);
-    WindowLayout::Private<Window>(*m_layout).set_grant(buffer_size());
+    m_layout = WindowLayout::Access<Window>::create(this);
+    WindowLayout::Access<Window>(*m_layout).set_grant(buffer_size());
 }
 
 Window::~Window() { close(); }
@@ -182,7 +182,7 @@ void Window::close()
     if (m_glfw_window) {
         log_trace << "Closing Window \"" << m_title << "\"";
         on_close(*this);
-        Application::Private<Window>().unregister(this);
+        Application::Access<Window>().unregister(this);
         m_layout.reset();
         m_render_manager.reset();
         m_glfw_window.reset();
@@ -346,7 +346,7 @@ void Window::_update()
     //    }
 
     // make the window current
-    Application::Private<Window>().set_current(this);
+    Application::Access<Window>().set_current(this);
 
     // render
     try {

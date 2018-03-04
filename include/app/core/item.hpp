@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/forwards.hpp"
+#include "common/exception.hpp"
 #include "common/id.hpp"
 #include "common/signal.hpp"
 
@@ -10,6 +11,9 @@ namespace notf {
 
 /// Unique identification token of an Item.
 using ItemID = IdType<Item, size_t>;
+
+/// Exception type for errors originating in the Item hierarchy.
+NOTF_EXCEPTION_TYPE(item_hierarchy_error)
 
 //====================================================================================================================//
 
@@ -36,11 +40,7 @@ class Item : public receive_signals, public std::enable_shared_from_this<Item> {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    /// Private access type template.
-    /// Used for finer grained friend control and is compiled away completely (if you should worry).
-    template<typename T,
-             typename = typename std::enable_if<is_one_of<T, detail::ItemContainer, WindowLayout>::value>::type>
-    class Private;
+    NOTF_ACCESS_TYPES(detail::ItemContainer)
 
     // signals -------------------------------------------------------------------------------------------------------//
 public:
@@ -67,18 +67,16 @@ public:
     /// Application-unique ID of this Item.
     ItemID id() const { return m_id; }
 
-    /// The Window containing the hierarchy that this Item is a part of.
-    /// Is invalid if this Item is not part of a rooted hierarchy.
-    Window* window() const { return m_window; }
-
     ///@{
-    /// The parent of this Item.
-    /// Is invalid if this Item does not have a parent.
-    Item* parent() { return m_parent; }
-    const Item* parent() const { return const_cast<Item*>(this)->parent(); }
+    /// The parent of this Item, returns an empty pointer if this Item currently has no parent.
+    risky_ptr<Item> parent() { return m_parent; }
+    const risky_ptr<Item> parent() const { return const_cast<Item*>(this)->parent(); }
     ///@}
 
-    /// The (optional) name of this Item.
+    /// Checks if this Item currently has a parent or not.
+    bool has_parent() const { return m_parent != nullptr; }
+
+    /// The name of this Item.
     const std::string& name() const { return m_name; }
 
     /// Checks if this Item is the parent of the given child.
@@ -92,8 +90,8 @@ public:
 
     ///@{
     /// Finds and returns the first common ancestor of two Items, returns empty if none exists.
-    Item* common_ancestor(Item* other);
-    const Item* common_ancestor(const Item* other) const
+    risky_ptr<Item> common_ancestor(Item* other);
+    const risky_ptr<Item> common_ancestor(const Item* other) const
     {
         return const_cast<Item*>(this)->common_ancestor(const_cast<Item*>(other));
     }
@@ -102,22 +100,22 @@ public:
     ///@{
     /// Returns the closest Layout in the hierarchy of the given Item.
     /// Is empty if the given Item has no ancestor Layout.
-    Layout* layout();
-    const Layout* layout() const { return const_cast<Item*>(this)->layout(); }
+    risky_ptr<Layout> layout();
+    const risky_ptr<Layout> layout() const { return const_cast<Item*>(this)->layout(); }
     ///@}
 
     ///@{
     /// Returns the closest Controller in the hierarchy of the given Item.
     /// Is empty if the given Item has no ancestor Controller.
-    Controller* controller();
-    const Controller* controller() const { return const_cast<Item*>(this)->controller(); }
+    risky_ptr<Controller> controller();
+    const risky_ptr<Controller> controller() const { return const_cast<Item*>(this)->controller(); }
     ///@}
 
     ///@{
     /// Returns the ScreenItem associated with this given Item - either the Item itself or a Controller's root Item.
     /// Is empty if this is a Controller without a root Item.
-    ScreenItem* screen_item();
-    const ScreenItem* screen_item() const { return const_cast<Item*>(this)->screen_item(); }
+    risky_ptr<ScreenItem> screen_item();
+    const risky_ptr<ScreenItem> screen_item() const { return const_cast<Item*>(this)->screen_item(); }
     ///@}
 
     /// Updates the name of this Item.
@@ -133,10 +131,7 @@ protected:
     virtual void _remove_child(const Item* child_item) = 0;
 
     /// Pulls new values from the parent if it changed.
-    virtual void _update_from_parent();
-
-    /// Changes the Window that this Item is displayed id.
-    void _set_window(Window* window);
+    virtual void _update_from_parent() {}
 
     /// Returns the first ancestor of this Item that has a specific type (can be empty if none is found).
     template<typename Type>
@@ -168,9 +163,6 @@ protected:
 private:
     /// Application-unique ID of this Item.
     const ItemID m_id;
-
-    /// The Window containing the hierarchy that this Item is a part of.
-    Window* m_window;
 
     /// The parent Item, is guaranteed to be valid iff `m_window` is valid.
     Item* m_parent;
@@ -277,32 +269,15 @@ struct ItemList final : public ItemContainer {
 // ===================================================================================================================//
 
 template<>
-class Item::Private<detail::ItemContainer> {
+class Item::Access<detail::ItemContainer> {
     friend struct detail::ItemContainer;
 
     /// Constructor.
-    Private(Item& item) : m_item(item) {}
+    Access(Item& item) : m_item(item) {}
 
     /// Sets the parent of this Item.
     /// @param is_orphaned   If the parent of the Item has already been deleted, the Item cannot unregister itself.
     void set_parent(Item* parent, bool is_orphaned) { m_item._set_parent(parent, is_orphaned); }
-
-    /// The Item to access.
-    Item& m_item;
-};
-
-// ===================================================================================================================//
-
-template<>
-class Item::Private<WindowLayout> {
-    friend class WindowLayout;
-
-    /// Constructor.
-    Private(Item& item) : m_item(item) {}
-
-    /// Sets the parent of this Item.
-    /// @param is_orphaned   If the parent of the Item has already been deleted, the Item cannot unregister itself.
-    void set_window(Window* window) { m_item.m_window = window; }
 
     /// The Item to access.
     Item& m_item;

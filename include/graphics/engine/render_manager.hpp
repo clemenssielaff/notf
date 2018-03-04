@@ -65,10 +65,10 @@ private:
 // ===================================================================================================================//
 
 ///
-/// 
+///
 /// State
 /// =====
-/// 
+///
 /// The RenderManager has a STATE that defines how to render a frame.
 /// A State is made up of a list of Layers.
 /// Layers define an AABR (potentially full-screen) that are rendered into the screen buffer on each frame.
@@ -94,21 +94,21 @@ private:
 ///
 /// Threading
 /// =========
-/// 
+///
 /// One important design decision concerned the threading model with regards to rendering.
 /// Obviously we need the actual rendering (OpenGL calls) made from a dedicated thread, in case OpenGL blocks to draw
 /// a more complicated frame. During that time, even though the UI cannot update visually, we need the rest of the
 /// application to remain responsive.
-/// 
+///
 /// Ideally, that is all that the render thread does - take some sort of fixed state, compile the best arrangement of
 /// OpenGL calls to satisfy the requirements imposed by the state and execute those calls.
 /// Practically however, this is a bit more complicated.
-/// 
-/// Some GraphicsProducer may require only properties in order to draw: the "smoke" FragmentProducer for example, 
+///
+/// Some GraphicsProducer may require only properties in order to draw: the "smoke" FragmentProducer for example,
 /// requires only the screen resolution and the time to update.
 /// In that case, it is enough for the Application to update the PropertyManager with all of its accumulated updates
 /// from various threads and then kick off the RenderManager of each Window.
-///   
+///
 ///                     +
 ///                     |     (owned by Application)         (owned by Window)
 ///                     |              |                            |
@@ -122,17 +122,14 @@ private:
 ///                     |
 ///                     +
 ///               thread barrier
-///                  
-/// This works well, as long as each Producer only requires the PropertyManager to remain unchanged 
-/// 
+///
+/// This works well, as long as each Producer only requires the PropertyManager to remain unchanged
+///
 class RenderManager {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    /// Private access type template.
-    /// Used for finer grained friend control and is compiled away completely (if you should worry).
-    template<typename T, typename = typename std::enable_if<is_one_of<T, GraphicsProducer, RenderTarget>::value>::type>
-    class Private;
+    NOTF_ACCESS_TYPES(Layer, GraphicsProducer, RenderTarget)
 
     /// Complete state of the Render Buffer.
     struct State {
@@ -238,12 +235,12 @@ private:
 // ===================================================================================================================//
 
 template<>
-class RenderManager::Private<GraphicsProducer> {
+class RenderManager::Access<GraphicsProducer> {
     friend class GraphicsProducer;
 
     /// Constructor.
     /// @param render_manager   RenderManager to access.
-    Private(RenderManager& render_manager) : m_render_manager(render_manager) {}
+    Access(RenderManager& render_manager) : m_render_manager(render_manager) {}
 
     /// Registers a new GraphicsProducer.
     /// @throws runtime_error   If a GraphicsProducer with the same ID is already registered.
@@ -254,12 +251,12 @@ class RenderManager::Private<GraphicsProducer> {
 };
 
 template<>
-class RenderManager::Private<RenderTarget> {
+class RenderManager::Access<RenderTarget> {
     friend class RenderTarget;
 
     /// Constructor.
     /// @param render_manager   RenderManager to access.
-    Private(RenderManager& render_manager) : m_render_manager(render_manager) {}
+    Access(RenderManager& render_manager) : m_render_manager(render_manager) {}
 
     /// Registers a new RenderTarget.
     /// @throws runtime_error   If a RenderTarget with the same ID is already registered.
@@ -270,4 +267,3 @@ class RenderManager::Private<RenderTarget> {
 };
 
 } // namespace notf
-

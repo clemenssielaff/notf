@@ -253,7 +253,7 @@ FrameBufferPtr FrameBuffer::create(GraphicsContext& context, Args&& args)
 #else
     framebuffer = std::make_shared<make_shared_enabler<FrameBuffer>>(context, std::move(args));
 #endif
-    GraphicsContext::Private<FrameBuffer>(context).register_new(framebuffer);
+    GraphicsContext::Access<FrameBuffer>(context).register_new(framebuffer);
     return framebuffer;
 }
 

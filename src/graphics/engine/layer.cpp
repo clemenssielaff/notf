@@ -47,7 +47,7 @@ void Layer::render()
         context.set_render_area(m_area);
     }
 
-    GraphicsProducer::Private<Layer>(*m_producer).render();
+    GraphicsProducer::Access<Layer>(*m_producer).render();
 }
 
 } // namespace notf

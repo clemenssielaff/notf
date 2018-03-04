@@ -129,11 +129,9 @@ class ScreenItem : public Item {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    /// Private access type template.
-    /// Used for finer grained friend control and is compiled away completely (if you should worry).
-    template<typename T, typename = typename std::enable_if<is_one_of<T, WindowLayout>::value>::type>
-    class Private;
+    NOTF_ACCESS_TYPES(WindowLayout)
 
+    /// Spaces that the transformation of a ScreenItem passes through.
     enum class Space : unsigned char {
         LOCAL,  // no transformation
         OFFSET, // offset transformation only
@@ -247,7 +245,7 @@ public:
     const Layout* scissor() const { return m_scissor_layout; }
 
     /// Whether this ScreenItem will inherit its scissor Layout from its parent or supply its own.
-    bool has_explicit_scissor() const { return m_has_explicit_scissor; }
+    bool has_explicit_scissor() const { return m_scissor_layout != nullptr; }
 
     /// Sets the new scissor Layout for this ScreenItem.
     void set_scissor(const Layout* scissor_layout);
@@ -349,11 +347,6 @@ private:
 
     /// Reference to a Layout in the ancestry, used to 'scissor' this ScreenItem.
     const Layout* m_scissor_layout;
-
-    /// Whether this ScreenItem will inherit its scissor Layout from its parent or supply its own.
-    /// If the ScreenItem provides its own scissor and is moved out of its scissor's hierarchy, this flag is reset
-    /// to false, causing the ScreenItem to inherit its new parent's scissor instead.
-    bool m_has_explicit_scissor;
 };
 
 //====================================================================================================================//
@@ -388,19 +381,15 @@ const Matrix3f ScreenItem::xform<ScreenItem::Space::WINDOW>() const;
 //====================================================================================================================//
 
 template<>
-class ScreenItem::Private<WindowLayout> {
+class ScreenItem::Access<WindowLayout> {
     friend class WindowLayout;
 
     /// Constructor.
     /// @param screen_item  ScreenItem to access.
-    Private(ScreenItem& screen_item) : m_screen_item(screen_item) {}
+    Access(ScreenItem& screen_item) : m_screen_item(screen_item) {}
 
     /// Turns this ScreenItem into a root item that is its own scissor.
-    void be_own_scissor(Layout* window_layout)
-    {
-        m_screen_item.m_scissor_layout       = window_layout;
-        m_screen_item.m_has_explicit_scissor = true;
-    }
+    void be_own_scissor(Layout* window_layout) { m_screen_item.m_scissor_layout = window_layout; }
 
     /// The ScreenItem to access.
     ScreenItem& m_screen_item;

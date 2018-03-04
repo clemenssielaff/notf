@@ -97,10 +97,7 @@ class GraphicsContext {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    /// Private access type template.
-    /// Used for finer grained friend control and is compiled away completely (if you should worry).
-    template<typename T, typename = typename std::enable_if<is_one_of<T, Texture, Shader, FrameBuffer>::value>::type>
-    class Private;
+    NOTF_ACCESS_TYPES(Texture, Shader, FrameBuffer)
 
     //================================================================================================================//
 
@@ -493,12 +490,12 @@ private:
 // ===================================================================================================================//
 
 template<>
-class GraphicsContext::Private<Texture> {
+class GraphicsContext::Access<Texture> {
     friend class Texture;
 
     /// Constructor.
     /// @param context  GraphicsContext to access.
-    Private(GraphicsContext& context) : m_context(context) {}
+    Access(GraphicsContext& context) : m_context(context) {}
 
     /// Registers a new Texture.
     /// @param texture          New Texture to register.
@@ -510,12 +507,12 @@ class GraphicsContext::Private<Texture> {
 };
 
 template<>
-class GraphicsContext::Private<Shader> {
+class GraphicsContext::Access<Shader> {
     friend class Shader;
 
     /// Constructor.
     /// @param context  GraphicsContext to access.
-    Private(GraphicsContext& context) : m_context(context) {}
+    Access(GraphicsContext& context) : m_context(context) {}
 
     /// Registers a new Shader.
     /// @param shader           New Shader to register.
@@ -527,12 +524,12 @@ class GraphicsContext::Private<Shader> {
 };
 
 template<>
-class GraphicsContext::Private<FrameBuffer> {
+class GraphicsContext::Access<FrameBuffer> {
     friend class FrameBuffer;
 
     /// Constructor.
     /// @param context  GraphicsContext to access.
-    Private(GraphicsContext& context) : m_context(context) {}
+    Access(GraphicsContext& context) : m_context(context) {}
 
     /// Registers a new FrameBuffer.
     /// @param framebuffer      New FrameBuffer to register.

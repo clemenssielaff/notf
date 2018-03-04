@@ -22,10 +22,13 @@ ItemID next_id()
 
 namespace notf {
 
+item_hierarchy_error::~item_hierarchy_error() = default;
+
+//====================================================================================================================//
+
 Item::Item(detail::ItemContainerPtr container)
     : m_children(std::move(container))
     , m_id(next_id())
-    , m_window()
     , m_parent()
     , m_name(std::to_string(static_cast<size_t>(id())))
 {
@@ -57,17 +60,13 @@ bool Item::has_ancestor(const Item* ancestor) const
         if (parent == ancestor) {
             return true;
         }
-        parent = parent->parent();
+        parent = parent->m_parent;
     }
     return false;
 }
 
-Item* Item::common_ancestor(Item* other)
+risky_ptr<Item> Item::common_ancestor(Item* other)
 {
-    if (this->m_window != other->m_window) {
-        return nullptr;
-    }
-
     if (this == other) {
         return this;
     }
@@ -78,14 +77,14 @@ Item* Item::common_ancestor(Item* other)
     std::unordered_set<Item*> known_ancestors = {first, second};
     while (1) {
         if (first) {
-            first = first->parent();
+            first = first->m_parent;
             if (known_ancestors.count(first)) {
                 return first;
             }
             known_ancestors.insert(first);
         }
         if (second) {
-            second = second->parent();
+            second = second->m_parent;
             if (known_ancestors.count(second)) {
                 return second;
             }
@@ -94,39 +93,17 @@ Item* Item::common_ancestor(Item* other)
     }
 }
 
-Layout* Item::layout() { return _first_ancestor<Layout>(); }
+risky_ptr<Layout> Item::layout() { return _first_ancestor<Layout>(); }
 
-Controller* Item::controller() { return _first_ancestor<Controller>(); }
+risky_ptr<Controller> Item::controller() { return _first_ancestor<Controller>(); }
 
-ScreenItem* Item::screen_item()
+risky_ptr<ScreenItem> Item::screen_item()
 {
     ScreenItem* screen_item = dynamic_cast<ScreenItem*>(this);
     if (!screen_item) {
         screen_item = dynamic_cast<Controller*>(this)->root_item();
     }
     return screen_item;
-}
-
-void Item::_update_from_parent()
-{
-    if (m_parent) {
-        _set_window(m_parent->m_window);
-    }
-    else {
-        _set_window(nullptr);
-    }
-}
-
-void Item::_set_window(Window* window)
-{
-    if (window == m_window) {
-        return;
-    }
-    m_window = window;
-
-    m_children->apply([window](Item* item) -> void { item->_set_window(window); });
-
-    on_window_changed(m_window);
 }
 
 void Item::_set_parent(Item* parent, bool is_orphaned)
@@ -155,13 +132,12 @@ ItemContainer::~ItemContainer() {}
 void ItemContainer::clear()
 {
     apply(
-        [](Item* item) -> void { Item::Private<ItemContainer>(*item).set_parent(nullptr, /* is_orphaned = */ false); });
+        [](Item* item) -> void { Item::Access<ItemContainer>(*item).set_parent(nullptr, /* is_orphaned = */ false); });
 }
 
 void ItemContainer::destroy()
 {
-    apply(
-        [](Item* item) -> void { Item::Private<ItemContainer>(*item).set_parent(nullptr, /* is_orphaned = */ true); });
+    apply([](Item* item) -> void { Item::Access<ItemContainer>(*item).set_parent(nullptr, /* is_orphaned = */ true); });
 }
 
 //====================================================================================================================//

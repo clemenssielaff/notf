@@ -14,7 +14,7 @@ namespace notf {
 ///
 /// 1. All visible child ScreenItems must be placed in accordance to the rules of the Layout.
 /// 2. The Layout must determine its own Aabr as well as
-/// 3. ... its child Aabr (see section on 'Child Aabr').
+/// 3. ... its content Aabr.
 ///
 /// Explicit and Implicit Claims
 /// ============================
@@ -26,10 +26,7 @@ class Layout : public ScreenItem {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    /// Private access type template.
-    /// Used for finer grained friend control and is compiled away completely (if you should worry).
-    template<typename T, typename = typename std::enable_if<is_one_of<T, ScreenItem>::value>::type>
-    class Private;
+    NOTF_ACCESS_TYPES(ScreenItem)
 
     // signals -------------------------------------------------------------------------------------------------------//
 public:
@@ -65,7 +62,7 @@ public:
     /// Layouts with an implicit Claim recalculate theirs from their children - those with an explict Claim don't.
     bool has_explicit_claim() const { return m_has_explicit_claim; }
 
-    /// Removes all Items from the Layout. */
+    /// Removes all Items from the Layout.
     void clear();
 
 protected:
@@ -79,19 +76,19 @@ protected:
 
     // fields --------------------------------------------------------------------------------------------------------//
 protected:
-    /// If true, this Layout provides its own Claim and does not aggregate it from its children. */
+    /// If true, this Layout provides its own Claim and does not aggregate it from its children.
     bool m_has_explicit_claim;
 };
 
 //====================================================================================================================//
 
 template<>
-class Layout::Private<ScreenItem> {
+class Layout::Access<ScreenItem> {
     friend class ScreenItem;
 
     /// Constructor.
     /// @param layout   Layout to access.
-    Private(Layout& layout) : m_layout(layout) {}
+    Access(Layout& layout) : m_layout(layout) {}
 
     /// Updates the Claim of this Layout.
     /// @return  True, iff the Claim was modified.

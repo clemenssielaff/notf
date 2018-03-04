@@ -277,17 +277,11 @@ overloaded(Ts...)->overloaded<Ts...>;
 
 //====================================================================================================================//
 
-/// Calling a const getter into a non-const getter.
-/// Use like:
-///     const Type& get() const { ... }
-///     Type& get() { NONCONST_GETTER(get) }
-#define NONCONST_GETTER(METHOD, ...)                                                                    \
-    {                                                                                                   \
-        using const_thisT = typename std::add_const<std::decay<decltype(*this)>::type>::type*;          \
-        using returnT     = typename std::remove_const<                                                 \
-            std::decay<decltype(const_cast<const_thisT>(this)->METHOD(__VA_ARGS__))>::type>::type&; \
-        return const_cast<returnT>(const_cast<const_thisT>(this)->METHOD(__VA_ARGS__));                 \
-    }
+/// Private access type template.
+/// Used for finer grained friend control and is compiled away completely (if you should worry).
+#define NOTF_ACCESS_TYPES(...)                                                                       \
+    template<typename T, typename = typename std::enable_if<is_one_of<T, __VA_ARGS__>::value>::type> \
+    class Access;
 
 //====================================================================================================================//
 

@@ -23,7 +23,6 @@ ScreenItem::ScreenItem(detail::ItemContainerPtr container)
     , m_is_visible(true)
     , m_opacity(1)
     , m_scissor_layout()
-    , m_has_explicit_scissor(false)
 {}
 
 template<>
@@ -50,7 +49,7 @@ float ScreenItem::opacity(bool effective) const
         return 0;
     }
     if (effective) {
-        if (const Layout* parent_layout = layout()) {
+        if (risky_ptr<const Layout> parent_layout = layout()) {
             return m_opacity * parent_layout->opacity();
         }
     }
@@ -75,12 +74,6 @@ bool ScreenItem::is_visible() const
         return false;
     }
 
-    // no window
-    if (!window()) {
-        return false;
-    }
-    assert(m_scissor_layout);
-
     // bounding rect too small
     if (m_size.area() <= precision_low<float>()) {
         return false;
@@ -91,7 +84,8 @@ bool ScreenItem::is_visible() const
         return false;
     }
 
-    { // fully scissored
+    // fully scissored
+    if (m_scissor_layout) {
         Aabrf content_aabr = m_content_aabr;
         transformation_between(this, m_scissor_layout).transform(content_aabr);
         Aabrf scissor_aabr(m_scissor_layout->size());
@@ -122,26 +116,16 @@ void ScreenItem::set_scissor(const Layout* scissor_layout)
                      << " because it is not an ancestor of " << name();
         scissor_layout = nullptr;
     }
-    if (!scissor_layout) {
-        if (ScreenItem* parent = layout()) {
-            scissor_layout = parent->scissor();
-        }
-    }
     _set_scissor(scissor_layout);
-    m_has_explicit_scissor = static_cast<bool>(scissor_layout);
 }
 
 void ScreenItem::_update_from_parent()
 {
     Item::_update_from_parent();
-    if (Item* parent_item = parent()) {
-        Layout* parent_layout = parent_item->layout();
-        if (!parent_layout) { // if the parent is the WindowLayout it won't have a parent itself
-            parent_layout = dynamic_cast<Layout*>(parent_item);
-        }
-        if (parent_layout) { // parent may be a Controller without a parent itself
-            _set_scissor(parent_layout->scissor());
-        }
+    if (m_scissor_layout && !has_ancestor(m_scissor_layout)) {
+        log_critical << "Item \"" << name() << "\" was moved out of the child hierarchy from its scissor layout: \""
+                     << m_scissor_layout->name() << "\" and will no longer be scissored by it";
+        m_scissor_layout = nullptr;
     }
 }
 
@@ -150,18 +134,19 @@ bool ScreenItem::_redraw() const
     if (!is_visible()) {
         return false;
     }
-    Window* my_window = window();
-    assert(my_window);
-    my_window->request_redraw();
+    //    Window* my_window = window();
+    //    assert(my_window);
+    //    my_window->request_redraw();
+    // TODO: how does a screen item reuqest a redraw? Does it ever? Maybe that should be the job of the PropertyManager
     return true;
 }
 
 void ScreenItem::_update_parent_layout()
 {
-    Layout* parent_layout = layout();
+    risky_ptr<Layout> parent_layout = layout();
     while (parent_layout) {
         // if the parent Layout's Claim changed, we also need to update the grandparent ...
-        if (Layout::Private<ScreenItem>(*parent_layout).update_claim()) {
+        if (Layout::Access<ScreenItem>(*parent_layout).update_claim()) {
             parent_layout = parent_layout->layout();
         }
 
@@ -222,27 +207,14 @@ void ScreenItem::_set_scissor(const Layout* scissor_layout)
     if (scissor_layout == m_scissor_layout) {
         return;
     }
-    if (m_has_explicit_scissor) {
-        if (has_ancestor(m_scissor_layout)) {
-            return;
-        }
-        m_has_explicit_scissor = false;
-    }
     m_scissor_layout = scissor_layout;
-
-    m_children->apply([scissor_layout](Item* item) -> void {
-        if (ScreenItem* screen_item = item->screen_item()) {
-            screen_item->_set_scissor(scissor_layout);
-        }
-    });
-
     on_scissor_changed(m_scissor_layout);
     _redraw();
 }
 
 void ScreenItem::_window_transform(Matrix3f& result) const
 {
-    if (const ScreenItem* parent_layout = layout()) {
+    if (const risky_ptr<ScreenItem> parent_layout = layout()) {
         parent_layout->_window_transform(result);
         result.premult(m_offset_transform * m_layout_transform);
     }
@@ -252,7 +224,7 @@ void ScreenItem::_window_transform(Matrix3f& result) const
 
 Matrix3f transformation_between(const ScreenItem* source, const ScreenItem* target)
 {
-    const ScreenItem* common_ancestor = source->common_ancestor(target)->screen_item();
+    risky_ptr<const ScreenItem> common_ancestor = source->common_ancestor(target)->screen_item();
     if (!common_ancestor) {
         std::stringstream ss;
         ss << "Cannot find common ancestor for Items " << source->name() << " and " << target->name();
@@ -260,12 +232,12 @@ Matrix3f transformation_between(const ScreenItem* source, const ScreenItem* targ
     }
 
     Matrix3f source_branch = Matrix3f::identity();
-    for (const ScreenItem* it = source; it != common_ancestor; it = it->layout()) {
+    for (risky_ptr<const ScreenItem> it = source; it != common_ancestor; it = it->layout()) {
         source_branch *= it->xform<ScreenItem::Space::PARENT>();
     }
 
     Matrix3f tarbranch = Matrix3f::identity();
-    for (const ScreenItem* it = target; it != common_ancestor; it = it->layout()) {
+    for (risky_ptr<const ScreenItem> it = target; it != common_ancestor; it = it->layout()) {
         tarbranch *= it->xform<ScreenItem::Space::PARENT>();
     }
     tarbranch.inverse();

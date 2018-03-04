@@ -54,7 +54,7 @@ RenderTargetPtr RenderTarget::create(RenderManager& manager, Args&& args)
 #else
     auto result = std::make_shared<make_shared_enabler<RenderTarget>>(manager, std::move(args));
 #endif
-    RenderManager::Private<RenderTarget>(manager).register_new(result);
+    RenderManager::Access<RenderTarget>(manager).register_new(result);
     return result;
 }
 
@@ -72,7 +72,7 @@ void RenderTarget::clean()
     m_context.clear(Color::black());
 
     // render everything
-    GraphicsProducer::Private<RenderTarget>(*m_producer).render();
+    GraphicsProducer::Access<RenderTarget>(*m_producer).render();
 }
 
 RenderTargetId RenderTarget::_next_id()
