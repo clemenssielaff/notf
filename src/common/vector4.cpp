@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 // Vector4f ==========================================================================================================//
 
@@ -43,4 +43,4 @@ static_assert(sizeof(Vector4h) == sizeof(half) * 4,
 
 static_assert(std::is_pod<Vector4f>::value, "This compiler does not recognize notf::Vector4h as a POD.");
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

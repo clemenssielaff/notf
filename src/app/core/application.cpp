@@ -13,7 +13,7 @@
 #include "common/vector2.hpp"
 
 namespace { // anonymous
-using namespace notf;
+NOTF_USING_NAMESPACE
 
 /// The current state of all keyboard keys.
 KeyStateSet g_key_states;
@@ -34,7 +34,7 @@ Vector2f g_prev_cursor_pos;
 
 //====================================================================================================================//
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 application_initialization_error::~application_initialization_error() {}
 
@@ -155,7 +155,7 @@ void Application::_on_error(int error, const char* message)
     log_critical << "GLFW Error " << error << ": '" << message << "'";
 }
 
-void Application::_on_token_key(GLFWwindow* glfw_window, int key, UNUSED int scancode, int action, int modifiers)
+void Application::_on_token_key(GLFWwindow* glfw_window, int key, NOTF_UNUSED int scancode, int action, int modifiers)
 {
     assert(glfw_window);
     Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
@@ -377,4 +377,4 @@ void Application::_shutdown()
     m_log_handler->join();
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

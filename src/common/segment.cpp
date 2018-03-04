@@ -3,7 +3,7 @@
 #include <iostream>
 #include <type_traits>
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 // Vector2f Line2::closest_point(const Vector2f& point, bool inside) const
 //{
@@ -109,4 +109,4 @@ static_assert(sizeof(Segment3f) == sizeof(float) * 6,
 
 static_assert(std::is_pod<Segment3f>::value, "This compiler does not recognize notf::Line3f as a POD.");
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

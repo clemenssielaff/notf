@@ -3,8 +3,9 @@
 #include <functional>
 
 #include "common/float.hpp"
+#include "utils/bitsizeof.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -56,4 +57,4 @@ inline size_t hash(Values&&... values)
     return result;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

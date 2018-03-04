@@ -9,7 +9,7 @@
 #include "graphics/forwards.hpp"
 #include "graphics/text/font.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /// A texture atlas is a texture that is filled with Glyphs.
 ///
@@ -96,7 +96,7 @@ private:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NO_COPY_AND_ASSIGN(FontAtlas)
+    NOTF_NO_COPY_OR_ASSIGN(FontAtlas)
 
     /// Constructor.
     FontAtlas(GraphicsContext& graphics_context);
@@ -159,4 +159,4 @@ private:
     WasteMap m_waste;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -5,7 +5,7 @@
 #include "common/log.hpp"
 
 namespace {
-using namespace notf;
+NOTF_USING_NAMESPACE
 
 /// Instead of copying multiple fields to each handler, we just put them into a "kit" and pass a single reference.
 struct HandlerKit {
@@ -45,7 +45,7 @@ struct SetExpressionHandler {
 
 } // namespace
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 void PropertyManager::execute_batches()
 {
@@ -105,4 +105,4 @@ void PropertyManager::execute_batches()
     m_ready_queue.clear();
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -10,7 +10,7 @@
 struct FT_LibraryRec_;
 typedef struct FT_LibraryRec_* FT_Library;
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -26,7 +26,7 @@ protected:
     FontManager(GraphicsContext& context);
 
 public:
-    NO_COPY_AND_ASSIGN(FontManager)
+    NOTF_NO_COPY_OR_ASSIGN(FontManager)
 
     /// Factory
     /// @param context  Graphics context within which the FontManager operates.
@@ -64,4 +64,4 @@ private:
     std::unordered_map<Font::Identifier, std::weak_ptr<Font>> m_fonts;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

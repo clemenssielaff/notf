@@ -7,7 +7,7 @@
 #include "graphics/core/pipeline.hpp"
 #include "graphics/core/shader.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 FragmentProducer::FragmentProducer(const Token& token, SceneManagerPtr& manager, const std::string& shader)
     : GraphicsProducer(token), m_pipeline(), m_context(*manager->graphics_context())
@@ -30,4 +30,4 @@ void FragmentProducer::_render() const
     gl_check(glDrawArrays(GL_TRIANGLES, 0, 3));
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

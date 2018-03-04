@@ -12,7 +12,7 @@
 #include "app/scene/widget/item.hpp"
 #include "common/exception.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 class ScreenItem;
 
@@ -108,7 +108,7 @@ protected:
     class StateMachine {
 
     public: // methods
-        NO_COPY_AND_ASSIGN(StateMachine)
+        NOTF_NO_COPY_OR_ASSIGN(StateMachine)
 
         /// Default Constructor.
         StateMachine() = default;
@@ -205,14 +205,14 @@ private:
     const State* m_current_state;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 #if 0
 #include <iostream>
 using namespace std;
 
 #include "core/controller.hpp"
-using namespace notf;
+NOTF_USING_NAMESPACE
 
 class Dynamite : public Controller<Dynamite> {
 public:

@@ -3,7 +3,7 @@
 #include "app/forwards.hpp"
 #include "app/io/keyboard.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /// Event object generated when an Item gains or looses focus.
 /// Unlike other events, a 'focus gained' event is propagated up the hierarchy if (and only if) the receiving Widget
@@ -48,4 +48,4 @@ private:
     bool m_was_handled;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

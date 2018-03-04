@@ -7,7 +7,7 @@
 #include "common/segment.hpp"
 #include "common/vector2.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -226,7 +226,7 @@ using Polygonf = detail::Polygon<float>;
 /// @return Output stream for further output.
 std::ostream& operator<<(std::ostream& out, const Polygonf& polygon);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 //====================================================================================================================//
 

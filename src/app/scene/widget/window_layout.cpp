@@ -5,7 +5,7 @@
 #include "common/log.hpp"
 #include "utils/make_smart_enabler.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 WindowLayout::WindowLayout(Window* window)
     : Layout(std::make_unique<detail::SingleItemContainer>()), m_window(window), m_controller()
@@ -100,4 +100,4 @@ void WindowLayout::_relayout()
     }
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

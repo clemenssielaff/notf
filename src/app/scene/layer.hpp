@@ -6,7 +6,7 @@
 #include "common/aabr.hpp"
 #include "common/forwards.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 // ===================================================================================================================//
 
@@ -25,7 +25,7 @@ protected:
     Layer(SceneManagerPtr& manager, GraphicsProducerPtr producer);
 
 public:
-    NO_COPY_AND_ASSIGN(Layer)
+    NOTF_NO_COPY_OR_ASSIGN(Layer)
 
     /// Factory.
     /// Constructs a full-screen, visible Layer.
@@ -74,4 +74,4 @@ private:
     bool m_is_fullscreen;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -3,7 +3,9 @@
 #include <string>
 #include <vector>
 
-namespace notf {
+#include "common/meta.hpp"
+
+NOTF_OPEN_NAMESPACE
 
 /// Tokenizes a string.
 /// @param input         Input string.
@@ -78,4 +80,4 @@ constexpr const char* basename(const char* input, const char delimiter = '/')
     return &input[last_occurrence];
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

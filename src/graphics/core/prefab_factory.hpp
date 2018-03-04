@@ -13,7 +13,7 @@
 #include "common/vector3.hpp"
 #include "common/vector4.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 template<typename LIBRARY>
 class PrefabFactory;
@@ -290,4 +290,4 @@ private: // fields *************************************************************
     std::vector<GLuint> m_indices;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

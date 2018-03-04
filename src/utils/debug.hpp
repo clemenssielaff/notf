@@ -5,7 +5,7 @@
 #include <iostream>
 #include <ostream>
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /// Simple RAII timer for timing a single function call.
 ///
@@ -44,4 +44,4 @@ private: // fields
     std::chrono::high_resolution_clock::time_point m_start;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

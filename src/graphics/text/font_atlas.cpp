@@ -19,7 +19,7 @@ const size_t INVALID_SIZE_T = std::numeric_limits<size_t>::max();
 
 } // namespace
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 void FontAtlas::WasteMap::initialize(const coord_t width, const coord_t height)
 {
@@ -359,4 +359,4 @@ void FontAtlas::_add_node(const size_t node_index, const Glyph::Rect& rect)
     }
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

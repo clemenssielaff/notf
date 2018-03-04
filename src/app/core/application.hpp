@@ -4,7 +4,7 @@
 #include "common/exception.hpp"
 #include "common/forwards.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -73,8 +73,8 @@ private:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NO_COPY_AND_ASSIGN(Application)
-    NO_HEAP_ALLOCATION(Application)
+    NOTF_NO_COPY_OR_ASSIGN(Application)
+    NOTF_NO_HEAP_ALLOCATION(Application)
 
     /// Desctructor
     ~Application();
@@ -235,4 +235,4 @@ class Application::Access<Window> {
     Application& m_application;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

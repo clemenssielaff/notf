@@ -10,7 +10,7 @@
 #include "common/forwards.hpp"
 #include "common/matrix4.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 // ===================================================================================================================//
 
@@ -18,8 +18,9 @@ namespace notf {
 /// It contains a single vertex buffer containing the vertices of all prefab types and a single index array to store
 /// indices into the vertex buffer.
 /// The group also contains an instance buffer that is repeatedly filled by each prefab type to render its instances.
-template<typename VERTEX_ARRAY, typename INSTANCE_ARRAY, ENABLE_IF_SUBCLASS(VERTEX_ARRAY, VertexArrayType),
-         ENABLE_IF_SUBCLASS(INSTANCE_ARRAY, VertexArrayType)>
+template<typename VERTEX_ARRAY, typename INSTANCE_ARRAY,
+         typename = std::enable_if_t<std::is_base_of<VertexArrayType, VERTEX_ARRAY>::value>,
+         typename = std::enable_if_t<std::is_base_of<VertexArrayType, INSTANCE_ARRAY>::value>>
 class PrefabGroup {
 
     template<typename>
@@ -37,7 +38,7 @@ public:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NO_COPY_AND_ASSIGN(PrefabGroup)
+    NOTF_NO_COPY_OR_ASSIGN(PrefabGroup)
 
     /// Default constructor.
     PrefabGroup()
@@ -149,4 +150,4 @@ private:
     std::vector<std::shared_ptr<PrefabType<InstanceData>>> m_prefab_types;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

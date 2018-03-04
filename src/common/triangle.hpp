@@ -4,7 +4,7 @@
 
 #include "common/vector2.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -91,7 +91,7 @@ using Trianglef = detail::Triangle<float>;
 /// @return Output stream for further output.
 std::ostream& operator<<(std::ostream& out, const Trianglef& triangle);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 //====================================================================================================================//
 

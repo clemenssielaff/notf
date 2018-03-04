@@ -1,7 +1,7 @@
 #include "common/dag.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 no_dag_error::~no_dag_error() {}
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

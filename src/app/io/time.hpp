@@ -3,7 +3,9 @@
 #include <cassert>
 #include <cstdint>
 
-namespace notf {
+#include "common/meta.hpp"
+
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -117,4 +119,4 @@ private:
     static Ticks s_frequency;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -5,7 +5,7 @@
 #include "common/exception.hpp"
 #include "common/meta.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -15,7 +15,7 @@ class ThreadGuard {
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NO_COPY_AND_ASSIGN(ThreadGuard)
+    NOTF_NO_COPY_OR_ASSIGN(ThreadGuard)
 
     /// Constructor
     /// @param thread   Thread to guard.
@@ -44,7 +44,7 @@ class ScopedThread {
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NO_COPY_AND_ASSIGN(ScopedThread)
+    NOTF_NO_COPY_OR_ASSIGN(ScopedThread)
 
     /// Constructor
     /// @param thread       Thread to guard.
@@ -87,4 +87,4 @@ don't dynamically create new threads.
 /* TODO: debug context
 a global debug context, that keeps track of various debug stats like number of times a mutex was contested etc.?
  */
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

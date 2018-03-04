@@ -7,7 +7,7 @@
 #include "common/id.hpp"
 #include "graphics/forwards.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 // TODO: cache compiled shader binaries next to their text files (like python?)
 
@@ -101,7 +101,7 @@ protected:
     Shader(GraphicsContextPtr& context, const GLuint id, Stage::Flags stages, std::string name);
 
 public:
-    NO_COPY_AND_ASSIGN(Shader)
+    NOTF_NO_COPY_OR_ASSIGN(Shader)
 
     /// Destructor
     virtual ~Shader();
@@ -346,4 +346,4 @@ private:
     const std::string m_source;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

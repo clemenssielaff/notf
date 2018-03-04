@@ -3,7 +3,7 @@
 #include "app/forwards.hpp"
 #include "app/io/keyboard.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /// Event object generated when the Application receives a keyboard input.
 class KeyEvent {
@@ -47,4 +47,4 @@ private:
     bool m_was_handled;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

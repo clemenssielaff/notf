@@ -2,7 +2,7 @@
 
 #include "app/scene/widget/screen_item.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -97,4 +97,4 @@ class Layout::Access<ScreenItem> {
     /// The ScreenItem to access.
     Layout& m_layout;
 };
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

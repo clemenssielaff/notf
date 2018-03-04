@@ -7,7 +7,7 @@
 #include "common/vector2.hpp"
 #include "graphics/forwards.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 // ===================================================================================================================//
 
@@ -109,7 +109,7 @@ protected:
     Plotter(const Token& token, SceneManagerPtr& manager);
 
 public:
-    NO_COPY_AND_ASSIGN(Plotter)
+    NOTF_NO_COPY_OR_ASSIGN(Plotter)
 
     /// Factory.
     /// @param manager  SceneManager.
@@ -174,4 +174,4 @@ private:
     mutable State m_state;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

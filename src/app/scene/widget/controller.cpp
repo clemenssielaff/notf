@@ -3,7 +3,7 @@
 #include "app/scene/widget/screen_item.hpp"
 #include "common/log.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 Controller::Controller() : Item(std::make_unique<detail::SingleItemContainer>()), m_root_item(nullptr) {}
 
@@ -33,4 +33,4 @@ void Controller::_remove_child(const Item* child_item)
     m_root_item = nullptr;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

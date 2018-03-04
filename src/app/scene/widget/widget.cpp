@@ -2,7 +2,7 @@
 
 #include "common/log.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 Widget::Widget() : ScreenItem(std::make_unique<detail::EmptyItemContainer>()) {}
 
@@ -52,4 +52,4 @@ void Widget::_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result
     }
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

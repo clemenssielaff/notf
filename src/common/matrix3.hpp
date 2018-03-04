@@ -2,7 +2,7 @@
 
 #include "common/vector2.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -227,7 +227,7 @@ using Matrix3d = detail::Matrix3<double>;
 template<typename REAL>
 std::ostream& operator<<(std::ostream& out, const notf::detail::Matrix3<REAL>& matrix);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 //== std::hash =======================================================================================================//
 

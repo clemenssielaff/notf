@@ -4,7 +4,7 @@
 
 #include "common/meta.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 namespace tuple_detail {
 
 template<typename FUNC, typename TUPLE, std::size_t... I>
@@ -14,7 +14,7 @@ auto apply_impl(FUNC&& f, TUPLE&& t, std::index_sequence<I...>)
 }
 
 } // namespace tuple_detail
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 #ifndef NOTF_CPP17
 
@@ -36,7 +36,7 @@ auto apply(FUNC&& f, TUPLE&& t)
 
 #endif // #ifndef NOTF_CPP17
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /// Checks if the given type is one of the types of the tuple.
 template<typename TYPE, typename TUPLE>
@@ -49,4 +49,4 @@ struct is_one_of_tuple {
     static constexpr auto value = impl(std::make_index_sequence<std::tuple_size<std::decay_t<TUPLE>>::value>{});
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -2,7 +2,7 @@
 
 #include "graphics/text/font.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 Aabri text_aabr(const FontPtr& font, const std::string& text)
 {
@@ -71,4 +71,4 @@ std::vector<std::string::const_iterator> break_text(const int width, const FontP
     return result;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

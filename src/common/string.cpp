@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <numeric>
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 std::vector<std::string> tokenize(const std::string& input, const char delimiter)
 {
@@ -105,4 +105,4 @@ size_t levenshtein_distance(const std::string& s1, const std::string& s2)
     return result;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

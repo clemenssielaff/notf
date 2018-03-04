@@ -2,7 +2,7 @@
 
 #include "app/renderer/graphics_producer.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 class FragmentProducer : public GraphicsProducer {
     friend class GraphicsProducer;
@@ -16,7 +16,7 @@ protected:
     FragmentProducer(const Token& token, SceneManagerPtr& manager, const std::string& shader);
 
 public:
-    NO_COPY_AND_ASSIGN(FragmentProducer)
+    NOTF_NO_COPY_OR_ASSIGN(FragmentProducer)
 
     /// Factory.
     /// @param manager  SceneManager.
@@ -39,4 +39,4 @@ private:
     GraphicsContext& m_context;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

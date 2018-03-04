@@ -10,7 +10,7 @@ static constexpr float g_alpha_cutoff = 1.f / (255 * 2);
 
 } // namespace
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 ScreenItem::ScreenItem(detail::ItemContainerPtr container)
     : Item(std::move(container))
@@ -246,4 +246,4 @@ Matrix3f transformation_between(const ScreenItem* source, const ScreenItem* targ
     return source_branch;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -53,7 +53,7 @@ constexpr const char* gl_error_string(GLenum error_code)
 
 } // namespace
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -77,4 +77,4 @@ void _gl_clear_errors()
 
 } // namespace detail
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

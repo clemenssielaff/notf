@@ -2,7 +2,7 @@
 
 #include "common/arithmetic.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -114,7 +114,7 @@ std::ostream& operator<<(std::ostream& out, const Vector4f& vec);
 std::ostream& operator<<(std::ostream& out, const Vector4d& vec);
 std::ostream& operator<<(std::ostream& out, const Vector4h& vec);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 //== std::hash =======================================================================================================//
 

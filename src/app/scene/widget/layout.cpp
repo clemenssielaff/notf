@@ -1,6 +1,6 @@
 #include "app/scene/widget/layout.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 Layout::Layout(detail::ItemContainerPtr container) : ScreenItem(std::move(container)), m_has_explicit_claim(false) {}
 
@@ -28,4 +28,4 @@ bool Layout::_update_claim()
     return _set_claim(_consolidate_claim());
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

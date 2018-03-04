@@ -5,7 +5,7 @@
 
 #include "common/exception.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 std::string load_file(const std::string& file_path)
 {
@@ -19,4 +19,4 @@ std::string load_file(const std::string& file_path)
     return buffer.str();
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

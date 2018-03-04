@@ -9,7 +9,7 @@
 #include "common/id.hpp"
 
 struct GLFWwindow;
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 using GraphicsProducerId = IdType<GraphicsProducer, size_t>; // TODO: id type forwards somewhere? in forwards.hpp?
 using RenderTargetId     = IdType<RenderTarget, size_t>;
@@ -266,4 +266,4 @@ class SceneManager::Access<RenderTarget> {
     SceneManager& m_render_manager;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

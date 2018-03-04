@@ -2,7 +2,7 @@
 
 #include "common/arithmetic.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -247,7 +247,7 @@ slerp(const detail::RealVector3<element_t>& from, const detail::RealVector3<elem
     return (from * scale_0) + (to * scale_1);
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 //== std::hash =======================================================================================================//
 

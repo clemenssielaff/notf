@@ -4,7 +4,7 @@
 #include "app/io/keyboard.hpp"
 #include "common/vector2.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /// Event object generated when the Application notices a mouse input.
 class MouseEvent {
@@ -64,4 +64,4 @@ private:
     bool m_was_handled;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

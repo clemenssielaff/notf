@@ -7,7 +7,7 @@
 #include "app/core/property_manager.hpp"
 #include "common/log.hpp"
 
-using namespace notf;
+NOTF_USING_NAMESPACE
 
 namespace {
 

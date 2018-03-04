@@ -5,7 +5,7 @@
 #include "common/id.hpp"
 #include "utils/make_smart_enabler.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 class RenderDag;
@@ -158,4 +158,4 @@ class GraphicsProducer::Access<RenderTarget> {
     GraphicsProducer& m_producer;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

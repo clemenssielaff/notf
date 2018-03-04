@@ -1,7 +1,7 @@
 #include "common/signal.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 receive_signals::~receive_signals() { disconnect_all_connections(); }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

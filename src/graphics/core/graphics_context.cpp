@@ -18,7 +18,7 @@
 
 //====================================================================================================================//
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_INFO
 #define CHECK_EXTENSION(member, name)                                                                              \
@@ -535,7 +535,7 @@ void GraphicsContext::_register_new(FrameBufferPtr framebuffer)
 
 void GraphicsContext::release_shader_compiler() { gl_check(glReleaseShaderCompiler()); }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 /* Something to think of, courtesy of the OpenGL ES book:
  * What happens if we are rendering into a texture and at the same time use this texture object as a texture in a

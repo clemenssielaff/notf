@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 // Matrix3f ==========================================================================================================//
 
@@ -38,4 +38,4 @@ static_assert(sizeof(Matrix3d) == sizeof(double) * 6,
 
 static_assert(std::is_pod<Matrix3d>::value, "This compiler does not recognize notf::Matrix3d as a POD.");
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -5,7 +5,7 @@
 
 #include "common/enum.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /// All keys recognized by GLFW.
 /// Can be used as indices for a KeyStateSet object.
@@ -240,4 +240,4 @@ enum class FocusAction : unsigned char {
     GAINED,
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

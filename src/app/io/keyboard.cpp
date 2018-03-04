@@ -3,7 +3,7 @@
 #include "app/core/glfw.hpp"
 #include "common/log.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 Key from_glfw_key(int key)
 {
@@ -253,4 +253,4 @@ Key from_glfw_key(int key)
     return Key::INVALID;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

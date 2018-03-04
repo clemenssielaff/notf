@@ -2,7 +2,7 @@
 
 #include "common/log.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 notf_exception::notf_exception(std::string file, std::string function, uint line, std::string message)
     : std::exception(), message(message)
@@ -25,4 +25,4 @@ internal_error::~internal_error() {}
 
 bad_deference_error::~bad_deference_error() {}
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

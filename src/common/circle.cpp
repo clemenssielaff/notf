@@ -3,7 +3,7 @@
 
 #include "common/circle.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /* Circlef ************************************************************************************************************/
 
@@ -18,4 +18,4 @@ static_assert(sizeof(Circlef) == sizeof(Vector2f) + sizeof(float),
 
 static_assert(std::is_pod<Circlef>::value, "This compiler does not recognize notf::Circlef as a POD.");
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

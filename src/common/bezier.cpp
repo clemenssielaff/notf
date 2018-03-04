@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 // Bezier2f ==========================================================================================================//
 
@@ -21,4 +21,4 @@ static_assert(sizeof(CubicBezier2f::Segment) == sizeof(Vector2f) * 4,
 
 static_assert(std::is_pod<CubicBezier2f::Segment>::value, "This compiler does not recognize notf::Bezier2f as a POD.");
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

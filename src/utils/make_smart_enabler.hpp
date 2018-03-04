@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /// Helper struct to allow `std::make_shared` to work with protected constructors.
 /// from:
@@ -16,4 +16,4 @@ struct make_shared_enabler : public T {
 
 // TODO: maybe make constructor of classes that use make_shared_enabler private and befriend mse?
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

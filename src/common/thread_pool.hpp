@@ -5,7 +5,7 @@
 
 #include "common/exception.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -24,7 +24,7 @@ class ThreadPool {
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NO_COPY_AND_ASSIGN(ThreadPool)
+    NOTF_NO_COPY_OR_ASSIGN(ThreadPool)
 
     /// Constructor.
     /// @param thread_count     Number of threads in the pool.
@@ -39,7 +39,7 @@ public:
     /// @param args         Arguments forwareded to the function when the tasks is executed.
     /// @throws             thread_pool_finished When the thread pool has already finished.
     template<typename FUNCTION, typename... Args, typename return_t = typename std::result_of<FUNCTION(Args...)>::type,
-             typename = typename std::enable_if<(std::is_same<void, return_t>::value)>::type>
+             typename = std::enable_if_t<(std::is_same<void, return_t>::value)>>
     void enqueue(FUNCTION&& function, Args&&... args)
     {
         { // enqueue the new task, unless the pool has already finished
@@ -56,7 +56,7 @@ public:
     /// Enqueues a new task with a return value.
     /// Note that this overload is more expensive than enqueuing a task without a return value, because it needs to wrap
     /// the function into a `packaged_task` with shared state for the returned future.
-    /// Therefore we declare the return value NODISCARD.
+    /// Therefore we declare the return value NOTF_NODISCARD.
     /// If you want to ignore the return value, consider wrapping the callable in a simple lambda returning void before
     /// enqueuing it.
     /// @param function     Function.
@@ -64,8 +64,8 @@ public:
     /// @returns            Future containing the result of the function once it finished execution.
     /// @throws             thread_pool_finished When the thread pool has already finished.
     template<typename FUNCTION, typename... Args, typename return_t = typename std::result_of<FUNCTION(Args...)>::type,
-             typename = typename std::enable_if<!(std::is_same<void, return_t>::value)>::type>
-    NODISCARD std::future<return_t> enqueue(FUNCTION&& function, Args&&... args)
+             typename = std::enable_if_t<!(std::is_same<void, return_t>::value)>>
+    NOTF_NODISCARD std::future<return_t> enqueue(FUNCTION&& function, Args&&... args)
     {
         // create the new task
         auto task = std::make_shared<std::packaged_task<return_t()>>(
@@ -102,4 +102,4 @@ private:
     bool is_finished = false;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

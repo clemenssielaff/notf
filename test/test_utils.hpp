@@ -9,7 +9,7 @@
 #include "common/size2.hpp"
 #include "common/vector2.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -111,4 +111,4 @@ inline Padding random_padding(const float from, const float to)
             random_number<float>(from, to)};
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

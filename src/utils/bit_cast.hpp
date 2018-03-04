@@ -3,7 +3,7 @@
 #include <string.h> // for memcpy
 #include <type_traits>
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /// Save bit_cast.
 /// adpted from https://chromium.googlesource.com/chromium/src/+/1587f7d/base/macros.h#76
@@ -18,4 +18,4 @@ inline targetT bit_cast(const sourceT& source)
     return target;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

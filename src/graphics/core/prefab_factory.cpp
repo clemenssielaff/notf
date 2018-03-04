@@ -20,7 +20,7 @@
  *
  */
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -273,4 +273,4 @@ void PrefabFactoryImpl::_convert(const Vector3d& in, Vector4h& out)
 
 } // namespace detail
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

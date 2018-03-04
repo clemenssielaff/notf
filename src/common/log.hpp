@@ -47,7 +47,7 @@
 #include "common/meta.hpp"
 #include "common/string.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 struct LogMessage;
 
@@ -102,7 +102,7 @@ struct LogMessageFactory {
     friend void set_log_level(LogMessage::LEVEL level);
 
 public: // methods
-    NO_HEAP_ALLOCATION(LogMessageFactory)
+    NOTF_NO_HEAP_ALLOCATION(LogMessageFactory)
 
     /** Value constructor.
      * @param level    Level of the LogMessage;
@@ -306,7 +306,7 @@ struct NullBuffer {
 
 } // namespace detail
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

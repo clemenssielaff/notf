@@ -2,7 +2,7 @@
 
 #include "common/string.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -33,4 +33,4 @@ void _gl_clear_errors();
 #define gl_check(A) A
 #endif
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

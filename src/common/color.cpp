@@ -13,7 +13,7 @@
 #include "common/log.hpp"
 #include "common/string.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -323,4 +323,4 @@ static_assert(std::is_pod<Color>::value, "This compiler does not recognize notf:
 #pragma clang diagnostic pop
 #endif
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

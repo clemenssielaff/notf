@@ -4,7 +4,7 @@
 #include <iostream>
 #include <type_traits>
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -124,7 +124,7 @@ std::ostream& operator<<(std::ostream& out, const IdType<Type, underlying_type, 
     return out << id.value();
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 //====================================================================================================================//
 

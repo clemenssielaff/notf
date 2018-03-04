@@ -5,7 +5,7 @@
 #include "graphics/core/gl_errors.hpp"
 #include "graphics/core/opengl.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 bool gl_is_initialized() { return glGetString(GL_VERSION) != nullptr; }
 
@@ -212,4 +212,4 @@ VaoBindGuard::VaoBindGuard(GLuint vao) : m_vao(vao) { gl_check(glBindVertexArray
 
 VaoBindGuard::~VaoBindGuard() { gl_check(glBindVertexArray(0)); }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

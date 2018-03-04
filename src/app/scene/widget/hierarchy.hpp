@@ -49,4 +49,4 @@
  * Time to get going!
  */
 
-namespace notf {}
+NOTF_OPEN_NAMESPACE}

@@ -11,7 +11,7 @@
 #include "common/exception.hpp"
 #include "common/id.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 class PropertyGraph;
 
@@ -356,4 +356,4 @@ private:
     std::unordered_map<id_t, std::unique_ptr<PropertyBase>> m_properties;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

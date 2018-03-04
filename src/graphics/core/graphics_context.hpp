@@ -12,7 +12,7 @@
 #include "common/id.hpp"
 #include "graphics/forwards.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -158,11 +158,11 @@ public:
 
     /// RAII guard to make sure that a bound Pipeline is always properly unbound after use.
     /// You can nest multiple guards, each will restore the previously bound pipeline.
-    class NODISCARD PipelineGuard {
+    class NOTF_NODISCARD PipelineGuard {
         friend class GraphicsContext;
 
-        NO_COPY_AND_ASSIGN(PipelineGuard)
-        NO_HEAP_ALLOCATION(PipelineGuard)
+        NOTF_NO_COPY_OR_ASSIGN(PipelineGuard)
+        NOTF_NO_HEAP_ALLOCATION(PipelineGuard)
 
         /// Constructor.
         /// @param context  Context that created the guard.
@@ -210,11 +210,11 @@ public:
 
     /// RAII guard to make sure that a bound FrameBuffer is always properly unbound after use.
     /// You can nest multiple guards, each will restore the previously bound pipeline.
-    class NODISCARD FramebufferGuard {
+    class NOTF_NODISCARD FramebufferGuard {
         friend class GraphicsContext;
 
-        NO_COPY_AND_ASSIGN(FramebufferGuard)
-        NO_HEAP_ALLOCATION(FramebufferGuard)
+        NOTF_NO_COPY_OR_ASSIGN(FramebufferGuard)
+        NOTF_NO_HEAP_ALLOCATION(FramebufferGuard)
 
         /// Constructor.
         /// @param context      Context that created the guard.
@@ -287,7 +287,7 @@ private:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NO_COPY_AND_ASSIGN(GraphicsContext)
+    NOTF_NO_COPY_OR_ASSIGN(GraphicsContext)
 
     /// Constructor.
     /// @param window           GLFW window displaying the contents of this context.
@@ -540,4 +540,4 @@ class GraphicsContext::Access<FrameBuffer> {
     GraphicsContext& m_context;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

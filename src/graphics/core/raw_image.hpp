@@ -2,9 +2,9 @@
 
 #include <string>
 
-namespace notf {
+#include "common/meta.hpp"
 
-using uchar = unsigned char;
+NOTF_OPEN_NAMESPACE
 
 /**  Helper structure around raw image data.
  * Raw images are usually loaded from disk, have their data copied into another object and are then destroyed again.
@@ -58,4 +58,4 @@ private: // fields *************************************************************
     uchar* m_data;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -17,7 +17,7 @@
 #include "graphics/core/texture.hpp"
 #include "graphics/core/vertex_array.hpp"
 
-using namespace notf;
+NOTF_USING_NAMESPACE
 
 namespace {
 

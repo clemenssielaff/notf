@@ -9,7 +9,7 @@
 
 #pragma clang diagnostic ignored "-Wunused-variable"
 
-using namespace notf;
+NOTF_USING_NAMESPACE
 
 namespace {
 

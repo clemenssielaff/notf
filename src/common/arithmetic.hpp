@@ -6,7 +6,7 @@
 #include "common/half.hpp"
 #include "common/hash.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -377,7 +377,7 @@ struct get_element_type {
     using type = typename T::element_t;
 };
 template<typename T>
-struct get_element_type<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
+struct get_element_type<T, std::enable_if_t<std::is_arithmetic<T>::value>> {
     using type = T;
 };
 template<>
@@ -620,4 +620,4 @@ value_t lerp(const value_t& from, const value_t& to, const typename value_t::ele
     return ((to - from) *= blend) += from;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

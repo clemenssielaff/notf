@@ -3,7 +3,7 @@
 #include "app/forwards.hpp"
 #include "common/exception.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -34,7 +34,7 @@ public:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NO_COPY_AND_ASSIGN(ResourceManager)
+    NOTF_NO_COPY_OR_ASSIGN(ResourceManager)
 
     /// Construction.
     /// @param args Arguments.
@@ -82,4 +82,4 @@ private:
     //    std::unordered_map<size_t, FontPtr> m_fonts;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

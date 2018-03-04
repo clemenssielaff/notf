@@ -1,6 +1,6 @@
 #include "common/random.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 decltype(randutils::default_rng()) & get_random_engine()
 {
@@ -69,4 +69,4 @@ std::string random_string(const size_t length, const std::string& pool)
     return result;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

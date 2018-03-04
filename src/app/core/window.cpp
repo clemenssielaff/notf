@@ -10,7 +10,7 @@
 #include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
-// using namespace notf;
+// NOTF_USING_NAMESPACE
 /*
 /// Helper function that propagates an event up the Item hierarchy.
 /// @param widget    Widget receiving the original event.
@@ -43,7 +43,7 @@ ScreenItem* propagate_to_hierarchy(Widget* widget, Signal<Args...> ScreenItem::*
 */
 } // namespace
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -358,4 +358,4 @@ void Window::_update()
     }
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

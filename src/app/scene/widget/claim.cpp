@@ -4,7 +4,7 @@
 
 #include "common/log.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 void Claim::set_width_to_height(const float ratio_min, const float ratio_max)
 {
@@ -84,4 +84,4 @@ std::ostream& operator<<(std::ostream& out, const Claim& claim)
                << vertical.priority() << "]\n\tratio: " << ratio.first << " : " << ratio.second << ")";
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

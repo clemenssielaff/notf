@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 std::ostream& operator<<(std::ostream& out, const Polygonf& polygon)
 {
@@ -18,4 +18,4 @@ std::ostream& operator<<(std::ostream& out, const Polygonf& polygon)
     return out;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

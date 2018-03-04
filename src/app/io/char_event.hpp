@@ -4,7 +4,7 @@
 #include "app/io/keyboard.hpp"
 #include "common/utf.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /// Event object generated when the Application receives a keyboard input that represents a unicode codepoint.
 class CharEvent {
@@ -44,4 +44,4 @@ private:
     bool m_was_handled;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

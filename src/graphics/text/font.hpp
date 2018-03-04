@@ -13,12 +13,10 @@
 struct FT_FaceRec_;
 typedef struct FT_FaceRec_* FT_Face;
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 class FontManager;
 class GraphicsContext;
-
-DEFINE_SHARED_POINTERS(class, Font);
 
 /// Data type to identify a single Glyph.
 using codepoint_t = utf32_t;
@@ -201,7 +199,7 @@ private:
     mutable std::unordered_map<codepoint_t, Glyph> m_glyphs;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 //== std::hash =======================================================================================================//
 

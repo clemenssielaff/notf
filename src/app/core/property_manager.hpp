@@ -17,7 +17,7 @@
 #include "common/vector3.hpp"
 #include "common/vector4.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -177,8 +177,9 @@ public:
         /// Create a new property of a given type.
         /// Only allows the creation of properties of a type mentioned in the notf_property_types tuple type.
         /// @returns A typed id that contains the value type of the property for ease-of-use.
-        template<typename value_t, typename = typename std::enable_if<is_one_of_tuple<
-                                       value_t, property_manager_detail::notf_property_types>::value>::type>
+        template<typename value_t,
+                 typename
+                 = std::enable_if_t<is_one_of_tuple<value_t, property_manager_detail::notf_property_types>::value>>
         TypedPropertyId<value_t> create_property(value_t value = {})
         {
             PropertyId id = m_graph.next_id();
@@ -191,8 +192,7 @@ public:
         /// correct type and also to forbid wrong instantiations, where conversions would fail.
         /// @param id       Typed property id.
         /// @param value    New property value.
-        template<typename value_t, typename T,
-                 typename = typename std::enable_if<std::is_convertible<T, value_t>::value>::type>
+        template<typename value_t, typename T, typename = std::enable_if<std::is_convertible<T, value_t>::value>>
         void set_property(const TypedPropertyId<value_t> id, T value)
         {
             m_commands.emplace_back(id, Command::SetValue{std::move(static_cast<value_t>(value))});
@@ -207,7 +207,7 @@ public:
         /// @param expression   New property expression
         /// @param dependencies All other properties that the expression relies on.
         template<typename value_t, typename T,
-                 typename = typename std::enable_if<std::is_convertible<T, expression_t<value_t>>::value>::type>
+                 typename = std::enable_if<std::is_convertible<T, expression_t<value_t>>::value>>
         void set_expression(const TypedPropertyId<value_t> id, T&& expression, std::vector<PropertyId>&& dependencies)
         {
             m_commands.emplace_back(
@@ -263,4 +263,4 @@ private:
     std::vector<InternalBatch> m_ready_queue;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

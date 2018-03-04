@@ -7,7 +7,7 @@
 #include "common/variant.hpp"
 #include "graphics/forwards.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -59,7 +59,7 @@ protected:
     RenderBuffer(GraphicsContextPtr& context, Args&& args);
 
 public:
-    NO_COPY_AND_ASSIGN(RenderBuffer)
+    NOTF_NO_COPY_OR_ASSIGN(RenderBuffer)
 
     /// Factory.
     /// @param context         Graphics context owning the render buffer.
@@ -151,7 +151,7 @@ protected:
     FrameBuffer(GraphicsContext& context, Args&& args);
 
 public:
-    NO_COPY_AND_ASSIGN(FrameBuffer)
+    NOTF_NO_COPY_OR_ASSIGN(FrameBuffer)
 
     /// Factory.
     /// @param context          Graphics context owning the frane buffer.
@@ -190,4 +190,4 @@ private:
     Args m_args;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

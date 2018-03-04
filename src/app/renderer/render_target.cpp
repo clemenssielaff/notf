@@ -7,7 +7,7 @@
 #include "graphics/core/texture.hpp"
 #include "utils/make_smart_enabler.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 RenderTarget::RenderTarget(SceneManager& scene_manager, Args&& args)
     : m_id(_next_id())
@@ -81,4 +81,4 @@ RenderTargetId RenderTarget::_next_id()
     return RenderTargetId(next++);
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

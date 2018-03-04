@@ -5,7 +5,9 @@
 
 #include "tinyutf8/tinyutf8.h" // TODO: split utf8 into header and body
 
-namespace notf {
+#include "common/meta.hpp"
+
+NOTF_OPEN_NAMESPACE
 
 using namespace tinyutf8;
 
@@ -26,4 +28,4 @@ struct Codepoint {
  */
 std::ostream& operator<<(std::ostream& out, const Codepoint codepoint);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -11,7 +11,7 @@ inline std::string color_prefix(u_short color) { return "\033[38;5;" + std::to_s
 
 } // namespace
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 LogHandler::LogHandler(size_t initial_buffer, ulong flush_interval)
     : m_write_buffer()
@@ -180,10 +180,10 @@ void LogHandler::flush_buffer(std::vector<LogMessage>& buffer)
 LogMessageHandler LogMessageFactory::s_message_handler;
 LogMessage::LEVEL LogMessageFactory::s_log_level = LogMessage::LEVEL::ALL;
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 #if 0
-using namespace notf;
+NOTF_USING_NAMESPACE
 
 using Clock = std::chrono::high_resolution_clock;
 

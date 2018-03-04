@@ -6,7 +6,7 @@
 
 #include "graphics/forwards.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 template<typename>
 class PrefabType;
@@ -150,4 +150,4 @@ private: // fields *************************************************************
     mutable std::vector<std::weak_ptr<PrefabInstance<InstanceData>>> m_instances;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

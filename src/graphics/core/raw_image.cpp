@@ -9,7 +9,7 @@
 #include "common/log.hpp"
 #include "common/string.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 RawImage::RawImage(const std::string& image_path, int force_format)
     : m_filepath(image_path), m_width(0), m_height(0), m_channels(0), m_data(nullptr)
@@ -38,4 +38,4 @@ RawImage::~RawImage()
     }
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

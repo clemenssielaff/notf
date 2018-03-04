@@ -11,7 +11,7 @@
 #include "graphics/core/shader.hpp"
 #include "utils/make_smart_enabler.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
                    GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader)
@@ -141,4 +141,4 @@ Pipeline::~Pipeline()
     }
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

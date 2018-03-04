@@ -94,7 +94,7 @@
 
 namespace {
 
-using namespace notf;
+NOTF_USING_NAMESPACE
 
 struct VertexPos : public AttributeTrait {
     constexpr static uint location = 0;
@@ -137,7 +137,7 @@ void set_modified_second_ctrl(PlotVertexArray::Vertex& vertex, const CubicBezier
 
 } // namespace
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 Plotter::Plotter(const Token& token, SceneManagerPtr& manager)
     : GraphicsProducer(token)
@@ -556,4 +556,4 @@ void Plotter::_render() const
     }
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

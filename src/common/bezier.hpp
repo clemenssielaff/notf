@@ -2,7 +2,7 @@
 
 #include "common/vector2.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -100,7 +100,7 @@ using CubicBezier2f = detail::Bezier<3, Vector2f>;
 /// @return Output stream for further output.
 std::ostream& operator<<(std::ostream& out, const CubicBezier2f& bezier);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 //====================================================================================================================//
 

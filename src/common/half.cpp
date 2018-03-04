@@ -35,7 +35,7 @@ union uif32 {
 
 } // namespace
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 using uint = unsigned int;
 
@@ -173,4 +173,4 @@ half::operator float() const
 
 std::ostream& operator<<(std::ostream& out, const half& value) { return out << static_cast<float>(value); }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

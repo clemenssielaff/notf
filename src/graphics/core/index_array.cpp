@@ -1,7 +1,7 @@
 #include "graphics/core/index_array.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 IndexArrayType::~IndexArrayType() { gl_check(glDeleteBuffers(1, &m_vbo_id)); }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

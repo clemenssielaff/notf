@@ -2,7 +2,9 @@
 
 #include <unordered_map>
 
-namespace notf {
+#include "common/meta.hpp"
+
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -57,4 +59,4 @@ constexpr auto to_number(Enum enumerator) noexcept
     return static_cast<std::underlying_type_t<Enum>>(enumerator);
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

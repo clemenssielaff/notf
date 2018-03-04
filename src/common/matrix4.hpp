@@ -4,7 +4,7 @@
 #include "common/vector3.hpp"
 #include "common/vector4.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -370,7 +370,7 @@ using Matrix4d = detail::Matrix4<double>;
 template<typename REAL>
 std::ostream& operator<<(std::ostream& out, const notf::detail::Matrix4<REAL>& matrix);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 //== std::hash =======================================================================================================//
 

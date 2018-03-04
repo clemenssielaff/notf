@@ -5,7 +5,7 @@
 
 #include "graphics/forwards.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 struct half;
 
@@ -49,4 +49,4 @@ struct VaoBindGuard final {
     ~VaoBindGuard();
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -5,7 +5,7 @@
 #include "common/id.hpp"
 #include "common/size2.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 // ===================================================================================================================//
 
@@ -53,7 +53,7 @@ protected:
     RenderTarget(SceneManager& scene_manager, Args&& args);
 
 public:
-    NO_COPY_AND_ASSIGN(RenderTarget)
+    NOTF_NO_COPY_OR_ASSIGN(RenderTarget)
 
     /// Factory.
     /// @param manager  The SceneManager that the RenderTarget is registered with.
@@ -104,4 +104,4 @@ private:
     bool m_is_dirty;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -1,6 +1,6 @@
 #include "common/utf.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 std::ostream& operator<<(std::ostream& out, const Codepoint codepoint)
 {
@@ -25,4 +25,4 @@ std::ostream& operator<<(std::ostream& out, const Codepoint codepoint)
     return out;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

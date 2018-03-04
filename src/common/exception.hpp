@@ -5,7 +5,7 @@
 #include "common/meta.hpp"
 #include "common/string.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -109,7 +109,7 @@ struct risky_ptr {
     risky_ptr& operator=(T* ptr) { m_raw = ptr; }
 
     /// Allows implicit conversion between compatible risky pointer types.
-    template<typename OTHER, typename = typename std::enable_if<std::is_convertible<T*, OTHER*>::value>::type>
+    template<typename OTHER, typename = std::enable_if_t<std::is_convertible<T*, OTHER*>::value>>
     operator risky_ptr<OTHER>() const
     {
         return risky_ptr<OTHER>(static_cast<OTHER*>(m_raw));
@@ -207,4 +207,4 @@ inline const T* make_raw(const risky_ptr<T>& risky) noexcept
 
 //====================================================================================================================//
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -3,7 +3,7 @@
 #include "common/exception.hpp"
 #include "common/log.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 GraphicsProducer::~GraphicsProducer() {}
 
@@ -24,4 +24,4 @@ GraphicsProducerId GraphicsProducer::_next_id()
     return GraphicsProducerId(next++);
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

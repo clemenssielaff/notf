@@ -11,7 +11,7 @@
 #include "graphics/text/font_manager.hpp"
 #include "utils/make_smart_enabler.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -145,4 +145,4 @@ SceneManager::StateId SceneManager::_next_id()
     return SceneManager::StateId(next++);
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

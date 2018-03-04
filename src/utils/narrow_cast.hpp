@@ -5,7 +5,7 @@
 #include "common/exception.hpp"
 #include "common/meta.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /// Save narrowing cast.
 /// https://github.com/Microsoft/GSL/blob/master/include/gsl/gsl_util
@@ -32,4 +32,4 @@ inline constexpr TARGET narrow_cast(RAW_SOURCE&& value)
     return result;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -13,7 +13,7 @@
 
 // TODO: AABR is used everywhere - why does it include sooo many other includes?
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -566,7 +566,7 @@ std::ostream& operator<<(std::ostream& out, const Aabrf& aabr);
 std::ostream& operator<<(std::ostream& out, const Aabrd& aabr);
 std::ostream& operator<<(std::ostream& out, const Aabri& aabr);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 //== std::hash =======================================================================================================//
 

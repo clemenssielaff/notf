@@ -40,7 +40,7 @@
 #include "common/exception.hpp"
 #include "common/meta.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /**********************************************************************************************************************/
 
@@ -158,7 +158,7 @@ private: // struct
     };
 
 public: // methods
-    NO_COPY_AND_ASSIGN(Signal)
+    NOTF_NO_COPY_OR_ASSIGN(Signal)
 
     /** Constructor. */
     Signal() = default;
@@ -302,7 +302,7 @@ private: // struct
     };
 
 public: // methods
-    NO_COPY_AND_ASSIGN(Signal)
+    NOTF_NO_COPY_OR_ASSIGN(Signal)
 
     Signal() = default;
 
@@ -418,7 +418,7 @@ private: // fields
 class receive_signals {
 
 public: // methods
-    NO_COPY_AND_ASSIGN(receive_signals)
+    NOTF_NO_COPY_OR_ASSIGN(receive_signals)
 
     /** Constructor. */
     receive_signals() = default;
@@ -560,4 +560,4 @@ private: // fields
 
 /**********************************************************************************************************************/
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

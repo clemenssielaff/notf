@@ -4,7 +4,7 @@
 #include "graphics/text/freetype.hpp"
 #include "utils/make_smart_enabler.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 FontManager::FontManager(GraphicsContext& context)
     : m_freetype(nullptr), m_graphics_context(context), m_atlas(context), m_fonts()
@@ -28,4 +28,4 @@ FontManager::~FontManager() { FT_Done_FreeType(m_freetype); }
 
 TexturePtr FontManager::atlas_texture() const { return m_atlas.get_texture(); }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

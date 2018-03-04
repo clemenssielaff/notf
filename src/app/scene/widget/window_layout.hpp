@@ -2,7 +2,7 @@
 
 #include "app/scene/widget/layout.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -79,4 +79,4 @@ class WindowLayout::Access<Window> {
     WindowLayout& m_window_layout;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

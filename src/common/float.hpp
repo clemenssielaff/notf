@@ -9,7 +9,7 @@
 #include "common/exception.hpp"
 #include "common/meta.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace float_detail {
 
@@ -228,7 +228,7 @@ constexpr int precision_high<int>()
 /// Floating point comparison from:
 /// https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 
-template<typename Real, ENABLE_IF_REAL(Real)>
+template<typename Real, typename = std::enable_if_t<std::is_floating_point<Real>::value>(Real)>
 struct _approx {
 
     /// Value to compare against.
@@ -239,7 +239,7 @@ struct _approx {
 
     _approx(Real value, Real epsilon) : value(value), epsilon(abs(epsilon)) {}
 
-    template<typename Other, ENABLE_IF_REAL(Other)>
+    template<typename Other, typename = std::enable_if_t<std::is_floating_point<Real>::value>(Other)>
     friend bool operator==(Other b, const _approx& a)
     {
         if (!is_real(a.value) || !is_real(b)) {
@@ -264,19 +264,19 @@ struct _approx {
         return false;
     }
 
-    template<typename Other, ENABLE_IF_REAL(Other)>
+    template<typename Other, typename = std::enable_if_t<std::is_floating_point<Real>::value>(Other)>
     friend bool operator==(const _approx& lhs, Other rhs)
     {
         return operator==(rhs, lhs);
     }
 
-    template<typename Other, ENABLE_IF_REAL(Other)>
+    template<typename Other, typename = std::enable_if_t<std::is_floating_point<Real>::value>(Other)>
     friend bool operator!=(Other lhs, const _approx& rhs)
     {
         return !operator==(lhs, rhs);
     }
 
-    template<typename Other, ENABLE_IF_REAL(Other)>
+    template<typename Other, typename = std::enable_if_t<std::is_floating_point<Real>::value>(Other)>
     friend bool operator!=(const _approx& lhs, Other rhs)
     {
         return !operator==(rhs, lhs);
@@ -290,40 +290,16 @@ std::ostream& operator<<(std::ostream& os, const _approx<Real>& value)
     return os;
 }
 
-template<typename Real, ENABLE_IF_REAL(Real)>
+template<typename Real, typename = std::enable_if_t<std::is_floating_point<Real>::value>(Real)>
 auto approx(const Real value)
 {
     return _approx<Real>(value, precision_high<Real>());
 }
 
-template<typename Real, ENABLE_IF_REAL(Real)>
+template<typename Real, typename = std::enable_if_t<std::is_floating_point<Real>::value>(Real)>
 auto approx(const Real value, const Real epsilon)
 {
     return _approx<Real>(value, epsilon);
 }
 
-template<typename Integer, ENABLE_IF_INT(Integer), DISABLE_IF_REAL(Integer)>
-auto approx(const Integer value)
-{
-    return _approx<double>(static_cast<double>(value), precision_high<double>());
-}
-
-template<typename Real, typename Integer, ENABLE_IF_REAL(Real), ENABLE_IF_INT(Integer)>
-auto approx(const Real value, const Integer epsilon)
-{
-    return _approx<Real>(value, static_cast<Real>(epsilon));
-}
-
-template<typename Real, typename Integer, ENABLE_IF_REAL(Real), ENABLE_IF_INT(Integer)>
-auto approx(const Integer value, const Real epsilon)
-{
-    return _approx<Real>(static_cast<Real>(value), epsilon);
-}
-
-template<typename Integer, ENABLE_IF_INT(Integer), DISABLE_IF_REAL(Integer)>
-auto approx(const Integer value, const Integer epsilon)
-{
-    return _approx<double>(static_cast<double>(value), static_cast<double>(epsilon));
-}
-
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

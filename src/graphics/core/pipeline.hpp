@@ -4,7 +4,7 @@
 #include "common/id.hpp"
 #include "graphics/forwards.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -93,4 +93,4 @@ private:
     FragmentShaderPtr m_fragment_shader;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

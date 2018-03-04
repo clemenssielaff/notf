@@ -6,7 +6,7 @@
 #include "common/utf.hpp"
 #include "graphics/forwards.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /// Returns the aabr for a given text rendered with a given font.
 /// The aabr origin is at the first glyph's origin.
@@ -27,4 +27,4 @@ std::vector<std::string::const_iterator>
 break_text(const int width, const FontPtr& font, const std::string& text, const size_t first = 0, const int limit = -1,
            const Codepoint delimiter = ' ');
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -31,7 +31,7 @@
 #include "common/size2.hpp"
 #include "common/vector2.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -98,7 +98,7 @@ protected:
     Window(const Args& args);
 
 public:
-    NO_COPY_AND_ASSIGN(Window)
+    NOTF_NO_COPY_OR_ASSIGN(Window)
 
     /// Factory.
     /// @param info  WindowInfo providing initialization arguments.
@@ -219,4 +219,4 @@ class Window::Access<Application> {
     Window& m_window;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -3,7 +3,7 @@
 #include "app/scene/widget/capability.hpp"
 #include "app/scene/widget/screen_item.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -33,13 +33,13 @@ public:
 
     /// Returns a requested capability by type.
     /// If the map does not contain the requested capability, throws an std::out_of_range exception.
-    template<typename CAPABILITY, ENABLE_IF_SUBCLASS(CAPABILITY, Capability)>
+    template<typename CAPABILITY, std::enable_if_t<std::is_base_of<Capability, CAPABILITY>::value>>
     std::shared_ptr<CAPABILITY> capability()
     {
         return m_capabilities.get<CAPABILITY>();
     }
 
-    template<typename CAPABILITY, ENABLE_IF_SUBCLASS(CAPABILITY, Capability)>
+    template<typename CAPABILITY, std::enable_if_t<std::is_base_of<Capability, CAPABILITY>::value>>
     std::shared_ptr<const CAPABILITY> capability() const
     {
         return m_capabilities.get<CAPABILITY>();
@@ -47,7 +47,7 @@ public:
 
     /// Inserts or replaces a capability of this widget.
     /// @param capability    Capability to insert.
-    template<typename CAPABILITY, ENABLE_IF_SUBCLASS(CAPABILITY, Capability)>
+    template<typename CAPABILITY, std::enable_if_t<std::is_base_of<Capability, CAPABILITY>::value>>
     void set_capability(std::shared_ptr<CAPABILITY> capability)
     {
         m_capabilities.set(std::move(capability));
@@ -81,4 +81,4 @@ private:
     CapabilityMap m_capabilities;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -9,13 +9,13 @@
 #include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
-using namespace notf;
+NOTF_USING_NAMESPACE
 
 const Glyph INVALID_GLYPH = {{0, 0, 0, 0}, 0, 0, 0, 0};
 
 } // namespace
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 static_assert(std::is_pod<Glyph::Rect>::value, "This compiler does not recognize notf::Glyph::Rect as a POD.");
 
@@ -149,4 +149,4 @@ const Glyph& Font::_allocate_glyph(const codepoint_t codepoint) const
     return m_glyphs.insert(std::make_pair(codepoint, std::move(glyph))).first->second;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

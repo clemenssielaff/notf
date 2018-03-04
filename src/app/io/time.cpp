@@ -3,7 +3,7 @@
 #include "app/core/glfw.hpp"
 #include "common/log.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 Time::Ticks Time::s_zero      = {0};
 Time::Ticks Time::s_frequency = {0};
@@ -39,4 +39,4 @@ void Time::initialize()
 
 static_assert(std::is_pod<Time>::value, "This compiler does not recognize notf::Time as a POD.");
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

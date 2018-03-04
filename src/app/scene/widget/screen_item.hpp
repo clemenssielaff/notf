@@ -5,7 +5,7 @@
 #include "app/scene/widget/item.hpp"
 #include "common/aabr.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -404,4 +404,4 @@ class ScreenItem::Access<WindowLayout> {
 /// @throw           std::runtime_error, if the two ScreenItems do not share a common ancestor.
 Matrix3f transformation_between(const ScreenItem* source, const ScreenItem* target);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

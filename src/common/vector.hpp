@@ -6,7 +6,7 @@
 #include "common/exception.hpp"
 #include "common/meta.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /// Removes all occurences of 'element' from 'vector'.
 /// @return The number of removed items.
@@ -149,4 +149,4 @@ bool index_of(const std::vector<T>& vector, const T& value, size_t& result)
     return false;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

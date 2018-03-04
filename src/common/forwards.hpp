@@ -4,7 +4,7 @@
 
 #include "common/meta.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -71,7 +71,7 @@ using CubicBezier2f = detail::Bezier<3, Vector2f>;
 
 using Polygonf = detail::Polygon<float>;
 
-DEFINE_UNIQUE_POINTERS(class, LogHandler);
-DEFINE_UNIQUE_POINTERS(class, ThreadPool);
+NOTF_DEFINE_UNIQUE_POINTERS(class, LogHandler);
+NOTF_DEFINE_UNIQUE_POINTERS(class, ThreadPool);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

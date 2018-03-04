@@ -1,7 +1,7 @@
 #include "graphics/core/vertex_array.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 VertexArrayType::~VertexArrayType() { glDeleteBuffers(1, &m_vbo_id); }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

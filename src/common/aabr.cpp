@@ -3,7 +3,7 @@
 
 #include "common/aabr.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 // Aabrf =============================================================================================================//
 
@@ -47,4 +47,4 @@ static_assert(sizeof(Aabri) == sizeof(Vector2i) * 2,
 
 static_assert(std::is_pod<Aabri>::value, "This compiler does not recognize notf::Aabri as a POD.");
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

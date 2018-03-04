@@ -8,7 +8,7 @@
 #include "common/log.hpp"
 
 namespace { // anonymous
-using namespace notf;
+NOTF_USING_NAMESPACE
 
 /// Returns the next available ItemID.
 /// Is thread-safe and ever-increasing.
@@ -20,7 +20,7 @@ ItemID next_id()
 
 } // namespace
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 item_hierarchy_error::~item_hierarchy_error() = default;
 
@@ -184,4 +184,4 @@ bool ItemList::contains(const Item* child) const
 
 } // namespace detail
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

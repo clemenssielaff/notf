@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <limits>
 
 #include "./gl_errors.hpp"
 #include "./gl_utils.hpp"
@@ -8,7 +9,7 @@
 #include "common/exception.hpp"
 #include "common/meta.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -84,20 +85,20 @@ template<class T>
 struct is_attribute_trait<
     T, std::void_t<
            // does the type contain a `uint` that has a valid value?
-           typename std::enable_if<std::is_same<decltype(T::location), const uint>::value>::type,
-           typename std::enable_if<T::location != std::numeric_limits<GLuint>::max()>::type,
+           std::enable_if_t<std::is_same<decltype(T::location), const uint>::value>,
+           std::enable_if_t<T::location != std::numeric_limits<GLuint>::max()>,
 
            // does the type contain a `bool` named `normalized` ?
-           typename std::enable_if<std::is_same<decltype(T::normalized), const bool>::value>::type,
+           std::enable_if_t<std::is_same<decltype(T::normalized), const bool>::value>,
 
            // does type type contain a type named `type`?
            typename T::type,
 
            // does type type contain a type named `kind` that is a subtype of `AttributeKind`?
            typename T::kind,
-           typename std::enable_if<
-               is_one_of<typename T::kind, AttributeKind::Position, AttributeKind::Normal, AttributeKind::Color,
-                         AttributeKind::TexCoord, AttributeKind::Other>::value>::type>> : std::true_type {};
+           std::enable_if_t<is_one_of<typename T::kind, AttributeKind::Position, AttributeKind::Normal,
+                                      AttributeKind::Color, AttributeKind::TexCoord, AttributeKind::Other>::value>>>
+    : std::true_type {};
 
 namespace detail {
 
@@ -150,7 +151,7 @@ protected:
     }
 
 public:
-    NO_COPY_AND_ASSIGN(VertexArrayType)
+    NOTF_NO_COPY_OR_ASSIGN(VertexArrayType)
 
     /// Destructor.
     virtual ~VertexArrayType();
@@ -347,4 +348,4 @@ private:
     GLsizei m_buffer_size;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

@@ -3,7 +3,7 @@
 #include <iostream>
 #include <type_traits>
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 // Trianglef =========================================================================================================//
 
@@ -21,4 +21,4 @@ static_assert(sizeof(Trianglef) == sizeof(Vector2f) * 3,
 
 static_assert(std::is_pod<Trianglef>::value, "This compiler does not recognize notf::Trianglef as a POD.");
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

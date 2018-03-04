@@ -5,7 +5,7 @@
 
 #include "./gl_forwards.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 class AttributeLayout {
 
@@ -52,4 +52,4 @@ private:
     std::vector<Attribute> m_attributes;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

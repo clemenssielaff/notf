@@ -7,7 +7,7 @@
 #include "common/log.hpp"
 #include "common/polygon.hpp"
 
-using namespace notf;
+NOTF_USING_NAMESPACE
 
 namespace {
 

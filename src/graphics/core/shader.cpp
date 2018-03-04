@@ -19,7 +19,7 @@
 
 namespace { // anonymous
 
-using namespace notf;
+NOTF_USING_NAMESPACE
 
 /// Compiles a single shader stage from a given source.
 /// @param program_name Name of the Shader program (for error messages).
@@ -285,7 +285,7 @@ void assert_is_valid(const Shader&) {} // noop
 
 // ===================================================================================================================//
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 const Shader::Defines Shader::s_no_defines = {};
 
@@ -718,4 +718,4 @@ FragmentShader::create(GraphicsContextPtr& context, std::string name, const std:
     return result;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

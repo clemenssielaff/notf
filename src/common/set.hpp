@@ -3,7 +3,7 @@
 #include <functional>
 #include <set>
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /// Pops a single element from a std::set and places it into the output parameter.
 /// @return True iff an element was popped from the set.
@@ -43,4 +43,4 @@ void erase_conditional(std::set<T>& set, Func condition)
     }
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

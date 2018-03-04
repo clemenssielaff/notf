@@ -10,7 +10,7 @@
 #include "common/size2.hpp"
 #include "graphics/forwards.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 // TODO: [engine] a texture streaming method using buffers
 // TODO: [engine] 3D texture
@@ -172,7 +172,7 @@ public:
     static TexturePtr load_image(GraphicsContext& context, const std::string& file_path, std::string name,
                                  const Args& args = s_default_args);
 
-    NO_COPY_AND_ASSIGN(Texture)
+    NOTF_NO_COPY_OR_ASSIGN(Texture)
 
     /// Destructor.
     ~Texture();
@@ -240,4 +240,4 @@ private:
     static const Args s_default_args;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

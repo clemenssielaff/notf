@@ -2,7 +2,7 @@
 
 #include "common/size2.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -517,7 +517,7 @@ std::ostream& operator<<(std::ostream& out, const Claim::Stretch& stretch);
 /// @return      Output stream for further output.
 std::ostream& operator<<(std::ostream& out, const Claim& aabr);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 //== std::hash =======================================================================================================//
 

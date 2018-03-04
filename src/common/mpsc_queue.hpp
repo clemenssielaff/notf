@@ -19,7 +19,7 @@
 
 #include "common/meta.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -42,7 +42,7 @@ class MpscQueue final {
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NO_COPY_AND_ASSIGN(MpscQueue)
+    NOTF_NO_COPY_OR_ASSIGN(MpscQueue)
 
     /// Constructor.
     MpscQueue() : m_head(new Node), m_tail(m_head.load(std::memory_order_relaxed))
@@ -99,4 +99,4 @@ private:
     std::atomic<Node*> m_tail;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

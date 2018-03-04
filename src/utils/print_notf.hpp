@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /** Behold the logo! */
 void print_notf()
@@ -76,4 +76,4 @@ void print_notf()
     std::cout.flush();
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

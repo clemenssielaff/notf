@@ -1,6 +1,6 @@
 #include "common/thread_pool.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -49,4 +49,4 @@ ThreadPool::~ThreadPool()
     }
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

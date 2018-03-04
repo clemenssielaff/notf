@@ -2,7 +2,7 @@
 
 #include "common/exception.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -140,4 +140,4 @@ private:
     index_t m_vertex_count;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

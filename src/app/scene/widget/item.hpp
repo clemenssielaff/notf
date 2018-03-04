@@ -5,7 +5,7 @@
 #include "common/id.hpp"
 #include "common/signal.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
@@ -59,7 +59,7 @@ protected:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NO_COPY_AND_ASSIGN(Item)
+    NOTF_NO_COPY_OR_ASSIGN(Item)
 
     /// Destructor
     virtual ~Item();
@@ -176,7 +176,7 @@ private:
 //====================================================================================================================//
 
 /// Convenience function to create a correctly typed `shared_from_this` shared_ptr from Item subclasses.
-template<typename ItemSubclass, ENABLE_IF_SUBCLASS(ItemSubclass, Item)>
+template<typename ItemSubclass, std::enable_if_t<std::is_base_of<Item, ItemSubclass>::value>>
 std::shared_ptr<ItemSubclass> make_shared_from(ItemSubclass* item)
 {
     return std::dynamic_pointer_cast<ItemSubclass>(static_cast<Item*>(item)->shared_from_this());
@@ -283,4 +283,4 @@ class Item::Access<detail::ItemContainer> {
     Item& m_item;
 };
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

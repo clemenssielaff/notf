@@ -4,7 +4,7 @@
 #include "common/set.hpp"
 #include "common/vector.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 property_lookup_error::~property_lookup_error() = default;
 
@@ -112,4 +112,4 @@ bool PropertyGraph::_is_dependency_of_any(const PropertyBase* property, const st
     return false;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

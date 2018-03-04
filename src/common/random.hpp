@@ -6,10 +6,10 @@
 #include "common/meta.hpp"
 #include "randutils/randutils.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /** Convenience accessor and cache of a randutils random engine. */
-decltype(randutils::default_rng()) & get_random_engine();
+decltype(randutils::default_rng())& get_random_engine();
 
 /** Returns a random number.
  * @param from      Lowest possible number (default is 0)
@@ -22,7 +22,7 @@ Type random_number(const Type from, const Type to)
 }
 
 /** Returns a random angle in radians between -pi and pi. */
-template<typename Real, ENABLE_IF_REAL(Real)>
+template<typename Real, typename = std::enable_if_t<std::is_floating_point<Real>::value>(Real)>
 Real random_radian()
 {
     return random_number(-pi<Real>(), pi<Real>());
@@ -45,4 +45,4 @@ random_string(const size_t length, const bool lowercase = true, const bool upper
  */
 std::string random_string(const size_t length, const std::string& pool);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

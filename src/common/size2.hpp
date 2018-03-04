@@ -6,14 +6,14 @@
 #include "common/hash.hpp"
 #include "common/meta.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
 //====================================================================================================================//
 
 /// Two-dimensional size.
-template<typename value_t, ENABLE_IF_ARITHMETIC(value_t)>
+template<typename value_t>
 struct Size2 {
 
     // fields --------------------------------------------------------------------------------------------------------//
@@ -31,7 +31,7 @@ struct Size2 {
     Size2(const value_t width, const value_t height) : width(width), height(height) {}
 
     /// Automatic type conversions between integer and real sizes.
-    template<typename Other_t, ENABLE_IF_ARITHMETIC(Other_t)>
+    template<typename Other_t>
     Size2(const Size2<Other_t>& other)
         : width(static_cast<value_t>(other.width)), height(static_cast<value_t>(other.height))
     {}
@@ -133,7 +133,7 @@ std::ostream& operator<<(std::ostream& out, const Size2f& size);
 std::ostream& operator<<(std::ostream& out, const Size2i& size);
 std::ostream& operator<<(std::ostream& out, const Size2s& size);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 // std::hash =========================================================================================================//
 

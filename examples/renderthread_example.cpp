@@ -8,7 +8,7 @@
 #include "app/core/glfw.hpp"
 #include "common/log.hpp"
 
-using namespace notf;
+NOTF_USING_NAMESPACE
 
 using namespace std::chrono_literals;
 

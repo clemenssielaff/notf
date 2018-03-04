@@ -4,7 +4,7 @@
 
 #define DEG_TO_RAD 0.017453292519943295769236907684886127134428718885417254560L
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 namespace literals {
 
 /** Floating point literal to convert degrees to radians. */
@@ -35,6 +35,6 @@ std::string operator"" _path(const char* input, size_t)
 }
 
 } // namespace literals
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 #undef DEG_TO_RAD

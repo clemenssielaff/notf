@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits>
 #include <vector>
 
 #include "./gl_errors.hpp"
@@ -8,7 +9,7 @@
 #include "common/exception.hpp"
 #include "common/meta.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -55,7 +56,7 @@ protected:
     }
 
 public:
-    NO_COPY_AND_ASSIGN(IndexArrayType)
+    NOTF_NO_COPY_OR_ASSIGN(IndexArrayType)
 
     /// Destructor.
     virtual ~IndexArrayType();
@@ -115,7 +116,7 @@ public:
     /// @throws runtime_error   If the VBO could not be allocated.
     /// @throws runtime_error   If no VAO is currently bound.
     void init()
-    {        
+    {
         { // make sure there is a bound VAO
             GLint current_vao = 0;
             gl_check(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
@@ -197,4 +198,4 @@ decltype(auto) create_index_buffer()
     return result;
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

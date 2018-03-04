@@ -17,7 +17,7 @@
 #include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
-using namespace notf;
+NOTF_USING_NAMESPACE
 
 // must be zero - as seen on: https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
 static const GLint BORDER = 0;
@@ -110,7 +110,7 @@ void assert_is_valid(const Texture&) {} // noop
 
 //********************************************************************************************************************
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 const Texture::Args Texture::s_default_args = {};
 
@@ -460,4 +460,4 @@ void Texture::_deallocate()
     }
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

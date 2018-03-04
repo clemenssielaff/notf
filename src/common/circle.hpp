@@ -4,7 +4,7 @@
 
 #include "common/vector2.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -111,7 +111,7 @@ using Circlef = detail::Circle<float>;
 /// @return Output stream for further output.
 std::ostream& operator<<(std::ostream& out, const Circlef& circle);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 //====================================================================================================================//
 

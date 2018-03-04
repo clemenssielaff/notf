@@ -40,7 +40,7 @@ std::string make_absolute(const std::string& path, const std::string& root_dir)
 
 //====================================================================================================================//
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 resource_manager_initialization_error::~resource_manager_initialization_error() {}
 
@@ -59,4 +59,4 @@ void ResourceManager::cleanup() {}
 
 void ResourceManager::clear() {}
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

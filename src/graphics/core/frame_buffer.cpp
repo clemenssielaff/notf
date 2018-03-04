@@ -14,7 +14,7 @@
 #include "utils/make_smart_enabler.hpp"
 
 namespace { //
-using namespace notf;
+NOTF_USING_NAMESPACE
 
 /// Human-readable name of a RenderBuffer type.
 const char* type_to_str(const RenderBuffer::Type type)
@@ -57,7 +57,7 @@ const char* status_to_str(const GLenum status)
 
 //====================================================================================================================//
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 RenderBuffer::RenderBuffer(GraphicsContextPtr& context, Args&& args)
     : m_id(0), m_graphics_context(*context), m_args(std::move(args))
@@ -421,4 +421,4 @@ void FrameBuffer::_validate_arguments() const
     }
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

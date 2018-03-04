@@ -3,7 +3,9 @@
 #include <iosfwd>
 #include <utility>
 
-namespace notf {
+#include "common/meta.hpp"
+
+NOTF_OPEN_NAMESPACE
 
 /// \brief 16bit floating point type.
 /// If you ever need a full-fledged half type, see:
@@ -66,4 +68,4 @@ inline std::pair<half, half> unpackHalfs(unsigned int pack)
 /// @return Output stream for further output.
 std::ostream& operator<<(std::ostream& out, const half& value);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE

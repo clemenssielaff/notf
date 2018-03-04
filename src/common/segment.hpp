@@ -7,7 +7,7 @@
 #include "common/vector2.hpp"
 #include "common/vector3.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
@@ -178,7 +178,7 @@ using Segment3f = detail::Segment3<float>;
 std::ostream& operator<<(std::ostream& out, const Segment2f& segment);
 std::ostream& operator<<(std::ostream& out, const Segment3f& segment);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 //====================================================================================================================//
 

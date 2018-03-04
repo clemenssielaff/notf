@@ -1,8 +1,5 @@
 #pragma once
 
-#include <limits.h>
-#include <limits>
-#include <stddef.h>
 #include <type_traits>
 
 //====================================================================================================================//
@@ -12,74 +9,85 @@
 ///     http://en.cppreference.com/w/User:D41D8CD98F/feature_testing_macros
 
 #ifndef __cplusplus
-#error A C++ compiler is required!
+#    error A C++ compiler is required!
 #else
-
-#if __cplusplus >= 199711L
-#define NOTF_CPP97
-#endif
-#if __cplusplus >= 201103L
-#define NOTF_CPP11
-#endif
-#if __cplusplus >= 201402L
-#define NOTF_CPP14
-#endif
-#if __cplusplus >= 201703L
-#define NOTF_CPP17
-#endif
-
+#    if __cplusplus >= 199711L
+#        define NOTF_CPP97
+#    endif
+#    if __cplusplus >= 201103L
+#        define NOTF_CPP11
+#    endif
+#    if __cplusplus >= 201402L
+#        define NOTF_CPP14
+#    endif
+#    if __cplusplus >= 201703L
+#        define NOTF_CPP17
+#    endif
 #endif
 
 //====================================================================================================================//
 
 /// Compiler detection.
 #ifdef __clang__
-#define NOTF_CLANG
+#    define NOTF_CLANG
 #else
-#ifdef _MSC_VER
-#define NOTF_MSVC
-#else
-#ifdef __GNUC__
-#define NOTF_GCC
-#endif
-#endif
+#    ifdef _MSC_VER
+#        define NOTF_MSVC
+#    else
+#        ifdef __GNUC__
+#            define NOTF_GCC
+#        endif
+#    endif
 #endif
 
 //====================================================================================================================//
 
 /// Compiler attribute detection, as described in:
 ///     https://clang.llvm.org/docs/LanguageExtensions.html#has-cpp-attribute
-#ifndef __has_cpp_attribute      // Optional of course.
-#define __has_cpp_attribute(x) 0 // Compatibility with non-clang compilers.
+#ifndef __has_cpp_attribute
+#    define __has_cpp_attribute(x) 0 // Compatibility with non-clang compilers.
 #endif
 
-/// NODISCARD attribute to make sure that the return value of a function is not immediately discarded.
+/// NOTF_NODISCARD attribute to make sure that the return value of a function is not immediately discarded.
 /// Example:
-///     NODISCARD int guard() { ...
-///     class NODISCARD Guard { ...
+///     NOTF_NODISCARD int guard() { ...
+///     class NOTF_NODISCARD Guard { ...
 #if __has_cpp_attribute(nodiscard)
-#define NODISCARD [[nodiscard]]
+#    define NOTF_NODISCARD [[nodiscard]]
 #elif __has_cpp_attribute(gnu::warn_unused_result)
-#define NODISCARD [[gnu::warn_unused_result]]
+#    define NOTF_NODISCARD [[gnu::warn_unused_result]]
 #else
-#define NODISCARD
+#    define NOTF_NODISCARD
 #endif
 
 /// Signifies that a value is (probably) unused and you don't want warnings about it.
 /// Example:
-///     UNUSED int answer = 42;
+///     NOTF_UNUSED int answer = 42;
 #if __has_cpp_attribute(maybe_unused)
-#define UNUSED [[maybe_unused]]
+#    define NOTF_UNUSED [[maybe_unused]]
 #elif __has_cpp_attribute(gnu::unused)
-#define UNUSED [[gnu::unused]]
+#    define NOTF_UNUSED [[gnu::unused]]
 #else
-#define UNUSED
+#    define NOTF_UNUSED
 #endif
+
+//====================================================================================================================//
+
+/// Takes two macros and concatenates them without whitespace in between.
+#define NOTF_MACRO_CONCAT_(A, B) A##B
+#define NOTF_MACRO_CONCAT(A, B) NOTF_MACRO_CONCAT_(A, B)
 
 //====================================================================================================================//
 
 /// std namespace injections
 namespace std {
+
+#ifndef NOTF_CPP14
+
+template<bool B, class T = void>
+using enable_if_t = typename enable_if<B, T>::type;
+
+#endif
 
 #ifndef NOTF_CPP17
 
@@ -124,36 +132,77 @@ using void_t = typename make_void<Ts...>::type;
 
 //====================================================================================================================//
 
+/// Convenience macro to disable the construction of automatic copy- and assign methods.
+/// Implicitly disables move constructor/assignment methods as well, although you can define them yourself if you want.
+#define NOTF_NO_COPY_OR_ASSIGN(Type) \
+    Type(const Type&) = delete;      \
+    void operator=(const Type&) = delete;
+
+/// Forbids the allocation on the heap of a given type.
+#define NOTF_NO_HEAP_ALLOCATION(Type)       \
+    void* operator new(size_t)    = delete; \
+    void* operator new[](size_t)  = delete; \
+    void operator delete(void*)   = delete; \
+    void operator delete[](void*) = delete;
+
+/// Convenience macro to define shared pointer types for a given type.
+#define NOTF_DEFINE_SHARED_POINTERS(Tag, Type)    \
+    Tag Type;                                     \
+    using Type##Ptr      = std::shared_ptr<Type>; \
+    using Type##ConstPtr = std::shared_ptr<const Type>
+
+/// Convenience macro to define unique pointer types for a given type.
+#define NOTF_DEFINE_UNIQUE_POINTERS(Tag, Type)    \
+    Tag Type;                                     \
+    using Type##Ptr      = std::unique_ptr<Type>; \
+    using Type##ConstPtr = std::unique_ptr<const Type>
+
+/// Private access type template.
+/// Used for finer grained friend control and is compiled away completely (if you should worry).
+#define NOTF_ACCESS_TYPES(...)                                                          \
+    template<typename T, typename = std::enable_if_t<is_one_of<T, __VA_ARGS__>::value>> \
+    class Access;
+
+//====================================================================================================================//
+
+/// Function name macro to use for logging and exceptions.
+#ifdef NOTF_LOG_PRETTY_FUNCTION
+#    ifdef NOTF_CLANG
+#        define NOTF_FUNCTION __PRETTY_FUNCTION__
+#    else
+#        ifdef NOTF_MSVC
+#            define NOTF_FUNCTION __FUNCTION__
+#        else
+#            ifdef NOTF_GCC
+#                define NOTF_FUNCTION __PRETTY_FUNCTION__
+#            endif
+#        endif
+#    endif
+#else
+#    define NOTF_FUNCTION __func__
+#endif
+
+//====================================================================================================================//
+
+/// Opens the NoTF namespace.
+/// This macro can later be used to implement namespace versioning.
+#define NOTF_OPEN_NAMESPACE namespace notf {
+
+/// For visual balance with NOTF_OPEN_NAMESPACE.
+#define NOTF_CLOSE_NAMESPACE }
+
+/// Use the versioned namespace.
+#define NOTF_USING_NAMESPACE using namespace notf;
+
+//====================================================================================================================//
+
+using uchar = unsigned char;
+
+//====================================================================================================================//
+
 /// Checks if T is any of the variadic types.
 template<typename T, typename... Ts>
 using is_one_of = std::disjunction<std::is_same<T, Ts>...>;
-
-//====================================================================================================================//
-
-#define ENABLE_IF_REAL(TYPE) \
-    typename std::enable_if<std::is_floating_point<typename std::decay<TYPE>::type>::value, bool>::type = true
-
-#define DISABLE_IF_REAL(TYPE) \
-    typename std::enable_if<!std::is_floating_point<typename std::decay<TYPE>::type>::value, bool>::type = true
-
-#define ENABLE_IF_INT(TYPE) \
-    typename std::enable_if<std::is_integral<typename std::decay<TYPE>::type>::value, bool>::type = true
-
-#define DISABLE_IF_INT(TYPE) \
-    typename std::enable_if<!std::is_integral<typename std::decay<TYPE>::type>::value, bool>::type = true
-
-#define ENABLE_IF_SAME(TYPE_A, TYPE_B)                                                                                 \
-    typename std::enable_if<std::is_same<typename std::decay<TYPE_A>::type, typename std::decay<TYPE_B>::type>::value, \
-                            bool>::type                                                                                \
-        = true
-
-#define ENABLE_IF_ARITHMETIC(TYPE) \
-    typename std::enable_if<std::is_arithmetic<typename std::decay<TYPE>::type>::value, bool>::type = true
-
-#define ENABLE_IF_SUBCLASS(TYPE, PARENT) \
-    typename std::enable_if<std::is_base_of<PARENT, typename std::decay<TYPE>::type>::value, bool>::type = true
-
-//====================================================================================================================//
 
 /// The `always_false` struct can be used to create a templated struct that will always evaluate to `false` when
 /// used in a static_assert.
@@ -207,99 +256,7 @@ struct always_false : std::false_type {};
 template<typename T>
 struct always_false_t : std::false_type {};
 
-//====================================================================================================================//
-
-/// Convenience macro to disable the construction of automatic copy- and assign methods.
-/// Implicitly disables move constructor/assignment methods as well, although you can define them yourself if you want.
-#define NO_COPY_AND_ASSIGN(Type) \
-    Type(const Type&) = delete;  \
-    void operator=(const Type&) = delete;
-
-/// Forbids the allocation on the heap of a given type.
-#define NO_HEAP_ALLOCATION(Type)            \
-    void* operator new(size_t)    = delete; \
-    void* operator new[](size_t)  = delete; \
-    void operator delete(void*)   = delete; \
-    void operator delete[](void*) = delete;
-
-/// Convenience macro to define shared pointer types for a given type.
-#define DEFINE_SHARED_POINTERS(Tag, Type)         \
-    Tag Type;                                     \
-    using Type##Ptr      = std::shared_ptr<Type>; \
-    using Type##ConstPtr = std::shared_ptr<const Type>
-
-/// Convenience macro to define unique pointer types for a given type.
-#define DEFINE_UNIQUE_POINTERS(Tag, Type)         \
-    Tag Type;                                     \
-    using Type##Ptr      = std::unique_ptr<Type>; \
-    using Type##ConstPtr = std::unique_ptr<const Type>
-
-//====================================================================================================================//
-
-/// Trait containing the type that has a higher numeric limits.
-template<typename LEFT, typename RIGHT>
-struct higher_type {
-    using type = typename std::conditional<std::numeric_limits<LEFT>::max() <= std::numeric_limits<RIGHT>::max(), LEFT,
-                                           RIGHT>::type;
-};
-
 /// Compile-time check whether two types are both signed / both unsigned.
 template<class T, class U>
 struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T>::value == std::is_signed<U>::value> {
 };
-
-/// Like sizeof, but a returns the size of the type in bits not bytes.
-template<typename T>
-constexpr size_t bitsizeof()
-{
-    return sizeof(T) * CHAR_BIT;
-}
-
-//====================================================================================================================//
-
-/// Takes two macros and concatenates them without whitespace in between.
-#define MACRO_CONCAT_(A, B) A##B
-#define MACRO_CONCAT(A, B) MACRO_CONCAT_(A, B)
-
-//====================================================================================================================//
-
-/// Overload helper to use with std::variant in C++17.
-/// For details see:
-///     http://en.cppreference.com/w/cpp/utility/variant/visit
-#ifdef NOTF_CPP17
-template<class... Ts>
-struct overloaded : Ts... {
-    using Ts::operator()...;
-};
-template<class... Ts>
-overloaded(Ts...)->overloaded<Ts...>;
-#endif
-
-//====================================================================================================================//
-
-/// Private access type template.
-/// Used for finer grained friend control and is compiled away completely (if you should worry).
-#define NOTF_ACCESS_TYPES(...)                                                                       \
-    template<typename T, typename = typename std::enable_if<is_one_of<T, __VA_ARGS__>::value>::type> \
-    class Access;
-
-//====================================================================================================================//
-
-/// Function name macro to use for logging and exceptions.
-#ifdef NOTF_LOG_PRETTY_FUNCTION
-#ifdef NOTF_CLANG
-#define NOTF_FUNCTION __PRETTY_FUNCTION__
-#else
-#ifdef NOTF_MSVC
-#define NOTF_FUNCTION __FUNCTION__
-#else
-#ifdef NOTF_GCC
-#define NOTF_FUNCTION __PRETTY_FUNCTION__
-#endif
-#endif
-#endif
-#else
-#define NOTF_FUNCTION __func__
-#endif
-
-//====================================================================================================================//

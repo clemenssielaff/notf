@@ -5,7 +5,7 @@
 #include "common/float.hpp"
 #include "common/hash.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 /** 4-sided Padding to use in Layouts.
  * Uses the same order as css margins, that is starting at top and then clockwise (top / right / bottom/ left).
@@ -72,7 +72,7 @@ struct Padding {
  */
 std::ostream& operator<<(std::ostream& out, const Padding& padding);
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
 
 /* std::hash **********************************************************************************************************/
 

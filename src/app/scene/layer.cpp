@@ -6,7 +6,7 @@
 #include "graphics/core/graphics_context.hpp"
 #include "utils/make_smart_enabler.hpp"
 
-namespace notf {
+NOTF_OPEN_NAMESPACE
 
 Layer::Layer(SceneManagerPtr& manager, GraphicsProducerPtr producer)
     : m_scene_manager(*manager)
@@ -50,4 +50,4 @@ void Layer::render()
     GraphicsProducer::Access<Layer>(*m_producer).render();
 }
 
-} // namespace notf
+NOTF_CLOSE_NAMESPACE
