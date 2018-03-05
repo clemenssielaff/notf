@@ -15,9 +15,8 @@ class FocusEvent {
 public:
     // TODO: FocusEvent is probably outdated when we have a hierarchy of focus-handling controllers...?
 
-    FocusEvent(Window& window, FocusAction action, WidgetPtr old_focus, WidgetPtr new_focus)
-        : window(window)
-        , action(action)
+    FocusEvent(FocusAction action, WidgetPtr old_focus, WidgetPtr new_focus)
+        : action(action)
         , old_focus(std::move(old_focus))
         , new_focus(std::move(new_focus))
         , m_was_handled(action == FocusAction::LOST)
@@ -31,9 +30,6 @@ public:
 
     // fields --------------------------------------------------------------------------------------------------------//
 public:
-    /// The Window to which the event was sent.
-    const Window& window;
-
     /// The action that triggered this event.
     const FocusAction action;
 

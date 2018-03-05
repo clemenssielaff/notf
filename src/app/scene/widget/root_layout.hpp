@@ -6,37 +6,31 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
-/// The WindowLayout is owned by a Window and root of all LayoutItems displayed within the Window.
-class WindowLayout : public Layout {
+/// The RootLayout is owned by a Window and root of all LayoutItems displayed within the Window.
+class RootLayout : public Layout {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(Window)
+    NOTF_ACCESS_TYPES(ItemHierarchy)
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Constructor.
-    /// @param window   Window owning this RootWidget.
-    WindowLayout(Window* window);
-
-    /// The Window containing the hierarchy that this Item is a part of.
-    /// Is invalid if this Item is not part of a rooted hierarchy.
-    Window* window() const { return m_window; }
+    RootLayout();
 
     /// Factory.
-    /// @param window   Window owning this RootWidget.
-    static WindowLayoutPtr create(Window* window);
+    static RootLayoutPtr create();
 
 public:
     /// Destructor.
-    virtual ~WindowLayout() override {}
+    virtual ~RootLayout() override {}
 
     /// Find all Widgets at a given position in the Window.
     /// @param local_pos     Local coordinates where to look for a Widget.
     /// @return              All Widgets at the given coordinate, ordered from front to back.
     std::vector<Widget*> widgets_at(const Vector2f& screen_pos);
 
-    /// Sets a new Controller for the WindowLayout.
+    /// Sets a new Controller for the RootLayout.
     void set_controller(const ControllerPtr& controller);
 
 private:
@@ -50,9 +44,6 @@ private:
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// The Window containing the hierarchy that this Item is the root of.
-    Window* m_window;
-
     /// The Window Controller.
     Controller* m_controller;
 };
@@ -60,23 +51,22 @@ private:
 // ===================================================================================================================//
 
 template<>
-class WindowLayout::Access<Window> {
-    friend class Window;
+class RootLayout::Access<ItemHierarchy> {
+    friend class ItemHierarchy;
 
     /// Constructor.
-    /// @param window_layout    WindowLayout to access.
-    Access(WindowLayout& window_layout) : m_window_layout(window_layout) {}
+    /// @param root_layout    RootLayout to access.
+    Access(RootLayout& root_layout) : m_root_layout(root_layout) {}
 
     /// Factory.
-    /// @param window   Window owning this RootWidget.
-    static WindowLayoutPtr create(Window* window) { return WindowLayout::create(window); }
+    static RootLayoutPtr create() { return RootLayout::create(); }
 
     /// Updates the Grant of this Item and might cause a relayout.
     /// @return      True iff the Grant was modified.
-    bool set_grant(Size2f grant) { return m_window_layout._set_grant(std::move(grant)); }
+    bool set_grant(Size2f grant) { return m_root_layout._set_grant(std::move(grant)); }
 
-    /// The WindowLayout to access.
-    WindowLayout& m_window_layout;
+    /// The RootLayout to access.
+    RootLayout& m_root_layout;
 };
 
 NOTF_CLOSE_NAMESPACE

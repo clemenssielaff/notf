@@ -46,6 +46,9 @@ class ScopedThread {
 public:
     NOTF_NO_COPY_OR_ASSIGN(ScopedThread)
 
+    /// Default constructor.
+    ScopedThread() = default;
+
     /// Constructor
     /// @param thread       Thread to guard.
     /// @throws logic_error If the thread is not joinable.
@@ -59,6 +62,19 @@ public:
     /// Move Constructor.
     /// @param other    ScopedThread to move from.
     ScopedThread(ScopedThread&& other) : ScopedThread(std::move(other.m_thread)) { other.m_thread = {}; }
+
+    /// Move Assignment.
+    /// Blocks until the the current thread is joined (if it is joinable).
+    /// @param other    ScopedThread to move from.
+    ScopedThread& operator=(ScopedThread&& other)
+    {
+        if (m_thread.joinable()) {
+            m_thread.join();
+        }
+        m_thread       = std::move(other.m_thread);
+        other.m_thread = {};
+        return *this;
+    }
 
     /// Destructor.
     /// Blocks until the thread has joined.

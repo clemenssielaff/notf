@@ -1,47 +1,12 @@
 #include "app/core/window.hpp"
 
-#include "app/core/application.hpp"
+#include "app/core/application.hpp"0
 #include "app/core/glfw.hpp"
 #include "app/core/resource_manager.hpp"
 #include "app/scene/scene_manager.hpp"
-#include "app/scene/widget/window_layout.hpp"
 #include "common/log.hpp"
 #include "graphics/core/raw_image.hpp"
 #include "utils/make_smart_enabler.hpp"
-
-namespace { // anonymous
-// NOTF_USING_NAMESPACE
-/*
-/// Helper function that propagates an event up the Item hierarchy.
-/// @param widget    Widget receiving the original event.
-/// @param signal    Signal to trigger on each ScreenItem in the hierarchy.
-/// @param event     Event object that is passed as an argument to the Signals.
-/// @param notified  ScreenItems that have already been notified of this event and that must not handle it again.
-/// @return          The ScreenItem that handled the event or nullptr, if none did.
-///
-template <class Event, typename... Args>
-ScreenItem* propagate_to_hierarchy(Widget* widget, Signal<Args...> ScreenItem::*signal, Event& event,
-                                   std::unordered_set<ScreenItem*>& notified_items)
-{
-    ScreenItem* screen_item = widget;
-    while (screen_item) {
-        // don't propagate the event to items that have already seen (but not handled) it
-        if (notified_items.count(screen_item)) {
-            return nullptr;
-        }
-        notified_items.insert(screen_item);
-
-        // fire the signal and return if it was handled
-        (screen_item->*signal)(event);
-        if (event.was_handled()) {
-            return screen_item;
-        }
-        screen_item = screen_item->get_layout();
-    }
-    return nullptr;
-}
-*/
-} // namespace
 
 NOTF_OPEN_NAMESPACE
 
@@ -65,7 +30,6 @@ window_initialization_error::~window_initialization_error() {}
 Window::Window(const Args& args)
     : m_glfw_window(nullptr, detail::window_deleter)
     , m_title(args.title)
-    , m_layout()
     , m_scene_manager() // has to be created after the OpenGL Context
     , m_size(args.size)
 {
@@ -115,10 +79,6 @@ Window::Window(const Args& args)
             log_warning << "Failed to load Window icon '" << icon_path << "'";
         }
     }
-
-    // create the layout
-    m_layout = WindowLayout::Access<Window>::create(this);
-    WindowLayout::Access<Window>(*m_layout).set_grant(buffer_size());
 
     log_info << "Created Window '" << title() << "' using OpenGl version: " << glGetString(GL_VERSION);
 }
@@ -172,185 +132,28 @@ Vector2f Window::mouse_pos() const
     return {static_cast<float>(mouse_x), static_cast<float>(mouse_y)};
 }
 
-void Window::update() const { m_scene_manager->request_redraw(); }
-
 void Window::close()
 {
     if (m_glfw_window) {
         log_trace << "Closing Window \"" << m_title << "\"";
         on_close(*this);
         Application::Access<Window>().unregister(this);
-        m_layout.reset();
         m_scene_manager.reset();
         m_glfw_window.reset();
     }
     m_size = Size2i::invalid();
 }
 
+void Window::_propagate(MouseEvent&& event) { m_scene_manager->propagate(std::move(event)); }
+
+void Window::_propagate(KeyEvent&& event) { m_scene_manager->propagate(std::move(event)); }
+
+void Window::_propagate(CharEvent&& event) { m_scene_manager->propagate(std::move(event)); }
+
 void Window::_resize(Size2i size)
 {
     m_size = std::move(size);
-
-    WindowLayout::Access<Window>(*m_layout).set_grant(buffer_size());
-}
-
-void Window::_propagate(MouseEvent&& event)
-{
-    //    // sort Widgets by RenderLayers
-    //    std::vector<std::vector<Widget*>> widgets_by_layer(m_render_manager->get_layer_count());
-    //    for (Widget* widget : m_layout->get_widgets_at(event.window_pos)) {
-    //        RenderLayer* render_layer = widget->get_render_layer().get();
-    //        assert(render_layer);
-    //        widgets_by_layer[render_layer->get_index()].emplace_back(widget);
-    //    }
-
-    //    WidgetPtr mouse_item = m_mouse_item.lock();
-    //    std::unordered_set<ScreenItem*> notified_items;
-
-    //    // call the appropriate event signal
-    //    if (event.action == MouseAction::MOVE) {
-    //        if (mouse_item) {
-    //            mouse_item->on_mouse_move(event);
-    //            if (event.was_handled()) {
-    //                return;
-    //            }
-    //            notified_items.insert(mouse_item.get());
-    //        }
-    //        for (const auto& layer : reverse(widgets_by_layer)) {
-    //            for (const auto& widget : layer) {
-    //                if (propagate_to_hierarchy(widget, &ScreenItem::on_mouse_move, event, notified_items)) {
-    //                    return;
-    //                }
-    //            }
-    //        }
-    //    }
-
-    //    else if (event.action == MouseAction::SCROLL) {
-    //        if (mouse_item) {
-    //            mouse_item->on_mouse_scroll(event);
-    //            if (event.was_handled()) {
-    //                return;
-    //            }
-    //            notified_items.insert(mouse_item.get());
-    //        }
-    //        for (const auto& layer : reverse(widgets_by_layer)) {
-    //            for (const auto& widget : layer) {
-    //                if (propagate_to_hierarchy(widget, &ScreenItem::on_mouse_scroll, event, notified_items)) {
-    //                    return;
-    //                }
-    //            }
-    //        }
-    //    }
-
-    //    else if (event.action == MouseAction::PRESS) {
-    //        assert(!mouse_item);
-    //        for (const auto& layer : reverse(widgets_by_layer)) {
-    //            for (const auto& widget : layer) {
-    //                if (propagate_to_hierarchy(widget, &ScreenItem::on_mouse_button, event, notified_items)) {
-    //                    WidgetPtr new_focus_widget = make_shared_from(widget);
-    //                    m_mouse_item               = new_focus_widget;
-
-    //                    // do nothing if the item already has the focus
-    //                    WidgetPtr old_focus_widget = m_keyboard_item.lock();
-    //                    if (new_focus_widget == old_focus_widget) {
-    //                        return;
-    //                    }
-
-    //                    // send the mouse item a 'focus gained' event and notify its hierarchy, if it handles it
-    //                    FocusEvent focus_gained_event(*this, FocusAction::GAINED, old_focus_widget, new_focus_widget);
-    //                    new_focus_widget->on_focus_changed(focus_gained_event);
-    //                    if (focus_gained_event.was_handled()) {
-
-    //                        // let the previously focused Widget know that it lost the focus
-    //                        if (old_focus_widget) {
-    //                            FocusEvent focus_lost_event(*this, FocusAction::LOST, old_focus_widget,
-    //                            new_focus_widget); ScreenItem* handler = old_focus_widget.get(); while (handler) {
-    //                                handler->on_focus_changed(focus_lost_event);
-    //                                handler = handler->get_layout();
-    //                            }
-    //                        }
-
-    //                        // notify the new focused Widget's hierarchy
-    //                        m_keyboard_item     = new_focus_widget;
-    //                        ScreenItem* handler = new_focus_widget->get_layout();
-    //                        while (handler) {
-    //                            handler->on_focus_changed(focus_gained_event);
-    //                            handler = handler->get_layout();
-    //                        }
-    //                    }
-    //                    else {
-    //                        // if it doesn't handle the focus event, the focus remains untouched
-    //                    }
-
-    //                    return;
-    //                }
-    //            }
-    //        }
-    //    }
-
-    //    else if (event.action == MouseAction::RELEASE) {
-    //        if (mouse_item) {
-    //            m_mouse_item.reset();
-    //            mouse_item->on_mouse_button(event);
-    //            if (event.was_handled()) {
-    //                return;
-    //                =
-    //            }
-    //            notified_items.insert(mouse_item.get());
-    //        }
-    //        for (const auto& layer : reverse(widgets_by_layer)) {
-    //            for (const auto& widget : layer) {
-    //                if (propagate_to_hierarchy(widget, &ScreenItem::on_mouse_button, event, notified_items)) {
-    //                    return;
-    //                }
-    //            }
-    //        }
-    //    }
-
-    //    else {
-    //        assert(0);
-    //    }
-}
-
-void Window::_propagate(KeyEvent&& event)
-{
-    //    std::unordered_set<ScreenItem*> notified_items;
-    //    if (WidgetPtr keyboard_item = m_keyboard_item.lock()) {
-    //        propagate_to_hierarchy(keyboard_item.get(), &ScreenItem::on_key, event, notified_items);
-    //    }
-    //    else { // if there is no keyboard item, only notify the WindowLayout
-    //        m_layout->on_key(event);
-    //    }
-}
-
-void Window::_propagate(CharEvent&& event)
-{
-    //    std::unordered_set<ScreenItem*> notified_items;
-    //    if (WidgetPtr keyboard_item = m_keyboard_item.lock()) {
-    //        propagate_to_hierarchy(keyboard_item.get(), &ScreenItem::on_char_input, event, notified_items);
-    //    }
-    //    else { // if there is no keyboard item, only notify the WindowLayout
-    //        m_layout->on_char_input(event);
-    //    }
-}
-
-void Window::_update()
-{
-    assert(m_glfw_window);
-
-    // do nothing, if there are no Widgets in need to be redrawn
-    //    if (m_render_manager->is_clean()) { // TODO: dirty mechanism for SceneManager
-    //        return;
-    //    }
-
-    // render
-    try {
-        m_scene_manager->request_redraw();
-    }
-    // if an error bubbled all the way up here, something has gone horribly wrong
-    catch (const notf_exception& error) {
-        log_critical << "Rendering failed: \"" << error.what() << "\"";
-    }
+    m_scene_manager->resize(m_size);
 }
 
 NOTF_CLOSE_NAMESPACE

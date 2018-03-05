@@ -48,7 +48,7 @@ NOTF_OPEN_NAMESPACE
 ///
 /// Whenever a Widget changes its Claim, the parent Layout has to see if it needs to update its Claim accordingly.
 /// If its Claim changes, its respective parent Layout might need to update as well - up to the first Layout that does
-/// not update its Claim (at the latest, the WindowLayout never updates its Claim).
+/// not update its Claim (at the latest, the RootLayout never updates its Claim).
 ///
 /// The pipeline is as follows:
 ///
@@ -105,7 +105,7 @@ NOTF_OPEN_NAMESPACE
 /// A "Scissor" is an axis-aligned rectangle, scissoring is the act of cutting off parts of a Widget that fall outside
 /// that rectangle.
 /// Every Widget contains a pointer to the ancestor Layout that acts as its scissor.
-/// By default, all ScreenItems are scissored to the WindowLayout, but you can explicitly override the scissor Layout
+/// By default, all ScreenItems are scissored to the RootLayout, but you can explicitly override the scissor Layout
 /// for each ScreenItem individually. If a ScreenItem is moved outside of its scissor hierarchy, it will fall back to
 /// its parent's scissor Layout. ScreenItems outside a hierarchy do not have a scissor.
 ///
@@ -129,7 +129,7 @@ class ScreenItem : public Item {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(WindowLayout)
+    NOTF_ACCESS_TYPES(RootLayout)
 
     /// Spaces that the transformation of a ScreenItem passes through.
     enum class Space : unsigned char {
@@ -381,15 +381,15 @@ const Matrix3f ScreenItem::xform<ScreenItem::Space::WINDOW>() const;
 //====================================================================================================================//
 
 template<>
-class ScreenItem::Access<WindowLayout> {
-    friend class WindowLayout;
+class ScreenItem::Access<RootLayout> {
+    friend class RootLayout;
 
     /// Constructor.
     /// @param screen_item  ScreenItem to access.
     Access(ScreenItem& screen_item) : m_screen_item(screen_item) {}
 
     /// Turns this ScreenItem into a root item that is its own scissor.
-    void be_own_scissor(Layout* window_layout) { m_screen_item.m_scissor_layout = window_layout; }
+    void be_own_scissor(Layout* root_layout) { m_screen_item.m_scissor_layout = root_layout; }
 
     /// The ScreenItem to access.
     ScreenItem& m_screen_item;

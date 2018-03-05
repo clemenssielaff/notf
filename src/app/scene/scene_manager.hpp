@@ -145,19 +145,53 @@ public:
 
     // ========================================================================
 private:
-    struct RenderThread {
-        // TODO: CONTINUE HERE
-        // By adapting the renderthread_example.
-        // Then move event propagation into the scene manager, who just forwards them to the scene of each Layer
-        // Then copy window event propagation into the widget/hierarchy and remove the WindowLayout from the WIndow.
+    class RenderThread {
+
+        // methods ------------------------------------------------------------
+    public:
+        /// Constructor.
+        /// @param scene_manager    The SceneManager used for rendering.
+        RenderThread(SceneManager& scene_manager) : m_scene(scene_manager) {}
+
+        /// Destructor.
+        ~RenderThread() { stop(); }
+
+        /// Start the RenderThread.
+        void start();
+
+        /// Requests a redraw at the next opportunity.
+        /// Does not block.
+        void request_redraw();
+
+        /// Stop the RenderThread.
+        /// Blocks until the worker thread joined.
+        void stop();
+
+    private:
+        /// Worker method.
+        void _run();
 
         // fields -------------------------------------------------------------
     private:
+        /// The SceneManager used for rendering.
+        SceneManager& m_scene;
+
+        /// Worker thread.
         ScopedThread m_thread;
+
+        /// Mutex guarding the RenderThread's state.
         std::mutex m_mutex;
+
+        /// Condition variable to wait for.
         std::condition_variable m_condition;
-        bool m_next_frame_ready = false;
+
+        /// Is used in conjunction with the condition variable to notify the thread that a new frame should be drawn.
+        std::atomic_flag m_is_blocked = ATOMIC_FLAG_INIT;
+
+        /// Is true as long at the thread should continue.
+        bool m_is_running = false;
     };
+    friend class RenderThread;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 protected:
@@ -187,7 +221,7 @@ public:
     ///@}
 
     /// Renders a single frame with the current State of the SceneManager.
-    void request_redraw() { _render(); }
+    void request_redraw() { m_render_thread.request_redraw(); }
 
     // state management -------------------------------------------------------
 
@@ -238,9 +272,6 @@ public:
     void resize(Size2i size);
 
 private:
-    /// Renders a single frame with the current State of the SceneManager.
-    void _render();
-
     /// Registers a new GraphicsProducer.
     /// @throws runtime_error   If a GraphicsProducer with the same ID is already registered.
     void _register_new(GraphicsProducerPtr graphics_producer);
@@ -254,6 +285,9 @@ private:
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
+    /// Render thread.
+    RenderThread m_render_thread;
+
     /// Internal GraphicsContext.
     GraphicsContextPtr m_graphics_context;
 

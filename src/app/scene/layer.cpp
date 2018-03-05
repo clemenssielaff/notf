@@ -8,20 +8,21 @@
 
 NOTF_OPEN_NAMESPACE
 
-Layer::Layer(SceneManagerPtr& manager, GraphicsProducerPtr producer)
+Layer::Layer(SceneManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr producer)
     : m_scene_manager(*manager)
+    , m_scene(std::move(scene))
     , m_producer(std::move(producer))
     , m_area(Aabri::zero())
     , m_is_visible(true)
     , m_is_fullscreen(true)
 {}
 
-LayerPtr Layer::create(SceneManagerPtr& manager, GraphicsProducerPtr producer)
+LayerPtr Layer::create(SceneManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr producer)
 {
 #ifdef NOTF_DEBUG
-    return LayerPtr(new Layer(manager, std::move(producer)));
+    return LayerPtr(new Layer(manager, std::move(scene), std::move(producer)));
 #else
-    return std::make_shared<make_shared_enabler<Layer>>(manager, std::move(producer));
+    return std::make_shared<make_shared_enabler<Layer>>(manager, std::move(scene), std::move(producer));
 #endif
 }
 

@@ -13,9 +13,9 @@
  * All events are sent to a Widget first and the propagated up until some ScreenItem ancestor handles it (or not).
  * Focus events are always propagated upwards to notify the hierarchy that a child has received the focus.
  *
- * If a Window has no current keyboard item, the WindowLayout is the only one notified of a key event, for example to
+ * If a Window has no current keyboard item, the RootLayout is the only one notified of a key event, for example to
  * close the Window on ESC.
- * Note that this doesn't mean that the WindowLayout is always notified!
+ * Note that this doesn't mean that the RootLayout is always notified!
  * If there is a keyboard item and it handles the key event, the event will not propagate further.
  * =======================================
  *
@@ -110,9 +110,6 @@ public:
     /// The Window's title.
     const std::string& title() const { return m_title; }
 
-    /// The invisible root Layout of this Window.
-    const WindowLayoutPtr& layout() const { return m_layout; }
-
     /// Returns the Application's Scene Manager.
     SceneManager& scene_manager() { return *m_scene_manager; }
 
@@ -132,9 +129,6 @@ public:
     /// Returns zero if the GLFW window was already closed.
     Vector2f mouse_pos() const;
 
-    /// Requests a redraw of this Window at the next possibility.
-    void update() const;
-
     /// Closes this Window.
     void close();
 
@@ -142,10 +136,6 @@ public:
     bool is_closed() const { return !(static_cast<bool>(m_glfw_window)); }
 
 private:
-    /// Called by the Application when the Window was resized.
-    /// @param size     New size.
-    void _resize(Size2i size);
-
     /// Called when the Application receives a mouse event targeting this Window.
     /// @param event    MouseEvent.
     void _propagate(MouseEvent&& event);
@@ -158,8 +148,9 @@ private:
     /// @param event    CharEvent.
     void _propagate(CharEvent&& event);
 
-    /// Updates the contents of this Window.
-    void _update();
+    /// Called by the Application when the Window was resized.
+    /// @param size     New size.
+    void _resize(Size2i size);
 
     /// The wrapped GLFW window.
     GLFWwindow* _glfw_window() const { return m_glfw_window.get(); }
@@ -171,9 +162,6 @@ private:
 
     /// The Window's title (is not accessible through GLFW).
     std::string m_title;
-
-    /// The Root Layout of this Window.
-    WindowLayoutPtr m_layout; // TODO: windows don't have a top-level layout anymore, but a scene
 
     /// The Window's Scene manager.
     SceneManagerPtr m_scene_manager;

@@ -2,14 +2,19 @@
 
 #include <sstream>
 
+#include "app/io/char_event.hpp"
+#include "app/io/key_event.hpp"
+#include "app/io/mouse_event.hpp"
 #include "app/renderer/graphics_producer.hpp"
 #include "app/renderer/render_target.hpp"
 #include "app/scene/layer.hpp"
+#include "app/scene/scene.hpp"
 #include "common/hash.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/text/font_manager.hpp"
 #include "utils/make_smart_enabler.hpp"
+#include "utils/reverse_iterator.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -40,16 +45,95 @@ void RenderDag::reset() { m_new_hash = 0; }
 
 //====================================================================================================================//
 
+void SceneManager::RenderThread::start()
+{
+    {
+        std::unique_lock<std::mutex> lock_guard(m_mutex);
+        if (m_is_running) {
+            return;
+        }
+        m_is_running = true;
+    }
+    m_is_blocked.test_and_set(std::memory_order_release);
+    m_thread = ScopedThread(std::thread(&SceneManager::RenderThread::_run, this));
+}
+
+void SceneManager::RenderThread::request_redraw()
+{
+    m_is_blocked.clear(std::memory_order_release);
+    m_condition.notify_one();
+}
+
+void SceneManager::RenderThread::stop()
+{
+    {
+        std::unique_lock<std::mutex> lock_guard(m_mutex);
+        if (!m_is_running) {
+            return;
+        }
+        m_is_running = false;
+        m_is_blocked.clear(std::memory_order_release);
+    }
+    m_condition.notify_one();
+    m_thread = {};
+}
+
+void SceneManager::RenderThread::_run()
+{
+    while (1) {
+        { // wait until the next frame is ready
+            std::unique_lock<std::mutex> lock_guard(m_mutex);
+            if (m_is_blocked.test_and_set(std::memory_order_acquire)) {
+                m_condition.wait(lock_guard, [&] { return !m_is_blocked.test_and_set(std::memory_order_acquire); });
+            }
+
+            if (!m_is_running) {
+                return;
+            }
+        }
+
+        // ignore default state
+        if (m_scene.m_state == &s_default_state) {
+            log_trace << "Cannot render a SceneManager in its default State";
+            continue;
+        }
+
+        // TODO: clean all the render targets here
+        // in order to sort them, use typeid(*ptr).hash_code()
+
+        m_scene.m_graphics_context->begin_frame();
+
+        try {
+            // render all Layers from back to front
+            for (const LayerPtr& layer : reverse(m_scene.m_state->layers)) {
+                layer->render();
+            }
+        }
+        // if an error bubbled all the way up here, something has gone horribly wrong
+        catch (const notf_exception& error) {
+            log_critical << "Rendering failed: \"" << error.what() << "\"";
+        }
+
+        m_scene.m_graphics_context->finish_frame();
+    }
+}
+
+//====================================================================================================================//
+
 const SceneManager::State SceneManager::s_default_state = {};
 
 SceneManager::SceneManager(GLFWwindow* window)
-    : m_graphics_context(std::make_unique<GraphicsContext>(window))
+    : m_render_thread(*this)
+    , m_graphics_context(std::make_unique<GraphicsContext>(window)) // TODO: move GraphicsContext and FontManager to
+                                                                    // Window
     , m_font_manager(FontManager::create(*m_graphics_context))
     , m_dependencies()
     , m_graphics_producer()
     , m_render_targets()
     , m_state(&s_default_state)
-{}
+{
+    m_render_thread.start();
+}
 
 SceneManagerPtr SceneManager::create(GLFWwindow* window)
 {
@@ -101,24 +185,44 @@ void SceneManager::remove_state(const StateId id)
     m_states.erase(it);
 }
 
-void SceneManager::_render()
+void SceneManager::propagate(MouseEvent&& event)
 {
-    if (m_state == &s_default_state) {
-        log_trace << "Ignoring SceneManager::render with the default State";
-        return;
-    }
-
-    // TODO: clean all the render targets here
-    // in order to sort them, use typeid(*ptr).hash_code()
-
-    m_graphics_context->begin_frame();
-
-    // render all Layers
+    assert(!event.was_handled());
     for (const LayerPtr& layer : m_state->layers) {
-        layer->render();
+        layer->scene()->propagate(event);
+        if (event.was_handled()) {
+            return;
+        }
     }
+}
 
-    m_graphics_context->finish_frame();
+void SceneManager::propagate(KeyEvent&& event)
+{
+    assert(!event.was_handled());
+    for (const LayerPtr& layer : m_state->layers) {
+        layer->scene()->propagate(event);
+        if (event.was_handled()) {
+            return;
+        }
+    }
+}
+
+void SceneManager::propagate(CharEvent&& event)
+{
+    assert(!event.was_handled());
+    for (const LayerPtr& layer : m_state->layers) {
+        layer->scene()->propagate(event);
+        if (event.was_handled()) {
+            return;
+        }
+    }
+}
+
+void SceneManager::resize(Size2i size)
+{
+    for (const LayerPtr& layer : m_state->layers) {
+        layer->scene()->resize(size);
+    }
 }
 
 void SceneManager::_register_new(GraphicsProducerPtr graphics_producer)

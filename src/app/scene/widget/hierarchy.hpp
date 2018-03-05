@@ -53,4 +53,57 @@
 
 NOTF_OPEN_NAMESPACE
 
+// ===================================================================================================================//
+
+class ItemHierarchy : public Scene {
+    friend class Scene;
+
+    // methods -------------------------------------------------------------------------------------------------------//
+protected:
+    /// Constructor.
+    ItemHierarchy(const Token& token);
+
+public:
+    /// Factory.
+    static ItemHierarchyPtr create() { return _create<ItemHierarchy>(); }
+
+    // event handlers ---------------------------------------------------------
+
+    /// Called when the a mouse button is pressed or released, the mouse is moved inside the Window, the mouse wheel
+    /// scrolled or the cursor enters or exists the client area of a Window.
+    /// @param event    MouseEvent.
+    /// @returns        True iff the Scene handled the event and it doesn't need to be propagated further.
+    virtual void propagate(MouseEvent& event) override;
+
+    /// Called when a key is pressed, repeated or released.
+    /// @param event    KeyEvent.
+    /// @returns        True iff the Scene handled the event and it doesn't need to be propagated further.
+    virtual void propagate(KeyEvent& event) override;
+
+    /// Called when an unicode code point is generated.
+    /// @param event    CharEvent.
+    /// @returns        True iff the Scene handled the event and it doesn't need to be propagated further.
+    virtual void propagate(CharEvent& event) override;
+
+    /// Called when the Window containing the Scene is resized.
+    /// @param size     New size.
+    virtual void resize(const Size2i& size) override;
+
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
+    /// The RootLayout of this Hierarchy.
+    RootLayoutPtr m_root;
+
+    /// The first Item to receive mouse events.
+    /// When an Item handles a mouse press event, it will also receive -move and -release events, even if the cursor is
+    /// no longer within the Item.
+    /// May be empty.
+    std::weak_ptr<Widget> m_mouse_item;
+
+    /// The first Item to receive keyboard events.
+    /// The 'focused' Item.
+    /// May be empty.
+    std::weak_ptr<Widget> m_keyboard_item;
+};
+
 NOTF_CLOSE_NAMESPACE

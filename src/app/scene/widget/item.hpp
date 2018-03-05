@@ -22,7 +22,7 @@ NOTF_EXCEPTION_TYPE(item_hierarchy_error)
 ///
 /// Item Hierarchy
 /// ==============
-/// Starting with the WindowLayout at the root, which is owned by a Window, every Item is owned by its immediate parent
+/// Starting with the RootLayout at the root, which is owned by a Window, every Item is owned by its immediate parent
 /// Item through a shared pointer.
 ///
 /// Item IDs
@@ -70,7 +70,7 @@ public:
     ///@{
     /// The parent of this Item, returns an empty pointer if this Item currently has no parent.
     risky_ptr<Item> parent() { return m_parent; }
-    const risky_ptr<Item> parent() const { return const_cast<Item*>(this)->parent(); }
+    risky_ptr<const Item> parent() const { return const_cast<Item*>(this)->parent(); }
     ///@}
 
     /// Checks if this Item currently has a parent or not.
@@ -91,7 +91,7 @@ public:
     ///@{
     /// Finds and returns the first common ancestor of two Items, returns empty if none exists.
     risky_ptr<Item> common_ancestor(Item* other);
-    const risky_ptr<Item> common_ancestor(const Item* other) const
+    risky_ptr<const Item> common_ancestor(const Item* other) const
     {
         return const_cast<Item*>(this)->common_ancestor(const_cast<Item*>(other));
     }
@@ -101,21 +101,21 @@ public:
     /// Returns the closest Layout in the hierarchy of the given Item.
     /// Is empty if the given Item has no ancestor Layout.
     risky_ptr<Layout> layout();
-    const risky_ptr<Layout> layout() const { return const_cast<Item*>(this)->layout(); }
+    risky_ptr<const Layout> layout() const { return const_cast<Item*>(this)->layout(); }
     ///@}
 
     ///@{
     /// Returns the closest Controller in the hierarchy of the given Item.
     /// Is empty if the given Item has no ancestor Controller.
     risky_ptr<Controller> controller();
-    const risky_ptr<Controller> controller() const { return const_cast<Item*>(this)->controller(); }
+    risky_ptr<const Controller> controller() const { return const_cast<Item*>(this)->controller(); }
     ///@}
 
     ///@{
     /// Returns the ScreenItem associated with this given Item - either the Item itself or a Controller's root Item.
     /// Is empty if this is a Controller without a root Item.
     risky_ptr<ScreenItem> screen_item();
-    const risky_ptr<ScreenItem> screen_item() const { return const_cast<Item*>(this)->screen_item(); }
+    risky_ptr<const ScreenItem> screen_item() const { return const_cast<Item*>(this)->screen_item(); }
     ///@}
 
     /// Updates the name of this Item.
@@ -172,15 +172,6 @@ private:
     /// If the name is not set, it is simply the ID of the Item.
     std::string m_name;
 };
-
-//====================================================================================================================//
-
-/// Convenience function to create a correctly typed `shared_from_this` shared_ptr from Item subclasses.
-template<typename ItemSubclass, std::enable_if_t<std::is_base_of<Item, ItemSubclass>::value>>
-std::shared_ptr<ItemSubclass> make_shared_from(ItemSubclass* item)
-{
-    return std::dynamic_pointer_cast<ItemSubclass>(static_cast<Item*>(item)->shared_from_this());
-}
 
 //====================================================================================================================//
 

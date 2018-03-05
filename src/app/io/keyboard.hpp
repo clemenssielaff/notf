@@ -147,7 +147,7 @@ enum class Button : unsigned char {
     BUTTON_6,
     BUTTON_7,
     BUTTON_8,
-    NONE,
+    NO_BUTTON,
     LEFT    = BUTTON_1,
     RIGHT   = BUTTON_2,
     MIDDLE  = BUTTON_3,
@@ -174,11 +174,11 @@ enum class MouseAction : unsigned char {
 /// If you hold down more than one key of the same modifier (both shift-keys, for example),
 /// the flag is still set only once (meaning there is no double-shift modifier).
 enum KeyModifiers : unsigned char {
-    NONE  = 0,
-    SHIFT = 1,
-    CTRL  = 2,
-    ALT   = 4,
-    SUPER = 8,
+    NO_MODIFIER = 0,
+    SHIFT       = 1,
+    CTRL        = 2,
+    ALT         = 4,
+    SUPER       = 8,
 };
 
 /// Converts a GLFW key to a notf::Key.

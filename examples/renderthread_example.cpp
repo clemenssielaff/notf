@@ -16,7 +16,8 @@ namespace {
 
 std::mutex render_mutex;
 std::condition_variable render_condition_variable;
-bool next_frame_ready = false;
+// bool next_frame_ready = false;
+std::atomic_flag is_blocked = ATOMIC_FLAG_INIT;
 
 void render_thread(GLFWwindow* window)
 {
@@ -25,10 +26,12 @@ void render_thread(GLFWwindow* window)
 
         { // Wait until main() sends data
             std::unique_lock<std::mutex> lock_guard(render_mutex);
-            if (!next_frame_ready) {
-                render_condition_variable.wait(lock_guard, [] { return next_frame_ready; });
+            //            if (!next_frame_ready) {
+            if (is_blocked.test_and_set(std::memory_order_acquire)) {
+                render_condition_variable.wait(lock_guard,
+                                               [] { return !is_blocked.test_and_set(std::memory_order_acquire); });
             }
-            next_frame_ready = false;
+            //            next_frame_ready = false;
         }
 
         std::cout << "Refresh:\t" << count++ << std::endl;
@@ -79,8 +82,9 @@ int renderthread_main(int /*argc*/, char* /*argv*/ [])
 
             // send data to the worker thread
             {
-                std::lock_guard<std::mutex> lock_guard(render_mutex);
-                next_frame_ready = true;
+//                std::lock_guard<std::mutex> lock_guard(render_mutex);
+//                next_frame_ready = true;
+                is_blocked.clear(std::memory_order_release);
             }
             render_condition_variable.notify_one();
 

@@ -34,16 +34,16 @@ struct notf_exception : public std::exception {
 /// Note that this declares but does not implement the virtual destructor, in order to avoid warnings about emitting the
 /// class' v-table into every unit, you'll have to implement the (empty) destructor somewhere manually.
 #ifndef NOTF_EXCEPTION_TYPE
-#define NOTF_EXCEPTION_TYPE(TYPE)                                                                  \
-    struct TYPE : public notf::notf_exception {                                                    \
-        TYPE(std::string file, std::string function, uint line, std::string message)               \
-            : notf::notf_exception(std::move(file), std::move(function), line, std::move(message)) \
-        {}                                                                                         \
-        TYPE(const TYPE&) = default;                                                               \
-        virtual ~TYPE() override;                                                                  \
-    };
+#    define NOTF_EXCEPTION_TYPE(TYPE)                                                                  \
+        struct TYPE : public notf::notf_exception {                                                    \
+            TYPE(std::string file, std::string function, uint line, std::string message)               \
+                : notf::notf_exception(std::move(file), std::move(function), line, std::move(message)) \
+            {}                                                                                         \
+            TYPE(const TYPE&) = default;                                                               \
+            virtual ~TYPE() override;                                                                  \
+        };
 #else
-#warning "Macro 'NOTF_EXCEPTION_TYPE' is already defined - NoTF's NOTF_EXCEPTION_TYPE macro will remain disabled."
+#    warning "Macro 'NOTF_EXCEPTION_TYPE' is already defined - NoTF's NOTF_EXCEPTION_TYPE macro will remain disabled."
 #endif
 
 //====================================================================================================================//
@@ -51,23 +51,23 @@ struct notf_exception : public std::exception {
 /// Convenience macro to throw a notf_exception with a message, that additionally contains the line, file and function
 /// where the error occured.
 #ifndef notf_throw_format
-#define notf_throw_format(TYPE, MSG)                                             \
-    {                                                                            \
-        std::stringstream ss;                                                    \
-        ss << MSG;                                                               \
-        throw TYPE(notf::basename(__FILE__), NOTF_FUNCTION, __LINE__, ss.str()); \
-    }
+#    define notf_throw_format(TYPE, MSG)                                             \
+        {                                                                            \
+            std::stringstream ss;                                                    \
+            ss << MSG;                                                               \
+            throw TYPE(notf::basename(__FILE__), NOTF_FUNCTION, __LINE__, ss.str()); \
+        }
 #else
-#warning "Macro 'notf_throw_format' is already defined - NoTF's notf_throw_format macro will remain disabled."
+#    warning "Macro 'notf_throw_format' is already defined - NoTF's notf_throw_format macro will remain disabled."
 #endif
 
 //====================================================================================================================//
 
 /// Convenience macro to trow a notf_exception with a message from a constexpr function.
 #ifndef notf_throw
-#define notf_throw(TYPE, MSG) (throw TYPE(notf::basename(__FILE__), NOTF_FUNCTION, __LINE__, MSG))
+#    define notf_throw(TYPE, MSG) (throw TYPE(notf::basename(__FILE__), NOTF_FUNCTION, __LINE__, MSG))
 #else
-#warning "Macro 'notf_throw' is already defined -"
+#    warning "Macro 'notf_throw' is already defined -"
 " NoTF's notf_throw macro will remain disabled."
 #endif
 
@@ -164,22 +164,22 @@ private:
 
     // friends -------------------------------------------------------------------------------------------------------//
     template<typename U>
-    friend U* make_raw(risky_ptr<U>&) noexcept;
+    friend U* make_raw(const risky_ptr<U>&) noexcept;
 
     template<typename U>
-    friend const U* make_raw(const risky_ptr<U>&) noexcept;
+    friend const U* make_raw(const risky_ptr<const U>&) noexcept;
 };
 
 /// @{
 /// Unwraps the a raw pointer from a risky_ptr.
 /// @throws bad_deference_error If the wrapped pointer is empty.
-template<typename T>
-inline T* make_raw(risky_ptr<T>& risky) noexcept
+template<typename U>
+inline U* make_raw(const risky_ptr<U>& risky) noexcept
 {
     return risky.m_raw;
 }
-template<typename T>
-inline const T* make_raw(const risky_ptr<T>& risky) noexcept
+template<typename U>
+inline const U* make_raw(const risky_ptr<const U>& risky) noexcept
 {
     return risky.m_raw;
 }

@@ -1,35 +1,33 @@
-#include "app/scene/widget/window_layout.hpp"
+#include "app/scene/widget/root_layout.hpp"
 
-#include "app/core/window.hpp"
 #include "app/scene/widget/controller.hpp"
 #include "common/log.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-WindowLayout::WindowLayout(Window* window)
-    : Layout(std::make_unique<detail::SingleItemContainer>()), m_window(window), m_controller()
+RootLayout::RootLayout() : Layout(std::make_unique<detail::SingleItemContainer>()), m_controller()
 {
-    ScreenItem::Access<WindowLayout>(*this).be_own_scissor(this);
+    ScreenItem::Access<RootLayout>(*this).be_own_scissor(this);
 }
 
-WindowLayoutPtr WindowLayout::create(Window* window)
+RootLayoutPtr RootLayout::create()
 {
 #ifdef NOTF_DEBUG
-    return WindowLayoutPtr(new WindowLayout(window));
+    return RootLayoutPtr(new RootLayout());
 #else
-    return std::make_shared<make_shared_enabler<WindowLayout>>(window);
+    return std::make_shared<make_shared_enabler<RootLayout>>();
 #endif
 }
 
-std::vector<Widget*> WindowLayout::widgets_at(const Vector2f& screen_pos)
+std::vector<Widget*> RootLayout::widgets_at(const Vector2f& screen_pos)
 {
     std::vector<Widget*> result;
     _widgets_at(screen_pos, result);
     return result;
 }
 
-void WindowLayout::set_controller(const ControllerPtr& controller)
+void RootLayout::set_controller(const ControllerPtr& controller)
 {
     if (!controller) {
         log_warning << "Cannot add an empty Controller pointer to a Layout";
@@ -54,25 +52,25 @@ void WindowLayout::set_controller(const ControllerPtr& controller)
     on_child_added(m_controller);
 }
 
-void WindowLayout::_remove_child(const Item* child_item)
+void RootLayout::_remove_child(const Item* child_item)
 {
     if (!child_item) {
         return;
     }
 
     if (child_item != m_controller) {
-        log_critical << "Cannot remove unknown child Item " << child_item->name() << " from WindowLayout " << name();
+        log_critical << "Cannot remove unknown child Item " << child_item->name() << " from RootLayout " << name();
         return;
     }
 
-    log_trace << "Removing controller from WindowLayout " << name();
+    log_trace << "Removing controller from RootLayout " << name();
     m_children->clear();
     m_controller = nullptr;
 
     on_child_removed(child_item);
 }
 
-void WindowLayout::_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
+void RootLayout::_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
     if (m_controller) {
         if (ScreenItem* root_item = m_controller->root_item()) {
@@ -81,13 +79,13 @@ void WindowLayout::_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& 
     }
 }
 
-Claim WindowLayout::_consolidate_claim()
+Claim RootLayout::_consolidate_claim()
 {
     assert(0);
     return {};
 }
 
-void WindowLayout::_relayout()
+void RootLayout::_relayout()
 {
     _set_size(grant());
     _set_content_aabr(Aabrf::zero());

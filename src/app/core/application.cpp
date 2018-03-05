@@ -222,7 +222,7 @@ void Application::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
     MouseEvent mouse_event(*window,
                            {static_cast<float>(x), static_cast<float>(y)}, // event position in window coordinates
                            g_cursor_pos - g_prev_cursor_pos,               // delta in window coordinates
-                           Button::NONE,                                   // move events are triggered by no button
+                           Button::NO_BUTTON,                              // move events are triggered by no button
                            MouseAction::MOVE, g_key_modifiers, g_button_states);
     Window::Access<Application>(*window).propagate(std::move(mouse_event));
 }
@@ -270,7 +270,7 @@ void Application::_on_scroll(GLFWwindow* glfw_window, double x, double y)
     MouseEvent mouse_event(*window,
                            {g_cursor_pos.x() - static_cast<float>(window_pos.x()),
                             g_cursor_pos.y() - static_cast<float>(window_pos.y())},
-                           {static_cast<float>(x), static_cast<float>(-y)}, Button::NONE, MouseAction::SCROLL,
+                           {static_cast<float>(x), static_cast<float>(-y)}, Button::NO_BUTTON, MouseAction::SCROLL,
                            g_key_modifiers, g_button_states);
     Window::Access<Application>(*window).propagate(std::move(mouse_event));
 }

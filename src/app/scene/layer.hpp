@@ -1,10 +1,7 @@
 #pragma once
 
-#include <vector>
-
 #include "app/forwards.hpp"
 #include "common/aabr.hpp"
-#include "common/forwards.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -21,8 +18,9 @@ protected:
     /// Constructor.
     /// Constructs a full-screen, visible Layer.
     /// @param manager      SceneManager owning this Layer.
-    /// @param producer     GraphicsProducer that renders into this Layer.
-    Layer(SceneManagerPtr& manager, GraphicsProducerPtr producer);
+    /// @param scene        Scene displayed in this Layer.
+    /// @param producer     GraphicsProducer that renders the Scene into this Layer.
+    Layer(SceneManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr producer);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(Layer)
@@ -30,8 +28,9 @@ public:
     /// Factory.
     /// Constructs a full-screen, visible Layer.
     /// @param manager      SceneManager owning this Layer.
-    /// @param producer     GraphicsProducer that renders into this Layer.
-    static LayerPtr create(SceneManagerPtr& manager, GraphicsProducerPtr producer);
+    /// @param scene        Scene displayed in this Layer.
+    /// @param producer     GraphicsProducer that renders the Scene into this Layer.
+    static LayerPtr create(SceneManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr producer);
 
     /// Render the Layer with all of its effects.
     void render();
@@ -44,6 +43,9 @@ public:
 
     /// Area of this Layer when not fullscreen.
     const Aabri& area() const { return m_area; }
+
+    /// The Scene displayed in this Layer.
+    ScenePtr& scene() { return m_scene; }
 
     /// Sets the Layer to be visible or not.
     void set_visible(const bool is_visible) { m_is_visible = is_visible; }
@@ -60,7 +62,10 @@ private:
     /// SceneManager owning this Layer.
     SceneManager& m_scene_manager;
 
-    /// GraphicsProducer that renders into this Layer.
+    /// The Scene displayed in this Layer.
+    ScenePtr m_scene;
+
+    /// GraphicsProducer that renders the Scene into this Layer.
     GraphicsProducerPtr m_producer;
 
     /// Area of this Layer when not fullscreen.
