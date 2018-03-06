@@ -104,8 +104,8 @@ struct Glyph {
 
 //====================================================================================================================//
 
-/// A Font is a manger object for a given font face in the SceneManager.
-/// It knows where its Glyphs reside in the SceneManager's Font Atlas.
+/// A Font is a manger object for a given font face in the FontManager.
+/// It knows where its Glyphs reside in the FontManager's Font Atlas.
 /// At the moment, a Font renders all renderable ascii Glyphs to begin with and adds new Glyphs should they be
 /// requested.
 class Font {

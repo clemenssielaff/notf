@@ -32,14 +32,8 @@ NOTF_DEFINE_SHARED_POINTERS(class, FragmentProducer);
 NOTF_DEFINE_SHARED_POINTERS(class, Scene);
 NOTF_DEFINE_SHARED_POINTERS(class, ItemHierarchy);
 
-NOTF_DEFINE_UNIQUE_POINTERS(class, SceneManager);
+NOTF_DEFINE_UNIQUE_POINTERS(class, LayerManager);
 NOTF_DEFINE_UNIQUE_POINTERS(class, ResourceManager);
 NOTF_DEFINE_UNIQUE_POINTERS(class, PropertyManager);
-
-namespace detail {
-
-NOTF_DEFINE_UNIQUE_POINTERS(struct, ItemContainer);
-
-} // namespace detail
 
 NOTF_CLOSE_NAMESPACE

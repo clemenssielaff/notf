@@ -185,7 +185,7 @@ public:
 protected:
     /// Constructor.
     /// @param container    Child container.
-    ScreenItem(detail::ItemContainerPtr container);
+    ScreenItem(ChildContainerPtr container);
 
 public:
     /// Destructor.

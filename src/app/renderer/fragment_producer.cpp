@@ -9,7 +9,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-FragmentProducer::FragmentProducer(const Token& token, SceneManagerPtr& manager, const std::string& shader)
+FragmentProducer::FragmentProducer(const Token& token, LayerManagerPtr& manager, const std::string& shader)
     : GraphicsProducer(token), m_pipeline(), m_context(*manager->graphics_context())
 {
     GraphicsContextPtr& context = manager->graphics_context();

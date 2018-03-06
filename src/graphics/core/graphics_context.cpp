@@ -341,7 +341,7 @@ TexturePtr GraphicsContext::texture(const TextureId& id) const
 {
     auto it = m_textures.find(id);
     if (it == m_textures.end()) {
-        notf_throw_format(out_of_range, "GraphicsContext does not contain a Texture with ID \"" << id << "\"");
+        notf_throw_format(out_of_bounds, "GraphicsContext does not contain a Texture with ID \"" << id << "\"");
     }
     return it->second.lock();
 }
@@ -399,7 +399,7 @@ ShaderPtr GraphicsContext::shader(const ShaderId& id) const
 {
     auto it = m_shaders.find(id);
     if (it == m_shaders.end()) {
-        notf_throw_format(out_of_range, "GraphicsContext does not contain a Shader with ID \"" << id << "\"");
+        notf_throw_format(out_of_bounds, "GraphicsContext does not contain a Shader with ID \"" << id << "\"");
     }
     return it->second.lock();
 }
@@ -414,7 +414,7 @@ FrameBufferPtr GraphicsContext::framebuffer(const FrameBufferId& id) const
 {
     auto it = m_framebuffers.find(id);
     if (it == m_framebuffers.end()) {
-        notf_throw_format(out_of_range, "GraphicsContext does not contain a FrameBuffer with ID \"" << id << "\"");
+        notf_throw_format(out_of_bounds, "GraphicsContext does not contain a FrameBuffer with ID \"" << id << "\"");
     }
     return it->second.lock();
 }

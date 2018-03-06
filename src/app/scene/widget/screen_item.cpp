@@ -12,7 +12,7 @@ static constexpr float g_alpha_cutoff = 1.f / (255 * 2);
 
 NOTF_OPEN_NAMESPACE
 
-ScreenItem::ScreenItem(detail::ItemContainerPtr container)
+ScreenItem::ScreenItem(ChildContainerPtr container)
     : Item(std::move(container))
     , m_layout_transform(Matrix3f::identity())
     , m_offset_transform(Matrix3f::identity())
@@ -214,7 +214,7 @@ void ScreenItem::_set_scissor(const Layout* scissor_layout)
 
 void ScreenItem::_window_transform(Matrix3f& result) const
 {
-    if (const risky_ptr<ScreenItem> parent_layout = layout()) {
+    if (const risky_ptr<const ScreenItem> parent_layout = layout()) {
         parent_layout->_window_transform(result);
         result.premult(m_offset_transform * m_layout_transform);
     }

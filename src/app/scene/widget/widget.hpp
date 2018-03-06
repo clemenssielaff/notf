@@ -57,7 +57,7 @@ public:
     /// @return True iff the Claim was modified.
     bool set_claim(Claim claim) { return _set_claim(std::move(claim)); }
 
-    /// Tells the SceneManager that this Widget needs to be redrawn.
+    /// Tells the LayerManager that this Widget needs to be redrawn.
     void redraw() const;
 
 protected:
@@ -72,8 +72,7 @@ private:
     virtual void _widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
     // hide Item methods that have no effect for Widgets
-    using Item::has_child;
-    using Item::has_children;
+    using Item::children;
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:

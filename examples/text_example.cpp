@@ -3,6 +3,7 @@
 #include "app/core/glfw.hpp"
 #include "app/renderer/plotter.hpp"
 #include "app/scene/layer.hpp"
+#include "app/scene/widget/hierarchy.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/text/font.hpp"
@@ -20,7 +21,7 @@ static void error_callback(int error, const char* description)
 
 void render_thread(GLFWwindow* window)
 {
-    SceneManagerPtr manager = SceneManager::create(window);
+    LayerManagerPtr manager = LayerManager::create(window);
 
     // Shader ///////////////////////////////////////////////
 
@@ -39,12 +40,13 @@ void render_thread(GLFWwindow* window)
 
     // Render State //////////////////////////////////////////////
 
-    LayerPtr layer = Layer::create(manager, plotter);
+    ItemHierarchyPtr scene = ItemHierarchy::create();
+    LayerPtr layer = Layer::create(manager, scene, plotter);
 
-    SceneManager::State state;
+    LayerManager::State state;
     state.layers = {layer};
 
-    SceneManager::StateId state_id = manager->add_state(std::move(state));
+    LayerManager::StateId state_id = manager->add_state(std::move(state));
     manager->enter_state(state_id);
 
     // Rendering //////////////////////////////////////////////

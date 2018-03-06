@@ -46,7 +46,7 @@ public:
         auto it         = std::find_if(m_capabilities.begin(), m_capabilities.end(),
                                [&](const auto& candidate) { return candidate.first == id; });
         if (it == m_capabilities.end()) {
-            notf_throw(out_of_range, "CapabilityMap does not contain requested Capability type");
+            notf_throw(out_of_bounds, "CapabilityMap does not contain requested Capability type");
         }
         else {
             return std::static_pointer_cast<CAPABILITY>(it.second);

@@ -104,16 +104,16 @@ private:
 protected:
     /// Construct a new Plotter.
     /// @param token            Token to make sure that the instance can only be created by a call to `_create`.
-    /// @param manager   SceneManager.
+    /// @param manager   LayerManager.
     /// @throws runtime_error   If the OpenGL VAO could not be generated.
-    Plotter(const Token& token, SceneManagerPtr& manager);
+    Plotter(const Token& token, LayerManagerPtr& manager);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(Plotter)
 
     /// Factory.
-    /// @param manager  SceneManager.
-    static PlotterPtr create(SceneManagerPtr& manager) { return _create<Plotter>(manager); }
+    /// @param manager  LayerManager.
+    static PlotterPtr create(LayerManagerPtr& manager) { return _create<Plotter>(manager); }
 
     /// Destructor.
     virtual ~Plotter() override;

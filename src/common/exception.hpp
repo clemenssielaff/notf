@@ -80,7 +80,7 @@ NOTF_EXCEPTION_TYPE(runtime_error)
 NOTF_EXCEPTION_TYPE(logic_error)
 
 /// Exception type for out of bounds errors.
-NOTF_EXCEPTION_TYPE(out_of_range)
+NOTF_EXCEPTION_TYPE(out_of_bounds)
 
 /// Exception type for access to invalid resources.
 NOTF_EXCEPTION_TYPE(resource_error)
@@ -99,6 +99,9 @@ NOTF_EXCEPTION_TYPE(bad_deference_error)
 /// or doesn't use it.
 template<typename T>
 struct risky_ptr {
+
+    /// Default constructor.
+    risky_ptr() : m_raw(nullptr) {}
 
     /// Constructor
     /// @param ptr  Pointer to wrap.

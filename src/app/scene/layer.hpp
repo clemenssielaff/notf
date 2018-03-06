@@ -7,7 +7,7 @@ NOTF_OPEN_NAMESPACE
 
 // ===================================================================================================================//
 
-/// Layers are screen-axis-aligned quads that are drawn directly into the screen buffer by the SceneManager.
+/// Layers are screen-axis-aligned quads that are drawn directly into the screen buffer by the LayerManager.
 /// The contents of a Layer are clipped to its area.
 /// The Layer's GraphicsProducer can query the size of this area using GraphicsContext::render_area().size() when
 /// rendered.
@@ -17,20 +17,20 @@ class Layer {
 protected:
     /// Constructor.
     /// Constructs a full-screen, visible Layer.
-    /// @param manager      SceneManager owning this Layer.
+    /// @param manager      LayerManager owning this Layer.
     /// @param scene        Scene displayed in this Layer.
     /// @param producer     GraphicsProducer that renders the Scene into this Layer.
-    Layer(SceneManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr producer);
+    Layer(LayerManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr producer);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(Layer)
 
     /// Factory.
     /// Constructs a full-screen, visible Layer.
-    /// @param manager      SceneManager owning this Layer.
+    /// @param manager      LayerManager owning this Layer.
     /// @param scene        Scene displayed in this Layer.
     /// @param producer     GraphicsProducer that renders the Scene into this Layer.
-    static LayerPtr create(SceneManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr producer);
+    static LayerPtr create(LayerManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr producer);
 
     /// Render the Layer with all of its effects.
     void render();
@@ -59,8 +59,8 @@ public:
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// SceneManager owning this Layer.
-    SceneManager& m_scene_manager;
+    /// LayerManager owning this Layer.
+    LayerManager& m_manager;
 
     /// The Scene displayed in this Layer.
     ScenePtr m_scene;

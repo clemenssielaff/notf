@@ -51,22 +51,22 @@ namespace detail {
 
 struct traverse {
 
-    class iterator {
+    class Iterator {
     public:
-        explicit iterator(long _num = 0); // : num(_num) {}
-        iterator& operator++()
+        explicit Iterator(long _num = 0); // : num(_num) {}
+        Iterator& operator++()
         {
             //            num = TO >= FROM ? num + 1 : num - 1;
             return *this;
         }
-        iterator operator++(int)
+        Iterator operator++(int)
         {
             iterator retval = *this;
             ++(*this);
             return retval;
         }
-        bool operator==(iterator other) const; // { return num == other.num; }
-        bool operator!=(iterator other) const; // { return !(*this == other); }
+        bool operator==(const Iterator& other) const; // { return num == other.num; }
+        bool operator!=(const Iterator& other) const; // { return !(*this == other); }
         Widget& operator*() const;             // { return num; }
     };
 
@@ -74,12 +74,21 @@ struct traverse {
     /// @param hierarchy    ItemHierarchy to traverse.
     traverse(ItemHierarchy* hierarchy) : m_hierarchy(*hierarchy) {}
 
-    iterator begin(); // { return iterator(FROM); }
+    Iterator begin(); // { return iterator(FROM); }
 
-    iterator end(); //  { return iterator(TO >= FROM ? TO + 1 : TO - 1); }
+    Iterator end(); //  { return iterator(TO >= FROM ? TO + 1 : TO - 1); }
 
     ItemHierarchy& m_hierarchy;
 };
+
+// TODO: continue here
+// by implementing the traverse Iterator
+// then remove all risky_ptr from Item and replace them with raw pointers and throw exception when nullptr is requested
+// then make everything compile (I think that will be a bit of work)
+// then commit, make a tag and create a new example with the application, window etc.
+// move graphics_context and fontManager into Window
+// make fog example with the time as property to exercise the redraw and timing mechanism
+// next step: create proper item hierarchy and see if you can reactivate the layouts
 
 } // namespace detail
 
@@ -127,7 +136,7 @@ void ItemHierarchy::propagate(MouseEvent& event)
 
     else if (event.action == MouseAction::PRESS) {
         assert(!mouse_item);
-        for (const auto& widget : traverse(this)) {
+        for (auto& widget : traverse(this)) {
             if (propagate_to_hierarchy(&widget, &ScreenItem::on_mouse_button, event, notified_items)) {
                 WidgetPtr new_focus_widget = std::static_pointer_cast<Widget>(widget.shared_from_this());
                 m_mouse_item               = new_focus_widget;

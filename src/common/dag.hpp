@@ -69,7 +69,7 @@ public:
     void add_edge(const index_t origin, const index_t target)
     {
         if (origin >= m_vertex_count || target >= m_vertex_count) {
-            notf_throw(out_of_range, "Vertex index is larger than the largest index in the graph");
+            notf_throw(out_of_bounds, "Vertex index is larger than the largest index in the graph");
         }
         m_edges[origin].push_back(target);
         ++m_indegrees[target];

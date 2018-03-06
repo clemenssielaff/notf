@@ -26,7 +26,11 @@ item_hierarchy_error::~item_hierarchy_error() = default;
 
 //====================================================================================================================//
 
-Item::Item(detail::ItemContainerPtr container)
+Item::ChildContainer::~ChildContainer() {}
+
+//====================================================================================================================//
+
+Item::Item(std::unique_ptr<ChildContainer> container)
     : m_children(std::move(container)), m_id(next_id()), m_parent(), m_name(std::to_string(static_cast<size_t>(id())))
 {
     log_trace << "Created Item #" << m_id;
@@ -35,16 +39,12 @@ Item::Item(detail::ItemContainerPtr container)
 Item::~Item()
 {
     log_trace << "Destroying Item #" << m_id;
-    m_children->destroy();
+    m_children->_destroy();
     m_children.reset();
     if (m_parent) {
         m_parent->_remove_child(this);
     }
 }
-
-bool Item::has_child(const Item* child) const { return m_children->contains(child); }
-
-bool Item::has_children() const { return !m_children->is_empty(); }
 
 bool Item::has_ancestor(const Item* ancestor) const
 {
@@ -96,11 +96,12 @@ risky_ptr<Controller> Item::controller() { return _first_ancestor<Controller>();
 
 risky_ptr<ScreenItem> Item::screen_item()
 {
-    ScreenItem* screen_item = dynamic_cast<ScreenItem*>(this);
-    if (!screen_item) {
-        screen_item = dynamic_cast<Controller*>(this)->root_item();
+    if (ScreenItem* screen_item = dynamic_cast<ScreenItem*>(this)) {
+        return screen_item;
     }
-    return screen_item;
+    else {
+        return dynamic_cast<Controller*>(this)->root_item();
+    }
 }
 
 void Item::_set_parent(Item* parent, bool is_orphaned)
@@ -115,72 +116,21 @@ void Item::_set_parent(Item* parent, bool is_orphaned)
     m_parent = parent;
 
     _update_from_parent();
-    m_children->apply([](Item* item) -> void { item->_update_from_parent(); });
+    for (Item& item : *m_children) {
+        item._update_from_parent();
+    }
 
     on_parent_changed(m_parent);
 }
 
 //====================================================================================================================//
-
 namespace detail {
-
-ItemContainer::~ItemContainer() {}
-
-void ItemContainer::clear()
-{
-    apply(
-        [](Item* item) -> void { Item::Access<ItemContainer>(*item).set_parent(nullptr, /* is_orphaned = */ false); });
-}
-
-void ItemContainer::destroy()
-{
-    apply([](Item* item) -> void { Item::Access<ItemContainer>(*item).set_parent(nullptr, /* is_orphaned = */ true); });
-}
-
-//====================================================================================================================//
 
 EmptyItemContainer::~EmptyItemContainer() {}
 
-//====================================================================================================================//
-
 SingleItemContainer::~SingleItemContainer() { item.reset(); }
 
-void SingleItemContainer::clear()
-{
-    ItemContainer::clear();
-    item.reset();
-}
-
-void SingleItemContainer::apply(std::function<void(Item*)> function)
-{
-    if (item) {
-        function(item.get());
-    }
-}
-
-//====================================================================================================================//
-
 ItemList::~ItemList() { items.clear(); }
-
-void ItemList::clear()
-{
-    ItemContainer::clear();
-    items.clear();
-}
-
-void ItemList::apply(std::function<void(Item*)> function)
-{
-    for (const ItemPtr& item : items) {
-        function(item.get());
-    }
-}
-
-bool ItemList::contains(const Item* child) const
-{
-    return std::find_if(std::begin(items), std::end(items),
-                        [child](const ItemPtr& entry) -> bool { return entry.get() == child; })
-           != std::end(items);
-}
 
 } // namespace detail
 

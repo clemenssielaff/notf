@@ -2,7 +2,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-Layout::Layout(detail::ItemContainerPtr container) : ScreenItem(std::move(container)), m_has_explicit_claim(false) {}
+Layout::Layout(ChildContainerPtr container) : ScreenItem(std::move(container)), m_has_explicit_claim(false) {}
 
 Layout::~Layout(){};
 

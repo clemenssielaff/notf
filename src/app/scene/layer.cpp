@@ -1,15 +1,15 @@
 #include "app/scene/layer.hpp"
 
 #include "app/renderer/graphics_producer.hpp"
-#include "app/scene/scene_manager.hpp"
+#include "app/scene/layer_manager.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-Layer::Layer(SceneManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr producer)
-    : m_scene_manager(*manager)
+Layer::Layer(LayerManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr producer)
+    : m_manager(*manager)
     , m_scene(std::move(scene))
     , m_producer(std::move(producer))
     , m_area(Aabri::zero())
@@ -17,7 +17,7 @@ Layer::Layer(SceneManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr produ
     , m_is_fullscreen(true)
 {}
 
-LayerPtr Layer::create(SceneManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr producer)
+LayerPtr Layer::create(LayerManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr producer)
 {
 #ifdef NOTF_DEBUG
     return LayerPtr(new Layer(manager, std::move(scene), std::move(producer)));
@@ -32,7 +32,7 @@ void Layer::render()
         return;
     }
 
-    GraphicsContext& context = *m_scene_manager.graphics_context();
+    GraphicsContext& context = *m_manager.graphics_context();
 
     if (m_is_fullscreen) {
         context.set_render_area(context.window_size());

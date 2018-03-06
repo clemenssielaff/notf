@@ -20,6 +20,12 @@ NOTF_EXCEPTION_TYPE(item_hierarchy_error)
 /// An Item is the base class for all objects in the `Item hierarchy`.
 /// Its three main specializations are `Widgets`, `Layouts` and `Controllers`.
 ///
+/// Lifetime
+/// ========
+///
+/// The lifetime of Items is managed through a shared_ptr. This way we can have, for example, the same controller in
+/// different places in the Item hierarchy.
+///
 /// Item Hierarchy
 /// ==============
 /// Starting with the RootLayout at the root, which is owned by a Window, every Item is owned by its immediate parent
@@ -40,7 +46,117 @@ class Item : public receive_signals, public std::enable_shared_from_this<Item> {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(detail::ItemContainer)
+    /// Abstract child Item Container.
+    /// Is used by subclasses to abstract away how (and if) they store child Items.
+    struct ChildContainer {
+        friend class notf::Item;
+
+        // types --------------------------------------------------------------
+    public:
+        /// All ChildContainers must be able to sort their children into a flat list ordered from front to back.
+        /// That means that the first Item will be drawn on top of the second and so on.
+        struct Iterator {
+            Iterator(ChildContainer& container, const size_t index) : container(container), index(index) {}
+            Iterator& operator++()
+            {
+                ++index;
+                return *this;
+            }
+            Iterator operator++(int)
+            {
+                Iterator result = *this;
+                ++(*this);
+                return result;
+            }
+            bool operator==(const Iterator& other) const { return index == other.index; }
+            bool operator!=(const Iterator& other) const { return !(*this == other); }
+            Item& operator*() const { return *container.child(index); }
+
+            ChildContainer& container;
+            size_t index;
+        };
+
+        struct ConstIterator {
+            ConstIterator(const ChildContainer& container, const size_t index) : container(container), index(index) {}
+            ConstIterator& operator++()
+            {
+                ++index;
+                return *this;
+            }
+            ConstIterator operator++(int)
+            {
+                ConstIterator result = *this;
+                ++(*this);
+                return result;
+            }
+            bool operator==(const ConstIterator& other) const { return index == other.index; }
+            bool operator!=(const ConstIterator& other) const { return !(*this == other); }
+            const Item& operator*() const { return *container.child(index); }
+
+            const ChildContainer& container;
+            size_t index;
+        };
+
+        // methods ------------------------------------------------------------
+    public:
+        /// Destructor.
+        virtual ~ChildContainer();
+
+        /// Number of children in the Container.
+        virtual size_t size() const = 0;
+
+        /// {@
+        /// Returns a child Item by its index.
+        /// @param index            Index of the requested child.
+        /// @throws out_of_range    If the index is >= the size of this Container.
+        virtual Item* child(const size_t index) = 0;
+        const Item* child(const size_t index) const { return const_cast<ChildContainer*>(this)->child(index); }
+        /// }@
+
+        /// {@
+        /// Iterator to the first child of this Container.
+        Iterator begin() { return Iterator(*this, 0); }
+        ConstIterator begin() const { return ConstIterator(*this, 0); }
+        /// }@
+
+        /// {@
+        /// Iterator one past the last child of this Container.
+        Iterator end() { return Iterator(*this, size()); }
+        ConstIterator end() const { return ConstIterator(*this, size()); }
+        /// }@
+
+        /// Disconnects all child Items from their parent.
+        /// Is virtual so that subclasses can do additional operations (like clearing an underlying vector etc.)
+        virtual void clear()
+        {
+            for (Item& item : *this) {
+                item._set_parent(nullptr, /* is_orphaned = */ false);
+            }
+        }
+
+        /// Checks whether this Container contains a given Item.
+        bool contains(const Item* candidate) const
+        {
+            for (const Item& item : *this) {
+                if (&item == candidate) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+    private:
+        /// Sets the parent of all Items to nullptr without evoking proper reparenting.
+        /// Is only used by the Item destructor.
+        void _destroy()
+        {
+            for (Item& item : *this) {
+                item._set_parent(nullptr, /* is_orphaned = */ true);
+            }
+        }
+    };
+
+    using ChildContainerPtr = std::unique_ptr<ChildContainer>;
 
     // signals -------------------------------------------------------------------------------------------------------//
 public:
@@ -55,7 +171,7 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Constructor.
-    Item(detail::ItemContainerPtr container);
+    Item(ChildContainerPtr container);
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
@@ -67,23 +183,20 @@ public:
     /// Application-unique ID of this Item.
     ItemID id() const { return m_id; }
 
+    /// The name of this Item.
+    const std::string& name() const { return m_name; }
+
+    /// The children of this Item.
+    const ChildContainer& children() const { return *m_children; }
+
+    /// Checks if this Item currently has a parent or not.
+    bool has_parent() const { return m_parent != nullptr; }
+
     ///@{
     /// The parent of this Item, returns an empty pointer if this Item currently has no parent.
     risky_ptr<Item> parent() { return m_parent; }
     risky_ptr<const Item> parent() const { return const_cast<Item*>(this)->parent(); }
     ///@}
-
-    /// Checks if this Item currently has a parent or not.
-    bool has_parent() const { return m_parent != nullptr; }
-
-    /// The name of this Item.
-    const std::string& name() const { return m_name; }
-
-    /// Checks if this Item is the parent of the given child.
-    bool has_child(const Item* child) const;
-
-    /// Checks if this Item has any children at all.
-    bool has_children() const;
 
     /// Tests, if this Item is a descendant of the given ancestor Item.
     bool has_ancestor(const Item* ancestor) const;
@@ -158,7 +271,7 @@ private:
     // fields --------------------------------------------------------------------------------------------------------//
 protected:
     /// All children of this Item.
-    detail::ItemContainerPtr m_children;
+    ChildContainerPtr m_children;
 
 private:
     /// Application-unique ID of this Item.
@@ -176,62 +289,39 @@ private:
 //====================================================================================================================//
 
 namespace detail {
-
-/// Abstract Item Container.
-/// Used by Item subclasses to contain child Items.
-struct ItemContainer {
-    friend class notf::Item;
-
-    /// Destructor.
-    virtual ~ItemContainer();
-
-    /// Clears all Items from this Container
-    virtual void clear() = 0;
-
-    /// Applies a function to all Items in this Container.
-    virtual void apply(std::function<void(Item*)> function) = 0;
-
-    /// Checks whether this Container contains a given Item.
-    virtual bool contains(const Item* item) const = 0;
-
-    /// Checks whether this Container is empty or not.
-    virtual bool is_empty() const = 0;
-
-    // methods -------------------------------------------------------------------------------------------------------//
-protected:
-    /// Sets the parent of all Items to nullptr without evoking proper reparenting.
-    /// Is only used by the Item destructor.
-    void destroy();
-};
-
-//====================================================================================================================//
-
 /// Widgets have no child Items and use this empty Container as a placeholder instead.
-struct EmptyItemContainer final : public ItemContainer {
+struct EmptyItemContainer final : public Item::ChildContainer {
     virtual ~EmptyItemContainer() override;
 
-    virtual void clear() override {}
+    virtual size_t size() const override { return 0; }
 
-    virtual void apply(std::function<void(Item*)>) override {}
-
-    virtual bool contains(const Item*) const override { return false; }
-
-    virtual bool is_empty() const override { return true; }
+    virtual Item* child(const size_t) override
+    {
+        notf_throw(out_of_bounds, "Child Item with an out-of-bounds index requested");
+    }
 };
 
 //====================================================================================================================//
 
 /// Controller (and some Layouts) have a single child Item.
-struct SingleItemContainer final : public ItemContainer {
+struct SingleItemContainer final : public Item::ChildContainer {
     virtual ~SingleItemContainer() override;
 
-    virtual void clear() override;
+    virtual size_t size() const override { return (item ? 1 : 0); }
 
-    virtual void apply(std::function<void(Item*)> function) override;
+    virtual Item* child(const size_t index) override
+    {
+        if (index != 0) {
+            notf_throw(out_of_bounds, "Child Item with an out-of-bounds index requested");
+        }
+        return item.get();
+    }
 
-    virtual bool contains(const Item* child) const override { return child == item.get(); }
-
-    virtual bool is_empty() const override { return static_cast<bool>(item); }
+    virtual void clear() override
+    {
+        Item::ChildContainer::clear();
+        item.reset();
+    }
 
     /// The singular Item contained in this Container.
     ItemPtr item;
@@ -240,38 +330,29 @@ struct SingleItemContainer final : public ItemContainer {
 //====================================================================================================================//
 
 /// Many Layouts keep their child Items in a list.
-struct ItemList final : public ItemContainer {
+struct ItemList final : public Item::ChildContainer {
     virtual ~ItemList() override;
 
-    virtual void clear() override;
+    virtual size_t size() const override { return items.size(); }
 
-    virtual void apply(std::function<void(Item*)> function) override;
+    virtual Item* child(const size_t index) override
+    {
+        if (index >= items.size()) {
+            notf_throw(out_of_bounds, "Child Item with an out-of-bounds index requested");
+        }
+        return items[index].get();
+    }
 
-    virtual bool contains(const Item* child) const override;
-
-    virtual bool is_empty() const override { return items.empty(); }
+    virtual void clear() override
+    {
+        Item::ChildContainer::clear();
+        items.clear();
+    }
 
     /// All Items contained in the list.
     std::vector<ItemPtr> items;
 };
 
 } // namespace detail
-
-// ===================================================================================================================//
-
-template<>
-class Item::Access<detail::ItemContainer> {
-    friend struct detail::ItemContainer;
-
-    /// Constructor.
-    Access(Item& item) : m_item(item) {}
-
-    /// Sets the parent of this Item.
-    /// @param is_orphaned   If the parent of the Item has already been deleted, the Item cannot unregister itself.
-    void set_parent(Item* parent, bool is_orphaned) { m_item._set_parent(parent, is_orphaned); }
-
-    /// The Item to access.
-    Item& m_item;
-};
 
 NOTF_CLOSE_NAMESPACE

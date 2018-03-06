@@ -42,7 +42,7 @@ public:
 protected:
     /// Constructor.
     /// @param container    Child container.
-    Layout(detail::ItemContainerPtr container);
+    Layout(ChildContainerPtr container);
 
 public:
     /// Destructor.

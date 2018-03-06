@@ -1,9 +1,9 @@
 #include "app/core/window.hpp"
 
-#include "app/core/application.hpp"0
+#include "app/core/application.hpp"
 #include "app/core/glfw.hpp"
 #include "app/core/resource_manager.hpp"
-#include "app/scene/scene_manager.hpp"
+#include "app/scene/layer_manager.hpp"
 #include "common/log.hpp"
 #include "graphics/core/raw_image.hpp"
 #include "utils/make_smart_enabler.hpp"
@@ -30,7 +30,7 @@ window_initialization_error::~window_initialization_error() {}
 Window::Window(const Args& args)
     : m_glfw_window(nullptr, detail::window_deleter)
     , m_title(args.title)
-    , m_scene_manager() // has to be created after the OpenGL Context
+    , m_layer_manager() // has to be created after the OpenGL Context
     , m_size(args.size)
 {
     // make sure that an Application was initialized before instanciating a Window (will throw on failure)
@@ -52,7 +52,7 @@ Window::Window(const Args& args)
     glfwSetWindowUserPointer(m_glfw_window.get(), this);
 
     // create the auxiliary objects
-    m_scene_manager = SceneManager::create(m_glfw_window.get());
+    m_layer_manager = LayerManager::create(m_glfw_window.get());
 
     // apply the Window icon
     // In order to show the icon in Ubuntu 16.04 is as bit more complicated:
@@ -138,22 +138,22 @@ void Window::close()
         log_trace << "Closing Window \"" << m_title << "\"";
         on_close(*this);
         Application::Access<Window>().unregister(this);
-        m_scene_manager.reset();
+        m_layer_manager.reset();
         m_glfw_window.reset();
     }
     m_size = Size2i::invalid();
 }
 
-void Window::_propagate(MouseEvent&& event) { m_scene_manager->propagate(std::move(event)); }
+void Window::_propagate(MouseEvent&& event) { m_layer_manager->propagate(std::move(event)); }
 
-void Window::_propagate(KeyEvent&& event) { m_scene_manager->propagate(std::move(event)); }
+void Window::_propagate(KeyEvent&& event) { m_layer_manager->propagate(std::move(event)); }
 
-void Window::_propagate(CharEvent&& event) { m_scene_manager->propagate(std::move(event)); }
+void Window::_propagate(CharEvent&& event) { m_layer_manager->propagate(std::move(event)); }
 
 void Window::_resize(Size2i size)
 {
     m_size = std::move(size);
-    m_scene_manager->resize(m_size);
+    m_layer_manager->resize(m_size);
 }
 
 NOTF_CLOSE_NAMESPACE

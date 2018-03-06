@@ -17,7 +17,7 @@ runtime_error::~runtime_error() {}
 
 logic_error::~logic_error() {}
 
-out_of_range::~out_of_range() {}
+out_of_bounds::~out_of_bounds() {}
 
 resource_error::~resource_error() {}
 
