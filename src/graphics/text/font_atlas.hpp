@@ -5,8 +5,6 @@
 #include <stddef.h>
 #include <vector>
 
-#include "common/forwards.hpp"
-#include "graphics/forwards.hpp"
 #include "graphics/text/font.hpp"
 
 NOTF_OPEN_NAMESPACE

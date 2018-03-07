@@ -22,6 +22,8 @@ ItemID next_id()
 
 NOTF_OPEN_NAMESPACE
 
+//====================================================================================================================//
+
 item_hierarchy_error::~item_hierarchy_error() = default;
 
 //====================================================================================================================//
@@ -120,10 +122,11 @@ void Item::_set_parent(Item* parent, bool is_orphaned)
         item._update_from_parent();
     }
 
-    on_parent_changed(m_parent);
+    on_parent_changed(*m_parent);
 }
 
 //====================================================================================================================//
+
 namespace detail {
 
 EmptyItemContainer::~EmptyItemContainer() {}

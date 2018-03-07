@@ -2,8 +2,6 @@
 
 #include <memory>
 
-#include "common/forwards.hpp"
-#include "common/meta.hpp"
 #include "graphics/forwards.hpp"
 
 struct GLFWwindow;
@@ -15,6 +13,8 @@ class MouseEvent;
 class KeyEvent;
 class CharEvent;
 class FocusEvent;
+class WindowEvent;
+class PropertyGraph;
 
 NOTF_DEFINE_SHARED_POINTERS(struct, Capability);
 NOTF_DEFINE_SHARED_POINTERS(class, Controller);
@@ -35,5 +35,12 @@ NOTF_DEFINE_SHARED_POINTERS(class, ItemHierarchy);
 NOTF_DEFINE_UNIQUE_POINTERS(class, LayerManager);
 NOTF_DEFINE_UNIQUE_POINTERS(class, ResourceManager);
 NOTF_DEFINE_UNIQUE_POINTERS(class, PropertyManager);
+
+namespace detail {
+
+class PropertyBase;
+class RenderDag;
+
+} // namespace detail
 
 NOTF_CLOSE_NAMESPACE

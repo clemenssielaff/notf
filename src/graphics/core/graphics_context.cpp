@@ -21,20 +21,20 @@
 NOTF_OPEN_NAMESPACE
 
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_INFO
-#define CHECK_EXTENSION(member, name)                                                                              \
-    member = extensions.count(name);                                                                               \
-    if (member) {                                                                                                  \
-        notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), "GLExtensions") \
-                .input                                                                                             \
-            << "Found OpenGL extension:\"" << name << "\"";                                                        \
-    }                                                                                                              \
-    else {                                                                                                         \
-        notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), "GLExtensions") \
-                .input                                                                                             \
-            << "Could not find OpenGL extension:\"" << name << "\"";                                               \
-    }
+#    define CHECK_EXTENSION(member, name)                                                                              \
+        member = extensions.count(name);                                                                               \
+        if (member) {                                                                                                  \
+            notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), "GLExtensions") \
+                    .input                                                                                             \
+                << "Found OpenGL extension:\"" << name << "\"";                                                        \
+        }                                                                                                              \
+        else {                                                                                                         \
+            notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), "GLExtensions") \
+                    .input                                                                                             \
+                << "Could not find OpenGL extension:\"" << name << "\"";                                               \
+        }
 #else
-#define CHECK_EXTENSION(member, name) member = extensions.count(name);
+#    define CHECK_EXTENSION(member, name) member = extensions.count(name);
 #endif
 
 GraphicsContext::Extensions::Extensions()
@@ -96,7 +96,7 @@ GraphicsContext::GraphicsContext(GLFWwindow* window)
     }
 
     // GLFW defaults
-    glfwMakeContextCurrent(m_window);
+    make_current();
     glfwSwapInterval(m_has_vsync ? 1 : 0);
 
     // OpenGL defaults
@@ -163,6 +163,8 @@ Size2i GraphicsContext::window_size() const
     glfwGetFramebufferSize(m_window, &result.width, &result.height);
     return result;
 }
+
+void GraphicsContext::make_current() const { glfwMakeContextCurrent(m_window); }
 
 void GraphicsContext::set_vsync(const bool enabled)
 {

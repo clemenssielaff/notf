@@ -1,5 +1,6 @@
 #include "app/scene/widget/hierarchy.hpp"
 
+#include <cassert>
 #include <unordered_set>
 
 #include "app/io/char_event.hpp"
@@ -47,52 +48,102 @@ bool propagate_to_hierarchy(const Widget* widget, Signal<Args...> ScreenItem::*s
 
 NOTF_OPEN_NAMESPACE
 
-namespace detail {
-
-struct traverse {
+struct ItemHierarchy::Traversal {
 
     class Iterator {
+        using ItemIt = Item::ChildContainer::Iterator;
+
+        // methods ------------------------------------------------------------
     public:
-        explicit Iterator(long _num = 0); // : num(_num) {}
+        /// Constructor.
+        /// @param root     Root Item to traverse.
+        /// @param is_end   Whether this is the end iterator.
+        Iterator(Item& root, const bool is_end) : m_is_end(is_end)
+        {
+            if (!m_is_end) {
+                t_iterators.clear();
+                _enqueue_layout(root);
+            }
+        }
+
+        /// Preincrement operator.
         Iterator& operator++()
         {
-            //            num = TO >= FROM ? num + 1 : num - 1;
-            return *this;
+            while (true) {
+                // go right and up until you hit the next visible ScreenItem
+                ScreenItem* screen_item;
+                while (true) {
+                    ItemIt& current = t_iterators.back().first;
+                    if (++current == t_iterators.back().second) {
+                        t_iterators.pop_back();
+                        if (t_iterators.empty()) {
+                            return *this;
+                        }
+                    }
+                    else {
+                        screen_item = make_raw((*current).screen_item());
+                        if (screen_item && screen_item->is_visible()) {
+                            break;
+                        }
+                    }
+                }
+
+                // expand down and left until you hit the next Widget
+                if (dynamic_cast<Widget*>(screen_item)) {
+                    return *this;
+                }
+                assert(dynamic_cast<Layout*>(screen_item));
+                _enqueue_layout(*screen_item);
+            }
         }
-        Iterator operator++(int)
+
+        /// Equality operator.
+        bool operator==(const Iterator& other) const { return m_is_end == other.m_is_end; }
+
+        /// Inequality operator.
+        bool operator!=(const Iterator& other) const { return m_is_end != other.m_is_end; }
+
+        /// Dereferencing operator.
+        Widget& operator*() const
         {
-            iterator retval = *this;
-            ++(*this);
-            return retval;
+            assert(!t_iterators.empty());
+            return *static_cast<Widget*>(&*(t_iterators.back().first));
         }
-        bool operator==(const Iterator& other) const; // { return num == other.num; }
-        bool operator!=(const Iterator& other) const; // { return !(*this == other); }
-        Widget& operator*() const;             // { return num; }
+
+    private:
+        void _enqueue_layout(Item& item)
+        {
+            t_iterators.emplace_back(std::make_pair(item.children().begin(), item.children().end()));
+        }
+
+        // fields -------------------------------------------------------------
+    private:
+        /// One pair of iterators (begin / end) for each parent level of the one currently being traversed.
+        std::vector<std::pair<ItemIt, ItemIt>> t_iterators;
+
+        /// Whether this is the end iterator.
+        const bool m_is_end;
     };
 
     /// Constructor.
     /// @param hierarchy    ItemHierarchy to traverse.
-    traverse(ItemHierarchy* hierarchy) : m_hierarchy(*hierarchy) {}
+    Traversal(ItemHierarchy* hierarchy) : m_hierarchy(*hierarchy) {}
 
-    Iterator begin(); // { return iterator(FROM); }
+    Iterator begin() { return Iterator(*m_hierarchy.m_root.get(), /* is_end = */ false); }
 
-    Iterator end(); //  { return iterator(TO >= FROM ? TO + 1 : TO - 1); }
+    Iterator end() { return Iterator(*m_hierarchy.m_root.get(), /* is_end = */ true); }
 
-    ItemHierarchy& m_hierarchy;
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
+    /// Item hierarchy to traverse.
+    const ItemHierarchy& m_hierarchy;
 };
 
 // TODO: continue here
-// by implementing the traverse Iterator
-// then remove all risky_ptr from Item and replace them with raw pointers and throw exception when nullptr is requested
-// then make everything compile (I think that will be a bit of work)
 // then commit, make a tag and create a new example with the application, window etc.
 // move graphics_context and fontManager into Window
 // make fog example with the time as property to exercise the redraw and timing mechanism
 // next step: create proper item hierarchy and see if you can reactivate the layouts
-
-} // namespace detail
-
-using detail::traverse;
 
 //====================================================================================================================//
 
@@ -112,7 +163,7 @@ void ItemHierarchy::propagate(MouseEvent& event)
             }
             notified_items.insert(mouse_item.get());
         }
-        for (const auto& widget : traverse(this)) {
+        for (const auto& widget : Traversal(this)) {
             if (propagate_to_hierarchy(&widget, &ScreenItem::on_mouse_move, event, notified_items)) {
                 return;
             }
@@ -127,7 +178,7 @@ void ItemHierarchy::propagate(MouseEvent& event)
             }
             notified_items.insert(mouse_item.get());
         }
-        for (const auto& widget : traverse(this)) {
+        for (const auto& widget : Traversal(this)) {
             if (propagate_to_hierarchy(&widget, &ScreenItem::on_mouse_scroll, event, notified_items)) {
                 return;
             }
@@ -136,7 +187,7 @@ void ItemHierarchy::propagate(MouseEvent& event)
 
     else if (event.action == MouseAction::PRESS) {
         assert(!mouse_item);
-        for (auto& widget : traverse(this)) {
+        for (auto& widget : Traversal(this)) {
             if (propagate_to_hierarchy(&widget, &ScreenItem::on_mouse_button, event, notified_items)) {
                 WidgetPtr new_focus_widget = std::static_pointer_cast<Widget>(widget.shared_from_this());
                 m_mouse_item               = new_focus_widget;
@@ -187,7 +238,7 @@ void ItemHierarchy::propagate(MouseEvent& event)
             }
             notified_items.insert(mouse_item.get());
         }
-        for (const auto& widget : traverse(this)) {
+        for (const auto& widget : Traversal(this)) {
             if (propagate_to_hierarchy(&widget, &ScreenItem::on_mouse_button, event, notified_items)) {
                 return;
             }
@@ -222,6 +273,8 @@ void ItemHierarchy::propagate(CharEvent& event)
         m_root->on_char_input(event);
     }
 }
+
+void ItemHierarchy::propagate(WindowEvent& event) { m_root->on_window_event(event); }
 
 void ItemHierarchy::resize(const Size2i& size) { RootLayout::Access<ItemHierarchy>(*m_root).set_grant(size); }
 

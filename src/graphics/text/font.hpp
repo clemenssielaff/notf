@@ -4,9 +4,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "common/forwards.hpp"
 #include "common/hash.hpp"
-#include "common/meta.hpp"
 #include "common/utf.hpp"
 #include "graphics/forwards.hpp"
 

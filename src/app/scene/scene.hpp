@@ -60,6 +60,10 @@ public:
     /// @param event    CharEvent.
     virtual void propagate(CharEvent& event) = 0;
 
+    /// Called when the cursor enters or exits the Window's client area or the window is about to be closed.
+    /// @param event    WindowEvent.
+    virtual void propagate(WindowEvent& event) = 0;
+
     /// Called when the Window containing the Scene is resized.
     /// @param size     New size.
     virtual void resize(const Size2i& size) = 0;

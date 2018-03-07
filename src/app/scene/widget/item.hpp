@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/forwards.hpp"
+#include "app/ids.hpp"
 #include "common/exception.hpp"
 #include "common/id.hpp"
 #include "common/signal.hpp"
@@ -8,9 +8,6 @@
 NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
-
-/// Unique identification token of an Item.
-using ItemID = IdType<Item, size_t>;
 
 /// Exception type for errors originating in the Item hierarchy.
 NOTF_EXCEPTION_TYPE(item_hierarchy_error)
@@ -48,54 +45,59 @@ class Item : public receive_signals, public std::enable_shared_from_this<Item> {
 public:
     /// Abstract child Item Container.
     /// Is used by subclasses to abstract away how (and if) they store child Items.
-    struct ChildContainer {
+    class ChildContainer {
         friend class notf::Item;
 
         // types --------------------------------------------------------------
-    public:
+    private:
         /// All ChildContainers must be able to sort their children into a flat list ordered from front to back.
         /// That means that the first Item will be drawn on top of the second and so on.
-        struct Iterator {
-            Iterator(ChildContainer& container, const size_t index) : container(container), index(index) {}
-            Iterator& operator++()
+        template<bool is_const>
+        class _Iterator {
+
+            // types ----------------------------------------------------------
+        private:
+            /// (const) ChildContainer
+            using Container = std::conditional_t<is_const, const ChildContainer, ChildContainer>;
+
+            /// (const) Item
+            using Child = std::conditional_t<is_const, const Item, Item>;
+
+            // methods --------------------------------------------------------
+        public:
+            /// Constructor.
+            /// @param container    Container to iterate.
+            /// @param index        Start index to iterate from.
+            _Iterator(Container& container, const size_t index) : container(container), index(index) {}
+
+            /// Preincrement operator.
+            _Iterator& operator++()
             {
                 ++index;
                 return *this;
             }
-            Iterator operator++(int)
-            {
-                Iterator result = *this;
-                ++(*this);
-                return result;
-            }
-            bool operator==(const Iterator& other) const { return index == other.index; }
-            bool operator!=(const Iterator& other) const { return !(*this == other); }
-            Item& operator*() const { return *container.child(index); }
 
-            ChildContainer& container;
+            /// Equality operator.
+            bool operator==(const _Iterator& other) const { return index == other.index; }
+
+            /// Inequality operator.
+            bool operator!=(const _Iterator& other) const { return !(*this == other); }
+
+            /// Dereferencing operator.
+            Child& operator*() const { return *container.child(index); }
+
+            // fields ---------------------------------------------------------
+        public:
+            /// Container to iterate.
+            Container& container;
+
+            /// Iteration index.
             size_t index;
         };
 
-        struct ConstIterator {
-            ConstIterator(const ChildContainer& container, const size_t index) : container(container), index(index) {}
-            ConstIterator& operator++()
-            {
-                ++index;
-                return *this;
-            }
-            ConstIterator operator++(int)
-            {
-                ConstIterator result = *this;
-                ++(*this);
-                return result;
-            }
-            bool operator==(const ConstIterator& other) const { return index == other.index; }
-            bool operator!=(const ConstIterator& other) const { return !(*this == other); }
-            const Item& operator*() const { return *container.child(index); }
-
-            const ChildContainer& container;
-            size_t index;
-        };
+    public:
+        using Iterator      = _Iterator</* is_const = */ false>;
+        using ConstIterator = _Iterator</* is_const = */ true>;
 
         // methods ------------------------------------------------------------
     public:
@@ -156,17 +158,14 @@ public:
         }
     };
 
+    /// Unique pointer to child item container.
     using ChildContainerPtr = std::unique_ptr<ChildContainer>;
 
     // signals -------------------------------------------------------------------------------------------------------//
 public:
     /// Emitted when this Item got a new parent.
     /// @param The new parent.
-    Signal<Item*> on_parent_changed;
-
-    /// Emitted when this Item is moved to the Item hierarchy of a new Window.
-    /// @param New Window.
-    Signal<Window*> on_window_changed;
+    Signal<Item&> on_parent_changed;
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
@@ -186,8 +185,11 @@ public:
     /// The name of this Item.
     const std::string& name() const { return m_name; }
 
+    ///@{
     /// The children of this Item.
     const ChildContainer& children() const { return *m_children; }
+    ChildContainer& children() { return *m_children; }
+    ///@}
 
     /// Checks if this Item currently has a parent or not.
     bool has_parent() const { return m_parent != nullptr; }

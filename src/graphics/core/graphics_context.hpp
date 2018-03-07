@@ -8,18 +8,9 @@
 #include "app/forwards.hpp"
 #include "common/aabr.hpp"
 #include "common/color.hpp"
-#include "common/forwards.hpp"
-#include "common/id.hpp"
-#include "graphics/forwards.hpp"
+#include "graphics/ids.hpp"
 
 NOTF_OPEN_NAMESPACE
-
-//====================================================================================================================//
-
-// forward declaration of relevant ID types
-using FrameBufferId = IdType<FrameBuffer, GLuint>;
-using ShaderId      = IdType<Shader, GLuint>;
-using TextureId     = IdType<Texture, GLuint>;
 
 //====================================================================================================================//
 
@@ -314,6 +305,9 @@ public:
 
     /// Area that is rendered into.
     const Aabri& render_area() const { return m_state.render_area; }
+
+    /// Makes the OpenGL context current on the current thread.
+    void make_current() const;
 
     /// En- or disables vsync (enabled by default).
     /// @param enabled  Whether to enable or disable vsync.

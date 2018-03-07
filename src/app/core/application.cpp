@@ -1,5 +1,7 @@
 #include "app/core/application.hpp"
 
+#include <algorithm>
+
 #include "app/core/glfw.hpp"
 #include "app/core/property_manager.hpp"
 #include "app/core/resource_manager.hpp"
@@ -9,6 +11,7 @@
 #include "app/io/keyboard.hpp"
 #include "app/io/mouse_event.hpp"
 #include "app/io/time.hpp"
+#include "app/io/window_event.hpp"
 #include "common/log.hpp"
 #include "common/thread_pool.hpp"
 #include "common/vector2.hpp"
@@ -189,12 +192,11 @@ void Application::_on_cursor_entered(GLFWwindow* glfw_window, int entered)
     Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
     assert(window);
 
-    // let the window emit its signal
     if (entered) {
-        window->on_cursor_entered(*window);
+        Window::Access<Application>(*window).propagate(WindowEvent(*window, WindowEvent::Type::CURSOR_ENTERED));
     }
     else {
-        window->on_cursor_exited(*window);
+        Window::Access<Application>(*window).propagate(WindowEvent(*window, WindowEvent::Type::CURSOR_EXITED));
     }
 }
 

@@ -5,7 +5,7 @@
 NOTF_OPEN_NAMESPACE
 
 notf_exception::notf_exception(std::string file, std::string function, uint line, std::string message)
-    : std::exception(), message(message)
+    : std::exception(), message(std::move(message))
 {
     LogMessageFactory log_message(LogMessage::LEVEL::CRITICAL, line, std::move(file), std::move(function));
     log_message.input << message;

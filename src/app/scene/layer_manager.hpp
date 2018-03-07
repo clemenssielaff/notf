@@ -4,19 +4,13 @@
 #include <unordered_map>
 #include <vector>
 
-#include "app/forwards.hpp"
+#include "app/ids.hpp"
 #include "common/dag.hpp"
-#include "common/forwards.hpp"
 #include "common/id.hpp"
 #include "common/size2.hpp"
 #include "common/thread.hpp"
 
 NOTF_OPEN_NAMESPACE
-
-// ===================================================================================================================//
-
-using GraphicsProducerId = IdType<GraphicsProducer, size_t>;
-using RenderTargetId     = IdType<RenderTarget, size_t>;
 
 // ===================================================================================================================//
 
@@ -267,6 +261,11 @@ public:
     /// @returns        True iff the Scene handled the event and it doesn't need to be propagated further.
     void propagate(CharEvent&& event);
 
+    /// Called when the cursor enters or exits the Window's client area or the window is about to be closed.
+    /// @param event    WindowEvent.
+    /// @returns        True iff the Scene handled the event and it doesn't need to be propagated further.
+    void propagate(WindowEvent&& event);
+
     /// Called when the Window containing the Scene is resized.
     /// @param size     New size.
     void resize(Size2i size);
@@ -285,6 +284,9 @@ private:
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
+    /// The current state of the LayerManager.
+    const State* m_state;
+
     /// Render thread.
     RenderThread m_render_thread;
 
@@ -304,9 +306,6 @@ private:
 
     /// All RenderTargets that are registered with this RenderTargets by their ID.
     std::unordered_map<RenderTargetId, RenderTargetPtr> m_render_targets;
-
-    /// The current state of the LayerManager.
-    const State* m_state;
 
     /// The default State is assumed, whenever the LayerManager would otherwise be stateless.
     static const State s_default_state;

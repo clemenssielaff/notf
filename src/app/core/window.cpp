@@ -3,6 +3,7 @@
 #include "app/core/application.hpp"
 #include "app/core/glfw.hpp"
 #include "app/core/resource_manager.hpp"
+#include "app/io/window_event.hpp"
 #include "app/scene/layer_manager.hpp"
 #include "common/log.hpp"
 #include "graphics/core/raw_image.hpp"
@@ -136,7 +137,7 @@ void Window::close()
 {
     if (m_glfw_window) {
         log_trace << "Closing Window \"" << m_title << "\"";
-        on_close(*this);
+        _propagate(WindowEvent(*this, WindowEvent::Type::CLOSE));
         Application::Access<Window>().unregister(this);
         m_layer_manager.reset();
         m_glfw_window.reset();
@@ -149,6 +150,8 @@ void Window::_propagate(MouseEvent&& event) { m_layer_manager->propagate(std::mo
 void Window::_propagate(KeyEvent&& event) { m_layer_manager->propagate(std::move(event)); }
 
 void Window::_propagate(CharEvent&& event) { m_layer_manager->propagate(std::move(event)); }
+
+void Window::_propagate(WindowEvent&& event) { m_layer_manager->propagate(std::move(event)); }
 
 void Window::_resize(Size2i size)
 {

@@ -5,6 +5,7 @@
 #include "app/io/char_event.hpp"
 #include "app/io/key_event.hpp"
 #include "app/io/mouse_event.hpp"
+#include "app/io/window_event.hpp"
 #include "app/renderer/graphics_producer.hpp"
 #include "app/renderer/render_target.hpp"
 #include "app/scene/layer.hpp"
@@ -80,6 +81,8 @@ void LayerManager::RenderThread::stop()
 
 void LayerManager::RenderThread::_run()
 {
+    m_manager.m_graphics_context->make_current(); // TODO: the GraphicsContext is ONLY CURRENT on the RenderThread...
+
     while (1) {
         { // wait until the next frame is ready
             std::unique_lock<std::mutex> lock_guard(m_mutex);
@@ -122,15 +125,16 @@ void LayerManager::RenderThread::_run()
 
 const LayerManager::State LayerManager::s_default_state = {};
 
+// TODO: move GraphicsContext and FontManager to Window
+
 LayerManager::LayerManager(GLFWwindow* window)
-    : m_render_thread(*this)
-    , m_graphics_context(std::make_unique<GraphicsContext>(window)) // TODO: move GraphicsContext and FontManager to
-                                                                    // Window
+    : m_state(&s_default_state)
+    , m_render_thread(*this)
+    , m_graphics_context(std::make_unique<GraphicsContext>(window))
     , m_font_manager(FontManager::create(*m_graphics_context))
     , m_dependencies()
     , m_graphics_producer()
     , m_render_targets()
-    , m_state(&s_default_state)
 {
     m_render_thread.start();
 }
@@ -208,6 +212,17 @@ void LayerManager::propagate(KeyEvent&& event)
 }
 
 void LayerManager::propagate(CharEvent&& event)
+{
+    assert(!event.was_handled());
+    for (const LayerPtr& layer : m_state->layers) {
+        layer->scene()->propagate(event);
+        if (event.was_handled()) {
+            return;
+        }
+    }
+}
+
+void LayerManager::propagate(WindowEvent&& event)
 {
     assert(!event.was_handled());
     for (const LayerPtr& layer : m_state->layers) {

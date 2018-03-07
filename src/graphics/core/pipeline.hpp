@@ -1,16 +1,8 @@
 #pragma once
 
-#include "common/forwards.hpp"
-#include "common/id.hpp"
-#include "graphics/forwards.hpp"
+#include "graphics/ids.hpp"
 
 NOTF_OPEN_NAMESPACE
-
-//====================================================================================================================//
-
-/// Pipeline ID type.
-using PipelineId = IdType<Pipeline, GLuint>;
-static_assert(std::is_pod<PipelineId>::value, "PipelineId is not a POD type");
 
 // ===================================================================================================================//
 

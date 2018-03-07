@@ -4,22 +4,14 @@
 #include <string>
 #include <vector>
 
-#include "common/forwards.hpp"
-#include "common/id.hpp"
 #include "common/meta.hpp"
 #include "common/size2.hpp"
-#include "graphics/forwards.hpp"
+#include "graphics/ids.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 // TODO: [engine] a texture streaming method using buffers
 // TODO: [engine] 3D texture
-
-//====================================================================================================================//
-
-/// Texture ID type.
-using TextureId = IdType<Texture, GLuint>;
-static_assert(std::is_pod<TextureId>::value, "TextureId is not a POD type");
 
 //====================================================================================================================//
 

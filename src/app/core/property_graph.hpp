@@ -7,27 +7,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include "app/ids.hpp"
 #include "app/io/time.hpp"
 #include "common/exception.hpp"
-#include "common/id.hpp"
 
 NOTF_OPEN_NAMESPACE
-
-class PropertyGraph;
-
-namespace detail {
-class PropertyBase;
-} // namespace detail
-
-//====================================================================================================================//
-
-/// Property id type.
-using PropertyId = IdType<detail::PropertyBase, size_t>;
-static_assert(std::is_pod<PropertyId>::value, "PropertyId is not a POD type");
-
-/// Typed property id.
-template<typename value_t>
-using TypedPropertyId = IdType<PropertyId::type_t, PropertyId::underlying_t, value_t>;
 
 //====================================================================================================================//
 

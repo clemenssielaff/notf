@@ -2,7 +2,6 @@
 #include <vector>
 
 #include "common/aabr.hpp"
-#include "common/forwards.hpp"
 #include "common/utf.hpp"
 #include "graphics/forwards.hpp"
 

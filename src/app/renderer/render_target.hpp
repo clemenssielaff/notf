@@ -1,16 +1,9 @@
 #pragma once
 
-#include "app/forwards.hpp"
-#include "common/forwards.hpp"
-#include "common/id.hpp"
+#include "app/ids.hpp"
 #include "common/size2.hpp"
 
 NOTF_OPEN_NAMESPACE
-
-// ===================================================================================================================//
-
-/// RenderTarget id type.
-using RenderTargetId = IdType<RenderTarget, size_t>;
 
 // ===================================================================================================================//
 

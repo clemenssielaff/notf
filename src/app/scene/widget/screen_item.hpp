@@ -178,6 +178,9 @@ public:
     /// Signal invoked, when this ScreenItem is asked to handle a character input event.
     Signal<CharEvent&> on_char_input;
 
+    /// Signal invoked when this ScreenItem is asked to handle a WindowEvent.
+    Signal<WindowEvent&> on_window_event;
+
     /// Emitted, when the ScreenItem has gained or lost the Window's focus.
     Signal<FocusEvent&> on_focus_changed;
 

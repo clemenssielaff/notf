@@ -2,7 +2,6 @@
 
 #include "app/renderer/graphics_producer.hpp"
 #include "common/aabr.hpp"
-#include "common/forwards.hpp"
 #include "common/variant.hpp"
 #include "common/vector2.hpp"
 #include "graphics/forwards.hpp"

@@ -1,20 +1,10 @@
 #pragma once
 
+#include "app/ids.hpp"
 #include "app/scene/layer_manager.hpp"
-#include "common/forwards.hpp"
-#include "common/id.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 NOTF_OPEN_NAMESPACE
-
-namespace detail {
-class RenderDag;
-} // namespace detail
-
-// ===================================================================================================================//
-
-/// Property id type.
-using GraphicsProducerId = IdType<GraphicsProducer, size_t>;
 
 // ===================================================================================================================//
 

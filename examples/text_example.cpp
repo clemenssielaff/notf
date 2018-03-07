@@ -51,7 +51,7 @@ void render_thread(GLFWwindow* window)
 
     // Rendering //////////////////////////////////////////////
 
-    manager->graphics_context()->clear(Color(0.2f, 0.3f, 0.5f, 1));
+//    manager->graphics_context()->clear(Color(0.2f, 0.3f, 0.5f, 1));
 
     while (!glfwWindowShouldClose(window)) {
 

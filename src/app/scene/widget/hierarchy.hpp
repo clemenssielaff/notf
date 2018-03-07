@@ -49,6 +49,31 @@
  * Time to get going!
  */
 
+/*
+ * previous comment about event propagation:
+ * =======================================
+ * Event propagation
+ * =================
+ * Each Window has to types of focus: the 'mouse' focus and the 'keyboard' focus.
+ * The mouse focus exists only between the mouse-press and -release events and is used to make sure that a Widget will
+ * always receive a corresponding -release event, as well as for allowing drag operations where the cursor might move
+ * outside of the Widget's boundaries between two frames.
+ * The keyboard focus is the first widget that receives key events.
+ * All events are sent to a Widget first and the propagated up until some ScreenItem ancestor handles it (or not).
+ * Focus events are always propagated upwards to notify the hierarchy that a child has received the focus.
+ *
+ * If a Window has no current keyboard item, the RootLayout is the only one notified of a key event, for example to
+ * close the Window on ESC.
+ * Note that this doesn't mean that the RootLayout is always notified!
+ * If there is a keyboard item and it handles the key event, the event will not propagate further.
+ * =======================================
+ *
+ * The window may not have a focus object, or two - one for mouse and one for keyboard.
+ * Instead, we have the controller hierarchy to manage the focus.
+ * This is because a Window might not even contain a Widget to begin with, or we want multiple widgest to receive
+ * the events - who knows?
+ */
+
 #include "app/scene/scene.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -56,7 +81,10 @@ NOTF_OPEN_NAMESPACE
 // ===================================================================================================================//
 
 class ItemHierarchy : public Scene {
-    friend class Scene;
+    friend class Scene; // befriend parent so it can construct instances
+
+    struct Traversal;
+    friend struct Traversal; // defined in compilation unit
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
@@ -84,6 +112,10 @@ public:
     /// @param event    CharEvent.
     /// @returns        True iff the Scene handled the event and it doesn't need to be propagated further.
     virtual void propagate(CharEvent& event) override;
+
+    /// Called when the cursor enters or exits the Window's client area or the window is about to be closed.
+    /// @param event    WindowEvent.
+    virtual void propagate(WindowEvent& event) override;
 
     /// Called when the Window containing the Scene is resized.
     /// @param size     New size.

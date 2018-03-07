@@ -1,21 +1,10 @@
 #pragma once
 
-#include "common/forwards.hpp"
-#include "common/id.hpp"
-#include "common/meta.hpp"
 #include "common/size2.hpp"
 #include "common/variant.hpp"
-#include "graphics/forwards.hpp"
+#include "graphics/ids.hpp"
 
 NOTF_OPEN_NAMESPACE
-
-//====================================================================================================================//
-
-/// RenderBuffer ID type.
-using RenderBufferId = IdType<RenderBuffer, GLuint>;
-
-/// FrameBuffer ID type.
-using FrameBufferId = IdType<FrameBuffer, GLuint>;
 
 //====================================================================================================================//
 

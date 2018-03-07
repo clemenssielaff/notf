@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "common/meta.hpp"
+#include "common/forwards.hpp"
 
 /// Lightweight forward declaration of OpenGL types.
 ///

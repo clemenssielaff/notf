@@ -3,19 +3,11 @@
 #include <string>
 #include <vector>
 
-#include "common/forwards.hpp"
-#include "common/id.hpp"
-#include "graphics/forwards.hpp"
+#include "graphics/ids.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 // TODO: cache compiled shader binaries next to their text files (like python?)
-
-//====================================================================================================================//
-
-/// Shader ID type.
-using ShaderId = IdType<Shader, GLuint>;
-static_assert(std::is_pod<ShaderId>::value, "ShaderId is not a POD type");
 
 // ===================================================================================================================//
 
