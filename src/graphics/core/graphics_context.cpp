@@ -88,8 +88,7 @@ GraphicsContext::Environment::Environment()
 
 //====================================================================================================================//
 
-GraphicsContext::GraphicsContext(GLFWwindow* window)
-    : m_window(window), m_state(), m_has_vsync(true), m_textures(), m_shaders()
+GraphicsContext::GraphicsContext(GLFWwindow* window) : m_window(window), m_current_thread(0)
 {
     if (!window) {
         notf_throw(runtime_error, "Failed to create a new GraphicsContext without a window (given pointer is null).");
@@ -164,7 +163,15 @@ Size2i GraphicsContext::window_size() const
     return result;
 }
 
-void GraphicsContext::make_current() const { glfwMakeContextCurrent(m_window); }
+void GraphicsContext::make_current()
+{
+    const auto thread_id = std::this_thread::get_id();
+    if (m_current_thread == thread_id) {
+        return;
+    }
+    glfwMakeContextCurrent(m_window);
+    m_current_thread = thread_id;
+}
 
 void GraphicsContext::set_vsync(const bool enabled)
 {

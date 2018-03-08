@@ -1,44 +1,70 @@
 #pragma once
 
 #include "app/ids.hpp"
-#include "common/exception.hpp"
-#include "common/id.hpp"
 #include "common/signal.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
-/// Exception type for errors originating in the Item hierarchy.
-NOTF_EXCEPTION_TYPE(item_hierarchy_error)
-
-//====================================================================================================================//
-
-/// An Item is the base class for all objects in the `Item hierarchy`.
-/// Its three main specializations are `Widgets`, `Layouts` and `Controllers`.
+/// Item
+/// ====
+///
+/// An Item is the virtual base class for all objects in the Item hierarchy. Its three main specializations are
+/// `Widgets`, `Layouts` and `Controllers`.
 ///
 /// Lifetime
-/// ========
+/// --------
 ///
-/// The lifetime of Items is managed through a shared_ptr. This way we can have, for example, the same controller in
-/// different places in the Item hierarchy.
+/// The lifetime of Items is managed through a shared_ptr. This way, the user is free to keep a subhierarchy around
+/// even after its parent has gone out of scope.
 ///
-/// Item Hierarchy
-/// ==============
-/// Starting with the RootLayout at the root, which is owned by a Window, every Item is owned by its immediate parent
-/// Item through a shared pointer.
+/// Hierarchy
+/// ---------
 ///
-/// Item IDs
-/// ========
-/// Each Item has a constant unique integer ID assigned to it upon instantiation.
-/// It can be used to identify the Item in a map, for debugging purposes or in conditionals.
+/// Items form a hierarchy with a single root Item on top. The number of children that an Item can have depends on its
+/// type. Widgets have no children, Controller have a single Layout as a child and Layouts can have a (theoretically
+/// unlimited) number of children of all types.
 ///
-/// Item name
-/// =========
-/// In addition to the unique ID, each Item can have a name.
-/// The name is assigned by the user and is not guaranteed to be unique.
-/// If the name is not set, it is simply the ID of the Item.
+/// Since Layouts may have special container requirement for their children (a list, a map, a matrix ...), Items have a
+/// virtual container class called `ChildContainer` that allows high level access to the children of each Item,
+/// regardless of how they are stored in memory. The only requirements that a Container must fulfill is that it has to
+/// offer a `size()` function that returns the number of children in the layout, a `clear()` function that removes all
+/// children (thereby potentially destroying them) and the method `child_at(index)` which returns a mutable reference to
+/// an ItemPtr of the child at the requested index, or throws an `out_of_bounds` exception if the index is >= the
+/// Container's size.
 ///
+/// Items keep a raw pointer to their parent. The alternative would be to have a weak_ptr to the parent and lock it,
+/// whenever we need to go up in the hierarchy. However, going up in the hierarchy is a very common occurrence and with
+/// deeply nested layouts, I assume that the number of locking operations per second will likely go in the thousands.
+/// This is a non-neglible expense for something that can prevented by making sure that you either know that the parent
+/// is still alive, or you check first.
+/// The pointer is initialized to zero and parents let their children know when they are destroyed. While this still
+/// leaves open the possiblity of an Item subclass manually messing up the parent pointer using the static `_set_parent`
+/// method, I have to stop somewhere and trust the user not to break things.
+///
+/// ID
+/// --
+///
+/// Each Item has a constant unique integer ID assigned to it upon instantiation. It can be used to identify the Item in
+/// a map, for debugging purposes or in conditionals.
+///
+/// Name
+/// ----
+///
+/// In addition to the unique ID, each Item can have a name. The name is assigned by the user and is not guaranteed to
+/// be unique. If the name is not set, it is custom to log the Item id instead, formatted like this:
+///
+///     log_info << "Something cool happened to Item #" << item.id() << ".";
+///
+/// Signals
+/// -------
+///
+/// Items communicate with each other either through their relationship in the hierachy (parents to children and
+/// vice-versa) or via Signals. Signals have the advantage of being able to connect every Item regardless of its
+/// position in the hierarchy. They can be created by the user and enabled/disabled at will.
+/// In order to facilitate Signal handling at the lowest possible level, all Items derive from the `receive_signals`
+/// class that takes care of removing leftover connections that still exist once the Item goes out of scope.
 class Item : public receive_signals, public std::enable_shared_from_this<Item> {
 
     // types ---------------------------------------------------------------------------------------------------------//
@@ -52,28 +78,41 @@ public:
     private:
         /// All ChildContainers must be able to sort their children into a flat list ordered from front to back.
         /// That means that the first Item will be drawn on top of the second and so on.
-        template<bool is_const>
+        template<bool IS_CONST, bool IS_REVERSE>
         class _Iterator {
 
             // types ----------------------------------------------------------
         private:
             /// (const) ChildContainer
-            using Container = std::conditional_t<is_const, const ChildContainer, ChildContainer>;
+            using Container = std::conditional_t<IS_CONST, const ChildContainer, ChildContainer>;
 
             /// (const) Item
-            using Child = std::conditional_t<is_const, const Item, Item>;
+            using ChildPtr = std::conditional_t<IS_CONST, const ItemConstPtr, ItemPtr>;
+
+        public:
+            /// Index type
+            using index_t = size_t;
 
             // methods --------------------------------------------------------
         public:
             /// Constructor.
             /// @param container    Container to iterate.
             /// @param index        Start index to iterate from.
-            _Iterator(Container& container, const size_t index) : container(container), index(index) {}
+            _Iterator(Container& container, const index_t index) : container(container), index(index) {}
 
-            /// Preincrement operator.
-            _Iterator& operator++()
+            /// Forward preincrement operator.
+            template<bool is_reverse = IS_REVERSE>
+            typename std::enable_if_t<!is_reverse, _Iterator&> operator++()
             {
                 ++index;
+                return *this;
+            }
+
+            /// Reverse preincrement operator.
+            template<bool is_reverse = IS_REVERSE>
+            typename std::enable_if_t<is_reverse, _Iterator&> operator++()
+            {
+                --index;
                 return *this;
             }
 
@@ -84,7 +123,7 @@ public:
             bool operator!=(const _Iterator& other) const { return !(*this == other); }
 
             /// Dereferencing operator.
-            Child& operator*() const { return *container.child(index); }
+            ChildPtr& operator*() const { return container.child_at(index); }
 
             // fields ---------------------------------------------------------
         public:
@@ -92,12 +131,14 @@ public:
             Container& container;
 
             /// Iteration index.
-            size_t index;
+            index_t index;
         };
 
     public:
-        using Iterator      = _Iterator</* is_const = */ false>;
-        using ConstIterator = _Iterator</* is_const = */ true>;
+        using Iterator             = _Iterator</* is_const = */ false, /* is_reverse = */ false>;
+        using ConstIterator        = _Iterator</* is_const = */ true, /* is_reverse = */ false>;
+        using ReverseIterator      = _Iterator</* is_const = */ false, /* is_reverse = */ true>;
+        using ReverseConstIterator = _Iterator</* is_const = */ true, /* is_reverse = */ true>;
 
         // methods ------------------------------------------------------------
     public:
@@ -111,8 +152,11 @@ public:
         /// Returns a child Item by its index.
         /// @param index            Index of the requested child.
         /// @throws out_of_range    If the index is >= the size of this Container.
-        virtual Item* child(const size_t index) = 0;
-        const Item* child(const size_t index) const { return const_cast<ChildContainer*>(this)->child(index); }
+        virtual ItemPtr& child_at(const size_t index) = 0;
+        const ItemConstPtr& child_at(const size_t index) const
+        {
+            return static_cast<const ItemConstPtr&>(const_cast<ChildContainer*>(this)->child_at(index));
+        }
         /// }@
 
         /// {@
@@ -122,25 +166,40 @@ public:
         /// }@
 
         /// {@
+        /// Reverse Iterator to the last child of this Container.
+        ReverseIterator rbegin() { return ReverseIterator(*this, _last_index()); }
+        ReverseConstIterator rbegin() const { return ReverseConstIterator(*this, _last_index()); }
+        /// }@
+
+        /// {@
         /// Iterator one past the last child of this Container.
         Iterator end() { return Iterator(*this, size()); }
         ConstIterator end() const { return ConstIterator(*this, size()); }
+        /// }@
+
+        /// {@
+        /// Iterator one past the last child of this Container.
+        ReverseIterator rend() { return ReverseIterator(*this, std::numeric_limits<ReverseIterator::index_t>::max()); }
+        ReverseConstIterator rend() const
+        {
+            return ReverseConstIterator(*this, std::numeric_limits<ReverseConstIterator::index_t>::max());
+        }
         /// }@
 
         /// Disconnects all child Items from their parent.
         /// Is virtual so that subclasses can do additional operations (like clearing an underlying vector etc.)
         virtual void clear()
         {
-            for (Item& item : *this) {
-                item._set_parent(nullptr, /* is_orphaned = */ false);
+            for (ItemPtr& item : *this) {
+                item->_set_parent(nullptr, /* notify_old = */ true);
             }
         }
 
         /// Checks whether this Container contains a given Item.
-        bool contains(const Item* candidate) const
+        bool contains(const ItemConstPtr& candidate) const
         {
-            for (const Item& item : *this) {
-                if (&item == candidate) {
+            for (const ItemConstPtr& item : *this) {
+                if (item == candidate) {
                     return true;
                 }
             }
@@ -152,9 +211,16 @@ public:
         /// Is only used by the Item destructor.
         void _destroy()
         {
-            for (Item& item : *this) {
-                item._set_parent(nullptr, /* is_orphaned = */ true);
+            for (ItemPtr& item : *this) {
+                item->_set_parent(nullptr, /* notify_old = */ false);
             }
+        }
+
+        /// Returns the index of the last Item in this Container.
+        size_t _last_index() const
+        {
+            const auto my_size = size();
+            return my_size == 0 ? 0 : my_size;
         }
     };
 
@@ -165,24 +231,27 @@ public:
 public:
     /// Emitted when this Item got a new parent.
     /// @param The new parent.
-    Signal<Item&> on_parent_changed;
+    Signal<Item*> on_parent_changed;
+
+    /// Emitted when this Item changes its name.
+    /// @param The new name.
+    Signal<const std::string&> on_name_changed;
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Constructor.
+    /// @param container    Container used to store this Item's children.
     Item(ChildContainerPtr container);
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_NO_COPY_OR_ASSIGN(Item)
-
     /// Destructor
     virtual ~Item();
 
     /// Application-unique ID of this Item.
     ItemID id() const { return m_id; }
 
-    /// The name of this Item.
+    /// The user-defined name of this Item, is potentially empty and not guaranteed to be unique if set.
     const std::string& name() const { return m_name; }
 
     ///@{
@@ -234,11 +303,8 @@ public:
     ///@}
 
     /// Updates the name of this Item.
-    const std::string& set_name(std::string name)
-    {
-        m_name = std::move(name);
-        return m_name;
-    }
+    /// @param name New name of this Item.
+    const std::string& set_name(std::string name);
 
 protected:
     /// Removes a child Item from this Item.
@@ -263,12 +329,13 @@ protected:
     }
 
     /// Allows Item subclasses to set each others' parent.
-    static void _set_parent(Item* item, Item* parent) { item->_set_parent(parent, /* is_orphaned = */ false); }
+    static void _set_parent(Item* item, Item* parent) { item->_set_parent(parent, /* notify_old = */ true); }
 
 private:
     /// Sets the parent of this Item.
-    /// @param is_orphaned   If the parent of the Item has already been deleted, the Item cannot unregister itself.
-    void _set_parent(Item* parent, bool is_orphaned);
+    /// @param notify_old   If the old parent is already in the process of being deleted, the child Item must not
+    ///                     attempt to unregister itself anymore.
+    void _set_parent(Item* parent, bool notify_old);
 
     // fields --------------------------------------------------------------------------------------------------------//
 protected:
@@ -279,25 +346,24 @@ private:
     /// Application-unique ID of this Item.
     const ItemID m_id;
 
-    /// The parent Item, is guaranteed to be valid iff `m_window` is valid.
-    Item* m_parent;
+    /// Non-owning pointer to the parent Item, is potentially empty.
+    Item* m_parent = nullptr;
 
-    /// An optional name of this Item.
-    /// The name is set by the user and is not guaranteed to be unique.
-    /// If the name is not set, it is simply the ID of the Item.
+    /// The user-defined name of this Item, is potentially empty and not guaranteed to be unique if set.
     std::string m_name;
 };
 
 //====================================================================================================================//
 
 namespace detail {
+
 /// Widgets have no child Items and use this empty Container as a placeholder instead.
 struct EmptyItemContainer final : public Item::ChildContainer {
     virtual ~EmptyItemContainer() override;
 
     virtual size_t size() const override { return 0; }
 
-    virtual Item* child(const size_t) override
+    virtual ItemPtr& child_at(const size_t) override
     {
         notf_throw(out_of_bounds, "Child Item with an out-of-bounds index requested");
     }
@@ -311,12 +377,12 @@ struct SingleItemContainer final : public Item::ChildContainer {
 
     virtual size_t size() const override { return (item ? 1 : 0); }
 
-    virtual Item* child(const size_t index) override
+    virtual ItemPtr& child_at(const size_t index) override
     {
         if (index != 0) {
             notf_throw(out_of_bounds, "Child Item with an out-of-bounds index requested");
         }
-        return item.get();
+        return item;
     }
 
     virtual void clear() override
@@ -337,12 +403,12 @@ struct ItemList final : public Item::ChildContainer {
 
     virtual size_t size() const override { return items.size(); }
 
-    virtual Item* child(const size_t index) override
+    virtual ItemPtr& child_at(const size_t index) override
     {
         if (index >= items.size()) {
             notf_throw(out_of_bounds, "Child Item with an out-of-bounds index requested");
         }
-        return items[index].get();
+        return items[index];
     }
 
     virtual void clear() override

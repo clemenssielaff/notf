@@ -38,7 +38,6 @@
 #include <vector>
 
 #include "common/exception.hpp"
-#include "common/meta.hpp"
 
 NOTF_OPEN_NAMESPACE
 

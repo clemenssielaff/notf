@@ -140,7 +140,6 @@ private:
 };
 
 // TODO: continue here
-// then commit, make a tag and create a new example with the application, window etc.
 // move graphics_context and fontManager into Window
 // make fog example with the time as property to exercise the redraw and timing mechanism
 // next step: create proper item hierarchy and see if you can reactivate the layouts
@@ -151,6 +150,8 @@ ItemHierarchy::ItemHierarchy(const Token& token) : Scene(token), m_root(RootLayo
 
 void ItemHierarchy::propagate(MouseEvent& event)
 {
+    // TODO: this propagation makes no sense ... it goes through ALL widgets in the hierarchy from front to back
+
     WidgetPtr mouse_item = m_mouse_item.lock();
     std::unordered_set<const ScreenItem*> notified_items;
 

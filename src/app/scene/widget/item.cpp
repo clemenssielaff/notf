@@ -14,7 +14,7 @@ NOTF_USING_NAMESPACE
 /// Is thread-safe and ever-increasing.
 ItemID next_id()
 {
-    static std::atomic<size_t> g_nextID(1);
+    static std::atomic<ItemID::underlying_t> g_nextID(1);
     return g_nextID++;
 }
 
@@ -24,28 +24,31 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
-item_hierarchy_error::~item_hierarchy_error() = default;
-
-//====================================================================================================================//
-
 Item::ChildContainer::~ChildContainer() {}
 
 //====================================================================================================================//
 
-Item::Item(std::unique_ptr<ChildContainer> container)
-    : m_children(std::move(container)), m_id(next_id()), m_parent(), m_name(std::to_string(static_cast<size_t>(id())))
+Item::Item(std::unique_ptr<ChildContainer> container) : m_children(std::move(container)), m_id(next_id())
 {
     log_trace << "Created Item #" << m_id;
 }
 
 Item::~Item()
 {
-    log_trace << "Destroying Item #" << m_id;
+    if (m_name.empty()) {
+        log_trace << "Destroying Item #" << m_id;
+    }
+    else {
+        log_trace << "Destroying Item \"" << m_name << "\"";
+    }
+
     m_children->_destroy();
     m_children.reset();
+
     if (m_parent) {
         m_parent->_remove_child(this);
     }
+    m_parent = nullptr;
 }
 
 bool Item::has_ancestor(const Item* ancestor) const
@@ -106,23 +109,32 @@ risky_ptr<ScreenItem> Item::screen_item()
     }
 }
 
-void Item::_set_parent(Item* parent, bool is_orphaned)
+const std::string& Item::set_name(std::string name)
+{
+    if (name != m_name) {
+        m_name = std::move(name);
+        on_name_changed(m_name);
+    }
+    return m_name;
+}
+
+void Item::_set_parent(Item* parent, bool notify_old)
 {
     if (parent == m_parent) {
         return;
     }
 
-    if (m_parent && !is_orphaned) {
+    if (m_parent && notify_old) {
         m_parent->_remove_child(this);
     }
     m_parent = parent;
 
     _update_from_parent();
-    for (Item& item : *m_children) {
-        item._update_from_parent();
+    for (ItemPtr& item : *m_children) {
+        item->_update_from_parent();
     }
 
-    on_parent_changed(*m_parent);
+    on_parent_changed(m_parent);
 }
 
 //====================================================================================================================//

@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -307,7 +308,7 @@ public:
     const Aabri& render_area() const { return m_state.render_area; }
 
     /// Makes the OpenGL context current on the current thread.
-    void make_current() const;
+    void make_current();
 
     /// En- or disables vsync (enabled by default).
     /// @param enabled  Whether to enable or disable vsync.
@@ -465,7 +466,10 @@ private:
     State m_state;
 
     /// True if this context has vsync enabled.
-    bool m_has_vsync;
+    bool m_has_vsync = true;
+
+    /// Id of the thread in which the context is current (to avoid unnecessary OpenGL calls).
+    std::thread::id m_current_thread;
 
     /// All Textures managed by this Context.
     /// Note that the Context doesn't "own" the textures, they are shared pointers, but the Render Context deallocates
