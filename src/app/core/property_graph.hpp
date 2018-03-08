@@ -311,7 +311,6 @@ public:
 
     /// Removes a property from the graph.
     /// All affected properties will have their value set to their current value.
-    /// @warning    This deletes the property - all raw pointers to the property will become invalid immediately!
     /// @return     True, iff the id identifies a property in the graph.
     void delete_property(PropertyId id);
 

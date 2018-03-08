@@ -1,10 +1,8 @@
-#include "app/scene/widget/item.hpp"
+#include "app/scene/item.hpp"
 
 #include <atomic>
 #include <unordered_set>
 
-#include "app/scene/widget/controller.hpp"
-#include "app/scene/widget/layout.hpp"
 #include "common/log.hpp"
 
 namespace { // anonymous
@@ -28,7 +26,7 @@ Item::ChildContainer::~ChildContainer() {}
 
 //====================================================================================================================//
 
-Item::Item(std::unique_ptr<ChildContainer> container) : m_children(std::move(container)), m_id(next_id())
+Item::Item(const Token&, std::unique_ptr<ChildContainer> container) : m_children(std::move(container)), m_id(next_id())
 {
     log_trace << "Created Item #" << m_id;
 }
@@ -92,20 +90,6 @@ risky_ptr<Item> Item::common_ancestor(Item* other)
             }
             known_ancestors.insert(second);
         }
-    }
-}
-
-risky_ptr<Layout> Item::layout() { return _first_ancestor<Layout>(); }
-
-risky_ptr<Controller> Item::controller() { return _first_ancestor<Controller>(); }
-
-risky_ptr<ScreenItem> Item::screen_item()
-{
-    if (ScreenItem* screen_item = dynamic_cast<ScreenItem*>(this)) {
-        return screen_item;
-    }
-    else {
-        return dynamic_cast<Controller*>(this)->root_item();
     }
 }
 

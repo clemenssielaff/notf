@@ -25,11 +25,13 @@ class Widget : public ScreenItem {
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
-    Widget();
+    /// Constructor.
+    /// @param token    Factory token provided by Item::_create.
+    Widget(const Token& token);
 
 public:
     /// Destructor.
-    virtual ~Widget() override {}
+    virtual ~Widget() override = default;
 
     /// Returns a requested capability by type.
     /// If the map does not contain the requested capability, throws an std::out_of_range exception.
@@ -57,7 +59,7 @@ public:
     /// @return True iff the Claim was modified.
     bool set_claim(Claim claim) { return _set_claim(std::move(claim)); }
 
-    /// Tells the LayerManager that this Widget needs to be redrawn.
+    /// Tells the SceneManager that this Widget needs to be redrawn.
     void redraw() const;
 
 protected:
@@ -69,7 +71,7 @@ private:
 
     virtual void _remove_child(const Item*) override { assert(0); } // should never happen
 
-    virtual void _widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
+    virtual void widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
     // hide Item methods that have no effect for Widgets
     using Item::children;

@@ -17,7 +17,7 @@ class RenderTarget {
 public:
     /// RenderTarget arguments.
     struct Args {
-        /// Name of the RenderTarget, unique within the LayerManager.
+        /// Name of the RenderTarget, unique within the SceneManager.
         std::string name;
 
         /// Size of the RenderTarget.
@@ -41,22 +41,22 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Constructor.
-    /// @param manager  The LayerManager that the RenderTarget is registered with.
+    /// @param manager  The SceneManager that the RenderTarget is registered with.
     /// @param args     Arguments.
-    RenderTarget(LayerManager& manager, Args&& args);
+    RenderTarget(SceneManager& manager, Args&& args);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(RenderTarget)
 
     /// Factory.
-    /// @param manager  The LayerManager that the RenderTarget is registered with.
+    /// @param manager  The SceneManager that the RenderTarget is registered with.
     /// @param args     Arguments.
-    static RenderTargetPtr create(LayerManager& manager, Args&& args);
+    static RenderTargetPtr create(SceneManager& manager, Args&& args);
 
     /// Id of this RenderTarget.
     RenderTargetId id() const noexcept { return m_id; }
 
-    /// Name of the RenderTarget, unique within the LayerManager.
+    /// Name of the RenderTarget, unique within the SceneManager.
     const std::string& name() const { return m_name; }
 
     /// The FrameBuffer of this target.
@@ -84,7 +84,7 @@ private:
     /// The GraphicsContext containing the graphic objects.
     GraphicsContext& m_context;
 
-    /// Name of the RenderTarget, unique within the LayerManager.
+    /// Name of the RenderTarget, unique within the SceneManager.
     std::string m_name;
 
     /// Framebuffer to render into.

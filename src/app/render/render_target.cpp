@@ -1,7 +1,7 @@
-#include "app/renderer/render_target.hpp"
+#include "app/render/render_target.hpp"
 
-#include "app/renderer/graphics_producer.hpp"
-#include "app/scene/layer_manager.hpp"
+#include "app/render/graphics_producer.hpp"
+#include "app/scene/scene_manager.hpp"
 #include "graphics/core/frame_buffer.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/texture.hpp"
@@ -9,7 +9,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-RenderTarget::RenderTarget(LayerManager& manager, Args&& args)
+RenderTarget::RenderTarget(SceneManager& manager, Args&& args)
     : m_id(_next_id())
     , m_context(*manager.graphics_context())
     , m_name(std::move(args.name))
@@ -47,14 +47,14 @@ RenderTarget::RenderTarget(LayerManager& manager, Args&& args)
     m_framebuffer = FrameBuffer::create(m_context, std::move(framebuffer_args));
 }
 
-RenderTargetPtr RenderTarget::create(LayerManager& manager, Args&& args)
+RenderTargetPtr RenderTarget::create(SceneManager& manager, Args&& args)
 {
 #ifdef NOTF_DEBUG
     auto result = RenderTargetPtr(new RenderTarget(manager, std::move(args)));
 #else
     auto result = std::make_shared<make_shared_enabler<RenderTarget>>(manager, std::move(args));
 #endif
-    LayerManager::Access<RenderTarget>(manager).register_new(result);
+    SceneManager::Access<RenderTarget>(manager).register_new(result);
     return result;
 }
 

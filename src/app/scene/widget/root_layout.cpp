@@ -20,13 +20,6 @@ RootLayoutPtr RootLayout::create()
 #endif
 }
 
-std::vector<Widget*> RootLayout::widgets_at(const Vector2f& screen_pos)
-{
-    std::vector<Widget*> result;
-    _widgets_at(screen_pos, result);
-    return result;
-}
-
 void RootLayout::set_controller(const ControllerPtr& controller)
 {
     if (!controller) {
@@ -70,11 +63,11 @@ void RootLayout::_remove_child(const Item* child_item)
     on_child_removed(child_item);
 }
 
-void RootLayout::_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
+void RootLayout::widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
     if (m_controller) {
         if (ScreenItem* root_item = m_controller->root_item()) {
-            ScreenItem::_widgets_at(root_item, local_pos, result);
+            root_item->widgets_at(local_pos, result);
         }
     }
 }

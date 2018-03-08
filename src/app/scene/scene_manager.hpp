@@ -12,14 +12,16 @@
 
 NOTF_OPEN_NAMESPACE
 
+// TODO: rename SceneManager back to SceneManager?
+
 // ===================================================================================================================//
 
 namespace detail {
 
-/// Helper class used by the LayerManager to make sure that each Producer is called after the RenderTargets that they
+/// Helper class used by the SceneManager to make sure that each Producer is called after the RenderTargets that they
 /// depend on are clean, and that RenderTargets are cleaned using the smallest number of OpenGL state changes possible.
 class RenderDag {
-    friend class notf::LayerManager;
+    friend class notf::SceneManager;
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
@@ -67,7 +69,7 @@ private:
 /// State
 /// =====
 ///
-/// The LayerManager has a STATE that defines how to render a frame.
+/// The SceneManager has a STATE that defines how to render a frame.
 /// A State is made up of a list of Layers.
 /// Layers define an AABR (potentially full-screen) that are rendered into the screen buffer on each frame.
 /// Each Layer has a single GraphicsProducer (short: Producer) that define their content.
@@ -105,7 +107,7 @@ private:
 /// Some GraphicsProducer may require only properties in order to draw: the "smoke" FragmentProducer for example,
 /// requires only the screen resolution and the time to update.
 /// In that case, it is enough for the Application to update the PropertyManager with all of its accumulated updates
-/// from various threads and then kick off the LayerManager of each Window.
+/// from various threads and then kick off the SceneManager of each Window.
 ///
 ///                     +
 ///                     |     (owned by Application)         (owned by Window)
@@ -113,7 +115,7 @@ private:
 ///           +---+     |              v                            v
 ///               |     |     +------------------+          +----------------+
 ///     various   |   async   |                  |   sync   |                |
-///               +----------->  PropertyManager +---------->  LayerManager  |
+///               +----------->  PropertyManager +---------->  SceneManager  |
 ///     threads   |   update  |                  |   query  |                |
 ///               |     |     +------------------+          +----------------+
 ///           +---+     |
@@ -123,7 +125,7 @@ private:
 ///
 /// This works well, as long as each Producer only requires the PropertyManager to remain unchanged
 ///
-class LayerManager {
+class SceneManager {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -134,18 +136,18 @@ public:
         std::vector<LayerPtr> layers;
     };
 
-    /// Ids for LayerManager states.
+    /// Ids for SceneManager states.
     using StateId = IdType<State, size_t>;
 
     // ========================================================================
 private:
-    class RenderThread {
+    class RenderThread { // TODO: why is the RenderThread part of the SceneManager? It should be part of the Window...
 
         // methods ------------------------------------------------------------
     public:
         /// Constructor.
-        /// @param manager  The LayerManager used for rendering.
-        RenderThread(LayerManager& manager) : m_manager(manager) {}
+        /// @param manager  The SceneManager used for rendering.
+        RenderThread(SceneManager& manager) : m_manager(manager) {}
 
         /// Destructor.
         ~RenderThread() { stop(); }
@@ -167,8 +169,8 @@ private:
 
         // fields -------------------------------------------------------------
     private:
-        /// The LayerManager used for rendering.
-        LayerManager& m_manager;
+        /// The SceneManager used for rendering.
+        SceneManager& m_manager;
 
         /// Worker thread.
         ScopedThread m_thread;
@@ -191,16 +193,16 @@ private:
 protected:
     /// Constructor.
     /// @param window   GLFWwindow providing the OpenGL context.
-    LayerManager(GLFWwindow* window);
+    SceneManager(GLFWwindow* window);
 
 public:
     /// Factory.
     /// @param window   GLFWwindow providing the OpenGL context.
-    static LayerManagerPtr create(GLFWwindow* window);
+    static SceneManagerPtr create(GLFWwindow* window);
 
     /// Destructor.
     /// Need, because otherwise we'd have to include types contained in member unique_ptrs in the header.
-    ~LayerManager();
+    ~SceneManager();
 
     ///@{
     /// Internal GraphicsContext.
@@ -214,12 +216,12 @@ public:
     const FontManagerPtr& font_manager() const { return m_font_manager; }
     ///@}
 
-    /// Renders a single frame with the current State of the LayerManager.
+    /// Renders a single frame with the current State of the SceneManager.
     void request_redraw() { m_render_thread.request_redraw(); }
 
     // state management -------------------------------------------------------
 
-    /// Adds a new State to the LayerManager.
+    /// Adds a new State to the SceneManager.
     /// @param state    New State to add.
     /// @returns        Id of the new state.
     StateId add_state(State&& state);
@@ -227,7 +229,7 @@ public:
     /// Checks if the Manager knows about a State with the given ID.
     bool has_state(const StateId id) const { return m_states.count(id) != 0; }
 
-    /// Read-only access to the current State of the LayerManager.
+    /// Read-only access to the current State of the SceneManager.
     const State& current_state() const { return *m_state; }
 
     /// Read-only access to a State by its ID.
@@ -239,7 +241,7 @@ public:
     void enter_state(const StateId id);
 
     /// Removes the State with the given ID.
-    /// If the State to remove is the curren State, the LayerManager will fall back to the default state.
+    /// If the State to remove is the curren State, the SceneManager will fall back to the default state.
     /// @throws resource_error  If no State with the given ID is known.
     void remove_state(const StateId id);
 
@@ -284,7 +286,7 @@ private:
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// The current state of the LayerManager.
+    /// The current state of the SceneManager.
     const State* m_state;
 
     /// Render thread.
@@ -298,51 +300,51 @@ private:
 
     detail::RenderDag m_dependencies;
 
-    /// All States that the LayerManager knows.
+    /// All States that the SceneManager knows.
     std::unordered_map<StateId, State> m_states;
 
-    /// All GraphicsProducer that are registered with this LayerManager by their ID.
+    /// All GraphicsProducer that are registered with this SceneManager by their ID.
     std::unordered_map<GraphicsProducerId, GraphicsProducerPtr> m_graphics_producer;
 
     /// All RenderTargets that are registered with this RenderTargets by their ID.
     std::unordered_map<RenderTargetId, RenderTargetPtr> m_render_targets;
 
-    /// The default State is assumed, whenever the LayerManager would otherwise be stateless.
+    /// The default State is assumed, whenever the SceneManager would otherwise be stateless.
     static const State s_default_state;
 };
 
 // ===================================================================================================================//
 
 template<>
-class LayerManager::Access<GraphicsProducer> {
+class SceneManager::Access<GraphicsProducer> {
     friend class GraphicsProducer;
 
     /// Constructor.
-    /// @param render_manager   LayerManager to access.
-    Access(LayerManager& render_manager) : m_render_manager(render_manager) {}
+    /// @param render_manager   SceneManager to access.
+    Access(SceneManager& render_manager) : m_render_manager(render_manager) {}
 
     /// Registers a new GraphicsProducer.
     /// @throws runtime_error   If a GraphicsProducer with the same ID is already registered.
     void register_new(GraphicsProducerPtr producer) { m_render_manager._register_new(std::move(producer)); }
 
-    /// The LayerManager to access.
-    LayerManager& m_render_manager;
+    /// The SceneManager to access.
+    SceneManager& m_render_manager;
 };
 
 template<>
-class LayerManager::Access<RenderTarget> {
+class SceneManager::Access<RenderTarget> {
     friend class RenderTarget;
 
     /// Constructor.
-    /// @param render_manager   LayerManager to access.
-    Access(LayerManager& render_manager) : m_render_manager(render_manager) {}
+    /// @param render_manager   SceneManager to access.
+    Access(SceneManager& render_manager) : m_render_manager(render_manager) {}
 
     /// Registers a new RenderTarget.
     /// @throws runtime_error   If a RenderTarget with the same ID is already registered.
     void register_new(RenderTargetPtr render_target) { m_render_manager._register_new(std::move(render_target)); }
 
-    /// The LayerManager to access.
-    LayerManager& m_render_manager;
+    /// The SceneManager to access.
+    SceneManager& m_render_manager;
 };
 
 NOTF_CLOSE_NAMESPACE

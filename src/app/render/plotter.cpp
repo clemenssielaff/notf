@@ -70,9 +70,9 @@
 /// Glyphs require Font Atlas size as input (maybe where the shape gets the center vertex?)
 ///
 
-#include "app/renderer/plotter.hpp"
+#include "app/render/plotter.hpp"
 
-#include "app/scene/layer_manager.hpp"
+#include "app/scene/scene_manager.hpp"
 #include "common/bezier.hpp"
 #include "common/enum.hpp"
 #include "common/log.hpp"
@@ -139,7 +139,7 @@ void set_modified_second_ctrl(PlotVertexArray::Vertex& vertex, const CubicBezier
 
 NOTF_OPEN_NAMESPACE
 
-Plotter::Plotter(const Token& token, LayerManagerPtr& manager)
+Plotter::Plotter(const Token& token, SceneManagerPtr& manager)
     : GraphicsProducer(token)
     , m_graphics_context(*manager->graphics_context())
     , m_font_manager(*manager->font_manager())

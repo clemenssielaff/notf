@@ -5,7 +5,9 @@
 
 NOTF_OPEN_NAMESPACE
 
-Controller::Controller() : Item(std::make_unique<detail::SingleItemContainer>()), m_root_item(nullptr) {}
+Controller::Controller(const Token& token)
+    : Item(token, std::make_unique<detail::SingleItemContainer>()), m_root_item(nullptr)
+{}
 
 void Controller::_set_root_item(const ScreenItemPtr& item)
 {

@@ -9,7 +9,7 @@
 #include <sstream>
 
 #include "app/core/property_graph.hpp"
-#include "app/scene/widget/item.hpp"
+#include "app/scene/item.hpp"
 #include "common/exception.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -27,7 +27,8 @@ class Controller : public Item {
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Constructor.
-    Controller();
+    /// @param token        Factory token provided by Item::_create.
+    Controller(const Token& token);
 
 public:
     /// Item at the root of the Controller's branch of the Item hierarchy.
@@ -157,10 +158,12 @@ protected:
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Value Constructor.
+    /// @param token            Factory token provided by Item::_create.
     /// @param state_machine     StateMachine of this Controller.
     /// @param properties        All Properties of this Controller.
-    BaseController(StateMachine&& state_machine, std::unordered_map<std::string, PropertyId>&& properties)
-        : Controller()
+    BaseController(const Token& token, StateMachine&& state_machine,
+                   std::unordered_map<std::string, PropertyId>&& properties)
+        : Controller(token)
         , m_state_machine(std::move(state_machine))
         , m_property_map(std::move(properties))
         , m_current_state(nullptr)
@@ -208,10 +211,10 @@ private:
 NOTF_CLOSE_NAMESPACE
 
 #if 0
-#include <iostream>
+#    include <iostream>
 using namespace std;
 
-#include "core/controller.hpp"
+#    include "core/controller.hpp"
 NOTF_USING_NAMESPACE
 
 class Dynamite : public Controller<Dynamite> {

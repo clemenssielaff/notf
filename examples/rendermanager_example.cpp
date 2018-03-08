@@ -1,10 +1,10 @@
 #include <iostream>
 
 #include "app/core/glfw.hpp"
-#include "app/renderer/fragment_producer.hpp"
+#include "app/render/fragment_producer.hpp"
 #include "app/scene/layer.hpp"
 #include "app/scene/widget/hierarchy.hpp"
-#include "app/scene/layer_manager.hpp"
+#include "app/scene/scene_manager.hpp"
 #include "common/log.hpp"
 #include "common/polygon.hpp"
 
@@ -19,7 +19,7 @@ static void error_callback(int error, const char* description)
 
 void render_thread(GLFWwindow* window)
 {
-    LayerManagerPtr manager = LayerManager::create(window);
+    SceneManagerPtr manager = SceneManager::create(window);
 
     // Producer ///////////////////////////////////////////////
 
@@ -31,10 +31,10 @@ void render_thread(GLFWwindow* window)
     ItemHierarchyPtr scene = ItemHierarchy::create();
     LayerPtr layer = Layer::create(manager, scene, producer);
 
-    LayerManager::State state;
+    SceneManager::State state;
     state.layers = {layer};
 
-    LayerManager::StateId state_id = manager->add_state(std::move(state));
+    SceneManager::StateId state_id = manager->add_state(std::move(state));
     manager->enter_state(state_id);
 
     // Rendering //////////////////////////////////////////////

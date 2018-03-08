@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/renderer/graphics_producer.hpp"
+#include "app/render/graphics_producer.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -11,17 +11,17 @@ class FragmentProducer : public GraphicsProducer {
 protected:
     /// Constructor.
     /// @param token    Token to make sure that the instance can only be created by a call to `_create`.
-    /// @param manager  LayerManager.
+    /// @param manager  SceneManager.
     /// @param shader   Name of a fragment shader to use.
-    FragmentProducer(const Token& token, LayerManagerPtr& manager, const std::string& shader);
+    FragmentProducer(const Token& token, SceneManagerPtr& manager, const std::string& shader);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(FragmentProducer)
 
     /// Factory.
-    /// @param manager  LayerManager.
+    /// @param manager  SceneManager.
     /// @param shader   Name of a fragment shader to use.
-    static FragmentProducerPtr create(LayerManagerPtr& manager, const std::string& shader)
+    static FragmentProducerPtr create(SceneManagerPtr& manager, const std::string& shader)
     {
         return _create<FragmentProducer>(manager, shader);
     }

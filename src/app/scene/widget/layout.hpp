@@ -41,8 +41,9 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Constructor.
+    /// @param token        Factory token provided by Item::_create.
     /// @param container    Child container.
-    Layout(ChildContainerPtr container);
+    Layout(const Token& token, ChildContainerPtr container);
 
 public:
     /// Destructor.

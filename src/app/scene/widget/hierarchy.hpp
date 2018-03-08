@@ -1,6 +1,6 @@
 #pragma once
 
-/* Move LayerManager into app/core
+/* Move SceneManager into app/core
  * Move Layer there as well.
  * The Layer class will become more powerfull with both a producer AND an item hierarchy ... or some other way to
  * delegate events - I suspect that a 3D scene will need a completely different approach than an Item Hierarchy.

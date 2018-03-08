@@ -1,4 +1,4 @@
-#include "app/renderer/graphics_producer.hpp"
+#include "app/render/graphics_producer.hpp"
 
 #include "common/exception.hpp"
 #include "common/log.hpp"

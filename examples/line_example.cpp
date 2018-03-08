@@ -1,8 +1,8 @@
 #include "app/core/glfw.hpp"
-#include "app/renderer/plotter.hpp"
+#include "app/render/plotter.hpp"
 #include "app/scene/layer.hpp"
 #include "app/scene/widget/hierarchy.hpp"
-#include "app/scene/layer_manager.hpp"
+#include "app/scene/scene_manager.hpp"
 #include "common/bezier.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
@@ -37,11 +37,11 @@ static void error_callback(int error, const char* description)
 
 void render_thread(GLFWwindow* window)
 {
-    LayerManagerPtr layer_manager = LayerManager::create(window);
+    SceneManagerPtr scene_manager = SceneManager::create(window);
 
     // Stroker ////////////////////////////////////////////////
 
-    PlotterPtr stroker = Plotter::create(layer_manager);
+    PlotterPtr stroker = Plotter::create(scene_manager);
 
     {
         Plotter::StrokeInfo stroke_info;
@@ -71,21 +71,21 @@ void render_thread(GLFWwindow* window)
     // Render State //////////////////////////////////////////////
 
     ItemHierarchyPtr scene = ItemHierarchy::create();
-    LayerPtr layer = Layer::create(layer_manager, scene, stroker);
+    LayerPtr layer = Layer::create(scene_manager, scene, stroker);
 
-    LayerManager::State state;
+    SceneManager::State state;
     state.layers = {layer};
 
-    LayerManager::StateId state_id = layer_manager->add_state(std::move(state));
-    layer_manager->enter_state(state_id);
+    SceneManager::StateId state_id = scene_manager->add_state(std::move(state));
+    scene_manager->enter_state(state_id);
 
     // Rendering //////////////////////////////////////////////
 
-    layer_manager->graphics_context()->clear(Color(0.2f, 0.3f, 0.5f, 1));
+    scene_manager->graphics_context()->clear(Color(0.2f, 0.3f, 0.5f, 1));
 
     while (!glfwWindowShouldClose(window)) {
 
-        layer_manager->request_redraw();
+        scene_manager->request_redraw();
 
         glfwPollEvents();
     }

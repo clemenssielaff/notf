@@ -2,25 +2,23 @@
 
 #include "app/ids.hpp"
 #include "common/signal.hpp"
+#include "utils/make_smart_enabler.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
-/// Item
-/// ====
-///
 /// An Item is the virtual base class for all objects in the Item hierarchy. Its three main specializations are
 /// `Widgets`, `Layouts` and `Controllers`.
 ///
 /// Lifetime
-/// --------
+/// ========
 ///
 /// The lifetime of Items is managed through a shared_ptr. This way, the user is free to keep a subhierarchy around
 /// even after its parent has gone out of scope.
 ///
 /// Hierarchy
-/// ---------
+/// =========
 ///
 /// Items form a hierarchy with a single root Item on top. The number of children that an Item can have depends on its
 /// type. Widgets have no children, Controller have a single Layout as a child and Layouts can have a (theoretically
@@ -44,13 +42,13 @@ NOTF_OPEN_NAMESPACE
 /// method, I have to stop somewhere and trust the user not to break things.
 ///
 /// ID
-/// --
+/// ==
 ///
 /// Each Item has a constant unique integer ID assigned to it upon instantiation. It can be used to identify the Item in
 /// a map, for debugging purposes or in conditionals.
 ///
 /// Name
-/// ----
+/// ====
 ///
 /// In addition to the unique ID, each Item can have a name. The name is assigned by the user and is not guaranteed to
 /// be unique. If the name is not set, it is custom to log the Item id instead, formatted like this:
@@ -58,13 +56,14 @@ NOTF_OPEN_NAMESPACE
 ///     log_info << "Something cool happened to Item #" << item.id() << ".";
 ///
 /// Signals
-/// -------
+/// =======
 ///
 /// Items communicate with each other either through their relationship in the hierachy (parents to children and
 /// vice-versa) or via Signals. Signals have the advantage of being able to connect every Item regardless of its
 /// position in the hierarchy. They can be created by the user and enabled/disabled at will.
 /// In order to facilitate Signal handling at the lowest possible level, all Items derive from the `receive_signals`
 /// class that takes care of removing leftover connections that still exist once the Item goes out of scope.
+///
 class Item : public receive_signals, public std::enable_shared_from_this<Item> {
 
     // types ---------------------------------------------------------------------------------------------------------//
@@ -227,6 +226,13 @@ public:
     /// Unique pointer to child item container.
     using ChildContainerPtr = std::unique_ptr<ChildContainer>;
 
+protected:
+    /// Token object to make sure that object instances can only be created by a call to `_create`.
+    class Token {
+        friend class Item;
+        Token() = default;
+    };
+
     // signals -------------------------------------------------------------------------------------------------------//
 public:
     /// Emitted when this Item got a new parent.
@@ -240,10 +246,26 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Constructor.
+    /// @param token        Factory token provided by Item::_create.
     /// @param container    Container used to store this Item's children.
-    Item(ChildContainerPtr container);
+    Item(const Token&, ChildContainerPtr container);
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    /// Factory method for this type and all of its children.
+    /// You need to call this function from your own factory in order to get a Token instance.
+    /// This method will in turn register the new instance with the SceneManager.
+    template<typename T, typename... Ts>
+    static std::shared_ptr<T> _create(Ts&&... args)
+    {
+        static_assert(std::is_base_of<Item, T>::value, "Item::_create can only create instances of Item subclasses");
+        const Token token;
+#ifdef NOTF_DEBUG
+        auto result = std::shared_ptr<T>(new T(token, std::forward<Ts>(args)...));
+#else
+        auto result = std::make_shared<make_shared_enabler<T>>(token, std::forward<Ts>(args)...);
+#endif
+        return result;
+    }
+
 public:
     /// Destructor
     virtual ~Item();
@@ -282,24 +304,24 @@ public:
     ///@}
 
     ///@{
-    /// Returns the closest Layout in the hierarchy of the given Item.
-    /// Is empty if the given Item has no ancestor Layout.
-    risky_ptr<Layout> layout();
-    risky_ptr<const Layout> layout() const { return const_cast<Item*>(this)->layout(); }
-    ///@}
-
-    ///@{
-    /// Returns the closest Controller in the hierarchy of the given Item.
-    /// Is empty if the given Item has no ancestor Controller.
-    risky_ptr<Controller> controller();
-    risky_ptr<const Controller> controller() const { return const_cast<Item*>(this)->controller(); }
-    ///@}
-
-    ///@{
-    /// Returns the ScreenItem associated with this given Item - either the Item itself or a Controller's root Item.
-    /// Is empty if this is a Controller without a root Item.
-    risky_ptr<ScreenItem> screen_item();
-    risky_ptr<const ScreenItem> screen_item() const { return const_cast<Item*>(this)->screen_item(); }
+    /// Returns the first ancestor of this Item that has a specific type (can be empty if none is found).
+    template<typename Type>
+    risky_ptr<Type> first_ancestor()
+    {
+        Item* next = m_parent;
+        while (next) {
+            if (Type* result = dynamic_cast<Type*>(next)) {
+                return result;
+            }
+            next = next->m_parent;
+        }
+        return {};
+    }
+    template<typename Type>
+    risky_ptr<const Type> first_ancestor() const
+    {
+        return const_cast<Item*>(this)->first_ancestor<Type>();
+    }
     ///@}
 
     /// Updates the name of this Item.
@@ -311,22 +333,8 @@ protected:
     /// This needs to be a virtual method, because Items react differently to the removal of a child Item.
     virtual void _remove_child(const Item* child_item) = 0;
 
-    /// Pulls new values from the parent if it changed.
+    /// Queries new data from the parent (what that is depends on the Item type).
     virtual void _update_from_parent() {}
-
-    /// Returns the first ancestor of this Item that has a specific type (can be empty if none is found).
-    template<typename Type>
-    Type* _first_ancestor() const
-    {
-        Item* next = m_parent;
-        while (next) {
-            if (Type* result = dynamic_cast<Type*>(next)) {
-                return result;
-            }
-            next = next->m_parent;
-        }
-        return {};
-    }
 
     /// Allows Item subclasses to set each others' parent.
     static void _set_parent(Item* item, Item* parent) { item->_set_parent(parent, /* notify_old = */ true); }

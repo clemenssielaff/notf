@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/renderer/graphics_producer.hpp"
+#include "app/render/graphics_producer.hpp"
 #include "common/aabr.hpp"
 #include "common/variant.hpp"
 #include "common/vector2.hpp"
@@ -103,16 +103,16 @@ private:
 protected:
     /// Construct a new Plotter.
     /// @param token            Token to make sure that the instance can only be created by a call to `_create`.
-    /// @param manager   LayerManager.
+    /// @param manager   SceneManager.
     /// @throws runtime_error   If the OpenGL VAO could not be generated.
-    Plotter(const Token& token, LayerManagerPtr& manager);
+    Plotter(const Token& token, SceneManagerPtr& manager);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(Plotter)
 
     /// Factory.
-    /// @param manager  LayerManager.
-    static PlotterPtr create(LayerManagerPtr& manager) { return _create<Plotter>(manager); }
+    /// @param manager  SceneManager.
+    static PlotterPtr create(SceneManagerPtr& manager) { return _create<Plotter>(manager); }
 
     /// Destructor.
     virtual ~Plotter() override;

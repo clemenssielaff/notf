@@ -28,15 +28,13 @@ public:
     /// Find all Widgets at a given position in the Window.
     /// @param local_pos     Local coordinates where to look for a Widget.
     /// @return              All Widgets at the given coordinate, ordered from front to back.
-    std::vector<Widget*> widgets_at(const Vector2f& screen_pos);
+    void widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
     /// Sets a new Controller for the RootLayout.
     void set_controller(const ControllerPtr& controller);
 
 private:
     virtual void _remove_child(const Item* child_item) override;
-
-    virtual void _widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
     virtual Claim _consolidate_claim() override;
 

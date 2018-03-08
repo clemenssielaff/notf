@@ -1,4 +1,4 @@
-#include "app/scene/layer_manager.hpp"
+#include "app/scene/scene_manager.hpp"
 
 #include <sstream>
 
@@ -6,8 +6,8 @@
 #include "app/io/key_event.hpp"
 #include "app/io/mouse_event.hpp"
 #include "app/io/window_event.hpp"
-#include "app/renderer/graphics_producer.hpp"
-#include "app/renderer/render_target.hpp"
+#include "app/render/graphics_producer.hpp"
+#include "app/render/render_target.hpp"
 #include "app/scene/layer.hpp"
 #include "app/scene/scene.hpp"
 #include "common/hash.hpp"
@@ -46,7 +46,7 @@ void RenderDag::reset() { m_new_hash = 0; }
 
 //====================================================================================================================//
 
-void LayerManager::RenderThread::start()
+void SceneManager::RenderThread::start()
 {
     {
         std::unique_lock<std::mutex> lock_guard(m_mutex);
@@ -56,16 +56,16 @@ void LayerManager::RenderThread::start()
         m_is_running = true;
     }
     m_is_blocked.test_and_set(std::memory_order_release);
-    m_thread = ScopedThread(std::thread(&LayerManager::RenderThread::_run, this));
+    m_thread = ScopedThread(std::thread(&SceneManager::RenderThread::_run, this));
 }
 
-void LayerManager::RenderThread::request_redraw()
+void SceneManager::RenderThread::request_redraw()
 {
     m_is_blocked.clear(std::memory_order_release);
     m_condition.notify_one();
 }
 
-void LayerManager::RenderThread::stop()
+void SceneManager::RenderThread::stop()
 {
     {
         std::unique_lock<std::mutex> lock_guard(m_mutex);
@@ -79,7 +79,7 @@ void LayerManager::RenderThread::stop()
     m_thread = {};
 }
 
-void LayerManager::RenderThread::_run()
+void SceneManager::RenderThread::_run()
 {
     m_manager.m_graphics_context->make_current(); // TODO: the GraphicsContext is ONLY CURRENT on the RenderThread...
 
@@ -97,7 +97,7 @@ void LayerManager::RenderThread::_run()
 
         // ignore default state
         if (m_manager.m_state == &s_default_state) {
-            log_trace << "Cannot render a LayerManager in its default State";
+            log_trace << "Cannot render a SceneManager in its default State";
             continue;
         }
 
@@ -123,11 +123,11 @@ void LayerManager::RenderThread::_run()
 
 //====================================================================================================================//
 
-const LayerManager::State LayerManager::s_default_state = {};
+const SceneManager::State SceneManager::s_default_state = {};
 
 // TODO: move GraphicsContext and FontManager to Window
 
-LayerManager::LayerManager(GLFWwindow* window)
+SceneManager::SceneManager(GLFWwindow* window)
     : m_state(&s_default_state)
     , m_render_thread(*this)
     , m_graphics_context(std::make_unique<GraphicsContext>(window))
@@ -139,57 +139,57 @@ LayerManager::LayerManager(GLFWwindow* window)
     m_render_thread.start();
 }
 
-LayerManagerPtr LayerManager::create(GLFWwindow* window)
+SceneManagerPtr SceneManager::create(GLFWwindow* window)
 {
 #ifdef NOTF_DEBUG
-    return LayerManagerPtr(new LayerManager(window));
+    return SceneManagerPtr(new SceneManager(window));
 #else
-    return std::make_unique<make_shared_enabler<LayerManager>>(window);
+    return std::make_unique<make_shared_enabler<SceneManager>>(window);
 #endif
 }
 
-LayerManager::~LayerManager() = default;
+SceneManager::~SceneManager() = default;
 
-LayerManager::StateId LayerManager::add_state(State&& state)
+SceneManager::StateId SceneManager::add_state(State&& state)
 {
     StateId new_id = _next_id();
     m_states.emplace(std::make_pair(new_id, std::move(state)));
     return new_id;
 }
 
-const LayerManager::State& LayerManager::state(const StateId id) const
+const SceneManager::State& SceneManager::state(const StateId id) const
 {
     auto it = m_states.find(id);
     if (it == m_states.end()) {
-        notf_throw_format(resource_error, "LayerManager has no State with the ID \"" << id << "\"");
+        notf_throw_format(resource_error, "SceneManager has no State with the ID \"" << id << "\"");
     }
     return it->second;
 }
 
-void LayerManager::enter_state(const StateId id)
+void SceneManager::enter_state(const StateId id)
 {
     auto it = m_states.find(id);
     if (it == m_states.end()) {
-        notf_throw_format(resource_error, "LayerManager has no State with the ID \"" << id << "\"");
+        notf_throw_format(resource_error, "SceneManager has no State with the ID \"" << id << "\"");
     }
     m_state = &it->second;
 }
 
-void LayerManager::remove_state(const StateId id)
+void SceneManager::remove_state(const StateId id)
 {
     auto it = m_states.find(id);
     if (it == m_states.end()) {
-        notf_throw_format(resource_error, "LayerManager has no State with the ID \"" << id << "\"");
+        notf_throw_format(resource_error, "SceneManager has no State with the ID \"" << id << "\"");
     }
     if (m_state == &it->second) {
-        log_warning << "Removing current LayerManager state \"" << it->first
+        log_warning << "Removing current SceneManager state \"" << it->first
                     << "\" - falling back to the default state";
         m_state = &s_default_state;
     }
     m_states.erase(it);
 }
 
-void LayerManager::propagate(MouseEvent&& event)
+void SceneManager::propagate(MouseEvent&& event)
 {
     assert(!event.was_handled());
     for (const LayerPtr& layer : m_state->layers) {
@@ -200,7 +200,7 @@ void LayerManager::propagate(MouseEvent&& event)
     }
 }
 
-void LayerManager::propagate(KeyEvent&& event)
+void SceneManager::propagate(KeyEvent&& event)
 {
     assert(!event.was_handled());
     for (const LayerPtr& layer : m_state->layers) {
@@ -211,7 +211,7 @@ void LayerManager::propagate(KeyEvent&& event)
     }
 }
 
-void LayerManager::propagate(CharEvent&& event)
+void SceneManager::propagate(CharEvent&& event)
 {
     assert(!event.was_handled());
     for (const LayerPtr& layer : m_state->layers) {
@@ -222,7 +222,7 @@ void LayerManager::propagate(CharEvent&& event)
     }
 }
 
-void LayerManager::propagate(WindowEvent&& event)
+void SceneManager::propagate(WindowEvent&& event)
 {
     assert(!event.was_handled());
     for (const LayerPtr& layer : m_state->layers) {
@@ -233,14 +233,14 @@ void LayerManager::propagate(WindowEvent&& event)
     }
 }
 
-void LayerManager::resize(Size2i size)
+void SceneManager::resize(Size2i size)
 {
     for (const LayerPtr& layer : m_state->layers) {
         layer->scene()->resize(size);
     }
 }
 
-void LayerManager::_register_new(GraphicsProducerPtr graphics_producer)
+void SceneManager::_register_new(GraphicsProducerPtr graphics_producer)
 {
     if (m_graphics_producer.count(graphics_producer->id())) {
         notf_throw_format(runtime_error, "Failed to register GraphicsProducer with duplicate ID: \""
@@ -249,7 +249,7 @@ void LayerManager::_register_new(GraphicsProducerPtr graphics_producer)
     m_graphics_producer.emplace(std::make_pair(graphics_producer->id(), graphics_producer));
 }
 
-void LayerManager::_register_new(RenderTargetPtr render_target)
+void SceneManager::_register_new(RenderTargetPtr render_target)
 {
     if (m_render_targets.count(render_target->id())) {
         notf_throw_format(runtime_error,
@@ -258,10 +258,10 @@ void LayerManager::_register_new(RenderTargetPtr render_target)
     m_render_targets.emplace(std::make_pair(render_target->id(), render_target));
 }
 
-LayerManager::StateId LayerManager::_next_id()
+SceneManager::StateId SceneManager::_next_id()
 {
-    static LayerManager::StateId::underlying_t next = 1;
-    return LayerManager::StateId(next++);
+    static SceneManager::StateId::underlying_t next = 1;
+    return SceneManager::StateId(next++);
 }
 
 NOTF_CLOSE_NAMESPACE

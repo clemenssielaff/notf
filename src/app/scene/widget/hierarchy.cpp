@@ -37,7 +37,7 @@ bool propagate_to_hierarchy(const Widget* widget, Signal<Args...> ScreenItem::*s
         if (event.was_handled()) {
             return true;
         }
-        screen_item = make_raw(screen_item->layout());
+        screen_item = make_raw(screen_item->first_ancestor<Layout>());
     }
     return false;
 }
@@ -81,7 +81,7 @@ struct ItemHierarchy::Traversal {
                         }
                     }
                     else {
-                        screen_item = make_raw((*current).screen_item());
+                        screen_item = make_raw((*current)->screen_item());
                         if (screen_item && screen_item->is_visible()) {
                             break;
                         }
@@ -210,16 +210,16 @@ void ItemHierarchy::propagate(MouseEvent& event)
                         ScreenItem* handler = old_focus_widget.get();
                         while (handler) {
                             handler->on_focus_changed(focus_lost_event);
-                            handler = make_raw(handler->layout());
+                            handler = make_raw(handler->first_ancestor<Layout>());
                         }
                     }
 
                     // notify the new focused Widget's hierarchy
                     m_keyboard_item     = new_focus_widget;
-                    ScreenItem* handler = make_raw(new_focus_widget->layout());
+                    ScreenItem* handler = make_raw(new_focus_widget->first_ancestor<Layout>());
                     while (handler) {
                         handler->on_focus_changed(focus_gained_event);
-                        handler = make_raw(handler->layout());
+                        handler = make_raw(handler->first_ancestor<Layout>());
                     }
                 }
                 else {

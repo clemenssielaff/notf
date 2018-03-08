@@ -70,8 +70,8 @@ public:
     /// The Window's title.
     const std::string& title() const { return m_title; }
 
-    /// Returns the Application's LayerManager.
-    LayerManager& layer_manager() { return *m_layer_manager; }
+    /// Returns the Application's SceneManager.
+    SceneManager& scene_manager() { return *m_scene_manager; }
 
     /// Returns the Window's size in screen coordinates (not pixels).
     /// Returns an invalid size if the GLFW window was already closed.
@@ -128,7 +128,7 @@ private:
     std::string m_title;
 
     /// The Window's Scene manager.
-    LayerManagerPtr m_layer_manager;
+    SceneManagerPtr m_scene_manager;
 
     /// The Window size.
     Size2i m_size;

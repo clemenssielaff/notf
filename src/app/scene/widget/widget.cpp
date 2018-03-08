@@ -4,7 +4,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-Widget::Widget() : ScreenItem(std::make_unique<detail::EmptyItemContainer>()) {}
+Widget::Widget(const Token& token) : ScreenItem(token, std::make_unique<detail::EmptyItemContainer>()) {}
 
 void Widget::redraw() const { ScreenItem::_redraw(); }
 
@@ -45,7 +45,7 @@ void Widget::_relayout()
 //    }
 //}
 
-void Widget::_widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
+void Widget::widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const
 {
     if (Aabrf(size()).contains(local_pos)) {
         result.push_back(const_cast<Widget*>(this));
