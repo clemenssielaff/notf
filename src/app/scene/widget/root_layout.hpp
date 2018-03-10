@@ -8,6 +8,7 @@ NOTF_OPEN_NAMESPACE
 
 /// The RootLayout is owned by a Window and root of all LayoutItems displayed within the Window.
 class RootLayout : public Layout {
+    friend class Item;
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -16,10 +17,11 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Constructor.
-    RootLayout();
+    /// @param token    Factory token provided by Item::_create.
+    RootLayout(const Token& token);
 
     /// Factory.
-    static RootLayoutPtr create();
+    static RootLayoutPtr create() { return _create<RootLayout>(); }
 
 public:
     /// Destructor.

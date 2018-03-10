@@ -1,7 +1,7 @@
 #pragma once
 
-#include "app/scene/widget/claim.hpp"
 #include "app/scene/item.hpp"
+#include "app/scene/widget/claim.hpp"
 #include "common/aabr.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -262,6 +262,8 @@ public:
     void set_scissor(const Layout* scissor_layout);
 
 protected:
+    void _redraw() const {} // TODO: remove
+
     /// Updates the size of this ScreenItem and the layout of all child Items.
     virtual void _relayout() = 0;
 
@@ -403,7 +405,28 @@ class ScreenItem::Access<RootLayout> {
 /// Is empty if this is a Controller without a root Item.
 /// @param item     Item to query.
 risky_ptr<ScreenItem> get_screen_item(Item* item);
-risky_ptr<const ScreenItem> get_screen_item(const Item* item) { return get_screen_item(const_cast<Item*>(item)); }
+inline risky_ptr<const ScreenItem> get_screen_item(const Item* item)
+{
+    return get_screen_item(const_cast<Item*>(item));
+}
+inline risky_ptr<ScreenItem> get_screen_item(risky_ptr<Item> item)
+{
+    if (item) {
+        return get_screen_item(&*item);
+    }
+    else {
+        return {};
+    }
+}
+inline risky_ptr<const ScreenItem> get_screen_item(risky_ptr<const Item> item)
+{
+    if (item) {
+        return get_screen_item(&*item);
+    }
+    else {
+        return {};
+    }
+}
 ///@}
 
 /// Calculates a transformation from a given ScreenItem to another one.

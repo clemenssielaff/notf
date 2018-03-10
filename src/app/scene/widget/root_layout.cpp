@@ -6,18 +6,10 @@
 
 NOTF_OPEN_NAMESPACE
 
-RootLayout::RootLayout() : Layout(std::make_unique<detail::SingleItemContainer>()), m_controller()
+RootLayout::RootLayout(const Token& token)
+    : Layout(token, std::make_unique<detail::SingleItemContainer>()), m_controller()
 {
     ScreenItem::Access<RootLayout>(*this).be_own_scissor(this);
-}
-
-RootLayoutPtr RootLayout::create()
-{
-#ifdef NOTF_DEBUG
-    return RootLayoutPtr(new RootLayout());
-#else
-    return std::make_shared<make_shared_enabler<RootLayout>>();
-#endif
 }
 
 void RootLayout::set_controller(const ControllerPtr& controller)
@@ -35,8 +27,8 @@ void RootLayout::set_controller(const ControllerPtr& controller)
     }
 
     detail::SingleItemContainer* container = static_cast<detail::SingleItemContainer*>(m_children.get());
-    container->item                        = controller;
-    m_controller                           = controller.get();
+    container->item = controller;
+    m_controller = controller.get();
     if (m_controller) {
         Item::_set_parent(m_controller, this);
     }

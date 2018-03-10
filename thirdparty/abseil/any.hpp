@@ -215,8 +215,6 @@ private:
     template<typename T>
     struct IsInPlaceType;
 
-    class ObjInterface;
-
 public:
     // Constructors
 

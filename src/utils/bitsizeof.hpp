@@ -1,3 +1,5 @@
+#pragma once
+
 #include "common/meta.hpp"
 
 #include <limits.h>
@@ -7,7 +9,7 @@ NOTF_OPEN_NAMESPACE
 
 /// Like sizeof, but a returns the size of the type in bits not bytes.
 template<typename T>
-constexpr size_t bitsizeof()
+inline constexpr size_t bitsizeof()
 {
     return sizeof(T) * CHAR_BIT;
 }

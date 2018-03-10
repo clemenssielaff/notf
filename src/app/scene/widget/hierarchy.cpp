@@ -81,7 +81,7 @@ struct ItemHierarchy::Traversal {
                         }
                     }
                     else {
-                        screen_item = make_raw((*current)->screen_item());
+                        screen_item = make_raw(get_screen_item(*current));
                         if (screen_item && screen_item->is_visible()) {
                             break;
                         }
@@ -107,7 +107,7 @@ struct ItemHierarchy::Traversal {
         Widget& operator*() const
         {
             assert(!t_iterators.empty());
-            return *static_cast<Widget*>(&*(t_iterators.back().first));
+            return *static_cast<Widget*>((*t_iterators.back().first));
         }
 
     private:
@@ -191,7 +191,7 @@ void ItemHierarchy::propagate(MouseEvent& event)
         for (auto& widget : Traversal(this)) {
             if (propagate_to_hierarchy(&widget, &ScreenItem::on_mouse_button, event, notified_items)) {
                 WidgetPtr new_focus_widget = std::static_pointer_cast<Widget>(widget.shared_from_this());
-                m_mouse_item               = new_focus_widget;
+                m_mouse_item = new_focus_widget;
 
                 // do nothing if the item already has the focus
                 WidgetPtr old_focus_widget = m_keyboard_item.lock();
@@ -215,7 +215,7 @@ void ItemHierarchy::propagate(MouseEvent& event)
                     }
 
                     // notify the new focused Widget's hierarchy
-                    m_keyboard_item     = new_focus_widget;
+                    m_keyboard_item = new_focus_widget;
                     ScreenItem* handler = make_raw(new_focus_widget->first_ancestor<Layout>());
                     while (handler) {
                         handler->on_focus_changed(focus_gained_event);

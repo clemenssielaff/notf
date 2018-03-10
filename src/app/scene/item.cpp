@@ -10,9 +10,9 @@ NOTF_USING_NAMESPACE
 
 /// Returns the next available ItemID.
 /// Is thread-safe and ever-increasing.
-ItemID next_id()
+ItemId next_id()
 {
-    static std::atomic<ItemID::underlying_t> g_nextID(1);
+    static std::atomic<ItemId::underlying_t> g_nextID(1);
     return g_nextID++;
 }
 
@@ -71,7 +71,7 @@ risky_ptr<Item> Item::common_ancestor(Item* other)
         return this;
     }
 
-    Item* first  = this;
+    Item* first = this;
     Item* second = other;
 
     std::unordered_set<Item*> known_ancestors = {first, second};
@@ -114,7 +114,7 @@ void Item::_set_parent(Item* parent, bool notify_old)
     m_parent = parent;
 
     _update_from_parent();
-    for (ItemPtr& item : *m_children) {
+    for (Item* item : *m_children) {
         item->_update_from_parent();
     }
 

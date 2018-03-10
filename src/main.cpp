@@ -1,6 +1,5 @@
 #include "framebuffer_example.hpp"
 #include "line_example.hpp"
-#include "property_example.hpp"
 #include "rendermanager_example.hpp"
 #include "renderthread_example.hpp"
 #include "shape_example.hpp"

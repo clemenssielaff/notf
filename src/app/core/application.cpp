@@ -3,7 +3,7 @@
 #include <algorithm>
 
 #include "app/core/glfw.hpp"
-#include "app/core/property_manager.hpp"
+#include "app/core/property_graph.hpp"
 #include "app/core/resource_manager.hpp"
 #include "app/core/window.hpp"
 #include "app/io/char_event.hpp"
@@ -50,7 +50,7 @@ Application::Application(const Args& application_args)
     : m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
     , m_resource_manager()
     , m_thread_pool(std::make_unique<ThreadPool>())
-    , m_property_manager(std::make_unique<PropertyManager>())
+    , m_property_graph(std::make_unique<PropertyGraph>())
     , m_windows()
 {
     // install the log handler first, to catch errors right away
@@ -67,10 +67,10 @@ Application::Application(const Args& application_args)
     try { // create the resource manager
         ResourceManager::Args args;
         args.texture_directory = application_args.texture_directory;
-        args.fonts_directory   = application_args.fonts_directory;
-        args.shader_directory  = application_args.shader_directory;
-        args.executable_path   = application_args.argv[0];
-        m_resource_manager     = std::make_unique<ResourceManager>(std::move(args));
+        args.fonts_directory = application_args.fonts_directory;
+        args.shader_directory = application_args.shader_directory;
+        args.executable_path = application_args.argv[0];
+        m_resource_manager = std::make_unique<ResourceManager>(std::move(args));
     }
     catch (const resource_manager_initialization_error& error) {
         notf_throw(application_initialization_error, error.what());
@@ -211,7 +211,7 @@ void Application::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
 
         // invert the y-coordinate (by default, y grows down)
         const int window_height = window->window_size().height;
-        y                       = window_height - y;
+        y = window_height - y;
         Vector2i window_pos;
         glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
         window_pos.y() = window_height - window_pos.y();
@@ -236,7 +236,7 @@ void Application::_on_mouse_button(GLFWwindow* glfw_window, int button, int acti
     assert(window);
 
     // parse raw arguments
-    Button notf_button      = static_cast<Button>(button);
+    Button notf_button = static_cast<Button>(button);
     MouseAction notf_action = static_cast<MouseAction>(action);
     assert(notf_action == MouseAction::PRESS || notf_action == MouseAction::RELEASE);
 

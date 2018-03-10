@@ -110,8 +110,8 @@ public:
     /// The Application's thread pool.
     ThreadPool& thread_pool() { return *m_thread_pool; }
 
-    /// The Application's PropertyManager.
-    PropertyManager& property_manager() { return *m_property_manager; }
+    /// The Application's PropertyGraph.
+    PropertyGraph& property_graph() { return *m_property_graph; }
 
 private:
     /// Static (private) function holding the actual Application instance.
@@ -203,8 +203,8 @@ private:
     /// The global thread pool.
     ThreadPoolPtr m_thread_pool;
 
-    /// PropertyManager.
-    PropertyManagerPtr m_property_manager;
+    /// PropertyGraph.
+    PropertyGraphPtr m_property_graph;
 
     /// All Windows known the the Application.
     std::vector<WindowPtr> m_windows;

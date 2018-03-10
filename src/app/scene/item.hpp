@@ -86,7 +86,7 @@ public:
             using Container = std::conditional_t<IS_CONST, const ChildContainer, ChildContainer>;
 
             /// (const) Item
-            using ChildPtr = std::conditional_t<IS_CONST, const ItemConstPtr, ItemPtr>;
+            using ChildPtr = std::conditional_t<IS_CONST, const Item*, Item*>;
 
         public:
             /// Index type
@@ -122,7 +122,7 @@ public:
             bool operator!=(const _Iterator& other) const { return !(*this == other); }
 
             /// Dereferencing operator.
-            ChildPtr& operator*() const { return container.child_at(index); }
+            ChildPtr operator*() const { return container.child_at(index); }
 
             // fields ---------------------------------------------------------
         public:
@@ -134,9 +134,9 @@ public:
         };
 
     public:
-        using Iterator             = _Iterator</* is_const = */ false, /* is_reverse = */ false>;
-        using ConstIterator        = _Iterator</* is_const = */ true, /* is_reverse = */ false>;
-        using ReverseIterator      = _Iterator</* is_const = */ false, /* is_reverse = */ true>;
+        using Iterator = _Iterator</* is_const = */ false, /* is_reverse = */ false>;
+        using ConstIterator = _Iterator</* is_const = */ true, /* is_reverse = */ false>;
+        using ReverseIterator = _Iterator</* is_const = */ false, /* is_reverse = */ true>;
         using ReverseConstIterator = _Iterator</* is_const = */ true, /* is_reverse = */ true>;
 
         // methods ------------------------------------------------------------
@@ -151,11 +151,8 @@ public:
         /// Returns a child Item by its index.
         /// @param index            Index of the requested child.
         /// @throws out_of_range    If the index is >= the size of this Container.
-        virtual ItemPtr& child_at(const size_t index) = 0;
-        const ItemConstPtr& child_at(const size_t index) const
-        {
-            return static_cast<const ItemConstPtr&>(const_cast<ChildContainer*>(this)->child_at(index));
-        }
+        virtual Item* child_at(const size_t index) = 0;
+        const Item* child_at(const size_t index) const { return const_cast<ChildContainer*>(this)->child_at(index); }
         /// }@
 
         /// {@
@@ -189,15 +186,15 @@ public:
         /// Is virtual so that subclasses can do additional operations (like clearing an underlying vector etc.)
         virtual void clear()
         {
-            for (ItemPtr& item : *this) {
+            for (Item* item : *this) {
                 item->_set_parent(nullptr, /* notify_old = */ true);
             }
         }
 
         /// Checks whether this Container contains a given Item.
-        bool contains(const ItemConstPtr& candidate) const
+        bool contains(const Item* candidate) const
         {
-            for (const ItemConstPtr& item : *this) {
+            for (const Item* item : *this) {
                 if (item == candidate) {
                     return true;
                 }
@@ -210,7 +207,7 @@ public:
         /// Is only used by the Item destructor.
         void _destroy()
         {
-            for (ItemPtr& item : *this) {
+            for (Item* item : *this) {
                 item->_set_parent(nullptr, /* notify_old = */ false);
             }
         }
@@ -271,7 +268,7 @@ public:
     virtual ~Item();
 
     /// Application-unique ID of this Item.
-    ItemID id() const { return m_id; }
+    ItemId id() const { return m_id; }
 
     /// The user-defined name of this Item, is potentially empty and not guaranteed to be unique if set.
     const std::string& name() const { return m_name; }
@@ -352,7 +349,7 @@ protected:
 
 private:
     /// Application-unique ID of this Item.
-    const ItemID m_id;
+    const ItemId m_id;
 
     /// Non-owning pointer to the parent Item, is potentially empty.
     Item* m_parent = nullptr;
@@ -371,7 +368,7 @@ struct EmptyItemContainer final : public Item::ChildContainer {
 
     virtual size_t size() const override { return 0; }
 
-    virtual ItemPtr& child_at(const size_t) override
+    virtual Item* child_at(const size_t) override
     {
         notf_throw(out_of_bounds, "Child Item with an out-of-bounds index requested");
     }
@@ -385,12 +382,12 @@ struct SingleItemContainer final : public Item::ChildContainer {
 
     virtual size_t size() const override { return (item ? 1 : 0); }
 
-    virtual ItemPtr& child_at(const size_t index) override
+    virtual Item* child_at(const size_t index) override
     {
         if (index != 0) {
             notf_throw(out_of_bounds, "Child Item with an out-of-bounds index requested");
         }
-        return item;
+        return item.get();
     }
 
     virtual void clear() override
@@ -411,12 +408,12 @@ struct ItemList final : public Item::ChildContainer {
 
     virtual size_t size() const override { return items.size(); }
 
-    virtual ItemPtr& child_at(const size_t index) override
+    virtual Item* child_at(const size_t index) override
     {
         if (index >= items.size()) {
             notf_throw(out_of_bounds, "Child Item with an out-of-bounds index requested");
         }
-        return items[index];
+        return items[index].get();
     }
 
     virtual void clear() override

@@ -99,15 +99,16 @@ add_sources(SOURCE_FILES examples
     wireframe_example.cpp
     shape_example.cpp
     text_example.cpp
-    property_example.cpp
     rendermanager_example.cpp
     renderthread_example.cpp
 )
 
 add_sources(THIRDPARTY_FILES thirdparty
-    double-metaphone/double_metaphone.cc
     tinyutf8/tinyutf8.cpp
     randutils/randutils.hpp
+    abseil/any.hpp
+    abseil/any.cpp
+    mpark/variant.hpp
 )
 
 add_sources(RESOURCE_FILES res
