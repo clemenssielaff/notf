@@ -1,6 +1,5 @@
 #pragma once
 
-#include <atomic>
 #include <cassert>
 #include <unordered_map>
 
@@ -27,10 +26,11 @@ public:
     NOTF_EXCEPTION_TYPE(cyclic_dependency_error)
 
 private:
-    ///
-    /// Uses std::any for internal type erasure of the Property value.
-    /// Type doubles as the conceptual `PropertyGroup` type, which is implicitly created by the PropertyGraph with the
-    /// key: (ItemId, 0) whenever a Property from a new Item is being created.
+    /// An untyped Property in the graph. Uses std::any for internal type erasure of the Property value.
+    /// The type also doubles as the conceptual `PropertyGroup` type, which is implicitly created by the PropertyGraph
+    /// with the key: (ItemId, 0) whenever a Property from a new Item is being created. I know that it is generally "bad
+    /// style" to overload a type like this, but it's just so convenient and besides, it is internal to PropertyGraph so
+    /// nobody has to know ;)
     class Property {
 
         // methods ------------------------------------------------------------
@@ -41,10 +41,8 @@ private:
         /// Value constructor.
         /// @param value    Value held by the Property, is used to determine the PropertyType.
         template<typename T>
-        Property(const T& value)
-        {
-            m_value = value;
-        }
+        Property(T&& value) : m_value(std::move(value))
+        {}
 
         // group --------------------------------------------------------------
 
@@ -56,25 +54,29 @@ private:
         }
 
         /// Adds a new Property to this group.
-        void add_property(Property* property)
-        {
-            assert(!m_value.has_value()); // group properties should not have a value
-            m_affected.push_back(std::move(property));
-        }
+        /// @param key  Key of the Property to add.
+        void add_member(PropertyKey key);
 
         /// All members of this group.
-        const std::vector<Property*>& members() const { return m_affected; }
+        const std::vector<PropertyKey>& members() const
+        {
+            assert(!m_value.has_value()); // group properties should not have a value
+            return m_affected;
+        }
+
+        /// Removes a Property as member of this Group.
+        /// @param key  Key of the Property to remove.
+        void remove_member(const PropertyKey& key);
 
         // property -----------------------------------------------------------
 
-        /// The property's value.
-        /// If the property is defined by an expression, this might evaluate the expression.
-        /// @param my_key       PropertyKey for error reporting.
-        /// @param graph        Graph used to (potentially) evaluate the Property expression.
+        /// The Property's value.
+        /// If the Property is defined by an expression, this might evaluate the expression.
+        /// @param my_key       PropertyKey of this Property.
         /// @throws type_error  If the wrong value type is requested.
         /// @returns            Const reference to the value of the Property.
         template<typename T>
-        const T& value(const PropertyKey& my_key, const PropertyGraph& graph)
+        const T& value(const PropertyKey& my_key, PropertyGraph& graph)
         {
             _check_value_type(my_key, typeid(T));
             _clean_value(my_key, graph);
@@ -84,34 +86,36 @@ private:
             return *result;
         }
 
-        /// Set the property's value.
-        /// Removes an existing expression on the property if it exists.
-        /// @param my_key       PropertyKey for error reporting.
+        /// Set the Property's value.
+        /// Removes an existing expression on the Property if it exists.
+        /// @param my_key       PropertyKey of this Property.
+        /// @param graph        Graph used to find affected Properties.
         /// @param value        New value.
         /// @throws type_error  If a value of the wrong type is passed.
         template<typename T>
-        void set_value(const PropertyKey& my_key, T&& value)
+        void set_value(const PropertyKey& my_key, PropertyGraph& graph, T&& value)
         {
             _check_value_type(my_key, typeid(T));
-            _freeze();
+            _freeze(my_key, graph);
 
             if (value != *std::any_cast<T>(&m_value)) {
                 m_value = std::forward<T>(value);
-                _set_affected_dirty();
+                _set_affected_dirty(graph);
             }
         }
 
         /// Set property's expression.
-        /// @param my_key       PropertyKey for error reporting.
+        /// @param my_key       PropertyKey of this Property.
+        /// @param graph        Graph used to find affected Properties.
         /// @param expression   Expression to set.
         /// @param dependencies Properties that the expression depends on.
         /// @throws type_error  If an expression returning the wrong type is passed.
         template<typename T>
-        void set_expression(const PropertyKey& my_key, std::function<T(const PropertyGraph&)> expression,
-                            std::vector<Property*> dependencies)
+        void set_expression(const PropertyKey& my_key, PropertyGraph& graph,
+                            std::function<T(const PropertyGraph&)> expression, std::vector<PropertyKey> dependencies)
         {
             _check_value_type(my_key, typeid(T));
-            _clear_dependencies();
+            _clear_dependencies(my_key, graph);
 
             // wrap the typed expression into one that returns a std::any
             m_expression
@@ -119,66 +123,79 @@ private:
             m_dependencies = std::move(dependencies);
             m_is_dirty = true;
 
-            _register_with_dependencies();
-            _set_affected_dirty();
+            _register_with_dependencies(my_key, graph);
+            _set_affected_dirty(graph);
         }
 
         /// All dependencies of this Property.
-        const std::vector<Property*>& dependencies() const { return m_dependencies; }
+        const std::vector<PropertyKey>& dependencies() const { return m_dependencies; }
 
         /// Prepares this Property for removal from the Graph.
-        void prepare_removal()
+        /// @param my_key       PropertyKey of this Property.
+        /// @param graph        Graph used to find affected Properties.
+        void prepare_removal(const PropertyKey& my_key, PropertyGraph& graph)
         {
-            _clear_dependencies();
-            _freeze_affected();
+            _clear_dependencies(my_key, graph);
+            _freeze_affected(my_key, graph);
         }
 
     private:
         /// Freezing a property means removing its expression without changing its value.
-        void _freeze() noexcept
+        /// @param my_key       PropertyKey of this Property.
+        /// @param graph        Graph used to find affected Properties.
+        void _freeze(const PropertyKey& my_key, PropertyGraph& graph) noexcept
         {
-            _clear_dependencies();
+            _clear_dependencies(my_key, graph);
             m_expression = {};
             m_is_dirty = false;
         }
 
         /// Registers this property as affected with all of its dependencies.
-        void _register_with_dependencies()
+        /// @param my_key   PropertyKey of this Property.
+        /// @param graph    Graph used to find dependency Properties.
+        void _register_with_dependencies(const PropertyKey& my_key, PropertyGraph& graph)
         {
-            for (Property* dependency : m_dependencies) {
-                dependency->m_affected.emplace_back(this);
+            for (const PropertyKey& dependencyKey : m_dependencies) {
+                Property& dependency = graph._find_property(dependencyKey);
+                dependency.m_affected.emplace_back(my_key);
             }
         }
 
         /// Removes all dependencies from this property.
-        void _clear_dependencies() noexcept;
+        /// @param my_key   PropertyKey of this Property.
+        /// @param graph    Graph used to find dependent Properties.
+        void _clear_dependencies(const PropertyKey& my_key, PropertyGraph& graph) noexcept;
 
         /// Freezes all affected properties.
-        void _freeze_affected()
+        /// @param graph    Graph used to find affected Properties.
+        void _freeze_affected(const PropertyKey& my_key, PropertyGraph& graph)
         {
-            for (Property* affected : m_affected) {
-                affected->_freeze();
+            for (const PropertyKey& affectedKey : m_affected) {
+                Property& affected = graph._find_property(affectedKey);
+                affected._freeze(my_key, graph);
             }
         }
 
         /// Set all affected properties dirty.
-        void _set_affected_dirty()
+        /// @param graph    Graph used to find affected Properties.
+        void _set_affected_dirty(PropertyGraph& graph)
         {
-            for (Property* affected : m_affected) {
-                affected->m_is_dirty = true;
+            for (const PropertyKey& affectedKey : m_affected) {
+                Property& affected = graph._find_property(affectedKey);
+                affected.m_is_dirty = true;
             }
         }
 
         /// Makes sure that the given type_info is the same as the one of the Property's value.
-        /// @param my_key       PropertyKey for error reporting.
+        /// @param my_key       PropertyKey of this Property.
         /// @param info         Type to check.
         /// @throws type_error  If the wrong value type is requested.
         void _check_value_type(const PropertyKey& my_key, const std::type_info& info);
 
         /// Makes sure that the Property's value is clean.
-        /// @param my_key   PropertyKey for error reporting.
+        /// @param my_key   PropertyKey of this Property.
         /// @param graph    Graph used to (potentially) evaluate the Property expression.
-        void _clean_value(const PropertyKey& my_key, const PropertyGraph& graph);
+        void _clean_value(const PropertyKey& my_key, PropertyGraph& graph);
 
         // fields -------------------------------------------------------------
     private:
@@ -189,10 +206,10 @@ private:
         std::function<std::any(const PropertyGraph&)> m_expression;
 
         /// All Properties that this one depends on.
-        std::vector<Property*> m_dependencies;
+        std::vector<PropertyKey> m_dependencies;
 
         /// Properties affected by this one through expressions.
-        std::vector<Property*> m_affected;
+        std::vector<PropertyKey> m_affected;
 
         /// Counter used by PropertyGroups to generate new PropertyIds for members of the group.
         PropertyId::underlying_t m_group_counter{1};
@@ -206,7 +223,7 @@ public:
     /// Checks if the graph has a Property with the given key.
     /// @param key  Key of the Property to search for.
     /// @returns    True iff there is a Property with the requested key in the graph.
-    bool has_property(const PropertyKey& key) const { return m_properties.count(key) != 0; }
+    bool has_property(const PropertyKey key) const { return m_properties.count(key) != 0; }
 
     /// @{
     /// Returns the value of the Property requested by type and key.
@@ -215,10 +232,9 @@ public:
     /// @throws type_error      If the wrong value type is requested.
     /// @return                 Value of the property.
     template<typename T>
-    const T& value(const PropertyKey& key) const
+    const T& value(const PropertyKey key) const
     {
-        const Property& property = _find_property(key);
-        return property.value<T>(key, *this);
+        return _find_property(key).value<T>(key, *this);
     }
     template<typename T>
     const T& value(const TypedPropertyKey<T> id) const
@@ -232,16 +248,16 @@ public:
     /// @param value    Initial value of the Property, also used to determine its type.
     /// @returns        Key of the new Property. Is invalid, if the given Item id is invalid.
     template<typename T>
-    TypedPropertyKey<T> add_property(const ItemId item_id, const T& value)
+    TypedPropertyKey<T> add_property(const ItemId item_id, T&& value)
     {
         if (!item_id.is_valid()) {
             return TypedPropertyKey<T>::invalid();
         }
         Property& group = _group_for(item_id);
         TypedPropertyKey<T> new_key(item_id, group.next_property_id());
-        auto result = m_properties.emplace(std::make_pair(new_key, Property(value)));
+        auto result = m_properties.emplace(std::make_pair(new_key, Property(std::forward<T>(value))));
         assert(result.second);
-        group.add_property(&(*result.first));
+        group.add_member(new_key);
         return new_key;
     }
 
@@ -251,53 +267,55 @@ public:
     /// @throws lookup_error    If a Property with the given id does not exist.
     /// @throws type_error      If the wrong value type is requested.
     template<typename T>
-    void set_value(const PropertyKey& key, T&& value)
+    void set_value(const PropertyKey key, T&& value)
     {
-        const Property& property = _find_property(key);
-        property.set_value(key, std::forward<T>(value));
+        _find_property(key).set_value(key, *this, std::forward<T>(value));
     }
 
     /// Sets the expression of a Property.
-    /// It is of critical importance, that all properties in the expression are listed.
     /// @param key              Key of the Property to modify.
     /// @param expression       New expression defining the value of the property.
+    /// @param dependencies     Keys of all dependencies. It is of critical importance, that all properties in the
+    ///                         expression are listed.
     /// @throws lookup_error    If a Property with the given id or one of the dependencies does not exist.
     /// @throws type_error      If the expression returns the wrong type.
     /// @throws cyclic_dependency_error     If the expression would introduce a cyclic dependency into the graph.
     template<typename T>
-    void set_expression(const PropertyKey& key, std::function<T(const PropertyGraph&)>&& expression,
-                        const std::vector<PropertyKey>& dependency_keys)
+    void set_expression(const PropertyKey key, std::function<T(const PropertyGraph&)>&& expression,
+                        std::vector<PropertyKey> dependencies)
     {
-        const Property& property = _find_property(key);
-        std::vector<Property*> dependencies = _collect_properties(dependency_keys);
-        _detect_cycles(property, dependencies);
-        property.set_expression(key, std::move(expression), std::move(dependency_keys));
+        _detect_cycles(key, dependencies);
+        _find_property(key).set_expression(key, *this, std::move(expression), std::move(dependencies));
     }
 
     /// Removes a Property from the graph.
     /// All affected Properties will have their value set to their current value.
     /// If the PropertyKey does not identify a Property in the graph, the call is silently ignored.
-    void delete_property(const PropertyKey& key);
+    void delete_property(const PropertyKey key);
+
+    /// Deletes a PropertyGroup from the graph.
+    /// @param id   ItemId used to identify the group.
+    /// If the id does not identify a PropertyGroup in the graph, the call is silently ignored.
+    void delete_group(const ItemId id);
 
 private:
     /// Property access with proper error reporting.
     /// @param key              Key of the Property to find.
     /// @throws lookup_error    If a property with the requested key does not exist in the graph.
     /// @returns                The requested Property.
-    const Property& _find_property(const PropertyKey& key) const;
+    Property& _find_property(const PropertyKey key);
+    const Property& _find_property(const PropertyKey key) const
+    {
+        return const_cast<PropertyGraph*>(this)->_find_property(key);
+    }
 
     /// Creates a new or returns an existing group Property for the given Item.
     /// @param item_id  PropertyGroups are identified by the ItemId alone.
     Property& _group_for(const ItemId item_id);
 
-    /// Collects a list of properties from their keys.
-    /// @param keys             All PropertyKeys.
-    /// @throws lookup_error    If any PropertyKey refers to a Property that doesn't exist in this graph.
-    std::vector<Property*> _collect_properties(const std::vector<PropertyKey>& keys);
-
     /// Detects potential cyclic dependencies in the graph before they are introduced.
     /// @throws cyclic_dependency_error     If the expression would introduce a cyclic dependency into the graph.
-    void _detect_cycles(const Property& property, const std::vector<Property*>& dependencies);
+    void _detect_cycles(const PropertyKey key, const std::vector<PropertyKey>& dependencies);
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
