@@ -1,21 +1,27 @@
 #pragma once
 
 #include <cassert>
+#include <mutex>
 #include <unordered_map>
 
 #include "app/core/property_key.hpp"
 #include "common/any.hpp"
 #include "common/exception.hpp"
-#include "utils/type_name.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
+/// Thread-safe container of arbitrary values that can be connected using expressions.
+/// Properties are owned by Items but stored in the PropertyGraph. Access to a value in the graph is facilitated by a
+/// PropertyKey - consisting of an ItemId and PropertyId. It is the Item's responsibility to make sure that all of its
+/// Properties are removed when it goes out of scope.
 class PropertyGraph {
 
     // types -------------------------------------------------------------------------------------------------------//
 public:
+    NOTF_ACCESS_TYPES(Item)
+
     /// Thrown when a Property with an unknown PropertyKey is requested.
     NOTF_EXCEPTION_TYPE(lookup_error)
 
@@ -216,6 +222,10 @@ private:
 
         /// Whether the Property is dirty (its expression needs to be evaluated).
         bool m_is_dirty = false;
+
+#ifdef NOTF_DEBUG
+        char _padding[3];
+#endif
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -223,7 +233,11 @@ public:
     /// Checks if the graph has a Property with the given key.
     /// @param key  Key of the Property to search for.
     /// @returns    True iff there is a Property with the requested key in the graph.
-    bool has_property(const PropertyKey key) const { return m_properties.count(key) != 0; }
+    bool has_property(const PropertyKey key) const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_properties.count(key) != 0;
+    }
 
     /// @{
     /// Returns the value of the Property requested by type and key.
@@ -234,32 +248,17 @@ public:
     template<typename T>
     const T& value(const PropertyKey key) const
     {
+        std::lock_guard<std::mutex> lock(m_mutex);
         return _find_property(key).value<T>(key, *this);
     }
     template<typename T>
-    const T& value(const TypedPropertyKey<T> id) const
+    const T& value(const TypedPropertyKey<T> typed_key) const
     {
-        return value<T>(PropertyKey(id));
+        const PropertyKey key(typed_key);
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return _find_property(key).value<T>(key, *this);
     }
     /// @}
-
-    /// Creates an new Property for a given Item and assigns its initial value (and type).
-    /// @param item_id  Item for which to construct the new Property.
-    /// @param value    Initial value of the Property, also used to determine its type.
-    /// @returns        Key of the new Property. Is invalid, if the given Item id is invalid.
-    template<typename T>
-    TypedPropertyKey<T> add_property(const ItemId item_id, T&& value)
-    {
-        if (!item_id.is_valid()) {
-            return TypedPropertyKey<T>::invalid();
-        }
-        Property& group = _group_for(item_id);
-        TypedPropertyKey<T> new_key(item_id, group.next_property_id());
-        auto result = m_properties.emplace(std::make_pair(new_key, Property(std::forward<T>(value))));
-        assert(result.second);
-        group.add_member(new_key);
-        return new_key;
-    }
 
     /// Sets the value of a Property.
     /// @param key              Key of the Property to modify.
@@ -269,6 +268,7 @@ public:
     template<typename T>
     void set_value(const PropertyKey key, T&& value)
     {
+        std::lock_guard<std::mutex> lock(m_mutex);
         _find_property(key).set_value(key, *this, std::forward<T>(value));
     }
 
@@ -284,19 +284,43 @@ public:
     void set_expression(const PropertyKey key, std::function<T(const PropertyGraph&)>&& expression,
                         std::vector<PropertyKey> dependencies)
     {
+        std::lock_guard<std::mutex> lock(m_mutex);
         _detect_cycles(key, dependencies);
         _find_property(key).set_expression(key, *this, std::move(expression), std::move(dependencies));
+    }
+
+private:
+    /// Creates an new Property for a given Item and assigns its initial value (and type).
+    /// @param item_id  Item for which to construct the new Property.
+    /// @param value    Initial value of the Property, also used to determine its type.
+    /// @returns        Key of the new Property. Is invalid, if the given Item id is invalid.
+    template<typename T>
+    TypedPropertyKey<T> _add_property(const ItemId item_id, T&& value)
+    {
+        if (!item_id.is_valid()) {
+            return TypedPropertyKey<T>::invalid();
+        }
+        TypedPropertyKey<T> new_key;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            Property& group = _group_for(item_id);
+            new_key = TypedPropertyKey<T>(item_id, group.next_property_id());
+            auto result = m_properties.emplace(std::make_pair(new_key, Property(std::forward<T>(value))));
+            assert(result.second);
+            group.add_member(new_key);
+        }
+        return new_key;
     }
 
     /// Removes a Property from the graph.
     /// All affected Properties will have their value set to their current value.
     /// If the PropertyKey does not identify a Property in the graph, the call is silently ignored.
-    void delete_property(const PropertyKey key);
+    void _delete_property(const PropertyKey key);
 
     /// Deletes a PropertyGroup from the graph.
     /// @param id   ItemId used to identify the group.
     /// If the id does not identify a PropertyGroup in the graph, the call is silently ignored.
-    void delete_group(const ItemId id);
+    void _delete_group(const ItemId id);
 
 private:
     /// Property access with proper error reporting.
@@ -321,6 +345,44 @@ private:
 private:
     /// All properties in the graph.
     std::unordered_map<PropertyKey, Property> m_properties;
+
+    /// Mutex guarding the graph.
+    mutable std::mutex m_mutex;
+};
+
+// ===================================================================================================================//
+
+template<>
+class PropertyGraph::Access<Item> {
+    friend class Item;
+
+    /// Constructor.
+    /// @param context  PropertyGraph to access.
+    Access(PropertyGraph& graph) : m_graph(graph) {}
+
+    /// Creates an new Property for a given Item and assigns its initial value (and type).
+    /// @param item_id  Item for which to construct the new Property.
+    /// @param value    Initial value of the Property, also used to determine its type.
+    /// @returns        Key of the new Property. Is invalid, if the given Item id is invalid.
+    template<typename T>
+    TypedPropertyKey<T> add_property(const ItemId item_id, T&& value)
+    {
+        m_graph._add_property(item_id, std::forward<T>(value));
+    }
+
+    /// Removes a Property from the graph.
+    /// All affected Properties will have their value set to their current value.
+    /// If the PropertyKey does not identify a Property in the graph, the call is silently ignored.
+    /// @param key  Key of the Property to delete.
+    void delete_property(const PropertyKey key) { m_graph._delete_property(key); }
+
+    /// Deletes a PropertyGroup from the graph.
+    /// @param id   ItemId used to identify the group.
+    /// If the id does not identify a PropertyGroup in the graph, the call is silently ignored.
+    void delete_group(const ItemId id) { m_graph._delete_group(id); }
+
+    /// The PropertyGraph to access.
+    PropertyGraph& m_graph;
 };
 
 NOTF_CLOSE_NAMESPACE

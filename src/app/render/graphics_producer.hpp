@@ -53,7 +53,7 @@ protected:
     /// Token object to make sure that object instances can only be created by a call to `_create`.
     class Token {
         friend class GraphicsProducer;
-        Token() = default;
+        Token() {} // not "= default", otherwise you could construct a Token via `Token{}`.
     };
 
     // methods -------------------------------------------------------------------------------------------------------//

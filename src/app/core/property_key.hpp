@@ -5,9 +5,6 @@
 
 NOTF_OPEN_NAMESPACE
 
-template<typename T>
-struct TypedPropertyKey;
-
 //====================================================================================================================//
 
 /// A PropertyKey is used to identify a single Property in the PropertyGraph.
@@ -23,28 +20,6 @@ public:
     /// @param item_id      ID of the Item owning the Property.
     /// @param property_id  ID of the Property in the Item's PropertyGroup.
     PropertyKey(ItemId item_id, PropertyId property_id) : m_item_id(item_id), m_property_id(property_id) {}
-
-    //    /// Copy constructor.
-    //    /// @param other    PropertyKey to copy from.
-    //    PropertyKey(const PropertyKey& other) : m_item_id(other.m_item_id), m_property_id(other.m_property_id) {}
-
-    //    /// Move constructor.
-    //    /// @param other    PropertyKey to copy from.
-    //    PropertyKey(PropertyKey&& other) : m_item_id(other.m_item_id), m_property_id(other.m_property_id) {
-    //        other.m_item_id = ItemId::invalid();
-    //        other.m_property_id = ItemId::m_property_id();
-    //    }
-
-    //    /// Copy constructor from typed key.
-    //    /// @param other    TypedPropertyKey to copy from.
-    //    template<typename T>
-    //    PropertyKey(const TypedPropertyKey<T>& other) : m_item_id(other.m_item_id), m_property_id(other.m_property_id)
-    //    {}
-
-    //    PropertyKey& operator=(const PropertyKey& other)
-    //    {
-
-    //    }
 
     /// ID of the Item owning the Property.
     ItemId item_id() const { return m_item_id; }
@@ -144,6 +119,18 @@ struct TypedPropertyKey : public PropertyKey {
 public:
     /// Value type of the Property.
     using value_t = T;
+
+    /// Default constructor.
+    TypedPropertyKey() : PropertyKey(ItemId::invalid(), PropertyId::invalid()) {}
+
+    /// Value constructor.
+    /// @param item_id      ID of the Item owning the Property.
+    /// @param property_id  ID of the Property in the Item's PropertyGroup.
+    TypedPropertyKey(ItemId item_id, PropertyId property_id) : PropertyKey(item_id, property_id) {}
+
+    /// Copy constructor.
+    /// @param other    PropertyKey to copy from.
+    TypedPropertyKey(const PropertyKey& other) : PropertyKey(other) {}
 };
 
 //====================================================================================================================//

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/core/property_graph.hpp"
 #include "app/ids.hpp"
 #include "common/signal.hpp"
 #include "utils/make_smart_enabler.hpp"
@@ -227,7 +228,7 @@ protected:
     /// Token object to make sure that object instances can only be created by a call to `_create`.
     class Token {
         friend class Item;
-        Token() = default;
+        Token() {} // not "= default", otherwise you could construct a Token via `Token{}`.
     };
 
     // signals -------------------------------------------------------------------------------------------------------//
@@ -266,6 +267,8 @@ protected:
 public:
     /// Destructor
     virtual ~Item();
+
+    static int doStuff(const Token&) { return 42; }
 
     /// Application-unique ID of this Item.
     ItemId id() const { return m_id; }
@@ -325,6 +328,33 @@ public:
     /// @param name New name of this Item.
     const std::string& set_name(std::string name);
 
+    /// Creates a new Property associated with this Item.
+    /// It is the responsibility of the caller of this method to store the returned key as the Item will keep no record
+    /// of it. However, the PropertyGraph will, and when this Item goes out of scope, so will all of its Properties.
+    /// Owning a copy of a PropertyKey does not imply ownership.
+    /// @param graph    PropertyGraph to store the value, aquire via `Application::instance().property_graph()`.
+    /// @param value    Initial value of the Property, also used to determine its type.
+    template<typename T>
+    TypedPropertyKey<T> add_property(PropertyGraph& graph, T&& value)
+    {
+        PropertyGraph::Access<Item>(graph).add_property(m_id, std::forward<T>(value));
+    }
+
+    /// Removes a Property from the graph.
+    /// All affected Properties will have their value frozen to their current value.
+    /// If the PropertyKey does not identify a Property in the graph, the call is silently ignored.
+    /// @param graph    PropertyGraph that stores the value, aquire via `Application::instance().property_graph()`.
+    /// @param key      Key of the Property to delete.
+    void delete_property(PropertyGraph& graph, PropertyKey key)
+    {
+        PropertyGraph::Access<Item>(graph).delete_property(key);
+        // also TODO: if we move this into the unit, we don't need to pass the graph as argumetn
+    }
+
+    // TODO: on the Item level, we don't need PropertyKeys anymore - TypedPropertyIds will do just fine (and are half
+    // the size. Maybe move PropertyKey into the PropertyGraph class? It's not like they are used anywhere else.
+    // And the PropertyGraph::Access<Item> struct can store the Id of the item and use it to construct PropertyKeys
+
 protected:
     /// Removes a child Item from this Item.
     /// This needs to be a virtual method, because Items react differently to the removal of a child Item.
@@ -348,14 +378,14 @@ protected:
     ChildContainerPtr m_children;
 
 private:
-    /// Application-unique ID of this Item.
-    const ItemId m_id;
-
     /// Non-owning pointer to the parent Item, is potentially empty.
     Item* m_parent = nullptr;
 
     /// The user-defined name of this Item, is potentially empty and not guaranteed to be unique if set.
     std::string m_name;
+
+    /// Application-unique ID of this Item.
+    const ItemId m_id;
 };
 
 //====================================================================================================================//

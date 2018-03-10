@@ -3,6 +3,7 @@
 #include "common/log.hpp"
 #include "common/set.hpp"
 #include "common/vector.hpp"
+#include "utils/type_name.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -67,11 +68,12 @@ void PropertyGraph::Property::_clean_value(const PropertyKey& my_key, PropertyGr
 
 //====================================================================================================================//
 
-void PropertyGraph::delete_property(const PropertyKey key)
+void PropertyGraph::_delete_property(const PropertyKey key)
 {
     if (!key.property_id().is_valid()) {
         return;
     }
+    std::lock_guard<std::mutex> lock(m_mutex);
 
     auto propertyIt = m_properties.find(key);
     if (propertyIt == m_properties.end()) {
@@ -86,11 +88,12 @@ void PropertyGraph::delete_property(const PropertyKey key)
     groupIt->second.remove_member(key);
 }
 
-void PropertyGraph::delete_group(const ItemId id)
+void PropertyGraph::_delete_group(const ItemId id)
 {
     if (!id.is_valid()) {
         return;
     }
+    std::lock_guard<std::mutex> lock(m_mutex);
 
     PropertyKey key = PropertyKey(id, 0);
     auto groupIt = m_properties.find(key);

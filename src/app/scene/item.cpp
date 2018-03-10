@@ -3,6 +3,8 @@
 #include <atomic>
 #include <unordered_set>
 
+#include "app/core/application.hpp"
+#include "app/core/property_graph.hpp"
 #include "common/log.hpp"
 
 namespace { // anonymous
@@ -39,6 +41,8 @@ Item::~Item()
     else {
         log_trace << "Destroying Item \"" << m_name << "\"";
     }
+
+    PropertyGraph::Access<Item>(Application::instance().property_graph()).delete_group(m_id);
 
     m_children->_destroy();
     m_children.reset();
