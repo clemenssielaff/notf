@@ -26,44 +26,24 @@ void PropertyGraph::Property::add_member(PropertyKey key)
     m_affected.push_back(std::move(key));
 }
 
-void PropertyGraph::Property::remove_member(const PropertyKey& key) { remove_one_unordered(m_affected, key); }
-
-void PropertyGraph::Property::_clear_dependencies(const PropertyKey& my_key, PropertyGraph& graph) noexcept
+void PropertyGraph::Property::remove_member(const PropertyKey& key)
 {
-    for (const PropertyKey& dependencyKey : m_dependencies) {
-        Property& dependency = graph._find_property(dependencyKey);
-        const bool should_always_succeed = remove_one_unordered(dependency.m_affected, my_key);
-        assert(should_always_succeed);
-    }
-    m_dependencies.clear();
+    assert(!m_value.has_value()); // group properties should not have a value
+    remove_one_unordered(m_affected, key);
 }
 
-void PropertyGraph::Property::_check_value_type(const PropertyKey& my_key, const std::type_info& info)
+void PropertyGraph::Property::_throw_type_error(const PropertyKey& my_key, const std::type_info& info)
 {
-    assert(m_value.has_value());
-    if (info != m_value.type()) {
-        notf_throw_format(type_error, "Wrong property type requested of Property \""
-                                          << my_key << "\""
-                                          << "(\"" << type_name(info) << " instead of \"" << type_name(m_value.type())
-                                          << "\")");
-    }
+    notf_throw_format(type_error, "Wrong property type requested of Property \""
+                                      << my_key << "\""
+                                      << "(\"" << type_name(info) << " instead of \"" << type_name(m_value.type())
+                                      << "\")");
 }
-
-void PropertyGraph::Property::_clean_value(const PropertyKey& my_key, PropertyGraph& graph)
+void PropertyGraph::Property::_report_expression_error(const PropertyKey& my_key, const std::type_info& info)
 {
-    if (m_is_dirty) {
-        assert(m_expression);
-        auto result = m_expression(graph);
-        if (result.type() != m_value.type()) {
-            _freeze(my_key, graph);
-            log_critical << "Expression for Property \"" << my_key << "\" returned wrong type (\""
-                         << type_name(result.type()) << "\" instead of \"" << type_name(m_value.type())
-                         << "\"). The expression has been disabled to avoid future errors.";
-            return;
-        }
-        m_value = std::move(result);
-        m_is_dirty = false;
-    }
+    log_critical << "Expression for Property \"" << my_key << "\" returned wrong type (\"" << type_name(info)
+                 << "\" instead of \"" << type_name(m_value.type())
+                 << "\"). The expression has been disabled to avoid future errors.";
 }
 
 //====================================================================================================================//
@@ -110,14 +90,8 @@ void PropertyGraph::_delete_group(const ItemId id)
     m_properties.erase(groupIt);
 }
 
-PropertyGraph::Property& PropertyGraph::_find_property(const PropertyKey key)
+void PropertyGraph::_throw_notfound(const PropertyKey key)
 {
-    if (key.property_id().is_valid()) { // you cannot request the implicit PropertyGroup properties
-        const auto it = m_properties.find(key);
-        if (it != m_properties.end()) {
-            return it->second;
-        }
-    }
     notf_throw_format(lookup_error, "Unknown Property \"" << key << "\"");
 }
 

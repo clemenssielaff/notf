@@ -268,8 +268,6 @@ public:
     /// Destructor
     virtual ~Item();
 
-    static int doStuff(const Token&) { return 42; }
-
     /// Application-unique ID of this Item.
     ItemId id() const { return m_id; }
 
@@ -328,32 +326,53 @@ public:
     /// @param name New name of this Item.
     const std::string& set_name(std::string name);
 
+    // properties -------------------------------------------------------------
+
+    /// Creates and returns a PropertyKey of this Item from a PropertyID.
+    /// Does not check whether the returned key is actually valid.
+    PropertyKey make_property_key(PropertyId property_id) { return PropertyKey(m_id, std::move(property_id)); }
+
     /// Creates a new Property associated with this Item.
     /// It is the responsibility of the caller of this method to store the returned key as the Item will keep no record
     /// of it. However, the PropertyGraph will, and when this Item goes out of scope, so will all of its Properties.
     /// Owning a copy of a PropertyKey does not imply ownership.
-    /// @param graph    PropertyGraph to store the value, aquire via `Application::instance().property_graph()`.
     /// @param value    Initial value of the Property, also used to determine its type.
+    /// @param graph    PropertyGraph that contains the Property - pass explicit to allow inlining.
+    /// @returns        TypedPropertyId that can be used to access the Property value in the graph.
     template<typename T>
-    TypedPropertyKey<T> add_property(PropertyGraph& graph, T&& value)
+    TypedPropertyId<T> add_property(T&& value, PropertyGraph& graph = _graph())
     {
-        PropertyGraph::Access<Item>(graph).add_property(m_id, std::forward<T>(value));
+        PropertyGraph::Access<Item>(graph, m_id).add_property(std::forward<T>(value));
     }
+
+    ///@{
+    /// Returns the value of the Property requested by type and key.
+    /// @param property_id      Requested Property.
+    /// @param graph            PropertyGraph that contains the Property - pass explicit to allow inlining.
+    /// @throws lookup_error    If a Property with the given id does not exist.
+    /// @throws type_error      If the wrong value type is requested.
+    /// @return                 Value of the property.
+    template<typename T>
+    const T& property_value(PropertyId property_id, PropertyGraph& graph = _graph())
+    {
+        return graph.value<T>(make_property_key(std::move(property_id)));
+    }
+    template<typename T>
+    const T& property_value(TypedPropertyId<T> property_id, PropertyGraph& graph = _graph())
+    {
+        return graph.value<T>(make_property_key(std::move(property_id)));
+    }
+    ///@}
 
     /// Removes a Property from the graph.
     /// All affected Properties will have their value frozen to their current value.
     /// If the PropertyKey does not identify a Property in the graph, the call is silently ignored.
-    /// @param graph    PropertyGraph that stores the value, aquire via `Application::instance().property_graph()`.
-    /// @param key      Key of the Property to delete.
-    void delete_property(PropertyGraph& graph, PropertyKey key)
+    /// @param property     Id of the Property to delete.
+    /// @param graph        PropertyGraph that contains the Property - pass explicit to allow inlining.
+    void delete_property(const PropertyId property, PropertyGraph& graph = _graph())
     {
-        PropertyGraph::Access<Item>(graph).delete_property(key);
-        // also TODO: if we move this into the unit, we don't need to pass the graph as argumetn
+        PropertyGraph::Access<Item>(graph, m_id).delete_property(property);
     }
-
-    // TODO: on the Item level, we don't need PropertyKeys anymore - TypedPropertyIds will do just fine (and are half
-    // the size. Maybe move PropertyKey into the PropertyGraph class? It's not like they are used anywhere else.
-    // And the PropertyGraph::Access<Item> struct can store the Id of the item and use it to construct PropertyKeys
 
 protected:
     /// Removes a child Item from this Item.
@@ -367,6 +386,9 @@ protected:
     static void _set_parent(Item* item, Item* parent) { item->_set_parent(parent, /* notify_old = */ true); }
 
 private:
+    /// Returns the global PropertyGraph.
+    static PropertyGraph& _graph();
+
     /// Sets the parent of this Item.
     /// @param notify_old   If the old parent is already in the process of being deleted, the child Item must not
     ///                     attempt to unregister itself anymore.

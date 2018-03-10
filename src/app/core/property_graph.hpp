@@ -4,9 +4,144 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "app/core/property_key.hpp"
+#include "app/ids.hpp"
 #include "common/any.hpp"
 #include "common/exception.hpp"
+#include "utils/bitsizeof.hpp"
+
+NOTF_OPEN_NAMESPACE
+
+//====================================================================================================================//
+
+/// A PropertyKey is used to identify a single Property in the PropertyGraph.
+/// It consists of both the ID of the Property itself, as well as that of its Item.
+struct PropertyKey {
+
+    // methods -------------------------------------------------------------------------------------------------------//
+public:
+    /// No default constructor.
+    PropertyKey() = delete;
+
+    /// Value constructor.
+    /// @param item_id      ID of the Item owning the Property.
+    /// @param property_id  ID of the Property in the Item's PropertyGroup.
+    PropertyKey(ItemId item_id, PropertyId property_id) : m_item_id(item_id), m_property_id(property_id) {}
+
+    /// ID of the Item owning the Property.
+    ItemId item_id() const { return m_item_id; }
+
+    /// ID of the Property in the Item's PropertyGroup.
+    PropertyId property_id() const { return m_property_id; }
+
+    /// Explicit invalid PropertyKey generator.
+    static PropertyKey invalid() { return PropertyKey(ItemId::INVALID, PropertyId::INVALID); }
+
+    /// Equality operator.
+    /// @param rhs  PropertyKey to test against.
+    bool operator==(const PropertyKey& rhs) const
+    {
+        return m_item_id == rhs.m_item_id && m_property_id == rhs.m_property_id;
+    }
+
+    /// Inequality operator.
+    /// @param rhs  PropertyKey to test against.
+    bool operator!=(const PropertyKey& rhs) const
+    {
+        return m_item_id != rhs.m_item_id || m_property_id != rhs.m_property_id;
+    }
+
+    /// Lesser-than operator.
+    /// @param rhs  PropertyKey to test against.
+    bool operator<(const PropertyKey& rhs) const
+    {
+        if (m_item_id < rhs.m_item_id) {
+            return true;
+        }
+        else {
+            return m_item_id == rhs.m_item_id && m_property_id < rhs.m_property_id;
+        }
+    }
+
+    /// Lesser-or-equal-than operator.
+    /// @param rhs  PropertyKey to test against.
+    bool operator<=(const PropertyKey& rhs) const
+    {
+        if (m_item_id < rhs.m_item_id) {
+            return true;
+        }
+        else {
+            return m_item_id == rhs.m_item_id && m_property_id <= rhs.m_property_id;
+        }
+    }
+
+    /// Greater-than operator.
+    /// @param rhs  PropertyKey to test against.
+    bool operator>(const PropertyKey& rhs) const
+    {
+        if (m_item_id > rhs.m_item_id) {
+            return true;
+        }
+        else {
+            return m_item_id == rhs.m_item_id && m_property_id > rhs.m_property_id;
+        }
+    }
+
+    /// Greater-or-equal-than operator.
+    /// @param rhs  PropertyKey to test against.
+    bool operator>=(const PropertyKey& rhs) const
+    {
+        if (m_item_id > rhs.m_item_id) {
+            return true;
+        }
+        else {
+            return m_item_id == rhs.m_item_id && m_property_id >= rhs.m_property_id;
+        }
+    }
+
+    /// Checks if this PropertyKey is valid or not.
+    bool is_valid() const { return m_item_id != ItemId::INVALID && m_property_id != PropertyId::INVALID; }
+
+    /// Checks if this PropertyKey is valid or not.
+    explicit operator bool() const { return is_valid(); }
+
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
+    /// ID of the Item owning the Property.
+    ItemId m_item_id;
+
+    /// ID of the Property in the Item's PropertyGroup.
+    PropertyId m_property_id;
+};
+
+//====================================================================================================================//
+
+/// Prints a human-readable representation of a PropertyKey into a std::ostream.
+/// @param os   Output stream, implicitly passed with the << operator.
+/// @param key  PropertyKey to print.
+/// @return Output stream for further output.
+inline std::ostream& operator<<(std::ostream& out, const PropertyKey& key)
+{
+    return out << "(" << key.item_id() << ", " << key.property_id() << ")";
+}
+
+NOTF_CLOSE_NAMESPACE
+
+//== std::hash =======================================================================================================//
+
+namespace std {
+
+template<>
+struct hash<notf::PropertyKey> {
+    size_t operator()(const notf::PropertyKey& key) const
+    {
+        return (static_cast<size_t>(key.item_id().value()) << (notf::bitsizeof<size_t>() / 2))
+               ^ key.property_id().value();
+    }
+};
+
+} // namespace std
+
+//====================================================================================================================//
 
 NOTF_OPEN_NAMESPACE
 
@@ -18,7 +153,7 @@ NOTF_OPEN_NAMESPACE
 /// Properties are removed when it goes out of scope.
 class PropertyGraph {
 
-    // types -------------------------------------------------------------------------------------------------------//
+    // types ---------------------------------------------------------------------------------------------------------//
 public:
     NOTF_ACCESS_TYPES(Item)
 
@@ -84,8 +219,21 @@ private:
         template<typename T>
         const T& value(const PropertyKey& my_key, PropertyGraph& graph)
         {
-            _check_value_type(my_key, typeid(T));
-            _clean_value(my_key, graph);
+            const auto& info = typeid(T);
+            if (info != m_value.type()) {
+                _throw_type_error(my_key, info);
+            }
+
+            if (m_is_dirty) {
+                assert(m_expression);
+                auto result = m_expression(graph);
+                if (result.type() != m_value.type()) {
+                    _freeze(my_key, graph);
+                    return _report_expression_error(my_key, result.type());
+                }
+                m_value = std::move(result);
+                m_is_dirty = false;
+            }
 
             const T* result = std::any_cast<T>(&m_value);
             assert(result);
@@ -101,7 +249,11 @@ private:
         template<typename T>
         void set_value(const PropertyKey& my_key, PropertyGraph& graph, T&& value)
         {
-            _check_value_type(my_key, typeid(T));
+            const auto& info = typeid(T);
+            if (info != m_value.type()) {
+                _throw_type_error(my_key, info);
+            }
+
             _freeze(my_key, graph);
 
             if (value != *std::any_cast<T>(&m_value)) {
@@ -120,8 +272,12 @@ private:
         void set_expression(const PropertyKey& my_key, PropertyGraph& graph,
                             std::function<T(const PropertyGraph&)> expression, std::vector<PropertyKey> dependencies)
         {
-            _check_value_type(my_key, typeid(T));
-            _clear_dependencies(my_key, graph);
+            const auto& info = typeid(T);
+            if (info != m_value.type()) {
+                _throw_type_error(my_key, info);
+            }
+
+            _unregister_from_dependencies(my_key, graph);
 
             // wrap the typed expression into one that returns a std::any
             m_expression
@@ -141,7 +297,7 @@ private:
         /// @param graph        Graph used to find affected Properties.
         void prepare_removal(const PropertyKey& my_key, PropertyGraph& graph)
         {
-            _clear_dependencies(my_key, graph);
+            _unregister_from_dependencies(my_key, graph);
             _freeze_affected(my_key, graph);
         }
 
@@ -151,7 +307,7 @@ private:
         /// @param graph        Graph used to find affected Properties.
         void _freeze(const PropertyKey& my_key, PropertyGraph& graph) noexcept
         {
-            _clear_dependencies(my_key, graph);
+            _unregister_from_dependencies(my_key, graph);
             m_expression = {};
             m_is_dirty = false;
         }
@@ -170,7 +326,17 @@ private:
         /// Removes all dependencies from this property.
         /// @param my_key   PropertyKey of this Property.
         /// @param graph    Graph used to find dependent Properties.
-        void _clear_dependencies(const PropertyKey& my_key, PropertyGraph& graph) noexcept;
+        void _unregister_from_dependencies(const PropertyKey& my_key, PropertyGraph& graph)
+        {
+            for (const PropertyKey& dependencyKey : m_dependencies) {
+                Property& dependency = graph._find_property(dependencyKey);
+                auto it = std::find(dependency.m_affected.begin(), dependency.m_affected.end(), my_key);
+                assert(it != dependency.m_affected.end());
+                *it = std::move(dependency.m_affected.back());
+                dependency.m_affected.pop_back();
+            }
+            m_dependencies.clear();
+        }
 
         /// Freezes all affected properties.
         /// @param graph    Graph used to find affected Properties.
@@ -196,12 +362,12 @@ private:
         /// @param my_key       PropertyKey of this Property.
         /// @param info         Type to check.
         /// @throws type_error  If the wrong value type is requested.
-        void _check_value_type(const PropertyKey& my_key, const std::type_info& info);
+        NOTF_NORETURN void _throw_type_error(const PropertyKey& my_key, const std::type_info& info);
 
-        /// Makes sure that the Property's value is clean.
+        /// Reports that the Property expression returned the wrong type and was removed.
         /// @param my_key   PropertyKey of this Property.
-        /// @param graph    Graph used to (potentially) evaluate the Property expression.
-        void _clean_value(const PropertyKey& my_key, PropertyGraph& graph);
+        /// @param info     TypeInfo of the wrong result type.
+        void _report_expression_error(const PropertyKey& my_key, const std::type_info& info);
 
         // fields -------------------------------------------------------------
     private:
@@ -239,7 +405,6 @@ public:
         return m_properties.count(key) != 0;
     }
 
-    /// @{
     /// Returns the value of the Property requested by type and key.
     /// @param key              Key of the requested Property.
     /// @throws lookup_error    If a Property with the given id does not exist.
@@ -251,14 +416,6 @@ public:
         std::lock_guard<std::mutex> lock(m_mutex);
         return _find_property(key).value<T>(key, *this);
     }
-    template<typename T>
-    const T& value(const TypedPropertyKey<T> typed_key) const
-    {
-        const PropertyKey key(typed_key);
-        std::lock_guard<std::mutex> lock(m_mutex);
-        return _find_property(key).value<T>(key, *this);
-    }
-    /// @}
 
     /// Sets the value of a Property.
     /// @param key              Key of the Property to modify.
@@ -266,7 +423,7 @@ public:
     /// @throws lookup_error    If a Property with the given id does not exist.
     /// @throws type_error      If the wrong value type is requested.
     template<typename T>
-    void set_value(const PropertyKey key, T&& value)
+    void set_property(const PropertyKey key, T&& value)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         _find_property(key).set_value(key, *this, std::forward<T>(value));
@@ -281,8 +438,8 @@ public:
     /// @throws type_error      If the expression returns the wrong type.
     /// @throws cyclic_dependency_error     If the expression would introduce a cyclic dependency into the graph.
     template<typename T>
-    void set_expression(const PropertyKey key, std::function<T(const PropertyGraph&)>&& expression,
-                        std::vector<PropertyKey> dependencies)
+    void set_property(const PropertyKey key, std::function<T(const PropertyGraph&)>&& expression,
+                      std::vector<PropertyKey> dependencies)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         _detect_cycles(key, dependencies);
@@ -295,16 +452,16 @@ private:
     /// @param value    Initial value of the Property, also used to determine its type.
     /// @returns        Key of the new Property. Is invalid, if the given Item id is invalid.
     template<typename T>
-    TypedPropertyKey<T> _add_property(const ItemId item_id, T&& value)
+    PropertyKey _add_property(const ItemId item_id, T&& value)
     {
         if (!item_id.is_valid()) {
-            return TypedPropertyKey<T>::invalid();
+            return PropertyKey::invalid();
         }
-        TypedPropertyKey<T> new_key;
+        PropertyKey new_key = PropertyKey::invalid();
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             Property& group = _group_for(item_id);
-            new_key = TypedPropertyKey<T>(item_id, group.next_property_id());
+            new_key = PropertyKey(item_id, group.next_property_id());
             auto result = m_properties.emplace(std::make_pair(new_key, Property(std::forward<T>(value))));
             assert(result.second);
             group.add_member(new_key);
@@ -327,11 +484,23 @@ private:
     /// @param key              Key of the Property to find.
     /// @throws lookup_error    If a property with the requested key does not exist in the graph.
     /// @returns                The requested Property.
-    Property& _find_property(const PropertyKey key);
+    Property& _find_property(const PropertyKey key)
+    {
+        if (key.property_id().is_valid()) { // you cannot request the implicit PropertyGroup properties
+            const auto it = m_properties.find(key);
+            if (it != m_properties.end()) {
+                return it->second;
+            }
+        }
+        _throw_notfound(key);
+    }
     const Property& _find_property(const PropertyKey key) const
     {
         return const_cast<PropertyGraph*>(this)->_find_property(key);
     }
+
+    /// Call when a PropertyKey is not found.
+    NOTF_NORETURN void _throw_notfound(const PropertyKey key);
 
     /// Creates a new or returns an existing group Property for the given Item.
     /// @param item_id  PropertyGroups are identified by the ItemId alone.
@@ -358,31 +527,34 @@ class PropertyGraph::Access<Item> {
 
     /// Constructor.
     /// @param context  PropertyGraph to access.
-    Access(PropertyGraph& graph) : m_graph(graph) {}
+    /// @param item     Id of the Item that created this instance.
+    Access(PropertyGraph& graph, const ItemId item) : m_graph(graph), m_item(item) {}
 
     /// Creates an new Property for a given Item and assigns its initial value (and type).
     /// @param item_id  Item for which to construct the new Property.
     /// @param value    Initial value of the Property, also used to determine its type.
     /// @returns        Key of the new Property. Is invalid, if the given Item id is invalid.
     template<typename T>
-    TypedPropertyKey<T> add_property(const ItemId item_id, T&& value)
+    TypedPropertyId<T> add_property(T&& value)
     {
-        m_graph._add_property(item_id, std::forward<T>(value));
+        return m_graph._add_property(m_item, std::forward<T>(value)).property_id();
     }
 
     /// Removes a Property from the graph.
     /// All affected Properties will have their value set to their current value.
     /// If the PropertyKey does not identify a Property in the graph, the call is silently ignored.
-    /// @param key  Key of the Property to delete.
-    void delete_property(const PropertyKey key) { m_graph._delete_property(key); }
+    /// @param property_id  Id of the Property to delete.
+    void delete_property(const PropertyId property_id) { m_graph._delete_property(PropertyKey(m_item, property_id)); }
 
     /// Deletes a PropertyGroup from the graph.
-    /// @param id   ItemId used to identify the group.
-    /// If the id does not identify a PropertyGroup in the graph, the call is silently ignored.
-    void delete_group(const ItemId id) { m_graph._delete_group(id); }
+    /// If the Item id does not identify a PropertyGroup in the graph, the call is silently ignored.
+    void delete_group() { m_graph._delete_group(m_item); }
 
     /// The PropertyGraph to access.
     PropertyGraph& m_graph;
+
+    /// Id of the Item that created this instance.
+    const ItemId m_item;
 };
 
 NOTF_CLOSE_NAMESPACE

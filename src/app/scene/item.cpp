@@ -42,7 +42,7 @@ Item::~Item()
         log_trace << "Destroying Item \"" << m_name << "\"";
     }
 
-    PropertyGraph::Access<Item>(Application::instance().property_graph()).delete_group(m_id);
+    PropertyGraph::Access<Item>(Application::instance().property_graph(), m_id).delete_group();
 
     m_children->_destroy();
     m_children.reset();
@@ -105,6 +105,8 @@ const std::string& Item::set_name(std::string name)
     }
     return m_name;
 }
+
+PropertyGraph& Item::_graph() { return Application::instance().property_graph(); }
 
 void Item::_set_parent(Item* parent, bool notify_old)
 {

@@ -86,6 +86,9 @@
 #    define NOTF_UNUSED
 #endif
 
+/// Signifies that the function will not return control flow back to the caller.
+#define NOTF_NORETURN [[noreturn]]
+
 //====================================================================================================================//
 
 /// Takes two macros and concatenates them without whitespace in between.
