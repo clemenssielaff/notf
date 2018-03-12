@@ -7,7 +7,6 @@
 #include "app/ids.hpp"
 #include "common/any.hpp"
 #include "common/exception.hpp"
-#include "common/variant.hpp"
 #include "utils/bitsizeof.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -167,23 +166,40 @@ public:
     /// Thrown when a new expression would introduce a cyclic dependency into the graph.
     NOTF_EXCEPTION_TYPE(cyclic_dependency_error)
 
-    /// Thrown when a PropertyGroup would be created twice or could not found (internal error).
-    NOTF_EXCEPTION_TYPE(group_error)
-
 private:
-    /// The PropertyGroup is created by an Item with the key: (ItemId, 0) and holds information about Properties in the
-    /// group as well as the GraphicsProducer associated with the Item.
-    class PropertyGroup {
+    /// An untyped Property in the graph. Uses std::any for internal type erasure of the Property value.
+    /// The type also doubles as the conceptual `PropertyGroup` type, which is implicitly created by the PropertyGraph
+    /// with the key: (ItemId, 0) whenever a Property from a new Item is being created. I know that it is generally "bad
+    /// style" to overload a type like this, but it's just so convenient and besides, it is internal to PropertyGraph so
+    /// nobody has to know ;) And no - using a variant here will actually increase the size of the Property type.
+    class Property {
+
         // methods ------------------------------------------------------------
     public:
         /// Default constructor.
-        PropertyGroup(GraphicsProducerId graphics_producer) : m_item_producer(std::move(graphics_producer)) {}
+        Property() = default;
+
+        /// Value constructor.
+        /// @param value    Value held by the Property, is used to determine the PropertyType.
+        template<typename T>
+        Property(T&& value) : m_value(std::move(value))
+        {}
+
+        // group --------------------------------------------------------------
 
         /// All members of this group.
-        const std::vector<PropertyKey>& members() const { return m_members; }
+        const std::vector<PropertyKey>& members() const
+        {
+            assert(!m_value.has_value()); // group properties should not have a value
+            return m_affected;
+        }
 
         /// Returns the next PropertyId in this group.
-        PropertyId next_property_id() { return m_group_counter++; }
+        PropertyId next_property_id()
+        {
+            assert(!m_value.has_value()); // group properties should not have a value
+            return m_group_counter++;
+        }
 
         /// Adds a new Property to this group.
         /// @param key  Key of the Property to add.
@@ -193,31 +209,7 @@ private:
         /// @param key  Key of the Property to remove.
         void remove_member(const PropertyKey& key);
 
-        // fields -------------------------------------------------------------
-    private:
-        /// All Properties in this group.
-        std::vector<PropertyKey> m_members;
-
-        /// The GraphicsProducer associated with the Item of this PropertyGroup.
-        const GraphicsProducerId m_item_producer;
-
-        /// Counter used by PropertyGroups to generate new PropertyIds for members of the group.
-        PropertyId::underlying_t m_group_counter{1};
-    };
-
-    //=========================================================================
-
-    /// An untyped Property in the graph that can be connected to other Properties via expressions.
-    /// Uses std::any for internal type erasure of the Property value.
-    class Property {
-
-        // methods ------------------------------------------------------------
-    public:
-        /// Value constructor.
-        /// @param value    Value held by the Property, is used to determine the PropertyType.
-        template<typename T>
-        Property(T&& value) : m_value(std::move(value))
-        {}
+        // property -----------------------------------------------------------
 
         /// The Property's value.
         /// If the Property is defined by an expression, this might evaluate the expression.
@@ -334,11 +326,14 @@ private:
         /// Properties affected by this one through expressions.
         std::vector<PropertyKey> m_affected;
 
+        /// Counter used by PropertyGroups to generate new PropertyIds for members of the group.
+        PropertyId::underlying_t m_group_counter = 1;
+
         /// Whether the Property is dirty (its expression needs to be evaluated).
         bool m_is_dirty = false;
 
 #ifdef NOTF_DEBUG
-        char _padding[7];
+        char _padding[3];
 #endif
     };
 
@@ -395,12 +390,6 @@ public:
     }
 
 private: // for Access<Item>
-    /// Creates a new PropertyGroup.
-    /// @param item_id      Item of this PropertyGroup.
-    /// @param produder     The GraphicsProducer associated with the Item.
-    /// @throws group_error If a PropertyGroup for the Item already exists.
-    void _add_group(const ItemId item_id, GraphicsProducerId producer);
-
     /// Creates an new Property for a given Item and assigns its initial value (and type).
     /// @param item_id  Item for which to construct the new Property.
     /// @param value    Initial value of the Property, also used to determine its type.
@@ -414,7 +403,7 @@ private: // for Access<Item>
         PropertyKey new_key = PropertyKey::invalid();
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            PropertyGroup& group = _group_for(item_id);
+            Property& group = _group_for(item_id);
             new_key = PropertyKey(item_id, group.next_property_id());
             auto result = m_properties.emplace(std::make_pair(new_key, Property(std::forward<T>(value))));
             assert(result.second);
@@ -443,8 +432,7 @@ private:
         if (key.property_id().is_valid()) { // you cannot request the implicit PropertyGroup properties
             const auto it = m_properties.find(key);
             if (it != m_properties.end()) {
-                assert(std::holds_alternative<Property>(it->second));
-                return std::get<Property>(it->second);
+                return it->second;
             }
         }
         _throw_notfound(key);
@@ -458,9 +446,8 @@ private:
     NOTF_NORETURN void _throw_notfound(const PropertyKey key);
 
     /// Creates a new or returns an existing group Property for the given Item.
-    /// @param item_id      PropertyGroups are identified by the ItemId alone.
-    /// @throws group_error If a PropertyGroup for the Item already exists.
-    PropertyGroup& _group_for(const ItemId item_id);
+    /// @param item_id  PropertyGroups are identified by the ItemId alone.
+    Property& _group_for(const ItemId item_id);
 
     /// Detects potential cyclic dependencies in the graph before they are introduced.
     /// @throws cyclic_dependency_error     If the expression would introduce a cyclic dependency into the graph.
@@ -469,7 +456,7 @@ private:
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// All properties in the graph.
-    std::unordered_map<PropertyKey, std::variant<PropertyGroup, Property>> m_properties;
+    std::unordered_map<PropertyKey, Property> m_properties;
 
     /// Mutex guarding the graph.
     mutable std::mutex m_mutex;
@@ -485,11 +472,6 @@ class PropertyGraph::Access<Item> {
     /// @param context  PropertyGraph to access.
     /// @param item     Id of the Item that created this instance.
     Access(PropertyGraph& graph, const ItemId item) : m_graph(graph), m_item(item) {}
-
-    /// Creates a new PropertyGroup.
-    /// @param produder     The GraphicsProducer associated with the Item.
-    /// @throws group_error If a PropertyGroup for the Item already exists.
-    void add_group(GraphicsProducerId producer) { m_graph._add_group(m_item, std::move(producer)); }
 
     /// Creates an new Property for a given Item and assigns its initial value (and type).
     /// @param item_id  Item for which to construct the new Property.
