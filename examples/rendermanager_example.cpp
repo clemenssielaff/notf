@@ -1,10 +1,10 @@
 #include <iostream>
 
-#include "app/core/glfw.hpp"
+#include "app/glfw.hpp"
 #include "app/render/fragment_producer.hpp"
-#include "app/scene/layer.hpp"
-#include "app/scene/widget/hierarchy.hpp"
-#include "app/scene/scene_manager.hpp"
+#include "app/layer.hpp"
+#include "app/widget/hierarchy.hpp"
+#include "app/scene_manager.hpp"
 #include "common/log.hpp"
 #include "common/polygon.hpp"
 

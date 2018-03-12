@@ -1,9 +1,9 @@
 #include <iostream>
 
-#include "app/core/glfw.hpp"
+#include "app/glfw.hpp"
 #include "app/render/plotter.hpp"
-#include "app/scene/layer.hpp"
-#include "app/scene/widget/hierarchy.hpp"
+#include "app/layer.hpp"
+#include "app/widget/hierarchy.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/text/font.hpp"

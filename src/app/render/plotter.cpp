@@ -72,7 +72,7 @@
 
 #include "app/render/plotter.hpp"
 
-#include "app/scene/scene_manager.hpp"
+#include "app/scene_manager.hpp"
 #include "common/bezier.hpp"
 #include "common/enum.hpp"
 #include "common/log.hpp"

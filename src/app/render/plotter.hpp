@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/render/graphics_producer.hpp"
+#include "app/graphics_producer.hpp"
 #include "common/aabr.hpp"
 #include "common/variant.hpp"
 #include "common/vector2.hpp"

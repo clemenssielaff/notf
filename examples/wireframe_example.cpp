@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "app/core/glfw.hpp"
+#include "app/glfw.hpp"
 #include "common/half.hpp"
 #include "common/log.hpp"
 #include "common/matrix4.hpp"

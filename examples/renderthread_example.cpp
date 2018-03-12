@@ -5,7 +5,7 @@
 #include <iostream>
 #include <thread>
 
-#include "app/core/glfw.hpp"
+#include "app/glfw.hpp"
 #include "common/log.hpp"
 
 NOTF_USING_NAMESPACE

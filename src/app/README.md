@@ -1,6 +1,4 @@
 ```
-
-
                                                                              .,:l;
                                                                    ..,:ldOKNMMMMMx
                                                                  :NMMMMMMMMMMMMMMx                .:dOKXNNNNXK0Oxoc'
@@ -22,7 +20,6 @@
       'MMMMMMMMMMMMMMMX      dMMMMMMMM,              .XMMMMMW;              .NMMMMMMWNWMl    OMMMMMMMMMMMMMMM:
       'MMMMMMMMMMMMMMMX      dMMMMMMMK               kMMMMMMMX               dMMMMMMMMMMl    OMMMMMMMMMMMMMMM:
     cokMMMMMMMMMMMMMMMWoo:   dMMMMMMMk               XMMMMMMMM'              cMMMMMMMMMMl    OMMMMMMMMMMMMMMM:
-    NMMMMMMMMMMMMMMMMMMMMK   dMMMMMMMk               XMMMMMMMM,              cMMMMMMMMMMl    OMMMMMMMMMMMMMMM:
     NMMMMMMMMMMMMMMMMMMMMK   dMMMMMMM0               0MMMMMMMW.              dMMMMMMMMWK,    OMMMMMMMMMMMMMMM:
     NMMMMMMMMMMMMMMMMMMMMK   dMMMMMMMW'              cMMMMMMMk               oOkkxoc;.       OMMMMMMMMMMMMMMM:
     NMMMMMMMMMMMMMMMMMMMMK   dMMMMMMMMO               oWMMMWx.                               OMMMMMMMMMMMMMMM:
@@ -30,20 +27,28 @@
                                                                                              OMMMMMMMMMMMMMMM:
                                                                                              OMMMMMMMMMMMMMMM:
                                 USER INTERFACE ENGINE                                        ;lllllllllllllll.
-
-
 ```
 
 The Application module
 ======================
 
 
-                  core
-                    |
-               +----+---+
-               |    |   |
-           graphics |   io
-               |    |   |
-               +--+ | +-+
-                  | | |
-                  items
+Application
+    PropertyManager (1)
+    ResourceManager (1)
+    ThreadPool (1)
+    Window (*)
+        RenderManager (1)
+        GraphicsContext(1)
+        FontManager(1, shared)
+
+        SceneManager (1)
+            Layer, direct & buffered (*)
+                Producer (1)
+                    Scene (1, shared)
+                        Item (*)
+
+The Application is a singleton and owns a PropertyManager as well as all Window.
+
+Windows are actually shared_ptrs because they are controlled by the user. The Application on the other side is not
+(only instanciated).

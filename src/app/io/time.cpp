@@ -1,6 +1,6 @@
 #include "app/io/time.hpp"
 
-#include "app/core/glfw.hpp"
+#include "app/glfw.hpp"
 #include "common/log.hpp"
 
 NOTF_OPEN_NAMESPACE

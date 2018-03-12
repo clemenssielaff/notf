@@ -33,7 +33,8 @@ NOTF_DEFINE_SHARED_POINTERS(class, ItemHierarchy);
 
 NOTF_DEFINE_UNIQUE_POINTERS(class, SceneManager);
 NOTF_DEFINE_UNIQUE_POINTERS(class, ResourceManager);
-NOTF_DEFINE_UNIQUE_POINTERS(class, PropertyGraph);
+NOTF_DEFINE_UNIQUE_POINTERS(class, PropertyManager);
+NOTF_DEFINE_UNIQUE_POINTERS(class, RenderThread);
 
 namespace detail {
 

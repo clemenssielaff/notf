@@ -4,7 +4,7 @@
 #include <cstring>
 #include <set>
 
-#include "app/core/glfw.hpp"
+#include "app/glfw.hpp"
 #include "common/exception.hpp"
 #include "common/log.hpp"
 #include "common/vector.hpp"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/render/graphics_producer.hpp"
+#include "app/graphics_producer.hpp"
 
 NOTF_OPEN_NAMESPACE
 
