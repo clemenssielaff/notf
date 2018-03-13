@@ -29,6 +29,8 @@ Item::ChildContainer::~ChildContainer() {}
 
 Item::Item(const Token&, std::unique_ptr<ChildContainer> container) : m_children(std::move(container)), m_id(next_id())
 {
+    // TODO: associate each Item with a GraphicsProducer
+    PropertyManager::Access<Item>(Application::instance().property_graph(), m_id).add_group(0);
     log_trace << "Created Item #" << m_id;
 }
 

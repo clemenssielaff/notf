@@ -15,22 +15,21 @@ PropertyManager::type_error::~type_error() = default;
 
 PropertyManager::cyclic_dependency_error::~cyclic_dependency_error() = default;
 
+PropertyManager::group_error::~group_error() = default;
+
 //====================================================================================================================//
 
-void PropertyManager::Property::add_member(PropertyKey key)
+void PropertyManager::PropertyGroup::add_member(PropertyKey key)
 {
-    assert(!m_value.has_value()); // group properties should not have a value
 #ifdef NOTF_DEBUG
-    assert(std::find(m_affected.begin(), m_affected.end(), key) == m_affected.end());
+    assert(std::find(m_members.begin(), m_members.end(), key) == m_members.end());
 #endif
-    m_affected.push_back(std::move(key));
+    m_members.push_back(std::move(key));
 }
 
-void PropertyManager::Property::remove_member(const PropertyKey& key)
-{
-    assert(!m_value.has_value()); // group properties should not have a value
-    remove_one_unordered(m_affected, key);
-}
+void PropertyManager::PropertyGroup::remove_member(const PropertyKey& key) { remove_one_unordered(m_members, key); }
+
+//====================================================================================================================//
 
 void PropertyManager::Property::prepare_removal(const PropertyKey& my_key, PropertyManager& graph)
 {
@@ -53,7 +52,7 @@ void PropertyManager::Property::_evaluate_expression(const PropertyKey& my_key, 
         return;
     }
     m_value = std::move(result);
-    m_is_dirty = false;
+    _set_clean();
 }
 
 void PropertyManager::Property::_register_with_dependencies(const PropertyKey& my_key, PropertyManager& graph)
@@ -80,7 +79,7 @@ void PropertyManager::Property::_set_affected_dirty(PropertyManager& graph)
 {
     for (const PropertyKey& affectedKey : m_affected) {
         Property& affected = graph._find_property(affectedKey);
-        affected.m_is_dirty = true;
+        affected._set_dirty();
     }
 }
 
@@ -91,6 +90,22 @@ void PropertyManager::Property::_assert_correct_type(const PropertyKey& my_key, 
                                           << my_key << "\""
                                           << "(\"" << type_name(info) << " instead of \"" << type_name(m_value.type())
                                           << "\")");
+    }
+}
+
+void PropertyManager::_add_group(const ItemId item_id, GraphicsProducerId producer)
+{
+    if (!item_id.is_valid()) {
+        return;
+    }
+    const PropertyKey group_key = PropertyKey(item_id, 0);
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_properties.find(group_key) != m_properties.end()) {
+            notf_throw_format(group_error, "Item #" << item_id << " already has an associated PropertyGroup");
+        }
+        auto result = m_properties.emplace(std::make_pair(group_key, PropertyGroup(producer)));
+        assert(result.second);
     }
 }
 
@@ -106,7 +121,8 @@ void PropertyManager::_delete_property(const PropertyKey key)
         if (propertyIt == m_properties.end()) {
             return;
         }
-        propertyIt->second.prepare_removal(key, *this);
+        assert(std::holds_alternative<Property>(propertyIt->second));
+        std::get<Property>(propertyIt->second).prepare_removal(key, *this);
         m_properties.erase(propertyIt);
     }
 
@@ -114,7 +130,8 @@ void PropertyManager::_delete_property(const PropertyKey key)
         PropertyKey group_key = PropertyKey(key.item_id(), 0);
         auto groupIt = m_properties.find(group_key);
         assert(groupIt != m_properties.end());
-        groupIt->second.remove_member(key);
+        assert(std::holds_alternative<PropertyGroup>(groupIt->second));
+        std::get<PropertyGroup>(groupIt->second).remove_member(key);
     }
 }
 
@@ -130,11 +147,14 @@ void PropertyManager::_delete_group(const ItemId id)
     if (groupIt == m_properties.end()) {
         return;
     }
+    assert(std::holds_alternative<PropertyGroup>(groupIt->second));
+    PropertyGroup& group = std::get<PropertyGroup>(groupIt->second);
 
-    for (const PropertyKey& propertyKey : groupIt->second.members()) {
+    for (const PropertyKey& propertyKey : group.members()) {
         auto propertyIt = m_properties.find(propertyKey);
         assert(propertyIt != m_properties.end());
-        propertyIt->second.prepare_removal(propertyKey, *this);
+        assert(std::holds_alternative<Property>(propertyIt->second));
+        std::get<Property>(propertyIt->second).prepare_removal(propertyKey, *this);
         m_properties.erase(propertyIt);
     }
     m_properties.erase(groupIt);
@@ -145,17 +165,16 @@ void PropertyManager::_throw_notfound(const PropertyKey key)
     notf_throw_format(lookup_error, "Unknown Property \"" << key << "\"");
 }
 
-PropertyManager::Property& PropertyManager::_group_for(const ItemId item_id)
+PropertyManager::PropertyGroup& PropertyManager::_group_for(const ItemId item_id)
 {
     assert(item_id.is_valid());
     PropertyKey key = PropertyKey(item_id, 0);
     auto it = m_properties.find(key);
     if (it != m_properties.end()) {
-        return it->second;
+        assert(std::holds_alternative<PropertyGroup>(it->second));
+        return std::get<PropertyGroup>(it->second);
     }
-    auto result = m_properties.emplace(std::make_pair(std::move(key), Property()));
-    assert(result.second);
-    return result.first->second;
+    notf_throw_format(group_error, "Item #" << item_id << " doesn't have an associated PropertyGroup");
 }
 
 void PropertyManager::_detect_cycles(const PropertyKey key, const std::vector<PropertyKey>& dependencies)
