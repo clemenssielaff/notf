@@ -1,7 +1,7 @@
 #pragma once
 
-#include "app/property_manager.hpp"
 #include "app/ids.hpp"
+#include "app/property_manager.hpp"
 #include "common/signal.hpp"
 #include "utils/make_smart_enabler.hpp"
 
@@ -328,51 +328,43 @@ public:
 
     // properties -------------------------------------------------------------
 
-    /// Creates and returns a PropertyKey of this Item from a PropertyID.
-    /// Does not check whether the returned key is actually valid.
-    PropertyKey make_property_key(PropertyId property_id) { return PropertyKey(m_id, std::move(property_id)); }
-
     /// Creates a new Property associated with this Item.
     /// It is the responsibility of the caller of this method to store the returned key as the Item will keep no record
     /// of it. However, the PropertyManager will, and when this Item goes out of scope, so will all of its Properties.
     /// Owning a copy of a PropertyKey does not imply ownership.
     /// @param value    Initial value of the Property, also used to determine its type.
-    /// @param graph    PropertyManager that contains the Property - pass explicit to allow inlining.
     /// @returns        TypedPropertyId that can be used to access the Property value in the graph.
     template<typename T>
-    TypedPropertyId<T> add_property(T&& value, PropertyManager& graph = _graph())
+    TypedPropertyId<T> add_property(T&& value)
     {
-        PropertyManager::Access<Item>(graph, m_id).add_property(std::forward<T>(value));
+        PropertyKey key = PropertyKey(m_id, ++m_property_counter);
+        PropertyManager::Access<Item>(_graph()).add_property(key, std::forward<T>(value));
+        m_properties.emplace_back(std::move(key));
     }
 
     ///@{
     /// Returns the value of the Property requested by type and key.
     /// @param property_id      Requested Property.
-    /// @param graph            PropertyManager that contains the Property - pass explicit to allow inlining.
     /// @throws lookup_error    If a Property with the given id does not exist.
     /// @throws type_error      If the wrong value type is requested.
     /// @return                 Value of the property.
     template<typename T>
-    const T& property_value(PropertyId property_id, PropertyManager& graph = _graph())
+    const T& property_value(PropertyId property_id)
     {
-        return graph.value<T>(make_property_key(std::move(property_id)));
+        return _graph().value<T>(PropertyKey(m_id, std::move(property_id)));
     }
     template<typename T>
-    const T& property_value(TypedPropertyId<T> property_id, PropertyManager& graph = _graph())
+    const T& property_value(TypedPropertyId<T> property_id)
     {
-        return graph.value<T>(make_property_key(std::move(property_id)));
+        return _graph().value<T>(PropertyKey(m_id, std::move(property_id)));
     }
     ///@}
 
     /// Removes a Property from the graph.
     /// All affected Properties will have their value frozen to their current value.
-    /// If the PropertyKey does not identify a Property in the graph, the call is silently ignored.
-    /// @param property     Id of the Property to delete.
-    /// @param graph        PropertyManager that contains the Property - pass explicit to allow inlining.
-    void delete_property(const PropertyId property, PropertyManager& graph = _graph())
-    {
-        PropertyManager::Access<Item>(graph, m_id).delete_property(property);
-    }
+    /// If the PropertyKey does not identify a Property of this Item, the call is silently ignored.
+    /// @param property_id  Id of the Property to delete.
+    void delete_property(PropertyId property_id);
 
 protected:
     /// Removes a child Item from this Item.
@@ -400,6 +392,9 @@ protected:
     ChildContainerPtr m_children;
 
 private:
+    /// All Properties of this Item.
+    std::vector<PropertyKey> m_properties;
+
     /// Non-owning pointer to the parent Item, is potentially empty.
     Item* m_parent = nullptr;
 
@@ -408,6 +403,9 @@ private:
 
     /// Application-unique ID of this Item.
     const ItemId m_id;
+
+    /// Counter used to generate new PropertyIds for members of the group.
+    PropertyId::underlying_t m_property_counter = 0;
 };
 
 //====================================================================================================================//

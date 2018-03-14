@@ -2,7 +2,6 @@
 
 #include "common/log.hpp"
 #include "common/set.hpp"
-#include "common/vector.hpp"
 #include "utils/type_name.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -15,39 +14,25 @@ PropertyManager::type_error::~type_error() = default;
 
 PropertyManager::cyclic_dependency_error::~cyclic_dependency_error() = default;
 
-PropertyManager::group_error::~group_error() = default;
-
 //====================================================================================================================//
 
-void PropertyManager::PropertyGroup::add_member(PropertyKey key)
+void PropertyManager::Property::prepare_removal(const PropertyKey& key, PropertyManager& graph)
 {
-#ifdef NOTF_DEBUG
-    assert(std::find(m_members.begin(), m_members.end(), key) == m_members.end());
-#endif
-    m_members.push_back(std::move(key));
-}
-
-void PropertyManager::PropertyGroup::remove_member(const PropertyKey& key) { remove_one_unordered(m_members, key); }
-
-//====================================================================================================================//
-
-void PropertyManager::Property::prepare_removal(const PropertyKey& my_key, PropertyManager& graph)
-{
-    _unregister_from_dependencies(my_key, graph);
+    _unregister_from_dependencies(key, graph);
     for (const PropertyKey& affectedKey : m_affected) {
         Property& affected = graph._find_property(affectedKey);
-        affected._freeze(my_key, graph);
+        affected._freeze(key, graph);
     }
 }
 
-void PropertyManager::Property::_evaluate_expression(const PropertyKey& my_key, PropertyManager& graph)
+void PropertyManager::Property::_evaluate_expression(const PropertyKey& key, PropertyManager& graph)
 {
     assert(m_expression);
     auto result = m_expression(graph);
     if (result.type() != m_value.type()) {
-        _freeze(my_key, graph);
-        log_critical << "Expression for Property \"" << my_key << "\" returned wrong type (\""
-                     << type_name(result.type()) << "\" instead of \"" << type_name(m_value.type())
+        _freeze(key, graph);
+        log_critical << "Expression for Property \"" << key << "\" returned wrong type (\"" << type_name(result.type())
+                     << "\" instead of \"" << type_name(m_value.type())
                      << "\"). The expression has been disabled to avoid future errors.";
         return;
     }
@@ -55,19 +40,19 @@ void PropertyManager::Property::_evaluate_expression(const PropertyKey& my_key, 
     _set_clean();
 }
 
-void PropertyManager::Property::_register_with_dependencies(const PropertyKey& my_key, PropertyManager& graph)
+void PropertyManager::Property::_register_with_dependencies(const PropertyKey& key, PropertyManager& graph)
 {
     for (const PropertyKey& dependencyKey : m_dependencies) {
         Property& dependency = graph._find_property(dependencyKey);
-        dependency.m_affected.emplace_back(my_key);
+        dependency.m_affected.emplace_back(key);
     }
 }
 
-void PropertyManager::Property::_unregister_from_dependencies(const PropertyKey& my_key, PropertyManager& graph)
+void PropertyManager::Property::_unregister_from_dependencies(const PropertyKey& key, PropertyManager& graph)
 {
     for (const PropertyKey& dependencyKey : m_dependencies) {
         Property& dependency = graph._find_property(dependencyKey);
-        auto it = std::find(dependency.m_affected.begin(), dependency.m_affected.end(), my_key);
+        auto it = std::find(dependency.m_affected.begin(), dependency.m_affected.end(), key);
         assert(it != dependency.m_affected.end());
         *it = std::move(dependency.m_affected.back());
         dependency.m_affected.pop_back();
@@ -75,39 +60,25 @@ void PropertyManager::Property::_unregister_from_dependencies(const PropertyKey&
     m_dependencies.clear();
 }
 
-void PropertyManager::Property::_set_affected_dirty(PropertyManager& graph)
+void PropertyManager::Property::_set_affected_dirty(const PropertyKey& key, PropertyManager& graph)
 {
     for (const PropertyKey& affectedKey : m_affected) {
         Property& affected = graph._find_property(affectedKey);
-        affected._set_dirty();
+        affected._set_dirty(key, graph);
     }
 }
 
-void PropertyManager::Property::_assert_correct_type(const PropertyKey& my_key, const std::type_info& info)
+void PropertyManager::Property::_assert_correct_type(const PropertyKey& key, const std::type_info& info)
 {
     if (info != m_value.type()) {
         notf_throw_format(type_error, "Wrong property type requested of Property \""
-                                          << my_key << "\""
+                                          << key << "\""
                                           << "(\"" << type_name(info) << " instead of \"" << type_name(m_value.type())
                                           << "\")");
     }
 }
 
-void PropertyManager::_add_group(const ItemId item_id, GraphicsProducerId producer)
-{
-    if (!item_id.is_valid()) {
-        return;
-    }
-    const PropertyKey group_key = PropertyKey(item_id, 0);
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        if (m_properties.find(group_key) != m_properties.end()) {
-            notf_throw_format(group_error, "Item #" << item_id << " already has an associated PropertyGroup");
-        }
-        auto result = m_properties.emplace(std::make_pair(group_key, PropertyGroup(producer)));
-        assert(result.second);
-    }
-}
+//====================================================================================================================//
 
 void PropertyManager::_delete_property(const PropertyKey key)
 {
@@ -115,66 +86,17 @@ void PropertyManager::_delete_property(const PropertyKey key)
         return;
     }
     std::lock_guard<std::mutex> lock(m_mutex);
-
-    { // remove property
-        auto propertyIt = m_properties.find(key);
-        if (propertyIt == m_properties.end()) {
-            return;
-        }
-        assert(std::holds_alternative<Property>(propertyIt->second));
-        std::get<Property>(propertyIt->second).prepare_removal(key, *this);
-        m_properties.erase(propertyIt);
-    }
-
-    { // remove from group
-        PropertyKey group_key = PropertyKey(key.item_id(), 0);
-        auto groupIt = m_properties.find(group_key);
-        assert(groupIt != m_properties.end());
-        assert(std::holds_alternative<PropertyGroup>(groupIt->second));
-        std::get<PropertyGroup>(groupIt->second).remove_member(key);
-    }
-}
-
-void PropertyManager::_delete_group(const ItemId id)
-{
-    if (!id.is_valid()) {
+    auto it = m_properties.find(key);
+    if (it == m_properties.end()) {
         return;
     }
-    std::lock_guard<std::mutex> lock(m_mutex);
-
-    PropertyKey key = PropertyKey(id, 0);
-    auto groupIt = m_properties.find(key);
-    if (groupIt == m_properties.end()) {
-        return;
-    }
-    assert(std::holds_alternative<PropertyGroup>(groupIt->second));
-    PropertyGroup& group = std::get<PropertyGroup>(groupIt->second);
-
-    for (const PropertyKey& propertyKey : group.members()) {
-        auto propertyIt = m_properties.find(propertyKey);
-        assert(propertyIt != m_properties.end());
-        assert(std::holds_alternative<Property>(propertyIt->second));
-        std::get<Property>(propertyIt->second).prepare_removal(propertyKey, *this);
-        m_properties.erase(propertyIt);
-    }
-    m_properties.erase(groupIt);
+    it->second.prepare_removal(key, *this);
+    m_properties.erase(it);
 }
 
 void PropertyManager::_throw_notfound(const PropertyKey key)
 {
     notf_throw_format(lookup_error, "Unknown Property \"" << key << "\"");
-}
-
-PropertyManager::PropertyGroup& PropertyManager::_group_for(const ItemId item_id)
-{
-    assert(item_id.is_valid());
-    PropertyKey key = PropertyKey(item_id, 0);
-    auto it = m_properties.find(key);
-    if (it != m_properties.end()) {
-        assert(std::holds_alternative<PropertyGroup>(it->second));
-        return std::get<PropertyGroup>(it->second);
-    }
-    notf_throw_format(group_error, "Item #" << item_id << " doesn't have an associated PropertyGroup");
 }
 
 void PropertyManager::_detect_cycles(const PropertyKey key, const std::vector<PropertyKey>& dependencies)

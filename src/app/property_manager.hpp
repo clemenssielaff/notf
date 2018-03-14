@@ -3,12 +3,12 @@
 #include <cassert>
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "app/ids.hpp"
 #include "app/io/time.hpp"
 #include "common/any.hpp"
 #include "common/exception.hpp"
-#include "common/variant.hpp"
 #include "utils/bitsizeof.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -26,13 +26,13 @@ public:
 
     /// Value constructor.
     /// @param item_id      ID of the Item owning the Property.
-    /// @param property_id  ID of the Property in the Item's PropertyGroup.
+    /// @param property_id  ID of the Property within its Item.
     PropertyKey(ItemId item_id, PropertyId property_id) : m_item_id(item_id), m_property_id(property_id) {}
 
     /// ID of the Item owning the Property.
     ItemId item_id() const { return m_item_id; }
 
-    /// ID of the Property in the Item's PropertyGroup.
+    /// ID of the Property within its Item.
     PropertyId property_id() const { return m_property_id; }
 
     /// Explicit invalid PropertyKey generator.
@@ -111,7 +111,7 @@ private:
     /// ID of the Item owning the Property.
     ItemId m_item_id;
 
-    /// ID of the Property in the Item's PropertyGroup.
+    /// ID of the Property within its Item.
     PropertyId m_property_id;
 };
 
@@ -168,49 +168,7 @@ public:
     /// Thrown when a new expression would introduce a cyclic dependency into the graph.
     NOTF_EXCEPTION_TYPE(cyclic_dependency_error)
 
-    /// Thrown when a PropertyGroup would be created twice or could not found (internal error).
-    NOTF_EXCEPTION_TYPE(group_error)
-
 private:
-    /// The PropertyGroup is created by an Item with the key: (ItemId, 0) and holds information about Properties in the
-    /// group as well as the GraphicsProducer associated with the Item.
-    class PropertyGroup {
-
-        // methods ------------------------------------------------------------
-    public:
-        /// Default constructor.
-        PropertyGroup(GraphicsProducerId graphics_producer) { m_producers[0] = std::move(graphics_producer); }
-
-        /// All members of this group.
-        const std::vector<PropertyKey>& members() const { return m_members; }
-
-        /// Returns the next PropertyId in this group.
-        PropertyId next_property_id() { return m_group_counter++; }
-
-        /// Adds a new Property to this group.
-        /// @param key  Key of the Property to add.
-        void add_member(PropertyKey key);
-
-        /// Removes a Property as member of this Group.
-        /// @param key  Key of the Property to remove.
-        void remove_member(const PropertyKey& key);
-
-        // fields -------------------------------------------------------------
-    private:
-        /// All Properties in this group.
-        std::vector<PropertyKey> m_members;
-
-        std::vector<GraphicsProducerId> m_overflow_producer;
-
-        /// The GraphicsProducers associated with the Item of this PropertyGroup.
-        std::array<GraphicsProducerId, 11> m_producers = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
-
-        /// Counter used by PropertyGroups to generate new PropertyIds for members of the group.
-        PropertyId::underlying_t m_group_counter = 1;
-    };
-
-    //=========================================================================
-
     /// An untyped Property in the graph that can be connected to other Properties via expressions.
     /// Uses std::any for internal type erasure of the Property value.
     class Property {
@@ -225,15 +183,15 @@ private:
 
         /// The Property's value.
         /// If the Property is defined by an expression, this might evaluate the expression.
-        /// @param my_key       PropertyKey of this Property.
+        /// @param key          PropertyKey of this Property.
         /// @throws type_error  If the wrong value type is requested.
         /// @returns            Const reference to the value of the Property.
         template<typename T>
-        const T& value(const PropertyKey& my_key, PropertyManager& graph)
+        const T& value(const PropertyKey& key, PropertyManager& graph)
         {
-            _assert_correct_type(my_key, typeid(T));
+            _assert_correct_type(key, typeid(T));
             if (_is_dirty()) {
-                _evaluate_expression(my_key, graph);
+                _evaluate_expression(key, graph);
             }
             const T* result = std::any_cast<T>(&m_value);
             assert(result);
@@ -242,93 +200,110 @@ private:
 
         /// Set the Property's value.
         /// Removes an existing expression on the Property if it exists.
-        /// @param my_key       PropertyKey of this Property.
+        /// @param key          PropertyKey of this Property.
         /// @param graph        Graph used to find affected Properties.
         /// @param value        New value.
         /// @throws type_error  If a value of the wrong type is passed.
         template<typename T>
-        void set_value(const PropertyKey& my_key, PropertyManager& graph, T&& value)
+        void set_value(const PropertyKey& key, PropertyManager& graph, T&& value)
         {
-            _assert_correct_type(my_key, typeid(T));
-            _freeze(my_key, graph);
-            if (value != *std::any_cast<T>(&m_value)) {
-                m_value = std::forward<T>(value);
-                _set_affected_dirty(graph);
+            _assert_correct_type(key, typeid(T));
+            if (m_expression) {
+                _freeze(key, graph);
             }
+            if (value == *std::any_cast<T>(&m_value)) {
+                return;
+            }
+            m_value = std::forward<T>(value);
+            graph.m_dirty_items.insert(key.item_id());
+            _set_affected_dirty(key, graph);
         }
 
         /// Set property's expression.
-        /// @param my_key       PropertyKey of this Property.
+        /// @param key          PropertyKey of this Property.
         /// @param graph        Graph used to find affected Properties.
         /// @param expression   Expression to set.
         /// @param dependencies Properties that the expression depends on.
         /// @throws type_error  If an expression returning the wrong type is passed.
         template<typename T>
-        void set_expression(const PropertyKey& my_key, PropertyManager& graph,
+        void set_expression(const PropertyKey& key, PropertyManager& graph,
                             std::function<T(const PropertyManager&)> expression, std::vector<PropertyKey> dependencies)
         {
-            _assert_correct_type(my_key, typeid(T));
-            _unregister_from_dependencies(my_key, graph);
+            if (expression == m_expression) {
+                return;
+            }
+            if (!expression) {
+                _freeze(key, graph);
+                return;
+            }
 
-            // wrap the typed expression into one that returns a std::any
-            m_expression
-                = [expr = std::move(expression)](const PropertyManager& graph) -> std::any { return expr(graph); };
+            _assert_correct_type(key, typeid(T));
+            _unregister_from_dependencies(key, graph);
+
+            m_expression = std::move(expression);
             m_dependencies = std::move(dependencies);
-            _set_dirty();
+            _set_dirty(key, graph);
 
-            _register_with_dependencies(my_key, graph);
-            _set_affected_dirty(graph);
+            _register_with_dependencies(key, graph);
+            _set_affected_dirty(key, graph);
         }
 
         /// All dependencies of this Property.
         const std::vector<PropertyKey>& dependencies() const { return m_dependencies; }
 
         /// Prepares this Property for removal from the Graph.
-        /// @param my_key       PropertyKey of this Property.
+        /// @param key          PropertyKey of this Property.
         /// @param graph        Graph used to find affected Properties.
-        void prepare_removal(const PropertyKey& my_key, PropertyManager& graph);
+        void prepare_removal(const PropertyKey& key, PropertyManager& graph);
 
     private:
         /// Freezing a property means removing its expression without changing its value.
-        /// @param my_key       PropertyKey of this Property.
-        /// @param graph        Graph used to find affected Properties.
-        void _freeze(const PropertyKey& my_key, PropertyManager& graph) noexcept
+        /// @param key          PropertyKey of this Property.
+        /// @param graph        Graph used to find dependent Properties.
+        void _freeze(const PropertyKey& key, PropertyManager& graph) noexcept
         {
-            _unregister_from_dependencies(my_key, graph);
+            _unregister_from_dependencies(key, graph);
             m_expression = {};
             _set_clean();
         }
 
         /// Evaluates this Property's expression and updates its value.
-        /// @param my_key       PropertyKey of this Property.
+        /// @param key          PropertyKey of this Property.
         /// @param graph        Graph used to find affected Properties.
-        void _evaluate_expression(const PropertyKey& my_key, PropertyManager& graph);
+        void _evaluate_expression(const PropertyKey& key, PropertyManager& graph);
 
         /// Registers this property as affected with all of its dependencies.
-        /// @param my_key   PropertyKey of this Property.
+        /// @param key      PropertyKey of this Property.
         /// @param graph    Graph used to find dependency Properties.
-        void _register_with_dependencies(const PropertyKey& my_key, PropertyManager& graph);
+        void _register_with_dependencies(const PropertyKey& key, PropertyManager& graph);
 
         /// Removes all dependencies from this property.
-        /// @param my_key   PropertyKey of this Property.
+        /// @param key      PropertyKey of this Property.
         /// @param graph    Graph used to find dependent Properties.
-        void _unregister_from_dependencies(const PropertyKey& my_key, PropertyManager& graph);
+        void _unregister_from_dependencies(const PropertyKey& key, PropertyManager& graph);
 
         /// Set all affected properties dirty.
+        /// @param key      PropertyKey of this Property.
         /// @param graph    Graph used to find affected Properties.
-        void _set_affected_dirty(PropertyManager& graph);
+        void _set_affected_dirty(const PropertyKey& key, PropertyManager& graph);
 
         /// Makes sure that the given type_info is the same as the one of the Property's value.
-        /// @param my_key       PropertyKey of this Property.
+        /// @param key          PropertyKey of this Property.
         /// @param info         Type to check.
         /// @throws type_error  If the wrong value type is requested.
-        void _assert_correct_type(const PropertyKey& my_key, const std::type_info& info);
+        void _assert_correct_type(const PropertyKey& key, const std::type_info& info);
 
         /// Checks if this Property is dirty.
         bool _is_dirty() const { return m_time.is_invalid(); }
 
         /// Sets the Property dirty.
-        void _set_dirty() { m_time = Time::invalid(); }
+        /// @param key      PropertyKey of this Property.
+        /// @param graph    Graph storing dirty Items.
+        void _set_dirty(const PropertyKey& key, PropertyManager& graph)
+        {
+            graph.m_dirty_items.insert(key.item_id());
+            m_time = Time::invalid();
+        }
 
         /// Sets the Property clean.
         /// @param time     Time when the decision to set the Property was made. Is `now` by default.
@@ -406,44 +381,39 @@ public:
         _find_property(key).set_expression(key, *this, std::move(expression), std::move(dependencies));
     }
 
-private: // for Access<Item>
-    /// Creates a new PropertyGroup.
-    /// @param item_id      Item of this PropertyGroup.
-    /// @param produder     The GraphicsProducer associated with the Item.
-    /// @throws group_error If a PropertyGroup for the Item already exists.
-    void _add_group(const ItemId item_id, GraphicsProducerId producer);
-
-    /// Creates an new Property for a given Item and assigns its initial value (and type).
-    /// @param item_id  Item for which to construct the new Property.
-    /// @param value    Initial value of the Property, also used to determine its type.
-    /// @returns        Key of the new Property. Is invalid, if the given Item id is invalid.
-    template<typename T>
-    PropertyKey _add_property(const ItemId item_id, T&& value)
+    /// Returns the set of Items that had at least one Property changed or dirtied since the last call.
+    /// Note that the set also contains the parent Items of those that have been removed.
+    std::unordered_set<ItemId> swap_dirty_items()
     {
-        if (!item_id.is_valid()) {
-            return PropertyKey::invalid();
+        std::unordered_set<ItemId> result;
+        result.swap(m_dirty_items);
+        return result;
+    }
+
+private: // for Access<Item>
+    /// Creates an new Property for a given Item and assigns its initial value (and type).
+    /// @param key      Key of the new Property.
+    /// @param value    Initial value of the Property, also used to determine its type.
+    /// @throws lookup_error    If the key is invalid or already exists.
+    template<typename T>
+    void _add_property(PropertyKey key, T&& value)
+    {
+        if (!key.is_valid()) {
+            notf_throw(lookup_error, "Cannot add Property with invalid key");
         }
-        PropertyKey new_key = PropertyKey::invalid();
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            PropertyGroup& group = _group_for(item_id);
-            new_key = PropertyKey(item_id, group.next_property_id());
-            auto result = m_properties.emplace(std::make_pair(new_key, Property(std::forward<T>(value))));
-            assert(result.second);
-            group.add_member(new_key);
+        std::lock_guard<std::mutex> lock(m_mutex);
+        auto it = m_properties.find(key);
+        if (it != m_properties.end()) {
+            notf_throw(lookup_error, "Cannot add Property with duplicate key");
         }
-        return new_key;
+        m_dirty_items.insert(key.item_id());
+        m_properties.emplace(std::make_pair(std::move(key), Property(std::forward<T>(value))));
     }
 
     /// Removes a Property from the graph.
     /// All affected Properties will have their value set to their current value.
     /// If the PropertyKey does not identify a Property in the graph, the call is silently ignored.
     void _delete_property(const PropertyKey key);
-
-    /// Deletes a PropertyGroup from the graph.
-    /// @param id   ItemId used to identify the group.
-    /// If the id does not identify a PropertyGroup in the graph, the call is silently ignored.
-    void _delete_group(const ItemId id);
 
 private:
     /// Property access with proper error reporting.
@@ -452,11 +422,10 @@ private:
     /// @returns                The requested Property.
     Property& _find_property(const PropertyKey key)
     {
-        if (key.property_id().is_valid()) { // you cannot request the implicit PropertyGroup properties
+        if (key.property_id().is_valid()) {
             const auto it = m_properties.find(key);
             if (it != m_properties.end()) {
-                assert(std::holds_alternative<Property>(it->second));
-                return std::get<Property>(it->second);
+                return it->second;
             }
         }
         _throw_notfound(key);
@@ -469,11 +438,6 @@ private:
     /// Call when a PropertyKey is not found.
     NOTF_NORETURN void _throw_notfound(const PropertyKey key);
 
-    /// Creates a new or returns an existing group Property for the given Item.
-    /// @param item_id      PropertyGroups are identified by the ItemId alone.
-    /// @throws group_error If a PropertyGroup for the Item already exists.
-    PropertyGroup& _group_for(const ItemId item_id);
-
     /// Detects potential cyclic dependencies in the graph before they are introduced.
     /// @throws cyclic_dependency_error     If the expression would introduce a cyclic dependency into the graph.
     void _detect_cycles(const PropertyKey key, const std::vector<PropertyKey>& dependencies);
@@ -481,7 +445,10 @@ private:
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// All properties in the graph.
-    std::unordered_map<PropertyKey, std::variant<PropertyGroup, Property>> m_properties;
+    std::unordered_map<PropertyKey, Property> m_properties;
+
+    /// All Items that had at least one Property changed or dirtied since the last call to `swap_dirty_properties`.
+    std::unordered_set<ItemId> m_dirty_items;
 
     /// Mutex guarding the graph.
     mutable std::mutex m_mutex;
@@ -495,39 +462,30 @@ class PropertyManager::Access<Item> {
 
     /// Constructor.
     /// @param context  PropertyManager to access.
-    /// @param item     Id of the Item that created this instance.
-    Access(PropertyManager& graph, const ItemId item) : m_graph(graph), m_item(item) {}
-
-    /// Creates a new PropertyGroup.
-    /// @param produder     The GraphicsProducer associated with the Item.
-    /// @throws group_error If a PropertyGroup for the Item already exists.
-    void add_group(GraphicsProducerId producer) { m_graph._add_group(m_item, std::move(producer)); }
+    Access(PropertyManager& graph) : m_graph(graph) {}
 
     /// Creates an new Property for a given Item and assigns its initial value (and type).
-    /// @param item_id  Item for which to construct the new Property.
+    /// @param key      Key of the new Property.
     /// @param value    Initial value of the Property, also used to determine its type.
-    /// @returns        Key of the new Property. Is invalid, if the given Item id is invalid.
+    /// @throws lookup_error    If the key is invalid or already exists.
     template<typename T>
-    TypedPropertyId<T> add_property(T&& value)
+    void add_property(PropertyKey key, T&& value)
     {
-        return m_graph._add_property(m_item, std::forward<T>(value)).property_id();
+        return m_graph._add_property(std::move(key), std::forward<T>(value));
     }
 
     /// Removes a Property from the graph.
     /// All affected Properties will have their value set to their current value.
     /// If the PropertyKey does not identify a Property in the graph, the call is silently ignored.
-    /// @param property_id  Id of the Property to delete.
-    void delete_property(const PropertyId property_id) { m_graph._delete_property(PropertyKey(m_item, property_id)); }
+    /// @param key  Key of the new Property.
+    void delete_property(PropertyKey key) { m_graph._delete_property(key); }
 
-    /// Deletes a PropertyGroup from the graph.
-    /// If the Item id does not identify a PropertyGroup in the graph, the call is silently ignored.
-    void delete_group() { m_graph._delete_group(m_item); }
+    /// Explictly adds a dirty Item to the set of dirty Items.
+    /// Useful when deleting an Item, in which case its parent is dirtied.
+    void add_dirty_item(ItemId item_id) { m_graph.m_dirty_items.insert(std::move(item_id)); }
 
     /// The PropertyManager to access.
     PropertyManager& m_graph;
-
-    /// Id of the Item that created this instance.
-    const ItemId m_item;
 };
 
 NOTF_CLOSE_NAMESPACE

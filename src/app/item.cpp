@@ -5,6 +5,7 @@
 
 #include "app/application.hpp"
 #include "common/log.hpp"
+#include "common/vector.hpp"
 
 namespace { // anonymous
 NOTF_USING_NAMESPACE
@@ -29,8 +30,6 @@ Item::ChildContainer::~ChildContainer() {}
 
 Item::Item(const Token&, std::unique_ptr<ChildContainer> container) : m_children(std::move(container)), m_id(next_id())
 {
-    // TODO: associate each Item with a GraphicsProducer
-    PropertyManager::Access<Item>(Application::instance().property_graph(), m_id).add_group(0);
     log_trace << "Created Item #" << m_id;
 }
 
@@ -43,7 +42,16 @@ Item::~Item()
         log_trace << "Destroying Item \"" << m_name << "\"";
     }
 
-    PropertyManager::Access<Item>(Application::instance().property_graph(), m_id).delete_group();
+    { // delete all properties
+        auto property_graph = PropertyManager::Access<Item>(_graph());
+        for (const PropertyKey& property : m_properties) {
+            property_graph.delete_property(property);
+        }
+        m_properties.clear();
+        if (m_parent) {
+            property_graph.add_dirty_item(m_parent->id());
+        }
+    }
 
     m_children->_destroy();
     m_children.reset();
@@ -105,6 +113,14 @@ const std::string& Item::set_name(std::string name)
         on_name_changed(m_name);
     }
     return m_name;
+}
+
+void Item::delete_property(PropertyId property_id)
+{
+    PropertyKey key = PropertyKey(m_id, std::move(property_id));
+    if (remove_one_unordered(m_properties, key)) {
+        PropertyManager::Access<Item>(_graph()).delete_property(key);
+    }
 }
 
 PropertyManager& Item::_graph() { return Application::instance().property_graph(); }
