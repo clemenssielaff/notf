@@ -2,14 +2,13 @@
 
 #include <cassert>
 #include <mutex>
-#include <unordered_map>
 #include <unordered_set>
 
 #include "app/ids.hpp"
 #include "app/io/time.hpp"
-#include "common/any.hpp"
 #include "common/exception.hpp"
-#include "utils/bitsizeof.hpp"
+#include "common/hash.hpp"
+#include "common/map.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -18,6 +17,9 @@ NOTF_OPEN_NAMESPACE
 /// A PropertyKey is used to identify a single Property in the PropertyManager.
 /// It consists of both the ID of the Property itself, as well as that of its Item.
 struct PropertyKey {
+
+    // TODO: We could pre-combine the ItemId and PropertyId of the PropertyKey into a single size_t
+    // The ItemId should take up 6 bytes while the PropertyKey only 2 (a ushort).
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
@@ -132,12 +134,14 @@ NOTF_CLOSE_NAMESPACE
 
 namespace std {
 
+NOTF_USING_NAMESPACE
+
 template<>
-struct hash<notf::PropertyKey> {
-    size_t operator()(const notf::PropertyKey& key) const
+struct hash<PropertyKey> {
+    size_t operator()(const PropertyKey& key) const
     {
-        return (static_cast<size_t>(key.item_id().value()) << (notf::bitsizeof<size_t>() / 2))
-               ^ key.property_id().value();
+        return hash_mix((static_cast<size_t>(key.item_id().value()) << (bitsizeof<PropertyId::underlying_t>() / 2))
+                        ^ key.property_id().value());
     }
 };
 
@@ -169,84 +173,15 @@ public:
     NOTF_EXCEPTION_TYPE(cyclic_dependency_error)
 
 private:
-    /// An untyped Property in the graph that can be connected to other Properties via expressions.
-    /// Uses std::any for internal type erasure of the Property value.
-    class Property {
-
+    /// An untyped Property in the graph.
+    class PropertyBase {
         // methods ------------------------------------------------------------
     public:
-        /// Value constructor.
-        /// @param value    Value held by the Property, is used to determine the PropertyType.
-        template<typename T>
-        Property(T&& value) : m_value(std::move(value))
-        {}
+        /// Virtual destructor.
+        virtual ~PropertyBase();
 
-        /// The Property's value.
-        /// If the Property is defined by an expression, this might evaluate the expression.
-        /// @param key          PropertyKey of this Property.
-        /// @throws type_error  If the wrong value type is requested.
-        /// @returns            Const reference to the value of the Property.
-        template<typename T>
-        const T& value(const PropertyKey& key, PropertyManager& graph)
-        {
-            _assert_correct_type(key, typeid(T));
-            if (_is_dirty()) {
-                _evaluate_expression(key, graph);
-            }
-            const T* result = std::any_cast<T>(&m_value);
-            assert(result);
-            return *result;
-        }
-
-        /// Set the Property's value.
-        /// Removes an existing expression on the Property if it exists.
-        /// @param key          PropertyKey of this Property.
-        /// @param graph        Graph used to find affected Properties.
-        /// @param value        New value.
-        /// @throws type_error  If a value of the wrong type is passed.
-        template<typename T>
-        void set_value(const PropertyKey& key, PropertyManager& graph, T&& value)
-        {
-            _assert_correct_type(key, typeid(T));
-            if (m_expression) {
-                _freeze(key, graph);
-            }
-            if (value == *std::any_cast<T>(&m_value)) {
-                return;
-            }
-            m_value = std::forward<T>(value);
-            graph.m_dirty_items.insert(key.item_id());
-            _set_affected_dirty(key, graph);
-        }
-
-        /// Set property's expression.
-        /// @param key          PropertyKey of this Property.
-        /// @param graph        Graph used to find affected Properties.
-        /// @param expression   Expression to set.
-        /// @param dependencies Properties that the expression depends on.
-        /// @throws type_error  If an expression returning the wrong type is passed.
-        template<typename T>
-        void set_expression(const PropertyKey& key, PropertyManager& graph,
-                            std::function<T(const PropertyManager&)> expression, std::vector<PropertyKey> dependencies)
-        {
-            if (expression == m_expression) {
-                return;
-            }
-            if (!expression) {
-                _freeze(key, graph);
-                return;
-            }
-
-            _assert_correct_type(key, typeid(T));
-            _unregister_from_dependencies(key, graph);
-
-            m_expression = std::move(expression);
-            m_dependencies = std::move(dependencies);
-            _set_dirty(key, graph);
-
-            _register_with_dependencies(key, graph);
-            _set_affected_dirty(key, graph);
-        }
+        /// Type of the Property.
+        virtual const std::type_info& type() const = 0;
 
         /// All dependencies of this Property.
         const std::vector<PropertyKey>& dependencies() const { return m_dependencies; }
@@ -254,44 +189,65 @@ private:
         /// Prepares this Property for removal from the Graph.
         /// @param key          PropertyKey of this Property.
         /// @param graph        Graph used to find affected Properties.
-        void prepare_removal(const PropertyKey& key, PropertyManager& graph);
+        void prepare_removal(const PropertyKey& key, PropertyManager& graph)
+        {
+            _unregister_from_dependencies(key, graph);
+            for (const PropertyKey& affectedKey : m_affected) {
+                PropertyBase* affected = graph._find_property(affectedKey);
+                affected->_freeze(key, graph);
+            }
+        }
 
-    private:
+    protected:
+        /// Removes the expression from this Property.
+        virtual void _clear_expression() = 0;
+
         /// Freezing a property means removing its expression without changing its value.
         /// @param key          PropertyKey of this Property.
         /// @param graph        Graph used to find dependent Properties.
-        void _freeze(const PropertyKey& key, PropertyManager& graph) noexcept
+        void _freeze(const PropertyKey& key, PropertyManager& graph)
         {
             _unregister_from_dependencies(key, graph);
-            m_expression = {};
+            _clear_expression();
             _set_clean();
         }
-
-        /// Evaluates this Property's expression and updates its value.
-        /// @param key          PropertyKey of this Property.
-        /// @param graph        Graph used to find affected Properties.
-        void _evaluate_expression(const PropertyKey& key, PropertyManager& graph);
 
         /// Registers this property as affected with all of its dependencies.
         /// @param key      PropertyKey of this Property.
         /// @param graph    Graph used to find dependency Properties.
-        void _register_with_dependencies(const PropertyKey& key, PropertyManager& graph);
+        void _register_with_dependencies(const PropertyKey& key, PropertyManager& graph)
+        {
+            for (const PropertyKey& dependencyKey : m_dependencies) {
+                PropertyBase* dependency = graph._find_property(dependencyKey);
+                dependency->m_affected.emplace_back(key);
+            }
+        }
 
         /// Removes all dependencies from this property.
         /// @param key      PropertyKey of this Property.
         /// @param graph    Graph used to find dependent Properties.
-        void _unregister_from_dependencies(const PropertyKey& key, PropertyManager& graph);
+        void _unregister_from_dependencies(const PropertyKey& key, PropertyManager& graph)
+        {
+            for (const PropertyKey& dependencyKey : m_dependencies) {
+                PropertyBase* dependency = graph._find_property(dependencyKey);
+                auto it = std::find(dependency->m_affected.begin(), dependency->m_affected.end(), key);
+                assert(it != dependency->m_affected.end());
+                *it = std::move(dependency->m_affected.back());
+                dependency->m_affected.pop_back();
+            }
+            m_dependencies.clear();
+        }
 
         /// Set all affected properties dirty.
         /// @param key      PropertyKey of this Property.
         /// @param graph    Graph used to find affected Properties.
-        void _set_affected_dirty(const PropertyKey& key, PropertyManager& graph);
-
-        /// Makes sure that the given type_info is the same as the one of the Property's value.
-        /// @param key          PropertyKey of this Property.
-        /// @param info         Type to check.
-        /// @throws type_error  If the wrong value type is requested.
-        void _assert_correct_type(const PropertyKey& key, const std::type_info& info);
+        void _set_affected_dirty(const PropertyKey& key, PropertyManager& graph)
+        {
+            for (const PropertyKey& affectedKey : m_affected) {
+                PropertyBase* affected = graph._find_property(affectedKey);
+                affected->_set_dirty(key, graph);
+            }
+        }
 
         /// Checks if this Property is dirty.
         bool _is_dirty() const { return m_time.is_invalid(); }
@@ -310,13 +266,7 @@ private:
         void _set_clean(Time time = Time::invalid()) { m_time = (time.is_valid() ? std::move(time) : Time::now()); }
 
         // fields -------------------------------------------------------------
-    private:
-        /// Value held by the Property.
-        std::any m_value;
-
-        /// Expression evaluating to a new value for this Property.
-        std::function<std::any(const PropertyManager&)> m_expression;
-
+    protected:
         /// All Properties that this one depends on.
         std::vector<PropertyKey> m_dependencies;
 
@@ -326,6 +276,102 @@ private:
         /// Time when this Property was last defined.
         /// Is invalid if the Property is dirty (its expression needs to be evaluated).
         Time m_time = Time::now();
+    };
+
+    //=========================================================================
+
+    /// A typed Property instance in the graph that can be connected to other Properties via expressions.
+    template<typename T>
+    class Property : public PropertyBase {
+
+        // methods ------------------------------------------------------------
+    public:
+        /// Value constructor.
+        /// @param value    Value held by the Property, is used to determine the PropertyType.
+        Property(T&& value) : m_value(std::move(value)) {}
+
+        /// Type of the Property.
+        virtual const std::type_info& type() const override { return typeid(T); }
+
+        /// The Property's value.
+        /// If the Property is defined by an expression, this might evaluate the expression.
+        /// @param graph        Graph used to (potentially) evaluate the expression of this Property in.
+        /// @throws type_error  If the wrong value type is requested.
+        /// @returns            Const reference to the value of the Property.
+        const T& value(PropertyManager& graph)
+        {
+            if (_is_dirty()) {
+                _evaluate_expression(graph);
+            }
+            return m_value;
+        }
+
+        /// Set the Property's value.
+        /// Removes an existing expression on the Property if it exists.
+        /// @param key          PropertyKey of this Property.
+        /// @param graph        Graph used to find affected Properties.
+        /// @param value        New value.
+        /// @throws type_error  If a value of the wrong type is passed.
+        void set_value(const PropertyKey& key, PropertyManager& graph, T&& value)
+        {
+            if (m_expression) {
+                _freeze(key, graph);
+            }
+            if (value == m_value) {
+                return;
+            }
+            m_value = std::forward<T>(value);
+            graph.m_dirty_items.insert(key.item_id());
+            _set_affected_dirty(key, graph);
+        }
+
+        /// Set property's expression.
+        /// @param key          PropertyKey of this Property.
+        /// @param graph        Graph used to find affected Properties.
+        /// @param expression   Expression to set.
+        /// @param dependencies Properties that the expression depends on.
+        /// @throws type_error  If an expression returning the wrong type is passed.
+        void set_expression(const PropertyKey& key, PropertyManager& graph,
+                            std::function<T(const PropertyManager&)> expression, std::vector<PropertyKey> dependencies)
+        {
+            if (expression == m_expression) {
+                return;
+            }
+            if (!expression) {
+                _freeze(key, graph);
+                return;
+            }
+
+            _unregister_from_dependencies(key, graph);
+            m_expression = std::move(expression);
+            m_dependencies = std::move(dependencies);
+            _register_with_dependencies(key, graph);
+
+            _set_dirty(key, graph);
+            _set_affected_dirty(key, graph);
+        }
+
+    private:
+        /// Removes the expression from this Property.
+        void _clear_expression() override { m_expression = {}; }
+
+        /// Evaluates this Property's expression and updates its value.
+        /// @param key          PropertyKey of this Property.
+        /// @param graph        Graph used to find affected Properties.
+        void _evaluate_expression(PropertyManager& graph)
+        {
+            assert(m_expression);
+            m_value = m_expression(graph);
+            _set_clean();
+        }
+
+        // fields -------------------------------------------------------------
+    private:
+        /// Value held by the Property.
+        T m_value;
+
+        /// Expression evaluating to a new value for this Property.
+        std::function<T(const PropertyManager&)> m_expression;
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -348,7 +394,11 @@ public:
     const T& value(const PropertyKey key) const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        return _find_property(key).value<T>(key, *this);
+        const Property<T>* property = dynamic_cast<Property<T>>(_find_property(key));
+        if (!property) {
+            notf_throw(type_error, "");
+        }
+        return property->value(*this);
     }
 
     /// Sets the value of a Property.
@@ -360,7 +410,11 @@ public:
     void set_property(const PropertyKey key, T&& value)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        _find_property(key).set_value(key, *this, std::forward<T>(value));
+        const Property<T>* property = dynamic_cast<Property<T>>(_find_property(key));
+        if (!property) {
+            notf_throw(type_error, "");
+        }
+        property->set_value(key, *this, std::forward<T>(value));
     }
 
     /// Sets the expression of a Property.
@@ -378,7 +432,11 @@ public:
         static_assert(!std::is_same<T, void>::value, "Cannot define a Property with an expression returning `void`");
         std::lock_guard<std::mutex> lock(m_mutex);
         _detect_cycles(key, dependencies);
-        _find_property(key).set_expression(key, *this, std::move(expression), std::move(dependencies));
+        const Property<T>* property = dynamic_cast<Property<T>>(_find_property(key));
+        if (!property) {
+            notf_throw(type_error, "");
+        }
+        property->set_expression(key, *this, std::move(expression), std::move(dependencies));
     }
 
     /// Returns the set of Items that had at least one Property changed or dirtied since the last call.
@@ -407,7 +465,7 @@ private: // for Access<Item>
             notf_throw(lookup_error, "Cannot add Property with duplicate key");
         }
         m_dirty_items.insert(key.item_id());
-        m_properties.emplace(std::make_pair(std::move(key), Property(std::forward<T>(value))));
+        m_properties.emplace(std::make_pair(std::move(key), std::make_unique<Property<T>>(std::forward<T>(value))));
     }
 
     /// Removes a Property from the graph.
@@ -420,32 +478,36 @@ private:
     /// @param key              Key of the Property to find.
     /// @throws lookup_error    If a property with the requested key does not exist in the graph.
     /// @returns                The requested Property.
-    Property& _find_property(const PropertyKey key)
+    PropertyBase* _find_property(const PropertyKey key)
     {
         if (key.property_id().is_valid()) {
-            const auto it = m_properties.find(key);
+            auto it = m_properties.find(key);
             if (it != m_properties.end()) {
-                return it->second;
+                return it->second.get();
             }
         }
-        _throw_notfound(key);
+        _throw_not_found(key);
     }
-    const Property& _find_property(const PropertyKey key) const
+    const PropertyBase* _find_property(const PropertyKey key) const
     {
         return const_cast<PropertyManager*>(this)->_find_property(key);
     }
-
-    /// Call when a PropertyKey is not found.
-    NOTF_NORETURN void _throw_notfound(const PropertyKey key);
 
     /// Detects potential cyclic dependencies in the graph before they are introduced.
     /// @throws cyclic_dependency_error     If the expression would introduce a cyclic dependency into the graph.
     void _detect_cycles(const PropertyKey key, const std::vector<PropertyKey>& dependencies);
 
+    /// Call when a PropertyKey is not found.
+    NOTF_NORETURN void _throw_not_found(const PropertyKey key);
+
+    /// Call when a Property is requested with the wrong type.
+    NOTF_NORETURN void
+    _throw_wrong_type(const PropertyKey key, const std::type_info& expected, const std::type_info& actual);
+
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// All properties in the graph.
-    std::unordered_map<PropertyKey, Property> m_properties;
+    robin_map<PropertyKey, std::unique_ptr<PropertyBase>> m_properties;
 
     /// All Items that had at least one Property changed or dirtied since the last call to `swap_dirty_properties`.
     std::unordered_set<ItemId> m_dirty_items;

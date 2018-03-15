@@ -109,6 +109,8 @@ add_sources(THIRDPARTY_FILES thirdparty
     abseil/any.hpp
     abseil/any.cpp
     mpark/variant.hpp
+    robin-map/robin_map.h
+    robin-map/robin_set.h
 )
 
 add_sources(RESOURCE_FILES res

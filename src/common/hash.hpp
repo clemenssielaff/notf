@@ -57,4 +57,34 @@ inline size_t hash(Values&&... values)
     return result;
 }
 
+/// 32 bit mixer taken from MurmurHash3
+///     https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp
+///
+/// Use this to improve a hash function with a low entropy (like a counter).
+constexpr inline size_t hash_mix(uint key)
+{
+    key ^= key >> 16;
+    key *= 0x85ebca6b;
+    key ^= key >> 13;
+    key *= 0xc2b2ae35;
+    key ^= key >> 16;
+    return key;
+}
+
+/// 64 bit mixer as described (Mix 13) in
+///     https://zimbry.blogspot.co.nz/2011/09/better-bit-mixing-improving-on.html
+/// which is based on the mixer used in MurmurHash3
+///     https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp
+///
+/// Use this to improve a hash function with a low entropy (like a counter).
+constexpr inline size_t hash_mix(size_t key)
+{
+    key ^= (key >> 30);
+    key *= 0xbf58476d1ce4e5b9;
+    key ^= (key >> 27);
+    key *= 0x94d049bb133111eb;
+    key ^= (key >> 31);
+    return key;
+}
+
 NOTF_CLOSE_NAMESPACE
