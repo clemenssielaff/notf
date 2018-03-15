@@ -224,6 +224,41 @@ public:
     /// Unique pointer to child item container.
     using ChildContainerPtr = std::unique_ptr<ChildContainer>;
 
+    //=========================================================================
+
+    /// Typed Property accessor.
+    template<typename T>
+    struct Property {
+
+        /// Constructor.
+        /// @param key  Key of the Property.
+        Property(PropertyKey key) : key(std::move(key)) {}
+
+        /// Removes the Property from the graph.
+        /// All affected Properties will have their value frozen to their current value.
+        ~Property() { PropertyManager::Access<Item>(_property_graph()).delete_property(key); }
+
+        /// The value of this Property.
+        const T& value() { return _property_graph().value<T>(key); }
+
+        /// Sets the value of this Property.
+        /// @param value    New value.
+        void set_value(T&& value) { _property_graph().set_value(key, std::forward<T>(value)); }
+
+        /// Sets an expression of this Property.
+        /// @param expression       New expression defining the value of the property.
+        /// @param dependencies     Keys of all dependencies. It is of critical importance, that all properties in the
+        ///                         expression are listed.
+        void
+        set_expression(std::function<T(const PropertyManager&)>&& expression, std::vector<PropertyKey> dependencies)
+        {
+            _property_graph().set_expression(key, std::move(expression), std::move(dependencies));
+        }
+
+        /// @param key  Key of the Property.
+        const PropertyKey key;
+    };
+
 protected:
     /// Token object to make sure that object instances can only be created by a call to `_create`.
     class Token {
@@ -329,42 +364,15 @@ public:
     // properties -------------------------------------------------------------
 
     /// Creates a new Property associated with this Item.
-    /// It is the responsibility of the caller of this method to store the returned key as the Item will keep no record
-    /// of it. However, the PropertyManager will, and when this Item goes out of scope, so will all of its Properties.
-    /// Owning a copy of a PropertyKey does not imply ownership.
     /// @param value    Initial value of the Property, also used to determine its type.
-    /// @returns        TypedPropertyId that can be used to access the Property value in the graph.
+    /// @returns        Property that can be used to access the Property value in the graph.
     template<typename T>
-    TypedPropertyId<T> add_property(T&& value)
+    Property<T> create_property(T&& value)
     {
-        PropertyKey key = PropertyKey(m_id, ++m_property_counter);
-        PropertyManager::Access<Item>(_graph()).add_property(key, std::forward<T>(value));
-        m_properties.emplace_back(std::move(key));
+        const PropertyKey key = PropertyKey(m_id, ++m_property_counter);
+        PropertyManager::Access<Item>(_property_graph()).add_property(key, std::forward<T>(value));
+        return Property<T>(key);
     }
-
-    ///@{
-    /// Returns the value of the Property requested by type and key.
-    /// @param property_id      Requested Property.
-    /// @throws lookup_error    If a Property with the given id does not exist.
-    /// @throws type_error      If the wrong value type is requested.
-    /// @return                 Value of the property.
-    template<typename T>
-    const T& property_value(PropertyId property_id)
-    {
-        return _graph().value<T>(PropertyKey(m_id, std::move(property_id)));
-    }
-    template<typename T>
-    const T& property_value(TypedPropertyId<T> property_id)
-    {
-        return _graph().value<T>(PropertyKey(m_id, std::move(property_id)));
-    }
-    ///@}
-
-    /// Removes a Property from the graph.
-    /// All affected Properties will have their value frozen to their current value.
-    /// If the PropertyKey does not identify a Property of this Item, the call is silently ignored.
-    /// @param property_id  Id of the Property to delete.
-    void delete_property(PropertyId property_id);
 
 protected:
     /// Removes a child Item from this Item.
@@ -379,7 +387,7 @@ protected:
 
 private:
     /// Returns the global PropertyManager.
-    static PropertyManager& _graph();
+    static PropertyManager& _property_graph();
 
     /// Sets the parent of this Item.
     /// @param notify_old   If the old parent is already in the process of being deleted, the child Item must not
@@ -392,9 +400,6 @@ protected:
     ChildContainerPtr m_children;
 
 private:
-    /// All Properties of this Item.
-    std::vector<PropertyKey> m_properties;
-
     /// Non-owning pointer to the parent Item, is potentially empty.
     Item* m_parent = nullptr;
 

@@ -42,21 +42,11 @@ Item::~Item()
         log_trace << "Destroying Item \"" << m_name << "\"";
     }
 
-    { // delete all properties
-        auto property_graph = PropertyManager::Access<Item>(_graph());
-        for (const PropertyKey& property : m_properties) {
-            property_graph.delete_property(property);
-        }
-        m_properties.clear();
-        if (m_parent) {
-            property_graph.add_dirty_item(m_parent->id());
-        }
-    }
-
     m_children->_destroy();
     m_children.reset();
 
     if (m_parent) {
+        PropertyManager::Access<Item>(_property_graph()).add_dirty_item(m_parent->id());
         m_parent->_remove_child(this);
     }
     m_parent = nullptr;
@@ -115,15 +105,7 @@ const std::string& Item::set_name(std::string name)
     return m_name;
 }
 
-void Item::delete_property(PropertyId property_id)
-{
-    PropertyKey key = PropertyKey(m_id, std::move(property_id));
-    if (remove_one_unordered(m_properties, key)) {
-        PropertyManager::Access<Item>(_graph()).delete_property(key);
-    }
-}
-
-PropertyManager& Item::_graph() { return Application::instance().property_graph(); }
+PropertyManager& Item::_property_graph() { return Application::instance().property_graph(); }
 
 void Item::_set_parent(Item* parent, bool notify_old)
 {

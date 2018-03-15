@@ -407,7 +407,7 @@ public:
     /// @throws lookup_error    If a Property with the given id does not exist.
     /// @throws type_error      If the wrong value type is requested.
     template<typename T>
-    void set_property(const PropertyKey key, T&& value)
+    void set_value(const PropertyKey key, T&& value)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         const Property<T>* property = dynamic_cast<Property<T>>(_find_property(key));
@@ -426,8 +426,8 @@ public:
     /// @throws type_error      If the expression returns the wrong type.
     /// @throws cyclic_dependency_error     If the expression would introduce a cyclic dependency into the graph.
     template<typename T>
-    void set_property(const PropertyKey key, std::function<T(const PropertyManager&)>&& expression,
-                      std::vector<PropertyKey> dependencies)
+    void set_expression(const PropertyKey key, std::function<T(const PropertyManager&)>&& expression,
+                        std::vector<PropertyKey> dependencies)
     {
         static_assert(!std::is_same<T, void>::value, "Cannot define a Property with an expression returning `void`");
         std::lock_guard<std::mutex> lock(m_mutex);
