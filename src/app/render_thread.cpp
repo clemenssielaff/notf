@@ -1,6 +1,6 @@
 #include "app/render_thread.hpp"
 
-#include "app/layer.hpp"
+//#include "app/layer.hpp"
 #include "app/scene_manager.hpp"
 #include "app/window.hpp"
 #include "common/log.hpp"
@@ -11,6 +11,8 @@ NOTF_OPEN_NAMESPACE
 
 void RenderThread::start()
 {
+    GraphicsContext& graphics_context = m_window.graphics_context();
+    graphics_context.release_current();
     {
         std::unique_lock<std::mutex> lock_guard(m_mutex);
         if (m_is_running) {
@@ -45,7 +47,7 @@ void RenderThread::stop()
 void RenderThread::_run()
 {
     GraphicsContext& graphics_context = m_window.graphics_context();
-    graphics_context.make_current(); // TODO: the GraphicsContext is ONLY CURRENT on the RenderThread...
+    graphics_context.make_current();
 
     SceneManager& scene_manager = m_window.scene_manager();
 
@@ -75,7 +77,7 @@ void RenderThread::_run()
         try {
             // render all Layers from back to front
             for (const LayerPtr& layer : reverse(scene_manager.current_state().layers)) {
-                layer->render();
+                //                layer->render();
             }
         }
         // if an error bubbled all the way up here, something has gone horribly wrong

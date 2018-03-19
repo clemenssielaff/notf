@@ -37,7 +37,7 @@ static void error_callback(int error, const char* description)
 
 void render_thread(GLFWwindow* window)
 {
-    SceneManagerPtr scene_manager = SceneManager::create(window);
+    SceneManagerPtr scene_manager = std::make_unique<SceneManager>();
 
     // Stroker ////////////////////////////////////////////////
 

@@ -319,6 +319,7 @@ NOTF_CLOSE_NAMESPACE
 #define NOTF_LOG_LEVEL_ALL 6      // log everything
 
 // TODO: notf_ prefix for log macros?
+// TODO: add log_debug or rename log_trace
 
 #ifndef NOTF_LOG_LEVEL
 #    define NOTF_LOG_LEVEL NOTF_LOG_LEVEL_ALL

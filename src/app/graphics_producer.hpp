@@ -2,6 +2,7 @@
 
 #include "app/ids.hpp"
 #include "app/scene_manager.hpp"
+#include "app/window.hpp"
 #include "utils/make_smart_enabler.hpp"
 
 NOTF_OPEN_NAMESPACE

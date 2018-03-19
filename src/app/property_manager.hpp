@@ -200,15 +200,16 @@ private:
 
     protected:
         /// Removes the expression from this Property.
-        virtual void _clear_expression() = 0;
+        /// @param graph        Graph used to find dependency Properties.
+        virtual void _clear_expression(PropertyManager& graph) = 0;
 
         /// Freezing a property means removing its expression without changing its value.
         /// @param key          PropertyKey of this Property.
         /// @param graph        Graph used to find dependent Properties.
         void _freeze(const PropertyKey& key, PropertyManager& graph)
         {
+            _clear_expression(graph);
             _unregister_from_dependencies(key, graph);
-            _clear_expression();
             _set_clean();
         }
 
@@ -353,11 +354,18 @@ private:
 
     private:
         /// Removes the expression from this Property.
-        void _clear_expression() override { m_expression = {}; }
+        /// @param graph        Graph used to find dependency Properties.
+        void _clear_expression(PropertyManager& graph) override
+        {
+            if (m_expression) {
+                _evaluate_expression(graph);
+                m_expression = {};
+            }
+        }
 
         /// Evaluates this Property's expression and updates its value.
         /// @param key          PropertyKey of this Property.
-        /// @param graph        Graph used to find affected Properties.
+        /// @param graph        Graph used to find dependency Properties.
         void _evaluate_expression(PropertyManager& graph)
         {
             assert(m_expression);

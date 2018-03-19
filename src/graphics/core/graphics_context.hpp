@@ -310,6 +310,11 @@ public:
     /// Makes the OpenGL context current on the current thread.
     void make_current();
 
+    /// Releases the OpenGL context if it is current on this thread. Otherwise does nothing.
+    /// This shouldn't actually be necessary, but I found that I couldn't move the context from the main to the render
+    /// thread otherwise.
+    void release_current();
+
     /// En- or disables vsync (enabled by default).
     /// @param enabled  Whether to enable or disable vsync.
     void set_vsync(const bool enabled);

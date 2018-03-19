@@ -3,15 +3,15 @@
 #include <algorithm>
 
 #include "app/glfw.hpp"
-#include "app/property_manager.hpp"
-#include "app/resource_manager.hpp"
-#include "app/window.hpp"
 #include "app/io/char_event.hpp"
 #include "app/io/key_event.hpp"
 #include "app/io/keyboard.hpp"
 #include "app/io/mouse_event.hpp"
 #include "app/io/time.hpp"
 #include "app/io/window_event.hpp"
+#include "app/property_manager.hpp"
+#include "app/resource_manager.hpp"
+#include "app/window.hpp"
 #include "common/log.hpp"
 #include "common/thread_pool.hpp"
 #include "common/vector2.hpp"
@@ -94,69 +94,71 @@ Application::~Application() { _shutdown(); }
 
 int Application::exec()
 {
-    //    const Time::Ticks ticks_per_frame = m_args.fps > 0 ? (Time::frequency() /
-    //    static_cast<Time::Ticks>(m_args.fps)) : 0; Time::Ticks next_frame            =
-    //    next_interval(Time::now().ticks, ticks_per_frame); bool fire_animation               = false;
+    // loop until there are no more windows open
+    while (m_windows.size() > 0) {
 
-    //    // loop until there are no more windows open
-    //    while (m_windows.size() > 0) {
-
-    //        // fire the animation signal before redrawing the windows
-    //        if (fire_animation) {
-    //            on_frame();
-    //            fire_animation = false;
-    //        }
-
-    //        // update all windows
-    //        for (const WindowPtr& window : m_windows) {
-    //            window->_update();
-    //        }
-
-    //        // find out if you need to fire an animation frame on the next cycle
-    //        const Time now = Time::now();
-    //        if (m_args.fps > 0 && now.ticks >= next_frame) {
-    //            fire_animation = true;
-    //            next_frame     = next_interval(now.ticks, ticks_per_frame);
-    //        }
-
-    //        //#ifdef _DEBUG
-    //        { // print debug stats
-    //            static Time last_frame    = Time::now();
-    //            static Time time_counter  = 0;
-    //            static uint frame_counter = 0; // actual number of frames in the last second
-    //            static uint anim_counter  = 0; // times the `on_frame` signal was fired in the last second
-
-    //            time_counter += now.since(last_frame);
-    //            last_frame = now;
-    //            ++frame_counter;
-    //            anim_counter += fire_animation ? 1 : 0;
-    //            if (time_counter >= Time::frequency()) {
-    //                //                log_trace << frame_counter << "fps / " << anim_counter << " animation frames";
-    //                frame_counter = 0;
-    //                anim_counter  = 0;
-    //                time_counter -= Time::frequency();
-    //            }
-    //        }
-    //        //#endif
-
-    //        // wait for the next event or the next time to fire an animation frame
-    //        //        if (m_args.fps == 0) {
-    //        //            glfwWaitEvents();
-    //        //        }
-    //        //        else {
-    //        //            glfwWaitEventsTimeout((next_frame > now.ticks ? next_frame - now.ticks : 0) /
-    //        //            static_cast<double>(Time::frequency()));
-    //        //        }
-    //        glfwPollEvents();
-    //    }
+        // wait for the next event or the next time to fire an animation frame
+        glfwWaitEvents();
+    }
 
     _shutdown();
     return 0;
 }
 
-void Application::_on_error(int error, const char* message)
+void Application::_on_error(int error_number, const char* message)
 {
-    log_critical << "GLFW Error " << error << ": '" << message << "'";
+#ifdef NOTF_DEBUG
+    static const std::string glfw_not_initialized = "GLFW_NOT_INITIALIZED";
+    static const std::string glfw_no_current_context = "GLFW_NO_CURRENT_CONTEXT";
+    static const std::string glfw_invalid_enum = "GLFW_INVALID_ENUM";
+    static const std::string glfw_invalid_value = "GLFW_INVALID_VALUE";
+    static const std::string glfw_out_of_memory = "GLFW_OUT_OF_MEMORY";
+    static const std::string glfw_api_unavailable = "GLFW_API_UNAVAILABLE";
+    static const std::string glfw_version_unavailable = "GLFW_VERSION_UNAVAILABLE";
+    static const std::string glfw_platform_error = "GLFW_PLATFORM_ERROR";
+    static const std::string glfw_format_unavailable = "GLFW_FORMAT_UNAVAILABLE";
+    static const std::string glfw_no_window_context = "GLFW_NO_WINDOW_CONTEXT";
+    static const std::string unknown_error = "<unknown error>";
+
+    const std::string* error_name;
+    switch (error_number) {
+    case GLFW_NOT_INITIALIZED:
+        error_name = &glfw_not_initialized;
+        break;
+    case GLFW_NO_CURRENT_CONTEXT:
+        error_name = &glfw_no_current_context;
+        break;
+    case GLFW_INVALID_ENUM:
+        error_name = &glfw_invalid_enum;
+        break;
+    case GLFW_INVALID_VALUE:
+        error_name = &glfw_invalid_value;
+        break;
+    case GLFW_OUT_OF_MEMORY:
+        error_name = &glfw_out_of_memory;
+        break;
+    case GLFW_API_UNAVAILABLE:
+        error_name = &glfw_api_unavailable;
+        break;
+    case GLFW_VERSION_UNAVAILABLE:
+        error_name = &glfw_version_unavailable;
+        break;
+    case GLFW_PLATFORM_ERROR:
+        error_name = &glfw_platform_error;
+        break;
+    case GLFW_FORMAT_UNAVAILABLE:
+        error_name = &glfw_format_unavailable;
+        break;
+    case GLFW_NO_WINDOW_CONTEXT:
+        error_name = &glfw_no_window_context;
+        break;
+    default:
+        error_name = &unknown_error;
+    }
+    log_critical << "GLFW Error " << *error_name << " (" << error_number << "): '" << message << "'";
+#else
+    log_critical << "GLFW Error (" << error_number << "): '" << message << "'";
+#endif
 }
 
 void Application::_on_token_key(GLFWwindow* glfw_window, int key, NOTF_UNUSED int scancode, int action, int modifiers)

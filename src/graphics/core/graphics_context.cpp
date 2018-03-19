@@ -98,6 +98,14 @@ GraphicsContext::GraphicsContext(GLFWwindow* window) : m_window(window), m_curre
     make_current();
     glfwSwapInterval(m_has_vsync ? 1 : 0);
 
+    { // sanity check (otherwise OpenGL may happily return `null` on all calls until something crashes down the line)
+        const GLubyte* version;
+        notf_check_gl(version = glGetString(GL_VERSION));
+        if (!version) {
+            notf_throw_format(runtime_error, "Failed to create an OpenGL context");
+        }
+    }
+
     // OpenGL defaults
     notf_check_gl(glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST));
     notf_check_gl(glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_DONT_CARE));
@@ -171,6 +179,16 @@ void GraphicsContext::make_current()
     }
     glfwMakeContextCurrent(m_window);
     m_current_thread = thread_id;
+}
+
+void GraphicsContext::release_current()
+{
+    const auto thread_id = std::this_thread::get_id();
+    if (m_current_thread != thread_id) {
+        return;
+    }
+    glfwMakeContextCurrent(nullptr);
+    m_current_thread = std::thread::id(0);
 }
 
 void GraphicsContext::set_vsync(const bool enabled)

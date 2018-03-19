@@ -89,18 +89,42 @@ create_module(app)
 create_module(graphics)
 create_module(utils)
 
+list(REMOVE_ITEM app_MODULE
+    src/app/render/fragment_producer.cpp
+    src/app/render/fragment_producer.hpp
+    src/app/render/plotter.cpp
+    src/app/render/plotter.hpp
+    src/app/render_target.hpp
+    src/app/render_target.cpp
+    src/app/layer.cpp
+    src/app/layer.hpp
+    src/app/widget/controller.hpp
+    src/app/widget/controller.cpp
+    src/app/widget/root_layout.cpp
+    src/app/widget/root_layout.hpp
+    src/app/widget/screen_item.cpp
+    src/app/widget/screen_item.hpp
+    src/app/widget/hierarchy.hpp
+    src/app/widget/hierarchy.cpp
+    src/app/widget/widget.cpp
+    src/app/widget/widget.hpp
+    src/app/widget/layout.hpp
+    src/app/widget/layout.cpp
+)
+
 add_sources(SOURCE_FILES src
     main.cpp
 )
 
 add_sources(SOURCE_FILES examples
-    framebuffer_example.cpp
-    line_example.cpp
-    wireframe_example.cpp
-    shape_example.cpp
-    text_example.cpp
-    rendermanager_example.cpp
-    renderthread_example.cpp
+#    framebuffer_example.cpp
+#    line_example.cpp
+#    wireframe_example.cpp
+#    shape_example.cpp
+#    text_example.cpp
+#    rendermanager_example.cpp
+#    renderthread_example.cpp
+    properties_example.cpp
 )
 
 add_sources(THIRDPARTY_FILES thirdparty

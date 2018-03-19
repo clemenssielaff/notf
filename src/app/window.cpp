@@ -31,6 +31,8 @@ window_initialization_error::~window_initialization_error() {}
 
 //====================================================================================================================//
 
+const Window::Args Window::s_default_args = {};
+
 Window::Window(const Args& args)
     : m_glfw_window(nullptr, detail::window_deleter), m_title(args.title), m_size(args.size)
 {
@@ -71,20 +73,21 @@ Window::Window(const Args& args)
         try {
             RawImage icon(icon_path);
             if (icon.channels() != 4) {
-                log_warning << "Icon file '" << icon_path << "' does not provide the required 4 byte per pixel, but "
+                log_warning << "Icon file \"" << icon_path << "\" does not provide the required 4 byte per pixel, but "
                             << icon.channels();
             }
             else {
                 const GLFWimage glfw_icon{icon.width(), icon.height(), const_cast<uchar*>(icon.data())};
                 glfwSetWindowIcon(m_glfw_window.get(), 1, &glfw_icon);
+                log_trace << "Loaded icon for Window \"" << title() << "\" from \"" << icon_path << "\"";
             }
         }
         catch (std::runtime_error) {
-            log_warning << "Failed to load Window icon '" << icon_path << "'";
+            log_warning << "Failed to load icon for Window \"" << title() << "\" from \"" << icon_path << "\"";
         }
     }
 
-    log_info << "Created Window '" << title() << "' using OpenGl version: " << glGetString(GL_VERSION);
+    log_info << "Created Window \"" << title() << "\" using OpenGl version: " << glGetString(GL_VERSION);
 
     m_render_thread->start();
 }
