@@ -25,4 +25,6 @@ internal_error::~internal_error() {}
 
 bad_deference_error::~bad_deference_error() {}
 
+assertion_error::~assertion_error() {}
+
 NOTF_CLOSE_NAMESPACE

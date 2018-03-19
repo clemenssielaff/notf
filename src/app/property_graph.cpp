@@ -1,4 +1,4 @@
-#include "app/property_manager.hpp"
+#include "app/property_graph.hpp"
 
 #include "common/log.hpp"
 #include "common/set.hpp"
@@ -8,46 +8,46 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
-PropertyManager::lookup_error::~lookup_error() = default;
+PropertyGraph::lookup_error::~lookup_error() = default;
 
-PropertyManager::type_error::~type_error() = default;
+PropertyGraph::type_error::~type_error() = default;
 
-PropertyManager::cyclic_dependency_error::~cyclic_dependency_error() = default;
-
-//====================================================================================================================//
-
-PropertyManager::PropertyBase::~PropertyBase() = default;
+PropertyGraph::cyclic_dependency_error::~cyclic_dependency_error() = default;
 
 //====================================================================================================================//
 
-void PropertyManager::_delete_property(const PropertyKey key)
+PropertyGraph::PropertyBase::~PropertyBase() = default;
+
+//====================================================================================================================//
+
+void PropertyGraph::delete_property(const PropertyBase* property)
 {
-    if (!key.property_id().is_valid()) {
+    if (!property) {
         return;
     }
     std::lock_guard<std::mutex> lock(m_mutex);
-    auto it = m_properties.find(key);
+    auto it = m_properties.find(property);
     if (it == m_properties.end()) {
         return;
     }
-    it->second->prepare_removal(key, *this);
+    it->second->prepare_removal(*this);
     m_properties.erase(it);
 }
 
-void PropertyManager::_detect_cycles(const PropertyKey key, const std::vector<PropertyKey>& dependencies)
+void PropertyGraph::_detect_cycles(const PropertyBase* property, const std::vector<PropertyBase*>& dependencies)
 {
-    std::unordered_set<PropertyKey> unchecked, checked;
+    std::unordered_set<PropertyBase*> unchecked, checked;
     std::copy(dependencies.begin(), dependencies.end(), std::inserter(unchecked, unchecked.begin()));
 
-    PropertyKey candidate = PropertyKey::invalid();
+    PropertyBase* candidate;
     while (pop_one(unchecked, candidate)) {
-        if (key == candidate) {
+        if (property == candidate) {
             notf_throw(cyclic_dependency_error, "Failed to create property expression which would introduce a cyclic "
                                                 "dependency");
         }
         checked.insert(candidate);
         PropertyBase* property = _find_property(candidate);
-        for (const PropertyKey& dependency : property->dependencies()) {
+        for (PropertyBase* dependency : property->dependencies()) {
             if (!checked.count(dependency)) {
                 unchecked.emplace(dependency);
             }
@@ -55,16 +55,16 @@ void PropertyManager::_detect_cycles(const PropertyKey key, const std::vector<Pr
     }
 }
 
-void PropertyManager::_throw_not_found(const PropertyKey key)
+void PropertyGraph::_throw_not_found(const PropertyBase* property) const
 {
-    notf_throw_format(lookup_error, "Unknown Property \"" << key << "\"");
+    notf_throw_format(lookup_error, "Unknown Property \"" << property << "\"");
 }
 
-void PropertyManager::_throw_wrong_type(const PropertyKey key, const std::type_info& expected,
-                                        const std::type_info& actual)
+void PropertyGraph::_throw_wrong_type(const PropertyBase* property, const std::type_info& expected,
+                                      const std::type_info& actual) const
 {
     notf_throw_format(type_error, "Wrong property type requested of Property \""
-                                      << key << "\""
+                                      << property << "\""
                                       << "(\"" << type_name(actual) << " instead of \"" << type_name(expected)
                                       << "\")");
 }

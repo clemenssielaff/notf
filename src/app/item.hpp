@@ -1,7 +1,7 @@
 #pragma once
 
 #include "app/ids.hpp"
-#include "app/property_manager.hpp"
+#include "app/property_graph.hpp"
 #include "common/signal.hpp"
 #include "utils/make_smart_enabler.hpp"
 
@@ -224,41 +224,6 @@ public:
     /// Unique pointer to child item container.
     using ChildContainerPtr = std::unique_ptr<ChildContainer>;
 
-    //=========================================================================
-
-    /// Typed Property accessor.
-    template<typename T>
-    struct Property {
-
-        /// Constructor.
-        /// @param key  Key of the Property.
-        Property(PropertyKey key) : key(std::move(key)) {}
-
-        /// Removes the Property from the graph.
-        /// All affected Properties will have their value frozen to their current value.
-        ~Property() { PropertyManager::Access<Item>(_property_graph()).delete_property(key); }
-
-        /// The value of this Property.
-        const T& value() { return _property_graph().value<T>(key); }
-
-        /// Sets the value of this Property.
-        /// @param value    New value.
-        void set_value(T&& value) { _property_graph().set_value(key, std::forward<T>(value)); }
-
-        /// Sets an expression of this Property.
-        /// @param expression       New expression defining the value of the property.
-        /// @param dependencies     Keys of all dependencies. It is of critical importance, that all properties in the
-        ///                         expression are listed.
-        void
-        set_expression(std::function<T(const PropertyManager&)>&& expression, std::vector<PropertyKey> dependencies)
-        {
-            _property_graph().set_expression(key, std::move(expression), std::move(dependencies));
-        }
-
-        /// @param key  Key of the Property.
-        const PropertyKey key;
-    };
-
 protected:
     /// Token object to make sure that object instances can only be created by a call to `_create`.
     class Token {
@@ -366,13 +331,13 @@ public:
     /// Creates a new Property associated with this Item.
     /// @param value    Initial value of the Property, also used to determine its type.
     /// @returns        Property that can be used to access the Property value in the graph.
-    template<typename T>
-    Property<T> create_property(T&& value)
-    {
-        const PropertyKey key = PropertyKey(m_id, ++m_property_counter);
-        PropertyManager::Access<Item>(_property_graph()).add_property(key, std::forward<T>(value));
-        return Property<T>(key);
-    }
+    //    template<typename T>
+    //    Property<T> create_property(T&& value)
+    //    {
+    //        const PropertyKey key = PropertyKey(m_id, ++m_property_counter);
+    //        PropertyGraph::Access<Item>(_property_graph()).add_property(key, std::forward<T>(value));
+    //        return Property<T>(key);
+    //    }
 
 protected:
     /// Removes a child Item from this Item.
@@ -386,9 +351,6 @@ protected:
     static void _set_parent(Item* item, Item* parent) { item->_set_parent(parent, /* notify_old = */ true); }
 
 private:
-    /// Returns the global PropertyManager.
-    static PropertyManager& _property_graph();
-
     /// Sets the parent of this Item.
     /// @param notify_old   If the old parent is already in the process of being deleted, the child Item must not
     ///                     attempt to unregister itself anymore.
@@ -408,9 +370,6 @@ private:
 
     /// Application-unique ID of this Item.
     const ItemId m_id;
-
-    /// Counter used to generate new PropertyIds for members of the group.
-    PropertyId::underlying_t m_property_counter = 0;
 };
 
 //====================================================================================================================//

@@ -46,7 +46,6 @@ Item::~Item()
     m_children.reset();
 
     if (m_parent) {
-        PropertyManager::Access<Item>(_property_graph()).add_dirty_item(m_parent->id());
         m_parent->_remove_child(this);
     }
     m_parent = nullptr;
@@ -104,8 +103,6 @@ const std::string& Item::set_name(std::string name)
     }
     return m_name;
 }
-
-PropertyManager& Item::_property_graph() { return Application::instance().property_graph(); }
 
 void Item::_set_parent(Item* parent, bool notify_old)
 {

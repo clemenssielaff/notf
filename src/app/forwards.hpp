@@ -15,6 +15,9 @@ class CharEvent;
 class FocusEvent;
 class WindowEvent;
 
+template<typename T>
+class Property;
+
 NOTF_DEFINE_SHARED_POINTERS(struct, Capability);
 NOTF_DEFINE_SHARED_POINTERS(class, Controller);
 NOTF_DEFINE_SHARED_POINTERS(class, Item);
@@ -33,7 +36,7 @@ NOTF_DEFINE_SHARED_POINTERS(class, ItemHierarchy);
 
 NOTF_DEFINE_UNIQUE_POINTERS(class, SceneManager);
 NOTF_DEFINE_UNIQUE_POINTERS(class, ResourceManager);
-NOTF_DEFINE_UNIQUE_POINTERS(class, PropertyManager);
+NOTF_DEFINE_UNIQUE_POINTERS(class, PropertyGraph);
 NOTF_DEFINE_UNIQUE_POINTERS(class, RenderThread);
 
 namespace detail {

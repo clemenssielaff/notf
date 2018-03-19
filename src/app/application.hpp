@@ -110,8 +110,8 @@ public:
     /// The Application's thread pool.
     ThreadPool& thread_pool() { return *m_thread_pool; }
 
-    /// The Application's PropertyManager.
-    PropertyManager& property_graph() { return *m_property_graph; }
+    /// The Application's PropertyGraph.
+    PropertyGraph& property_graph() { return *m_property_graph; }
 
 private:
     /// Static (private) function holding the actual Application instance.
@@ -203,8 +203,8 @@ private:
     /// The global thread pool.
     ThreadPoolPtr m_thread_pool;
 
-    /// PropertyManager.
-    PropertyManagerPtr m_property_graph;
+    /// PropertyGraph.
+    PropertyGraphPtr m_property_graph;
 
     /// All Windows known the the Application.
     std::vector<WindowPtr> m_windows;
@@ -231,5 +231,9 @@ class Application::Access<Window> {
     /// The Application to access.
     Application& m_application;
 };
+
+/// Helper macro.
+/// auto& app = NOTF_APP();
+#define NOTF_APP Application::instance
 
 NOTF_CLOSE_NAMESPACE

@@ -34,7 +34,7 @@ The Application module
 
 
 Application
-    PropertyManager (1)
+    PropertyGraph (1)
     ResourceManager (1)
     ThreadPool (1)
     Window (*)
@@ -48,7 +48,7 @@ Application
                     Scene (1, shared)
                         Item (*)
 
-The Application is a singleton and owns a PropertyManager as well as all Window.
+The Application is a singleton and owns a PropertyGraph as well as all Window.
 
 Windows are actually shared_ptrs because they are controlled by the user. The Application on the other side is not
 (only instanciated).

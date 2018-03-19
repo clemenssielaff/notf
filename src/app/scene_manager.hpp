@@ -102,7 +102,7 @@ private:
 ///
 /// Some GraphicsProducer may require only properties in order to draw: the "smoke" FragmentProducer for example,
 /// requires only the screen resolution and the time to update.
-/// In that case, it is enough for the Application to update the PropertyManager with all of its accumulated updates
+/// In that case, it is enough for the Application to update the PropertyGraph with all of its accumulated updates
 /// from various threads and then kick off the SceneManager of each Window.
 ///
 ///                     +
@@ -111,7 +111,7 @@ private:
 ///           +---+     |              v                            v
 ///               |     |     +------------------+          +----------------+
 ///     various   |   async   |                  |   sync   |                |
-///               +----------->  PropertyManager +---------->  SceneManager  |
+///               +----------->  PropertyGraph +---------->  SceneManager  |
 ///     threads   |   update  |                  |   query  |                |
 ///               |     |     +------------------+          +----------------+
 ///           +---+     |
@@ -119,7 +119,7 @@ private:
 ///                     +
 ///               thread barrier
 ///
-/// This works well, as long as each Producer only requires the PropertyManager to remain unchanged
+/// This works well, as long as each Producer only requires the PropertyGraph to remain unchanged
 ///
 class SceneManager {
 

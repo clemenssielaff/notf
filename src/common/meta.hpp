@@ -91,6 +91,10 @@
 
 //====================================================================================================================//
 
+/// Interprets an expanded macro as a string.
+#define NOTF_STRINGIFY(x) #x
+#define NOTF_TOSTRING(x) NOTF_STRINGIFY(x)
+
 /// Takes two macros and concatenates them without whitespace in between.
 #define NOTF_MACRO_CONCAT_(A, B) A##B
 #define NOTF_MACRO_CONCAT(A, B) NOTF_MACRO_CONCAT_(A, B)

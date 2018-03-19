@@ -9,7 +9,7 @@
 #include "app/io/mouse_event.hpp"
 #include "app/io/time.hpp"
 #include "app/io/window_event.hpp"
-#include "app/property_manager.hpp"
+#include "app/property_graph.hpp"
 #include "app/resource_manager.hpp"
 #include "app/window.hpp"
 #include "common/log.hpp"
@@ -50,7 +50,7 @@ Application::Application(const Args& application_args)
     : m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
     , m_resource_manager()
     , m_thread_pool(std::make_unique<ThreadPool>())
-    , m_property_graph(std::make_unique<PropertyManager>())
+    , m_property_graph(std::make_unique<PropertyGraph>())
     , m_windows()
 {
     // install the log handler first, to catch errors right away
