@@ -41,8 +41,8 @@ NOTF_DEFINE_UNIQUE_POINTERS(class, RenderThread);
 
 namespace detail {
 
-class PropertyBase;
 class RenderDag;
+class PropertyBase;
 
 } // namespace detail
 

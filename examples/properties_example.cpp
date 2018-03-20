@@ -1,9 +1,20 @@
 #include "renderthread_example.hpp"
 
 #include "app/application.hpp"
+#include "app/property_graph.hpp"
 #include "app/window.hpp"
+#include "common/log.hpp"
 
 NOTF_USING_NAMESPACE
+
+class A {
+public:
+    virtual int get() const { return 3; }
+};
+
+class B : public A {};
+
+class C : public A {};
 
 int properties_main(int argc, char* argv[])
 {
@@ -13,6 +24,19 @@ int properties_main(int argc, char* argv[])
     Window::Args window_args;
     window_args.icon = "notf.png";
     auto window = Window::create(window_args);
+
+    auto prop_a = Property<int>(3);
+    auto prop_b = Property<int>(3);
+
+    auto b = B{};
+    auto c = C{};
+    std::vector<std::reference_wrapper<A>> vec;
+    vec.push_back(b);
+    vec.push_back(c);
+
+    for (A& a : vec) {
+        log_trace << a.get();
+    }
 
     return app.exec();
 }

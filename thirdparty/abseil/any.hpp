@@ -66,14 +66,9 @@
 #include <typeinfo>
 #include <utility>
 
+#include "abseil.hpp"
+
 namespace absl {
-
-struct in_place_t {};
-
-template<typename T>
-struct in_place_type_t {};
-
-static constexpr in_place_t in_place = {};
 
 // Objects of type bad_any_cast are thrown by a failed any_cast.
 class bad_any_cast : public std::bad_cast {
@@ -87,9 +82,9 @@ public:
 // NOTE: This macro is an implementation detail that is undefined at the bottom
 // of the file. It is not intended for expansion directly from user code.
 #ifdef ABSL_ANY_DETAIL_HAS_RTTI
-#    error ABSL_ANY_DETAIL_HAS_RTTI cannot be directly set
+#error ABSL_ANY_DETAIL_HAS_RTTI cannot be directly set
 #elif !defined(__GNUC__) || defined(__GXX_RTTI)
-#    define ABSL_ANY_DETAIL_HAS_RTTI 1
+#define ABSL_ANY_DETAIL_HAS_RTTI 1
 #endif // !defined(__GNUC__) || defined(__GXX_RTTI)
 
 namespace any_internal {
@@ -311,7 +306,7 @@ public:
     {
         reset(); // NOTE: reset() is required here even in the world of exceptions.
         Obj<VT>* const object_ptr = new Obj<VT>(in_place, std::forward<Args>(args)...);
-        obj_                      = std::unique_ptr<ObjInterface>(object_ptr);
+        obj_ = std::unique_ptr<ObjInterface>(object_ptr);
         return object_ptr->value;
     }
 
@@ -333,7 +328,7 @@ public:
     {
         reset(); // NOTE: reset() is required here even in the world of exceptions.
         Obj<VT>* const object_ptr = new Obj<VT>(in_place, ilist, std::forward<Args>(args)...);
-        obj_                      = std::unique_ptr<ObjInterface>(object_ptr);
+        obj_ = std::unique_ptr<ObjInterface>(object_ptr);
         return object_ptr->value;
     }
 
@@ -375,7 +370,7 @@ private:
     public:
         virtual ~ObjInterface();
         virtual std::unique_ptr<ObjInterface> Clone() const = 0;
-        virtual const void* ObjTypeId() const noexcept      = 0;
+        virtual const void* ObjTypeId() const noexcept = 0;
 #if ABSL_ANY_DETAIL_HAS_RTTI
         virtual const std::type_info& Type() const noexcept = 0;
 #endif // ABSL_ANY_DETAIL_HAS_RTTI
@@ -527,4 +522,4 @@ T* any_cast(any* operand) noexcept
 
 #undef ABSL_ANY_DETAIL_HAS_RTTI
 
-#endif
+#endif // #ifndef NOTF_CPP17

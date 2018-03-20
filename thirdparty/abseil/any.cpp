@@ -10,4 +10,4 @@ any::ObjInterface::~ObjInterface() = default;
 
 } // namespace absl
 
-#endif
+#endif // #ifndef NOTF_CPP17

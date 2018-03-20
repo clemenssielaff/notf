@@ -232,8 +232,4 @@ class Application::Access<Window> {
     Application& m_application;
 };
 
-/// Helper macro.
-/// auto& app = NOTF_APP();
-#define NOTF_APP Application::instance
-
 NOTF_CLOSE_NAMESPACE

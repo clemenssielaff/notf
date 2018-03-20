@@ -1,87 +1,95 @@
 #pragma once
 
 #include <mutex>
-#include <unordered_set>
+#include <thread>
 
 #include "app/application.hpp"
 #include "app/io/time.hpp"
 #include "common/map.hpp"
+#include "common/optional.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
 /// Thread-safe container of arbitrary values that can be connected using expressions.
-/// Properties are owned by Items but stored in the PropertyGraph in a DAG (direct acyclic graph). Access to a value
-/// in the graph is facilitated by a PropertyKey - consisting of an ItemId and PropertyId. It is the Item's
-/// responsibility to make sure that all of its Properties are removed when it goes out of scope.
+///
+/// Multithreading and Deltas
+/// =========================
+///
+/// Conceptually we have this:
+///
+/// ```
+///  Events   Timer    Commands   ...       Renderer
+///     ^       ^         ^        ^           ^
+///     |       |         |        |           |
+///     |       +---+ +---+        |           |
+///     +---------+ | | +----------+           |
+///    read/write | | | |                      |
+///               v v v v                      |
+///           +-------------+                  |
+///           |    Delta    |                  |
+///           +------+------+                  |
+///                  | commit                  |
+///           +------v-------------------------+------+
+///           |             Ground Truth              |
+///           +---------------------------------------+
+/// ```
+///
+/// Everybody but the RenderManager has read/write access to a conceptual Delta that sits on top of the Ground Truth,
+/// while the RenderManager uses the Ground Truth to render a frozen state of the UI. Whenever the RenderManager is
+/// about to render a new frame, it commits the changes from the Delta to the Ground Truth (which is blocking so that no
+/// further changes can be made to the Delta) and then releases all locks on the Delta again. This should allow for
+/// minimal blockage and maximal responsiveness.
+///
 class PropertyGraph {
 
-    template<typename T>
-    friend class Property; // has access to the graph's types
-    // TODO: remove friend - is only necessary for dependency vector and that shouldn't be exposed anyway
+    friend class detail::PropertyBase;
+
+    template<typename>
+    friend class Property;
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    template<typename T> // TODO: restrict access to Property types
-    class Access;
-
-    /// Thrown when a Property with an unknown PropertyKey is requested.
-    NOTF_EXCEPTION_TYPE(lookup_error)
-
-    /// Thrown when an existing Property is asked for the wrong type of value.
-    NOTF_EXCEPTION_TYPE(type_error)
-
     /// Thrown when a new expression would introduce a cyclic dependency into the graph.
-    NOTF_EXCEPTION_TYPE(cyclic_dependency_error)
+    NOTF_EXCEPTION_TYPE(no_dag_error)
 
     //=========================================================================
 private:
-    /// An untyped Property in the graph.
-    class PropertyBase {
+    /// Untyped base type for all PropertyNode types.
+    class PropertyNodeBase {
 
         // methods ------------------------------------------------------------
     public:
         /// Virtual destructor.
-        virtual ~PropertyBase();
-
-        /// Type of the Property.
-        virtual const std::type_info& type() const = 0;
-
-        /// All dependencies of this Property.
-        const std::vector<PropertyBase*>& dependencies() const { return m_dependencies; }
-
-        /// Prepares this Property for removal from the Graph.
-        /// @param graph    Graph used to find affected Properties.
-        void prepare_removal(PropertyGraph& graph)
-        {
-            _unregister_from_dependencies(graph);
-            for (PropertyBase* affected : m_affected) {
-                NOTF_ASSERT(graph.has_property(affected), "Accessed invalid Property \"" << affected << "\"");
-                affected->_freeze(graph);
-            }
-        }
+        virtual ~PropertyNodeBase();
 
     protected:
+        /// Checks if this Property is dirty.
+        bool _is_dirty() const { return m_time.is_invalid(); }
+
+        /// Sets the Property dirty.
+        void _set_dirty() { m_time = Time::invalid(); }
+
+        /// Sets the Property clean.
+        /// @param time     Time when the decision to set the Property was made. Is `now` by default.
+        void _set_clean(Time time = Time::invalid()) { m_time = (time.is_valid() ? std::move(time) : Time::now()); }
+
         /// Removes the expression from this Property.
-        /// @param graph        Graph used to find dependency Properties.
-        virtual void _clear_expression(PropertyGraph& graph) = 0;
+        virtual void _clear_expression() = 0;
 
         /// Freezing a property means removing its expression without changing its value.
-        /// @param graph        Graph used to find dependent Properties.
-        void _freeze(PropertyGraph& graph)
+        void _freeze()
         {
-            _clear_expression(graph);
-            _unregister_from_dependencies(graph);
+            _clear_expression();
+            _unregister_from_dependencies();
             _set_clean();
         }
 
         /// Registers this property as affected with all of its dependencies.
-        /// @param graph        Graph used to find dependency Properties.
-        void _register_with_dependencies(PropertyGraph& graph)
+        void _register_with_dependencies()
         {
-            for (PropertyBase* dependency : m_dependencies) {
-                NOTF_ASSERT(graph.has_property(dependency), "Accessed invalid Property \"" << dependency << "\"");
+            for (PropertyNodeBase* dependency : m_dependencies) {
                 NOTF_ASSERT(std::find(dependency->m_affected.begin(), dependency->m_affected.end(), this)
                                 == dependency->m_affected.end(),
                             "Duplicate insertion of Property \"" << this << "\" as affected of dependency: \""
@@ -91,11 +99,9 @@ private:
         }
 
         /// Removes all dependencies from this property.
-        /// @param graph        Graph used to find dependency Properties.
-        void _unregister_from_dependencies(PropertyGraph& graph)
+        void _unregister_from_dependencies()
         {
-            for (PropertyBase* dependency : m_dependencies) {
-                NOTF_ASSERT(graph.has_property(dependency), "Accessed invalid Property \"" << dependency << "\"");
+            for (PropertyNodeBase* dependency : m_dependencies) {
                 auto it = std::find(dependency->m_affected.begin(), dependency->m_affected.end(), this);
                 NOTF_ASSERT(it != dependency->m_affected.end(),
                             "Failed to unregister previously registered affected Property \""
@@ -107,32 +113,25 @@ private:
         }
 
         /// Set all affected properties dirty.
-        /// @param graph        Graph used to find affected Properties.
-        void _set_affected_dirty(PropertyGraph& graph)
+        void _set_affected_dirty()
         {
-            for (PropertyBase* affected : m_affected) {
-                NOTF_ASSERT(graph.has_property(affected), "Accessed invalid Property \"" << affected << "\"");
+            for (PropertyNodeBase* affected : m_affected) {
                 affected->_set_dirty();
             }
         }
 
-        /// Checks if this Property is dirty.
-        bool _is_dirty() const { return m_time.is_invalid(); }
-
-        /// Sets the Property dirty.
-        void _set_dirty() { m_time = Time::invalid(); }
-
-        /// Sets the Property clean.
-        /// @param time     Time when the decision to set the Property was made. Is `now` by default.
-        void _set_clean(Time time = Time::invalid()) { m_time = (time.is_valid() ? std::move(time) : Time::now()); }
+        /// Detects potential cyclic dependencies in the graph before they are introduced.
+        /// @param dependencies                 All PropertyNodes that this node will potentially be dependent on.
+        /// @throws no_dag_error     If the expression would introduce a cyclic dependency into the graph.
+        void _detect_cycles(const std::vector<PropertyNodeBase*>& dependencies) const;
 
         // fields -------------------------------------------------------------
     protected:
         /// All Properties that this one depends on.
-        std::vector<PropertyBase*> m_dependencies;
+        std::vector<PropertyNodeBase*> m_dependencies;
 
         /// Properties affected by this one through expressions.
-        std::vector<PropertyBase*> m_affected;
+        std::vector<PropertyNodeBase*> m_affected;
 
         /// Time when this Property was last defined.
         /// Is invalid if the Property is dirty (its expression needs to be evaluated).
@@ -141,93 +140,81 @@ private:
 
     //=========================================================================
 
-    /// A typed Property instance in the graph that can be connected to other Properties via expressions.
+    /// A typed PropertyNode in the Property graph that manages all of the Properties connection, its value and optional
+    /// expression.
     template<typename T>
-    class Property : public PropertyBase {
+    class PropertyNode : public PropertyNodeBase {
 
         // methods ------------------------------------------------------------
     public:
         /// Value constructor.
         /// @param value    Value held by the Property, is used to determine the PropertyType.
-        Property(T&& value) : m_value(std::move(value)) {}
-
-        /// Type of the Property.
-        virtual const std::type_info& type() const override { return typeid(T); }
+        PropertyNode(T&& value) : m_value(std::move(value)) {}
 
         /// The Property's value.
         /// If the Property is defined by an expression, this might evaluate the expression.
-        /// @param graph        Graph used to (potentially) evaluate the expression of this Property in.
-        /// @throws type_error  If the wrong value type is requested.
-        /// @returns            Const reference to the value of the Property.
-        const T& value(PropertyGraph& graph)
+        const T& value()
         {
             if (_is_dirty()) {
-                _evaluate_expression(graph);
+                _evaluate_expression();
             }
             return m_value;
         }
 
         /// Set the Property's value.
         /// Removes an existing expression on the Property if it exists.
-        /// @param key          PropertyKey of this Property.
-        /// @param graph        Graph used to find affected Properties.
-        /// @param value        New value.
-        /// @throws type_error  If a value of the wrong type is passed.
-        void set_value(PropertyGraph& graph, T&& value)
+        /// @param value    New value.
+        void set_value(T&& value)
         {
             if (m_expression) {
-                _freeze(graph);
+                _freeze();
             }
             if (value == m_value) {
                 return;
             }
             m_value = std::forward<T>(value);
-            _set_affected_dirty(graph);
+            _set_affected_dirty();
         }
 
-        /// Set property's expression.
-        /// @param graph        Graph used to find affected Properties.
-        /// @param expression   Expression to set.
-        /// @param dependencies Properties that the expression depends on.
-        /// @throws type_error  If an expression returning the wrong type is passed.
-        void set_expression(PropertyGraph& graph, std::function<T(const PropertyGraph&)> expression,
-                            std::vector<const PropertyBase*> dependencies)
+        /// Set the Property's expression.
+        /// @param expression       Expression to set.
+        /// @param dependencies     Properties that the expression depends on.
+        /// @throws no_dag_error    If the expression would introduce a cyclic dependency into the graph.
+        void
+        set_expression(std::function<T(const PropertyGraph&)> expression, std::vector<PropertyNodeBase*> dependencies)
         {
             if (expression == m_expression) {
                 return;
             }
             if (!expression) {
-                _freeze(graph);
-                return;
+                return _freeze();
             }
+            _detect_cycles(dependencies);
 
-            _unregister_from_dependencies(graph);
+            _unregister_from_dependencies();
             m_expression = std::move(expression);
             m_dependencies = std::move(dependencies);
-            _register_with_dependencies(graph);
+            _register_with_dependencies();
 
             _set_dirty();
-            _set_affected_dirty(graph);
+            _set_affected_dirty();
         }
 
     private:
         /// Removes the expression from this Property.
-        /// @param graph        Graph used to find dependency Properties.
-        void _clear_expression(PropertyGraph& graph) override
+        void _clear_expression() override
         {
             if (m_expression) {
-                _evaluate_expression(graph);
+                _evaluate_expression();
                 m_expression = {};
             }
         }
 
         /// Evaluates this Property's expression and updates its value.
-        /// @param key          PropertyKey of this Property.
-        /// @param graph        Graph used to find dependency Properties.
-        void _evaluate_expression(PropertyGraph& graph)
+        void _evaluate_expression()
         {
-            NOTF_ASSERT(m_expression, "Cannot evaluate expression from frozen Property \"" << this << "\"");
-            m_value = m_expression(graph);
+            NOTF_ASSERT(m_expression, "Cannot evaluate expression from ground Property: \"" << this << "\"");
+            m_value = m_expression(PropertyGraph::instance());
             _set_clean();
         }
 
@@ -242,143 +229,81 @@ private:
 
     //=========================================================================
 
-    // TODO: implement PropertyDelta
-    class PropertyDeltaBase {};
-
-    //=========================================================================
+    struct PropertyDeltaBase {};
 
     template<typename T>
-    class PropertyDelta : public PropertyDeltaBase {};
+    struct PropertyDelta : public PropertyDeltaBase {
+        /// Constructor.
+        /// @param value    Value of the modified Property, leave empty for a deletion delta.
+        PropertyDelta(std::optional<T>&& value = {}) : value(std::move(value)) {}
+
+        /// Optional value, if modified.
+        std::optional<T> value;
+    };
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
-    /// Checks if the graph has a given Property.
-    /// @param property     Property to check.
-    /// @returns            True iff there is a Property with the requested key in the graph.
-    bool has_property(const PropertyBase* property) const
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        return m_properties.count(property) != 0;
-    }
+    /// PropertyGraph singleton.
+    /// @throws application_initialization_error    If you call this method before an Application has been initialized.
+    static PropertyGraph& instance() { return Application::instance().property_graph(); }
 
-    /// Creates an new Property for a given Item and assigns its initial value (and type).
-    /// @param value            Initial value of the Property, also used to determine its type.
-    /// @returns                New Property.
-    template<typename T>
-    Property<T>* add_property(T&& value)
+    /// Tells the PropertyGraph to enable the Delta state.
+    /// All subsequent Property modifications and removals will create Delta objects until the Delta is resolved.
+    void enable_delta()
     {
+        const auto thread_id = std::this_thread::get_id();
         std::lock_guard<std::mutex> lock(m_mutex);
-        auto property = std::make_unique<Property<T>>(std::forward<T>(value));
-        m_properties.emplace(std::make_pair(property.get(), std::move(property)));
-    }
-
-    /// Returns the value of the Property.
-    /// @param property         Requested Property.
-    /// @throws lookup_error    If a Property with the given id does not exist.
-    /// @throws type_error      If the wrong value type is requested.
-    /// @return                 Value of the property.
-    template<typename T>
-    const T& value(PropertyBase* property) const
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        const Property<T>* typed_property = dynamic_cast<Property<T>>(_find_property(property));
-        if (!typed_property) {
-            _throw_wrong_type(property, typeid(T), typeid(typed_property));
+        if (thread_id == m_reader_thread) {
+            return;
         }
-        return typed_property->value(*this);
+        NOTF_ASSERT(thread_id != std::thread::id(0), "Unexpected second reading thread of a PropertyGraph");
+        m_reader_thread = thread_id;
     }
 
-    /// Sets the value of a Property.
-    /// @param property         Property to modify.
-    /// @param value            New value.
-    /// @throws lookup_error    If a Property with the given id does not exist.
-    /// @throws type_error      If the wrong value type is requested.
-    template<typename T>
-    void set_value(PropertyBase* property, T&& value)
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        const Property<T>* typed_property = dynamic_cast<Property<T>>(_find_property(property));
-        if (!property) {
-            _throw_wrong_type(property, typeid(T), typeid(typed_property));
-        }
-        typed_property->set_value(*this, std::forward<T>(value));
-    }
-
-    /// Sets the expression of a Property.
-    /// @param property         Property to modify.
-    /// @param expression       New expression defining the value of the property.
-    /// @param dependencies     Keys of all dependencies. It is of critical importance, that all properties in the
-    ///                         expression are listed.
-    /// @throws lookup_error    If a Property with the given id or one of the dependencies does not exist.
-    /// @throws type_error      If the expression returns the wrong type.
-    /// @throws cyclic_dependency_error     If the expression would introduce a cyclic dependency into the graph.
-    template<typename T>
-    void set_expression(PropertyBase* property, std::function<T(const PropertyGraph&)>&& expression,
-                        std::vector<PropertyBase*> dependencies)
-    {
-        static_assert(!std::is_same<T, void>::value, "Cannot define a Property with an expression returning `void`");
-        std::lock_guard<std::mutex> lock(m_mutex);
-        _detect_cycles(property, dependencies);
-        const Property<T>* typed_property = dynamic_cast<Property<T>>(_find_property(property));
-        if (!typed_property) {
-            _throw_wrong_type(property, typeid(T), typeid(typed_property));
-        }
-        typed_property->set_expression(*this, std::move(expression), std::move(dependencies));
-    }
-
-    /// Removes a Property from the graph.
-    /// All affected Properties will have their value set to their current value.
-    /// If the PropertyKey does not identify a Property in the graph, the call is silently ignored.
-    /// @param property     Property to delete.
-    void delete_property(const PropertyBase* property);
-
-private:
-    /// Property access with proper error reporting.
-    /// @param property         Property to find.
-    /// @throws lookup_error    If the requested Property does not exist in the graph.
-    /// @returns                The requested Property.
-    PropertyBase* _find_property(PropertyBase* property)
-    {
-        if (m_properties.find(property) == m_properties.end()) {
-            _throw_not_found(property);
-        }
-        return property;
-    }
-    const PropertyBase* _find_property(PropertyBase* property) const
-    {
-        return const_cast<PropertyGraph*>(this)->_find_property(property);
-    }
-
-    /// Detects potential cyclic dependencies in the graph before they are introduced.
-    /// @param property     Property that receives a new expression.
-    /// @param dependencies All Properties that `property` will potentially be dependent on.
-    /// @throws cyclic_dependency_error     If the expression would introduce a cyclic dependency into the graph.
-    void _detect_cycles(const PropertyBase* property, const std::vector<PropertyBase*>& dependencies);
-
-    /// Call when a PropertyKey is not found.
-    NOTF_NORETURN void _throw_not_found(const PropertyBase* property) const;
-
-    /// Call when a Property is requested with the wrong type.
-    NOTF_NORETURN void
-    _throw_wrong_type(const PropertyBase* property, const std::type_info& expected, const std::type_info& actual) const;
+    void resolve_delta();
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// All properties in the graph.
-    robin_map<const PropertyBase*, std::unique_ptr<PropertyBase>> m_properties;
-
     /// The current delta.
-    robin_map<const PropertyBase*, std::unique_ptr<PropertyDeltaBase>> m_delta;
+    robin_map<const PropertyNodeBase*, std::unique_ptr<PropertyDeltaBase>> m_delta;
 
     /// Mutex guarding the graph.
     mutable std::mutex m_mutex;
+
+    /// Flag whether the graph currently has a Delta or not.
+    std::thread::id m_reader_thread{0};
 };
 
 // ===================================================================================================================//
 
+namespace detail {
+
+/// Base class of all Properties.
+/// Necessary so you can collect Properties of various types together in a vector of dependencies for `set_expression`.
+class PropertyBase {
+    template<typename T>
+    friend class notf::Property;
+
+    using NodeBase = PropertyGraph::PropertyNodeBase;
+
+    // fields --------------------------------------------------------------------------------------------------------//
+protected:
+    /// Unique pointer to the node of this Property in the graph.
+    std::unique_ptr<PropertyGraph::PropertyNodeBase> m_node = nullptr;
+};
+
+} // namespace detail
+
+// ===================================================================================================================//
+
 /// An object managing a single Property in the PropertyGraph.
+/// Contains a unique_ptr to a PropertyNode in the graph.
 template<typename T>
-class Property {
+class Property : public detail::PropertyBase {
+
+    using Node = PropertyGraph::PropertyNode<T>;
+    using DeltaBase = PropertyGraph::PropertyDeltaBase;
+    using Delta = PropertyGraph::PropertyDelta<T>;
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
@@ -386,95 +311,81 @@ public:
 
     /// Constructor.
     /// @param value    Initial value of the Property.
-    Property(T&& value) { m_pointer = PropertyGraph::Access<Property<T>>::create_property(std::forward<T>(value)); }
+    explicit Property(T&& value) : PropertyBase() { m_node = std::make_unique<Node>(std::forward<T>(value)); }
 
     /// Move Constructor.
     /// @param other    Property to move from.
-    Property(Property&& other) : m_pointer(other.m_pointer) { other.m_pointer = nullptr; }
-
-    /// Destructor.
-    ~Property()
-    {
-        if (m_pointer) {
-            PropertyGraph::Access<Property<T>>().delete_property(m_pointer);
-            m_pointer = nullptr;
-        }
-    }
+    Property(Property&& other) { m_node.swap(other.m_node); }
 
     /// The value of this Property.
-    /// @throws lookup_error    If you try to access a Property that was moved from.
-    const T& value() { return PropertyGraph::Access<Property<T>>(m_pointer).value(); }
-    // TODO: we know that pointer is valid ... that's why we are doing this in the first place!
-    // TODO: implement this in Item
+    const T& value()
+    {
+        NOTF_ASSERT(m_node, "Access to invalid Property instance (are you using an object that was moved from?)");
+        PropertyGraph& graph = PropertyGraph::instance();
+        const auto thread_id = std::this_thread::get_id();
+        {
+            std::lock_guard<std::mutex> lock(graph.m_mutex);
+            if (graph.m_reader_thread == std::thread::id(0) || thread_id == graph.m_reader_thread) {
+                return _node().value();
+            }
+            else {
+                auto it = graph.m_delta.find(m_node.get());
+                if (it == graph.m_delta.end()) {
+                    return _node().value();
+                }
+                NOTF_ASSERT(dynamic_cast<Delta>(*it), "Encountered Property Delta of wrong type");
+                const Delta* delta = static_cast<Delta>(*it);
+                if (delta->value.has_value()) {
+                    return delta->value.value();
+                } else {
+                    // TODO: throw Property deleted error
+                    // TODO: CONTINUE HERE
+                    // Is that even a possibility anymore, that you would access a PropertyNode that has been deleted?
+                    // If it were deleted, you wouldn't have the Property anymore.
+                }
+            }
+        }
+    }
 
     /// Sets the value of this Property.
     /// @param value            New value.
-    /// @throws lookup_error    If you try to modify a Property that was moved from.
-    void set_value(T&& value) { PropertyGraph::Access<Property<T>>(m_pointer).set_value(std::forward<T>(value)); }
-
-    /// Sets an expression of this Property.
-    /// @param expression       New expression defining the value of the property.
-    /// @param dependencies     Keys of all dependencies. It is of critical importance, that all properties in the
-    ///                         expression are listed.
-    /// @throws lookup_error    If you try to modify a Property that was moved from.
-    void set_expression(std::function<T(const PropertyGraph&)>&& expression,
-                        std::vector<PropertyGraph::PropertyBase*> dependencies)
+    void set_value(T&& value)
     {
-        PropertyGraph::Access<Property<T>>(m_pointer).set_expression(std::move(expression), std::move(dependencies));
+        NOTF_ASSERT(m_node, "Access to invalid Property instance (are you using an object that was moved from?)");
+        std::lock_guard<std::mutex> lock(PropertyGraph::instance().m_mutex);
+        // TODO: implement delta check
+        _node().set_value(std::forward<T>(value));
     }
 
-    // fields --------------------------------------------------------------------------------------------------------//
-private:
-    /// Raw pointer to the Property in the graph.
-    T* m_pointer = nullptr;
-};
-
-//====================================================================================================================//
-
-template<typename T>
-class PropertyGraph::Access<Property<T>> {
-    friend class Property<T>;
-
-    /// Constructor.
-    /// @param property     Property to allow access.
-    Access(PropertyBase* property) : m_property(property)
+    /// Sets an expression of this Property.
+    /// @param expression       New expression defining the value of the Property.
+    /// @param dependency       All Property dependencies. It is of critical importance that all Properties in the
+    ///                         expression are listed.
+    /// @throws no_dag_error    If the expression would introduce a cyclic dependency into the graph.
+    void set_expression(std::function<T(const PropertyGraph&)>&& expression,
+                        const std::vector<std::reference_wrapper<detail::PropertyBase>>& dependency)
     {
-        if (!m_property) {
-            notf_throw(PropertyGraph::lookup_error, "Cannot access a Property that was moved from");
+        NOTF_ASSERT(m_node, "Access to invalid Property instance (are you using an object that was moved from?)");
+
+        // collect unique pointers from all passed property dependencies
+        std::vector<NodeBase*> dependencies;
+        dependencies.reserve(dependencies.size());
+        for (const auto& ref : dependency) {
+            const NodeBase* ptr = ref.get().m_node.get();
+            if (std::find(dependencies.begin(), dependencies.end(), ptr) == dependencies.end()) {
+                dependencies.emplace_back(ptr);
+            }
+        }
+
+        { // set the expression
+            std::lock_guard<std::mutex> lock(PropertyGraph::instance().m_mutex);
+            _node().set_expression(std::move(expression), std::move(dependencies));
         }
     }
 
-    /// Creates an new Property and assigns its initial value (and type).
-    /// @param value    Initial value of the Property, also used to determine its type.
-    static Property<T>* create_property(T&& value)
-    {
-        return NOTF_APP().property_graph().add_property(std::forward<T>(value));
-    }
-
-    /// Removes a Property from the graph.
-    /// All affected Properties will have their value set to their current value.
-    /// If the given pointer does not identify a Property in the graph, the call is silently ignored.
-    /// @param property     Property to delete.
-    void delete_property() { NOTF_APP().property_graph().delete_property(m_property); }
-
-    /// The value of this Property.
-    const T& value() { return NOTF_APP().property_graph().value<T>(m_property); }
-
-    /// Sets the value of this Property.
-    /// @param value    New value.
-    void set_value(T&& value) { NOTF_APP().property_graph().set_value(m_property, std::forward<T>(value)); }
-
-    /// Sets an expression of this Property.
-    /// @param expression       New expression defining the value of the property.
-    /// @param dependencies     Keys of all dependencies. It is of critical importance, that all properties in the
-    ///                         expression are listed.
-    void set_expression(std::function<T(const PropertyGraph&)>&& expression, std::vector<PropertyBase*> dependencies)
-    {
-        NOTF_APP().property_graph().set_expression(m_property, std::move(expression), std::move(dependencies));
-    }
-
-    /// Property to allow access.
-    PropertyBase* m_property;
+private:
+    /// Convenience access to the typed PropertyNode.
+    Node& _node() { return *static_cast<Node*>(m_node.get()); }
 };
 
 NOTF_CLOSE_NAMESPACE

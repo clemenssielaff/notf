@@ -130,8 +130,11 @@ add_sources(SOURCE_FILES examples
 add_sources(THIRDPARTY_FILES thirdparty
     tinyutf8/tinyutf8.cpp
     randutils/randutils.hpp
+    abseil/abseil.hpp
     abseil/any.hpp
     abseil/any.cpp
+    abseil/optional.hpp
+    abseil/optional.cpp
     mpark/variant.hpp
     robin-map/robin_map.h
     robin-map/robin_set.h
