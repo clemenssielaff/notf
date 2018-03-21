@@ -94,8 +94,11 @@ NOTF_EXCEPTION_TYPE(internal_error)
 /// Error thrown by risky_ptr, when you try to dereference a nullptr.
 NOTF_EXCEPTION_TYPE(bad_deference_error)
 
-/// Error thrown in debug mode when a NOTF_ASSERT fails.
+/// Error thrown in debug mode when a NOTF_ASSERT_MSG fails.
 NOTF_EXCEPTION_TYPE(assertion_error)
+
+/// Error thrown when the wrong thread does something.
+NOTF_EXCEPTION_TYPE(thread_error)
 
 //====================================================================================================================//
 
@@ -194,21 +197,11 @@ inline const U* make_raw(const risky_ptr<const U>& risky) noexcept
 }
 /// @}
 
-//====================================================================================================================//
-
-/// NoTF assertion macro.
-#define NOTF_ASSERT(EXPR, MSG)                                                                                     \
-    if (!static_cast<bool>(EXPR)) {                                                                                                 \
-        notf_throw_format(assertion_error, "Assertion \"" << NOTF_TOSTRING(EXPR) << "\" failed! Message:" << MSG); \
-    }
-
-//====================================================================================================================//
-
 #else
 
-/// In release-mode the risky_ptr is a simple typedef that is compiled away to a raw pointer.
-template<typename T>
-using risky_ptr = T*;
+    /// In release-mode the risky_ptr is a simple typedef that is compiled away to a raw pointer.
+    template<typename T>
+    using risky_ptr = T*;
 
 template<typename T>
 inline T* make_raw(risky_ptr<T>& risky) noexcept
@@ -221,11 +214,31 @@ inline const T* make_raw(const risky_ptr<T>& risky) noexcept
     return risky;
 }
 
-/// In release mode, the NoTF assertion macro expands to nothing.
-#define NOTF_ASSERT(EXPR, MSG) /* assertion */
-
 #endif
 
+//====================================================================================================================//
+
+#ifdef NOTF_DEBUG
+
+/// NoTF assertion macro.
+#define NOTF_ASSERT(EXPR)                                                                          \
+    if (!static_cast<bool>(EXPR)) {                                                                \
+        notf_throw_format(assertion_error, "Assertion \"" << NOTF_TOSTRING(EXPR) << "\" failed!"); \
+    }
+
+/// NoTF assertion macro with attached message.
+#define NOTF_ASSERT_MSG(EXPR, MSG)                                                                                 \
+    if (!static_cast<bool>(EXPR)) {                                                                                \
+        notf_throw_format(assertion_error, "Assertion \"" << NOTF_TOSTRING(EXPR) << "\" failed! Message:" << MSG); \
+    }
+
+#else
+
+/// In release mode, the NoTF assertion macros expand to nothing.
+#define NOTF_ASSERT(EXPR)          /* assertion */
+#define NOTF_ASSERT_MSG(EXPR, MSG) /* assertion */
+
+#endif
 //====================================================================================================================//
 
 NOTF_CLOSE_NAMESPACE

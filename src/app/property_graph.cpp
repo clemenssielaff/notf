@@ -9,29 +9,42 @@ NOTF_OPEN_NAMESPACE
 
 PropertyGraph::no_dag_error::~no_dag_error() = default;
 
+PropertyGraph::property_deleted_error::~property_deleted_error() = default;
+
 //====================================================================================================================//
 
-PropertyGraph::PropertyNodeBase::~PropertyNodeBase()
+PropertyGraph::NodeBase::~NodeBase()
 {
     _unregister_from_dependencies();
-    for (PropertyNodeBase* affected : m_affected) {
-        affected->_freeze();
+    for (NodeBase* id : m_affected) {
+        if (risky_ptr<NodeBase> affected = PropertyGraph::instance().write_node(id)) {
+            affected->_ground();
+        }
     }
 }
 
-void PropertyGraph::PropertyNodeBase::_detect_cycles(const std::vector<PropertyNodeBase*>& dependencies) const
+void PropertyGraph::NodeBase::_detect_cycles(const std::vector<NodeBase*>& dependencies)
 {
-    std::unordered_set<PropertyNodeBase*> unchecked, checked;
-    std::copy(dependencies.begin(), dependencies.end(), std::inserter(unchecked, unchecked.begin()));
+    std::unordered_set<NodeBase*> unchecked, checked;
+    unchecked.reserve(dependencies.size());
+    checked.reserve(dependencies.size());
 
-    PropertyNodeBase* candidate;
+    PropertyGraph& graph = PropertyGraph::instance();
+    for (NodeBase* id : dependencies) {
+        if (risky_ptr<NodeBase> dependency = graph.read_node(id)) {
+            unchecked.insert(make_raw(dependency));
+        }
+    }
+
+    NodeBase* const my_id = id();
+    NodeBase* candidate;
     while (pop_one(unchecked, candidate)) {
-        if (this == candidate) {
+        if (my_id == candidate) {
             notf_throw(no_dag_error, "Failed to create property expression which would introduce a cyclic "
                                      "dependency");
         }
         checked.insert(candidate);
-        for (PropertyNodeBase* dependency : candidate->m_dependencies) {
+        for (NodeBase* dependency : candidate->m_dependencies) {
             if (!checked.count(dependency)) {
                 unchecked.emplace(dependency);
             }
@@ -41,15 +54,37 @@ void PropertyGraph::PropertyNodeBase::_detect_cycles(const std::vector<PropertyN
 
 //====================================================================================================================//
 
-void PropertyGraph::create_delta()
-{
+PropertyGraph::DeltaBase::~DeltaBase() = default;
 
+PropertyGraph::ModificationDelta::~ModificationDelta() = default;
+
+PropertyGraph::DeletionDelta::~DeletionDelta() = default;
+
+//====================================================================================================================//
+
+void PropertyGraph::freeze()
+{
+    const auto thread_id = std::this_thread::get_id();
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (thread_id == m_reader_thread) {
+        return;
+    }
+    if (thread_id != std::thread::id()) {
+        notf_throw(thread_error, "Unexpected second reading thread of a PropertyGraph");
+    }
+    m_reader_thread = thread_id;
 }
 
-
-void PropertyGraph::resolve_delta()
+void PropertyGraph::unfreeze()
 {
+    const auto thread_id = std::this_thread::get_id();
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (thread_id != m_reader_thread) {
+        notf_throw(thread_error, "Only the reader thread can unfreeze the PropertyGraph");
+    }
 
+    // TODO: unfreezing
+    // TODO: what happens when you first modify and then delete a Property when the graph is frozen?
 }
 
 NOTF_CLOSE_NAMESPACE
