@@ -9,7 +9,7 @@ NOTF_OPEN_NAMESPACE
 
 #ifdef NOTF_DEBUG
 
-/// In debug mode, the notf::Mutex can be asked to check whether it is locked and from which thread.
+/// In debug mode, the notf::Mutex can be asked to check whether it is locked by the calling thread.
 /// From https://stackoverflow.com/a/30109512/3444217
 class Mutex : public std::mutex {
 
@@ -28,9 +28,6 @@ public:
         m_holder = std::thread::id();
         std::mutex::unlock();
     }
-
-    /// Checks if the mutex is locked by any thread.
-    bool is_locked() const { return m_holder != std::thread::id(); }
 
     /// Checks if the mutex is locked by the thread calling this method.
     bool is_locked_by_this_thread() const { return m_holder == std::this_thread::get_id(); }

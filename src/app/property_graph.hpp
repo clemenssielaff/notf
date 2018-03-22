@@ -2,6 +2,7 @@
 
 #include "app/application.hpp"
 #include "app/io/time.hpp"
+#include "common/hash.hpp"
 #include "common/map.hpp"
 #include "common/mutex.hpp"
 
@@ -14,22 +15,21 @@ NOTF_OPEN_NAMESPACE
 /// Property
 /// ========
 ///
-/// A `Property` in NoTF is a container class for a single unit of *self-contained* data. An integer would be a prime
-/// example, so would be a boolean. A node in a linked list would not qualify as Property, because it would need to link
-/// to other Nodes and would therefore not be self-contained. Strings on the other hand do qualify, because even though
-/// they contain a pointer to the heap, they are conceptually self-contained. Note that NoTF cannot enforce that each
-/// Property type is indeed *self-contained*, use your own judgement.
-///
-/// Properties are used everywhere. The application-wide `time` and `framenumber` are Properties, so are widget
-/// transformations, progress bar percentages or whatever else you need. By itself, a Property works just the same as a
-/// normal value -- you can create, read, update and delete it without a need to consider what is going on behind the
-/// scenes.
+/// A `Property` in NoTF is a container class for a single unit of *self-contained* data. The application-wide `time`
+/// and `framenumber` are Properties, so are widget transformations, progress bar percentages or whatever else you
+/// need. An integer would be a prime example, so would be a boolean. A node in a linked list would not qualify as
+/// Property, because it would need to link to other Nodes and would therefore not be self-contained. Strings on the
+/// other hand do qualify, because even though they contain a pointer to the heap, they are conceptually self-contained.
+/// Note that NoTF cannot enforce that each Property type is indeed *self-contained*, use your own judgement.
 ///
 /// There are two reason for why Properties are so prevalent:
 ///
 /// 1. They can be used to build *Property Expressions* in the `PropertyGraph`.
 /// 2. They can safely be used from multiple threads and can be used to *freeze* the global state during rendering
 /// without putting any responsibility on the user to do so.
+///
+/// Properties have two modes of operation, depending on the thread used to access them. While they can be written to
+/// from any thread *but* the render thread, they can only be read from the render thread.
 ///
 /// The Property Graph
 /// ==================
@@ -47,12 +47,12 @@ NOTF_OPEN_NAMESPACE
 ///     |       |         |        |           |
 ///     |       +---+ +---+        |           |
 ///     +---------+ | | +----------+           |
-///    read/write | | | |                      |
+///         write | | | | write                |
 ///               v v v v                      |
 ///           +-------------+                  |
 ///           |    Delta    |                  |
-///           +------+------+                  |
-///                  | commit                  |
+///           +------+------+             read |
+///                  | resolve                 |
 ///           +------v-------------------------+------+
 ///           |             Ground Truth              |
 ///           +---------------------------------------+
@@ -64,21 +64,10 @@ NOTF_OPEN_NAMESPACE
 /// further changes can be made to the Delta) and then releases all locks on the Delta again. This should allow for
 /// minimal blockage and maximal responsiveness.
 ///
-/// Drawbacks
-/// =========
-///
-/// Of course, Properties are not perfect. Properties take up a large amount of space, especially when compared with
-/// raw variables of particularly small types like booleans. Also, all Property values are stored on the heap, meaning
-/// that even in the best case, all uses of a Property require at least one heap access. Reading a Property might block
-/// while its expression is evaluated, and since expressions are defined by the user, the block duration is undetermined
-/// (if you put an infinite loop into an expression, you can wait forever ... go figure). Lastly, if the PropertyGraph
-/// is currently frozen, modifying a Property will create a new Delta object on the heap.
-///
-/// As always, use your own judgement. If you have a value that is not used for rendering, that is *const* or can only
-/// be accessed by a single thread at a time and that will never be part or target of an expression, there is nothing
-/// stopping you from just using a plain old variable instead.
-///
 class PropertyGraph {
+
+    // TODO: use not_null for all the pointers
+    // TODO: implement proper time handling for properties (we might have to re-introduce the dedicated dirty flag)
 
     friend class detail::PropertyBase;
 
@@ -86,19 +75,15 @@ class PropertyGraph {
     friend class Property;
 
     // types ---------------------------------------------------------------------------------------------------------//
+    template<typename>
+    class NodeDelta;
+
 public:
     /// Thrown when a new expression would introduce a cyclic dependency into the graph.
     NOTF_EXCEPTION_TYPE(no_dag_error)
 
-private:
-    /// Error thrown when a Property that is referenced as a dependency has been deleted.
-    NOTF_EXCEPTION_TYPE(property_deleted_error)
-
     //=========================================================================
-
-    template<typename>
-    class NodeDelta;
-
+private:
     /// Untyped base type for all PropertyNode types.
     /// It is required that you hold the PropertyGraph mutex for all operations on PropertyNodes.
     class NodeBase {
@@ -108,8 +93,11 @@ private:
         /// Virtual destructor.
         virtual ~NodeBase();
 
-        /// Creates a properly typed copy of this PropertyNode instance.
+        /// Creates a properly typed delta copy of this node.
         virtual std::unique_ptr<NodeBase> copy_to_delta() = 0;
+
+        /// Resolves the modification delta back into this node.
+        virtual void resolve_delta(NodeBase* delta) = 0;
 
         /// Id of this PropertyNode. Is simply `this` unless this Node is part of a Delta.
         virtual NodeBase* id() { return this; }
@@ -137,19 +125,20 @@ private:
         }
 
         /// Registers this property as affected with all of its dependencies.
-        /// @throws property_deleted_error  If any of the dependencies was deleted.
-        void _register_with_dependencies()
+        /// @returns False iff any of the dependencies was deleted.
+        bool _register_with_dependencies()
         {
             NodeBase* const my_id = id();
             for (NodeBase* dependency_id : m_dependencies) {
                 risky_ptr<NodeBase> dependency = PropertyGraph::instance().write_node(dependency_id);
                 if (!dependency) {
-                    notf_throw(property_deleted_error, "Dependency was deleted");
+                    return false;
                 }
                 NOTF_ASSERT(std::find(dependency->m_affected.begin(), dependency->m_affected.end(), my_id)
                             == dependency->m_affected.end());
                 dependency->m_affected.emplace_back(my_id);
             }
+            return true;
         }
 
         /// Removes all dependencies from this property.
@@ -205,7 +194,7 @@ private:
     class Node : public NodeBase {
 
         template<typename>
-        friend class PropertyNodeDelta;
+        friend class NodeDelta;
 
         // methods ------------------------------------------------------------
     public:
@@ -213,8 +202,20 @@ private:
         /// @param value    Value held by the Property, is used to determine the PropertyType.
         Node(T value) : NodeBase(), m_value(std::move(value)) {}
 
-        /// Creates a properly typed copy of this PropertyNode instance.
+        /// Creates a properly typed delta copy of this PropertyNode instance.
         virtual std::unique_ptr<NodeBase> copy_to_delta() override { return std::make_unique<NodeDelta<T>>(*this); }
+
+        /// Resolves the modification delta back into this node.
+        virtual void resolve_delta(NodeBase* node) override
+        {
+            NOTF_ASSERT(dynamic_cast<NodeDelta<T>*>(node));
+            NodeDelta<T>* delta = static_cast<NodeDelta<T>>(node);
+            m_dependencies = delta->m_dependencies;
+            m_affected = delta->m_affected;
+            m_time = delta->m_time;
+            m_expression = delta->m_expression;
+            m_value = delta->m_value;
+        }
 
         /// The Property's value.
         /// If the Property is defined by an expression, this might evaluate the expression.
@@ -258,10 +259,7 @@ private:
             _unregister_from_dependencies();
             m_expression = std::move(expression);
             m_dependencies = std::move(dependencies);
-            try {
-                _register_with_dependencies();
-            }
-            catch (const property_deleted_error&) {
+            if (!_register_with_dependencies()) {
                 return _ground();
             }
 
@@ -302,6 +300,7 @@ private:
     /// Carries the id of the copied node with it.
     template<typename T>
     class NodeDelta : public Node<T> {
+
         // methods ------------------------------------------------------------
     public:
         /// Value constructor.
@@ -314,8 +313,28 @@ private:
             Node<T>::m_expression = other.m_expression;
         }
 
+        /// Destructor.
+        /// Makes sure that the NodeDelta doesn't touch any other nodes on deletion.
+        virtual ~NodeDelta() override
+        {
+            Node<T>::m_dependencies.clear();
+            Node<T>::m_affected.clear();
+        }
+
         /// Id of the copied PropertyNode.
         virtual NodeBase* id() { return m_id; }
+
+        /// Creates a properly typed delta copy of this PropertyNode instance.
+        virtual std::unique_ptr<NodeBase> copy_to_delta() override
+        {
+            notf_throw(internal_error, "Cannot copy a NodeDelta into a new delta");
+        }
+
+        /// Resolves the modification delta back into this node.
+        virtual void resolve_delta(NodeBase*) override
+        {
+            notf_throw(internal_error, "Cannot copy into an existing NodeDelta");
+        }
 
         // fields -------------------------------------------------------------
     private:
@@ -336,9 +355,6 @@ private:
 
         /// The PropertyNode referred to by this Delta.
         virtual NodeBase* node() const = 0;
-
-        /// Returns true iff this Delta is a deletion Delta, false if it is a modification Delta.
-        bool is_deletion() const { return !is_modification(); }
     };
 
     //=========================================================================
@@ -387,25 +403,46 @@ private:
         NodeBase* m_node;
     };
 
+    //=========================================================================
+    //=========================================================================
+
+    /// Specialized hash to mix up the relative low entropy of pointers as key.
+    struct NodeHash {
+        size_t operator()(const NodeBase* node) const { return hash_mix(reinterpret_cast<std::uintptr_t>(node)); }
+    };
+
     // methods -------------------------------------------------------------------------------------------------------//
 private:
     /// PropertyGraph singleton.
     /// @throws application_initialization_error    If you call this method before an Application has been initialized.
     static PropertyGraph& instance() { return Application::instance().property_graph(); }
 
-    /// Returns a PropertyNode for reading without creating a new delta.
-    /// @returns The requested Node or nullptr, if the node has a deletion delta.
-    risky_ptr<NodeBase> read_node(NodeBase* ptr)
+    /// Creates a new Property node in the graph.
+    /// @param value    First ground value of the Property, is used to determine its type.
+    template<typename T>
+    NodeBase* create_node(T&& value)
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
-        if (!is_frozen() || std::this_thread::get_id() == m_reader_thread) {
-            return ptr; // direct access
+        std::unique_ptr<NodeBase> node = std::make_unique<Node<T>>(std::forward<T>(value));
+        NodeBase* id = node.get();
+        m_nodes.emplace(std::make_pair(id, std::move(node)));
+        return id;
+    }
+
+    /// Returns a PropertyNode for reading without creating a new delta.
+    /// @param node     Property node to read from.
+    /// @returns        The requested Node or nullptr, if the node has a deletion delta.
+    risky_ptr<NodeBase> read_node(NodeBase* node)
+    {
+        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+        if (!is_frozen() || is_render_thread()) {
+            return node; // direct access
         }
 
         // return the frozen node if there is no delta for it
-        auto it = m_delta.find(ptr);
+        auto it = m_delta.find(node);
         if (it == m_delta.end()) {
-            return ptr;
+            return node;
         }
 
         // return an existing modification delta
@@ -418,40 +455,80 @@ private:
 
     /// Returns a PropertyNode for writing.
     /// Creates a new NodeDelta if the graph is frozen.
-    /// @returns The requested Node or nullptr, if the node already has a deletion delta.
-    risky_ptr<NodeBase> write_node(NodeBase* ptr)
+    /// @param node     Property node to write into.
+    /// @returns        The requested Node or nullptr, if the node already has a deletion delta.
+    risky_ptr<NodeBase> write_node(NodeBase* node)
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
         if (!is_frozen()) {
-            return ptr;
+            return node; // direct access
+        }
+        if (is_render_thread()) { // do nothing if this is the render thread resolving the delta
+            return nullptr;
         }
 
         // return an existing modification delta
-        auto it = m_delta.find(ptr);
+        auto it = m_delta.find(node);
         if (it != m_delta.end()) {
             if (it->second->is_modification()) {
                 return it->second->node();
             }
-            return nullptr;
+            return nullptr; // node has a deletion delta
         }
 
         // create a new modification delta
-        auto new_delta = std::make_unique<ModificationDelta>(ptr->copy_to_delta());
+        auto new_delta = std::make_unique<ModificationDelta>(node->copy_to_delta());
         auto result = new_delta->node();
-        m_delta.emplace(std::make_pair(ptr, std::move(new_delta)));
+        m_delta.emplace(std::make_pair(node, std::move(new_delta)));
         return result;
+    }
+
+    /// Deletes a given Property node.
+    /// Gives the Graph the chance to create a deletion delta for a deleted node.
+    /// @param node     Property node to delete.
+    void delete_node(NodeBase* node)
+    {
+        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+
+        // delete the property node straight away if the graph isn't frozen
+        // or if this is the render thread resolving the delta
+        if (!is_frozen() || is_render_thread()) {
+            auto it = m_nodes.find(node);
+            NOTF_ASSERT_MSG(it != m_nodes.end(), "Cannot delete unknown Property Node");
+            m_nodes.erase(it);
+            return;
+        }
+
+        // if the graph is frozen and the property is deleted, create a new deletion delta
+        auto it = m_delta.find(node);
+        if (it == m_delta.end()) {
+            m_delta.emplace(std::make_pair(node, std::make_unique<DeletionDelta>(node)));
+            return;
+        }
+
+        // if there is already a modification delta in place, replace it with a deletion delta
+        NOTF_ASSERT_MSG(it->second->is_modification(), "Cannot delete the same Node twice");
+        std::unique_ptr<DeltaBase> delete_delta = std::make_unique<DeletionDelta>(node);
+        it.value().swap(delete_delta);
     }
 
     /// Checks if the PropertyGraph is currently frozen or not.
     bool is_frozen() const
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
-        return m_reader_thread != std::thread::id();
+        return m_render_thread != std::thread::id();
+    }
+
+    /// Checks if the calling thread is the current render thread.
+    bool is_render_thread() const
+    {
+        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+        return std::this_thread::get_id() == m_render_thread;
     }
 
     /// Freezes the PropertyGraph.
     /// All subsequent Property modifications and removals will create Delta objects until the Delta is resolved.
-    /// Does nothing iff the reader thread tries to freeze the graph multiple times.
+    /// Does nothing iff the render thread tries to freeze the graph multiple times.
     /// @throws thread_error    If any but the reading thread tries to freeze the graph.
     void freeze();
 
@@ -461,14 +538,17 @@ private:
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
+    /// All nodes managed by the graph.
+    robin_map<NodeBase*, std::unique_ptr<NodeBase>, NodeHash> m_nodes;
+
     /// The current delta.
-    robin_map<const NodeBase*, std::unique_ptr<DeltaBase>> m_delta;
+    robin_map<NodeBase*, std::unique_ptr<DeltaBase>, NodeHash> m_delta;
 
     /// Mutex guarding the graph.
     mutable Mutex m_mutex;
 
     /// Flag whether the graph currently has a Delta or not.
-    std::thread::id m_reader_thread{0};
+    std::thread::id m_render_thread;
 };
 
 // ===================================================================================================================//
@@ -481,12 +561,15 @@ class PropertyBase {
     template<typename T>
     friend class notf::Property;
 
+    /// Convenience typedef.
     using NodeBase = PropertyGraph::NodeBase;
 
     // fields --------------------------------------------------------------------------------------------------------//
 protected:
-    /// Unique pointer to the node of this Property in the graph.
-    std::unique_ptr<PropertyGraph::NodeBase> m_node = nullptr;
+    /// (somewhat) Owning pointer to the node of this Property in the graph.
+    /// I say somewhat because ultimately it is the graph that owns the Property node, but this is the only reference to
+    /// it on the outside.
+    NodeBase* m_node = nullptr;
 };
 
 } // namespace detail
@@ -498,8 +581,8 @@ protected:
 template<typename T>
 class Property : public detail::PropertyBase {
 
+    /// Typed Property node type.
     using Node = PropertyGraph::Node<T>;
-    using NodeBase = PropertyGraph::NodeBase;
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
@@ -507,13 +590,39 @@ public:
 
     /// Constructor.
     /// @param value    Initial value of the Property.
-    explicit Property(T&& value) : PropertyBase() { m_node = std::make_unique<Node>(std::forward<T>(value)); }
+    explicit Property(T&& value) : PropertyBase()
+    {
+        PropertyGraph& graph = PropertyGraph::instance();
+        {
+            std::lock_guard<std::mutex> lock(graph.m_mutex);
+            m_node = graph.create_node(std::forward<T>(value));
+        }
+    }
 
     /// Move Constructor.
     /// @param other    Property to move from.
-    Property(Property&& other) { m_node.swap(other.m_node); }
+    Property(Property&& other)
+    {
+        m_node = other.m_node;
+        other.m_node = nullptr;
+    }
+
+    /// Destructor.
+    ~Property()
+    {
+        if (m_node) {
+            PropertyGraph& graph = PropertyGraph::instance();
+            {
+                std::lock_guard<std::mutex> lock(graph.m_mutex);
+                graph.delete_node(m_node);
+            }
+            m_node = nullptr;
+        }
+    }
 
     /// The value of this Property.
+    /// Only call this method from the render thread (in Widget::paint, for example).
+    /// @throws thread_error    If this is not the render thread.
     const T& value()
     {
         NOTF_ASSERT_MSG(m_node, "Access to invalid Property instance (are you using an object that was moved from?)");
@@ -521,8 +630,11 @@ public:
         PropertyGraph& graph = PropertyGraph::instance();
         {
             std::lock_guard<std::mutex> lock(graph.m_mutex);
-            Node* node = dynamic_cast<Node>(make_raw(graph.read_node(m_node.get())));
-            NOTF_ASSERT(node);
+            if (!graph.is_render_thread()) {
+                notf_throw(thread_error, "Property reads are only allowed from the render thread");
+            }
+            Node* node = static_cast<Node>(make_raw(graph.read_node(m_node)));
+            NOTF_ASSERT(node); // we wouldn't be here if the Property had been removed
             return node->value();
         }
     }
@@ -536,8 +648,8 @@ public:
         PropertyGraph& graph = PropertyGraph::instance();
         {
             std::lock_guard<std::mutex> lock(graph.m_mutex);
-            Node* node = dynamic_cast<Node>(make_raw(graph.write_node(m_node.get())));
-            NOTF_ASSERT(node);
+            Node* node = static_cast<Node>(make_raw(graph.write_node(m_node)));
+            NOTF_ASSERT(node); // we wouldn't be here if the Property had been removed
             node->set_value(std::forward<T>(value));
         }
     }
@@ -552,11 +664,11 @@ public:
     {
         NOTF_ASSERT_MSG(m_node, "Access to invalid Property instance (are you using an object that was moved from?)");
 
-        // collect unique pointers from all passed property dependencies
+        // collect the set of pointers from the expression dependencies
         std::vector<NodeBase*> dependencies;
         dependencies.reserve(dependencies.size());
         for (const auto& ref : dependency) {
-            const NodeBase* ptr = ref.get().m_node.get();
+            const NodeBase* ptr = ref.get().m_node;
             if (std::find(dependencies.begin(), dependencies.end(), ptr) == dependencies.end()) {
                 dependencies.emplace_back(ptr);
             }
@@ -565,8 +677,8 @@ public:
         PropertyGraph& graph = PropertyGraph::instance();
         {
             std::lock_guard<std::mutex> lock(graph.m_mutex);
-            Node* node = dynamic_cast<Node>(make_raw(graph.write_node(m_node.get())));
-            NOTF_ASSERT(node);
+            Node* node = static_cast<Node>(make_raw(graph.write_node(m_node)));
+            NOTF_ASSERT(node); // we wouldn't be here if the Property had been removed
             node->set_expression(std::move(expression), std::move(dependencies));
         }
     }

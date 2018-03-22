@@ -94,7 +94,7 @@ NOTF_EXCEPTION_TYPE(internal_error)
 /// Error thrown by risky_ptr, when you try to dereference a nullptr.
 NOTF_EXCEPTION_TYPE(bad_deference_error)
 
-/// Error thrown in debug mode when a NOTF_ASSERT_MSG fails.
+/// Error thrown in debug mode when a NOTF_ASSERT fails.
 NOTF_EXCEPTION_TYPE(assertion_error)
 
 /// Error thrown when the wrong thread does something.

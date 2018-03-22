@@ -9,8 +9,6 @@ NOTF_OPEN_NAMESPACE
 
 PropertyGraph::no_dag_error::~no_dag_error() = default;
 
-PropertyGraph::property_deleted_error::~property_deleted_error() = default;
-
 //====================================================================================================================//
 
 PropertyGraph::NodeBase::~NodeBase()
@@ -21,15 +19,18 @@ PropertyGraph::NodeBase::~NodeBase()
             affected->_ground();
         }
     }
+    PropertyGraph::instance().delete_node(this);
 }
 
 void PropertyGraph::NodeBase::_detect_cycles(const std::vector<NodeBase*>& dependencies)
 {
-    std::unordered_set<NodeBase*> unchecked, checked;
+    PropertyGraph& graph = PropertyGraph::instance();
+    NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
+
+    robin_set<NodeBase*> unchecked, checked;
     unchecked.reserve(dependencies.size());
     checked.reserve(dependencies.size());
 
-    PropertyGraph& graph = PropertyGraph::instance();
     for (NodeBase* id : dependencies) {
         if (risky_ptr<NodeBase> dependency = graph.read_node(id)) {
             unchecked.insert(make_raw(dependency));
@@ -65,26 +66,43 @@ PropertyGraph::DeletionDelta::~DeletionDelta() = default;
 void PropertyGraph::freeze()
 {
     const auto thread_id = std::this_thread::get_id();
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (thread_id == m_reader_thread) {
-        return;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (thread_id == m_render_thread) {
+            return;
+        }
+        if (thread_id != std::thread::id()) {
+            notf_throw(thread_error, "Unexpected second reading thread of a PropertyGraph");
+        }
+        m_render_thread = thread_id;
     }
-    if (thread_id != std::thread::id()) {
-        notf_throw(thread_error, "Unexpected second reading thread of a PropertyGraph");
-    }
-    m_reader_thread = thread_id;
 }
 
 void PropertyGraph::unfreeze()
 {
     const auto thread_id = std::this_thread::get_id();
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (thread_id != m_reader_thread) {
-        notf_throw(thread_error, "Only the reader thread can unfreeze the PropertyGraph");
-    }
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (thread_id != m_render_thread) {
+            notf_throw(thread_error, "Only the render thread can unfreeze the PropertyGraph");
+        }
 
-    // TODO: unfreezing
-    // TODO: what happens when you first modify and then delete a Property when the graph is frozen?
+        for (const auto& delta_it : m_delta) {
+            auto node_it = m_nodes.find(delta_it.first);
+            NOTF_ASSERT(node_it != m_nodes.end());
+            DeltaBase& delta = *delta_it.second.get();
+
+            if (delta.is_modification()) {
+                // modification delta
+                node_it.value()->resolve_delta(delta.node());
+            }
+            else {
+                // deletion delta
+                m_nodes.erase(node_it);
+            }
+        }
+        m_delta.clear();
+    }
 }
 
 NOTF_CLOSE_NAMESPACE
