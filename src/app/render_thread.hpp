@@ -7,7 +7,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-class RenderThread {
+class RenderThread { // TODO: move into RenderManager - this doesn't need to be its own unit
 
     // methods ------------------------------------------------------------
 public:

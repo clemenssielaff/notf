@@ -68,6 +68,7 @@ class PropertyGraph {
 
     // TODO: use not_null for all the pointers
     // TODO: implement proper time handling for properties (we might have to re-introduce the dedicated dirty flag)
+    // TODO: Instead of storing NodeBase pointers outside the graph, use the uintptr_t type
 
     friend class detail::PropertyBase;
 
@@ -209,7 +210,7 @@ private:
         virtual void resolve_delta(NodeBase* node) override
         {
             NOTF_ASSERT(dynamic_cast<NodeDelta<T>*>(node));
-            NodeDelta<T>* delta = static_cast<NodeDelta<T>>(node);
+            NodeDelta<T>* delta = static_cast<NodeDelta<T>*>(node);
             m_dependencies = delta->m_dependencies;
             m_affected = delta->m_affected;
             m_time = delta->m_time;
@@ -408,7 +409,7 @@ private:
 
     /// Specialized hash to mix up the relative low entropy of pointers as key.
     struct NodeHash {
-        size_t operator()(const NodeBase* node) const { return hash_mix(reinterpret_cast<std::uintptr_t>(node)); }
+        size_t operator()(const NodeBase* node) const { return hash_mix(to_number(node)); }
     };
 
     // methods -------------------------------------------------------------------------------------------------------//

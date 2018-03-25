@@ -135,7 +135,7 @@ protected:
     /// @param manager       Font manager.
     /// @param filename      File from which to load the font.
     /// @param pixel_size    Font base size in pixels.
-    Font(FontManager& manager, const std::string filename, const pixel_size_t pixel_size);
+    Font(FontManager& manager, const std::string& filename, const pixel_size_t pixel_size);
 
 public:
     /// Loads a new Font or returns a pointer to an existing font if a font with the same filename /
@@ -143,7 +143,7 @@ public:
     /// @param font_manager     Manager of the loaded Font.
     /// @param filename         File from which the Font is loaded.
     /// @param pixel_size       Nominal size of the loaded Font in pixels.
-    static FontPtr load(FontManagerPtr& font_manager, const std::string filename, const pixel_size_t pixel_size);
+    static FontPtr load(FontManagerPtr& font_manager, std::string filename, const pixel_size_t pixel_size);
 
     /// Returns true if this Font is valid.
     /// If the file used to initialize the Font could not be loaded, the Font is invalid.

@@ -18,7 +18,9 @@ class FontManager {
     friend class Font;
 
     // methods -------------------------------------------------------------------------------------------------------//
-protected:
+private:
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+
     /// Constructor.
     /// @param context  Graphics context within which the FontManager operates.
     FontManager(GraphicsContext& context);
@@ -28,7 +30,10 @@ public:
 
     /// Factory
     /// @param context  Graphics context within which the FontManager operates.
-    static FontManagerPtr create(GraphicsContext& context);
+    static FontManagerPtr create(GraphicsContext& context)
+    {
+        return NOTF_MAKE_UNIQUE_FROM_PRIVATE(FontManager, context);
+    }
 
     /// Destructor.
     ~FontManager();

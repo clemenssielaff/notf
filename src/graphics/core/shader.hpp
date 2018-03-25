@@ -54,12 +54,12 @@ public:
         /// Individual Shader stages.
         enum Flag : unsigned char {
             // implicit zero value for default-initialized Stage
-            VERTEX          = 1u << 0, ///< Vertex stage.
-            TESS_CONTROL    = 1u << 1, ///< Tesselation control stage.
+            VERTEX = 1u << 0,          ///< Vertex stage.
+            TESS_CONTROL = 1u << 1,    ///< Tesselation control stage.
             TESS_EVALUATION = 1u << 2, ///< Tesselation evaluation stage.
-            GEOMETRY        = 1u << 3, ///< Geometry stage.
-            FRAGMENT        = 1u << 4, ///< Fragment stage.
-            COMPUTE         = 1u << 5, ///< Compute shader (not a stage in the pipeline).
+            GEOMETRY = 1u << 3,        ///< Geometry stage.
+            FRAGMENT = 1u << 4,        ///< Fragment stage.
+            COMPUTE = 1u << 5,         ///< Compute shader (not a stage in the pipeline).
         };
 
         /// Combination of Shader stages.
@@ -75,12 +75,12 @@ protected:
 
     /// Construction arguments.
     struct Args {
-        const char* vertex_source    = nullptr;
+        const char* vertex_source = nullptr;
         const char* tess_ctrl_source = nullptr;
         const char* tess_eval_source = nullptr;
-        const char* geometry_source  = nullptr;
-        const char* fragment_source  = nullptr;
-        const char* compute_source   = nullptr;
+        const char* geometry_source = nullptr;
+        const char* fragment_source = nullptr;
+        const char* compute_source = nullptr;
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -141,7 +141,7 @@ protected:
     /// Registers the given Shader with its context.
     /// @param shader           Shader to register.
     /// @throws internal_error  If another Shader with the same ID already exists.
-    static void _register_with_context(ShaderPtr shader);
+    static void _register_with_context(const ShaderPtr& shader);
 
 private:
     /// Returns the uniform with the given name.
@@ -193,7 +193,9 @@ void Shader::set_uniform(const std::string&, const Matrix4f& value);
 class VertexShader : public Shader {
 
     // methods -------------------------------------------------------------------------------------------------------//
-protected:
+private:
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+
     /// Value Constructor.
     /// @param context  Render Context in which the Shader lives.
     /// @param program  OpenGL Shader program ID.
@@ -236,15 +238,17 @@ private:
 class TesselationShader : public Shader {
 
     // methods -------------------------------------------------------------------------------------------------------//
-protected:
+private:
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+
     /// Value Constructor.
     /// @param context              Render Context in which the Shader lives.
     /// @param program              OpenGL Shader program ID.
     /// @param name                 Human readable name of the Shader.
     /// @param control_source       Tesselation control shader source.
     /// @param evaluation_source    Tesselation evaluation shader source.
-    TesselationShader(GraphicsContextPtr& context, const GLuint program, std::string name,
-                      const std::string control_source, const std::string evaluation_source);
+    TesselationShader(GraphicsContextPtr& context, const GLuint program, std::string name, std::string control_source,
+                      std::string evaluation_source);
 
 public:
     /// Factory.
@@ -254,8 +258,9 @@ public:
     /// @param evaluation_source    Tesselation evaluation shader source.
     /// @param defines              Additional definitions to inject into the shader code.
     /// @throws internal_error      If another Shader with the same ID already exists.
-    static TesselationShaderPtr create(GraphicsContextPtr& context, std::string name, const std::string& control_source,
-                                       const std::string& evaluation_source, const Defines& defines = s_no_defines);
+    static TesselationShaderPtr
+    create(GraphicsContextPtr& context, const std::string& name, std::string& control_source,
+           std::string& evaluation_source, const Defines& defines = s_no_defines);
 
     /// The teselation control shader source code.
     const std::string& control_source() const { return m_control_source; }
@@ -278,7 +283,9 @@ private:
 class GeometryShader : public Shader {
 
     // methods -------------------------------------------------------------------------------------------------------//
-protected:
+private:
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+
     /// Value Constructor.
     /// @param context  Render Context in which the Shader lives.
     /// @param program  OpenGL Shader program ID.
@@ -311,7 +318,9 @@ private:
 class FragmentShader : public Shader {
 
     // methods -------------------------------------------------------------------------------------------------------//
-protected:
+private:
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+
     /// Value Constructor.
     /// @param context  Render Context in which the Shader lives.
     /// @param program  OpenGL Shader program ID.

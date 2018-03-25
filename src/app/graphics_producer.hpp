@@ -3,7 +3,6 @@
 #include "app/ids.hpp"
 #include "app/scene_manager.hpp"
 #include "app/window.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -58,11 +57,14 @@ protected:
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
-protected:
+private:
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+
     /// Constructor.
     /// @param token    Token to make sure that the instance can only be created by a call to `_create`.
     GraphicsProducer(const Token&) : m_id(_next_id()) {}
 
+protected:
     /// Factory method for this type and all of its children.
     /// You need to call this function from your own factory in order to get a Token instance.
     /// This method will in turn register the new instance with the SceneManager.
@@ -72,11 +74,7 @@ protected:
         static_assert(std::is_base_of<GraphicsProducer, T>::value, "GraphicsProducer::_create can only create "
                                                                    "instances of GraphicsProducer subclasses");
         const Token token;
-#ifdef NOTF_DEBUG
-        auto result = std::shared_ptr<T>(new T(token, render_manager, std::forward<Ts>(args)...));
-#else
-        auto result = std::make_shared<make_shared_enabler<T>>(token, render_manager, std::forward<Ts>(args)...);
-#endif
+        auto result = NOTF_MAKE_SHARED_FROM_PRIVATE(T, token, render_manager, std::forward<Ts>(args)...);
         SceneManager::Access<GraphicsProducer>(*render_manager).register_new(result);
         return result;
     }

@@ -5,7 +5,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-using ItemId = IdType<Item, uint>;
+using SceneNodeId = IdType<SceneNode, uint>;
 
 using GraphicsProducerId = IdType<GraphicsProducer, uint>;
 

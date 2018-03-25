@@ -10,7 +10,6 @@
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/raw_image.hpp"
 #include "graphics/text/font_manager.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -94,14 +93,8 @@ Window::Window(const Args& args)
 
 std::shared_ptr<Window> Window::create(const Args& args)
 {
-    WindowPtr window;
-#ifdef NOTF_DEBUG
-    window = WindowPtr(new Window(args));
-#else
-    window = std::make_shared<make_shared_enabler<Window>>(args);
-#endif
-
     // inititalize the window
+    WindowPtr window = NOTF_MAKE_SHARED_FROM_PRIVATE(Window, args);
     Application::Access<Window>().register_new(window);
     return window;
 }

@@ -14,8 +14,6 @@
 #include "graphics/core/gl_utils.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/opengl.hpp"
-#include "utils/make_smart_enabler.hpp"
-#include "utils/narrow_cast.hpp"
 
 namespace { // anonymous
 
@@ -28,43 +26,43 @@ NOTF_USING_NAMESPACE
 /// @return OpenGL ID of the shader stage.
 GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag stage, const char* source)
 {
-    static const char* vertex    = "vertex";
+    static const char* vertex = "vertex";
     static const char* tess_ctrl = "tesselation-control";
     static const char* tess_eval = "tesselation-evaluation";
-    static const char* geometry  = "geometry";
-    static const char* fragment  = "fragment";
-    static const char* compute   = "compute";
+    static const char* geometry = "geometry";
+    static const char* fragment = "fragment";
+    static const char* compute = "compute";
 
     if (!source) {
         return 0;
     }
 
     // create the OpenGL shader
-    GLuint shader          = 0;
+    GLuint shader = 0;
     const char* stage_name = nullptr;
     switch (stage) {
     case Shader::Stage::VERTEX:
-        shader     = glCreateShader(GL_VERTEX_SHADER);
+        shader = glCreateShader(GL_VERTEX_SHADER);
         stage_name = vertex;
         break;
     case Shader::Stage::TESS_CONTROL:
-        shader     = glCreateShader(GL_TESS_CONTROL_SHADER);
+        shader = glCreateShader(GL_TESS_CONTROL_SHADER);
         stage_name = tess_ctrl;
         break;
     case Shader::Stage::TESS_EVALUATION:
-        shader     = glCreateShader(GL_TESS_EVALUATION_SHADER);
+        shader = glCreateShader(GL_TESS_EVALUATION_SHADER);
         stage_name = tess_eval;
         break;
     case Shader::Stage::GEOMETRY:
-        shader     = glCreateShader(GL_GEOMETRY_SHADER);
+        shader = glCreateShader(GL_GEOMETRY_SHADER);
         stage_name = geometry;
         break;
     case Shader::Stage::FRAGMENT:
-        shader     = glCreateShader(GL_FRAGMENT_SHADER);
+        shader = glCreateShader(GL_FRAGMENT_SHADER);
         stage_name = fragment;
         break;
     case Shader::Stage::COMPUTE:
-        shader     = glCreateShader(GL_COMPUTE_SHADER);
+        shader = glCreateShader(GL_COMPUTE_SHADER);
         stage_name = compute;
         break;
     }
@@ -306,7 +304,7 @@ Shader::Shader(GraphicsContextPtr& context, const GLuint id, Stage::Flags stages
 
         GLsizei name_length = 0;
         notf_check_gl(glGetActiveUniform(m_id.value(), index, static_cast<GLsizei>(uniform_name.size()), &name_length,
-                                    &variable.size, &variable.type, &uniform_name[0]));
+                                         &variable.size, &variable.type, &uniform_name[0]));
         assert(variable.type);
         assert(variable.size);
 
@@ -363,12 +361,12 @@ GLuint Shader::_build(const std::string& name, const Args& args)
     notf_check_gl(glProgramParameteri(program, GL_PROGRAM_SEPARABLE, GL_TRUE));
 
     { // create and attach the shader stages
-        GLuint vertex_stage    = compile_stage(name, Shader::Stage::VERTEX, args.vertex_source);
+        GLuint vertex_stage = compile_stage(name, Shader::Stage::VERTEX, args.vertex_source);
         GLuint tess_ctrl_stage = compile_stage(name, Shader::Stage::TESS_CONTROL, args.tess_ctrl_source);
         GLuint tess_eval_stage = compile_stage(name, Shader::Stage::TESS_EVALUATION, args.tess_eval_source);
-        GLuint geometry_stage  = compile_stage(name, Shader::Stage::GEOMETRY, args.geometry_source);
-        GLuint fragment_stage  = compile_stage(name, Shader::Stage::FRAGMENT, args.fragment_source);
-        GLuint compute_stage   = compile_stage(name, Shader::Stage::COMPUTE, args.compute_source);
+        GLuint geometry_stage = compile_stage(name, Shader::Stage::GEOMETRY, args.geometry_source);
+        GLuint fragment_stage = compile_stage(name, Shader::Stage::FRAGMENT, args.fragment_source);
+        GLuint compute_stage = compile_stage(name, Shader::Stage::COMPUTE, args.compute_source);
 
         if (vertex_stage) {
             notf_check_gl(glAttachShader(program, vertex_stage));
@@ -437,7 +435,7 @@ GLuint Shader::_build(const std::string& name, const Args& args)
     return program;
 }
 
-void Shader::_register_with_context(ShaderPtr shader)
+void Shader::_register_with_context(const ShaderPtr& shader)
 {
     assert(shader && shader->is_valid());
     GraphicsContext::Access<Shader>(shader->m_graphics_context).register_new(shader);
@@ -549,7 +547,7 @@ void Shader::set_uniform(const std::string& name, const Matrix4f& value)
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT_MAT4) {
         notf_check_gl(glProgramUniformMatrix4fv(m_id.value(), uniform.location, /*count*/ 1, /*transpose*/ GL_FALSE,
-                                           value.as_ptr()));
+                                                value.as_ptr()));
     }
     else {
         notf_throw_format(runtime_error, "Uniform \"" << name << "\" in shader \"" << m_name << "\" of type \""
@@ -578,7 +576,7 @@ VertexShader::VertexShader(GraphicsContextPtr& context, const GLuint program, st
 
         GLsizei name_length = 0;
         notf_check_gl(glGetActiveAttrib(id().value(), index, static_cast<GLsizei>(uniform_name.size()), &name_length,
-                                   &variable.size, &variable.type, &uniform_name[0]));
+                                        &variable.size, &variable.type, &uniform_name[0]));
         assert(variable.type);
         assert(variable.size);
 
@@ -605,16 +603,11 @@ VertexShader::create(GraphicsContextPtr& context, std::string name, const std::s
     const std::string modified_source = inject_header(source, glsl_header(context) + build_defines(defines));
 
     Args args;
-    args.vertex_source   = modified_source.c_str();
+    args.vertex_source = modified_source.c_str();
     const GLuint program = Shader::_build(name, args);
 
-    VertexShaderPtr result;
-#ifdef NOTF_DEBUG
-    result = VertexShaderPtr(new VertexShader(context, program, std::move(name), std::move(modified_source)));
-#else
-    result = std::make_shared<make_shared_enabler<VertexShader>>(context, program, std::move(name),
-                                                                 std::move(modified_source));
-#endif
+    VertexShaderPtr result
+        = NOTF_MAKE_SHARED_FROM_PRIVATE(VertexShader, context, program, std::move(name), std::move(modified_source));
     _register_with_context(result);
     return result;
 }
@@ -633,33 +626,28 @@ GLuint VertexShader::attribute(const std::string& attribute_name) const
 // ===================================================================================================================//
 
 TesselationShader::TesselationShader(GraphicsContextPtr& context, const GLuint program, std::string shader_name,
-                                     const std::string control_source, const std::string evaluation_source)
+                                     std::string control_source, std::string evaluation_source)
     : Shader(context, program, Stage::TESS_CONTROL | Stage::TESS_EVALUATION, std::move(shader_name))
     , m_control_source(std::move(control_source))
     , m_evaluation_source(std::move(evaluation_source))
 {}
 
 TesselationShaderPtr
-TesselationShader::create(GraphicsContextPtr& context, std::string name, const std::string& control_source,
-                          const std::string& evaluation_source, const Defines& defines)
+TesselationShader::create(GraphicsContextPtr& context, const std::string& name, std::string& control_source,
+                          std::string& evaluation_source, const Defines& defines)
 {
-    const std::string injection_string           = glsl_header(context) + build_defines(defines);
-    const std::string modified_control_source    = inject_header(control_source, injection_string);
+    const std::string injection_string = glsl_header(context) + build_defines(defines);
+    const std::string modified_control_source = inject_header(control_source, injection_string);
     const std::string modified_evaluation_source = inject_header(evaluation_source, injection_string);
 
     Args args;
     args.tess_ctrl_source = modified_control_source.c_str();
     args.tess_eval_source = modified_evaluation_source.c_str();
-    const GLuint program  = Shader::_build(name, args);
+    const GLuint program = Shader::_build(name, args);
 
-    TesselationShaderPtr result;
-#ifdef NOTF_DEBUG
-    result = TesselationShaderPtr(new TesselationShader(
-        context, program, std::move(name), std::move(modified_control_source), std::move(modified_evaluation_source)));
-#else
-    result = std::make_shared<make_shared_enabler<TesselationShader>>(
-        context, program, std::move(name), std::move(modified_control_source), std::move(modified_evaluation_source));
-#endif
+    TesselationShaderPtr result = NOTF_MAKE_SHARED_FROM_PRIVATE(TesselationShader, context, program, std::move(name),
+                                                           std::move(modified_control_source),
+                                                           std::move(modified_evaluation_source));
     _register_with_context(result);
     return result;
 }
@@ -680,13 +668,8 @@ GeometryShader::create(GraphicsContextPtr& context, std::string name, const std:
     args.geometry_source = modified_source.c_str();
     const GLuint program = Shader::_build(name, args);
 
-    GeometryShaderPtr result;
-#ifdef NOTF_DEBUG
-    result = GeometryShaderPtr(new GeometryShader(context, program, std::move(name), std::move(modified_source)));
-#else
-    result = std::make_shared<make_shared_enabler<GeometryShader>>(context, program, std::move(name),
-                                                                   std::move(modified_source));
-#endif
+    GeometryShaderPtr result
+        = NOTF_MAKE_SHARED_FROM_PRIVATE(GeometryShader, context, program, std::move(name), std::move(modified_source));
     _register_with_context(result);
     return result;
 }
@@ -707,13 +690,8 @@ FragmentShader::create(GraphicsContextPtr& context, std::string name, const std:
     args.fragment_source = modified_source.c_str();
     const GLuint program = Shader::_build(name, args);
 
-    FragmentShaderPtr result;
-#ifdef NOTF_DEBUG
-    result = FragmentShaderPtr(new FragmentShader(context, program, std::move(name), std::move(modified_source)));
-#else
-    result = std::make_shared<make_shared_enabler<FragmentShader>>(context, program, std::move(name),
-                                                                   std::move(modified_source));
-#endif
+    FragmentShaderPtr result
+        = NOTF_MAKE_SHARED_FROM_PRIVATE(FragmentShader, context, program, std::move(name), std::move(modified_source));
     _register_with_context(result);
     return result;
 }

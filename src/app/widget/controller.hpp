@@ -39,7 +39,7 @@ public:
 
 protected:
     /// Sets a new root at this Controller's branch of the Item hierarchy.
-    void _set_root_item(const ScreenItemPtr& item);
+    void _set_root_item(const ScreenEntityPtr& item);
 
     virtual void _remove_child(const Item* child_item) override;
 

@@ -48,7 +48,9 @@ public:
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
-protected:
+private:
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+
     /// Constructor.
     /// @param args                                 Initialization arguments.
     /// @throws window_initialization_error         If the OpenGL context creation for this Window failed

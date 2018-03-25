@@ -13,8 +13,8 @@ NOTF_EXCEPTION_TYPE(no_dag_error);
 
 /// A Direct Acyclic Graph.
 ///
-/// Useful for topological sorting of items that should form a DAG. The class does not operate on the actual items, but
-/// only of integrals representing an item each. This is done for performance and generalizability.
+/// Useful for topological sorting of nodes that should form a DAG. The class does not operate on the actual nodes, but
+/// only of integrals representing an nodes each. This is done for performance and generalizability.
 /// The class makes extensive use of vectors, but doesn't give up memory once it aquired it. This way, while the first
 /// few times the DAG might still allocate memory, on overage it should not allocate anymore.
 ///

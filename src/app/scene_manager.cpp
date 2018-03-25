@@ -13,7 +13,6 @@
 #include "common/hash.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 NOTF_OPEN_NAMESPACE
 

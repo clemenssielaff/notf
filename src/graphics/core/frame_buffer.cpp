@@ -11,7 +11,6 @@
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/opengl.hpp"
 #include "graphics/core/texture.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 namespace { //
 NOTF_USING_NAMESPACE
@@ -87,17 +86,6 @@ RenderBuffer::RenderBuffer(GraphicsContextPtr& context, Args&& args)
             notf_throw(runtime_error, "Could not allocate new RenderBuffer");
         }
     }
-}
-
-RenderBufferPtr RenderBuffer::create(GraphicsContextPtr& context, Args&& args)
-{
-    RenderBufferPtr result;
-#ifdef NOTF_DEBUG
-    result = RenderBufferPtr(new RenderBuffer(context, std::move(args)));
-#else
-    result = std::make_shared<make_shared_enabler<RenderBuffer>>(context, std::move(args));
-#endif
-    return result;
 }
 
 RenderBuffer::~RenderBuffer() { _deallocate(); }
@@ -195,18 +183,19 @@ FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_graphics_con
     notf_check_gl(glBindFramebuffer(GL_FRAMEBUFFER, m_id.value()));
 
     for (const auto& numbered_color_target : m_args.color_targets) {
-        const ushort target_id   = numbered_color_target.first;
+        const ushort target_id = numbered_color_target.first;
         const auto& color_target = numbered_color_target.second;
 
         if (std::holds_alternative<RenderBufferPtr>(color_target)) {
             if (const auto& color_buffer = std::get<RenderBufferPtr>(color_target)) {
-                notf_check_gl(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + target_id, GL_RENDERBUFFER,
-                                                   color_buffer->id().value()));
+                notf_check_gl(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + target_id,
+                                                        GL_RENDERBUFFER, color_buffer->id().value()));
             }
         }
         else if (const auto& color_texture = std::get<TexturePtr>(color_target)) {
-            notf_check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + target_id, color_texture->target(),
-                                            color_texture->id().value(), /* level = */ 0));
+            notf_check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + target_id,
+                                                 color_texture->target(), color_texture->id().value(),
+                                                 /* level = */ 0));
         }
     }
 
@@ -214,23 +203,23 @@ FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_graphics_con
     if (std::holds_alternative<RenderBufferPtr>(m_args.depth_target)) {
         if (const auto& depth_buffer = std::get<RenderBufferPtr>(m_args.depth_target)) {
             notf_check_gl(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
-                                               depth_buffer->id().value()));
+                                                    depth_buffer->id().value()));
             has_depth = true;
         }
     }
     else if (const auto& depth_texture = std::get<TexturePtr>(m_args.depth_target)) {
         notf_check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_texture->target(),
-                                        depth_texture->id().value(), /* level = */ 0));
+                                             depth_texture->id().value(), /* level = */ 0));
         has_depth = true;
     }
 
     if (m_args.stencil_target) {
         notf_check_gl(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
-                                           m_args.stencil_target->id().value()));
+                                                m_args.stencil_target->id().value()));
     }
 
     { // make sure the frame buffer is valid
-        GLenum status          = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+        GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         const bool has_stencil = (m_args.stencil_target == nullptr);
         if (status == GL_FRAMEBUFFER_COMPLETE) {
             log_info << "Created new FrameBuffer " << m_id << "with " << m_args.color_targets.size()
@@ -247,12 +236,7 @@ FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_graphics_con
 
 FrameBufferPtr FrameBuffer::create(GraphicsContext& context, Args&& args)
 {
-    FrameBufferPtr framebuffer;
-#ifdef NOTF_DEBUG
-    framebuffer = FrameBufferPtr(new FrameBuffer(context, std::move(args)));
-#else
-    framebuffer = std::make_shared<make_shared_enabler<FrameBuffer>>(context, std::move(args));
-#endif
+    FrameBufferPtr framebuffer = NOTF_MAKE_SHARED_FROM_PRIVATE(FrameBuffer, context, std::move(args));
     GraphicsContext::Access<FrameBuffer>(context).register_new(framebuffer);
     return framebuffer;
 }

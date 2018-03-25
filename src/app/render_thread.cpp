@@ -1,6 +1,5 @@
 #include "app/render_thread.hpp"
 
-//#include "app/layer.hpp"
 #include "app/scene_manager.hpp"
 #include "app/window.hpp"
 #include "common/log.hpp"

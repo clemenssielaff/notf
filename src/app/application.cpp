@@ -19,6 +19,8 @@
 namespace { // anonymous
 NOTF_USING_NAMESPACE
 
+// TODO: move all of the global input states to the event manager
+
 /// The current state of all keyboard keys.
 KeyStateSet g_key_states;
 

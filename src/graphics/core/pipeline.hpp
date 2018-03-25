@@ -11,7 +11,9 @@ NOTF_OPEN_NAMESPACE
 class Pipeline : public std::enable_shared_from_this<Pipeline> {
 
     // methods -------------------------------------------------------------------------------------------------------//
-protected:
+private:
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+
     /// Value constructor.
     /// @param context              Graphics context containing this Pipeline and all of its Shader.
     /// @param vertex_shader        Vertex shader to use in the Pipeline.
@@ -30,7 +32,11 @@ public:
     /// @param fragment_shader      Fragment shader to use in the Pipeline.
     static PipelinePtr
     create(GraphicsContextPtr& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
-           GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader);
+           GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader)
+    {
+        return NOTF_MAKE_SHARED_FROM_PRIVATE(Pipeline, *context, std::move(vertex_shader), std::move(tesselation_shader),
+                                        std::move(geometry_shader), std::move(fragment_shader));
+    }
 
     static PipelinePtr
     create(GraphicsContextPtr& context, VertexShaderPtr vertex_shader, FragmentShaderPtr fragment_shader)

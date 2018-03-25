@@ -2,7 +2,6 @@
 
 #include "app/forwards.hpp"
 #include "common/size2.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -19,10 +18,13 @@ protected:
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
-protected:
+private:
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+
     /// Constructor.
     Scene(const Token&) {}
 
+protected:
     /// Factory method for this type and all of its children.
     /// You need to call this function from your own factory in order to get a Token instance.
     template<typename T, typename... Ts>
@@ -31,12 +33,7 @@ protected:
         static_assert(std::is_base_of<Scene, T>::value, "Scene::_create can only create instances of subclasses of "
                                                         "Scene");
         const Token token;
-#ifdef NOTF_DEBUG
-        auto result = std::shared_ptr<T>(new T(token, std::forward<Ts>(args)...));
-#else
-        auto result = std::make_shared<make_shared_enabler<T>>(token, std::forward<Ts>(args)...);
-#endif
-        return result;
+        return NOTF_MAKE_SHARED_FROM_PRIVATE(T, std::forward<Ts>(args)...);
     }
 
 public:

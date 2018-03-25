@@ -38,7 +38,9 @@ public:
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
-protected:
+private:
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+
     /// Constructor.
     /// @param context         Graphics context owning the render buffer.
     /// @param args            Render buffer arguments.
@@ -52,7 +54,10 @@ public:
     /// @param context         Graphics context owning the render buffer.
     /// @param args            Render buffer arguments.
     /// @throws runtime_error  If the arguments fail to validate.
-    static RenderBufferPtr create(GraphicsContextPtr& context, Args&& args);
+    static RenderBufferPtr create(GraphicsContextPtr& context, Args&& args)
+    {
+        return NOTF_MAKE_SHARED_FROM_PRIVATE(RenderBuffer, context, std::move(args));
+    }
 
     /// Destructor.
     ~RenderBuffer();
@@ -130,7 +135,9 @@ public:
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
-protected:
+private:
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+
     /// Constructor.
     /// @param context          Graphics context owning the frane buffer.
     /// @param args             Frame buffer arguments.

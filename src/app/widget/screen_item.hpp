@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/item.hpp"
+#include "app/scene_node.hpp"
 #include "app/widget/claim.hpp"
 #include "common/aabr.hpp"
 
@@ -8,7 +8,7 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
-/// Abstract baseclass for all Item types that can occupy space on screen.
+/// Abstract baseclass for all SceneNode types in a Widget hierarchy that can occupy space on screen.
 ///
 /// Layouting
 /// =========
@@ -62,7 +62,7 @@ NOTF_OPEN_NAMESPACE
 /// ------------
 ///
 /// Size is only the size of the Layout itself, how much was claimed and subsequently granted. The content Aabr is the
-/// Aabr of all descendant items in the Layout. For example: a FlexLayout in a ScrollArea might have a (visible) size of
+/// Aabr of all descendant nodes in the Layout. For example: a FlexLayout in a ScrollArea might have a (visible) size of
 /// 600x400, but a content Aabr of 600x845 with 445 vertical rows being scissored by the ScrollArea.
 ///
 /// Spaces
@@ -92,15 +92,15 @@ NOTF_OPEN_NAMESPACE
 /// *Window space*
 ///
 /// Transformation relative to the RootLayout. The RootLayout might itself have a transformation, but this should be
-/// transparent to the Items in its hierarchy and if the root's Layer is in fullscreen mode, Window space is accurate.
+/// transparent to the nodes in its hierarchy and if the root's Layer is in fullscreen mode, Window space is accurate.
 ///
 /// Opacity
 /// -------
 ///
 /// Each ScreenItem has an `opacity` member, which is a float in the range [0 -> 1]. An opacity of `0` means that the
-/// Item is fully transparent (invisible, in fact), an opacity of `0.5` (semi-transparent) and `1` not transparent at
-/// all. Opacity trickles down the hierarchy, meaning that in order to get to the effective opacity of an Item, you have
-/// to multiply it's own opacity with that of each ancestor.
+/// node is fully transparent (invisible, in fact), an opacity of `0.5` (semi-transparent) and `1` not transparent at
+/// all. Opacity trickles down the hierarchy, meaning that in order to get to the effective opacity of a ScreenItem, you
+/// have to multiply it's own opacity with that of each ancestor.
 ///
 /// Scissoring
 /// ----------
@@ -119,9 +119,9 @@ NOTF_OPEN_NAMESPACE
 /// user input or a system event. Only Widgets receive events, which means that you might want to put an invisible
 /// Widget in the background of a Layout to catch events that would otherwise "fall through the cracks" (see ScrollArea
 /// for an example). If a Widget receives an event but does not handle it, the eventis propagated up the ancestry until
-/// it either reaches the root Item or an ancestor sets the event's `is_handled` flag.
+/// it either reaches the root node or an ancestor sets the event's `is_handled` flag.
 ///
-class ScreenItem : public Item {
+class ScreenItem : public SceneNode {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -192,15 +192,15 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Constructor.
-    /// @param token        Factory token provided by Item::_create.
+    /// @param token        Factory token provided by SceneNode::_create.
     /// @param container    Container used to store this Item's children.
-    ScreenItem(const Token& token, ChildContainerPtr container) : Item(token, std::move(container)) {}
+    ScreenItem(const Token& token, ChildContainerPtr container) : SceneNode(token, std::move(container)) {}
 
 public:
     /// Destructor.
     virtual ~ScreenItem() override = default;
 
-    /// The Claim of this Item.
+    /// The Claim of this ScreenItem.
     const Claim& claim() const { return m_claim; }
 
     /// ScreenItem's transformation in the requested space.
@@ -267,7 +267,7 @@ protected:
     /// Updates the size of this ScreenItem and the layout of all child Items.
     virtual void _relayout() = 0;
 
-    /// Queries new data from the parent (what that is depends on the Item type).
+    /// Queries new data from the parent (what that is depends on the ScreenItem type).
     virtual void _update_from_parent() override;
 
     /// Lets the parent Layout know that this ScreenItem has changed at it might have to relayout.
@@ -280,7 +280,7 @@ protected:
     /// @return         True iff the Claim was modified.
     bool _set_claim(const Claim claim);
 
-    /// Updates the layout transformation of this Item.
+    /// Updates the layout transformation of this ScreenItem.
     /// @param transform    New Layout transform.
     void _set_layout_xform(const Matrix3f transform);
 
@@ -292,7 +292,7 @@ protected:
     /// @param scissor_layout   New scissor Layout.
     void _set_scissor(const Layout* scissor_layout);
 
-    /// Updates the Grant of this Item and might cause a relayout.
+    /// Updates the Grant of this ScreenItem and might cause a relayout.
     /// @param grant    New Grant.
     /// @return         True iff the Grant was modified.
     bool _set_grant(const Size2f grant);
@@ -340,7 +340,7 @@ private:
     /// Note that the grant can also be smaller or bigger than the Claim.
     Size2f m_grant = Size2f::zero();
 
-    /// The size of a ScreenItem is how much space the Item claims after receiving a grant from its parent Layout.
+    /// The size of a ScreenItem is how much space the ScreenItem claims after receiving a grant from its parent Layout.
     Size2f m_size = Size2f::zero();
 
     /// Opacity of this ScreenItem in the range [0 -> 1].
@@ -391,7 +391,7 @@ class ScreenItem::Access<RootLayout> {
     /// @param screen_item  ScreenItem to access.
     Access(ScreenItem& screen_item) : m_screen_item(screen_item) {}
 
-    /// Turns this ScreenItem into a root item that is its own scissor.
+    /// Turns this ScreenItem into a root ScreenItem that is its own scissor.
     void be_own_scissor(Layout* root_layout) { m_screen_item.m_scissor_layout = root_layout; }
 
     /// The ScreenItem to access.

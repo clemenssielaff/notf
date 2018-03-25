@@ -35,8 +35,8 @@ public:
     /// Texture format.
     enum class Format : unsigned char {
         GRAYSCALE = 1, ///< one channel per pixel (grayscale)
-        RGB       = 3, ///< 3 channels per pixel (color)
-        RGBA      = 4, ///< 4 channels per pixel (color + alpha)
+        RGB = 3,       ///< 3 channels per pixel (color)
+        RGBA = 4,      ///< 4 channels per pixel (color + alpha)
     };
 
     /// Filter used when sampling the texture and any of its mipmaps.
@@ -121,18 +121,8 @@ public:
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
-    /// Factory.
-    /// @param context  Render Context in which the Texture lives.
-    /// @param id       OpenGL texture ID.
-    /// @param target   How the texture is going to be used by OpenGL.
-    ///                 (see https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glTexImage2D.xhtml)
-    /// @param name     Context-unique name of the Texture.
-    /// @param size     Size of the Texture in pixels.
-    /// @param format   Texture format.
-    static TexturePtr _create(GraphicsContext& context, const GLuint id, const GLenum target, std::string name,
-                              Size2i size, const Format format);
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
 
-protected:
     /// Value Constructor.
     /// @param context  Render Context in which the Texture lives.
     /// @param id       OpenGL texture ID.
@@ -143,6 +133,21 @@ protected:
     /// @param format   Texture format.
     Texture(GraphicsContext& context, const GLuint id, const GLenum target, std::string name, Size2i size,
             const Format format);
+
+private:
+    /// Factory.
+    /// @param context  Render Context in which the Texture lives.
+    /// @param id       OpenGL texture ID.
+    /// @param target   How the texture is going to be used by OpenGL.
+    ///                 (see https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glTexImage2D.xhtml)
+    /// @param name     Context-unique name of the Texture.
+    /// @param size     Size of the Texture in pixels.
+    /// @param format   Texture format.
+    static TexturePtr _create(GraphicsContext& context, const GLuint id, const GLenum target, std::string name,
+                              Size2i size, const Format format)
+    {
+        return NOTF_MAKE_SHARED_FROM_PRIVATE(Texture, context, id, target, std::move(name), std::move(size), format);
+    }
 
 public:
     /// Creates an valid but transparent texture in memory.

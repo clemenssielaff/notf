@@ -2,7 +2,6 @@
 
 #include "common/log.hpp"
 #include "graphics/text/freetype.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -13,15 +12,6 @@ FontManager::FontManager(GraphicsContext& context)
         log_critical << "Failed to initialize the Freetype library";
         return;
     }
-}
-
-FontManagerPtr FontManager::create(GraphicsContext& context)
-{
-#ifdef NOTF_DEBUG
-    return FontManagerPtr(new FontManager(context));
-#else
-    return std::make_unique<make_shared_enabler<FontManager>>(context);
-#endif
 }
 
 FontManager::~FontManager() { FT_Done_FreeType(m_freetype); }

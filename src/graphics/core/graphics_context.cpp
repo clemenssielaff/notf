@@ -14,7 +14,6 @@
 #include "graphics/core/pipeline.hpp"
 #include "graphics/core/shader.hpp"
 #include "graphics/core/texture.hpp"
-#include "utils/narrow_cast.hpp"
 
 //====================================================================================================================//
 

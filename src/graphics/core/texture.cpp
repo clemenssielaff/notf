@@ -14,7 +14,6 @@
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/opengl.hpp"
 #include "graphics/core/raw_image.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
 NOTF_USING_NAMESPACE
@@ -114,17 +113,6 @@ NOTF_OPEN_NAMESPACE
 
 const Texture::Args Texture::s_default_args = {};
 
-TexturePtr Texture::_create(GraphicsContext& context, const GLuint id, const GLenum target, std::string name,
-                            Size2i size, const Format format)
-{
-#ifdef NOTF_DEBUG
-    return TexturePtr(new Texture(context, id, target, name, size, format));
-#else
-    return std::make_shared<make_shared_enabler<Texture>>(context, id, target, std::move(name), std::move(size),
-                                                          format);
-#endif
-}
-
 Texture::Texture(GraphicsContext& context, const GLuint id, const GLenum target, std::string name, Size2i size,
                  const Format format)
     : m_id(id)
@@ -148,24 +136,24 @@ TexturePtr Texture::create_empty(GraphicsContext& context, std::string name, Siz
     }
 
     // translate to OpenGL format
-    GLenum gl_format      = 0;
+    GLenum gl_format = 0;
     GLint internal_format = 0;
-    GLint alignment       = 0;
+    GLint alignment = 0;
     switch (args.format) {
     case Format::GRAYSCALE:
-        gl_format       = GL_RED;
+        gl_format = GL_RED;
         internal_format = GL_R8;
-        alignment       = 1;
+        alignment = 1;
         break;
     case Format::RGB:
-        gl_format       = GL_RGB;
+        gl_format = GL_RGB;
         internal_format = args.is_linear ? GL_RGB : GL_SRGB8;
-        alignment       = 4;
+        alignment = 4;
         break;
     case Format::RGBA:
-        gl_format       = GL_RGBA;
+        gl_format = GL_RGBA;
         internal_format = args.is_linear ? GL_RGBA : GL_SRGB8_ALPHA8;
-        alignment       = 4;
+        alignment = 4;
         break;
     }
 
@@ -181,8 +169,8 @@ TexturePtr Texture::create_empty(GraphicsContext& context, std::string name, Siz
     notf_check_gl(glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0));
     notf_check_gl(glPixelStorei(GL_UNPACK_SKIP_ROWS, 0));
 
-    notf_check_gl(glTexImage2D(GL_TEXTURE_2D, /* level= */ 0, internal_format, size.width, size.height, BORDER, gl_format,
-                          datatype_to_gl(args.data_type), nullptr));
+    notf_check_gl(glTexImage2D(GL_TEXTURE_2D, /* level= */ 0, internal_format, size.width, size.height, BORDER,
+                               gl_format, datatype_to_gl(args.data_type), nullptr));
 
     notf_check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(args.min_filter)));
     notf_check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(args.mag_filter)));
@@ -201,11 +189,11 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
     std::vector<uchar> image_data;
     Size2i image_size;
     Texture::Format texture_format;
-    GLenum gl_format       = 0;
+    GLenum gl_format = 0;
     GLenum internal_format = 0;
-    GLint alignment        = 0;
-    GLsizei image_length   = 0;
-    int image_bytes        = 0;
+    GLint alignment = 0;
+    GLsizei image_length = 0;
+    int image_bytes = 0;
 
     // load the texture from file
     if (args.codec == Codec::RAW) {
@@ -214,28 +202,28 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
             return {};
         }
 
-        image_size.width  = image.width();
+        image_size.width = image.width();
         image_size.height = image.height();
-        image_bytes       = image.channels();
-        image_data        = std::vector<uchar>(image.data(), image.data() + (image_size.area() * image_bytes));
+        image_bytes = image.channels();
+        image_data = std::vector<uchar>(image.data(), image.data() + (image_size.area() * image_bytes));
 
         if (image_bytes == 1) { // grayscale
-            gl_format       = GL_RED;
+            gl_format = GL_RED;
             internal_format = GL_R8;
-            texture_format  = Texture::Format::GRAYSCALE;
-            alignment       = 1;
+            texture_format = Texture::Format::GRAYSCALE;
+            alignment = 1;
         }
         else if (image_bytes == 3) { // color
-            gl_format       = GL_RGB;
+            gl_format = GL_RGB;
             internal_format = args.is_linear ? GL_RGB : GL_SRGB8;
-            texture_format  = Texture::Format::RGB;
-            alignment       = 4;
+            texture_format = Texture::Format::RGB;
+            alignment = 4;
         }
         else if (image_bytes == 4) { // color + alpha
-            gl_format       = GL_RGBA;
+            gl_format = GL_RGBA;
             internal_format = args.is_linear ? GL_RGBA : GL_SRGB8_ALPHA8;
-            texture_format  = Texture::Format::RGBA;
-            alignment       = 4;
+            texture_format = Texture::Format::RGBA;
+            alignment = 4;
         }
         else {
             notf_throw_format(runtime_error,
@@ -249,13 +237,13 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
         }
         image_data = std::vector<uchar>(std::istreambuf_iterator<char>(image_file), std::istreambuf_iterator<char>());
 
-        image_size     = {1024, 1024};
+        image_size = {1024, 1024};
         texture_format = Texture::Format::RGBA;
-        alignment      = 4;
-        image_bytes    = 4;
+        alignment = 4;
+        image_bytes = 4;
 
         internal_format = GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6;
-        image_length    = static_cast<GLsizei>(ceil(image_size.width / 6.))
+        image_length = static_cast<GLsizei>(ceil(image_size.width / 6.))
                        * static_cast<GLsizei>(ceil(image_size.height / 6.)) * 16;
 
         // TODO: 'header' reader for ASTC files, we need the image size, the block size and the format (rgb/argb)
@@ -279,18 +267,18 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
     if (args.make_immutable) {
         // immutable texture
         const GLsizei max_levels = static_cast<GLsizei>(floor(log2(max(image_size.width, image_size.height)))) + 1;
-        const GLsizei levels     = args.create_mipmaps ? max_levels : 1;
+        const GLsizei levels = args.create_mipmaps ? max_levels : 1;
         notf_check_gl(glTexStorage2D(GL_TEXTURE_2D, levels, internal_format, image_size.width, image_size.height));
 
         if (args.codec == Codec::RAW) {
             notf_check_gl(glTexSubImage2D(GL_TEXTURE_2D, /* level= */ 0, /* xoffset= */ 0, /* yoffset= */ 0,
-                                     image_size.width, image_size.height, gl_format, datatype_to_gl(args.data_type),
-                                     &image_data.front()));
+                                          image_size.width, image_size.height, gl_format,
+                                          datatype_to_gl(args.data_type), &image_data.front()));
         }
         else if (args.codec == Codec::ASTC) {
             notf_check_gl(glCompressedTexSubImage2D(GL_TEXTURE_2D, /* level= */ 0, /* xoffset= */ 0, /* yoffset= */ 0,
-                                               image_size.width, image_size.height, internal_format, image_length,
-                                               &image_data.front()));
+                                                    image_size.width, image_size.height, internal_format, image_length,
+                                                    &image_data.front()));
         }
         else {
             assert(0);
@@ -306,13 +294,13 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
     else {
         // mutable texture
         if (args.codec == Codec::RAW) {
-            notf_check_gl(glTexImage2D(GL_TEXTURE_2D, /* level= */ 0, static_cast<GLint>(internal_format), image_size.width,
-                                  image_size.height, BORDER, gl_format, datatype_to_gl(args.data_type),
-                                  &image_data.front()));
+            notf_check_gl(glTexImage2D(GL_TEXTURE_2D, /* level= */ 0, static_cast<GLint>(internal_format),
+                                       image_size.width, image_size.height, BORDER, gl_format,
+                                       datatype_to_gl(args.data_type), &image_data.front()));
         }
         else if (args.codec == Codec::ASTC) {
             notf_check_gl(glCompressedTexImage2D(GL_TEXTURE_2D, /* level= */ 0, internal_format, image_size.width,
-                                            image_size.height, BORDER, image_length, &image_data.front()));
+                                                 image_size.height, BORDER, image_length, &image_data.front()));
         }
         else {
             assert(0);
@@ -341,8 +329,8 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
     { // log success
 #if NOTF_LOG_LEVEL > NOTF_LOG_LEVEL_INFO
         static const std::string grayscale = "grayscale";
-        static const std::string rgb       = "rgb";
-        static const std::string rgba      = "rgba";
+        static const std::string rgb = "rgb";
+        static const std::string rgba = "rgba";
 
         const std::string* format_name;
         if (image_bytes == 1) {

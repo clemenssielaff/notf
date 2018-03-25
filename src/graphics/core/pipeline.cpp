@@ -9,7 +9,6 @@
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/opengl.hpp"
 #include "graphics/core/shader.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -48,7 +47,7 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
         assert(m_tesselation_shader->is_valid());
         assert(m_tesselation_shader->context() == m_graphics_context);
         notf_check_gl(glUseProgramStages(m_id.value(), GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT,
-                                    m_tesselation_shader->id().value()));
+                                         m_tesselation_shader->id().value()));
 
         std::stringstream ss;
         ss << "tesselation shader \"" << m_tesselation_shader->name() << "\"";
@@ -116,20 +115,6 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
         }
         log_info << message.str();
     }
-}
-
-PipelinePtr
-Pipeline::create(GraphicsContextPtr& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
-                 GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader)
-{
-#ifdef NOTF_DEBUG
-    return PipelinePtr(new Pipeline(*context, std::move(vertex_shader), std::move(tesselation_shader),
-                                    std::move(geometry_shader), std::move(fragment_shader)));
-#else
-    return std::make_shared<make_shared_enabler<Pipeline>>(*context, std::move(vertex_shader),
-                                                           std::move(tesselation_shader), std::move(geometry_shader),
-                                                           std::move(fragment_shader));
-#endif
 }
 
 Pipeline::~Pipeline()

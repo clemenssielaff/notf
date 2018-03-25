@@ -1,6 +1,7 @@
 #pragma once
 
-#include <type_traits>
+#include <cstdint>
+#include <utility>
 
 //====================================================================================================================//
 
@@ -9,50 +10,58 @@
 ///     http://en.cppreference.com/w/User:D41D8CD98F/feature_testing_macros
 
 #ifndef __cplusplus
-#    error A C++ compiler is required!
+#error A C++ compiler is required!
 #else
-#    if __cplusplus >= 199711L
-#        define NOTF_CPP97
-#    endif
-#    if __cplusplus >= 201103L
-#        define NOTF_CPP11
-#    endif
-#    if __cplusplus >= 201402L
-#        define NOTF_CPP14
-#    endif
-#    if __cplusplus >= 201703L
-#        define NOTF_CPP17
-#    endif
+#if __cplusplus >= 199711L
+#define NOTF_CPP97
+#endif
+#if __cplusplus >= 201103L
+#define NOTF_CPP11
+#endif
+#if __cplusplus >= 201402L
+#define NOTF_CPP14
+#endif
+#if __cplusplus >= 201703L
+#define NOTF_CPP17
+#endif
 #endif
 
 //====================================================================================================================//
 
 /// Compiler detection.
 #ifdef __clang__
-#    define NOTF_CLANG
+#define NOTF_CLANG
 #else
-#    ifdef _MSC_VER
-#        define NOTF_MSVC
-#    else
-#        ifdef __GNUC__
-#            define NOTF_GCC
-#        else
-#            error Unknown compiler detected (searching for __clang__, _MSC_VER and __GNUC__)
-#        endif
-#    endif
+#ifdef _MSC_VER
+#define NOTF_MSVC
+#else
+#ifdef __GNUC__
+#define NOTF_GCC
+#else
+#error Unknown compiler detected (searching for __clang__, _MSC_VER and __GNUC__)
+#endif
+#endif
 #endif
 
 //====================================================================================================================//
 
 /// OS detection
 #ifdef __linux__
-#    define NOTF_LINUX
+#define NOTF_LINUX
 #else
-#    ifdef _WIN32
-#        define NOTF_WINDOWS
-#    else
-#        error Unknown operating system detected (searching for __linux__ and _WIN32)
-#    endif
+#ifdef _WIN32
+#define NOTF_WINDOWS
+#else
+#error Unknown operating system detected (searching for __linux__ and _WIN32)
+#endif
+#endif
+
+//====================================================================================================================//
+
+#ifdef NOTF_MSVC
+#define NOTF_PRAGMA(x) __pragma(x)
+#else
+#define NOTF_PRAGMA(x) _Pragma(x)
 #endif
 
 //====================================================================================================================//
@@ -60,7 +69,7 @@
 /// Compiler attribute detection, as described in:
 ///     https://clang.llvm.org/docs/LanguageExtensions.html#has-cpp-attribute
 #ifndef __has_cpp_attribute
-#    define __has_cpp_attribute(x) 0 // Compatibility with non-clang compilers.
+#define __has_cpp_attribute(x) 0 // Compatibility with non-clang compilers.
 #endif
 
 /// NOTF_NODISCARD attribute to make sure that the return value of a function is not immediately discarded.
@@ -68,22 +77,22 @@
 ///     NOTF_NODISCARD int guard() { ...
 ///     class NOTF_NODISCARD Guard { ...
 #if __has_cpp_attribute(nodiscard)
-#    define NOTF_NODISCARD [[nodiscard]]
+#define NOTF_NODISCARD [[nodiscard]]
 #elif __has_cpp_attribute(gnu::warn_unused_result)
-#    define NOTF_NODISCARD [[gnu::warn_unused_result]]
+#define NOTF_NODISCARD [[gnu::warn_unused_result]]
 #else
-#    define NOTF_NODISCARD
+#define NOTF_NODISCARD
 #endif
 
 /// Signifies that a value is (probably) unused and you don't want warnings about it.
 /// Example:
 ///     NOTF_UNUSED int answer = 42;
 #if __has_cpp_attribute(maybe_unused)
-#    define NOTF_UNUSED [[maybe_unused]]
+#define NOTF_UNUSED [[maybe_unused]]
 #elif __has_cpp_attribute(gnu::unused)
-#    define NOTF_UNUSED [[gnu::unused]]
+#define NOTF_UNUSED [[gnu::unused]]
 #else
-#    define NOTF_UNUSED
+#define NOTF_UNUSED
 #endif
 
 /// Signifies that the function will not return control flow back to the caller.
@@ -92,12 +101,14 @@
 //====================================================================================================================//
 
 /// Interprets an expanded macro as a string.
-#define NOTF_STRINGIFY(x) #x
-#define NOTF_TOSTRING(x) NOTF_STRINGIFY(x)
+#define NOTF_STR(x) #x
 
 /// Takes two macros and concatenates them without whitespace in between.
-#define NOTF_MACRO_CONCAT_(A, B) A##B
-#define NOTF_MACRO_CONCAT(A, B) NOTF_MACRO_CONCAT_(A, B)
+#define NOTF_CONCAT(x, y) x##y
+
+/// Expands a macro inside another macro.
+/// Use for `NOTF_DEFER(NOTF_STR, expanded) and others
+#define NOTF_DEFER(f, ...) f(__VA_ARGS__)
 
 //====================================================================================================================//
 
@@ -161,22 +172,22 @@ using void_t = typename make_void<Ts...>::type;
     void operator=(const Type&) = delete;
 
 /// Forbids the allocation on the heap of a given type.
-#define NOTF_NO_HEAP_ALLOCATION(Type)       \
-    void* operator new(size_t)    = delete; \
-    void* operator new[](size_t)  = delete; \
-    void operator delete(void*)   = delete; \
+#define NOTF_NO_HEAP_ALLOCATION(Type)      \
+    void* operator new(size_t) = delete;   \
+    void* operator new[](size_t) = delete; \
+    void operator delete(void*) = delete;  \
     void operator delete[](void*) = delete;
 
 /// Convenience macro to define shared pointer types for a given type.
-#define NOTF_DEFINE_SHARED_POINTERS(Tag, Type)    \
-    Tag Type;                                     \
-    using Type##Ptr      = std::shared_ptr<Type>; \
+#define NOTF_DEFINE_SHARED_POINTERS(Tag, Type) \
+    Tag Type;                                  \
+    using Type##Ptr = std::shared_ptr<Type>;   \
     using Type##ConstPtr = std::shared_ptr<const Type>
 
 /// Convenience macro to define unique pointer types for a given type.
-#define NOTF_DEFINE_UNIQUE_POINTERS(Tag, Type)    \
-    Tag Type;                                     \
-    using Type##Ptr      = std::unique_ptr<Type>; \
+#define NOTF_DEFINE_UNIQUE_POINTERS(Tag, Type) \
+    Tag Type;                                  \
+    using Type##Ptr = std::unique_ptr<Type>;   \
     using Type##ConstPtr = std::unique_ptr<const Type>
 
 /// Private access type template.
@@ -189,20 +200,36 @@ using void_t = typename make_void<Ts...>::type;
 
 /// Function name macro to use for logging and exceptions.
 #ifdef NOTF_LOG_PRETTY_FUNCTION
-#    ifdef NOTF_CLANG
-#        define NOTF_FUNCTION __PRETTY_FUNCTION__
-#    else
-#        ifdef NOTF_MSVC
-#            define NOTF_FUNCTION __FUNCTION__
-#        else
-#            ifdef NOTF_GCC
-#                define NOTF_FUNCTION __PRETTY_FUNCTION__
-#            endif
-#        endif
-#    endif
+#ifdef NOTF_CLANG
+#define NOTF_FUNCTION __PRETTY_FUNCTION__
 #else
-#    define NOTF_FUNCTION __func__
+#ifdef NOTF_MSVC
+#define NOTF_FUNCTION __FUNCTION__
+#else
+#ifdef NOTF_GCC
+#define NOTF_FUNCTION __PRETTY_FUNCTION__
 #endif
+#endif
+#endif
+#else
+#define NOTF_FUNCTION __func__
+#endif
+
+//====================================================================================================================//
+
+/// Convienience macros to temporarely disable a single warning.
+/// DISABLE_WARNING("switch-enum")
+///     ...
+/// ENABLE_WARNINGS
+#define NOTF_DISABLE_WARNING_STR_(x) GCC diagnostic ignored "-W" x
+#define NOTF_DISABLE_WARNING(x)          \
+    NOTF_PRAGMA("clang diagnostic push") \
+    NOTF_PRAGMA(NOTF_DEFER(NOTF_STR, NOTF_DISABLE_WARNING_STR_(x)))
+#define NOTF_ENABLE_WARNINGS NOTF_PRAGMA("clang diagnostic pop")
+
+/// Throw a compiler warning or error with some additional information.
+#define NOTF_COMPILER_WARNING(x) NOTF_PRAGMA(NOTF_STR(GCC warning(x " at line " NOTF_DEFER(NOTF_STR, __LINE__))))
+#define NOTF_COMPILER_ERROR(x) NOTF_PRAGMA(NOTF_STR(GCC error(x " at line " NOTF_DEFER(NOTF_STR, __LINE__))))
 
 //====================================================================================================================//
 
@@ -217,6 +244,8 @@ using void_t = typename make_void<Ts...>::type;
 #define NOTF_USING_NAMESPACE using namespace notf;
 
 //====================================================================================================================//
+
+NOTF_OPEN_NAMESPACE
 
 using uchar = unsigned char;
 
@@ -282,3 +311,63 @@ struct always_false_t : std::false_type {};
 template<class T, class U>
 struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T>::value == std::is_signed<U>::value> {
 };
+
+//====================================================================================================================//
+
+/// Constexpr to use an enum class value as a numeric value.
+/// From "Effective Modern C++ by Scott Mayers': Item #10.
+template<typename Enum>
+constexpr auto to_number(Enum enumerator) noexcept
+{
+    return static_cast<std::underlying_type_t<Enum>>(enumerator);
+}
+
+/// Converts any pointer to the equivalent integer representation.
+template<typename T>
+constexpr std::uintptr_t to_number(const T* const ptr) noexcept
+{
+    return reinterpret_cast<std::uintptr_t>(ptr);
+}
+
+//====================================================================================================================//
+
+namespace detail {
+
+/// Simple `new` forward to allow the creation of an instance from a protected or private constructor.
+template<typename T, typename... Args>
+inline T* make_new_enabler(Args&&... args)
+{
+    new T(std::forward<Args>(args)...);
+}
+
+/// Helper struct to allow `std::make_shared` to work with protected or private constructors.
+/// from:
+///     https://stackoverflow.com/a/8147213/3444217 and https://stackoverflow.com/a/25069711/3444217
+template<typename T>
+struct make_shared_enabler : public T {
+    template<typename... Args>
+    make_shared_enabler(Args&&... args) : T(std::forward<Args>(args)...)
+    {}
+};
+
+} // namespace detail
+
+/// Put into the class body to allow the use of NOTF_MAKE_SHARED_FROM_PRIVATE
+#define NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE         \
+    template<typename T, typename... Args>         \
+    friend T* detail::make_new_enabler(Args&&...); \
+    template<typename>                             \
+    friend struct detail::make_shared_enabler;
+
+/// I found that debugging a `detail::make_shared_enable<T>` instance is not as reliable (members seem to be missing?)
+/// as when you create a shared pointer from a raw pointer. Therefore, NOTF_MAKE_SHARED_FROM_PRIVATE works differently
+/// in debug and release mode.
+#ifdef NOTF_DEBUG
+#define NOTF_MAKE_SHARED_FROM_PRIVATE(T, ...) std::shared_ptr<T>(detail::make_new_enabler<T>(__VA_ARGS__))
+#define NOTF_MAKE_UNIQUE_FROM_PRIVATE(T, ...) std::unique_ptr<T>(detail::make_new_enabler<T>(__VA_ARGS__))
+#else
+#define NOTF_MAKE_SHARED_FROM_PRIVATE(T, ...) std::make_shared<detail::make_shared_enabler<T>>(__VA_ARGS__);
+#define NOTF_MAKE_UNIQUE_FROM_PRIVATE(T, ...) std::make_unique<detail::make_shared_enabler<T>>(__VA_ARGS__);
+#endif
+
+NOTF_CLOSE_NAMESPACE

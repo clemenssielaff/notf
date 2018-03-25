@@ -6,7 +6,6 @@
 #include "common/string.hpp"
 #include "graphics/text/font_manager.hpp"
 #include "graphics/text/freetype.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 namespace { // anonymous
 NOTF_USING_NAMESPACE
@@ -19,12 +18,12 @@ NOTF_OPEN_NAMESPACE
 
 static_assert(std::is_pod<Glyph::Rect>::value, "This compiler does not recognize notf::Glyph::Rect as a POD.");
 
-Font::Font(FontManager& manager, const std::string filename, const pixel_size_t pixel_size)
+Font::Font(FontManager& manager, const std::string& filename, const pixel_size_t pixel_size)
     : m_manager(manager), m_name(), m_identifier({filename, pixel_size}), m_face(nullptr), m_glyphs()
 {
     { // extract the name of the font from the file name
         const std::string basestring = basename(filename.c_str());
-        m_name                       = basestring.substr(0, basestring.rfind('.'));
+        m_name = basestring.substr(0, basestring.rfind('.'));
     }
 
     // load the new Font into freetype
@@ -38,8 +37,8 @@ Font::Font(FontManager& manager, const std::string filename, const pixel_size_t 
     { // store font metrics
         assert(m_face->ascender >= 0);
         assert(m_face->height >= 0);
-        m_ascender    = static_cast<pixel_size_t>(std::abs(m_face->size->metrics.ascender) / 64);
-        m_descender   = static_cast<pixel_size_t>(std::abs(m_face->size->metrics.descender) / 64);
+        m_ascender = static_cast<pixel_size_t>(std::abs(m_face->size->metrics.ascender) / 64);
+        m_descender = static_cast<pixel_size_t>(std::abs(m_face->size->metrics.descender) / 64);
         m_line_height = static_cast<pixel_size_t>(std::abs(m_face->size->metrics.height) / 64);
     }
 
@@ -53,9 +52,9 @@ Font::Font(FontManager& manager, const std::string filename, const pixel_size_t 
         }
 
         Glyph new_glyph;
-        new_glyph.rect      = {0, 0, 0, 0}; // is determined in the next step
-        new_glyph.left      = static_cast<Glyph::coord_t>(slot->bitmap_left);
-        new_glyph.top       = static_cast<Glyph::coord_t>(slot->bitmap_top);
+        new_glyph.rect = {0, 0, 0, 0}; // is determined in the next step
+        new_glyph.left = static_cast<Glyph::coord_t>(slot->bitmap_left);
+        new_glyph.top = static_cast<Glyph::coord_t>(slot->bitmap_top);
         new_glyph.advance_x = static_cast<Glyph::coord_t>(slot->advance.x / 64);
         new_glyph.advance_y = static_cast<Glyph::coord_t>(slot->advance.y / 64);
         m_glyphs.insert(std::make_pair(codepoint, std::move(new_glyph)));
@@ -79,9 +78,9 @@ Font::Font(FontManager& manager, const std::string filename, const pixel_size_t 
     log_trace << "Loaded Font \"" << m_name << "\" from file: " << filename;
 }
 
-FontPtr Font::load(FontManagerPtr& font_manager, const std::string filename, const pixel_size_t pixel_size)
+FontPtr Font::load(FontManagerPtr& font_manager, std::string filename, const pixel_size_t pixel_size)
 {
-    const Font::Identifier identifier = {filename, pixel_size};
+    const Font::Identifier identifier = {std::move(filename), pixel_size};
 
     { // check if the given filename/size - pair is already a known (and loaded) font
         auto it = font_manager->m_fonts.find(identifier);
@@ -95,12 +94,8 @@ FontPtr Font::load(FontManagerPtr& font_manager, const std::string filename, con
         }
     }
 
-// create and store the new Font in the manager, so it can be re-used
-#ifdef NOTF_DEBUG
-    FontPtr font(new Font(*font_manager, filename, pixel_size));
-#else
-    FontPtr font = std::make_shared<make_shared_enabler<Font>>(*font_manager, filename, pixel_size);
-#endif
+    // create and store the new Font in the manager, so it can be re-used
+    FontPtr font = NOTF_MAKE_SHARED_FROM_PRIVATE(Font, *font_manager, filename, pixel_size);
     font_manager->m_fonts.insert({identifier, font});
     return font;
 }
@@ -125,24 +120,24 @@ const Glyph& Font::_allocate_glyph(const codepoint_t codepoint) const
     }
 
     Glyph glyph;
-    glyph.left      = static_cast<Glyph::coord_t>(slot->bitmap_left);
-    glyph.top       = static_cast<Glyph::coord_t>(slot->bitmap_top);
+    glyph.left = static_cast<Glyph::coord_t>(slot->bitmap_left);
+    glyph.top = static_cast<Glyph::coord_t>(slot->bitmap_top);
     glyph.advance_x = static_cast<Glyph::coord_t>(slot->advance.x >> 6); // "x >> 6" is "x / 64" in fancy
     glyph.advance_y = static_cast<Glyph::coord_t>(slot->advance.y >> 6);
 
     if (slot->bitmap.width > 0) {
         assert(slot->bitmap.rows);
         FontAtlas& font_atlas = m_manager.atlas();
-        glyph.rect            = font_atlas.insert_rect(static_cast<Glyph::coord_t>(slot->bitmap.width),
+        glyph.rect = font_atlas.insert_rect(static_cast<Glyph::coord_t>(slot->bitmap.width),
                                             static_cast<Glyph::coord_t>(slot->bitmap.rows));
         font_atlas.fill_rect(glyph.rect, slot->bitmap.buffer);
     }
     else {
         assert(!slot->bitmap.rows);
-        glyph.rect.x      = 0;
-        glyph.rect.y      = 0;
+        glyph.rect.x = 0;
+        glyph.rect.y = 0;
         glyph.rect.height = 0;
-        glyph.rect.width  = 0;
+        glyph.rect.width = 0;
     }
 
     // store and return the new Glyph

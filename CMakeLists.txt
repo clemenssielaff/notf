@@ -68,9 +68,10 @@ endif()
 
 # NOTF #################################################################################################################
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g -DNOTF_DEBUG")
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_CXX_FLAGS_DEBUG "-g -DNOTF_DEBUG")
 
 if(NOTF_LOG_PRETTY_FUNCTION)
     add_definitions(-DNOTF_NOTF_LOG_PRETTY_FUNCTION)
@@ -85,35 +86,37 @@ include_directories(
 )
 
 create_module(common)
-create_module(app)
+#create_module(app)
 create_module(graphics)
 create_module(utils)
 
-list(REMOVE_ITEM app_MODULE
-    src/app/render/fragment_producer.cpp
-    src/app/render/fragment_producer.hpp
-    src/app/render/plotter.cpp
-    src/app/render/plotter.hpp
-    src/app/render_target.hpp
-    src/app/render_target.cpp
-    src/app/layer.cpp
-    src/app/layer.hpp
-    src/app/widget/controller.hpp
-    src/app/widget/controller.cpp
-    src/app/widget/root_layout.cpp
-    src/app/widget/root_layout.hpp
-    src/app/widget/screen_item.cpp
-    src/app/widget/screen_item.hpp
-    src/app/widget/hierarchy.hpp
-    src/app/widget/hierarchy.cpp
-    src/app/widget/widget.cpp
-    src/app/widget/widget.hpp
-    src/app/widget/layout.hpp
-    src/app/widget/layout.cpp
-)
 
 add_sources(SOURCE_FILES src
     main.cpp
+    app/application.cpp
+    app/application.hpp
+    app/window.cpp
+    app/window.hpp
+    app/property_graph.hpp
+    app/property_graph.cpp
+    app/resource_manager.hpp
+    app/resource_manager.cpp
+    app/render_thread.hpp
+    app/render_thread.cpp
+    app/scene_manager.hpp
+    app/scene_manager.cpp
+    app/scene_node.hpp
+    app/scene_node.cpp
+    app/forwards.hpp
+    app/glfw.hpp
+    app/io/char_event.hpp
+    app/io/key_event.hpp
+    app/io/keyboard.hpp
+    app/io/keyboard.cpp
+    app/io/mouse_event.hpp
+    app/io/time.hpp
+    app/io/time.cpp
+    app/io/window_event.hpp
 )
 
 add_sources(SOURCE_FILES examples
@@ -140,29 +143,29 @@ add_sources(THIRDPARTY_FILES thirdparty
     robin-map/robin_set.h
 )
 
-add_sources(RESOURCE_FILES res
-    shaders/cell.frag
-    shaders/cell.vert
-    shaders/blinn_phong.vert
-    shaders/blinn_phong.frag
-    shaders/fullscreen.vert
-    shaders/wireframe.vert
-    shaders/wireframe.tess
-    shaders/wireframe.eval
-    shaders/wireframe.geo
-    shaders/wireframe.frag
-    shaders/plotter.vert
-    shaders/plotter.tess
-    shaders/plotter.eval
-    shaders/plotter.frag
-    shaders/trivial.vert
-    shaders/trivial.frag
-    shaders/clouds.frag
-)
+#add_sources(RESOURCE_FILES res
+#    shaders/cell.frag
+#    shaders/cell.vert
+#    shaders/blinn_phong.vert
+#    shaders/blinn_phong.frag
+#    shaders/fullscreen.vert
+#    shaders/wireframe.vert
+#    shaders/wireframe.tess
+#    shaders/wireframe.eval
+#    shaders/wireframe.geo
+#    shaders/wireframe.frag
+#    shaders/plotter.vert
+#    shaders/plotter.tess
+#    shaders/plotter.eval
+#    shaders/plotter.frag
+#    shaders/trivial.vert
+#    shaders/trivial.frag
+#    shaders/clouds.frag
+#)
 
 add_executable(notf
     ${common_MODULE}
-    ${app_MODULE}
+#    ${app_MODULE}
     ${graphics_MODULE}
     ${utils_MODULE}
     ${SOURCE_FILES}
