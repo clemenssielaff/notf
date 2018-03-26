@@ -1,11 +1,12 @@
 #pragma once
 
 #include "app/forwards.hpp"
+#include "event.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 /// Event object generated when the Application receives a keyboard input that represents a unicode codepoint.
-class WindowEvent {
+class WindowEvent : public detail::EventBase<WindowEvent> {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -21,6 +22,9 @@ public:
     /// @param window       Window that received the event from the Application.
     /// @param type         The type of this event.
     WindowEvent(Window& window, Type type) : window(window), type(type) {}
+
+    /// Destructor.
+    virtual ~WindowEvent() override;
 
     /// Checks whether this event was already handled or not.
     bool was_handled() const { return m_was_handled; }

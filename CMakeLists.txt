@@ -109,14 +109,20 @@ add_sources(SOURCE_FILES src
     app/scene_node.cpp
     app/forwards.hpp
     app/glfw.hpp
+    app/io/event.hpp
+    app/io/event.cpp
     app/io/char_event.hpp
+    app/io/char_event.cpp
     app/io/key_event.hpp
+    app/io/key_event.cpp
     app/io/keyboard.hpp
     app/io/keyboard.cpp
     app/io/mouse_event.hpp
+    app/io/mouse_event.cpp
     app/io/time.hpp
     app/io/time.cpp
     app/io/window_event.hpp
+    app/io/window_event.cpp
 )
 
 add_sources(SOURCE_FILES examples

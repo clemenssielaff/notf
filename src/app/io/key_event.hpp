@@ -1,12 +1,14 @@
 #pragma once
 
 #include "app/forwards.hpp"
-#include "app/io/keyboard.hpp"
+#include "event.hpp"
+#include "keyboard.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 /// Event object generated when the Application receives a keyboard input.
-class KeyEvent {
+class KeyEvent : public detail::EventBase<KeyEvent> {
+
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
@@ -18,6 +20,9 @@ public:
     KeyEvent(Window& window, Key key, KeyAction action, KeyModifiers modifiers, const KeyStateSet& stateset)
         : window(window), key(key), action(action), modifiers(modifiers), stateset(stateset), m_was_handled(false)
     {}
+
+    /// Destructor.
+    virtual ~KeyEvent() override;
 
     /// Checks whether this event was already handled or not.
     bool was_handled() const { return m_was_handled; }

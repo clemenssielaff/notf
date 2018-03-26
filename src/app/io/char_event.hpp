@@ -1,13 +1,15 @@
 #pragma once
 
 #include "app/forwards.hpp"
-#include "app/io/keyboard.hpp"
 #include "common/utf.hpp"
+#include "event.hpp"
+#include "keyboard.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 /// Event object generated when the Application receives a keyboard input that represents a unicode codepoint.
-class CharEvent {
+class CharEvent : public detail::EventBase<CharEvent> {
+
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
@@ -18,6 +20,9 @@ public:
     CharEvent(Window& window, utf32_t codepoint, KeyModifiers modifiers, const KeyStateSet& stateset)
         : window(window), codepoint(codepoint), modifiers(modifiers), stateset(stateset), m_was_handled(false)
     {}
+
+    /// Destructor.
+    virtual ~CharEvent() override;
 
     /// Checks whether this event was already handled or not.
     bool was_handled() const { return m_was_handled; }

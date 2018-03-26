@@ -1,13 +1,15 @@
 #pragma once
 
 #include "app/forwards.hpp"
-#include "app/io/keyboard.hpp"
 #include "common/vector2.hpp"
+#include "event.hpp"
+#include "keyboard.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 /// Event object generated when the Application notices a mouse input.
-class MouseEvent {
+class MouseEvent : public detail::EventBase<MouseEvent> {
+
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
@@ -27,6 +29,9 @@ public:
         , stateset(stateset)
         , m_was_handled(false)
     {}
+
+    /// Destructor.
+    virtual ~MouseEvent() override;
 
     /// Checks whether this event was already handled or not.
     bool was_handled() const { return m_was_handled; }

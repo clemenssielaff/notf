@@ -1,12 +1,13 @@
 #include "app/io/time.hpp"
 
 #include "app/glfw.hpp"
+#include "common/float.hpp"
 #include "common/log.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-Time::Ticks Time::s_zero      = {0};
-Time::Ticks Time::s_frequency = {0};
+Time::Ticks Time::s_zero = {0};
+Time::Ticks Time::s_frequency = {1};
 
 Time Time::now() { return {glfwGetTimerValue() - s_zero}; }
 
@@ -32,8 +33,8 @@ Time Time::until(const Time& then)
 
 void Time::initialize()
 {
-    s_zero      = glfwGetTimerValue();
-    s_frequency = glfwGetTimerFrequency();
+    s_zero = glfwGetTimerValue();
+    s_frequency = max(1, glfwGetTimerFrequency());
     log_info << "Setting Time::frequency to: " << s_frequency;
 }
 

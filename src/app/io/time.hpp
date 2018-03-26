@@ -1,8 +1,5 @@
 #pragma once
 
-#include <cassert>
-#include <cstdint>
-
 #include "common/meta.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -38,11 +35,7 @@ public:
     bool is_invalid() const { return !is_valid(); }
 
     /// Seconds since the start of the Application.
-    double in_seconds() const
-    {
-        assert(s_frequency);
-        return static_cast<double>(ticks) / static_cast<double>(s_frequency);
-    }
+    double in_seconds() const { return static_cast<double>(ticks) / static_cast<double>(s_frequency); }
 
     /// The current time.
     static Time now();
