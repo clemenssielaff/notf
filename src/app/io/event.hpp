@@ -10,7 +10,8 @@ NOTF_OPEN_NAMESPACE
 //====================================================================================================================//
 
 /// Virtual baseclass, can be used as catch-all type for all Events.
-struct Event {
+class Event {
+public:
 
     /// Virtual destructor.
     virtual ~Event();
@@ -25,7 +26,8 @@ namespace detail {
 
 /// Type to derive Event types via the curiously recurring template pattern.
 template<typename T>
-struct EventBase : public Event {
+class EventBase : public Event {
+public:
 
     /// Static type of this Event subclass.
     static size_t static_type() { return typeid(T).hash_code(); }

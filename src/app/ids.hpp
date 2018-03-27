@@ -7,7 +7,7 @@ NOTF_OPEN_NAMESPACE
 
 using SceneNodeId = IdType<SceneNode, uint>;
 
-using GraphicsProducerId = IdType<GraphicsProducer, uint>;
+using RendererId = IdType<Renderer, uint>;
 
 using RenderTargetId = IdType<RenderTarget, uint>;
 

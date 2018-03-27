@@ -8,18 +8,15 @@ NOTF_OPEN_NAMESPACE
 // ===================================================================================================================//
 
 /// A RenderTarget is a 2D image of arbitrary size that is produced (and potentially consumed) by one or more
-/// GraphicsProducers. Interally, they have a framebuffer with a single texture attached as color target. When one or
-/// more of the target's GraphicsProducers are "dirty", the whole target has to be "cleaned" by evoking all of its
-/// GraphicsProducers in order.
+/// Renderers. Interally, they have a framebuffer with a single texture attached as color target. When one or
+/// more of the target's Renderers are "dirty", the whole target has to be "cleaned" by evoking all of its
+/// Renderers in order.
 class RenderTarget {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
     /// RenderTarget arguments.
     struct Args {
-        /// Name of the RenderTarget, unique within the SceneManager.
-        std::string name;
-
         /// Size of the RenderTarget.
         Size2i size;
 
@@ -34,30 +31,32 @@ public:
         /// A value <= 1 means no anisotropic filtering.
         float anisotropy = 1;
 
-        /// The GraphicsProducer that define the contents of the target.
-        GraphicsProducerPtr producer;
+        /// The Renderer that define the contents of the target.
+        RendererPtr renderer;
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
-protected:
+private:
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+
     /// Constructor.
-    /// @param manager  The SceneManager that the RenderTarget is registered with.
+    /// @param context  The GraphicsContext containing the graphic objects.
     /// @param args     Arguments.
-    RenderTarget(SceneManager& manager, Args&& args);
+    RenderTarget(GraphicsContext& context, Args&& args);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(RenderTarget)
 
     /// Factory.
-    /// @param manager  The SceneManager that the RenderTarget is registered with.
+    /// @param context  The GraphicsContext containing the graphic objects.
     /// @param args     Arguments.
-    static RenderTargetPtr create(SceneManager& manager, Args&& args);
+    static RenderTargetPtr create(GraphicsContext& context, Args&& args)
+    {
+        return NOTF_MAKE_SHARED_FROM_PRIVATE(RenderTarget, context, std::forward<Args>(args));
+    }
 
-    /// Id of this RenderTarget.
-    RenderTargetId id() const noexcept { return m_id; }
-
-    /// Name of the RenderTarget, unique within the SceneManager.
-    const std::string& name() const { return m_name; }
+    /// Destructor.
+    ~RenderTarget();
 
     /// The FrameBuffer of this target.
     const FrameBufferPtr& framebuffer() const { return m_framebuffer; }
@@ -68,30 +67,20 @@ public:
     /// Whether the target is dirty or not.
     bool is_dirty() const { return m_is_dirty; }
 
-    /// Evokes the GraphicsProducers, "cleaning" the target.
+    /// Evokes the Renderers, "cleaning" the target.
     /// If the target is clean to begin with, this does nothing.
     void clean();
 
-private:
-    /// Generate the next available RenderTargetId.
-    static RenderTargetId _next_id();
-
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// GraphicsProducer id.
-    const RenderTargetId m_id;
-
     /// The GraphicsContext containing the graphic objects.
     GraphicsContext& m_context;
-
-    /// Name of the RenderTarget, unique within the SceneManager.
-    std::string m_name;
 
     /// Framebuffer to render into.
     FrameBufferPtr m_framebuffer;
 
-    /// The GraphicsProducer that defines the contents of the target.
-    GraphicsProducerPtr m_producer;
+    /// The Renderer that defines the contents of the target.
+    RendererPtr m_renderer;
 
     /// Whether the RenderTarget is currently dirty or not.
     bool m_is_dirty;

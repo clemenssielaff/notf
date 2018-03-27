@@ -9,6 +9,28 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
+namespace detail {
+
+/// Helper struct to create a Window instance.
+struct WindowArguments {
+
+    /// Initial size of the Window.
+    Size2i size = {640, 480};
+
+    /// If the Window is resizeable or not.
+    bool is_resizeable = true;
+
+    /// Window title.
+    std::string title = "NoTF";
+
+    /// File name of the Window's icon, relative to the Application's texture directory, empty means no icon.
+    std::string icon = "";
+};
+
+} // namespace detail
+
+//====================================================================================================================//
+
 /// Exception thrown when the OpenGL context of a Window could not be initialized.
 /// The error string will contain more detailed information about the error.
 NOTF_EXCEPTION_TYPE(window_initialization_error)
@@ -32,20 +54,7 @@ public:
     NOTF_ACCESS_TYPES(Application)
 
     /// Helper struct to create a Window instance.
-    struct Args {
-
-        /// Initial size of the Window.
-        Size2i size = {640, 480};
-
-        /// If the Window is resizeable or not.
-        bool is_resizeable = true;
-
-        /// Window title.
-        std::string title = "NoTF";
-
-        /// File name of the Window's icon, relative to the Application's texture directory, empty means no icon.
-        std::string icon = "";
-    };
+    using Args = detail::WindowArguments;
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
@@ -73,15 +82,15 @@ public:
     const std::string& title() const { return m_title; }
 
     ///@{
-    /// Returns the Application's SceneManager.
-    SceneManager& scene_manager() { return *m_scene_manager; }
-    const SceneManager& scene_manager() const { return *m_scene_manager; }
-    ///@}
-
-    ///@{
     /// Internal GraphicsContext.
     GraphicsContext& graphics_context() { return *m_graphics_context; }
     const GraphicsContext& graphics_context() const { return *m_graphics_context; }
+    ///@}
+
+    ///@{
+    /// Layers displayed in the Window.
+    std::vector<LayerPtr>& layers() { return m_layers; }
+    const std::vector<LayerPtr>& layers() const { return m_layers; }
     ///@}
 
     ///@{
@@ -106,6 +115,10 @@ public:
     /// Returns zero if the GLFW window was already closed.
     Vector2f mouse_pos() const;
 
+    /// Called by the Application when the Window was resized.
+    /// @param size     New size.
+    void resize(Size2i size);
+
     /// Renders a single frame with the current State of the SceneManager.
     void request_redraw() const;
 
@@ -116,51 +129,31 @@ public:
     bool is_closed() const { return !(static_cast<bool>(m_glfw_window)); }
 
 private:
-    /// Called when the Application receives a mouse event targeting this Window.
-    /// @param event    MouseEvent.
-    void _propagate(MouseEvent&& event);
-
-    /// Called when the Application receives a key event targeting this Window.
-    /// @param event    KeyEvent.
-    void _propagate(KeyEvent&& event);
-
-    /// Called when the Application receives a character input event targeting this Window.
-    /// @param event    CharEvent.
-    void _propagate(CharEvent&& event);
-
-    /// Called when the cursor enters or exits the Window's client area or the window is about to be closed.
-    /// @param event    WindowEvent.
-    void _propagate(WindowEvent&& event);
-
-    /// Called by the Application when the Window was resized.
-    /// @param size     New size.
-    void _resize(Size2i size);
-
     /// The wrapped GLFW window.
-    GLFWwindow* _glfw_window() const { return m_glfw_window.get(); }
+    GLFWwindow* _glfw_window() { return m_glfw_window.get(); }
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// The GLFW window managed by this Window.
     std::unique_ptr<GLFWwindow, decltype(&detail::window_deleter)> m_glfw_window;
 
+    /// Internal GraphicsContext.
+    GraphicsContextPtr m_graphics_context;
+
+    /// Render thread.
+    RenderThreadPtr m_render_thread;
+
+    /// Layers displayed in the Window.
+    std::vector<LayerPtr> m_layers;
+
+    /// FontManager used to render text.
+    FontManagerPtr m_font_manager; // TODO: FontManager per Window doesn't seem right
+
     /// The Window's title (is not accessible through GLFW).
     std::string m_title;
 
     /// The Window size.
     Size2i m_size;
-
-    /// Internal GraphicsContext.
-    GraphicsContextPtr m_graphics_context;
-
-    /// FontManager used to render text.
-    FontManagerPtr m_font_manager;
-
-    /// Render thread.
-    RenderThreadPtr m_render_thread;
-
-    /// The Window's Scene manager.
-    SceneManagerPtr m_scene_manager;
 
     /// Default arguments, when the user didn't supply any.
     static const Args s_default_args;
@@ -175,26 +168,6 @@ class Window::Access<Application> {
     /// Constructor.
     /// @param window   Window to access.
     Access(Window& window) : m_window(window) {}
-
-    /// Forwards an event generated by the Application to be handled by this Window.
-    /// @param event    MouseEvent.
-    void propagate(MouseEvent&& event) { m_window._propagate(std::move(event)); }
-
-    /// Forwards an event generated by the Application to be handled by this Window.
-    /// @param event    KeyEvent.
-    void propagate(KeyEvent&& event) { m_window._propagate(std::move(event)); }
-
-    /// Forwards an event generated by the Application to be handled by this Window.
-    /// @param event    CharEvent.
-    void propagate(CharEvent&& event) { m_window._propagate(std::move(event)); }
-
-    /// Forwards an event generated by the Application to be handled by this Window.
-    /// @param event    WindowEvent.
-    void propagate(WindowEvent&& event) { m_window._propagate(std::move(event)); }
-
-    /// Notify the Window, that it was resized.
-    /// @param size     New size.
-    void resize(Size2i size) { m_window._resize(std::move(size)); }
 
     /// The GLFW window wrapped by the NoTF Window.
     GLFWwindow* glfw_window() { return m_window._glfw_window(); }

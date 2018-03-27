@@ -34,25 +34,30 @@ int properties_main(int argc, char* argv[])
 {
     Application::initialize(argc, argv);
     auto& app = Application::instance();
+    {
 
-    Window::Args window_args;
-    window_args.icon = "notf.png";
-    auto window = Window::create(window_args);
+        Window::Args window_args;
+        window_args.icon = "notf.png";
+        app.create_window(window_args);
 
-    auto prop_a = Property<int>(3);
-    auto prop_b = Property<int>(3);
+//        {
+            auto prop_a = Property<int>(3);
+            auto prop_b = Property<int>(3);
 
-    auto b = B{};
-    auto c = C{};
-    std::vector<std::reference_wrapper<A>> vec;
-    vec.push_back(b);
-    vec.push_back(c);
+            auto b = B{};
+            auto c = C{};
+            std::vector<std::reference_wrapper<A>> vec;
+            vec.push_back(b);
+            vec.push_back(c);
 
-    for (A& a : vec) {
-        log_trace << a.get();
+//            for (A& a : vec) {
+//                log_trace << a.get();
+//            }
+//        }
+
+        auto ant = Antity::create();
+
+        app.exec();
     }
-
-    auto ant = Antity::create();
-
-    return app.exec();
+    return 0;
 }

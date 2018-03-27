@@ -98,6 +98,15 @@
 /// Signifies that the function will not return control flow back to the caller.
 #define NOTF_NORETURN [[noreturn]]
 
+/// Tells the compiler that a given statement is likely to be evaluated to true.
+#ifdef __GNUC__
+#define NOTF_LIKELY(x) __builtin_expect(!!(x), 1)
+#define NOTF_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#else
+#define NOTF_LIKELY(x) (x)
+#define NOTF_UNLIKELY(x) (x)
+#endif
+
 //====================================================================================================================//
 
 /// Interprets an expanded macro as a string.
@@ -337,7 +346,7 @@ namespace detail {
 template<typename T, typename... Args>
 inline T* make_new_enabler(Args&&... args)
 {
-    new T(std::forward<Args>(args)...);
+    return new T(std::forward<Args>(args)...);
 }
 
 /// Helper struct to allow `std::make_shared` to work with protected or private constructors.

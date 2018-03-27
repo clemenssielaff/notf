@@ -101,12 +101,20 @@ add_sources(SOURCE_FILES src
     app/property_graph.cpp
     app/resource_manager.hpp
     app/resource_manager.cpp
+    app/event_manager.hpp
+    app/event_manager.cpp
     app/render_thread.hpp
     app/render_thread.cpp
-    app/scene_manager.hpp
-    app/scene_manager.cpp
+    app/render_target.hpp
+    app/render_target.cpp
+    app/scene.hpp
+    app/scene.cpp
+    app/layer.hpp
+    app/layer.cpp
     app/scene_node.hpp
     app/scene_node.cpp
+    app/renderer.hpp
+    app/renderer.cpp
     app/forwards.hpp
     app/glfw.hpp
     app/io/event.hpp

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/graphics_producer.hpp"
+#include "app/renderer.hpp"
 #include "common/aabr.hpp"
 #include "common/variant.hpp"
 #include "common/vector2.hpp"
@@ -15,8 +15,8 @@ NOTF_OPEN_NAMESPACE
 /// `render`, and the "buffer" one that is in the process of being defined through the various `add_*` functions.
 /// After calling `parse`, the render image is replaced by the new one and the buffer is cleared.
 /// Technically, the conceptual images consist of OpenGl buffers and draw calls.
-class Plotter : public GraphicsProducer {
-    friend class GraphicsProducer;
+class Plotter : public Renderer {
+    friend class Renderer;
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -63,10 +63,10 @@ private:
 
     /// Type of the patch to draw.
     enum PatchType : int {
-        CONVEX  = 1,
+        CONVEX = 1,
         CONCAVE = 2,
-        STROKE  = 3,
-        TEXT    = 4,
+        STROKE = 3,
+        TEXT = 4,
         // JOINT     = 31, // internal
         // START_CAP = 32, // internal
         // END_CAP   = 33, // internal

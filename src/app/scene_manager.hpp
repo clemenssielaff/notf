@@ -25,14 +25,14 @@ private:
     RenderDag() : m_dag(), m_dependencies(), m_new_hash(0), m_last_hash(0) {}
 
 public:
-    /// Adds a new RenderTarget to the dependency list of a GraphicsProducer.
-    /// @param producer     GraphicsProducer that depends on `target`.
+    /// Adds a new RenderTarget to the dependency list of a Renderer.
+    /// @param producer     Renderer that depends on `target`.
     /// @param target       RenderTarget dependency for `producer`.
-    void add(const GraphicsProducerId producer, const RenderTargetId target);
+    void add(const RendererId producer, const RenderTargetId target);
 
 private:
     /// Sorts the given RenderTargets in an order which minimizes OpenGL state changes when rendering.
-    /// @throws render_dependency_cycle If a GraphicsProducer is dependent on a RenderTarget that itself must produce.
+    /// @throws render_dependency_cycle If a Renderer is dependent on a RenderTarget that itself must produce.
     /// @returns Sorted RenderTargetIds.
     //    const std::vector<RenderTargetId>& sort();
 
@@ -44,8 +44,8 @@ private:
     /// RenderTarget DAG.
     Dag<ushort> m_dag;
 
-    /// Raw dependencies as reported by the GraphicsProducers.
-    std::vector<std::pair<GraphicsProducerId, RenderTargetId>> m_dependencies;
+    /// Raw dependencies as reported by the Renderers.
+    std::vector<std::pair<RendererId, RenderTargetId>> m_dependencies;
 
     /// We expect the render layout to change only occasionally. Most of the time, it will be the same as it was last
     /// frame. In order to avoid unnecessary re-sorting of the RenderTargets, we hash the order in which the Producers
@@ -68,7 +68,7 @@ private:
 /// The SceneManager has a STATE that defines how to render a frame.
 /// A State is made up of a list of Layers.
 /// Layers define an AABR (potentially full-screen) that are rendered into the screen buffer on each frame.
-/// Each Layer has a single GraphicsProducer (short: Producer) that define their content.
+/// Each Layer has a single Renderer (short: Producer) that define their content.
 /// Producers can either generate their content procedurally or display a RenderTarget.
 /// RenderTargets have a Producer each, while Producers can themselves refer to 0-n other RenderTargets.
 /// RenderTarget may not depend on a Producer which itself depends on the same RenderTarget (no loops).
@@ -100,7 +100,7 @@ private:
 /// OpenGL calls to satisfy the requirements imposed by the state and execute those calls.
 /// Practically however, this is a bit more complicated.
 ///
-/// Some GraphicsProducer may require only properties in order to draw: the "smoke" FragmentProducer for example,
+/// Some Renderer may require only properties in order to draw: the "smoke" FragmentProducer for example,
 /// requires only the screen resolution and the time to update.
 /// In that case, it is enough for the Application to update the PropertyGraph with all of its accumulated updates
 /// from various threads and then kick off the SceneManager of each Window.
@@ -125,7 +125,7 @@ class SceneManager {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(GraphicsProducer, RenderTarget)
+    NOTF_ACCESS_TYPES(Renderer, RenderTarget)
 
     /// Complete state of the Render Buffer.
     struct State {
@@ -201,9 +201,9 @@ public:
     void resize(Size2i size);
 
 private:
-    /// Registers a new GraphicsProducer.
-    /// @throws runtime_error   If a GraphicsProducer with the same ID is already registered.
-    void _register_new(GraphicsProducerPtr graphics_producer);
+    /// Registers a new Renderer.
+    /// @throws runtime_error   If a Renderer with the same ID is already registered.
+    void _register_new(RendererPtr graphics_producer);
 
     /// Registers a new RenderTarget.
     /// @throws runtime_error   If a RenderTarget with the same ID is already registered.
@@ -222,8 +222,8 @@ private:
     /// All States that the SceneManager knows.
     std::unordered_map<StateId, State> m_states;
 
-    /// All GraphicsProducer that are registered with this SceneManager by their ID.
-    std::unordered_map<GraphicsProducerId, GraphicsProducerPtr> m_graphics_producer;
+    /// All Renderer that are registered with this SceneManager by their ID.
+    std::unordered_map<RendererId, RendererPtr> m_graphics_producer;
 
     /// All RenderTargets that are registered with this RenderTargets by their ID.
     std::unordered_map<RenderTargetId, RenderTargetPtr> m_render_targets;
@@ -235,16 +235,16 @@ private:
 // ===================================================================================================================//
 
 template<>
-class SceneManager::Access<GraphicsProducer> {
-    friend class GraphicsProducer;
+class SceneManager::Access<Renderer> {
+    friend class Renderer;
 
     /// Constructor.
     /// @param render_manager   SceneManager to access.
     Access(SceneManager& render_manager) : m_render_manager(render_manager) {}
 
-    /// Registers a new GraphicsProducer.
-    /// @throws runtime_error   If a GraphicsProducer with the same ID is already registered.
-    void register_new(GraphicsProducerPtr producer) { m_render_manager._register_new(std::move(producer)); }
+    /// Registers a new Renderer.
+    /// @throws runtime_error   If a Renderer with the same ID is already registered.
+    void register_new(RendererPtr producer) { m_render_manager._register_new(std::move(producer)); }
 
     /// The SceneManager to access.
     SceneManager& m_render_manager;

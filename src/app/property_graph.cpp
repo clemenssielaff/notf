@@ -19,7 +19,6 @@ PropertyGraph::NodeBase::~NodeBase()
             affected->_ground();
         }
     }
-    PropertyGraph::instance().delete_node(this);
 }
 
 void PropertyGraph::NodeBase::_detect_cycles(const std::vector<NodeBase*>& dependencies)
@@ -67,7 +66,7 @@ void PropertyGraph::freeze()
 {
     const auto thread_id = std::this_thread::get_id();
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
+        std::lock_guard<Mutex> lock(m_mutex);
         if (thread_id == m_render_thread) {
             return;
         }
@@ -82,7 +81,7 @@ void PropertyGraph::unfreeze()
 {
     const auto thread_id = std::this_thread::get_id();
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
+        std::lock_guard<Mutex> lock(m_mutex);
         if (thread_id != m_render_thread) {
             notf_throw(thread_error, "Only the render thread can unfreeze the PropertyGraph");
         }

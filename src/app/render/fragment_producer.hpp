@@ -1,11 +1,11 @@
 #pragma once
 
-#include "app/graphics_producer.hpp"
+#include "app/renderer.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-class FragmentProducer : public GraphicsProducer {
-    friend class GraphicsProducer;
+class FragmentProducer : public Renderer {
+    friend class Renderer;
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
@@ -27,7 +27,7 @@ public:
     }
 
 private:
-    /// Subclass-defined implementation of the GraphicsProducer's rendering.
+    /// Subclass-defined implementation of the Renderer's rendering.
     virtual void _render() const override;
 
     // fields --------------------------------------------------------------------------------------------------------//

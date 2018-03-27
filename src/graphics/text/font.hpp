@@ -130,7 +130,9 @@ public: // types
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
-protected:
+private:
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+
     /// Constructor.
     /// @param manager       Font manager.
     /// @param filename      File from which to load the font.

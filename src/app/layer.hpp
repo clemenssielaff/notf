@@ -9,28 +9,33 @@ NOTF_OPEN_NAMESPACE
 
 /// Layers are screen-axis-aligned quads that are drawn directly into the screen buffer by the SceneManager.
 /// The contents of a Layer are clipped to its area.
-/// The Layer's GraphicsProducer can query the size of this area using GraphicsContext::render_area().size() when
+/// The Layer's Renderer can query the size of this area using GraphicsContext::render_area().size() when
 /// rendered.
 class Layer {
 
     // methods -------------------------------------------------------------------------------------------------------//
-protected:
+private:
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+
     /// Constructor.
     /// Constructs a full-screen, visible Layer.
-    /// @param manager      SceneManager owning this Layer.
+    /// @param window       Window containing this Layer.
+    /// @param renderer     Renderer that renders the Scene into this Layer.
     /// @param scene        Scene displayed in this Layer.
-    /// @param producer     GraphicsProducer that renders the Scene into this Layer.
-    Layer(SceneManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr producer);
+    Layer(Window& window, RendererPtr renderer, ScenePtr& scene);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(Layer)
 
     /// Factory.
     /// Constructs a full-screen, visible Layer.
-    /// @param manager      SceneManager owning this Layer.
+    /// @param window       Window containing this Layer.
+    /// @param renderer     Renderer that renders the Scene into this Layer.
     /// @param scene        Scene displayed in this Layer.
-    /// @param producer     GraphicsProducer that renders the Scene into this Layer.
-    static LayerPtr create(SceneManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr producer);
+    static LayerPtr create(Window& window, RendererPtr renderer, ScenePtr& scene);
+
+    /// Destructor.
+    ~Layer();
 
     /// Render the Layer with all of its effects.
     void render();
@@ -54,29 +59,29 @@ public:
     /// or to respect its explicit size and position.
     void set_fullscreen(const bool is_fullscreen) { m_is_fullscreen = is_fullscreen; }
 
-    /// Sets a new are for this Layer to render tino (but does not change its `fullscreen` state).
+    /// Sets a new are for this Layer to render into (but does not change its `fullscreen` state).
     void set_area(Aabri area) { m_area = std::move(area); }
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// SceneManager owning this Layer.
-    SceneManager& m_manager;
+    /// Window containing this Layer.
+    Window& m_window;
 
     /// The Scene displayed in this Layer.
     ScenePtr m_scene;
 
-    /// GraphicsProducer that renders the Scene into this Layer.
-    GraphicsProducerPtr m_producer;
+    /// Renderer that renders the Scene into this Layer.
+    RendererPtr m_renderer;
 
     /// Area of this Layer when not fullscreen.
-    Aabri m_area;
+    Aabri m_area = Aabri::zero();
 
     /// Layers can be set invisible in which case they are simply not drawn.
-    bool m_is_visible;
+    bool m_is_visible = true;
 
     /// Layers can be rendered either fullscreen (no matter the resolution), or in an AABR with explicit size and
     /// position.
-    bool m_is_fullscreen;
+    bool m_is_fullscreen = true;
 };
 
 NOTF_CLOSE_NAMESPACE

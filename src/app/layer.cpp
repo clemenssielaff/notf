@@ -1,30 +1,23 @@
 #include "app/layer.hpp"
 
-#include "app/graphics_producer.hpp"
-#include "app/scene_manager.hpp"
+#include "app/renderer.hpp"
+#include "app/scene.hpp"
+#include "app/window.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
-#include "utils/make_smart_enabler.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-Layer::Layer(SceneManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr producer)
-    : m_manager(*manager)
-    , m_scene(std::move(scene))
-    , m_producer(std::move(producer))
-    , m_area(Aabri::zero())
-    , m_is_visible(true)
-    , m_is_fullscreen(true)
+Layer::Layer(Window& window, RendererPtr renderer, ScenePtr& scene)
+    : m_window(window), m_scene(std::move(scene)), m_renderer(std::move(renderer))
 {}
 
-LayerPtr Layer::create(SceneManagerPtr& manager, ScenePtr scene, GraphicsProducerPtr producer)
+LayerPtr Layer::create(Window& window, RendererPtr renderer, ScenePtr& scene)
 {
-#ifdef NOTF_DEBUG
-    return LayerPtr(new Layer(manager, std::move(scene), std::move(producer)));
-#else
-    return std::make_shared<make_shared_enabler<Layer>>(manager, std::move(scene), std::move(producer));
-#endif
+    return NOTF_MAKE_UNIQUE_FROM_PRIVATE(Layer, window, std::move(renderer), scene);
 }
+
+Layer::~Layer() = default;
 
 void Layer::render()
 {
@@ -32,7 +25,7 @@ void Layer::render()
         return;
     }
 
-    GraphicsContext& context = *m_manager.graphics_context();
+    GraphicsContext& context = m_window.graphics_context();
 
     if (m_is_fullscreen) {
         context.set_render_area(context.window_size());
@@ -48,7 +41,7 @@ void Layer::render()
         context.set_render_area(m_area);
     }
 
-    GraphicsProducer::Access<Layer>(*m_producer).render();
+    Renderer::Access<Layer>(*m_renderer).render();
 }
 
 NOTF_CLOSE_NAMESPACE

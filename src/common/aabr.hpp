@@ -138,7 +138,7 @@ struct Aabr {
     /// Returns an Aabr of a given size, with zero in the center.
     static Aabr centered(const Size2<element_t>& size)
     {
-        const element_t half_width  = size.width / 2;
+        const element_t half_width = size.width / 2;
         const element_t half_height = size.height / 2;
         Aabr result;
         result._min = {-half_width, -half_height};
@@ -220,8 +220,8 @@ struct Aabr {
     /// @return          Closest point inside the Aabr to the target point.
     vector_t closest_point_to(const vector_t& target) const
     {
-        const vector_t pos          = center();
-        const element_t half_width  = width() / 2;
+        const vector_t pos = center();
+        const element_t half_width = width() / 2;
         const element_t half_height = height() / 2;
         return {pos.x() + clamp(target.x() - pos.x(), -half_width, half_width),
                 pos.y() + clamp(target.y() - pos.y(), -half_height, half_height)};
@@ -233,7 +233,7 @@ struct Aabr {
     /// Returns the length of the longer side of this Aabr.
     element_t longer_side() const
     {
-        const element_t width  = this->width();
+        const element_t width = this->width();
         const element_t height = this->height();
         return width > height ? width : height;
     }
@@ -241,7 +241,7 @@ struct Aabr {
     /// Returns the length of the shorter side of this Aabr.
     element_t shorter_side() const
     {
-        const element_t width  = this->width();
+        const element_t width = this->width();
         const element_t height = this->height();
         return width < height ? width : height;
     }
@@ -265,8 +265,8 @@ struct Aabr {
     Aabr& set_x(const element_t x)
     {
         const element_t half_width = width() / 2;
-        _min.x()                   = x - half_width;
-        _max.x()                   = x + half_width;
+        _min.x() = x - half_width;
+        _max.x() = x + half_width;
         return *this;
     }
 
@@ -274,8 +274,8 @@ struct Aabr {
     Aabr& set_y(const element_t y)
     {
         const element_t half_height = height() / 2;
-        _min.y()                    = y - half_height;
-        _max.y()                    = y + half_height;
+        _min.y() = y - half_height;
+        _max.y() = y + half_height;
         return *this;
     }
 
@@ -371,10 +371,10 @@ struct Aabr {
     /// If a width less than zero is specified, the resulting width is zero.
     Aabr& set_width(const element_t width)
     {
-        const element_t center     = x();
+        const element_t center = x();
         const element_t half_width = width / 2;
-        _min.x()                   = center - half_width;
-        _max.x()                   = center + half_width;
+        _min.x() = center - half_width;
+        _max.x() = center + half_width;
         return *this;
     }
 
@@ -383,10 +383,10 @@ struct Aabr {
     /// If a height less than zero is specified, the resulting height is zero.
     Aabr& set_height(const element_t height)
     {
-        const element_t center      = y();
+        const element_t center = y();
         const element_t half_height = height / 2;
-        _min.y()                    = center - half_height;
-        _max.y()                    = center + half_height;
+        _min.y() = center - half_height;
+        _max.y() = center + half_height;
         return *this;
     }
 
@@ -506,10 +506,10 @@ struct Aabr {
         typename MATRIX::component_t d1(_max[0], _max[1]);
         typename MATRIX::component_t d2(_min.x(), _max.y());
         typename MATRIX::component_t d3(_max.x(), _min.y());
-        d0       = matrix.transform(d0);
-        d1       = matrix.transform(d1);
-        d2       = matrix.transform(d2);
-        d3       = matrix.transform(d3);
+        d0 = matrix.transform(d0);
+        d1 = matrix.transform(d1);
+        d2 = matrix.transform(d2);
+        d3 = matrix.transform(d3);
         _min.x() = min(d0.x(), d1.x(), d2.x(), d3.x());
         _min.y() = min(d0.y(), d1.y(), d2.y(), d3.y());
         _max.x() = max(d0.x(), d1.x(), d2.x(), d3.x());
@@ -525,6 +525,7 @@ struct Aabr {
 using Aabrf = detail::Aabr<Vector2f>;
 using Aabrd = detail::Aabr<Vector2d>;
 using Aabri = detail::Aabr<Vector2i>;
+using Aabrs = detail::Aabr<Vector2s>;
 
 //====================================================================================================================//
 

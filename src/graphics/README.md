@@ -5,7 +5,7 @@ Hierarchy
 ---------
 
 ```
-               producer
+               renderer
                   |                |
              +----+----+           |
              |    |    |         depends
@@ -25,5 +25,5 @@ Engine
 Text
 ----
 
-Producer
+Renderer
 --------

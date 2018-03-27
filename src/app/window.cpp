@@ -1,11 +1,12 @@
 #include "app/window.hpp"
 
 #include "app/application.hpp"
+#include "app/event_manager.hpp"
 #include "app/glfw.hpp"
 #include "app/io/window_event.hpp"
+#include "app/layer.hpp"
 #include "app/render_thread.hpp"
 #include "app/resource_manager.hpp"
-#include "app/scene_manager.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/raw_image.hpp"
@@ -55,9 +56,18 @@ Window::Window(const Args& args)
 
     // create the auxiliary objects
     m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window.get());
-    m_scene_manager = std::make_unique<SceneManager>();
-    m_render_thread = std::make_unique<RenderThread>(*this);
     m_font_manager = FontManager::create(*m_graphics_context);
+    m_render_thread = std::make_unique<RenderThread>(*this);
+
+    // connect the window callbacks
+    glfwSetKeyCallback(m_glfw_window.get(), EventManager::on_token_key);
+    glfwSetCharModsCallback(m_glfw_window.get(), EventManager::on_char_input);
+    glfwSetCursorEnterCallback(m_glfw_window.get(), EventManager::on_cursor_entered);
+    glfwSetCursorPosCallback(m_glfw_window.get(), EventManager::on_cursor_move);
+    glfwSetMouseButtonCallback(m_glfw_window.get(), EventManager::on_mouse_button);
+    glfwSetScrollCallback(m_glfw_window.get(), EventManager::on_scroll);
+    glfwSetWindowCloseCallback(m_glfw_window.get(), EventManager::on_window_close);
+    glfwSetWindowSizeCallback(m_glfw_window.get(), EventManager::on_window_resize);
 
     // apply the Window icon
     // In order to show the icon in Ubuntu 16.04 is as bit more complicated:
@@ -91,11 +101,10 @@ Window::Window(const Args& args)
     m_render_thread->start();
 }
 
-std::shared_ptr<Window> Window::create(const Args& args)
+WindowPtr Window::create(const Args& args)
 {
     // inititalize the window
-    WindowPtr window = NOTF_MAKE_SHARED_FROM_PRIVATE(Window, args);
-    Application::Access<Window>().register_new(window);
+    WindowPtr window = NOTF_MAKE_UNIQUE_FROM_PRIVATE(Window, args);
     return window;
 }
 
@@ -134,37 +143,45 @@ Vector2f Window::mouse_pos() const
     return {static_cast<float>(mouse_x), static_cast<float>(mouse_y)};
 }
 
+void Window::resize(Size2i size)
+{
+    m_size = std::move(size);
+    for (LayerPtr& layer : m_layers) {
+        if (layer->is_fullscreen()) {
+            layer->set_area(size);
+        }
+    }
+}
+
 void Window::request_redraw() const { m_render_thread->request_redraw(); }
 
 void Window::close()
 {
-    if (m_glfw_window) {
-        log_trace << "Closing Window \"" << m_title << "\"";
-        _propagate(WindowEvent(*this, WindowEvent::Type::CLOSE));
-        Application::Access<Window>().unregister(this);
-        m_scene_manager.reset();
-        m_glfw_window.reset();
-
-        m_font_manager.reset();
-        m_render_thread.reset();
-        m_scene_manager.reset();
-        m_graphics_context.reset();
+    if (!m_glfw_window) {
+        return;
     }
+
+    log_trace << "Closing Window \"" << m_title << "\"";
+
+    // disconnect the window callbacks
+    glfwSetKeyCallback(m_glfw_window.get(), nullptr);
+    glfwSetCharModsCallback(m_glfw_window.get(), nullptr);
+    glfwSetCursorEnterCallback(m_glfw_window.get(), nullptr);
+    glfwSetCursorPosCallback(m_glfw_window.get(), nullptr);
+    glfwSetMouseButtonCallback(m_glfw_window.get(), nullptr);
+    glfwSetScrollCallback(m_glfw_window.get(), nullptr);
+    glfwSetWindowCloseCallback(m_glfw_window.get(), nullptr);
+    glfwSetWindowSizeCallback(m_glfw_window.get(), nullptr);
+
+    m_font_manager.reset();
+    m_layers.clear();
+    m_render_thread.reset();
+    m_graphics_context.reset();
+    m_glfw_window.reset();
+
     m_size = Size2i::invalid();
-}
 
-void Window::_propagate(MouseEvent&& event) { m_scene_manager->propagate(std::move(event)); }
-
-void Window::_propagate(KeyEvent&& event) { m_scene_manager->propagate(std::move(event)); }
-
-void Window::_propagate(CharEvent&& event) { m_scene_manager->propagate(std::move(event)); }
-
-void Window::_propagate(WindowEvent&& event) { m_scene_manager->propagate(std::move(event)); }
-
-void Window::_resize(Size2i size)
-{
-    m_size = std::move(size);
-    m_scene_manager->resize(m_size);
+    Application::Access<Window>().unregister(this);
 }
 
 NOTF_CLOSE_NAMESPACE

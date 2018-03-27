@@ -595,7 +595,7 @@ public:
     {
         PropertyGraph& graph = PropertyGraph::instance();
         {
-            std::lock_guard<std::mutex> lock(graph.m_mutex);
+            std::lock_guard<Mutex> lock(graph.m_mutex);
             m_node = graph.create_node(std::forward<T>(value));
         }
     }
@@ -612,9 +612,12 @@ public:
     ~Property()
     {
         if (m_node) {
+            if (Application::was_closed()) {
+                return;
+            }
             PropertyGraph& graph = PropertyGraph::instance();
             {
-                std::lock_guard<std::mutex> lock(graph.m_mutex);
+                std::lock_guard<Mutex> lock(graph.m_mutex);
                 graph.delete_node(m_node);
             }
             m_node = nullptr;
@@ -630,7 +633,7 @@ public:
 
         PropertyGraph& graph = PropertyGraph::instance();
         {
-            std::lock_guard<std::mutex> lock(graph.m_mutex);
+            std::lock_guard<Mutex> lock(graph.m_mutex);
             if (!graph.is_render_thread()) {
                 notf_throw(thread_error, "Property reads are only allowed from the render thread");
             }
@@ -648,7 +651,7 @@ public:
 
         PropertyGraph& graph = PropertyGraph::instance();
         {
-            std::lock_guard<std::mutex> lock(graph.m_mutex);
+            std::lock_guard<Mutex> lock(graph.m_mutex);
             Node* node = static_cast<Node>(make_raw(graph.write_node(m_node)));
             NOTF_ASSERT(node); // we wouldn't be here if the Property had been removed
             node->set_value(std::forward<T>(value));
@@ -677,7 +680,7 @@ public:
 
         PropertyGraph& graph = PropertyGraph::instance();
         {
-            std::lock_guard<std::mutex> lock(graph.m_mutex);
+            std::lock_guard<Mutex> lock(graph.m_mutex);
             Node* node = static_cast<Node>(make_raw(graph.write_node(m_node)));
             NOTF_ASSERT(node); // we wouldn't be here if the Property had been removed
             node->set_expression(std::move(expression), std::move(dependencies));
