@@ -1,6 +1,8 @@
 #pragma once
 
-#include "app/forwards.hpp"
+#include <vector>
+
+#include "render_target.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -18,12 +20,12 @@ public:
     /// Destructor.
     virtual ~Renderer();
 
+private:
     /// Report all RenderTargets that this renderer depends on.
     /// The default implementation does nothing, it is the subclass' responsibility to add *all* of its dependencies.
     /// @param dependencies     [out] Dependencies to add yours to.
-    virtual void report_dependencies(detail::RenderDag& /*dependencies*/) const {}
+    virtual void _collect_dependencies(std::vector<RenderTarget*>& /*dependencies*/) const {}
 
-private:
     /// Subclass-defined implementation of the Renderer's rendering.
     virtual void _render() const = 0;
 };

@@ -5,7 +5,9 @@
 
 NOTF_OPEN_NAMESPACE
 
-/// Event object generated when the Application receives a keyboard input that represents a unicode codepoint.
+/// Event object generated when the Application receives a Window event.
+/// Unlike other events, this one cannot be handled by a Layer in the front but is always propagated all the way to the
+/// last Layer in a Window.
 class WindowEvent : public detail::EventBase<WindowEvent> {
 
     // types ---------------------------------------------------------------------------------------------------------//
@@ -19,30 +21,16 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
-    /// @param window       Window that received the event from the Application.
     /// @param type         The type of this event.
-    WindowEvent(Window& window, Type type) : window(window), type(type) {}
+    WindowEvent(Type type) : type(type) {}
 
     /// Destructor.
     virtual ~WindowEvent() override;
 
-    /// Checks whether this event was already handled or not.
-    bool was_handled() const { return m_was_handled; }
-
-    /// Must be called after an event handler handled this event.
-    void set_handled() { m_was_handled = true; }
-
     // fields --------------------------------------------------------------------------------------------------------//
 public:
-    /// The Window to which the event was sent.
-    const Window& window;
-
     /// The type of this event.
     const Type type;
-
-private:
-    /// True iff this event was already handled.
-    bool m_was_handled = false;
 };
 
 NOTF_CLOSE_NAMESPACE

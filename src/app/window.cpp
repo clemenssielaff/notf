@@ -3,10 +3,10 @@
 #include "app/application.hpp"
 #include "app/event_manager.hpp"
 #include "app/glfw.hpp"
-#include "app/io/window_event.hpp"
 #include "app/layer.hpp"
 #include "app/render_thread.hpp"
 #include "app/resource_manager.hpp"
+#include "app/scene.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/raw_image.hpp"
@@ -141,16 +141,6 @@ Vector2f Window::mouse_pos() const
     double mouse_x, mouse_y;
     glfwGetCursorPos(m_glfw_window.get(), &mouse_x, &mouse_y);
     return {static_cast<float>(mouse_x), static_cast<float>(mouse_y)};
-}
-
-void Window::resize(Size2i size)
-{
-    m_size = std::move(size);
-    for (LayerPtr& layer : m_layers) {
-        if (layer->is_fullscreen()) {
-            layer->set_area(size);
-        }
-    }
 }
 
 void Window::request_redraw() const { m_render_thread->request_redraw(); }

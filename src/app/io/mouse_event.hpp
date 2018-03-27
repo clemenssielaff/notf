@@ -13,15 +13,13 @@ class MouseEvent : public detail::EventBase<MouseEvent> {
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
-    /// @param window       Window that received the event from the Application.
     /// @param window_pos   Position of the mouse in the Window.
     /// @param window_delta How much the mouse moved since the last event.
     /// @param button       Contains the button that triggered the event, if one exists.
     /// @param action       Action that triggered this event.
-    MouseEvent(Window& window, Vector2f window_pos, Vector2f window_delta, Button button, MouseAction action,
-               KeyModifiers modifiers, const ButtonStateSet& stateset)
-        : window(window)
-        , window_pos(std::move(window_pos))
+    MouseEvent(Vector2f window_pos, Vector2f window_delta, Button button, MouseAction action, KeyModifiers modifiers,
+               const ButtonStateSet& stateset)
+        : window_pos(std::move(window_pos))
         , window_delta(std::move(window_delta))
         , button(button)
         , action(action)
@@ -41,9 +39,6 @@ public:
 
     // fields --------------------------------------------------------------------------------------------------------//
 public:
-    /// The Window to which the event was sent.
-    const Window& window;
-
     /// Position of the mouse cursor relative to the top-left corner of `window`.
     const Vector2f window_pos;
 

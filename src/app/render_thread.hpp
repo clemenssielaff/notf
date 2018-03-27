@@ -7,7 +7,11 @@
 
 NOTF_OPEN_NAMESPACE
 
-class RenderThread { // TODO: move into RenderManager - this doesn't need to be its own unit
+class RenderThread {
+    // TODO: move into RenderManager - this doesn't need to be its own unit
+    // TODO: I feel like the SceneManager class (currently out of CMAKE) has much in Common with a RenderManager
+    // TODO: actually -  renderTargets should be shared.
+    // TODO: The SceneManager has an idea about "States". Should the Window have states?
 
     // methods ------------------------------------------------------------
 public:

@@ -5,19 +5,15 @@
 #include "app/glfw.hpp"
 #include "app/io/char_event.hpp"
 #include "app/io/key_event.hpp"
-#include "app/io/keyboard.hpp"
 #include "app/io/mouse_event.hpp"
-#include "app/io/time.hpp"
 #include "app/io/window_event.hpp"
-#include "common/exception.hpp"
+#include "app/layer.hpp"
+#include "app/scene.hpp"
 #include "common/log.hpp"
-#include "io/event.hpp"
 #include "window.hpp"
 
 namespace { // anonymous
 NOTF_USING_NAMESPACE
-
-// TODO: move all of the global input states to the event manager
 
 /// The current state of all keyboard keys.
 KeyStateSet g_key_states;
@@ -125,136 +121,183 @@ void EventManager::on_error(int error_number, const char* message)
 
 void EventManager::on_token_key(GLFWwindow* glfw_window, int key, NOTF_UNUSED int scancode, int action, int modifiers)
 {
-//    assert(glfw_window);
-//    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-//    assert(window);
+    NOTF_ASSERT(glfw_window);
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    NOTF_ASSERT(window);
 
-//    // update the global state
-//    Key notf_key = from_glfw_key(key);
-//    set_key(g_key_states, notf_key, action);
-//    g_key_modifiers = KeyModifiers(modifiers);
+    // update the global state
+    Key notf_key = from_glfw_key(key);
+    set_key(g_key_states, notf_key, action);
+    g_key_modifiers = KeyModifiers(modifiers);
 
-//    // let the window handle the event
-//    Window::Access<Application>(*window).propagate(
-//        KeyEvent(*window, notf_key, KeyAction(action), KeyModifiers(modifiers), g_key_states));
+    // let the window handle the event
+    KeyEvent event(notf_key, KeyAction(action), KeyModifiers(modifiers), g_key_states);
+    for (auto& layer : window->layers()) {
+        if (Scene* scene = layer->scene().get()) {
+            scene->handle_event(event);
+        }
+        if (event.was_handled()) {
+            break;
+        }
+    }
 }
 
 void EventManager::on_char_input(GLFWwindow* glfw_window, uint codepoint, int modifiers)
 {
-//    assert(glfw_window);
-//    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-//    assert(window);
+    NOTF_ASSERT(glfw_window);
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    NOTF_ASSERT(window);
 
-//    // let the window handle the event
-//    Window::Access<Application>(*window).propagate(
-//        CharEvent(*window, codepoint, KeyModifiers(modifiers), g_key_states));
+    // let the window handle the event
+    CharEvent event(codepoint, KeyModifiers(modifiers), g_key_states);
+    for (auto& layer : window->layers()) {
+        if (Scene* scene = layer->scene().get()) {
+            scene->handle_event(event);
+        }
+        if (event.was_handled()) {
+            break;
+        }
+    }
 }
 
 void EventManager::on_cursor_entered(GLFWwindow* glfw_window, int entered)
 {
-//    assert(glfw_window);
-//    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-//    assert(window);
+    NOTF_ASSERT(glfw_window);
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    NOTF_ASSERT(window);
 
-//    if (entered) {
-//        Window::Access<Application>(*window).propagate(WindowEvent(*window, WindowEvent::Type::CURSOR_ENTERED));
-//    }
-//    else {
-//        Window::Access<Application>(*window).propagate(WindowEvent(*window, WindowEvent::Type::CURSOR_EXITED));
-//    }
+    // let the window propagate the event
+    WindowEvent::Type event_type = WindowEvent::Type::CURSOR_EXITED;
+    if (entered) {
+        event_type = WindowEvent::Type::CURSOR_ENTERED;
+    }
+    WindowEvent event(event_type);
+    for (auto& layer : window->layers()) {
+        if (Scene* scene = layer->scene().get()) {
+            scene->handle_event(event);
+        }
+    }
 }
 
 void EventManager::on_cursor_move(GLFWwindow* glfw_window, double x, double y)
 {
-//    assert(glfw_window);
-//    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-//    assert(window);
+    NOTF_ASSERT(glfw_window);
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    NOTF_ASSERT(window);
 
-//    { // update the global state
-//        g_prev_cursor_pos = g_cursor_pos;
+    { // update the global state
+        g_prev_cursor_pos = g_cursor_pos;
 
-//        // invert the y-coordinate (by default, y grows down)
-//        const int window_height = window->window_size().height;
-//        y = window_height - y;
-//        Vector2i window_pos;
-//        glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
-//        window_pos.y() = window_height - window_pos.y();
+        // invert the y-coordinate (by default, y grows down)
+        const int window_height = window->window_size().height;
+        y = window_height - y;
+        Vector2i window_pos;
+        glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
+        window_pos.y() = window_height - window_pos.y();
 
-//        g_cursor_pos.x() = static_cast<float>(window_pos.x()) + static_cast<float>(x);
-//        g_cursor_pos.y() = static_cast<float>(window_pos.y()) + static_cast<float>(y);
-//    }
+        g_cursor_pos.x() = static_cast<float>(window_pos.x()) + static_cast<float>(x);
+        g_cursor_pos.y() = static_cast<float>(window_pos.y()) + static_cast<float>(y);
+    }
 
-//    // let the window handle the event
-//    MouseEvent mouse_event(*window,
-//                           {static_cast<float>(x), static_cast<float>(y)}, // event position in window coordinates
-//                           g_cursor_pos - g_prev_cursor_pos,               // delta in window coordinates
-//                           Button::NO_BUTTON,                              // move events are triggered by no button
-//                           MouseAction::MOVE, g_key_modifiers, g_button_states);
-//    Window::Access<Application>(*window).propagate(std::move(mouse_event));
+    // let the window handle the event
+    MouseEvent event({static_cast<float>(x), static_cast<float>(y)}, // event position in window coordinates
+                     g_cursor_pos - g_prev_cursor_pos,               // delta in window coordinates
+                     Button::NO_BUTTON,                              // move events are triggered by no button
+                     MouseAction::MOVE, g_key_modifiers, g_button_states);
+    for (auto& layer : window->layers()) {
+        if (Scene* scene = layer->scene().get()) {
+            scene->handle_event(event);
+        }
+        if (event.was_handled()) {
+            break;
+        }
+    }
 }
 
 void EventManager::on_mouse_button(GLFWwindow* glfw_window, int button, int action, int modifiers)
 {
-//    assert(glfw_window);
-//    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-//    assert(window);
+    NOTF_ASSERT(glfw_window);
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    NOTF_ASSERT(window);
 
-//    // parse raw arguments
-//    Button notf_button = static_cast<Button>(button);
-//    MouseAction notf_action = static_cast<MouseAction>(action);
-//    assert(notf_action == MouseAction::PRESS || notf_action == MouseAction::RELEASE);
+    // parse raw arguments
+    Button notf_button = static_cast<Button>(button);
+    MouseAction notf_action = static_cast<MouseAction>(action);
+    NOTF_ASSERT(notf_action == MouseAction::PRESS || notf_action == MouseAction::RELEASE);
 
-//    // update the global state
-//    set_button(g_button_states, notf_button, action);
-//    g_key_modifiers = KeyModifiers(modifiers);
+    // update the global state
+    set_button(g_button_states, notf_button, action);
+    g_key_modifiers = KeyModifiers(modifiers);
 
-//    // invert the y-coordinate (by default, y grows down)
-//    Vector2i window_pos;
-//    glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
-//    window_pos.y() = window->window_size().height - window_pos.y();
+    // invert the y-coordinate (by default, y grows down)
+    Vector2i window_pos;
+    glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
+    window_pos.y() = window->window_size().height - window_pos.y();
 
-//    // let the window handle the event
-//    MouseEvent mouse_event(*window,
-//                           {g_cursor_pos.x() - static_cast<float>(window_pos.x()),
-//                            g_cursor_pos.y() - static_cast<float>(window_pos.y())},
-//                           Vector2f::zero(), notf_button, notf_action, g_key_modifiers, g_button_states);
-//    Window::Access<Application>(*window).propagate(std::move(mouse_event));
+    // let the window handle the event
+    MouseEvent event({g_cursor_pos.x() - static_cast<float>(window_pos.x()),
+                      g_cursor_pos.y() - static_cast<float>(window_pos.y())},
+                     Vector2f::zero(), notf_button, notf_action, g_key_modifiers, g_button_states);
+    for (auto& layer : window->layers()) {
+        if (Scene* scene = layer->scene().get()) {
+            scene->handle_event(event);
+        }
+        if (event.was_handled()) {
+            break;
+        }
+    }
 }
 
 void EventManager::on_scroll(GLFWwindow* glfw_window, double x, double y)
 {
-//    assert(glfw_window);
-//    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-//    assert(window);
+    NOTF_ASSERT(glfw_window);
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    NOTF_ASSERT(window);
 
-//    // invert the y-coordinate (by default, y grows down)
-//    Vector2i window_pos;
-//    glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
-//    window_pos.y() = window->window_size().height - window_pos.y();
+    // invert the y-coordinate (by default, y grows down)
+    Vector2i window_pos;
+    glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
+    window_pos.y() = window->window_size().height - window_pos.y();
 
-//    // let the window handle the event
-//    MouseEvent mouse_event(*window,
-//                           {g_cursor_pos.x() - static_cast<float>(window_pos.x()),
-//                            g_cursor_pos.y() - static_cast<float>(window_pos.y())},
-//                           {static_cast<float>(x), static_cast<float>(-y)}, Button::NO_BUTTON, MouseAction::SCROLL,
-//                           g_key_modifiers, g_button_states);
-//    Window::Access<Application>(*window).propagate(std::move(mouse_event));
+    // let the window handle the event
+    MouseEvent event({g_cursor_pos.x() - static_cast<float>(window_pos.x()),
+                      g_cursor_pos.y() - static_cast<float>(window_pos.y())},
+                     {static_cast<float>(x), static_cast<float>(-y)}, Button::NO_BUTTON, MouseAction::SCROLL,
+                     g_key_modifiers, g_button_states);
+    for (auto& layer : window->layers()) {
+        if (Scene* scene = layer->scene().get()) {
+            scene->handle_event(event);
+        }
+        if (event.was_handled()) {
+            break;
+        }
+    }
 }
 
 void EventManager::on_window_close(GLFWwindow* glfw_window)
 {
-    assert(glfw_window);
+    NOTF_ASSERT(glfw_window);
     Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-    assert(window);
+    NOTF_ASSERT(window);
     window->close();
 }
 
 void EventManager::on_window_resize(GLFWwindow* glfw_window, int width, int height)
 {
-//    assert(glfw_window);
-//    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-//    assert(window);
-//    Window::Access<Application>(*window).resize({width, height});
+    NOTF_ASSERT(glfw_window);
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+    NOTF_ASSERT(window);
+
+    // tell the Window's layer to resize
+    Size2i size = {width, height};
+    for (auto& layer : window->layers()) {
+        if (!layer->is_fullscreen()) {
+            continue;
+        }
+        if (Scene* scene = layer->scene().get()) {
+            scene->resize_view(size);
+        }
+    }
 }
 
 NOTF_CLOSE_NAMESPACE

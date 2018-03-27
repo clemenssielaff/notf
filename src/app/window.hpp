@@ -51,8 +51,6 @@ class Window {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(Application)
-
     /// Helper struct to create a Window instance.
     using Args = detail::WindowArguments;
 
@@ -115,10 +113,6 @@ public:
     /// Returns zero if the GLFW window was already closed.
     Vector2f mouse_pos() const;
 
-    /// Called by the Application when the Window was resized.
-    /// @param size     New size.
-    void resize(Size2i size);
-
     /// Renders a single frame with the current State of the SceneManager.
     void request_redraw() const;
 
@@ -157,23 +151,6 @@ private:
 
     /// Default arguments, when the user didn't supply any.
     static const Args s_default_args;
-};
-
-// ===================================================================================================================//
-
-template<>
-class Window::Access<Application> {
-    friend class Application;
-
-    /// Constructor.
-    /// @param window   Window to access.
-    Access(Window& window) : m_window(window) {}
-
-    /// The GLFW window wrapped by the NoTF Window.
-    GLFWwindow* glfw_window() { return m_window._glfw_window(); }
-
-    /// The Window to access.
-    Window& m_window;
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -12,13 +12,12 @@ class KeyEvent : public detail::EventBase<KeyEvent> {
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
-    /// @param window       Window that received the event from the Application.
     /// @param key          Key that did something.
     /// @param action       What the key did.
     /// @param modifiers    Additional modifiers that were held when the event was generated.
     /// @param stateset     State of all keys on the keyboard at the time the event was generated.
-    KeyEvent(Window& window, Key key, KeyAction action, KeyModifiers modifiers, const KeyStateSet& stateset)
-        : window(window), key(key), action(action), modifiers(modifiers), stateset(stateset), m_was_handled(false)
+    KeyEvent(Key key, KeyAction action, KeyModifiers modifiers, const KeyStateSet& stateset)
+        : key(key), action(action), modifiers(modifiers), stateset(stateset), m_was_handled(false)
     {}
 
     /// Destructor.
@@ -32,9 +31,6 @@ public:
 
     // fields --------------------------------------------------------------------------------------------------------//
 public:
-    /// The Window to which the event was sent.
-    const Window& window;
-
     /// The key that triggered this event.
     const Key key;
 

@@ -13,12 +13,11 @@ class CharEvent : public detail::EventBase<CharEvent> {
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
-    /// @param window       Window that received the event from the Application.
     /// @param codepoint    Unicode codepoint.
     /// @param modifiers    Additional modifiers that were held when the event was generated.
     /// @param stateset     State of all keys on the keyboard at the time the event was generated.
-    CharEvent(Window& window, utf32_t codepoint, KeyModifiers modifiers, const KeyStateSet& stateset)
-        : window(window), codepoint(codepoint), modifiers(modifiers), stateset(stateset), m_was_handled(false)
+    CharEvent(utf32_t codepoint, KeyModifiers modifiers, const KeyStateSet& stateset)
+        : codepoint(codepoint), modifiers(modifiers), stateset(stateset), m_was_handled(false)
     {}
 
     /// Destructor.
@@ -32,9 +31,6 @@ public:
 
     // fields --------------------------------------------------------------------------------------------------------//
 public:
-    /// The Window to which the event was sent.
-    const Window& window;
-
     /// The input character codepoint as native endian UTF-32.
     const Codepoint codepoint;
 

@@ -95,6 +95,7 @@ add_sources(SOURCE_FILES src
     main.cpp
     app/application.cpp
     app/application.hpp
+    app/ids.hpp
     app/window.cpp
     app/window.hpp
     app/property_graph.hpp

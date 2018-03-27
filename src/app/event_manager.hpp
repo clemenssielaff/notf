@@ -14,6 +14,7 @@ NOTF_OPEN_NAMESPACE
 /// Window handling events. This is because the state of the hierarchy itself determines who is going to end up handling
 /// an event and if a later event is handled before an earlier one, then the propagation might not work correctly.
 class EventManager {
+
     friend class Application;
     friend class Window;
 

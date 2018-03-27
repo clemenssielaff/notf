@@ -82,6 +82,9 @@ NOTF_EXCEPTION_TYPE(runtime_error)
 /// Exception type for logical errors.
 NOTF_EXCEPTION_TYPE(logic_error)
 
+/// Exception type for malformed or otherwise invalid values.
+NOTF_EXCEPTION_TYPE(value_error)
+
 /// Exception type for out of bounds errors.
 NOTF_EXCEPTION_TYPE(out_of_bounds)
 

@@ -113,11 +113,14 @@ public:
     /// @throws application_shutdown_error          When this method is called after the Application was shut down.
     static Application& instance()
     {
-        if (was_closed()) {
+        if (NOTF_UNLIKELY(was_closed())) {
             notf_throw(application_shutdown_error, "You may not access the Application after it was shut down");
         }
         return _instance();
     }
+
+    /// Checks if the Application was once open but is now closed.
+    static bool was_closed() { return s_was_closed.load(std::memory_order_acquire); }
 
     /// The Application's Resource Manager.
     ResourceManager& resource_manager() { return *m_resource_manager; }
@@ -128,16 +131,13 @@ public:
     /// The Application's PropertyGraph.
     PropertyGraph& property_graph() { return *m_property_graph; }
 
-public:
+private:
     /// Static (private) function holding the actual Application instance.
     static Application& _instance(const Args& application_args = s_invalid_args)
     {
         static Application instance(application_args);
         return instance;
     }
-
-    /// Checks if the Application was once open but is now closed.
-    static bool was_closed() { return s_was_closed.load(std::memory_order_acquire); }
 
     /// Unregisters an existing Window from this Application.
     void _unregister_window(Window* window);

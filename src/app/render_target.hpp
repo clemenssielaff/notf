@@ -1,6 +1,7 @@
 #pragma once
 
-#include "app/ids.hpp"
+#include "app/forwards.hpp"
+#include "common/exception.hpp"
 #include "common/size2.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -17,8 +18,16 @@ class RenderTarget {
 public:
     /// RenderTarget arguments.
     struct Args {
+
+        /// The Renderer that define the contents of the target.
+        RendererPtr renderer;
+
         /// Size of the RenderTarget.
         Size2i size;
+
+        /// Anisotropy factor, if anisotropic filtering is supported (only makes sense with `create_mipmaps = true`).
+        /// A value <= 1 means no anisotropic filtering.
+        float anisotropy = 1;
 
         /// Set to `true`, if this FrameBuffer has transparency.
         bool has_transparency = false;
@@ -26,13 +35,6 @@ public:
         /// If you don't plan on transforming the RenderTarget before displaying it on screen, leave this set to `false`
         /// to avoid the overhead associated with mipmap generation.
         bool create_mipmaps = false;
-
-        /// Anisotropy factor, if anisotropic filtering is supported (only makes sense with `create_mipmaps = true`).
-        /// A value <= 1 means no anisotropic filtering.
-        float anisotropy = 1;
-
-        /// The Renderer that define the contents of the target.
-        RendererPtr renderer;
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -48,11 +50,15 @@ public:
     NOTF_NO_COPY_OR_ASSIGN(RenderTarget)
 
     /// Factory.
-    /// @param context  The GraphicsContext containing the graphic objects.
-    /// @param args     Arguments.
+    /// @param context      The GraphicsContext containing the graphic objects.
+    /// @param args         Arguments.
+    /// @throws value_error If `args` doesn't contain a Renderer.
     static RenderTargetPtr create(GraphicsContext& context, Args&& args)
     {
-        return NOTF_MAKE_SHARED_FROM_PRIVATE(RenderTarget, context, std::forward<Args>(args));
+        if (!args.renderer) {
+            notf_throw(value_error, "Cannot create a RenderTarget without a Renderer");
+        }
+        return NOTF_MAKE_UNIQUE_FROM_PRIVATE(RenderTarget, context, std::forward<Args>(args));
     }
 
     /// Destructor.
@@ -63,6 +69,9 @@ public:
 
     /// Returns the texture of this target.
     const TexturePtr& texture() const;
+
+    /// Renderer that draws into the target.
+    const Renderer& renderer() const { return *m_renderer; }
 
     /// Whether the target is dirty or not.
     bool is_dirty() const { return m_is_dirty; }
@@ -79,7 +88,7 @@ private:
     /// Framebuffer to render into.
     FrameBufferPtr m_framebuffer;
 
-    /// The Renderer that defines the contents of the target.
+    /// Renderer that draws into the target.
     RendererPtr m_renderer;
 
     /// Whether the RenderTarget is currently dirty or not.
