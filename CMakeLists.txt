@@ -104,16 +104,18 @@ add_sources(SOURCE_FILES src
     app/resource_manager.cpp
     app/event_manager.hpp
     app/event_manager.cpp
-    app/render_thread.hpp
-    app/render_thread.cpp
     app/render_target.hpp
     app/render_target.cpp
+    app/render_manager.hpp
+    app/render_manager.cpp
     app/scene.hpp
     app/scene.cpp
     app/layer.hpp
     app/layer.cpp
     app/scene_node.hpp
     app/scene_node.cpp
+    app/scene_manager.hpp
+    app/scene_manager.cpp
     app/renderer.hpp
     app/renderer.cpp
     app/forwards.hpp

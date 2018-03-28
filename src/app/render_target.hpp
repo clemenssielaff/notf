@@ -1,7 +1,6 @@
 #pragma once
 
 #include "app/forwards.hpp"
-#include "common/exception.hpp"
 #include "common/size2.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -58,7 +57,7 @@ public:
         if (!args.renderer) {
             notf_throw(value_error, "Cannot create a RenderTarget without a Renderer");
         }
-        return NOTF_MAKE_UNIQUE_FROM_PRIVATE(RenderTarget, context, std::forward<Args>(args));
+        return NOTF_MAKE_SHARED_FROM_PRIVATE(RenderTarget, context, std::forward<Args>(args));
     }
 
     /// Destructor.
@@ -82,9 +81,6 @@ public:
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// The GraphicsContext containing the graphic objects.
-    GraphicsContext& m_context;
-
     /// Framebuffer to render into.
     FrameBufferPtr m_framebuffer;
 

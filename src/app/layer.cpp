@@ -8,25 +8,25 @@
 
 NOTF_OPEN_NAMESPACE
 
-Layer::Layer(Window& window, RendererPtr renderer, ScenePtr& scene)
+Layer::Layer(Window& window, RendererPtr renderer, ScenePtr scene)
     : m_window(window), m_scene(std::move(scene)), m_renderer(std::move(renderer))
 {}
 
-LayerPtr Layer::create(Window& window, RendererPtr renderer, ScenePtr& scene)
+LayerPtr Layer::create(Window& window, RendererPtr renderer, ScenePtr scene)
 {
-    return NOTF_MAKE_UNIQUE_FROM_PRIVATE(Layer, window, std::move(renderer), scene);
+    return NOTF_MAKE_SHARED_FROM_PRIVATE(Layer, window, std::move(renderer), std::move(scene));
 }
 
 Layer::~Layer() = default;
 
 void Layer::render()
 {
-    if (!m_is_visible) {
+    if (!is_visible()) {
         return;
     }
 
+    // define render area
     GraphicsContext& context = m_window.graphics_context();
-
     if (m_is_fullscreen) {
         context.set_render_area(context.window_size());
     }

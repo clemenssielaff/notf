@@ -4,9 +4,9 @@
 #include "app/event_manager.hpp"
 #include "app/glfw.hpp"
 #include "app/layer.hpp"
-#include "app/render_thread.hpp"
 #include "app/resource_manager.hpp"
 #include "app/scene.hpp"
+#include "app/scene_manager.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/raw_image.hpp"
@@ -56,8 +56,8 @@ Window::Window(const Args& args)
 
     // create the auxiliary objects
     m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window.get());
+    m_scenes = std::make_unique<SceneManager>(*this);
     m_font_manager = FontManager::create(*m_graphics_context);
-    m_render_thread = std::make_unique<RenderThread>(*this);
 
     // connect the window callbacks
     glfwSetKeyCallback(m_glfw_window.get(), EventManager::on_token_key);
@@ -97,8 +97,6 @@ Window::Window(const Args& args)
     }
 
     log_info << "Created Window \"" << title() << "\" using OpenGl version: " << glGetString(GL_VERSION);
-
-    m_render_thread->start();
 }
 
 WindowPtr Window::create(const Args& args)
@@ -143,7 +141,7 @@ Vector2f Window::mouse_pos() const
     return {static_cast<float>(mouse_x), static_cast<float>(mouse_y)};
 }
 
-void Window::request_redraw() const { m_render_thread->request_redraw(); }
+void Window::request_redraw() { Application::Access<Window>(this).request_redraw(); }
 
 void Window::close()
 {
@@ -163,15 +161,14 @@ void Window::close()
     glfwSetWindowCloseCallback(m_glfw_window.get(), nullptr);
     glfwSetWindowSizeCallback(m_glfw_window.get(), nullptr);
 
+    m_scenes.reset();
     m_font_manager.reset();
-    m_layers.clear();
-    m_render_thread.reset();
     m_graphics_context.reset();
     m_glfw_window.reset();
 
     m_size = Size2i::invalid();
 
-    Application::Access<Window>().unregister(this);
+    Application::Access<Window>(this).unregister();
 }
 
 NOTF_CLOSE_NAMESPACE

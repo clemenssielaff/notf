@@ -142,6 +142,10 @@ private:
     /// Unregisters an existing Window from this Application.
     void _unregister_window(Window* window);
 
+    /// Tell the RenderManager to redraw the given Window at the next opportunity.
+    /// @param window   Window to redraw.
+    void _request_redraw(Window* window);
+
     /// Shuts down the application.
     /// Is called automatically, after the last Window has been closed.
     void _shutdown();
@@ -156,6 +160,9 @@ private:
 
     /// The global thread pool.
     ThreadPoolPtr m_thread_pool;
+
+    /// The RenderManager singleton.
+    RenderManagerPtr m_render_manager;
 
     /// PropertyGraph.
     PropertyGraphPtr m_property_graph;
@@ -180,13 +187,19 @@ class Application::Access<Window> {
     friend class Window;
 
     /// Constructor.
-    Access() : m_application(Application::instance()) {}
+    Access(Window* window) : m_application(Application::instance()), m_window(window) {}
 
     /// Unregisters an existing Window from this Application.
-    void unregister(Window* window) { m_application._unregister_window(std::move(window)); }
+    void unregister() { m_application._unregister_window(m_window); }
+
+    /// Tell the RenderManager to redraw this Window at the next opportunity.
+    void request_redraw() { m_application._request_redraw(m_window); }
 
     /// The Application to access.
     Application& m_application;
+
+    /// Window that was granted access.
+    Window* m_window;
 };
 
 NOTF_CLOSE_NAMESPACE

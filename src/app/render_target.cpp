@@ -1,7 +1,5 @@
 #include "app/render_target.hpp"
 
-#include <sstream>
-
 #include "app/renderer.hpp"
 #include "graphics/core/frame_buffer.hpp"
 #include "graphics/core/graphics_context.hpp"
@@ -10,7 +8,7 @@
 NOTF_OPEN_NAMESPACE
 
 RenderTarget::RenderTarget(GraphicsContext& context, Args&& args)
-    : m_context(context), m_framebuffer(), m_renderer(std::move(args.renderer)), m_is_dirty(true)
+    : m_framebuffer(), m_renderer(std::move(args.renderer)), m_is_dirty(true)
 {
     // create the texture arguments
     Texture::Args texture_args;
@@ -40,11 +38,11 @@ RenderTarget::RenderTarget(GraphicsContext& context, Args&& args)
     {
         std::stringstream ss;
         ss << "RenderTargetTexture#" << this;
-        framebuffer_args.set_color_target(0, Texture::create_empty(m_context, ss.str(), std::move(args.size),
+        framebuffer_args.set_color_target(0, Texture::create_empty(context, ss.str(), std::move(args.size),
                                                                    std::move(texture_args)));
     }
 
-    m_framebuffer = FrameBuffer::create(m_context, std::move(framebuffer_args));
+    m_framebuffer = FrameBuffer::create(context, std::move(framebuffer_args));
 }
 
 RenderTarget::~RenderTarget() = default;
@@ -58,9 +56,10 @@ void RenderTarget::clean()
     }
 
     // prepare the graphic state
-    const auto framebuffer_guard = m_context.bind_framebuffer(m_framebuffer);
-    m_context.set_render_area(texture()->size());
-    m_context.clear(Color::black());
+    GraphicsContext& context = m_framebuffer->context();
+    const auto framebuffer_guard = context.bind_framebuffer(m_framebuffer);
+    context.set_render_area(texture()->size());
+    context.clear(Color::black());
 
     // render everything
     Renderer::Access<RenderTarget>(*m_renderer).render();

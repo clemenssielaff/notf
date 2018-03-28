@@ -79,7 +79,7 @@ public:
     const char* what() const noexcept override { return "Bad any cast"; }
 };
 
-// NOTE: This macro is an implementation detail that is undefined at the bottom
+// This macro is an implementation detail that is undefined at the bottom
 // of the file. It is not intended for expansion directly from user code.
 #ifdef ABSL_ANY_DETAIL_HAS_RTTI
 #error ABSL_ANY_DETAIL_HAS_RTTI cannot be directly set
@@ -304,7 +304,7 @@ public:
         std::enable_if_t<std::is_copy_constructible<VT>::value && std::is_constructible<VT, Args...>::value>* = nullptr>
     VT& emplace(Args&&... args)
     {
-        reset(); // NOTE: reset() is required here even in the world of exceptions.
+        reset();
         Obj<VT>* const object_ptr = new Obj<VT>(in_place, std::forward<Args>(args)...);
         obj_ = std::unique_ptr<ObjInterface>(object_ptr);
         return object_ptr->value;
@@ -326,7 +326,7 @@ public:
                               && std::is_constructible<VT, std::initializer_list<U>&, Args...>::value>* = nullptr>
     VT& emplace(std::initializer_list<U> ilist, Args&&... args)
     {
-        reset(); // NOTE: reset() is required here even in the world of exceptions.
+        reset();
         Obj<VT>* const object_ptr = new Obj<VT>(in_place, ilist, std::forward<Args>(args)...);
         obj_ = std::unique_ptr<ObjInterface>(object_ptr);
         return object_ptr->value;

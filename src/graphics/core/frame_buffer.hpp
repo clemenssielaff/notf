@@ -160,6 +160,9 @@ public:
     /// The FrameBuffer's id.
     FrameBufferId id() const { return m_id; }
 
+    /// GraphicsContext containing the frame buffer.
+    GraphicsContext& context() { return m_context; }
+
     /// Texture used as color attachment.
     /// @throws runtime_error   If there is no texture attached as the color target.
     const TexturePtr& color_texture(const ushort id);
@@ -174,8 +177,8 @@ private:
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// Render Context owning the frame buffer.
-    GraphicsContext& m_graphics_context;
+    /// GraphicsContext containing the frame buffer.
+    GraphicsContext& m_context;
 
     /// OpenGL ID of the frame buffer.
     FrameBufferId m_id;

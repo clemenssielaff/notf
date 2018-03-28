@@ -266,7 +266,7 @@ protected:
     }
 };
 
-// TODO(absl-team): Add another class using
+// LATER(absl-team): Add another class using
 // std::is_trivially_move_constructible trait when available to match
 // http://cplusplus.github.io/LWG/lwg-defects.html#2900, for types that
 // have trivial move but nontrivial copy.
@@ -518,7 +518,7 @@ public:
     // (The `in_place_t` is a tag used to indicate that the contained object
     // should be constructed in-place.)
     //
-    // TODO(absl-team): Add std::is_constructible<T, Args&&...> SFINAE.
+    // LATER(absl-team): Add std::is_constructible<T, Args&&...> SFINAE.
     template<typename... Args>
     constexpr explicit optional(in_place_t, Args&&... args) : data_base(in_place_t(), std::forward<Args>(args)...)
     {}
@@ -877,7 +877,7 @@ private:
 // Performs a swap between two `absl::optional` objects, using standard
 // semantics.
 //
-// NOTE: we assume `is_swappable()` is always `true`. A compile error will
+// We assume `is_swappable()` is always `true`. A compile error will
 // result if this is not the case.
 template<typename T, typename std::enable_if<std::is_move_constructible<T>::value, bool>::type = false>
 void swap(optional<T>& a, optional<T>& b) noexcept(noexcept(a.swap(b)))

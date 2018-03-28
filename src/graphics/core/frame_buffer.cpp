@@ -166,7 +166,7 @@ void FrameBuffer::Args::set_color_target(const ushort id, ColorTarget target)
     }
 }
 
-FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_graphics_context(context), m_id(0), m_args(args)
+FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_context(context), m_id(0), m_args(args)
 {
     _validate_arguments();
 

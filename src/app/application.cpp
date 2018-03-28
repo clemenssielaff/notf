@@ -5,6 +5,7 @@
 #include "app/event_manager.hpp"
 #include "app/glfw.hpp"
 #include "app/property_graph.hpp"
+#include "app/render_manager.hpp"
 #include "app/resource_manager.hpp"
 #include "app/window.hpp"
 #include "common/log.hpp"
@@ -27,6 +28,7 @@ Application::Application(const Args& application_args)
     : m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
     , m_resource_manager()
     , m_thread_pool(std::make_unique<ThreadPool>())
+    , m_render_manager(std::make_unique<RenderManager>())
     , m_property_graph(std::make_unique<PropertyGraph>())
     , m_event_manager(std::make_unique<EventManager>())
     , m_windows()
@@ -98,6 +100,8 @@ void Application::_unregister_window(Window* window)
     m_windows.erase(it);
 }
 
+void Application::_request_redraw(Window* window) { m_render_manager->render(window); }
+
 void Application::_shutdown()
 {
     // you can only close the application once
@@ -110,6 +114,7 @@ void Application::_shutdown()
         window->close();
     }
     m_windows.clear();
+    m_render_manager.reset();
 
     // stop the event loop
     glfwTerminate();

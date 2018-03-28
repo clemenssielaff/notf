@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "render_target.hpp"
+#include "app/forwards.hpp"
 
 NOTF_OPEN_NAMESPACE
 

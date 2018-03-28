@@ -86,9 +86,9 @@ public:
     ///@}
 
     ///@{
-    /// Layers displayed in the Window.
-    std::vector<LayerPtr>& layers() { return m_layers; }
-    const std::vector<LayerPtr>& layers() const { return m_layers; }
+    /// Scenes displayed in the Window.
+    SceneManager& scenes() { return *m_scenes; }
+    const SceneManager& scenes() const { return *m_scenes; }
     ///@}
 
     ///@{
@@ -113,8 +113,8 @@ public:
     /// Returns zero if the GLFW window was already closed.
     Vector2f mouse_pos() const;
 
-    /// Renders a single frame with the current State of the SceneManager.
-    void request_redraw() const;
+    /// Tell the RenderManager to redraw this Window at the next opportunity.
+    void request_redraw();
 
     /// Closes this Window.
     void close();
@@ -134,11 +134,8 @@ private:
     /// Internal GraphicsContext.
     GraphicsContextPtr m_graphics_context;
 
-    /// Render thread.
-    RenderThreadPtr m_render_thread;
-
-    /// Layers displayed in the Window.
-    std::vector<LayerPtr> m_layers;
+    /// Scenes displayed in the Window.
+    SceneManagerPtr m_scenes;
 
     /// FontManager used to render text.
     FontManagerPtr m_font_manager; // TODO: FontManager per Window doesn't seem right
