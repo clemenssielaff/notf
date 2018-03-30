@@ -134,6 +134,7 @@ add_sources(SOURCE_FILES src
     app/io/time.cpp
     app/io/window_event.hpp
     app/io/window_event.cpp
+    app/README.md
 )
 
 add_sources(SOURCE_FILES examples

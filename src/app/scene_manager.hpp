@@ -3,6 +3,10 @@
 #include <vector>
 
 #include "app/forwards.hpp"
+#include "app/scene_node.hpp"
+#include "common/hash.hpp"
+#include "common/map.hpp"
+#include "common/mutex.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -59,7 +63,7 @@ NOTF_OPEN_NAMESPACE
 ///           +---+     |              v                            v
 ///               |     |     +------------------+          +----------------+
 ///     various   |   async   |                  |   sync   |                |
-///               +----------->  PropertyGraph +---------->  SceneManager  |
+///               +----------->  PropertyGraph   +---------->  SceneManager  |
 ///     threads   |   update  |                  |   query  |                |
 ///               |     |     +------------------+          +----------------+
 ///           +---+     |
@@ -95,6 +99,13 @@ public:
 
     using StatePtr = std::shared_ptr<State>;
 
+    //=========================================================================
+
+    /// Specialized hash to mix up the relative low entropy of pointers as key.
+    struct NodeHash {
+        size_t operator()(const SceneNode* node) const { return hash_mix(to_number(node)); }
+    };
+
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
@@ -104,7 +115,7 @@ public:
     /// Needed, because otherwise we'd have to include types contained in member unique_ptrs in the header.
     ~SceneManager();
 
-    /// Current list of Layers.
+    /// Current list of Layers, ordered from front to back.
     const std::vector<LayerPtr> layers() const { return m_current_state->layers(); }
 
     // state management -------------------------------------------------------
@@ -134,6 +145,15 @@ private:
 
     /// Current State of the SceneManager.
     StatePtr m_current_state;
+
+    /// All nodes managed by the graph.
+    robin_map<SceneNode*, std::unique_ptr<SceneNode>, NodeHash> m_nodes;
+
+    /// The current delta.
+    robin_map<SceneNode*, std::unique_ptr<SceneNode>, NodeHash> m_delta;
+
+    /// Mutex guarding the graph.
+    mutable Mutex m_mutex;
 };
 
 NOTF_CLOSE_NAMESPACE

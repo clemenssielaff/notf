@@ -56,7 +56,7 @@ Window::Window(const Args& args)
 
     // create the auxiliary objects
     m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window.get());
-    m_scenes = std::make_unique<SceneManager>(*this);
+    m_scene_manager = std::make_unique<SceneManager>(*this);
     m_font_manager = FontManager::create(*m_graphics_context);
 
     // connect the window callbacks
@@ -161,7 +161,7 @@ void Window::close()
     glfwSetWindowCloseCallback(m_glfw_window.get(), nullptr);
     glfwSetWindowSizeCallback(m_glfw_window.get(), nullptr);
 
-    m_scenes.reset();
+    m_scene_manager.reset();
     m_font_manager.reset();
     m_graphics_context.reset();
     m_glfw_window.reset();
