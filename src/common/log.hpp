@@ -322,7 +322,7 @@ NOTF_CLOSE_NAMESPACE
 // TODO: add log_debug or rename log_trace
 
 #ifndef NOTF_LOG_LEVEL
-#    define NOTF_LOG_LEVEL NOTF_LOG_LEVEL_ALL
+#define NOTF_LOG_LEVEL NOTF_LOG_LEVEL_ALL
 #endif
 
 /// Define log_* macros.
@@ -334,76 +334,67 @@ NOTF_CLOSE_NAMESPACE
 ///
 /// The object provided by log_* is a std::stringstream or a NullBuffer, which accepts all the same inputs.
 #ifndef log_format
-#    if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_TRACE
-#        define log_format                                                                               \
-            notf::LogMessageFactory(notf::LogMessage::LEVEL::FORMAT, __LINE__, notf::basename(__FILE__), \
-                                    NOTF_FUNCTION)                                                       \
-                .input
-#    else
-#        define log_format notf::detail::NullBuffer()
-#    endif
+#if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_TRACE
+#define log_format \
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::FORMAT, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
 #else
-#    warning "Macro 'log_format' is already defined - NoTF's log_format macro will remain disabled."
+#define log_format notf::detail::NullBuffer()
+#endif
+#else
+#warning "Macro 'log_format' is already defined - NoTF's log_format macro will remain disabled."
 #endif
 
 #ifndef log_trace
-#    if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_TRACE
-#        define log_trace                                                                                              \
-            notf::LogMessageFactory(notf::LogMessage::LEVEL::TRACE, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION) \
-                .input
-#    else
-#        define log_trace notf::detail::NullBuffer()
-#    endif
+#if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_TRACE
+#define log_trace \
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::TRACE, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
 #else
-#    warning "Macro 'log_trace' is already defined - NoTF's log_trace macro will remain disabled."
+#define log_trace notf::detail::NullBuffer()
+#endif
+#else
+#warning "Macro 'log_trace' is already defined - NoTF's log_trace macro will remain disabled."
 #endif
 
 #ifndef log_info
-#    if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_INFO
-#        define log_info                                                                                              \
-            notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION) \
-                .input
-#    else
-#        define log_info notf::detail::NullBuffer()
-#    endif
+#if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_INFO
+#define log_info \
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
 #else
-#    warning "Macro 'log_info' is already defined - NoTF's log_info macro will remain disabled."
+#define log_info notf::detail::NullBuffer()
+#endif
+#else
+#warning "Macro 'log_info' is already defined - NoTF's log_info macro will remain disabled."
 #endif
 
 #ifndef log_warning
-#    if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_WARNING
-#        define log_warning                                                                               \
-            notf::LogMessageFactory(notf::LogMessage::LEVEL::WARNING, __LINE__, notf::basename(__FILE__), \
-                                    NOTF_FUNCTION)                                                        \
-                .input
-#    else
-#        define log_warning notf::detail::NullBuffer()
-#    endif
+#if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_WARNING
+#define log_warning \
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::WARNING, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
 #else
-#    warning "Macro 'log_warning' is already defined - NoTF's log_warning macro will remain disabled."
+#define log_warning notf::detail::NullBuffer()
+#endif
+#else
+#warning "Macro 'log_warning' is already defined - NoTF's log_warning macro will remain disabled."
 #endif
 
 #ifndef log_critical
-#    if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_CRITICAL
-#        define log_critical                                                                               \
-            notf::LogMessageFactory(notf::LogMessage::LEVEL::CRITICAL, __LINE__, notf::basename(__FILE__), \
-                                    NOTF_FUNCTION)                                                         \
-                .input
-#    else
-#        define log_critical notf::detail::NullBuffer()
-#    endif
+#if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_CRITICAL
+#define log_critical \
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::CRITICAL, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
 #else
-#    warning "Macro 'log_critical' is already defined - NoTF's log_critical macro will remain disabled."
+#define log_critical notf::detail::NullBuffer()
+#endif
+#else
+#warning "Macro 'log_critical' is already defined - NoTF's log_critical macro will remain disabled."
 #endif
 
 #ifndef log_fatal
-#    if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_FATAL
-#        define log_fatal                                                                                              \
-            notf::LogMessageFactory(notf::LogMessage::LEVEL::FATAL, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION) \
-                .input
-#    else
-#        define log_fatal notf::detail::NullBuffer()
-#    endif
+#if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_FATAL
+#define log_fatal \
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::FATAL, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
 #else
-#    warning "Macro 'log_fatal' is already defined - NoTF's log_fatal macro will remain disabled."
+#define log_fatal notf::detail::NullBuffer()
+#endif
+#else
+#warning "Macro 'log_fatal' is already defined - NoTF's log_fatal macro will remain disabled."
 #endif

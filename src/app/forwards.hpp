@@ -39,10 +39,14 @@ NOTF_DEFINE_UNIQUE_POINTERS(class, RenderManager);
 
 namespace detail {
 
-class SceneNodeBase;
 class PropertyBase;
+class SceneNodeBase;
 struct WindowArguments;
 
 } // namespace detail
+
+namespace test {
+struct Test;
+} // namespace test
 
 NOTF_CLOSE_NAMESPACE

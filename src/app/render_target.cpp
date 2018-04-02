@@ -1,5 +1,7 @@
 #include "app/render_target.hpp"
 
+#include <sstream>
+
 #include "app/renderer.hpp"
 #include "graphics/core/frame_buffer.hpp"
 #include "graphics/core/graphics_context.hpp"

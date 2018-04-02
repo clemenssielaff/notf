@@ -191,13 +191,70 @@ private:
     /// Creates a new SceneNode.
     /// @param args     Arguments to create the new node with.
     template<typename T, typename... Args, typename = std::enable_if_t<is_scene_node_type<T>::value>>
-    valid_ptr<SceneNode*> create_node(Args&&... args)
+    valid_ptr<T*> create_node(Args&&... args)
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
-        std::unique_ptr<SceneNode> node = std::make_unique<T>(std::forward<Args>(args)...);
-        valid_ptr<SceneNode*> ptr = node.get();
+        std::unique_ptr<T> node = std::make_unique<T>(std::forward<Args>(args)...);
+        valid_ptr<T*> ptr = node.get();
         m_nodes.emplace(std::make_pair(ptr, std::move(node)));
         return ptr;
+    }
+
+    /// Returns a SceneNode for reading without creating a new delta.
+    /// @param node     SceneNodeto read from.
+    /// @returns        The requested node or nullptr, if the node has a deletion delta.
+    template<typename T, typename = std::enable_if_t<is_scene_node_type<T>::value>>
+    risky_ptr<T*> read_node(valid_ptr<T*> node)
+    {
+        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+        if (!is_frozen() || is_render_thread()) {
+            return node; // direct access
+        }
+
+        // return the frozen node if there is no delta for it
+        auto it = m_delta.find(node);
+        if (it == m_delta.end()) {
+            return node;
+        }
+
+        // return an existing modification delta
+        const std::unique_ptr<SceneNodeBase>& delta = it->second;
+        if (is_deletion_delta(delta.get())) {
+            return nullptr;
+        }
+        return delta.get();
+    }
+
+    /// Returns a SceneNode for writing.
+    /// Creates a new SceneNode if the graph is frozen.
+    /// @param node     SceneNode to write into.
+    /// @returns        The requested node or nullptr, if the node already has a deletion delta.
+    template<typename T, typename = std::enable_if_t<is_scene_node_type<T>::value>>
+    risky_ptr<T*> write_node(valid_ptr<T*> node)
+    {
+        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+        if (!is_frozen()) {
+            return node; // direct access
+        }
+        if (is_render_thread()) { // do nothing if this is the render thread resolving the delta
+            return nullptr;
+        }
+
+        // return an existing modification delta
+        auto it = m_delta.find(node);
+        if (it != m_delta.end()) {
+            const std::unique_ptr<SceneNodeBase>& delta = it->second;
+            if (is_deletion_delta(delta.get())) {
+                return nullptr;
+            }
+            return it->second->node();
+        }
+
+        // create a new modification delta
+        std::unique_ptr<T> new_delta = std::make_unique<T>(*node);
+        T* result = new_delta.get();
+        m_delta.emplace(std::make_pair(node, std::move(new_delta)));
+        return result;
     }
 
     /// Deletes a given SceneNode.
@@ -248,6 +305,16 @@ private:
     {
         return (dynamic_cast<DeletionDelta*>(ptr.get()) != nullptr);
     }
+
+    /// Freezes the Scene.
+    /// All subsequent SceneNode modifications and removals will create Delta objects until the Delta is resolved.
+    /// Does nothing iff the render thread tries to freeze the graph multiple times.
+    /// @throws thread_error    If any but the render thread tries to freeze the manager.
+    void freeze();
+
+    /// Unfreezes the SceneManager and resolves all deltas.
+    /// @throws thread_error    If any but the render thread tries to unfreeze the manager.
+    void unfreeze();
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:

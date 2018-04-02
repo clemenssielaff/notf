@@ -4,6 +4,7 @@
 #include "app/application.hpp"
 #include "app/window.hpp"
 #include "common/exception.hpp"
+#include "common/log.hpp"
 #include "common/optional.hpp"
 #include "testenv.hpp"
 
@@ -13,6 +14,8 @@ namespace {
 std::optional<std::reference_wrapper<Window>> g_window_reference;
 }
 
+NOTF_OPEN_NAMESPACE
+
 Window& notf_window()
 {
     if (!g_window_reference.has_value()) {
@@ -21,8 +24,13 @@ Window& notf_window()
     return g_window_reference.value();
 }
 
+NOTF_CLOSE_NAMESPACE
+
 int main(int argc, char* argv[])
 {
+    // don't be too verbose
+    set_log_level(LogMessage::LEVEL::WARNING);
+
     // initialize the application and the test window
     Application::initialize(argc, argv);
     g_window_reference = Application::instance().create_window();

@@ -11,8 +11,8 @@ using tsl::robin_set;
 
 /// Pops a single element from a std::set and places it into the output parameter.
 /// @return True iff an element was popped from the set.
-template<typename T>
-bool pop_one(robin_set<T>& set, T& result)
+template<typename T, typename U, typename = std::enable_if_t<std::is_convertible<T, U>::value>>
+bool pop_one(robin_set<T>& set, U& result)
 {
     if (set.empty()) {
         return false;
