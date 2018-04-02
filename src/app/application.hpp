@@ -195,6 +195,8 @@ class Application::Access<Window> {
     /// Tell the RenderManager to redraw this Window at the next opportunity.
     void request_redraw() { m_application._request_redraw(m_window); }
 
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
     /// The Application to access.
     Application& m_application;
 

@@ -5,6 +5,7 @@
 #include "common/hash.hpp"
 #include "common/map.hpp"
 #include "common/mutex.hpp"
+#include "common/pointer.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -68,7 +69,7 @@ class PropertyGraph {
 
     // TODO: use not_null for all the pointers
     // TODO: implement proper time handling for properties (we might have to re-introduce the dedicated dirty flag)
-    // TODO: Instead of storing NodeBase pointers outside the graph, use the uintptr_t type
+    // TODO: Instead of storing NodeBase pointers outside the graph, use the IdType<NodeBase*>
 
     friend class detail::PropertyBase;
 
@@ -131,7 +132,7 @@ private:
         {
             NodeBase* const my_id = id();
             for (NodeBase* dependency_id : m_dependencies) {
-                risky_ptr<NodeBase> dependency = PropertyGraph::instance().write_node(dependency_id);
+                risky_ptr<NodeBase*> dependency = PropertyGraph::instance().write_node(dependency_id);
                 if (!dependency) {
                     return false;
                 }
@@ -147,7 +148,7 @@ private:
         {
             NodeBase* const my_id = id();
             for (NodeBase* dependency_id : m_dependencies) {
-                risky_ptr<NodeBase> dependency = PropertyGraph::instance().write_node(dependency_id);
+                risky_ptr<NodeBase*> dependency = PropertyGraph::instance().write_node(dependency_id);
                 if (!dependency) {
                     continue; // ignore
                 }
@@ -163,7 +164,7 @@ private:
         void _set_affected_dirty()
         {
             for (NodeBase* affected_id : m_affected) {
-                if (risky_ptr<NodeBase> affected = PropertyGraph::instance().write_node(affected_id)) {
+                if (risky_ptr<NodeBase*> affected = PropertyGraph::instance().write_node(affected_id)) {
                     affected->_set_dirty();
                 }
             }
@@ -404,14 +405,6 @@ private:
         NodeBase* m_node;
     };
 
-    //=========================================================================
-    //=========================================================================
-
-    /// Specialized hash to mix up the relative low entropy of pointers as key.
-    struct NodeHash {
-        size_t operator()(const NodeBase* node) const { return hash_mix(to_number(node)); }
-    };
-
     // methods -------------------------------------------------------------------------------------------------------//
 private:
     /// PropertyGraph singleton.
@@ -433,7 +426,7 @@ private:
     /// Returns a PropertyNode for reading without creating a new delta.
     /// @param node     Property node to read from.
     /// @returns        The requested Node or nullptr, if the node has a deletion delta.
-    risky_ptr<NodeBase> read_node(NodeBase* node)
+    risky_ptr<NodeBase*> read_node(NodeBase* node)
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
         if (!is_frozen() || is_render_thread()) {
@@ -458,7 +451,7 @@ private:
     /// Creates a new NodeDelta if the graph is frozen.
     /// @param node     Property node to write into.
     /// @returns        The requested Node or nullptr, if the node already has a deletion delta.
-    risky_ptr<NodeBase> write_node(NodeBase* node)
+    risky_ptr<NodeBase*> write_node(NodeBase* node)
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
         if (!is_frozen()) {
@@ -540,15 +533,16 @@ private:
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// All nodes managed by the graph.
-    robin_map<NodeBase*, std::unique_ptr<NodeBase>, NodeHash> m_nodes;
+    robin_map<NodeBase*, std::unique_ptr<NodeBase>, PointerHash<NodeBase>> m_nodes;
 
     /// The current delta.
-    robin_map<NodeBase*, std::unique_ptr<DeltaBase>, NodeHash> m_delta;
+    robin_map<NodeBase*, std::unique_ptr<DeltaBase>, PointerHash<NodeBase>> m_delta;
 
     /// Mutex guarding the graph.
     mutable Mutex m_mutex;
 
-    /// Flag whether the graph currently has a Delta or not.
+    /// Thread id of the renderer thread, if it currently rendering.
+    /// Also used as a flag whether the graph currently has a Delta or not.
     std::thread::id m_render_thread;
 };
 
@@ -637,7 +631,7 @@ public:
             if (!graph.is_render_thread()) {
                 notf_throw(thread_error, "Property reads are only allowed from the render thread");
             }
-            Node* node = static_cast<Node>(make_raw(graph.read_node(m_node)));
+            Node* node = static_cast<Node>(graph.read_node(m_node));
             NOTF_ASSERT(node); // we wouldn't be here if the Property had been removed
             return node->value();
         }
@@ -652,7 +646,7 @@ public:
         PropertyGraph& graph = PropertyGraph::instance();
         {
             std::lock_guard<Mutex> lock(graph.m_mutex);
-            Node* node = static_cast<Node>(make_raw(graph.write_node(m_node)));
+            Node* node = static_cast<Node>(graph.write_node(m_node));
             NOTF_ASSERT(node); // we wouldn't be here if the Property had been removed
             node->set_value(std::forward<T>(value));
         }
@@ -681,7 +675,7 @@ public:
         PropertyGraph& graph = PropertyGraph::instance();
         {
             std::lock_guard<Mutex> lock(graph.m_mutex);
-            Node* node = static_cast<Node>(make_raw(graph.write_node(m_node)));
+            Node* node = static_cast<Node>(graph.write_node(m_node));
             NOTF_ASSERT(node); // we wouldn't be here if the Property had been removed
             node->set_expression(std::move(expression), std::move(dependencies));
         }

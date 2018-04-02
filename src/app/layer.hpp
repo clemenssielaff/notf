@@ -2,6 +2,7 @@
 
 #include "app/forwards.hpp"
 #include "common/aabr.hpp"
+#include "common/pointer.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -50,7 +51,7 @@ public:
     const Aabri& area() const { return m_area; }
 
     /// The Scene displayed in this Layer, might be empty.
-    risky_ptr<Scene> scene() { return m_scene.get(); }
+    risky_ptr<Scene*> scene() { return m_scene.get(); }
 
     /// Sets the Layer to be visible or not.
     void set_visible(const bool is_visible) { m_is_visible = is_visible; }

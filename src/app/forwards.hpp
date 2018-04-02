@@ -19,6 +19,10 @@ class WindowEvent;
 template<typename T>
 class Property;
 
+struct SceneNodeParent;
+template<typename T, typename>
+struct ChildSceneNode;
+
 NOTF_DEFINE_SHARED_POINTERS(class, RenderTarget);
 NOTF_DEFINE_SHARED_POINTERS(class, Layer);
 
@@ -35,6 +39,7 @@ NOTF_DEFINE_UNIQUE_POINTERS(class, RenderManager);
 
 namespace detail {
 
+class SceneNodeBase;
 class PropertyBase;
 struct WindowArguments;
 

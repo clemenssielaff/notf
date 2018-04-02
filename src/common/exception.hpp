@@ -94,9 +94,6 @@ NOTF_EXCEPTION_TYPE(resource_error)
 /// Error thrown when something went wrong that really shouldn't have ...
 NOTF_EXCEPTION_TYPE(internal_error)
 
-/// Error thrown by risky_ptr, when you try to dereference a nullptr.
-NOTF_EXCEPTION_TYPE(bad_deference_error)
-
 /// Error thrown in debug mode when a NOTF_ASSERT fails.
 NOTF_EXCEPTION_TYPE(assertion_error)
 
@@ -107,132 +104,17 @@ NOTF_EXCEPTION_TYPE(thread_error)
 
 #ifdef NOTF_DEBUG
 
-/// Pointer wrapper to make sure that if a function can return a nullptr, the user either checks it before dereferencing
-/// or doesn't use it.
-template<typename T>
-struct risky_ptr {
-
-    /// Default constructor.
-    risky_ptr() : m_raw(nullptr) {}
-
-    /// Constructor
-    /// @param ptr  Pointer to wrap.
-    risky_ptr(T* ptr) : m_raw(ptr) {}
-
-    /// Assignment operator.
-    risky_ptr& operator=(T* ptr) { m_raw = ptr; }
-
-    /// Allows implicit conversion between compatible risky pointer types.
-    template<typename OTHER, typename = std::enable_if_t<std::is_convertible<T*, OTHER*>::value>>
-    operator risky_ptr<OTHER>() const
-    {
-        return risky_ptr<OTHER>(static_cast<OTHER*>(m_raw));
-    }
-
-    /// @{
-    /// Access the value pointed to by the wrapped pointer.
-    /// @throws bad_deference_error If the wrapped pointer is empty.
-    T* operator->()
-    {
-        if (!m_raw) {
-            notf_throw(bad_deference_error, "Failed to dereference an empty pointer!");
-        }
-        return m_raw;
-    }
-    const T* operator->() const { return const_cast<risky_ptr<T>*>(this)->operator->(); }
-    /// @}
-
-    /// Dereferences the wrapped pointer.
-    /// @throws bad_deference_error If the wrapped pointer is empty.
-    T& operator*()
-    {
-        if (!m_raw) {
-            notf_throw(bad_deference_error, "Failed to dereference an empty pointer!");
-        }
-        return *m_raw;
-    }
-    const T& operator*() const { return const_cast<risky_ptr<T>*>(this)->operator*(); }
-    /// @}
-
-    /// @{
-    /// Equality operator
-    bool operator==(const T* rhs) const noexcept { return m_raw == rhs; }
-    bool operator==(const risky_ptr& rhs) const noexcept { return m_raw == rhs.m_raw; }
-    /// @}
-
-    /// @{
-    /// Inequality operator.
-    bool operator!=(const T* rhs) const noexcept { return m_raw != rhs; }
-    bool operator!=(const risky_ptr& rhs) const noexcept { return m_raw != rhs.m_raw; }
-    /// @}
-
-    /// Tests if the contained pointer is save.
-    explicit operator bool() const noexcept { return m_raw != nullptr; }
-
-    /// Tests if the contained pointer is empty.
-    bool operator!() const noexcept { return m_raw == nullptr; }
-
-    // fields --------------------------------------------------------------------------------------------------------//
-private:
-    /// Wrapped pointer.
-    T* m_raw;
-
-    // friends -------------------------------------------------------------------------------------------------------//
-    template<typename U>
-    friend U* make_raw(const risky_ptr<U>&) noexcept;
-
-    template<typename U>
-    friend const U* make_raw(const risky_ptr<const U>&) noexcept;
-};
-
-/// @{
-/// Unwraps the a raw pointer from a risky_ptr.
-/// @throws bad_deference_error If the wrapped pointer is empty.
-template<typename U>
-inline U* make_raw(const risky_ptr<U>& risky) noexcept
-{
-    return risky.m_raw;
-}
-template<typename U>
-inline const U* make_raw(const risky_ptr<const U>& risky) noexcept
-{
-    return risky.m_raw;
-}
-/// @}
-
-#else
-
-    /// In release-mode the risky_ptr is a simple typedef that is compiled away to a raw pointer.
-    template<typename T>
-    using risky_ptr = T*;
-
-template<typename T>
-inline T* make_raw(risky_ptr<T>& risky) noexcept
-{
-    return risky;
-}
-template<typename T>
-inline const T* make_raw(const risky_ptr<T>& risky) noexcept
-{
-    return risky;
-}
-
-#endif
-
-//====================================================================================================================//
-
-#ifdef NOTF_DEBUG
-
 /// NoTF assertion macro.
-#define NOTF_ASSERT(EXPR)                                                                          \
-    if (!static_cast<bool>(EXPR)) {                                                                \
+#define NOTF_ASSERT(EXPR)                                                                                 \
+    if (!static_cast<bool>(EXPR)) {                                                                       \
         notf_throw_format(assertion_error, "Assertion \"" << NOTF_DEFER(NOTF_STR, EXPR) << "\" failed!"); \
     }
 
 /// NoTF assertion macro with attached message.
-#define NOTF_ASSERT_MSG(EXPR, MSG)                                                                                 \
-    if (!static_cast<bool>(EXPR)) {                                                                                \
-        notf_throw_format(assertion_error, "Assertion \"" << NOTF_DEFER(NOTF_STR, EXPR) << "\" failed! Message:" << MSG); \
+#define NOTF_ASSERT_MSG(EXPR, MSG)                                                                       \
+    if (!static_cast<bool>(EXPR)) {                                                                      \
+        notf_throw_format(assertion_error,                                                               \
+                          "Assertion \"" << NOTF_DEFER(NOTF_STR, EXPR) << "\" failed! Message:" << MSG); \
     }
 
 #else

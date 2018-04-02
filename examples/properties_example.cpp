@@ -1,63 +1,41 @@
 #include "renderthread_example.hpp"
 
+#include <iostream>
+
 #include "app/application.hpp"
-#include "app/scene_node.hpp"
 #include "app/property_graph.hpp"
+#include "app/scene_manager.hpp"
+#include "app/scene_node.hpp"
 #include "app/window.hpp"
 #include "common/log.hpp"
+#include "common/vector.hpp"
 
 NOTF_USING_NAMESPACE
 
-class A {
-public:
-    virtual int get() const { return 3; }
-};
-
-class B : public A {};
-
-class C : public A {};
-
-class Antity : public SceneNode {
-private:
-    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
-    Antity(const Token& token, ChildContainerPtr container) : SceneNode(token, std::move(container)) {}
-
-public:
-    static std::shared_ptr<Antity> create()
-    {
-        return SceneNode::_create<Antity>(std::make_unique<detail::EmptyNodeContainer>());
-    }
-    virtual void _remove_child(const SceneNode*) override {}
-};
-
 int properties_main(int argc, char* argv[])
 {
-    Application::initialize(argc, argv);
-    auto& app = Application::instance();
-    {
+    std::vector<int> vec {0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
-        Window::Args window_args;
-        window_args.icon = "notf.png";
-        app.create_window(window_args);
-
-//        {
-            auto prop_a = Property<int>(3);
-            auto prop_b = Property<int>(3);
-
-            auto b = B{};
-            auto c = C{};
-            std::vector<std::reference_wrapper<A>> vec;
-            vec.push_back(b);
-            vec.push_back(c);
-
-//            for (A& a : vec) {
-//                log_trace << a.get();
-//            }
-//        }
-
-        auto ant = Antity::create();
-
-        app.exec();
+    for(const auto& i : vec){
+        std::cout << i << ", ";
     }
+    std::cout << std::endl;
+
+    stack_behind(vec, iterator_at(vec, 5), iterator_at(vec, 2));
+
+    for(const auto& i : vec){
+        std::cout << i << ", ";
+    }
+    std::cout << std::endl;
+
+//    Application::initialize(argc, argv);
+//    auto& app = Application::instance();
+//    {
+//        Window::Args window_args;
+//        window_args.icon = "notf.png";
+//        app.create_window(window_args);
+//        app.exec();
+//    }
+
     return 0;
 }

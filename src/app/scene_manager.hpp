@@ -1,14 +1,41 @@
 #pragma once
 
-#include <vector>
-
 #include "app/forwards.hpp"
-#include "app/scene_node.hpp"
 #include "common/hash.hpp"
 #include "common/map.hpp"
 #include "common/mutex.hpp"
+#include "common/pointer.hpp"
 
 NOTF_OPEN_NAMESPACE
+
+//====================================================================================================================//
+
+namespace detail {
+
+/// Empty baseclass, used for empty SceneNode types like SceneManager::DeletionDelta.
+class SceneNodeBase {
+    // methods -------------------------------------------------------------------------------------------------------//
+public:
+    /// Value Constructor.
+    /// @param manager      SceneManager owning this SceneNode.
+    SceneNodeBase(SceneManager& manager) : m_manager(manager) {}
+
+    /// Destructor.
+    virtual ~SceneNodeBase();
+
+    ///@{
+    /// The SceneManager owning this node.
+    SceneManager& manager() { return m_manager; }
+    const SceneManager& manager() const { return m_manager; }
+    ///@}
+
+    // fields --------------------------------------------------------------------------------------------------------//
+protected:
+    /// SceneManager owning this SceneNode.
+    SceneManager& m_manager;
+};
+
+} // namespace detail
 
 // ===================================================================================================================//
 
@@ -75,8 +102,26 @@ NOTF_OPEN_NAMESPACE
 ///
 class SceneManager {
 
+    using SceneNodeBase = notf::detail::SceneNodeBase;
+
+    friend struct SceneNodeParent;
+    template<typename, typename>
+    friend struct SceneNodeChild;
+
     // types ---------------------------------------------------------------------------------------------------------//
 public:
+    NOTF_ACCESS_TYPES(SceneNode)
+
+    //=========================================================================
+
+    /// Alias for checking if T is a valid SceneNode subtype.
+    /// Subtypes must derive from SceneNode, must be copy constructible and not be const.
+    template<typename T>
+    using is_scene_node_type = typename std::conjunction<std::is_base_of<SceneNode, T>, std::is_copy_constructible<T>,
+                                                         std::negation<std::is_const<T>>>::value;
+
+    //=========================================================================
+
     /// State of the SceneManager.
     class State {
 
@@ -96,14 +141,18 @@ public:
     private:
         std::vector<LayerPtr> m_layers;
     };
-
     using StatePtr = std::shared_ptr<State>;
 
     //=========================================================================
+private:
+    /// Empty class signifying that a SceneNode was deleted in the delta.
+    struct DeletionDelta : public SceneNodeBase {
+        /// Value Constructor.
+        /// @param manager      SceneManager owning this SceneNode.
+        DeletionDelta(SceneManager& manager) : SceneNodeBase(manager) {}
 
-    /// Specialized hash to mix up the relative low entropy of pointers as key.
-    struct NodeHash {
-        size_t operator()(const SceneNode* node) const { return hash_mix(to_number(node)); }
+        /// Destructor.
+        ~DeletionDelta() override;
     };
 
     // methods ------------------------------------------------------------------------------------------------------ //
@@ -138,6 +187,68 @@ public:
     /// @throws resource_error  If no State with the given ID is known.
     void enter_state(StatePtr state);
 
+private:
+    /// Creates a new SceneNode.
+    /// @param args     Arguments to create the new node with.
+    template<typename T, typename... Args, typename = std::enable_if_t<is_scene_node_type<T>::value>>
+    valid_ptr<SceneNode*> create_node(Args&&... args)
+    {
+        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+        std::unique_ptr<SceneNode> node = std::make_unique<T>(std::forward<Args>(args)...);
+        valid_ptr<SceneNode*> ptr = node.get();
+        m_nodes.emplace(std::make_pair(ptr, std::move(node)));
+        return ptr;
+    }
+
+    /// Deletes a given SceneNode.
+    /// Gives the Graph the chance to create a deletion delta for a deleted node.
+    /// @param node     SceneNode to delete.
+    void delete_node(valid_ptr<SceneNodeBase*> node)
+    {
+        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+
+        // delete the property node straight away if the graph isn't frozen
+        // or if this is the render thread resolving the delta
+        if (!is_frozen() || is_render_thread()) {
+            auto it = m_nodes.find(node);
+            NOTF_ASSERT_MSG(it != m_nodes.end(), "Cannot delete unknown SceneNode");
+            m_nodes.erase(it);
+            return;
+        }
+
+        // if the graph is frozen and the property is deleted, create a new deletion delta
+        auto it = m_delta.find(node);
+        if (it == m_delta.end()) {
+            m_delta.emplace(std::make_pair(node, std::make_unique<DeletionDelta>(*this)));
+            return;
+        }
+
+        // if there is already a modification delta in place, replace it with a deletion delta
+        NOTF_ASSERT_MSG(!is_deletion_delta(it->second.get()), "Cannot delete the same SceneNode twice");
+        std::unique_ptr<SceneNodeBase> deletion_delta = std::make_unique<DeletionDelta>(*this);
+        it.value().swap(deletion_delta);
+    }
+
+    /// Checks if the PropertyGraph is currently frozen or not.
+    bool is_frozen() const
+    {
+        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+        return m_render_thread != std::thread::id();
+    }
+
+    /// Checks if the calling thread is the current render thread.
+    bool is_render_thread() const
+    {
+        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+        return std::this_thread::get_id() == m_render_thread;
+    }
+
+    /// Checks if a given SceneNode is a DeletionDelta or not.
+    static bool is_deletion_delta(const valid_ptr<SceneNodeBase*> ptr)
+    {
+        return (dynamic_cast<DeletionDelta*>(ptr.get()) != nullptr);
+    }
+
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// Window owning this SceneManager.
@@ -147,13 +258,102 @@ private:
     StatePtr m_current_state;
 
     /// All nodes managed by the graph.
-    robin_map<SceneNode*, std::unique_ptr<SceneNode>, NodeHash> m_nodes;
+    robin_map<valid_ptr<SceneNodeBase*>, std::unique_ptr<SceneNodeBase>, PointerHash<SceneNodeBase>> m_nodes;
 
     /// The current delta.
-    robin_map<SceneNode*, std::unique_ptr<SceneNode>, NodeHash> m_delta;
+    robin_map<valid_ptr<SceneNodeBase*>, std::unique_ptr<SceneNodeBase>, PointerHash<SceneNodeBase>> m_delta;
 
     /// Mutex guarding the graph.
     mutable Mutex m_mutex;
+
+    /// Thread id of the renderer thread, if it currently rendering.
+    /// Also used as a flag whether the graph currently has a Delta or not.
+    std::thread::id m_render_thread;
+};
+
+// ===================================================================================================================//
+
+struct SceneNodeParent {
+
+    // methods ----------------------------------------------------------------
+protected:
+    /// Constructor.
+    /// @param node Parent SceneNode to manage.
+    SceneNodeParent(valid_ptr<SceneNode*> node) : m_node(node) {}
+
+public:
+    valid_ptr<SceneNode*> get() { return m_node; } // TODO: LOOOOCKCKCKCKCKCK
+    valid_ptr<const SceneNode*> get() const { return const_cast<SceneNodeParent*>(this)->get(); }
+
+    // fields -----------------------------------------------------------------
+private:
+    valid_ptr<SceneNode*> m_node;
+};
+
+// ===================================================================================================================//
+
+template<typename T, typename = std::enable_if_t<SceneManager::is_scene_node_type<T>::value>>
+struct SceneNodeChild {
+
+    using SceneNodeBase = detail::SceneNodeBase;
+
+    // methods ----------------------------------------------------------------
+protected:
+    /// Constructor.
+    /// @param node ScenNode to manage.
+    SceneNodeChild(valid_ptr<SceneNodeBase*> node) : m_node(node) {}
+
+public:
+    NOTF_NO_COPY_OR_ASSIGN(SceneNodeChild)
+
+    /// Move Constructor.
+    /// @param other    Property to move from.
+    SceneNodeChild(SceneNodeChild&& other)
+    {
+        m_node = other.m_node;
+        other.m_node = nullptr;
+    }
+
+    /// Destructor.
+    ~SceneNodeChild()
+    {
+        if (m_node) {
+            SceneManager& manager = m_node->manager();
+            manager.delete_node(m_node);
+            m_node = nullptr;
+        }
+    }
+
+    SceneNodeBase* get() { return m_node; } // TODO: LOOOOCKCKCKCKCKCK
+    valid_ptr<const SceneNode*> get() const { return const_cast<SceneNodeChild*>(this)->get(); }
+
+    // fields -----------------------------------------------------------------
+private:
+    SceneNodeBase* m_node;
+};
+
+//====================================================================================================================//
+
+template<>
+class SceneManager::Access<SceneNode> {
+    friend class SceneNode;
+
+    /// Constructor.
+    /// @param manager  The SceneNode to grant access.
+    Access(valid_ptr<SceneNodeBase*> node) : m_manager(node->manager()) {}
+
+    /// Adds a new child SceneNode to the
+    /// @param args     Arguments to create the new node with.
+    template<typename T, typename... Args, typename = std::enable_if_t<SceneManager::is_scene_node_type<T>::value>>
+    SceneNodeChild<T> add_child(Args&&... args)
+    {
+        return SceneNodeChild<T>(m_manager.create_node<T>(std::forward<Args>(args)...));
+    }
+
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
+    /// The SceneManager to access.
+    SceneManager& m_manager;
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -11,6 +11,7 @@
 #include "app/scene.hpp"
 #include "app/scene_manager.hpp"
 #include "common/log.hpp"
+#include "common/pointer.hpp"
 #include "window.hpp"
 
 namespace { // anonymous
@@ -134,7 +135,7 @@ void EventManager::on_token_key(GLFWwindow* glfw_window, int key, NOTF_UNUSED in
     // let the window handle the event
     KeyEvent event(notf_key, KeyAction(action), KeyModifiers(modifiers), g_key_states);
     for (auto& layer : window->scene_manager().layers()) {
-        if (risky_ptr<Scene> scene = layer->scene()) {
+        if (risky_ptr<Scene*> scene = layer->scene()) {
             scene->handle_event(event);
         }
         if (event.was_handled()) {
@@ -152,7 +153,7 @@ void EventManager::on_char_input(GLFWwindow* glfw_window, uint codepoint, int mo
     // let the window handle the event
     CharEvent event(codepoint, KeyModifiers(modifiers), g_key_states);
     for (auto& layer : window->scene_manager().layers()) {
-        if (risky_ptr<Scene> scene = layer->scene()) {
+        if (risky_ptr<Scene*> scene = layer->scene()) {
             scene->handle_event(event);
         }
         if (event.was_handled()) {
@@ -174,7 +175,7 @@ void EventManager::on_cursor_entered(GLFWwindow* glfw_window, int entered)
     }
     WindowEvent event(event_type);
     for (auto& layer : window->scene_manager().layers()) {
-        if (risky_ptr<Scene> scene = layer->scene()) {
+        if (risky_ptr<Scene*> scene = layer->scene()) {
             scene->handle_event(event);
         }
     }
@@ -206,7 +207,7 @@ void EventManager::on_cursor_move(GLFWwindow* glfw_window, double x, double y)
                      Button::NO_BUTTON,                              // move events are triggered by no button
                      MouseAction::MOVE, g_key_modifiers, g_button_states);
     for (auto& layer : window->scene_manager().layers()) {
-        if (risky_ptr<Scene> scene = layer->scene()) {
+        if (risky_ptr<Scene*> scene = layer->scene()) {
             scene->handle_event(event);
         }
         if (event.was_handled()) {
@@ -240,7 +241,7 @@ void EventManager::on_mouse_button(GLFWwindow* glfw_window, int button, int acti
                       g_cursor_pos.y() - static_cast<float>(window_pos.y())},
                      Vector2f::zero(), notf_button, notf_action, g_key_modifiers, g_button_states);
     for (auto& layer : window->scene_manager().layers()) {
-        if (risky_ptr<Scene> scene = layer->scene()) {
+        if (risky_ptr<Scene*> scene = layer->scene()) {
             scene->handle_event(event);
         }
         if (event.was_handled()) {
@@ -266,7 +267,7 @@ void EventManager::on_scroll(GLFWwindow* glfw_window, double x, double y)
                      {static_cast<float>(x), static_cast<float>(-y)}, Button::NO_BUTTON, MouseAction::SCROLL,
                      g_key_modifiers, g_button_states);
     for (auto& layer : window->scene_manager().layers()) {
-        if (risky_ptr<Scene> scene = layer->scene()) {
+        if (risky_ptr<Scene*> scene = layer->scene()) {
             scene->handle_event(event);
         }
         if (event.was_handled()) {
@@ -295,7 +296,7 @@ void EventManager::on_window_resize(GLFWwindow* glfw_window, int width, int heig
         if (!layer->is_fullscreen()) {
             continue;
         }
-        if (risky_ptr<Scene> scene = layer->scene()) {
+        if (risky_ptr<Scene*> scene = layer->scene()) {
             scene->resize_view(size);
         }
     }

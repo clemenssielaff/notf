@@ -4,6 +4,10 @@
 
 NOTF_OPEN_NAMESPACE
 
+SceneManager::DeletionDelta::~DeletionDelta() = default;
+
+//====================================================================================================================//
+
 SceneManager::SceneManager(Window& window) : m_window(window), m_current_state(create_state()) {}
 
 SceneManager::~SceneManager() = default;

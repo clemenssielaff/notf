@@ -1,9 +1,11 @@
 #include "app/scene_node.hpp"
 
 #include <atomic>
+#include <sstream>
 #include <unordered_set>
 
 #include "app/application.hpp"
+#include "app/scene_manager.hpp"
 #include "common/log.hpp"
 #include "common/vector.hpp"
 
@@ -12,10 +14,12 @@ NOTF_USING_NAMESPACE
 
 /// Returns the next available SceneNodeId.
 /// Is thread-safe and ever-increasing.
-SceneNodeId next_id()
+std::string next_name()
 {
-    static std::atomic<SceneNodeId::underlying_t> g_nextID(1);
-    return g_nextID++;
+    static std::atomic<size_t> g_nextID(1);
+    std::stringstream ss;
+    ss << "SceneNode#" << g_nextID++;
+    return ss.str();
 }
 
 } // namespace
@@ -24,32 +28,44 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
-SceneNode::ChildContainer::~ChildContainer() {}
+namespace detail {
+
+SceneNodeBase::~SceneNodeBase() = default;
+
+} // namespace detail
 
 //====================================================================================================================//
 
-SceneNode::SceneNode(const Token&, std::unique_ptr<ChildContainer> container)
-    : m_children(std::move(container)), m_id(next_id())
+SceneNode::hierarchy_error::~hierarchy_error() = default;
+
+//====================================================================================================================//
+
+SceneNode::SceneNode(const Token&, SceneManager& manager, SceneNodeParent parent)
+    : SceneNodeBase(manager), m_parent(parent), m_name(next_name())
 {
-    log_trace << "Created SceneNode #" << m_id;
+    std::vector<valid_ptr<SceneNode*>>& siblings = m_parent.get()->m_children;
+    siblings.emplace_back(this);
+    NOTF_ASSERT(std::count(siblings.begin(), siblings.end(), this) == 1);
+
+    log_trace << "Created SceneNode: \"" << m_name << "\"";
 }
 
 SceneNode::~SceneNode()
 {
-    if (m_name.empty()) {
-        log_trace << "Destroying SceneNode #" << m_id;
-    }
-    else {
-        log_trace << "Destroying SceneNode \"" << m_name << "\"";
+    log_trace << "Destroying SceneNode \"" << m_name << "\"";
+
+    { // unregister from parent
+        auto& children = m_parent.get()->m_children;
+        const auto it = find(children.begin(), children.end(), this);
+        if (it == children.end()) {
+            log_critical << "Cannot unregister SceneNode \"" << m_name << "\" from parent";
+        }
+        else {
+            children.erase(it);
+        }
     }
 
-    m_children->_destroy();
-    m_children.reset();
-
-    if (m_parent) {
-        m_parent->_remove_child(this);
-    }
-    m_parent = nullptr;
+    m_children.clear();
 }
 
 bool SceneNode::has_ancestor(const SceneNode* ancestor) const
@@ -58,17 +74,19 @@ bool SceneNode::has_ancestor(const SceneNode* ancestor) const
         return false;
     }
 
-    const SceneNode* parent = m_parent;
-    while (parent) {
+    valid_ptr<const SceneNode*> parent = m_parent.get();
+    valid_ptr<const SceneNode*> next = parent->parent();
+    while (parent != next) {
         if (parent == ancestor) {
             return true;
         }
-        parent = parent->m_parent;
+        parent = next;
+        next = parent->parent();
     }
     return false;
 }
 
-risky_ptr<SceneNode> SceneNode::common_ancestor(SceneNode* other)
+risky_ptr<SceneNode*> SceneNode::common_ancestor(SceneNode* other)
 {
     if (this == other) {
         return this;
@@ -80,14 +98,14 @@ risky_ptr<SceneNode> SceneNode::common_ancestor(SceneNode* other)
     std::unordered_set<SceneNode*> known_ancestors = {first, second};
     while (1) {
         if (first) {
-            first = first->m_parent;
+            first = first->parent();
             if (known_ancestors.count(first)) {
                 return first;
             }
             known_ancestors.insert(first);
         }
         if (second) {
-            second = second->m_parent;
+            second = second->parent();
             if (known_ancestors.count(second)) {
                 return second;
             }
@@ -105,35 +123,48 @@ const std::string& SceneNode::set_name(std::string name)
     return m_name;
 }
 
-void SceneNode::_set_parent(SceneNode* parent, bool notify_old)
+void SceneNode::stack_front()
 {
-    if (parent == m_parent) {
-        return;
-    }
-
-    if (m_parent && notify_old) {
-        m_parent->_remove_child(this);
-    }
-    m_parent = parent;
-
-    _update_from_parent();
-    for (SceneNode* node : *m_children) {
-        node->_update_from_parent();
-    }
-
-    on_parent_changed(m_parent);
+    std::vector<valid_ptr<SceneNode*>>& siblings = m_parent.get()->m_children;
+    auto it = std::find(siblings.begin(), siblings.end(), this);
+    NOTF_ASSERT(it != siblings.end());
+    move_to_front(siblings, it);
 }
 
-//====================================================================================================================//
+void SceneNode::stack_back()
+{
+    std::vector<valid_ptr<SceneNode*>>& siblings = m_parent.get()->m_children;
+    auto it = std::find(siblings.begin(), siblings.end(), this);
+    NOTF_ASSERT(it != siblings.end());
+    move_to_back(siblings, it);
+}
 
-namespace detail {
+void SceneNode::stack_before(valid_ptr<SceneNode*> sibling)
+{
+    std::vector<valid_ptr<SceneNode*>>& siblings = m_parent.get()->m_children;
+    auto it = std::find(siblings.begin(), siblings.end(), this);
+    NOTF_ASSERT(it != siblings.end());
+    auto other = std::find(siblings.begin(), siblings.end(), sibling);
+    if (other == siblings.end()) {
+        notf_throw_format(hierarchy_error, "Cannot stack SceneNode \"" << name() << "\" before SceneNode \""
+                                                                       << sibling->name()
+                                                                       << "\" that is not a sibling.");
+    }
+    notf::stack_before(siblings, it, other);
+}
 
-EmptyNodeContainer::~EmptyNodeContainer() {}
-
-SingleNodeContainer::~SingleNodeContainer() { node.reset(); }
-
-NodeList::~NodeList() { nodes.clear(); }
-
-} // namespace detail
+void SceneNode::stack_behind(valid_ptr<SceneNode*> sibling)
+{
+    std::vector<valid_ptr<SceneNode*>>& siblings = m_parent.get()->m_children;
+    auto it = std::find(siblings.begin(), siblings.end(), this);
+    NOTF_ASSERT(it != siblings.end());
+    auto other = std::find(siblings.begin(), siblings.end(), sibling);
+    if (other == siblings.end()) {
+        notf_throw_format(hierarchy_error, "Cannot stack SceneNode \"" << name() << "\" behind SceneNode \""
+                                                                       << sibling->name()
+                                                                       << "\" that is not a sibling.");
+    }
+    notf::stack_behind(siblings, it, other);
+}
 
 NOTF_CLOSE_NAMESPACE

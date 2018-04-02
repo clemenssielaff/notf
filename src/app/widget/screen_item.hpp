@@ -8,6 +8,64 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
+/// A ScreenNode is the virtual base class for all objects in the Item hierarchy. Its three main specializations are
+/// `Widgets`, `Layouts` and `Controllers`.
+///
+/// Lifetime
+/// ========
+///
+/// The lifetime of Items is managed through a shared_ptr. This way, the user is free to keep a subhierarchy around
+/// even after its parent has gone out of scope.
+///
+/// Hierarchy
+/// =========
+///
+/// Items form a hierarchy with a single root Item on top. The number of children that an Item can have depends on its
+/// type. Widgets have no children, Controller have a single Layout as a child and Layouts can have a (theoretically
+/// unlimited) number of children of all types.
+///
+/// Since Layouts may have special container requirement for their children (a list, a map, a matrix ...), Items have a
+/// virtual container class called `ChildContainer` that allows high level access to the children of each Item,
+/// regardless of how they are stored in memory. The only requirements that a Container must fulfill is that it has to
+/// offer a `size()` function that returns the number of children in the layout, a `clear()` function that removes all
+/// children (thereby potentially destroying them) and the method `child_at(index)` which returns a mutable reference to
+/// an pointer of the child at the requested index, or throws an `out_of_bounds` exception if the index is >= the
+/// Container's size.
+///
+/// SceneNodes keep a raw pointer to their parent. The alternative would be to have a weak_ptr to the parent and lock
+/// it, whenever we need to go up in the hierarchy. However, going up in the hierarchy is a very common occurrence and
+/// with deeply nested layouts, I assume that the number of locking operations per second will likely go in the
+/// thousands. This is a non-neglible expense for something that can prevented by making sure that you either know that
+/// the parent is still alive, or you check first. The pointer is initialized to zero and parents let their children
+/// know when they are destroyed. While this still leaves open the possiblity of an Item subclass manually messing up
+/// the parent pointer using the static `_set_parent` method, I have to stop somewhere and trust the user not to break
+/// things.
+///
+/// ID
+/// ==
+///
+/// Each SceneNode has a constant unique integer ID assigned to it upon instantiation. It can be used to identify the
+/// node in a map, for debugging purposes or in conditionals.
+///
+/// Name
+/// ====
+///
+/// In addition to the unique ID, each SceneNode can have a name. The name is assigned by the user and is not guaranteed
+/// to be unique. If the name is not set, it is custom to log the SceneNode id instead, formatted like this:
+///
+///     log_info << "Something cool happened to SceneNode #" << node.id() << ".";
+///
+/// Signals
+/// =======
+///
+/// SceneNodes communicate with each other either through their relationship in the hierachy (parents to children and
+/// vice-versa) or via Signals. Signals have the advantage of being able to connect every SceneNode regardless of its
+/// position in the hierarchy. They can be created by the user and enabled/disabled at will.
+/// In order to facilitate Signal handling at the lowest possible level, all SceneNodes derive from the
+/// `receive_signals` class that takes care of removing leftover connections that still exist once the SceneNode goes
+/// out of scope.
+///
+
 /// Abstract baseclass for all SceneNode types in a Widget hierarchy that can occupy space on screen.
 ///
 /// Layouting

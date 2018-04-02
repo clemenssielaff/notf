@@ -58,18 +58,20 @@
 
 //====================================================================================================================//
 
+/// Pragma support for macros.
 #ifdef NOTF_MSVC
 #define NOTF_PRAGMA(x) __pragma(x)
 #else
 #define NOTF_PRAGMA(x) _Pragma(x)
 #endif
 
-//====================================================================================================================//
+/// Nothing happening here.
+#define NOTF_NOOP static_cast<void>(0)
 
 /// Compiler attribute detection, as described in:
 ///     https://clang.llvm.org/docs/LanguageExtensions.html#has-cpp-attribute
 #ifndef __has_cpp_attribute
-#define __has_cpp_attribute(x) 0 // Compatibility with non-clang compilers.
+#define __has_cpp_attribute(x) NOTF_NOOP // Compatibility with non-clang compilers.
 #endif
 
 /// NOTF_NODISCARD attribute to make sure that the return value of a function is not immediately discarded.
@@ -103,8 +105,8 @@
 #define NOTF_LIKELY(x) __builtin_expect(!!(x), 1)
 #define NOTF_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #else
-#define NOTF_LIKELY(x) (x)
-#define NOTF_UNLIKELY(x) (x)
+#define NOTF_LIKELY(x) (!!(x))
+#define NOTF_UNLIKELY(x) (!!(x))
 #endif
 
 //====================================================================================================================//

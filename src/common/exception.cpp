@@ -25,8 +25,6 @@ resource_error::~resource_error() {}
 
 internal_error::~internal_error() {}
 
-bad_deference_error::~bad_deference_error() {}
-
 assertion_error::~assertion_error() {}
 
 thread_error::~thread_error() {}

@@ -87,4 +87,11 @@ constexpr inline size_t hash_mix(size_t key)
     return key;
 }
 
+/// Specialized Hash for pointers.
+/// Uses `hash_mix` to improve pointer entropy.
+template<typename T>
+struct PointerHash {
+    size_t operator()(const T* ptr) const { return hash_mix(to_number(ptr)); }
+};
+
 NOTF_CLOSE_NAMESPACE

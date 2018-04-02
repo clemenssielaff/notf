@@ -5,6 +5,6 @@
 
 NOTF_OPEN_NAMESPACE
 
-using SceneNodeId = IdType<SceneNode, uint>;
+using SceneNodeId = IdType<SceneNode, size_t>;
 
 NOTF_CLOSE_NAMESPACE
