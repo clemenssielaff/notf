@@ -1,7 +1,6 @@
 #pragma once
 
 #include "app/scene_manager.hpp"
-#include "common/signal.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -52,7 +51,7 @@ NOTF_OPEN_NAMESPACE
 /// handling at the lowest possible level, all SceneNodes derive from the `receive_signals` class that takes care of
 /// removing leftover connections that still exist once the SceneNode goes out of scope.
 ///
-class SceneNode : public detail::SceneNodeBase, public receive_signals {
+class SceneNode : public detail::SceneNodeBase {
 
     // types ---------------------------------------------------------------------------------------------------------//
 private:
@@ -113,12 +112,6 @@ protected:
         friend class SceneNode;
         Token() {} // not "= default", otherwise you could construct a Token via `Token{}`.
     };
-
-    // signals -------------------------------------------------------------------------------------------------------//
-public:
-    /// Emitted when this SceneNode changes its name.
-    /// @param The new name.
-    Signal<const std::string&> on_name_changed;
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:

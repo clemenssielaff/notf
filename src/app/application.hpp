@@ -18,6 +18,29 @@ NOTF_EXCEPTION_TYPE(application_shutdown_error)
 
 //====================================================================================================================//
 
+namespace detail {
+
+/// Helper struct to create a Window instance.
+struct WindowArguments {
+
+    /// Initial size of the Window.
+    int width = 640;
+    int height = 480;
+
+    /// If the Window is resizeable or not.
+    bool is_resizeable = true;
+
+    /// Window title.
+    std::string title = "NoTF";
+
+    /// File name of the Window's icon, relative to the Application's texture directory, empty means no icon.
+    std::string icon = "";
+};
+
+} // namespace detail
+
+//====================================================================================================================//
+
 /// The Application class.
 /// After initialization, the Application singleton is available everywhere with `Application::instance()`.
 /// It also manages the lifetime of the LogHandler.
@@ -97,8 +120,11 @@ public:
         return _instance(std::move(args));
     }
 
+    /// @{
     /// Creates a new Window instance with the given arguments.
+    Window& create_window();
     Window& create_window(const detail::WindowArguments& args);
+    /// @}
 
     /// Starts the application's main loop.
     /// Can only be called once.

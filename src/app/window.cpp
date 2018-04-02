@@ -1,6 +1,5 @@
 #include "app/window.hpp"
 
-#include "app/application.hpp"
 #include "app/event_manager.hpp"
 #include "app/glfw.hpp"
 #include "app/layer.hpp"
@@ -34,7 +33,7 @@ window_initialization_error::~window_initialization_error() {}
 const Window::Args Window::s_default_args = {};
 
 Window::Window(const Args& args)
-    : m_glfw_window(nullptr, detail::window_deleter), m_title(args.title), m_size(args.size)
+    : m_glfw_window(nullptr, detail::window_deleter), m_title(args.title), m_size(args.width, args.height)
 {
     // make sure that an Application was initialized before instanciating a Window (will throw on failure)
     Application& app = Application::instance();
@@ -99,7 +98,7 @@ Window::Window(const Args& args)
     log_info << "Created Window \"" << title() << "\" using OpenGl version: " << glGetString(GL_VERSION);
 }
 
-WindowPtr Window::create(const Args& args)
+WindowPtr Window::_create(const Args& args)
 {
     // inititalize the window
     WindowPtr window = NOTF_MAKE_UNIQUE_FROM_PRIVATE(Window, args);

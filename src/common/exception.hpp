@@ -114,7 +114,7 @@ NOTF_EXCEPTION_TYPE(thread_error)
 #define NOTF_ASSERT_MSG(EXPR, MSG)                                                                       \
     if (!static_cast<bool>(EXPR)) {                                                                      \
         notf_throw_format(assertion_error,                                                               \
-                          "Assertion \"" << NOTF_DEFER(NOTF_STR, EXPR) << "\" failed! Message:" << MSG); \
+                          "Assertion \"" << NOTF_DEFER(NOTF_STR, EXPR) << "\" failed! Message: " << MSG); \
     }
 
 #else

@@ -118,7 +118,7 @@ const std::string& SceneNode::set_name(std::string name)
 {
     if (name != m_name) {
         m_name = std::move(name);
-        on_name_changed(m_name);
+//        on_name_changed(m_name);
     }
     return m_name;
 }

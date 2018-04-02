@@ -26,6 +26,7 @@ endmacro()
 
 # OPTIONS ##############################################################################################################
 
+option(NOTF_BUILD_APP "Build application" ON)
 option(NOTF_USE_LIBCXX "Use LLVM's libc++ instead of libstdc++" OFF)
 option(NOTF_USE_OPENMP "Use OpenMP" ON)
 option(NOTF_BUILD_TESTS "Build tests" OFF)
@@ -92,7 +93,6 @@ create_module(utils)
 
 
 add_sources(SOURCE_FILES src
-    main.cpp
     app/application.cpp
     app/application.hpp
     app/ids.hpp
@@ -181,22 +181,28 @@ add_sources(THIRDPARTY_FILES thirdparty
 #    shaders/clouds.frag
 #)
 
-add_executable(notf
-    ${common_MODULE}
-#    ${app_MODULE}
-    ${graphics_MODULE}
-    ${utils_MODULE}
-    ${SOURCE_FILES}
-    ${THIRDPARTY_FILES}
-    ${RESOURCE_FILES}
-)
+if(NOTF_BUILD_APP)
 
-target_link_libraries(${PROJECT_NAME}
-    ${OPENGL_gl_LIBRARY}
-    glfw
-    freetype
-    ${PYTHON_LIBRARIES}
-)
+    add_sources(SOURCE_FILES src main.cpp)
+
+    add_executable(notf
+        ${common_MODULE}
+    #    ${app_MODULE}
+        ${graphics_MODULE}
+        ${utils_MODULE}
+        ${SOURCE_FILES}
+        ${THIRDPARTY_FILES}
+        ${RESOURCE_FILES}
+    )
+
+    target_link_libraries(${PROJECT_NAME}
+        ${OPENGL_gl_LIBRARY}
+        glfw
+        freetype
+        ${PYTHON_LIBRARIES}
+    )
+
+endif()
 
 # TESTS ################################################################################################################
 
@@ -207,34 +213,35 @@ if(NOTF_BUILD_TESTS)
     )
 
     add_sources(TEST_SOURCES test
-        test_aabr.cpp
-        test_circle.cpp
-        test_color.cpp
-        test_float.cpp
-        test_main.cpp
-        test_half.cpp
-    #    test_signal.cpp
-        test_string_utils.cpp
-    #    test_vector2.cpp
-    #    test_matrix3.cpp
-    #    test_matrix4.cpp
-        test_utils.cpp
-        test_dag.cpp
-
         catch.hpp
-        test_utils.hpp
-        glm_utils.hpp
+        main.cpp
+#        glm_utils.hpp
+        testenv.hpp
+#        test_aabr.cpp
+#        test_circle.cpp
+#        test_color.cpp
+#        test_dag.cpp
+#        test_float.cpp
+#        test_half.cpp
+#        test_matrix3.cpp
+#        test_matrix4.cpp
+        test_scene.cpp
+#        test_signal.cpp
+#        test_string_utils.cpp
+#        test_utils.cpp
+#        test_utils.hpp
+#        test_vector2.cpp
     )
 
     add_executable(notf-test
         ${common_MODULE}
-        ${core_MODULE}
-        ${dynamic_MODULE}
+    #    ${app_MODULE}
         ${graphics_MODULE}
         ${utils_MODULE}
-        ${TEST_SOURCES}
+        ${SOURCE_FILES}
         ${THIRDPARTY_FILES}
         ${RESOURCE_FILES}
+        ${TEST_SOURCES}
     )
 
     target_link_libraries(notf-test

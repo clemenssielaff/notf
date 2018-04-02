@@ -72,9 +72,15 @@ Application::Application(const Args& application_args)
 
 Application::~Application() { _shutdown(); }
 
+Window& Application::create_window()
+{
+    m_windows.emplace_back(Window::Access<Application>::create());
+    return *m_windows.back().get();
+}
+
 Window& Application::create_window(const detail::WindowArguments& args)
 {
-    m_windows.emplace_back(Window::create(args));
+    m_windows.emplace_back(Window::Access<Application>::create(args));
     return *m_windows.back().get();
 }
 
