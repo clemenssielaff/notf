@@ -9,14 +9,8 @@ NOTF_USING_NAMESPACE
 
 SCENARIO("a Scene can be set up and modified", "[app], [scene]")
 {
-
-    auto& app = Application::instance();
-
-    Window::Args window_args;
-    window_args.icon = "notf.png";
-    app.create_window(window_args);
-
-    GIVEN("an empty Scene") {
+    GIVEN("an empty Scene")
+    {
         SceneManager scene_manager(notf_window());
 
         REQUIRE(scene_manager.layers().size() == 0);

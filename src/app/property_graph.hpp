@@ -29,13 +29,16 @@ NOTF_OPEN_NAMESPACE
 /// 2. They can safely be used from multiple threads and can be used to *freeze* the global state during rendering
 /// without putting any responsibility on the user to do so.
 ///
-/// Properties have two modes of operation, depending on the thread used to access them. While they can be written to
-/// from any thread *but* the render thread, they can only be read from the render thread.
+/// You can read Properties from both the render thread and all other threads, however when you read from any thread but
+/// the render thread, Properties can change at any time. Each individual access is protected by a mutex, but if you
+/// have a Property that is set a thousand times per second by an animation, you might read a different value at the
+/// start of a long-running function then you'd get at the end.
 ///
 /// The Property Graph
 /// ==================
 ///
-/// The Property Graph is the central management instance for all Properties in NoTF.
+/// The Property Graph is the central management instance for all Properties in NoTF. It owns the Property `nodes`, the
+/// data that makes up a Property itself, while the `Property<T>` *access* types live in userland.
 ///
 /// *Freezing* the Property Graph
 /// =============================
@@ -48,7 +51,7 @@ NOTF_OPEN_NAMESPACE
 ///     |       |         |        |           |
 ///     |       +---+ +---+        |           |
 ///     +---------+ | | +----------+           |
-///         write | | | | write                |
+///          read | | | | write                |
 ///               v v v v                      |
 ///           +-------------+                  |
 ///           |    Delta    |                  |
@@ -68,28 +71,31 @@ NOTF_OPEN_NAMESPACE
 class PropertyGraph {
 
     // TODO: implement proper time handling for properties (we might have to re-introduce the dedicated dirty flag)
-    // TODO: Instead of storing NodeBase pointers outside the graph, use the IdType<NodeBase*>
 
+    // friends
     friend class detail::PropertyBase;
-
     template<typename>
     friend class Property;
 
-    // types ---------------------------------------------------------------------------------------------------------//
-private:
+    // forwards
     template<typename>
     class NodeDelta;
 
+    // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(test::Test)
+    NOTF_ACCESS_TYPES(test::Harness)
 
     /// Thrown when a new expression would introduce a cyclic dependency into the graph.
     NOTF_EXCEPTION_TYPE(no_dag_error)
 
+    /// Alias for checking if T is a valid type to store in a Property.
+    template<typename T>
+    using is_property_type = typename std::conjunction<std::is_copy_constructible<T>, std::negation<std::is_const<T>>>;
+
     //=========================================================================
 private:
     /// Untyped base type for all PropertyNode types.
-    /// It is required that you hold the PropertyGraph mutex for all operations on PropertyNodes.
+    /// It is required (but unchecked) that you hold the PropertyGraph mutex for all operations on PropertyNodes.
     class NodeBase {
 
         // methods ------------------------------------------------------------
@@ -148,13 +154,12 @@ private:
         /// Removes all dependencies from this property.
         void _unregister_from_dependencies()
         {
-            valid_ptr<NodeBase*> const my_id = id();
             for (valid_ptr<NodeBase*> dependency_id : m_dependencies) {
                 risky_ptr<NodeBase*> dependency = PropertyGraph::instance().write_node(dependency_id);
                 if (!dependency) {
                     continue; // ignore
                 }
-                auto it = std::find(dependency->m_affected.begin(), dependency->m_affected.end(), my_id);
+                auto it = std::find(dependency->m_affected.begin(), dependency->m_affected.end(), id());
                 NOTF_ASSERT(it != dependency->m_affected.end());
                 *it = std::move(dependency->m_affected.back());
                 dependency->m_affected.pop_back();
@@ -194,7 +199,7 @@ private:
 
     /// A typed PropertyNode in the Property graph that manages all of the Properties connection, its value and optional
     /// expression.
-    template<typename T, typename = std::enable_if_t<std::is_copy_assignable<T>::value>>
+    template<typename T, typename = std::enable_if_t<is_property_type<T>::value>>
     class Node : public NodeBase {
 
         template<typename>
@@ -404,10 +409,6 @@ private:
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
-public:
-    /// Number of nodes in the graph.
-    size_t size() const { return m_nodes.size(); }
-
 private:
     /// PropertyGraph singleton.
     /// @throws application_initialization_error    If you call this method before an Application has been initialized.
@@ -419,6 +420,7 @@ private:
     valid_ptr<NodeBase*> create_node(T&& value)
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+        NOTF_ASSERT(!is_render_thread(std::this_thread::get_id()));
         std::unique_ptr<NodeBase> node = std::make_unique<Node<T>>(std::forward<T>(value));
         NodeBase* id = node.get();
         m_nodes.emplace(std::make_pair(id, std::move(node)));
@@ -426,12 +428,13 @@ private:
     }
 
     /// Returns a PropertyNode for reading without creating a new delta.
-    /// @param node     Property node to read from.
-    /// @returns        The requested node or nullptr, if the node has a deletion delta.
-    risky_ptr<NodeBase*> read_node(valid_ptr<NodeBase*> node)
+    /// @param node         Property node to read from.
+    /// @param thread_id    Id of the thread calling this function (exposed for testability).
+    /// @returns            The requested node or nullptr, if the node has a deletion delta.
+    risky_ptr<NodeBase*> read_node(valid_ptr<NodeBase*> node, const std::thread::id thread_id)
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
-        if (!is_frozen() || is_render_thread()) {
+        if (!is_frozen() || is_render_thread(thread_id)) {
             return node; // direct access
         }
 
@@ -459,8 +462,8 @@ private:
         if (!is_frozen()) {
             return node; // direct access
         }
-        if (is_render_thread()) { // do nothing if this is the render thread resolving the delta
-            return nullptr;
+        if (is_render_thread(std::this_thread::get_id())) {
+            return nullptr; // do nothing if this is the render thread resolving the delta
         }
 
         // return an existing modification delta
@@ -481,14 +484,16 @@ private:
 
     /// Deletes a given Property node.
     /// Gives the Graph the chance to create a deletion delta for a deleted node.
-    /// @param node     Property node to delete.
-    void delete_node(valid_ptr<NodeBase*> node)
+    /// @param node         Property node to delete.
+    /// @param thread_id    Id of the thread calling this function (exposed for testability).
+    /// @param node         Property node to delete.
+    void delete_node(valid_ptr<NodeBase*> node, const std::thread::id thread_id)
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
 
         // delete the property node straight away if the graph isn't frozen
         // or if this is the render thread resolving the delta
-        if (!is_frozen() || is_render_thread()) {
+        if (!is_frozen() || is_render_thread(thread_id)) {
             auto it = m_nodes.find(node);
             NOTF_ASSERT_MSG(it != m_nodes.end(), "Cannot delete unknown Property Node");
             m_nodes.erase(it);
@@ -516,10 +521,10 @@ private:
     }
 
     /// Checks if the calling thread is the current render thread.
-    bool is_render_thread() const
+    bool is_render_thread(const std::thread::id thread_id)
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
-        return std::this_thread::get_id() == m_render_thread;
+        return thread_id == m_render_thread;
     }
 
     /// Freezes the PropertyGraph.
@@ -610,28 +615,31 @@ public:
     /// Destructor.
     ~Property()
     {
-        if (m_node) {
-            if (Application::was_closed()) {
-                return;
-            }
-            PropertyGraph& graph = PropertyGraph::instance();
-            {
-                std::lock_guard<RecursiveMutex> lock(graph.m_mutex);
-                graph.delete_node(m_node);
-            }
-            m_node = nullptr;
+        if (!m_node) {
+            return;
         }
+        if (Application::was_closed()) {
+            return;
+        }
+        PropertyGraph& graph = PropertyGraph::instance();
+        {
+            std::lock_guard<RecursiveMutex> lock(graph.m_mutex);
+            graph.delete_node(m_node, std::this_thread::get_id());
+        }
+        m_node = nullptr;
     }
 
     /// The value of this Property.
-    const T& value()
+    const T& value() const
     {
         NOTF_ASSERT_MSG(m_node, "Access to invalid Property instance (are you using an object that was moved from?)");
 
         PropertyGraph& graph = PropertyGraph::instance();
         {
             std::lock_guard<RecursiveMutex> lock(graph.m_mutex);
-            valid_ptr<Node*> node = static_cast<Node*>(graph.read_node(m_node).get());
+
+            // we wouldn't be here if the Property had been removed
+            valid_ptr<Node*> node = static_cast<Node*>(graph.read_node(m_node, std::this_thread::get_id()).get());
             return node->value();
         }
     }
@@ -681,21 +689,63 @@ public:
             node->set_expression(std::move(expression), std::move(dependencies));
         }
     }
+
+#ifdef NOTF_TEST
+    /// Direct access to the node (id) of this Property - for testability only!
+    risky_ptr<NodeBase*>& node() { return m_node; }
+#endif // #ifdef NOTF_TEST
 };
 
 // ===================================================================================================================//
 
+#ifdef NOTF_TEST
+
 template<>
-class PropertyGraph::Access<test::Test> {
+class PropertyGraph::Access<test::Harness> {
 public:
     /// Freezes the PropertyGraph.
     /// All subsequent Property modifications and removals will create Delta objects until the Delta is resolved.
     /// Does nothing iff the render thread tries to freeze the graph multiple times.
-    /// @param thread_id        ID of the freezing thread, is exposed for testability only.
-    void freeze(uint id) { PropertyGraph::instance().freeze(std::thread::id(id)); }
+    /// @param thread_id    ID of the freezing thread, is exposed for testability only.
+    void freeze(const std::thread::id thread_id) { PropertyGraph::instance().freeze(thread_id); }
 
     /// Unfreezes the PropertyGraph and resolves all deltas.
     void unfreeze() { PropertyGraph::instance().unfreeze(PropertyGraph::instance().m_render_thread); }
+
+    /// Number of nodes in the graph.
+    size_t size() const { return PropertyGraph::instance().m_nodes.size(); }
+
+    /// The value of a given Property, as read from a given thread.
+    /// @param property     Property whose value to read.
+    /// @param thread_id    (Pretend) Id of the calling thread.
+    template<typename T>
+    const T& read_property(Property<T>& property, const std::thread::id thread_id)
+    {
+        using Node = PropertyGraph::Node<T>;
+        PropertyGraph& graph = PropertyGraph::instance();
+        {
+            std::lock_guard<RecursiveMutex> lock(graph.m_mutex);
+            valid_ptr<Node*> node = static_cast<Node*>(graph.read_node(property.node(), thread_id).get());
+            return node->value();
+        }
+    }
+
+    /// Deletes a Property as if it was deleted from a given thread.
+    /// @param property     Property whose value to read.
+    /// @param thread_id    (Pretend) Id of the calling thread.
+    void delete_property(const valid_ptr<PropertyGraph::NodeBase*> node, const std::thread::id thread_id)
+    {
+        PropertyGraph& graph = PropertyGraph::instance();
+        {
+            std::lock_guard<RecursiveMutex> lock(graph.m_mutex);
+            graph.delete_node(node, thread_id);
+        }
+    }
 };
+
+#else
+template<>
+class PropertyGraph::Access<test::Harness> {};
+#endif // #ifdef NOTF_TEST
 
 NOTF_CLOSE_NAMESPACE

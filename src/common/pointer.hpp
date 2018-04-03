@@ -39,7 +39,7 @@ struct valid_ptr {
     constexpr valid_ptr(U&& u) : m_ptr(std::forward<U>(u))
     {
         if (NOTF_UNLIKELY(m_ptr == nullptr)) {
-            notf_throw(bad_pointer_error, "Failed to dereference an empty pointer!");
+            notf_throw(bad_pointer_error, "Failed to dereference an empty pointer");
         }
     }
 
@@ -59,7 +59,7 @@ struct valid_ptr {
     constexpr T get() const
     {
         if (NOTF_UNLIKELY(m_ptr == nullptr)) {
-            notf_throw(bad_pointer_error, "Failed to dereference an empty pointer!");
+            notf_throw(bad_pointer_error, "Failed to dereference an empty pointer");
         }
         return m_ptr;
     }
@@ -189,7 +189,7 @@ struct risky_ptr {
     constexpr T get() const
     {
         if (NOTF_UNLIKELY(m_ptr == nullptr)) {
-            notf_throw(bad_pointer_error, "Failed to dereference an empty pointer!");
+            notf_throw(bad_pointer_error, "Failed to dereference an empty pointer");
         }
         return m_ptr;
     }

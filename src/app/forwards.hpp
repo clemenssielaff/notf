@@ -46,7 +46,7 @@ struct WindowArguments;
 } // namespace detail
 
 namespace test {
-struct Test;
+struct Harness;
 } // namespace test
 
 NOTF_CLOSE_NAMESPACE

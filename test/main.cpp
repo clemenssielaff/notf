@@ -28,8 +28,7 @@ NOTF_CLOSE_NAMESPACE
 
 int main(int argc, char* argv[])
 {
-    // don't be too verbose
-    set_log_level(LogMessage::LEVEL::WARNING);
+    set_log_level(LogMessage::LEVEL::NONE);
 
     // initialize the application and the test window
     Application::initialize(argc, argv);

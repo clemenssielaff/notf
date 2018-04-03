@@ -19,7 +19,7 @@ struct notf_exception : public std::exception {
     /// @param function  Function in which the error was thrown.
     /// @param line      Line in `file` at which the error was thrown.
     /// @param message   What has caused this exception?
-    notf_exception(std::string file, std::string function, uint line, std::string message = {});
+    notf_exception(std::string file, std::string function, uint line, std::string msg = {});
 
     /// Destructor.
     virtual ~notf_exception() override;
@@ -37,13 +37,13 @@ struct notf_exception : public std::exception {
 /// Note that this declares but does not implement the virtual destructor, in order to avoid warnings about emitting the
 /// class' v-table into every unit, you'll have to implement the (empty) destructor somewhere manually.
 #ifndef NOTF_EXCEPTION_TYPE
-#define NOTF_EXCEPTION_TYPE(TYPE)                                                                  \
-    struct TYPE : public notf::notf_exception {                                                    \
-        TYPE(std::string file, std::string function, uint line, std::string message)               \
-            : notf::notf_exception(std::move(file), std::move(function), line, std::move(message)) \
-        {}                                                                                         \
-        TYPE(const TYPE&) = default;                                                               \
-        virtual ~TYPE() override;                                                                  \
+#define NOTF_EXCEPTION_TYPE(TYPE)                                                              \
+    struct TYPE : public notf::notf_exception {                                                \
+        TYPE(std::string file, std::string function, uint line, std::string msg)               \
+            : notf::notf_exception(std::move(file), std::move(function), line, std::move(msg)) \
+        {}                                                                                     \
+        TYPE(const TYPE&) = default;                                                           \
+        virtual ~TYPE() override;                                                              \
     };
 #else
 #warning "Macro 'NOTF_EXCEPTION_TYPE' is already defined - NoTF's NOTF_EXCEPTION_TYPE macro will remain disabled."
@@ -111,9 +111,9 @@ NOTF_EXCEPTION_TYPE(thread_error)
     }
 
 /// NoTF assertion macro with attached message.
-#define NOTF_ASSERT_MSG(EXPR, MSG)                                                                       \
-    if (!static_cast<bool>(EXPR)) {                                                                      \
-        notf_throw_format(assertion_error,                                                               \
+#define NOTF_ASSERT_MSG(EXPR, MSG)                                                                        \
+    if (!static_cast<bool>(EXPR)) {                                                                       \
+        notf_throw_format(assertion_error,                                                                \
                           "Assertion \"" << NOTF_DEFER(NOTF_STR, EXPR) << "\" failed! Message: " << MSG); \
     }
 

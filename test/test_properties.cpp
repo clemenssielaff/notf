@@ -7,6 +7,10 @@ NOTF_USING_NAMESPACE
 
 SCENARIO("a PropertyGraph can be set up and modified", "[app], [property_graph]")
 {
+    const std::thread::id some_thread_id{1};
+    const std::thread::id other_thread_id{2};
+    const std::thread::id render_thread_id{3};
+
     auto& app = Application::instance();
 
     GIVEN("an empty PropertyGraph")
@@ -17,7 +21,10 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app], [property_graph]"
             Property<int> int_prop2(2);
             Property<std::string> str_prop1("derbe");
 
-            THEN("the graph has grown by the number of added properties") { REQUIRE(app.property_graph().size() == 3); }
+            THEN("the graph has grown by the number of added properties")
+            {
+                REQUIRE(PropertyGraph::Access<test::Harness>().size() == 3);
+            }
 
             THEN("you can read their value")
             {
@@ -60,31 +67,65 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app], [property_graph]"
                 Property<int> int_prop2(2);
                 Property<std::string> str_prop1("derbe");
             }
-            THEN("the graph is empty again") { CHECK(app.property_graph().size() == 0); }
+            THEN("the graph is empty again") { CHECK(PropertyGraph::Access<test::Harness>().size() == 0); }
         }
 
         WHEN("you freeze the graph")
         {
-            Property<int> int_prop1(48);
+            std::unique_ptr<Property<int>> iprop = std::make_unique<Property<int>>(48);
+            std::unique_ptr<Property<std::string>> sprop = std::make_unique<Property<std::string>>("before");
 
-            PropertyGraph::Access<test::Test> graph_access;
-            graph_access.freeze(1);
+            PropertyGraph::Access<test::Harness> graph_access;
+            graph_access.freeze(render_thread_id);
 
             AND_THEN("change a value before unfreezing")
             {
-                int_prop1.set_value(24);
+                iprop->set_value(24);
+                sprop->set_value("after");
 
                 THEN("the new value will replace the old one for all but the render thread")
                 {
-                    REQUIRE(int_prop1.value() == 24);
+                    REQUIRE(iprop->value() == 24);
+                    REQUIRE(graph_access.read_property(*iprop, some_thread_id) == 24);
+                    REQUIRE(graph_access.read_property(*iprop, other_thread_id) == 24);
+                    REQUIRE(graph_access.read_property(*iprop, render_thread_id) == 48);
+
+                    REQUIRE(sprop->value() == "after");
+                    REQUIRE(graph_access.read_property(*sprop, some_thread_id) == "after");
+                    REQUIRE(graph_access.read_property(*sprop, other_thread_id) == "after");
+                    REQUIRE(graph_access.read_property(*sprop, render_thread_id) == "before");
                 }
 
                 AND_WHEN("the graph is unfrozen again")
                 {
                     graph_access.unfreeze();
 
-                    THEN("the new value will replace the old one") { REQUIRE(int_prop1.value() == 24); }
+                    THEN("the new value will replace the old one")
+                    {
+                        REQUIRE(iprop->value() == 24);
+                        REQUIRE(graph_access.read_property(*iprop, some_thread_id) == 24);
+                        REQUIRE(graph_access.read_property(*iprop, other_thread_id) == 24);
+                        REQUIRE(graph_access.read_property(*iprop, render_thread_id) == 24);
+
+                        REQUIRE(sprop->value() == "after");
+                        REQUIRE(graph_access.read_property(*sprop, other_thread_id) == "after");
+                        REQUIRE(graph_access.read_property(*sprop, some_thread_id) == "after");
+                        REQUIRE(graph_access.read_property(*sprop, render_thread_id) == "after");
+                    }
                 }
+            }
+
+            AND_THEN("delete a property before unfreezing")
+            {
+                graph_access.delete_property(iprop->node().get(), some_thread_id);
+
+                REQUIRE_THROWS(iprop->value()); // property is actually deleted (not possible without test harness)
+
+                THEN("the render thread will still be able to access the property")
+                {
+                    REQUIRE(graph_access.read_property(*iprop, render_thread_id) == 48);
+                }
+                iprop->node() = nullptr; // to avoid double-freeing the node
             }
         }
     }

@@ -25,13 +25,14 @@ void PropertyGraph::NodeBase::_detect_cycles(const std::vector<valid_ptr<NodeBas
 {
     PropertyGraph& graph = PropertyGraph::instance();
     NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
+    const std::thread::id thread_id = std::this_thread::get_id();
 
     robin_set<valid_ptr<NodeBase*>> unchecked, checked;
     unchecked.reserve(dependencies.size());
     checked.reserve(dependencies.size());
 
     for (NodeBase* id : dependencies) {
-        if (risky_ptr<NodeBase*> dependency = graph.read_node(id)) {
+        if (risky_ptr<NodeBase*> dependency = graph.read_node(id, thread_id)) {
             unchecked.insert(dependency);
         }
     }
