@@ -66,7 +66,7 @@ PropertyGraph::DeletionDelta::~DeletionDelta() = default;
 void PropertyGraph::freeze(const std::thread::id thread_id)
 {
     std::lock_guard<RecursiveMutex> lock(m_mutex);
-    if (m_render_thread != std::thread::id()) {
+    if (m_render_thread != std::thread::id(0)) {
         return;
     }
     m_render_thread = thread_id;
@@ -75,6 +75,9 @@ void PropertyGraph::freeze(const std::thread::id thread_id)
 void PropertyGraph::unfreeze(const std::thread::id thread_id)
 {
     std::lock_guard<RecursiveMutex> lock(m_mutex);
+    if(!is_frozen()){
+        return;
+    }
     if (thread_id != m_render_thread) {
         notf_throw(thread_error, "Only the render thread can unfreeze the PropertyGraph");
     }
@@ -94,6 +97,7 @@ void PropertyGraph::unfreeze(const std::thread::id thread_id)
         }
     }
     m_delta.clear();
+    m_render_thread = std::thread::id(0);
 }
 
 NOTF_CLOSE_NAMESPACE

@@ -70,15 +70,17 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app], [property_graph]"
             THEN("the graph is empty again") { CHECK(PropertyGraph::Access<test::Harness>().size() == 0); }
         }
 
-        WHEN("you freeze the graph")
+        WHEN("create a graph with a few properties and freeze it")
         {
             std::unique_ptr<Property<int>> iprop = std::make_unique<Property<int>>(48);
+            std::unique_ptr<Property<int>> iprop2 = std::make_unique<Property<int>>(0);
             std::unique_ptr<Property<std::string>> sprop = std::make_unique<Property<std::string>>("before");
 
             PropertyGraph::Access<test::Harness> graph_access;
+
             graph_access.freeze(render_thread_id);
 
-            AND_THEN("change a value before unfreezing")
+            AND_THEN("change a value")
             {
                 iprop->set_value(24);
                 sprop->set_value("after");
@@ -113,9 +115,10 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app], [property_graph]"
                         REQUIRE(graph_access.read_property(*sprop, render_thread_id) == "after");
                     }
                 }
+
             }
 
-            AND_THEN("delete a property before unfreezing")
+            AND_THEN("delete a property")
             {
                 graph_access.delete_property(iprop->node().get(), some_thread_id);
 
@@ -127,6 +130,35 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app], [property_graph]"
                 }
                 iprop->node() = nullptr; // to avoid double-freeing the node
             }
+
+            AND_THEN("define an expression for a property")
+            {
+                Property<int>& iprop_ref = *iprop.get();
+                iprop2->set_expression([&iprop_ref] { return iprop_ref.value() + 1; }, {iprop_ref});
+
+                THEN("the expression will replace the old value for all but the render thread")
+                {
+                    REQUIRE(iprop2->value() == 49);
+                    REQUIRE(graph_access.read_property(*iprop2, some_thread_id) == 49);
+                    REQUIRE(graph_access.read_property(*iprop2, other_thread_id) == 49);
+                    REQUIRE(graph_access.read_property(*iprop2, render_thread_id) == 0);
+                }
+
+                AND_WHEN("the graph is unfrozen again")
+                {
+                    graph_access.unfreeze();
+
+                    THEN("the expression will replace the old value")
+                    {
+                        REQUIRE(iprop2->value() == 49);
+                        REQUIRE(graph_access.read_property(*iprop2, some_thread_id) == 49);
+                        REQUIRE(graph_access.read_property(*iprop2, other_thread_id) == 49);
+                        REQUIRE(graph_access.read_property(*iprop2, render_thread_id) == 49);
+                    }
+                }
+            }
+
+            graph_access.unfreeze(); // always unfreeze!
         }
     }
 }

@@ -380,6 +380,7 @@ private:
         /// The modified PropertyNode.
         virtual valid_ptr<NodeBase*> node() const override { return m_node.get(); }
 
+        // fields -------------------------------------------------------------
     private:
         /// Copy of the modified node.
         std::unique_ptr<NodeBase> m_node;
@@ -403,9 +404,21 @@ private:
         /// The modified PropertyNode.
         virtual valid_ptr<NodeBase*> node() const override { return m_node; }
 
+        // fields -------------------------------------------------------------
     private:
         /// Property that was deleted.
         valid_ptr<NodeBase*> m_node;
+    };
+
+    //=========================================================================
+
+    /// RAII object to make sure that a frozen graph is ALWAYS unfrozen again
+    struct NOTF_NODISCARD FreezeGuard {
+        /// Constructor.
+        FreezeGuard() { PropertyGraph::instance().freeze(std::this_thread::get_id()); }
+
+        /// Destructor.
+        ~FreezeGuard() { PropertyGraph::instance().unfreeze(std::this_thread::get_id()); }
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -517,7 +530,7 @@ private:
     bool is_frozen() const
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
-        return m_render_thread != std::thread::id();
+        return m_render_thread != std::thread::id(0);
     }
 
     /// Checks if the calling thread is the current render thread.
