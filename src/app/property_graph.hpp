@@ -499,7 +499,6 @@ private:
     /// Gives the Graph the chance to create a deletion delta for a deleted node.
     /// @param node         Property node to delete.
     /// @param thread_id    Id of the thread calling this function (exposed for testability).
-    /// @param node         Property node to delete.
     void delete_node(valid_ptr<NodeBase*> node, const std::thread::id thread_id)
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());

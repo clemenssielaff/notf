@@ -229,9 +229,9 @@ using void_t = typename make_void<Ts...>::type;
 //====================================================================================================================//
 
 /// Convienience macros to temporarely disable a single warning.
-/// DISABLE_WARNING("switch-enum")
+/// NOTF_DISABLE_WARNING("switch-enum")
 ///     ...
-/// ENABLE_WARNINGS
+/// NOTF_ENABLE_WARNINGS
 #define NOTF_DISABLE_WARNING_STR_(x) GCC diagnostic ignored "-W" x
 #define NOTF_DISABLE_WARNING(x)          \
     NOTF_PRAGMA("clang diagnostic push") \

@@ -41,6 +41,7 @@ namespace detail {
 
 class PropertyBase;
 class SceneNodeBase;
+struct SceneNodeChildHelper;
 struct WindowArguments;
 
 } // namespace detail

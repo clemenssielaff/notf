@@ -15,18 +15,19 @@ NOTF_OPEN_NAMESPACE
 /// subtypes may pose additional restrictions.
 ///
 /// Only SceneNodes may create other SceneNodes. The only method allowed to create SceneNodes is in the
-/// `SceneManager::Access<SceneNode>` accessor called `add_child`, returning a `ChildSceneNode<T>` (with T being the
+/// `SceneManager::Access<SceneNode>` accessor called `_add_child`, returning a `ChildSceneNode<T>` (with T being the
 /// type of the child node). ChildSceneNodes owns their actual child SceneNode, meaning that when they are destroyed, so
-/// is their child SceneNode. You store them in the parent SceneNode, in any way that makes most sense for the type of
-/// node (list, map, quadtree...). They are not copy- or assignable, think of them as specialized unique_ptr.
+/// is their child SceneNode. You store them in the parenting SceneNode, in any way that makes most sense for the type
+/// of node (list, map, quadtree...). They are not copy- or assignable, think of them as specialized unique_ptr.
 ///
 /// To traverse the hierarchy, we need to know all of the children of a SceneNode and their draw order, from back
 /// to front (earlier nodes are drawn behind later nodes). Therefore, a Node must keep a vector of raw SceneNode
-/// pointers that point to the nodes that the node itself owns through NodePtr objects. By default, `add_child` appends
+/// pointers that point to the nodes that the node itself owns through NodePtr objects. By default, `_add_child` appends
 /// a raw pointer to the newly created SceneNode to the `m_children` vector, resulting in each new child being drawn in
 /// front of its next-older sibling. You are free to reshuffle the children as you please using the dedicated functions
 /// on SceneNode. The destructor of ChildSceneNode automatically finds and removes its SceneNode from the parent's
 /// `m_children` vector.
+/// The `m_children` vector is private so you can't mess it up ;)
 ///
 /// SceneNodes also have a link back to their parent, in a ParentSceneNode object. They work much the same way as a
 /// ChildSceneNode, but do not own the parent (obviously). As parents are guaranteed to outlive their children in the
@@ -45,21 +46,15 @@ NOTF_OPEN_NAMESPACE
 /// =======
 ///
 /// SceneNodes communicate with each other either through their relationship in the hierachy (parents to children and
-/// vice-versa) or via Signals. Signals have the advantage of being able to connect every SceneNode regardless of its
-/// position in the hierarchy, given that both the source and the target are managed by the same SceneManager (for
-/// threading reasons). They can be created by the user and enabled/disabled at will. In order to facilitate Signal
-/// handling at the lowest possible level, all SceneNodes derive from the `receive_signals` class that takes care of
-/// removing leftover connections that still exist once the SceneNode goes out of scope.
+/// vice-versa) or via Signals. Signals have the advantage of being able to connect every SceneNode underneath the same
+/// SceneManager regardless of its position in the hierarchy. They can be created by the user and enabled/disabled at
+/// will. In order to facilitate Signal handling at the lowest possible level, all SceneNodes derive from the
+/// `receive_signals` class that takes care of removing leftover connections that still exist once the SceneNode goes
+/// out of scope.
 ///
-class SceneNode : public detail::SceneNodeBase {
+class SceneNode : public detail::SceneNodeBase, public SceneNodeInterface<SceneNode> {
 
     // types ---------------------------------------------------------------------------------------------------------//
-private:
-    using SceneNodeBase = detail::SceneNodeBase;
-
-    /// Thrown when a node did not have the expected position in the hierarchy.
-    NOTF_EXCEPTION_TYPE(hierarchy_error)
-
 public:
     /// Convenience container for easy mutable iteration over all of a SceneNode's children.
     struct Children {
@@ -107,29 +102,29 @@ public:
 
     //=========================================================================
 protected:
-    /// Token object to make sure that object instances can only be created by a call to `_create`.
+    /// Thrown when a node did not have the expected position in the hierarchy.
+    NOTF_EXCEPTION_TYPE(hierarchy_error)
+
+    /// Token object to make sure that object instances can only be created by a call to `_add_child`.
     class Token {
         friend class SceneNode;
         Token() {} // not `= default`, otherwise you could construct a Token via `Token{}`.
     };
 
+private:
+    using SceneNodeBase = detail::SceneNodeBase;
+
     // methods -------------------------------------------------------------------------------------------------------//
-protected:
+public:
     /// Constructor.
     /// @param token    Factory token provided by SceneNode::_add_child.
     /// @param manager  SceneManager containing the Scene of this SceneNode.
     /// @param parent   Parent SceneNode.
     SceneNode(const Token&, SceneManager& manager, SceneNodeParent parent);
 
-    /// Copy Constructor.
-    /// @param other    SceneNode to copy.
-    explicit SceneNode(const SceneNode& other)
-        : SceneNodeBase(other.m_manager), m_parent(other.m_parent), m_children(other.m_children), m_name(other.m_name)
-    {}
-
-public:
-    /// No assignment.
-    void operator=(const SceneNode&) = delete;
+    /// Default copy and move constructors
+    SceneNode(const SceneNode& other) = default;
+    SceneNode(SceneNode&& other) = default;
 
     /// Destructor
     ~SceneNode() override;
@@ -145,8 +140,8 @@ public:
 
     ///@{
     /// The parent of this SceneNode.
-    valid_ptr<SceneNode*> parent() { return m_parent.get(); }
-    valid_ptr<const SceneNode*> parent() const { return const_cast<SceneNode*>(this)->parent(); }
+    valid_ptr<SceneNode*> parent() { return m_parent.get_mutable(); }
+    valid_ptr<const SceneNode*> parent() const { return m_parent.get_const(); }
     ///@}
 
     /// Tests, if this SceneNode is a descendant of the given ancestor.
@@ -205,9 +200,14 @@ public:
 protected:
     /// Adds a new child SceneNode to the
     /// @param args     Arguments to create the new node with.
-    template<typename T, typename... Args, typename = std::enable_if_t<SceneManager::is_scene_node_type<T>::value>>
+    template<typename T, typename... Args, typename = std::enable_if_t<detail::is_valid_scene_node_type<T>()>>
     SceneNodeChild<T> _add_child(Args&&... args)
     {
+        static_assert(detail::is_valid_scene_node_type<T>(), "Not a valid SceneNode subtype");
+
+        constexpr bool implements_interface = std::is_base_of<SceneNodeInterface<T>, T>::value;
+        static_assert(implements_interface, "Each SceneNode subtype `T` must derive from `SceneNodeInterface<T>`");
+
         const Token token;
         return SceneManager::Access<SceneNode>(this).add_child<T>(token, std::forward<Args>(args)...);
     }
@@ -223,5 +223,7 @@ private:
     /// The user-defined name of this SceneNode, is potentially empty and not guaranteed to be unique if set.
     std::string m_name;
 };
+
+static_assert(detail::is_valid_scene_node_type<SceneNode>(), "SceneNode doesn't validate as a scene node subtype.");
 
 NOTF_CLOSE_NAMESPACE
