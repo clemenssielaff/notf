@@ -432,11 +432,13 @@ private:
     template<typename T>
     valid_ptr<NodeBase*> create_node(T&& value)
     {
-        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
         NOTF_ASSERT(!is_render_thread(std::this_thread::get_id()));
         std::unique_ptr<NodeBase> node = std::make_unique<Node<T>>(std::forward<T>(value));
         NodeBase* id = node.get();
-        m_nodes.emplace(std::make_pair(id, std::move(node)));
+        {
+            std::lock_guard<RecursiveMutex> lock(m_mutex);
+            m_nodes.emplace(std::make_pair(id, std::move(node)));
+        }
         return id;
     }
 
@@ -609,11 +611,7 @@ public:
     /// @param value    Initial value of the Property.
     explicit Property(T&& value) : PropertyBase()
     {
-        PropertyGraph& graph = PropertyGraph::instance();
-        {
-            std::lock_guard<RecursiveMutex> lock(graph.m_mutex);
-            m_node = graph.create_node(std::forward<T>(value));
-        }
+        m_node = PropertyGraph::instance().create_node(std::forward<T>(value));
     }
 
     /// Move Constructor.
