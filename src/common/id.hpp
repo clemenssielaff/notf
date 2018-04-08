@@ -16,6 +16,8 @@ NOTF_OPEN_NAMESPACE
 template<typename type, typename underlying_type, typename... aux>
 struct IdType {
 
+    static_assert(std::is_integral<underlying_type>::value, "The underlying type of an IdType must be integral");
+
     // types ---------------------------------------------------------------------------------------------------------//
 public:
     /// Type identified by the ID.
@@ -27,11 +29,6 @@ public:
     /// Auxiliary types.
     /// Useful, if you want to attach more type information to the ID type.
     using aux_ts = std::tuple<aux...>;
-
-private:
-    /// We cannot use SFINAE in the struct template because of the variadic template parameters, but we can use it here:
-    using fails_if_underlying_type_is_not_integral =
-        typename std::enable_if_t<std::is_integral<underlying_type>::value>;
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:

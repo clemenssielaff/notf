@@ -25,14 +25,13 @@ void PropertyGraph::NodeBase::_detect_cycles(const std::vector<valid_ptr<NodeBas
 {
     PropertyGraph& graph = PropertyGraph::instance();
     NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
-    const std::thread::id thread_id = std::this_thread::get_id();
 
     robin_set<valid_ptr<NodeBase*>> unchecked, checked;
     unchecked.reserve(dependencies.size());
     checked.reserve(dependencies.size());
 
     for (NodeBase* id : dependencies) {
-        if (risky_ptr<NodeBase*> dependency = graph.read_node(id, thread_id)) {
+        if (risky_ptr<NodeBase*> dependency = graph.read_node(id)) {
             unchecked.insert(dependency);
         }
     }
@@ -66,7 +65,7 @@ PropertyGraph::DeletionDelta::~DeletionDelta() = default;
 void PropertyGraph::freeze(const std::thread::id thread_id)
 {
     std::lock_guard<RecursiveMutex> lock(m_mutex);
-    if (m_render_thread != std::thread::id(0)) {
+    if (m_render_thread != std::thread::id()) {
         return;
     }
     m_render_thread = thread_id;
@@ -75,7 +74,7 @@ void PropertyGraph::freeze(const std::thread::id thread_id)
 void PropertyGraph::unfreeze(const std::thread::id thread_id)
 {
     std::lock_guard<RecursiveMutex> lock(m_mutex);
-    if(!is_frozen()){
+    if (!is_frozen()) {
         return;
     }
     if (thread_id != m_render_thread) {
@@ -97,7 +96,7 @@ void PropertyGraph::unfreeze(const std::thread::id thread_id)
         }
     }
     m_delta.clear();
-    m_render_thread = std::thread::id(0);
+    m_render_thread = std::thread::id();
 }
 
 NOTF_CLOSE_NAMESPACE

@@ -150,6 +150,12 @@ bool index_of(const std::vector<T>& vector, const T& value, size_t& result)
 }
 
 /// Moves the value at the iterator to the end of the vector.
+/// Example:
+///
+///     std::vector<int> vec = { 0, 1, 2, 3, 4, 5, 6, 7 };
+///     auto it = std::find(vec.begin(), vec.end(), 5);
+///     move_to_back(vec, it); // vector is now { 0, 1, 2, 3, 4, 6, 7, 5 }
+///
 /// @param vec  Vector to modify.
 /// @param it   Iterator to the element to move to the back.
 template<typename T>
@@ -158,22 +164,28 @@ inline void move_to_back(std::vector<T>& vec, typename std::vector<T>::iterator 
     std::rotate(it, std::next(it), vec.end());
 }
 
-/// Moves the value at the iterator to the end of the vector.
+/// Moves the value at the iterator to the front of the vector.
+/// Example:
+///
+///     std::vector<int> vec = { 0, 1, 2, 3, 4, 5, 6, 7 };
+///     auto it = std::find(vec.begin(), vec.end(), 5);
+///     move_to_back(vec, it); // vector is now { 5, 0, 1, 2, 3, 4, 6, 7 }
+///
 /// @param vec  Vector to modify.
-/// @param it   Iterator to the element to move to the back.
+/// @param it   Iterator to the element to move to the front.
 template<typename T>
 inline void move_to_front(std::vector<T>& vec, typename std::vector<T>::iterator it)
 {
     std::rotate(vec.begin(), it, std::next(it));
 }
 
-/// Stacks the given iterator right before the other.
+/// Stacks the given iterator just to the left of the other.
 /// @param vec      Vector to modify.
 /// @param it       Iterator to the element to move.
-/// @param other    Element following `it` after this function.
+/// @param other    Element just to the right of `it` after this function has run.
 template<typename T>
 inline void
-stack_before(std::vector<T>& vec, typename std::vector<T>::iterator it, typename std::vector<T>::iterator other)
+move_in_front_of(std::vector<T>& vec, typename std::vector<T>::iterator it, typename std::vector<T>::iterator other)
 {
     if (it == other) {
         return;
@@ -186,13 +198,13 @@ stack_before(std::vector<T>& vec, typename std::vector<T>::iterator it, typename
     }
 }
 
-/// Stacks the given iterator right behind the other.
+/// Stacks the given iterator just to the right of the other.
 /// @param vec      Vector to modify.
 /// @param it       Iterator to the element to move.
-/// @param other    Element following `it` after this function.
+/// @param other    Element just to the left of `it` after this function has run.
 template<typename T>
 inline void
-stack_behind(std::vector<T>& vec, typename std::vector<T>::iterator it, typename std::vector<T>::iterator other)
+move_behind_of(std::vector<T>& vec, typename std::vector<T>::iterator it, typename std::vector<T>::iterator other)
 {
     if (it == other) {
         return;
@@ -205,4 +217,11 @@ stack_behind(std::vector<T>& vec, typename std::vector<T>::iterator it, typename
     }
 }
 
+/// Checks if a vector contains a given value.
+/// @param value    Value to search for.
+template<typename T>
+bool contains(const std::vector<T>& vec, const T& value)
+{
+    return std::find(vec.begin(), vec.end(), value) != vec.end();
+}
 NOTF_CLOSE_NAMESPACE

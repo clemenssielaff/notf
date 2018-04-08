@@ -1,7 +1,7 @@
 #include "catch.hpp"
 
 #include "app/application.hpp"
-#include "app/scene_node.hpp"
+#include "app/scene_manager.hpp"
 #include "app/window.hpp"
 #include "testenv.hpp"
 

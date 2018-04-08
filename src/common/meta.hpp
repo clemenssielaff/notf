@@ -342,6 +342,19 @@ constexpr std::uintptr_t to_number(const T* const ptr) noexcept
 
 //====================================================================================================================//
 
+/// Defined not because boolean reasoning is not hard.
+#define NOTF_THROWS_IF(x) noexcept(!(x))
+#define NOTF_THROWS noexcept(false)
+
+/// Useful for cases like `NOTF_THROWS_IF(is_debug_build())`.
+#ifdef NOTF_DEBUG
+constexpr bool is_debug_build() noexcept { return true; }
+#else
+constexpr bool is_debug_build() noexcept { return false; }
+#endif
+
+//====================================================================================================================//
+
 namespace detail {
 
 /// Simple `new` forward to allow the creation of an instance from a protected or private constructor.

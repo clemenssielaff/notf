@@ -415,10 +415,10 @@ private:
     /// RAII object to make sure that a frozen graph is ALWAYS unfrozen again
     struct NOTF_NODISCARD FreezeGuard {
         /// Constructor.
-        FreezeGuard() { PropertyGraph::instance().freeze(std::this_thread::get_id()); }
+        FreezeGuard() { PropertyGraph::instance().freeze(); }
 
         /// Destructor.
-        ~FreezeGuard() { PropertyGraph::instance().unfreeze(std::this_thread::get_id()); }
+        ~FreezeGuard() { PropertyGraph::instance().unfreeze(); }
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -432,7 +432,6 @@ private:
     template<typename T>
     valid_ptr<NodeBase*> create_node(T&& value)
     {
-        NOTF_ASSERT(!is_render_thread(std::this_thread::get_id()));
         std::unique_ptr<NodeBase> node = std::make_unique<Node<T>>(std::forward<T>(value));
         NodeBase* id = node.get();
         {
@@ -444,9 +443,10 @@ private:
 
     /// Returns a PropertyNode for reading without creating a new delta.
     /// @param node         Property node to read from.
-    /// @param thread_id    Id of the thread calling this function (exposed for testability).
+    /// @param thread_id    ID of the freezing thread, uses the calling thread by default. (exposed for testability)
     /// @returns            The requested node or nullptr, if the node has a deletion delta.
-    risky_ptr<NodeBase*> read_node(valid_ptr<NodeBase*> node, const std::thread::id thread_id)
+    risky_ptr<NodeBase*>
+    read_node(valid_ptr<NodeBase*> node, const std::thread::id thread_id = std::this_thread::get_id())
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
         if (!is_frozen() || is_render_thread(thread_id)) {
@@ -501,7 +501,7 @@ private:
     /// Gives the Graph the chance to create a deletion delta for a deleted node.
     /// @param node         Property node to delete.
     /// @param thread_id    Id of the thread calling this function (exposed for testability).
-    void delete_node(valid_ptr<NodeBase*> node, const std::thread::id thread_id)
+    void delete_node(valid_ptr<NodeBase*> node, const std::thread::id thread_id = std::this_thread::get_id())
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
 
@@ -531,7 +531,7 @@ private:
     bool is_frozen() const
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
-        return m_render_thread != std::thread::id(0);
+        return m_render_thread != std::thread::id();
     }
 
     /// Checks if the calling thread is the current render thread.
@@ -544,13 +544,13 @@ private:
     /// Freezes the PropertyGraph.
     /// All subsequent Property modifications and removals will create Delta objects until the Delta is resolved.
     /// Is ignored if the graph is already frozen.
-    /// @param thread_id        ID of the freezing thread, is exposed for testability only.
-    void freeze(const std::thread::id thread_id);
+    /// @param thread_id    ID of the freezing thread, uses the calling thread by default. (exposed for testability)
+    void freeze(const std::thread::id thread_id = std::this_thread::get_id());
 
     /// Unfreezes the PropertyGraph and resolves all deltas.
-    /// @param thread_id        ID of the freezing thread, is exposed for testability only.
+    /// @param thread_id        ID of the freezing thread, uses the calling thread by default. (exposed for testability)
     /// @throws thread_error    If any but the freezing thread tries to unfreeze the graph.
-    void unfreeze(const std::thread::id thread_id);
+    void unfreeze(const std::thread::id thread_id = std::this_thread::get_id());
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
@@ -634,7 +634,7 @@ public:
         PropertyGraph& graph = PropertyGraph::instance();
         {
             std::lock_guard<RecursiveMutex> lock(graph.m_mutex);
-            graph.delete_node(m_node, std::this_thread::get_id());
+            graph.delete_node(m_node);
         }
         m_node = nullptr;
     }
@@ -649,7 +649,7 @@ public:
             std::lock_guard<RecursiveMutex> lock(graph.m_mutex);
 
             // we wouldn't be here if the Property had been removed
-            valid_ptr<Node*> node = static_cast<Node*>(graph.read_node(m_node, std::this_thread::get_id()).get());
+            valid_ptr<Node*> node = static_cast<Node*>(graph.read_node(m_node).get());
             return node->value();
         }
     }

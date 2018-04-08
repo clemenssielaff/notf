@@ -5,7 +5,6 @@
 #include "app/application.hpp"
 #include "app/property_graph.hpp"
 #include "app/scene_manager.hpp"
-#include "app/scene_node.hpp"
 #include "app/window.hpp"
 #include "common/log.hpp"
 #include "common/vector.hpp"
@@ -21,7 +20,7 @@ int properties_main(int argc, char* argv[])
     }
     std::cout << std::endl;
 
-    stack_behind(vec, iterator_at(vec, 5), iterator_at(vec, 2));
+    move_behind_of(vec, iterator_at(vec, 5), iterator_at(vec, 2));
 
     for(const auto& i : vec){
         std::cout << i << ", ";
