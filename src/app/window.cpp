@@ -33,7 +33,7 @@ window_initialization_error::~window_initialization_error() {}
 const Window::Args Window::s_default_args = {};
 
 Window::Window(const Args& args)
-    : m_glfw_window(nullptr, detail::window_deleter), m_title(args.title), m_size(args.width, args.height)
+    : m_glfw_window(nullptr, detail::window_deleter), m_title(args.title), m_state(args.state), m_size(args.size)
 {
     // make sure that an Application was initialized before instanciating a Window (will throw on failure)
     Application& app = Application::instance();
@@ -52,6 +52,7 @@ Window::Window(const Args& args)
                           "Window or OpenGL context creation failed for Window '" << title() << "'");
     }
     glfwSetWindowUserPointer(m_glfw_window.get(), this);
+    set_state(m_state);
 
     // create the auxiliary objects
     m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window.get());
@@ -141,6 +142,21 @@ Vector2f Window::mouse_pos() const
 }
 
 void Window::request_redraw() { Application::Access<Window>(this).request_redraw(); }
+
+void Window::set_state(const State state)
+{
+    switch (state) {
+    case State::MINIMIZED:
+        glfwIconifyWindow(m_glfw_window.get());
+        break;
+    case State::WINDOWED:
+        glfwRestoreWindow(m_glfw_window.get());
+        break;
+    case State::FULLSCREEN:
+        glfwMaximizeWindow(m_glfw_window.get());
+        break;
+    }
+}
 
 void Window::close()
 {

@@ -1,5 +1,7 @@
 #include "common/exception.hpp"
 
+#include <iostream>
+
 #include "common/log.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -7,6 +9,8 @@ NOTF_OPEN_NAMESPACE
 notf_exception::notf_exception(std::string file, std::string function, uint line, std::string msg)
     : std::exception(), message(std::move(msg))
 {
+    std::cerr << message << std::endl;  // TODO: we need some sort of priority log for fatal messages
+                                        // this is a HACK ONLY
     LogMessageFactory log_message(LogMessage::LEVEL::CRITICAL, line, std::move(file), std::move(function));
     log_message.input << message;
 }

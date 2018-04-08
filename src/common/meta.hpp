@@ -377,10 +377,10 @@ struct make_shared_enabler : public T {
 } // namespace detail
 
 /// Put into the class body to allow the use of NOTF_MAKE_SHARED_FROM_PRIVATE
-#define NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE         \
-    template<typename T, typename... Args>         \
-    friend T* detail::make_new_enabler(Args&&...); \
-    template<typename>                             \
+#define NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE           \
+    template<typename _T, typename... _Args>         \
+    friend _T* detail::make_new_enabler(_Args&&...); \
+    template<typename>                               \
     friend struct detail::make_shared_enabler;
 
 /// I found that debugging a `detail::make_shared_enable<T>` instance is not as reliable (members seem to be missing?)

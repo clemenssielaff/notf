@@ -105,16 +105,18 @@ NOTF_EXCEPTION_TYPE(thread_error)
 #ifdef NOTF_DEBUG
 
 /// NoTF assertion macro.
-#define NOTF_ASSERT(EXPR)                                                                                 \
-    if (!static_cast<bool>(EXPR)) {                                                                       \
-        notf_throw_format(assertion_error, "Assertion \"" << NOTF_DEFER(NOTF_STR, EXPR) << "\" failed!"); \
+#define NOTF_ASSERT(EXPR)                                                                                             \
+    if (!static_cast<bool>(EXPR)) {                                                                                   \
+        notf_throw_format(assertion_error, "Assertion \"" << NOTF_DEFER(NOTF_STR, EXPR) << "\" failed "               \
+                                                          << "on: " << notf::basename(__FILE__) << "::" << __LINE__); \
     }
 
 /// NoTF assertion macro with attached message.
-#define NOTF_ASSERT_MSG(EXPR, MSG)                                                                        \
-    if (!static_cast<bool>(EXPR)) {                                                                       \
-        notf_throw_format(assertion_error,                                                                \
-                          "Assertion \"" << NOTF_DEFER(NOTF_STR, EXPR) << "\" failed! Message: " << MSG); \
+#define NOTF_ASSERT_MSG(EXPR, MSG)                                                                                  \
+    if (!static_cast<bool>(EXPR)) {                                                                                 \
+        notf_throw_format(assertion_error, "Assertion \"" << NOTF_DEFER(NOTF_STR, EXPR) << "\" failed "             \
+                                                          << "on: " << notf::basename(__FILE__) << "::" << __LINE__ \
+                                                          << " with message: " << MSG);                             \
     }
 
 #else

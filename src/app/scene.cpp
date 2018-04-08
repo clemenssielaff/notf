@@ -40,6 +40,7 @@ Scene::Node::~Node() NOTF_THROWS_IF(is_debug_build())
     // remove child container
     auto children_it = m_scene.m_child_container.find(m_children);
     NOTF_ASSERT(children_it != m_scene.m_child_container.end());
+    NOTF_ASSERT_MSG(children_it->second->empty(), "Node \"" << name() << "\" must not outlive its child nodes");
     m_scene.m_child_container.erase(children_it);
 }
 
@@ -147,7 +148,7 @@ const std::string& Scene::Node::set_name(std::string name)
 
 void Scene::Node::stack_front()
 {
-    std::lock_guard<Mutex> lock(m_scene.m_mutex);
+    std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
 
     { // early out to avoid creating unnecessary deltas
         const ChildContainer& siblings = m_parent->read_children();
@@ -165,7 +166,7 @@ void Scene::Node::stack_front()
 
 void Scene::Node::stack_back()
 {
-    std::lock_guard<Mutex> lock(m_scene.m_mutex);
+    std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
 
     { // early out to avoid creating unnecessary deltas
         const ChildContainer& siblings = m_parent->read_children();
@@ -183,7 +184,7 @@ void Scene::Node::stack_back()
 
 void Scene::Node::stack_before(valid_ptr<Node*> sibling)
 {
-    std::lock_guard<Mutex> lock(m_scene.m_mutex);
+    std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
 
     size_t my_index;
     { // early out to avoid creating unnecessary deltas
@@ -208,7 +209,7 @@ void Scene::Node::stack_before(valid_ptr<Node*> sibling)
 
 void Scene::Node::stack_behind(valid_ptr<Node*> sibling)
 {
-    std::lock_guard<Mutex> lock(m_scene.m_mutex);
+    std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
 
     size_t my_index;
     { // early out to avoid creating unnecessary deltas
@@ -236,7 +237,7 @@ valid_ptr<Scene::ChildContainer*> Scene::Node::_prepare_children(Scene& scene)
     std::unique_ptr<ChildContainer> container = std::make_unique<ChildContainer>();
     ChildContainer* handle = container.get();
     {
-        std::lock_guard<Mutex> lock(scene.m_mutex);
+        std::lock_guard<RecursiveMutex> lock(scene.m_mutex);
         scene.m_child_container.emplace(std::make_pair(handle, std::move(container)));
     }
     return handle;
@@ -244,9 +245,15 @@ valid_ptr<Scene::ChildContainer*> Scene::Node::_prepare_children(Scene& scene)
 
 //====================================================================================================================//
 
+Scene::RootNode::RootNode(Scene& scene) : Node(scene, this) {}
+
+Scene::RootNode::~RootNode() NOTF_THROWS_IF(is_debug_build()) {}
+
+//====================================================================================================================//
+
 Scene::FreezeGuard::FreezeGuard(Scene& scene, const std::thread::id thread_id) : m_scene(&scene)
 {
-    std::lock_guard<Mutex> lock(m_scene->m_mutex);
+    std::lock_guard<RecursiveMutex> lock(m_scene->m_mutex);
     if (m_scene->m_render_thread != std::thread::id()) {
         log_warning << "Ignoring repeated freezing of Scene";
         m_scene = nullptr;
@@ -261,7 +268,7 @@ Scene::FreezeGuard::~FreezeGuard() NOTF_THROWS_IF(is_debug_build())
         return;
     }
 
-    std::lock_guard<Mutex> lock(m_scene->m_mutex);
+    std::lock_guard<RecursiveMutex> lock(m_scene->m_mutex);
     NOTF_ASSERT(m_scene->m_render_thread == std::this_thread::get_id());
 
     // resolve the delta
@@ -301,6 +308,26 @@ Scene::hierarchy_error::~hierarchy_error() = default;
 
 //====================================================================================================================//
 
-Scene::~Scene() = default;
+Scene::Scene(SceneManager& manager) : m_manager(manager), m_root(_create_root()) {}
+
+Scene::RootNode* Scene::_create_root()
+{
+    std::unique_ptr<RootNode> root_node = std::make_unique<RootNode>(*this);
+    RootNode* ptr = root_node.get();
+    m_nodes.emplace(std::make_pair(ptr, std::move(root_node)));
+    return ptr;
+}
+
+Scene::~Scene() NOTF_THROWS_IF(is_debug_build())
+{
+    std::lock_guard<RecursiveMutex> lock(m_mutex);
+    NOTF_ASSERT(!is_frozen());
+
+    // remove the root node
+    auto it = m_nodes.find(m_root);
+    NOTF_ASSERT(it != m_nodes.end());
+    m_nodes.erase(it);
+    NOTF_ASSERT_MSG(m_nodes.empty(), "The RootNode must be the last node to be deleted");
+};
 
 NOTF_CLOSE_NAMESPACE

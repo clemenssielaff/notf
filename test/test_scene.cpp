@@ -1,57 +1,45 @@
 #include "catch.hpp"
 
 #include "app/application.hpp"
+#include "app/scene.hpp"
 #include "app/scene_manager.hpp"
 #include "app/window.hpp"
 #include "testenv.hpp"
 
 NOTF_USING_NAMESPACE
 
+#pragma clang diagnostic ignored "-Wweak-vtables"
+
+struct TestScene : public Scene {
+    TestScene(SceneManager& manager) : Scene(manager) {}
+    void resize_view(Size2i) override {}
+};
+
+struct LeafNode : public Scene::Node {
+    LeafNode(Scene& scene, valid_ptr<Node*> parent) : Node(scene, parent) {}
+};
+
+struct TwoChildrenNode : public Scene::Node {
+    TwoChildrenNode(Scene& scene, valid_ptr<Node*> parent) : Node(scene, parent)
+    {
+        m_left = _add_child<LeafNode>(this->scene(), this);
+    }
+
+    Scene::NodeHandle<LeafNode> m_left;
+    Scene::NodeHandle<LeafNode> m_right;
+};
+
 SCENARIO("a Scene can be set up and modified", "[app], [scene]")
 {
     GIVEN("an empty Scene")
     {
         SceneManager scene_manager(notf_window());
-
-        REQUIRE(scene_manager.layers().size() == 0);
+        TestScene scene(scene_manager);
+        {
+            {
+                auto anode = scene.root().add_child<TwoChildrenNode>(scene, &scene.root());
+            }
+            int i = 3;
+        }
     }
-
-    //        std::vector<int> v( 5 );
-
-    //        REQUIRE( v.size() == 5 );
-    //        REQUIRE( v.capacity() >= 5 );
-
-    //        WHEN( "the size is increased" ) {
-    //            v.resize( 10 );
-
-    //            THEN( "the size and capacity change" ) {
-    //                REQUIRE( v.size() == 10 );
-    //                REQUIRE( v.capacity() >= 10 );
-    //            }
-    //        }
-    //        WHEN( "the size is reduced" ) {
-    //            v.resize( 0 );
-
-    //            THEN( "the size changes but not capacity" ) {
-    //                REQUIRE( v.size() == 0 );
-    //                REQUIRE( v.capacity() >= 5 );
-    //            }
-    //        }
-    //        WHEN( "more capacity is reserved" ) {
-    //            v.reserve( 10 );
-
-    //            THEN( "the capacity changes but not the size" ) {
-    //                REQUIRE( v.size() == 5 );
-    //                REQUIRE( v.capacity() >= 10 );
-    //            }
-    //        }
-    //        WHEN( "less capacity is reserved" ) {
-    //            v.reserve( 0 );
-
-    //            THEN( "neither size nor capacity are changed" ) {
-    //                REQUIRE( v.size() == 5 );
-    //                REQUIRE( v.capacity() >= 5 );
-    //            }
-    //        }
-    //    }
 }

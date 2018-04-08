@@ -69,6 +69,10 @@ NOTF_OPEN_NAMESPACE
 ///
 /// This works well, as long as each Producer only requires the PropertyGraph to remain unchanged
 ///
+/// It is **not** possible to lock an Object *just* for rendering on a per-object basis. We need to freeze the entire
+/// Scene (actually all Scenes of a SceneManager) **at once**, to get a frame without weird hafl-states where (for
+/// example) one object has already moved while another one is still in the state of the last frame.
+///
 class SceneManager { // TODO: update SceneManager docstring
 
     // types ---------------------------------------------------------------------------------------------------------//

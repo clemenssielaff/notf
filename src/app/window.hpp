@@ -30,6 +30,13 @@ class Window {
 public:
     NOTF_ACCESS_TYPES(Application)
 
+    /// Whether the window is minimzed, windowed or maxmized.
+    enum class State {
+        MINIMIZED,  //< Window is minimized to the task bar.
+        WINDOWED,   //< Window is visible on the screen with border and decorations.
+        FULLSCREEN, //< Window takes up the entire screen without additional border and decorations.
+    };
+
     /// Helper struct to create a Window instance.
     using Args = detail::WindowArguments;
 
@@ -95,6 +102,12 @@ public:
     /// Tell the RenderManager to redraw this Window at the next opportunity.
     void request_redraw();
 
+    /// Sets the current state of the Window.
+    /// If the new state is equal to the old one this method does nothing.
+    /// @param state    New state.
+    void set_state(const State state);
+    // TODO: connect more glfw window callbacks
+
     /// Closes this Window.
     void close();
 
@@ -122,6 +135,9 @@ private:
     /// The Window's title (is not accessible through GLFW).
     std::string m_title;
 
+    /// Current state of the window.
+    State m_state;
+
     /// The Window size.
     Size2i m_size;
 
@@ -146,5 +162,30 @@ private:
     /// Window that was granted access.
     Window* m_window;
 };
+
+//====================================================================================================================//
+
+namespace detail {
+
+///// Helper struct to create a Window instance.
+struct WindowArguments {
+
+    /// Window title.
+    std::string title = "NoTF";
+
+    /// File name of the Window's icon, relative to the Application's texture directory, empty means no icon.
+    std::string icon = "";
+
+    /// Initial size of the Window.
+    Size2i size = {640, 480};
+
+    /// If the Window is resizeable or not.
+    bool is_resizeable = true;
+
+    /// Initial state of the Window.
+    Window::State state = Window::State::WINDOWED;
+};
+
+} // namespace detail
 
 NOTF_CLOSE_NAMESPACE

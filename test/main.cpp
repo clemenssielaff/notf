@@ -30,9 +30,14 @@ int main(int argc, char* argv[])
 {
     set_log_level(LogMessage::LEVEL::NONE);
 
-    // initialize the application and the test window
+    // initialize the application
     Application::initialize(argc, argv);
-    g_window_reference = Application::instance().create_window();
+
+    { // initialize the window
+        Window::Args args;
+        args.state = Window::State::MINIMIZED;
+        g_window_reference = Application::instance().create_window(args);
+    }
 
     int result = Catch::Session().run(argc, argv);
 
