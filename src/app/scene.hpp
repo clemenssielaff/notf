@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/forwards.hpp"
+#include "common/assert.hpp"
 #include "common/hash.hpp"
 #include "common/map.hpp"
 #include "common/mutex.hpp"
@@ -65,11 +66,11 @@ class Scene {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    struct Node; // forward
+    NOTF_ACCESS_TYPES(test::Harness)
 
+    struct Node; // forward
 private:
     struct RootNode; // forward
-
     using ChildContainer = std::vector<valid_ptr<Node*>>;
     using ChildContainerPtr = std::unique_ptr<ChildContainer>;
 
@@ -117,7 +118,7 @@ public:
         }
 
         /// Destructor.
-        ~NodeHandle() NOTF_THROWS_IF(is_debug_build())
+        ~NodeHandle()
         {
             if (!m_scene) {
                 return;
@@ -148,8 +149,8 @@ public:
 
         /// @{
         /// The managed BaseNode instance correctly typed.
-        T* get() { return static_cast<T*>(m_node.get()); }
-        const T* get() const { return static_cast<const T*>(m_node.get()); }
+        constexpr T* operator->() { return static_cast<T*>(m_node.get()); }
+        constexpr const T* operator->() const { return static_cast<const T*>(m_node.get()); }
         /// @}
 
         // fields -------------------------------------------------------------
@@ -181,7 +182,7 @@ public:
         Node(Scene& scene, valid_ptr<Node*> parent);
 
         /// Destructor.
-        virtual ~Node() NOTF_THROWS_IF(is_debug_build());
+        virtual ~Node();
 
         /// @{
         /// The Scene containing this node.
@@ -311,7 +312,7 @@ private:
         RootNode(Scene& scene);
 
         /// Destructor.
-        virtual ~RootNode() NOTF_THROWS_IF(is_debug_build());
+        virtual ~RootNode();
 
         /// Creates and adds a new child to this node.
         /// @param args Arguments that are forwarded to the constructor of the child.
@@ -335,8 +336,12 @@ private:
         /// @param thread_id    ID of the freezing thread, uses the calling thread by default. (exposed for testability)
         FreezeGuard(Scene& scene, const std::thread::id thread_id = std::this_thread::get_id());
 
+        /// Move constructor.
+        /// @param other    FreezeGuard to move from.
+        FreezeGuard(FreezeGuard&& other) : m_scene(other.m_scene) { other.m_scene = nullptr; }
+
         /// Destructor.
-        ~FreezeGuard() NOTF_THROWS_IF(is_debug_build());
+        ~FreezeGuard();
 
         // fields -------------------------------------------------------------
     private:
@@ -359,7 +364,7 @@ public:
     NOTF_NO_COPY_OR_ASSIGN(Scene)
 
     /// Destructor.
-    virtual ~Scene() NOTF_THROWS_IF(is_debug_build());
+    virtual ~Scene();
 
     /// @{
     /// The SceneManager owning this Scene.
@@ -386,14 +391,14 @@ public:
     // scene hierarchy --------------------------------------------------------
 private:
     /// Checks if the scene is currently frozen or not.
-    bool is_frozen() const NOTF_THROWS_IF(is_debug_build())
+    bool is_frozen() const
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
         return m_render_thread != std::thread::id();
     }
 
     /// Checks if the calling thread is the current render thread.
-    bool is_render_thread(const std::thread::id thread_id) const NOTF_THROWS_IF(is_debug_build())
+    bool is_render_thread(const std::thread::id thread_id) const
     {
         NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
         return thread_id == m_render_thread;
@@ -430,5 +435,43 @@ private:
     /// The singular root node of the scene hierarchy.
     valid_ptr<RootNode*> m_root;
 };
+
+// ===================================================================================================================//
+
+#ifdef NOTF_TEST
+
+template<>
+class Scene::Access<test::Harness> {
+public:
+    /// Constructor.
+    /// @param scene    Scene to access.
+    Access(Scene& scene) : m_scene(scene) {}
+
+    /// Creates and returns a FreezeGuard that keeps the scene frozen while it is alive.
+    /// @param thread_id    Id of the freezing thread.
+    Scene::FreezeGuard freeze(const std::thread::id thread_id = std::this_thread::get_id())
+    {
+        return Scene::FreezeGuard(m_scene, thread_id);
+    }
+
+    /// Returns the number of nodes in the Scene.
+    size_t node_count() { return m_scene.m_nodes.size(); }
+
+    /// Returns the number of child container in the Scene.
+    size_t child_container_count() { return m_scene.m_child_container.size(); }
+
+    /// Returns the number of deltas in the Scene.
+    size_t delta_count() { return m_scene.m_deltas.size(); }
+
+    // fields -----------------------------------------------------------------
+private:
+    /// Scene to access.
+    Scene& m_scene;
+};
+
+#else
+template<>
+class Scene::Access<test::Harness> {};
+#endif // #ifdef NOTF_TEST
 
 NOTF_CLOSE_NAMESPACE

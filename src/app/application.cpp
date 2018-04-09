@@ -8,6 +8,7 @@
 #include "app/render_manager.hpp"
 #include "app/resource_manager.hpp"
 #include "app/window.hpp"
+#include "common/assert.hpp"
 #include "common/log.hpp"
 #include "common/thread_pool.hpp"
 

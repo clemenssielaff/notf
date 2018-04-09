@@ -336,7 +336,7 @@ NOTF_CLOSE_NAMESPACE
 #ifndef log_format
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_TRACE
 #define log_format \
-    notf::LogMessageFactory(notf::LogMessage::LEVEL::FORMAT, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::FORMAT, __LINE__, notf::basename(__FILE__), NOTF_CURRENT_FUNCTION).input
 #else
 #define log_format notf::detail::NullBuffer()
 #endif
@@ -347,7 +347,7 @@ NOTF_CLOSE_NAMESPACE
 #ifndef log_trace
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_TRACE
 #define log_trace \
-    notf::LogMessageFactory(notf::LogMessage::LEVEL::TRACE, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::TRACE, __LINE__, notf::basename(__FILE__), NOTF_CURRENT_FUNCTION).input
 #else
 #define log_trace notf::detail::NullBuffer()
 #endif
@@ -358,7 +358,7 @@ NOTF_CLOSE_NAMESPACE
 #ifndef log_info
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_INFO
 #define log_info \
-    notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), NOTF_CURRENT_FUNCTION).input
 #else
 #define log_info notf::detail::NullBuffer()
 #endif
@@ -369,7 +369,7 @@ NOTF_CLOSE_NAMESPACE
 #ifndef log_warning
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_WARNING
 #define log_warning \
-    notf::LogMessageFactory(notf::LogMessage::LEVEL::WARNING, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::WARNING, __LINE__, notf::basename(__FILE__), NOTF_CURRENT_FUNCTION).input
 #else
 #define log_warning notf::detail::NullBuffer()
 #endif
@@ -380,7 +380,7 @@ NOTF_CLOSE_NAMESPACE
 #ifndef log_critical
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_CRITICAL
 #define log_critical \
-    notf::LogMessageFactory(notf::LogMessage::LEVEL::CRITICAL, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::CRITICAL, __LINE__, notf::basename(__FILE__), NOTF_CURRENT_FUNCTION).input
 #else
 #define log_critical notf::detail::NullBuffer()
 #endif
@@ -391,7 +391,7 @@ NOTF_CLOSE_NAMESPACE
 #ifndef log_fatal
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_FATAL
 #define log_fatal \
-    notf::LogMessageFactory(notf::LogMessage::LEVEL::FATAL, __LINE__, notf::basename(__FILE__), NOTF_FUNCTION).input
+    notf::LogMessageFactory(notf::LogMessage::LEVEL::FATAL, __LINE__, notf::basename(__FILE__), NOTF_CURRENT_FUNCTION).input
 #else
 #define log_fatal notf::detail::NullBuffer()
 #endif

@@ -3,6 +3,7 @@
 #include <mutex>
 #include <thread>
 
+#include "common/assert.hpp"
 #include "common/exception.hpp"
 #include "common/meta.hpp"
 

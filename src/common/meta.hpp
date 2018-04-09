@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <utility>
 
@@ -58,6 +59,25 @@
 
 //====================================================================================================================//
 
+/// Function name macro to use for logging and exceptions.
+#ifdef NOTF_LOG_PRETTY_FUNCTION
+#ifdef NOTF_CLANG
+#define NOTF_CURRENT_FUNCTION __PRETTY_FUNCTION__
+#else
+#ifdef NOTF_MSVC
+#define NOTF_CURRENT_FUNCTION __FUNCTION__
+#else
+#ifdef NOTF_GCC
+#define NOTF_CURRENT_FUNCTION __PRETTY_FUNCTION__
+#endif
+#endif
+#endif
+#else
+#define NOTF_CURRENT_FUNCTION __func__
+#endif
+
+//====================================================================================================================//
+
 /// Pragma support for macros.
 #ifdef NOTF_MSVC
 #define NOTF_PRAGMA(x) __pragma(x)
@@ -66,7 +86,7 @@
 #endif
 
 /// Nothing happening here.
-#define NOTF_NOOP static_cast<void>(0)
+#define NOTF_NOOP ((void)0)
 
 /// Compiler attribute detection, as described in:
 ///     https://clang.llvm.org/docs/LanguageExtensions.html#has-cpp-attribute
@@ -120,6 +140,22 @@
 /// Expands a macro inside another macro.
 /// Use for `NOTF_DEFER(NOTF_STR, expanded) and others
 #define NOTF_DEFER(f, ...) f(__VA_ARGS__)
+
+//====================================================================================================================//
+
+/// Convienience macros to temporarely disable a single warning.
+/// NOTF_DISABLE_WARNING("switch-enum")
+///     ...
+/// NOTF_ENABLE_WARNINGS
+#define NOTF_DISABLE_WARNING_STR_(x) GCC diagnostic ignored "-W" x
+#define NOTF_DISABLE_WARNING(x)          \
+    NOTF_PRAGMA("clang diagnostic push") \
+    NOTF_PRAGMA(NOTF_DEFER(NOTF_STR, NOTF_DISABLE_WARNING_STR_(x)))
+#define NOTF_ENABLE_WARNINGS NOTF_PRAGMA("clang diagnostic pop")
+
+/// Throw a compiler warning or error with some additional information.
+#define NOTF_COMPILER_WARNING(x) NOTF_PRAGMA(NOTF_STR(GCC warning(x " at line " NOTF_DEFER(NOTF_STR, __LINE__))))
+#define NOTF_COMPILER_ERROR(x) NOTF_PRAGMA(NOTF_STR(GCC error(x " at line " NOTF_DEFER(NOTF_STR, __LINE__))))
 
 //====================================================================================================================//
 
@@ -209,41 +245,6 @@ using void_t = typename make_void<Ts...>::type;
 
 //====================================================================================================================//
 
-/// Function name macro to use for logging and exceptions.
-#ifdef NOTF_LOG_PRETTY_FUNCTION
-#ifdef NOTF_CLANG
-#define NOTF_FUNCTION __PRETTY_FUNCTION__
-#else
-#ifdef NOTF_MSVC
-#define NOTF_FUNCTION __FUNCTION__
-#else
-#ifdef NOTF_GCC
-#define NOTF_FUNCTION __PRETTY_FUNCTION__
-#endif
-#endif
-#endif
-#else
-#define NOTF_FUNCTION __func__
-#endif
-
-//====================================================================================================================//
-
-/// Convienience macros to temporarely disable a single warning.
-/// NOTF_DISABLE_WARNING("switch-enum")
-///     ...
-/// NOTF_ENABLE_WARNINGS
-#define NOTF_DISABLE_WARNING_STR_(x) GCC diagnostic ignored "-W" x
-#define NOTF_DISABLE_WARNING(x)          \
-    NOTF_PRAGMA("clang diagnostic push") \
-    NOTF_PRAGMA(NOTF_DEFER(NOTF_STR, NOTF_DISABLE_WARNING_STR_(x)))
-#define NOTF_ENABLE_WARNINGS NOTF_PRAGMA("clang diagnostic pop")
-
-/// Throw a compiler warning or error with some additional information.
-#define NOTF_COMPILER_WARNING(x) NOTF_PRAGMA(NOTF_STR(GCC warning(x " at line " NOTF_DEFER(NOTF_STR, __LINE__))))
-#define NOTF_COMPILER_ERROR(x) NOTF_PRAGMA(NOTF_STR(GCC error(x " at line " NOTF_DEFER(NOTF_STR, __LINE__))))
-
-//====================================================================================================================//
-
 /// Opens the NoTF namespace.
 /// This macro can later be used to implement namespace versioning.
 #define NOTF_OPEN_NAMESPACE namespace notf {
@@ -327,15 +328,15 @@ struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T
 
 /// Constexpr to use an enum class value as a numeric value.
 /// From "Effective Modern C++ by Scott Mayers': Item #10.
-template<typename Enum>
+template<typename Enum, typename = std::enable_if_t<std::is_enum<Enum>::value>>
 constexpr auto to_number(Enum enumerator) noexcept
 {
     return static_cast<std::underlying_type_t<Enum>>(enumerator);
 }
 
 /// Converts any pointer to the equivalent integer representation.
-template<typename T>
-constexpr std::uintptr_t to_number(const T* const ptr) noexcept
+template<typename T, typename = std::enable_if_t<std::is_pointer<T>::value>>
+constexpr std::uintptr_t to_number(const T ptr) noexcept
 {
     return reinterpret_cast<std::uintptr_t>(ptr);
 }
@@ -393,5 +394,23 @@ struct make_shared_enabler : public T {
 #define NOTF_MAKE_SHARED_FROM_PRIVATE(T, ...) std::make_shared<detail::make_shared_enabler<T>>(__VA_ARGS__);
 #define NOTF_MAKE_UNIQUE_FROM_PRIVATE(T, ...) std::make_unique<detail::make_shared_enabler<T>>(__VA_ARGS__);
 #endif
+
+//====================================================================================================================//
+
+/// Extracts the last part of a pathname at compile time.
+/// @param input     Path to investigate.
+/// @param delimiter Delimiter used to separate path elements.
+/// @return          Only the last part of the path, e.g. basename("/path/to/some/file.cpp", '/') would return
+///                  "file.cpp".
+constexpr const char* basename(const char* input, const char delimiter = '/')
+{
+    size_t last_occurrence = 0;
+    for (size_t offset = 0; input[offset]; ++offset) {
+        if (input[offset] == delimiter) {
+            last_occurrence = offset + 1;
+        }
+    }
+    return &input[last_occurrence];
+}
 
 NOTF_CLOSE_NAMESPACE

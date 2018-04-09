@@ -2,6 +2,7 @@
 
 #include "app/application.hpp"
 #include "app/io/time.hpp"
+#include "common/assert.hpp"
 #include "common/hash.hpp"
 #include "common/map.hpp"
 #include "common/mutex.hpp"
@@ -285,7 +286,7 @@ private:
         /// Evaluates this Property's expression and updates its value.
         void _evaluate_expression()
         {
-            NOTF_ASSERT_MSG(m_expression, "Cannot evaluate expression from ground Property: \"" << this << "\"");
+            NOTF_ASSERT_MSG(m_expression, "Cannot evaluate expression from ground Property: \"{}\"", to_number(this));
             m_value = m_expression();
             _set_clean();
         }

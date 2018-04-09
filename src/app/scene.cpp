@@ -31,7 +31,7 @@ Scene::Node::Node(Scene& scene, valid_ptr<Node*> parent)
     log_trace << "Created \"" << m_name << "\"";
 }
 
-Scene::Node::~Node() NOTF_THROWS_IF(is_debug_build())
+Scene::Node::~Node()
 {
     NOTF_ASSERT(m_scene.m_mutex.is_locked_by_this_thread());
 
@@ -40,7 +40,7 @@ Scene::Node::~Node() NOTF_THROWS_IF(is_debug_build())
     // remove child container
     auto children_it = m_scene.m_child_container.find(m_children);
     NOTF_ASSERT(children_it != m_scene.m_child_container.end());
-    NOTF_ASSERT_MSG(children_it->second->empty(), "Node \"" << name() << "\" must not outlive its child nodes");
+    NOTF_ASSERT_MSG(children_it->second->empty(), "Node \"{}\" must not outlive its child nodes", name());
     m_scene.m_child_container.erase(children_it);
 }
 
@@ -247,7 +247,7 @@ valid_ptr<Scene::ChildContainer*> Scene::Node::_prepare_children(Scene& scene)
 
 Scene::RootNode::RootNode(Scene& scene) : Node(scene, this) {}
 
-Scene::RootNode::~RootNode() NOTF_THROWS_IF(is_debug_build()) {}
+Scene::RootNode::~RootNode() {}
 
 //====================================================================================================================//
 
@@ -262,7 +262,7 @@ Scene::FreezeGuard::FreezeGuard(Scene& scene, const std::thread::id thread_id) :
     m_scene->m_render_thread = thread_id;
 }
 
-Scene::FreezeGuard::~FreezeGuard() NOTF_THROWS_IF(is_debug_build())
+Scene::FreezeGuard::~FreezeGuard()
 {
     if (!m_scene) { // don't unfreeze if this guard tried to double-freeze the scene
         return;
@@ -318,7 +318,7 @@ Scene::RootNode* Scene::_create_root()
     return ptr;
 }
 
-Scene::~Scene() NOTF_THROWS_IF(is_debug_build())
+Scene::~Scene()
 {
     std::lock_guard<RecursiveMutex> lock(m_mutex);
     NOTF_ASSERT(!is_frozen());

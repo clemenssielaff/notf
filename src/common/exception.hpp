@@ -58,7 +58,7 @@ struct notf_exception : public std::exception {
     {                                                                            \
         std::stringstream ss;                                                    \
         ss << MSG;                                                               \
-        throw TYPE(notf::basename(__FILE__), NOTF_FUNCTION, __LINE__, ss.str()); \
+        throw TYPE(notf::basename(__FILE__), NOTF_CURRENT_FUNCTION, __LINE__, ss.str()); \
     }
 #else
 #warning "Macro 'notf_throw_format' is already defined - NoTF's notf_throw_format macro will remain disabled."
@@ -68,7 +68,7 @@ struct notf_exception : public std::exception {
 
 /// Convenience macro to trow a notf_exception with a message from a constexpr function.
 #ifndef notf_throw
-#define notf_throw(TYPE, MSG) (throw TYPE(notf::basename(__FILE__), NOTF_FUNCTION, __LINE__, MSG))
+#define notf_throw(TYPE, MSG) (throw TYPE(notf::basename(__FILE__), NOTF_CURRENT_FUNCTION, __LINE__, MSG))
 #else
 #warning "Macro 'notf_throw' is already defined -"
 " NoTF's notf_throw macro will remain disabled."
@@ -94,38 +94,8 @@ NOTF_EXCEPTION_TYPE(resource_error)
 /// Error thrown when something went wrong that really shouldn't have ...
 NOTF_EXCEPTION_TYPE(internal_error)
 
-/// Error thrown in debug mode when a NOTF_ASSERT fails.
-NOTF_EXCEPTION_TYPE(assertion_error)
-
 /// Error thrown when the wrong thread does something.
 NOTF_EXCEPTION_TYPE(thread_error)
-
-//====================================================================================================================//
-
-#ifdef NOTF_DEBUG
-
-/// NoTF assertion macro.
-#define NOTF_ASSERT(EXPR)                                                                                             \
-    if (!static_cast<bool>(EXPR)) {                                                                                   \
-        notf_throw_format(assertion_error, "Assertion \"" << NOTF_DEFER(NOTF_STR, EXPR) << "\" failed "               \
-                                                          << "on: " << notf::basename(__FILE__) << "::" << __LINE__); \
-    }
-
-/// NoTF assertion macro with attached message.
-#define NOTF_ASSERT_MSG(EXPR, MSG)                                                                                  \
-    if (!static_cast<bool>(EXPR)) {                                                                                 \
-        notf_throw_format(assertion_error, "Assertion \"" << NOTF_DEFER(NOTF_STR, EXPR) << "\" failed "             \
-                                                          << "on: " << notf::basename(__FILE__) << "::" << __LINE__ \
-                                                          << " with message: " << MSG);                             \
-    }
-
-#else
-
-/// In release mode, the NoTF assertion macros expand to nothing.
-#define NOTF_ASSERT(EXPR)          /* assertion */
-#define NOTF_ASSERT_MSG(EXPR, MSG) /* assertion */
-
-#endif
 
 //====================================================================================================================//
 

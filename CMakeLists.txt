@@ -31,7 +31,7 @@ option(NOTF_USE_LIBCXX "Use LLVM's libc++ instead of libstdc++" OFF)
 option(NOTF_USE_OPENMP "Use OpenMP" ON)
 option(NOTF_BUILD_TESTS "Build tests" OFF)
 option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
-option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" OFF)
+option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
 
 # LIBRARIES ############################################################################################################
 
@@ -75,10 +75,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS_DEBUG "-g -DNOTF_DEBUG")
 
 if(NOTF_LOG_PRETTY_FUNCTION)
-    add_definitions(-DNOTF_NOTF_LOG_PRETTY_FUNCTION)
+    add_definitions(-DNOTF_LOG_PRETTY_FUNCTION)
 endif()
 
 include_directories(
+    ./
     src/
     thirdparty/
     res/
@@ -157,6 +158,8 @@ add_sources(THIRDPARTY_FILES thirdparty
     mpark/variant.hpp
     robin-map/robin_map.h
     robin-map/robin_set.h
+    fmt/format.h
+    fmt/format.cc
 )
 
 #add_sources(RESOURCE_FILES res

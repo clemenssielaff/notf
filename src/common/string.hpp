@@ -19,10 +19,7 @@ std::vector<std::string> tokenize(const std::string& input, const char delimiter
 /// @return              String tokens.
 inline std::vector<std::string> tokenize(const char* input, const char delimiter)
 {
-    if (!input) {
-        return {};
-    }
-    return tokenize(std::string(input), delimiter);
+    return (static_cast<bool>(input) ? tokenize(std::string(input), delimiter) : std::vector<std::string>());
 }
 
 /// Tests if a string ends starts a given prefix.
@@ -63,21 +60,5 @@ bool icompare(const std::string& left, const std::string& right);
 /// @param s2    Second string.
 /// @return      Number of additions, modifications or removals to get from s1 to s2.
 size_t levenshtein_distance(const std::string& s1, const std::string& s2);
-
-/// Extracts the last part of a pathname at compile time.
-/// @param input     Path to investigate.
-/// @param delimiter Delimiter used to separate path elements.
-/// @return          Only the last part of the path, e.g. basename("/path/to/some/file.cpp", '/') would return
-///                  "file.cpp".
-constexpr const char* basename(const char* input, const char delimiter = '/')
-{
-    size_t last_occurrence = 0;
-    for (size_t offset = 0; input[offset]; ++offset) {
-        if (input[offset] == delimiter) {
-            last_occurrence = offset + 1;
-        }
-    }
-    return &input[last_occurrence];
-}
 
 NOTF_CLOSE_NAMESPACE
