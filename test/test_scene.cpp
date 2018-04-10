@@ -21,7 +21,7 @@ struct TestScene : public Scene {
 
 struct LeafNode : public Scene::Node {
     /// Constructor.
-    LeafNode(Scene& scene, valid_ptr<Node*> parent) : Node(scene, parent) {}
+    LeafNode(const Token& token, Scene& scene, valid_ptr<Node*> parent) : Node(token, scene, parent) {}
 };
 
 //====================================================================================================================//
@@ -30,28 +30,54 @@ struct TwoChildrenNode : public Scene::Node {
 
     /// Constructor.
     ///
-    TwoChildrenNode(Scene& scene, valid_ptr<Node*> parent) : Node(scene, parent)
+    TwoChildrenNode(const Token& token, Scene& scene, valid_ptr<Node*> parent) : Node(token, scene, parent)
     {
-        m_back = _add_child<LeafNode>(this->scene(), this);
-        m_front = _add_child<LeafNode>(this->scene(), this);
+        m_back = _add_child<LeafNode>();
+        m_front = _add_child<LeafNode>();
     }
 
     void reverse() { m_back->stack_front(); }
 
     // fields -----------------------------------------------------------------
 private:
-    Scene::NodeHandle<LeafNode> m_back;
-    Scene::NodeHandle<LeafNode> m_front;
+    NodeHande<LeafNode> m_back;
+    NodeHande<LeafNode> m_front;
 };
 
 //====================================================================================================================//
 
-struct ThreeChildNode : public Scene::Node {
+struct ThreeChildrenNode : public Scene::Node {
 
     /// Constructor.
-    ThreeChildNode(Scene& scene, valid_ptr<Node*> parent) : Node(scene, parent)
+    ///
+    ThreeChildrenNode(const Token& token, Scene& scene, valid_ptr<Node*> parent) : Node(token, scene, parent)
     {
-        m_center = _add_child<TwoChildrenNode>(this->scene(), this);
+        m_back = _add_child<LeafNode>();
+        m_center = _add_child<LeafNode>();
+        m_front = _add_child<LeafNode>();
+    }
+
+    void reverse()
+    {
+        (*m_back).stack_front();
+        (*m_center).stack_back();
+    }
+
+    // fields -----------------------------------------------------------------
+private:
+    NodeHande<LeafNode> m_back;
+    NodeHande<LeafNode> m_center;
+    NodeHande<LeafNode> m_front;
+};
+
+//====================================================================================================================//
+
+struct SplitNode : public Scene::Node {
+
+    /// Constructor.
+    SplitNode(const Token& token, Scene& scene, valid_ptr<Node*> parent) : Node(token, scene, parent)
+    {
+        m_center = _add_child<TwoChildrenNode>();
     }
 
     // fields -----------------------------------------------------------------
@@ -61,8 +87,6 @@ private:
 
 //====================================================================================================================//
 
-// TODO: we say that you cannot create a node outside the `_add_child` method ... but you can. Use Tokens or something
-
 SCENARIO("a Scene can be set up and modified", "[app], [scene]")
 {
     GIVEN("an empty Scene")
@@ -71,50 +95,80 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
         TestScene scene(scene_manager);
         Scene::Access<test::Harness> access(scene);
 
-        WHEN("you freeze an empty scene")
+        std::thread::id reader_thread(1);
+        std::thread::id render_thread(2);
+
+        SECTION("freezing an empty scene has no effect")
         {
             REQUIRE(access.node_count() == 1);            // root node
             REQUIRE(access.child_container_count() == 1); // root node
             REQUIRE(access.delta_count() == 0);
 
             {
-                auto guard = access.freeze();
+                auto guard = access.freeze_guard();
             }
 
-            THEN("nothing changes")
-            {
-                REQUIRE(access.node_count() == 1);
-                REQUIRE(access.child_container_count() == 1);
-                REQUIRE(access.delta_count() == 0);
-            }
+            REQUIRE(access.node_count() == 1);
+            REQUIRE(access.child_container_count() == 1);
+            REQUIRE(access.delta_count() == 0);
         }
 
-        WHEN("you create a few nodes")
+        SECTION("creating, modifying and deleting without freezing produces no deltas")
         {
             {
-                auto a = scene.root().add_child<TwoChildrenNode>(scene, &scene.root());
-                auto b = scene.root().add_child<ThreeChildNode>(scene, &scene.root());
+                Scene::NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
+                Scene::NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
+                Scene::NodeHandle<ThreeChildrenNode> c = scene.root().add_child<ThreeChildrenNode>();
 
-                REQUIRE(access.node_count() == 8);
-                REQUIRE(access.child_container_count() == 8);
+                REQUIRE(access.node_count() == 12);
+                REQUIRE(access.child_container_count() == 12);
                 REQUIRE(access.delta_count() == 0);
 
-                AND_THEN("you modify them, they will not produce a delta")
-                {
-                    a->reverse();
+                a->reverse();
+                c->reverse();
 
-                    REQUIRE(access.node_count() == 8);
-                    REQUIRE(access.child_container_count() == 8);
-                    REQUIRE(access.delta_count() == 0);
+                REQUIRE(access.node_count() == 12);
+                REQUIRE(access.child_container_count() == 12);
+                REQUIRE(access.delta_count() == 0);
+            }
+
+            REQUIRE(access.node_count() == 1);
+            REQUIRE(access.child_container_count() == 1);
+            REQUIRE(access.delta_count() == 0);
+        }
+
+        SECTION("deleting nodes from a frozen scene will produce deltas that are resolved when unfrozen")
+        {
+            Scene::NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
+            Scene::NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
+            Scene::NodeHandle<ThreeChildrenNode> c = scene.root().add_child<ThreeChildrenNode>();
+
+            REQUIRE(access.node_count() == 12);
+            REQUIRE(access.child_container_count() == 12);
+            REQUIRE(access.delta_count() == 0);
+
+            a->reverse();
+            c->reverse();
+
+            { // frozen scope
+                auto guard = access.freeze_guard(render_thread);
+
+                REQUIRE(access.node_count() == 12);
+                REQUIRE(access.child_container_count() == 12);
+                REQUIRE(access.delta_count() == 0);
+
+                { // delete c
+                    Scene::NodeHandle<ThreeChildrenNode> dropped = std::move(c);
                 }
+
+                REQUIRE(access.node_count() == 12);
+                REQUIRE(access.child_container_count() == 12);
+                REQUIRE(access.delta_count() == 1);
             }
 
-            AND_THEN("they are deleted again, the scene is empty")
-            {
-                REQUIRE(access.node_count() == 1);
-                REQUIRE(access.child_container_count() == 1);
-                REQUIRE(access.delta_count() == 0);
-            }
+            REQUIRE(access.node_count() == 8);
+            REQUIRE(access.child_container_count() == 8);
+            REQUIRE(access.delta_count() == 0);
         }
     }
 }

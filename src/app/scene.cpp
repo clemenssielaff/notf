@@ -25,7 +25,7 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
-Scene::Node::Node(Scene& scene, valid_ptr<Node*> parent)
+Scene::Node::Node(const Token&, Scene& scene, valid_ptr<Node*> parent)
     : m_scene(scene), m_parent(parent), m_children(_prepare_children(scene)), m_name(next_name())
 {
     log_trace << "Created \"" << m_name << "\"";
@@ -245,40 +245,66 @@ valid_ptr<Scene::ChildContainer*> Scene::Node::_prepare_children(Scene& scene)
 
 //====================================================================================================================//
 
-Scene::RootNode::RootNode(Scene& scene) : Node(scene, this) {}
+Scene::RootNode::RootNode(Scene& scene) : Node(Token{}, scene, this) {}
 
 Scene::RootNode::~RootNode() {}
 
 //====================================================================================================================//
 
-Scene::FreezeGuard::FreezeGuard(Scene& scene, const std::thread::id thread_id) : m_scene(&scene)
+Scene::FreezeGuard::FreezeGuard(Scene& scene, const std::thread::id thread_id) : m_scene(&scene), m_thread_id(thread_id)
 {
-    std::lock_guard<RecursiveMutex> lock(m_scene->m_mutex);
-    if (m_scene->m_render_thread != std::thread::id()) {
-        log_warning << "Ignoring repeated freezing of Scene";
+    if (!m_scene->freeze(m_thread_id)) {
         m_scene = nullptr;
-        return;
     }
-    m_scene->m_render_thread = thread_id;
 }
 
 Scene::FreezeGuard::~FreezeGuard()
 {
-    if (!m_scene) { // don't unfreeze if this guard tried to double-freeze the scene
+    if (m_scene) { // don't unfreeze if this guard tried to double-freeze the scene
+        m_scene->unfreeze(m_thread_id);
+    }
+}
+
+//====================================================================================================================//
+
+Scene::hierarchy_error::~hierarchy_error() = default;
+
+//====================================================================================================================//
+
+Scene::Scene(SceneManager& manager) : m_manager(manager), m_root(_create_root()) {}
+
+bool Scene::freeze(const std::thread::id thread_id)
+{
+    std::lock_guard<RecursiveMutex> lock(m_mutex);
+    if (m_render_thread != std::thread::id()) {
+        log_warning << "Ignoring repeated freezing of Scene";
+        return false;
+    }
+    m_render_thread = thread_id;
+    return true;
+}
+
+void Scene::unfreeze(const std::thread::id thread_id)
+{
+    std::lock_guard<RecursiveMutex> lock(m_mutex);
+    if (m_render_thread == std::thread::id()) {
         return;
     }
+    NOTF_ASSERT_MSG(m_render_thread == thread_id,
+                    "Thread #{} must not unfreeze the Scene, because it was frozen by a different thread (#{}).",
+                    hash(thread_id), hash(m_render_thread));
 
-    std::lock_guard<RecursiveMutex> lock(m_scene->m_mutex);
-    NOTF_ASSERT(m_scene->m_render_thread == std::this_thread::get_id());
+    // unfreeze - otherwise all modifications would just create new deltas
+    m_render_thread = std::thread::id();
 
     // resolve the delta
-    for (auto& delta_it : m_scene->m_deltas) {
+    for (auto& delta_it : m_deltas) {
         valid_ptr<const ChildContainer*> id = delta_it.first;
         ChildContainer& delta = *delta_it.second.get();
 
         // swap the delta children with the existing ones
-        auto children_it = m_scene->m_child_container.find(id);
-        if (children_it == m_scene->m_child_container.end()) {
+        auto children_it = m_child_container.find(id);
+        if (children_it == m_child_container.end()) {
             // TODO: REMOVE
             log_trace << "This actually happens - I suspected it but wasn't sure. Please remove this log entry";
             continue; // parent has already been removed - ignore
@@ -291,24 +317,15 @@ Scene::FreezeGuard::~FreezeGuard()
             if (contains(children, child_id)) {
                 continue;
             }
-            auto node_it = m_scene->m_nodes.find(child_id);
-            NOTF_ASSERT(node_it != m_scene->m_nodes.end());
-            m_scene->m_nodes.erase(node_it);
+            auto node_it = m_nodes.find(child_id);
+            NOTF_ASSERT_MSG(node_it != m_nodes.end(), "Delta could not be resolved because the Node has already been "
+                                                      "removed");
+            node_it.value().reset();
+            m_nodes.erase(node_it);
         }
     }
-
-    // unfreeze
-    m_scene->m_deltas.clear();
-    m_scene->m_render_thread = std::thread::id();
+    m_deltas.clear();
 }
-
-//====================================================================================================================//
-
-Scene::hierarchy_error::~hierarchy_error() = default;
-
-//====================================================================================================================//
-
-Scene::Scene(SceneManager& manager) : m_manager(manager), m_root(_create_root()) {}
 
 Scene::RootNode* Scene::_create_root()
 {

@@ -123,27 +123,30 @@ public:
             if (!m_scene) {
                 return;
             }
+            std::lock_guard<RecursiveMutex> lock(m_scene->m_mutex);
+
+            valid_ptr<Node*> parent = m_node->parent();
+            if (m_scene->m_nodes.count(parent) == 0) {
+                NOTF_ASSERT_MSG(false,
+                                "The parent of Node \"{}\" was deleted before its child was! \n"
+                                "Have you been storing NodeHandles of child nodes outside their parent?",
+                                m_node->name());
+            }
+
             else {
-                std::lock_guard<RecursiveMutex> lock(m_scene->m_mutex);
-                NOTF_ASSERT_MSG(m_scene->m_nodes.count(m_node) != 0, "Node double deletion detected");
+                // remove yourself as a child from your parent node
+                ChildContainer& siblings = parent->write_children(); // this creates a delta in a frozen scene
+                auto child_it = std::find(siblings.begin(), siblings.end(), m_node);
+                NOTF_ASSERT_MSG(child_it != siblings.end(), "Cannot remove unknown child node from parent");
+                siblings.erase(child_it);
+            }
 
-                valid_ptr<Node*> parent = m_node->parent();
-                NOTF_ASSERT_MSG(m_scene->m_nodes.count(parent) != 0, "A node must not outlive its parent");
-
-                // remove your node immediately, if the scene is not frozen
-                if (!m_scene->is_frozen()) {
-                    auto it = m_scene->m_nodes.find(m_node);
-                    NOTF_ASSERT_MSG(it != m_scene->m_nodes.end(), "Cannot remove unknown node from scene");
-                    it.value().reset(); // delete the node before modifying the `m_nodes` map
-                    m_scene->m_nodes.erase(it);
-                }
-
-                { // remove yourself from your parent node
-                    ChildContainer& siblings = parent->write_children();
-                    auto it = std::find(siblings.begin(), siblings.end(), m_node);
-                    NOTF_ASSERT_MSG(it != siblings.end(), "Cannot remove unknown child node from parent");
-                    siblings.erase(it);
-                }
+            // if the scene is not frozen, we can remove the node immediately
+            if (!m_scene->is_frozen()) {
+                auto node_it = m_scene->m_nodes.find(m_node);
+                NOTF_ASSERT_MSG(node_it != m_scene->m_nodes.end(), "Node has already been removed from scene");
+                node_it.value().reset(); // delete the node before modifying the Scene's `m_nodes` map
+                m_scene->m_nodes.erase(node_it);
             }
         }
 
@@ -151,6 +154,12 @@ public:
         /// The managed BaseNode instance correctly typed.
         constexpr T* operator->() { return static_cast<T*>(m_node.get()); }
         constexpr const T* operator->() const { return static_cast<const T*>(m_node.get()); }
+        /// @}
+
+        /// @{
+        /// The managed BaseNode instance correctly typed.
+        T& operator*() { return *static_cast<T*>(m_node.get()); }
+        const T& operator*() const { return *static_cast<T*>(m_node.get()); }
         /// @}
 
         // fields -------------------------------------------------------------
@@ -172,14 +181,28 @@ public:
 
         friend struct RootNode;
 
+        // typedef so we don't have to use the `Scene::` prefix in the scope of this and sub- types.
+        template<typename T>
+        using NodeHande = NodeHandle<T>;
+
+        // types --------------------------------------------------------------
+    protected:
+        /// Token object to make sure that Node instances can only be created by a call to `_add_child`.
+        class Token {
+            friend struct Node;
+            friend struct RootNode;
+            Token() {} // not `= default`, otherwise you could construct a Token via `Token{}`.
+        };
+
         // methods ------------------------------------------------------------
     public:
         NOTF_NO_COPY_OR_ASSIGN(Node)
 
         /// Constructor.
+        /// @param token    Factory token provided by SceneNode::_add_child.
         /// @param scene    Scene to manage the node.
         /// @param parent   Parent of this node.
-        Node(Scene& scene, valid_ptr<Node*> parent);
+        Node(const Token&, Scene& scene, valid_ptr<Node*> parent);
 
         /// Destructor.
         virtual ~Node();
@@ -268,10 +291,12 @@ public:
     protected:
         /// Creates and adds a new child to this node.
         /// @param args Arguments that are forwarded to the constructor of the child.
+        ///             Note that all arguments for the Node base class are supplied automatically by this method.
         template<typename T, typename... Args>
         NodeHandle<T> _add_child(Args&&... args)
         {
-            std::unique_ptr<Node> new_child = std::make_unique<T>(std::forward<Args>(args)...);
+            static const Token token;
+            std::unique_ptr<Node> new_child = std::make_unique<T>(token, m_scene, this, std::forward<Args>(args)...);
             Node* child_handle = new_child.get();
             {
                 std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
@@ -347,6 +372,9 @@ private:
     private:
         /// Scene to freeze.
         Scene* m_scene;
+
+        /// Id of the freezing thread.
+        const std::thread::id m_thread_id;
     };
 
     //=========================================================================
@@ -404,6 +432,14 @@ private:
         return thread_id == m_render_thread;
     }
 
+    /// Freezes the Scene if it is not already frozen.
+    /// @param thread_id    Id of the calling thread.
+    /// @returns            True iff the Scene was frozen.
+    bool freeze(const std::thread::id thread_id);
+
+    /// Unfreezes the Scene again.
+    void unfreeze(const std::thread::id thread_id);
+
 private:
     /// Creates the root node.
     RootNode* _create_root();
@@ -449,7 +485,7 @@ public:
 
     /// Creates and returns a FreezeGuard that keeps the scene frozen while it is alive.
     /// @param thread_id    Id of the freezing thread.
-    Scene::FreezeGuard freeze(const std::thread::id thread_id = std::this_thread::get_id())
+    Scene::FreezeGuard freeze_guard(const std::thread::id thread_id = std::this_thread::get_id())
     {
         return Scene::FreezeGuard(m_scene, thread_id);
     }
@@ -462,6 +498,12 @@ public:
 
     /// Returns the number of deltas in the Scene.
     size_t delta_count() { return m_scene.m_deltas.size(); }
+
+    /// Freezes the Scene.
+    void freeze(const std::thread::id thread_id = std::this_thread::get_id()) { m_scene.freeze(thread_id); }
+
+    /// Unfreezes the Scene.
+    void unfreeze(const std::thread::id thread_id = std::this_thread::get_id()) { m_scene.unfreeze(thread_id); }
 
     // fields -----------------------------------------------------------------
 private:

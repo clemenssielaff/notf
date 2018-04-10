@@ -154,8 +154,8 @@
 #define NOTF_ENABLE_WARNINGS NOTF_PRAGMA("clang diagnostic pop")
 
 /// Throw a compiler warning or error with some additional information.
-#define NOTF_COMPILER_WARNING(x) NOTF_PRAGMA(NOTF_STR(GCC warning(x " at line " NOTF_DEFER(NOTF_STR, __LINE__))))
-#define NOTF_COMPILER_ERROR(x) NOTF_PRAGMA(NOTF_STR(GCC error(x " at line " NOTF_DEFER(NOTF_STR, __LINE__))))
+#define NOTF_COMPILER_WARNING(x) \
+    NOTF_PRAGMA(NOTF_DEFER(NOTF_STR, message "(warning) on line " NOTF_DEFER(NOTF_STR, __LINE__) ": " x))
 
 //====================================================================================================================//
 
