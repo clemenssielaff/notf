@@ -32,16 +32,16 @@ struct TwoChildrenNode : public Scene::Node {
     ///
     TwoChildrenNode(const Token& token, Scene& scene, valid_ptr<Node*> parent) : Node(token, scene, parent)
     {
-        m_back = _add_child<LeafNode>();
-        m_front = _add_child<LeafNode>();
+        back = _add_child<LeafNode>();
+        front = _add_child<LeafNode>();
     }
 
-    void reverse() { m_back->stack_front(); }
+    void reverse() { back->stack_front(); }
 
     // fields -----------------------------------------------------------------
-private:
-    NodeHande<LeafNode> m_back;
-    NodeHande<LeafNode> m_front;
+public:
+    NodeHande<LeafNode> back;
+    NodeHande<LeafNode> front;
 };
 
 //====================================================================================================================//
@@ -52,22 +52,22 @@ struct ThreeChildrenNode : public Scene::Node {
     ///
     ThreeChildrenNode(const Token& token, Scene& scene, valid_ptr<Node*> parent) : Node(token, scene, parent)
     {
-        m_back = _add_child<LeafNode>();
-        m_center = _add_child<LeafNode>();
-        m_front = _add_child<LeafNode>();
+        back = _add_child<LeafNode>();
+        center = _add_child<LeafNode>();
+        front = _add_child<LeafNode>();
     }
 
     void reverse()
     {
-        (*m_back).stack_front();
-        (*m_center).stack_back();
+        (*back).stack_front();
+        (*center).stack_back();
     }
 
     // fields -----------------------------------------------------------------
-private:
-    NodeHande<LeafNode> m_back;
-    NodeHande<LeafNode> m_center;
-    NodeHande<LeafNode> m_front;
+public:
+    NodeHande<LeafNode> back;
+    NodeHande<LeafNode> center;
+    NodeHande<LeafNode> front;
 };
 
 //====================================================================================================================//
@@ -95,9 +95,9 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
         TestScene scene(scene_manager);
         Scene::Access<test::Harness> access(scene);
 
-        std::thread::id reader_thread(1);
-        std::thread::id render_thread(2);
-
+        std::thread::id event_thread_id = std::this_thread::get_id();
+        std::thread::id render_thread_id(1);
+#if 1
         SECTION("freezing an empty scene has no effect")
         {
             REQUIRE(access.node_count() == 1);            // root node
@@ -137,6 +137,56 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
             REQUIRE(access.delta_count() == 0);
         }
 
+        SECTION("modifying nodes in a frozen scene will produce deltas that are resolved when unfrozen")
+        {
+            Scene::NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
+
+            REQUIRE(access.node_count() == 4);
+            REQUIRE(access.child_container_count() == 4);
+            REQUIRE(access.delta_count() == 0);
+
+            { // frozen scope
+                auto guard = access.freeze_guard(render_thread_id);
+
+                REQUIRE(access.node_count() == 4);
+                REQUIRE(access.child_container_count() == 4);
+                REQUIRE(access.delta_count() == 0);
+
+                // access from event thread
+                REQUIRE(a->front->is_in_front());
+                REQUIRE(a->back->is_in_back());
+
+                // access from (pretend) render thread
+                access.set_render_thread(event_thread_id);
+                CHECK(a->front->is_in_front());
+                CHECK(a->back->is_in_back());
+                access.set_render_thread(render_thread_id);
+
+                a->reverse();
+
+                // access from event thread
+                REQUIRE(a->front->is_in_back());
+                REQUIRE(a->back->is_in_front());
+
+                // access from (pretend) render thread
+                access.set_render_thread(event_thread_id);
+                CHECK(a->front->is_in_front());
+                CHECK(a->back->is_in_back());
+                access.set_render_thread(render_thread_id);
+
+                REQUIRE(access.node_count() == 4);
+                REQUIRE(access.child_container_count() == 4);
+                REQUIRE(access.delta_count() == 1);
+            }
+
+            REQUIRE(a->front->is_in_back());
+            REQUIRE(a->back->is_in_front());
+
+            REQUIRE(access.node_count() == 4);
+            REQUIRE(access.child_container_count() == 4);
+            REQUIRE(access.delta_count() == 0);
+        }
+
         SECTION("deleting nodes from a frozen scene will produce deltas that are resolved when unfrozen")
         {
             Scene::NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
@@ -148,7 +198,7 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
             REQUIRE(access.delta_count() == 0);
 
             { // frozen scope
-                auto guard = access.freeze_guard(render_thread);
+                auto guard = access.freeze_guard(render_thread_id);
 
                 REQUIRE(access.node_count() == 12);
                 REQUIRE(access.child_container_count() == 12);
@@ -174,5 +224,36 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
             REQUIRE(access.child_container_count() == 8);
             REQUIRE(access.delta_count() == 0);
         }
+//#else
+        SECTION("nodes that are created and modified with a frozen scene will unfreeze with it")
+        {
+            REQUIRE(access.node_count() == 1);
+            REQUIRE(access.child_container_count() == 1);
+            REQUIRE(access.delta_count() == 0);
+
+            {
+                access.freeze(render_thread_id);
+
+                Scene::NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
+
+                CHECK(a->front->is_in_front());
+                CHECK(a->back->is_in_back());
+
+                a->reverse();
+
+                CHECK(a->front->is_in_back());
+                CHECK(a->back->is_in_front());
+
+                access.unfreeze(render_thread_id);
+
+                REQUIRE(a->front->is_in_back());
+                REQUIRE(a->back->is_in_front());
+            }
+
+            REQUIRE(access.node_count() == 1);
+            REQUIRE(access.child_container_count() == 1);
+            REQUIRE(access.delta_count() == 0);
+        }
+#endif
     }
 }

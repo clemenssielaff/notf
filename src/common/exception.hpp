@@ -2,7 +2,7 @@
 
 #include <exception>
 #ifdef NOTF_DEBUG
-#include <sstream>
+#include <sstream> // TODO: use fmt for exception formatting
 #endif
 
 #include "common/string.hpp"

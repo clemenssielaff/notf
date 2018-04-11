@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "app/forwards.hpp"
 #include "common/assert.hpp"
@@ -269,6 +270,24 @@ public:
         /// @param name New name of this Node.
         const std::string& set_name(std::string name);
 
+        // z-order ------------------------------------------------------------
+
+        /// Checks if this Node is in front of all of its siblings.
+        bool is_in_front() const;
+
+        /// Checks if this Node is behind all of its siblings.
+        bool is_in_back() const;
+
+        /// Returns true if this node is stacked anywhere in front of the given sibling.
+        /// @param sibling  Sibling node to test against.
+        /// @throws hierarchy_error If the sibling is not a sibling of this node.
+        bool is_in_front_of(const valid_ptr<Node*> sibling) const;
+
+        /// Returns true if this node is stacked anywhere behind the given sibling.
+        /// @param sibling  Sibling node to test against.
+        /// @throws hierarchy_error If the sibling is not a sibling of this node.
+        bool is_behind(const valid_ptr<Node*> sibling) const;
+
         /// Moves this Node in front of all of its siblings.
         void stack_front();
 
@@ -278,12 +297,12 @@ public:
         /// Moves this Node before a given sibling.
         /// @param sibling  Sibling to stack before.
         /// @throws hierarchy_error If the sibling is not a sibling of this node.
-        void stack_before(valid_ptr<Node*> sibling);
+        void stack_before(const valid_ptr<Node*> sibling);
 
         /// Moves this Node behind a given sibling.
         /// @param sibling  Sibling to stack behind.
         /// @throws hierarchy_error If the sibling is not a sibling of this node.
-        void stack_behind(valid_ptr<Node*> sibling);
+        void stack_behind(const valid_ptr<Node*> sibling);
 
     protected:
         /// Creates and adds a new child to this node.
@@ -304,9 +323,10 @@ public:
         }
 
     private:
-        /// Prepares an empty vector for the children of a new node.
+        /// Registers a new node with the scene.
         /// @param scene    Scene to manage the children.
-        static valid_ptr<ChildContainer*> _prepare_children(Scene& scene);
+        /// @returns        An new empty vector for the children of this node.
+        valid_ptr<ChildContainer*> _register_with_scene(Scene& scene);
 
         // fields -------------------------------------------------------------
     private:
@@ -455,15 +475,17 @@ private:
     mutable RecursiveMutex m_mutex;
 
     /// Map owning all nodes in the scene.
-    std::unordered_map<valid_ptr<const Node*>, std::unique_ptr<Node>, PointerHash<Node>> m_nodes;
+    std::unordered_map<valid_ptr<Node*>, std::unique_ptr<Node>, PointerHash<Node>> m_nodes;
 
     /// Mapping from all nodes in the scene to their children.
     /// Is separate from the Node type so the Scene hierarchy can be frozen.
-    std::unordered_map<valid_ptr<const ChildContainer*>, ChildContainerPtr, PointerHash<ChildContainer>>
-        m_child_container;
+    std::unordered_map<valid_ptr<ChildContainer*>, ChildContainerPtr, PointerHash<ChildContainer>> m_child_container;
 
     /// Map containing copieds of ChildContainer that were modified while the Scene was frozen.
-    std::unordered_map<valid_ptr<const ChildContainer*>, ChildContainerPtr, PointerHash<ChildContainer>> m_deltas;
+    std::unordered_map<valid_ptr<ChildContainer*>, ChildContainerPtr, PointerHash<ChildContainer>> m_deltas;
+
+    /// Set of all nodes that were created while the Scene was frozen.
+    std::unordered_set<valid_ptr<Node*>> m_new_nodes;
 
     /// Thread id of the render thread, if we are rendering at the moment
     /// (a value != default signifies that the graph is currently frozen).
@@ -500,11 +522,17 @@ public:
     /// Returns the number of deltas in the Scene.
     size_t delta_count() { return m_scene.m_deltas.size(); }
 
+    /// Returns the number of new nodes in the Scene.
+    size_t new_nodes_count() { return m_scene.m_new_nodes.size(); }
+
     /// Freezes the Scene.
     void freeze(const std::thread::id thread_id = std::this_thread::get_id()) { m_scene.freeze(thread_id); }
 
     /// Unfreezes the Scene.
     void unfreeze(const std::thread::id thread_id = std::this_thread::get_id()) { m_scene.unfreeze(thread_id); }
+
+    /// Lets the caller pretend that this is the render thread.
+    void set_render_thread(const std::thread::id thread_id) { m_scene.m_render_thread = thread_id; }
 
     // fields -----------------------------------------------------------------
 private:

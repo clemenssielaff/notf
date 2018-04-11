@@ -26,7 +26,7 @@ NOTF_OPEN_NAMESPACE
 //====================================================================================================================//
 
 Scene::Node::Node(const Token&, Scene& scene, valid_ptr<Node*> parent)
-    : m_scene(scene), m_parent(parent), m_children(_prepare_children(scene)), m_name(next_name())
+    : m_scene(scene), m_parent(parent), m_children(_register_with_scene(scene)), m_name(next_name())
 {
     log_trace << "Created \"" << m_name << "\"";
 }
@@ -146,16 +146,77 @@ const std::string& Scene::Node::set_name(std::string name)
     return m_name;
 }
 
+bool Scene::Node::is_in_front() const
+{
+    std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
+    const ChildContainer& siblings = m_parent->read_children();
+    NOTF_ASSERT(!siblings.empty());
+    return siblings.back() == this;
+}
+
+bool Scene::Node::is_in_back() const
+{
+    std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
+    const ChildContainer& siblings = m_parent->read_children();
+    NOTF_ASSERT(!siblings.empty());
+    return siblings.front() == this;
+}
+
+bool Scene::Node::is_in_front_of(const valid_ptr<Node*> sibling) const
+{
+    std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
+    const ChildContainer& siblings = m_parent->read_children();
+    const size_t sibling_count = siblings.size();
+    size_t my_index = 0;
+    for (; my_index < sibling_count; ++my_index) {
+        if (siblings[my_index] == this) {
+            break;
+        }
+        else if (siblings[my_index] == sibling) {
+            return false;
+        }
+    }
+    NOTF_ASSERT(my_index < sibling_count);
+    for (size_t sibling_index = my_index + 1; sibling_index < sibling_count; ++sibling_index) {
+        if (siblings[sibling_index] == sibling) {
+            return true;
+        }
+    }
+    notf_throw_format(hierarchy_error, "Cannot compare z-order of nodes \"" << name() << "\" and \"" << sibling->name()
+                                                                            << "\", because they are not siblings.");
+}
+
+bool Scene::Node::is_behind(const valid_ptr<Node*> sibling) const
+{
+    std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
+    const ChildContainer& siblings = m_parent->read_children();
+    const size_t sibling_count = siblings.size();
+    size_t sibling_index = 0;
+    for (; sibling_index < sibling_count; ++sibling_index) {
+        if (siblings[sibling_index] == sibling) {
+            break;
+        }
+        else if (siblings[sibling_index] == this) {
+            return false;
+        }
+    }
+    NOTF_ASSERT(sibling_index < sibling_count);
+    for (size_t my_index = sibling_index + 1; my_index < sibling_count; ++my_index) {
+        if (siblings[my_index] == this) {
+            return true;
+        }
+    }
+    notf_throw_format(hierarchy_error, "Cannot compare z-order of nodes \"" << name() << "\" and \"" << sibling->name()
+                                                                            << "\", because they are not siblings.");
+}
+
 void Scene::Node::stack_front()
 {
     std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
 
-    { // early out to avoid creating unnecessary deltas
-        const ChildContainer& siblings = m_parent->read_children();
-        NOTF_ASSERT(!siblings.empty());
-        if (siblings.back() == this) {
-            return;
-        }
+    // early out to avoid creating unnecessary deltas
+    if (is_in_front()) {
+        return;
     }
 
     ChildContainer& siblings = m_parent->write_children();
@@ -168,12 +229,9 @@ void Scene::Node::stack_back()
 {
     std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
 
-    { // early out to avoid creating unnecessary deltas
-        const ChildContainer& siblings = m_parent->read_children();
-        NOTF_ASSERT(!siblings.empty());
-        if (siblings.front() == this) {
-            return;
-        }
+    // early out to avoid creating unnecessary deltas
+    if (is_in_back()) {
+        return;
     }
 
     ChildContainer& siblings = m_parent->write_children();
@@ -182,7 +240,7 @@ void Scene::Node::stack_back()
     move_to_front(siblings, it); // "in back" means at the start of the vector ordered back to front
 }
 
-void Scene::Node::stack_before(valid_ptr<Node*> sibling)
+void Scene::Node::stack_before(const valid_ptr<Node*> sibling)
 {
     std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
 
@@ -207,7 +265,7 @@ void Scene::Node::stack_before(valid_ptr<Node*> sibling)
     notf::move_behind_of(siblings, iterator_at(siblings, my_index), sibling_it);
 }
 
-void Scene::Node::stack_behind(valid_ptr<Node*> sibling)
+void Scene::Node::stack_behind(const valid_ptr<Node*> sibling)
 {
     std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
 
@@ -232,13 +290,18 @@ void Scene::Node::stack_behind(valid_ptr<Node*> sibling)
     notf::move_in_front_of(siblings, iterator_at(siblings, my_index), sibling_it);
 }
 
-valid_ptr<Scene::ChildContainer*> Scene::Node::_prepare_children(Scene& scene)
+valid_ptr<Scene::ChildContainer*> Scene::Node::_register_with_scene(Scene& scene)
 {
     std::unique_ptr<ChildContainer> container = std::make_unique<ChildContainer>();
     ChildContainer* handle = container.get();
     {
         std::lock_guard<RecursiveMutex> lock(scene.m_mutex);
         scene.m_child_container.emplace(std::make_pair(handle, std::move(container)));
+
+        // if this scene is currently frozen, add yourself to the set of "new nodes"
+        if (scene._is_frozen()) {
+            scene.m_new_nodes.insert(this);
+        }
     }
     return handle;
 }
@@ -299,18 +362,23 @@ void Scene::unfreeze(NOTF_UNUSED const std::thread::id thread_id)
 
     // resolve the delta
     for (auto& delta_it : m_deltas) {
-        valid_ptr<const ChildContainer*> id = delta_it.first;
+        ChildContainer& children = *delta_it.first;
         ChildContainer& delta = *delta_it.second.get();
 
         // swap the delta children with the existing ones
-        auto children_it = m_child_container.find(id);
-        if (children_it == m_child_container.end()) {
-            // TODO: REMOVE
-            log_trace << "This actually happens - I suspected it but wasn't sure. Please remove this log entry";
+        if (m_child_container.find(&children) == m_child_container.end()) {
             continue; // parent has already been removed - ignore
         }
-        ChildContainer& children = *children_it->second.get();
         children.swap(delta);
+
+        // find new nodes that were created and make sure they are removed from the "new nodes" set
+        if (!m_new_nodes.empty()) {
+            for (valid_ptr<Node*> child_node : children) {
+                if (!contains(delta, child_node)) {
+                    m_new_nodes.erase(m_new_nodes.find(child_node));
+                }
+            }
+        }
 
         // find old children that are removed by the delta and delete them
         for (valid_ptr<Node*> child_node : delta) {
@@ -319,7 +387,15 @@ void Scene::unfreeze(NOTF_UNUSED const std::thread::id thread_id)
             }
         }
     }
+
+    // all nodes that are still left in the "new nodes" set were created and removed again, while the scene was frozen
+    // since no nodes are actually deleted from a frozen scene, we need to delete them now
+    for (valid_ptr<Node*> leftover_node : m_new_nodes) {
+        _delete_node(leftover_node);
+    }
+
     m_deltas.clear();
+    m_new_nodes.clear();
 }
 
 void Scene::_delete_node(valid_ptr<Node*> node)
