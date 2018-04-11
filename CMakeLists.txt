@@ -156,8 +156,6 @@ add_sources(THIRDPARTY_FILES thirdparty
     abseil/optional.hpp
     abseil/optional.cpp
     mpark/variant.hpp
-    robin-map/robin_map.h
-    robin-map/robin_set.h
     fmt/format.h
     fmt/format.cc
 )

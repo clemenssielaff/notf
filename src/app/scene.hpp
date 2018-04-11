@@ -1,9 +1,11 @@
 #pragma once
 
+#include <algorithm>
+#include <unordered_map>
+
 #include "app/forwards.hpp"
 #include "common/assert.hpp"
 #include "common/hash.hpp"
-#include "common/map.hpp"
 #include "common/mutex.hpp"
 #include "common/pointer.hpp"
 #include "common/size2.hpp"
@@ -126,15 +128,13 @@ public:
             std::lock_guard<RecursiveMutex> lock(m_scene->m_mutex);
 
             valid_ptr<Node*> parent = m_node->parent();
-            if (m_scene->m_nodes.count(parent) == 0) {
-                NOTF_ASSERT_MSG(false,
-                                "The parent of Node \"{}\" was deleted before its child was! \n"
-                                "Have you been storing NodeHandles of child nodes outside their parent?",
-                                m_node->name());
-            }
+            NOTF_ASSERT_MSG(m_scene->m_nodes.count(parent) != 0,
+                            "The parent of Node \"{}\" was deleted before its child was! \n"
+                            "Have you been storing NodeHandles of child nodes outside their parent?",
+                            m_node->name());
 
-            else {
-                // remove yourself as a child from your parent node
+            // remove yourself as a child from your parent node
+            {
                 ChildContainer& siblings = parent->write_children(); // this creates a delta in a frozen scene
                 auto child_it = std::find(siblings.begin(), siblings.end(), m_node);
                 NOTF_ASSERT_MSG(child_it != siblings.end(), "Cannot remove unknown child node from parent");
@@ -142,11 +142,8 @@ public:
             }
 
             // if the scene is not frozen, we can remove the node immediately
-            if (!m_scene->is_frozen()) {
-                auto node_it = m_scene->m_nodes.find(m_node);
-                NOTF_ASSERT_MSG(node_it != m_scene->m_nodes.end(), "Node has already been removed from scene");
-                node_it.value().reset(); // delete the node before modifying the Scene's `m_nodes` map
-                m_scene->m_nodes.erase(node_it);
+            if (!m_scene->_is_frozen()) {
+                m_scene->_delete_node(m_node);
             }
         }
 
@@ -418,20 +415,6 @@ public:
 
     // scene hierarchy --------------------------------------------------------
 private:
-    /// Checks if the scene is currently frozen or not.
-    bool is_frozen() const
-    {
-        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
-        return m_render_thread != std::thread::id();
-    }
-
-    /// Checks if the calling thread is the current render thread.
-    bool is_render_thread(const std::thread::id thread_id) const
-    {
-        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
-        return thread_id == m_render_thread;
-    }
-
     /// Freezes the Scene if it is not already frozen.
     /// @param thread_id    Id of the calling thread.
     /// @returns            True iff the Scene was frozen.
@@ -440,7 +423,24 @@ private:
     /// Unfreezes the Scene again.
     void unfreeze(const std::thread::id thread_id);
 
-private:
+    /// Checks if the scene is currently frozen or not.
+    bool _is_frozen() const
+    {
+        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+        return m_render_thread != std::thread::id();
+    }
+
+    /// Checks if the calling thread is the current render thread.
+    bool _is_render_thread(const std::thread::id thread_id) const
+    {
+        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+        return thread_id == m_render_thread;
+    }
+
+    /// Deletes the given node from the Scene.
+    /// @param node     Node to remove.
+    void _delete_node(valid_ptr<Node*> node);
+
     /// Creates the root node.
     RootNode* _create_root();
 
@@ -455,14 +455,15 @@ private:
     mutable RecursiveMutex m_mutex;
 
     /// Map owning all nodes in the scene.
-    robin_map<valid_ptr<const Node*>, std::unique_ptr<Node>, PointerHash<Node>> m_nodes;
+    std::unordered_map<valid_ptr<const Node*>, std::unique_ptr<Node>, PointerHash<Node>> m_nodes;
 
     /// Mapping from all nodes in the scene to their children.
     /// Is separate from the Node type so the Scene hierarchy can be frozen.
-    robin_map<valid_ptr<const ChildContainer*>, ChildContainerPtr, PointerHash<ChildContainer>> m_child_container;
+    std::unordered_map<valid_ptr<const ChildContainer*>, ChildContainerPtr, PointerHash<ChildContainer>>
+        m_child_container;
 
     /// Map containing copieds of ChildContainer that were modified while the Scene was frozen.
-    robin_map<valid_ptr<const ChildContainer*>, ChildContainerPtr, PointerHash<ChildContainer>> m_deltas;
+    std::unordered_map<valid_ptr<const ChildContainer*>, ChildContainerPtr, PointerHash<ChildContainer>> m_deltas;
 
     /// Thread id of the render thread, if we are rendering at the moment
     /// (a value != default signifies that the graph is currently frozen).

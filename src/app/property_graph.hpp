@@ -1,10 +1,12 @@
 #pragma once
 
+#include <algorithm>
+#include <unordered_map>
+
 #include "app/application.hpp"
 #include "app/io/time.hpp"
 #include "common/assert.hpp"
 #include "common/hash.hpp"
-#include "common/map.hpp"
 #include "common/mutex.hpp"
 #include "common/pointer.hpp"
 
@@ -525,7 +527,7 @@ private:
         // if there is already a modification delta in place, replace it with a deletion delta
         NOTF_ASSERT_MSG(it->second->is_modification(), "Cannot delete the same Node twice");
         std::unique_ptr<DeltaBase> delete_delta = std::make_unique<DeletionDelta>(node);
-        it.value().swap(delete_delta);
+        it->second.swap(delete_delta);
     }
 
     /// Checks if the PropertyGraph is currently frozen or not.
@@ -556,10 +558,10 @@ private:
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// All nodes managed by the graph.
-    robin_map<valid_ptr<NodeBase*>, std::unique_ptr<NodeBase>, PointerHash<NodeBase>> m_nodes;
+    std::unordered_map<valid_ptr<NodeBase*>, std::unique_ptr<NodeBase>, PointerHash<NodeBase>> m_nodes;
 
     /// The current delta.
-    robin_map<valid_ptr<NodeBase*>, std::unique_ptr<DeltaBase>, PointerHash<NodeBase>> m_delta;
+    std::unordered_map<valid_ptr<NodeBase*>, std::unique_ptr<DeltaBase>, PointerHash<NodeBase>> m_delta;
 
     /// Mutex guarding the graph.
     /// Has to be recursive because Properties with expressions require other Properties to call their `value` method,

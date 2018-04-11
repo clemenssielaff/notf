@@ -49,7 +49,7 @@ const Scene::ChildContainer& Scene::Node::read_children() const
     NOTF_ASSERT(m_scene.m_mutex.is_locked_by_this_thread());
 
     // direct access
-    if (!m_scene.is_frozen() || m_scene.is_render_thread(std::this_thread::get_id())) {
+    if (!m_scene._is_frozen() || m_scene._is_render_thread(std::this_thread::get_id())) {
         return *m_children;
     }
 
@@ -70,7 +70,7 @@ Scene::ChildContainer& Scene::Node::write_children()
     NOTF_ASSERT(m_scene.m_mutex.is_locked_by_this_thread());
 
     // direct access
-    if (!m_scene.is_frozen() || m_scene.is_render_thread(std::this_thread::get_id())) {
+    if (!m_scene._is_frozen() || m_scene._is_render_thread(std::this_thread::get_id())) {
         return *m_children;
     }
 
@@ -284,7 +284,7 @@ bool Scene::freeze(const std::thread::id thread_id)
     return true;
 }
 
-void Scene::unfreeze(const std::thread::id thread_id)
+void Scene::unfreeze(NOTF_UNUSED const std::thread::id thread_id)
 {
     std::lock_guard<RecursiveMutex> lock(m_mutex);
     if (m_render_thread == std::thread::id()) {
@@ -313,18 +313,24 @@ void Scene::unfreeze(const std::thread::id thread_id)
         children.swap(delta);
 
         // find old children that are removed by the delta and delete them
-        for (valid_ptr<Node*> child_id : delta) {
-            if (contains(children, child_id)) {
-                continue;
+        for (valid_ptr<Node*> child_node : delta) {
+            if (!contains(children, child_node)) {
+                _delete_node(child_node);
             }
-            auto node_it = m_nodes.find(child_id);
-            NOTF_ASSERT_MSG(node_it != m_nodes.end(), "Delta could not be resolved because the Node has already been "
-                                                      "removed");
-            node_it.value().reset();
-            m_nodes.erase(node_it);
         }
     }
     m_deltas.clear();
+}
+
+void Scene::_delete_node(valid_ptr<Node*> node)
+{
+    auto node_it = m_nodes.find(node);
+    NOTF_ASSERT_MSG(node_it != m_nodes.end(), "Delta could not be resolved because the Node has already been removed");
+
+    // delete the node here while still having its `m_nodes` entry
+    // this way its children can check that this is a proper removal
+    node_it->second.reset();
+    m_nodes.erase(node_it);
 }
 
 Scene::RootNode* Scene::_create_root()
@@ -338,7 +344,7 @@ Scene::RootNode* Scene::_create_root()
 Scene::~Scene()
 {
     std::lock_guard<RecursiveMutex> lock(m_mutex);
-    NOTF_ASSERT(!is_frozen());
+    NOTF_ASSERT(!_is_frozen());
 
     // remove the root node
     auto it = m_nodes.find(m_root);

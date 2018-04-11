@@ -26,7 +26,7 @@ void PropertyGraph::NodeBase::_detect_cycles(const std::vector<valid_ptr<NodeBas
     PropertyGraph& graph = PropertyGraph::instance();
     NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
 
-    robin_set<valid_ptr<NodeBase*>> unchecked, checked;
+    std::unordered_set<valid_ptr<NodeBase*>> unchecked, checked;
     unchecked.reserve(dependencies.size());
     checked.reserve(dependencies.size());
 
@@ -88,7 +88,7 @@ void PropertyGraph::unfreeze(const std::thread::id thread_id)
 
         if (delta.is_modification()) {
             // modification delta
-            node_it.value()->resolve_delta(delta.node());
+            node_it->second->resolve_delta(delta.node());
         }
         else {
             // deletion delta

@@ -147,9 +147,6 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
             REQUIRE(access.child_container_count() == 12);
             REQUIRE(access.delta_count() == 0);
 
-            a->reverse();
-            c->reverse();
-
             { // frozen scope
                 auto guard = access.freeze_guard(render_thread);
 
@@ -157,13 +154,20 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
                 REQUIRE(access.child_container_count() == 12);
                 REQUIRE(access.delta_count() == 0);
 
+                a->reverse();
+                c->reverse();
+
+                REQUIRE(access.node_count() == 12);
+                REQUIRE(access.child_container_count() == 12);
+                REQUIRE(access.delta_count() == 2); // a and c were modified
+
                 { // delete c
                     Scene::NodeHandle<ThreeChildrenNode> dropped = std::move(c);
                 }
 
                 REQUIRE(access.node_count() == 12);
                 REQUIRE(access.child_container_count() == 12);
-                REQUIRE(access.delta_count() == 1);
+                REQUIRE(access.delta_count() == 3);
             }
 
             REQUIRE(access.node_count() == 8);
