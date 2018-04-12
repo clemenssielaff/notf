@@ -224,7 +224,7 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
             REQUIRE(access.child_container_count() == 8);
             REQUIRE(access.delta_count() == 0);
         }
-//#else
+
         SECTION("nodes that are created and modified with a frozen scene will unfreeze with it")
         {
             REQUIRE(access.node_count() == 1);
@@ -248,6 +248,27 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
 
                 REQUIRE(a->front->is_in_back());
                 REQUIRE(a->back->is_in_front());
+            }
+
+            REQUIRE(access.node_count() == 1);
+            REQUIRE(access.child_container_count() == 1);
+            REQUIRE(access.delta_count() == 0);
+        }
+//#else
+        SECTION("nodes that are create & removed while frozen are removed correctly when unfrozen")
+        {
+            REQUIRE(access.node_count() == 1);
+            REQUIRE(access.child_container_count() == 1);
+            REQUIRE(access.delta_count() == 0);
+
+            { // frozen scope
+                auto guard = access.freeze_guard(render_thread_id);
+                {
+                    Scene::NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
+                    Scene::NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
+                    Scene::NodeHandle<ThreeChildrenNode> c = scene.root().add_child<ThreeChildrenNode>();
+                    Scene::NodeHandle<LeafNode> d = scene.root().add_child<LeafNode>();
+                }
             }
 
             REQUIRE(access.node_count() == 1);

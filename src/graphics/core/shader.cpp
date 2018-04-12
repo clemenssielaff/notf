@@ -69,8 +69,8 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
     assert(stage_name);
 
     if (!shader) {
-        notf_throw_format(runtime_error, "Failed to create " << stage_name << " shader object for for program \""
-                                                             << program_name << "\"");
+        notf_throw_format(runtime_error, "Failed to create {} shader object for for program \"{}\"", stage_name,
+                          program_name);
     }
 
     // compile the shader
@@ -87,8 +87,8 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
         notf_check_gl(glGetShaderInfoLog(shader, error_size, /*length*/ nullptr, &error_message[0]));
         notf_check_gl(glDeleteShader(shader));
 
-        notf_throw_format(runtime_error, "Failed to compile " << stage_name << " stage for shader \"" << program_name
-                                                              << "\"\n\t" << error_message.data());
+        notf_throw_format(runtime_error, "Failed to compile {} stage for shader \"{}\"\n\t", stage_name, program_name,
+                          error_message.data());
     }
 
     assert(shader);
@@ -271,8 +271,8 @@ std::string inject_header(const std::string& source, const std::string& injectio
 void assert_is_valid(const Shader& shader)
 {
     if (!shader.is_valid()) {
-        notf_throw_format(resource_error,
-                          "Shader \"" << shader.name() << "\" was deallocated! Has the GraphicsContext been deleted?");
+        notf_throw_format(resource_error, "Shader \"{}\" was deallocated! Has the GraphicsContext been deleted?",
+                          shader.name());
     }
 }
 #else
@@ -356,7 +356,7 @@ GLuint Shader::_build(const std::string& name, const Args& args)
     //     https://www.khronos.org/opengl/wiki/Interface_Matching#Separate_programs
     GLuint program = glCreateProgram();
     if (!program) {
-        notf_throw_format(runtime_error, "Failed to create program object for shader \"" << name << "\"");
+        notf_throw_format(runtime_error, "Failed to create program object for shader \"{}\"", name);
     }
     notf_check_gl(glProgramParameteri(program, GL_PROGRAM_SEPARABLE, GL_TRUE));
 
@@ -425,8 +425,7 @@ GLuint Shader::_build(const std::string& name, const Args& args)
             notf_check_gl(glGetProgramInfoLog(program, error_size, /*length*/ nullptr, &error_message[0]));
             notf_check_gl(glDeleteProgram(program));
 
-            notf_throw_format(runtime_error, "Failed to link shader program \"" << name << "\":\n"
-                                                                                << error_message.data());
+            notf_throw_format(runtime_error, "Failed to link shader program \"{}\":\n", name, error_message.data());
         }
     }
     log_trace << "Compiled and linked shader program \"" << name << "\".";
@@ -448,7 +447,7 @@ const Shader::Variable& Shader::_uniform(const std::string& name) const
     auto it = std::find_if(std::begin(m_uniforms), std::end(m_uniforms),
                            [&](const Variable& var) -> bool { return var.name == name; });
     if (it == std::end(m_uniforms)) {
-        notf_throw_format(runtime_error, "No uniform named \"" << name << "\" in shader \"" << m_name << "\"");
+        notf_throw_format(runtime_error, "No uniform named \"{}\" in shader \"{}\"", name, m_name);
     }
     return *it;
 }
@@ -471,9 +470,9 @@ void Shader::set_uniform(const std::string& name, const int& value)
         notf_check_gl(glProgramUniform1i(m_id.value(), uniform.location, value));
     }
     else {
-        notf_throw_format(runtime_error, "Uniform \"" << name << "\" in shader \"" << m_name << "\" of type \""
-                                                      << gl_type_name(uniform.type)
-                                                      << "\" is not compatible with value type \"int\"");
+        notf_throw_format(runtime_error,
+                          "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"int\"",
+                          name, m_name, gl_type_name(uniform.type));
     }
 }
 
@@ -489,9 +488,10 @@ void Shader::set_uniform(const std::string& name, const unsigned int& value)
         notf_check_gl(glProgramUniform1i(m_id.value(), uniform.location, static_cast<GLint>(value)));
     }
     else {
-        notf_throw_format(runtime_error, "Uniform \"" << name << "\" in shader \"" << m_name << "\" of type \""
-                                                      << gl_type_name(uniform.type)
-                                                      << "\" is not compatible with value type \"unsigned int\"");
+        notf_throw_format(
+            runtime_error,
+            "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"unsigned int\"", name,
+            m_name, gl_type_name(uniform.type));
     }
 }
 
@@ -504,9 +504,9 @@ void Shader::set_uniform(const std::string& name, const float& value)
         notf_check_gl(glProgramUniform1f(m_id.value(), uniform.location, value));
     }
     else {
-        notf_throw_format(runtime_error, "Uniform \"" << name << "\" in shader \"" << m_name << "\" of type \""
-                                                      << gl_type_name(uniform.type)
-                                                      << "\" is not compatible with value type \"float\"");
+        notf_throw_format(runtime_error,
+                          "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"float\"",
+                          name, m_name, gl_type_name(uniform.type));
     }
 }
 
@@ -519,9 +519,10 @@ void Shader::set_uniform(const std::string& name, const Vector2f& value)
         notf_check_gl(glProgramUniform2fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
     }
     else {
-        notf_throw_format(runtime_error, "Uniform \"" << name << "\" in shader \"" << m_name << "\" of type \""
-                                                      << gl_type_name(uniform.type)
-                                                      << "\" is not compatible with value type \"Vector2f\"");
+        notf_throw_format(
+            runtime_error,
+            "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"Vector2f\"", name,
+            m_name, gl_type_name(uniform.type));
     }
 }
 
@@ -534,9 +535,10 @@ void Shader::set_uniform(const std::string& name, const Vector4f& value)
         notf_check_gl(glProgramUniform4fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
     }
     else {
-        notf_throw_format(runtime_error, "Uniform \"" << name << "\" in shader \"" << m_name << "\" of type \""
-                                                      << gl_type_name(uniform.type)
-                                                      << "\" is not compatible with value type \"Vector2f\"");
+        notf_throw_format(
+            runtime_error,
+            "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"Vector2f\"", name,
+            m_name, gl_type_name(uniform.type));
     }
 }
 
@@ -550,9 +552,10 @@ void Shader::set_uniform(const std::string& name, const Matrix4f& value)
                                                 value.as_ptr()));
     }
     else {
-        notf_throw_format(runtime_error, "Uniform \"" << name << "\" in shader \"" << m_name << "\" of type \""
-                                                      << gl_type_name(uniform.type)
-                                                      << "\" is not compatible with value type \"Vector2f\"");
+        notf_throw_format(
+            runtime_error,
+            "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"Vector2f\"", name,
+            m_name, gl_type_name(uniform.type));
     }
 }
 
@@ -620,7 +623,7 @@ GLuint VertexShader::attribute(const std::string& attribute_name) const
             return static_cast<GLuint>(variable.location);
         }
     }
-    notf_throw_format(runtime_error, "No attribute named \"" << attribute_name << "\" in shader \"" << name() << "\"");
+    notf_throw_format(runtime_error, "No attribute named \"{}\" in shader \"{}\"", attribute_name, name());
 }
 
 // ===================================================================================================================//
@@ -646,8 +649,8 @@ TesselationShader::create(GraphicsContextPtr& context, const std::string& name, 
     const GLuint program = Shader::_build(name, args);
 
     TesselationShaderPtr result = NOTF_MAKE_SHARED_FROM_PRIVATE(TesselationShader, context, program, std::move(name),
-                                                           std::move(modified_control_source),
-                                                           std::move(modified_evaluation_source));
+                                                                std::move(modified_control_source),
+                                                                std::move(modified_evaluation_source));
     _register_with_context(result);
     return result;
 }

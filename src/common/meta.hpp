@@ -155,7 +155,7 @@
 
 /// Throw a compiler warning or error with some additional information.
 #define NOTF_COMPILER_WARNING(x) \
-    NOTF_PRAGMA(NOTF_DEFER(NOTF_STR, message "(warning) on line " NOTF_DEFER(NOTF_STR, __LINE__) ": " x))
+    NOTF_PRAGMA(NOTF_DEFER(NOTF_STR, warning "(warning) on line " NOTF_DEFER(NOTF_STR, __LINE__) ": " x))
 
 //====================================================================================================================//
 

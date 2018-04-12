@@ -48,8 +48,8 @@ Window::Window(const Args& args)
     // create the GLFW window
     m_glfw_window.reset(glfwCreateWindow(m_size.width, m_size.height, m_title.c_str(), nullptr, nullptr));
     if (!m_glfw_window) {
-        notf_throw_format(window_initialization_error,
-                          "Window or OpenGL context creation failed for Window '" << title() << "'");
+        notf_throw_format(window_initialization_error, "Window or OpenGL context creation failed for Window \"{}\"",
+                          title());
     }
     glfwSetWindowUserPointer(m_glfw_window.get(), this);
     set_state(m_state);

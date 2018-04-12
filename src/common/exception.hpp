@@ -1,11 +1,10 @@
 #pragma once
 
 #include <exception>
-#ifdef NOTF_DEBUG
-#include <sstream> // TODO: use fmt for exception formatting
-#endif
 
-#include "common/string.hpp"
+#include "common/meta.hpp"
+#include "thirdparty/fmt/format.h"
+#include "thirdparty/fmt/ostream.h"
 
 NOTF_OPEN_NAMESPACE
 
@@ -46,7 +45,8 @@ struct notf_exception : public std::exception {
         virtual ~TYPE() override;                                                              \
     };
 #else
-#warning "Macro 'NOTF_EXCEPTION_TYPE' is already defined - NoTF's NOTF_EXCEPTION_TYPE macro will remain disabled."
+NOTF_COMPILER_WARNING(
+    "Macro 'NOTF_EXCEPTION_TYPE' is already defined - NoTF's NOTF_EXCEPTION_TYPE macro will remain disabled.")
 #endif
 
 //====================================================================================================================//
@@ -54,14 +54,13 @@ struct notf_exception : public std::exception {
 /// Convenience macro to throw a notf_exception with a message, that additionally contains the line, file and function
 /// where the error occured.
 #ifndef notf_throw_format
-#define notf_throw_format(TYPE, MSG)                                             \
-    {                                                                            \
-        std::stringstream ss;                                                    \
-        ss << MSG;                                                               \
-        throw TYPE(notf::basename(__FILE__), NOTF_CURRENT_FUNCTION, __LINE__, ss.str()); \
+#define notf_throw_format(TYPE, ...)                                                                     \
+    {                                                                                                    \
+        throw TYPE(notf::basename(__FILE__), NOTF_CURRENT_FUNCTION, __LINE__, fmt::format(__VA_ARGS__)); \
     }
 #else
-#warning "Macro 'notf_throw_format' is already defined - NoTF's notf_throw_format macro will remain disabled."
+NOTF_COMPILER_WARNING(
+    "Macro 'notf_throw_format' is already defined - NoTF's notf_throw_format macro will remain disabled.")
 #endif
 
 //====================================================================================================================//
@@ -70,8 +69,7 @@ struct notf_exception : public std::exception {
 #ifndef notf_throw
 #define notf_throw(TYPE, MSG) (throw TYPE(notf::basename(__FILE__), NOTF_CURRENT_FUNCTION, __LINE__, MSG))
 #else
-#warning "Macro 'notf_throw' is already defined -"
-" NoTF's notf_throw macro will remain disabled."
+NOTF_COMPILER_WARNING("Macro 'notf_throw' is already defined - NoTF's notf_throw macro will remain disabled.")
 #endif
 
 //====================================================================================================================//
@@ -111,11 +109,7 @@ inline constexpr TARGET narrow_cast(RAW_SOURCE&& value)
         notf_throw(logic_error, "narrow_cast failed");
     }
 
-#ifdef NOTF_CPP17
-    if constexpr (!is_same_signedness<TARGET, SOURCE>::value) {
-#else
-    {
-#endif
+    if (!is_same_signedness<TARGET, SOURCE>::value) {
         if ((result < TARGET{}) != (value < SOURCE{})) {
             notf_throw(logic_error, "narrow_cast failed");
         }

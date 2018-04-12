@@ -11,7 +11,7 @@ std::string load_file(const std::string& file_path)
 {
     std::ifstream file(file_path.c_str(), std::ifstream::in);
     if (!file.is_open()) {
-        notf_throw_format(runtime_error, "Could not read file \"" << file_path << "\". File does not exist.");
+        notf_throw_format(runtime_error, "Could not read file \"{}\". File does not exist.", file_path);
     }
 
     std::stringstream buffer;

@@ -66,7 +66,7 @@ RenderBuffer::RenderBuffer(GraphicsContextPtr& context, Args&& args)
     if (!m_args.size.is_valid() || m_args.size.area() == 0
         || m_args.size.height > static_cast<short>(env.max_render_buffer_size)
         || m_args.size.width > static_cast<short>(env.max_render_buffer_size)) {
-        notf_throw_format(runtime_error, "Invalid render buffer size: " << args.size);
+        notf_throw_format(runtime_error, "Invalid render buffer size: {}", args.size);
     }
     if (m_args.internal_format == 0) {
         notf_throw(runtime_error, "Invalid internal format for RenderBuffer: 0");
@@ -123,7 +123,7 @@ void RenderBuffer::_assert_color_format(const GLenum internal_format)
     case GL_RGBA32UI:
         break;
     default: {
-        notf_throw_format(runtime_error, "Invalid internal format for a color buffer: " << internal_format);
+        notf_throw_format(runtime_error, "Invalid internal format for a color buffer: {}", internal_format);
     }
     }
 }
@@ -139,7 +139,7 @@ void RenderBuffer::_assert_depth_stencil_format(const GLenum internal_format)
     case GL_STENCIL_INDEX8:
         break;
     default: {
-        notf_throw_format(runtime_error, "Invalid internal format for a depth or stencil buffer: " << internal_format);
+        notf_throw_format(runtime_error, "Invalid internal format for a depth or stencil buffer: {}", internal_format);
     }
     }
 }
@@ -227,7 +227,7 @@ FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_context(cont
                      << (has_depth ? " a depth attachment" : "") << (has_stencil ? " and a stencil attachment" : "");
         }
         else {
-            notf_throw_format(runtime_error, "OpenGL error: " << status_to_str(status));
+            notf_throw_format(runtime_error, "OpenGL error: {}", status_to_str(status));
         }
     }
 
@@ -255,7 +255,7 @@ const TexturePtr& FrameBuffer::color_texture(const ushort id)
     catch (std::bad_variant_access&) {
         /* ignore */
     }
-    notf_throw_format(runtime_error, "FrameBuffer has no color attachment: " << id);
+    notf_throw_format(runtime_error, "FrameBuffer has no color attachment: {}", id);
 }
 
 void FrameBuffer::_deallocate()
@@ -302,7 +302,7 @@ void FrameBuffer::_validate_arguments() const
     for (const auto& numbered_color_target : m_args.color_targets) {
         const ushort target_id = numbered_color_target.first;
         if (used_targets.count(target_id)) {
-            notf_throw_format(runtime_error, "Duplicate color attachment id: " << target_id);
+            notf_throw_format(runtime_error, "Duplicate color attachment id: {}", target_id);
         }
         used_targets.insert(target_id);
 
@@ -310,14 +310,14 @@ void FrameBuffer::_validate_arguments() const
         if (std::holds_alternative<RenderBufferPtr>(color_target)) {
             if (const auto& color_buffer = std::get<RenderBufferPtr>(color_target)) {
                 if (color_buffer->type() != RenderBuffer::Type::COLOR) {
-                    notf_throw_format(runtime_error, "Cannot attach a RenderBuffer of type "
-                                                         << type_to_str(color_buffer->type()) << " as color buffer");
+                    notf_throw_format(runtime_error, "Cannot attach a RenderBuffer of type {} as color buffer",
+                                      type_to_str(color_buffer->type()));
                 }
 
                 if (framebuffer_size.is_valid()) {
                     if (framebuffer_size != color_buffer->size()) {
-                        notf_throw(runtime_error, "All RenderBuffers attached to the same FrameBuffer must be of the "
-                                                  "same size.");
+                        notf_throw(runtime_error,
+                                   "All RenderBuffers attached to the same FrameBuffer must be of the same size.");
                     }
                 }
                 else {
@@ -343,8 +343,8 @@ void FrameBuffer::_validate_arguments() const
         if ((depth_buffer = std::get<RenderBufferPtr>(m_args.depth_target))) {
             if (depth_buffer->type() != RenderBuffer::Type::DEPTH
                 && depth_buffer->type() != RenderBuffer::Type::DEPTH_STENCIL) {
-                notf_throw_format(runtime_error, "Cannot attach a RenderBuffer of type "
-                                                     << type_to_str(depth_buffer->type()) << " as depth buffer");
+                notf_throw_format(runtime_error, "Cannot attach a RenderBuffer of type {} as depth buffer",
+                                  type_to_str(depth_buffer->type()));
             }
 
             if (framebuffer_size.is_valid()) {
@@ -373,14 +373,14 @@ void FrameBuffer::_validate_arguments() const
     if (m_args.stencil_target) {
         if (m_args.stencil_target->type() != RenderBuffer::Type::STENCIL
             && m_args.stencil_target->type() != RenderBuffer::Type::DEPTH_STENCIL) {
-            notf_throw_format(runtime_error, "Cannot attach a RenderBuffer of type "
-                                                 << type_to_str(m_args.stencil_target->type()) << " as stencil buffer");
+            notf_throw_format(runtime_error, "Cannot attach a RenderBuffer of type {} as stencil buffer",
+                              type_to_str(m_args.stencil_target->type()));
         }
 
         if (framebuffer_size.is_valid()) {
             if (framebuffer_size != m_args.stencil_target->size()) {
-                notf_throw(runtime_error, "All RenderBuffers attached to the same FrameBuffer must be of the "
-                                          "same size.");
+                notf_throw(runtime_error,
+                           "All RenderBuffers attached to the same FrameBuffer must be of the same size.");
             }
         }
 
@@ -393,8 +393,8 @@ void FrameBuffer::_validate_arguments() const
 
     if (depth_buffer && m_args.stencil_target) {
         if (depth_buffer != m_args.stencil_target) {
-            notf_throw(runtime_error, "FrameBuffers with both depth and stencil attachments have to refer to the same "
-                                      "RenderBuffer");
+            notf_throw(runtime_error,
+                       "FrameBuffers with both depth and stencil attachments have to refer to the same RenderBuffer");
         }
         if (depth_buffer->internal_format() != GL_DEPTH24_STENCIL8
             && depth_buffer->internal_format() != GL_DEPTH32F_STENCIL8) {

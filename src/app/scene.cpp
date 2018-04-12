@@ -131,8 +131,8 @@ valid_ptr<Scene::Node*> Scene::Node::common_ancestor(valid_ptr<Node*> other)
 
     // if the result is a scene root node, we need to make sure that it is in fact the root of BOTH nodes
     if (result->parent() == result && (!has_ancestor(result) || !other->has_ancestor(result))) {
-        notf_throw_format(hierarchy_error, "Nodes \"" << name() << "\" and \"" << other->name()
-                                                      << "\" are not part of the same hierarchy");
+        notf_throw_format(hierarchy_error, "Nodes \"{}\" and \"{}\" are not part of the same hierarchy", name(),
+                          other->name());
     }
     return result;
 }
@@ -182,8 +182,9 @@ bool Scene::Node::is_in_front_of(const valid_ptr<Node*> sibling) const
             return true;
         }
     }
-    notf_throw_format(hierarchy_error, "Cannot compare z-order of nodes \"" << name() << "\" and \"" << sibling->name()
-                                                                            << "\", because they are not siblings.");
+    notf_throw_format(hierarchy_error,
+                      "Cannot compare z-order of nodes \"{}\" and \"{}\", because they are not siblings.", name(),
+                      sibling->name());
 }
 
 bool Scene::Node::is_behind(const valid_ptr<Node*> sibling) const
@@ -206,8 +207,9 @@ bool Scene::Node::is_behind(const valid_ptr<Node*> sibling) const
             return true;
         }
     }
-    notf_throw_format(hierarchy_error, "Cannot compare z-order of nodes \"" << name() << "\" and \"" << sibling->name()
-                                                                            << "\", because they are not siblings.");
+    notf_throw_format(hierarchy_error,
+                      "Cannot compare z-order of nodes \"{}\" and \"{}\", because they are not siblings.", name(),
+                      sibling->name());
 }
 
 void Scene::Node::stack_front()
@@ -259,8 +261,8 @@ void Scene::Node::stack_before(const valid_ptr<Node*> sibling)
     ChildContainer& siblings = m_parent->write_children();
     auto sibling_it = std::find(siblings.begin(), siblings.end(), sibling);
     if (sibling_it == siblings.end()) {
-        notf_throw_format(hierarchy_error, "Cannot stack node \"" << name() << "\" before node \"" << sibling->name()
-                                                                  << "\" as the two are not siblings.");
+        notf_throw_format(hierarchy_error, "Cannot stack node \"{}\" before node \"{}\" as the two are not siblings.",
+                          name(), sibling->name());
     }
     notf::move_behind_of(siblings, iterator_at(siblings, my_index), sibling_it);
 }
@@ -284,8 +286,8 @@ void Scene::Node::stack_behind(const valid_ptr<Node*> sibling)
     ChildContainer& siblings = m_parent->write_children();
     auto sibling_it = std::find(siblings.begin(), siblings.end(), sibling);
     if (sibling_it == siblings.end()) {
-        notf_throw_format(hierarchy_error, "Cannot stack node \"" << name() << "\" behind node \"" << sibling->name()
-                                                                  << "\" as the two are not siblings.");
+        notf_throw_format(hierarchy_error, "Cannot stack node \"{}\" behind node \"{}\" as the two are not siblings.",
+                          name(), sibling->name());
     }
     notf::move_in_front_of(siblings, iterator_at(siblings, my_index), sibling_it);
 }
@@ -297,11 +299,6 @@ valid_ptr<Scene::ChildContainer*> Scene::Node::_register_with_scene(Scene& scene
     {
         std::lock_guard<RecursiveMutex> lock(scene.m_mutex);
         scene.m_child_container.emplace(std::make_pair(handle, std::move(container)));
-
-        // if this scene is currently frozen, add yourself to the set of "new nodes"
-        if (scene._is_frozen()) {
-            scene.m_new_nodes.insert(this);
-        }
     }
     return handle;
 }
@@ -362,40 +359,34 @@ void Scene::unfreeze(NOTF_UNUSED const std::thread::id thread_id)
 
     // resolve the delta
     for (auto& delta_it : m_deltas) {
-        ChildContainer& children = *delta_it.first;
         ChildContainer& delta = *delta_it.second.get();
-
-        // swap the delta children with the existing ones
-        if (m_child_container.find(&children) == m_child_container.end()) {
+        valid_ptr<const ChildContainer*> child_id = delta_it.first;
+        auto child_it = m_child_container.find(child_id);
+        if (child_it == m_child_container.end()) {
             continue; // parent has already been removed - ignore
         }
-        children.swap(delta);
 
-        // find new nodes that were created and make sure they are removed from the "new nodes" set
-        if (!m_new_nodes.empty()) {
-            for (valid_ptr<Node*> child_node : children) {
-                if (!contains(delta, child_node)) {
-                    m_new_nodes.erase(m_new_nodes.find(child_node));
-                }
-            }
-        }
+        // swap the delta children with the existing ones
+        ChildContainer& children = *child_it->second.get();
+        children.swap(delta);
 
         // find old children that are removed by the delta and delete them
         for (valid_ptr<Node*> child_node : delta) {
             if (!contains(children, child_node)) {
+                m_deletion_deltas.erase(child_node);
                 _delete_node(child_node);
             }
         }
     }
 
-    // all nodes that are still left in the "new nodes" set were created and removed again, while the scene was frozen
+    // all nodes that are left in the deletion deltas set were created and removed again, while the scene was frozen
     // since no nodes are actually deleted from a frozen scene, we need to delete them now
-    for (valid_ptr<Node*> leftover_node : m_new_nodes) {
+    for (valid_ptr<Node*> leftover_node : m_deletion_deltas) {
         _delete_node(leftover_node);
     }
 
     m_deltas.clear();
-    m_new_nodes.clear();
+    m_deletion_deltas.clear();
 }
 
 void Scene::_delete_node(valid_ptr<Node*> node)

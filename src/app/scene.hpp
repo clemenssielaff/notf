@@ -118,6 +118,7 @@ public:
             m_node = other.m_node;
             other.m_scene = nullptr;
             other.m_node = nullptr;
+            return *this;
         }
 
         /// Destructor.
@@ -142,8 +143,13 @@ public:
                 siblings.erase(child_it);
             }
 
+            // if this scene is currently frozen, add a deletion delta
+            if (m_scene->_is_frozen()) {
+                m_scene->m_deletion_deltas.insert(m_node);
+            }
+
             // if the scene is not frozen, we can remove the node immediately
-            if (!m_scene->_is_frozen()) {
+            else {
                 m_scene->_delete_node(m_node);
             }
         }
@@ -475,17 +481,18 @@ private:
     mutable RecursiveMutex m_mutex;
 
     /// Map owning all nodes in the scene.
-    std::unordered_map<valid_ptr<Node*>, std::unique_ptr<Node>, PointerHash<Node>> m_nodes;
+    std::unordered_map<valid_ptr<const Node*>, std::unique_ptr<Node>, PointerHash<Node>> m_nodes;
 
     /// Mapping from all nodes in the scene to their children.
     /// Is separate from the Node type so the Scene hierarchy can be frozen.
-    std::unordered_map<valid_ptr<ChildContainer*>, ChildContainerPtr, PointerHash<ChildContainer>> m_child_container;
+    std::unordered_map<valid_ptr<const ChildContainer*>, ChildContainerPtr, PointerHash<ChildContainer>>
+        m_child_container;
 
     /// Map containing copieds of ChildContainer that were modified while the Scene was frozen.
-    std::unordered_map<valid_ptr<ChildContainer*>, ChildContainerPtr, PointerHash<ChildContainer>> m_deltas;
+    std::unordered_map<valid_ptr<const ChildContainer*>, ChildContainerPtr, PointerHash<ChildContainer>> m_deltas;
 
-    /// Set of all nodes that were created while the Scene was frozen.
-    std::unordered_set<valid_ptr<Node*>> m_new_nodes;
+    /// All nodes that were deleted while the Scene was frozen.
+    std::unordered_set<valid_ptr<Node*>> m_deletion_deltas;
 
     /// Thread id of the render thread, if we are rendering at the moment
     /// (a value != default signifies that the graph is currently frozen).
@@ -523,7 +530,7 @@ public:
     size_t delta_count() { return m_scene.m_deltas.size(); }
 
     /// Returns the number of new nodes in the Scene.
-    size_t new_nodes_count() { return m_scene.m_new_nodes.size(); }
+    size_t deletions_count() { return m_scene.m_deletion_deltas.size(); }
 
     /// Freezes the Scene.
     void freeze(const std::thread::id thread_id = std::this_thread::get_id()) { m_scene.freeze(thread_id); }

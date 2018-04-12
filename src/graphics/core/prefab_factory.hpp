@@ -91,10 +91,10 @@ public: // types ***************************************************************
 
 public: // methods ****************************************************************************************************/
     /** Add a box to the factory's production list. */
-    void add(const Box definition) { m_definitions.emplace_back(std::make_unique<Box>(std::move(definition))); }
+    void add(const Box& definition) { m_definitions.emplace_back(std::make_unique<Box>(std::move(definition))); }
 
     /** Add a sphere to the factory's production list. */
-    void add(const Sphere definition) { m_definitions.emplace_back(std::make_unique<Sphere>(std::move(definition))); }
+    void add(const Sphere& definition) { m_definitions.emplace_back(std::make_unique<Sphere>(std::move(definition))); }
 
 protected: // methods *************************************************************************************************/
     /** Constructor. */
@@ -164,7 +164,7 @@ public: // methods *************************************************************
     std::shared_ptr<PrefabType<InstanceData>> produce(std::string name)
     {
         if (m_library.has_prefab_type(name)) {
-            notf_throw_format(runtime_error, "Cannot produce new prefab type with existing name \"" << name << "\"");
+            notf_throw_format(runtime_error, "Cannot produce new prefab type with existing name \"{}\"", name);
         }
 
         // build up the studies from the factory list

@@ -114,6 +114,16 @@ struct Size2 {
     }
 };
 
+// Free Functions ====================================================================================================//
+
+/// Prints the contents of this size into a std::ostream.
+/// @param out   Output stream, implicitly passed with the << operator.
+/// @param size  Size2 to print.
+/// @return      Output stream for further output.
+std::ostream& operator<<(std::ostream& out, const Size2<float>& size);
+std::ostream& operator<<(std::ostream& out, const Size2<int>& size);
+std::ostream& operator<<(std::ostream& out, const Size2<short>& size);
+
 } // namespace detail
 
 //====================================================================================================================//
@@ -122,15 +132,7 @@ using Size2f = detail::Size2<float>;
 using Size2i = detail::Size2<int>;
 using Size2s = detail::Size2<short>;
 
-// Free Functions ====================================================================================================//
 
-/// Prints the contents of this size into a std::ostream.
-/// @param out   Output stream, implicitly passed with the << operator.
-/// @param size  Size2 to print.
-/// @return      Output stream for further output.
-std::ostream& operator<<(std::ostream& out, const Size2f& size);
-std::ostream& operator<<(std::ostream& out, const Size2i& size);
-std::ostream& operator<<(std::ostream& out, const Size2s& size);
 
 NOTF_CLOSE_NAMESPACE
 

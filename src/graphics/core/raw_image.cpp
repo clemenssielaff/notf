@@ -21,7 +21,7 @@ RawImage::RawImage(const std::string& image_path, int force_format)
     // load the image from file
     m_data = stbi_load(m_filepath.c_str(), &m_width, &m_height, &m_channels, force_format);
     if (!m_data) {
-        notf_throw_format(runtime_error, "Failed to load image from '" << m_filepath << "'");
+        notf_throw_format(runtime_error, "Failed to load image from \"{}\"", m_filepath);
     }
     assert(m_height);
     assert(m_width);

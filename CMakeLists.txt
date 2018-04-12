@@ -156,8 +156,13 @@ add_sources(THIRDPARTY_FILES thirdparty
     abseil/optional.hpp
     abseil/optional.cpp
     mpark/variant.hpp
-    fmt/format.h
+
     fmt/format.cc
+    fmt/format.h
+    fmt/ostream.cc
+    fmt/ostream.h
+    fmt/string.h
+    fmt/time.h
 )
 
 #add_sources(RESOURCE_FILES res

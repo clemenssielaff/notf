@@ -20,20 +20,20 @@
 NOTF_OPEN_NAMESPACE
 
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_INFO
-#    define CHECK_EXTENSION(member, name)                                                                              \
-        member = extensions.count(name);                                                                               \
-        if (member) {                                                                                                  \
-            notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), "GLExtensions") \
-                    .input                                                                                             \
-                << "Found OpenGL extension:\"" << name << "\"";                                                        \
-        }                                                                                                              \
-        else {                                                                                                         \
-            notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), "GLExtensions") \
-                    .input                                                                                             \
-                << "Could not find OpenGL extension:\"" << name << "\"";                                               \
-        }
+#define CHECK_EXTENSION(member, name)                                                                              \
+    member = extensions.count(name);                                                                               \
+    if (member) {                                                                                                  \
+        notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), "GLExtensions") \
+                .input                                                                                             \
+            << "Found OpenGL extension:\"" << name << "\"";                                                        \
+    }                                                                                                              \
+    else {                                                                                                         \
+        notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), "GLExtensions") \
+                .input                                                                                             \
+            << "Could not find OpenGL extension:\"" << name << "\"";                                               \
+    }
 #else
-#    define CHECK_EXTENSION(member, name) member = extensions.count(name);
+#define CHECK_EXTENSION(member, name) member = extensions.count(name);
 #endif
 
 GraphicsContext::Extensions::Extensions()
@@ -367,7 +367,7 @@ TexturePtr GraphicsContext::texture(const TextureId& id) const
 {
     auto it = m_textures.find(id);
     if (it == m_textures.end()) {
-        notf_throw_format(out_of_bounds, "GraphicsContext does not contain a Texture with ID \"" << id << "\"");
+        notf_throw_format(out_of_bounds, "GraphicsContext does not contain a Texture with ID \"{}\"", id);
     }
     return it->second.lock();
 }
@@ -379,8 +379,8 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot)
     }
 
     if (slot >= environment().texture_slot_count) {
-        notf_throw_format(runtime_error, "Invalid texture slot: " << slot << " - largest texture slot is:"
-                                                                  << environment().texture_slot_count - 1);
+        notf_throw_format(runtime_error, "Invalid texture slot: {} - largest texture slot is: {}", slot,
+                          environment().texture_slot_count - 1);
     }
 
     if (texture == m_state.texture_slots[slot].get()) {
@@ -388,7 +388,7 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot)
     }
 
     if (!texture->is_valid()) {
-        notf_throw_format(runtime_error, "Cannot bind invalid texture \"" << texture->name() << "\"");
+        notf_throw_format(runtime_error, "Cannot bind invalid texture \"{}\"", texture->name());
     }
 
     notf_check_gl(glActiveTexture(GL_TEXTURE0 + slot));
@@ -400,8 +400,8 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot)
 void GraphicsContext::unbind_texture(uint slot)
 {
     if (slot >= environment().texture_slot_count) {
-        notf_throw_format(runtime_error, "Invalid texture slot: " << slot << " - largest texture slot is:"
-                                                                  << environment().texture_slot_count - 1);
+        notf_throw_format(runtime_error, "Invalid texture slot: {} - largest texture slot is: {}", slot,
+                          environment().texture_slot_count - 1);
     }
 
     if (m_state.texture_slots.at(slot) == nullptr) {
@@ -425,7 +425,7 @@ ShaderPtr GraphicsContext::shader(const ShaderId& id) const
 {
     auto it = m_shaders.find(id);
     if (it == m_shaders.end()) {
-        notf_throw_format(out_of_bounds, "GraphicsContext does not contain a Shader with ID \"" << id << "\"");
+        notf_throw_format(out_of_bounds, "GraphicsContext does not contain a Shader with ID \"{}\"", id);
     }
     return it->second.lock();
 }
@@ -440,7 +440,7 @@ FrameBufferPtr GraphicsContext::framebuffer(const FrameBufferId& id) const
 {
     auto it = m_framebuffers.find(id);
     if (it == m_framebuffers.end()) {
-        notf_throw_format(out_of_bounds, "GraphicsContext does not contain a FrameBuffer with ID \"" << id << "\"");
+        notf_throw_format(out_of_bounds, "GraphicsContext does not contain a FrameBuffer with ID \"{}\"", id);
     }
     return it->second.lock();
 }
@@ -522,9 +522,9 @@ void GraphicsContext::_register_new(TexturePtr texture)
         it->second = texture; // update expired
     }
     else {
-        notf_throw_format(internal_error, "Failed to register a new texture with the same ID as an existing "
-                                          "texture: \""
-                                              << texture->id() << "\"");
+        notf_throw_format(internal_error,
+                          "Failed to register a new texture with the same ID as an existing texture: \"{}\"",
+                          texture->id());
     }
 }
 
@@ -538,9 +538,9 @@ void GraphicsContext::_register_new(ShaderPtr shader)
         it->second = shader; // update expired
     }
     else {
-        notf_throw_format(internal_error, "Failed to register a new shader with the same ID as an existing shader: "
-                                          "\"" << shader->id()
-                                               << "\"");
+        notf_throw_format(internal_error,
+                          "Failed to register a new shader with the same ID as an existing shader: \"{}\"",
+                          shader->id());
     }
 }
 
@@ -554,8 +554,9 @@ void GraphicsContext::_register_new(FrameBufferPtr framebuffer)
         it->second = framebuffer; // update expired
     }
     else {
-        notf_throw_format(internal_error, "Failed to register a new framebuffer with the same ID as an existing "
-                                              << "framebuffer: \"" << framebuffer->id() << "\"");
+        notf_throw_format(internal_error,
+                          "Failed to register a new framebuffer with the same ID as an existing framebuffer: \"{}\"",
+                          framebuffer->id());
     }
 }
 

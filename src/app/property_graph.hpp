@@ -330,16 +330,16 @@ private:
         }
 
         /// Id of the copied PropertyNode.
-        virtual valid_ptr<NodeBase*> id() { return m_id; }
+        valid_ptr<NodeBase*> id() override { return m_id; }
 
         /// Creates a properly typed delta copy of this PropertyNode instance.
-        virtual std::unique_ptr<NodeBase> copy_to_delta() override
+        std::unique_ptr<NodeBase> copy_to_delta() override
         {
             notf_throw(internal_error, "Cannot copy a NodeDelta into a new delta");
         }
 
         /// Resolves the modification delta back into this node.
-        virtual void resolve_delta(valid_ptr<NodeBase*>) override
+        void resolve_delta(valid_ptr<NodeBase*>) override
         {
             notf_throw(internal_error, "Cannot copy into an existing NodeDelta");
         }
