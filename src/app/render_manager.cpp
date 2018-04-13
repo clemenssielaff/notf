@@ -3,9 +3,6 @@
 #include "app/window.hpp"
 #include "graphics/core/graphics_context.hpp"
 
-//#include "common/log.hpp"
-//#include "utils/reverse_iterator.hpp"
-
 NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//

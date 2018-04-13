@@ -3,8 +3,9 @@
 #include <exception>
 
 #include "common/meta.hpp"
-#include "thirdparty/fmt/format.h"
-#include "thirdparty/fmt/ostream.h"
+
+#include "fmt/format.h"
+#include "fmt/ostream.h"
 
 NOTF_OPEN_NAMESPACE
 

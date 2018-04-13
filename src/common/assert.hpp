@@ -4,7 +4,7 @@
 
 #ifdef NOTF_DEBUG
 
-#include "thirdparty/fmt/format.h"
+#include "fmt/format.h"
 
 NOTF_OPEN_NAMESPACE
 

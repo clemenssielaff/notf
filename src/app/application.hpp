@@ -128,6 +128,9 @@ public:
     /// The Application's Resource Manager.
     ResourceManager& resource_manager() { return *m_resource_manager; }
 
+    /// The Application's Event Manager.
+    EventManager& event_manager() { return *m_event_manager; }
+
     /// The Application's thread pool.
     ThreadPool& thread_pool() { return *m_thread_pool; }
 
@@ -189,22 +192,11 @@ template<>
 class Application::Access<Window> {
     friend class Window;
 
-    /// Constructor.
-    Access(Window* window) : m_application(Application::instance()), m_window(window) {}
-
     /// Unregisters an existing Window from this Application.
-    void unregister() { m_application._unregister_window(m_window); }
+    void unregister(Window* window) { Application::instance()._unregister_window(window); }
 
     /// Tell the RenderManager to redraw this Window at the next opportunity.
-    void request_redraw() { m_application._request_redraw(m_window); }
-
-    // fields --------------------------------------------------------------------------------------------------------//
-private:
-    /// The Application to access.
-    Application& m_application;
-
-    /// Window that was granted access.
-    Window* m_window;
+    void request_redraw(Window* window) { Application::instance()._request_redraw(window); }
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -57,9 +57,6 @@ Application::Application(const Args& application_args)
         notf_throw(application_initialization_error, error.what());
     }
 
-    // set the error callback to catch all GLFW errors
-    glfwSetErrorCallback(EventManager::on_error);
-
     // initialize GLFW
     if (!glfwInit()) {
         _shutdown();

@@ -1,7 +1,8 @@
 #pragma once
 
 #include "app/forwards.hpp"
-#include "event.hpp"
+#include "app/io/event.hpp"
+#include "common/size2.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -25,12 +26,38 @@ public:
     WindowEvent(Type type) : type(type) {}
 
     /// Destructor.
-    virtual ~WindowEvent() override;
+    ~WindowEvent() override;
 
     // fields --------------------------------------------------------------------------------------------------------//
 public:
     /// The type of this event.
     const Type type;
+};
+
+//====================================================================================================================//
+
+/// Event object generated when a Window is resized.
+/// Unlike other events, this one cannot be handled by a Layer in the front but is always propagated all the way to the
+/// last Layer in a Window.
+class WindowResizeEvent : public detail::EventBase<WindowResizeEvent> {
+
+    // methods -------------------------------------------------------------------------------------------------------//
+public:
+    /// Constructor.
+    /// @param type         The type of this event.
+    WindowResizeEvent(Size2i old_size, Size2i new_size) : old_size(std::move(old_size)), new_size(std::move(new_size))
+    {}
+
+    /// Destructor.
+    ~WindowResizeEvent() override;
+
+    // fields --------------------------------------------------------------------------------------------------------//
+public:
+    /// Old size of the Window.
+    const Size2i old_size;
+
+    /// New size of the Window.
+    const Size2i new_size;
 };
 
 NOTF_CLOSE_NAMESPACE

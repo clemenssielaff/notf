@@ -1,8 +1,8 @@
 #pragma once
 
 #include "app/forwards.hpp"
-#include "event.hpp"
-#include "keyboard.hpp"
+#include "app/io/event.hpp"
+#include "app/io/keyboard.hpp"
 
 NOTF_OPEN_NAMESPACE
 

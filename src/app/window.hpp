@@ -28,7 +28,7 @@ class Window {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(Application)
+    NOTF_ACCESS_TYPES(Application, EventManager)
 
     /// Whether the window is minimzed, windowed or maxmized.
     enum class State {
@@ -106,7 +106,6 @@ public:
     /// If the new state is equal to the old one this method does nothing.
     /// @param state    New state.
     void set_state(const State state);
-    // TODO: connect more glfw window callbacks
 
     /// Closes this Window.
     void close();
@@ -156,11 +155,25 @@ class Window::Access<Application> {
     /// @throws window_initialization_error         If the OpenGL context creation for this Window failed
     /// @throws application_initialization_error    When you try to instantiate a Window without an Application.
     static WindowPtr create(const Args& args = Window::s_default_args) { return Window::_create(args); }
+};
+
+// ===================================================================================================================//
+
+template<>
+class Window::Access<EventManager> {
+    friend class EventManager;
+
+    /// Constructor.
+    /// @param window   Window granting access.
+    Access(Window& window) : m_window(window) {}
+
+    /// The GLFW window wrapped by the accessed notf Window.
+    GLFWwindow* glfw_window() { return m_window.m_glfw_window.get(); }
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// Window that was granted access.
-    Window* m_window;
+    /// Window granting access.
+    Window& m_window;
 };
 
 //====================================================================================================================//

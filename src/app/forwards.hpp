@@ -5,6 +5,7 @@
 #include "graphics/forwards.hpp"
 
 struct GLFWwindow;
+struct GLFWmonitor;
 
 NOTF_OPEN_NAMESPACE
 

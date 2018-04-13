@@ -60,17 +60,10 @@ Window::Window(const Args& args)
     m_font_manager = FontManager::create(*m_graphics_context);
 
     // connect the window callbacks
-    glfwSetKeyCallback(m_glfw_window.get(), EventManager::on_token_key);
-    glfwSetCharModsCallback(m_glfw_window.get(), EventManager::on_char_input);
-    glfwSetCursorEnterCallback(m_glfw_window.get(), EventManager::on_cursor_entered);
-    glfwSetCursorPosCallback(m_glfw_window.get(), EventManager::on_cursor_move);
-    glfwSetMouseButtonCallback(m_glfw_window.get(), EventManager::on_mouse_button);
-    glfwSetScrollCallback(m_glfw_window.get(), EventManager::on_scroll);
-    glfwSetWindowCloseCallback(m_glfw_window.get(), EventManager::on_window_close);
-    glfwSetWindowSizeCallback(m_glfw_window.get(), EventManager::on_window_resize);
+    EventManager::Access<Window>().register_window(*this);
 
     // apply the Window icon
-    // In order to show the icon in Ubuntu 16.04 is as bit more complicated:
+    // Showing the icon in Ubuntu 16.04 is as bit more complicated:
     // 1. start the software at least once, you might have to pin it to the launcher as well ...
     // 2. copy the icon to ~/.local/share/icons/hicolor/<resolution>/apps/<yourapp>
     // 3. modify the file ~/.local/share/applications/<yourapp>, in particular the line Icon=<yourapp>
@@ -141,7 +134,8 @@ Vector2f Window::mouse_pos() const
     return {static_cast<float>(mouse_x), static_cast<float>(mouse_y)};
 }
 
-void Window::request_redraw() { Application::Access<Window>(this).request_redraw(); }
+// TODO: Window::request_redraw has an enormous call stack for such an easy function
+void Window::request_redraw() { Application::Access<Window>().request_redraw(this); }
 
 void Window::set_state(const State state)
 {
@@ -167,14 +161,7 @@ void Window::close()
     log_trace << "Closing Window \"" << m_title << "\"";
 
     // disconnect the window callbacks
-    glfwSetKeyCallback(m_glfw_window.get(), nullptr);
-    glfwSetCharModsCallback(m_glfw_window.get(), nullptr);
-    glfwSetCursorEnterCallback(m_glfw_window.get(), nullptr);
-    glfwSetCursorPosCallback(m_glfw_window.get(), nullptr);
-    glfwSetMouseButtonCallback(m_glfw_window.get(), nullptr);
-    glfwSetScrollCallback(m_glfw_window.get(), nullptr);
-    glfwSetWindowCloseCallback(m_glfw_window.get(), nullptr);
-    glfwSetWindowSizeCallback(m_glfw_window.get(), nullptr);
+    EventManager::Access<Window>().remove_window(*this);
 
     m_scene_manager.reset();
     m_font_manager.reset();
@@ -183,7 +170,7 @@ void Window::close()
 
     m_size = Size2i::invalid();
 
-    Application::Access<Window>(this).unregister();
+    Application::Access<Window>().unregister(this);
 }
 
 NOTF_CLOSE_NAMESPACE

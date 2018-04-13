@@ -73,6 +73,10 @@ NOTF_OPEN_NAMESPACE
 /// Scene (actually all Scenes of a SceneManager) **at once**, to get a frame without weird hafl-states where (for
 /// example) one object has already moved while another one is still in the state of the last frame.
 ///
+/// The SceneManager works synchronously, meaning there is a strict temporal ordering of events with regard to each
+/// Window handling events. This is because the state of the hierarchy itself determines who is going to end up handling
+/// an event and if a later event is handled before an earlier one, then the propagation might not work correctly.
+///
 class SceneManager { // TODO: update SceneManager docstring
 
     // types ---------------------------------------------------------------------------------------------------------//
@@ -109,8 +113,9 @@ public:
     /// Needed, because otherwise we'd have to include types contained in member unique_ptrs in the header.
     ~SceneManager();
 
-    /// Current list of Layers, ordered from front to back.
-    const std::vector<LayerPtr> layers() const { return m_current_state->layers(); }
+    /// Propagates the event into the scenes.
+    /// @param untyped_event
+    void propagate_event(EventPtr&& untyped_event);
 
     // state management -------------------------------------------------------
 

@@ -79,7 +79,6 @@ if(NOTF_LOG_PRETTY_FUNCTION)
 endif()
 
 include_directories(
-    ./
     src/
     thirdparty/
     res/
@@ -96,7 +95,6 @@ create_module(utils)
 add_sources(SOURCE_FILES src
     app/application.cpp
     app/application.hpp
-    app/ids.hpp
     app/window.cpp
     app/window.hpp
     app/property_graph.hpp

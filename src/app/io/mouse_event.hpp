@@ -1,9 +1,9 @@
 #pragma once
 
 #include "app/forwards.hpp"
+#include "app/io/event.hpp"
+#include "app/io/keyboard.hpp"
 #include "common/vector2.hpp"
-#include "event.hpp"
-#include "keyboard.hpp"
 
 NOTF_OPEN_NAMESPACE
 
