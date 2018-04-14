@@ -76,7 +76,6 @@ private:
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     NOTF_NO_COPY_OR_ASSIGN(Application)
-    NOTF_NO_HEAP_ALLOCATION(Application)
 
     /// Desctructor
     ~Application();
@@ -128,14 +127,17 @@ public:
     /// The Application's Resource Manager.
     ResourceManager& resource_manager() { return *m_resource_manager; }
 
-    /// The Application's Event Manager.
-    EventManager& event_manager() { return *m_event_manager; }
-
     /// The Application's thread pool.
     ThreadPool& thread_pool() { return *m_thread_pool; }
 
+    /// The RenderManager singleton.
+    RenderManager& render_manager() { return *m_render_manager; }
+
     /// The Application's PropertyGraph.
     PropertyGraph& property_graph() { return *m_property_graph; }
+
+    /// The Application's Event Manager.
+    EventManager& event_manager() { return *m_event_manager; }
 
 private:
     /// Static (private) function holding the actual Application instance.
@@ -147,10 +149,6 @@ private:
 
     /// Unregisters an existing Window from this Application.
     void _unregister_window(Window* window);
-
-    /// Tell the RenderManager to redraw the given Window at the next opportunity.
-    /// @param window   Window to redraw.
-    void _request_redraw(Window* window);
 
     /// Shuts down the application.
     /// Is called automatically, after the last Window has been closed.
@@ -194,9 +192,6 @@ class Application::Access<Window> {
 
     /// Unregisters an existing Window from this Application.
     void unregister(Window* window) { Application::instance()._unregister_window(window); }
-
-    /// Tell the RenderManager to redraw this Window at the next opportunity.
-    void request_redraw(Window* window) { Application::instance()._request_redraw(window); }
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -8,7 +8,6 @@
 #include "app/render_manager.hpp"
 #include "app/resource_manager.hpp"
 #include "app/window.hpp"
-#include "common/assert.hpp"
 #include "common/log.hpp"
 #include "common/thread_pool.hpp"
 
@@ -103,8 +102,6 @@ void Application::_unregister_window(Window* window)
     NOTF_ASSERT_MSG(it != m_windows.end(), "Cannot remove unknown Window from instance");
     m_windows.erase(it);
 }
-
-void Application::_request_redraw(Window* window) { m_render_manager->render(window); }
 
 void Application::_shutdown()
 {

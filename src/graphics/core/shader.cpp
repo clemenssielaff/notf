@@ -157,7 +157,7 @@ std::string build_defines(const Shader::Defines& defines)
 
 namespace detail {
 
-std::string build_glsl_header(const GraphicsContextPtr& context)
+std::string build_glsl_header(const GraphicsContext& context)
 {
     std::string result = "\n//==== notf header ========================================\n\n";
 
@@ -174,7 +174,7 @@ std::string build_glsl_header(const GraphicsContextPtr& context)
 
     { // ... then extensions ...
         bool any_extensions = false;
-        if (context->extensions().nv_gpu_shader5) {
+        if (context.extensions().nv_gpu_shader5) {
             result += "#extension GL_NV_gpu_shader5 : enable\n";
             any_extensions = true;
         }
@@ -185,7 +185,7 @@ std::string build_glsl_header(const GraphicsContextPtr& context)
 
     { // ... and defines last
         bool any_defines = false;
-        if (!context->extensions().nv_gpu_shader5) {
+        if (!context.extensions().nv_gpu_shader5) {
             result += "#define int8_t    int \n"
                       "#define int16_t   int \n"
                       "#define int32_t   int \n"
@@ -244,7 +244,7 @@ std::string build_glsl_header(const GraphicsContextPtr& context)
 
 } // namespace detail
 
-const std::string& glsl_header(const GraphicsContextPtr& context)
+const std::string& glsl_header(const GraphicsContext& context)
 {
     static const std::string header = detail::build_glsl_header(context);
     return header;
@@ -287,8 +287,8 @@ NOTF_OPEN_NAMESPACE
 
 const Shader::Defines Shader::s_no_defines = {};
 
-Shader::Shader(GraphicsContextPtr& context, const GLuint id, Stage::Flags stages, std::string name)
-    : m_graphics_context(*context), m_id(id), m_stages(stages), m_name(std::move(name)), m_uniforms()
+Shader::Shader(GraphicsContext& context, const GLuint id, Stage::Flags stages, std::string name)
+    : m_graphics_context(context), m_id(id), m_stages(stages), m_name(std::move(name)), m_uniforms()
 {
     // discover uniforms
     GLint uniform_count = 0;
@@ -561,8 +561,9 @@ void Shader::set_uniform(const std::string& name, const Matrix4f& value)
 
 // ===================================================================================================================//
 
-VertexShader::VertexShader(GraphicsContextPtr& context, const GLuint program, std::string shader_name,
-                           std::string source)
+Signal<VertexShaderPtr> VertexShader::on_shader_created;
+
+VertexShader::VertexShader(GraphicsContext& context, const GLuint program, std::string shader_name, std::string source)
     : Shader(context, program, Stage::VERTEX, std::move(shader_name)), m_source(std::move(source)), m_attributes()
 {
     // discover attributes
@@ -601,7 +602,7 @@ VertexShader::VertexShader(GraphicsContextPtr& context, const GLuint program, st
 }
 
 VertexShaderPtr
-VertexShader::create(GraphicsContextPtr& context, std::string name, const std::string& source, const Defines& defines)
+VertexShader::create(GraphicsContext& context, std::string name, const std::string& source, const Defines& defines)
 {
     const std::string modified_source = inject_header(source, glsl_header(context) + build_defines(defines));
 
@@ -612,6 +613,8 @@ VertexShader::create(GraphicsContextPtr& context, std::string name, const std::s
     VertexShaderPtr result
         = NOTF_MAKE_SHARED_FROM_PRIVATE(VertexShader, context, program, std::move(name), std::move(modified_source));
     _register_with_context(result);
+
+    on_shader_created(result);
     return result;
 }
 
@@ -628,7 +631,9 @@ GLuint VertexShader::attribute(const std::string& attribute_name) const
 
 // ===================================================================================================================//
 
-TesselationShader::TesselationShader(GraphicsContextPtr& context, const GLuint program, std::string shader_name,
+Signal<TesselationShaderPtr> TesselationShader::on_shader_created;
+
+TesselationShader::TesselationShader(GraphicsContext& context, const GLuint program, std::string shader_name,
                                      std::string control_source, std::string evaluation_source)
     : Shader(context, program, Stage::TESS_CONTROL | Stage::TESS_EVALUATION, std::move(shader_name))
     , m_control_source(std::move(control_source))
@@ -636,7 +641,7 @@ TesselationShader::TesselationShader(GraphicsContextPtr& context, const GLuint p
 {}
 
 TesselationShaderPtr
-TesselationShader::create(GraphicsContextPtr& context, const std::string& name, std::string& control_source,
+TesselationShader::create(GraphicsContext& context, const std::string& name, std::string& control_source,
                           std::string& evaluation_source, const Defines& defines)
 {
     const std::string injection_string = glsl_header(context) + build_defines(defines);
@@ -652,18 +657,22 @@ TesselationShader::create(GraphicsContextPtr& context, const std::string& name, 
                                                                 std::move(modified_control_source),
                                                                 std::move(modified_evaluation_source));
     _register_with_context(result);
+
+    on_shader_created(result);
     return result;
 }
 
 // ===================================================================================================================//
 
-GeometryShader::GeometryShader(GraphicsContextPtr& context, const GLuint program, std::string shader_name,
+Signal<GeometryShaderPtr> GeometryShader::on_shader_created;
+
+GeometryShader::GeometryShader(GraphicsContext& context, const GLuint program, std::string shader_name,
                                std::string source)
     : Shader(context, program, Stage::GEOMETRY, std::move(shader_name)), m_source(std::move(source))
 {}
 
 GeometryShaderPtr
-GeometryShader::create(GraphicsContextPtr& context, std::string name, const std::string& source, const Defines& defines)
+GeometryShader::create(GraphicsContext& context, std::string name, const std::string& source, const Defines& defines)
 {
     const std::string modified_source = inject_header(source, glsl_header(context) + build_defines(defines));
 
@@ -674,18 +683,22 @@ GeometryShader::create(GraphicsContextPtr& context, std::string name, const std:
     GeometryShaderPtr result
         = NOTF_MAKE_SHARED_FROM_PRIVATE(GeometryShader, context, program, std::move(name), std::move(modified_source));
     _register_with_context(result);
+
+    on_shader_created(result);
     return result;
 }
 
 // ===================================================================================================================//
 
-FragmentShader::FragmentShader(GraphicsContextPtr& context, const GLuint program, std::string shader_name,
+Signal<FragmentShaderPtr> FragmentShader::on_shader_created;
+
+FragmentShader::FragmentShader(GraphicsContext& context, const GLuint program, std::string shader_name,
                                std::string source)
     : Shader(context, program, Stage::FRAGMENT, std::move(shader_name)), m_source(std::move(source))
 {}
 
 FragmentShaderPtr
-FragmentShader::create(GraphicsContextPtr& context, std::string name, const std::string& source, const Defines& defines)
+FragmentShader::create(GraphicsContext& context, std::string name, const std::string& source, const Defines& defines)
 {
     const std::string modified_source = inject_header(source, glsl_header(context) + build_defines(defines));
 
@@ -696,6 +709,8 @@ FragmentShader::create(GraphicsContextPtr& context, std::string name, const std:
     FragmentShaderPtr result
         = NOTF_MAKE_SHARED_FROM_PRIVATE(FragmentShader, context, program, std::move(name), std::move(modified_source));
     _register_with_context(result);
+
+    on_shader_created(result);
     return result;
 }
 

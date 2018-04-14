@@ -13,6 +13,11 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
+/// The EventManager is called from all parts of an Application, whenever an event happens.
+/// Its job is to create Event objects that contain the type and auxiliary information about the event, and propagate
+/// them to the relevant handlers.
+///
+/// The EventManager runs on the main thread, because it requires access to GLFW functions.
 class EventManager {
 
     // types ---------------------------------------------------------------------------------------------------------//
@@ -21,16 +26,19 @@ public:
 
 private:
     /// Per-window data.
-    struct WindowHandler {
+    class WindowHandler {
 
         // methods ------------------------------------------------------------
     public:
         /// Constructor.
         /// @param window   Window to forward the events into.
-        WindowHandler(Window* window) : window(window) {}
+        WindowHandler(Window* window) : m_window(window) {}
 
         /// Destructor.
         ~WindowHandler() { stop(); }
+
+        /// Window to forward the events into.
+        Window* window() { return m_window; }
 
         /// Start the handler.
         void start();
@@ -48,12 +56,13 @@ private:
         void _run();
 
         // fields -------------------------------------------------------------
-    public:
+    private:
         /// Worker thread.
         ScopedThread m_thread;
 
-        /// All events for this handler in order.
-        std::deque<EventPtr> events;
+        /// All events for this handler in order of occurrence.
+        /// (Events in the front are older than the ones in the back).
+        std::deque<EventPtr> m_events;
 
         /// Mutex guarding the RenderThread's state.
         Mutex m_mutex;
@@ -62,7 +71,7 @@ private:
         std::condition_variable m_condition;
 
         /// Window to forward the events into.
-        Window* const window;
+        Window* const m_window;
 
         /// Is true as long at the thread should continue.
         bool m_is_running = false;
@@ -189,7 +198,11 @@ private:
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// Relevant data for each Window.
+    /// Handlers are unordered.
     std::vector<std::unique_ptr<WindowHandler>> m_handler;
+
+    /// Mutex making sure that event dispatch is thread-safe.
+    Mutex m_mutex;
 };
 
 // ===================================================================================================================//

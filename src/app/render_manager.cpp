@@ -1,7 +1,11 @@
 #include "app/render_manager.hpp"
 
+#include "app/layer.hpp"
+#include "app/scene_manager.hpp"
 #include "app/window.hpp"
+#include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
+#include "utils/reverse_iterator.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -53,7 +57,7 @@ void RenderManager::RenderThread::_run()
     while (1) {
         { // wait until the next frame is ready
             std::unique_lock<std::mutex> lock_guard(m_mutex);
-            if (m_windows.empty()) {
+            if (m_windows.empty() && m_is_running) {
                 m_condition.wait(lock_guard, [&] { return !m_windows.empty() || !m_is_running; });
             }
 
@@ -68,29 +72,23 @@ void RenderManager::RenderThread::_run()
         GraphicsContext& context = window->graphics_context();
         context.make_current();
 
-        //    SceneManager& scene_manager = m_window.scene_manager();
-
-        //        // ignore default state
-        //        if (!scene_manager.current_state().is_valid()) {
-        //            log_trace << "Cannot render a SceneManager in its invalid State";
-        //            continue;
-        //        }
+        SceneManager& scene_manager = window->scene_manager();
 
         //        // TODO: clean all the render targets here
         //        // in order to sort them, use typeid(*ptr).hash_code()
 
         context.begin_frame();
 
-        //        try {
-        //            // render all Layers from back to front
-        //            for (const LayerPtr& layer : reverse(scene_manager.current_state().layers)) {
-        //                layer->render();
-        //            }
-        //        }
-        //        // if an error bubbled all the way up here, something has gone horribly wrong
-        //        catch (const notf_exception& error) {
-        //            log_critical << "Rendering failed: \"" << error.what() << "\"";
-        //        }
+        try {
+            // render all Layers from back to front
+            for (const LayerPtr& layer : reverse(scene_manager.current_state()->layers())) {
+                layer->render();
+            }
+        }
+        // if an error bubbled all the way up here, something has gone horribly wrong
+        catch (const notf_exception& error) {
+            log_critical << "Rendering failed: \"" << error.what() << "\"";
+        }
 
         context.finish_frame();
     }

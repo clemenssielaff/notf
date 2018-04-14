@@ -15,6 +15,9 @@
 #include "graphics/core/opengl.hpp"
 #include "graphics/core/raw_image.hpp"
 
+#include "app/application.hpp"
+#include "app/resource_manager.hpp"
+
 namespace { // anonymous
 NOTF_USING_NAMESPACE
 
@@ -112,6 +115,7 @@ void assert_is_valid(const Texture&) {} // noop
 NOTF_OPEN_NAMESPACE
 
 const Texture::Args Texture::s_default_args = {};
+Signal<TexturePtr> Texture::on_texture_created;
 
 Texture::Texture(GraphicsContext& context, const GLuint id, const GLenum target, std::string name, Size2i size,
                  const Format format)
@@ -353,6 +357,8 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
     TexturePtr texture
         = Texture::_create(context, id, GL_TEXTURE_2D, std::move(name), std::move(image_size), texture_format);
     GraphicsContext::Access<Texture>(context).register_new(texture);
+
+    on_texture_created(texture);
     return texture;
 }
 

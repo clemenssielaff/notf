@@ -3,6 +3,7 @@
 #include "app/event_manager.hpp"
 #include "app/glfw.hpp"
 #include "app/layer.hpp"
+#include "app/render_manager.hpp"
 #include "app/resource_manager.hpp"
 #include "app/scene.hpp"
 #include "app/scene_manager.hpp"
@@ -134,8 +135,7 @@ Vector2f Window::mouse_pos() const
     return {static_cast<float>(mouse_x), static_cast<float>(mouse_y)};
 }
 
-// TODO: Window::request_redraw has an enormous call stack for such an easy function
-void Window::request_redraw() { Application::Access<Window>().request_redraw(this); }
+void Window::request_redraw() { Application::instance().render_manager().render(this); }
 
 void Window::set_state(const State state)
 {

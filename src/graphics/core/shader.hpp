@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "common/signal.hpp"
 #include "graphics/ids.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -90,7 +91,7 @@ protected:
     /// @param id       OpenGL Shader program ID.
     /// @param stages   Pipeline stage/s of the Shader.
     /// @param name     Name of this Shader.
-    Shader(GraphicsContextPtr& context, const GLuint id, Stage::Flags stages, std::string name);
+    Shader(GraphicsContext& context, const GLuint id, Stage::Flags stages, std::string name);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(Shader)
@@ -192,6 +193,12 @@ void Shader::set_uniform(const std::string&, const Matrix4f& value);
 /// Vertex Shader.
 class VertexShader : public Shader {
 
+    // signals -------------------------------------------------------------------------------------------------------//
+public:
+    /// Fired when a new Vertex Shader was created.
+    /// @param New vertex shader.
+    static Signal<VertexShaderPtr> on_shader_created;
+
     // methods -------------------------------------------------------------------------------------------------------//
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
@@ -201,7 +208,7 @@ private:
     /// @param program  OpenGL Shader program ID.
     /// @param name     Human readable name of the Shader.
     /// @param source   Source of the Shader.
-    VertexShader(GraphicsContextPtr& context, const GLuint program, std::string name, std::string source);
+    VertexShader(GraphicsContext& context, const GLuint program, std::string name, std::string source);
 
 public:
     /// Factory.
@@ -210,7 +217,7 @@ public:
     /// @param source           Vertex shader source.
     /// @param defines          Additional definitions to inject into the shader code.
     /// @throws internal_error  If another Shader with the same ID already exists.
-    static VertexShaderPtr create(GraphicsContextPtr& context, std::string name, const std::string& source,
+    static VertexShaderPtr create(GraphicsContext& context, std::string name, const std::string& source,
                                   const Defines& defines = s_no_defines);
 
     /// Returns the location of the attribute with the given name.
@@ -237,6 +244,12 @@ private:
 /// Tesselation Shader.
 class TesselationShader : public Shader {
 
+    // signals -------------------------------------------------------------------------------------------------------//
+public:
+    /// Fired when a new Tesselation Shader was created.
+    /// @param New tesselation shader.
+    static Signal<TesselationShaderPtr> on_shader_created;
+
     // methods -------------------------------------------------------------------------------------------------------//
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
@@ -247,7 +260,7 @@ private:
     /// @param name                 Human readable name of the Shader.
     /// @param control_source       Tesselation control shader source.
     /// @param evaluation_source    Tesselation evaluation shader source.
-    TesselationShader(GraphicsContextPtr& context, const GLuint program, std::string name, std::string control_source,
+    TesselationShader(GraphicsContext& context, const GLuint program, std::string name, std::string control_source,
                       std::string evaluation_source);
 
 public:
@@ -258,9 +271,8 @@ public:
     /// @param evaluation_source    Tesselation evaluation shader source.
     /// @param defines              Additional definitions to inject into the shader code.
     /// @throws internal_error      If another Shader with the same ID already exists.
-    static TesselationShaderPtr
-    create(GraphicsContextPtr& context, const std::string& name, std::string& control_source,
-           std::string& evaluation_source, const Defines& defines = s_no_defines);
+    static TesselationShaderPtr create(GraphicsContext& context, const std::string& name, std::string& control_source,
+                                       std::string& evaluation_source, const Defines& defines = s_no_defines);
 
     /// The teselation control shader source code.
     const std::string& control_source() const { return m_control_source; }
@@ -282,6 +294,12 @@ private:
 /// Geometry Shader.
 class GeometryShader : public Shader {
 
+    // signals -------------------------------------------------------------------------------------------------------//
+public:
+    /// Fired when a new Geometry Shader was created.
+    /// @param New geometry shader.
+    static Signal<GeometryShaderPtr> on_shader_created;
+
     // methods -------------------------------------------------------------------------------------------------------//
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
@@ -291,7 +309,7 @@ private:
     /// @param program  OpenGL Shader program ID.
     /// @param name     Human readable name of the Shader.
     /// @param source   Source of the Shader.
-    GeometryShader(GraphicsContextPtr& context, const GLuint program, std::string name, std::string source);
+    GeometryShader(GraphicsContext& context, const GLuint program, std::string name, std::string source);
 
 public:
     /// Factory.
@@ -300,7 +318,7 @@ public:
     /// @param source           Geometry shader source.
     /// @param defines          Additional definitions to inject into the shader code.
     /// @throws internal_error  If another Shader with the same ID already exists.
-    static GeometryShaderPtr create(GraphicsContextPtr& context, std::string name, const std::string& source,
+    static GeometryShaderPtr create(GraphicsContext& context, std::string name, const std::string& source,
                                     const Defines& defines = s_no_defines);
 
     /// The geometry shader source code.
@@ -317,6 +335,12 @@ private:
 /// Fragment Shader.
 class FragmentShader : public Shader {
 
+    // signals -------------------------------------------------------------------------------------------------------//
+public:
+    /// Fired when a new Fragment Shader was created.
+    /// @param New fragment shader.
+    static Signal<FragmentShaderPtr> on_shader_created;
+
     // methods -------------------------------------------------------------------------------------------------------//
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
@@ -326,7 +350,7 @@ private:
     /// @param program  OpenGL Shader program ID.
     /// @param name     Human readable name of the Shader.
     /// @param source   Source of the Shader.
-    FragmentShader(GraphicsContextPtr& context, const GLuint program, std::string name, std::string source);
+    FragmentShader(GraphicsContext& context, const GLuint program, std::string name, std::string source);
 
 public:
     /// Factory.
@@ -335,7 +359,7 @@ public:
     /// @param source           Fragment shader source.
     /// @param defines          Additional definitions to inject into the shader code.
     /// @throws internal_error  If another Shader with the same ID already exists.
-    static FragmentShaderPtr create(GraphicsContextPtr& context, std::string name, const std::string& source,
+    static FragmentShaderPtr create(GraphicsContext& context, std::string name, const std::string& source,
                                     const Defines& defines = s_no_defines);
 
     /// The fragment shader source code.

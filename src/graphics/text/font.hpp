@@ -5,6 +5,7 @@
 #include <unordered_map>
 
 #include "common/hash.hpp"
+#include "common/signal.hpp"
 #include "common/utf.hpp"
 #include "graphics/forwards.hpp"
 
@@ -129,6 +130,12 @@ public: // types
         }
     };
 
+    // signals -------------------------------------------------------------------------------------------------------//
+public:
+    /// Fired when a new Font was created.
+    /// @param New font.
+    static Signal<FontPtr> on_font_created;
+
     // methods -------------------------------------------------------------------------------------------------------//
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
@@ -146,6 +153,9 @@ public:
     /// @param filename         File from which the Font is loaded.
     /// @param pixel_size       Nominal size of the loaded Font in pixels.
     static FontPtr load(FontManagerPtr& font_manager, std::string filename, const pixel_size_t pixel_size);
+
+    /// Name of the Font.
+    const std::string& name() const { return m_name; }
 
     /// Returns true if this Font is valid.
     /// If the file used to initialize the Font could not be loaded, the Font is invalid.

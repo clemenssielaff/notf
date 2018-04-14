@@ -31,20 +31,21 @@ public:
     /// @param geometry_shader      Geometry shader to use in the Pipeline.
     /// @param fragment_shader      Fragment shader to use in the Pipeline.
     static PipelinePtr
-    create(GraphicsContextPtr& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
+    create(GraphicsContext& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
            GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader)
     {
-        return NOTF_MAKE_SHARED_FROM_PRIVATE(Pipeline, *context, std::move(vertex_shader), std::move(tesselation_shader),
-                                        std::move(geometry_shader), std::move(fragment_shader));
+        return NOTF_MAKE_SHARED_FROM_PRIVATE(Pipeline, context, std::move(vertex_shader),
+                                             std::move(tesselation_shader), std::move(geometry_shader),
+                                             std::move(fragment_shader));
     }
 
     static PipelinePtr
-    create(GraphicsContextPtr& context, VertexShaderPtr vertex_shader, FragmentShaderPtr fragment_shader)
+    create(GraphicsContext& context, VertexShaderPtr vertex_shader, FragmentShaderPtr fragment_shader)
     {
         return create(context, std::move(vertex_shader), {}, {}, std::move(fragment_shader));
     }
 
-    static PipelinePtr create(GraphicsContextPtr& context, VertexShaderPtr vertex_shader,
+    static PipelinePtr create(GraphicsContext& context, VertexShaderPtr vertex_shader,
                               TesselationShaderPtr tesselation_shader, FragmentShaderPtr fragment_shader)
     {
         return create(context, std::move(vertex_shader), std::move(tesselation_shader), {}, std::move(fragment_shader));

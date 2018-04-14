@@ -1,7 +1,11 @@
 #pragma once
 
+#include <unordered_map>
+
 #include "app/forwards.hpp"
 #include "common/exception.hpp"
+#include "common/pointer.hpp"
+#include "common/signal.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -9,11 +13,15 @@ NOTF_OPEN_NAMESPACE
 
 NOTF_EXCEPTION_TYPE(resource_manager_initialization_error);
 
+NOTF_EXCEPTION_TYPE(resource_identification_error);
+
 //====================================================================================================================//
 
 /// The Resource Manager owns all dynamically loaded resources.
 /// It is not a Singleton, even though each Application will most likely only have one.
-class ResourceManager {
+/// The ResourceManager does not load individual resources, it only stores them and allows other parts of the
+/// application to get them by name.
+class ResourceManager : public receive_signals {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -50,22 +58,45 @@ public:
     /// The absolute font directory path
     const std::string& font_directory() const { return m_font_directory; }
 
-    //    /// Retrieves a Font by its name in the font directory
-    //    /// There is a 1:1 relationship between a font name and its .ttf file.
-    //    /// This is also the reason why you can only load fonts from the font directory as we can guarantee that there
-    //    will
-    //    /// be no naming conflicts.
-    //    /// @param font_name             Name of the Font and its file in the font directory (the *.ttf ending is
-    //    optional).
-    //    /// @throw std::runtime_error    If the requested Font cannot be loaded.
-    //    FontPtr fetch_font(const std::string& name);
-
     /// Deletes all resources that are not currently being used.
     void cleanup();
 
     /// Releases ownership of all managed resources.
     /// If a resource is not currently in use by another object owning a shared pointer to it, it is deleted.
     void clear();
+
+    // getter -----------------------------------------------------------------
+
+    /// Returns a Shader by name
+    /// @param name Name of the Shader.
+    /// @returns The requested Shader, may be empty if there is no shader with the given name.
+    risky_ptr<ShaderPtr> shader(const std::string& name);
+
+    /// Returns a Texture by name
+    /// @param name Name of the Texture.
+    /// @returns The requested Texture, may be empty if there is no shader with the given name.
+    risky_ptr<TexturePtr> texture(const std::string& name);
+
+    /// Returns a Font by name
+    /// @param name Name of the Font.
+    /// @returns The requested Font, may be empty if there is no shader with the given name.
+    risky_ptr<FontPtr> font(const std::string& name);
+
+private:
+    /// Adds a new Shader, does nothing if the Shader is already stored in the manager.
+    /// @param shader   Shader to add.
+    /// @throws resource_identification_error   If the Shader has the same name as an existing Shader.
+    void _add_shader(ShaderPtr shader);
+
+    /// Adds a new Texture, does nothing if the Texture is already stored in the manager.
+    /// @param texture  Texture to add.
+    /// @throws resource_identification_error   If the Texture has the same name as an existing Texture.
+    void _add_texture(TexturePtr texture);
+
+    /// Adds a new Font, does nothing if the Font is already stored in the manager.
+    /// @param font     Font to add.
+    /// @throws resource_identification_error   If the Font has the same name as an existing Font.
+    void _add_font(FontPtr font);
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
@@ -78,8 +109,14 @@ private:
     /// System path to the font directory, absolute or relative to the executable.
     std::string m_font_directory;
 
-    /// All managed Fonts - indexed by hash of name relative to the font directory.
-    //    std::unordered_map<size_t, FontPtr> m_fonts;
+    /// All shaders stored in the manager.
+    std::unordered_map<std::string, ShaderPtr> m_shaders;
+
+    /// All Textures stored in the manager.
+    std::unordered_map<std::string, TexturePtr> m_textures;
+
+    /// All Fonts stored in the manager.
+    std::unordered_map<std::string, FontPtr> m_fonts;
 };
 
 NOTF_CLOSE_NAMESPACE

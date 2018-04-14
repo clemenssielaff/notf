@@ -24,6 +24,10 @@ macro(create_module name)
     set(${name}_MODULE ${${name}_SOURCE} ${${name}_HEADERS} ${${name}_MARKDOWN})
 endmacro()
 
+
+macro(remove_subdir module name)
+endmacro()
+
 # OPTIONS ##############################################################################################################
 
 option(NOTF_BUILD_APP "Build application" ON)
@@ -131,6 +135,8 @@ add_sources(SOURCE_FILES src
     app/io/time.cpp
     app/io/window_event.hpp
     app/io/window_event.cpp
+    app/render/procedural.hpp
+    app/render/procedural.cpp
     app/README.md
 )
 
@@ -189,7 +195,7 @@ if(NOTF_BUILD_APP)
 
     add_executable(notf
         ${common_MODULE}
-    #    ${app_MODULE}
+#        ${app_MODULE}
         ${graphics_MODULE}
         ${utils_MODULE}
         ${SOURCE_FILES}
@@ -240,7 +246,7 @@ if(NOTF_BUILD_TESTS)
 
     add_executable(notf-test
         ${common_MODULE}
-    #    ${app_MODULE}
+#        ${app_MODULE}
         ${graphics_MODULE}
         ${utils_MODULE}
         ${SOURCE_FILES}

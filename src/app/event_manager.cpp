@@ -14,20 +14,30 @@
 namespace { // anonymous
 NOTF_USING_NAMESPACE
 
-/// The current state of all keyboard keys.
-KeyStateSet g_key_states;
+struct GlobalState {
 
-/// Currently pressed key modifiers.
-KeyModifiers g_key_modifiers;
+    /// The current state of all keyboard keys.
+    KeyStateSet key_states;
 
-/// The current state of all mouse buttons.
-ButtonStateSet g_button_states;
+    /// The current state of all mouse buttons.
+    ButtonStateSet button_states;
 
-/// Current position of the mouse cursor in screen coordinates.
-Vector2f g_cursor_pos;
+    /// Current position of the mouse cursor in screen coordinates.
+    Vector2f cursor_pos;
 
-/// Previous position of the mouse cursor in screen coordinates.
-Vector2f g_prev_cursor_pos;
+    /// Previous position of the mouse cursor in screen coordinates.
+    Vector2f prev_cursor_pos;
+
+    /// Currently pressed key modifiers.
+    KeyModifiers key_modifiers;
+
+    /// Mutex protecting the global state.
+    Mutex mutex;
+};
+
+/// The global state, used to store auxiliary information about events that are unique in the context of the application
+/// (like the cursor position).
+static GlobalState g_state;
 
 } // namespace
 
@@ -41,7 +51,7 @@ void EventManager::WindowHandler::start()
             return;
         }
         m_is_running = true;
-        events.clear();
+        m_events.clear();
     }
     m_thread = ScopedThread(std::thread(&WindowHandler::_run, this));
 }
@@ -50,7 +60,7 @@ void EventManager::WindowHandler::enqueue_event(EventPtr&& event)
 {
     {
         std::unique_lock<Mutex> lock_guard(m_mutex);
-        events.emplace_back(std::move(event));
+        m_events.emplace_back(std::move(event));
     }
     m_condition.notify_one();
 }
@@ -63,7 +73,7 @@ void EventManager::WindowHandler::stop()
             return;
         }
         m_is_running = false;
-        events.clear();
+        m_events.clear();
     }
     m_condition.notify_one();
     m_thread = {}; // blocks
@@ -71,7 +81,23 @@ void EventManager::WindowHandler::stop()
 
 void EventManager::WindowHandler::_run()
 {
-    // TODO: forward all event objects to the SceneManager that will then propagate to the Scenes
+    while (1) {
+        { // wait until the next event is ready
+            std::unique_lock<std::mutex> lock_guard(m_mutex);
+            if (m_events.empty() && m_is_running) {
+                m_condition.wait(lock_guard, [&] { return !m_events.empty() || !m_is_running; });
+            }
+
+            // stop condition
+            if (!m_is_running) {
+                return;
+            }
+        }
+
+        // forward the next event object to your Window's SceneManager, that will then propagate it to the Scenes
+        m_window->scene_manager().propagate_event(std::move(m_events.front()));
+        m_events.pop_front();
+    }
 }
 
 //====================================================================================================================//
@@ -88,9 +114,10 @@ EventManager::~EventManager() = default;
 
 void EventManager::_propagate_event_to(EventPtr&& event, Window* window)
 {
+    std::lock_guard<Mutex> lock(m_mutex);
     auto handler_it
         = std::find_if(m_handler.begin(), m_handler.end(), [&](const std::unique_ptr<WindowHandler>& handler) -> bool {
-              return handler->window == window;
+              return handler->window() == window;
           });
     if (handler_it == m_handler.end()) {
         log_critical << "Cannot find event handler";
@@ -161,25 +188,39 @@ void EventManager::_on_mouse_button(GLFWwindow* glfw_window, int button, int act
 {
     valid_ptr<Window*> window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
 
-    // parse raw arguments
-    Button notf_button = static_cast<Button>(button);
-    MouseAction notf_action = static_cast<MouseAction>(action);
-    NOTF_ASSERT(notf_action == MouseAction::PRESS || notf_action == MouseAction::RELEASE);
-
-    // update the global state
-    set_button(g_button_states, notf_button, action);
-    g_key_modifiers = KeyModifiers(modifiers);
-
     // invert the y-coordinate (by default, y grows down)
     Vector2i window_pos;
     glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
     window_pos.y() = window->window_size().height - window_pos.y();
 
+    // parse raw arguments
+    const Button notf_button = static_cast<Button>(button);
+    const MouseAction notf_action = static_cast<MouseAction>(action);
+    const KeyModifiers notf_modifiers = KeyModifiers(modifiers);
+    NOTF_ASSERT(notf_action == MouseAction::PRESS || notf_action == MouseAction::RELEASE);
+
+    // update the global state
+    Vector2f cursor_pos;
+    ButtonStateSet button_states;
+    {
+        std::unique_lock<Mutex> lock(g_state.mutex);
+
+        set_button(g_state.button_states, notf_button, action);
+        g_state.key_modifiers = notf_modifiers;
+
+        cursor_pos = g_state.cursor_pos;
+        button_states = g_state.button_states;
+    }
+
     // let the window handle the event
     EventPtr event = std::make_unique<MouseEvent>(
-        Vector2f{g_cursor_pos.x() - static_cast<float>(window_pos.x()),
-                 g_cursor_pos.y() - static_cast<float>(window_pos.y())}, // event position in window coordinates
-        Vector2f::zero(), notf_button, notf_action, g_key_modifiers, g_button_states);
+        Vector2f{cursor_pos.x() - static_cast<float>(window_pos.x()),  // event position in window coordinates
+                 cursor_pos.y() - static_cast<float>(window_pos.y())}, //
+        Vector2f::zero(),                                              // mouse cursor delta in window coordinates
+        notf_button,                                                   // mouse button that triggered the event
+        notf_action,                                                   // either PRESS or RELEASE
+        notf_modifiers,                                                // active key modifiers
+        std::move(button_states));                                     // state of all mouse buttons
     Application::instance().event_manager()._propagate_event_to(std::move(event), window);
 }
 
@@ -187,32 +228,46 @@ void EventManager::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
 {
     valid_ptr<Window*> window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
 
-    { // update the global state
-        g_prev_cursor_pos = g_cursor_pos;
+    // invert the y-coordinate (by default, y grows down)
+    Vector2i window_pos;
+    glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
+    window_pos.y() = window->window_size().height - window_pos.y();
 
-        // invert the y-coordinate (by default, y grows down)
-        const int window_height = window->window_size().height;
-        y = window_height - y;
-        Vector2i window_pos;
-        glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
-        window_pos.y() = window_height - window_pos.y();
+    // parse raw arguments
+    const Vector2f cursor_pos = {static_cast<float>(window_pos.x()) + static_cast<float>(x),
+                                 static_cast<float>(window_pos.y()) + static_cast<float>(y)};
 
-        g_cursor_pos.x() = static_cast<float>(window_pos.x()) + static_cast<float>(x);
-        g_cursor_pos.y() = static_cast<float>(window_pos.y()) + static_cast<float>(y);
+    // update the global state
+    Vector2f prev_cursor_pos;
+    KeyModifiers key_modifiers;
+    ButtonStateSet button_states;
+    {
+        std::unique_lock<Mutex> lock(g_state.mutex);
+
+        prev_cursor_pos = g_state.prev_cursor_pos;
+        key_modifiers = g_state.key_modifiers;
+        button_states = g_state.button_states;
+
+        g_state.prev_cursor_pos = g_state.cursor_pos;
+        g_state.cursor_pos = cursor_pos;
     }
 
     // let the window handle the event
     EventPtr event = std::make_unique<MouseEvent>(
         Vector2f{static_cast<float>(x), static_cast<float>(y)}, // event position in window coordinates
-        g_cursor_pos - g_prev_cursor_pos,                       // delta in window coordinates
-        Button::NO_BUTTON,                                      // move events are triggered by no button
-        MouseAction::MOVE, g_key_modifiers, g_button_states);
+        cursor_pos - prev_cursor_pos,                           // mouse cursor delta in window coordinates
+        Button::NO_BUTTON,                                      // move events are not triggered by a button
+        MouseAction::MOVE,                                      // action
+        key_modifiers,                                          // active key modifiers
+        button_states);                                         // state of all mouse buttons
     Application::instance().event_manager()._propagate_event_to(std::move(event), window);
 }
 
 void EventManager::_on_cursor_entered(GLFWwindow* glfw_window, int entered)
 {
     valid_ptr<Window*> window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+
+    // let the window handle the event
     EventPtr event = std::make_unique<WindowEvent>(entered == GLFW_TRUE ? WindowEvent::Type::CURSOR_ENTERED :
                                                                           WindowEvent::Type::CURSOR_EXITED);
     Application::instance().event_manager()._propagate_event_to(std::move(event), window);
@@ -227,12 +282,26 @@ void EventManager::_on_scroll(GLFWwindow* glfw_window, double x, double y)
     glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
     window_pos.y() = window->window_size().height - window_pos.y();
 
+    // update the global state
+    Vector2f cursor_pos;
+    KeyModifiers key_modifiers;
+    ButtonStateSet button_states;
+    {
+        std::unique_lock<Mutex> lock(g_state.mutex);
+        cursor_pos = g_state.cursor_pos;
+        key_modifiers = g_state.key_modifiers;
+        button_states = g_state.button_states;
+    }
+
     // let the window handle the event
     EventPtr event = std::make_unique<MouseEvent>(
-        Vector2f{g_cursor_pos.x() - static_cast<float>(window_pos.x()),
-                 g_cursor_pos.y() - static_cast<float>(window_pos.y())}, // event position in window coordinates
-        Vector2f{static_cast<float>(x), static_cast<float>(-y)},         // delta in window coordinates
-        Button::NO_BUTTON, MouseAction::SCROLL, g_key_modifiers, g_button_states);
+        Vector2f{cursor_pos.x() - static_cast<float>(window_pos.x()),  // event position in window coordinates
+                 cursor_pos.y() - static_cast<float>(window_pos.y())}, //
+        Vector2f{static_cast<float>(x), static_cast<float>(-y)},       // mouse cursor delta in window coordinates
+        Button::NO_BUTTON,                                             // scroll events are not triggered by a button
+        MouseAction::SCROLL,                                           // action
+        key_modifiers,                                                 // active key modifiers
+        button_states);                                                // state of all mouse buttons
     Application::instance().event_manager()._propagate_event_to(std::move(event), window);
 }
 
@@ -240,13 +309,25 @@ void EventManager::_on_token_key(GLFWwindow* glfw_window, int key, NOTF_UNUSED i
 {
     valid_ptr<Window*> window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
 
+    // parse raw arguments
+    const Key notf_key = from_glfw_key(key);
+    const KeyModifiers key_modifiers = KeyModifiers(modifiers);
+
     // update the global state
-    Key notf_key = from_glfw_key(key);
-    set_key(g_key_states, notf_key, action);
-    g_key_modifiers = KeyModifiers(modifiers);
+    KeyStateSet key_states;
+    {
+        std::unique_lock<Mutex> lock(g_state.mutex);
+        set_key(g_state.key_states, notf_key, action);
+        g_state.key_modifiers = key_modifiers;
+
+        key_states = g_state.key_states;
+    }
 
     // let the window handle the event
-    EventPtr event = std::make_unique<KeyEvent>(notf_key, KeyAction(action), KeyModifiers(modifiers), g_key_states);
+    EventPtr event = std::make_unique<KeyEvent>(notf_key,          // key triggering the event
+                                                KeyAction(action), // either PRESS, REPEAT or RELASE
+                                                key_modifiers,     // active key modifiers
+                                                key_states);       // state of all keys
     Application::instance().event_manager()._propagate_event_to(std::move(event), window);
 }
 
@@ -255,7 +336,23 @@ void EventManager::_on_char_input(GLFWwindow* glfw_window, uint codepoint) { _on
 void EventManager::_on_shortcut(GLFWwindow* glfw_window, uint codepoint, int modifiers)
 {
     valid_ptr<Window*> window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-    EventPtr event = std::make_unique<CharEvent>(codepoint, KeyModifiers(modifiers), g_key_states);
+
+    // parse raw arguments
+    const KeyModifiers key_modifiers = KeyModifiers(modifiers);
+
+    // update the global state
+    KeyStateSet key_states;
+    {
+        std::unique_lock<Mutex> lock(g_state.mutex);
+        g_state.key_modifiers = key_modifiers;
+
+        key_states = g_state.key_states;
+    }
+
+    // let the window handle the event
+    EventPtr event = std::make_unique<CharEvent>(codepoint,     // character triggering the event
+                                                 key_modifiers, // active key modifiers
+                                                 key_states);   // state of all keys
     Application::instance().event_manager()._propagate_event_to(std::move(event), window);
 }
 
@@ -300,13 +397,17 @@ void EventManager::Access<Window>::register_window(Window& window)
     // create the handler
     EventManager& manager = Application::instance().event_manager();
     for (const auto& handler : manager.m_handler) {
-        if (handler->window == &window) {
-            log_critical << "Ignoring registration of duplicate Window: " << window.title();
+        if (handler->window() == &window) {
+            log_critical << "Ignoring duplicate event handler registration of Window: " << window.title();
             return;
         }
     }
-    manager.m_handler.emplace_back(std::make_unique<WindowHandler>(&window));
-    WindowHandler& handler = *manager.m_handler.back().get();
+    WindowHandler* handler;
+    {
+        std::lock_guard<Mutex> lock(manager.m_mutex);
+        manager.m_handler.emplace_back(std::make_unique<WindowHandler>(&window));
+        handler = manager.m_handler.back().get();
+    }
 
     //
     // register all glfw callbacks
@@ -335,7 +436,7 @@ void EventManager::Access<Window>::register_window(Window& window)
     glfwSetMonitorCallback(EventManager::_on_monitor_change);
     glfwSetJoystickCallback(EventManager::_on_joystick_change);
 
-    handler.start();
+    handler->start();
 }
 
 void EventManager::Access<Window>::remove_window(Window& window)
@@ -362,21 +463,20 @@ void EventManager::Access<Window>::remove_window(Window& window)
 
     // remove handler
     EventManager& manager = Application::instance().event_manager();
-
-    auto it = std::find_if(manager.m_handler.begin(), manager.m_handler.end(),
-                           [&](const std::unique_ptr<WindowHandler>& handler) -> bool {
-                               return handler->window == &window;
-                           });
-    if (it == manager.m_handler.end()) {
-        log_critical << "Ignoring unregistration of unknown Window: " << window.title();
-        return;
+    {
+        std::lock_guard<Mutex> lock(manager.m_mutex);
+        auto it = std::find_if(manager.m_handler.begin(), manager.m_handler.end(),
+                               [&](const std::unique_ptr<WindowHandler>& handler) -> bool {
+                                   return handler->window() == &window;
+                               });
+        if (it == manager.m_handler.end()) {
+            log_critical << "Ignoring unregistration of unknown Window: " << window.title();
+            return;
+        }
+        it->get()->stop();
+        *it = std::move(manager.m_handler.back());
+        manager.m_handler.pop_back();
     }
-
-    WindowHandler* handler = it->get();
-    handler->stop();
-
-    *it = std::move(manager.m_handler.back());
-    manager.m_handler.pop_back();
 }
 
 NOTF_CLOSE_NAMESPACE

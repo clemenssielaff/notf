@@ -7,6 +7,7 @@
 #include "common/meta.hpp"
 #include "common/size2.hpp"
 #include "graphics/ids.hpp"
+#include "common/signal.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -118,6 +119,12 @@ public:
         /// A value <= 1 means no anisotropic filtering.
         float anisotropy = 1;
     };
+
+    // signals -------------------------------------------------------------------------------------------------------//
+public:
+    /// Fired when a new Texture was created.
+    /// @param New texture.
+    static Signal<TexturePtr> on_texture_created;
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:

@@ -9,6 +9,7 @@
 #include "common/hash.hpp"
 #include "common/mutex.hpp"
 #include "common/pointer.hpp"
+#include "common/signal.hpp"
 #include "common/size2.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -34,13 +35,13 @@ NOTF_OPEN_NAMESPACE
 ///
 /// Only a concrete nodes may create other nodes. The only method allowed to do so is `Scene::Node::_add_child` which
 /// returns a `NodeHandle<T>` (with T being the type of the child node). Handles own the actual child node, meaning that
-/// when they are destroyed, so is their child SceneNode. You store them in the parenting node, in any way that
+/// when they are destroyed, so is their child Scene Node. You store them in the parenting node, in any way that
 /// makes most sense for the type of node (list, map, quadtree...). They are not copy- or assignable, think of them as
 /// specialized unique_ptr.
 ///
 /// To traverse the hierarchy, we need to know all of the children of a node and their draw order, from back to front
 /// (earlier nodes are drawn behind later nodes). Therefore, every scene node contains a vector of raw pointers to their
-/// children. By default, `_add_child` appends the newly created SceneNode to the vector, resulting in each new child
+/// children. By default, `_add_child` appends the newly created Scene Node to the vector, resulting in each new child
 /// being drawn in front of its next-older sibling. You are free to reshuffle the children as you please using the
 /// dedicated functions on `Scene::Node`. The `m_children` vector is private so you can't mess it up ;)
 ///
@@ -181,7 +182,7 @@ public:
     /// Contains a handle to its children and the Scene from which to request them.
     /// This allows us to freeze the Scene hierarchy during rendering with the only downside of an additional
     /// indirection between the node and its children.
-    struct Node {
+    struct Node : public receive_signals {
 
         friend struct RootNode;
 
@@ -198,12 +199,18 @@ public:
             Token() {} // not `= default`, otherwise you could construct a Token via `Token{}`.
         };
 
+        // signals ------------------------------------------------------------
+    public:
+        /// Emitted when this Node changes its name.
+        /// @param The new name.
+        Signal<const std::string&> on_name_changed;
+
         // methods ------------------------------------------------------------
     public:
         NOTF_NO_COPY_OR_ASSIGN(Node)
 
         /// Constructor.
-        /// @param token    Factory token provided by SceneNode::_add_child.
+        /// @param token    Factory token provided by Node::_add_child.
         /// @param scene    Scene to manage the node.
         /// @param parent   Parent of this node.
         Node(const Token&, Scene& scene, valid_ptr<Node*> parent);

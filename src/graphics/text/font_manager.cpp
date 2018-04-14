@@ -6,7 +6,7 @@
 NOTF_OPEN_NAMESPACE
 
 FontManager::FontManager(GraphicsContext& context)
-    : m_freetype(nullptr), m_graphics_context(context), m_atlas(context), m_fonts()
+    : m_freetype(nullptr), m_graphics_context(context), m_atlas(context)
 {
     if (FT_Init_FreeType(&m_freetype)) {
         log_critical << "Failed to initialize the Freetype library";

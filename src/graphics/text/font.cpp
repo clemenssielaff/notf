@@ -14,9 +14,13 @@ const Glyph INVALID_GLYPH = {{0, 0, 0, 0}, 0, 0, 0, 0};
 
 } // namespace
 
+//====================================================================================================================//
+
 NOTF_OPEN_NAMESPACE
 
 static_assert(std::is_pod<Glyph::Rect>::value, "This compiler does not recognize notf::Glyph::Rect as a POD.");
+
+Signal<FontPtr> Font::on_font_created;
 
 Font::Font(FontManager& manager, const std::string& filename, const pixel_size_t pixel_size)
     : m_manager(manager), m_name(), m_identifier({filename, pixel_size}), m_face(nullptr), m_glyphs()
@@ -97,6 +101,8 @@ FontPtr Font::load(FontManagerPtr& font_manager, std::string filename, const pix
     // create and store the new Font in the manager, so it can be re-used
     FontPtr font = NOTF_MAKE_SHARED_FROM_PRIVATE(Font, *font_manager, filename, pixel_size);
     font_manager->m_fonts.insert({identifier, font});
+
+    on_font_created(font);
     return font;
 }
 
