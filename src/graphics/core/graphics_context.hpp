@@ -9,6 +9,7 @@
 #include "app/forwards.hpp"
 #include "common/aabr.hpp"
 #include "common/color.hpp"
+#include "common/mutex.hpp"
 #include "graphics/ids.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -254,6 +255,60 @@ public:
 
     //================================================================================================================//
 
+    /// Guard that makes sure that a GraphicsContext is properly made current and released on a thread.
+    /// Blocks until the GraphicsContext is free to be aquired by this thread.
+    struct NOTF_NODISCARD CurrentGuard {
+        friend class GraphicsContext;
+
+        // methods ------------------------------------------------------------
+    private:
+        /// Constructor.
+        /// @param context      Context that created the guard.
+        CurrentGuard(GraphicsContext& context) : m_context(&context) { m_mutex_lock = m_context->_make_current(); }
+
+    public:
+        NOTF_NO_COPY_OR_ASSIGN(CurrentGuard)
+        NOTF_NO_HEAP_ALLOCATION(CurrentGuard)
+
+        // Default constructor.
+        CurrentGuard() = default;
+
+        /// Explicit move Constructor.
+        /// @param other            CurrentGuard to move from.
+        /// @throws internal_error  When you try to move an active guard accross thread boundaries.
+        CurrentGuard(CurrentGuard&& other)
+        {
+            if (other.m_thread_id != m_thread_id) {
+                notf_throw(internal_error, "Cannot move a GraphicsContext::CurrentGuard accross thread boundaries");
+            }
+            m_context = other.m_context;
+            m_mutex_lock = std::move(other.m_mutex_lock);
+
+            other.m_context = nullptr;
+        }
+
+        /// Destructor.
+        ~CurrentGuard()
+        {
+            if (m_context) {
+                m_context->_release_current();
+            }
+        }
+
+        // fields -------------------------------------------------------------
+    private:
+        /// Context that created the guard.
+        GraphicsContext* m_context = nullptr;
+
+        /// Mutex lock.
+        std::unique_lock<RecursiveMutex> m_mutex_lock;
+
+        /// Id of the thread in which the context is current.
+        const std::thread::id m_thread_id = std::this_thread::get_id();
+    };
+
+    //================================================================================================================//
+
 private:
     /// Graphics state.
     struct State {
@@ -307,14 +362,6 @@ public:
     /// Area that is rendered into.
     const Aabri& render_area() const { return m_state.render_area; }
 
-    /// Makes the OpenGL context current on the current thread.
-    void make_current();
-
-    /// Releases the OpenGL context if it is current on this thread. Otherwise does nothing.
-    /// This shouldn't actually be necessary, but I found that I couldn't move the context from the main to the render
-    /// thread otherwise.
-    void release_current();
-
     /// En- or disables vsync (enabled by default).
     /// @param enabled  Whether to enable or disable vsync.
     void set_vsync(const bool enabled);
@@ -340,6 +387,10 @@ public:
     /// @param buffers  Buffers to clear.
     /// @param force    Ignore the current state and always make the OpenGL call.
     void clear(Color color, const BufferFlags buffers = Buffer::COLOR, const bool force = false);
+
+    /// Makes this context current on this thread.
+    /// Blocks until the GraphicsContext's mutex is free.
+    CurrentGuard make_current() { return CurrentGuard(*this); }
 
     /// Begins the render of a frame.
     void begin_frame();
@@ -411,6 +462,14 @@ public:
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
+    /// Makes the OpenGL context current on the current thread.
+    /// Does nothing if the context is already current.
+    /// @returns Mutex lock.
+    std::unique_lock<RecursiveMutex> _make_current();
+
+    /// Decreases the recursion count of this graphics context.
+    void _release_current();
+
     // state ------------------------------------------------------------------
 
     /// Create a new State.
@@ -473,8 +532,17 @@ private:
     /// True if this context has vsync enabled.
     bool m_has_vsync = true;
 
-    /// Id of the thread in which the context is current (to avoid unnecessary OpenGL calls).
-    std::thread::id m_current_thread;
+    // thread-safety ----------------------------------------------------------
+
+    // TODO: this whole thread-safety of the graphics context is not very well thought out...
+
+    /// Mutex to make sure that only one thread is accessing the render context at any time.
+    RecursiveMutex m_mutex;
+
+    /// Number of times the mutex was locked.
+    int m_recursion_counter = 0;
+
+    // resources --------------------------------------------------------------
 
     /// All Textures managed by this Context.
     /// Note that the Context doesn't "own" the textures, they are shared pointers, but the Render Context deallocates

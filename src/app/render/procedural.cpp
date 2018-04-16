@@ -2,6 +2,7 @@
 
 #include "app/application.hpp"
 #include "app/resource_manager.hpp"
+#include "app/window.hpp"
 #include "common/system.hpp"
 #include "graphics/core/gl_errors.hpp"
 #include "graphics/core/graphics_context.hpp"
@@ -27,26 +28,32 @@ ProceduralRenderer::ProceduralRenderer(GraphicsContext& context, const std::stri
         }
     }
     if (!vertex_shader) {
-        const std::string vertex_src = load_file(fmt::format("{}fullscreen.vert", resource_manager.shader_directory()));
+//        const std::string vertex_src = load_file(fmt::format("{}fullscreen.vert", resource_manager.shader_directory())); // TODO: REMOVEME
+        const std::string vertex_src = load_file(fmt::format("{}trivial.vert", resource_manager.shader_directory()));
         vertex_shader = VertexShader::create(context, "__fullscreen.vert", vertex_src);
     }
 
     // load or get the custom fragment shader.
     FragmentShaderPtr fragment_shader;
     {
-        const std::string custom_name = fmt::format("__procedural_{}.frag", shader_name);
+        const std::string custom_name = fmt::format("__procedural_{}", shader_name);
         risky_ptr<ShaderPtr> stored_shader = resource_manager.shader(custom_name);
         if (stored_shader) {
             fragment_shader = std::dynamic_pointer_cast<FragmentShader>(stored_shader.get());
         }
         if (!fragment_shader) {
-            const std::string custom_shader_src = load_file(shader_name);
+            const std::string custom_shader_src = load_file(resource_manager.shader_directory() + shader_name);
             fragment_shader = FragmentShader::create(context, custom_name, custom_shader_src);
         }
     }
 
     // create the render pipeline
     m_pipeline = Pipeline::create(context, vertex_shader, fragment_shader);
+}
+
+ProceduralRendererPtr ProceduralRenderer::create(Window& window, const std::string& shader_name)
+{
+    return NOTF_MAKE_UNIQUE_FROM_PRIVATE(ProceduralRenderer, window.graphics_context(), shader_name);
 }
 
 void ProceduralRenderer::_render() const

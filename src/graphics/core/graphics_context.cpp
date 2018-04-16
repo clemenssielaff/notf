@@ -87,33 +87,36 @@ GraphicsContext::Environment::Environment()
 
 //====================================================================================================================//
 
-GraphicsContext::GraphicsContext(GLFWwindow* window) : m_window(window), m_current_thread(0)
+GraphicsContext::GraphicsContext(GLFWwindow* window) : m_window(window)
 {
     if (!window) {
         notf_throw(runtime_error, "Failed to create a new GraphicsContext without a window (given pointer is null).");
     }
 
-    // GLFW defaults
-    make_current();
-    glfwSwapInterval(m_has_vsync ? 1 : 0);
+    { // GLFW defaults
+        CurrentGuard guard = make_current();
 
-    { // sanity check (otherwise OpenGL may happily return `null` on all calls until something crashes down the line)
-        const GLubyte* version;
-        notf_check_gl(version = glGetString(GL_VERSION));
-        if (!version) {
-            notf_throw_format(runtime_error, "Failed to create an OpenGL context");
+        glfwSwapInterval(m_has_vsync ? 1 : 0);
+
+        { // sanity check (otherwise OpenGL may happily return `null` on all calls until something crashes down the
+          // line)
+            const GLubyte* version;
+            notf_check_gl(version = glGetString(GL_VERSION));
+            if (!version) {
+                notf_throw_format(runtime_error, "Failed to create an OpenGL context");
+            }
         }
+
+        // OpenGL defaults
+        notf_check_gl(glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST));
+        notf_check_gl(glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_DONT_CARE));
+
+        // apply the default state
+        m_state = _create_state();
+        set_stencil_mask(m_state.stencil_mask, /* force = */ true);
+        set_blend_mode(m_state.blend_mode, /* force = */ true);
+        clear(m_state.clear_color, Buffer::COLOR, /* force = */ true);
     }
-
-    // OpenGL defaults
-    notf_check_gl(glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST));
-    notf_check_gl(glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_DONT_CARE));
-
-    // apply the default state
-    m_state = _create_state();
-    set_stencil_mask(m_state.stencil_mask, /* force = */ true);
-    set_blend_mode(m_state.blend_mode, /* force = */ true);
-    clear(m_state.clear_color, Buffer::COLOR, /* force = */ true);
 }
 
 GraphicsContext::~GraphicsContext()
@@ -168,26 +171,6 @@ Size2i GraphicsContext::window_size() const
     Size2i result;
     glfwGetFramebufferSize(m_window, &result.width, &result.height);
     return result;
-}
-
-void GraphicsContext::make_current()
-{
-    const auto thread_id = std::this_thread::get_id();
-    if (m_current_thread == thread_id) {
-        return;
-    }
-    glfwMakeContextCurrent(m_window);
-    m_current_thread = thread_id;
-}
-
-void GraphicsContext::release_current()
-{
-    const auto thread_id = std::this_thread::get_id();
-    if (m_current_thread != thread_id) {
-        return;
-    }
-    glfwMakeContextCurrent(nullptr);
-    m_current_thread = std::thread::id(0);
 }
 
 void GraphicsContext::set_vsync(const bool enabled)
@@ -449,6 +432,23 @@ GraphicsContext::FramebufferGuard GraphicsContext::bind_framebuffer(const FrameB
 {
     _bind_framebuffer(framebuffer);
     return FramebufferGuard(*this, framebuffer);
+}
+
+std::unique_lock<RecursiveMutex> GraphicsContext::_make_current()
+{
+    auto lock = std::unique_lock<RecursiveMutex>(m_mutex);
+    if (m_recursion_counter++ == 0) {
+        glfwMakeContextCurrent(m_window);
+    }
+    return lock;
+}
+
+void GraphicsContext::_release_current()
+{
+    NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+    if (--m_recursion_counter == 0) {
+        glfwMakeContextCurrent(nullptr);
+    }
 }
 
 GraphicsContext::State GraphicsContext::_create_state() const

@@ -5,7 +5,7 @@
 //#include "shape_example.hpp"
 //#include "text_example.hpp"
 //#include "wireframe_example.hpp"
-#include "properties_example.hpp"
+#include "smoke_example.hpp"
 
 int main(int argc, char* argv[])
 {
@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
     //    return property_main(argc, argv);
     //    return rendermanager_main(argc, argv);
     //    return renderthread_main(argc, argv);
-    return properties_main(argc, argv);
+    return smoke_main(argc, argv);
     //    (void)(argc);
     //    (void)(argv);
     //    return 0;

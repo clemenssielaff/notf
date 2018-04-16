@@ -21,6 +21,8 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
     , m_geometry_shader(std::move(geometry_shader))
     , m_fragment_shader(std::move(fragment_shader))
 {
+    GraphicsContext::CurrentGuard guard = m_graphics_context.make_current();
+
     { // generate new pipeline id
         PipelineId::underlying_t id = 0;
         notf_check_gl(glGenProgramPipelines(1, &id));

@@ -9,8 +9,6 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
-
 void RenderManager::RenderThread::start()
 {
     {
@@ -70,27 +68,30 @@ void RenderManager::RenderThread::_run()
         m_windows.pop_front();
 
         GraphicsContext& context = window->graphics_context();
-        context.make_current();
+        { // render the frame
+            GraphicsContext::CurrentGuard current_guard = context.make_current();
 
-        SceneManager& scene_manager = window->scene_manager();
+            SceneManager& scene_manager = window->scene_manager();
 
-        //        // TODO: clean all the render targets here
-        //        // in order to sort them, use typeid(*ptr).hash_code()
+            //        // TODO: clean all the render targets here
+            //        // in order to sort them, use typeid(*ptr).hash_code()
 
-        context.begin_frame();
+            context.begin_frame();
 
-        try {
-            // render all Layers from back to front
-            for (const LayerPtr& layer : reverse(scene_manager.current_state()->layers())) {
-                layer->render();
+            try {
+                // render all Layers from back to front
+//                for (const LayerPtr& layer : reverse(scene_manager.current_state()->layers())) { // TODO: BROKEN?
+                 for (const LayerPtr& layer : scene_manager.current_state()->layers()) { // TODO: BROKEN?
+                    layer->render();
+                }
             }
-        }
-        // if an error bubbled all the way up here, something has gone horribly wrong
-        catch (const notf_exception& error) {
-            log_critical << "Rendering failed: \"" << error.what() << "\"";
-        }
+            // if an error bubbled all the way up here, something has gone horribly wrong
+            catch (const notf_exception& error) {
+                log_critical << "Rendering failed: \"" << error.what() << "\"";
+            }
 
-        context.finish_frame();
+            context.finish_frame();
+        }
     }
 }
 

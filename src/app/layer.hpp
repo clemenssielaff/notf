@@ -28,12 +28,15 @@ private:
 public:
     NOTF_NO_COPY_OR_ASSIGN(Layer)
 
+    /// @{
     /// Factory.
     /// Constructs a full-screen, visible Layer.
     /// @param window       Window containing this Layer.
     /// @param renderer     Renderer that renders the Scene into this Layer.
     /// @param scene        (optional) Scene displayed in this Layer.
-    static LayerPtr create(Window& window, RendererPtr renderer, ScenePtr scene = {});
+    static LayerPtr create(Window& window, RendererPtr renderer); // `scene = {}` doesn't work
+    static LayerPtr create(Window& window, RendererPtr renderer, ScenePtr scene);
+    /// @}
 
     /// Destructor.
     ~Layer();

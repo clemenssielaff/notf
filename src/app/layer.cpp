@@ -12,6 +12,8 @@ Layer::Layer(Window& window, RendererPtr renderer, ScenePtr scene)
     : m_window(window), m_scene(std::move(scene)), m_renderer(std::move(renderer))
 {}
 
+LayerPtr Layer::create(Window& window, RendererPtr renderer) { return create(window, std::move(renderer), {}); }
+
 LayerPtr Layer::create(Window& window, RendererPtr renderer, ScenePtr scene)
 {
     return NOTF_MAKE_SHARED_FROM_PRIVATE(Layer, window, std::move(renderer), std::move(scene));

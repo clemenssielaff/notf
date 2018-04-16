@@ -1,3 +1,5 @@
+#version 320 es
+
 // Author @patriciogv - 2015
 // http://patriciogonzalezvivo.com
 // from https://thebookofshaders.com/13/
@@ -6,8 +8,12 @@
 precision mediump float;
 #endif
 
-uniform vec2 u_resolution;
-uniform float u_time;
+in vec2 uv;
+
+//uniform vec2 u_resolution;
+//uniform float u_time;
+
+layout(location=0) out vec4 f_color;
 
 float random (in vec2 _st) {
     return fract(sin(dot(_st.xy,
@@ -52,19 +58,21 @@ float fbm ( in vec2 _st) {
 }
 
 void main() {
-    vec2 st = gl_FragCoord.xy/u_resolution.xy*3.;
-    // st += st * abs(sin(u_time*0.1)*3.0);
+    float u_time = 2.3f;
+    f_color = vec4(0., 1., 0. ,1.);
+    
+    // uv += uv * abs(sin(u_time*0.1)*3.0);
     vec3 color = vec3(0.0);
 
     vec2 q = vec2(0.);
-    q.x = fbm( st + 0.00*u_time);
-    q.y = fbm( st + vec2(1.0));
+    q.x = fbm( uv + 0.00*u_time);
+    q.y = fbm( uv + vec2(1.0));
 
     vec2 r = vec2(0.);
-    r.x = fbm( st + 1.0*q + vec2(1.7,9.2)+ 0.15*u_time );
-    r.y = fbm( st + 1.0*q + vec2(8.3,2.8)+ 0.126*u_time);
+    r.x = fbm( uv + 1.0*q + vec2(1.7,9.2)+ 0.15*u_time );
+    r.y = fbm( uv + 1.0*q + vec2(8.3,2.8)+ 0.126*u_time);
 
-    float f = fbm(st+r);
+    float f = fbm(uv+r);
 
     color = mix(vec3(0.101961,0.619608,0.666667),
                 vec3(0.666667,0.666667,0.498039),
@@ -78,5 +86,5 @@ void main() {
                 vec3(0.666667,1,1),
                 clamp(length(r.x),0.0,1.0));
 
-    gl_FragColor = vec4((f*f*f+.6*f*f+.5*f)*color,1.);
+    f_color = vec4((f*f*f+.6*f*f+.5*f)*color,1.);
 }

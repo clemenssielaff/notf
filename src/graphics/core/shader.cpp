@@ -87,7 +87,7 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
         notf_check_gl(glGetShaderInfoLog(shader, error_size, /*length*/ nullptr, &error_message[0]));
         notf_check_gl(glDeleteShader(shader));
 
-        notf_throw_format(runtime_error, "Failed to compile {} stage for shader \"{}\"\n\t", stage_name, program_name,
+        notf_throw_format(runtime_error, "Failed to compile {} stage for shader \"{}\"\n\t{}", stage_name, program_name,
                           error_message.data());
     }
 
@@ -608,10 +608,13 @@ VertexShader::create(GraphicsContext& context, std::string name, const std::stri
 
     Args args;
     args.vertex_source = modified_source.c_str();
-    const GLuint program = Shader::_build(name, args);
 
-    VertexShaderPtr result
-        = NOTF_MAKE_SHARED_FROM_PRIVATE(VertexShader, context, program, std::move(name), std::move(modified_source));
+    VertexShaderPtr result;
+    {
+        auto guard = context.make_current();
+        result = NOTF_MAKE_SHARED_FROM_PRIVATE(VertexShader, context, Shader::_build(name, args), std::move(name),
+                                               std::move(modified_source));
+    }
     _register_with_context(result);
 
     on_shader_created(result);
@@ -651,11 +654,14 @@ TesselationShader::create(GraphicsContext& context, const std::string& name, std
     Args args;
     args.tess_ctrl_source = modified_control_source.c_str();
     args.tess_eval_source = modified_evaluation_source.c_str();
-    const GLuint program = Shader::_build(name, args);
 
-    TesselationShaderPtr result = NOTF_MAKE_SHARED_FROM_PRIVATE(TesselationShader, context, program, std::move(name),
-                                                                std::move(modified_control_source),
-                                                                std::move(modified_evaluation_source));
+    TesselationShaderPtr result;
+    {
+        auto guard = context.make_current();
+        result = NOTF_MAKE_SHARED_FROM_PRIVATE(TesselationShader, context, Shader::_build(name, args), std::move(name),
+                                               std::move(modified_control_source),
+                                               std::move(modified_evaluation_source));
+    }
     _register_with_context(result);
 
     on_shader_created(result);
@@ -678,10 +684,14 @@ GeometryShader::create(GraphicsContext& context, std::string name, const std::st
 
     Args args;
     args.geometry_source = modified_source.c_str();
-    const GLuint program = Shader::_build(name, args);
 
-    GeometryShaderPtr result
-        = NOTF_MAKE_SHARED_FROM_PRIVATE(GeometryShader, context, program, std::move(name), std::move(modified_source));
+    GeometryShaderPtr result;
+    {
+        auto guard = context.make_current();
+        result = NOTF_MAKE_SHARED_FROM_PRIVATE(GeometryShader, context, Shader::_build(name, args), std::move(name),
+                                               std::move(modified_source));
+    }
+
     _register_with_context(result);
 
     on_shader_created(result);
@@ -704,10 +714,13 @@ FragmentShader::create(GraphicsContext& context, std::string name, const std::st
 
     Args args;
     args.fragment_source = modified_source.c_str();
-    const GLuint program = Shader::_build(name, args);
 
-    FragmentShaderPtr result
-        = NOTF_MAKE_SHARED_FROM_PRIVATE(FragmentShader, context, program, std::move(name), std::move(modified_source));
+    FragmentShaderPtr result;
+    {
+        auto guard = context.make_current();
+        result = NOTF_MAKE_SHARED_FROM_PRIVATE(FragmentShader, context, Shader::_build(name, args), std::move(name),
+                                               std::move(modified_source));
+    }
     _register_with_context(result);
 
     on_shader_created(result);

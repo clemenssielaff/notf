@@ -7,6 +7,7 @@
 #include "app/layer.hpp"
 #include "app/scene.hpp"
 #include "app/window.hpp"
+#include "common/log.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -83,6 +84,11 @@ void SceneManager::propagate_event(EventPtr&& untyped_event)
                 scene->resize_view(event->new_size);
             }
         }
+    }
+
+    // fallback
+    else {
+        log_warning << "Unhandled event of type: " << event_type;
     }
 }
 

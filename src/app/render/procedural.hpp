@@ -20,12 +20,9 @@ public:
     NOTF_NO_COPY_OR_ASSIGN(ProceduralRenderer)
 
     /// Factory.
-    /// @param context      Graphics context.
+    /// @param window       Window in which the renderer is displayed.
     /// @param shader_name  Name of a fragment shader to use (file path in relation to the shader directory).
-    static ProceduralRendererPtr create(GraphicsContext& context, const std::string& shader_name)
-    {
-        return NOTF_MAKE_UNIQUE_FROM_PRIVATE(ProceduralRenderer, context, shader_name);
-    }
+    static ProceduralRendererPtr create(Window& window, const std::string& shader_name);
 
 private:
     /// Subclass-defined implementation of the Renderer's rendering.

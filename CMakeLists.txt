@@ -148,7 +148,7 @@ add_sources(SOURCE_FILES examples
 #    text_example.cpp
 #    rendermanager_example.cpp
 #    renderthread_example.cpp
-    properties_example.cpp
+    smoke_example.cpp
 )
 
 add_sources(THIRDPARTY_FILES thirdparty

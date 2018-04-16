@@ -1,6 +1,6 @@
 #version 320 es
 
-precision highp float;
+precision mediump float;
 
 out vec2 uv;
 
@@ -11,7 +11,7 @@ const int ONEi = 1;
 const int TWOi = 2;
 
 //
-// This vertex shader fill the complete screen with a single triangle (which is clipped to a quad for free),without the
+// This vertex shader fill the complete screen with a single triangle (which is clipped to a quad for free), without the
 // use of vertex buffers. The idea is similar to the one described (for Vulkan) in:
 //     https://www.saschawillems.de/?page_id=2122
 //
