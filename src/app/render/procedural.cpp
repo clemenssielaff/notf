@@ -28,8 +28,7 @@ ProceduralRenderer::ProceduralRenderer(GraphicsContext& context, const std::stri
         }
     }
     if (!vertex_shader) {
-//        const std::string vertex_src = load_file(fmt::format("{}fullscreen.vert", resource_manager.shader_directory())); // TODO: REMOVEME
-        const std::string vertex_src = load_file(fmt::format("{}trivial.vert", resource_manager.shader_directory()));
+        const std::string vertex_src = load_file(fmt::format("{}fullscreen.vert", resource_manager.shader_directory()));
         vertex_shader = VertexShader::create(context, "__fullscreen.vert", vertex_src);
     }
 
