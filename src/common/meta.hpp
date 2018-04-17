@@ -167,6 +167,9 @@ namespace std {
 template<bool B, class T = void>
 using enable_if_t = typename enable_if<B, T>::type;
 
+template<bool B, class T, class F>
+using conditional_t = typename conditional<B, T, F>::type;
+
 #endif
 
 #ifndef NOTF_CPP17
@@ -178,7 +181,7 @@ struct conjunction : std::true_type {};
 template<typename T>
 struct conjunction<T> : T {};
 template<typename T, typename... TList>
-struct conjunction<T, TList...> : std::conditional<T::value, conjunction<TList...>, T>::type {};
+struct conjunction<T, TList...> : std::conditional_t<T::value, conjunction<TList...>, T> {};
 
 /// Variadic logical OR metafunction
 /// http://en.cppreference.com/w/cpp/types/disjunction
@@ -187,7 +190,7 @@ struct disjunction : std::false_type {};
 template<typename T>
 struct disjunction<T> : T {};
 template<typename T, typename... TList>
-struct disjunction<T, TList...> : std::conditional<T::value, T, disjunction<TList...>>::type {};
+struct disjunction<T, TList...> : std::conditional_t<T::value, T, disjunction<TList...>> {};
 
 /// Logical NOT metafunction.
 /// http://en.cppreference.com/w/cpp/types/negation

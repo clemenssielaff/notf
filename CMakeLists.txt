@@ -97,6 +97,8 @@ create_module(utils)
 
 
 add_sources(SOURCE_FILES src
+    app/animation_manager.cpp
+    app/animation_manager.hpp
     app/application.cpp
     app/application.hpp
     app/window.cpp
