@@ -97,8 +97,6 @@ create_module(utils)
 
 
 add_sources(SOURCE_FILES src
-    app/animation_manager.cpp
-    app/animation_manager.hpp
     app/application.cpp
     app/application.hpp
     app/window.cpp
@@ -119,6 +117,8 @@ add_sources(SOURCE_FILES src
     app/layer.cpp
     app/scene_manager.hpp
     app/scene_manager.cpp
+    app/scheduling_manager.cpp
+    app/scheduling_manager.hpp
     app/renderer.hpp
     app/renderer.cpp
     app/forwards.hpp

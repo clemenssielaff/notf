@@ -139,6 +139,9 @@ public:
     /// The Application's Event Manager.
     EventManager& event_manager() { return *m_event_manager; }
 
+    /// The Application's Scheduling Manager.
+    SchedulingManager& scheduling_manager() { return *m_scheduling_manager; }
+
 private:
     /// Static (private) function holding the actual Application instance.
     static Application& _instance(const Args& application_args = s_invalid_args)
@@ -173,6 +176,9 @@ private:
 
     /// Event Manager singleton.
     EventManagerPtr m_event_manager;
+
+    /// Scheduling Manager.
+    SchedulingManagerPtr m_scheduling_manager;
 
     /// All Windows known the the Application.
     std::vector<WindowPtr> m_windows;

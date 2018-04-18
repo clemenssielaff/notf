@@ -36,7 +36,7 @@ private:
         void stop();
 
     private:
-        /// Worker method.
+        /// Worker thread method.
         void _run();
 
         // fields -------------------------------------------------------------
@@ -53,7 +53,7 @@ private:
         /// Condition variable to wait for.
         std::condition_variable m_condition;
 
-        /// Is true as long at the thread should continue.
+        /// Is true as long at the thread is alive.
         bool m_is_running = false;
     };
 
