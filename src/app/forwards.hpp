@@ -32,7 +32,7 @@ NOTF_DEFINE_UNIQUE_POINTERS(class, PropertyGraph);
 NOTF_DEFINE_UNIQUE_POINTERS(class, Event);
 NOTF_DEFINE_UNIQUE_POINTERS(class, EventManager);
 NOTF_DEFINE_UNIQUE_POINTERS(class, RenderManager);
-NOTF_DEFINE_UNIQUE_POINTERS(class, SchedulingManager);
+NOTF_DEFINE_UNIQUE_POINTERS(class, TimerManager);
 
 namespace detail {
 

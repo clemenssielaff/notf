@@ -7,7 +7,7 @@
 #include "app/property_graph.hpp"
 #include "app/render_manager.hpp"
 #include "app/resource_manager.hpp"
-#include "app/scheduling_manager.hpp"
+#include "app/timer_manager.hpp"
 #include "app/window.hpp"
 #include "common/log.hpp"
 #include "common/thread_pool.hpp"
@@ -32,7 +32,7 @@ Application::Application(const Args& application_args)
     , m_render_manager(std::make_unique<RenderManager>())
     , m_property_graph(std::make_unique<PropertyGraph>())
     , m_event_manager(std::make_unique<EventManager>())
-    , m_scheduling_manager(std::make_unique<SchedulingManager>())
+    , m_timer_manager(std::make_unique<TimerManager>())
     , m_windows()
 {
     // install the log handler first, to catch errors right away

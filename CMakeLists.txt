@@ -117,8 +117,8 @@ add_sources(SOURCE_FILES src
     app/layer.cpp
     app/scene_manager.hpp
     app/scene_manager.cpp
-    app/scheduling_manager.cpp
-    app/scheduling_manager.hpp
+    app/timer_manager.cpp
+    app/timer_manager.hpp
     app/renderer.hpp
     app/renderer.cpp
     app/forwards.hpp
@@ -238,6 +238,7 @@ if(NOTF_BUILD_TESTS)
 #        test_matrix3.cpp
 #        test_matrix4.cpp
         test_scene.cpp
+        test_timer.cpp
         test_properties.cpp
 #        test_signal.cpp
 #        test_string_utils.cpp
