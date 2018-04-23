@@ -225,7 +225,7 @@ private: // fields
     /** Mutex used for thread-safe access to the write log. */
     std::mutex m_mutex;
 
-    /** Thread in which the hander loop is run. */
+    /** Thread in which the handler loop is run. */
     std::thread m_thread;
 
     /** Counter, assigning a unique ID to each log message. */

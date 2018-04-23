@@ -81,7 +81,7 @@ void RenderManager::RenderThread::_run()
             try {
                 // render all Layers from back to front
 //                for (const LayerPtr& layer : reverse(scene_manager.current_state()->layers())) { // TODO: BROKEN?
-                 for (const LayerPtr& layer : scene_manager.current_state()->layers()) { // TODO: BROKEN?
+                 for (const LayerPtr& layer : scene_manager.current_state()->layers()) {
                     layer->render();
                 }
             }

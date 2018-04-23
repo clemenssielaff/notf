@@ -24,6 +24,8 @@ using time_point_t = std::chrono::time_point<clock_t, duration_t>;
 
 namespace literals {
 
+using namespace std::chrono_literals;
+
 /// User-defined "_fps" literal.
 constexpr auto operator""_fps(unsigned long long fps) { return duration_t{duration_t::period::den / fps}; }
 constexpr auto operator""_fps(long double fps)

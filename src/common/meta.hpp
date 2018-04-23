@@ -242,8 +242,9 @@ using void_t = typename make_void<Ts...>::type;
 
 /// Private access type template.
 /// Used for finer grained friend control and is compiled away completely (if you should worry).
-#define NOTF_ACCESS_TYPES(...)                                                          \
-    template<typename T, typename = std::enable_if_t<is_one_of<T, __VA_ARGS__>::value>> \
+#define NOTF_ACCESS_TYPES(...)                                                                \
+    template<typename ACCESS_TYPE_CHECKER,                                                    \
+             typename = std::enable_if_t<is_one_of<ACCESS_TYPE_CHECKER, __VA_ARGS__>::value>> \
     class Access;
 
 //====================================================================================================================//

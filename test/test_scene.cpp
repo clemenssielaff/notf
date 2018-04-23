@@ -19,18 +19,18 @@ struct TestScene : public Scene {
 
 //====================================================================================================================//
 
-struct LeafNode : public Scene::Node {
+struct LeafNode : public SceneNode {
     /// Constructor.
-    LeafNode(const Token& token, Scene& scene, valid_ptr<Node*> parent) : Node(token, scene, parent) {}
+    LeafNode(const Token& token, Scene& scene, valid_ptr<SceneNode*> parent) : SceneNode(token, scene, parent) {}
 };
 
 //====================================================================================================================//
 
-struct TwoChildrenNode : public Scene::Node {
+struct TwoChildrenNode : public SceneNode {
 
     /// Constructor.
     ///
-    TwoChildrenNode(const Token& token, Scene& scene, valid_ptr<Node*> parent) : Node(token, scene, parent)
+    TwoChildrenNode(const Token& token, Scene& scene, valid_ptr<SceneNode*> parent) : SceneNode(token, scene, parent)
     {
         back = _add_child<LeafNode>();
         front = _add_child<LeafNode>();
@@ -40,17 +40,17 @@ struct TwoChildrenNode : public Scene::Node {
 
     // fields -----------------------------------------------------------------
 public:
-    NodeHande<LeafNode> back;
-    NodeHande<LeafNode> front;
+    NodeHandle<LeafNode> back;
+    NodeHandle<LeafNode> front;
 };
 
 //====================================================================================================================//
 
-struct ThreeChildrenNode : public Scene::Node {
+struct ThreeChildrenNode : public SceneNode {
 
     /// Constructor.
     ///
-    ThreeChildrenNode(const Token& token, Scene& scene, valid_ptr<Node*> parent) : Node(token, scene, parent)
+    ThreeChildrenNode(const Token& token, Scene& scene, valid_ptr<SceneNode*> parent) : SceneNode(token, scene, parent)
     {
         back = _add_child<LeafNode>();
         center = _add_child<LeafNode>();
@@ -65,24 +65,24 @@ struct ThreeChildrenNode : public Scene::Node {
 
     // fields -----------------------------------------------------------------
 public:
-    NodeHande<LeafNode> back;
-    NodeHande<LeafNode> center;
-    NodeHande<LeafNode> front;
+    NodeHandle<LeafNode> back;
+    NodeHandle<LeafNode> center;
+    NodeHandle<LeafNode> front;
 };
 
 //====================================================================================================================//
 
-struct SplitNode : public Scene::Node {
+struct SplitNode : public SceneNode {
 
     /// Constructor.
-    SplitNode(const Token& token, Scene& scene, valid_ptr<Node*> parent) : Node(token, scene, parent)
+    SplitNode(const Token& token, Scene& scene, valid_ptr<SceneNode*> parent) : SceneNode(token, scene, parent)
     {
         m_center = _add_child<TwoChildrenNode>();
     }
 
     // fields -----------------------------------------------------------------
 private:
-    Scene::NodeHandle<TwoChildrenNode> m_center;
+    NodeHandle<TwoChildrenNode> m_center;
 };
 
 //====================================================================================================================//
@@ -116,9 +116,9 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
         SECTION("creating, modifying and deleting without freezing produces no deltas")
         {
             {
-                Scene::NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
-                Scene::NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
-                Scene::NodeHandle<ThreeChildrenNode> c = scene.root().add_child<ThreeChildrenNode>();
+                NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
+                NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
+                NodeHandle<ThreeChildrenNode> c = scene.root().add_child<ThreeChildrenNode>();
 
                 REQUIRE(access.node_count() == 12);
                 REQUIRE(access.child_container_count() == 12);
@@ -139,7 +139,7 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
 
         SECTION("modifying nodes in a frozen scene will produce deltas that are resolved when unfrozen")
         {
-            Scene::NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
+            NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
 
             REQUIRE(access.node_count() == 4);
             REQUIRE(access.child_container_count() == 4);
@@ -189,9 +189,9 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
 
         SECTION("deleting nodes from a frozen scene will produce deltas that are resolved when unfrozen")
         {
-            Scene::NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
-            Scene::NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
-            Scene::NodeHandle<ThreeChildrenNode> c = scene.root().add_child<ThreeChildrenNode>();
+            NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
+            NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
+            NodeHandle<ThreeChildrenNode> c = scene.root().add_child<ThreeChildrenNode>();
 
             REQUIRE(access.node_count() == 12);
             REQUIRE(access.child_container_count() == 12);
@@ -212,7 +212,7 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
                 REQUIRE(access.delta_count() == 2); // a and c were modified
 
                 { // delete c
-                    Scene::NodeHandle<ThreeChildrenNode> dropped = std::move(c);
+                    NodeHandle<ThreeChildrenNode> dropped = std::move(c);
                 }
 
                 REQUIRE(access.node_count() == 12);
@@ -234,7 +234,7 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
             {
                 access.freeze(render_thread_id);
 
-                Scene::NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
+                NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
 
                 CHECK(a->front->is_in_front());
                 CHECK(a->back->is_in_back());
@@ -264,10 +264,10 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
             { // frozen scope
                 auto guard = access.freeze_guard(render_thread_id);
                 {
-                    Scene::NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
-                    Scene::NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
-                    Scene::NodeHandle<ThreeChildrenNode> c = scene.root().add_child<ThreeChildrenNode>();
-                    Scene::NodeHandle<LeafNode> d = scene.root().add_child<LeafNode>();
+                    NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
+                    NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
+                    NodeHandle<ThreeChildrenNode> c = scene.root().add_child<ThreeChildrenNode>();
+                    NodeHandle<LeafNode> d = scene.root().add_child<LeafNode>();
                 }
             }
 

@@ -25,13 +25,17 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
-Scene::Node::Node(const Token&, Scene& scene, valid_ptr<Node*> parent)
+SceneNode::hierarchy_error::~hierarchy_error() = default;
+
+//====================================================================================================================//
+
+SceneNode::SceneNode(const Token&, Scene& scene, valid_ptr<SceneNode*> parent)
     : m_scene(scene), m_parent(parent), m_children(_register_with_scene(scene)), m_name(next_name())
 {
     log_trace << "Created \"" << m_name << "\"";
 }
 
-Scene::Node::~Node()
+SceneNode::~SceneNode()
 {
     NOTF_ASSERT(m_scene.m_mutex.is_locked_by_this_thread());
 
@@ -44,7 +48,7 @@ Scene::Node::~Node()
     m_scene.m_child_container.erase(children_it);
 }
 
-const Scene::ChildContainer& Scene::Node::read_children() const
+const SceneNode::ChildContainer& SceneNode::read_children() const
 {
     NOTF_ASSERT(m_scene.m_mutex.is_locked_by_this_thread());
 
@@ -65,7 +69,7 @@ const Scene::ChildContainer& Scene::Node::read_children() const
     }
 }
 
-Scene::ChildContainer& Scene::Node::write_children()
+SceneNode::ChildContainer& SceneNode::write_children()
 {
     NOTF_ASSERT(m_scene.m_mutex.is_locked_by_this_thread());
 
@@ -89,9 +93,9 @@ Scene::ChildContainer& Scene::Node::write_children()
     }
 }
 
-bool Scene::Node::has_ancestor(const valid_ptr<const Node*> ancestor) const
+bool SceneNode::has_ancestor(const valid_ptr<const SceneNode*> ancestor) const
 {
-    valid_ptr<const Node*> next = parent();
+    valid_ptr<const SceneNode*> next = parent();
     while (next != next->parent()) {
         if (next == ancestor) {
             return true;
@@ -101,17 +105,17 @@ bool Scene::Node::has_ancestor(const valid_ptr<const Node*> ancestor) const
     return false;
 }
 
-valid_ptr<Scene::Node*> Scene::Node::common_ancestor(valid_ptr<Node*> other)
+valid_ptr<SceneNode*> SceneNode::common_ancestor(valid_ptr<SceneNode*> other)
 {
     if (this == other) {
         return this;
     }
 
-    valid_ptr<Node*> first = this;
-    valid_ptr<Node*> second = other;
-    Scene::Node* result = nullptr;
+    valid_ptr<SceneNode*> first = this;
+    valid_ptr<SceneNode*> second = other;
+    SceneNode* result = nullptr;
 
-    std::unordered_set<valid_ptr<Node*>> known_ancestors = {first, second};
+    std::unordered_set<valid_ptr<SceneNode*>> known_ancestors = {first, second};
     while (1) {
         first = first->parent();
         if (known_ancestors.count(first)) {
@@ -137,7 +141,7 @@ valid_ptr<Scene::Node*> Scene::Node::common_ancestor(valid_ptr<Node*> other)
     return result;
 }
 
-const std::string& Scene::Node::set_name(std::string name)
+const std::string& SceneNode::set_name(std::string name)
 {
     if (name != m_name) {
         m_name = std::move(name);
@@ -146,7 +150,7 @@ const std::string& Scene::Node::set_name(std::string name)
     return m_name;
 }
 
-bool Scene::Node::is_in_front() const
+bool SceneNode::is_in_front() const
 {
     std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
     const ChildContainer& siblings = m_parent->read_children();
@@ -154,7 +158,7 @@ bool Scene::Node::is_in_front() const
     return siblings.back() == this;
 }
 
-bool Scene::Node::is_in_back() const
+bool SceneNode::is_in_back() const
 {
     std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
     const ChildContainer& siblings = m_parent->read_children();
@@ -162,7 +166,7 @@ bool Scene::Node::is_in_back() const
     return siblings.front() == this;
 }
 
-bool Scene::Node::is_in_front_of(const valid_ptr<Node*> sibling) const
+bool SceneNode::is_in_front_of(const valid_ptr<SceneNode*> sibling) const
 {
     std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
     const ChildContainer& siblings = m_parent->read_children();
@@ -187,7 +191,7 @@ bool Scene::Node::is_in_front_of(const valid_ptr<Node*> sibling) const
                       sibling->name());
 }
 
-bool Scene::Node::is_behind(const valid_ptr<Node*> sibling) const
+bool SceneNode::is_behind(const valid_ptr<SceneNode*> sibling) const
 {
     std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
     const ChildContainer& siblings = m_parent->read_children();
@@ -212,7 +216,7 @@ bool Scene::Node::is_behind(const valid_ptr<Node*> sibling) const
                       sibling->name());
 }
 
-void Scene::Node::stack_front()
+void SceneNode::stack_front()
 {
     std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
 
@@ -227,7 +231,7 @@ void Scene::Node::stack_front()
     move_to_back(siblings, it); // "in front" means at the end of the vector ordered back to front
 }
 
-void Scene::Node::stack_back()
+void SceneNode::stack_back()
 {
     std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
 
@@ -242,7 +246,7 @@ void Scene::Node::stack_back()
     move_to_front(siblings, it); // "in back" means at the start of the vector ordered back to front
 }
 
-void Scene::Node::stack_before(const valid_ptr<Node*> sibling)
+void SceneNode::stack_before(const valid_ptr<SceneNode*> sibling)
 {
     std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
 
@@ -267,7 +271,7 @@ void Scene::Node::stack_before(const valid_ptr<Node*> sibling)
     notf::move_behind_of(siblings, iterator_at(siblings, my_index), sibling_it);
 }
 
-void Scene::Node::stack_behind(const valid_ptr<Node*> sibling)
+void SceneNode::stack_behind(const valid_ptr<SceneNode*> sibling)
 {
     std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
 
@@ -292,7 +296,7 @@ void Scene::Node::stack_behind(const valid_ptr<Node*> sibling)
     notf::move_in_front_of(siblings, iterator_at(siblings, my_index), sibling_it);
 }
 
-valid_ptr<Scene::ChildContainer*> Scene::Node::_register_with_scene(Scene& scene)
+valid_ptr<SceneNode::ChildContainer*> SceneNode::_register_with_scene(Scene& scene)
 {
     std::unique_ptr<ChildContainer> container = std::make_unique<ChildContainer>();
     ChildContainer* handle = container.get();
@@ -305,7 +309,7 @@ valid_ptr<Scene::ChildContainer*> Scene::Node::_register_with_scene(Scene& scene
 
 //====================================================================================================================//
 
-Scene::RootNode::RootNode(Scene& scene) : Node(Token{}, scene, this) {}
+Scene::RootNode::RootNode(const Token& token, Scene& scene) : SceneNode(token, scene, this) {}
 
 Scene::RootNode::~RootNode() {}
 
@@ -324,10 +328,6 @@ Scene::FreezeGuard::~FreezeGuard()
         m_scene->unfreeze(m_thread_id);
     }
 }
-
-//====================================================================================================================//
-
-Scene::hierarchy_error::~hierarchy_error() = default;
 
 //====================================================================================================================//
 
@@ -371,7 +371,7 @@ void Scene::unfreeze(NOTF_UNUSED const std::thread::id thread_id)
         children.swap(delta);
 
         // find old children that are removed by the delta and delete them
-        for (valid_ptr<Node*> child_node : delta) {
+        for (valid_ptr<SceneNode*> child_node : delta) {
             if (!contains(children, child_node)) {
                 m_deletion_deltas.erase(child_node);
                 _delete_node(child_node);
@@ -381,7 +381,7 @@ void Scene::unfreeze(NOTF_UNUSED const std::thread::id thread_id)
 
     // all nodes that are left in the deletion deltas set were created and removed again, while the scene was frozen
     // since no nodes are actually deleted from a frozen scene, we need to delete them now
-    for (valid_ptr<Node*> leftover_node : m_deletion_deltas) {
+    for (valid_ptr<SceneNode*> leftover_node : m_deletion_deltas) {
         _delete_node(leftover_node);
     }
 
@@ -389,7 +389,7 @@ void Scene::unfreeze(NOTF_UNUSED const std::thread::id thread_id)
     m_deletion_deltas.clear();
 }
 
-void Scene::_delete_node(valid_ptr<Node*> node)
+void Scene::_delete_node(valid_ptr<SceneNode*> node)
 {
     auto node_it = m_nodes.find(node);
     NOTF_ASSERT_MSG(node_it != m_nodes.end(), "Delta could not be resolved because the Node has already been removed");
@@ -402,7 +402,7 @@ void Scene::_delete_node(valid_ptr<Node*> node)
 
 Scene::RootNode* Scene::_create_root()
 {
-    std::unique_ptr<RootNode> root_node = std::make_unique<RootNode>(*this);
+    std::unique_ptr<RootNode> root_node = std::make_unique<RootNode>(SceneNode::Access<Scene>::create_token(), *this);
     RootNode* ptr = root_node.get();
     m_nodes.emplace(std::make_pair(ptr, std::move(root_node)));
     return ptr;
