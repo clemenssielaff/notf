@@ -13,6 +13,7 @@
 #include "common/size2.hpp"
 
 NOTF_OPEN_NAMESPACE
+
 // ===================================================================================================================//
 
 ///
@@ -23,7 +24,7 @@ NOTF_OPEN_NAMESPACE
 /// The SceneGraph has State objects that defines how to render a frame.
 /// A State is made up of a list of Layers.
 /// Layers define an AABR (potentially full-screen) that are rendered into the screen buffer on each frame.
-/// Each Layer has a single Renderer (short: Producer) that define their content.
+/// Each Layer has a single Renderer that define their content.
 /// Producers can either generate their content procedurally or display a RenderTarget.
 /// RenderTargets have a Producer each, while Producers can themselves refer to 0-n other RenderTargets.
 /// RenderTarget may not depend on a Producer which itself depends on the same RenderTarget (no loops).
@@ -86,8 +87,10 @@ NOTF_OPEN_NAMESPACE
 ///
 class SceneGraph { // TODO: update SceneGraph docstring
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types --------------------------------------------------------------
 public:
+    NOTF_ACCESS_TYPES(SceneNode)
+
     /// State of the SceneGraph.
     class State {
 
@@ -142,6 +145,11 @@ public:
     /// Enters a given State.
     void enter_state(StatePtr state);
 
+private:
+    /// Registers a SceneNode as dirty.
+    /// @param node     Node to register as dirty.
+    void _register_dirty(valid_ptr<SceneNode*> node);
+
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// Window owning this SceneGraph.
@@ -149,6 +157,221 @@ private:
 
     /// Current State of the SceneGraph.
     StatePtr m_current_state;
+
+    /// Nodes that registered themselves as "dirty".
+    /// If there is one or more dirty Nodes registered, the Window containing this graph must be re-rendered.
+    std::unordered_set<valid_ptr<SceneNode*>> m_dirty_nodes;
+};
+
+template<>
+class SceneGraph::Access<SceneNode> {
+    friend class SceneNode;
+
+    /// Constructor.
+    /// @param graph    Graph to access.
+    Access(SceneGraph& graph) : m_graph(graph) {}
+
+    /// Registers a new SceneNode as dirty.
+    /// @param node     Node to register as dirty.
+    void register_dirty(valid_ptr<SceneNode*> node) { m_graph._register_dirty(std::move(node)); }
+
+    // fields -----------------------------------------------------------------
+private:
+    /// Graph to access.
+    SceneGraph& m_graph;
+};
+
+// ===================================================================================================================//
+
+/// The Scene is an abstract hierarchy of scene nodes.
+/// We keep it abstract, so that a Scene can both be a map of nested 2D rectangles, as well as a 3D scene graph or
+/// whatever else.
+///
+/// Events
+/// ======
+///
+/// The Scene knows how to handle (untyped) events via the `handle_event` method. All events are ignored by default.
+/// When you override the handler method, use event->type() to get a type integer that you can use in a
+/// switch-statement.
+///
+/// Scene Hierarchy
+/// ===============
+///
+/// Scene nodes form a hierarchy with a single RootNode on top. Each node can have 0-n children, although different
+/// subtypes may pose additional restrictions.
+///
+/// Only a concrete nodes may create other nodes. The only method allowed to do so is `Scene::Node::_add_child` which
+/// returns a `NodeHandle<T>` (with T being the type of the child node). Handles own the actual child node, meaning that
+/// when they are destroyed, so is their child Scene Node. You store them in the parenting node, in any way that
+/// makes most sense for the type of node (list, map, quadtree...). They are not copy- or assignable, think of them as
+/// specialized unique_ptr.
+///
+/// To traverse the hierarchy, we need to know all of the children of a node and their draw order, from back to front
+/// (earlier nodes are drawn behind later nodes). Therefore, every scene node contains a vector of raw pointers to their
+/// children. By default, `_add_child` appends the newly created Scene Node to the vector, resulting in each new child
+/// being drawn in front of its next-older sibling. You are free to reshuffle the children as you please using the
+/// dedicated functions on `Scene::Node`. The `m_children` vector is private so you can't mess it up ;)
+///
+/// Nodes also have a link back to their parent, but do not own the parent (obviously). As parents are guaranteed to
+/// outlive their children in the tree, we can be certain that all nodes have a valid parent. The RootNode is its
+/// own parent, so while it is in fact valid you need to check for this condition when traversing up the hierarchy,
+/// otherwise you'll be stuck in an infinite loop (then again, if you don't check for the stop condition and the parent
+/// is null, your program crashes).
+///
+/// Name
+/// ====
+///
+/// Each Node has a name. Be default, the name is of the format "SceneNode#[number]" where the number is guaranteed to
+/// be unique. The user can change the name of each node, in which case it might no longer be unique.
+///
+/// Signals
+/// =======
+///
+/// Scene nodes communicate with each other either through their relationship in the hierachy (parents to children and
+/// vice-versa) or via Signals. Signals have the advantage of being able to connect every node in the same SceneGraph
+/// regardless of its position in the hierarchy. They can be created by the user and enabled/disabled at will. In order
+/// to facilitate Signal handling at the lowest possible level, all Nodes derive from the `receive_signals` class
+/// that takes care of removing leftover connections that still exist once the Node goes out of scope.
+///
+class Scene {
+
+    friend class SceneNode;
+
+    template<typename>
+    friend struct NodeHandle;
+
+    // types ---------------------------------------------------------------------------------------------------------//
+public:
+    NOTF_ACCESS_TYPES(test::Harness)
+
+private:
+    using ChildContainer = std::vector<valid_ptr<SceneNode*>>;
+
+    //=========================================================================
+
+    /// RAII object to make sure that a frozen scene is ALWAYS unfrozen again
+    struct NOTF_NODISCARD FreezeGuard {
+
+        NOTF_NO_COPY_OR_ASSIGN(FreezeGuard)
+        NOTF_NO_HEAP_ALLOCATION(FreezeGuard)
+
+        /// Constructor.
+        /// @param scene        Scene to freeze.
+        /// @param thread_id    ID of the freezing thread, uses the calling thread by default. (exposed for testability)
+        FreezeGuard(Scene& scene, const std::thread::id thread_id = std::this_thread::get_id());
+
+        /// Move constructor.
+        /// @param other    FreezeGuard to move from.
+        FreezeGuard(FreezeGuard&& other) : m_scene(other.m_scene) { other.m_scene = nullptr; }
+
+        /// Destructor.
+        ~FreezeGuard();
+
+        // fields -------------------------------------------------------------
+    private:
+        /// Scene to freeze.
+        Scene* m_scene;
+
+        /// Id of the freezing thread.
+        const std::thread::id m_thread_id;
+    };
+
+    // methods -------------------------------------------------------------------------------------------------------//
+protected:
+    /// Constructor.
+    /// @param manager  The SceneGraph owning this Scene.
+    Scene(SceneGraph& graph);
+
+public:
+    NOTF_NO_COPY_OR_ASSIGN(Scene)
+
+    /// Destructor.
+    virtual ~Scene();
+
+    /// @{
+    /// The SceneGraph owning this Scene.
+    SceneGraph& graph() { return m_graph; }
+    const SceneGraph& graph() const { return m_graph; }
+    /// @}
+
+    /// @{
+    /// The unique root node of this Scene.
+    RootSceneNode& root() { return *m_root; }
+    const RootSceneNode& root() const { return *m_root; }
+    /// @}
+
+    // event handling ---------------------------------------------------------
+
+    /// Handles an untyped event.
+    /// @returns True iff the event was handled.
+    virtual bool handle_event(Event& event NOTF_UNUSED) { return false; }
+
+    /// Resizes the view on this Scene.
+    /// @param size Size of the view in pixels.
+    virtual void resize_view(Size2i size) = 0;
+
+    // scene hierarchy --------------------------------------------------------
+private:
+    /// Freezes the Scene if it is not already frozen.
+    /// @param thread_id    Id of the calling thread.
+    /// @returns            True iff the Scene was frozen.
+    bool freeze(const std::thread::id thread_id);
+
+    /// Unfreezes the Scene again.
+    void unfreeze(const std::thread::id thread_id);
+
+    /// Checks if the scene is currently frozen or not.
+    bool _is_frozen() const
+    {
+        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+        return m_render_thread != std::thread::id();
+    }
+
+    /// Checks if the calling thread is the current render thread.
+    bool _is_render_thread(const std::thread::id thread_id) const
+    {
+        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+        return thread_id == m_render_thread;
+    }
+
+    /// Deletes the given node from the Scene.
+    /// @param node     Node to remove.
+    void _delete_node(valid_ptr<SceneNode*> node);
+
+    /// Creates the root node.
+    RootSceneNode* _create_root();
+
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
+    /// The SceneGraph owning this Scene.
+    SceneGraph& m_graph;
+
+    /// Mutex guarding the scene.
+    /// Has to be recursive, because when we delete a node, it will delete its child nodes and we need to protect the
+    /// destructor with a lock.
+    mutable RecursiveMutex m_mutex;
+
+    /// Map owning all nodes in the scene.
+    std::unordered_map<valid_ptr<const SceneNode*>, std::unique_ptr<SceneNode>, PointerHash<SceneNode>> m_nodes;
+
+    /// Mapping from all nodes in the scene to their children.
+    /// Is separate from the Node type so the Scene hierarchy can be frozen.
+    std::unordered_map<valid_ptr<const ChildContainer*>, std::unique_ptr<ChildContainer>, PointerHash<ChildContainer>>
+        m_child_container;
+
+    /// Map containing copieds of ChildContainer that were modified while the Scene was frozen.
+    std::unordered_map<valid_ptr<const ChildContainer*>, std::unique_ptr<ChildContainer>, PointerHash<ChildContainer>>
+        m_deltas;
+
+    /// All nodes that were deleted while the Scene was frozen.
+    std::unordered_set<valid_ptr<SceneNode*>> m_deletion_deltas;
+
+    /// Thread id of the render thread, if we are rendering at the moment
+    /// (a value != default signifies that the graph is currently frozen).
+    std::thread::id m_render_thread;
+
+    /// The singular root node of the scene hierarchy.
+    valid_ptr<RootSceneNode*> m_root;
 };
 
 // ===================================================================================================================//
@@ -164,7 +387,7 @@ public:
     NOTF_ACCESS_TYPES(Scene)
 
     /// Container used to store the children of a SceneNode.
-    using ChildContainer = std::vector<valid_ptr<SceneNode*>>;
+    using ChildContainer = Scene::ChildContainer;
 
 protected:
     /// Token object to make sure that Node instances can only be created by a call to `_add_child`.
@@ -262,6 +485,11 @@ public:
     /// @param name New name of this Node.
     const std::string& set_name(std::string name);
 
+    /// Registers this Node as being dirty.
+    /// A ScenGraph containing at least one dirty SceneNode causes the Window to be redrawn at the next opportunity.
+    /// Is virtual, so subclasses may decide to ignore this method, for example if the node is invisible.
+    virtual void redraw() { SceneGraph::Access<SceneNode>(m_scene.graph()).register_dirty(this); }
+
     // z-order ------------------------------------------------------------
 
     /// Checks if this Node is in front of all of its siblings.
@@ -325,219 +553,36 @@ private:
     std::string m_name;
 };
 
+template<>
+class SceneNode::Access<Scene> {
+    friend class Scene;
+
+    /// Creates a factory Token so the Scene can create its RootNode.
+    static SceneNode::Token create_token() { return Token{}; }
+};
+
 // ===================================================================================================================//
 
-/// The Scene is an abstract hierarchy of scene nodes.
-/// We keep it abstract, so that a Scene can both be a map of nested 2D rectangles, as well as a 3D scene graph or
-/// whatever else.
-///
-/// Events
-/// ======
-///
-/// The Scene knows how to handle (untyped) events via the `handle_event` method. All events are ignored by default.
-/// When you override the handler method, use event->type() to get a type integer that you can use in a
-/// switch-statement.
-///
-/// Scene Hierarchy
-/// ===============
-///
-/// Scene nodes form a hierarchy with a single RootNode on top. Each node can have 0-n children, although different
-/// subtypes may pose additional restrictions.
-///
-/// Only a concrete nodes may create other nodes. The only method allowed to do so is `Scene::Node::_add_child` which
-/// returns a `NodeHandle<T>` (with T being the type of the child node). Handles own the actual child node, meaning that
-/// when they are destroyed, so is their child Scene Node. You store them in the parenting node, in any way that
-/// makes most sense for the type of node (list, map, quadtree...). They are not copy- or assignable, think of them as
-/// specialized unique_ptr.
-///
-/// To traverse the hierarchy, we need to know all of the children of a node and their draw order, from back to front
-/// (earlier nodes are drawn behind later nodes). Therefore, every scene node contains a vector of raw pointers to their
-/// children. By default, `_add_child` appends the newly created Scene Node to the vector, resulting in each new child
-/// being drawn in front of its next-older sibling. You are free to reshuffle the children as you please using the
-/// dedicated functions on `Scene::Node`. The `m_children` vector is private so you can't mess it up ;)
-///
-/// Nodes also have a link back to their parent, but do not own the parent (obviously). As parents are guaranteed to
-/// outlive their children in the tree, we can be certain that all nodes have a valid parent. The RootNode is its
-/// own parent, so while it is in fact valid you need to check for this condition when traversing up the hierarchy,
-/// otherwise you'll be stuck in an infinite loop (then again, if you don't check for the stop condition and the parent
-/// is null, your program crashes).
-///
-/// Name
-/// ====
-///
-/// Each Node has a name. Be default, the name is of the format "SceneNode#[number]" where the number is guaranteed to
-/// be unique. The user can change the name of each node, in which case it might no longer be unique.
-///
-/// Signals
-/// =======
-///
-/// Scene nodes communicate with each other either through their relationship in the hierachy (parents to children and
-/// vice-versa) or via Signals. Signals have the advantage of being able to connect every node in the same SceneGraph
-/// regardless of its position in the hierarchy. They can be created by the user and enabled/disabled at will. In order
-/// to facilitate Signal handling at the lowest possible level, all Nodes derive from the `receive_signals` class
-/// that takes care of removing leftover connections that still exist once the Node goes out of scope.
-///
-class Scene {
+/// The singular root node of a Scene hierarchy.
+class RootSceneNode : public SceneNode {
 
-    template<typename>
-    friend struct NodeHandle;
-
-    friend class SceneNode;
-
-    // types ---------------------------------------------------------------------------------------------------------//
+    // methods --------------------------------------------------------------------------
 public:
-    NOTF_ACCESS_TYPES(test::Harness)
-
-private:
-    using ChildContainer = SceneNode::ChildContainer;
-
-    //=========================================================================
-
-    /// The singular root node of a Scene hierarchy.
-    struct RootNode : public SceneNode {
-
-        /// Constructor.
-        /// @param token    Factory token provided by the Scene.
-        /// @param scene    Scene to manage the node.
-        RootNode(const Token& token, Scene& scene);
-
-        /// Destructor.
-        virtual ~RootNode();
-
-        /// Creates and adds a new child to this node.
-        /// @param args Arguments that are forwarded to the constructor of the child.
-        template<typename T, typename... Args>
-        NodeHandle<T> add_child(Args&&... args)
-        {
-            return _add_child<T>(std::forward<Args>(args)...);
-        }
-    };
-
-    //=========================================================================
-
-    /// RAII object to make sure that a frozen scene is ALWAYS unfrozen again
-    struct NOTF_NODISCARD FreezeGuard {
-
-        NOTF_NO_COPY_OR_ASSIGN(FreezeGuard)
-        NOTF_NO_HEAP_ALLOCATION(FreezeGuard)
-
-        /// Constructor.
-        /// @param scene        Scene to freeze.
-        /// @param thread_id    ID of the freezing thread, uses the calling thread by default. (exposed for testability)
-        FreezeGuard(Scene& scene, const std::thread::id thread_id = std::this_thread::get_id());
-
-        /// Move constructor.
-        /// @param other    FreezeGuard to move from.
-        FreezeGuard(FreezeGuard&& other) : m_scene(other.m_scene) { other.m_scene = nullptr; }
-
-        /// Destructor.
-        ~FreezeGuard();
-
-        // fields -------------------------------------------------------------
-    private:
-        /// Scene to freeze.
-        Scene* m_scene;
-
-        /// Id of the freezing thread.
-        const std::thread::id m_thread_id;
-    };
-
-    // methods -------------------------------------------------------------------------------------------------------//
-protected:
     /// Constructor.
-    /// @param manager  The SceneGraph owning this Scene.
-    Scene(SceneGraph& graph);
-
-public:
-    NOTF_NO_COPY_OR_ASSIGN(Scene)
+    /// @param token    Factory token provided by the Scene.
+    /// @param scene    Scene to manage the node.
+    RootSceneNode(const Token& token, Scene& scene) : SceneNode(token, scene, this) {}
 
     /// Destructor.
-    virtual ~Scene();
+    virtual ~RootSceneNode();
 
-    /// @{
-    /// The SceneGraph owning this Scene.
-    SceneGraph& graph() { return m_graph; }
-    const SceneGraph& graph() const { return m_graph; }
-    /// @}
-
-    /// @{
-    /// The unique root node of this Scene.
-    RootNode& root() { return *m_root; }
-    const RootNode& root() const { return *m_root; }
-    /// @}
-
-    // event handling ---------------------------------------------------------
-
-    /// Handles an untyped event.
-    /// @returns True iff the event was handled.
-    virtual bool handle_event(Event& event NOTF_UNUSED) { return false; }
-
-    /// Resizes the view on this Scene.
-    /// @param size Size of the view in pixels.
-    virtual void resize_view(Size2i size) = 0;
-
-    // scene hierarchy --------------------------------------------------------
-private:
-    /// Freezes the Scene if it is not already frozen.
-    /// @param thread_id    Id of the calling thread.
-    /// @returns            True iff the Scene was frozen.
-    bool freeze(const std::thread::id thread_id);
-
-    /// Unfreezes the Scene again.
-    void unfreeze(const std::thread::id thread_id);
-
-    /// Checks if the scene is currently frozen or not.
-    bool _is_frozen() const
+    /// Creates and adds a new child to this node.
+    /// @param args Arguments that are forwarded to the constructor of the child.
+    template<typename T, typename... Args>
+    NodeHandle<T> add_child(Args&&... args) // TODO: this should probably be "set_child" because it's the root
     {
-        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
-        return m_render_thread != std::thread::id();
+        return _add_child<T>(std::forward<Args>(args)...);
     }
-
-    /// Checks if the calling thread is the current render thread.
-    bool _is_render_thread(const std::thread::id thread_id) const
-    {
-        NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
-        return thread_id == m_render_thread;
-    }
-
-    /// Deletes the given node from the Scene.
-    /// @param node     Node to remove.
-    void _delete_node(valid_ptr<SceneNode*> node);
-
-    /// Creates the root node.
-    RootNode* _create_root();
-
-    // fields --------------------------------------------------------------------------------------------------------//
-private:
-    /// The SceneGraph owning this Scene.
-    SceneGraph& m_graph;
-
-    /// Mutex guarding the scene.
-    /// Has to be recursive, because when we delete a node, it will delete its child nodes and we need to protect the
-    /// destructor with a lock.
-    mutable RecursiveMutex m_mutex;
-
-    /// Map owning all nodes in the scene.
-    std::unordered_map<valid_ptr<const SceneNode*>, std::unique_ptr<SceneNode>, PointerHash<SceneNode>> m_nodes;
-
-    /// Mapping from all nodes in the scene to their children.
-    /// Is separate from the Node type so the Scene hierarchy can be frozen.
-    std::unordered_map<valid_ptr<const ChildContainer*>, std::unique_ptr<ChildContainer>, PointerHash<ChildContainer>>
-        m_child_container;
-
-    /// Map containing copieds of ChildContainer that were modified while the Scene was frozen.
-    std::unordered_map<valid_ptr<const ChildContainer*>, std::unique_ptr<ChildContainer>, PointerHash<ChildContainer>>
-        m_deltas;
-
-    /// All nodes that were deleted while the Scene was frozen.
-    std::unordered_set<valid_ptr<SceneNode*>> m_deletion_deltas;
-
-    /// Thread id of the render thread, if we are rendering at the moment
-    /// (a value != default signifies that the graph is currently frozen).
-    std::thread::id m_render_thread;
-
-    /// The singular root node of the scene hierarchy.
-    valid_ptr<RootNode*> m_root;
 };
 
 // ===================================================================================================================//
@@ -655,16 +700,6 @@ NodeHandle<T> SceneNode::_add_child(Args&&... args)
     }
     return NodeHandle<T>(&m_scene, child_handle);
 }
-
-// ===================================================================================================================//
-
-template<>
-class SceneNode::Access<Scene> {
-    friend class Scene;
-
-    /// Creates a factory Token so the Scene can create its RootNode.
-    static SceneNode::Token create_token() { return Token{}; }
-};
 
 // ===================================================================================================================//
 

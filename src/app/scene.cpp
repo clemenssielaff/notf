@@ -118,6 +118,122 @@ void SceneGraph::enter_state(StatePtr state)
     m_window.request_redraw();
 }
 
+void SceneGraph::_register_dirty(valid_ptr<SceneNode*> node)
+{
+    if (m_dirty_nodes.empty()) {
+        m_window.request_redraw();
+    }
+    m_dirty_nodes.insert(node);
+}
+
+//====================================================================================================================//
+
+Scene::FreezeGuard::FreezeGuard(Scene& scene, const std::thread::id thread_id) : m_scene(&scene), m_thread_id(thread_id)
+{
+    if (!m_scene->freeze(m_thread_id)) {
+        m_scene = nullptr;
+    }
+}
+
+Scene::FreezeGuard::~FreezeGuard()
+{
+    if (m_scene) { // don't unfreeze if this guard tried to double-freeze the scene
+        m_scene->unfreeze(m_thread_id);
+    }
+}
+
+//====================================================================================================================//
+
+Scene::Scene(SceneGraph& graph) : m_graph(graph), m_root(_create_root()) {}
+
+bool Scene::freeze(const std::thread::id thread_id)
+{
+    std::lock_guard<RecursiveMutex> lock(m_mutex);
+    if (m_render_thread != std::thread::id()) {
+        log_warning << "Ignoring repeated freezing of Scene";
+        return false;
+    }
+    m_render_thread = thread_id;
+    return true;
+}
+
+void Scene::unfreeze(NOTF_UNUSED const std::thread::id thread_id)
+{
+    std::lock_guard<RecursiveMutex> lock(m_mutex);
+    if (m_render_thread == std::thread::id()) {
+        return;
+    }
+    NOTF_ASSERT_MSG(m_render_thread == thread_id,
+                    "Thread #{} must not unfreeze the Scene, because it was frozen by a different thread (#{}).",
+                    hash(thread_id), hash(m_render_thread));
+
+    // unfreeze - otherwise all modifications would just create new deltas
+    m_render_thread = std::thread::id();
+
+    // resolve the delta
+    for (auto& delta_it : m_deltas) {
+        ChildContainer& delta = *delta_it.second.get();
+        valid_ptr<const ChildContainer*> child_id = delta_it.first;
+        auto child_it = m_child_container.find(child_id);
+        if (child_it == m_child_container.end()) {
+            continue; // parent has already been removed - ignore
+        }
+
+        // swap the delta children with the existing ones
+        ChildContainer& children = *child_it->second.get();
+        children.swap(delta);
+
+        // find old children that are removed by the delta and delete them
+        for (valid_ptr<SceneNode*> child_node : delta) {
+            if (!contains(children, child_node)) {
+                m_deletion_deltas.erase(child_node);
+                _delete_node(child_node);
+            }
+        }
+    }
+
+    // all nodes that are left in the deletion deltas set were created and removed again, while the scene was frozen
+    // since no nodes are actually deleted from a frozen scene, we need to delete them now
+    for (valid_ptr<SceneNode*> leftover_node : m_deletion_deltas) {
+        _delete_node(leftover_node);
+    }
+
+    m_deltas.clear();
+    m_deletion_deltas.clear();
+}
+
+void Scene::_delete_node(valid_ptr<SceneNode*> node)
+{
+    auto node_it = m_nodes.find(node);
+    NOTF_ASSERT_MSG(node_it != m_nodes.end(), "Delta could not be resolved because the Node has already been removed");
+
+    // delete the node here while still having its `m_nodes` entry
+    // this way its children can check that this is a proper removal
+    node_it->second.reset();
+    m_nodes.erase(node_it);
+}
+
+RootSceneNode* Scene::_create_root()
+{
+    std::unique_ptr<RootSceneNode> root_node
+        = std::make_unique<RootSceneNode>(SceneNode::Access<Scene>::create_token(), *this);
+    RootSceneNode* ptr = root_node.get();
+    m_nodes.emplace(std::make_pair(ptr, std::move(root_node)));
+    return ptr;
+}
+
+Scene::~Scene()
+{
+    std::lock_guard<RecursiveMutex> lock(m_mutex);
+    NOTF_ASSERT(!_is_frozen());
+
+    // remove the root node
+    auto it = m_nodes.find(m_root);
+    NOTF_ASSERT(it != m_nodes.end());
+    m_nodes.erase(it);
+    NOTF_ASSERT_MSG(m_nodes.empty(), "The RootNode must be the last node to be deleted");
+};
+
 //====================================================================================================================//
 
 SceneNode::hierarchy_error::~hierarchy_error() = default;
@@ -401,118 +517,8 @@ valid_ptr<SceneNode::ChildContainer*> SceneNode::_register_with_scene(Scene& sce
     }
     return handle;
 }
-
 //====================================================================================================================//
 
-Scene::RootNode::RootNode(const Token& token, Scene& scene) : SceneNode(token, scene, this) {}
-
-Scene::RootNode::~RootNode() {}
-
-//====================================================================================================================//
-
-Scene::FreezeGuard::FreezeGuard(Scene& scene, const std::thread::id thread_id) : m_scene(&scene), m_thread_id(thread_id)
-{
-    if (!m_scene->freeze(m_thread_id)) {
-        m_scene = nullptr;
-    }
-}
-
-Scene::FreezeGuard::~FreezeGuard()
-{
-    if (m_scene) { // don't unfreeze if this guard tried to double-freeze the scene
-        m_scene->unfreeze(m_thread_id);
-    }
-}
-
-//====================================================================================================================//
-
-Scene::Scene(SceneGraph& graph) : m_graph(graph), m_root(_create_root()) {}
-
-bool Scene::freeze(const std::thread::id thread_id)
-{
-    std::lock_guard<RecursiveMutex> lock(m_mutex);
-    if (m_render_thread != std::thread::id()) {
-        log_warning << "Ignoring repeated freezing of Scene";
-        return false;
-    }
-    m_render_thread = thread_id;
-    return true;
-}
-
-void Scene::unfreeze(NOTF_UNUSED const std::thread::id thread_id)
-{
-    std::lock_guard<RecursiveMutex> lock(m_mutex);
-    if (m_render_thread == std::thread::id()) {
-        return;
-    }
-    NOTF_ASSERT_MSG(m_render_thread == thread_id,
-                    "Thread #{} must not unfreeze the Scene, because it was frozen by a different thread (#{}).",
-                    hash(thread_id), hash(m_render_thread));
-
-    // unfreeze - otherwise all modifications would just create new deltas
-    m_render_thread = std::thread::id();
-
-    // resolve the delta
-    for (auto& delta_it : m_deltas) {
-        ChildContainer& delta = *delta_it.second.get();
-        valid_ptr<const ChildContainer*> child_id = delta_it.first;
-        auto child_it = m_child_container.find(child_id);
-        if (child_it == m_child_container.end()) {
-            continue; // parent has already been removed - ignore
-        }
-
-        // swap the delta children with the existing ones
-        ChildContainer& children = *child_it->second.get();
-        children.swap(delta);
-
-        // find old children that are removed by the delta and delete them
-        for (valid_ptr<SceneNode*> child_node : delta) {
-            if (!contains(children, child_node)) {
-                m_deletion_deltas.erase(child_node);
-                _delete_node(child_node);
-            }
-        }
-    }
-
-    // all nodes that are left in the deletion deltas set were created and removed again, while the scene was frozen
-    // since no nodes are actually deleted from a frozen scene, we need to delete them now
-    for (valid_ptr<SceneNode*> leftover_node : m_deletion_deltas) {
-        _delete_node(leftover_node);
-    }
-
-    m_deltas.clear();
-    m_deletion_deltas.clear();
-}
-
-void Scene::_delete_node(valid_ptr<SceneNode*> node)
-{
-    auto node_it = m_nodes.find(node);
-    NOTF_ASSERT_MSG(node_it != m_nodes.end(), "Delta could not be resolved because the Node has already been removed");
-
-    // delete the node here while still having its `m_nodes` entry
-    // this way its children can check that this is a proper removal
-    node_it->second.reset();
-    m_nodes.erase(node_it);
-}
-
-Scene::RootNode* Scene::_create_root()
-{
-    std::unique_ptr<RootNode> root_node = std::make_unique<RootNode>(SceneNode::Access<Scene>::create_token(), *this);
-    RootNode* ptr = root_node.get();
-    m_nodes.emplace(std::make_pair(ptr, std::move(root_node)));
-    return ptr;
-}
-
-Scene::~Scene()
-{
-    std::lock_guard<RecursiveMutex> lock(m_mutex);
-    NOTF_ASSERT(!_is_frozen());
-
-    // remove the root node
-    auto it = m_nodes.find(m_root);
-    NOTF_ASSERT(it != m_nodes.end());
-    m_nodes.erase(it);
-    NOTF_ASSERT_MSG(m_nodes.empty(), "The RootNode must be the last node to be deleted");
-};
+RootSceneNode::~RootSceneNode() {}
 
 NOTF_CLOSE_NAMESPACE

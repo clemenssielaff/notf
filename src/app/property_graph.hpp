@@ -203,6 +203,11 @@ private:
         /// Properties affected by this one through expressions.
         std::vector<valid_ptr<NodeBase*>> m_affected;
 
+        /// SceneNode associated with this Property.
+        /// Can be nullptr if this is an unassociated Property.
+        /// Associated Properties cause their SceneNode to request a redraw when they are changed.
+        risky_ptr<SceneNode*> m_node;
+
         /// Time when this Property was last defined.
         /// Is invalid if the Property is dirty (its expression needs to be evaluated).
         Time m_time = Time::now();
@@ -612,7 +617,7 @@ protected:
 // ===================================================================================================================//
 
 /// An object managing a single Property in the PropertyGraph.
-/// Contains a unique_ptr to a PropertyNode in the graph.
+/// Contains a pointer to a PropertyNode in the graph.
 template<typename T>
 class Property : public detail::PropertyBase {
 

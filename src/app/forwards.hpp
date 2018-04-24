@@ -15,6 +15,7 @@ class KeyEvent;
 class CharEvent;
 class WindowEvent;
 class SceneNode;
+class RootSceneNode;
 
 template<typename T>
 class Property;
