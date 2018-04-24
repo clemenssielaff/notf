@@ -73,8 +73,8 @@ public:
 
     ///@{
     /// Scenes displayed in the Window.
-    SceneManager& scene_manager() { return *m_scene_manager; }
-    const SceneManager& scene_manager() const { return *m_scene_manager; }
+    SceneGraph& scene_graph() { return *m_scene_graph; }
+    const SceneGraph& scene_graph() const { return *m_scene_graph; }
     ///@}
 
     ///@{
@@ -126,7 +126,7 @@ private:
     GraphicsContextPtr m_graphics_context;
 
     /// Scenes displayed in the Window.
-    SceneManagerPtr m_scene_manager;
+    SceneGraphPtr m_scene_graph;
 
     /// FontManager used to render text.
     FontManagerPtr m_font_manager; // TODO: FontManager per Window doesn't seem right

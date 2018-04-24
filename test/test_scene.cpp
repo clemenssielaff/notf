@@ -2,7 +2,6 @@
 
 #include "app/application.hpp"
 #include "app/scene.hpp"
-#include "app/scene_manager.hpp"
 #include "app/window.hpp"
 #include "testenv.hpp"
 
@@ -13,7 +12,7 @@ NOTF_USING_NAMESPACE
 //====================================================================================================================//
 
 struct TestScene : public Scene {
-    TestScene(SceneManager& manager) : Scene(manager) {}
+    TestScene(SceneGraph& graph) : Scene(graph) {}
     void resize_view(Size2i) override {}
 };
 
@@ -91,8 +90,8 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
 {
     GIVEN("an empty Scene")
     {
-        SceneManager scene_manager(notf_window());
-        TestScene scene(scene_manager);
+        SceneGraph scene_graph(notf_window());
+        TestScene scene(scene_graph);
         Scene::Access<test::Harness> access(scene);
 
         std::thread::id event_thread_id = std::this_thread::get_id();

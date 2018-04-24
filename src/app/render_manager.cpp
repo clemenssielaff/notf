@@ -1,7 +1,7 @@
 #include "app/render_manager.hpp"
 
 #include "app/layer.hpp"
-#include "app/scene_manager.hpp"
+#include "app/scene.hpp"
 #include "app/window.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
@@ -71,7 +71,7 @@ void RenderManager::RenderThread::_run()
         { // render the frame
             GraphicsContext::CurrentGuard current_guard = context.make_current();
 
-            SceneManager& scene_manager = window->scene_manager();
+            SceneGraph& scene_graph = window->scene_graph();
 
             //        // TODO: clean all the render targets here
             //        // in order to sort them, use typeid(*ptr).hash_code()
@@ -80,8 +80,9 @@ void RenderManager::RenderThread::_run()
 
             try {
                 // render all Layers from back to front
-//                for (const LayerPtr& layer : reverse(scene_manager.current_state()->layers())) { // TODO: BROKEN?
-                 for (const LayerPtr& layer : scene_manager.current_state()->layers()) {
+                //                for (const LayerPtr& layer : reverse(scene_graph.current_state()->layers())) { //
+                //                TODO: BROKEN?
+                for (const LayerPtr& layer : scene_graph.current_state()->layers()) {
                     layer->render();
                 }
             }

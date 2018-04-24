@@ -59,7 +59,7 @@ public:
     /// @return True iff the Claim was modified.
     bool set_claim(Claim claim) { return _set_claim(std::move(claim)); }
 
-    /// Tells the SceneManager that this Widget needs to be redrawn.
+    /// Tells the SceneGraph that this Widget needs to be redrawn.
     void redraw() const;
 
 protected:

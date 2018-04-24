@@ -8,7 +8,7 @@
 #include "app/application.hpp"
 #include "app/layer.hpp"
 #include "app/render/procedural.hpp"
-#include "app/scene_manager.hpp"
+#include "app/scene.hpp"
 #include "app/window.hpp"
 
 NOTF_USING_NAMESPACE
@@ -23,8 +23,8 @@ int smoke_main(int argc, char* argv[])
     {
         auto renderer = ProceduralRenderer::create(window, "clouds.frag");
         std::vector<LayerPtr> layers = {Layer::create(window, std::move(renderer))};
-        SceneManager::StatePtr state = window.scene_manager().create_state(layers);
-        window.scene_manager().enter_state(state);
+        SceneGraph::StatePtr state = window.scene_graph().create_state(layers);
+        window.scene_graph().enter_state(state);
     }
     return app.exec();
 

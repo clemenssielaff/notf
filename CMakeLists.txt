@@ -115,8 +115,6 @@ add_sources(SOURCE_FILES src
     app/scene.cpp
     app/layer.hpp
     app/layer.cpp
-    app/scene_manager.hpp
-    app/scene_manager.cpp
     app/timer_manager.cpp
     app/timer_manager.hpp
     app/renderer.hpp

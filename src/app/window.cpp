@@ -6,7 +6,6 @@
 #include "app/render_manager.hpp"
 #include "app/resource_manager.hpp"
 #include "app/scene.hpp"
-#include "app/scene_manager.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/raw_image.hpp"
@@ -59,7 +58,7 @@ Window::Window(const Args& args)
     m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window.get());
     {
         auto guard = m_graphics_context->make_current();
-        m_scene_manager = std::make_unique<SceneManager>(*this);
+        m_scene_graph = std::make_unique<SceneGraph>(*this);
         m_font_manager = FontManager::create(*m_graphics_context);
     }
 
@@ -166,7 +165,7 @@ void Window::close()
     // disconnect the window callbacks
     EventManager::Access<Window>().remove_window(*this);
 
-    m_scene_manager.reset();
+    m_scene_graph.reset();
     m_font_manager.reset();
     m_graphics_context.reset();
     m_glfw_window.reset();

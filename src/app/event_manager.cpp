@@ -7,7 +7,7 @@
 #include "app/io/key_event.hpp"
 #include "app/io/mouse_event.hpp"
 #include "app/io/window_event.hpp"
-#include "app/scene_manager.hpp"
+#include "app/scene.hpp"
 #include "common/log.hpp"
 #include "window.hpp"
 
@@ -94,8 +94,8 @@ void EventManager::WindowHandler::_run()
             }
         }
 
-        // forward the next event object to your Window's SceneManager, that will then propagate it to the Scenes
-        m_window->scene_manager().propagate_event(std::move(m_events.front()));
+        // forward the next event object to your Window's SceneGraph, that will then propagate it to the Scenes
+        m_window->scene_graph().propagate_event(std::move(m_events.front()));
         m_events.pop_front();
     }
 }

@@ -8,7 +8,7 @@ NOTF_OPEN_NAMESPACE
 
 // ===================================================================================================================//
 
-/// Layers are screen-axis-aligned quads that are drawn directly into the screen buffer by the SceneManager.
+/// Layers are screen-axis-aligned quads that are drawn directly into the screen buffer by the SceneGraph.
 /// The contents of a Layer are clipped to its area.
 /// The Layer's Renderer can query the size of this area using GraphicsContext::render_area().size() when
 /// rendered.
