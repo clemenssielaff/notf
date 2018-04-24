@@ -3,6 +3,7 @@
 #include "app/event_manager.hpp"
 #include "app/glfw.hpp"
 #include "app/layer.hpp"
+#include "app/property_graph.hpp"
 #include "app/render_manager.hpp"
 #include "app/resource_manager.hpp"
 #include "app/scene.hpp"
@@ -58,6 +59,7 @@ Window::Window(const Args& args)
     m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window.get());
     {
         auto guard = m_graphics_context->make_current();
+        m_property_graph = std::make_unique<PropertyGraph>();
         m_scene_graph = std::make_unique<SceneGraph>(*this);
         m_font_manager = FontManager::create(*m_graphics_context);
     }
@@ -166,6 +168,7 @@ void Window::close()
     EventManager::Access<Window>().remove_window(*this);
 
     m_scene_graph.reset();
+    m_property_graph.reset();
     m_font_manager.reset();
     m_graphics_context.reset();
     m_glfw_window.reset();

@@ -133,9 +133,6 @@ public:
     /// The RenderManager singleton.
     RenderManager& render_manager() { return *m_render_manager; }
 
-    /// The Application's PropertyGraph.
-    PropertyGraph& property_graph() { return *m_property_graph; }
-
     /// The Application's Event Manager.
     EventManager& event_manager() { return *m_event_manager; }
 
@@ -170,9 +167,6 @@ private:
 
     /// The RenderManager singleton.
     RenderManagerPtr m_render_manager;
-
-    /// PropertyGraph.
-    PropertyGraphPtr m_property_graph;
 
     /// Event Manager singleton.
     EventManagerPtr m_event_manager;

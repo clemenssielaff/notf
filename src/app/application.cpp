@@ -4,11 +4,11 @@
 
 #include "app/event_manager.hpp"
 #include "app/glfw.hpp"
-#include "app/property_graph.hpp"
 #include "app/render_manager.hpp"
 #include "app/resource_manager.hpp"
 #include "app/timer_manager.hpp"
 #include "app/window.hpp"
+#include "app/io/time.hpp"
 #include "common/log.hpp"
 #include "common/thread_pool.hpp"
 
@@ -30,7 +30,6 @@ Application::Application(const Args& application_args)
     , m_resource_manager()
     , m_thread_pool(std::make_unique<ThreadPool>())
     , m_render_manager(std::make_unique<RenderManager>())
-    , m_property_graph(std::make_unique<PropertyGraph>())
     , m_event_manager(std::make_unique<EventManager>())
     , m_timer_manager(std::make_unique<TimerManager>())
     , m_windows()
@@ -127,7 +126,6 @@ void Application::_shutdown()
 
     // release all resources and objects
     m_thread_pool.reset();
-    m_property_graph.reset();
     m_event_manager.reset();
     m_resource_manager.reset();
 

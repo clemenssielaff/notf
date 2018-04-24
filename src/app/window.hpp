@@ -78,6 +78,12 @@ public:
     ///@}
 
     ///@{
+    /// The PropertyGraph displayed in the Window.
+    PropertyGraph& property_graph() { return *m_property_graph; }
+    const PropertyGraph& property_graph() const { return *m_property_graph; }
+    ///@}
+
+    ///@{
     /// FontManager used to render text.
     FontManager& font_manager() { return *m_font_manager; }
     const FontManager& font_manager() const { return *m_font_manager; }
@@ -124,6 +130,9 @@ private:
 
     /// Internal GraphicsContext.
     GraphicsContextPtr m_graphics_context;
+
+    /// PropertyGraph.
+    PropertyGraphPtr m_property_graph;
 
     /// Scenes displayed in the Window.
     SceneGraphPtr m_scene_graph;

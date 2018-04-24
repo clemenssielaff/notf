@@ -15,7 +15,7 @@ PropertyGraph::NodeBase::~NodeBase()
 {
     _unregister_from_dependencies();
     for (valid_ptr<NodeBase*> id : m_affected) {
-        if (risky_ptr<NodeBase*> affected = PropertyGraph::instance().write_node(id)) {
+        if (risky_ptr<NodeBase*> affected = m_graph.write_node(id)) {
             affected->_ground();
         }
     }
@@ -23,15 +23,14 @@ PropertyGraph::NodeBase::~NodeBase()
 
 void PropertyGraph::NodeBase::_detect_cycles(const std::vector<valid_ptr<NodeBase*>>& dependencies)
 {
-    PropertyGraph& graph = PropertyGraph::instance();
-    NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
+    NOTF_ASSERT(m_graph.m_mutex.is_locked_by_this_thread());
 
     std::unordered_set<valid_ptr<NodeBase*>> unchecked, checked;
     unchecked.reserve(dependencies.size());
     checked.reserve(dependencies.size());
 
     for (NodeBase* id : dependencies) {
-        if (risky_ptr<NodeBase*> dependency = graph.read_node(id)) {
+        if (risky_ptr<NodeBase*> dependency = m_graph.read_node(id)) {
             unchecked.insert(dependency);
         }
     }

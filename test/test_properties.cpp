@@ -1,6 +1,7 @@
 #include "catch.hpp"
 
 #include "app/property_graph.hpp"
+#include "app/window.hpp"
 #include "testenv.hpp"
 
 NOTF_USING_NAMESPACE
@@ -12,18 +13,19 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app], [property_graph]"
     const std::thread::id render_thread_id{3};
 
     auto& app = Application::instance();
+    PropertyGraph& graph = notf_window().property_graph();
 
     GIVEN("an empty PropertyGraph")
     {
         WHEN("you add properties")
         {
-            Property<int> int_prop1(48);
-            Property<int> int_prop2(2);
-            Property<std::string> str_prop1("derbe");
+            Property<int> int_prop1(graph, 48);
+            Property<int> int_prop2(graph, 2);
+            Property<std::string> str_prop1(graph, "derbe");
 
             THEN("the graph has grown by the number of added properties")
             {
-                REQUIRE(PropertyGraph::Access<test::Harness>().size() == 3);
+                REQUIRE(PropertyGraph::Access<test::Harness>(graph).size() == 3);
             }
 
             THEN("you can read their value")
@@ -63,20 +65,20 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app], [property_graph]"
         WHEN("all properties have gone out of scope")
         {
             {
-                Property<int> int_prop1(48);
-                Property<int> int_prop2(2);
-                Property<std::string> str_prop1("derbe");
+                Property<int> int_prop1(graph, 48);
+                Property<int> int_prop2(graph, 2);
+                Property<std::string> str_prop1(graph, "derbe");
             }
-            THEN("the graph is empty again") { CHECK(PropertyGraph::Access<test::Harness>().size() == 0); }
+            THEN("the graph is empty again") { CHECK(PropertyGraph::Access<test::Harness>(graph).size() == 0); }
         }
 
         WHEN("create a graph with a few properties and freeze it")
         {
-            std::unique_ptr<Property<int>> iprop = std::make_unique<Property<int>>(48);
-            std::unique_ptr<Property<int>> iprop2 = std::make_unique<Property<int>>(0);
-            std::unique_ptr<Property<std::string>> sprop = std::make_unique<Property<std::string>>("before");
+            std::unique_ptr<Property<int>> iprop = std::make_unique<Property<int>>(graph, 48);
+            std::unique_ptr<Property<int>> iprop2 = std::make_unique<Property<int>>(graph, 0);
+            std::unique_ptr<Property<std::string>> sprop = std::make_unique<Property<std::string>>(graph, "before");
 
-            PropertyGraph::Access<test::Harness> graph_access;
+            PropertyGraph::Access<test::Harness> graph_access(graph);
 
             graph_access.freeze(render_thread_id);
 
@@ -115,7 +117,6 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app], [property_graph]"
                         REQUIRE(graph_access.read_property(*sprop, render_thread_id) == "after");
                     }
                 }
-
             }
 
             AND_THEN("delete a property")
