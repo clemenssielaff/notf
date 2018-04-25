@@ -131,11 +131,11 @@ private:
     /// Internal GraphicsContext.
     GraphicsContextPtr m_graphics_context;
 
-    /// PropertyGraph.
-    PropertyGraphPtr m_property_graph;
-
     /// Scenes displayed in the Window.
     SceneGraphPtr m_scene_graph;
+
+    /// PropertyGraph.
+    PropertyGraphPtr m_property_graph;
 
     /// FontManager used to render text.
     FontManagerPtr m_font_manager; // TODO: FontManager per Window doesn't seem right

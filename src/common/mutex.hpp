@@ -12,7 +12,7 @@ NOTF_OPEN_NAMESPACE
 #ifdef NOTF_DEBUG
 
 /// In debug mode, the notf::Mutex can be asked to check whether it is locked by the calling thread.
-/// From https://stackoverflow.com/a/30109512/3444217
+/// From https://stackoverflow.com/a/30109512
 class Mutex : public std::mutex {
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -43,7 +43,7 @@ private:
 //====================================================================================================================//
 
 /// In debug mode, the notf::RecursiveMutex can be asked to check whether it is locked by the calling thread.
-/// From https://stackoverflow.com/a/30109512/3444217
+/// From https://stackoverflow.com/a/30109512
 class RecursiveMutex : public std::recursive_mutex {
 
     // methods -------------------------------------------------------------------------------------------------------//

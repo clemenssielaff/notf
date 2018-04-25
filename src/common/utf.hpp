@@ -22,7 +22,7 @@ struct Codepoint {
 };
 
 /** Prints a single codepoint into a std::ostream.
- * From http://stackoverflow.com/a/23467513/3444217
+ * From http://stackoverflow.com/a/23467513
  * @param out       Output stream.
  * @param codepoint Codepoint to print.
  */

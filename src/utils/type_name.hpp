@@ -17,7 +17,7 @@ std::string demangle_type_name(const char* name);
 
 /// Utility function to get a human-readable type name.
 /// Code from:
-///     https://stackoverflow.com/a/4541470/3444217
+///     https://stackoverflow.com/a/4541470
 /// @param t    Instance of the type in question.
 /// @returns    Pretty printed name, if this plattform is supported.
 template<class T>

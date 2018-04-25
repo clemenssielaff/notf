@@ -352,15 +352,15 @@ private:
     mutable RecursiveMutex m_mutex;
 
     /// Map owning all nodes in the scene.
-    std::unordered_map<valid_ptr<const SceneNode*>, std::unique_ptr<SceneNode>, PointerHash<SceneNode>> m_nodes;
+    std::unordered_map<valid_ptr<const SceneNode*>, std::unique_ptr<SceneNode>, pointer_hash<SceneNode>> m_nodes;
 
     /// Mapping from all nodes in the scene to their children.
     /// Is separate from the Node type so the Scene hierarchy can be frozen.
-    std::unordered_map<valid_ptr<const ChildContainer*>, std::unique_ptr<ChildContainer>, PointerHash<ChildContainer>>
+    std::unordered_map<valid_ptr<const ChildContainer*>, std::unique_ptr<ChildContainer>, pointer_hash<ChildContainer>>
         m_child_container;
 
     /// Map containing copieds of ChildContainer that were modified while the Scene was frozen.
-    std::unordered_map<valid_ptr<const ChildContainer*>, std::unique_ptr<ChildContainer>, PointerHash<ChildContainer>>
+    std::unordered_map<valid_ptr<const ChildContainer*>, std::unique_ptr<ChildContainer>, pointer_hash<ChildContainer>>
         m_deltas;
 
     /// All nodes that were deleted while the Scene was frozen.

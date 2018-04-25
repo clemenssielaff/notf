@@ -371,7 +371,7 @@ inline T* make_new_enabler(Args&&... args)
 
 /// Helper struct to allow `std::make_shared` to work with protected or private constructors.
 /// from:
-///     https://stackoverflow.com/a/8147213/3444217 and https://stackoverflow.com/a/25069711/3444217
+///     https://stackoverflow.com/a/8147213 and https://stackoverflow.com/a/25069711
 template<typename T>
 struct make_shared_enabler : public T {
     template<typename... Args>

@@ -70,7 +70,7 @@ T& create_back(std::vector<T>& target, Args&&... args)
 #endif
 
 /// Extends a vector with another one of the same type.
-/// From https://stackoverflow.com/a/41079085/3444217
+/// From https://stackoverflow.com/a/41079085
 template<typename T>
 std::vector<T>& extend(std::vector<T>& vector, const std::vector<T>& extension)
 {
@@ -103,7 +103,7 @@ constexpr typename std::vector<T>::iterator iterator_at(std::vector<T>& vector, 
 }
 
 /// Flattens a 2D nested vector into a single one.
-/// As seen on: http://stackoverflow.com/a/17299623/3444217
+/// As seen on: http://stackoverflow.com/a/17299623
 template<typename T>
 std::vector<T> flatten(const std::vector<std::vector<T>>& v)
 {

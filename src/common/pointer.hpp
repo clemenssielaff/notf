@@ -11,6 +11,42 @@ NOTF_EXCEPTION_TYPE(bad_pointer_error)
 
 //====================================================================================================================//
 
+/// Helper struct to use when comparing pointers of different types (raw, valid_ptr, risky_ptr, shared_ptr, unique_ptr).
+/// From:
+///     https://stackoverflow.com/a/18940595
+template<class T>
+struct pointer_equal {
+    typedef std::true_type is_transparent;
+
+    /// Helps reducing the number of comparison pairs.
+    struct Helper {
+
+        /// Constructor overload for raw pointers.
+        /// @param ptr  Raw pointer.
+        Helper(T* ptr) : m_ptr(ptr) {}
+
+        /// Constructor overload for all types that make a pointer available using `get()`.
+        /// @param ptr  Some other pointer type.
+        template<typename U>
+        Helper(const U& ptr) : m_ptr(ptr.get())
+        {}
+
+        /// Comparison operator.
+        /// @param other    Other pointer to compare against.
+        bool operator==(const Helper& other) const { return m_ptr == other.m_ptr; }
+
+    private:
+        /// Pointer.
+        T* m_ptr = nullptr;
+    };
+
+    /// Comparison operation.
+    /// Transforms both sides into the internal `Helper` type to avoid manual overloads for all kinds of pointers.
+    bool operator()(Helper&& lhs, Helper&& rhs) const { return lhs == rhs; }
+};
+
+//====================================================================================================================//
+
 /// Restricts a pointer or smart pointer to only hold non-null values.
 /// Has zero size overhead over T.
 ///

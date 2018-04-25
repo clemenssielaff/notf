@@ -12,7 +12,7 @@
  * If you need more than 16, just append the numbers to `_notf_arg_pattern_match`
  * and prepend them in reverse to `_notf_count_args`.
  *
- * From http://stackoverflow.com/a/30566098/3444217
+ * From http://stackoverflow.com/a/30566098
  */
 #define NOTF_OVERLOADED_MACRO(macro_name, ...) _notf_overload(macro_name, _notf_count_args(__VA_ARGS__))(__VA_ARGS__)
 

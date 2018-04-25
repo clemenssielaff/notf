@@ -24,7 +24,7 @@ constexpr size_t _bit_index_recursion(size_t c, size_t v) { return v == 0 ? c : 
 } // namespace detail
 
 /**
- * Enum Hash Map as described in: https://stackoverflow.com/a/24847480/3444217
+ * Enum Hash Map as described in: https://stackoverflow.com/a/24847480
  *
  * The problem is that (currently) you cannot use a enum class as key of an unordered_map.
  * This is apparently a defect in the C++ standard and will be fixed at some point,

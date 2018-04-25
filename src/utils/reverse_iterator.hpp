@@ -24,7 +24,7 @@ auto end(reversion_wrapper<T> w)
 ///     for(const auto& foo : reverse(bar)){
 ///         cout << foo << endl;
 ///     }
-/// From: http://stackoverflow.com/a/28139075/3444217
+/// From: http://stackoverflow.com/a/28139075
 template<typename T>
 reversion_wrapper<T> reverse(T&& iterable)
 {

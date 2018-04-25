@@ -3,7 +3,7 @@
 #include "app/event_manager.hpp"
 #include "app/glfw.hpp"
 #include "app/layer.hpp"
-#include "app/property_graph.hpp"
+#include "app/properties.hpp"
 #include "app/render_manager.hpp"
 #include "app/resource_manager.hpp"
 #include "app/scene.hpp"
@@ -59,8 +59,8 @@ Window::Window(const Args& args)
     m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window.get());
     {
         auto guard = m_graphics_context->make_current();
-        m_property_graph = std::make_unique<PropertyGraph>();
         m_scene_graph = std::make_unique<SceneGraph>(*this);
+        m_property_graph = PropertyGraph::create(*m_scene_graph);
         m_font_manager = FontManager::create(*m_graphics_context);
     }
 

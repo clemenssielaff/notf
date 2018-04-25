@@ -90,8 +90,15 @@ constexpr inline size_t hash_mix(size_t key)
 /// Specialized Hash for pointers.
 /// Uses `hash_mix` to improve pointer entropy.
 template<typename T>
-struct PointerHash {
+struct pointer_hash {
     size_t operator()(const T* ptr) const { return hash_mix(to_number(ptr)); }
+};
+
+/// Specialized Hash for unique pointers.
+/// Uses `hash_mix` to improve pointer entropy.
+template<typename T>
+struct unique_pointer_hash {
+    size_t operator()(const std::unique_ptr<T>& ptr) const { return hash_mix(to_number(ptr.get())); }
 };
 
 NOTF_CLOSE_NAMESPACE

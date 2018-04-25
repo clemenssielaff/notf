@@ -23,7 +23,7 @@ namespace std {
 /// Expands (applies) a tuple to arguments for a function call.
 /// Is included in the std from C++17 onwards.
 ///
-/// From http://stackoverflow.com/a/19060157/3444217
+/// From http://stackoverflow.com/a/19060157
 /// but virtually identical to reference implementation from: http://en.cppreference.com/w/cpp/utility/apply
 template<typename FUNC, typename TUPLE>
 auto apply(FUNC&& f, TUPLE&& t)
