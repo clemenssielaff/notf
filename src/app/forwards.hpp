@@ -20,6 +20,9 @@ class RootSceneNode;
 template<typename>
 struct NodeHandle;
 
+template<typename>
+class PropertyHandler;
+
 NOTF_DEFINE_SHARED_POINTERS(class, RenderTarget);
 NOTF_DEFINE_SHARED_POINTERS(class, Layer);
 NOTF_DEFINE_SHARED_POINTERS(class, Timer);

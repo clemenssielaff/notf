@@ -44,7 +44,7 @@ struct notf_exception : public std::exception {
         {}                                                                                     \
         TYPE(const TYPE&) = default;                                                           \
         virtual ~TYPE() override;                                                              \
-    };
+    }
 #else
 NOTF_COMPILER_WARNING(
     "Macro 'NOTF_EXCEPTION_TYPE' is already defined - NoTF's NOTF_EXCEPTION_TYPE macro will remain disabled.")
@@ -76,25 +76,25 @@ NOTF_COMPILER_WARNING("Macro 'notf_throw' is already defined - NoTF's notf_throw
 //====================================================================================================================//
 
 /// Specialized exception that logs the message and then behaves like a regular std::runtime_error.
-NOTF_EXCEPTION_TYPE(runtime_error)
+NOTF_EXCEPTION_TYPE(runtime_error);
 
 /// Exception type for logical errors.
-NOTF_EXCEPTION_TYPE(logic_error)
+NOTF_EXCEPTION_TYPE(logic_error);
 
 /// Exception type for malformed or otherwise invalid values.
-NOTF_EXCEPTION_TYPE(value_error)
+NOTF_EXCEPTION_TYPE(value_error);
 
 /// Exception type for out of bounds errors.
-NOTF_EXCEPTION_TYPE(out_of_bounds)
+NOTF_EXCEPTION_TYPE(out_of_bounds);
 
 /// Exception type for access to invalid resources.
-NOTF_EXCEPTION_TYPE(resource_error)
+NOTF_EXCEPTION_TYPE(resource_error);
 
 /// Error thrown when something went wrong that really shouldn't have ...
-NOTF_EXCEPTION_TYPE(internal_error)
+NOTF_EXCEPTION_TYPE(internal_error);
 
 /// Error thrown when the wrong thread does something.
-NOTF_EXCEPTION_TYPE(thread_error)
+NOTF_EXCEPTION_TYPE(thread_error);
 
 //====================================================================================================================//
 

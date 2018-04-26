@@ -399,7 +399,7 @@ protected:
     //=========================================================================
 public:
     /// Thrown when a node did not have the expected position in the hierarchy.
-    NOTF_EXCEPTION_TYPE(hierarchy_error)
+    NOTF_EXCEPTION_TYPE(hierarchy_error);
 
     // signals ------------------------------------------------------------
 public:

@@ -17,7 +17,6 @@ NOTF_OPEN_NAMESPACE
 
 /// A single thread running 0-n Timer instances used to trigger timed events like animations.
 ///
-/// WARNING
 /// You must not use Timers to trigger changes in a Scene hierarchy!
 /// Only use it to modify Properties or create Events.
 class TimerManager {

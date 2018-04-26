@@ -10,7 +10,7 @@ NOTF_OPEN_NAMESPACE
 //====================================================================================================================//
 
 /// Thrown when you enqueue a new thread in a ThreadPool that has already finished.
-NOTF_EXCEPTION_TYPE(thread_pool_finished)
+NOTF_EXCEPTION_TYPE(thread_pool_finished);
 
 //====================================================================================================================//
 

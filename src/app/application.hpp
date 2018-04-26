@@ -11,10 +11,10 @@ NOTF_OPEN_NAMESPACE
 
 /// Exception thrown when the Application could not initialize.
 /// The error string will contain more detailed information about the error.
-NOTF_EXCEPTION_TYPE(application_initialization_error)
+NOTF_EXCEPTION_TYPE(application_initialization_error);
 
 /// Exception thrown when you try to access the Application instance after it was shut down.
-NOTF_EXCEPTION_TYPE(application_shutdown_error)
+NOTF_EXCEPTION_TYPE(application_shutdown_error);
 
 //====================================================================================================================//
 

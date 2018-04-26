@@ -10,7 +10,7 @@ NOTF_OPEN_NAMESPACE
 
 /// Exception thrown when the OpenGL context of a Window could not be initialized.
 /// The error string will contain more detailed information about the error.
-NOTF_EXCEPTION_TYPE(window_initialization_error)
+NOTF_EXCEPTION_TYPE(window_initialization_error);
 
 //====================================================================================================================//
 

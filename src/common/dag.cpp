@@ -2,6 +2,6 @@
 
 NOTF_OPEN_NAMESPACE
 
-no_dag_error::~no_dag_error() {}
+no_dag::~no_dag() {}
 
 NOTF_CLOSE_NAMESPACE

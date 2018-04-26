@@ -7,6 +7,7 @@
 #include "common/hash.hpp"
 #include "common/mutex.hpp"
 #include "common/pointer.hpp"
+#include "common/signal.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -20,16 +21,22 @@ public:
 
     /// Checks if T is a valid type to store in a Property.
     template<typename T>
-    using is_property_type = typename std::conjunction<std::is_copy_constructible<T>, std::negation<std::is_const<T>>>;
+    using is_property_type = typename std::conjunction< //
+        std::is_trivially_copyable<T>,                  // we need to copy property values to store them as deltas
+        std::negation<std::is_const<T>>>;               // property values should be modifyable
 
     /// Thrown when a new expression would introduce a cyclic dependency into the graph.
-    NOTF_EXCEPTION_TYPE(no_dag_error)
+    NOTF_EXCEPTION_TYPE(no_dag);
 
-    template<typename, typename>
-    class TypedPropertyBody; // forward
+    /// Thrown when a Property head tries to access an already deleted PropertyGraph.
+    NOTF_EXCEPTION_TYPE(no_graph);
 
     template<typename>
-    class PropertyHead; // forward
+    class TypedPropertyHead; // forward
+
+private:
+    template<typename, typename>
+    class TypedPropertyBody; // forward
 
     //=========================================================================
 private:
@@ -82,12 +89,12 @@ private:
     };
 
     //=========================================================================
-public:
+private:
     template<typename T, typename = std::enable_if_t<is_property_type<T>::value>>
     class TypedPropertyBody final : public PropertyBody {
 
         template<typename>
-        friend class PropertyHead;
+        friend class TypedPropertyHead;
 
         // methods ------------------------------------------------------------
     public:
@@ -121,7 +128,7 @@ public:
         /// Set the Property's expression.
         /// @param expression       Expression to set.
         /// @param dependencies     Properties that the expression depends on.
-        /// @throws no_dag_error    If the expression would introduce a cyclic dependency into the graph.
+        /// @throws no_dag    If the expression would introduce a cyclic dependency into the graph.
         void set_expression(std::function<T()> expression, std::vector<valid_ptr<PropertyBody*>> dependencies)
         {
             if (expression) {
@@ -166,6 +173,13 @@ public:
             }
         }
 
+        /// Unassociates the SceneNode associated with the Property.
+        void _unassociate()
+        {
+            std::unique_lock<Mutex> lock(m_graph.m_mutex);
+            m_node = nullptr;
+        }
+
         // fields -------------------------------------------------------------
     private:
         /// Expression evaluating to a new value for this Property.
@@ -176,13 +190,42 @@ public:
     };
 
     //=========================================================================
-
-    template<typename T>
+public:
+    /// Base of all PropertyHead subclasses.
+    /// Useful for storing a bunch of untyped PropertyHeads into a vector to pass as expression dependencies.
     class PropertyHead {
+
+        template<typename T>
+        friend class TypedPropertyHead;
+
+        // methods ------------------------------------------------------------
+    protected:
+        /// Contructor.
+        /// @param body     Body of the Property.
+        PropertyHead(valid_ptr<PropertyBody*> body) : m_body(std::move(body)) {}
+
+        // fields -------------------------------------------------------------
+    protected:
+        /// Body of the Property.
+        valid_ptr<PropertyBody*> m_body;
+    };
+
+    /// PropertyHead to be used in the wild.
+    /// Is properly typed.
+    template<typename T>
+    class TypedPropertyHead : public PropertyHead {
+
         friend class PropertyGraph;
 
         template<typename, typename>
         friend class TypedPropertyBody;
+
+        template<typename>
+        friend class PropertyHandler;
+
+        // types --------------------------------------------------------------
+    public:
+        NOTF_ACCESS_TYPES(PropertyHandler<T>)
 
         // methods ------------------------------------------------------------
     private:
@@ -190,32 +233,91 @@ public:
 
         /// Constructor.
         /// @param body     Body of the Property.
-        PropertyHead(valid_ptr<TypedPropertyBody<T>*> body) : m_body(body), m_graph(body->graph().shared_from_this()) {}
+        TypedPropertyHead(valid_ptr<TypedPropertyBody<T>*> body)
+            : PropertyHead(std::move(body)), m_graph(body->graph().shared_from_this())
+        {}
 
         /// Factory method.
         /// @param body     Body of the Property.
-        static std::shared_ptr<PropertyHead<T>> create(valid_ptr<TypedPropertyBody<T>*> body)
+        static std::shared_ptr<TypedPropertyHead<T>> create(valid_ptr<TypedPropertyBody<T>*> body)
         {
-            return NOTF_MAKE_SHARED_FROM_PRIVATE(PropertyHead, body);
+            return NOTF_MAKE_SHARED_FROM_PRIVATE(TypedPropertyHead, body);
         }
 
     public:
         /// Destructor.
-        ~PropertyHead()
+        ~TypedPropertyHead()
         {
-            if (auto graph = m_graph.lock()) {
-                graph->_delete_property(m_body);
+            if (auto property_graph = graph()) {
+                property_graph->_delete_property(m_body);
             }
         }
 
-        // TODO: get
-        // TODO: set
+        /// Returns the PropertyGraph managing this Property.
+        risky_ptr<PropertyGraphPtr> graph() const { return m_graph.lock(); }
+
+        /// The Property's value.
+        /// @throws no_graph    If the PropertyGraph has been deleted.
+        const T& value()
+        {
+            if (auto property_graph NOTF_UNUSED = graph()) {
+                return _body()->value();
+            }
+            else {
+                notf_throw(no_graph, "PropertyGraph has been deleted");
+            }
+        }
+
+        /// Set the Property's value and updates downstream Properties.
+        /// Removes an existing expression on this Property if one exists.
+        /// @param value        New value.
+        /// @throws no_graph    If the PropertyGraph has been deleted.
+        void set_value(T&& value)
+        {
+            if (auto property_graph NOTF_UNUSED = graph()) {
+                return _body()->set_value(std::forward<T>(value));
+            }
+            else {
+                notf_throw(no_graph, "PropertyGraph has been deleted");
+            }
+        }
+
+        /// Set the Property's expression.
+        /// @param expression       Expression to set.
+        /// @param dependencies     Properties that the expression depends on.
+        /// @throws no_dag    If the expression would introduce a cyclic dependency into the graph.
+        void
+        set_expression(std::function<T()> expression, const std::vector<std::shared_ptr<PropertyHead>>& dependencies)
+        {
+            if (auto property_graph NOTF_UNUSED = graph()) {
+                // extract the property bodies from the dependencies given
+                std::vector<valid_ptr<PropertyBody*>> dependency_bodies;
+                dependency_bodies.reserve(dependencies.size());
+                std::transform(dependencies.begin(), dependencies.end(), dependency_bodies.begin(),
+                               [](const std::shared_ptr<PropertyHead>& dependency) -> valid_ptr<PropertyBody*> {
+                                   return dependency->m_body;
+                               });
+                return _body()->set_expression(std::move(expression), std::move(dependency_bodies));
+            }
+            else {
+                notf_throw(no_graph, "PropertyGraph has been deleted");
+            }
+        }
+
+    private:
+        /// Unassociates the SceneNode associated with the Property.
+        void _unassociate()
+        {
+            if (auto property_graph NOTF_UNUSED = graph()) {
+                _body()->_unassociate();
+            }
+        }
+
+        /// Type restoring access to the Property's body.
+        valid_ptr<TypedPropertyBody<T>*> _body() const { return static_cast<TypedPropertyBody<T>*>(m_body.get()); }
 
         // fields -------------------------------------------------------------
     private:
-        /// Body of the Property.
-        valid_ptr<TypedPropertyBody<T>*> m_body;
-
         /// PropertyGraph containing the Property's body.
         std::weak_ptr<PropertyGraph> m_graph;
     };
@@ -239,7 +341,7 @@ public:
     /// Creates a new free Property in the graph.
     /// @param value    Value held by the Property, is used to determine the property type.
     template<typename T>
-    std::shared_ptr<PropertyHead<T>> create_property(T&& value)
+    std::shared_ptr<TypedPropertyHead<T>> create_property(T&& value)
     {
         return _create_property(std::forward<T>(value));
     }
@@ -249,11 +351,11 @@ private:
     /// @param value    Value held by the Property, is used to determine the property type.
     /// @param node     SceneNode associated with this Property.
     template<typename T>
-    std::shared_ptr<PropertyHead<T>> _create_property(T&& value, SceneNode* node = nullptr)
+    std::shared_ptr<TypedPropertyHead<T>> _create_property(T&& value, SceneNode* node = nullptr)
     {
         static_assert(is_property_type<T>::value, "T is not a valid Property type");
         auto body = std::make_unique<TypedPropertyBody<T>>(*this, std::forward<T>(value), node);
-        auto head = PropertyHead<T>::create(body.get());
+        auto head = TypedPropertyHead<T>::create(body.get());
         {
             std::lock_guard<Mutex> lock(m_mutex);
             m_properties.emplace(std::move(body));
@@ -287,9 +389,59 @@ private:
 
 /// Convenience typdef for PropertyHead shared pointers.
 template<typename T>
-using PropertyPtr = std::shared_ptr<PropertyGraph::PropertyHead<T>>;
+using PropertyPtr = std::shared_ptr<PropertyGraph::TypedPropertyHead<T>>;
 
-/// Access for SceneNodes.
+//====================================================================================================================//
+
+template<typename T>
+class PropertyHandler {
+    friend class PropertyGraph::Access<SceneNode>;
+
+    // signals -------------------------------------------------------------------------------------------------------//
+public:
+    /// Fired when the value of the Property Handler changed.
+    Signal<const T&> on_value_changed;
+
+    // methods -------------------------------------------------------------------------------------------------------//
+private:
+    /// Constructor.
+    /// @param property     Property to handle.
+    /// @param value        Initial value of the Property.
+    PropertyHandler(PropertyPtr<T>&& property, T value) : m_property(std::move(property)), m_value(std::move(value)) {}
+
+public:
+    /// Destructor.
+    ~PropertyHandler() { m_property->_unassociate(); }
+
+    /// Last property value known to the handler.
+    const T& value() const { return m_value; }
+
+    // TODO: set
+    // TODO: set expression
+
+private:
+    /// Updates the value in response to a PropertyEvent.
+    /// @param value    New value of the Property.
+    void _update_value(T value)
+    {
+        if (value != m_value) {
+            m_value = std::move(value);
+            on_value_changed(m_value);
+        }
+    }
+
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
+    /// Property to handle.
+    PropertyPtr<T> m_property;
+
+    /// Last property value known to the handler.
+    T m_value;
+};
+
+//====================================================================================================================//
+
+/// PropertyGraph access for SceneNodes.
 template<>
 class PropertyGraph::Access<SceneNode> {
     friend class SceneNode;
@@ -302,9 +454,9 @@ class PropertyGraph::Access<SceneNode> {
     /// @param value    Value held by the Property, is used to determine the property type.
     /// @param node     SceneNode associated with this Property.
     template<typename T>
-    PropertyPtr<T> create_property(T&& value, SceneNode* node)
+    PropertyHandler<T> create_property(T value, SceneNode* node)
     {
-        return m_graph._create_property(std::forward<T>(value), node);
+        return PropertyHandler<T>(m_graph._create_property(value, node), std::forward<T>(value));
     }
 
     // fields --------------------------------------------------------------------------------------------------------//

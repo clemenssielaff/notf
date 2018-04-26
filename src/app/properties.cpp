@@ -8,7 +8,9 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
-PropertyGraph::no_dag_error::~no_dag_error() = default;
+PropertyGraph::no_dag::~no_dag() = default;
+
+PropertyGraph::no_graph_error::~no_graph_error() = default;
 
 //====================================================================================================================//
 
@@ -58,7 +60,7 @@ bool PropertyGraph::PropertyBody::_validate_upstream(const std::vector<valid_ptr
     risky_ptr<PropertyBody*> candidate;
     while (pop_one(unchecked, candidate)) {
         if (this == candidate) {
-            notf_throw(no_dag_error, "Failed to create property expression which would introduce a cyclic dependency");
+            notf_throw(no_dag, "Failed to create property expression which would introduce a cyclic dependency");
         }
         checked.insert(candidate);
         for (valid_ptr<PropertyBody*> dependency : candidate->m_upstream) {

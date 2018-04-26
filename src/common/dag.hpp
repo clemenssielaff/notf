@@ -7,7 +7,7 @@ NOTF_OPEN_NAMESPACE
 //====================================================================================================================//
 
 /// Thrown by Dag::topological_sort, if the graph is not a DAG.
-NOTF_EXCEPTION_TYPE(no_dag_error);
+NOTF_EXCEPTION_TYPE(no_dag);
 
 //====================================================================================================================//
 
@@ -79,7 +79,7 @@ public:
     /// Note that this method is destructive! It will return the result (unless a cyclic dependecy was detected), but
     /// it will have modified the internal state of the Dag, so you need to reconstruct it before calling this method
     /// again.
-    /// @throws no_dag_error    If a cyclic dependency was detected during sort.
+    /// @throws no_dag    If a cyclic dependency was detected during sort.
     /// @returns                A topologically sorted sequence of vertices in the graph.
     const std::vector<index_t>& topological_sort()
     {
@@ -111,7 +111,7 @@ public:
 
         // check if there is a cycle in the graph
         if (visited_count != m_vertex_count) {
-            notf_throw(no_dag_error, "Caught cyclic dependency during topological sort");
+            notf_throw(no_dag, "Caught cyclic dependency during topological sort");
         }
 
         return m_result;

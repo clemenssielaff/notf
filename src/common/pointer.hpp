@@ -7,7 +7,7 @@ NOTF_OPEN_NAMESPACE
 //====================================================================================================================//
 
 /// Error thrown by risky_ptr, when you try to dereference a nullptr.
-NOTF_EXCEPTION_TYPE(bad_pointer_error)
+NOTF_EXCEPTION_TYPE(bad_pointer_error);
 
 //====================================================================================================================//
 
