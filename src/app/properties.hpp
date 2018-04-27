@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <set>
 
 #include "app/forwards.hpp"
@@ -162,11 +163,6 @@ private:
             NOTF_ASSERT(m_graph.m_mutex.is_locked_by_this_thread());
             if (value != m_value) {
                 m_value = std::forward<T>(value);
-
-                if (m_node) {
-                    // TODO: Generate PropertyEvent here
-                }
-
                 for (valid_ptr<PropertyBody*> affected : m_downstream) {
                     affected->_update();
                 }
@@ -182,11 +178,11 @@ private:
 
         // fields -------------------------------------------------------------
     private:
-        /// Expression evaluating to a new value for this Property.
-        std::function<T()> m_expression;
-
         /// Value held by the Property.
         T m_value;
+
+        /// Expression evaluating to a new value for this Property.
+        std::function<T()> m_expression;
     };
 
     //=========================================================================
@@ -202,18 +198,30 @@ public:
     protected:
         /// Contructor.
         /// @param body     Body of the Property.
-        PropertyHead(valid_ptr<PropertyBody*> body) : m_body(std::move(body)) {}
+        PropertyHead(valid_ptr<PropertyBody*> body) : m_body(std::move(body)), m_graph(body->graph().shared_from_this())
+        {}
+
+    public:
+        /// Destructor.
+        ~PropertyHead();
+
+        /// Returns the PropertyGraph managing this Property.
+        /// If the graph has already gone out of scope, the nullptr is returned.
+        risky_ptr<PropertyGraphPtr> graph() const { return m_graph.lock(); }
 
         // fields -------------------------------------------------------------
     protected:
         /// Body of the Property.
         valid_ptr<PropertyBody*> m_body;
+
+        /// PropertyGraph containing the Property's body.
+        std::weak_ptr<PropertyGraph> m_graph;
     };
 
     /// PropertyHead to be used in the wild.
     /// Is properly typed.
     template<typename T>
-    class TypedPropertyHead : public PropertyHead {
+    class TypedPropertyHead final : public PropertyHead {
 
         friend class PropertyGraph;
 
@@ -233,9 +241,7 @@ public:
 
         /// Constructor.
         /// @param body     Body of the Property.
-        TypedPropertyHead(valid_ptr<TypedPropertyBody<T>*> body)
-            : PropertyHead(std::move(body)), m_graph(body->graph().shared_from_this())
-        {}
+        TypedPropertyHead(valid_ptr<TypedPropertyBody<T>*> body) : PropertyHead(std::move(body)) {}
 
         /// Factory method.
         /// @param body     Body of the Property.
@@ -245,17 +251,6 @@ public:
         }
 
     public:
-        /// Destructor.
-        ~TypedPropertyHead()
-        {
-            if (auto property_graph = graph()) {
-                property_graph->_delete_property(m_body);
-            }
-        }
-
-        /// Returns the PropertyGraph managing this Property.
-        risky_ptr<PropertyGraphPtr> graph() const { return m_graph.lock(); }
-
         /// The Property's value.
         /// @throws no_graph    If the PropertyGraph has been deleted.
         const T& value()
@@ -315,11 +310,6 @@ public:
 
         /// Type restoring access to the Property's body.
         valid_ptr<TypedPropertyBody<T>*> _body() const { return static_cast<TypedPropertyBody<T>*>(m_body.get()); }
-
-        // fields -------------------------------------------------------------
-    private:
-        /// PropertyGraph containing the Property's body.
-        std::weak_ptr<PropertyGraph> m_graph;
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -411,7 +401,15 @@ private:
 
 public:
     /// Destructor.
-    ~PropertyHandler() { m_property->_unassociate(); }
+    ~PropertyHandler()
+    {
+        m_property->_unassociate();
+
+        // TODO: I'm pretty sure that's not threadsafe. Maybe exchange with null and delete if not nullptr?
+        if (m_frozen_value) {
+            delete m_frozen_value;
+        }
+    }
 
     /// Last property value known to the handler.
     const T& value() const { return m_value; }
@@ -434,6 +432,9 @@ private:
 private:
     /// Property to handle.
     PropertyPtr<T> m_property;
+
+    /// Pointer to a frozen copy of the value, if it was modified while the SceneGraph was frozen.
+    std::atomic<T*> m_frozen_value;
 
     /// Last property value known to the handler.
     T m_value;

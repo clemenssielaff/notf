@@ -10,7 +10,7 @@ NOTF_OPEN_NAMESPACE
 
 PropertyGraph::no_dag::~no_dag() = default;
 
-PropertyGraph::no_graph_error::~no_graph_error() = default;
+PropertyGraph::no_graph::~no_graph() = default;
 
 //====================================================================================================================//
 
@@ -71,6 +71,13 @@ bool PropertyGraph::PropertyBody::_validate_upstream(const std::vector<valid_ptr
     }
 
     return true;
+}
+
+PropertyGraph::PropertyHead::~PropertyHead()
+{
+    if (auto property_graph = graph()) {
+        property_graph->_delete_property(m_body);
+    }
 }
 
 NOTF_CLOSE_NAMESPACE
