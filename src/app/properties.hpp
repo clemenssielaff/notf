@@ -49,30 +49,30 @@ private:
         // methods ------------------------------------------------------------
     public:
         /// Constructor.
-        /// @param graph    PropertyGraph containing this Property.
         /// @param node     SceneNode associated with this Property.
-        PropertyBody(PropertyGraph& graph, SceneNode* node) : m_graph(graph), m_node(node) {}
+        PropertyBody(SceneNode* node) : m_node(node) {}
 
         /// Destructor.
         virtual ~PropertyBody();
 
-        /// PropertyGraph containing this Property.
-        PropertyGraph& graph() { return m_graph; }
+        /// Grounds this and all of its affected Properties.
+        void prepare_removal(PropertyGraph& graph);
 
     protected:
         /// Updates the Property by evaluating its expression.
         /// Then continues to update all downstream nodes as well.
-        virtual void _update() = 0;
+        /// @param graph    PropertyGraph containing this Property.
+        virtual void _update(PropertyGraph& graph) = 0;
 
         /// Removes this Property as affected (downstream) of all of its dependencies (upstream).
-        void _ground();
+        void _ground(PropertyGraph& graph);
 
         /// Checks that none of the proposed upstream Properties:
         ///     * is still alive (return false)
         ///     * is already downstream of this one (no_dag exception).
         ///     * has this one as a child already (assert).
         /// @returns False if one of the dependencies has since been removed.
-        bool _validate_upstream(const std::vector<valid_ptr<PropertyBody*>>& dependencies) const;
+        bool _validate_upstream(PropertyGraph& graph, const std::vector<valid_ptr<PropertyBody*>>& dependencies) const;
 
         // fields -------------------------------------------------------------
     protected:
@@ -81,9 +81,6 @@ private:
 
         /// Properties affected by this one through expressions.
         std::vector<valid_ptr<PropertyBody*>> m_downstream;
-
-        /// Graph containing this Property.
-        PropertyGraph& m_graph;
 
         /// SceneNode associated with this Property (can be nullptr if this is an unassociated Property).
         risky_ptr<SceneNode*> m_node;
@@ -100,42 +97,43 @@ private:
         // methods ------------------------------------------------------------
     public:
         /// Value constructor.
-        /// @param graph    PropertyGraph containing this Property.
         /// @param value    Value held by the Property, is used to determine the property type.
         /// @param node     SceneNode associated with this Property.
-        TypedPropertyBody(PropertyGraph& graph, T value, SceneNode* node)
-            : PropertyBody(graph, node), m_value(std::move(value))
-        {}
+        TypedPropertyBody(T value, SceneNode* node) : PropertyBody(node), m_value(std::move(value)) {}
 
         /// The Property's value.
-        const T& value()
+        /// @param graph    PropertyGraph containing this Property.
+        const T& value(PropertyGraph& graph)
         {
-            std::unique_lock<Mutex> lock(m_graph.m_mutex);
+            std::unique_lock<Mutex> lock(graph.m_mutex);
             return m_value;
         }
 
         /// Set the Property's value and updates downstream Properties.
         /// Removes an existing expression on this Property if one exists.
+        /// @param graph    PropertyGraph containing this Property.
         /// @param value    New value.
-        void set_value(T&& value)
+        void set_value(PropertyGraph& graph, T&& value)
         {
-            std::unique_lock<Mutex> lock(m_graph.m_mutex);
+            std::unique_lock<Mutex> lock(graph.m_mutex);
             if (m_expression) {
-                _ground();
+                _ground(graph);
             }
-            _set_value(std::forward<T>(value));
+            _set_value(graph, std::forward<T>(value));
         }
 
         /// Set the Property's expression.
+        /// @param graph            PropertyGraph containing this Property.
         /// @param expression       Expression to set.
         /// @param dependencies     Properties that the expression depends on.
         /// @throws no_dag    If the expression would introduce a cyclic dependency into the graph.
-        void set_expression(std::function<T()> expression, std::vector<valid_ptr<PropertyBody*>> dependencies)
+        void set_expression(PropertyGraph& graph, std::function<T()> expression,
+                            std::vector<valid_ptr<PropertyBody*>> dependencies)
         {
             if (expression) {
-                std::unique_lock<Mutex> lock(m_graph.m_mutex);
-                _ground();
-                if (!_validate_upstream(dependencies)) {
+                std::unique_lock<Mutex> lock(graph.m_mutex);
+                _ground(graph);
+                if (!_validate_upstream(graph, dependencies)) {
                     return;
                 }
                 m_expression = std::move(expression);
@@ -149,30 +147,34 @@ private:
 
     private:
         /// Updates the Property by evaluating its expression.
-        void _update() override
+        /// @param graph    PropertyGraph containing this Property.
+        void _update(PropertyGraph& graph) override
         {
-            NOTF_ASSERT(m_graph.m_mutex.is_locked_by_this_thread());
+            NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
             if (m_expression) {
                 _set_value(m_expression());
             }
         }
 
         /// Changes the value of this Property if the new one is different and then updates all affected Properties.
-        void _set_value(T&& value)
+        /// @param graph    PropertyGraph containing this Property.
+        /// @param value    New value.
+        void _set_value(PropertyGraph& graph, T&& value)
         {
-            NOTF_ASSERT(m_graph.m_mutex.is_locked_by_this_thread());
+            NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
             if (value != m_value) {
                 m_value = std::forward<T>(value);
                 for (valid_ptr<PropertyBody*> affected : m_downstream) {
-                    affected->_update();
+                    affected->_update(graph);
                 }
             }
         }
 
         /// Unassociates the SceneNode associated with the Property.
-        void _unassociate()
+        /// @param graph    PropertyGraph containing this Property.
+        void _unassociate(PropertyGraph& graph)
         {
-            std::unique_lock<Mutex> lock(m_graph.m_mutex);
+            std::unique_lock<Mutex> lock(graph.m_mutex);
             m_node = nullptr;
         }
 
@@ -197,8 +199,10 @@ public:
         // methods ------------------------------------------------------------
     protected:
         /// Contructor.
+        /// @param graph    PropertyGraph containing this Property's body.
         /// @param body     Body of the Property.
-        PropertyHead(valid_ptr<PropertyBody*> body) : m_body(std::move(body)), m_graph(body->graph().shared_from_this())
+        PropertyHead(PropertyGraphPtr graph, valid_ptr<PropertyBody*> body)
+            : m_graph(std::move(graph)), m_body(std::move(body))
         {}
 
     public:
@@ -211,11 +215,11 @@ public:
 
         // fields -------------------------------------------------------------
     protected:
-        /// Body of the Property.
-        valid_ptr<PropertyBody*> m_body;
-
         /// PropertyGraph containing the Property's body.
         std::weak_ptr<PropertyGraph> m_graph;
+
+        /// Body of the Property.
+        valid_ptr<PropertyBody*> m_body;
     };
 
     /// PropertyHead to be used in the wild.
@@ -240,14 +244,19 @@ public:
         NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
 
         /// Constructor.
+        /// @param graph    PropertyGraph containing this Property's body.
         /// @param body     Body of the Property.
-        TypedPropertyHead(valid_ptr<TypedPropertyBody<T>*> body) : PropertyHead(std::move(body)) {}
+        TypedPropertyHead(PropertyGraphPtr graph, valid_ptr<TypedPropertyBody<T>*> body)
+            : PropertyHead(std::move(graph), body)
+        {}
 
         /// Factory method.
+        /// @param graph    PropertyGraph containing this Property's body.
         /// @param body     Body of the Property.
-        static std::shared_ptr<TypedPropertyHead<T>> create(valid_ptr<TypedPropertyBody<T>*> body)
+        static std::shared_ptr<TypedPropertyHead<T>>
+        create(PropertyGraphPtr graph, valid_ptr<TypedPropertyBody<T>*> body)
         {
-            return NOTF_MAKE_SHARED_FROM_PRIVATE(TypedPropertyHead, body);
+            return NOTF_MAKE_SHARED_FROM_PRIVATE(TypedPropertyHead, std::move(graph), body);
         }
 
     public:
@@ -255,8 +264,8 @@ public:
         /// @throws no_graph    If the PropertyGraph has been deleted.
         const T& value()
         {
-            if (auto property_graph NOTF_UNUSED = graph()) {
-                return _body()->value();
+            if (auto property_graph = graph()) {
+                return _body()->value(*property_graph);
             }
             else {
                 notf_throw(no_graph, "PropertyGraph has been deleted");
@@ -269,8 +278,8 @@ public:
         /// @throws no_graph    If the PropertyGraph has been deleted.
         void set_value(T&& value)
         {
-            if (auto property_graph NOTF_UNUSED = graph()) {
-                return _body()->set_value(std::forward<T>(value));
+            if (auto property_graph = graph()) {
+                return _body()->set_value(*property_graph, std::forward<T>(value));
             }
             else {
                 notf_throw(no_graph, "PropertyGraph has been deleted");
@@ -284,7 +293,7 @@ public:
         void
         set_expression(std::function<T()> expression, const std::vector<std::shared_ptr<PropertyHead>>& dependencies)
         {
-            if (auto property_graph NOTF_UNUSED = graph()) {
+            if (auto property_graph = graph()) {
                 // extract the property bodies from the dependencies given
                 std::vector<valid_ptr<PropertyBody*>> dependency_bodies;
                 dependency_bodies.reserve(dependencies.size());
@@ -292,7 +301,7 @@ public:
                                [](const std::shared_ptr<PropertyHead>& dependency) -> valid_ptr<PropertyBody*> {
                                    return dependency->m_body;
                                });
-                return _body()->set_expression(std::move(expression), std::move(dependency_bodies));
+                return _body()->set_expression(*property_graph, std::move(expression), std::move(dependency_bodies));
             }
             else {
                 notf_throw(no_graph, "PropertyGraph has been deleted");
@@ -303,8 +312,8 @@ public:
         /// Unassociates the SceneNode associated with the Property.
         void _unassociate()
         {
-            if (auto property_graph NOTF_UNUSED = graph()) {
-                _body()->_unassociate();
+            if (auto property_graph = graph()) {
+                _body()->_unassociate(*property_graph);
             }
         }
 
@@ -345,7 +354,7 @@ private:
     {
         static_assert(is_property_type<T>::value, "T is not a valid Property type");
         auto body = std::make_unique<TypedPropertyBody<T>>(*this, std::forward<T>(value), node);
-        auto head = TypedPropertyHead<T>::create(body.get());
+        auto head = TypedPropertyHead<T>::create(shared_from_this(), body.get());
         {
             std::lock_guard<Mutex> lock(m_mutex);
             m_properties.emplace(std::move(body));
@@ -357,10 +366,10 @@ private:
     /// @param property     Property to remove.
     void _delete_property(const valid_ptr<PropertyBody*> property)
     {
-        NOTF_ASSERT(&property->graph() == this);
         std::lock_guard<Mutex> lock(m_mutex);
         auto it = m_properties.find(property);
         if (it != m_properties.end()) {
+            (*it)->prepare_removal(*this);
             m_properties.erase(it);
         }
     }
