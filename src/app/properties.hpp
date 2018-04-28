@@ -20,6 +20,23 @@ class PropertyGraph : public std::enable_shared_from_this<PropertyGraph> {
     friend class Property;
 
     // types ---------------------------------------------------------------------------------------------------------//
+private:
+    /// Expression defining a Property of type T.
+    template<typename T>
+    using Expression = std::function<T()>;
+
+    // forwards
+    class PropertyBody;
+    class PropertyHead;
+    template<typename, typename>
+    class TypedPropertyBody;
+
+    /// Convenience typedef for owning pointer to property heads.
+    using PropertyHeadPtr = std::shared_ptr<PropertyHead>;
+
+    /// Convenience typedef for all connected property bodies, up- or downstream.
+    using Connected = std::vector<valid_ptr<PropertyBody*>>;
+
 public:
     NOTF_ACCESS_TYPES(SceneNode);
 
@@ -38,17 +55,10 @@ public:
     template<typename T>
     static constexpr bool is_property_type_v = is_property_type<T>::value;
 
-    class PropertyHead; // forward
+    // forwards
+    class Batch;
 
-    using PropertyHeadPtr = std::shared_ptr<PropertyHead>;
-
-    class Batch; // forward
-
-    /// Expression defining a Property of type T.
-    template<typename T>
-    using Expression = std::function<T()>;
-
-    // ========================================================================
+    // ------------------------------------------------------------------------
 
     /// Virtual baseclass, so we can store updates of various property types in one `PropertyUpdates` list.
     struct Update {
@@ -105,18 +115,6 @@ public:
 
     /// Set of update to untyped properties.
     using UpdateSet = std::set<std::unique_ptr<Update>>;
-
-    // ------------------------------------------------------------------------
-private:
-    class PropertyBody; // forward
-
-    template<typename, typename>
-    class TypedPropertyBody; // forward
-
-    // ------------------------------------------------------------------------
-
-    /// Convenience typedef for all connected properties, up- or downstream.
-    using Connected = std::vector<valid_ptr<PropertyBody*>>;
 
     //=========================================================================
 private:
@@ -182,9 +180,6 @@ private:
 private:
     template<typename T, typename = std::enable_if_t<is_property_type_v<T>>>
     class TypedPropertyBody final : public PropertyBody {
-
-        template<typename>
-        friend class TypedPropertyHead;
 
         // methods ------------------------------------------------------------
     public:
@@ -303,7 +298,7 @@ private:
     };
 
     //=========================================================================
-public:
+private:
     /// Base of all PropertyHead subclasses.
     /// Useful for storing a bunch of untyped PropertyHeads into a vector to pass as expression dependencies.
     class PropertyHead {
@@ -342,30 +337,6 @@ public:
         /// If the graph has already gone out of scope, the nullptr is returned.
         risky_ptr<PropertyGraphPtr> _graph() const { return m_graph.lock(); }
 
-        //        /// Body of the Property.
-        //        /// @throws no_graph    If the PropertyGraph has been deleted.
-        //        valid_ptr<PropertyBody*> body() const
-        //        {
-        //            if (auto property_graph NOTF_UNUSED = graph()) {
-        //                return m_body;
-        //            }
-        //            else {
-        //                notf_throw(no_graph, "PropertyGraph has been deleted");
-        //            }
-        //        }
-
-        //        /// SceneNode associated with this Property (can be nullptr if this is an unassociated Property).
-        //        /// @throws no_graph    If the PropertyGraph has been deleted.
-        //        risky_ptr<const SceneNode*> node() const
-        //        {
-        //            if (auto property_graph = graph()) {
-        //                return m_body->node(*property_graph);
-        //            }
-        //            else {
-        //                notf_throw(no_graph, "PropertyGraph has been deleted");
-        //            }
-        //        }
-
         /// Fires a PropertyEvent targeting the given list of affected properties.
         /// @param affected     Associated properties affected
         void _fire_event(UpdateSet&& affected);
@@ -386,6 +357,7 @@ public:
     /// Note however, that failures (like a "no_dag" error) will silently be ignored when used like that.
     /// If you are unsure if the batch will succeed, manually call `execute` after collecting all updates.
     class NOTF_NODISCARD Batch {
+
         friend class PropertyGraph;
 
         // methods ------------------------------------------------------------
@@ -396,6 +368,10 @@ public:
 
     public:
         NOTF_NO_COPY_OR_ASSIGN(Batch);
+
+        /// Move Constructor.
+        /// @param other    Other Batch to move from.
+        Batch(Batch&& other) : m_graph(std::move(other.m_graph)), m_updates(std::move(other.m_updates)) {}
 
         /// Destructor.
         /// Tries to execute but will swallow any exceptions that might occur.
@@ -436,6 +412,7 @@ public:
         /// Executes this batch.
         /// If any error occurs, this method will throw the exception and not modify the PropertyGraph.
         /// If no exception occurs, the transaction was successfull and the batch is empty again.
+        /// @throws no_dag  If a Property expression update would cause a cyclic dependency in the graph.
         void execute();
 
         // fields -------------------------------------------------------------
@@ -449,7 +426,7 @@ public:
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
-    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Constructor.
     /// @param scene_graph  SceneGraph to deliver the PropertyEvents to.
@@ -470,6 +447,9 @@ public:
     {
         return _create_property(std::forward<T>(value));
     }
+
+    /// Creates a new Batch.
+    Batch create_batch() { return Batch(shared_from_this()); }
 
 private:
     /// Creates a new Property in the graph.
@@ -544,27 +524,29 @@ private:
 template<typename T>
 class Property final : public PropertyGraph::PropertyHead {
 
-    friend class PropertyGraph;
+    //    friend class PropertyGraph;
 
-    template<typename, typename>
-    friend class TypedPropertyBody;
+    //    template<typename, typename>
+    //    friend class TypedPropertyBody;
 
     friend class PropertyHandler<T>;
 
     // types --------------------------------------------------------------
 private:
     using Body = PropertyGraph::TypedPropertyBody<T>;
-    using Expression = PropertyGraph::Expression<T>;
     using Connected = PropertyGraph::Connected;
-    using Update = PropertyGraph::Update;
-    using ValueUpdate = PropertyGraph::ValueUpdate<T>;
     using ExpressionUpdate = PropertyGraph::ExpressionUpdate<T>;
-    using UpdateSet = PropertyGraph::UpdateSet;
     using PropertyHeadPtr = PropertyGraph::PropertyHeadPtr;
+    using Update = PropertyGraph::Update;
+    using UpdateSet = PropertyGraph::UpdateSet;
+    using ValueUpdate = PropertyGraph::ValueUpdate<T>;
+
+public:
+    using Expression = PropertyGraph::Expression<T>;
 
     // methods ------------------------------------------------------------
 private:
-    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Constructor.
     /// @param graph    PropertyGraph containing this Property's body.

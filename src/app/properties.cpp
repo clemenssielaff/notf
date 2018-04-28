@@ -107,22 +107,27 @@ void PropertyGraph::Batch::execute()
         notf_throw(no_graph, "PropertyGraph has been deleted");
     }
 
-    std::unique_lock<Mutex> lock(property_graph->m_mutex);
-
-    // verify that all updates will succeed first
-    for (auto& update : m_updates) {
-        update->property->_validate_update(update.get());
-    }
-
-    // apply the updates
     PropertyGraph::UpdateSet affected;
-    for (auto& update : m_updates) {
-        update->property->_apply_update(*property_graph, update.get(), affected);
+    {
+        std::unique_lock<Mutex> lock(property_graph->m_mutex);
+
+        // verify that all updates will succeed first
+        for (auto& update : m_updates) {
+            update->property->_validate_update(update.get());
+        }
+
+        // apply the updates
+        for (auto& update : m_updates) {
+            update->property->_apply_update(*property_graph, update.get(), affected);
+        }
     }
 
     // fire off the combined event
     valid_ptr<Window*> window = &(property_graph->m_scene_graph.window());
     Application::instance().event_manager().handle(std::make_unique<PropertyEvent>(window, std::move(affected)));
+
+    // reset in case the user wants to reuse the batch object
+    m_updates.clear();
 }
 
 //====================================================================================================================//

@@ -88,7 +88,7 @@ protected:
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
-    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Value Constructor.
     /// @param callback     Function called when this Timer times out.
@@ -167,7 +167,7 @@ class IntervalTimer : public Timer {
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
-    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Value Constructor.
     /// @param callback     Function called when this Timer times out.
@@ -214,7 +214,7 @@ public:
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
-    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Value Constructor.
     /// @param callback     Function called when this Timer times out.

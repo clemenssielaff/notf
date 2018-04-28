@@ -404,7 +404,7 @@ struct make_shared_enabler : public T {
     template<typename _T, typename... _Args>         \
     friend _T* detail::make_new_enabler(_Args&&...); \
     template<typename>                               \
-    friend struct detail::make_shared_enabler;
+    friend struct detail::make_shared_enabler
 
 /// I found that debugging a `detail::make_shared_enable<T>` instance is not as reliable (members seem to be missing?)
 /// as when you create a shared pointer from a raw pointer. Therefore, NOTF_MAKE_SHARED_FROM_PRIVATE works differently

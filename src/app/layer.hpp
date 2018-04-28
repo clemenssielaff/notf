@@ -16,7 +16,7 @@ class Layer {
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
-    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Constructor.
     /// Constructs a full-screen, visible Layer.

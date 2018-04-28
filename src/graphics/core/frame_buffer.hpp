@@ -39,7 +39,7 @@ public:
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
-    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Constructor.
     /// @param context         Graphics context owning the render buffer.
@@ -136,7 +136,7 @@ public:
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
-    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Constructor.
     /// @param context          Graphics context owning the frane buffer.

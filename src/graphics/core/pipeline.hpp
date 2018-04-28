@@ -12,7 +12,7 @@ class Pipeline : public std::enable_shared_from_this<Pipeline> {
 
     // methods -------------------------------------------------------------------------------------------------------//
 private:
-    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Value constructor.
     /// @param context              Graphics context containing this Pipeline and all of its Shader.
