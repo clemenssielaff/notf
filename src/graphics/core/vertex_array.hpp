@@ -151,7 +151,7 @@ protected:
     }
 
 public:
-    NOTF_NO_COPY_OR_ASSIGN(VertexArrayType)
+    NOTF_NO_COPY_OR_ASSIGN(VertexArrayType);
 
     /// Destructor.
     virtual ~VertexArrayType();

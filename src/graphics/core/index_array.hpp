@@ -56,7 +56,7 @@ protected:
     }
 
 public:
-    NOTF_NO_COPY_OR_ASSIGN(IndexArrayType)
+    NOTF_NO_COPY_OR_ASSIGN(IndexArrayType);
 
     /// Destructor.
     virtual ~IndexArrayType();

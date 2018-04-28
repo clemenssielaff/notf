@@ -26,7 +26,7 @@ private:
     FontManager(GraphicsContext& context);
 
 public:
-    NOTF_NO_COPY_OR_ASSIGN(FontManager)
+    NOTF_NO_COPY_OR_ASSIGN(FontManager);
 
     /// Factory
     /// @param context  Graphics context within which the FontManager operates.

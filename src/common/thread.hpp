@@ -15,7 +15,7 @@ class ThreadGuard {
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_NO_COPY_OR_ASSIGN(ThreadGuard)
+    NOTF_NO_COPY_OR_ASSIGN(ThreadGuard);
 
     /// Constructor
     /// @param thread   Thread to guard.
@@ -44,7 +44,7 @@ class ScopedThread {
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_NO_COPY_OR_ASSIGN(ScopedThread)
+    NOTF_NO_COPY_OR_ASSIGN(ScopedThread);
 
     /// Default constructor.
     ScopedThread() = default;

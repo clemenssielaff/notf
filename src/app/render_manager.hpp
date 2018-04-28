@@ -59,7 +59,7 @@ private:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_NO_COPY_OR_ASSIGN(RenderManager)
+    NOTF_NO_COPY_OR_ASSIGN(RenderManager);
 
     /// Default constructor.
     RenderManager();

@@ -1,8 +1,8 @@
 #pragma once
 
 #include <bitset>
-#include <cassert>
 
+#include "common/assert.hpp"
 #include "common/enum.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -11,7 +11,7 @@ NOTF_OPEN_NAMESPACE
 /// Can be used as indices for a KeyStateSet object.
 enum class Key : unsigned char {
     __first = 0,
-    SPACE   = __first,
+    SPACE = __first,
     APOSTROPHE,
     COMMA,
     MINUS,
@@ -132,13 +132,13 @@ enum class Key : unsigned char {
     RIGHT_SUPER,
     MENU,
     INVALID = 255,
-    __last  = MENU,
+    __last = MENU,
 };
 
 /// All mouse buttons recognized by GLFW.
 /// Can be used as indices for a ButtonStateSet object.
 enum class Button : unsigned char {
-    __first  = 0,
+    __first = 0,
     BUTTON_1 = __first,
     BUTTON_2,
     BUTTON_3,
@@ -148,11 +148,11 @@ enum class Button : unsigned char {
     BUTTON_7,
     BUTTON_8,
     NO_BUTTON,
-    LEFT    = BUTTON_1,
-    RIGHT   = BUTTON_2,
-    MIDDLE  = BUTTON_3,
+    LEFT = BUTTON_1,
+    RIGHT = BUTTON_2,
+    MIDDLE = BUTTON_3,
     INVALID = 255,
-    __last  = BUTTON_8,
+    __last = BUTTON_8,
 };
 
 /// Actions you can do with a key.
@@ -175,10 +175,10 @@ enum class MouseAction : unsigned char {
 /// the flag is still set only once (meaning there is no double-shift modifier).
 enum KeyModifiers : unsigned char {
     NO_MODIFIER = 0,
-    SHIFT       = 1,
-    CTRL        = 2,
-    ALT         = 4,
-    SUPER       = 8,
+    SHIFT = 1,
+    CTRL = 2,
+    ALT = 4,
+    SUPER = 8,
 };
 
 /// Converts a GLFW key to a notf::Key.
@@ -195,7 +195,7 @@ using KeyStateSet = std::bitset<to_number(Key::__last)>;
 /// @return          True iff the key is pressed, false otherwise.
 inline bool test_key(const KeyStateSet& state_set, Key key)
 {
-    assert(key >= Key::__first && key <= Key::__last);
+    NOTF_ASSERT(key >= Key::__first && key <= Key::__last);
     return state_set.test(static_cast<size_t>(to_number(key)));
 }
 
@@ -205,7 +205,7 @@ inline bool test_key(const KeyStateSet& state_set, Key key)
 /// @param pressed      Whether the key is pressed or not.
 inline void set_key(KeyStateSet& state_set, Key key, bool pressed)
 {
-    assert(key >= Key::__first && key <= Key::__last);
+    NOTF_ASSERT(key >= Key::__first && key <= Key::__last);
     state_set.set(static_cast<size_t>(to_number(key)), pressed);
 }
 
@@ -220,7 +220,7 @@ using ButtonStateSet = std::bitset<to_number(Button::__last)>;
 /// @return          True iff the button is pressed, false otherwise.
 inline bool test_button(const ButtonStateSet& state_set, Button button)
 {
-    assert(button >= Button::__first && button <= Button::__last);
+    NOTF_ASSERT(button >= Button::__first && button <= Button::__last);
     return state_set.test(static_cast<size_t>(to_number(button)));
 }
 
@@ -230,7 +230,7 @@ inline bool test_button(const ButtonStateSet& state_set, Button button)
 /// @param pressed      Whether the button is pressed or not.
 inline void set_button(ButtonStateSet& state_set, Button button, bool pressed)
 {
-    assert(button >= Button::__first && button <= Button::__last);
+    NOTF_ASSERT(button >= Button::__first && button <= Button::__last);
     state_set.set(static_cast<size_t>(to_number(button)), pressed);
 }
 

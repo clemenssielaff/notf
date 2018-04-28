@@ -46,7 +46,7 @@ private:
     RenderTarget(GraphicsContext& context, Args&& args);
 
 public:
-    NOTF_NO_COPY_OR_ASSIGN(RenderTarget)
+    NOTF_NO_COPY_OR_ASSIGN(RenderTarget);
 
     /// Factory.
     /// @param context      The GraphicsContext containing the graphic objects.

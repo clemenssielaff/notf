@@ -176,7 +176,7 @@ public:
     static TexturePtr load_image(GraphicsContext& context, const std::string& file_path, std::string name,
                                  const Args& args = s_default_args);
 
-    NOTF_NO_COPY_OR_ASSIGN(Texture)
+    NOTF_NO_COPY_OR_ASSIGN(Texture);
 
     /// Destructor.
     ~Texture();

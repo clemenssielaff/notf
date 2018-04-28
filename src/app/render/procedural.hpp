@@ -17,7 +17,7 @@ private:
     ProceduralRenderer(GraphicsContext& context, const std::string& shader_name);
 
 public:
-    NOTF_NO_COPY_OR_ASSIGN(ProceduralRenderer)
+    NOTF_NO_COPY_OR_ASSIGN(ProceduralRenderer);
 
     /// Factory.
     /// @param window       Window in which the renderer is displayed.

@@ -26,7 +26,7 @@ private:
     Layer(Window& window, RendererPtr renderer, ScenePtr scene);
 
 public:
-    NOTF_NO_COPY_OR_ASSIGN(Layer)
+    NOTF_NO_COPY_OR_ASSIGN(Layer);
 
     /// @{
     /// Factory.

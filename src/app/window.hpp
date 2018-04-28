@@ -28,7 +28,7 @@ class Window {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(Application, EventManager)
+    NOTF_ACCESS_TYPES(Application, EventManager);
 
     /// Whether the window is minimzed, windowed or maxmized.
     enum class State {
@@ -57,7 +57,7 @@ private:
     static WindowPtr _create(const Args& args);
 
 public:
-    NOTF_NO_COPY_OR_ASSIGN(Window)
+    NOTF_NO_COPY_OR_ASSIGN(Window);
 
     /// Destructor.
     virtual ~Window();

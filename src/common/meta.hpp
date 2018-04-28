@@ -219,14 +219,14 @@ using void_t = typename make_void<Ts...>::type;
 /// Implicitly disables move constructor/assignment methods as well, although you can define them yourself if you want.
 #define NOTF_NO_COPY_OR_ASSIGN(Type) \
     Type(const Type&) = delete;      \
-    void operator=(const Type&) = delete;
+    void operator=(const Type&) = delete
 
 /// Forbids the allocation on the heap of a given type.
 #define NOTF_NO_HEAP_ALLOCATION(Type)      \
     void* operator new(size_t) = delete;   \
     void* operator new[](size_t) = delete; \
     void operator delete(void*) = delete;  \
-    void operator delete[](void*) = delete;
+    void operator delete[](void*) = delete
 
 /// Convenience macro to define shared pointer types for a given type.
 #define NOTF_DEFINE_SHARED_POINTERS(Tag, Type) \
@@ -240,12 +240,30 @@ using void_t = typename make_void<Ts...>::type;
     using Type##Ptr = std::unique_ptr<Type>;   \
     using Type##ConstPtr = std::unique_ptr<const Type>
 
+/// Convenience macro to define shared pointer types for a given templated type with one template argument.
+#define NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(Tag, Type) \
+    template<typename>                                   \
+    Tag Type;                                            \
+    template<typename T>                                 \
+    using Type##Ptr = std::shared_ptr<Type<T>>;          \
+    template<typename T>                                 \
+    using Type##ConstPtr = std::shared_ptr<const Type<T>>
+
+/// Convenience macro to define unique pointer types for a given templated type with one template argument.
+#define NOTF_DEFINE_UNIQUE_POINTERS_TEMPLATE1(Tag, Type) \
+    template<typename>                                   \
+    Tag Type;                                            \
+    template<typename T>                                 \
+    using Type##Ptr = std::unique_ptr<Type<T>>;          \
+    template<typename T>                                 \
+    using Type##ConstPtr = std::unique_ptr<const Type<T>>
+
 /// Private access type template.
 /// Used for finer grained friend control and is compiled away completely (if you should worry).
 #define NOTF_ACCESS_TYPES(...)                                                                \
     template<typename ACCESS_TYPE_CHECKER,                                                    \
              typename = std::enable_if_t<is_one_of<ACCESS_TYPE_CHECKER, __VA_ARGS__>::value>> \
-    class Access;
+    class Access
 
 //====================================================================================================================//
 

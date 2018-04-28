@@ -2,6 +2,10 @@
 
 #include <algorithm>
 
+#include "app/application.hpp"
+#include "app/event_manager.hpp"
+#include "app/io/property_event.hpp"
+#include "app/scene.hpp"
 #include "common/set.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -12,20 +16,22 @@ PropertyGraph::no_dag::~no_dag() = default;
 
 PropertyGraph::no_graph::~no_graph() = default;
 
+PropertyGraph::Update::~Update() = default;
+
 //====================================================================================================================//
 
 PropertyGraph::PropertyBody::~PropertyBody() = default;
 
-void PropertyGraph::PropertyBody::prepare_removal(PropertyGraph& graph)
+void PropertyGraph::PropertyBody::prepare_removal(const PropertyGraph& graph)
 {
-    std::unique_lock<Mutex> lock(graph.m_mutex);
+    NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
     _ground(graph);
     for (valid_ptr<PropertyBody*> affected : m_downstream) {
         affected->_ground(graph);
     }
 }
 
-void PropertyGraph::PropertyBody::_ground(PropertyGraph& graph)
+void PropertyGraph::PropertyBody::_ground(const PropertyGraph& graph)
 {
     NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
     for (valid_ptr<PropertyBody*> dependency : m_upstream) {
@@ -38,8 +44,7 @@ void PropertyGraph::PropertyBody::_ground(PropertyGraph& graph)
     m_upstream.clear();
 }
 
-bool PropertyGraph::PropertyBody::_validate_upstream(PropertyGraph& graph,
-                                                     const std::vector<valid_ptr<PropertyBody*>>& dependencies) const
+bool PropertyGraph::PropertyBody::_validate_upstream(const PropertyGraph& graph, const Connected& dependencies) const
 {
     NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
 
@@ -76,11 +81,56 @@ bool PropertyGraph::PropertyBody::_validate_upstream(PropertyGraph& graph,
     return true;
 }
 
+//====================================================================================================================//
+
 PropertyGraph::PropertyHead::~PropertyHead()
 {
-    if (auto property_graph = graph()) {
+    if (auto property_graph = _graph()) {
         property_graph->_delete_property(m_body);
     }
 }
+
+void PropertyGraph::PropertyHead::_fire_event(UpdateSet&& affected)
+{
+    if (auto property_graph = _graph()) {
+        valid_ptr<Window*> window = &(property_graph->m_scene_graph.window());
+        Application::instance().event_manager().handle(std::make_unique<PropertyEvent>(window, std::move(affected)));
+    }
+}
+
+//====================================================================================================================//
+
+void PropertyGraph::Batch::execute()
+{
+    PropertyGraphPtr property_graph = m_graph.lock();
+    if (!property_graph) {
+        notf_throw(no_graph, "PropertyGraph has been deleted");
+    }
+
+    std::unique_lock<Mutex> lock(property_graph->m_mutex);
+
+    // verify that all updates will succeed first
+    for (auto& update : m_updates) {
+        update->property->_validate_update(update.get());
+    }
+
+    // apply the updates
+    PropertyGraph::UpdateSet affected;
+    for (auto& update : m_updates) {
+        update->property->_apply_update(*property_graph, update.get(), affected);
+    }
+
+    // fire off the combined event
+    valid_ptr<Window*> window = &(property_graph->m_scene_graph.window());
+    Application::instance().event_manager().handle(std::make_unique<PropertyEvent>(window, std::move(affected)));
+}
+
+//====================================================================================================================//
+
+namespace detail {
+
+PropertyHandlerBase::~PropertyHandlerBase() = default;
+
+} // namespace detail
 
 NOTF_CLOSE_NAMESPACE

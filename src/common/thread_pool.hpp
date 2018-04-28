@@ -24,7 +24,7 @@ class ThreadPool {
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_NO_COPY_OR_ASSIGN(ThreadPool)
+    NOTF_NO_COPY_OR_ASSIGN(ThreadPool);
 
     /// Constructor.
     /// @param thread_count     Number of threads in the pool.

@@ -89,7 +89,7 @@ class SceneGraph { // TODO: update SceneGraph docstring
 
     // types --------------------------------------------------------------
 public:
-    NOTF_ACCESS_TYPES(SceneNode)
+    NOTF_ACCESS_TYPES(SceneNode, EventManager);
 
     /// State of the SceneGraph.
     class State {
@@ -123,9 +123,11 @@ public:
     /// Needed, because otherwise we'd have to include types contained in member unique_ptrs in the header.
     ~SceneGraph();
 
-    /// Propagates the event into the scenes.
-    /// @param untyped_event
-    void propagate_event(EventPtr&& untyped_event);
+    /// @{
+    /// Window owning this SceneGraph.
+    Window& window() { return m_window; }
+    const Window& window() const { return m_window; }
+    /// @}
 
     // state management -------------------------------------------------------
 
@@ -149,6 +151,10 @@ private:
     /// Registers a SceneNode as dirty.
     /// @param node     Node to register as dirty.
     void _register_dirty(valid_ptr<SceneNode*> node);
+
+    /// Propagates the event into the scenes.
+    /// @param untyped_event
+    void _propagate_event(EventPtr&& untyped_event);
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
@@ -174,6 +180,24 @@ class SceneGraph::Access<SceneNode> {
     /// Registers a new SceneNode as dirty.
     /// @param node     Node to register as dirty.
     void register_dirty(valid_ptr<SceneNode*> node) { m_graph._register_dirty(std::move(node)); }
+
+    // fields -----------------------------------------------------------------
+private:
+    /// Graph to access.
+    SceneGraph& m_graph;
+};
+
+template<>
+class SceneGraph::Access<EventManager> {
+    friend class EventManager;
+
+    /// Constructor.
+    /// @param graph    Graph to access.
+    Access(SceneGraph& graph) : m_graph(graph) {}
+
+    /// Propagates the event into the scenes.
+    /// @param untyped_event
+    void propagate_event(EventPtr&& untyped_event) { m_graph._propagate_event(std::move(untyped_event)); }
 
     // fields -----------------------------------------------------------------
 private:
@@ -242,7 +266,7 @@ class Scene {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(test::Harness)
+    NOTF_ACCESS_TYPES(test::Harness);
 
 private:
     using ChildContainer = std::vector<valid_ptr<SceneNode*>>;
@@ -252,8 +276,8 @@ private:
     /// RAII object to make sure that a frozen scene is ALWAYS unfrozen again
     struct NOTF_NODISCARD FreezeGuard {
 
-        NOTF_NO_COPY_OR_ASSIGN(FreezeGuard)
-        NOTF_NO_HEAP_ALLOCATION(FreezeGuard)
+        NOTF_NO_COPY_OR_ASSIGN(FreezeGuard);
+        NOTF_NO_HEAP_ALLOCATION(FreezeGuard);
 
         /// Constructor.
         /// @param scene        Scene to freeze.
@@ -283,7 +307,7 @@ protected:
     Scene(SceneGraph& graph);
 
 public:
-    NOTF_NO_COPY_OR_ASSIGN(Scene)
+    NOTF_NO_COPY_OR_ASSIGN(Scene);
 
     /// Destructor.
     virtual ~Scene();
@@ -384,7 +408,7 @@ class SceneNode : public receive_signals {
 
     // types --------------------------------------------------------------
 public:
-    NOTF_ACCESS_TYPES(Scene)
+    NOTF_ACCESS_TYPES(Scene);
 
     /// Container used to store the children of a SceneNode.
     using ChildContainer = Scene::ChildContainer;
@@ -409,7 +433,7 @@ public:
 
     // methods ------------------------------------------------------------
 public:
-    NOTF_NO_COPY_OR_ASSIGN(SceneNode)
+    NOTF_NO_COPY_OR_ASSIGN(SceneNode);
 
     /// Constructor.
     /// @param token    Factory token provided by Node::_add_child.
@@ -607,7 +631,7 @@ private:
     NodeHandle(valid_ptr<Scene*> scene, valid_ptr<SceneNode*> node) : m_scene(scene), m_node(node) {}
 
 public:
-    NOTF_NO_COPY_OR_ASSIGN(NodeHandle)
+    NOTF_NO_COPY_OR_ASSIGN(NodeHandle);
 
     /// Default constructor.
     NodeHandle() = default;

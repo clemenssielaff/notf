@@ -8,18 +8,20 @@
 NOTF_OPEN_NAMESPACE
 
 /// Event object generated when the Application notices a mouse input.
-class MouseEvent : public detail::EventBase<MouseEvent> {
+struct MouseEvent : public detail::EventBase<MouseEvent> {
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
+    /// @param window       Window that the event is meant for.
     /// @param window_pos   Position of the mouse in the Window.
     /// @param window_delta How much the mouse moved since the last event.
     /// @param button       Contains the button that triggered the event, if one exists.
     /// @param action       Action that triggered this event.
-    MouseEvent(Vector2f window_pos, Vector2f window_delta, Button button, MouseAction action, KeyModifiers modifiers,
-               const ButtonStateSet& stateset)
-        : window_pos(std::move(window_pos))
+    MouseEvent(valid_ptr<const Window*> window, Vector2f window_pos, Vector2f window_delta, Button button,
+               MouseAction action, KeyModifiers modifiers, const ButtonStateSet& stateset)
+        : detail::EventBase<MouseEvent>(window)
+        , window_pos(std::move(window_pos))
         , window_delta(std::move(window_delta))
         , button(button)
         , action(action)

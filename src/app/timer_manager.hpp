@@ -95,7 +95,7 @@ protected:
     Timer(Callback callback) : m_callback(std::move(callback)) {}
 
 public:
-    NOTF_NO_COPY_OR_ASSIGN(Timer)
+    NOTF_NO_COPY_OR_ASSIGN(Timer);
 
     /// Destructor.
     virtual ~Timer();

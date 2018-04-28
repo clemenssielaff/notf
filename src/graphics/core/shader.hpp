@@ -94,7 +94,7 @@ protected:
     Shader(GraphicsContext& context, const GLuint id, Stage::Flags stages, std::string name);
 
 public:
-    NOTF_NO_COPY_OR_ASSIGN(Shader)
+    NOTF_NO_COPY_OR_ASSIGN(Shader);
 
     /// Destructor
     virtual ~Shader();

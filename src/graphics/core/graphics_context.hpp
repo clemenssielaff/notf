@@ -90,7 +90,7 @@ class GraphicsContext {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(Texture, Shader, FrameBuffer)
+    NOTF_ACCESS_TYPES(Texture, Shader, FrameBuffer);
 
     //================================================================================================================//
 
@@ -154,8 +154,8 @@ public:
     class NOTF_NODISCARD PipelineGuard {
         friend class GraphicsContext;
 
-        NOTF_NO_COPY_OR_ASSIGN(PipelineGuard)
-        NOTF_NO_HEAP_ALLOCATION(PipelineGuard)
+        NOTF_NO_COPY_OR_ASSIGN(PipelineGuard);
+        NOTF_NO_HEAP_ALLOCATION(PipelineGuard);
 
         /// Constructor.
         /// @param context  Context that created the guard.
@@ -206,8 +206,8 @@ public:
     class NOTF_NODISCARD FramebufferGuard {
         friend class GraphicsContext;
 
-        NOTF_NO_COPY_OR_ASSIGN(FramebufferGuard)
-        NOTF_NO_HEAP_ALLOCATION(FramebufferGuard)
+        NOTF_NO_COPY_OR_ASSIGN(FramebufferGuard);
+        NOTF_NO_HEAP_ALLOCATION(FramebufferGuard);
 
         /// Constructor.
         /// @param context      Context that created the guard.
@@ -267,8 +267,8 @@ public:
         CurrentGuard(GraphicsContext& context) : m_context(&context) { m_mutex_lock = m_context->_make_current(); }
 
     public:
-        NOTF_NO_COPY_OR_ASSIGN(CurrentGuard)
-        NOTF_NO_HEAP_ALLOCATION(CurrentGuard)
+        NOTF_NO_COPY_OR_ASSIGN(CurrentGuard);
+        NOTF_NO_HEAP_ALLOCATION(CurrentGuard);
 
         // Default constructor.
         CurrentGuard() = default;
@@ -334,7 +334,7 @@ private:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_NO_COPY_OR_ASSIGN(GraphicsContext)
+    NOTF_NO_COPY_OR_ASSIGN(GraphicsContext);
 
     /// Constructor.
     /// @param window           GLFW window displaying the contents of this context.

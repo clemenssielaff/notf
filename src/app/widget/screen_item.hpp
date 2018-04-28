@@ -183,7 +183,7 @@ class ScreenItem : public SceneNode {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(RootLayout)
+    NOTF_ACCESS_TYPES(RootLayout);
 
     /// Spaces that the transformation of a ScreenItem passes through.
     enum class Space : uchar {

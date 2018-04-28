@@ -108,7 +108,7 @@ protected:
     class StateMachine {
 
     public: // methods
-        NOTF_NO_COPY_OR_ASSIGN(StateMachine)
+        NOTF_NO_COPY_OR_ASSIGN(StateMachine);
 
         /// Default Constructor.
         StateMachine() = default;

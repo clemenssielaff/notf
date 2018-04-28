@@ -9,7 +9,7 @@ NOTF_OPEN_NAMESPACE
 /// Event object generated when the Application receives a Window event.
 /// Unlike other events, this one cannot be handled by a Layer in the front but is always propagated all the way to the
 /// last Layer in a Window.
-class WindowEvent : public detail::EventBase<WindowEvent> {
+struct WindowEvent : public detail::EventBase<WindowEvent> {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -22,8 +22,9 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
+    /// @param window       Window that the event is meant for.
     /// @param type         The type of this event.
-    WindowEvent(Type type) : type(type) {}
+    WindowEvent(valid_ptr<const Window*> window, Type type) : detail::EventBase<WindowEvent>(window), type(type) {}
 
     /// Destructor.
     ~WindowEvent() override;
@@ -39,13 +40,15 @@ public:
 /// Event object generated when a Window is resized.
 /// Unlike other events, this one cannot be handled by a Layer in the front but is always propagated all the way to the
 /// last Layer in a Window.
-class WindowResizeEvent : public detail::EventBase<WindowResizeEvent> {
+struct WindowResizeEvent : public detail::EventBase<WindowResizeEvent> {
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
+    /// @param window       Window that the event is meant for.
     /// @param type         The type of this event.
-    WindowResizeEvent(Size2i old_size, Size2i new_size) : old_size(std::move(old_size)), new_size(std::move(new_size))
+    WindowResizeEvent(valid_ptr<const Window*> window, Size2i old_size, Size2i new_size)
+        : detail::EventBase<WindowResizeEvent>(window), old_size(std::move(old_size)), new_size(std::move(new_size))
     {}
 
     /// Destructor.

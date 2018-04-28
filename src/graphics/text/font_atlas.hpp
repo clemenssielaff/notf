@@ -94,7 +94,7 @@ private:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_NO_COPY_OR_ASSIGN(FontAtlas)
+    NOTF_NO_COPY_OR_ASSIGN(FontAtlas);
 
     /// Constructor.
     FontAtlas(GraphicsContext& graphics_context);

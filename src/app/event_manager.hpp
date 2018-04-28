@@ -22,7 +22,7 @@ class EventManager {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(Window)
+    NOTF_ACCESS_TYPES(Window);
 
 private:
     /// Per-window data.
@@ -79,7 +79,7 @@ private:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_NO_COPY_OR_ASSIGN(EventManager)
+    NOTF_NO_COPY_OR_ASSIGN(EventManager);
 
     /// Constructor.
     EventManager();
@@ -88,12 +88,11 @@ public:
     /// Blocks until all current events have finished.
     ~EventManager();
 
-private:
-    /// Returns the handler for a given window.
-    void _propagate_event_to(EventPtr&& event, Window* window);
+    /// Handles a given event.
+    void handle(EventPtr&& event);
 
     // glfw event handler -----------------------------------------------------
-
+private:
     /// Called by GLFW in case of an error.
     /// @param error    Error ID.
     /// @param message  Error message;

@@ -7,17 +7,24 @@
 NOTF_OPEN_NAMESPACE
 
 /// Event object generated when the Application receives a keyboard input.
-class KeyEvent : public detail::EventBase<KeyEvent> {
+struct KeyEvent : public detail::EventBase<KeyEvent> {
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
+    /// @param window       Window that the event is meant for.
     /// @param key          Key that did something.
     /// @param action       What the key did.
     /// @param modifiers    Additional modifiers that were held when the event was generated.
     /// @param stateset     State of all keys on the keyboard at the time the event was generated.
-    KeyEvent(Key key, KeyAction action, KeyModifiers modifiers, const KeyStateSet& stateset)
-        : key(key), action(action), modifiers(modifiers), stateset(stateset), m_was_handled(false)
+    KeyEvent(valid_ptr<const Window*> window, Key key, KeyAction action, KeyModifiers modifiers,
+             const KeyStateSet& stateset)
+        : detail::EventBase<KeyEvent>(window)
+        , key(key)
+        , action(action)
+        , modifiers(modifiers)
+        , stateset(stateset)
+        , m_was_handled(false)
     {}
 
     /// Destructor.

@@ -131,6 +131,8 @@ add_sources(SOURCE_FILES src
     app/io/keyboard.cpp
     app/io/mouse_event.hpp
     app/io/mouse_event.cpp
+    app/io/property_event.hpp
+    app/io/property_event.cpp
     app/io/time.hpp
     app/io/time.cpp
     app/io/window_event.hpp

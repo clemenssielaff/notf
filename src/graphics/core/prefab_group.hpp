@@ -38,7 +38,7 @@ public:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_NO_COPY_OR_ASSIGN(PrefabGroup)
+    NOTF_NO_COPY_OR_ASSIGN(PrefabGroup);
 
     /// Default constructor.
     PrefabGroup()

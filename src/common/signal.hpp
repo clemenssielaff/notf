@@ -157,7 +157,7 @@ private: // struct
     };
 
 public: // methods
-    NOTF_NO_COPY_OR_ASSIGN(Signal)
+    NOTF_NO_COPY_OR_ASSIGN(Signal);
 
     /** Constructor. */
     Signal() = default;
@@ -301,7 +301,7 @@ private: // struct
     };
 
 public: // methods
-    NOTF_NO_COPY_OR_ASSIGN(Signal)
+    NOTF_NO_COPY_OR_ASSIGN(Signal);
 
     Signal() = default;
 
@@ -417,7 +417,7 @@ private: // fields
 class receive_signals {
 
 public: // methods
-    NOTF_NO_COPY_OR_ASSIGN(receive_signals)
+    NOTF_NO_COPY_OR_ASSIGN(receive_signals);
 
     /** Constructor. */
     receive_signals() = default;

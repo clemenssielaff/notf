@@ -108,7 +108,7 @@ protected:
     Plotter(const Token& token, SceneGraph& graph);
 
 public:
-    NOTF_NO_COPY_OR_ASSIGN(Plotter)
+    NOTF_NO_COPY_OR_ASSIGN(Plotter);
 
     /// Factory.
     /// @param graph    SceneGraph.

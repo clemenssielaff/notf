@@ -42,7 +42,7 @@ public:
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_NO_COPY_OR_ASSIGN(ResourceManager)
+    NOTF_NO_COPY_OR_ASSIGN(ResourceManager);
 
     /// Construction.
     /// @param args Arguments.

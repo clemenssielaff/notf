@@ -35,7 +35,21 @@ SceneGraph::SceneGraph(Window& window) : m_window(window), m_current_state(creat
 
 SceneGraph::~SceneGraph() = default;
 
-void SceneGraph::propagate_event(EventPtr&& untyped_event)
+void SceneGraph::enter_state(StatePtr state)
+{
+    m_current_state = std::move(state);
+    m_window.request_redraw();
+}
+
+void SceneGraph::_register_dirty(valid_ptr<SceneNode*> node)
+{
+    if (m_dirty_nodes.empty()) {
+        m_window.request_redraw();
+    }
+    m_dirty_nodes.insert(node);
+}
+
+void SceneGraph::_propagate_event(EventPtr&& untyped_event)
 {
     static const size_t char_event = CharEvent::static_type();
     static const size_t key_event = KeyEvent::static_type();
@@ -110,20 +124,6 @@ void SceneGraph::propagate_event(EventPtr&& untyped_event)
     else {
         log_warning << "Unhandled event of type: " << event_type;
     }
-}
-
-void SceneGraph::enter_state(StatePtr state)
-{
-    m_current_state = std::move(state);
-    m_window.request_redraw();
-}
-
-void SceneGraph::_register_dirty(valid_ptr<SceneNode*> node)
-{
-    if (m_dirty_nodes.empty()) {
-        m_window.request_redraw();
-    }
-    m_dirty_nodes.insert(node);
 }
 
 //====================================================================================================================//

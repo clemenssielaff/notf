@@ -48,7 +48,7 @@ private:
     RenderBuffer(GraphicsContextPtr& context, Args&& args);
 
 public:
-    NOTF_NO_COPY_OR_ASSIGN(RenderBuffer)
+    NOTF_NO_COPY_OR_ASSIGN(RenderBuffer);
 
     /// Factory.
     /// @param context         Graphics context owning the render buffer.
@@ -145,7 +145,7 @@ private:
     FrameBuffer(GraphicsContext& context, Args&& args);
 
 public:
-    NOTF_NO_COPY_OR_ASSIGN(FrameBuffer)
+    NOTF_NO_COPY_OR_ASSIGN(FrameBuffer);
 
     /// Factory.
     /// @param context          Graphics context owning the frane buffer.
