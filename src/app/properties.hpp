@@ -451,6 +451,13 @@ public:
     /// Creates a new Batch.
     Batch create_batch() { return Batch(shared_from_this()); }
 
+    /// Checks if the graph currently frozen or not.
+    bool is_frozen() const;
+
+    /// Checks if the graph is currently frozen by a given thread.
+    /// @param thread_id    Id of the thread in question.
+    bool is_frozen_by(const std::thread::id thread_id) const;
+
 private:
     /// Creates a new Property in the graph.
     /// @param value    Value held by the Property, is used to determine the property type.
@@ -685,6 +692,17 @@ private:
         }
     }
 
+    /// Whether the PropertyGraph is currently frozen.
+    /// Should only be available to PropertyHandler<T> TODO: add PropertyHandler access type to Property
+    bool _is_frozen() const
+    {
+        if (auto property_graph = _graph()) {
+            // does not require a mutex - the graph will not just freeze mid-event
+            return property_graph->is_frozen();
+        }
+        return false;
+    }
+
     /// Type restoring access to the Property's body.
     valid_ptr<Body*> _body() const { return static_cast<Body*>(m_body.get()); }
 
@@ -750,12 +768,55 @@ public:
     }
 
     /// Last property value known to the handler.
-    const T& value() const { return m_value; }
+    /// @throws no_graph    If the PropertyGraph has been deleted.
+    const T& value() const
+    {
+        // if the property is frozen by this thread (the render thread, presumably) and there exists a frozen copy of
+        // the value, use that instead of the current one
+        if (m_property->_is_frozen_by(std::this_thread::get_id())) {
+            if (T* frozen_value = m_frozen_value.load(std::memory_order_consume)) {
+                return *frozen_value;
+            }
+        }
+        return m_value;
+    }
 
-    // TODO: set
+    /// Set the Property's value.
+    /// Removes an existing expression on this Property if one exists.
+    /// @param value        New value.
+    /// @throws no_graph    If the PropertyGraph has been deleted.
+    void set_value(T&& value)
+    {
+        // apply the value to the handler only first
+        _set_handler_value(value);
+
+        // update the property and all affected bodies
+        PropertyGraph::UpdateSet updates = m_property->_set_value(std::forward<T>(value));
+        // TODO: shallow update of only affected PropertyHandlers
+    }
+
     // TODO: set expression
 
 private:
+    void _set_handler_value(T&& value)
+    {
+        if (value == m_value) {
+            return; // early out
+        }
+
+        // if the property is currently frozen and this is the first modification, create a frozen copy of the current
+        // value before changing it
+        if (m_property->_is_frozen()) {
+            T* frozen_value = m_frozen_value.load(std::memory_order_relaxed);
+            if (!frozen_value) {
+                frozen_value = new T(std::move(m_value));
+                m_frozen_value.store(frozen_value, std::memory_order_release);
+            }
+        }
+        m_value = value;
+        on_value_changed(m_value);
+    }
+
     /// Updates the value in response to a PropertyEvent.
     /// @param update   PropertyUpdate to apply.
     void _apply_update(valid_ptr<PropertyGraph::Update*> update) override
@@ -767,10 +828,7 @@ private:
 #else
         typed_update = static_cast<PropertyGraph::TypedPropertyUpdate<T>*>(update);
 #endif
-        if (typed_update->value != m_value) {
-            m_value = std::move(typed_update->value);
-            on_value_changed(m_value);
-        }
+        _set_handler_value(std::move(typed_update->value));
     }
 
     // fields --------------------------------------------------------------------------------------------------------//

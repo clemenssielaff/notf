@@ -132,6 +132,18 @@ void PropertyGraph::Batch::execute()
 
 //====================================================================================================================//
 
+bool PropertyGraph::is_frozen() const
+{
+    return m_scene_graph.is_frozen();
+}
+
+bool PropertyGraph::is_frozen_by(const std::thread::id thread_id) const
+{
+    return m_scene_graph.is_frozen_by(std::move(thread_id));
+}
+
+//====================================================================================================================//
+
 namespace detail {
 
 PropertyHandlerBase::~PropertyHandlerBase() = default;

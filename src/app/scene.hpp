@@ -129,6 +129,13 @@ public:
     const Window& window() const { return m_window; }
     /// @}
 
+    /// Checks if the SceneGraph currently frozen or not.
+    bool is_frozen() const { return m_freezing_thread != std::thread::id(); }
+
+    /// Checks if the SceneGraph is currently frozen by a given thread.
+    /// @param thread_id    Id of the thread in question.
+    bool is_frozen_by(const std::thread::id thread_id) const { return m_freezing_thread == thread_id; }
+
     // state management -------------------------------------------------------
 
     /// Creates a new SceneGraph::State
@@ -167,6 +174,9 @@ private:
     /// Nodes that registered themselves as "dirty".
     /// If there is one or more dirty Nodes registered, the Window containing this graph must be re-rendered.
     std::unordered_set<valid_ptr<SceneNode*>> m_dirty_nodes;
+
+    /// Thread that has frozen the SceneGraph (is 0 if the graph is not frozen).
+    std::thread::id m_freezing_thread;
 };
 
 template<>
@@ -266,7 +276,7 @@ class Scene {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(test::Harness);
+    NOTF_ACCESS_TYPES();
 
 private:
     using ChildContainer = std::vector<valid_ptr<SceneNode*>>;
@@ -724,55 +734,5 @@ NodeHandle<T> SceneNode::_add_child(Args&&... args)
     }
     return NodeHandle<T>(&m_scene, child_handle);
 }
-
-// ===================================================================================================================//
-
-#ifdef NOTF_TEST
-
-template<>
-class Scene::Access<test::Harness> {
-public:
-    /// Constructor.
-    /// @param scene    Scene to access.
-    Access(Scene& scene) : m_scene(scene) {}
-
-    /// Creates and returns a FreezeGuard that keeps the scene frozen while it is alive.
-    /// @param thread_id    Id of the freezing thread.
-    Scene::FreezeGuard freeze_guard(const std::thread::id thread_id = std::this_thread::get_id())
-    {
-        return Scene::FreezeGuard(m_scene, thread_id);
-    }
-
-    /// Returns the number of nodes in the Scene.
-    size_t node_count() { return m_scene.m_nodes.size(); }
-
-    /// Returns the number of child container in the Scene.
-    size_t child_container_count() { return m_scene.m_child_container.size(); }
-
-    /// Returns the number of deltas in the Scene.
-    size_t delta_count() { return m_scene.m_deltas.size(); }
-
-    /// Returns the number of new nodes in the Scene.
-    size_t deletions_count() { return m_scene.m_deletion_deltas.size(); }
-
-    /// Freezes the Scene.
-    void freeze(const std::thread::id thread_id = std::this_thread::get_id()) { m_scene.freeze(thread_id); }
-
-    /// Unfreezes the Scene.
-    void unfreeze(const std::thread::id thread_id = std::this_thread::get_id()) { m_scene.unfreeze(thread_id); }
-
-    /// Lets the caller pretend that this is the render thread.
-    void set_render_thread(const std::thread::id thread_id) { m_scene.m_render_thread = thread_id; }
-
-    // fields -----------------------------------------------------------------
-private:
-    /// Scene to access.
-    Scene& m_scene;
-};
-
-#else
-template<>
-class Scene::Access<test::Harness> {};
-#endif // #ifdef NOTF_TEST
 
 NOTF_CLOSE_NAMESPACE

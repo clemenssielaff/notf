@@ -237,6 +237,7 @@ if(NOTF_BUILD_TESTS)
 #        test_half.cpp
 #        test_matrix3.cpp
 #        test_matrix4.cpp
+        test_scene.hpp
         test_scene.cpp
         test_timer.cpp
         test_properties.cpp

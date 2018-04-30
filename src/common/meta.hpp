@@ -141,6 +141,9 @@
 /// Use for `NOTF_DEFER(NOTF_STR, expanded) and others
 #define NOTF_DEFER(f, ...) f(__VA_ARGS__)
 
+/// Helper to add a comma before __VA_ARGS__ but only if the list is not empty
+#define NOTF_VA_ARGS(...) , ##__VA_ARGS__
+
 //====================================================================================================================//
 
 /// Convienience macros to temporarely disable a single warning.
@@ -260,10 +263,18 @@ using void_t = typename make_void<Ts...>::type;
 
 /// Private access type template.
 /// Used for finer grained friend control and is compiled away completely (if you should worry).
-#define NOTF_ACCESS_TYPES(...)                                                                \
-    template<typename ACCESS_TYPE_CHECKER,                                                    \
-             typename = std::enable_if_t<is_one_of<ACCESS_TYPE_CHECKER, __VA_ARGS__>::value>> \
+#ifdef NOTF_TEST
+#define NOTF_ACCESS_TYPES(...)                                                                                   \
+    template<typename ACCESS_TYPE_CHECKER,                                                                       \
+             typename                                                                                            \
+             = std::enable_if_t<is_one_of<ACCESS_TYPE_CHECKER, test::Harness NOTF_VA_ARGS(__VA_ARGS__)>::value>> \
     class Access
+#else
+#define NOTF_ACCESS_TYPES(...)                                                                             \
+    template<typename ACCESS_TYPE_CHECKER,                                                                 \
+             typename = std::enable_if_t<is_one_of<ACCESS_TYPE_CHECKER NOTF_VA_ARGS(__VA_ARGS__)>::value>> \
+    class Access
+#endif
 
 //====================================================================================================================//
 
@@ -282,6 +293,16 @@ using void_t = typename make_void<Ts...>::type;
 NOTF_OPEN_NAMESPACE
 
 using uchar = unsigned char;
+
+//====================================================================================================================//
+
+namespace test {
+
+/// Special type used by tests to access Type::Access<test::Harness> instances defined by NOTF_ACESS_TYPES(...).
+/// Is never actually defined.
+struct Harness;
+
+} // namespace test
 
 //====================================================================================================================//
 
