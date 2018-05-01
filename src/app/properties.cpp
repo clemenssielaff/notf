@@ -16,6 +16,8 @@ PropertyGraph::no_dag::~no_dag() = default;
 
 PropertyGraph::no_graph::~no_graph() = default;
 
+//====================================================================================================================//
+
 PropertyGraph::Update::~Update() = default;
 
 //====================================================================================================================//
@@ -90,14 +92,16 @@ PropertyGraph::PropertyHead::~PropertyHead()
     }
 }
 
-void PropertyGraph::PropertyHead::_fire_event(UpdateSet&& affected)
-{
-    if (auto property_graph = _graph()) {
-        valid_ptr<Window*> window = &(property_graph->m_scene_graph.window());
-        Application::instance().event_manager().handle(std::make_unique<PropertyEvent>(window, std::move(affected)));
-    }
-}
+//====================================================================================================================//
 
+PropertyGraph::PropertyHandlerBase::~PropertyHandlerBase() = default;
+
+bool PropertyGraph::PropertyHandlerBase::is_frozen() const { return m_node->scene().graph().is_frozen(); }
+
+bool PropertyGraph::PropertyHandlerBase::is_frozen_by(const std::thread::id thread_id) const
+{
+    return m_node->scene().graph().is_frozen_by(std::move(thread_id));
+}
 //====================================================================================================================//
 
 void PropertyGraph::Batch::execute()
@@ -123,8 +127,7 @@ void PropertyGraph::Batch::execute()
     }
 
     // fire off the combined event
-    valid_ptr<Window*> window = &(property_graph->m_scene_graph.window());
-    Application::instance().event_manager().handle(std::make_unique<PropertyEvent>(window, std::move(affected)));
+    property_graph->_fire_event(std::move(affected));
 
     // reset in case the user wants to reuse the batch object
     m_updates.clear();
@@ -132,22 +135,10 @@ void PropertyGraph::Batch::execute()
 
 //====================================================================================================================//
 
-bool PropertyGraph::is_frozen() const
+void PropertyGraph::_fire_event(UpdateSet&& affected)
 {
-    return m_scene_graph.is_frozen();
+    valid_ptr<Window*> window = &(m_scene_graph.window());
+    Application::instance().event_manager().handle(std::make_unique<PropertyEvent>(window, std::move(affected)));
 }
-
-bool PropertyGraph::is_frozen_by(const std::thread::id thread_id) const
-{
-    return m_scene_graph.is_frozen_by(std::move(thread_id));
-}
-
-//====================================================================================================================//
-
-namespace detail {
-
-PropertyHandlerBase::~PropertyHandlerBase() = default;
-
-} // namespace detail
 
 NOTF_CLOSE_NAMESPACE

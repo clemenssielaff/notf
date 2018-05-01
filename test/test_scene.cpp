@@ -3,6 +3,7 @@
 #include "app/application.hpp"
 #include "app/scene.hpp"
 #include "app/window.hpp"
+#include "test_scene.hpp"
 #include "testenv.hpp"
 
 NOTF_USING_NAMESPACE
@@ -253,7 +254,7 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
             REQUIRE(access.child_container_count() == 1);
             REQUIRE(access.delta_count() == 0);
         }
-//#else
+        //#else
         SECTION("nodes that are create & removed while frozen are removed correctly when unfrozen")
         {
             REQUIRE(access.node_count() == 1);
