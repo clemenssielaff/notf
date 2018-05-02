@@ -216,6 +216,40 @@ using void_t = typename make_void<Ts...>::type;
 
 } // namespace std
 
+/// Type template to ensure that a template argument does not participate in type deduction.
+/// Compare:
+///
+///     template <typename T>
+///     void multiply_each(std::vector<T>& vec, T factor) {
+///         for (auto& item : vec){
+///             item *= factor;
+///         }
+///     }
+///     std::vector<long> vec{1, 2, 3};
+///     multiply_each(vec, 5);  // error: no matching function call to
+///                             // multipy_each(std::vector<long int>&, int)
+///                             // note: template argument deduction/substitution failed:
+///                             // note: deduced conflicting types for parameter `T` (`long int` and `int`)
+///
+/// with:
+///
+///     template <typename T>
+///     void multiply_each(std::vector<T>& vec, identity_t<T> factor)
+///     {
+///         for (auto& item : vec){
+///             item *= factor;
+///         }
+///     }
+///     std::vector<long> vec{1, 2, 3};
+///     multiply_each(vec, 5);  // works
+///
+template<typename T>
+struct identity {
+    using type = T;
+};
+template<typename T>
+using identity_t = typename identity<T>::type;
+
 //====================================================================================================================//
 
 /// Convenience macro to disable the construction of automatic copy- and assign methods.
@@ -264,13 +298,13 @@ using void_t = typename make_void<Ts...>::type;
 /// Private access type template.
 /// Used for finer grained friend control and is compiled away completely (if you should worry).
 #ifdef NOTF_TEST
-#define NOTF_ACCESS_TYPES(...)                                                                                   \
+#define NOTF_ALLOW_ACCESS_TYPES(...)                                                                             \
     template<typename ACCESS_TYPE_CHECKER,                                                                       \
              typename                                                                                            \
              = std::enable_if_t<is_one_of<ACCESS_TYPE_CHECKER, test::Harness NOTF_VA_ARGS(__VA_ARGS__)>::value>> \
     class Access
 #else
-#define NOTF_ACCESS_TYPES(...)                                                                             \
+#define NOTF_ALLOW_ACCESS_TYPES(...)                                                                       \
     template<typename ACCESS_TYPE_CHECKER,                                                                 \
              typename = std::enable_if_t<is_one_of<ACCESS_TYPE_CHECKER NOTF_VA_ARGS(__VA_ARGS__)>::value>> \
     class Access

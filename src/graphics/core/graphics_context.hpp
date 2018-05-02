@@ -90,7 +90,7 @@ class GraphicsContext {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(Texture, Shader, FrameBuffer);
+    NOTF_ALLOW_ACCESS_TYPES(Texture, Shader, FrameBuffer);
 
     //================================================================================================================//
 

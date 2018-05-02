@@ -22,7 +22,7 @@ class EventManager {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(Window);
+    NOTF_ALLOW_ACCESS_TYPES(Window);
 
 private:
     /// Per-window data.
@@ -89,7 +89,21 @@ public:
     ~EventManager();
 
     /// Handles a given event.
+    /// @param event    Event to handle.
     void handle(EventPtr&& event);
+
+    /// Suspends the handling of events.
+    /// All events are stored but not handled until the manager resumes handling.
+    void suspend();
+
+    /// Resumes the handling of events.
+    /// Executes all stored events in order.
+    void resume();
+
+private:
+    /// Handles a given event.
+    /// @param event    Event to handle.
+    void _handle(EventPtr&& event);
 
     // glfw event handler -----------------------------------------------------
 private:
@@ -200,8 +214,14 @@ private:
     /// Handlers are unordered.
     std::vector<std::unique_ptr<WindowHandler>> m_handler;
 
+    /// When the event handler is suspended, all events are queued into the backlog instead.
+    std::vector<EventPtr> m_backlog;
+
     /// Mutex making sure that event dispatch is thread-safe.
     Mutex m_mutex;
+
+    /// When suspended, all events are stored but not handled until the manager resumes handling.
+    bool m_is_suspended;
 };
 
 // ===================================================================================================================//

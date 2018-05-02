@@ -1,7 +1,5 @@
 #include "catch.hpp"
 
-#include "app/application.hpp"
-#include "app/scene.hpp"
 #include "app/window.hpp"
 #include "test_scene.hpp"
 #include "testenv.hpp"
@@ -89,105 +87,31 @@ private:
 
 SCENARIO("a Scene can be set up and modified", "[app], [scene]")
 {
-    GIVEN("an empty Scene")
-    {
-        SceneGraph scene_graph(notf_window());
-        TestScene scene(scene_graph);
-        Scene::Access<test::Harness> access(scene);
 
-        std::thread::id event_thread_id = std::this_thread::get_id();
-        std::thread::id render_thread_id(1);
+    SceneGraph scene_graph(notf_window());
+    TestScene scene(scene_graph);
+    Scene::Access<test::Harness> access(scene);
+
+    std::thread::id event_thread_id = std::this_thread::get_id();
+    std::thread::id render_thread_id(1);
 #if 1
-        SECTION("freezing an empty scene has no effect")
+    SECTION("freezing an empty scene has no effect")
+    {
+        REQUIRE(access.node_count() == 1);            // root node
+        REQUIRE(access.child_container_count() == 1); // root node
+        REQUIRE(access.delta_count() == 0);
+
         {
-            REQUIRE(access.node_count() == 1);            // root node
-            REQUIRE(access.child_container_count() == 1); // root node
-            REQUIRE(access.delta_count() == 0);
-
-            {
-                auto guard = access.freeze_guard();
-            }
-
-            REQUIRE(access.node_count() == 1);
-            REQUIRE(access.child_container_count() == 1);
-            REQUIRE(access.delta_count() == 0);
+            auto guard = access.freeze_guard();
         }
 
-        SECTION("creating, modifying and deleting without freezing produces no deltas")
-        {
-            {
-                NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
-                NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
-                NodeHandle<ThreeChildrenNode> c = scene.root().add_child<ThreeChildrenNode>();
+        REQUIRE(access.node_count() == 1);
+        REQUIRE(access.child_container_count() == 1);
+        REQUIRE(access.delta_count() == 0);
+    }
 
-                REQUIRE(access.node_count() == 12);
-                REQUIRE(access.child_container_count() == 12);
-                REQUIRE(access.delta_count() == 0);
-
-                a->reverse();
-                c->reverse();
-
-                REQUIRE(access.node_count() == 12);
-                REQUIRE(access.child_container_count() == 12);
-                REQUIRE(access.delta_count() == 0);
-            }
-
-            REQUIRE(access.node_count() == 1);
-            REQUIRE(access.child_container_count() == 1);
-            REQUIRE(access.delta_count() == 0);
-        }
-
-        SECTION("modifying nodes in a frozen scene will produce deltas that are resolved when unfrozen")
-        {
-            NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
-
-            REQUIRE(access.node_count() == 4);
-            REQUIRE(access.child_container_count() == 4);
-            REQUIRE(access.delta_count() == 0);
-
-            { // frozen scope
-                auto guard = access.freeze_guard(render_thread_id);
-
-                REQUIRE(access.node_count() == 4);
-                REQUIRE(access.child_container_count() == 4);
-                REQUIRE(access.delta_count() == 0);
-
-                // access from event thread
-                REQUIRE(a->front->is_in_front());
-                REQUIRE(a->back->is_in_back());
-
-                // access from (pretend) render thread
-                access.set_render_thread(event_thread_id);
-                CHECK(a->front->is_in_front());
-                CHECK(a->back->is_in_back());
-                access.set_render_thread(render_thread_id);
-
-                a->reverse();
-
-                // access from event thread
-                REQUIRE(a->front->is_in_back());
-                REQUIRE(a->back->is_in_front());
-
-                // access from (pretend) render thread
-                access.set_render_thread(event_thread_id);
-                CHECK(a->front->is_in_front());
-                CHECK(a->back->is_in_back());
-                access.set_render_thread(render_thread_id);
-
-                REQUIRE(access.node_count() == 4);
-                REQUIRE(access.child_container_count() == 4);
-                REQUIRE(access.delta_count() == 1);
-            }
-
-            REQUIRE(a->front->is_in_back());
-            REQUIRE(a->back->is_in_front());
-
-            REQUIRE(access.node_count() == 4);
-            REQUIRE(access.child_container_count() == 4);
-            REQUIRE(access.delta_count() == 0);
-        }
-
-        SECTION("deleting nodes from a frozen scene will produce deltas that are resolved when unfrozen")
+    SECTION("creating, modifying and deleting without freezing produces no deltas")
+    {
         {
             NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
             NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
@@ -197,84 +121,156 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
             REQUIRE(access.child_container_count() == 12);
             REQUIRE(access.delta_count() == 0);
 
-            { // frozen scope
-                auto guard = access.freeze_guard(render_thread_id);
+            a->reverse();
+            c->reverse();
 
-                REQUIRE(access.node_count() == 12);
-                REQUIRE(access.child_container_count() == 12);
-                REQUIRE(access.delta_count() == 0);
-
-                a->reverse();
-                c->reverse();
-
-                REQUIRE(access.node_count() == 12);
-                REQUIRE(access.child_container_count() == 12);
-                REQUIRE(access.delta_count() == 2); // a and c were modified
-
-                { // delete c
-                    NodeHandle<ThreeChildrenNode> dropped = std::move(c);
-                }
-
-                REQUIRE(access.node_count() == 12);
-                REQUIRE(access.child_container_count() == 12);
-                REQUIRE(access.delta_count() == 3);
-            }
-
-            REQUIRE(access.node_count() == 8);
-            REQUIRE(access.child_container_count() == 8);
+            REQUIRE(access.node_count() == 12);
+            REQUIRE(access.child_container_count() == 12);
             REQUIRE(access.delta_count() == 0);
         }
 
-        SECTION("nodes that are created and modified with a frozen scene will unfreeze with it")
-        {
-            REQUIRE(access.node_count() == 1);
-            REQUIRE(access.child_container_count() == 1);
-            REQUIRE(access.delta_count() == 0);
-
-            {
-                access.freeze(render_thread_id);
-
-                NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
-
-                CHECK(a->front->is_in_front());
-                CHECK(a->back->is_in_back());
-
-                a->reverse();
-
-                CHECK(a->front->is_in_back());
-                CHECK(a->back->is_in_front());
-
-                access.unfreeze(render_thread_id);
-
-                REQUIRE(a->front->is_in_back());
-                REQUIRE(a->back->is_in_front());
-            }
-
-            REQUIRE(access.node_count() == 1);
-            REQUIRE(access.child_container_count() == 1);
-            REQUIRE(access.delta_count() == 0);
-        }
-        //#else
-        SECTION("nodes that are create & removed while frozen are removed correctly when unfrozen")
-        {
-            REQUIRE(access.node_count() == 1);
-            REQUIRE(access.child_container_count() == 1);
-            REQUIRE(access.delta_count() == 0);
-
-            { // frozen scope
-                auto guard = access.freeze_guard(render_thread_id);
-                {
-                    NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
-                    NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
-                    NodeHandle<ThreeChildrenNode> c = scene.root().add_child<ThreeChildrenNode>();
-                    NodeHandle<LeafNode> d = scene.root().add_child<LeafNode>();
-                }
-            }
-
-            REQUIRE(access.node_count() == 1);
-            REQUIRE(access.child_container_count() == 1);
-            REQUIRE(access.delta_count() == 0);
-        }
-#endif
+        REQUIRE(access.node_count() == 1);
+        REQUIRE(access.child_container_count() == 1);
+        REQUIRE(access.delta_count() == 0);
     }
+
+    SECTION("modifying nodes in a frozen scene will produce deltas that are resolved when unfrozen")
+    {
+        NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
+
+        REQUIRE(access.node_count() == 4);
+        REQUIRE(access.child_container_count() == 4);
+        REQUIRE(access.delta_count() == 0);
+
+        { // frozen scope
+            auto guard = access.freeze_guard(render_thread_id);
+
+            REQUIRE(access.node_count() == 4);
+            REQUIRE(access.child_container_count() == 4);
+            REQUIRE(access.delta_count() == 0);
+
+            // access from event thread
+            REQUIRE(a->front->is_in_front());
+            REQUIRE(a->back->is_in_back());
+
+            // access from (pretend) render thread
+            access.set_render_thread(event_thread_id);
+            CHECK(a->front->is_in_front());
+            CHECK(a->back->is_in_back());
+            access.set_render_thread(render_thread_id);
+
+            a->reverse();
+
+            // access from event thread
+            REQUIRE(a->front->is_in_back());
+            REQUIRE(a->back->is_in_front());
+
+            // access from (pretend) render thread
+            access.set_render_thread(event_thread_id);
+            CHECK(a->front->is_in_front());
+            CHECK(a->back->is_in_back());
+            access.set_render_thread(render_thread_id);
+
+            REQUIRE(access.node_count() == 4);
+            REQUIRE(access.child_container_count() == 4);
+            REQUIRE(access.delta_count() == 1);
+        }
+
+        REQUIRE(a->front->is_in_back());
+        REQUIRE(a->back->is_in_front());
+
+        REQUIRE(access.node_count() == 4);
+        REQUIRE(access.child_container_count() == 4);
+        REQUIRE(access.delta_count() == 0);
+    }
+
+    SECTION("deleting nodes from a frozen scene will produce deltas that are resolved when unfrozen")
+    {
+        NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
+        NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
+        NodeHandle<ThreeChildrenNode> c = scene.root().add_child<ThreeChildrenNode>();
+
+        REQUIRE(access.node_count() == 12);
+        REQUIRE(access.child_container_count() == 12);
+        REQUIRE(access.delta_count() == 0);
+
+        { // frozen scope
+            auto guard = access.freeze_guard(render_thread_id);
+
+            REQUIRE(access.node_count() == 12);
+            REQUIRE(access.child_container_count() == 12);
+            REQUIRE(access.delta_count() == 0);
+
+            a->reverse();
+            c->reverse();
+
+            REQUIRE(access.node_count() == 12);
+            REQUIRE(access.child_container_count() == 12);
+            REQUIRE(access.delta_count() == 2); // a and c were modified
+
+            { // delete c
+                NodeHandle<ThreeChildrenNode> dropped = std::move(c);
+            }
+
+            REQUIRE(access.node_count() == 12);
+            REQUIRE(access.child_container_count() == 12);
+            REQUIRE(access.delta_count() == 3);
+        }
+
+        REQUIRE(access.node_count() == 8);
+        REQUIRE(access.child_container_count() == 8);
+        REQUIRE(access.delta_count() == 0);
+    }
+
+    SECTION("nodes that are created and modified with a frozen scene will unfreeze with it")
+    {
+        REQUIRE(access.node_count() == 1);
+        REQUIRE(access.child_container_count() == 1);
+        REQUIRE(access.delta_count() == 0);
+
+        {
+            access.freeze(render_thread_id);
+
+            NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
+
+            CHECK(a->front->is_in_front());
+            CHECK(a->back->is_in_back());
+
+            a->reverse();
+
+            CHECK(a->front->is_in_back());
+            CHECK(a->back->is_in_front());
+
+            access.unfreeze(render_thread_id);
+
+            REQUIRE(a->front->is_in_back());
+            REQUIRE(a->back->is_in_front());
+        }
+
+        REQUIRE(access.node_count() == 1);
+        REQUIRE(access.child_container_count() == 1);
+        REQUIRE(access.delta_count() == 0);
+    }
+    //#else
+    SECTION("nodes that are create & removed while frozen are removed correctly when unfrozen")
+    {
+        REQUIRE(access.node_count() == 1);
+        REQUIRE(access.child_container_count() == 1);
+        REQUIRE(access.delta_count() == 0);
+
+        { // frozen scope
+            auto guard = access.freeze_guard(render_thread_id);
+            {
+                NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
+                NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
+                NodeHandle<ThreeChildrenNode> c = scene.root().add_child<ThreeChildrenNode>();
+                NodeHandle<LeafNode> d = scene.root().add_child<LeafNode>();
+            }
+        }
+
+        REQUIRE(access.node_count() == 1);
+        REQUIRE(access.child_container_count() == 1);
+        REQUIRE(access.delta_count() == 0);
+    }
+#endif
 }

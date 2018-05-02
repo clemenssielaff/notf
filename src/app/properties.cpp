@@ -24,29 +24,7 @@ PropertyGraph::Update::~Update() = default;
 
 PropertyGraph::PropertyBody::~PropertyBody() = default;
 
-void PropertyGraph::PropertyBody::prepare_removal(const PropertyGraph& graph)
-{
-    NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
-    _ground(graph);
-    for (valid_ptr<PropertyBody*> affected : m_downstream) {
-        affected->_ground(graph);
-    }
-}
-
-void PropertyGraph::PropertyBody::_ground(const PropertyGraph& graph)
-{
-    NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
-    for (valid_ptr<PropertyBody*> dependency : m_upstream) {
-        auto it = std::find(dependency->m_downstream.begin(), dependency->m_downstream.end(), this);
-        NOTF_ASSERT(it != dependency->m_downstream.end());
-
-        *it = std::move(dependency->m_downstream.back());
-        dependency->m_downstream.pop_back();
-    }
-    m_upstream.clear();
-}
-
-bool PropertyGraph::PropertyBody::_validate_upstream(const PropertyGraph& graph, const Connected& dependencies) const
+bool PropertyGraph::PropertyBody::validate_upstream(const PropertyGraph& graph, const Connected& dependencies) const
 {
     NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
 
@@ -60,7 +38,7 @@ bool PropertyGraph::PropertyBody::_validate_upstream(const PropertyGraph& graph,
 
         // check if this property is not already downstream of the dependency (should never happen)
         NOTF_ASSERT(std::find(dependency->m_downstream.begin(), dependency->m_downstream.end(), this)
-                    != dependency->m_downstream.end());
+                    == dependency->m_downstream.end());
 
         unchecked.insert(dependency);
     }
@@ -81,6 +59,28 @@ bool PropertyGraph::PropertyBody::_validate_upstream(const PropertyGraph& graph,
     }
 
     return true;
+}
+
+void PropertyGraph::PropertyBody::prepare_removal(const PropertyGraph& graph)
+{
+    NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
+    _ground(graph);
+    for (valid_ptr<PropertyBody*> affected : m_downstream) {
+        affected->_ground(graph);
+    }
+}
+
+void PropertyGraph::PropertyBody::_ground(const PropertyGraph& graph)
+{
+    NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
+    for (valid_ptr<PropertyBody*> dependency : m_upstream) {
+        auto it = std::find(dependency->m_downstream.begin(), dependency->m_downstream.end(), this);
+        NOTF_ASSERT(it != dependency->m_downstream.end());
+
+        *it = std::move(dependency->m_downstream.back());
+        dependency->m_downstream.pop_back();
+    }
+    m_upstream.clear();
 }
 
 //====================================================================================================================//
@@ -113,7 +113,7 @@ void PropertyGraph::Batch::execute()
 
     PropertyGraph::UpdateSet affected;
     {
-        std::unique_lock<Mutex> lock(property_graph->m_mutex);
+        std::unique_lock<RecursiveMutex> lock(property_graph->m_mutex);
 
         // verify that all updates will succeed first
         for (auto& update : m_updates) {

@@ -115,17 +115,45 @@ EventManager::~EventManager() = default;
 void EventManager::handle(EventPtr&& event)
 {
     std::lock_guard<Mutex> lock(m_mutex);
-    auto handler_it
-        = std::find_if(m_handler.begin(), m_handler.end(), [&](const std::unique_ptr<WindowHandler>& handler) -> bool {
-              return handler->window() == event->window();
-          });
-    if (handler_it == m_handler.end()) {
-        log_critical << "Cannot find event handler";
-        return;
-    }
+    _handle(std::move(event));
+}
 
-    WindowHandler* handler = handler_it->get();
-    handler->enqueue_event(std::move(event));
+void EventManager::suspend()
+{
+    std::lock_guard<Mutex> lock(m_mutex);
+    m_is_suspended = true;
+}
+
+void EventManager::resume()
+{
+    std::lock_guard<Mutex> lock(m_mutex);
+    m_is_suspended = false;
+
+    for (EventPtr& event : m_backlog) {
+        _handle(std::move(event));
+    }
+    m_backlog.clear();
+}
+
+void EventManager::_handle(EventPtr&& event)
+{
+    NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+    if (m_is_suspended) {
+        m_backlog.emplace_back(std::move(event));
+    }
+    else {
+        auto handler_it = std::find_if(m_handler.begin(), m_handler.end(),
+                                       [&](const std::unique_ptr<WindowHandler>& handler) -> bool {
+                                           return handler->window() == event->window();
+                                       });
+        if (handler_it == m_handler.end()) {
+            log_critical << "Cannot find event handler";
+            return;
+        }
+
+        WindowHandler* handler = handler_it->get();
+        handler->enqueue_event(std::move(event));
+    }
 }
 
 void EventManager::_on_error(int error_number, const char* message)

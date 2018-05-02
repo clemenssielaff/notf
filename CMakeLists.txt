@@ -240,7 +240,9 @@ if(NOTF_BUILD_TESTS)
         test_scene.hpp
         test_scene.cpp
         test_timer.cpp
+        test_properties.hpp
         test_properties.cpp
+        test_event_manager.hpp
 #        test_signal.cpp
 #        test_string_utils.cpp
 #        test_utils.cpp

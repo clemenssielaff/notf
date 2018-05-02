@@ -89,7 +89,7 @@ class SceneGraph { // TODO: update SceneGraph docstring
 
     // types --------------------------------------------------------------
 public:
-    NOTF_ACCESS_TYPES(SceneNode, EventManager);
+    NOTF_ALLOW_ACCESS_TYPES(SceneNode, EventManager);
 
     /// State of the SceneGraph.
     class State {
@@ -276,7 +276,7 @@ class Scene {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES();
+    NOTF_ALLOW_ACCESS_TYPES();
 
 private:
     using ChildContainer = std::vector<valid_ptr<SceneNode*>>;
@@ -418,7 +418,7 @@ class SceneNode : public receive_signals {
 
     // types --------------------------------------------------------------
 public:
-    NOTF_ACCESS_TYPES(Scene);
+    NOTF_ALLOW_ACCESS_TYPES(Scene);
 
     /// Container used to store the children of a SceneNode.
     using ChildContainer = Scene::ChildContainer;

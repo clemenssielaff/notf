@@ -25,7 +25,7 @@ class Application {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(Window);
+    NOTF_ALLOW_ACCESS_TYPES(Window);
 
     /// Application arguments.
     ///

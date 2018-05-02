@@ -28,7 +28,7 @@ class Window {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ACCESS_TYPES(Application, EventManager);
+    NOTF_ALLOW_ACCESS_TYPES(Application, EventManager);
 
     /// Whether the window is minimzed, windowed or maxmized.
     enum class State {
