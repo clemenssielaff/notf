@@ -43,7 +43,7 @@ void Layer::render()
         context.set_render_area(m_area);
     }
 
-    Renderer::Access<Layer>(*m_renderer).render();
+    Renderer::Access<Layer>(*m_renderer).render(m_scene.get());
 }
 
 NOTF_CLOSE_NAMESPACE

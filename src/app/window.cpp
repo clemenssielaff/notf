@@ -59,8 +59,8 @@ Window::Window(const Args& args)
     m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window.get());
     {
         auto guard = m_graphics_context->make_current();
-        m_scene_graph = std::make_unique<SceneGraph>(*this);
-        m_property_graph = PropertyGraph::create(*m_scene_graph);
+        m_scene_graph = SceneGraph::Access<Window>::create(*this);
+        m_property_graph = PropertyGraph::Access<Window>::create(*m_scene_graph);
         m_font_manager = FontManager::create(*m_graphics_context);
     }
 

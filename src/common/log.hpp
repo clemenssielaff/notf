@@ -162,7 +162,7 @@ public: // methods
     {
         // if the thread is running, add the log message to the write buffer
         if (m_is_running.test_and_set()) {
-            std::lock_guard<std::mutex> _(m_mutex);
+            std::lock_guard<std::mutex> lock(m_mutex);
 
             bool force_flush = message.level < LogMessage::LEVEL::WARNING;
             m_write_buffer.emplace_back(std::move(message));

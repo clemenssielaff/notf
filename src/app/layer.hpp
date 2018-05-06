@@ -44,6 +44,9 @@ public:
     /// Whether the Layer is visible or not.
     bool is_visible() const { return m_is_visible; }
 
+    /// Whether the Layer is active or not.
+    bool is_active() const { return m_is_active; }
+
     /// Whether the Layer is fullscreen or not.
     bool is_fullscreen() const { return m_is_fullscreen; }
 
@@ -56,8 +59,13 @@ public:
     /// The Scene displayed in this Layer, might be empty.
     risky_ptr<Scene*> scene() { return m_scene.get(); }
 
-    /// Sets the Layer to be visible or not.
-    void set_visible(const bool is_visible) { m_is_visible = is_visible; }
+    /// Invisible Layers are not drawn on screen.
+    /// Note that this method also changes the `active` state of the Layer to the visibility state.
+    /// If you want a hidden/active or visible/inactive combo, call `set_active` after this method.
+    void set_visible(const bool is_visible) { m_is_visible = is_visible; m_is_active = is_visible;}
+
+    /// Inactive Layers do not participate in event propagation.
+    void set_active(const bool is_active) { m_is_active = is_active; }
 
     /// Sets the Layer to either be rendered always fullscreen (no matter the resolution),
     /// or to respect its explicit size and position.
@@ -85,6 +93,9 @@ private:
 
     /// Layers can be set invisible in which case they are simply not drawn.
     bool m_is_visible = true;
+
+    /// Layers can be active (the default) or inactive, in which case they do not participate in the event propagation.
+    bool m_is_active = true;
 
     /// Layers can be rendered either fullscreen (no matter the resolution), or in an AABR with explicit size and
     /// position.

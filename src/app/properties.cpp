@@ -96,11 +96,11 @@ PropertyGraph::PropertyHead::~PropertyHead()
 
 PropertyGraph::PropertyHandlerBase::~PropertyHandlerBase() = default;
 
-bool PropertyGraph::PropertyHandlerBase::is_frozen() const { return m_node->scene().graph().is_frozen(); }
+bool PropertyGraph::PropertyHandlerBase::is_frozen() const { return m_node->graph()->is_frozen(); }
 
 bool PropertyGraph::PropertyHandlerBase::is_frozen_by(const std::thread::id thread_id) const
 {
-    return m_node->scene().graph().is_frozen_by(std::move(thread_id));
+    return m_node->graph()->is_frozen_by(std::move(thread_id));
 }
 //====================================================================================================================//
 
@@ -113,7 +113,7 @@ void PropertyGraph::Batch::execute()
 
     PropertyGraph::UpdateSet affected;
     {
-        std::unique_lock<RecursiveMutex> lock(property_graph->m_mutex);
+        std::lock_guard<RecursiveMutex> lock(property_graph->m_mutex);
 
         // verify that all updates will succeed first
         for (auto& update : m_updates) {

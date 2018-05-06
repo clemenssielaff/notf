@@ -38,7 +38,7 @@ ThreadPool::ThreadPool(const size_t thread_count)
 ThreadPool::~ThreadPool()
 {
     { // notify all workers that we're finished
-        std::unique_lock<std::mutex> lock(m_queue_mutex);
+        std::lock_guard<std::mutex> lock(m_queue_mutex);
         is_finished = true;
     }
     m_condition_variable.notify_all();

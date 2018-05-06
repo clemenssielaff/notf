@@ -43,7 +43,7 @@ public:
     void enqueue(FUNCTION&& function, Args&&... args)
     {
         { // enqueue the new task, unless the pool has already finished
-            std::unique_lock<std::mutex> lock(m_queue_mutex);
+            std::lock_guard<std::mutex> lock(m_queue_mutex);
             if (is_finished) {
                 notf_throw(thread_pool_finished, "Cannot enqueue a new task into an already finished ThreadPool");
             }
@@ -73,7 +73,7 @@ public:
         std::future<return_t> result = task->get_future();
 
         { // enqueue the new task, unless the pool has already finished
-            std::unique_lock<std::mutex> lock(m_queue_mutex);
+            std::lock_guard<std::mutex> lock(m_queue_mutex);
             if (is_finished) {
                 notf_throw(thread_pool_finished, "Cannot enqueue a new task into an already finished ThreadPool");
             }

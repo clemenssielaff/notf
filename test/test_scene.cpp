@@ -11,15 +11,15 @@ NOTF_USING_NAMESPACE
 //====================================================================================================================//
 
 struct TestScene : public Scene {
-    TestScene(SceneGraph& graph) : Scene(graph) {}
-    void resize_view(Size2i) override {}
+    TestScene(const FactoryToken& token, const valid_ptr<SceneGraphPtr>& graph) : Scene(token, graph) {}
+    void _resize_view(Size2i) override {}
 };
 
 //====================================================================================================================//
 
 struct LeafNode : public SceneNode {
     /// Constructor.
-    LeafNode(const Token& token, Scene& scene, valid_ptr<SceneNode*> parent) : SceneNode(token, scene, parent) {}
+    LeafNode(const FactoryToken& token, Scene& scene, valid_ptr<SceneNode*> parent) : SceneNode(token, scene, parent) {}
 };
 
 //====================================================================================================================//
@@ -28,7 +28,8 @@ struct TwoChildrenNode : public SceneNode {
 
     /// Constructor.
     ///
-    TwoChildrenNode(const Token& token, Scene& scene, valid_ptr<SceneNode*> parent) : SceneNode(token, scene, parent)
+    TwoChildrenNode(const FactoryToken& token, Scene& scene, valid_ptr<SceneNode*> parent)
+        : SceneNode(token, scene, parent)
     {
         back = _add_child<LeafNode>();
         front = _add_child<LeafNode>();
@@ -48,7 +49,8 @@ struct ThreeChildrenNode : public SceneNode {
 
     /// Constructor.
     ///
-    ThreeChildrenNode(const Token& token, Scene& scene, valid_ptr<SceneNode*> parent) : SceneNode(token, scene, parent)
+    ThreeChildrenNode(const FactoryToken& token, Scene& scene, valid_ptr<SceneNode*> parent)
+        : SceneNode(token, scene, parent)
     {
         back = _add_child<LeafNode>();
         center = _add_child<LeafNode>();
@@ -73,7 +75,7 @@ public:
 struct SplitNode : public SceneNode {
 
     /// Constructor.
-    SplitNode(const Token& token, Scene& scene, valid_ptr<SceneNode*> parent) : SceneNode(token, scene, parent)
+    SplitNode(const FactoryToken& token, Scene& scene, valid_ptr<SceneNode*> parent) : SceneNode(token, scene, parent)
     {
         m_center = _add_child<TwoChildrenNode>();
     }
@@ -87,27 +89,28 @@ private:
 
 SCENARIO("a Scene can be set up and modified", "[app], [scene]")
 {
-
-    SceneGraph scene_graph(notf_window());
-    TestScene scene(scene_graph);
-    Scene::Access<test::Harness> access(scene);
+    SceneGraphPtr scene_graph = SceneGraph::Access<test::Harness>::create(notf_window());
+    std::shared_ptr<TestScene> scene_ptr = TestScene::create<TestScene>(scene_graph);
+    TestScene& scene = *scene_ptr;
+    SceneGraph::Access<test::Harness> graph_access(*scene_graph);
+    Scene::Access<test::Harness> scene_access(scene);
 
     std::thread::id event_thread_id = std::this_thread::get_id();
     std::thread::id render_thread_id(1);
 #if 1
     SECTION("freezing an empty scene has no effect")
     {
-        REQUIRE(access.node_count() == 1);            // root node
-        REQUIRE(access.child_container_count() == 1); // root node
-        REQUIRE(access.delta_count() == 0);
+        REQUIRE(scene_access.node_count() == 1);            // root node
+        REQUIRE(scene_access.child_container_count() == 1); // root node
+        REQUIRE(scene_access.delta_count() == 0);
 
         {
-            auto guard = access.freeze_guard();
+            auto guard = graph_access.freeze_guard();
         }
 
-        REQUIRE(access.node_count() == 1);
-        REQUIRE(access.child_container_count() == 1);
-        REQUIRE(access.delta_count() == 0);
+        REQUIRE(scene_access.node_count() == 1);
+        REQUIRE(scene_access.child_container_count() == 1);
+        REQUIRE(scene_access.delta_count() == 0);
     }
 
     SECTION("creating, modifying and deleting without freezing produces no deltas")
@@ -117,47 +120,47 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
             NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
             NodeHandle<ThreeChildrenNode> c = scene.root().add_child<ThreeChildrenNode>();
 
-            REQUIRE(access.node_count() == 12);
-            REQUIRE(access.child_container_count() == 12);
-            REQUIRE(access.delta_count() == 0);
+            REQUIRE(scene_access.node_count() == 12);
+            REQUIRE(scene_access.child_container_count() == 12);
+            REQUIRE(scene_access.delta_count() == 0);
 
             a->reverse();
             c->reverse();
 
-            REQUIRE(access.node_count() == 12);
-            REQUIRE(access.child_container_count() == 12);
-            REQUIRE(access.delta_count() == 0);
+            REQUIRE(scene_access.node_count() == 12);
+            REQUIRE(scene_access.child_container_count() == 12);
+            REQUIRE(scene_access.delta_count() == 0);
         }
 
-        REQUIRE(access.node_count() == 1);
-        REQUIRE(access.child_container_count() == 1);
-        REQUIRE(access.delta_count() == 0);
+        REQUIRE(scene_access.node_count() == 1);
+        REQUIRE(scene_access.child_container_count() == 1);
+        REQUIRE(scene_access.delta_count() == 0);
     }
 
     SECTION("modifying nodes in a frozen scene will produce deltas that are resolved when unfrozen")
     {
         NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
 
-        REQUIRE(access.node_count() == 4);
-        REQUIRE(access.child_container_count() == 4);
-        REQUIRE(access.delta_count() == 0);
+        REQUIRE(scene_access.node_count() == 4);
+        REQUIRE(scene_access.child_container_count() == 4);
+        REQUIRE(scene_access.delta_count() == 0);
 
         { // frozen scope
-            auto guard = access.freeze_guard(render_thread_id);
+            auto guard = graph_access.freeze_guard(render_thread_id);
 
-            REQUIRE(access.node_count() == 4);
-            REQUIRE(access.child_container_count() == 4);
-            REQUIRE(access.delta_count() == 0);
+            REQUIRE(scene_access.node_count() == 4);
+            REQUIRE(scene_access.child_container_count() == 4);
+            REQUIRE(scene_access.delta_count() == 0);
 
             // access from event thread
             REQUIRE(a->front->is_in_front());
             REQUIRE(a->back->is_in_back());
 
             // access from (pretend) render thread
-            access.set_render_thread(event_thread_id);
+            graph_access.set_render_thread(event_thread_id);
             CHECK(a->front->is_in_front());
             CHECK(a->back->is_in_back());
-            access.set_render_thread(render_thread_id);
+            graph_access.set_render_thread(render_thread_id);
 
             a->reverse();
 
@@ -166,22 +169,22 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
             REQUIRE(a->back->is_in_front());
 
             // access from (pretend) render thread
-            access.set_render_thread(event_thread_id);
+            graph_access.set_render_thread(event_thread_id);
             CHECK(a->front->is_in_front());
             CHECK(a->back->is_in_back());
-            access.set_render_thread(render_thread_id);
+            graph_access.set_render_thread(render_thread_id);
 
-            REQUIRE(access.node_count() == 4);
-            REQUIRE(access.child_container_count() == 4);
-            REQUIRE(access.delta_count() == 1);
+            REQUIRE(scene_access.node_count() == 4);
+            REQUIRE(scene_access.child_container_count() == 4);
+            REQUIRE(scene_access.delta_count() == 1);
         }
 
         REQUIRE(a->front->is_in_back());
         REQUIRE(a->back->is_in_front());
 
-        REQUIRE(access.node_count() == 4);
-        REQUIRE(access.child_container_count() == 4);
-        REQUIRE(access.delta_count() == 0);
+        REQUIRE(scene_access.node_count() == 4);
+        REQUIRE(scene_access.child_container_count() == 4);
+        REQUIRE(scene_access.delta_count() == 0);
     }
 
     SECTION("deleting nodes from a frozen scene will produce deltas that are resolved when unfrozen")
@@ -190,46 +193,46 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
         NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
         NodeHandle<ThreeChildrenNode> c = scene.root().add_child<ThreeChildrenNode>();
 
-        REQUIRE(access.node_count() == 12);
-        REQUIRE(access.child_container_count() == 12);
-        REQUIRE(access.delta_count() == 0);
+        REQUIRE(scene_access.node_count() == 12);
+        REQUIRE(scene_access.child_container_count() == 12);
+        REQUIRE(scene_access.delta_count() == 0);
 
         { // frozen scope
-            auto guard = access.freeze_guard(render_thread_id);
+            auto guard = graph_access.freeze_guard(render_thread_id);
 
-            REQUIRE(access.node_count() == 12);
-            REQUIRE(access.child_container_count() == 12);
-            REQUIRE(access.delta_count() == 0);
+            REQUIRE(scene_access.node_count() == 12);
+            REQUIRE(scene_access.child_container_count() == 12);
+            REQUIRE(scene_access.delta_count() == 0);
 
             a->reverse();
             c->reverse();
 
-            REQUIRE(access.node_count() == 12);
-            REQUIRE(access.child_container_count() == 12);
-            REQUIRE(access.delta_count() == 2); // a and c were modified
+            REQUIRE(scene_access.node_count() == 12);
+            REQUIRE(scene_access.child_container_count() == 12);
+            REQUIRE(scene_access.delta_count() == 2); // a and c were modified
 
             { // delete c
                 NodeHandle<ThreeChildrenNode> dropped = std::move(c);
             }
 
-            REQUIRE(access.node_count() == 12);
-            REQUIRE(access.child_container_count() == 12);
-            REQUIRE(access.delta_count() == 3);
+            REQUIRE(scene_access.node_count() == 12);
+            REQUIRE(scene_access.child_container_count() == 12);
+            REQUIRE(scene_access.delta_count() == 3);
         }
 
-        REQUIRE(access.node_count() == 8);
-        REQUIRE(access.child_container_count() == 8);
-        REQUIRE(access.delta_count() == 0);
+        REQUIRE(scene_access.node_count() == 8);
+        REQUIRE(scene_access.child_container_count() == 8);
+        REQUIRE(scene_access.delta_count() == 0);
     }
 
     SECTION("nodes that are created and modified with a frozen scene will unfreeze with it")
     {
-        REQUIRE(access.node_count() == 1);
-        REQUIRE(access.child_container_count() == 1);
-        REQUIRE(access.delta_count() == 0);
+        REQUIRE(scene_access.node_count() == 1);
+        REQUIRE(scene_access.child_container_count() == 1);
+        REQUIRE(scene_access.delta_count() == 0);
 
         {
-            access.freeze(render_thread_id);
+            graph_access.freeze(render_thread_id);
 
             NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
 
@@ -241,25 +244,25 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
             CHECK(a->front->is_in_back());
             CHECK(a->back->is_in_front());
 
-            access.unfreeze(render_thread_id);
+            graph_access.unfreeze(render_thread_id);
 
             REQUIRE(a->front->is_in_back());
             REQUIRE(a->back->is_in_front());
         }
 
-        REQUIRE(access.node_count() == 1);
-        REQUIRE(access.child_container_count() == 1);
-        REQUIRE(access.delta_count() == 0);
+        REQUIRE(scene_access.node_count() == 1);
+        REQUIRE(scene_access.child_container_count() == 1);
+        REQUIRE(scene_access.delta_count() == 0);
     }
     //#else
     SECTION("nodes that are create & removed while frozen are removed correctly when unfrozen")
     {
-        REQUIRE(access.node_count() == 1);
-        REQUIRE(access.child_container_count() == 1);
-        REQUIRE(access.delta_count() == 0);
+        REQUIRE(scene_access.node_count() == 1);
+        REQUIRE(scene_access.child_container_count() == 1);
+        REQUIRE(scene_access.delta_count() == 0);
 
         { // frozen scope
-            auto guard = access.freeze_guard(render_thread_id);
+            auto guard = graph_access.freeze_guard(render_thread_id);
             {
                 NodeHandle<TwoChildrenNode> a = scene.root().add_child<TwoChildrenNode>();
                 NodeHandle<SplitNode> b = scene.root().add_child<SplitNode>();
@@ -268,9 +271,9 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
             }
         }
 
-        REQUIRE(access.node_count() == 1);
-        REQUIRE(access.child_container_count() == 1);
-        REQUIRE(access.delta_count() == 0);
+        REQUIRE(scene_access.node_count() == 1);
+        REQUIRE(scene_access.child_container_count() == 1);
+        REQUIRE(scene_access.delta_count() == 0);
     }
 #endif
 }

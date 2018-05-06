@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/exception.hpp"
+#include "common/hash.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -63,6 +64,43 @@ struct pointer_less_than {
     /// Comparison operation.
     /// Transforms both sides into the internal `Helper` type to avoid manual overloads for all kinds of pointers.
     bool operator()(Adapter&& lhs, Adapter&& rhs) const { return lhs < rhs; }
+};
+
+//====================================================================================================================//
+
+/// @{
+/// Compares two weak_ptrs without locking them.
+/// If the two pointers are not of the same type, they are not considered equal.
+/// @param a    First weak_ptr.
+/// @param b    Second weak_ptr.
+template<typename T, typename U>
+typename std::enable_if_t<std::is_same<T, U>::value, bool>
+weak_ptr_equal(const std::weak_ptr<T>& a, const std::weak_ptr<U>& b)
+{
+    return !a.owner_before(b) && !b.owner_before(a);
+}
+template<typename T, typename U>
+typename std::enable_if_t<(!std::is_same<T, U>::value), bool>
+weak_ptr_equal(const std::weak_ptr<T>&, const std::weak_ptr<U>&)
+{
+    return false;
+}
+/// @}
+
+//====================================================================================================================//
+
+/// Specialized Hash for pointers.
+/// Uses `hash_mix` to improve pointer entropy.
+template<typename T>
+struct pointer_hash {
+    size_t operator()(const T* ptr) const { return hash_mix(to_number(ptr)); }
+};
+
+/// Specialized Hash for smart pointers.
+/// Uses `hash_mix` to improve pointer entropy.
+template<typename T>
+struct smart_pointer_hash {
+    size_t operator()(const T& ptr) const { return hash_mix(to_number(ptr.get())); }
 };
 
 //====================================================================================================================//

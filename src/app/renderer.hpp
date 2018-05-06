@@ -3,6 +3,8 @@
 #include <vector>
 
 #include "app/forwards.hpp"
+#include "common/pointer.hpp"
+#include "common/exception.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -14,6 +16,9 @@ class Renderer {
     // types ---------------------------------------------------------------------------------------------------------//
 public:
     NOTF_ALLOW_ACCESS_TYPES(Layer, RenderTarget);
+
+    /// Exception thrown when a Renderer requires a Scene to render, but wasn't passed on.
+    NOTF_EXCEPTION_TYPE(no_scene);
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
@@ -27,7 +32,10 @@ private:
     virtual void _collect_dependencies(std::vector<RenderTarget*>& /*dependencies*/) const {}
 
     /// Subclass-defined implementation of the Renderer's rendering.
-    virtual void _render() const = 0;
+    /// @param scene        Depending on the type of Renderer, it might require a Scene to render or not.
+    ///                     A Renderer is free to ignore the argument if you pass one.
+    /// @throws no_scene    If the Renderer requires a Scene argument, but none was passed.
+    virtual void _render(risky_ptr<Scene*> scene) const = 0;
 };
 
 // ===================================================================================================================//
@@ -40,9 +48,14 @@ class Renderer::Access<Layer> {
     /// @param renderer     The renderer to access.
     Access(Renderer& renderer) : m_renderer(renderer) {}
 
-    /// Renders the Renderer, if it is dirty.
-    void render() { m_renderer._render(); }
+    /// Renders the Renderer.
+    /// @param scene        Depending on the type of Renderer, it might require a Scene to render or not.
+    ///                     A Renderer is free to ignore the argument if you pass one.
+    /// @throws no_scene    If the Renderer requires a Scene argument, but none was passed.
+    void render(risky_ptr<Scene*> scene) { m_renderer._render(scene); }
 
+    // fields -----------------------------------------------------------------
+private:
     /// The Renderer to access.
     Renderer& m_renderer;
 };
@@ -55,9 +68,12 @@ class Renderer::Access<RenderTarget> {
     /// @param renderer     The Renderer to access.
     Access(Renderer& renderer) : m_renderer(renderer) {}
 
-    /// Renders the Renderer, if it is dirty.
-    void render() { m_renderer._render(); }
+    /// Renders the Renderer.
+    /// @throws no_scene    If the Renderer type requires a Scene argument.
+    void render() { m_renderer._render(nullptr); }
 
+    // fields -----------------------------------------------------------------
+private:
     /// The Renderer to access.
     Renderer& m_renderer;
 };

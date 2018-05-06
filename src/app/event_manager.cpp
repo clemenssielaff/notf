@@ -46,7 +46,7 @@ static GlobalState g_state;
 void EventManager::WindowHandler::start()
 {
     {
-        std::unique_lock<Mutex> lock_guard(m_mutex);
+        std::lock_guard<Mutex> lock(m_mutex);
         if (m_is_running) {
             return;
         }
@@ -59,7 +59,7 @@ void EventManager::WindowHandler::start()
 void EventManager::WindowHandler::enqueue_event(EventPtr&& event)
 {
     {
-        std::unique_lock<Mutex> lock_guard(m_mutex);
+        std::lock_guard<Mutex> lock(m_mutex);
         m_events.emplace_back(std::move(event));
     }
     m_condition.notify_one();
@@ -68,7 +68,7 @@ void EventManager::WindowHandler::enqueue_event(EventPtr&& event)
 void EventManager::WindowHandler::stop()
 {
     {
-        std::unique_lock<Mutex> lock_guard(m_mutex);
+        std::lock_guard<Mutex> lock(m_mutex);
         if (!m_is_running) {
             return;
         }
@@ -83,9 +83,9 @@ void EventManager::WindowHandler::_run()
 {
     while (1) {
         { // wait until the next event is ready
-            std::unique_lock<std::mutex> lock_guard(m_mutex);
+            std::unique_lock<std::mutex> lock(m_mutex);
             if (m_events.empty() && m_is_running) {
-                m_condition.wait(lock_guard, [&] { return !m_events.empty() || !m_is_running; });
+                m_condition.wait(lock, [&] { return !m_events.empty() || !m_is_running; });
             }
 
             // stop condition
@@ -231,7 +231,7 @@ void EventManager::_on_mouse_button(GLFWwindow* glfw_window, int button, int act
     Vector2f cursor_pos;
     ButtonStateSet button_states;
     {
-        std::unique_lock<Mutex> lock(g_state.mutex);
+        std::lock_guard<Mutex> lock(g_state.mutex);
 
         set_button(g_state.button_states, notf_button, action);
         g_state.key_modifiers = notf_modifiers;
@@ -271,7 +271,7 @@ void EventManager::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
     KeyModifiers key_modifiers;
     ButtonStateSet button_states;
     {
-        std::unique_lock<Mutex> lock(g_state.mutex);
+        std::lock_guard<Mutex> lock(g_state.mutex);
 
         prev_cursor_pos = g_state.prev_cursor_pos;
         key_modifiers = g_state.key_modifiers;
@@ -318,7 +318,7 @@ void EventManager::_on_scroll(GLFWwindow* glfw_window, double x, double y)
     KeyModifiers key_modifiers;
     ButtonStateSet button_states;
     {
-        std::unique_lock<Mutex> lock(g_state.mutex);
+        std::lock_guard<Mutex> lock(g_state.mutex);
         cursor_pos = g_state.cursor_pos;
         key_modifiers = g_state.key_modifiers;
         button_states = g_state.button_states;
@@ -348,7 +348,7 @@ void EventManager::_on_token_key(GLFWwindow* glfw_window, int key, NOTF_UNUSED i
     // update the global state
     KeyStateSet key_states;
     {
-        std::unique_lock<Mutex> lock(g_state.mutex);
+        std::lock_guard<Mutex> lock(g_state.mutex);
         set_key(g_state.key_states, notf_key, action);
         g_state.key_modifiers = key_modifiers;
 
@@ -376,7 +376,7 @@ void EventManager::_on_shortcut(GLFWwindow* glfw_window, uint codepoint, int mod
     // update the global state
     KeyStateSet key_states;
     {
-        std::unique_lock<Mutex> lock(g_state.mutex);
+        std::lock_guard<Mutex> lock(g_state.mutex);
         g_state.key_modifiers = key_modifiers;
 
         key_states = g_state.key_states;

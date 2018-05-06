@@ -38,7 +38,7 @@ private:
     using Connected = std::vector<valid_ptr<PropertyBody*>>;
 
 public:
-    NOTF_ALLOW_ACCESS_TYPES(SceneNode);
+    NOTF_ALLOW_ACCESS_TYPES(SceneNode, Window);
 
     /// Thrown when a new expression would introduce a cyclic dependency into the graph.
     NOTF_EXCEPTION_TYPE(no_dag);
@@ -443,11 +443,13 @@ private:
         /// Destructor.
         virtual ~PropertyHandlerBase();
 
-        /// Checks if the SceneNode is frozen at all.
+        /// Checks if the SceneNode is frozen.
+        /// @throws no_graph    If the SceneGraph of the node has been deleted.
         bool is_frozen() const;
 
         /// Checks if the SceneNode is frozen by a given thread.
         /// @param tread_id     Id of the thread to check for.
+        /// @throws no_graph    If the SceneGraph of the node has been deleted.
         bool is_frozen_by(const std::thread::id thread_id) const;
 
     protected:
@@ -469,14 +471,14 @@ private:
     /// @param scene_graph  SceneGraph to deliver the PropertyEvents to.
     PropertyGraph(SceneGraph& scene_graph) : m_scene_graph(scene_graph) {}
 
-public:
     /// Factory method.
     /// @param scene_graph  SceneGraph to deliver the PropertyEvents to.
-    static PropertyGraphPtr create(SceneGraph& scene_graph)
+    static PropertyGraphPtr _create(SceneGraph& scene_graph)
     {
         return NOTF_MAKE_SHARED_FROM_PRIVATE(PropertyGraph, scene_graph);
     }
 
+public:
     /// Creates a new free Property in the graph.
     /// @param value    Value held by the Property, is used to determine the property type.
     template<typename T>
@@ -551,6 +553,25 @@ private:
     PropertyGraph& m_graph;
 };
 
+/// PropertyGraph access for Window.
+template<>
+class PropertyGraph::Access<Window> {
+    friend class Window;
+
+    /// Constructor.
+    /// @param graph    PropertyGraph to access.
+    Access(PropertyGraph& graph) : m_graph(graph) {}
+
+    /// Factory method.
+    /// @param scene_graph  SceneGraph to deliver the PropertyEvents to.
+    static PropertyGraphPtr create(SceneGraph& scene_graph) { return PropertyGraph::_create(scene_graph); }
+
+    // fields --------------------------------------------------------------------------------------------------------//
+private:
+    /// PropertyGraph to access.
+    PropertyGraph& m_graph;
+};
+
 //====================================================================================================================//
 
 /// PropertyHead to be used in the wild.
@@ -595,7 +616,7 @@ public:
     bool is_grounded() const
     {
         if (auto property_graph = _graph()) {
-            std::unique_lock<RecursiveMutex> lock(property_graph->m_mutex);
+            std::lock_guard<RecursiveMutex> lock(property_graph->m_mutex);
             return _body()->is_grounded(*property_graph);
         }
         else {
@@ -611,7 +632,7 @@ public:
     const T& value()
     {
         if (auto property_graph = _graph()) {
-            std::unique_lock<RecursiveMutex> lock(property_graph->m_mutex);
+            std::lock_guard<RecursiveMutex> lock(property_graph->m_mutex);
             return _body()->value(*property_graph);
         }
         else {
@@ -690,7 +711,7 @@ private:
     UpdateSet _set_value(T&& value, const bool fire_event)
     {
         if (auto property_graph = _graph()) {
-            std::unique_lock<RecursiveMutex> lock(property_graph->m_mutex);
+            std::lock_guard<RecursiveMutex> lock(property_graph->m_mutex);
 
             UpdateSet affected;
             _body()->set_value(*property_graph, std::forward<T>(value), affected);
@@ -720,7 +741,7 @@ private:
     _set_expression(Expression&& expression, std::vector<PropertyHeadPtr>&& dependencies, const bool fire_event)
     {
         if (auto property_graph = _graph()) {
-            std::unique_lock<RecursiveMutex> lock(property_graph->m_mutex);
+            std::lock_guard<RecursiveMutex> lock(property_graph->m_mutex);
 
             PropertyGraph::UpdateSet affected;
             _body()->set_expression(*property_graph, std::move(expression), _bodies_of_heads(dependencies), affected);

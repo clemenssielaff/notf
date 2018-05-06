@@ -4,3 +4,4 @@ docs/.sass-cache
 docs/_site
 notf.pro.user
 CMakeLists.txt.user
+.vscode/*

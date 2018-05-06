@@ -52,10 +52,10 @@ ProceduralRenderer::ProceduralRenderer(GraphicsContext& context, const std::stri
 
 ProceduralRendererPtr ProceduralRenderer::create(Window& window, const std::string& shader_name)
 {
-    return NOTF_MAKE_UNIQUE_FROM_PRIVATE(ProceduralRenderer, window.graphics_context(), shader_name);
+    return NOTF_MAKE_SHARED_FROM_PRIVATE(ProceduralRenderer, window.graphics_context(), shader_name);
 }
 
-void ProceduralRenderer::_render() const
+void ProceduralRenderer::_render(risky_ptr<Scene*>) const
 {
     const auto pipeline_guard = m_context.bind_pipeline(m_pipeline);
     notf_check_gl(glDrawArrays(GL_TRIANGLES, 0, 3));

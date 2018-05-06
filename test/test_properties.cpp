@@ -32,8 +32,8 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app], [property_graph]"
     {
         SuspensionGuard event_suspension(event_manager);
         {
-            PropertyPtr<int> iprop1 = graph.create_property<int>(48);
-            PropertyPtr<int> iprop2 = graph.create_property<int>(2);
+            PropertyPtr<int> iprop1 = graph.create_property(48);
+            PropertyPtr<int> iprop2 = graph.create_property(2);
             PropertyPtr<std::string> sprop1 = graph.create_property<std::string>("derbe");
             REQUIRE(PropertyGraph::Access<test::Harness>(graph).size() == 3);
 

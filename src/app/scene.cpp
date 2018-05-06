@@ -1,7 +1,5 @@
 #include "app/scene.hpp"
 
-#include <atomic>
-
 #include "app/io/char_event.hpp"
 #include "app/io/key_event.hpp"
 #include "app/io/mouse_event.hpp"
@@ -19,7 +17,7 @@ NOTF_USING_NAMESPACE
 /// Is thread-safe and ever-increasing.
 std::string next_name()
 {
-    static std::atomic<size_t> g_nextID(1);
+    static std::atomic_size_t g_nextID(1);
     std::stringstream ss;
     ss << "SceneNode#" << g_nextID++;
     return ss.str();
@@ -35,14 +33,19 @@ SceneGraph::SceneGraph(Window& window) : m_window(window), m_current_state(creat
 
 SceneGraph::~SceneGraph() = default;
 
-void SceneGraph::enter_state(StatePtr state)
+void SceneGraph::enter_state(valid_ptr<StatePtr> state)
 {
+    NOTF_MUTEX_GUARD(m_hierarchy_mutex);
+
     m_current_state = std::move(state);
     m_window.request_redraw();
 }
 
 void SceneGraph::_register_dirty(valid_ptr<SceneNode*> node)
 {
+    NOTF_ASSERT(m_event_mutex.is_locked_by_this_thread());
+    NOTF_ASSERT(m_hierarchy_mutex.is_locked_by_this_thread());
+
     if (m_dirty_nodes.empty()) {
         m_window.request_redraw();
     }
@@ -57,14 +60,19 @@ void SceneGraph::_propagate_event(EventPtr&& untyped_event)
     static const size_t window_event = WindowEvent::static_type();
     static const size_t window_resize_event = WindowResizeEvent::static_type();
 
+    NOTF_MUTEX_GUARD(m_event_mutex);
+
     const size_t event_type = untyped_event->type();
 
     // MouseEvent
     if (event_type == mouse_event) {
         MouseEvent* event = static_cast<MouseEvent*>(untyped_event.get());
         for (auto& layer : m_current_state->layers()) {
+            if (!layer->is_active()) {
+                continue;
+            }
             if (risky_ptr<Scene*> scene = layer->scene()) {
-                scene->handle_event(*event);
+                Scene::Access<SceneGraph>(*scene).handle_event(*event);
             }
             if (event->was_handled()) { // TODO: maybe add virtual "is_handled" function? Or "is_handleable_ subtype
                 break;                  // this way we wouldn't have to differentiate between Mouse, Key, CharEvents
@@ -76,8 +84,11 @@ void SceneGraph::_propagate_event(EventPtr&& untyped_event)
     else if (event_type == key_event) {
         KeyEvent* event = static_cast<KeyEvent*>(untyped_event.get());
         for (auto& layer : m_current_state->layers()) {
+            if (!layer->is_active()) {
+                continue;
+            }
             if (risky_ptr<Scene*> scene = layer->scene()) {
-                scene->handle_event(*event);
+                Scene::Access<SceneGraph>(*scene).handle_event(*event);
             }
             if (event->was_handled()) {
                 break;
@@ -89,8 +100,11 @@ void SceneGraph::_propagate_event(EventPtr&& untyped_event)
     else if (event_type == char_event) {
         CharEvent* event = static_cast<CharEvent*>(untyped_event.get());
         for (auto& layer : m_current_state->layers()) {
+            if (!layer->is_active()) {
+                continue;
+            }
             if (risky_ptr<Scene*> scene = layer->scene()) {
-                scene->handle_event(*event);
+                Scene::Access<SceneGraph>(*scene).handle_event(*event);
             }
             if (event->was_handled()) {
                 break;
@@ -101,8 +115,11 @@ void SceneGraph::_propagate_event(EventPtr&& untyped_event)
     // WindowEvent
     else if (event_type == window_event) {
         for (auto& layer : m_current_state->layers()) {
+            if (!layer->is_active()) {
+                continue;
+            }
             if (risky_ptr<Scene*> scene = layer->scene()) {
-                scene->handle_event(*untyped_event);
+                Scene::Access<SceneGraph>(*scene).handle_event(*untyped_event);
             }
         }
     }
@@ -115,7 +132,7 @@ void SceneGraph::_propagate_event(EventPtr&& untyped_event)
                 continue;
             }
             if (risky_ptr<Scene*> scene = layer->scene()) {
-                scene->resize_view(event->new_size);
+                Scene::Access<SceneGraph>(*scene).resize_view(event->new_size);
             }
         }
     }
@@ -126,49 +143,74 @@ void SceneGraph::_propagate_event(EventPtr&& untyped_event)
     }
 }
 
-//====================================================================================================================//
-
-Scene::FreezeGuard::FreezeGuard(Scene& scene, const std::thread::id thread_id) : m_scene(&scene), m_thread_id(thread_id)
+bool SceneGraph::_freeze(const std::thread::id thread_id)
 {
-    if (!m_scene->freeze(m_thread_id)) {
-        m_scene = nullptr;
-    }
-}
+    NOTF_MUTEX_GUARD(m_event_mutex);
 
-Scene::FreezeGuard::~FreezeGuard()
-{
-    if (m_scene) { // don't unfreeze if this guard tried to double-freeze the scene
-        m_scene->unfreeze(m_thread_id);
-    }
-}
+    const size_t thread_hash = hash(thread_id);
 
-//====================================================================================================================//
-
-Scene::Scene(SceneGraph& graph) : m_graph(graph), m_root(_create_root()) {}
-
-bool Scene::freeze(const std::thread::id thread_id)
-{
-    std::lock_guard<RecursiveMutex> lock(m_mutex);
-    if (m_render_thread != std::thread::id()) {
-        log_warning << "Ignoring repeated freezing of Scene";
+    if (m_freezing_thread == thread_hash) {
+        log_warning << "Ignoring repeated freezing of SceneGraph from the same thread";
         return false;
     }
-    m_render_thread = thread_id;
+    if (m_freezing_thread != 0) {
+        log_critical << "Ignoring duplicate freezing of SceneGraph from another thread";
+        return false;
+    }
+
+    m_freezing_thread = thread_hash;
     return true;
 }
 
-void Scene::unfreeze(NOTF_UNUSED const std::thread::id thread_id)
+void SceneGraph::_unfreeze(NOTF_UNUSED const std::thread::id thread_id)
 {
-    std::lock_guard<RecursiveMutex> lock(m_mutex);
-    if (m_render_thread == std::thread::id()) {
-        return;
-    }
-    NOTF_ASSERT_MSG(m_render_thread == thread_id,
-                    "Thread #{} must not unfreeze the Scene, because it was frozen by a different thread (#{}).",
-                    hash(thread_id), hash(m_render_thread));
+    NOTF_MUTEX_GUARD(m_event_mutex);
 
-    // unfreeze - otherwise all modifications would just create new deltas
-    m_render_thread = std::thread::id();
+    if (m_freezing_thread == 0) {
+        return; // already unfrozen
+    }
+    NOTF_ASSERT_MSG(m_freezing_thread == hash(thread_id),
+                    "Thread #{} must not unfreeze the SceneGraph, because it was frozen by a different thread (#{}).",
+                    hash(thread_id), hash(m_freezing_thread.load()));
+
+    {
+        NOTF_MUTEX_GUARD(m_hierarchy_mutex);
+
+        // unfreeze - otherwise all modifications would just create new deltas
+        m_freezing_thread = 0;
+
+        // resolve delta in all scenes
+        for (auto it = m_scenes.begin(); it != m_scenes.end();) {
+            if (ScenePtr scene = it->lock()) {
+                Scene::Access<SceneGraph>(*scene).resolve_delta();
+                ++it;
+            }
+
+            // ...and sort out Scenes that were deleted
+            else {
+                it = m_scenes.erase(it);
+            }
+        }
+    }
+}
+
+//====================================================================================================================//
+
+Scene::no_graph::~no_graph() = default;
+
+//====================================================================================================================//
+
+Scene::Scene(const FactoryToken&, const valid_ptr<SceneGraphPtr>& graph) : m_graph(graph.get()), m_root(_create_root())
+{}
+
+void Scene::_resolve_delta()
+{
+#ifdef NOTF_DEBUG
+    {
+        SceneGraphPtr scene_graph = graph(); // this method is called from a SceneGraph, it should exist
+        NOTF_ASSERT(scene_graph && SceneGraph::Access<Scene>(*scene_graph).mutex().is_locked_by_this_thread());
+    }
+#endif
 
     // resolve the delta
     for (auto& delta_it : m_deltas) {
@@ -204,6 +246,12 @@ void Scene::unfreeze(NOTF_UNUSED const std::thread::id thread_id)
 
 void Scene::_delete_node(valid_ptr<SceneNode*> node)
 {
+#ifdef NOTF_DEBUG
+    if (SceneGraphPtr scene_graph = graph()) {
+        NOTF_ASSERT(scene_graph && SceneGraph::Access<Scene>(*scene_graph).mutex().is_locked_by_this_thread());
+    }
+#endif
+
     auto node_it = m_nodes.find(node);
     NOTF_ASSERT_MSG(node_it != m_nodes.end(), "Delta could not be resolved because the Node has already been removed");
 
@@ -224,8 +272,11 @@ RootSceneNode* Scene::_create_root()
 
 Scene::~Scene()
 {
-    std::lock_guard<RecursiveMutex> lock(m_mutex);
-    NOTF_ASSERT(!_is_frozen());
+#ifdef NOTF_DEBUG
+    if (SceneGraphPtr scene_graph = graph()) {
+        NOTF_ASSERT(!scene_graph->is_frozen());
+    }
+#endif
 
     // remove the root node
     auto it = m_nodes.find(m_root);
@@ -240,7 +291,7 @@ SceneNode::hierarchy_error::~hierarchy_error() = default;
 
 //====================================================================================================================//
 
-SceneNode::SceneNode(const Token&, Scene& scene, valid_ptr<SceneNode*> parent)
+SceneNode::SceneNode(const FactoryToken&, Scene& scene, valid_ptr<SceneNode*> parent)
     : m_scene(scene), m_parent(parent), m_children(_register_with_scene(scene)), m_name(next_name())
 {
     log_trace << "Created \"" << m_name << "\"";
@@ -248,7 +299,11 @@ SceneNode::SceneNode(const Token&, Scene& scene, valid_ptr<SceneNode*> parent)
 
 SceneNode::~SceneNode()
 {
-    NOTF_ASSERT(m_scene.m_mutex.is_locked_by_this_thread());
+#ifdef NOTF_DEBUG
+    if (SceneGraphPtr scene_graph = m_scene.graph()) {
+        NOTF_ASSERT(!scene_graph->is_frozen());
+    }
+#endif
 
     log_trace << "Destroying \"" << m_name << "\"";
 
@@ -261,10 +316,12 @@ SceneNode::~SceneNode()
 
 const SceneNode::ChildContainer& SceneNode::read_children() const
 {
-    NOTF_ASSERT(m_scene.m_mutex.is_locked_by_this_thread());
+    // make sure the SceneGraph hierarchy is properly locked
+    SceneGraphPtr scene_graph = m_scene.graph();
+    NOTF_ASSERT(SceneGraph::Access<SceneNode>(*scene_graph).mutex().is_locked_by_this_thread());
 
-    // direct access
-    if (!m_scene._is_frozen() || m_scene._is_render_thread(std::this_thread::get_id())) {
+    // direct access if unfrozen or this is the render thread
+    if (!scene_graph->is_frozen() || scene_graph->is_frozen_by(std::this_thread::get_id())) {
         return *m_children;
     }
 
@@ -282,10 +339,12 @@ const SceneNode::ChildContainer& SceneNode::read_children() const
 
 SceneNode::ChildContainer& SceneNode::write_children()
 {
-    NOTF_ASSERT(m_scene.m_mutex.is_locked_by_this_thread());
+    // make sure the SceneGraph hierarchy is properly locked
+    SceneGraphPtr scene_graph = m_scene.graph();
+    NOTF_ASSERT(SceneGraph::Access<SceneNode>(*scene_graph).mutex().is_locked_by_this_thread());
 
-    // direct access
-    if (!m_scene._is_frozen() || m_scene._is_render_thread(std::this_thread::get_id())) {
+    // direct access if unfrozen or this is the render thread
+    if (!scene_graph->is_frozen() || scene_graph->is_frozen_by(std::this_thread::get_id())) {
         return *m_children;
     }
 
@@ -306,6 +365,9 @@ SceneNode::ChildContainer& SceneNode::write_children()
 
 bool SceneNode::has_ancestor(const valid_ptr<const SceneNode*> ancestor) const
 {
+    // lock the SceneGraph hierarchy
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>(*m_scene.graph()).mutex());
+
     valid_ptr<const SceneNode*> next = parent();
     while (next != next->parent()) {
         if (next == ancestor) {
@@ -322,10 +384,12 @@ valid_ptr<SceneNode*> SceneNode::common_ancestor(valid_ptr<SceneNode*> other)
         return this;
     }
 
+    // lock the SceneGraph hierarchy
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>(*m_scene.graph()).mutex());
+
     valid_ptr<SceneNode*> first = this;
     valid_ptr<SceneNode*> second = other;
     SceneNode* result = nullptr;
-
     std::unordered_set<valid_ptr<SceneNode*>> known_ancestors = {first, second};
     while (1) {
         first = first->parent();
@@ -363,7 +427,9 @@ const std::string& SceneNode::set_name(std::string name)
 
 bool SceneNode::is_in_front() const
 {
-    std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
+    // lock the SceneGraph hierarchy
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>(*m_scene.graph()).mutex());
+
     const ChildContainer& siblings = m_parent->read_children();
     NOTF_ASSERT(!siblings.empty());
     return siblings.back() == this;
@@ -371,7 +437,9 @@ bool SceneNode::is_in_front() const
 
 bool SceneNode::is_in_back() const
 {
-    std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
+    // lock the SceneGraph hierarchy
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>(*m_scene.graph()).mutex());
+
     const ChildContainer& siblings = m_parent->read_children();
     NOTF_ASSERT(!siblings.empty());
     return siblings.front() == this;
@@ -379,7 +447,9 @@ bool SceneNode::is_in_back() const
 
 bool SceneNode::is_in_front_of(const valid_ptr<SceneNode*> sibling) const
 {
-    std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
+    // lock the SceneGraph hierarchy
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>(*m_scene.graph()).mutex());
+
     const ChildContainer& siblings = m_parent->read_children();
     const size_t sibling_count = siblings.size();
     size_t my_index = 0;
@@ -392,6 +462,7 @@ bool SceneNode::is_in_front_of(const valid_ptr<SceneNode*> sibling) const
         }
     }
     NOTF_ASSERT(my_index < sibling_count);
+
     for (size_t sibling_index = my_index + 1; sibling_index < sibling_count; ++sibling_index) {
         if (siblings[sibling_index] == sibling) {
             return true;
@@ -404,7 +475,9 @@ bool SceneNode::is_in_front_of(const valid_ptr<SceneNode*> sibling) const
 
 bool SceneNode::is_behind(const valid_ptr<SceneNode*> sibling) const
 {
-    std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
+    // lock the SceneGraph hierarchy
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>(*m_scene.graph()).mutex());
+
     const ChildContainer& siblings = m_parent->read_children();
     const size_t sibling_count = siblings.size();
     size_t sibling_index = 0;
@@ -416,6 +489,7 @@ bool SceneNode::is_behind(const valid_ptr<SceneNode*> sibling) const
             return false;
         }
     }
+
     NOTF_ASSERT(sibling_index < sibling_count);
     for (size_t my_index = sibling_index + 1; my_index < sibling_count; ++my_index) {
         if (siblings[my_index] == this) {
@@ -429,7 +503,8 @@ bool SceneNode::is_behind(const valid_ptr<SceneNode*> sibling) const
 
 void SceneNode::stack_front()
 {
-    std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
+    // lock the SceneGraph hierarchy
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>(*m_scene.graph()).mutex());
 
     // early out to avoid creating unnecessary deltas
     if (is_in_front()) {
@@ -444,7 +519,8 @@ void SceneNode::stack_front()
 
 void SceneNode::stack_back()
 {
-    std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
+    // lock the SceneGraph hierarchy
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>(*m_scene.graph()).mutex());
 
     // early out to avoid creating unnecessary deltas
     if (is_in_back()) {
@@ -459,7 +535,8 @@ void SceneNode::stack_back()
 
 void SceneNode::stack_before(const valid_ptr<SceneNode*> sibling)
 {
-    std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
+    // lock the SceneGraph hierarchy
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>(*m_scene.graph()).mutex());
 
     size_t my_index;
     { // early out to avoid creating unnecessary deltas
@@ -484,7 +561,8 @@ void SceneNode::stack_before(const valid_ptr<SceneNode*> sibling)
 
 void SceneNode::stack_behind(const valid_ptr<SceneNode*> sibling)
 {
-    std::lock_guard<RecursiveMutex> lock(m_scene.m_mutex);
+    // lock the SceneGraph hierarchy
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>(*m_scene.graph()).mutex());
 
     size_t my_index;
     { // early out to avoid creating unnecessary deltas
@@ -509,10 +587,11 @@ void SceneNode::stack_behind(const valid_ptr<SceneNode*> sibling)
 
 valid_ptr<SceneNode::ChildContainer*> SceneNode::_register_with_scene(Scene& scene)
 {
+    SceneGraphPtr scene_graph = m_scene.graph();
     std::unique_ptr<ChildContainer> container = std::make_unique<ChildContainer>();
     ChildContainer* handle = container.get();
     {
-        std::lock_guard<RecursiveMutex> lock(scene.m_mutex);
+        NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>(*scene_graph).mutex());
         scene.m_child_container.emplace(std::make_pair(handle, std::move(container)));
     }
     return handle;

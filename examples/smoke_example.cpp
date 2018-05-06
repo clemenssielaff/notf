@@ -22,8 +22,8 @@ int smoke_main(int argc, char* argv[])
     Window& window = Application::instance().create_window();
     {
         auto renderer = ProceduralRenderer::create(window, "clouds.frag");
-        std::vector<LayerPtr> layers = {Layer::create(window, std::move(renderer))};
-        SceneGraph::StatePtr state = window.scene_graph().create_state(layers);
+        std::vector<valid_ptr<LayerPtr>> layers = {Layer::create(window, std::move(renderer))};
+        SceneGraph::StatePtr state = window.scene_graph().create_state(std::move(layers));
         window.scene_graph().enter_state(state);
     }
     return app.exec();
