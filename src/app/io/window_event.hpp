@@ -1,6 +1,5 @@
 #pragma once
 
-#include "app/forwards.hpp"
 #include "app/io/event.hpp"
 #include "common/size2.hpp"
 

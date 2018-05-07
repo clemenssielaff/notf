@@ -24,7 +24,7 @@ class SceneGraph {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    NOTF_ALLOW_ACCESS_TYPES(Window, Scene, SceneNode, EventManager);
+    NOTF_ALLOW_ACCESS_TYPES(Window, Scene, SceneNode, EventManager, RenderManager);
 
     /// State of the SceneGraph.
     class State {
@@ -58,7 +58,7 @@ private:
 
     /// Factory.
     /// @param window   Window owning this SceneGraph.
-    static SceneGraphPtr create(Window& window) { return NOTF_MAKE_SHARED_FROM_PRIVATE(SceneGraph, window); }
+    static SceneGraphPtr _create(Window& window) { return NOTF_MAKE_SHARED_FROM_PRIVATE(SceneGraph, window); }
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(SceneGraph);
@@ -91,26 +91,23 @@ public:
 
     /// @{
     /// The current State of the SceneGraph.
-    StatePtr current_state()
-    {
-        NOTF_MUTEX_GUARD(m_hierarchy_mutex);
-        return m_current_state;
-    }
-    const StatePtr current_state() const
-    {
-        NOTF_MUTEX_GUARD(m_hierarchy_mutex);
-        return m_current_state;
-    }
+    StatePtr current_state();
+    const StatePtr current_state() const { return const_cast<SceneGraph*>(this)->current_state(); }
     /// @}
 
-    /// Enters a given State.
-    /// @param state    New state to enter.
-    void enter_state(valid_ptr<StatePtr> state);
+    /// Schedule this SceneGraph to switch to a new state.
+    /// Generates a StateChangeEvent and pushes it onto the event queue for the Window.
+    void enter_state(StatePtr new_state);
 
 private:
     /// Registers a SceneNode as dirty.
     /// @param node     Node to register as dirty.
     void _register_dirty(valid_ptr<SceneNode*> node);
+
+    /// Unregisters a (previously registered) dirty node as being clean again.
+    /// If the node wasn't registered as dirty to begin with, nothing changes.
+    /// @param node     Node to unregister.
+    void _remove_dirty(valid_ptr<SceneNode*> node);
 
     /// Propagates the event into the scenes.
     /// @param untyped_event
@@ -124,7 +121,14 @@ private:
     bool _freeze(const std::thread::id thread_id);
 
     /// Unfreezes the Scene again.
+    /// @param thread_id    Id of the calling thread (for safety reasons).
     void _unfreeze(const std::thread::id thread_id);
+
+    // state changes ----------------------------------------------------------
+
+    /// Enters a given State.
+    /// @param state    New state to enter.
+    void _enter_state(valid_ptr<StatePtr> state);
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
@@ -134,9 +138,12 @@ private:
     /// Current State of the SceneGraph.
     valid_ptr<StatePtr> m_current_state;
 
+    /// Frozen State of the SceneGraph.
+    risky_ptr<StatePtr> m_frozen_state = nullptr;
+
     /// Nodes that registered themselves as "dirty".
     /// If there is one or more dirty Nodes registered, the Window containing this graph must be re-rendered.
-    std::unordered_set<valid_ptr<SceneNode*>> m_dirty_nodes;
+    std::unordered_set<valid_ptr<SceneNode*>, smart_pointer_hash<valid_ptr<SceneNode*>>> m_dirty_nodes;
 
     /// Non-owning references to all Scenes that are affected by the graph's "frozen" state.
     std::set<std::weak_ptr<Scene>, std::owner_less<std::weak_ptr<Scene>>> m_scenes;
@@ -155,6 +162,8 @@ private:
     std::atomic_size_t m_freezing_thread{0};
 };
 
+// accessors ---------------------------------------------------------------------------------------------------------//
+
 template<>
 class SceneGraph::Access<Window> {
     friend class Window;
@@ -165,7 +174,7 @@ class SceneGraph::Access<Window> {
 
     /// Factory.
     /// @param window   Window owning this SceneGraph.
-    static SceneGraphPtr create(Window& window) { return SceneGraph::create(window); }
+    static SceneGraphPtr create(Window& window) { return SceneGraph::_create(window); }
 
     // fields -----------------------------------------------------------------
 private:
@@ -185,7 +194,7 @@ class SceneGraph::Access<Scene> {
     /// @param scene    Scene t register.
     void register_scene(ScenePtr scene)
     {
-        std::lock_guard<decltype(m_hierarchy_mutex)> lock(m_graph.m_hierarchy_mutex);
+        NOTF_MUTEX_GUARD(m_graph.m_hierarchy_mutex);
         m_graph.m_scenes.emplace(std::move(scene));
     }
 
@@ -209,6 +218,11 @@ class SceneGraph::Access<SceneNode> {
     /// Registers a new SceneNode as dirty.
     /// @param node     Node to register as dirty.
     void register_dirty(valid_ptr<SceneNode*> node) { m_graph._register_dirty(std::move(node)); }
+
+    /// Unregisters a (previously registered) dirty node as being clean again.
+    /// If the node wasn't registered as dirty to begin with, nothing changes.
+    /// @param node     Node to unregister.
+    void remove_dirty(valid_ptr<SceneNode*> node) { m_graph._remove_dirty(std::move(node)); }
 
     /// Direct access to the Graph's hierachy mutex.
     RecursiveMutex& mutex() { return m_graph.m_hierarchy_mutex; }
@@ -237,21 +251,45 @@ private:
     SceneGraph& m_graph;
 };
 
+template<>
+class SceneGraph::Access<RenderManager> {
+    friend class RenderManager;
+
+    /// Constructor.
+    /// @param graph    Graph to access.
+    Access(SceneGraph& graph) : m_graph(graph) {}
+
+    /// Freezes the Scene if it is not already frozen.
+    /// @param thread_id    Id of the calling thread.
+    /// @returns            True iff the Scene was frozen.
+    bool freeze(std::thread::id thread_id) { return m_graph._freeze(std::move(thread_id)); }
+
+    /// Unfreezes the Scene again.
+    /// @param thread_id    Id of the calling thread (for safety reasons).
+    void unfreeze(const std::thread::id thread_id) { m_graph._unfreeze(std::move(thread_id)); }
+
+    // fields -----------------------------------------------------------------
+private:
+    /// Graph to access.
+    SceneGraph& m_graph;
+};
+
 // ===================================================================================================================//
 
 class Scene {
-
-    friend class SceneNode;
 
     template<typename>
     friend struct NodeHandle;
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
-    NOTF_ALLOW_ACCESS_TYPES(SceneGraph);
+    NOTF_ALLOW_ACCESS_TYPES(SceneGraph, SceneNode);
 
     /// Exception thrown when the SceneGraph has gone out of scope before a Scene tries to access it.
     NOTF_EXCEPTION_TYPE(no_graph);
+
+    /// Thrown when a node did not have the expected position in the hierarchy.
+    NOTF_EXCEPTION_TYPE(hierarchy_error);
 
 protected:
     /// Factory token object to make sure that Node instances can only be created by a call to `create`.
@@ -318,8 +356,35 @@ private:
 
     // scene hierarchy --------------------------------------------------------
 private:
+    /// Registers a new node in the Scene.
+    /// @param node         New node to add to the Scene.
+    /// @throws no_graph    If the SceneGraph of this Scene has been deleted.
+    void _add_node(std::unique_ptr<SceneNode> node);
+
+    /// Creates a child container for a new Node.
+    /// @returns            An new empty vector for the children of the node.
+    /// @throws no_graph    If the SceneGraph of this Scene has been deleted.
+    valid_ptr<ChildContainer*> _create_child_container();
+
+    /// Finds a delta for the given child container and returns it, if it exists.
+    /// @param container    Child container for which to find a delta.
+    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    risky_ptr<ChildContainer*> _get_delta(valid_ptr<ChildContainer*> container);
+
+    /// Creates a new delta for the given child container and returns it.
+    /// @param container    Child container to create a delta for.
+    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    valid_ptr<ChildContainer*> _create_delta(valid_ptr<ChildContainer*> container);
+
+    /// Removes an existing child container.
+    /// Does nothing if `container` does not identify a child container.
+    /// @param container    Container to remove.
+    /// @throws no_graph    If the SceneGraph of this Scene has been deleted.
+    void _remove_child_container(valid_ptr<ChildContainer*> container);
+
     /// Deletes the given node from the Scene.
-    /// @param node     Node to remove.
+    /// @param node         Node to remove.
+    /// @throws no_graph    If the SceneGraph of this Scene has been deleted.
     void _delete_node(valid_ptr<SceneNode*> node);
 
     /// Creates the root node.
@@ -352,6 +417,8 @@ private:
     valid_ptr<RootSceneNode*> m_root;
 };
 
+// accessors ---------------------------------------------------------------------------------------------------------//
+
 template<>
 class Scene::Access<SceneGraph> {
     friend class SceneGraph;
@@ -377,6 +444,57 @@ private:
     Scene& m_scene;
 };
 
+template<>
+class Scene::Access<SceneNode> {
+    friend class SceneNode;
+
+    /// Container used to store the children of a SceneNode.
+    using ChildContainer = Scene::ChildContainer;
+
+    /// Constructor.
+    /// @param scene    Scene to access.
+    Access(Scene& scene) : m_scene(scene) {}
+
+    /// Registers a new node in the Scene.
+    /// @param node     New node to add to the Scene.
+    void add_node(std::unique_ptr<SceneNode> node) { m_scene._add_node(std::move(node)); }
+
+    /// Creates a child container for a new Node.
+    /// @returns            An new empty vector for the children of the node.
+    /// @throws no_graph    If the SceneGraph of this Scene has been deleted.
+    valid_ptr<Scene::ChildContainer*> create_child_container() { return m_scene._create_child_container(); }
+
+    /// Removes an existing child container.
+    /// Does nothing if `container` does not identify a child container.
+    /// @param container    Container to remove.
+    /// @throws no_graph    If the SceneGraph of this Scene has been deleted.
+    void remove_child_container(valid_ptr<ChildContainer*> container)
+    {
+        m_scene._remove_child_container(std::move(container));
+    }
+
+    /// Finds a delta for the given child container and returns it, if it exists.
+    /// @param container    Child container for which to find a delta.
+    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    risky_ptr<ChildContainer*> get_delta(valid_ptr<ChildContainer*> container)
+    {
+        return m_scene._get_delta(std::move(container));
+    }
+
+    /// Creates a new delta for the given child container and returns it.
+    /// @param container    Child container to create a delta for.
+    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    valid_ptr<ChildContainer*> create_delta(valid_ptr<ChildContainer*> container)
+    {
+        return m_scene._create_delta(std::move(container));
+    }
+
+    // fields -----------------------------------------------------------------
+private:
+    /// Scene to access.
+    Scene& m_scene;
+};
+
 // ===================================================================================================================//
 
 /// Base of all Nodes in a Scene.
@@ -390,7 +508,10 @@ public:
     NOTF_ALLOW_ACCESS_TYPES(Scene);
 
     /// Container used to store the children of a SceneNode.
-    using ChildContainer = Scene::ChildContainer;
+    using ChildContainer = Scene::Access<SceneNode>::ChildContainer;
+
+    /// Thrown when a node did not have the expected position in the hierarchy.
+    using hierarchy_error = Scene::hierarchy_error;
 
 protected:
     /// Factory token object to make sure that Node instances can only be created by a call to `_add_child`.
@@ -398,11 +519,6 @@ protected:
         friend class SceneNode;
         FactoryToken() {} // not `= default`, otherwise you could construct a Token via `Token{}`.
     };
-
-    //=========================================================================
-public:
-    /// Thrown when a node did not have the expected position in the hierarchy.
-    NOTF_EXCEPTION_TYPE(hierarchy_error);
 
     // signals ------------------------------------------------------------
 public:
@@ -567,18 +683,11 @@ protected:
         SceneNode* child_handle = new_child.get();
         {
             NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>(*graph()).mutex());
-            m_scene.m_nodes.emplace(std::make_pair(child_handle, std::move(new_child)));
+            Scene::Access<SceneNode>(m_scene).add_node(std::move(new_child));
             write_children().emplace_back(child_handle);
         }
         return NodeHandle<T>(&m_scene, child_handle);
     }
-
-private:
-    /// Registers a new node with the scene.
-    /// @param scene        Scene to manage the children.
-    /// @returns            An new empty vector for the children of this node.
-    /// @throws no_graph    If the SceneGraph of the node has been deleted.
-    valid_ptr<ChildContainer*> _register_with_scene(Scene& scene);
 
     // fields -------------------------------------------------------------
 private:

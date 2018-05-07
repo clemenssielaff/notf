@@ -121,10 +121,10 @@ add_sources(SOURCE_FILES src
     app/renderer.cpp
     app/forwards.hpp
     app/glfw.hpp
-    app/io/event.hpp
-    app/io/event.cpp
     app/io/char_event.hpp
     app/io/char_event.cpp
+    app/io/event.hpp
+    app/io/event.cpp
     app/io/key_event.hpp
     app/io/key_event.cpp
     app/io/keyboard.hpp
@@ -133,6 +133,8 @@ add_sources(SOURCE_FILES src
     app/io/mouse_event.cpp
     app/io/property_event.hpp
     app/io/property_event.cpp
+    app/io/state_event.hpp
+    app/io/state_event.cpp
     app/io/time.hpp
     app/io/time.cpp
     app/io/window_event.hpp

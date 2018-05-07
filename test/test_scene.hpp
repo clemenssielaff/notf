@@ -59,7 +59,7 @@ public:
     Access(SceneGraph& graph) : m_graph(graph) {}
 
     /// Factory method.
-    static SceneGraphPtr create(Window& window) { return SceneGraph::create(window); }
+    static SceneGraphPtr create(Window& window) { return SceneGraph::_create(window); }
 
     /// Creates and returns a FreezeGuard that keeps the scene frozen while it is alive.
     /// @param thread_id    (pretend) Id of the freezing thread.
