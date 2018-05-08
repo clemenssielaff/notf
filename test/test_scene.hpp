@@ -92,13 +92,13 @@ private:
 /// The test::Harness accessors subvert about any safety guards in place and are only to be used for testing under
 /// controlled circumstances (and only from a single thread)!
 template<>
-class Scene::Access<test::Harness> {
+class access::_Scene<test::Harness> {
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.
     /// @param scene    Scene to access.
-    Access(Scene& scene) : m_scene(scene) {}
+    _Scene(Scene& scene) : m_scene(scene) {}
 
     /// Returns the number of nodes in the Scene.
     size_t node_count() { return m_scene.m_nodes.size(); }

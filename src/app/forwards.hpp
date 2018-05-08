@@ -10,8 +10,8 @@ struct GLFWmonitor;
 NOTF_OPEN_NAMESPACE
 
 class Application;
-class SceneNode;
 class RootSceneNode;
+class SceneNode;
 
 // events
 struct WindowEvent;
