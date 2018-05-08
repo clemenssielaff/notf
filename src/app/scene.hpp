@@ -15,16 +15,32 @@
 
 NOTF_OPEN_NAMESPACE
 
+namespace access { // forwards
+template<class T>
+class _SceneGraph;
+class _SceneGraph_NodeHandle;
+} // namespace access
+
 // ===================================================================================================================//
 
 class SceneGraph {
 
-    template<typename>
-    friend struct NodeHandle;
+    friend class access::_SceneGraph<Window>;
+    friend class access::_SceneGraph<Scene>;
+    friend class access::_SceneGraph<SceneNode>;
+    friend class access::_SceneGraph<EventManager>;
+    friend class access::_SceneGraph<RenderManager>;
+    friend class access::_SceneGraph_NodeHandle;
+#ifdef NOTF_TEST
+    friend class access::_SceneGraph<test::Harness>;
+#endif
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    NOTF_ALLOW_ACCESS_TYPES(Window, Scene, SceneNode, EventManager, RenderManager);
+    template<class T>
+    using Access = access::_SceneGraph<T>;
+
+    using NodeHandleAccess = access::_SceneGraph_NodeHandle;
 
     /// State of the SceneGraph.
     class State {
@@ -165,113 +181,98 @@ private:
 // accessors ---------------------------------------------------------------------------------------------------------//
 
 template<>
-class SceneGraph::Access<Window> {
-    friend class Window;
-
-    /// Constructor.
-    /// @param graph    Graph to access.
-    Access(SceneGraph& graph) : m_graph(graph) {}
+class access::_SceneGraph<Window> {
+    friend class notf::Window;
 
     /// Factory.
     /// @param window   Window owning this SceneGraph.
     static SceneGraphPtr create(Window& window) { return SceneGraph::_create(window); }
-
-    // fields -----------------------------------------------------------------
-private:
-    /// Graph to access.
-    SceneGraph& m_graph;
 };
 
-template<>
-class SceneGraph::Access<Scene> {
-    friend class Scene;
+//-----------------------------------------------------------------------------
 
-    /// Constructor.
-    /// @param graph    Graph to access.
-    Access(SceneGraph& graph) : m_graph(graph) {}
+template<>
+class access::_SceneGraph<Scene> {
+    friend class notf::Scene;
 
     /// Registers a new Scene with the graph.
-    /// @param scene    Scene t register.
-    void register_scene(ScenePtr scene)
+    /// @param graph    SceneGraph to operate on.
+    /// @param scene    Scene to register.
+    static void register_scene(SceneGraph& graph, ScenePtr scene)
     {
-        NOTF_MUTEX_GUARD(m_graph.m_hierarchy_mutex);
-        m_graph.m_scenes.emplace(std::move(scene));
+        NOTF_MUTEX_GUARD(graph.m_hierarchy_mutex);
+        graph.m_scenes.emplace(std::move(scene));
     }
 
     /// Direct access to the Graph's hierachy mutex.
-    RecursiveMutex& mutex() { return m_graph.m_hierarchy_mutex; }
-
-    // fields -----------------------------------------------------------------
-private:
-    /// Graph to access.
-    SceneGraph& m_graph;
+    /// @param graph    SceneGraph to operate on.
+    static RecursiveMutex& mutex(SceneGraph& graph) { return graph.m_hierarchy_mutex; }
 };
 
-template<>
-class SceneGraph::Access<SceneNode> {
-    friend class SceneNode;
+//-----------------------------------------------------------------------------
 
-    /// Constructor.
-    /// @param graph    Graph to access.
-    Access(SceneGraph& graph) : m_graph(graph) {}
+template<>
+class access::_SceneGraph<SceneNode> {
+    friend class notf::SceneNode;
 
     /// Registers a new SceneNode as dirty.
+    /// @param graph    SceneGraph to operate on.
     /// @param node     Node to register as dirty.
-    void register_dirty(valid_ptr<SceneNode*> node) { m_graph._register_dirty(std::move(node)); }
+    static void register_dirty(SceneGraph& graph, valid_ptr<SceneNode*> node) { graph._register_dirty(node); }
 
     /// Unregisters a (previously registered) dirty node as being clean again.
     /// If the node wasn't registered as dirty to begin with, nothing changes.
+    /// @param graph    SceneGraph to operate on.
     /// @param node     Node to unregister.
-    void remove_dirty(valid_ptr<SceneNode*> node) { m_graph._remove_dirty(std::move(node)); }
+    static void remove_dirty(SceneGraph& graph, valid_ptr<SceneNode*> node) { graph._remove_dirty(node); }
 
     /// Direct access to the Graph's hierachy mutex.
-    RecursiveMutex& mutex() { return m_graph.m_hierarchy_mutex; }
-
-    // fields -----------------------------------------------------------------
-private:
-    /// Graph to access.
-    SceneGraph& m_graph;
+    /// @param graph    SceneGraph to operate on.
+    static RecursiveMutex& mutex(SceneGraph& graph) { return graph.m_hierarchy_mutex; }
 };
 
-template<>
-class SceneGraph::Access<EventManager> {
-    friend class EventManager;
+//-----------------------------------------------------------------------------
 
-    /// Constructor.
-    /// @param graph    Graph to access.
-    Access(SceneGraph& graph) : m_graph(graph) {}
+template<>
+class access::_SceneGraph<EventManager> {
+    friend class notf::EventManager;
 
     /// Propagates the event into the scenes.
-    /// @param untyped_event
-    void propagate_event(EventPtr&& untyped_event) { m_graph._propagate_event(std::move(untyped_event)); }
-
-    // fields -----------------------------------------------------------------
-private:
-    /// Graph to access.
-    SceneGraph& m_graph;
+    /// @param graph            SceneGraph to operate on.
+    /// @param untyped_event    Event to propagate.
+    static void propagate_event(SceneGraph& graph, EventPtr&& untyped_event)
+    {
+        graph._propagate_event(std::move(untyped_event));
+    }
 };
 
-template<>
-class SceneGraph::Access<RenderManager> {
-    friend class RenderManager;
+//-----------------------------------------------------------------------------
 
-    /// Constructor.
-    /// @param graph    Graph to access.
-    Access(SceneGraph& graph) : m_graph(graph) {}
+template<>
+class access::_SceneGraph<RenderManager> {
+    friend class notf::RenderManager;
 
     /// Freezes the Scene if it is not already frozen.
+    /// @param graph        SceneGraph to operate on.
     /// @param thread_id    Id of the calling thread.
     /// @returns            True iff the Scene was frozen.
-    bool freeze(std::thread::id thread_id) { return m_graph._freeze(std::move(thread_id)); }
+    static bool freeze(SceneGraph& graph, std::thread::id thread_id) { return graph._freeze(std::move(thread_id)); }
 
     /// Unfreezes the Scene again.
+    /// @param graph        SceneGraph to operate on.
     /// @param thread_id    Id of the calling thread (for safety reasons).
-    void unfreeze(const std::thread::id thread_id) { m_graph._unfreeze(std::move(thread_id)); }
+    static void unfreeze(SceneGraph& graph, const std::thread::id thread_id) { graph._unfreeze(std::move(thread_id)); }
+};
 
-    // fields -----------------------------------------------------------------
-private:
-    /// Graph to access.
-    SceneGraph& m_graph;
+//-----------------------------------------------------------------------------
+
+class access::_SceneGraph_NodeHandle {
+    template<class>
+    friend struct notf::NodeHandle;
+
+    /// Direct access to the Graph's hierachy mutex.
+    /// @param graph    SceneGraph to operate on.
+    static RecursiveMutex& mutex(SceneGraph& graph) { return graph.m_hierarchy_mutex; }
 };
 
 // ===================================================================================================================//
@@ -313,11 +314,11 @@ public:
     /// Scene Factory method.
     /// @param graph    SceneGraph containing the Scene.
     /// @param args     Additional arguments for the Scene subclass
-    template<typename T, typename... Args, typename = std::enable_if_t<std::is_base_of<Scene, T>::value>>
+    template<class T, class... Args, typename = std::enable_if_t<std::is_base_of<Scene, T>::value>>
     static std::shared_ptr<T> create(const valid_ptr<SceneGraphPtr>& graph, Args... args)
     {
         std::shared_ptr<T> scene = std::make_shared<T>(FactoryToken(), graph, std::forward<Args>(args)...);
-        SceneGraph::Access<Scene>(*graph).register_scene(scene);
+        access::_SceneGraph<Scene>::register_scene(*graph, scene);
         return scene;
     }
 
@@ -383,8 +384,9 @@ private:
     void _remove_child_container(valid_ptr<ChildContainer*> container);
 
     /// Deletes the given node from the Scene.
-    /// @param node         Node to remove.
-    /// @throws no_graph    If the SceneGraph of this Scene has been deleted.
+    /// @param node             Node to remove.
+    /// @throws no_graph        If the SceneGraph of this Scene has been deleted.
+    /// @throws hierarchy_error If you try to remove the root node.
     void _delete_node(valid_ptr<SceneNode*> node);
 
     /// Creates the root node.
@@ -592,7 +594,7 @@ public:
     ///@{
     /// Returns the first ancestor of this Node that has a specific type (can be empty if none is found).
     /// @throws no_graph    If the SceneGraph of the node has been deleted.
-    template<typename T>
+    template<class T>
     risky_ptr<const T*> first_ancestor() const
     {
         if (!std::is_base_of<SceneNode, T>::value) {
@@ -600,7 +602,7 @@ public:
         }
 
         // lock the SceneGraph hierarchy
-        NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>(*m_scene.graph()).mutex());
+        NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*m_scene.graph()));
 
         valid_ptr<const SceneNode*> next = parent();
         while (next != next->parent()) {
@@ -611,7 +613,7 @@ public:
         }
         return nullptr;
     }
-    template<typename T>
+    template<class T>
     risky_ptr<T*> first_ancestor()
     {
         return const_cast<const SceneNode*>(this)->first_ancestor<T>();
@@ -626,7 +628,7 @@ public:
     /// A ScenGraph containing at least one dirty SceneNode causes the Window to be redrawn at the next opportunity.
     /// Is virtual, so subclasses may decide to ignore this method, for example if the node is invisible.
     /// @throws no_graph        If the SceneGraph of the node has been deleted.
-    virtual void redraw() { SceneGraph::Access<SceneNode>(*graph()).register_dirty(this); }
+    virtual void redraw() { SceneGraph::Access<SceneNode>::register_dirty(*graph(), this); }
 
     // z-order ------------------------------------------------------------
 
@@ -675,14 +677,14 @@ protected:
     /// @param args Arguments that are forwarded to the constructor of the child.
     ///             Note that all arguments for the Node base class are supplied automatically by this method.
     /// @throws no_graph    If the SceneGraph of the node has been deleted.
-    template<typename T, typename... Args>
+    template<class T, class... Args>
     NodeHandle<T> _add_child(Args&&... args)
     {
         std::unique_ptr<SceneNode> new_child
             = std::make_unique<T>(FactoryToken(), m_scene, this, std::forward<Args>(args)...);
         SceneNode* child_handle = new_child.get();
         {
-            NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>(*graph()).mutex());
+            NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
             Scene::Access<SceneNode>(m_scene).add_node(std::move(new_child));
             write_children().emplace_back(child_handle);
         }
@@ -730,7 +732,7 @@ public:
 
     /// Creates and adds a new child to this node.
     /// @param args Arguments that are forwarded to the constructor of the child.
-    template<typename T, typename... Args>
+    template<class T, class... Args>
     NodeHandle<T> add_child(Args&&... args) // TODO: this should be set_child, because it is the root
     {
         return _add_child<T>(std::forward<Args>(args)...);
@@ -744,12 +746,12 @@ public:
 /// NodeHandle are not copyable or assignable to make sure that the parent node always outlives its child nodes.
 /// The handle is templated on the BaseNode subtype that it contains, so the owner has direct access to the node
 /// and doesn't manually need to cast.
-template<typename T>
+template<class T>
 struct NodeHandle {
     static_assert(std::is_base_of<SceneNode, T>::value,
                   "The type wrapped by NodeHandle<T> must be a subclass of SceneNode");
 
-    template<typename U, typename... Args>
+    template<class U, class... Args>
     friend NodeHandle<U> SceneNode::_add_child(Args&&... args);
 
     // methods ------------------------------------------------------------
@@ -799,7 +801,7 @@ public:
             return; // TODO: what do we do if a NodeHandle outlives the SceneGraph?
         }
 
-        NOTF_MUTEX_GUARD(scene_graph->m_hierarchy_mutex);
+        NOTF_MUTEX_GUARD(SceneGraph::NodeHandleAccess::mutex(*scene_graph));
 
         valid_ptr<SceneNode*> parent = m_node->parent();
         NOTF_ASSERT_MSG(m_scene->m_nodes.count(parent) != 0,

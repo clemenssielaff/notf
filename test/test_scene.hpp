@@ -10,7 +10,7 @@ NOTF_OPEN_NAMESPACE
 /// The test::Harness accessors subvert about any safety guards in place and are only to be used for testing under
 /// controlled circumstances (and only from a single thread)!
 template<>
-class SceneGraph::Access<test::Harness> {
+class access::_SceneGraph<test::Harness> {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -56,7 +56,7 @@ public:
 public:
     /// Constructor.
     /// @param graph    SceneGraph to access.
-    Access(SceneGraph& graph) : m_graph(graph) {}
+    _SceneGraph(SceneGraph& graph) : m_graph(graph) {}
 
     /// Factory method.
     static SceneGraphPtr create(Window& window) { return SceneGraph::_create(window); }
