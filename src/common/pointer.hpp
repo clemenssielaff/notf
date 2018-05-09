@@ -31,10 +31,14 @@ struct PointerAdapter {
     /// Equality operator.
     /// @param other    Other pointer to compare against.
     bool operator==(const PointerAdapter& other) const { return m_ptr == other.m_ptr; }
+    bool operator!=(const PointerAdapter& other) const { return m_ptr != other.m_ptr; }
 
     /// Comparison operator.
     /// @param other    Other pointer to compare against.
     bool operator<(const PointerAdapter& other) const { return m_ptr < other.m_ptr; }
+    bool operator<=(const PointerAdapter& other) const { return m_ptr <= other.m_ptr; }
+    bool operator>(const PointerAdapter& other) const { return m_ptr > other.m_ptr; }
+    bool operator>=(const PointerAdapter& other) const { return m_ptr >= other.m_ptr; }
 
 private:
     /// Pointer.
@@ -150,7 +154,7 @@ struct valid_ptr {
     /// @{
     /// The wrapped pointer.
     /// @throws bad_pointer_error   If the wrapped pointer is empty.
-    constexpr T get() const
+    constexpr T& get() const
     {
         if (NOTF_UNLIKELY(m_ptr == nullptr)) {
             notf_throw(bad_pointer_error, "Failed to dereference an empty pointer");
@@ -160,6 +164,21 @@ struct valid_ptr {
     constexpr operator T() const { return get(); }
     constexpr T operator->() const { return get(); }
     constexpr decltype(auto) operator*() const { return *get(); }
+    /// @}
+
+    /// @{
+    /// Access to the raw pointer, even if T is a smart pointer.
+    /// @throws bad_pointer_error   If the wrapped pointer is empty.
+    template<class U = T, typename = typename U::element_type>
+    const typename U::element_type* raw() const
+    {
+        return get().get();
+    }
+    template<class U = T, typename = std::enable_if_t<std::is_pointer<U>::value>>
+    const U raw() const
+    {
+        return get();
+    }
     /// @}
 
     // prevents compilation when someone attempts to assign a null pointer constant
@@ -177,7 +196,7 @@ struct valid_ptr {
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    T m_ptr;
+    mutable T m_ptr;
 };
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -203,37 +222,49 @@ std::ostream& operator<<(std::ostream& os, const valid_ptr<T>& val)
 }
 
 template<class T, class U>
-auto operator==(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs) -> decltype(lhs.get() == rhs.get())
+auto operator==(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs)
 {
-    return lhs.get() == rhs.get();
+    return lhs.raw() == rhs.raw();
+}
+
+template<class T, class U = typename T::type::element_type*>
+auto operator==(const valid_ptr<T>& lhs, const U rhs)
+{
+    return lhs.raw() == rhs;
+}
+
+template<class T, class U = typename T::type::element_type*>
+auto operator==(const U lhs, const valid_ptr<T>& rhs)
+{
+    return lhs == rhs.raw();
 }
 
 template<class T, class U>
-auto operator!=(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs) -> decltype(lhs.get() != rhs.get())
+auto operator!=(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs)
 {
     return lhs.get() != rhs.get();
 }
 
 template<class T, class U>
-auto operator<(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs) -> decltype(lhs.get() < rhs.get())
+auto operator<(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs)
 {
     return lhs.get() < rhs.get();
 }
 
 template<class T, class U>
-auto operator<=(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs) -> decltype(lhs.get() <= rhs.get())
+auto operator<=(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs)
 {
     return lhs.get() <= rhs.get();
 }
 
 template<class T, class U>
-auto operator>(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs) -> decltype(lhs.get() > rhs.get())
+auto operator>(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs)
 {
     return lhs.get() > rhs.get();
 }
 
 template<class T, class U>
-auto operator>=(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs) -> decltype(lhs.get() >= rhs.get())
+auto operator>=(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs)
 {
     return lhs.get() >= rhs.get();
 }
@@ -280,7 +311,7 @@ struct risky_ptr {
     /// @{
     /// Access to the wrapped pointer.
     /// @throws bad_pointer_error   If the wrapped pointer is empty.
-    constexpr T get() const
+    constexpr T& get() const
     {
         if (NOTF_UNLIKELY(m_ptr == nullptr)) {
             notf_throw(bad_pointer_error, "Failed to dereference an empty pointer");
@@ -290,6 +321,21 @@ struct risky_ptr {
     constexpr operator T() const { return get(); }
     constexpr T operator->() const { return get(); }
     constexpr decltype(auto) operator*() const { return *get(); }
+    /// @}
+
+    /// @{
+    /// Access to the raw pointer, even if T is a smart pointer.
+    /// @throws bad_pointer_error   If the wrapped pointer is empty.
+    template<class U = T, typename = typename U::element_type>
+    const typename U::element_type* raw() const
+    {
+        return get().get();
+    }
+    template<class U = T, typename = std::enable_if_t<std::is_pointer<U>::value>>
+    const U raw() const
+    {
+        return get();
+    }
     /// @}
 
     /// Tests if the contained pointer is save.
@@ -310,7 +356,7 @@ struct risky_ptr {
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// Wrapped pointer.
-    T m_ptr = nullptr;
+    mutable T m_ptr = nullptr;
 };
 
 template<class T>
@@ -321,37 +367,37 @@ std::ostream& operator<<(std::ostream& os, const risky_ptr<T>& val)
 }
 
 template<class T, class U>
-auto operator==(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs) -> decltype(lhs.get() == rhs.get())
+auto operator==(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs)
 {
     return lhs.get() == rhs.get();
 }
 
 template<class T, class U>
-auto operator!=(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs) -> decltype(lhs.get() != rhs.get())
+auto operator!=(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs)
 {
     return lhs.get() != rhs.get();
 }
 
 template<class T, class U>
-auto operator<(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs) -> decltype(lhs.get() < rhs.get())
+auto operator<(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs)
 {
     return lhs.get() < rhs.get();
 }
 
 template<class T, class U>
-auto operator<=(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs) -> decltype(lhs.get() <= rhs.get())
+auto operator<=(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs)
 {
     return lhs.get() <= rhs.get();
 }
 
 template<class T, class U>
-auto operator>(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs) -> decltype(lhs.get() > rhs.get())
+auto operator>(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs)
 {
     return lhs.get() > rhs.get();
 }
 
 template<class T, class U>
-auto operator>=(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs) -> decltype(lhs.get() >= rhs.get())
+auto operator>=(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs)
 {
     return lhs.get() >= rhs.get();
 }

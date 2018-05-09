@@ -362,6 +362,9 @@ public:
     const RootSceneNode& root() const { return *m_root; }
     /// @}
 
+    /// The number of SceneNodes in the Scene including the root node (therefore is always >= 1).
+    size_t count_nodes() const;
+
     // event handling ---------------------------------------------------------
 private:
     /// Handles an untyped event.
@@ -498,12 +501,9 @@ public:
     const Scene& scene() const { return m_scene; }
     /// @}
 
-    /// @{
     /// The SceneGraph containing this node.
     /// @throws no_graph    If the SceneGraph of the node has been deleted.
-    valid_ptr<SceneGraphPtr> graph() { return m_scene.graph(); }
-    valid_ptr<SceneGraphConstPtr> graph() const { return m_scene.graph(); }
-    /// @}
+    valid_ptr<SceneGraphPtr> graph() const { return m_scene.graph(); }
 
     /// @{
     /// The parent of this node.
@@ -525,6 +525,22 @@ public:
     virtual void redraw() { SceneGraph::Access<SceneNode>::register_dirty(*graph(), this); }
 
     // hierarchy --------------------------------------------------------------
+
+    /// The number of direct children of this SceneNode.
+    size_t count_children() const
+    {
+        NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+        return _read_children().size();
+    }
+
+    /// The number of all (direct and indirect) descendants of this SceneNode.
+    size_t count_descendants() const
+    {
+        NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+        size_t result = 0;
+        _count_descendants_impl(result);
+        return result;
+    }
 
     /// Tests, if this Node is a descendant of the given ancestor.
     /// @param ancestor     Potential ancestor to verify.
@@ -616,6 +632,16 @@ public:
     void stack_behind(const valid_ptr<SceneNode*> sibling);
 
 protected:
+    /// Recursive implementation of `count_descendants`.
+    void _count_descendants_impl(size_t& result) const
+    {
+        NOTF_ASSERT(SceneGraph::Access<SceneNode>::mutex(*graph()).is_locked_by_this_thread());
+        result += _read_children().size();
+        for (const auto& child : _read_children()) {
+            child->_count_descendants_impl(result);
+        }
+    }
+
     /// All children of this node, orded from back to front.
     /// Never creates a delta.
     /// Note that you will need to hold the SceneGraph hierarchy mutex while calling this method, as well as for the
@@ -671,12 +697,11 @@ class access::_SceneNode<Scene> {
     /// Creates a factory Token so the Scene can create its RootNode.
     static SceneNode::FactoryToken create_token() { return notf::SceneNode::FactoryToken{}; }
 
-    /// @{
     /// All children of this node, ordered from back to front.
+    /// It is okay to access the child container directly here, because the function is only used by the Scene to create
+    /// a new delta NodeContainer.
     /// @param node     SceneNode to operate on.
-    static SceneNode::NodeContainer& children(SceneNode& node) { return node.m_children; }
     static const SceneNode::NodeContainer& children(const SceneNode& node) { return node.m_children; }
-    /// @}
 };
 
 // ===================================================================================================================//
@@ -741,15 +766,15 @@ public:
     /// @{
     /// The managed BaseNode instance correctly typed.
     /// @throws SceneNode::no_node  If the handled SceneNode has been deleted.
-    std::shared_ptr<T> get()
+    T* operator->()
     {
-        auto raw_node = m_node.lock();
+        std::shared_ptr<SceneNode> raw_node = m_node.lock();
         if (NOTF_UNLIKELY(!raw_node)) {
             notf_throw(SceneNode::no_node, "SceneNode has been deleted");
         }
-        return std::static_pointer_cast<T>(raw_node);
+        return static_cast<T*>(raw_node.get());
     }
-    std::shared_ptr<const T> get() const { return const_cast<NodeHandle<T>*>(this)->get(); }
+    const T* operator->() const { return const_cast<NodeHandle<T>*>(this)->operator->(); }
     /// @}
 
     // fields -------------------------------------------------------------

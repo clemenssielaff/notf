@@ -38,6 +38,7 @@ SceneGraph::~SceneGraph() = default;
 SceneGraph::StatePtr SceneGraph::current_state()
 {
     NOTF_MUTEX_GUARD(m_hierarchy_mutex);
+
     if (is_frozen_by(std::this_thread::get_id())) {
         NOTF_ASSERT(m_frozen_state);
         return m_frozen_state;
@@ -53,7 +54,7 @@ void SceneGraph::enter_state(StatePtr new_state)
 
 void SceneGraph::_register_dirty(valid_ptr<SceneNode*> node)
 {
-    NOTF_ASSERT(m_event_mutex.is_locked_by_this_thread()); // must be part of the serialized event handling
+    NOTF_MUTEX_GUARD(m_hierarchy_mutex);
 
     if (m_dirty_nodes.empty()) {
         m_window.request_redraw();
@@ -63,7 +64,7 @@ void SceneGraph::_register_dirty(valid_ptr<SceneNode*> node)
 
 void SceneGraph::_remove_dirty(valid_ptr<SceneNode*> node)
 {
-    NOTF_ASSERT(m_event_mutex.is_locked_by_this_thread()); // must be part of the serialized event handling
+    NOTF_MUTEX_GUARD(m_hierarchy_mutex);
 
     m_dirty_nodes.erase(node);
 }
@@ -253,6 +254,11 @@ Scene::~Scene()
 #endif
 };
 
+size_t Scene::count_nodes() const
+{
+    return m_root->count_descendants() + 1; // +1 is the root node
+}
+
 risky_ptr<Scene::NodeContainer*> Scene::_get_delta(valid_ptr<const SceneNode*> node)
 {
     NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph()));
@@ -285,7 +291,24 @@ SceneNode::SceneNode(const FactoryToken&, Scene& scene, valid_ptr<SceneNode*> pa
     log_trace << "Created \"" << m_name << "\"";
 }
 
-SceneNode::~SceneNode() { log_trace << "Destroying \"" << m_name << "\""; }
+SceneNode::~SceneNode()
+{
+#ifdef NOTF_DEBUG
+    // all children should be removed with their parent
+    for (const auto& child : m_children) {
+        NOTF_ASSERT(child.get().use_count() == 1);
+    }
+#endif
+
+    log_trace << "Destroying \"" << m_name << "\"";
+
+    try {
+        SceneGraph::Access<SceneNode>::remove_dirty(*graph(), this);
+    }
+    catch (const Scene::no_graph&) {
+        // if the SceneGraph has already been deleted, it won't matter if this SceneNode was dirty or not
+    }
+}
 
 const std::string& SceneNode::set_name(std::string name)
 {
@@ -299,7 +322,7 @@ const std::string& SceneNode::set_name(std::string name)
 bool SceneNode::has_ancestor(const valid_ptr<const SceneNode*> ancestor) const
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*m_scene.graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
 
     valid_ptr<const SceneNode*> next = parent();
     while (next != next->parent()) {
@@ -318,7 +341,7 @@ valid_ptr<SceneNode*> SceneNode::common_ancestor(valid_ptr<SceneNode*> other)
     }
 
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*m_scene.graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
 
     valid_ptr<SceneNode*> first = this;
     valid_ptr<SceneNode*> second = other;
@@ -352,43 +375,43 @@ valid_ptr<SceneNode*> SceneNode::common_ancestor(valid_ptr<SceneNode*> other)
 bool SceneNode::is_in_front() const
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*m_scene.graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
 
     const NodeContainer& siblings = m_parent->_read_children();
     NOTF_ASSERT(!siblings.empty());
-    return &(*siblings.back()) == this;
+    return siblings.back() == this;
 }
 
 bool SceneNode::is_in_back() const
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*m_scene.graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
 
     const NodeContainer& siblings = m_parent->_read_children();
     NOTF_ASSERT(!siblings.empty());
-    return &(*siblings.front()) == this;
+    return siblings.front() == this;
 }
 
 bool SceneNode::is_in_front_of(const valid_ptr<SceneNode*> sibling) const
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*m_scene.graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
 
     const NodeContainer& siblings = m_parent->_read_children();
     const size_t sibling_count = siblings.size();
     size_t my_index = 0;
     for (; my_index < sibling_count; ++my_index) {
-        if (&(*siblings[my_index]) == this) {
+        if (siblings[my_index] == this) {
             break;
         }
-        else if (&(*siblings[my_index]) == sibling) {
+        else if (siblings[my_index] == sibling) {
             return false;
         }
     }
     NOTF_ASSERT(my_index < sibling_count);
 
     for (size_t sibling_index = my_index + 1; sibling_index < sibling_count; ++sibling_index) {
-        if (&(*siblings[sibling_index]) == sibling) {
+        if (siblings[sibling_index] == sibling) {
             return true;
         }
     }
@@ -400,23 +423,23 @@ bool SceneNode::is_in_front_of(const valid_ptr<SceneNode*> sibling) const
 bool SceneNode::is_behind(const valid_ptr<SceneNode*> sibling) const
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*m_scene.graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
 
     const NodeContainer& siblings = m_parent->_read_children();
     const size_t sibling_count = siblings.size();
     size_t sibling_index = 0;
     for (; sibling_index < sibling_count; ++sibling_index) {
-        if (&(*siblings[sibling_index]) == sibling) {
+        if (siblings[sibling_index] == sibling) {
             break;
         }
-        else if (&(*siblings[sibling_index]) == this) {
+        else if (siblings[sibling_index] == this) {
             return false;
         }
     }
 
     NOTF_ASSERT(sibling_index < sibling_count);
     for (size_t my_index = sibling_index + 1; my_index < sibling_count; ++my_index) {
-        if (&(*siblings[my_index]) == this) {
+        if (siblings[my_index] == this) {
             return true;
         }
     }
@@ -428,7 +451,7 @@ bool SceneNode::is_behind(const valid_ptr<SceneNode*> sibling) const
 void SceneNode::stack_front()
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*m_scene.graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
 
     // early out to avoid creating unnecessary deltas
     if (is_in_front()) {
@@ -436,10 +459,9 @@ void SceneNode::stack_front()
     }
 
     NodeContainer& siblings = m_parent->_write_children();
-    auto it = std::find_if(siblings.begin(), siblings.end(),
-                           [&](const valid_ptr<std::shared_ptr<SceneNode>>& sibling) -> bool {
-                               return &(*sibling) == this;
-                           });
+    auto it
+        = std::find_if(siblings.begin(), siblings.end(),
+                       [&](const valid_ptr<std::shared_ptr<SceneNode>>& sibling) -> bool { return sibling == this; });
     NOTF_ASSERT(it != siblings.end());
     move_to_back(siblings, it); // "in front" means at the end of the vector ordered back to front
 }
@@ -447,7 +469,7 @@ void SceneNode::stack_front()
 void SceneNode::stack_back()
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*m_scene.graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
 
     // early out to avoid creating unnecessary deltas
     if (is_in_back()) {
@@ -455,10 +477,9 @@ void SceneNode::stack_back()
     }
 
     NodeContainer& siblings = m_parent->_write_children();
-    auto it = std::find_if(siblings.begin(), siblings.end(),
-                           [&](const valid_ptr<std::shared_ptr<SceneNode>>& sibling) -> bool {
-                               return &(*sibling) == this;
-                           });
+    auto it
+        = std::find_if(siblings.begin(), siblings.end(),
+                       [&](const valid_ptr<std::shared_ptr<SceneNode>>& sibling) -> bool { return sibling == this; });
     NOTF_ASSERT(it != siblings.end());
     move_to_front(siblings, it); // "in back" means at the start of the vector ordered back to front
 }
@@ -466,28 +487,26 @@ void SceneNode::stack_back()
 void SceneNode::stack_before(const valid_ptr<SceneNode*> sibling)
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*m_scene.graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
 
     size_t my_index;
     { // early out to avoid creating unnecessary deltas
         const NodeContainer& siblings = m_parent->_read_children();
-        auto it = std::find_if(siblings.begin(), siblings.end(),
-                               [&](const valid_ptr<std::shared_ptr<SceneNode>>& other) -> bool {
-                                   return &(*other) == this;
-                               });
+        auto it
+            = std::find_if(siblings.begin(), siblings.end(),
+                           [&](const valid_ptr<std::shared_ptr<SceneNode>>& other) -> bool { return other == this; });
         NOTF_ASSERT(it != siblings.end());
 
         my_index = static_cast<size_t>(std::distance(siblings.begin(), it)); // we only need to find the index once
-        if (my_index != 0 && &(*siblings[my_index - 1]) == sibling) {
+        if (my_index != 0 && siblings[my_index - 1] == sibling) {
             return;
         }
     }
 
     NodeContainer& siblings = m_parent->_write_children();
-    auto sibling_it = std::find_if(siblings.begin(), siblings.end(),
-                                   [&](const valid_ptr<std::shared_ptr<SceneNode>>& other) -> bool {
-                                       return &(*other) == sibling;
-                                   });
+    auto sibling_it
+        = std::find_if(siblings.begin(), siblings.end(),
+                       [&](const valid_ptr<std::shared_ptr<SceneNode>>& other) -> bool { return other == sibling; });
     if (sibling_it == siblings.end()) {
         notf_throw_format(hierarchy_error, "Cannot stack node \"{}\" before node \"{}\" as the two are not siblings.",
                           name(), sibling->name());
@@ -498,28 +517,26 @@ void SceneNode::stack_before(const valid_ptr<SceneNode*> sibling)
 void SceneNode::stack_behind(const valid_ptr<SceneNode*> sibling)
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*m_scene.graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
 
     size_t my_index;
     { // early out to avoid creating unnecessary deltas
         const NodeContainer& siblings = m_parent->_read_children();
-        auto it = std::find_if(siblings.begin(), siblings.end(),
-                               [&](const valid_ptr<std::shared_ptr<SceneNode>>& other) -> bool {
-                                   return &(*other) == this;
-                               });
+        auto it
+            = std::find_if(siblings.begin(), siblings.end(),
+                           [&](const valid_ptr<std::shared_ptr<SceneNode>>& other) -> bool { return other == this; });
         NOTF_ASSERT(it != siblings.end());
 
         my_index = static_cast<size_t>(std::distance(siblings.begin(), it)); // we only need to find the index once
-        if (my_index != siblings.size() - 1 && &(*siblings[my_index + 1]) == sibling) {
+        if (my_index != siblings.size() - 1 && siblings[my_index + 1] == sibling) {
             return;
         }
     }
 
     NodeContainer& siblings = m_parent->_write_children();
-    auto sibling_it = std::find_if(siblings.begin(), siblings.end(),
-                                   [&](const valid_ptr<std::shared_ptr<SceneNode>>& other) -> bool {
-                                       return &(*other) == sibling;
-                                   });
+    auto sibling_it
+        = std::find_if(siblings.begin(), siblings.end(),
+                       [&](const valid_ptr<std::shared_ptr<SceneNode>>& other) -> bool { return other == sibling; });
     if (sibling_it == siblings.end()) {
         notf_throw_format(hierarchy_error, "Cannot stack node \"{}\" behind node \"{}\" as the two are not siblings.",
                           name(), sibling->name());
@@ -530,7 +547,7 @@ void SceneNode::stack_behind(const valid_ptr<SceneNode*> sibling)
 const SceneNode::NodeContainer& SceneNode::_read_children() const
 {
     // make sure the SceneGraph hierarchy is properly locked
-    SceneGraphPtr scene_graph = m_scene.graph();
+    SceneGraphPtr scene_graph = graph();
     NOTF_ASSERT(SceneGraph::Access<SceneNode>::mutex(*scene_graph).is_locked_by_this_thread());
 
     // direct access if unfrozen or this is the render thread
@@ -552,7 +569,7 @@ const SceneNode::NodeContainer& SceneNode::_read_children() const
 SceneNode::NodeContainer& SceneNode::_write_children()
 {
     // make sure the SceneGraph hierarchy is properly locked
-    SceneGraphPtr scene_graph = m_scene.graph();
+    SceneGraphPtr scene_graph = graph();
     NOTF_ASSERT(SceneGraph::Access<SceneNode>::mutex(*scene_graph).is_locked_by_this_thread());
 
     // direct access if unfrozen or this is the render thread

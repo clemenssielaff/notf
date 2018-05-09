@@ -101,16 +101,10 @@ public:
     _Scene(Scene& scene) : m_scene(scene) {}
 
     /// Returns the number of nodes in the Scene.
-    size_t node_count() { return m_scene.m_nodes.size(); }
-
-    /// Returns the number of child container in the Scene.
-    size_t child_container_count() { return m_scene.m_child_container.size(); }
+    size_t node_count() { return m_scene.count_nodes(); }
 
     /// Returns the number of deltas in the Scene.
     size_t delta_count() { return m_scene.m_deltas.size(); }
-
-    /// Returns the number of new nodes in the Scene.
-    size_t deletions_count() { return m_scene.m_deletion_deltas.size(); }
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
