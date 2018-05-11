@@ -259,6 +259,8 @@ size_t Scene::count_nodes() const
     return m_root->count_descendants() + 1; // +1 is the root node
 }
 
+void Scene::clear() { m_root->clear(); }
+
 risky_ptr<Scene::NodeContainer*> Scene::_get_delta(valid_ptr<const SceneNode*> node)
 {
     NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph()));
@@ -270,13 +272,46 @@ risky_ptr<Scene::NodeContainer*> Scene::_get_delta(valid_ptr<const SceneNode*> n
     return &it->second;
 }
 
-valid_ptr<Scene::NodeContainer*> Scene::_create_delta(valid_ptr<const SceneNode*> node)
+void Scene::_create_delta(valid_ptr<const SceneNode*> node)
 {
     NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph()));
 
     auto it = m_deltas.emplace(std::make_pair(node, SceneNode::Access<Scene>::children(*node)));
     NOTF_ASSERT(it.second);
-    return &it.first->second;
+}
+
+void access::_Scene<SceneGraph>::clear_delta(Scene& scene)
+{
+#ifdef NOTF_DEBUG
+    // In debug mode, I'd like to ensure that each SceneNode is deleted before its parent.
+    // If the parent has been modified (creating a delta referencing all child nodes) and is then deleted, calling
+    // `deltas.clear()` might end up deleting the parent node before its childen.
+    // Therefore we loop over all deltas and pick out those that can safely be deleted.
+    bool progress = true;
+    while (!scene.m_deltas.empty() && progress) {
+        progress = false;
+        for (auto it = scene.m_deltas.begin(); it != scene.m_deltas.end(); ++it) {
+            bool childHasDelta = false;
+            const Scene::NodeContainer& container = it->second;
+            for (auto& child : container) {
+                if (scene.m_deltas.count(child.raw().get())) {
+                    childHasDelta = true;
+                    break;
+                }
+            }
+            if (!childHasDelta) {
+                scene.m_deltas.erase(it);
+                progress = true;
+                break;
+            }
+        }
+    }
+    // If the loop should be broken because we made no progress, a child delta references a parent...
+    // Should that ever happen, something has gone seriously wrong.
+    NOTF_ASSERT(progress);
+#else
+    scene.m_deltas.clear();
+#endif
 }
 
 //====================================================================================================================//
@@ -296,7 +331,7 @@ SceneNode::~SceneNode()
 #ifdef NOTF_DEBUG
     // all children should be removed with their parent
     for (const auto& child : m_children) {
-        NOTF_ASSERT(child.get().use_count() == 1);
+        NOTF_ASSERT(child.raw().use_count() == 1);
     }
 #endif
 
@@ -550,12 +585,12 @@ const SceneNode::NodeContainer& SceneNode::_read_children() const
     SceneGraphPtr scene_graph = graph();
     NOTF_ASSERT(SceneGraph::Access<SceneNode>::mutex(*scene_graph).is_locked_by_this_thread());
 
-    // direct access if unfrozen or this is the render thread
-    if (!scene_graph->is_frozen() || scene_graph->is_frozen_by(std::this_thread::get_id())) {
+    // direct access if unfrozen or this is the event handling thread
+    if (!scene_graph->is_frozen() || !scene_graph->is_frozen_by(std::this_thread::get_id())) {
         return m_children;
     }
 
-    // if the scene is frozen, try to find an existing delta first
+    // if the scene is frozen by this thread, try to find an existing delta first
     if (risky_ptr<NodeContainer*> delta = Scene::Access<SceneNode>::get_delta(m_scene, this)) {
         return *delta;
     }
@@ -573,19 +608,27 @@ SceneNode::NodeContainer& SceneNode::_write_children()
     NOTF_ASSERT(SceneGraph::Access<SceneNode>::mutex(*scene_graph).is_locked_by_this_thread());
 
     // direct access if unfrozen or this is the render thread
-    if (!scene_graph->is_frozen() || scene_graph->is_frozen_by(std::this_thread::get_id())) {
+    if (!scene_graph->is_frozen()) {
         return m_children;
     }
 
-    // if the scene is frozen, try to find an existing delta first
-    if (risky_ptr<NodeContainer*> delta = Scene::Access<SceneNode>::get_delta(m_scene, this)) {
-        return *delta;
+    // the render thread should never modify the hierarchy
+    NOTF_ASSERT(!scene_graph->is_frozen_by(std::this_thread::get_id()));
+
+    // if there is no delta yet, create a new one
+    if (!Scene::Access<SceneNode>::get_delta(m_scene, this)) {
+        Scene::Access<SceneNode>::create_delta(m_scene, this);
     }
 
-    // if there is no delta yet, create a new one and return it
-    else {
-        return *Scene::Access<SceneNode>::create_delta(m_scene, this);
-    }
+    // always modify your actual children, not the delta
+    return m_children;
+}
+
+void SceneNode::_clear_children()
+{
+    // lock the SceneGraph hierarchy
+    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+    _write_children().clear();
 }
 
 //====================================================================================================================//

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "common/exception.hpp"
-#include "common/hash.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -14,60 +13,57 @@ NOTF_EXCEPTION_TYPE(bad_pointer_error);
 
 namespace detail {
 
-/// Helps reducing the number of comparison pairs.
+/// @{
+/// Returns the raw pointer from any kind of other pointer without increasing the use_count of shared_ptrs.
 template<class T>
-struct PointerAdapter {
-
-    /// Constructor overload for raw pointers.
-    /// @param ptr  Raw pointer.
-    PointerAdapter(T* ptr) : m_ptr(ptr) {}
-
-    /// Constructor overload for all types that make a pointer available using `get()`.
-    /// @param ptr  Some other pointer type.
-    template<typename U>
-    PointerAdapter(const U& ptr) : m_ptr(ptr.get())
-    {}
-
-    /// Equality operator.
-    /// @param other    Other pointer to compare against.
-    bool operator==(const PointerAdapter& other) const { return m_ptr == other.m_ptr; }
-    bool operator!=(const PointerAdapter& other) const { return m_ptr != other.m_ptr; }
-
-    /// Comparison operator.
-    /// @param other    Other pointer to compare against.
-    bool operator<(const PointerAdapter& other) const { return m_ptr < other.m_ptr; }
-    bool operator<=(const PointerAdapter& other) const { return m_ptr <= other.m_ptr; }
-    bool operator>(const PointerAdapter& other) const { return m_ptr > other.m_ptr; }
-    bool operator>=(const PointerAdapter& other) const { return m_ptr >= other.m_ptr; }
-
-private:
-    /// Pointer.
-    T* m_ptr = nullptr;
-};
+std::enable_if_t<std::is_pointer<T>::value, const T> raw(const T& ptr)
+{
+    return ptr; // from raw
+}
+template<class T>
+const typename T::element_type* raw(const T& shared_ptr)
+{
+    return shared_ptr.get(); // from shared_ptr<T>
+}
+template<class T, class U = std::enable_if_t<std::is_pointer<typename T::type>::value, typename T::type>>
+const U raw(const T& safe_ptr)
+{
+    return safe_ptr.get(); // from valid_ptr<T*>
+}
+template<class T, class U = typename T::type::element_type>
+const U* raw(const T& nested_ptr)
+{
+    return &(*nested_ptr); // from valid_ptr<shared_ptr<T>>
+}
+/// @}
 
 } // namespace detail
+
+//====================================================================================================================//
 
 /// Helper struct to use when comparing pointers of different types (raw, valid_ptr, risky_ptr, shared_ptr, unique_ptr).
 /// From:
 ///     https://stackoverflow.com/a/18940595
-template<class T>
 struct pointer_equal {
     typedef std::true_type is_transparent;
-    using Adapter = detail::PointerAdapter<T>;
 
     /// Comparison operation.
-    /// Transforms both sides into the internal `Helper` type to avoid manual overloads for all kinds of pointers.
-    bool operator()(Adapter&& lhs, Adapter&& rhs) const { return lhs == rhs; }
+    template<class T, class U>
+    bool operator()(const T& lhs, const U& rhs) const
+    {
+        return detail::raw(lhs) == detail::raw(rhs);
+    }
 };
 
-template<class T>
 struct pointer_less_than {
     typedef std::true_type is_transparent;
-    using Adapter = detail::PointerAdapter<T>;
 
     /// Comparison operation.
-    /// Transforms both sides into the internal `Helper` type to avoid manual overloads for all kinds of pointers.
-    bool operator()(Adapter&& lhs, Adapter&& rhs) const { return lhs < rhs; }
+    template<class T, class U>
+    bool operator()(const T& lhs, const U& rhs) const
+    {
+        return detail::raw(lhs) < detail::raw(rhs);
+    }
 };
 
 //====================================================================================================================//
@@ -93,22 +89,6 @@ weak_ptr_equal(const std::weak_ptr<T>&, const std::weak_ptr<U>&)
 
 //====================================================================================================================//
 
-/// Specialized Hash for pointers.
-/// Uses `hash_mix` to improve pointer entropy.
-template<typename T>
-struct pointer_hash {
-    size_t operator()(const T* ptr) const { return hash_mix(to_number(ptr)); }
-};
-
-/// Specialized Hash for smart pointers.
-/// Uses `hash_mix` to improve pointer entropy.
-template<typename T>
-struct smart_pointer_hash {
-    size_t operator()(const T& ptr) const { return hash_mix(to_number(ptr.get())); }
-};
-
-//====================================================================================================================//
-
 /// Restricts a pointer or smart pointer to only hold non-null values.
 /// Has zero size overhead over T.
 ///
@@ -126,6 +106,9 @@ template<typename T>
 struct valid_ptr {
 
     static_assert(std::is_assignable<T&, std::nullptr_t>::value, "T cannot be assigned nullptr.");
+
+    /// Stored type.
+    using type = T;
 
     /// No default constructor.
     valid_ptr() = delete;
@@ -154,31 +137,17 @@ struct valid_ptr {
     /// @{
     /// The wrapped pointer.
     /// @throws bad_pointer_error   If the wrapped pointer is empty.
-    constexpr T& get() const
+    constexpr T& raw() const
     {
         if (NOTF_UNLIKELY(m_ptr == nullptr)) {
             notf_throw(bad_pointer_error, "Failed to dereference an empty pointer");
         }
         return m_ptr;
     }
-    constexpr operator T() const { return get(); }
-    constexpr T operator->() const { return get(); }
-    constexpr decltype(auto) operator*() const { return *get(); }
-    /// @}
-
-    /// @{
-    /// Access to the raw pointer, even if T is a smart pointer.
-    /// @throws bad_pointer_error   If the wrapped pointer is empty.
-    template<class U = T, typename = typename U::element_type>
-    const typename U::element_type* raw() const
-    {
-        return get().get();
-    }
-    template<class U = T, typename = std::enable_if_t<std::is_pointer<U>::value>>
-    const U raw() const
-    {
-        return get();
-    }
+    constexpr T get() const { return raw(); }
+    constexpr operator T() const { return raw(); }
+    constexpr T& operator->() const { return raw(); }
+    constexpr decltype(auto) operator*() const { return *raw(); }
     /// @}
 
     // prevents compilation when someone attempts to assign a null pointer constant
@@ -217,56 +186,44 @@ private:
 template<class T>
 std::ostream& operator<<(std::ostream& os, const valid_ptr<T>& val)
 {
-    os << val.get();
+    os << *val;
     return os;
 }
 
 template<class T, class U>
-auto operator==(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs)
+auto operator==(const valid_ptr<T>& lhs, const U& rhs)
 {
-    return lhs.raw() == rhs.raw();
-}
-
-template<class T, class U = typename T::type::element_type*>
-auto operator==(const valid_ptr<T>& lhs, const U rhs)
-{
-    return lhs.raw() == rhs;
-}
-
-template<class T, class U = typename T::type::element_type*>
-auto operator==(const U lhs, const valid_ptr<T>& rhs)
-{
-    return lhs == rhs.raw();
+    return detail::raw(lhs) == detail::raw(rhs);
 }
 
 template<class T, class U>
-auto operator!=(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs)
+auto operator!=(const valid_ptr<T>& lhs, const U& rhs)
 {
-    return lhs.get() != rhs.get();
+    return detail::raw(lhs) != detail::raw(rhs);
 }
 
 template<class T, class U>
-auto operator<(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs)
+auto operator<(const valid_ptr<T>& lhs, const U& rhs)
 {
-    return lhs.get() < rhs.get();
+    return detail::raw(lhs) < detail::raw(rhs);
 }
 
 template<class T, class U>
-auto operator<=(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs)
+auto operator<=(const valid_ptr<T>& lhs, const U& rhs)
 {
-    return lhs.get() <= rhs.get();
+    return detail::raw(lhs) <= detail::raw(rhs);
 }
 
 template<class T, class U>
-auto operator>(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs)
+auto operator>(const valid_ptr<T>& lhs, const U& rhs)
 {
-    return lhs.get() > rhs.get();
+    return detail::raw(lhs) > detail::raw(rhs);
 }
 
 template<class T, class U>
-auto operator>=(const valid_ptr<T>& lhs, const valid_ptr<U>& rhs)
+auto operator>=(const valid_ptr<T>& lhs, const U& rhs)
 {
-    return lhs.get() >= rhs.get();
+    return detail::raw(lhs) >= detail::raw(rhs);
 }
 
 // more unwanted operators for `valid_ptr`
@@ -311,31 +268,17 @@ struct risky_ptr {
     /// @{
     /// Access to the wrapped pointer.
     /// @throws bad_pointer_error   If the wrapped pointer is empty.
-    constexpr T& get() const
+    constexpr T& raw() const
     {
         if (NOTF_UNLIKELY(m_ptr == nullptr)) {
             notf_throw(bad_pointer_error, "Failed to dereference an empty pointer");
         }
         return m_ptr;
     }
-    constexpr operator T() const { return get(); }
-    constexpr T operator->() const { return get(); }
-    constexpr decltype(auto) operator*() const { return *get(); }
-    /// @}
-
-    /// @{
-    /// Access to the raw pointer, even if T is a smart pointer.
-    /// @throws bad_pointer_error   If the wrapped pointer is empty.
-    template<class U = T, typename = typename U::element_type>
-    const typename U::element_type* raw() const
-    {
-        return get().get();
-    }
-    template<class U = T, typename = std::enable_if_t<std::is_pointer<U>::value>>
-    const U raw() const
-    {
-        return get();
-    }
+    constexpr T get() const { return raw(); }
+    constexpr operator T() const { return raw(); }
+    constexpr T& operator->() const { return raw(); }
+    constexpr decltype(auto) operator*() const { return *raw(); }
     /// @}
 
     /// Tests if the contained pointer is save.
@@ -362,44 +305,44 @@ private:
 template<class T>
 std::ostream& operator<<(std::ostream& os, const risky_ptr<T>& val)
 {
-    os << val.get();
+    os << *val;
     return os;
 }
 
 template<class T, class U>
-auto operator==(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs)
+auto operator==(const risky_ptr<T>& lhs, const U& rhs)
 {
-    return lhs.get() == rhs.get();
+    return detail::raw(lhs) == detail::raw(rhs);
 }
 
 template<class T, class U>
-auto operator!=(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs)
+auto operator!=(const risky_ptr<T>& lhs, const U& rhs)
 {
-    return lhs.get() != rhs.get();
+    return detail::raw(lhs) != detail::raw(rhs);
 }
 
 template<class T, class U>
-auto operator<(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs)
+auto operator<(const risky_ptr<T>& lhs, const U& rhs)
 {
-    return lhs.get() < rhs.get();
+    return detail::raw(lhs) < detail::raw(rhs);
 }
 
 template<class T, class U>
-auto operator<=(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs)
+auto operator<=(const risky_ptr<T>& lhs, const U& rhs)
 {
-    return lhs.get() <= rhs.get();
+    return detail::raw(lhs) <= detail::raw(rhs);
 }
 
 template<class T, class U>
-auto operator>(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs)
+auto operator>(const risky_ptr<T>& lhs, const U& rhs)
 {
-    return lhs.get() > rhs.get();
+    return detail::raw(lhs) > detail::raw(rhs);
 }
 
 template<class T, class U>
-auto operator>=(const risky_ptr<T>& lhs, const risky_ptr<U>& rhs)
+auto operator>=(const risky_ptr<T>& lhs, const U& rhs)
 {
-    return lhs.get() >= rhs.get();
+    return detail::raw(lhs) >= detail::raw(rhs);
 }
 
 // more unwanted operators for `risky_ptr`

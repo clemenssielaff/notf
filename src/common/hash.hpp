@@ -87,4 +87,20 @@ constexpr inline size_t hash_mix(size_t key)
     return key;
 }
 
+//====================================================================================================================//
+
+/// Specialized Hash for pointers.
+/// Uses `hash_mix` to improve pointer entropy.
+template<typename T>
+struct pointer_hash {
+    size_t operator()(const T* ptr) const { return hash_mix(to_number(ptr)); }
+};
+
+/// Specialized Hash for smart pointers.
+/// Uses `hash_mix` to improve pointer entropy.
+template<typename T>
+struct smart_pointer_hash {
+    size_t operator()(const T& ptr) const { return hash_mix(to_number(ptr.get())); }
+};
+
 NOTF_CLOSE_NAMESPACE

@@ -523,7 +523,7 @@ private:
     RecursiveMutex m_mutex;
 
     /// All Property bodies in this graph.
-    std::set<std::unique_ptr<PropertyBody>, pointer_less_than<PropertyBody>> m_properties;
+    std::set<std::unique_ptr<PropertyBody>, pointer_less_than> m_properties;
 
     /// SceneGraph to deliver the PropertyEvents to.
     SceneGraph& m_scene_graph;
