@@ -34,9 +34,9 @@ Path::token_error::~token_error() = default;
 // ===================================================================================================================//
 
 Path::Path(std::vector<std::string>&& tokens, const bool is_absolute, const bool is_property)
-    : m_is_absolute(is_absolute), m_is_property(is_property)
+    : m_tokens(std::move(tokens)), m_is_absolute(is_absolute), m_is_property(is_property)
 {
-    _store_normalized_tokens(std::move(tokens));
+    _normalize();
 }
 
 Path::Path(const std::string_view& string)
@@ -66,13 +66,12 @@ Path::Path(const std::string_view& string)
         }
     }
 
-    std::vector<std::string> tokens;
     { // parse the node tokens
         std::string::size_type string_pos{0};
         std::string::size_type delimiter_pos = string.find_first_of(node_delimiter, string_pos);
         while (delimiter_pos != std::string::npos) {
             if (auto token_length = delimiter_pos - string_pos) {
-                tokens.emplace_back(&string[string_pos], token_length);
+                m_tokens.emplace_back(&string[string_pos], token_length);
             }
             string_pos = delimiter_pos + 1;
             delimiter_pos = string.find_first_of(node_delimiter, string_pos);
@@ -81,7 +80,7 @@ Path::Path(const std::string_view& string)
         // last node
         delimiter_pos = min(property_delimiter_pos, string.length());
         if (const auto token_length = delimiter_pos - string_pos) {
-            tokens.emplace_back(&string[string_pos], token_length);
+            m_tokens.emplace_back(&string[string_pos], token_length);
         }
     }
 
@@ -90,25 +89,11 @@ Path::Path(const std::string_view& string)
         std::string::size_type string_pos = property_delimiter_pos + 1;
         const auto token_length = string.length() - string_pos;
         NOTF_ASSERT(token_length > 0);
-        tokens.emplace_back(&string[string_pos], token_length);
+        m_tokens.emplace_back(&string[string_pos], token_length);
         m_is_property = true;
     }
 
-    _store_normalized_tokens(std::move(tokens));
-}
-
-Path::Path(Path&& other)
-{
-    m_is_absolute = other.m_is_absolute;
-    m_is_property = other.m_is_property;
-
-    if (other.m_is_normalized) {
-        m_tokens = std::move(other.m_tokens);
-    }
-    else {
-        _store_normalized_tokens(std::move(other.m_tokens));
-    }
-    m_is_normalized = true;
+    _normalize();
 }
 
 std::string Path::string() const
@@ -156,6 +141,7 @@ Path Path::operator+(const Path& other) const&
     extend(combined_tokens, other.m_tokens);
     return Path(std::move(combined_tokens), is_absolute(), other.is_property());
 }
+
 Path&& Path::operator+(Path&& other) &&
 {
     if (other.is_absolute()) {
@@ -165,32 +151,30 @@ Path&& Path::operator+(Path&& other) &&
 
     extend(m_tokens, std::move(other.m_tokens));
     m_is_property = other.m_is_property;
-    m_is_normalized = false;
     return std::move(*this);
 }
 
-void Path::_store_normalized_tokens(const std::vector<std::string>&& tokens)
+void Path::_normalize()
 {
-    m_tokens.reserve(tokens.size());
-
     // normalize the token
-    for (const std::string& token : tokens) {
-        if (token == "." && tokens.size() > 1) {
+    size_t next_valid_index = 0;
+    for (size_t token_index = 0; token_index < m_tokens.size(); ++token_index) {
+        const std::string& token = m_tokens[token_index];
+        if (token == "." && m_tokens.size() > 1) {
             continue; // ignore "current directory" dot in all but the special "." (one dot only) path
         }
 
         if (token == "..") {
-            if (m_tokens.empty()) {
+            if (next_valid_index == 0) {
                 if (is_absolute()) {
-                    m_tokens = std::move(tokens); // temporarly create an invalid path
                     notf_throw_format(no_path, "Absolute path \"{}\" cannot be resolved", string());
                 }
-                // if the path is relative and empty, we store the token
+                // if the path is relative, we allow 0-n ".." tokens at the start
             }
             else {
-                if (m_tokens.back() != "..") {
+                if (m_tokens[next_valid_index - 1] != "..") {
                     // if the token is a ".." and we know the parent node, go back one step
-                    m_tokens.pop_back();
+                    --next_valid_index;
                     continue;
                 }
                 // if the path is relative and the last token is already a ".." append the new token
@@ -198,10 +182,15 @@ void Path::_store_normalized_tokens(const std::vector<std::string>&& tokens)
         }
 
         // store the token
-        m_tokens.emplace_back(token);
+        if (next_valid_index != token_index) {
+            std::swap(m_tokens[next_valid_index], m_tokens[token_index]);
+        }
+        ++next_valid_index;
     }
+
+    NOTF_ASSERT(next_valid_index <= m_tokens.size());
+    m_tokens.resize(next_valid_index);
     m_tokens.shrink_to_fit();
-    m_is_normalized = true;
 }
 
 NOTF_CLOSE_NAMESPACE

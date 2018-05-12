@@ -47,7 +47,13 @@ public:
     /// Move constructor.
     /// @param other        Path to move from.
     /// @throws no_path     If the string failed to be parsed.
-    Path(Path&& other);
+    Path(Path&& other)
+    {
+        m_tokens = std::move(other.m_tokens);
+        m_is_absolute = other.m_is_absolute;
+        m_is_property = other.m_is_property;
+        _normalize();
+    }
 
     /// Checks whether the Path is empty.
     bool is_empty() const { return m_tokens.empty(); }
@@ -105,7 +111,7 @@ public:
     /// @throws no_path If the other path is absolute.
     Path operator+(const Path& other) const&;
 
-    /// Concatenation of this and another relative path if this is an rvalue.
+    /// Effective concatenation of this and another relative path if this is an rvalue.
     /// Does not perform normalization.
     /// @param other    Relative path to append to this one.
     /// @returns        The unnormalized concatenation of this and other.
@@ -113,8 +119,8 @@ public:
     Path&& operator+(Path&& other) &&;
 
 private:
-    /// Normalizes and stores the given tokens in this path.
-    void _store_normalized_tokens(const std::vector<std::string>&& tokens);
+    /// Normalizes the tokens in this path.
+    void _normalize();
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
@@ -126,9 +132,6 @@ private:
 
     /// Whether or not the last token in the Path is a property name.
     bool m_is_property = false;
-
-    /// Used in the move-constructor to differentiate user-defined and already normalized paths.
-    bool m_is_normalized = false;
 };
 
 NOTF_CLOSE_NAMESPACE
