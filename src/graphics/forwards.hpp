@@ -1,7 +1,5 @@
 #pragma once
 
-#include <memory>
-
 #include "common/forwards.hpp"
 
 /// Lightweight forward declaration of OpenGL types.

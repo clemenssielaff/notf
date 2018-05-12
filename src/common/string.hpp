@@ -61,4 +61,16 @@ bool icompare(const std::string& left, const std::string& right);
 /// @return      Number of additions, modifications or removals to get from s1 to s2.
 size_t levenshtein_distance(const std::string& s1, const std::string& s2);
 
+/// @{
+/// Joins a vector of strings into a single string, optionally inserting a delimiter in between.
+/// @param vec          Vector of strings to join.
+/// @param delimiter    Delimiter inserted in between the vector items.
+std::string join(const std::vector<std::string>::const_iterator begin,
+                 const std::vector<std::string>::const_iterator end, const std::string& delimiter = "");
+inline std::string join(const std::vector<std::string>& vec, const std::string& delimiter = "")
+{
+    return join(vec.cbegin(), vec.cend(), delimiter);
+}
+/// @}
+
 NOTF_CLOSE_NAMESPACE

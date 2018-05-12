@@ -113,6 +113,8 @@ add_sources(SOURCE_FILES src
     app/render_manager.cpp
     app/scene.hpp
     app/scene.cpp
+    app/path.hpp
+    app/path.cpp
     app/layer.hpp
     app/layer.cpp
     app/timer_manager.cpp
@@ -242,6 +244,7 @@ if(NOTF_BUILD_TESTS)
         test_scene.hpp
         test_scene.cpp
         test_timer.cpp
+        test_path.cpp
         test_properties.hpp
         test_properties.cpp
         test_event_manager.hpp

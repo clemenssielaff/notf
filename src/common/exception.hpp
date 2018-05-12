@@ -54,7 +54,7 @@ NOTF_COMPILER_WARNING(
 
 /// Convenience macro to throw a notf_exception with a message, that additionally contains the line, file and function
 /// where the error occured.
-#ifndef notf_throw_format
+#ifndef notf_throw_format // TODO: there is no difference between notf_throw and notf_throw_format anymore
 #define notf_throw_format(TYPE, ...)                                                                     \
     {                                                                                                    \
         throw TYPE(notf::basename(__FILE__), NOTF_CURRENT_FUNCTION, __LINE__, fmt::format(__VA_ARGS__)); \

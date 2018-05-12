@@ -1,7 +1,5 @@
 #pragma once
 
-#include <memory>
-
 #include "graphics/forwards.hpp"
 
 struct GLFWwindow;
