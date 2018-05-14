@@ -111,7 +111,7 @@ struct TestNode : public SceneNode {
 
 //====================================================================================================================//
 
-SCENARIO("a Scene can be set up and modified", "[app], [scene]")
+SCENARIO("a Scene can be set up and modified", "[app][scene]")
 {
     SceneGraphPtr scene_graph = SceneGraph::Access<test::Harness>::create(notf_window());
     std::shared_ptr<TestScene> scene_ptr = TestScene::create<TestScene>(scene_graph);
@@ -284,7 +284,9 @@ SCENARIO("a Scene can be set up and modified", "[app], [scene]")
                 NodeHandle<LeafNode> d = first_node->add_child<LeafNode>();
 
                 first_node->clear();
-//                REQUIRE(scene_access.delta_count() == 1); // only true if adding children in constructor doesn't count
+
+                 // creating adding children in the constructor doesn't count towards the delta
+                REQUIRE(scene_access.delta_count() == 1);
             }
         }
 

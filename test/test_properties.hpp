@@ -8,19 +8,11 @@ NOTF_OPEN_NAMESPACE
 /// The test::Harness accessors subvert about any safety guards in place and are only to be used for testing under
 /// controlled circumstances (and only from a single thread)!
 template<>
-class PropertyGraph::Access<test::Harness> {
+class access::_PropertyGraph<test::Harness> {
 public:
-    /// Constructor.
-    /// @param graph    PropertyGraph to access.
-    Access(PropertyGraph& graph) : m_graph(graph) {}
-
     /// Number of properties in the graph.
-    size_t size() const { return m_graph.m_properties.size(); }
-
-    // fields --------------------------------------------------------------------------------------------------------//
-private:
-    /// PropertyGraph to access.
-    PropertyGraph& m_graph;
+    /// /// @param graph    PropertyGraph to operate on.
+    static size_t size(PropertyGraph& graph) { return graph.m_properties.size(); }
 };
 
 NOTF_CLOSE_NAMESPACE

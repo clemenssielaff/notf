@@ -175,6 +175,19 @@ SCENARIO("Application path", "[app], [path]")
         }
     }
 
+    SECTION("when appending a relative path to a property path the relative path must start with '..'")
+    {
+        const Path start("/parent/to/absolute:property");
+        const Path okay("../child/to/another:property");
+        const Path should_work = start + okay;
+        REQUIRE(should_work == Path("/parent/to/absolute/child/to/another:property"));
+        REQUIRE(should_work.is_absolute());
+        REQUIRE(should_work.is_property());
+
+        const Path broken("nope/does/not:work");
+        REQUIRE_THROWS_AS(start + broken, Path::no_path);
+    }
+
     SECTION("superfluous symbols are ignored")
     {
         const Path superfluous("/parent/./child/../child/target/");

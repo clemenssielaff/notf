@@ -1,16 +1,11 @@
 #pragma once
 
 #include <algorithm>
-#include <atomic>
-#include <set>
 #include <unordered_map>
 #include <unordered_set>
 
-#include "app/forwards.hpp"
-#include "common/exception.hpp"
-#include "common/mutex.hpp"
-#include "common/pointer.hpp"
-#include "common/signal.hpp"
+#include "app/path.hpp"
+#include "app/properties.hpp"
 #include "common/size2.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -30,6 +25,9 @@ class _NodeHandle;
 // ===================================================================================================================//
 
 class SceneGraph {
+
+    // access ------------------------------------------------------------------------------------------------------- //
+
     friend class access::_SceneGraph<Window>;
     friend class access::_SceneGraph<Scene>;
     friend class access::_SceneGraph<SceneNode>;
@@ -119,6 +117,9 @@ public:
     /// Schedule this SceneGraph to switch to a new state.
     /// Generates a StateChangeEvent and pushes it onto the event queue for the Window.
     void enter_state(StatePtr new_state);
+
+    /// The PropertyGraph associated with this SceneGraph (owned by the same Window).
+    PropertyGraph& property_graph() const;
 
 private:
     /// Registers a SceneNode as dirty.
@@ -470,6 +471,9 @@ public:
     /// Exception thrown when the SceneNode has gone out of scope (Scene must have been deleted).
     NOTF_EXCEPTION_TYPE(no_node);
 
+    /// Exception thrown when you try to do something that is only allowed to do if the node hasn't been finalized yet.
+    NOTF_EXCEPTION_TYPE(node_finalized);
+
 protected:
     /// Factory token object to make sure that Node instances can only be created by a call to `_add_child`.
     class FactoryToken {
@@ -662,15 +666,19 @@ protected:
     /// @param args Arguments that are forwarded to the constructor of the child.
     ///             Note that all arguments for the Node base class are supplied automatically by this method.
     /// @throws no_graph    If the SceneGraph of the node has been deleted.
-    template<class T, class... Args>
+    template<class T, class... Args, typename = std::enable_if_t<std::is_base_of<SceneNode, T>::value>>
     NodeHandle<T> _add_child(Args&&... args)
     {
+        // create the node
         auto child = std::make_shared<T>(FactoryToken(), m_scene, this, std::forward<Args>(args)...);
+        child->m_is_finalized = true; // finalize the node once its constructor has succeeded
         auto handle = NodeHandle<T>(child);
-        {
+
+        { // store the node as a child
             NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
             _write_children().emplace_back(std::move(child));
         }
+
         return handle;
     }
 
@@ -697,6 +705,35 @@ protected:
     /// @throws no_graph    If the SceneGraph of the node has been deleted.
     void _clear_children();
 
+    /// Constructs a new Property on this SceneNode.
+    /// @param name         Name of the Property.
+    /// @param value        Initial value of the Property (also determines its type unless specified explicitly).
+    /// @throws node_finalized      If you call this method from anywhere but the constructor.
+    /// @throws Path::not_unique    If there already exists a Property of the same name on this SceneNode.
+    /// @throws no_graph            If the SceneGraph of the node has been deleted.
+    template<class T>
+    PropertyHandler<T>& _create_property(std::string name, T&& value)
+    {
+        if (m_is_finalized) {
+            notf_throw_format(node_finalized,
+                              "Cannot create Property \"{}\" (or any new Property) on SceneNode \"{}\", "
+                              "or in fact any SceneNode that has already been finalized",
+                              name, this->name());
+        }
+        if (m_properties.count(name)) {
+            notf_throw_format(Path::not_unique, "SceneNode \"{}\" already has a Property named \"{}\"", this->name(),
+                              name);
+        }
+
+        // create the property
+        PropertyHandler<T> result
+            = PropertyGraph::Access<SceneNode>::create_property(graph()->property_graph(), std::move(value), this);
+        auto it = m_properties.emplace(std::make_pair(std::move(name), result.property()));
+        NOTF_ASSERT(it.second);
+
+        return result;
+    }
+
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// The scene containing this node.
@@ -709,8 +746,14 @@ private:
     /// All children of this node, ordered from back to front.
     NodeContainer m_children;
 
+    /// All properties of this node, accessible by their (node-unique) name.
+    std::unordered_map<std::string, PropertyGraph::Access<SceneNode>::PropertyHeadPtr> m_properties;
+
     /// The user-defined name of this Node, is potentially empty and not guaranteed to be unique if set.
     std::string m_name;
+
+    /// Only unfinalized nodes can create properties and creating new children in an unfinalized node creates no deltas.
+    bool m_is_finalized = false;
 };
 
 // accessors ---------------------------------------------------------------------------------------------------------//
@@ -766,7 +809,7 @@ struct NodeHandle {
     static_assert(std::is_base_of<SceneNode, T>::value,
                   "The type wrapped by NodeHandle<T> must be a subclass of SceneNode");
 
-    template<class U, class... Args>
+    template<class U, class... Args, typename>
     friend NodeHandle<U> SceneNode::_add_child(Args&&... args);
 
     friend class access::_NodeHandle;

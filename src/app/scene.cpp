@@ -52,6 +52,8 @@ void SceneGraph::enter_state(StatePtr new_state)
     event_manger.handle(std::make_unique<StateChangeEvent>(&m_window, std::move(new_state)));
 }
 
+PropertyGraph& SceneGraph::property_graph() const { return m_window.property_graph(); }
+
 void SceneGraph::_register_dirty(valid_ptr<SceneNode*> node)
 {
     NOTF_MUTEX_GUARD(m_hierarchy_mutex);
@@ -317,6 +319,8 @@ void access::_Scene<SceneGraph>::clear_delta(Scene& scene)
 //====================================================================================================================//
 
 SceneNode::no_node::~no_node() = default;
+
+SceneNode::node_finalized::~node_finalized() = default;
 
 //====================================================================================================================//
 
@@ -607,8 +611,8 @@ SceneNode::NodeContainer& SceneNode::_write_children()
     SceneGraphPtr scene_graph = graph();
     NOTF_ASSERT(SceneGraph::Access<SceneNode>::mutex(*scene_graph).is_locked_by_this_thread());
 
-    // direct access if unfrozen or this is the render thread
-    if (!scene_graph->is_frozen()) {
+    // direct access if unfrozen or the node hasn't been finalized yet
+    if (!scene_graph->is_frozen() || !m_is_finalized) {
         return m_children;
     }
 

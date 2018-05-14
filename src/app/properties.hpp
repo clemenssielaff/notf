@@ -12,15 +12,26 @@
 
 NOTF_OPEN_NAMESPACE
 
+namespace access { // forwards
+template<class>
+class _PropertyGraph;
+class _PropertyGraph_Property;
+class _PropertyGraph_PropertyHandler;
+} // namespace access
+
 //====================================================================================================================//
 
 class PropertyGraph : public std::enable_shared_from_this<PropertyGraph> {
 
-    template<typename>
-    friend class Property;
+    // access ------------------------------------------------------------------------------------------------------- //
 
-    template<typename>
-    friend class PropertyHandler;
+    friend class access::_PropertyGraph<SceneNode>;
+    friend class access::_PropertyGraph<Window>;
+    friend class access::_PropertyGraph_Property;
+    friend class access::_PropertyGraph_PropertyHandler;
+#ifdef NOTF_TEST
+    friend class access::_PropertyGraph<test::Harness>;
+#endif
 
     // types ---------------------------------------------------------------------------------------------------------//
 private:
@@ -28,7 +39,7 @@ private:
     class PropertyBody;
     class PropertyHead;
     class PropertyHandlerBase;
-    template<typename, typename>
+    template<class, class>
     class TypedPropertyBody;
 
     /// Convenience typedef for owning pointer to property heads.
@@ -38,7 +49,11 @@ private:
     using Connected = std::vector<valid_ptr<PropertyBody*>>;
 
 public:
-    NOTF_ALLOW_ACCESS_TYPES(SceneNode, Window);
+    /// Access types.
+    template<class T>
+    using Access = access::_PropertyGraph<T>;
+    using PropertyAccess = access::_PropertyGraph_Property;
+    using PropertyHandlerAccess = access::_PropertyGraph_PropertyHandler;
 
     /// Thrown when a new expression would introduce a cyclic dependency into the graph.
     NOTF_EXCEPTION_TYPE(no_dag);
@@ -47,16 +62,15 @@ public:
     NOTF_EXCEPTION_TYPE(no_graph);
 
     /// Checks if T is a valid type to store in a Property.
-    template<typename T>
+    template<class T>
     using is_property_type = typename std::conjunction< //
         std::is_copy_constructible<T>,                  // we need to copy property values to store them as deltas
-        std::negation<std::is_const<T>>                 // property values must be modifyable
-        >;                                              //
-    template<typename T>
+        std::negation<std::is_const<T>>>;               // property values must be modifyable
+    template<class T>
     static constexpr bool is_property_type_v = is_property_type<T>::value;
 
     /// Expression defining a Property of type T.
-    template<typename T>
+    template<class T>
     using Expression = std::function<T()>;
 
     //=========================================================================
@@ -78,7 +92,7 @@ public:
     // ------------------------------------------------------------------------
 
     /// Helper type to store an update value for an untyped property.
-    template<typename T>
+    template<class T>
     struct ValueUpdate final : public Update {
 
         /// Constructor.
@@ -93,7 +107,7 @@ public:
     // ------------------------------------------------------------------------
 
     /// Helper type to store an update expression for an untyped property.
-    template<typename T>
+    template<class T>
     struct ExpressionUpdate final : public Update {
 
         /// Constructor.
@@ -159,7 +173,7 @@ public:
         /// Removes an existing expression on this Property if one exists.
         /// @param property     Property to update.
         /// @param value        New value.
-        template<typename T>
+        template<class T>
         void set_value(PropertyPtr<T> property, T&& value)
         {
             m_updates.emplace(std::make_unique<ValueUpdate<T>>(std::move(property), std::forward<T>(value)));
@@ -170,7 +184,7 @@ public:
         /// @param target           Property targeted by this update.
         /// @param expression       New expression for the targeted Property.
         /// @param dependencies     Properties that the expression depends on.
-        template<typename T>
+        template<class T>
         void set_expression(PropertyPtr<T> property, identity_t<Expression<T>>&& expression,
                             std::vector<PropertyHeadPtr>&& dependencies)
         {
@@ -197,7 +211,7 @@ public:
 private:
     class PropertyBody {
 
-        template<typename, typename>
+        template<class, class>
         friend class TypedPropertyBody;
 
         // methods ------------------------------------------------------------
@@ -240,7 +254,7 @@ private:
 
     //=========================================================================
 private:
-    template<typename T, typename = std::enable_if_t<is_property_type_v<T>>>
+    template<class T, typename = std::enable_if_t<is_property_type_v<T>>>
     class TypedPropertyBody final : public PropertyBody {
 
         friend class PropertyGraph;
@@ -374,7 +388,7 @@ private:
     /// Useful for storing a bunch of untyped PropertyHeads into a vector to pass as expression dependencies.
     class PropertyHead {
 
-        template<typename>
+        template<class>
         friend class Property;
 
         friend class Batch;
@@ -430,7 +444,7 @@ private:
     /// Abstract base class allowing a SceneNode to match an untyped PropertyUpdate with the correct PropertyHandler.
     class PropertyHandlerBase {
 
-        template<typename>
+        template<class>
         friend class PropertyHandler;
 
         // methods ------------------------------------------------------------
@@ -481,7 +495,7 @@ private:
 public:
     /// Creates a new free Property in the graph.
     /// @param value    Value held by the Property, is used to determine the property type.
-    template<typename T>
+    template<class T>
     PropertyPtr<T> create_property(T&& value)
     {
         static_assert(is_property_type_v<T>, "T is not a valid Property type");
@@ -529,64 +543,93 @@ private:
     SceneGraph& m_scene_graph;
 };
 
-/// PropertyGraph access for SceneNodes.
-template<>
-class PropertyGraph::Access<SceneNode> {
-    friend class SceneNode;
+// accessors ---------------------------------------------------------------------------------------------------------//
 
-    /// Constructor.
-    /// @param graph    PropertyGraph to access.
-    Access(PropertyGraph& graph) : m_graph(graph) {}
+template<>
+class access::_PropertyGraph<SceneNode> {
+    friend class notf::SceneNode;
+
+    using PropertyHeadPtr = PropertyGraph::PropertyHeadPtr;
 
     /// Creates a new Property node in the graph.
+    /// @param graph    PropertyGraph to operate on.
     /// @param value    Value held by the Property, is used to determine the property type.
     /// @param node     SceneNode associated with this Property.
-    template<typename T>
-    PropertyHandler<T> create_property(T value, SceneNode* node)
+    template<class T>
+    static PropertyHandler<T> create_property(PropertyGraph& graph, T value, SceneNode* node)
     {
-        return PropertyHandler<T>(m_graph.create_property(value), std::forward<T>(value), node);
+        return PropertyHandler<T>(graph.create_property(value), std::forward<T>(value), node);
     }
-
-    // fields --------------------------------------------------------------------------------------------------------//
-private:
-    /// PropertyGraph to access.
-    PropertyGraph& m_graph;
 };
 
-/// PropertyGraph access for Window.
-template<>
-class PropertyGraph::Access<Window> {
-    friend class Window;
+//-----------------------------------------------------------------------------
 
-    /// Constructor.
-    /// @param graph    PropertyGraph to access.
-    Access(PropertyGraph& graph) : m_graph(graph) {}
+template<>
+class access::_PropertyGraph<Window> {
+    friend class notf::Window;
 
     /// Factory method.
     /// @param scene_graph  SceneGraph to deliver the PropertyEvents to.
     static PropertyGraphPtr create(SceneGraph& scene_graph) { return PropertyGraph::_create(scene_graph); }
-
-    // fields --------------------------------------------------------------------------------------------------------//
-private:
-    /// PropertyGraph to access.
-    PropertyGraph& m_graph;
 };
 
+//-----------------------------------------------------------------------------
+
+class access::_PropertyGraph_Property {
+    template<class>
+    friend class notf::Property;
+
+    template<class T>
+    using TypedPropertyBody = PropertyGraph::TypedPropertyBody<T>;
+    using PropertyBody = PropertyGraph::PropertyBody;
+    using PropertyHead = PropertyGraph::PropertyHead;
+    using PropertyHeadPtr = PropertyGraph::PropertyHeadPtr;
+    using Connected = PropertyGraph::Connected;
+
+    /// Direct access to the PropertyGraph's mutex.
+    /// @param graph    PropertyGraph to operate on.
+    static RecursiveMutex& mutex(PropertyGraph& graph) { return graph.m_mutex; }
+
+    /// Fires a PropertyEvent targeting the given list of affected properties.
+    /// @param affected     Associated properties affected
+    static void fire_event(PropertyGraph& graph, PropertyGraph::UpdateSet&& affected)
+    {
+        graph._fire_event(std::move(affected));
+    }
+};
+
+//-----------------------------------------------------------------------------
+
+class access::_PropertyGraph_PropertyHandler {
+    template<class>
+    friend class notf::PropertyHandler;
+
+    using PropertyHandlerBase = PropertyGraph::PropertyHandlerBase;
+    template<class T>
+    using Expression = PropertyGraph::Expression<T>;
+    using PropertyHeadPtr = PropertyGraph::PropertyHeadPtr;
+
+    /// Direct access to the PropertyGraph's mutex.
+    /// @param graph    PropertyGraph to operate on.
+    static RecursiveMutex& mutex(PropertyGraph& graph) { return graph.m_mutex; }
+};
 //====================================================================================================================//
 
 /// PropertyHead to be used in the wild.
 /// Is properly typed.
-template<typename T>
-class Property final : public PropertyGraph::PropertyHead {
+template<class T>
+class Property final : public PropertyGraph::PropertyAccess::PropertyHead {
 
     friend class PropertyGraph;
 
     // types --------------------------------------------------------------
 private:
-    using Body = PropertyGraph::TypedPropertyBody<T>;
-    using Connected = PropertyGraph::Connected;
+    using PropertyBody = PropertyGraph::PropertyAccess::PropertyBody;
+    using Body = PropertyGraph::PropertyAccess::TypedPropertyBody<T>;
+    using Connected = PropertyGraph::PropertyAccess::Connected;
+    using PropertyHeadPtr = PropertyGraph::PropertyAccess::PropertyHeadPtr;
+
     using ExpressionUpdate = PropertyGraph::ExpressionUpdate<T>;
-    using PropertyHeadPtr = PropertyGraph::PropertyHeadPtr;
     using Update = PropertyGraph::Update;
     using UpdateSet = PropertyGraph::UpdateSet;
     using ValueUpdate = PropertyGraph::ValueUpdate<T>;
@@ -616,7 +659,7 @@ public:
     bool is_grounded() const
     {
         if (auto property_graph = _graph()) {
-            std::lock_guard<RecursiveMutex> lock(property_graph->m_mutex);
+            NOTF_MUTEX_GUARD(PropertyGraph::PropertyAccess::mutex(*property_graph));
             return _body()->is_grounded(*property_graph);
         }
         else {
@@ -632,7 +675,7 @@ public:
     const T& value()
     {
         if (auto property_graph = _graph()) {
-            std::lock_guard<RecursiveMutex> lock(property_graph->m_mutex);
+            NOTF_MUTEX_GUARD(PropertyGraph::PropertyAccess::mutex(*property_graph));
             return _body()->value(*property_graph);
         }
         else {
@@ -665,7 +708,7 @@ private:
     void _validate_update(valid_ptr<Update*> update) override
     {
         PropertyGraphPtr property_graph = _graph();
-        NOTF_ASSERT(property_graph && property_graph->m_mutex.is_locked_by_this_thread());
+        NOTF_ASSERT(property_graph && PropertyGraph::PropertyAccess::mutex(*property_graph).is_locked_by_this_thread());
 
         // check if an exception would introduce a cyclic dependency
         if (auto expression_update = dynamic_cast<ExpressionUpdate*>(update.get())) {
@@ -680,7 +723,7 @@ private:
     /// @param all_affected     [OUT] Set of all associated properties affected of the change.
     void _apply_update(PropertyGraph& graph, valid_ptr<Update*> update, UpdateSet& all_affected) override
     {
-        NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
+        NOTF_ASSERT(PropertyGraph::PropertyAccess::mutex(graph).is_locked_by_this_thread());
 
         // update with a ground value
         if (auto value_update = dynamic_cast<ValueUpdate*>(update.get())) {
@@ -711,13 +754,13 @@ private:
     UpdateSet _set_value(T&& value, const bool fire_event)
     {
         if (auto property_graph = _graph()) {
-            std::lock_guard<RecursiveMutex> lock(property_graph->m_mutex);
+            NOTF_MUTEX_GUARD(PropertyGraph::PropertyAccess::mutex(*property_graph));
 
             UpdateSet affected;
             _body()->set_value(*property_graph, std::forward<T>(value), affected);
 
             if (fire_event && !affected.empty()) {
-                property_graph->_fire_event(std::move(affected));
+                PropertyGraph::PropertyAccess::fire_event(*property_graph, std::move(affected));
                 affected.clear();
             }
             return affected;
@@ -741,13 +784,13 @@ private:
     _set_expression(Expression&& expression, std::vector<PropertyHeadPtr>&& dependencies, const bool fire_event)
     {
         if (auto property_graph = _graph()) {
-            std::lock_guard<RecursiveMutex> lock(property_graph->m_mutex);
+            NOTF_MUTEX_GUARD(PropertyGraph::PropertyAccess::mutex(*property_graph));
 
             PropertyGraph::UpdateSet affected;
             _body()->set_expression(*property_graph, std::move(expression), _bodies_of_heads(dependencies), affected);
 
             if (fire_event && !affected.empty()) {
-                property_graph->_fire_event(std::move(affected));
+                PropertyGraph::PropertyAccess::fire_event(*property_graph, std::move(affected));
                 affected.clear();
             }
             return affected;
@@ -769,24 +812,23 @@ private:
         Connected dependency_bodies;
         dependency_bodies.reserve(heads.size());
         std::transform(heads.begin(), heads.end(), std::back_inserter(dependency_bodies),
-                       [](const PropertyHeadPtr& head) -> valid_ptr<PropertyGraph::PropertyBody*> {
-                           return head->m_body;
-                       });
+                       [](const PropertyHeadPtr& head) -> valid_ptr<PropertyBody*> { return head->m_body; });
         return dependency_bodies;
     }
 };
 
 //====================================================================================================================//
 
-template<typename T>
-class PropertyHandler final : public PropertyGraph::PropertyHandlerBase {
+template<class T>
+class PropertyHandler final : public PropertyGraph::PropertyHandlerAccess::PropertyHandlerBase {
 
-    friend class PropertyGraph::Access<SceneNode>;
+    friend class access::_PropertyGraph<SceneNode>;
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
+    using PropertyHandlerBase = PropertyGraph::PropertyHandlerAccess::PropertyHandlerBase;
+    using PropertyHeadPtr = PropertyGraph::PropertyHandlerAccess::PropertyHeadPtr;
     using Expression = PropertyGraph::Expression<T>;
-    using PropertyHeadPtr = PropertyGraph::PropertyHeadPtr;
 
     // signals -------------------------------------------------------------------------------------------------------//
 public:
@@ -800,7 +842,7 @@ private:
     /// @param value        Initial value of the Property.
     /// @param node         SceneNode owning this Handler.
     PropertyHandler(PropertyPtr<T>&& property, T value, valid_ptr<SceneNode*> node)
-        : PropertyGraph::PropertyHandlerBase(node), m_property(std::move(property)), m_value(std::move(value))
+        : PropertyHandlerBase(node), m_property(std::move(property)), m_value(std::move(value))
     {}
 
 public:
@@ -851,6 +893,9 @@ public:
             = m_property->_set_expression(std::move(expression), std::move(dependencies), /* fire_event = */ false);
         _update_affected(std::move(updates));
     }
+
+    /// The Property head contained in this Handler.
+    Property<T> property() const { return m_property; }
 
 private:
     /// Shallow update of affected PropertyHandlers

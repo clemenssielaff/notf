@@ -19,6 +19,9 @@ public:
     /// Thrown when an invalid index was requested.
     NOTF_EXCEPTION_TYPE(token_error);
 
+    /// Thrown when a name or path is not unique.
+    NOTF_EXCEPTION_TYPE(not_unique);
+
     /// Delimiter character used to separate nodes in the path.
     static constexpr char node_delimiter = '/';
 

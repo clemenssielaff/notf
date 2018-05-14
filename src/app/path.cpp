@@ -11,6 +11,8 @@
 
 namespace { // anonymous
 
+NOTF_USING_NAMESPACE;
+
 std::string
 construct_error_message(const char* input, const size_t error_position, const size_t error_length, const char* message)
 {
@@ -19,6 +21,19 @@ construct_error_message(const char* input, const size_t error_position, const si
                        "  {1:>{2}}\n" // error indicator
                        "  {3}",       // error message
                        input, fmt::format("{0:^>{1}}", '^', error_length), error_position + error_length, message);
+}
+
+void check_concat(const Path& lhs, const Path& rhs)
+{
+    if (rhs.is_absolute()) {
+        notf_throw_format(Path::no_path, "Cannot combine paths \"{}\" and \"{}\", because the latter one is absolute",
+                          lhs.string(), rhs.string());
+    }
+    if (lhs.is_property() && rhs.node_count() > 0 && rhs.node(0) != "..") {
+        notf_throw_format(Path::no_path,
+                          "Cannot combine paths \"{}\" and \"{}\", because the latter one must start with a \"..\"",
+                          lhs.string(), rhs.string());
+    }
 }
 
 } // namespace
@@ -30,6 +45,8 @@ NOTF_OPEN_NAMESPACE
 Path::no_path::~no_path() = default;
 
 Path::token_error::~token_error() = default;
+
+Path::not_unique::~not_unique() = default;
 
 // ===================================================================================================================//
 
@@ -132,10 +149,7 @@ bool Path::operator==(const Path& other) const
 
 Path Path::operator+(const Path& other) const&
 {
-    if (other.is_absolute()) {
-        notf_throw_format(no_path, "Cannot combine paths \"{}\" and \"{}\", because the latter one is absolute",
-                          string(), other.string());
-    }
+    check_concat(*this, other);
 
     std::vector<std::string> combined_tokens = m_tokens;
     extend(combined_tokens, other.m_tokens);
@@ -144,10 +158,7 @@ Path Path::operator+(const Path& other) const&
 
 Path&& Path::operator+(Path&& other) &&
 {
-    if (other.is_absolute()) {
-        notf_throw_format(no_path, "Cannot combine paths \"{}\" and \"{}\", because the latter one is absolute",
-                          string(), other.string());
-    }
+    check_concat(*this, other);
 
     extend(m_tokens, std::move(other.m_tokens));
     m_is_property = other.m_is_property;

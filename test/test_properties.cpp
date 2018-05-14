@@ -17,7 +17,7 @@ struct SuspensionGuard {
 
 } // namespace
 
-SCENARIO("a PropertyGraph can be set up and modified", "[app], [property_graph]")
+SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
 {
     const std::thread::id some_thread_id{1};
     const std::thread::id other_thread_id{2};
@@ -35,7 +35,7 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app], [property_graph]"
             PropertyPtr<int> iprop1 = graph.create_property(48);
             PropertyPtr<int> iprop2 = graph.create_property(2);
             PropertyPtr<std::string> sprop1 = graph.create_property<std::string>("derbe");
-            REQUIRE(PropertyGraph::Access<test::Harness>(graph).size() == 3);
+            REQUIRE(PropertyGraph::Access<test::Harness>::size(graph) == 3);
 
             REQUIRE(iprop1->value() == 48);
             REQUIRE(iprop2->value() == 2);
@@ -51,7 +51,7 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app], [property_graph]"
 
             REQUIRE(EventManager::Access<test::Harness>(event_manager).backlog_size() == 0);
         }
-        REQUIRE(PropertyGraph::Access<test::Harness>(graph).size() == 0);
+        REQUIRE(PropertyGraph::Access<test::Harness>::size(graph) == 0);
     }
 
     SECTION("working with property expressions")
@@ -95,9 +95,12 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app], [property_graph]"
             REQUIRE(iprop2->value() == 32);
         }
         // even though iprop2 is partially owned by the expression on iprop2, it should be removed by now
-        REQUIRE(PropertyGraph::Access<test::Harness>(graph).size() == 0);
+        REQUIRE(PropertyGraph::Access<test::Harness>::size(graph) == 0);
     }
+}
 
+SCENARIO("a PropertyGraph must work with a SceneGraph", "[app][property_graph][scene]")
+{
 #else
     //        WHEN("create a graph with a few properties and freeze it")
     //        {
