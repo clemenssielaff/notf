@@ -27,7 +27,6 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
     PropertyGraph& graph = notf_window().property_graph();
     EventManager& event_manager = app.event_manager();
 
-#if 1
     SECTION("simple CRUD operations on properties")
     {
         SuspensionGuard event_suspension(event_manager);
@@ -101,6 +100,8 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
 
 SCENARIO("a PropertyGraph must work with a SceneGraph", "[app][property_graph][scene]")
 {
+
+#if 1
 #else
     //        WHEN("create a graph with a few properties and freeze it")
     //        {

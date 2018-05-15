@@ -76,6 +76,9 @@ public:
     /// @param thread_id    (pretend) Id of the thread unfreezing the graph.
     void unfreeze(const std::thread::id thread_id = std::this_thread::get_id()) { m_graph._unfreeze(thread_id); }
 
+    /// The graph's event mutex.
+    Mutex& event_mutex() { return m_graph.m_event_mutex; }
+
     /// Lets the caller pretend that this is the render thread.
     /// @param thread_id    (pretend) Id of the thread assumed to be the render thread by the Scene.
     void set_render_thread(const std::thread::id thread_id) { m_graph.m_freezing_thread = hash(thread_id); }

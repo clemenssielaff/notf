@@ -203,7 +203,7 @@ void SceneGraph::_unfreeze(NOTF_UNUSED const std::thread::id thread_id)
     }
     NOTF_ASSERT_MSG(m_freezing_thread == hash(thread_id),
                     "Thread #{} must not unfreeze the SceneGraph, because it was frozen by a different thread (#{}).",
-                    hash(thread_id), hash(m_freezing_thread.load()));
+                    hash(thread_id), hash(m_freezing_thread));
 
     {
         NOTF_MUTEX_GUARD(m_hierarchy_mutex);
@@ -247,14 +247,7 @@ Scene::Scene(const FactoryToken&, const valid_ptr<SceneGraphPtr>& graph)
     : m_graph(graph.get()), m_root(std::make_shared<RootSceneNode>(SceneNode::Access<Scene>::create_token(), *this))
 {}
 
-Scene::~Scene()
-{
-#ifdef NOTF_DEBUG
-    if (SceneGraphPtr scene_graph = graph()) {
-        NOTF_ASSERT(!scene_graph->is_frozen());
-    }
-#endif
-};
+Scene::~Scene() = default;
 
 size_t Scene::count_nodes() const
 {
@@ -324,9 +317,14 @@ SceneNode::node_finalized::~node_finalized() = default;
 
 //====================================================================================================================//
 
+thread_local std::set<valid_ptr<const SceneNode*>> SceneNode::s_unfinalized_nodes = {};
+
 SceneNode::SceneNode(const FactoryToken&, Scene& scene, valid_ptr<SceneNode*> parent)
     : m_scene(scene), m_parent(parent), m_name(next_name())
 {
+    // register this node as being unfinalized
+    s_unfinalized_nodes.emplace(this);
+
     log_trace << "Created \"" << m_name << "\"";
 }
 
@@ -340,6 +338,7 @@ SceneNode::~SceneNode()
 #endif
 
     log_trace << "Destroying \"" << m_name << "\"";
+    _finalize();
 
     try {
         SceneGraph::Access<SceneNode>::remove_dirty(*graph(), this);
@@ -612,7 +611,7 @@ SceneNode::NodeContainer& SceneNode::_write_children()
     NOTF_ASSERT(SceneGraph::Access<SceneNode>::mutex(*scene_graph).is_locked_by_this_thread());
 
     // direct access if unfrozen or the node hasn't been finalized yet
-    if (!scene_graph->is_frozen() || !m_is_finalized) {
+    if (!scene_graph->is_frozen() || !_is_finalized()) {
         return m_children;
     }
 

@@ -93,11 +93,19 @@ public:
     /// @}
 
     /// Checks if the SceneGraph currently frozen or not.
-    bool is_frozen() const { return (m_freezing_thread != 0); }
+    bool is_frozen() const
+    {
+        NOTF_ASSERT(m_event_mutex.is_locked_by_this_thread());
+        return (m_freezing_thread != 0);
+    }
 
     /// Checks if the SceneGraph is currently frozen by a given thread.
     /// @param thread_id    Id of the thread in question.
-    bool is_frozen_by(const std::thread::id& thread_id) const { return (m_freezing_thread == hash(thread_id)); }
+    bool is_frozen_by(const std::thread::id& thread_id) const
+    {
+        NOTF_ASSERT(m_event_mutex.is_locked_by_this_thread());
+        return (m_freezing_thread == hash(thread_id));
+    }
 
     // state management -------------------------------------------------------
 
@@ -181,7 +189,7 @@ private:
     mutable RecursiveMutex m_hierarchy_mutex;
 
     /// Thread that has frozen the SceneGraph (is 0 if the graph is not frozen).
-    std::atomic_size_t m_freezing_thread{0};
+    size_t m_freezing_thread = 0;
 };
 
 // accessors ---------------------------------------------------------------------------------------------------------//
@@ -671,7 +679,7 @@ protected:
     {
         // create the node
         auto child = std::make_shared<T>(FactoryToken(), m_scene, this, std::forward<Args>(args)...);
-        child->m_is_finalized = true; // finalize the node once its constructor has succeeded
+        child->_finalize();
         auto handle = NodeHandle<T>(child);
 
         { // store the node as a child
@@ -714,7 +722,7 @@ protected:
     template<class T>
     PropertyHandler<T>& _create_property(std::string name, T&& value)
     {
-        if (m_is_finalized) {
+        if (_is_finalized()) {
             notf_throw_format(node_finalized,
                               "Cannot create Property \"{}\" (or any new Property) on SceneNode \"{}\", "
                               "or in fact any SceneNode that has already been finalized",
@@ -734,6 +742,13 @@ protected:
         return result;
     }
 
+private:
+    /// Finalizes this SceneNode.
+    void _finalize() const { s_unfinalized_nodes.erase(this); }
+
+    /// Whether or not this SceneNode has been finalized or not.
+    bool _is_finalized() const { return s_unfinalized_nodes.count(this) == 0; }
+
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// The scene containing this node.
@@ -749,11 +764,11 @@ private:
     /// All properties of this node, accessible by their (node-unique) name.
     std::unordered_map<std::string, PropertyGraph::Access<SceneNode>::PropertyHeadPtr> m_properties;
 
-    /// The user-defined name of this Node, is potentially empty and not guaranteed to be unique if set.
+    /// The parent-unique name of this Node.
     std::string m_name;
 
     /// Only unfinalized nodes can create properties and creating new children in an unfinalized node creates no deltas.
-    bool m_is_finalized = false;
+    static thread_local std::set<valid_ptr<const SceneNode*>> s_unfinalized_nodes;
 };
 
 // accessors ---------------------------------------------------------------------------------------------------------//

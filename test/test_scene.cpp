@@ -125,24 +125,30 @@ SCENARIO("a Scene can be set up and modified", "[app][scene]")
 
     SECTION("freezing an empty scene has no effect")
     {
-        REQUIRE(scene_access.node_count() == 1); // root node
-        REQUIRE(scene_access.delta_count() == 0);
-
-        {
+        { // event thread
+            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            REQUIRE(scene_access.node_count() == 1); // root node
+            REQUIRE(scene_access.delta_count() == 0);
+        }
+        { // render thread
             auto guard = graph_access.freeze_guard();
         }
-
-        REQUIRE(scene_access.node_count() == 1);
-        REQUIRE(scene_access.delta_count() == 0);
+        { // event thread
+            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            REQUIRE(scene_access.node_count() == 1);
+            REQUIRE(scene_access.delta_count() == 0);
+        }
     }
 
     SECTION("creating, modifying and deleting without freezing produces no deltas")
     {
-        {                                                                                 // 1 (root node)
+        { // event thread
+            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+
             NodeHandle<TestNode> first_node = scene.root().set_child<TestNode>();         // + 1
             NodeHandle<TwoChildrenNode> a = first_node->add_child<TwoChildrenNode>();     // + 3
             NodeHandle<SplitNode> b = first_node->add_child<SplitNode>();                 // + 4
-            NodeHandle<ThreeChildrenNode> c = first_node->add_child<ThreeChildrenNode>(); // + 4
+            NodeHandle<ThreeChildrenNode> c = first_node->add_child<ThreeChildrenNode>(); // + 4 + root
 
             REQUIRE(scene_access.node_count() == 13);
             REQUIRE(scene_access.delta_count() == 0);
@@ -154,130 +160,172 @@ SCENARIO("a Scene can be set up and modified", "[app][scene]")
             REQUIRE(scene_access.delta_count() == 0);
 
             first_node->clear();
+
+            REQUIRE(scene_access.node_count() == 2);
+            REQUIRE(scene_access.delta_count() == 0);
         }
-
-        REQUIRE(scene_access.node_count() == 2);
-        REQUIRE(scene_access.delta_count() == 0);
     }
-
     SECTION("modifying nodes in a frozen scene will produce deltas that are resolved when unfrozen")
     {
-        NodeHandle<TestNode> first_node = scene.root().set_child<TestNode>();
-        NodeHandle<TwoChildrenNode> a = first_node->add_child<TwoChildrenNode>();
-
-        REQUIRE(scene_access.node_count() == 5);
-        REQUIRE(scene_access.delta_count() == 0);
-
-        { // frozen scope
-            auto guard = graph_access.freeze_guard(render_thread_id);
+        NodeHandle<TestNode> first_node;
+        NodeHandle<TwoChildrenNode> a;
+        { // event thread
+            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            first_node = scene.root().set_child<TestNode>();
+            a = first_node->add_child<TwoChildrenNode>();
 
             REQUIRE(scene_access.node_count() == 5);
             REQUIRE(scene_access.delta_count() == 0);
+        }
+        { // frozen scope
+            auto guard = graph_access.freeze_guard(render_thread_id);
 
-            // access from event thread
-            REQUIRE(a->front->is_in_front());
-            REQUIRE(a->back->is_in_back());
+            { // event thread
+                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                REQUIRE(scene_access.node_count() == 5);
+                REQUIRE(scene_access.delta_count() == 0);
 
-            // access from (pretend) render thread
-            graph_access.set_render_thread(event_thread_id);
-            CHECK(a->front->is_in_front());
-            CHECK(a->back->is_in_back());
-            graph_access.set_render_thread(render_thread_id);
+                REQUIRE(a->front->is_in_front());
+                REQUIRE(a->back->is_in_back());
+            }
+            { // render thread
+                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                graph_access.set_render_thread(event_thread_id);
+                CHECK(a->front->is_in_front());
+                CHECK(a->back->is_in_back());
+                graph_access.set_render_thread(render_thread_id);
+            }
+            { // event thread
+                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                a->reverse();
+                REQUIRE(a->front->is_in_back());
+                REQUIRE(a->back->is_in_front());
+            }
+            { // render thread
+                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                graph_access.set_render_thread(event_thread_id);
+                CHECK(a->front->is_in_front());
+                CHECK(a->back->is_in_back());
+                graph_access.set_render_thread(render_thread_id);
 
-            a->reverse();
-
-            // access from event thread
+                REQUIRE(scene_access.node_count() == 5);
+                REQUIRE(scene_access.delta_count() == 1);
+            }
+        } // end of frozen scope
+        { // event thread
+            NOTF_MUTEX_GUARD(graph_access.event_mutex());
             REQUIRE(a->front->is_in_back());
             REQUIRE(a->back->is_in_front());
 
-            // access from (pretend) render thread
-            graph_access.set_render_thread(event_thread_id);
-            CHECK(a->front->is_in_front());
-            CHECK(a->back->is_in_back());
-            graph_access.set_render_thread(render_thread_id);
-
             REQUIRE(scene_access.node_count() == 5);
-            REQUIRE(scene_access.delta_count() == 1);
+            REQUIRE(scene_access.delta_count() == 0);
         }
-
-        REQUIRE(a->front->is_in_back());
-        REQUIRE(a->back->is_in_front());
-
-        REQUIRE(scene_access.node_count() == 5);
-        REQUIRE(scene_access.delta_count() == 0);
     }
 
     SECTION("deleting nodes from a frozen scene will produce deltas that are resolved when unfrozen")
     {
-        NodeHandle<TestNode> first_node = scene.root().set_child<TestNode>();
-        NodeHandle<TwoChildrenNode> a = first_node->add_child<TwoChildrenNode>();
-        NodeHandle<SplitNode> b = first_node->add_child<SplitNode>();
-        NodeHandle<ThreeChildrenNode> c = first_node->add_child<ThreeChildrenNode>();
+        NodeHandle<TestNode> first_node;
+        NodeHandle<TwoChildrenNode> a;
+        NodeHandle<SplitNode> b;
+        NodeHandle<ThreeChildrenNode> c;
 
-        REQUIRE(scene_access.node_count() == 13);
-        REQUIRE(scene_access.delta_count() == 0);
-
-        { // frozen scope
-            auto guard = graph_access.freeze_guard(render_thread_id);
+        { // event thread
+            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            first_node = scene.root().set_child<TestNode>();
+            a = first_node->add_child<TwoChildrenNode>();
+            b = first_node->add_child<SplitNode>();
+            c = first_node->add_child<ThreeChildrenNode>();
 
             REQUIRE(scene_access.node_count() == 13);
             REQUIRE(scene_access.delta_count() == 0);
-
-            a->reverse();
-            c->reverse();
-
-            REQUIRE(scene_access.node_count() == 13);
-            REQUIRE(scene_access.delta_count() == 2); // a and c were modified
-
-            first_node->remove_child(c);
-
-            // the render thread still sees the original 13 nodes
-            graph_access.set_render_thread(event_thread_id);
-            REQUIRE(scene_access.node_count() == 13);
-
-            // the event handler already has the updated number of 9 nodes
-            graph_access.set_render_thread(render_thread_id);
-            REQUIRE(scene_access.node_count() == 9);
-            REQUIRE(scene_access.delta_count() == 3);
         }
+        { // frozen scope
+            auto guard = graph_access.freeze_guard(render_thread_id);
+
+            { // event thread
+                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                REQUIRE(scene_access.node_count() == 13);
+                REQUIRE(scene_access.delta_count() == 0);
+
+                a->reverse();
+                c->reverse();
+
+                REQUIRE(scene_access.node_count() == 13);
+                REQUIRE(scene_access.delta_count() == 2); // a and c were modified
+
+                first_node->remove_child(c);
+            }
+            { // // the render thread still sees the original 13 nodes
+                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                graph_access.set_render_thread(event_thread_id);
+                REQUIRE(scene_access.node_count() == 13);
+                graph_access.set_render_thread(render_thread_id);
+            }
+            { // the event handler already has the updated number of 9 nodes
+                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                REQUIRE(scene_access.node_count() == 9);
+                REQUIRE(scene_access.delta_count() == 3);
+            }
+        } // end of frozen scope
     }
 
     SECTION("nodes that are created and modified with a frozen scene will unfreeze with it")
     {
-        NodeHandle<TestNode> first_node = scene.root().set_child<TestNode>();
+        NodeHandle<TestNode> first_node;
+        NodeHandle<TwoChildrenNode> a;
+
+        { // event thread
+            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            first_node = scene.root().set_child<TestNode>();
+        }
+
         {
             graph_access.freeze(render_thread_id);
 
-            NodeHandle<TwoChildrenNode> a = first_node->add_child<TwoChildrenNode>();
+            { // event thread
+                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                a = first_node->add_child<TwoChildrenNode>();
 
-            CHECK(a->front->is_in_front());
-            CHECK(a->back->is_in_back());
+                CHECK(a->front->is_in_front());
+                CHECK(a->back->is_in_back());
 
-            a->reverse();
+                a->reverse();
 
-            CHECK(a->front->is_in_back());
-            CHECK(a->back->is_in_front());
+                CHECK(a->front->is_in_back());
+                CHECK(a->back->is_in_front());
+            }
 
             graph_access.unfreeze(render_thread_id);
-            REQUIRE(scene_access.delta_count() == 0);
 
-            REQUIRE(a->front->is_in_back());
-            REQUIRE(a->back->is_in_front());
+            { // event thread
+                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                REQUIRE(scene_access.delta_count() == 0);
 
-            REQUIRE(scene_access.node_count() == 5);
+                REQUIRE(a->front->is_in_back());
+                REQUIRE(a->back->is_in_front());
+
+                REQUIRE(scene_access.node_count() == 5);
+            }
         }
     }
 
     SECTION("nodes that are create & removed while frozen do not affect the scene when unfrozen again")
     {
-        NodeHandle<TestNode> first_node = scene.root().set_child<TestNode>();
+        NodeHandle<TestNode> first_node;
 
-        REQUIRE(scene_access.node_count() == 2);
-        REQUIRE(scene_access.delta_count() == 0);
+        { // event thread
+            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            first_node = scene.root().set_child<TestNode>();
 
+            REQUIRE(scene_access.node_count() == 2);
+            REQUIRE(scene_access.delta_count() == 0);
+        }
         { // frozen scope
             auto guard = graph_access.freeze_guard(render_thread_id);
-            {
+
+            { // event thread
+                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+
                 NodeHandle<TwoChildrenNode> a = first_node->add_child<TwoChildrenNode>();
                 NodeHandle<SplitNode> b = first_node->add_child<SplitNode>();
                 NodeHandle<ThreeChildrenNode> c = first_node->add_child<ThreeChildrenNode>();
@@ -285,12 +333,14 @@ SCENARIO("a Scene can be set up and modified", "[app][scene]")
 
                 first_node->clear();
 
-                 // creating adding children in the constructor doesn't count towards the delta
+                // creating adding children in the constructor doesn't count towards the delta
                 REQUIRE(scene_access.delta_count() == 1);
             }
+        } // end of frozen scope
+        { // event thread
+            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            REQUIRE(scene_access.node_count() == 2);
+            REQUIRE(scene_access.delta_count() == 0);
         }
-
-        REQUIRE(scene_access.node_count() == 2);
-        REQUIRE(scene_access.delta_count() == 0);
     }
 }
