@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -44,6 +45,8 @@ public:
     template<class T>
     using Access = access::_SceneGraph<T>;
     using NodeHandleAccess = access::_SceneGraph_NodeHandle;
+
+    // ------------------------------------------------------------------------
 
     /// State of the SceneGraph.
     class State {
@@ -324,11 +327,97 @@ private:
     /// Shared pointer to any SceneNode.
     using SceneNodePtr = std::shared_ptr<SceneNode>;
 
-    /// Container for all child nodes of a SceneNode.
-    using NodeContainer = std::vector<valid_ptr<SceneNodePtr>>;
-
     /// Shared pointer to the root node.
     using RootPtr = valid_ptr<std::shared_ptr<RootSceneNode>>;
+
+    // ------------------------------------------------------------------------
+
+    /// Container for all child nodes of a SceneNode.
+    class NodeContainer {
+
+        // methods ------------------------------------------------------------
+    public:
+        /// Tests if this container is empty.
+        bool empty() const noexcept { return m_order.empty(); }
+
+        /// Number of SceneNodes in the container.
+        size_t size() const noexcept { return m_order.size(); }
+
+        /// Checks if the container contains a SceneNode by the given name.
+        /// @param name Name to check for.
+        bool contains(const std::string& name) const { return m_names.count(name); }
+
+        /// Adds a new SceneNode to the container.
+        /// @param node Node to add.
+        /// @returns    True iff the node was inserted successfully, false otherwise.
+        bool add(valid_ptr<SceneNodePtr> node);
+
+        /// Erases a given SceneNode from the container.
+        void erase(const SceneNodePtr& node);
+
+        /// Clears all SceneNodes from the container.
+        void clear()
+        {
+            m_order.clear();
+            m_names.clear();
+        }
+
+        /// Moves the given node in front of all of its siblings.
+        /// @param node     Node to move.
+        void stack_front(const valid_ptr<SceneNode*> node);
+
+        /// Moves the given node behind all of its siblings.
+        /// @param node     Node to move.
+        void stack_back(const valid_ptr<SceneNode*> node);
+
+        /// Moves the node at a given index before a given sibling.
+        /// @param index    Index of the node to move
+        /// @param sibling  Sibling to stack before.
+        /// @throws hierarchy_error     If the sibling is not a sibling of this node.
+        void stack_before(const size_t index, const valid_ptr<SceneNode*> relative);
+
+        /// Moves the node at a given index behind a given sibling.
+        /// @param index    Index of the node to move
+        /// @param sibling  Sibling to stack behind.
+        /// @throws hierarchy_error     If the sibling is not a sibling of this node.
+        void stack_behind(const size_t index, const valid_ptr<SceneNode*> sibling);
+
+        /// @{
+        /// Reference to the SceneNode in the back of the stack.
+        auto& back() { return m_order.front(); }
+        const auto& back() const { return m_order.front(); }
+        /// @}
+
+        /// @{
+        /// Reference to the SceneNode in the front of the stack.
+        auto& front() { return m_order.back(); }
+        const auto& front() const { return m_order.back(); }
+        /// @}
+
+        /// @{
+        /// Iterator-adapters for traversing the contained SceneNodes in order.
+        auto begin() noexcept { return m_order.begin(); }
+        auto begin() const noexcept { return m_order.cbegin(); }
+        auto cbegin() const noexcept { return m_order.cbegin(); }
+        auto end() noexcept { return m_order.end(); }
+        auto end() const noexcept { return m_order.cend(); }
+        auto cend() const noexcept { return m_order.cend(); }
+        /// @}
+
+        /// @{
+        /// Index-based access to a SceneNode in the container.
+        auto& operator[](size_t pos) { return m_order[pos]; }
+        const auto& operator[](size_t pos) const { return m_order[pos]; }
+        /// @}
+
+        // fields -------------------------------------------------------------
+    private:
+        /// All SceneNodes in order, also provides ownership.
+        std::vector<valid_ptr<SceneNodePtr>> m_order;
+
+        /// Provides name-based lookup of the contained SceneNodes.
+        std::map<std::string, std::weak_ptr<SceneNode>> m_names;
+    };
 
     // methods -------------------------------------------------------------------------------------------------------//
 public:
@@ -684,7 +773,7 @@ protected:
 
         { // store the node as a child
             NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
-            _write_children().emplace_back(std::move(child));
+            _write_children().add(std::move(child));
         }
 
         return handle;
@@ -702,10 +791,7 @@ protected:
         { // remove the node from the child container
             NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
             NodeContainer& children = _write_children();
-            auto it = std::find(children.begin(), children.end(), node);
-            if (it != children.end()) {
-                children.erase(it);
-            }
+            children.erase(node);
         }
     }
 

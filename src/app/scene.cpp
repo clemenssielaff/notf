@@ -243,6 +243,67 @@ Scene::hierarchy_error::~hierarchy_error() = default;
 
 //====================================================================================================================//
 
+bool Scene::NodeContainer::add(valid_ptr<SceneNodePtr> node)
+{
+    if (contains(node->name())) {
+        return false;
+    }
+    m_names.emplace(std::make_pair(node->name(), node.raw()));
+    m_order.emplace_back(std::move(node));
+    return true;
+}
+
+void Scene::NodeContainer::erase(const SceneNodePtr& node)
+{
+    auto it = std::find(m_order.begin(), m_order.end(), node);
+    if (it != m_order.end()) {
+        m_names.erase((*it)->name());
+        m_order.erase(it);
+    }
+}
+
+void Scene::NodeContainer::stack_front(const valid_ptr<SceneNode*> node)
+{
+    auto it
+        = std::find_if(m_order.begin(), m_order.end(), [&](const auto& sibling) -> bool { return sibling == node; });
+    NOTF_ASSERT(it != m_order.end());
+    move_to_back(m_order, it); // "in front" means at the end of the vector ordered back to front
+}
+
+void Scene::NodeContainer::stack_back(const valid_ptr<SceneNode*> node)
+{
+    auto it
+        = std::find_if(m_order.begin(), m_order.end(), [&](const auto& sibling) -> bool { return sibling == node; });
+    NOTF_ASSERT(it != m_order.end());
+    move_to_front(m_order, it); // "in back" means at the start of the vector ordered back to front
+}
+
+void Scene::NodeContainer::stack_before(const size_t index, const valid_ptr<SceneNode*> sibling)
+{
+    auto node_it = iterator_at(m_order, index);
+    auto sibling_it = std::find(m_order.begin(), m_order.end(), sibling);
+    if (sibling_it == m_order.end()) {
+        notf_throw_format(hierarchy_error,
+                          "Cannot stack node \"{}\" before node \"{}\" because the two are not siblings.",
+                          (*node_it)->name(), sibling->name());
+    }
+    notf::move_behind_of(m_order, node_it, sibling_it);
+}
+
+void Scene::NodeContainer::stack_behind(const size_t index, const valid_ptr<SceneNode*> sibling)
+{
+    auto node_it = iterator_at(m_order, index);
+    auto sibling_it = std::find(m_order.begin(), m_order.end(), sibling);
+    if (sibling_it == m_order.end()) {
+        notf_throw_format(hierarchy_error,
+                          "Cannot stack node \"{}\" before node \"{}\" because the two are not siblings.",
+                          (*node_it)->name(), sibling->name());
+    }
+    notf::move_in_front_of(m_order, node_it, sibling_it);
+}
+
+//====================================================================================================================//
+
 Scene::Scene(const FactoryToken&, const valid_ptr<SceneGraphPtr>& graph)
     : m_graph(graph.get()), m_root(std::make_shared<RootSceneNode>(SceneNode::Access<Scene>::create_token(), *this))
 {}
@@ -417,7 +478,7 @@ bool SceneNode::is_in_front() const
 
     const NodeContainer& siblings = m_parent->_read_children();
     NOTF_ASSERT(!siblings.empty());
-    return siblings.back() == this;
+    return siblings.front() == this;
 }
 
 bool SceneNode::is_in_back() const
@@ -427,7 +488,7 @@ bool SceneNode::is_in_back() const
 
     const NodeContainer& siblings = m_parent->_read_children();
     NOTF_ASSERT(!siblings.empty());
-    return siblings.front() == this;
+    return siblings.back() == this;
 }
 
 bool SceneNode::is_in_front_of(const valid_ptr<SceneNode*> sibling) const
@@ -497,11 +558,7 @@ void SceneNode::stack_front()
     }
 
     NodeContainer& siblings = m_parent->_write_children();
-    auto it
-        = std::find_if(siblings.begin(), siblings.end(),
-                       [&](const valid_ptr<std::shared_ptr<SceneNode>>& sibling) -> bool { return sibling == this; });
-    NOTF_ASSERT(it != siblings.end());
-    move_to_back(siblings, it); // "in front" means at the end of the vector ordered back to front
+    siblings.stack_front(this);
 }
 
 void SceneNode::stack_back()
@@ -515,11 +572,7 @@ void SceneNode::stack_back()
     }
 
     NodeContainer& siblings = m_parent->_write_children();
-    auto it
-        = std::find_if(siblings.begin(), siblings.end(),
-                       [&](const valid_ptr<std::shared_ptr<SceneNode>>& sibling) -> bool { return sibling == this; });
-    NOTF_ASSERT(it != siblings.end());
-    move_to_front(siblings, it); // "in back" means at the start of the vector ordered back to front
+    siblings.stack_back(this);
 }
 
 void SceneNode::stack_before(const valid_ptr<SceneNode*> sibling)
@@ -530,26 +583,17 @@ void SceneNode::stack_before(const valid_ptr<SceneNode*> sibling)
     size_t my_index;
     { // early out to avoid creating unnecessary deltas
         const NodeContainer& siblings = m_parent->_read_children();
-        auto it
-            = std::find_if(siblings.begin(), siblings.end(),
-                           [&](const valid_ptr<std::shared_ptr<SceneNode>>& other) -> bool { return other == this; });
+        auto it = std::find(siblings.begin(), siblings.end(), this);
         NOTF_ASSERT(it != siblings.end());
 
-        my_index = static_cast<size_t>(std::distance(siblings.begin(), it)); // we only need to find the index once
+        my_index = static_cast<size_t>(std::distance(siblings.begin(), it));
         if (my_index != 0 && siblings[my_index - 1] == sibling) {
             return;
         }
     }
 
     NodeContainer& siblings = m_parent->_write_children();
-    auto sibling_it
-        = std::find_if(siblings.begin(), siblings.end(),
-                       [&](const valid_ptr<std::shared_ptr<SceneNode>>& other) -> bool { return other == sibling; });
-    if (sibling_it == siblings.end()) {
-        notf_throw_format(hierarchy_error, "Cannot stack node \"{}\" before node \"{}\" as the two are not siblings.",
-                          name(), sibling->name());
-    }
-    notf::move_behind_of(siblings, iterator_at(siblings, my_index), sibling_it);
+    siblings.stack_before(my_index, sibling);
 }
 
 void SceneNode::stack_behind(const valid_ptr<SceneNode*> sibling)
@@ -560,9 +604,7 @@ void SceneNode::stack_behind(const valid_ptr<SceneNode*> sibling)
     size_t my_index;
     { // early out to avoid creating unnecessary deltas
         const NodeContainer& siblings = m_parent->_read_children();
-        auto it
-            = std::find_if(siblings.begin(), siblings.end(),
-                           [&](const valid_ptr<std::shared_ptr<SceneNode>>& other) -> bool { return other == this; });
+        auto it = std::find(siblings.begin(), siblings.end(), this);
         NOTF_ASSERT(it != siblings.end());
 
         my_index = static_cast<size_t>(std::distance(siblings.begin(), it)); // we only need to find the index once
@@ -572,14 +614,7 @@ void SceneNode::stack_behind(const valid_ptr<SceneNode*> sibling)
     }
 
     NodeContainer& siblings = m_parent->_write_children();
-    auto sibling_it
-        = std::find_if(siblings.begin(), siblings.end(),
-                       [&](const valid_ptr<std::shared_ptr<SceneNode>>& other) -> bool { return other == sibling; });
-    if (sibling_it == siblings.end()) {
-        notf_throw_format(hierarchy_error, "Cannot stack node \"{}\" behind node \"{}\" as the two are not siblings.",
-                          name(), sibling->name());
-    }
-    notf::move_in_front_of(siblings, iterator_at(siblings, my_index), sibling_it);
+    siblings.stack_behind(my_index, sibling);
 }
 
 const SceneNode::NodeContainer& SceneNode::_read_children() const
