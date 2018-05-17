@@ -103,6 +103,8 @@ add_sources(SOURCE_FILES src
     app/window.hpp
     app/properties.hpp
     app/properties.cpp
+    app/properties2.hpp
+    app/properties2.cpp
     app/resource_manager.hpp
     app/resource_manager.cpp
     app/event_manager.hpp
