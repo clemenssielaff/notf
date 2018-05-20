@@ -62,12 +62,9 @@ public:
     template<class T>
     using TypedPropertyBodyPtr = std::shared_ptr<PropertyBody<T, void>>;
 
-    /// Set of update to untyped properties.
-    using UpdateSet = std::set<std::unique_ptr<Update>>;
-
     //=========================================================================
 public: // TODO: make private
-    /// Virtual baseclass, so we can store updates of various property types in one `UpdateSet`.
+    /// Virtual baseclass, so we can store updates of various property types in one Batch.
     struct Update {
 
         /// Constructor.
@@ -124,12 +121,12 @@ public:
     public:
         NOTF_NO_COPY_OR_ASSIGN(Batch);
 
-        /// Default constructor.
+        /// Empty default constructor.
         Batch() = default;
 
         /// Move Constructor.
         /// @param other    Other Batch to move from.
-        Batch(Batch&& other) : m_updates(std::move(other.m_updates)) {}
+        Batch(Batch&& other) = default;
 
         /// Destructor.
         /// Tries to execute but will swallow any exceptions that might occur.
@@ -140,7 +137,7 @@ public:
                 execute();
             }
             catch (...) {
-                // ignore
+                // ignore exceptions
             }
         }
 
@@ -176,7 +173,7 @@ public:
         // fields -------------------------------------------------------------
     private:
         /// All updates that make up this batch.
-        UpdateSet m_updates;
+        std::set<std::unique_ptr<Update>> m_updates;
     };
 
     //=========================================================================
@@ -202,14 +199,25 @@ public:
         // TODO: make private?
         risky_ptr<PropertyHead*> head() const { return m_head; }
 
-    protected:
+        //    protected:
+    public: // TODO: make protected
         /// Updates the Property by evaluating its expression.
         /// Then continues to update all downstream nodes as well.
-        /// @param all_affected     [OUT] Set of all associated properties affected of the change.
-        virtual void _update(Affected& all_affected) = 0;
+        /// @param affected     [OUT] Set of all associated properties affected of the change.
+        virtual void _update(Affected& affected) = 0;
 
         /// Removes this Property as affected (downstream) of all of its dependencies (upstream).
         virtual void _ground();
+
+        /// Checks if a given update would succeed if executed or not.
+        /// @throws no_dag_error    If the update is an expression that would introduce a cyclic dependency.
+        virtual void _validate_update(valid_ptr<Update*> update) = 0;
+
+        /// Allows an untyped Property to ingest an untyped Update from a Batch.
+        /// Note that this method moves the value/expression out of the update.
+        /// @param update       Update to apply.
+        /// @param affected     [OUT] Set of all associated properties affected of the change.
+        virtual void _apply_update(valid_ptr<Update*> update, Affected& affected) = 0;
 
         /// Tests whether the propposed upstream can be accepted, or would introduce a cyclic dependency.
         /// @param dependencies Dependencies to test.
@@ -261,25 +269,35 @@ public:
             return m_value;
         }
 
+        /// Sets the Property's value and fires a PropertyEvent.
+        /// @param value        New value.
+        void set_value(T&& value)
+        {
+            Affected affected;
+            set_value(std::forward<T>(value), affected);
+            //            PropertyGraph::PropertyAccess::fire_event(*property_graph, std::move(affected));
+            // TODO: fire event
+        }
+
         /// Set the Property's value and updates downstream Properties.
         /// Removes an existing expression on this Property if one exists.
-        /// @param value            New value.
-        /// @param all_affected     [OUT] Set of all associated properties affected of the change.
-        void set_value(T&& value, Affected& all_affected)
+        /// @param value        New value.
+        /// @param affected     [OUT] Set of all associated properties affected of the change.
+        void set_value(T&& value, Affected& affected)
         {
             NOTF_MUTEX_GUARD(PropertyGraph::s_mutex);
             if (m_expression) {
                 _ground();
             }
-            _set_value(std::forward<T>(value), all_affected);
+            _set_value(std::forward<T>(value), affected);
         }
 
         /// Set the Property's expression.
         /// @param expression       Expression to set.
         /// @param dependencies     Properties that the expression depends on.
-        /// @param all_affected     [OUT] Set of all associated properties affected of the change.
+        /// @param affected         [OUT] Set of all associated properties affected of the change.
         /// @throws no_dag_error    If the expression would introduce a cyclic dependency into the graph.
-        void set_expression(Expression<T> expression, Dependencies dependencies, Affected& all_affected)
+        void set_expression(Expression<T> expression, Dependencies dependencies, Affected& affected)
         {
             NOTF_MUTEX_GUARD(PropertyGraph::s_mutex);
 
@@ -292,34 +310,15 @@ public:
                 m_expression = std::move(expression);
 
                 // update the value of yourself and all downstream properties
-                _update(all_affected);
+                _update(affected);
             }
         }
 
-    private:
-        /// Updates the Property by evaluating its expression.
-        /// Then continues to update all downstream nodes as well.
-        /// @param all_affected     [OUT] Set of all associated properties affected of the change.
-        void _update(Affected& all_affected) override
-        {
-            NOTF_ASSERT(PropertyGraph::s_mutex.is_locked_by_this_thread());
-
-            if (m_expression) {
-                _set_value(m_expression(), all_affected);
-            }
-        }
-
-        /// Removes this Property as affected (downstream) of all of its dependencies (upstream).
-        void _ground() override
-        {
-            PropertyBodyBase::_ground();
-            m_expression = {};
-        }
-
+    public: // TODO: make private
         /// Changes the value of this Property if the new one is different and then updates all affected Properties.
-        /// @param value            New value.
-        /// @param all_affected     [OUT] Set of all associated properties affected of the change.
-        void _set_value(T&& value, Affected& all_affected)
+        /// @param value        New value.
+        /// @param affected     [OUT] Set of all associated properties affected of the change.
+        void _set_value(T&& value, Affected& affected)
         {
             NOTF_ASSERT(PropertyGraph::s_mutex.is_locked_by_this_thread());
 
@@ -330,137 +329,97 @@ public:
 
             // order affected properties upstream before downstream
             if (m_head) {
-                all_affected.emplace(this);
+                affected.emplace(this);
             }
 
             // update the value of yourself and all downstream properties
             m_value = std::forward<T>(value);
             for (valid_ptr<PropertyBody*> affected : m_downstream) {
-                affected->_update(all_affected);
+                affected->_update(affected);
             }
         }
 
-        //        /// Checks if a given update would succeed if executed or not.
-        //        /// @throws no_dag  If the update is an expression that would introduce a cyclic dependency into the
-        //        graph. void _validate_update(valid_ptr<Update*> update) override
-        //        {
-        //            PropertyGraphPtr property_graph = _graph();
-        //            NOTF_ASSERT(property_graph &&
-        //            PropertyGraph::PropertyAccess::mutex(*property_graph).is_locked_by_this_thread());
+        /// Sets a Property expression.
+        /// Evaluates the expression right away to update the Property's value.
+        /// @param expression       Expression to set.
+        /// @param dependencies     Properties that the expression depends on.
+        /// @param affected         [OUT] Set of all associated properties affected of the change.
+        /// @throws no_dag          If the expression would introduce a cyclic dependency into the graph.
+        void _set_expression(Expression<T> expression, Dependencies dependencies, Affected& affected)
+        {
+            NOTF_ASSERT(PropertyGraph::s_mutex.is_locked_by_this_thread());
 
-        //            // check if an exception would introduce a cyclic dependency
-        //            if (auto expression_update = dynamic_cast<ExpressionUpdate*>(update.get())) {
-        //                _body()->validate_upstream(*property_graph,
-        //                _bodies_of_heads(expression_update->dependencies));
-        //            }
-        //        }
+            // do not accept an empty expression
+            if (!expression) {
+                return;
+            }
 
-        //        /// Allows an untyped PropertyHead to ingest an untyped PropertyUpdate from a Batch.
-        //        /// Note that this method moves the value/expression out of the update.
-        //        /// @param graph            Graph containing the properties to update.
-        //        /// @param update           Update to apply.
-        //        /// @param all_affected     [OUT] Set of all associated properties affected of the change.
-        //        void _apply_update(PropertyGraph& graph, valid_ptr<Update*> update, UpdateSet& all_affected) override
-        //        {
-        //            NOTF_ASSERT(PropertyGraph::PropertyAccess::mutex(graph).is_locked_by_this_thread());
+            // update connections on yourself and upstream
+            _set_upstream(std::move(dependencies)); // might throw no_dag_error
+            m_expression = std::move(expression);
 
-        //            // update with a ground value
-        //            if (auto value_update = dynamic_cast<ValueUpdate*>(update.get())) {
-        //                NOTF_ASSERT(value_update->property.get() == this);
-        //                _body()->set_value(graph, std::forward<T>(value_update->value), all_affected);
-        //            }
+            // update the value of yourself and all downstream properties
+            _update(affected);
+        }
 
-        //            // update with an expression
-        //            else if (auto expression_update = dynamic_cast<ExpressionUpdate*>(update.get())) {
-        //                NOTF_ASSERT(expression_update->property.get() == this);
-        //                _body()->set_expression(graph, std::move(expression_update->expression),
-        //                                        _bodies_of_heads(expression_update->dependencies), all_affected);
-        //            }
+        /// Updates the Property by evaluating its expression.
+        /// Then continues to update all downstream nodes as well.
+        /// @param affected     [OUT] Set of all associated properties affected of the change.
+        void _update(Affected& affected) override
+        {
+            NOTF_ASSERT(PropertyGraph::s_mutex.is_locked_by_this_thread());
 
-        //            // should not happen
-        //            else {
-        //                NOTF_ASSERT(false);
-        //            }
-        //        }
+            if (m_expression) {
+                _set_value(m_expression(), affected);
+            }
+        }
 
-        //        /// Updates a Property's value.
-        //        /// Removes an existing expression on this Property if one exists.
-        //        /// @param value        New value.
-        //        /// @param fire_event   Whether the PropertyGraph should fire off a PropertyEvent in response to the
-        //        change.
-        //        /// @throws no_graph    If the PropertyGraph has been deleted.
-        //        /// @returns            All Properties affected by the update with their new values if `fire_event` is
-        //        false.
-        //        ///                     If `fire_event` is true, the returned value will always be empty.
-        //        UpdateSet _set_value(T&& value, const bool fire_event)
-        //        {
-        //            if (auto property_graph = _graph()) {
-        //                NOTF_MUTEX_GUARD(PropertyGraph::PropertyAccess::mutex(*property_graph));
+        /// Removes this Property as affected (downstream) of all of its dependencies (upstream).
+        void _ground() override
+        {
+            NOTF_ASSERT(PropertyGraph::s_mutex.is_locked_by_this_thread());
 
-        //                UpdateSet affected;
-        //                _body()->set_value(*property_graph, std::forward<T>(value), affected);
+            PropertyBodyBase::_ground();
+            m_expression = {};
+        }
 
-        //                if (fire_event && !affected.empty()) {
-        //                    PropertyGraph::PropertyAccess::fire_event(*property_graph, std::move(affected));
-        //                    affected.clear();
-        //                }
-        //                return affected;
-        //            }
-        //            else {
-        //                notf_throw(PropertyGraph::no_graph, "PropertyGraph has been deleted");
-        //            }
-        //        }
+        /// Checks if a given update would succeed if executed or not.
+        /// @throws no_dag_error    If the update is an expression that would introduce a cyclic dependency.
+        void _validate_update(valid_ptr<Update*> update) override
+        {
+            NOTF_ASSERT(PropertyGraph::s_mutex.is_locked_by_this_thread());
 
-        //        /// Method for PropertyHandler to update a Property's expression.
-        //        /// Evaluates the expression right away to update the Property's value.
-        //        /// Does not fire an event.
-        //        /// @param expression       Expression to set.
-        //        /// @param dependencies     Properties that the expression depends on.
-        //        /// @param fire_event       Whether the PropertyGraph should fire off a PropertyEvent in response to
-        //        the change.
-        //        /// @throws no_dag          If the expression would introduce a cyclic dependency into the graph.
-        //        /// @throws no_graph        If the PropertyGraph has been deleted.
-        //        /// @returns                All Properties affected by the update with their new values if
-        //        `fire_event` is false.
-        //        ///                         If `fire_event` is true, the returned value will always be empty.
-        //        UpdateSet
-        //        _set_expression(Expression&& expression, std::vector<PropertyHeadPtr>&& dependencies, const bool
-        //        fire_event)
-        //        {
-        //            if (auto property_graph = _graph()) {
-        //                NOTF_MUTEX_GUARD(PropertyGraph::PropertyAccess::mutex(*property_graph));
+            // check if an exception would introduce a cyclic dependency
+            if (ExpressionUpdate<T>* expression_update = dynamic_cast<ExpressionUpdate<T>*>(update.get())) {
+                _test_upstream(expression_update->dependencies);
+            }
+        }
 
-        //                PropertyGraph::UpdateSet affected;
-        //                _body()->set_expression(*property_graph, std::move(expression),
-        //                _bodies_of_heads(dependencies), affected);
+        /// Allows an untyped Property to ingest an untyped Update from a Batch.
+        /// Note that this method moves the value/expression out of the update.
+        /// @param update       Update to apply.
+        /// @param affected     [OUT] Set of all associated properties affected of the change.
+        void _apply_update(valid_ptr<Update*> raw_update, Affected& affected) override
+        {
+            NOTF_ASSERT(PropertyGraph::s_mutex.is_locked_by_this_thread());
 
-        //                if (fire_event && !affected.empty()) {
-        //                    PropertyGraph::PropertyAccess::fire_event(*property_graph, std::move(affected));
-        //                    affected.clear();
-        //                }
-        //                return affected;
-        //            }
-        //            else {
-        //                notf_throw(PropertyGraph::no_graph, "PropertyGraph has been deleted");
-        //            }
-        //        }
+            // update with a ground value
+            if (ValueUpdate<T>* update = dynamic_cast<ValueUpdate<T>*>(raw_update.get())) {
+                NOTF_ASSERT(update->property.get() == this);
+                _set_value(std::forward<T>(update->value), affected);
+            }
 
-        //        /// Unassociates the SceneNode associated with the Property.
-        //        void _unassociate() { m_handler = nullptr; }
+            // update with an expression
+            else if (ExpressionUpdate<T>* update = dynamic_cast<ExpressionUpdate<T>*>(raw_update.get())) {
+                NOTF_ASSERT(update->property.get() == this);
+                _set_expression(std::move(update->expression), std::move(update->dependencies), affected);
+            }
 
-        //        /// Type restoring access to the Property's body.
-        //        valid_ptr<Body*> _body() const { return static_cast<Body*>(m_body.get()); }
-
-        //        /// Transforms a list of property heads into a list of property bodies.
-        //        static Connected _bodies_of_heads(const std::vector<PropertyHeadPtr>& heads)
-        //        {
-        //            Connected dependency_bodies;
-        //            dependency_bodies.reserve(heads.size());
-        //            std::transform(heads.begin(), heads.end(), std::back_inserter(dependency_bodies),
-        //                           [](const PropertyHeadPtr& head) -> valid_ptr<PropertyBody*> { return head->m_body;
-        //                           });
-        //            return dependency_bodies;
-        //        }
+            // should not happen
+            else {
+                NOTF_ASSERT(false);
+            }
+        }
 
         // fields -------------------------------------------------------------
     private:
@@ -514,8 +473,6 @@ public:
         /// Read-access to the value of the PropertyBody.
         const T& operator()() const { return static_cast<PropertyBody<T>*>(m_body.get())->value(); }
     };
-
-    //=========================================================================
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:

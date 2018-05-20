@@ -18,26 +18,27 @@ PropertyGraph::Update::~Update() = default;
 
 void PropertyGraph::Batch::execute()
 {
-    //    PropertyGraph::UpdateSet affected;
-    //    {
-    //        NOTF_MUTEX_GUARD(PropertyGraph::s_mutex);
+    PropertyBodyBase::Affected affected;
+    {
+        NOTF_MUTEX_GUARD(PropertyGraph::s_mutex);
 
-    //        // verify that all updates will succeed first
-    //        for (auto& update : m_updates) {
-    //            update->property->_validate_update(update.get());
-    //        }
+        // verify that all updates will succeed first
+        for (auto& update : m_updates) {
+            update->property->_validate_update(update.get());
+        }
 
-    //        // apply the updates
-    //        for (auto& update : m_updates) {
-    //            update->property->_apply_update(*property_graph, update.get(), affected);
-    //        }
-    //    }
+        // apply the updates
+        for (auto& update : m_updates) {
+            update->property->_apply_update(update.get(), affected);
+        }
+    }
 
-    //    // fire off the combined event
+    // fire off the combined event
     //    property_graph->_fire_event(std::move(affected));
+    // TODO: fire event
 
-    //    // reset in case the user wants to reuse the batch object
-    //    m_updates.clear();
+    // reset in case the user wants to reuse the batch object
+    m_updates.clear();
 }
 
 //====================================================================================================================//
