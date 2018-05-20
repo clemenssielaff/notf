@@ -20,10 +20,10 @@ struct KeyEvent;
 struct CharEvent;
 
 template<typename>
-struct NodeHandle;
+struct SceneNodeHandle;
 
-template<typename>
-class PropertyHandler;
+template<class>
+class SceneProperty;
 
 NOTF_DEFINE_SHARED_POINTERS(class, RenderTarget);
 NOTF_DEFINE_SHARED_POINTERS(class, Layer);
@@ -38,6 +38,7 @@ NOTF_DEFINE_SHARED_POINTERS(class, SceneGraph);
 
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, Property);
 
+NOTF_DEFINE_UNIQUE_POINTERS(class, PropertyHead);
 NOTF_DEFINE_UNIQUE_POINTERS(class, Window);
 NOTF_DEFINE_UNIQUE_POINTERS(class, ResourceManager);
 NOTF_DEFINE_UNIQUE_POINTERS(class, EventManager);

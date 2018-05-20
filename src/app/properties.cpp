@@ -2,19 +2,13 @@
 
 #include <algorithm>
 
-#include "app/application.hpp"
-#include "app/event_manager.hpp"
-#include "app/io/property_event.hpp"
-#include "app/scene.hpp"
 #include "common/set.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
-PropertyGraph::no_dag::~no_dag() = default;
-
-PropertyGraph::no_graph::~no_graph() = default;
+PropertyGraph::no_dag_error::~no_dag_error() = default;
 
 //====================================================================================================================//
 
@@ -22,123 +16,112 @@ PropertyGraph::Update::~Update() = default;
 
 //====================================================================================================================//
 
-PropertyGraph::PropertyBody::~PropertyBody() = default;
-
-bool PropertyGraph::PropertyBody::validate_upstream(const PropertyGraph& graph, const Connected& dependencies) const
+void PropertyGraph::Batch::execute()
 {
-    NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
+    //    PropertyGraph::UpdateSet affected;
+    //    {
+    //        NOTF_MUTEX_GUARD(PropertyGraph::s_mutex);
 
-    // fill the unordered set and
-    std::set<valid_ptr<PropertyBody*>> unchecked;
-    for (valid_ptr<PropertyBody*> dependency : dependencies) {
-        // check if all properties are still alive
-        if (!graph.m_properties.count(dependency)) {
-            return false;
-        }
+    //        // verify that all updates will succeed first
+    //        for (auto& update : m_updates) {
+    //            update->property->_validate_update(update.get());
+    //        }
 
-        // check if this property is not already downstream of the dependency (should never happen)
-        NOTF_ASSERT(std::find(dependency->m_downstream.begin(), dependency->m_downstream.end(), this)
-                    == dependency->m_downstream.end());
+    //        // apply the updates
+    //        for (auto& update : m_updates) {
+    //            update->property->_apply_update(*property_graph, update.get(), affected);
+    //        }
+    //    }
 
-        unchecked.insert(dependency);
-    }
+    //    // fire off the combined event
+    //    property_graph->_fire_event(std::move(affected));
 
-    // check for cyclic dependencies
-    std::set<valid_ptr<PropertyBody*>> checked;
-    risky_ptr<PropertyBody*> candidate;
-    while (pop_one(unchecked, candidate)) {
-        if (this == candidate) {
-            notf_throw(no_dag, "Failed to create property expression which would introduce a cyclic dependency");
-        }
-        checked.insert(candidate);
-        for (valid_ptr<PropertyBody*> dependency : candidate->m_upstream) {
-            if (!checked.count(dependency)) {
-                unchecked.emplace(dependency);
-            }
-        }
-    }
-
-    return true;
+    //    // reset in case the user wants to reuse the batch object
+    //    m_updates.clear();
 }
 
-void PropertyGraph::PropertyBody::prepare_removal(const PropertyGraph& graph)
-{
-    NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
-    _ground(graph);
-    for (valid_ptr<PropertyBody*> affected : m_downstream) {
-        affected->_ground(graph);
-    }
-}
+//====================================================================================================================//
 
-void PropertyGraph::PropertyBody::_ground(const PropertyGraph& graph)
+PropertyGraph::PropertyBodyBase::~PropertyBodyBase() { PropertyBodyBase::_ground(); }
+
+void PropertyGraph::PropertyBodyBase::_ground()
 {
-    NOTF_ASSERT(graph.m_mutex.is_locked_by_this_thread());
-    for (valid_ptr<PropertyBody*> dependency : m_upstream) {
+    NOTF_ASSERT(PropertyGraph::s_mutex.is_locked_by_this_thread());
+
+    for (const PropertyReaderBase& reader : m_upstream) {
+        PropertyBodyBase* dependency = reader.m_body.get();
         auto it = std::find(dependency->m_downstream.begin(), dependency->m_downstream.end(), this);
         NOTF_ASSERT(it != dependency->m_downstream.end());
-
         *it = std::move(dependency->m_downstream.back());
         dependency->m_downstream.pop_back();
     }
     m_upstream.clear();
 }
 
-//====================================================================================================================//
-
-PropertyGraph::PropertyHead::~PropertyHead()
+void PropertyGraph::PropertyBodyBase::_test_upstream(const Dependencies& dependencies)
 {
-    if (auto property_graph = _graph()) {
-        property_graph->_delete_property(m_body);
-    }
-}
+    NOTF_ASSERT(PropertyGraph::s_mutex.is_locked_by_this_thread());
 
-//====================================================================================================================//
-
-PropertyGraph::PropertyHandlerBase::~PropertyHandlerBase() = default;
-
-bool PropertyGraph::PropertyHandlerBase::is_frozen() const { return m_node->graph()->is_frozen(); }
-
-bool PropertyGraph::PropertyHandlerBase::is_frozen_by(const std::thread::id thread_id) const
-{
-    return m_node->graph()->is_frozen_by(std::move(thread_id));
-}
-//====================================================================================================================//
-
-void PropertyGraph::Batch::execute()
-{
-    PropertyGraphPtr property_graph = m_graph.lock();
-    if (!property_graph) {
-        notf_throw(no_graph, "PropertyGraph has been deleted");
-    }
-
-    PropertyGraph::UpdateSet affected;
-    {
-        std::lock_guard<RecursiveMutex> lock(property_graph->m_mutex);
-
-        // verify that all updates will succeed first
-        for (auto& update : m_updates) {
-            update->property->_validate_update(update.get());
-        }
-
-        // apply the updates
-        for (auto& update : m_updates) {
-            update->property->_apply_update(*property_graph, update.get(), affected);
+    std::set<valid_ptr<PropertyBodyBase*>> unchecked;
+    for (const PropertyReaderBase& reader : dependencies) {
+        if (PropertyBodyBase* dependency = reader.m_body.get()) {
+            unchecked.insert(dependency);
         }
     }
 
-    // fire off the combined event
-    property_graph->_fire_event(std::move(affected));
+    std::set<valid_ptr<PropertyBodyBase*>> checked;
+    PropertyBodyBase* candidate;
+    while (pop_one(unchecked, candidate)) {
+        if (this == candidate) {
+            notf_throw(no_dag_error, "Failed to create property expression which would introduce a cyclic dependency");
+        }
+        checked.insert(candidate);
+        for (const PropertyReaderBase& reader : candidate->m_upstream) {
+            PropertyBodyBase* dependency = reader.m_body.get();
+            if (!checked.count(dependency)) {
+                unchecked.emplace(dependency);
+            }
+        }
+    }
+}
 
-    // reset in case the user wants to reuse the batch object
-    m_updates.clear();
+void PropertyGraph::PropertyBodyBase::_set_upstream(Dependencies&& dependencies)
+{
+    NOTF_ASSERT(PropertyGraph::s_mutex.is_locked_by_this_thread());
+
+#ifdef NOTF_DEBUG
+    _test_upstream(dependencies); // input should already have been tested at this point, but better safe than sorry
+#endif
+
+    // remove potential duplicates in the input
+    m_upstream.clear();
+    m_upstream.reserve(dependencies.size());
+    for (const PropertyReaderBase& reader : dependencies) {
+        if (std::find(m_upstream.cbegin(), m_upstream.cend(), reader) == m_upstream.cend()) {
+            m_upstream.emplace_back(std::move(reader));
+        }
+    }
+
+    // register with the upstream properties
+    for (const PropertyReaderBase& reader : m_upstream) {
+        PropertyBodyBase* dependency = reader.m_body.get();
+        dependency->_add_downstream(this);
+    }
+}
+
+void PropertyGraph::PropertyBodyBase::_add_downstream(const valid_ptr<PropertyBodyBase*> affected)
+{
+    NOTF_ASSERT(PropertyGraph::s_mutex.is_locked_by_this_thread());
+
+#ifdef NOTF_DEBUG
+    auto it = std::find(m_downstream.begin(), m_downstream.end(), affected);
+    NOTF_ASSERT(it == m_downstream.end()); // there should not be a way to register the same property twice
+#endif
+    m_downstream.emplace_back(affected);
 }
 
 //====================================================================================================================//
 
-void PropertyGraph::_fire_event(UpdateSet&& affected)
-{
-    valid_ptr<Window*> window = &(m_scene_graph.window());
-    Application::instance().event_manager().handle(std::make_unique<PropertyEvent>(window, std::move(affected)));
-}
+RecursiveMutex PropertyGraph::s_mutex = {};
 
 NOTF_CLOSE_NAMESPACE

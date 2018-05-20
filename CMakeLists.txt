@@ -103,8 +103,6 @@ add_sources(SOURCE_FILES src
     app/window.hpp
     app/properties.hpp
     app/properties.cpp
-    app/properties2.hpp
-    app/properties2.cpp
     app/resource_manager.hpp
     app/resource_manager.cpp
     app/event_manager.hpp
@@ -115,6 +113,13 @@ add_sources(SOURCE_FILES src
     app/render_manager.cpp
     app/scene.hpp
     app/scene.cpp
+    app/scene_graph.hpp
+    app/scene_graph.cpp
+    app/scene_property.hpp
+    app/scene_property.cpp
+    app/scene_node.hpp
+    app/scene_node.cpp
+    app/scene_node_handle.hpp
     app/path.hpp
     app/path.cpp
     app/layer.hpp
