@@ -27,15 +27,15 @@ public:
     class PropertyBodyBase;
 
     template<class>
-    class PropertyAccessor;
-    class PropertyAccessorBase;
+    class PropertyReader;
+    class PropertyReaderBase;
 
     class Batch;
 
     // ------------------------------------------------------------------------
 public:
     /// Thrown when a new expression would introduce a cyclic dependency into the graph.
-    NOTF_EXCEPTION_TYPE(no_dag);
+    NOTF_EXCEPTION_TYPE(no_dag_error);
 
     // ------------------------------------------------------------------------
 public:
@@ -103,9 +103,9 @@ private:
         /// Constructor.
         /// @param target           Property targeted by this update.
         /// @param expression       New expression for the targeted Property.
-        /// @param dependencies     Accessors of Properties that the expression depends on.
+        /// @param dependencies     Property Readers that the expression depends on.
         ExpressionUpdate(PropertyBodyPtr target, Expression<T>&& expression,
-                         std::vector<PropertyAccessorBase>&& dependencies)
+                         std::vector<PropertyReaderBase>&& dependencies)
             : Update(std::move(target))
             , expression(std::forward<Expression<T>>(expression))
             , dependencies(std::move(dependencies))
@@ -115,7 +115,7 @@ private:
         Expression<T> expression; // not const so we can move from it
 
         /// Properties that the expression depends on.
-        std::vector<PropertyAccessorBase> dependencies; // not const so we can move from it
+        std::vector<PropertyReaderBase> dependencies; // not const so we can move from it
     };
 
     //=========================================================================
@@ -157,10 +157,10 @@ public:
         /// Evaluates the expression right away to update the Property's value.
         /// @param target           Property targeted by this update.
         /// @param expression       New expression for the targeted Property.
-        /// @param dependencies     Accessors of Properties that the expression depends on.
+        /// @param dependencies     Property Readers that the expression depends on.
         template<class T>
         void set_expression(PropertyPtr<T> property, identity_t<Expression<T>>&& expression,
-                            std::vector<PropertyAccessorBase>&& dependencies)
+                            std::vector<PropertyReaderBase>&& dependencies)
         {
             m_updates.emplace(std::make_unique<ExpressionUpdate<T>>(
                 std::move(property), std::forward<Expression<T>>(expression), std::move(dependencies)));
@@ -169,7 +169,7 @@ public:
         /// Executes this batch.
         /// If any error occurs, this method will throw the exception and not modify the PropertyGraph.
         /// If no exception occurs, the transaction was successfull and the batch is empty again.
-        /// @throws no_dag  If a Property expression update would cause a cyclic dependency in the graph.
+        /// @throws no_dag_error    If a Property expression update would cause a cyclic dependency in the graph.
         void execute();
 
         // fields -------------------------------------------------------------
@@ -192,7 +192,7 @@ public:
         // types --------------------------------------------------------------
     protected:
         /// Owning references to all PropertyBodies that this one depends on through its expression.
-        using Dependencies = std::vector<PropertyAccessorBase>;
+        using Dependencies = std::vector<PropertyReaderBase>;
 
         /// Set of all property bodies affected by a change in the graph.
         using Affected = std::set<valid_ptr<const PropertyBodyBase*>>;
@@ -213,11 +213,11 @@ public:
 
         /// Tests whether the propposed upstream can be accepted, or would introduce a cyclic dependency.
         /// @param dependencies Dependencies to test.
-        /// @throws no_dag      If the connections would introduce a cyclic dependency into the graph.
+        /// @throws no_dag_error    If the connections would introduce a cyclic dependency into the graph.
         void _test_upstream(const Dependencies& dependencies);
 
         /// Updates the upstream properties that this one depends on through its expression.
-        /// @throws no_dag  If the connections would introduce a cyclic dependency into the graph.
+        /// @throws no_dag_error    If the connections would introduce a cyclic dependency into the graph.
         void _set_upstream(Dependencies&& dependencies);
 
         /// Adds a new downstream property that is affected by this one through an expression.
@@ -230,6 +230,9 @@ public:
 
         /// PropertyBodies depending on this through their expressions.
         std::vector<valid_ptr<PropertyBodyBase*>> m_downstream;
+
+        /// The head of this Property body (if one exists).
+        risky_ptr<PropertyHead*> m_head;
     };
 
     template<class T, typename = std::enable_if_t<is_property_type_v<T>>>
@@ -272,7 +275,7 @@ public:
         /// @param expression       Expression to set.
         /// @param dependencies     Properties that the expression depends on.
         /// @param all_affected     [OUT] Set of all associated properties affected of the change.
-        /// @throws no_dag          If the expression would introduce a cyclic dependency into the graph.
+        /// @throws no_dag_error    If the expression would introduce a cyclic dependency into the graph.
         void set_expression(Expression<T> expression, Dependencies dependencies, Affected& all_affected)
         {
             NOTF_ASSERT(PropertyGraph::s_mutex.is_locked_by_this_thread());
@@ -282,7 +285,7 @@ public:
 
             if (expression) {
                 // update connections on yourself and upstream
-                _set_upstream(std::move(dependencies)); // might throw no_dag
+                _set_upstream(std::move(dependencies)); // might throw no_dag_error
                 m_expression = std::move(expression);
 
                 // update the value of yourself and all downstream properties
@@ -336,9 +339,6 @@ public:
 
         // fields -------------------------------------------------------------
     private:
-        /// The head of this Property body (if one exists).
-        risky_ptr<PropertyHead*> m_head;
-
         /// Expression evaluating to a new value for this Property.
         Expression<T> m_expression;
 
@@ -348,41 +348,41 @@ public:
 
     //=========================================================================
 public:
-    class PropertyAccessorBase {
+    class PropertyReaderBase {
 
         friend class PropertyBodyBase;
 
         // methods ------------------------------------------------------------
     public:
         /// Empty default constructor.
-        PropertyAccessorBase() = default;
+        PropertyReaderBase() = default;
 
         /// Value constructor.
-        /// @param body     Owning pointer to the PropertyBody to access.
-        PropertyAccessorBase(PropertyBodyPtr&& body) : m_body(std::move(body)) {}
+        /// @param body     Owning pointer to the PropertyBody to read from.
+        PropertyReaderBase(PropertyBodyPtr&& body) : m_body(std::move(body)) {}
 
         /// Copy Constructor.
-        /// @param other    Accessor to copy.
-        PropertyAccessorBase(const PropertyAccessorBase& other) : m_body(other.m_body) {}
+        /// @param other    Reader to copy.
+        PropertyReaderBase(const PropertyReaderBase& other) : m_body(other.m_body) {}
 
         /// Move Constructor.
-        /// @param other    Accessor to move.
-        PropertyAccessorBase(PropertyAccessorBase&& other) : m_body(std::move(other.m_body)) { other.m_body.reset(); }
+        /// @param other    Reader to move.
+        PropertyReaderBase(PropertyReaderBase&& other) : m_body(std::move(other.m_body)) { other.m_body.reset(); }
 
         // fields -------------------------------------------------------------
     protected:
-        /// Owning pointer to the PropertyBody to access.
+        /// Owning pointer to the PropertyBody to read from.
         PropertyBodyPtr m_body;
     };
 
     template<class T>
-    class PropertyAccessor : public PropertyAccessorBase {
+    class PropertyReader : public PropertyReaderBase {
 
         // methods ------------------------------------------------------------
     public:
         /// Value constructor.
-        /// @param body     Owning pointer to the PropertyBody to access.
-        PropertyAccessor(TypedPropertyBodyPtr<T>&& body) : PropertyAccessorBase(std::move(body)) {}
+        /// @param body     Owning pointer to the PropertyBody to read from.
+        PropertyReader(TypedPropertyBodyPtr<T>&& body) : PropertyReaderBase(std::move(body)) {}
 
         /// Read-access to the value of the PropertyBody.
         const T& operator()() const { return static_cast<PropertyBody<T>*>(m_body.get())->value(); }

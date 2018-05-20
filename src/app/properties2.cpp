@@ -10,7 +10,7 @@ namespace temp {
 
 //====================================================================================================================//
 
-PropertyGraph::no_dag::~no_dag() = default;
+PropertyGraph::no_dag_error::~no_dag_error() = default;
 
 //====================================================================================================================//
 
@@ -50,8 +50,8 @@ void PropertyGraph::PropertyBodyBase::_ground()
 {
     NOTF_ASSERT(PropertyGraph::s_mutex.is_locked_by_this_thread());
 
-    for (const PropertyAccessorBase& accessor : m_upstream) {
-        PropertyBodyBase* dependency = accessor.m_body.get();
+    for (const PropertyReaderBase& reader : m_upstream) {
+        PropertyBodyBase* dependency = reader.m_body.get();
         auto it = std::find(dependency->m_downstream.begin(), dependency->m_downstream.end(), this);
         NOTF_ASSERT(it != dependency->m_downstream.end());
         *it = std::move(dependency->m_downstream.back());
@@ -65,8 +65,8 @@ void PropertyGraph::PropertyBodyBase::_test_upstream(const Dependencies& depende
     NOTF_ASSERT(PropertyGraph::s_mutex.is_locked_by_this_thread());
 
     std::set<valid_ptr<PropertyBodyBase*>> unchecked;
-    for (const PropertyAccessorBase& accessor : dependencies) {
-        if (PropertyBodyBase* dependency = accessor.m_body.get()) {
+    for (const PropertyReaderBase& reader : dependencies) {
+        if (PropertyBodyBase* dependency = reader.m_body.get()) {
             unchecked.insert(dependency);
         }
     }
@@ -75,11 +75,11 @@ void PropertyGraph::PropertyBodyBase::_test_upstream(const Dependencies& depende
     PropertyBodyBase* candidate;
     while (pop_one(unchecked, candidate)) {
         if (this == candidate) {
-            notf_throw(no_dag, "Failed to create property expression which would introduce a cyclic dependency");
+            notf_throw(no_dag_error, "Failed to create property expression which would introduce a cyclic dependency");
         }
         checked.insert(candidate);
-        for (const PropertyAccessorBase& accessor : candidate->m_upstream) {
-            PropertyBodyBase* dependency = accessor.m_body.get();
+        for (const PropertyReaderBase& reader : candidate->m_upstream) {
+            PropertyBodyBase* dependency = reader.m_body.get();
             if (!checked.count(dependency)) {
                 unchecked.emplace(dependency);
             }
@@ -98,15 +98,15 @@ void PropertyGraph::PropertyBodyBase::_set_upstream(Dependencies&& dependencies)
     // remove potential duplicates in the input
     m_upstream.clear();
     m_upstream.reserve(dependencies.size());
-    for (PropertyAccessorBase& accessor : dependencies) {
-        if (std::find(m_upstream.begin(), m_upstream.end(), accessor) == m_upstream.end()) {
-            m_upstream.emplace_back(std::move(accessor));
+    for (PropertyReaderBase& reader : dependencies) {
+        if (std::find(m_upstream.begin(), m_upstream.end(), reader) == m_upstream.end()) {
+            m_upstream.emplace_back(std::move(reader));
         }
     }
 
     // register with the upstream properties
-    for (const PropertyAccessorBase& accessor : m_upstream) {
-        PropertyBodyBase* dependency = accessor.m_body.get();
+    for (const PropertyReaderBase& reader : m_upstream) {
+        PropertyBodyBase* dependency = reader.m_body.get();
         dependency->_add_downstream(this);
     }
 }

@@ -14,7 +14,7 @@ NOTF_OPEN_NAMESPACE
 NOTF_EXCEPTION_TYPE(application_initialization_error);
 
 /// Exception thrown when you try to access the Application instance after it was shut down.
-NOTF_EXCEPTION_TYPE(application_shutdown_error);
+NOTF_EXCEPTION_TYPE(no_application_error);
 
 //====================================================================================================================//
 
@@ -112,11 +112,11 @@ public:
     /// The singleton Application instance.
     /// @returns    The Application singleton.
     /// @throws application_initialization_error    When the Application intialization failed.
-    /// @throws application_shutdown_error          When this method is called after the Application was shut down.
+    /// @throws no_application_error          When this method is called after the Application was shut down.
     static Application& instance()
     {
         if (NOTF_UNLIKELY(was_closed())) {
-            notf_throw(application_shutdown_error, "You may not access the Application after it was shut down");
+            notf_throw(no_application_error, "You may not access the Application after it was shut down");
         }
         return _instance();
     }

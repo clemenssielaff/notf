@@ -18,7 +18,7 @@ NOTF_OPEN_NAMESPACE
 
 application_initialization_error::~application_initialization_error() {}
 
-application_shutdown_error::~application_shutdown_error() {}
+no_application_error::~no_application_error() {}
 
 //====================================================================================================================//
 
