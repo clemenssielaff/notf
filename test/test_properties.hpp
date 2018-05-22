@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/properties.hpp"
+#include "app/property_graph.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -12,7 +12,7 @@ class access::_PropertyGraph<test::Harness> {
 public:
     /// Number of properties in the graph.
     /// /// @param graph    PropertyGraph to operate on.
-    static size_t size(PropertyGraph& graph) { return graph.m_properties.size(); }
+    static size_t size() { return PropertyGraph::s_property_count; }
 };
 
 NOTF_CLOSE_NAMESPACE

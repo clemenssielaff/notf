@@ -1,7 +1,7 @@
 #pragma once
 
 #include "app/io/event.hpp"
-#include "app/properties.hpp"
+#include "app/property_graph.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -13,7 +13,7 @@ public:
     /// Constructor.
     /// @param window   Window that the event is meant for.
     /// @param updates  Updates contained in this Event.
-    PropertyEvent(valid_ptr<const Window*> window, PropertyGraph::UpdateSet&& updates)
+    PropertyEvent(valid_ptr<const Window*> window, PropertyUpdateList&& updates)
         : detail::EventBase<PropertyEvent>(window), updates(std::move(updates))
     {}
 
@@ -23,7 +23,7 @@ public:
     // fields --------------------------------------------------------------------------------------------------------//
 public:
     /// Updates contained in this Event.
-    PropertyGraph::UpdateSet updates;
+    PropertyUpdateList updates;
 };
 
 NOTF_CLOSE_NAMESPACE

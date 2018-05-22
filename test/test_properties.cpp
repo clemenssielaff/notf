@@ -1,6 +1,7 @@
 #include "catch.hpp"
 
 #include "app/window.hpp"
+#include "app/property_global.hpp"
 #include "test_event_manager.hpp"
 #include "test_properties.hpp"
 #include "testenv.hpp"
@@ -24,17 +25,16 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
     const std::thread::id render_thread_id{3};
 
     auto& app = Application::instance();
-    PropertyGraph& graph = notf_window().property_graph();
     EventManager& event_manager = app.event_manager();
 
     SECTION("simple CRUD operations on properties")
     {
         SuspensionGuard event_suspension(event_manager);
         {
-            PropertyPtr<int> iprop1 = graph.create_property(48);
-            PropertyPtr<int> iprop2 = graph.create_property(2);
-            PropertyPtr<std::string> sprop1 = graph.create_property<std::string>("derbe");
-            REQUIRE(PropertyGraph::Access<test::Harness>::size(graph) == 3);
+            GlobalPropertyPtr<int> iprop1 = create_global_property(48);
+            GlobalPropertyPtr<int> iprop2 = create_global_property(2);
+            GlobalPropertyPtr<std::string> sprop1 = create_global_property<std::string>("derbe");
+            REQUIRE(PropertyGraph::Access<test::Harness>::size() == 3);
 
             REQUIRE(iprop1->value() == 48);
             REQUIRE(iprop2->value() == 2);
@@ -50,17 +50,20 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
 
             REQUIRE(EventManager::Access<test::Harness>(event_manager).backlog_size() == 0);
         }
-        REQUIRE(PropertyGraph::Access<test::Harness>::size(graph) == 0);
+        REQUIRE(PropertyGraph::Access<test::Harness>::size() == 0);
     }
 
     SECTION("working with property expressions")
     {
         SuspensionGuard event_suspension(event_manager);
 
-        PropertyPtr<int> iprop1 = graph.create_property<int>(48);
-        PropertyPtr<int> iprop2 = graph.create_property<int>(2);
+        GlobalPropertyPtr<int> iprop1 = create_global_property<int>(48);
+        GlobalPropertyPtr<int> iprop2 = create_global_property<int>(2);
 
-        iprop1->set_expression([&iprop2]() -> int { return iprop2->value() + 7; }, {iprop2});
+        {
+            auto reader = iprop2->reader();
+            iprop1->set_expression([reader]() -> int { return reader() + 7; }, {reader});
+        }
         REQUIRE(iprop1->has_expression());
 
         REQUIRE(iprop1->value() == 9);
@@ -76,13 +79,16 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
     SECTION("using PropertyGraph::Batches")
     {
         {
-            PropertyPtr<int> iprop1 = graph.create_property<int>(48);
-            PropertyPtr<int> iprop2 = graph.create_property<int>(2);
-            PropertyPtr<std::string> sprop1 = graph.create_property<std::string>("derbe");
+            GlobalPropertyPtr<int> iprop1 = create_global_property<int>(48);
+            GlobalPropertyPtr<int> iprop2 = create_global_property<int>(2);
+            GlobalPropertyPtr<std::string> sprop1 = create_global_property<std::string>("derbe");
 
-            PropertyGraph::Batch batch = graph.create_batch();
-            batch.set_expression(iprop1, [iprop2]() -> int { return iprop2->value() + 5; }, {iprop2});
-            batch.set_value(iprop2, 32);
+            PropertyBatch batch;
+            {
+                auto reader = iprop2->reader();
+                batch.set_expression(*iprop1, [reader]() -> int { return reader() + 5; }, {reader});
+            }
+            batch.set_value(*iprop2, 32);
 
             REQUIRE(iprop1->is_grounded());
             REQUIRE(iprop2->value() == 2);
@@ -94,7 +100,7 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
             REQUIRE(iprop2->value() == 32);
         }
         // even though iprop2 is partially owned by the expression on iprop2, it should be removed by now
-        REQUIRE(PropertyGraph::Access<test::Harness>::size(graph) == 0);
+        REQUIRE(PropertyGraph::Access<test::Harness>::size() == 0);
     }
 }
 

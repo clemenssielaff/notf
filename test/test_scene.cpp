@@ -1,6 +1,8 @@
 #include "catch.hpp"
 
 #include "app/window.hpp"
+#include "app/scene_node.hpp"
+#include "app/scene_node_handle.hpp"
 #include "test_scene.hpp"
 #include "testenv.hpp"
 

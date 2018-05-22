@@ -312,7 +312,7 @@ private:
     NodeContainer m_children;
 
     /// All properties of this node, accessible by their (node-unique) name.
-    std::unordered_map<std::string, PropertyHeadPtr> m_properties;
+    std::unordered_map<std::string, std::unique_ptr<PropertyHeadBase>> m_properties;
 
     /// The parent-unique name of this Node.
     std::string m_name;

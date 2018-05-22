@@ -101,8 +101,9 @@ add_sources(SOURCE_FILES src
     app/application.hpp
     app/window.cpp
     app/window.hpp
-    app/properties.hpp
-    app/properties.cpp
+    app/property_graph.hpp
+    app/property_graph.cpp
+    app/property_global.hpp
     app/resource_manager.hpp
     app/resource_manager.cpp
     app/event_manager.hpp

@@ -3,7 +3,6 @@
 #include "app/event_manager.hpp"
 #include "app/glfw.hpp"
 #include "app/layer.hpp"
-#include "app/properties.hpp"
 #include "app/render_manager.hpp"
 #include "app/resource_manager.hpp"
 #include "app/scene.hpp"
@@ -60,7 +59,6 @@ Window::Window(const Args& args)
     {
         auto guard = m_graphics_context->make_current();
         m_scene_graph = SceneGraph::Access<Window>::create(*this);
-        m_property_graph = PropertyGraph::Access<Window>::create(*m_scene_graph);
         m_font_manager = FontManager::create(*m_graphics_context);
     }
 
@@ -168,7 +166,6 @@ void Window::close()
     EventManager::Access<Window>().remove_window(*this);
 
     m_scene_graph.reset();
-    m_property_graph.reset();
     m_font_manager.reset();
     m_graphics_context.reset();
     m_glfw_window.reset();

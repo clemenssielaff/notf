@@ -3,7 +3,7 @@
 #include <atomic>
 
 #include "common/log.hpp"
-#include "app/properties.hpp"
+#include "app/property_graph.hpp"
 
 namespace { // anonymous
 NOTF_USING_NAMESPACE

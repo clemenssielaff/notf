@@ -1,9 +1,11 @@
 #pragma once
 
-#include "app/properties.hpp"
+#include "app/property_graph.hpp"
 #include "common/signal.hpp"
 
 NOTF_OPEN_NAMESPACE
+
+//====================================================================================================================//
 
 namespace detail {
 
@@ -23,15 +25,16 @@ inline bool is_node_frozen_by(valid_ptr<SceneNode*> node, const std::thread::id&
 //====================================================================================================================//
 
 template<class T>
-class SceneProperty final : public PropertyHead {
+class SceneProperty final : public PropertyHead<T> {
+
+    using PropertyHead<T>::m_body;
+    using PropertyHead<T>::_apply_update_to;
+    using Dependencies = PropertyGraph::Dependencies;
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
     using Expression = PropertyGraph::Expression<T>;
     using Validator = PropertyGraph::Validator<T>;
-
-private:
-    using PropertyBody = PropertyGraph::TypedPropertyBodyPtr<T>;
 
     // signals -------------------------------------------------------------------------------------------------------//
 public:
@@ -74,8 +77,9 @@ public:
     /// @throws no_graph    If the PropertyGraph has been deleted.
     void set_value(T&& value)
     {
-        PropertyGraph::UpdateSet updates = m_body->set_value(std::forward<T>(value), /* fire_event = */ false);
-        _update_affected(std::move(updates));
+        PropertyUpdateList effects;
+        _body()->set_value(std::forward<T>(value), effects);
+        _update_affected(std::move(effects));
     }
 
     /// Sets the Property's expression.
@@ -84,36 +88,39 @@ public:
     /// @param dependencies     Properties that the expression depends on.
     /// @throws no_dag          If the expression would introduce a cyclic dependency into the graph.
     /// @throws no_graph        If the PropertyGraph has been deleted.
-    void _set_expression(Expression&& expression, typename PropertyBody::Dependencies&& dependencies)
+    void _set_expression(Expression&& expression, Dependencies&& dependencies)
     {
-        PropertyGraph::UpdateSet updates
-            = m_body->_set_expression(std::move(expression), std::move(dependencies), /* fire_event = */ false);
-        _update_affected(std::move(updates));
+        PropertyUpdateList effects;
+        _body()->_set_expression(std::move(expression), std::move(dependencies), effects);
+        _update_affected(std::move(effects));
     }
 
 private:
+    /// The typed property body.
+    PropertyBody<T>& _body() const { return *(static_cast<PropertyBody<T>*>(m_body.get())); }
+
     /// Shallow update of affected PropertyHandlers
-    /// @param affected     Other PropertyHandlers affected by the
-    void _update_affected(PropertyGraph::UpdateSet&& affected)
+    /// @param effects  Effects on other Properties that were affected by a change to this one.
+    void _update_affected(PropertyUpdateList&& effects)
     {
-        for (const std::unique_ptr<PropertyGraph::Update>& update : affected) {
-            risky_ptr<PropertyHead*> affected_head = update->property->head();
-            NOTF_ASSERT(affected_head);
-            affected_head->_apply_update(update.get());
+        for (const PropertyUpdatePtr& update : effects) {
+            if (risky_ptr<PropertyHeadBase*> affected_head = update->property->head()) {
+                _apply_update_to(affected_head, update.get());
+            }
         }
     }
 
     /// Updates the value in response to a PropertyEvent.
     /// @param update   PropertyUpdate to apply.
-    void _apply_update(valid_ptr<PropertyGraph::Update*> update) override
+    void _apply_update(valid_ptr<PropertyUpdate*> update) override
     {
         // restore the correct update type
-        PropertyGraph::ValueUpdate<T>* typed_update;
+        PropertyValueUpdate<T>* typed_update;
 #ifdef NOTF_DEBUG
-        typed_update = dynamic_cast<PropertyGraph::ValueUpdate<T>*>(update);
+        typed_update = dynamic_cast<PropertyValueUpdate<T>*>(update);
         NOTF_ASSERT(typed_update);
 #else
-        typed_update = static_cast<PropertyGraph::TypedPropertyUpdate<T>*>(update);
+        typed_update = static_cast<PropertyValueUpdate<T>*>(update);
 #endif
         // early out
         if (typed_update->value == m_value) {
@@ -137,9 +144,6 @@ private:
 private:
     /// SceneNode owning this SceneProperty
     valid_ptr<SceneNode*> m_node;
-
-    /// Property body.
-    PropertyBody m_body;
 
     /// Pointer to a frozen copy of the value, if it was modified while the SceneGraph was frozen.
     std::atomic<T*> m_frozen_value;
