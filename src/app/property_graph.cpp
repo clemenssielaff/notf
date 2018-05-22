@@ -185,6 +185,10 @@ void PropertyBodyBase::_add_downstream(const valid_ptr<PropertyBodyBase*> affect
 
 //====================================================================================================================//
 
+PropertyHeadBase::initial_value_error::~initial_value_error() = default;
+
+PropertyHeadBase::no_body_error::~no_body_error() = default;
+
 PropertyHeadBase::~PropertyHeadBase() = default;
 
 NOTF_CLOSE_NAMESPACE

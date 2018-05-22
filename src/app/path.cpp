@@ -46,7 +46,7 @@ Path::no_path::~no_path() = default;
 
 Path::token_error::~token_error() = default;
 
-Path::not_unique::~not_unique() = default;
+Path::not_unique_error::~not_unique_error() = default;
 
 // ===================================================================================================================//
 

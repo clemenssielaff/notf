@@ -2,8 +2,8 @@
 
 #include <atomic>
 
-#include "common/log.hpp"
 #include "app/property_graph.hpp"
+#include "common/log.hpp"
 
 namespace { // anonymous
 NOTF_USING_NAMESPACE
@@ -26,7 +26,7 @@ NOTF_OPEN_NAMESPACE
 
 SceneNode::no_node_error::~no_node_error() = default;
 
-SceneNode::node_finalized::~node_finalized() = default;
+SceneNode::node_finalized_error::~node_finalized_error() = default;
 
 //====================================================================================================================//
 

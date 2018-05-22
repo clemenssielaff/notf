@@ -304,7 +304,7 @@ private:
 public:
     /// Factory function, making sure that all PropertyBodies are managed by a shared_ptr.
     /// @param value    Value held by the Property, is used to determine the property type.
-    static PropertyBodyPtr<T> create(T&& value)
+    static std::enable_if_t<PropertyGraph::is_property_type_v<T>, PropertyBodyPtr<T>> create(T&& value)
     {
         return NOTF_MAKE_SHARED_FROM_PRIVATE(PropertyBody<T>, std::forward<T>(value));
     }
@@ -544,9 +544,18 @@ public:
     template<class T>
     using Access = access::_PropertyHeadBase<T>;
 
+    /// Exception thrown when the initial value of a SceneProperty could not be validated.
+    NOTF_EXCEPTION_TYPE(initial_value_error);
+
+    /// Exception thrown when a PropertyHead without a body tries to access one.
+    NOTF_EXCEPTION_TYPE(no_body_error);
+
     // methods ------------------------------------------------------------------------------------------------------ //
 protected:
-    /// Constructor.
+    /// Empty default Constructor.
+    PropertyHeadBase() = default;
+
+    /// Value Constructor.
     /// @param body     PropertyBoy associated with this head.
     PropertyHeadBase(PropertyBodyBasePtr&& body) : m_body(std::move(body)) {}
 
@@ -579,8 +588,11 @@ class PropertyHead : public PropertyHeadBase {
 
     // methods ------------------------------------------------------------------------------------------------------ //
 protected:
+    /// Empty default Constructor.
+    PropertyHead() = default;
+
     /// @param value    Initial value of the Property.
-    PropertyHead(T&& value) : PropertyHeadBase(PropertyBody<T>::create(std::forward<T>(value))) {}
+    PropertyHead(T value) : PropertyHeadBase(PropertyBody<T>::create(std::forward<T>(value))) {}
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //

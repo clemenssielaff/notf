@@ -71,7 +71,7 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
 
         iprop2.reset();
         REQUIRE(iprop1->value() == 9);
-        REQUIRE(iprop1->has_expression());
+        REQUIRE(iprop1->has_expression()); // ipropr2 lives on in iprop1's expression
 
         iprop1->set_value(9);
         REQUIRE(iprop1->is_grounded());
@@ -88,7 +88,7 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
 
             PropertyBatch batch;
             {
-                auto reader = iprop2->reader();
+                PropertyReader<int> reader = iprop2->reader();
                 batch.set_expression(*iprop1, [reader]() -> int { return reader() + 5; }, {reader});
             }
             batch.set_value(*iprop2, 32);

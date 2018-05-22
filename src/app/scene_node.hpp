@@ -1,10 +1,12 @@
 #pragma once
 
+#include "app/path.hpp"
 #include "app/scene.hpp"
 #include "app/scene_property.hpp"
 #include "common/signal.hpp"
 
 NOTF_OPEN_NAMESPACE
+
 namespace access { // forwards
 template<class>
 class _SceneNode;
@@ -27,11 +29,15 @@ public:
     /// Thrown when a node did not have the expected position in the hierarchy.
     using hierarchy_error = Scene::hierarchy_error;
 
+    /// Validator function for a Property of type T.
+    template<class T>
+    using Validator = PropertyGraph::Validator<T>;
+
     /// Exception thrown when the SceneNode has gone out of scope (Scene must have been deleted).
     NOTF_EXCEPTION_TYPE(no_node_error);
 
     /// Exception thrown when you try to do something that is only allowed to do if the node hasn't been finalized yet.
-    NOTF_EXCEPTION_TYPE(node_finalized);
+    NOTF_EXCEPTION_TYPE(node_finalized_error);
 
 protected:
     /// Factory token object to make sure that Node instances can only be created by a call to `_add_child`.
@@ -262,35 +268,47 @@ protected:
     void _clear_children();
 
     /// Constructs a new Property on this SceneNode.
-    /// @param name         Name of the Property.
-    /// @param value        Initial value of the Property (also determines its type unless specified explicitly).
-    /// @throws node_finalized      If you call this method from anywhere but the constructor.
-    /// @throws Path::not_unique    If there already exists a Property of the same name on this SceneNode.
-    /// @throws no_graph_error      If the SceneGraph of the node has been deleted.
-    //    template<class T>
-    //    PropertyHandler<T>& _create_property(std::string name, T&& value)
-    //    {
-    //        if (_is_finalized()) {
-    //            notf_throw_format(node_finalized,
-    //                              "Cannot create Property \"{}\" (or any new Property) on SceneNode \"{}\", "
-    //                              "or in fact any SceneNode that has already been finalized",
-    //                              name, this->name());
-    //        }
-    //        if (m_properties.count(name)) {
-    //            notf_throw_format(Path::not_unique, "SceneNode \"{}\" already has a Property named \"{}\"",
-    //            this->name(),
-    //                              name);
-    //        }
+    /// @param name     Name of the Property.
+    /// @param value    Initial value of the Property (also determines its type unless specified explicitly).
+    /// @throws node_finalized_error
+    ///                 If you call this method from anywhere but the constructor.
+    /// @throws Path::not_unique_error
+    ///                 If there already exists a Property of the same name on this SceneNode.
+    /// @throws no_graph_error
+    ///                 If the SceneGraph of the node has been deleted.
+    /// @throws SceneProperty::initial_value_error
+    ///                 If the value of the Property could not be validated.
+    template<class T>
+    SceneProperty<T>*
+    _create_property(std::string name, T&& value, Validator<T> validator = {}, const bool has_body = true)
+    {
+        if (_is_finalized()) {
+            notf_throw_format(node_finalized_error,
+                              "Cannot create Property \"{}\" (or any new Property) on SceneNode \"{}\", "
+                              "or in fact any SceneNode that has already been finalized",
+                              name, this->name());
+        }
+        if (m_properties.count(name)) {
+            notf_throw_format(Path::not_unique_error, "SceneNode \"{}\" already has a Property named \"{}\"",
+                              this->name(), name);
+        }
 
-    //        // create the property
-    //        PropertyHandler<T> result
-    //            = PropertyGraph::Access<SceneNode>::create_property(graph()->property_graph(), std::move(value),
-    //            this);
-    //        auto it = m_properties.emplace(std::make_pair(std::move(name), result.property()));
-    //        NOTF_ASSERT(it.second);
+        if (validator && !validator(value)) {
+            notf_throw_format(SceneProperty<T>::initial_value_error,
+                              "Cannot create Property \"{}\" with value \"{}\", "
+                              "that did not validate against the supplied Validator function",
+                              name, value);
+        }
 
-    //        return result;
-    //    }
+        // create the property
+        ScenePropertyPtr<T> property = SceneProperty<T>::template Access<SceneNode>::create(
+            std::forward<T>(value), this, std::move(validator), has_body);
+        SceneProperty<T>* result = property.get();
+        auto it = m_properties.emplace(std::make_pair(std::move(name), std::move(property)));
+        NOTF_ASSERT(it.second);
+
+        return result;
+    }
 
 private:
     /// Finalizes this SceneNode.
