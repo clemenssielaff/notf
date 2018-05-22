@@ -95,7 +95,7 @@ struct TestNode : public SceneNode {
 
     /// Adds a new node as a child of this one.
     /// @param args Arguments that are forwarded to the constructor of the child.
-    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     template<class T, class... Args>
     SceneNodeHandle<T> add_child(Args&&... args)
     {

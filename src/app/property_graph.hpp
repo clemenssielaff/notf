@@ -33,20 +33,9 @@ public:
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
-    /// Empty default constructor.
-    PropertyReaderBase() = default;
-
     /// Value constructor.
     /// @param body     Owning pointer to the PropertyBody to read from.
     PropertyReaderBase(PropertyBodyBasePtr&& body) : m_body(std::move(body)) {}
-
-    /// Copy Constructor.
-    /// @param other    Reader to copy.
-    PropertyReaderBase(const PropertyReaderBase& other) : m_body(other.m_body) {}
-
-    /// Move Constructor.
-    /// @param other    Reader to move.
-    PropertyReaderBase(PropertyReaderBase&& other) : m_body(std::move(other.m_body)) { other.m_body.reset(); }
 
     /// Equality operator.
     /// @param rhs      Other reader to compare against.
@@ -118,7 +107,15 @@ public:
     /// Owning references to all property bodies that a Property one depends on through its expression.
     using Dependencies = std::vector<PropertyReaderBase>;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    /// List of PropertyUpdates.
+    using PropertyUpdateList = std::vector<PropertyUpdatePtr>;
+
+    // methods ------------------------------------------------------------------------------------------------------ //
+
+    /// Generates one or more PropertyEvents targeted at the SceneGraphs of affected SceneProperties.
+    static void fire_event(PropertyUpdateList&& effects);
+
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Mutex guarding all Property bodies.
     /// Needs to be recursive because we need to execute user-defined expressions (that might lock the mutex) while
@@ -172,9 +169,6 @@ public:
     PropertyBodyBasePtr property;
 };
 
-/// List of PropertyUpdates.
-using PropertyUpdateList = std::vector<PropertyUpdatePtr>;
-
 /// Stores a single value update for a property.
 template<class T>
 struct PropertyValueUpdate final : public PropertyUpdate {
@@ -223,6 +217,7 @@ class PropertyBodyBase {
     // types ---------------------------------------------------------------------------------------------------------//
 private:
     using Dependencies = PropertyGraph::Dependencies;
+    using PropertyUpdateList = PropertyGraph::PropertyUpdateList;
 
 public:
     /// Access types.
@@ -332,17 +327,18 @@ public:
     }
 
     /// Sets the Property's value and fires a PropertyEvent.
+    /// Fires a PropertyEvent, if the call had any effect.
     /// @param value        New value.
     void set_value(T&& value)
     {
         PropertyUpdateList effects;
         set_value(std::forward<T>(value), effects);
-        //            PropertyGraph::PropertyAccess::fire_event(*property_graph, std::move(effects));
-        // TODO: fire event
+        PropertyGraph::fire_event(std::move(effects));
     }
 
     /// Set the Property's value and updates downstream Properties.
     /// Removes an existing expression on this Property if one exists.
+    /// Does not fire a PropertyEvent, but instead passes all effects into the output argument.
     /// @param value        New value.
     /// @param effects      [OUT] All properties affected of the change.
     void set_value(T&& value, PropertyUpdateList& effects)
@@ -355,6 +351,7 @@ public:
     }
 
     /// Set the Property's expression.
+    /// Fires a PropertyEvent, if the call had any effect.
     /// @param expression       Expression to set.
     /// @param dependencies     Properties that the expression depends on.
     /// @throws no_dag_error    If the expression would introduce a cyclic dependency into the graph.
@@ -362,10 +359,11 @@ public:
     {
         PropertyUpdateList effects;
         set_expression(std::move(expression), std::move(dependencies), effects);
-        // TODO: fire event
+        PropertyGraph::fire_event(std::move(effects));
     }
 
     /// Set the Property's expression.
+    /// Does not fire a PropertyEvent, but instead passes all effects into the output argument.
     /// @param expression       Expression to set.
     /// @param dependencies     Properties that the expression depends on.
     /// @param effects          [OUT] All properties affected of the change.
@@ -417,7 +415,7 @@ private:
     /// @param expression       Expression to set.
     /// @param dependencies     Properties that the expression depends on.
     /// @param effects          [OUT] All properties affected of the change.
-    /// @throws no_dag          If the expression would introduce a cyclic dependency into the graph.
+    /// @throws no_dag_error    If the expression would introduce a cyclic dependency into the graph.
     void _set_expression(Expression expression, Dependencies dependencies, PropertyUpdateList& effects)
     {
         NOTF_ASSERT(_mutex().is_locked_by_this_thread());
@@ -510,6 +508,8 @@ template<>
 class access::_PropertyBodyBase<PropertyBatch> {
     friend class notf::PropertyBatch;
 
+    using PropertyUpdateList = PropertyGraph::PropertyUpdateList;
+
     /// Checks if a given update would succeed if executed or not.
     /// @param property         Property to access.
     /// @param update           Untyped update to test (only PropertyExpressionUpdated can fail).
@@ -554,7 +554,12 @@ public:
     /// Destructor.
     virtual ~PropertyHeadBase();
 
+    /// Returns the SceneNode associated with this PropertyHead (if there is one).
+    virtual risky_ptr<SceneNode*> scene_node() { return nullptr; }
+
 private:
+    /// Updates the value in response to a PropertyEvent.
+    /// @param update   PropertyUpdate to apply.
     virtual void _apply_update(valid_ptr<PropertyUpdate*> update) = 0;
 
     /// Allows all subclasses of PropertyHeadBase to call `_apply_update` on all others.
@@ -595,6 +600,7 @@ class NOTF_NODISCARD PropertyBatch {
     template<class T>
     using Expression = PropertyGraph::Expression<T>;
     using Dependencies = PropertyGraph::Dependencies;
+    using PropertyUpdateList = PropertyGraph::PropertyUpdateList;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:

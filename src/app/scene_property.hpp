@@ -30,6 +30,7 @@ class SceneProperty final : public PropertyHead<T> {
     using PropertyHead<T>::m_body;
     using PropertyHead<T>::_apply_update_to;
     using Dependencies = PropertyGraph::Dependencies;
+    using PropertyUpdateList = PropertyGraph::PropertyUpdateList;
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -57,6 +58,8 @@ public:
             delete frozen_ptr;
         }
     }
+    /// Returns the SceneNode associated with this PropertyHead.
+    virtual risky_ptr<SceneNode*> scene_node() override { return m_node; }
 
     /// Current SceneProperty value.
     const T& value() const
@@ -73,8 +76,8 @@ public:
 
     /// Set the Property's value.
     /// Removes an existing expression on this Property if one exists.
-    /// @param value        New value.
-    /// @throws no_graph    If the PropertyGraph has been deleted.
+    /// @param value            New value.
+    /// @throws no_graph_error  If the PropertyGraph has been deleted.
     void set_value(T&& value)
     {
         PropertyUpdateList effects;
@@ -86,8 +89,8 @@ public:
     /// Evaluates the expression right away to update the Property's value.
     /// @param expression       Expression to set.
     /// @param dependencies     Properties that the expression depends on.
-    /// @throws no_dag          If the expression would introduce a cyclic dependency into the graph.
-    /// @throws no_graph        If the PropertyGraph has been deleted.
+    /// @throws no_dag_error    If the expression would introduce a cyclic dependency into the graph.
+    /// @throws no_graph_error  If the PropertyGraph has been deleted.
     void _set_expression(Expression&& expression, Dependencies&& dependencies)
     {
         PropertyUpdateList effects;

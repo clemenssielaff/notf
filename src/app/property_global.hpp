@@ -4,7 +4,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 template<class T>
 class GlobalProperty : public PropertyHead<T> {
@@ -12,11 +12,11 @@ class GlobalProperty : public PropertyHead<T> {
     using PropertyHead<T>::m_body;
     using Dependencies = PropertyGraph::Dependencies;
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     using Expression = PropertyGraph::Expression<T>;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
@@ -61,7 +61,12 @@ private:
     /// The typed property body.
     PropertyBody<T>& _body() const { return *(static_cast<PropertyBody<T>*>(m_body.get())); }
 
-    virtual void _apply_update(valid_ptr<PropertyUpdate*>) {}
+    /// Updates the value in response to a PropertyEvent.
+    /// @param update   PropertyUpdate to apply.
+    void _apply_update(valid_ptr<PropertyUpdate*>) override
+    {
+        NOTF_NOOP; // a global property does not need to react to changes of its body
+    }
 };
 
 /// Creates a global property with automatic type deduction.

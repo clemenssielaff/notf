@@ -51,12 +51,12 @@ public:
 
     /// @{
     /// The managed BaseNode instance correctly typed.
-    /// @throws SceneNode::no_node  If the handled SceneNode has been deleted.
+    /// @throws SceneNode::no_node_error    If the handled SceneNode has been deleted.
     T* operator->()
     {
         std::shared_ptr<SceneNode> raw_node = m_node.lock();
         if (NOTF_UNLIKELY(!raw_node)) {
-            notf_throw(SceneNode::no_node, "SceneNode has been deleted");
+            notf_throw(SceneNode::no_node_error, "SceneNode has been deleted");
         }
         return static_cast<T*>(raw_node.get());
     }

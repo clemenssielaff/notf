@@ -8,6 +8,8 @@ NOTF_OPEN_NAMESPACE
 /// Event generated when the value of an associated Property was changed.
 struct PropertyEvent : public detail::EventBase<PropertyEvent> {
 
+    using PropertyUpdateList = PropertyGraph::PropertyUpdateList;
+
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     /// Constructor.

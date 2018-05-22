@@ -9,7 +9,7 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
-Scene::no_graph::~no_graph() = default;
+Scene::no_graph_error::~no_graph_error() = default;
 
 Scene::hierarchy_error::~hierarchy_error() = default;
 

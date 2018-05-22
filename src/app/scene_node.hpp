@@ -28,7 +28,7 @@ public:
     using hierarchy_error = Scene::hierarchy_error;
 
     /// Exception thrown when the SceneNode has gone out of scope (Scene must have been deleted).
-    NOTF_EXCEPTION_TYPE(no_node);
+    NOTF_EXCEPTION_TYPE(no_node_error);
 
     /// Exception thrown when you try to do something that is only allowed to do if the node hasn't been finalized yet.
     NOTF_EXCEPTION_TYPE(node_finalized);
@@ -67,7 +67,7 @@ public:
     /// @}
 
     /// The SceneGraph containing this node.
-    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     valid_ptr<SceneGraphPtr> graph() const { return m_scene.graph(); }
 
     /// @{
@@ -86,7 +86,7 @@ public:
     /// Registers this Node as being dirty.
     /// A ScenGraph containing at least one dirty SceneNode causes the Window to be redrawn at the next opportunity.
     /// Is virtual, so subclasses may decide to ignore this method, for example if the node is invisible.
-    /// @throws no_graph        If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     virtual void redraw() { SceneGraph::Access<SceneNode>::register_dirty(*graph(), this); }
 
     // hierarchy --------------------------------------------------------------
@@ -108,8 +108,8 @@ public:
     }
 
     /// Tests, if this Node is a descendant of the given ancestor.
-    /// @param ancestor     Potential ancestor to verify.
-    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    /// @param ancestor         Potential ancestor to verify.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     bool has_ancestor(const valid_ptr<const SceneNode*> ancestor) const;
 
     ///@{
@@ -117,7 +117,7 @@ public:
     /// The root node is always a common ancestor, iff the two nodes are in the same scene.
     /// @param other            Other SceneNode to find the common ancestor for.
     /// @throws hierarchy_error If the two nodes are not in the same scene.
-    /// @throws no_graph        If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     valid_ptr<SceneNode*> common_ancestor(valid_ptr<SceneNode*> other);
     valid_ptr<const SceneNode*> common_ancestor(valid_ptr<const SceneNode*> other) const
     {
@@ -127,7 +127,7 @@ public:
 
     ///@{
     /// Returns the first ancestor of this Node that has a specific type (can be empty if none is found).
-    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     template<class T>
     risky_ptr<const T*> first_ancestor() const // TODO: this should return a Handle, right?
     {
@@ -157,43 +157,43 @@ public:
     // z-order ------------------------------------------------------------
 
     /// Checks if this Node is in front of all of its siblings.
-    /// @throws no_graph        If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     bool is_in_front() const;
 
     /// Checks if this Node is behind all of its siblings.
-    /// @throws no_graph        If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     bool is_in_back() const;
 
     /// Returns true if this node is stacked anywhere in front of the given sibling.
     /// @param sibling  Sibling node to test against.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    /// @throws no_graph        If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     bool is_in_front_of(const valid_ptr<SceneNode*> sibling) const;
 
     /// Returns true if this node is stacked anywhere behind the given sibling.
     /// @param sibling  Sibling node to test against.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    /// @throws no_graph        If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     bool is_behind(const valid_ptr<SceneNode*> sibling) const;
 
     /// Moves this Node in front of all of its siblings.
-    /// @throws no_graph        If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void stack_front();
 
     /// Moves this Node behind all of its siblings.
-    /// @throws no_graph        If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void stack_back();
 
     /// Moves this Node before a given sibling.
     /// @param sibling  Sibling to stack before.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    /// @throws no_graph        If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void stack_before(const valid_ptr<SceneNode*> sibling);
 
     /// Moves this Node behind a given sibling.
     /// @param sibling  Sibling to stack behind.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    /// @throws no_graph        If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void stack_behind(const valid_ptr<SceneNode*> sibling);
 
 protected:
@@ -211,20 +211,20 @@ protected:
     /// Never creates a delta.
     /// Note that you will need to hold the SceneGraph hierarchy mutex while calling this method, as well as for the
     /// entire lifetime of the returned reference!
-    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     const NodeContainer& _read_children() const;
 
     /// All children of this node, orded from back to front.
     /// Will create a new delta if the scene is frozen.
     /// Note that you will need to hold the SceneGraph hierarchy mutex while calling this method, as well as for the
     /// entire lifetime of the returned reference!
-    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     NodeContainer& _write_children();
 
     /// Creates and adds a new child to this node.
     /// @param args Arguments that are forwarded to the constructor of the child.
     ///             Note that all arguments for the Node base class are supplied automatically by this method.
-    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     template<class T, class... Args, typename = std::enable_if_t<std::is_base_of<SceneNode, T>::value>>
     SceneNodeHandle<T> _add_child(Args&&... args)
     {
@@ -258,7 +258,7 @@ protected:
     }
 
     /// Removes all children of this node.
-    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void _clear_children();
 
     /// Constructs a new Property on this SceneNode.
@@ -266,7 +266,7 @@ protected:
     /// @param value        Initial value of the Property (also determines its type unless specified explicitly).
     /// @throws node_finalized      If you call this method from anywhere but the constructor.
     /// @throws Path::not_unique    If there already exists a Property of the same name on this SceneNode.
-    /// @throws no_graph            If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error      If the SceneGraph of the node has been deleted.
     //    template<class T>
     //    PropertyHandler<T>& _create_property(std::string name, T&& value)
     //    {
@@ -354,7 +354,7 @@ public:
 
     /// Sets  a new child at the top of the Scene hierarchy (below the root).
     /// @param args Arguments that are forwarded to the constructor of the child.
-    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     template<class T, class... Args>
     SceneNodeHandle<T> set_child(Args&&... args)
     {
@@ -363,7 +363,7 @@ public:
     }
 
     /// Removes the child of the root node, effectively clearing the Scene.
-    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void clear() { _clear_children(); }
 };
 

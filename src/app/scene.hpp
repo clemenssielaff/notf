@@ -32,7 +32,7 @@ public:
     using SceneNodeHandleAccess = access::_Scene_SceneNodeHandle;
 
     /// Exception thrown when the SceneGraph has gone out of scope before a Scene tries to access it.
-    NOTF_EXCEPTION_TYPE(no_graph);
+    NOTF_EXCEPTION_TYPE(no_graph_error);
 
     /// Thrown when a node did not have the expected position in the hierarchy.
     NOTF_EXCEPTION_TYPE(hierarchy_error);
@@ -165,12 +165,12 @@ public:
 
     /// @{
     /// The SceneGraph owning this Scene.
-    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     valid_ptr<SceneGraphPtr> graph()
     {
         SceneGraphPtr scene_graph = m_graph.lock();
         if (NOTF_UNLIKELY(!scene_graph)) {
-            notf_throw(no_graph, "SceneGraph has been deleted");
+            notf_throw(no_graph_error, "SceneGraph has been deleted");
         }
         return scene_graph;
     }
@@ -202,13 +202,13 @@ private:
     // scene hierarchy --------------------------------------------------------
 private:
     /// Finds a delta for the given child container and returns it, if it exists.
-    /// @param node         SceneNode whose delta to return.
-    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    /// @param node             SceneNode whose delta to return.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     risky_ptr<NodeContainer*> _get_delta(valid_ptr<const SceneNode*> node);
 
     /// Creates a new delta for the given child container.
-    /// @param node         SceneNode whose delta to create a delta for.
-    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    /// @param node             SceneNode whose delta to create a delta for.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void _create_delta(valid_ptr<const SceneNode*> node);
 
     // fields --------------------------------------------------------------------------------------------------------//
@@ -254,18 +254,18 @@ class access::_Scene<SceneNode> {
     using NodeContainer = Scene::NodeContainer;
 
     /// Finds a delta for the given child container and returns it, if it exists.
-    /// @param scene        Scene to operate on.
-    /// @param node         SceneNode whose delta to return.
-    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    /// @param scene            Scene to operate on.
+    /// @param node             SceneNode whose delta to return.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     static risky_ptr<NodeContainer*> get_delta(Scene& scene, valid_ptr<const SceneNode*> node)
     {
         return scene._get_delta(node);
     }
 
     /// Creates a new delta for the given child container.
-    /// @param scene        Scene to operate on.
-    /// @param node         SceneNode whose delta to create a delta for.
-    /// @throws no_graph    If the SceneGraph of the node has been deleted.
+    /// @param scene            Scene to operate on.
+    /// @param node             SceneNode whose delta to create a delta for.
+    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     static void create_delta(Scene& scene, valid_ptr<const SceneNode*> node) { scene._create_delta(node); }
 };
 

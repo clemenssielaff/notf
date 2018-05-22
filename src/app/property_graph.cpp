@@ -1,8 +1,14 @@
 #include "app/property_graph.hpp"
 
 #include <algorithm>
+#include <map>
 #include <set>
 
+#include "app/application.hpp"
+#include "app/event_manager.hpp"
+#include "app/io/property_event.hpp"
+#include "app/scene_graph.hpp"
+#include "app/scene_node.hpp"
 #include "common/set.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -10,6 +16,45 @@ NOTF_OPEN_NAMESPACE
 //====================================================================================================================//
 
 PropertyGraph::no_dag_error::~no_dag_error() = default;
+
+void PropertyGraph::fire_event(PropertyUpdateList&& effects)
+{
+    // sort effects by Window containing the affected SceneProperty
+    std::map<valid_ptr<const Window*>, PropertyUpdateList> updates_by_window;
+    while (!effects.empty()) {
+        PropertyUpdatePtr update = std::move(effects.back());
+        effects.pop_back();
+
+        if (risky_ptr<PropertyHeadBase*> property_head = update->property->head()) {
+            if (risky_ptr<SceneNode*> scene_node = property_head->scene_node()) {
+                try {
+                    const Window* window = &(scene_node->graph()->window());
+                    if (updates_by_window.count(window) == 0) {
+                        PropertyUpdateList window_updates;
+                        window_updates.reserve(effects.size() + 1); // assume all updates are for the same window
+                        window_updates.emplace_back(std::move(update));
+                        updates_by_window[window] = std::move(window_updates);
+                    }
+                    else {
+                        updates_by_window[window].emplace_back(std::move(update));
+                    }
+                }
+                catch (const Scene::no_graph_error&) {
+                    // ignore events for SceneGraphs that have been deleted
+                }
+            }
+        }
+    }
+
+    // fire events
+    while (!updates_by_window.empty()) {
+        auto it = updates_by_window.begin();
+
+        Application::instance().event_manager().handle(
+            std::make_unique<PropertyEvent>(it->first, std::move(it->second)));
+        updates_by_window.erase(it);
+    }
+}
 
 RecursiveMutex PropertyGraph::s_mutex = {};
 
@@ -25,7 +70,7 @@ PropertyUpdate::~PropertyUpdate() = default;
 
 void PropertyBatch::execute()
 {
-    PropertyUpdateList effect;
+    PropertyUpdateList effects;
     {
         NOTF_MUTEX_GUARD(PropertyGraph::Access<PropertyBatch>::mutex());
 
@@ -36,13 +81,12 @@ void PropertyBatch::execute()
 
         // apply the updates
         for (const PropertyUpdatePtr& update : m_updates) {
-            PropertyBodyBase::Access<PropertyBatch>::apply_update(update->property, update, effect);
+            PropertyBodyBase::Access<PropertyBatch>::apply_update(update->property, update, effects);
         }
     }
 
-    // fire off the combined event
-    //    property_graph->_fire_event(std::move(affected));
-    // TODO: fire event
+    // fire off the combined event/s
+    PropertyGraph::fire_event(std::move(effects));
 
     // reset in case the user wants to reuse the batch object
     m_updates.clear();
@@ -52,7 +96,10 @@ void PropertyBatch::execute()
 
 PropertyBodyBase::~PropertyBodyBase()
 {
-    PropertyBodyBase::_ground();
+    { // properties that are getting deleted should not have any downstream left, but to be sure, ground here
+        NOTF_MUTEX_GUARD(_mutex());
+        PropertyBodyBase::_ground();
+    }
 
 #ifdef NOTF_TEST
     --PropertyGraph::Access<PropertyBodyBase>::property_count();

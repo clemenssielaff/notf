@@ -122,9 +122,6 @@ public:
     /// Generates a StateChangeEvent and pushes it onto the event queue for the Window.
     void enter_state(StatePtr new_state);
 
-    /// The PropertyGraph associated with this SceneGraph (owned by the same Window).
-    PropertyGraph& property_graph() const;
-
 private:
     /// Registers a SceneNode as dirty.
     /// @param node     Node to register as dirty.

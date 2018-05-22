@@ -71,6 +71,9 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
 
         iprop2.reset();
         REQUIRE(iprop1->value() == 9);
+        REQUIRE(iprop1->has_expression());
+
+        iprop1->set_value(9);
         REQUIRE(iprop1->is_grounded());
 
         REQUIRE(EventManager::Access<test::Harness>(event_manager).backlog_size() == 0);

@@ -24,7 +24,7 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
-SceneNode::no_node::~no_node() = default;
+SceneNode::no_node_error::~no_node_error() = default;
 
 SceneNode::node_finalized::~node_finalized() = default;
 
@@ -56,7 +56,7 @@ SceneNode::~SceneNode()
     try {
         SceneGraph::Access<SceneNode>::remove_dirty(*graph(), this);
     }
-    catch (const Scene::no_graph&) {
+    catch (const Scene::no_graph_error&) {
         // if the SceneGraph has already been deleted, it won't matter if this SceneNode was dirty or not
     }
 }
