@@ -279,7 +279,7 @@ protected:
     /// @throws SceneProperty::initial_value_error
     ///                 If the value of the Property could not be validated.
     template<class T>
-    SceneProperty<T>*
+    valid_ptr<SceneProperty<T>*>
     _create_property(std::string name, T&& value, Validator<T> validator = {}, const bool has_body = true)
     {
         if (_is_finalized()) {
@@ -306,6 +306,7 @@ protected:
         SceneProperty<T>* result = property.get();
         auto it = m_properties.emplace(std::make_pair(std::move(name), std::move(property)));
         NOTF_ASSERT(it.second);
+        result->m_name_it = it;
 
         return result;
     }
@@ -330,7 +331,7 @@ private:
     NodeContainer m_children;
 
     /// All properties of this node, accessible by their (node-unique) name.
-    std::unordered_map<std::string, std::unique_ptr<PropertyHeadBase>> m_properties;
+    std::map<std::string, std::unique_ptr<PropertyHeadBase>> m_properties;
 
     /// The parent-unique name of this Node.
     std::string m_name;

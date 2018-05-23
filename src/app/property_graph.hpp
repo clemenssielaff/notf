@@ -69,6 +69,8 @@ class access::_PropertyReader_PropertyBody {
     static const PropertyBodyBasePtr& property(const PropertyReaderBase& reader) { return reader.m_body; }
 };
 
+// TODO: PropertyWriters
+
 // ================================================================================================================== //
 
 class PropertyGraph {
@@ -113,6 +115,7 @@ public:
     // methods ------------------------------------------------------------------------------------------------------ //
 
     /// Generates one or more PropertyEvents targeted at the SceneGraphs of affected SceneProperties.
+    /// @throws no_application_error    If the global Application has already finished.
     static void fire_event(PropertyUpdateList&& effects);
 
     // fields ------------------------------------------------------------------------------------------------------- //

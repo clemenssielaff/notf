@@ -15,6 +15,8 @@ bool is_node_frozen_by(valid_ptr<SceneNode*> node, const std::thread::id& thread
     return node->graph()->is_frozen_by(thread_id);
 }
 
+const std::string& node_name(valid_ptr<SceneNode*> node) { return node->name(); }
+
 } // namespace detail
 
 NOTF_CLOSE_NAMESPACE

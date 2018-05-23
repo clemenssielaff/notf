@@ -26,6 +26,9 @@ inline bool is_node_frozen(valid_ptr<SceneNode*> node);
 /// @param thread_id    Id of the thread to test for.
 inline bool is_node_frozen_by(valid_ptr<SceneNode*> node, const std::thread::id& thread_id);
 
+/// Returns the name of the given SceneNode.
+const std::string& node_name(valid_ptr<SceneNode*> node);
+
 } // namespace detail
 
 //====================================================================================================================//
@@ -110,6 +113,9 @@ public:
     /// Returns the SceneNode associated with this PropertyHead.
     virtual risky_ptr<SceneNode*> scene_node() override { return m_node; }
 
+    /// The node-unique name of this Property.
+    const std::string& name() const { return m_name_it->first; }
+
     /// Current SceneProperty value.
     const T& value() const
     {
@@ -123,6 +129,10 @@ public:
         return m_value;
     }
 
+    /// Returns true if this SceneProperty can be set to hold an expressions.
+    /// If this method returns false, `set_expression` will throw a `no_body_error`.
+    bool supports_expressions() const { return (_body() != nullptr); }
+
     /// Set the Property's value.
     /// Removes an existing expression on this Property if one exists.
     /// @param value            New value.
@@ -133,15 +143,14 @@ public:
             return;
         }
 
-        m_value = value;
-
         if (risky_ptr<PropertyBody<T>*> body = _body()) {
             PropertyUpdateList effects;
             body()->set_value(std::forward<T>(value), effects);
             _update_affected(std::move(effects));
         }
-
-        on_value_changed(m_value);
+        else {
+            _set_value(std::move(value));
+        }
     }
 
     /// Sets the Property's expression.
@@ -156,23 +165,14 @@ public:
     {
         risky_ptr<PropertyBody<T>*> body = _body();
         if (!body) {
-            notf_throw(SceneProperty<T>::no_body_error, "Property cannot be defined using an Expression");
-            // TODO: should Properties know their own name using an iterator to a map in the SceneNode?
-            // TODO: should bodyless Properties be their own type so we don't even have the `set_expression` method when it is not allowed?
+            notf_throw_format(SceneProperty<T>::no_body_error,
+                              "Property \"{}\" on Node \"{}\" cannot be defined using an Expression", name(),
+                              detail::node_name(m_node));
         }
 
         PropertyUpdateList effects;
         body->_set_expression(std::move(expression), std::move(dependencies), effects);
-
-        // do nothing if the value fails to validate
-        T new_value = body->value();
-        if (m_validator && !m_validator(new_value)) {
-            return;
-        }
-        m_value = std::move(new_value);
-
         _update_affected(std::move(effects));
-        on_value_changed(m_value);
     }
 
 private:
@@ -202,13 +202,20 @@ private:
 #else
         typed_update = static_cast<PropertyValueUpdate<T>*>(update);
 #endif
+        _set_value(std::move(typed_update->value));
+    }
+
+    /// Updates the value of the SceneProperty.
+    /// @param value    New value.
+    void _set_value(T&& value)
+    {
         // do nothing if the property value would not actually change
-        if (typed_update->value == m_value) {
+        if (value == m_value) {
             return;
         }
 
         // do nothing if the value fails to validate
-        if (m_validator && !m_validator(typed_update->value)) {
+        if (m_validator && !m_validator(value)) {
             return;
         }
 
@@ -219,9 +226,10 @@ private:
             if (!frozen_value) {
                 frozen_value = new T(std::move(m_value));
                 m_frozen_value.store(frozen_value, std::memory_order_release);
+                // TODO: register frozen Properties with the SceneGraph so they can be unfrozen again
             }
         }
-        m_value = typed_update->value;
+        m_value = value;
         on_value_changed(m_value);
     }
 
@@ -232,6 +240,9 @@ private:
 
     /// Optional validator function used to validate a given value.
     Validator m_validator;
+
+    /// Iterator to this Property in the SceneNode's PropertyMap. Used to access this Property's name.
+    std::map<std::string, std::unique_ptr<PropertyHeadBase>>::const_iterator m_name_it = {};
 
     /// Pointer to a frozen copy of the value, if it was modified while the SceneGraph was frozen.
     std::atomic<T*> m_frozen_value = nullptr;
