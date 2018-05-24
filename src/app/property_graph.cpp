@@ -25,7 +25,7 @@ void PropertyGraph::fire_event(PropertyUpdateList&& effects)
         PropertyUpdatePtr update = std::move(effects.back());
         effects.pop_back();
 
-        if (risky_ptr<PropertyHeadBase*> property_head = update->property->head()) {
+        if (risky_ptr<PropertyHead*> property_head = update->property->head()) {
             if (risky_ptr<SceneNode*> scene_node = property_head->scene_node()) {
                 try {
                     const Window* window = &(scene_node->graph()->window());
@@ -76,12 +76,12 @@ void PropertyBatch::execute()
 
         // verify that all updates will succeed first
         for (const PropertyUpdatePtr& update : m_updates) {
-            PropertyBodyBase::Access<PropertyBatch>::validate_update(update->property, update);
+            PropertyBody::Access<PropertyBatch>::validate_update(update->property, update);
         }
 
         // apply the updates
         for (const PropertyUpdatePtr& update : m_updates) {
-            PropertyBodyBase::Access<PropertyBatch>::apply_update(update->property, update, effects);
+            PropertyBody::Access<PropertyBatch>::apply_update(update->property, update, effects);
         }
     }
 
@@ -94,24 +94,24 @@ void PropertyBatch::execute()
 
 //====================================================================================================================//
 
-PropertyBodyBase::~PropertyBodyBase()
+PropertyBody::~PropertyBody()
 {
     { // properties that are getting deleted should not have any downstream left, but to be sure, ground here
         NOTF_MUTEX_GUARD(_mutex());
-        PropertyBodyBase::_ground();
+        PropertyBody::_ground();
     }
 
 #ifdef NOTF_TEST
-    --PropertyGraph::Access<PropertyBodyBase>::property_count();
+    --PropertyGraph::Access<PropertyBody>::property_count();
 #endif
 }
 
-void PropertyBodyBase::_ground()
+void PropertyBody::_ground()
 {
     NOTF_ASSERT(_mutex().is_locked_by_this_thread());
 
-    for (const PropertyReaderBase& reader : m_upstream) {
-        PropertyBodyBase* dependency = PropertyReaderBase::PropertyBodyAccess::property(reader).get();
+    for (const PropertyReader& reader : m_upstream) {
+        PropertyBody* dependency = PropertyReader::Access<PropertyBody>::property(reader).get();
         auto it = std::find(dependency->m_downstream.begin(), dependency->m_downstream.end(), this);
         NOTF_ASSERT(it != dependency->m_downstream.end());
         *it = std::move(dependency->m_downstream.back());
@@ -120,27 +120,27 @@ void PropertyBodyBase::_ground()
     m_upstream.clear();
 }
 
-void PropertyBodyBase::_test_upstream(const Dependencies& dependencies)
+void PropertyBody::_test_upstream(const Dependencies& dependencies)
 {
     NOTF_ASSERT(_mutex().is_locked_by_this_thread());
 
-    std::set<valid_ptr<PropertyBodyBase*>> unchecked;
-    for (const PropertyReaderBase& reader : dependencies) {
-        if (PropertyBodyBase* dependency = PropertyReaderBase::PropertyBodyAccess::property(reader).get()) {
+    std::set<valid_ptr<PropertyBody*>> unchecked;
+    for (const PropertyReader& reader : dependencies) {
+        if (PropertyBody* dependency = PropertyReader::Access<PropertyBody>::property(reader).get()) {
             unchecked.insert(dependency);
         }
     }
 
-    std::set<valid_ptr<PropertyBodyBase*>> checked;
-    PropertyBodyBase* candidate;
+    std::set<valid_ptr<PropertyBody*>> checked;
+    PropertyBody* candidate;
     while (pop_one(unchecked, candidate)) {
         if (this == candidate) {
             notf_throw(PropertyGraph::no_dag_error,
                        "Failed to create property expression which would introduce a cyclic dependency");
         }
         checked.insert(candidate);
-        for (const PropertyReaderBase& reader : candidate->m_upstream) {
-            PropertyBodyBase* dependency = PropertyReaderBase::PropertyBodyAccess::property(reader).get();
+        for (const PropertyReader& reader : candidate->m_upstream) {
+            PropertyBody* dependency = PropertyReader::Access<PropertyBody>::property(reader).get();
             if (!checked.count(dependency)) {
                 unchecked.emplace(dependency);
             }
@@ -148,7 +148,7 @@ void PropertyBodyBase::_test_upstream(const Dependencies& dependencies)
     }
 }
 
-void PropertyBodyBase::_set_upstream(Dependencies&& dependencies)
+void PropertyBody::_set_upstream(Dependencies&& dependencies)
 {
     NOTF_ASSERT(_mutex().is_locked_by_this_thread());
 
@@ -159,20 +159,20 @@ void PropertyBodyBase::_set_upstream(Dependencies&& dependencies)
     // remove potential duplicates in the input
     m_upstream.clear();
     m_upstream.reserve(dependencies.size());
-    for (const PropertyReaderBase& reader : dependencies) {
+    for (const PropertyReader& reader : dependencies) {
         if (std::find(m_upstream.cbegin(), m_upstream.cend(), reader) == m_upstream.cend()) {
             m_upstream.emplace_back(std::move(reader));
         }
     }
 
     // register with the upstream properties
-    for (const PropertyReaderBase& reader : m_upstream) {
-        PropertyBodyBase* dependency = PropertyReaderBase::PropertyBodyAccess::property(reader).get();
+    for (const PropertyReader& reader : m_upstream) {
+        PropertyBody* dependency = PropertyReader::Access<PropertyBody>::property(reader).get();
         dependency->_add_downstream(this);
     }
 }
 
-void PropertyBodyBase::_add_downstream(const valid_ptr<PropertyBodyBase*> affected)
+void PropertyBody::_add_downstream(const valid_ptr<PropertyBody*> affected)
 {
     NOTF_ASSERT(_mutex().is_locked_by_this_thread());
 
@@ -185,10 +185,6 @@ void PropertyBodyBase::_add_downstream(const valid_ptr<PropertyBodyBase*> affect
 
 //====================================================================================================================//
 
-PropertyHeadBase::initial_value_error::~initial_value_error() = default;
-
-PropertyHeadBase::no_body_error::~no_body_error() = default;
-
-PropertyHeadBase::~PropertyHeadBase() = default;
+PropertyHead::~PropertyHead() = default;
 
 NOTF_CLOSE_NAMESPACE

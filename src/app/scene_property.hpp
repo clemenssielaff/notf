@@ -1,7 +1,8 @@
 #pragma once
 
+#include <map>
+
 #include "app/property_graph.hpp"
-#include "app/scene_node.hpp"
 #include "common/signal.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -13,43 +14,76 @@ class _SceneProperty;
 
 //====================================================================================================================//
 
-namespace detail {
-
-/// Tests if the given SceneNode is currently frozen.
-/// Is implemented in the .cpp file to avoid circular includes.
-/// @param node         SceneNode to test.
-inline bool is_node_frozen(valid_ptr<SceneNode*> node);
-
-/// Tests if the given SceneNode is currently frozen by a specific thread.
-/// Is implemented in the .cpp file to avoid circular includes.
-/// @param node         SceneNode to test.
-/// @param thread_id    Id of the thread to test for.
-inline bool is_node_frozen_by(valid_ptr<SceneNode*> node, const std::thread::id& thread_id);
-
-/// Returns the name of the given SceneNode.
-const std::string& node_name(valid_ptr<SceneNode*> node);
-
-} // namespace detail
-
-//====================================================================================================================//
-
-template<class T>
-class SceneProperty final : public PropertyHead<T> {
+class SceneProperty : public PropertyHead {
 
     friend class access::_SceneProperty<SceneNode>;
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
     /// Access types.
-    template<class U>
-    using Access = access::_SceneProperty<U>;
+    template<class T>
+    using Access = access::_SceneProperty<T>;
+
+    /// Map to store Properties by their name.
+    using PropertyMap = std::map<std::string, std::unique_ptr<SceneProperty>>;
 
     /// Exception thrown when the initial value of a SceneProperty could not be validated.
-    using PropertyHeadBase::initial_value_error;
+    NOTF_EXCEPTION_TYPE(initial_value_error);
 
     /// Exception thrown when a PropertyHead without a body tries to access one.
-    using PropertyHeadBase::no_body_error;
+    NOTF_EXCEPTION_TYPE(no_body_error);
 
+    // methods -------------------------------------------------------------------------------------------------------//
+protected:
+    /// Constructor.
+    /// Does not create a PropertyBody for this -head.
+    SceneProperty(valid_ptr<SceneNode*> node) : PropertyHead(), m_node(node) {}
+
+    /// Constructor.
+    /// Creates an associated PropertyBody for this -head.
+    template<class T>
+    SceneProperty(T value, valid_ptr<SceneNode*> node) : PropertyHead(std::forward<T>(value)), m_node(node)
+    {}
+
+public:
+    /// Destructor.
+    ~SceneProperty() override;
+
+protected:
+    /// Tests if the given SceneNode is currently frozen.
+    /// Is implemented in the .cpp file to avoid circular includes.
+    bool _is_frozen() const;
+
+    /// Tests if the given SceneNode is currently frozen by a specific thread.
+    /// Is implemented in the .cpp file to avoid circular includes.
+    /// @param thread_id    Id of the thread to test for.
+    bool _is_frozen_by(const std::thread::id& thread_id) const;
+
+    /// The name of the SceneNode.
+    const std::string& _node_name() const;
+
+    /// Registers a SceneNode as being "dirty".
+    /// A SceneNode is dirty when it has one or more Properties that were modified while the SceneGraph was frozen.
+    /// @param node         SceneNode to register as dirty.
+    void _register_node_dirty() const;
+
+private:
+    /// Deletes the frozen value copy of the SceneProperty if one exists.
+    virtual void _clear_frozen_value() = 0;
+
+    // fields --------------------------------------------------------------------------------------------------------//
+protected:
+    /// SceneNode owning this SceneProperty
+    valid_ptr<SceneNode*> m_node;
+};
+
+//====================================================================================================================//
+
+template<class T>
+class TypedSceneProperty final : public SceneProperty {
+
+    // types ---------------------------------------------------------------------------------------------------------//
+public:
     /// Expression defining a Property of type T.
     using Expression = PropertyGraph::Expression<T>;
 
@@ -74,14 +108,14 @@ private:
 
     /// Constructor.
     /// Does not create a PropertyBody for this -head.
-    SceneProperty(T value, valid_ptr<SceneNode*> node, Validator validator)
-        : PropertyHead<T>(), m_node(node), m_validator(std::move(validator)), m_value(std::move(value))
+    TypedSceneProperty(T value, valid_ptr<SceneNode*> node, Validator validator)
+        : SceneProperty(node), m_validator(std::move(validator)), m_value(std::move(value))
     {}
 
     /// Constructor.
     /// Creates an associated PropertyBody for this -head.
-    SceneProperty(T value, valid_ptr<SceneNode*> node, Validator validator, CreateBody)
-        : PropertyHead<T>(value), m_node(node), m_validator(std::move(validator)), m_value(std::move(value))
+    TypedSceneProperty(T value, valid_ptr<SceneNode*> node, Validator validator, CreateBody)
+        : SceneProperty(value, node), m_validator(std::move(validator)), m_value(std::move(value))
     {}
 
     /// Factory.
@@ -89,27 +123,23 @@ private:
     /// @param node         SceneNode owning this SceneProperty
     /// @param validator    Validator function of this Property.
     /// @param create_body  Iff true, the SceneProperty will have an assoicated PropertyBody available in the -graph.
-    static ScenePropertyPtr<T>
+    static TypedSceneProperty<T>
     create(T&& value, valid_ptr<SceneNode*> node, Validator validator, const bool create_body)
     {
         if (create_body) {
-            return NOTF_MAKE_UNIQUE_FROM_PRIVATE(SceneProperty<T>, std::forward<T>(value), node, std::move(validator),
-                                                 CreateBody{});
+            return NOTF_MAKE_UNIQUE_FROM_PRIVATE(TypedSceneProperty<T>, std::forward<T>(value), node,
+                                                 std::move(validator), CreateBody{});
         }
         else {
-            return NOTF_MAKE_UNIQUE_FROM_PRIVATE(SceneProperty<T>, std::forward<T>(value), node, std::move(validator));
+            return NOTF_MAKE_UNIQUE_FROM_PRIVATE(TypedSceneProperty<T>, std::forward<T>(value), node,
+                                                 std::move(validator));
         }
     }
 
 public:
     /// Destructor.
-    ~SceneProperty()
-    {
-        // delete the frozen value, if there is one
-        if (T* frozen_ptr = m_frozen_value.exchange(nullptr)) {
-            delete frozen_ptr;
-        }
-    }
+    ~TypedSceneProperty() { _clear_frozen_value(); }
+
     /// Returns the SceneNode associated with this PropertyHead.
     virtual risky_ptr<SceneNode*> scene_node() override { return m_node; }
 
@@ -121,7 +151,7 @@ public:
     {
         // if the property is frozen by this thread (the render thread, presumably) and there exists a frozen copy of
         // the value, use that instead of the current one
-        if (detail::is_node_frozen_by(m_node, std::this_thread::get_id())) {
+        if (_is_frozen_by(std::this_thread::get_id())) {
             if (T* frozen_value = m_frozen_value.load(std::memory_order_consume)) {
                 return *frozen_value;
             }
@@ -143,7 +173,7 @@ public:
             return;
         }
 
-        if (risky_ptr<PropertyBody<T>*> body = _body()) {
+        if (risky_ptr<TypedPropertyBody<T>*> body = _body()) {
             PropertyUpdateList effects;
             body()->set_value(std::forward<T>(value), effects);
             _update_affected(std::move(effects));
@@ -163,11 +193,11 @@ public:
     ///                     If this SceneProperty was created without a PropertyBody and cannot accept expressions.
     void set_expression(Expression&& expression, Dependencies&& dependencies)
     {
-        risky_ptr<PropertyBody<T>*> body = _body();
+        risky_ptr<TypedPropertyBody<T>*> body = _body();
         if (!body) {
-            notf_throw_format(SceneProperty<T>::no_body_error,
+            notf_throw_format(TypedSceneProperty<T>::no_body_error,
                               "Property \"{}\" on Node \"{}\" cannot be defined using an Expression", name(),
-                              detail::node_name(m_node));
+                              _node_name());
         }
 
         PropertyUpdateList effects;
@@ -177,15 +207,15 @@ public:
 
 private:
     /// The typed property body.
-    risky_ptr<PropertyBody<T>*> _body() const { return static_cast<PropertyBody<T>*>(PropertyHead<T>::m_body.get()); }
+    risky_ptr<TypedPropertyBody<T>*> _body() const { return static_cast<TypedPropertyBody<T>*>(m_body.get()); }
 
     /// Shallow update of affected PropertyHandlers
     /// @param effects  Effects on other Properties that were affected by a change to this one.
     void _update_affected(PropertyUpdateList&& effects)
     {
         for (const PropertyUpdatePtr& update : effects) {
-            if (risky_ptr<PropertyHeadBase*> affected_head = update->property->head()) {
-                PropertyHead<T>::_apply_update_to(affected_head, update.get());
+            if (risky_ptr<PropertyHead*> affected_head = update->property->head()) {
+                _apply_update_to(affected_head, update.get());
             }
         }
     }
@@ -221,28 +251,33 @@ private:
 
         // if the property is currently frozen and this is the first modification, create a frozen copy of the current
         // value before changing it
-        if (detail::is_node_frozen(m_node)) {
+        if (_is_frozen()) {
             T* frozen_value = m_frozen_value.load(std::memory_order_relaxed);
             if (!frozen_value) {
                 frozen_value = new T(std::move(m_value));
                 m_frozen_value.store(frozen_value, std::memory_order_release);
-                // TODO: register frozen Properties with the SceneGraph so they can be unfrozen again
+                _register_node_dirty();
             }
         }
         m_value = value;
         on_value_changed(m_value);
     }
 
+    /// Deletes the frozen value copy.
+    void _clear_frozen_value() override
+    {
+        if (T* frozen_ptr = m_frozen_value.exchange(nullptr)) {
+            delete frozen_ptr;
+        }
+    }
+
     // fields --------------------------------------------------------------------------------------------------------//
 private:
-    /// SceneNode owning this SceneProperty
-    valid_ptr<SceneNode*> m_node;
-
     /// Optional validator function used to validate a given value.
     Validator m_validator;
 
     /// Iterator to this Property in the SceneNode's PropertyMap. Used to access this Property's name.
-    std::map<std::string, std::unique_ptr<PropertyHeadBase>>::const_iterator m_name_it = {};
+    PropertyMap::const_iterator m_name_it = {};
 
     /// Pointer to a frozen copy of the value, if it was modified while the SceneGraph was frozen.
     std::atomic<T*> m_frozen_value = nullptr;
@@ -263,11 +298,14 @@ class access::_SceneProperty<SceneNode> {
     /// @param validator    Validator function of this Property.
     /// @param create_body  Iff true, the SceneProperty will have an assoicated PropertyBody available in the -graph.
     template<class T>
-    static ScenePropertyPtr<T>
-    create(T value, valid_ptr<SceneNode*> node, typename SceneProperty<T>::Validator validator, const bool create_body)
+    static TypedSceneProperty<T> create(T value, valid_ptr<SceneNode*> node,
+                                        typename TypedSceneProperty<T>::Validator validator, const bool create_body)
     {
-        return SceneProperty<T>::create(std::forward<T>(value), node, std::move(validator), create_body);
+        return TypedSceneProperty<T>::create(std::forward<T>(value), node, std::move(validator), create_body);
     }
+
+    /// Deletes the frozen value copy of the SceneProperty if one exists.
+    static void clear_frozen(SceneProperty& property) { property._clear_frozen_value(); }
 };
 
 NOTF_CLOSE_NAMESPACE

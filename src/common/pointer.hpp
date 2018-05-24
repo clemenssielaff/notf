@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/exception.hpp"
+#include "common/hash.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -8,6 +9,20 @@ NOTF_OPEN_NAMESPACE
 
 /// Error thrown by risky_ptr, when you try to dereference a nullptr.
 NOTF_EXCEPTION_TYPE(bad_pointer_error);
+
+//====================================================================================================================//
+
+/// Template struct to test whether a given type is a shared pointer or not.
+template<class T>
+struct is_shared_ptr : std::false_type {};
+template<class T>
+struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
+
+/// Template struct to test whether a given type is a unique pointer or not.
+template<class T>
+struct is_unique_ptr : std::false_type {};
+template<class T>
+struct is_unique_ptr<std::unique_ptr<T>> : std::true_type {};
 
 //====================================================================================================================//
 
@@ -21,19 +36,19 @@ std::enable_if_t<std::is_pointer<T>::value, const T> raw(const T& ptr)
     return ptr; // from raw
 }
 template<class T>
-const typename T::element_type* raw(const T& shared_ptr)
+std::enable_if_t<is_shared_ptr<T>::value, const typename T::element_type*> raw(const T& shared_ptr)
 {
     return shared_ptr.get(); // from shared_ptr<T>
 }
-template<class T, class U = std::enable_if_t<std::is_pointer<typename T::type>::value, typename T::type>>
-const U raw(const T& safe_ptr)
+template<class T>
+std::enable_if_t<is_unique_ptr<T>::value, const typename T::element_type*> raw(const T& unique_ptr)
 {
-    return safe_ptr.get(); // from valid_ptr<T*>
+    return unique_ptr.get(); // from unique<T>
 }
-template<class T, class U = typename T::type::element_type>
-const U* raw(const T& nested_ptr)
+template<class T>
+std::enable_if_t<T::is_notf_pointer::value, decltype(raw(typename T::type{}))> raw(const T& notf_pointer)
 {
-    return &(*nested_ptr); // from valid_ptr<shared_ptr<T>>
+    return raw(notf_pointer.raw()); // from notf_pointer
 }
 /// @}
 
@@ -109,6 +124,9 @@ struct valid_ptr {
 
     /// Stored type.
     using type = T;
+
+    /// Used to enable pointer-specific NoTF specializations.
+    using is_notf_pointer = std::true_type;
 
     /// No default constructor.
     valid_ptr() = delete;
@@ -246,6 +264,12 @@ struct risky_ptr {
 
     static_assert(std::is_assignable<T&, std::nullptr_t>::value, "T cannot be assigned nullptr.");
 
+    /// Stored type.
+    using type = T;
+
+    /// Used to enable pointer-specific NoTF specializations.
+    using is_notf_pointer = std::true_type;
+
     /// Default constructor.
     risky_ptr() = default;
 
@@ -355,20 +379,13 @@ risky_ptr<T> operator+(const risky_ptr<T>&, std::ptrdiff_t) = delete;
 template<class T>
 risky_ptr<T> operator+(std::ptrdiff_t, const risky_ptr<T>&) = delete;
 
-NOTF_CLOSE_NAMESPACE
-
 //====================================================================================================================//
 
-namespace std {
-
-template<class T>
-struct hash<notf::valid_ptr<T>> {
-    std::size_t operator()(const notf::valid_ptr<T>& value) const { return hash<T>{}(value); }
+/// Specialized Hash for pointers.
+/// Uses `hash_mix` to improve pointer entropy.
+template<typename T>
+struct pointer_hash {
+    size_t operator()(const T& ptr) const noexcept { return hash_mix(to_number(detail::raw(ptr))); }
 };
 
-template<class T>
-struct hash<notf::risky_ptr<T>> {
-    std::size_t operator()(const notf::risky_ptr<T>& value) const { return hash<T>{}(value); }
-};
-
-} // namespace std
+NOTF_CLOSE_NAMESPACE

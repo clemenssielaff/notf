@@ -88,7 +88,7 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
 
             PropertyBatch batch;
             {
-                PropertyReader<int> reader = iprop2->reader();
+                TypedPropertyReader<int> reader = iprop2->reader();
                 batch.set_expression(*iprop1, [reader]() -> int { return reader() + 5; }, {reader});
             }
             batch.set_value(*iprop2, 32);

@@ -107,7 +107,7 @@ public:
     size_t node_count() { return m_scene.count_nodes(); }
 
     /// Returns the number of deltas in the Scene.
-    size_t delta_count() { return m_scene.m_deltas.size(); }
+    size_t delta_count() { return m_scene.m_frozen_children.size(); }
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:

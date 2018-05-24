@@ -45,9 +45,6 @@ protected:
     };
 
 private:
-    /// Shared pointer to any SceneNode.
-    using SceneNodePtr = std::shared_ptr<SceneNode>;
-
     /// Shared pointer to the root node.
     using RootPtr = valid_ptr<std::shared_ptr<RootSceneNode>>;
 
@@ -199,25 +196,31 @@ private:
     /// @param size Size of the view in pixels.
     virtual void _resize_view(Size2i size) = 0;
 
+    /// Called by the SceneGraph after unfreezing, resolves all deltas in this Scene.
+    void _clear_delta();
+
     // scene hierarchy --------------------------------------------------------
 private:
-    /// Finds a delta for the given child container and returns it, if it exists.
-    /// @param node             SceneNode whose delta to return.
+    /// Finds and returns the frozen child container for a given node, if one exists.
+    /// @param node             Frozen SceneNode.
     /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
-    risky_ptr<NodeContainer*> _get_delta(valid_ptr<const SceneNode*> node);
+    risky_ptr<NodeContainer*> _get_frozen_children(valid_ptr<const SceneNode*> node);
 
-    /// Creates a new delta for the given child container.
-    /// @param node             SceneNode whose delta to create a delta for.
+    /// Creates a frozen child container for the given node.
+    /// @param node             SceneNode to freeze.
     /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
-    void _create_delta(valid_ptr<const SceneNode*> node);
+    void _create_frozen_children(valid_ptr<const SceneNode*> node);
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// The SceneGraph owning this Scene.
     std::weak_ptr<SceneGraph> m_graph;
 
-    /// Map containing copieds of ChildContainer that were modified while the Scene was frozen.
-    std::unordered_map<valid_ptr<const SceneNode*>, NodeContainer, pointer_hash<const SceneNode>> m_deltas;
+    /// Map containing copieds of ChildContainer that were modified while the SceneGraph was frozen.
+    std::unordered_map<const SceneNode*, NodeContainer, pointer_hash<const SceneNode*>> m_frozen_children;
+
+    /// Set of SceneNodes containing one or more Properties that were modified while the SceneGraph was frozen.
+    std::unordered_set<valid_ptr<SceneNodePtr>, pointer_hash<valid_ptr<SceneNodePtr>>> m_dirty_nodes;
 
     /// The singular root node of the scene hierarchy.
     RootPtr m_root;
@@ -241,7 +244,7 @@ class access::_Scene<SceneGraph> {
 
     /// Called by the SceneGraph after unfreezing, resolves all deltas in this Scene.
     /// @param scene    Scene to operate on.
-    static void clear_delta(Scene& scene);
+    static void clear_delta(Scene& scene) { scene._clear_delta(); }
 };
 
 //-----------------------------------------------------------------------------
@@ -259,14 +262,23 @@ class access::_Scene<SceneNode> {
     /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     static risky_ptr<NodeContainer*> get_delta(Scene& scene, valid_ptr<const SceneNode*> node)
     {
-        return scene._get_delta(node);
+        return scene._get_frozen_children(node);
     }
 
     /// Creates a new delta for the given child container.
     /// @param scene            Scene to operate on.
     /// @param node             SceneNode whose delta to create a delta for.
     /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
-    static void create_delta(Scene& scene, valid_ptr<const SceneNode*> node) { scene._create_delta(node); }
+    static void create_delta(Scene& scene, valid_ptr<const SceneNode*> node) { scene._create_frozen_children(node); }
+
+    /// Registers a SceneNode as being "dirty".
+    /// A SceneNode is dirty when it has one or more Properties that were modified while the SceneGraph was frozen.
+    /// @param scene            Scene to operate on.
+    /// @param node             Node to register as dirty.
+    static void register_dirty(Scene& scene, valid_ptr<SceneNodePtr> node)
+    {
+        scene.m_dirty_nodes.emplace(std::move(node));
+    }
 };
 
 NOTF_CLOSE_NAMESPACE

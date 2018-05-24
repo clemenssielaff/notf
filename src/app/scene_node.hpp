@@ -14,8 +14,10 @@ class _SceneNode;
 
 //====================================================================================================================//
 
-class SceneNode : public receive_signals {
+class SceneNode : public receive_signals, public std::enable_shared_from_this<SceneNode> {
+
     friend class access::_SceneNode<Scene>;
+    friend class access::_SceneNode<SceneProperty>;
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -279,7 +281,7 @@ protected:
     /// @throws SceneProperty::initial_value_error
     ///                 If the value of the Property could not be validated.
     template<class T>
-    valid_ptr<SceneProperty<T>*>
+    valid_ptr<TypedSceneProperty<T>*>
     _create_property(std::string name, T&& value, Validator<T> validator = {}, const bool has_body = true)
     {
         if (_is_finalized()) {
@@ -294,16 +296,16 @@ protected:
         }
 
         if (validator && !validator(value)) {
-            notf_throw_format(SceneProperty<T>::initial_value_error,
+            notf_throw_format(SceneProperty::initial_value_error,
                               "Cannot create Property \"{}\" with value \"{}\", "
                               "that did not validate against the supplied Validator function",
                               name, value);
         }
 
         // create the property
-        ScenePropertyPtr<T> property = SceneProperty<T>::template Access<SceneNode>::create(
-            std::forward<T>(value), this, std::move(validator), has_body);
-        SceneProperty<T>* result = property.get();
+        TypedScenePropertyPtr<T> property
+            = SceneProperty::Access<SceneNode>::create(std::forward<T>(value), this, std::move(validator), has_body);
+        TypedSceneProperty<T>* result = property.get();
         auto it = m_properties.emplace(std::make_pair(std::move(name), std::move(property)));
         NOTF_ASSERT(it.second);
         result->m_name_it = it;
@@ -318,6 +320,14 @@ private:
     /// Whether or not this SceneNode has been finalized or not.
     bool _is_finalized() const { return s_unfinalized_nodes.count(this) == 0; }
 
+    /// Registers this SceneNode as being "dirty".
+    /// A SceneNode is dirty when it has one or more Properties that were modified while the SceneGraph was frozen.
+    void _register_as_dirty() { Scene::Access<SceneNode>::register_dirty(m_scene, shared_from_this()); }
+
+    /// Cleans a dirty SceneNode when its SceneGraph is being unfrozen.
+    /// @see _register_as_dirty
+    void _clean();
+
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// The scene containing this node.
@@ -331,7 +341,7 @@ private:
     NodeContainer m_children;
 
     /// All properties of this node, accessible by their (node-unique) name.
-    std::map<std::string, std::unique_ptr<PropertyHeadBase>> m_properties;
+    SceneProperty::PropertyMap m_properties;
 
     /// The parent-unique name of this Node.
     std::string m_name;
@@ -354,6 +364,18 @@ class access::_SceneNode<Scene> {
     /// a new delta NodeContainer.
     /// @param node     SceneNode to operate on.
     static const SceneNode::NodeContainer& children(const SceneNode& node) { return node.m_children; }
+
+    /// Cleans a dirty SceneNode when its SceneGraph is being unfrozen.
+    static void clean(SceneNode& node) { node._clean(); }
+};
+
+template<>
+class access::_SceneNode<SceneProperty> {
+    friend class notf::SceneProperty;
+
+    /// Registers this SceneNode as being "dirty".
+    /// A SceneNode is dirty when it has one or more Properties that were modified while the SceneGraph was frozen.
+    static void register_node_dirty(SceneNode& node) { node._register_as_dirty(); }
 };
 
 // ===================================================================================================================//

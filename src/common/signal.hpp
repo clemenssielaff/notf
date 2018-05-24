@@ -495,7 +495,7 @@ public: // methods
     /** All Connections managed by this object. */
     const std::vector<Connection>& get_connections() const
     {
-        _cleanup();
+        _clear_disconnected();
         return m_connections;
     }
 
@@ -525,7 +525,7 @@ public: // methods
 
 private: // methods
     /** Removes all disconnected Connections. */
-    void _cleanup() const
+    void _clear_disconnected() const
     {
         std::remove_if(m_connections.begin(), m_connections.end(),
                        [](const Connection& connection) -> bool { return !connection.is_connected(); });
@@ -535,7 +535,7 @@ private: // methods
     template<typename SIGNAL, typename... ARGS>
     Connection _connect_signal(SIGNAL& signal, ARGS&&... args)
     {
-        _cleanup();
+        _clear_disconnected();
         Connection connection = signal.connect(std::forward<ARGS>(args)...);
         m_connections.push_back(connection);
         return connection;

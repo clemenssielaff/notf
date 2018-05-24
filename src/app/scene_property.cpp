@@ -6,17 +6,23 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
-namespace detail {
+SceneProperty::initial_value_error::~initial_value_error() = default;
 
-bool is_node_frozen(valid_ptr<SceneNode*> node) { return node->graph()->is_frozen(); }
+SceneProperty::no_body_error::~no_body_error() = default;
 
-bool is_node_frozen_by(valid_ptr<SceneNode*> node, const std::thread::id& thread_id)
+//====================================================================================================================//
+
+SceneProperty::~SceneProperty() = default;
+
+bool SceneProperty::_is_frozen() const { return m_node->graph()->is_frozen(); }
+
+bool SceneProperty::_is_frozen_by(const std::thread::id& thread_id) const
 {
-    return node->graph()->is_frozen_by(thread_id);
+    return m_node->graph()->is_frozen_by(thread_id);
 }
 
-const std::string& node_name(valid_ptr<SceneNode*> node) { return node->name(); }
+const std::string& SceneProperty::_node_name() const { return m_node->name(); }
 
-} // namespace detail
+void SceneProperty::_register_node_dirty() const { SceneNode::Access<SceneProperty>::register_node_dirty(*m_node); }
 
 NOTF_CLOSE_NAMESPACE

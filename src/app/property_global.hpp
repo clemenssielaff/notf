@@ -7,9 +7,8 @@ NOTF_OPEN_NAMESPACE
 // ================================================================================================================== //
 
 template<class T>
-class GlobalProperty : public PropertyHead<T> {
+class GlobalProperty : public PropertyHead {
 
-    using PropertyHead<T>::m_body;
     using Dependencies = PropertyGraph::Dependencies;
 
     // types -------------------------------------------------------------------------------------------------------- //
@@ -22,7 +21,7 @@ private:
 
     /// Value constructor.
     /// @param value    Initial value of the Property.
-    GlobalProperty(T&& value) : PropertyHead<T>(std::forward<T>(value)) {}
+    GlobalProperty(T&& value) : PropertyHead(std::forward<T>(value)) {}
 
 public:
     /// Factory method making sure that each GlobalProperty is managed by a shared_ptr.
@@ -54,12 +53,15 @@ public:
     /// Checks if the Property has an expression or not (is grounded).
     bool has_expression() const { return _body().has_expression(); }
 
-    /// Creates a PropertyReader for this global property.
-    PropertyReader<T> reader() const { return PropertyReader<T>(std::static_pointer_cast<PropertyBody<T>>(m_body)); }
+    /// Creates a TypedPropertyReader for this global property.
+    TypedPropertyReader<T> reader() const
+    {
+        return TypedPropertyReader<T>(std::static_pointer_cast<TypedPropertyBody<T>>(m_body));
+    }
 
 private:
     /// The typed property body.
-    PropertyBody<T>& _body() const { return *(static_cast<PropertyBody<T>*>(m_body.get())); }
+    TypedPropertyBody<T>& _body() const { return *(static_cast<TypedPropertyBody<T>*>(m_body.get())); }
 
     /// Updates the value in response to a PropertyEvent.
     /// @param update   PropertyUpdate to apply.

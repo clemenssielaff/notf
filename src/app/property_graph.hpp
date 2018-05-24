@@ -13,60 +13,63 @@ NOTF_OPEN_NAMESPACE
 namespace access { // forwards
 template<class>
 class _PropertyGraph;
-class _PropertyReader_PropertyBody;
 template<class>
-class _PropertyBodyBase;
+class _PropertyReader;
 template<class>
-class _PropertyHeadBase;
+class _PropertyBody;
+template<class>
+class _PropertyHead;
 } // namespace access
 
 // ================================================================================================================== //
 
-class PropertyReaderBase {
+class PropertyReader {
 
-    friend class access::_PropertyReader_PropertyBody;
+    friend class access::_PropertyReader<PropertyBody>;
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Access types.
-    using PropertyBodyAccess = access::_PropertyReader_PropertyBody;
+    template<class T>
+    using Access = access::_PropertyReader<T>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Value constructor.
     /// @param body     Owning pointer to the PropertyBody to read from.
-    PropertyReaderBase(PropertyBodyBasePtr&& body) : m_body(std::move(body)) {}
+    PropertyReader(PropertyBodyPtr&& body) : m_body(std::move(body)) {}
 
     /// Equality operator.
     /// @param rhs      Other reader to compare against.
-    bool operator==(const PropertyReaderBase& rhs) const { return m_body == rhs.m_body; }
+    bool operator==(const PropertyReader& rhs) const { return m_body == rhs.m_body; }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 protected:
     /// Owning pointer to the PropertyBody to read from.
-    PropertyBodyBasePtr m_body;
+    PropertyBodyPtr m_body;
 };
 
 template<class T>
-class PropertyReader final : public PropertyReaderBase {
+class TypedPropertyReader final : public PropertyReader {
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Value constructor.
     /// @param body     Owning pointer to the PropertyBody to read from.
-    PropertyReader(PropertyBodyPtr<T>&& body) : PropertyReaderBase(std::move(body)) {}
+    TypedPropertyReader(TypedPropertyBodyPtr<T>&& body) : PropertyReader(std::move(body)) {}
 
     /// Read-access to the value of the PropertyBody.
-    const T& operator()() const { return static_cast<PropertyBody<T>*>(m_body.get())->value(); }
+    const T& operator()() const { return static_cast<TypedPropertyBody<T>*>(m_body.get())->value(); }
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //
 
-class access::_PropertyReader_PropertyBody {
-    friend class notf::PropertyBodyBase;
+template<>
+class access::_PropertyReader<PropertyBody> {
+    friend class notf::PropertyBody;
 
     /// Mutex guarding all Property bodies.
-    static const PropertyBodyBasePtr& property(const PropertyReaderBase& reader) { return reader.m_body; }
+    static const PropertyBodyPtr& property(const PropertyReader& reader) { return reader.m_body; }
 };
 
 // TODO: PropertyWriters
@@ -75,7 +78,7 @@ class access::_PropertyReader_PropertyBody {
 
 class PropertyGraph {
 
-    friend class access::_PropertyGraph<PropertyBodyBase>;
+    friend class access::_PropertyGraph<PropertyBody>;
     friend class access::_PropertyGraph<PropertyBatch>;
 #ifdef NOTF_TEST
     friend class access::_PropertyGraph<test::Harness>;
@@ -107,7 +110,7 @@ public:
     using Validator = std::function<bool(T&)>;
 
     /// Owning references to all property bodies that a Property one depends on through its expression.
-    using Dependencies = std::vector<PropertyReaderBase>;
+    using Dependencies = std::vector<PropertyReader>;
 
     /// List of PropertyUpdates.
     using PropertyUpdateList = std::vector<PropertyUpdatePtr>;
@@ -134,8 +137,8 @@ private:
 // accessors ---------------------------------------------------------------------------------------------------------//
 
 template<>
-class access::_PropertyGraph<PropertyBodyBase> {
-    friend class notf::PropertyBodyBase;
+class access::_PropertyGraph<PropertyBody> {
+    friend class notf::PropertyBody;
 
 #ifdef NOTF_TEST
     /// Direct access to the PropertyGraph's property counter.
@@ -162,14 +165,14 @@ struct PropertyUpdate {
 protected:
     /// Constructor.
     /// @param target   Property targeted by this update.
-    PropertyUpdate(PropertyBodyBasePtr target) : property(std::move(target)) {}
+    PropertyUpdate(PropertyBodyPtr target) : property(std::move(target)) {}
 
 public:
     /// Destructor.
     virtual ~PropertyUpdate();
 
     /// Property that was updated.
-    PropertyBodyBasePtr property;
+    PropertyBodyPtr property;
 };
 
 /// Stores a single value update for a property.
@@ -179,7 +182,7 @@ struct PropertyValueUpdate final : public PropertyUpdate {
     /// Constructor.
     /// @param target   Property targeted by this update.
     /// @param value    New value of the targeted Property.
-    PropertyValueUpdate(PropertyBodyBasePtr target, T value)
+    PropertyValueUpdate(PropertyBodyPtr target, T value)
         : PropertyUpdate(std::move(target)), value(std::forward<T>(value))
     {}
 
@@ -198,7 +201,7 @@ struct PropertyExpressionUpdate final : public PropertyUpdate {
     /// @param target           Property targeted by this update.
     /// @param expression       New expression for the targeted Property.
     /// @param dependencies     Property Readers that the expression depends on.
-    PropertyExpressionUpdate(PropertyBodyBasePtr target, Expression expression, Dependencies dependencies)
+    PropertyExpressionUpdate(PropertyBodyPtr target, Expression expression, Dependencies dependencies)
         : PropertyUpdate(std::move(target)), expression(std::move(expression)), dependencies(std::move(dependencies))
     {}
 
@@ -211,11 +214,11 @@ struct PropertyExpressionUpdate final : public PropertyUpdate {
 
 //====================================================================================================================//
 
-class PropertyBodyBase {
+class PropertyBody {
 
     template<class>
-    friend class PropertyBody;
-    friend class access::_PropertyBodyBase<PropertyBatch>;
+    friend class TypedPropertyBody;
+    friend class access::_PropertyBody<PropertyBatch>;
 
     // types ---------------------------------------------------------------------------------------------------------//
 private:
@@ -225,23 +228,23 @@ private:
 public:
     /// Access types.
     template<class T>
-    using Access = access::_PropertyBodyBase<T>;
+    using Access = access::_PropertyBody<T>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 protected:
 #ifndef NOTF_TEST
     /// Default constructor.
-    PropertyBodyBase() = default;
+    PropertyBody() = default;
 #else
     /// Default constructor.
-    PropertyBodyBase() { ++PropertyGraph::Access<PropertyBodyBase>::property_count(); }
+    PropertyBody() { ++PropertyGraph::Access<PropertyBody>::property_count(); }
 #endif
 public:
     /// Destructor.
-    virtual ~PropertyBodyBase();
+    virtual ~PropertyBody();
 
     /// The PropertyHead associated with this body, if one exists.
-    risky_ptr<PropertyHeadBase*> head() const { return m_head; }
+    risky_ptr<PropertyHead*> head() const { return m_head; }
 
 protected:
     /// Updates the Property by evaluating its expression.
@@ -273,10 +276,10 @@ protected:
     void _set_upstream(Dependencies&& dependencies);
 
     /// Adds a new downstream property that is affected by this one through an expression.
-    void _add_downstream(const valid_ptr<PropertyBodyBase*> affected);
+    void _add_downstream(const valid_ptr<PropertyBody*> affected);
 
     /// Mutex guarding all Property bodies.
-    RecursiveMutex& _mutex() const { return PropertyGraph::Access<PropertyBodyBase>::mutex(); }
+    RecursiveMutex& _mutex() const { return PropertyGraph::Access<PropertyBody>::mutex(); }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 protected:
@@ -284,17 +287,17 @@ protected:
     Dependencies m_upstream;
 
     /// PropertyBodies depending on this through their expressions.
-    std::vector<valid_ptr<PropertyBodyBase*>> m_downstream;
+    std::vector<valid_ptr<PropertyBody*>> m_downstream;
 
     /// The head of this Property body (if one exists).
-    risky_ptr<PropertyHeadBase*> m_head;
+    risky_ptr<PropertyHead*> m_head;
 };
 
 template<class T>
-class PropertyBody final : public PropertyBodyBase, public std::enable_shared_from_this<PropertyBody<T>> {
+class TypedPropertyBody final : public PropertyBody, public std::enable_shared_from_this<TypedPropertyBody<T>> {
 
     using Expression = PropertyGraph::Expression<T>;
-    using std::enable_shared_from_this<PropertyBody<T>>::shared_from_this;
+    using std::enable_shared_from_this<TypedPropertyBody<T>>::shared_from_this;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 private:
@@ -302,14 +305,14 @@ private:
 
     /// Value constructor.
     /// @param value    Value held by the Property, is used to determine the property type.
-    PropertyBody(T&& value) : PropertyBodyBase(), m_value(std::forward<T>(value)) {}
+    TypedPropertyBody(T&& value) : PropertyBody(), m_value(std::forward<T>(value)) {}
 
 public:
     /// Factory function, making sure that all PropertyBodies are managed by a shared_ptr.
     /// @param value    Value held by the Property, is used to determine the property type.
-    static std::enable_if_t<PropertyGraph::is_property_type_v<T>, PropertyBodyPtr<T>> create(T&& value)
+    static std::enable_if_t<PropertyGraph::is_property_type_v<T>, TypedPropertyBodyPtr<T>> create(T&& value)
     {
-        return NOTF_MAKE_SHARED_FROM_PRIVATE(PropertyBody<T>, std::forward<T>(value));
+        return NOTF_MAKE_SHARED_FROM_PRIVATE(TypedPropertyBody<T>, std::forward<T>(value));
     }
 
     /// Checks if the Property is grounded or not (has an expression).
@@ -408,7 +411,7 @@ private:
 
         // update the value of yourself and all downstream properties
         m_value = std::forward<T>(value);
-        for (valid_ptr<PropertyBodyBase*> affected : m_downstream) {
+        for (valid_ptr<PropertyBody*> affected : m_downstream) {
             affected->_update(effects);
         }
     }
@@ -453,7 +456,7 @@ private:
     {
         NOTF_ASSERT(_mutex().is_locked_by_this_thread());
 
-        PropertyBodyBase::_ground();
+        PropertyBody::_ground();
         m_expression = {};
     }
 
@@ -508,7 +511,7 @@ private:
 // accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
-class access::_PropertyBodyBase<PropertyBatch> {
+class access::_PropertyBody<PropertyBatch> {
     friend class notf::PropertyBatch;
 
     using PropertyUpdateList = PropertyGraph::PropertyUpdateList;
@@ -517,7 +520,7 @@ class access::_PropertyBodyBase<PropertyBatch> {
     /// @param property         Property to access.
     /// @param update           Untyped update to test (only PropertyExpressionUpdated can fail).
     /// @throws no_dag_error    If the update is an expression that would introduce a cyclic dependency.
-    static void validate_update(PropertyBodyBasePtr& property, const PropertyUpdatePtr& update)
+    static void validate_update(PropertyBodyPtr& property, const PropertyUpdatePtr& update)
     {
         property->_validate_update(update.get());
     }
@@ -528,8 +531,7 @@ class access::_PropertyBodyBase<PropertyBatch> {
     /// @param update           Update to apply.
     /// @param effects          [OUT] All properties affected of the change.
     /// @throws no_dag_error    If the update is an expression that would introduce a cyclic dependency.
-    static void
-    apply_update(PropertyBodyBasePtr& property, const PropertyUpdatePtr& update, PropertyUpdateList& effects)
+    static void apply_update(PropertyBodyPtr& property, const PropertyUpdatePtr& update, PropertyUpdateList& effects)
     {
         property->_apply_update(update.get(), effects);
     }
@@ -537,45 +539,41 @@ class access::_PropertyBodyBase<PropertyBatch> {
 
 // ================================================================================================================== //
 
-class PropertyHeadBase {
+class PropertyHead {
 
-    friend class access::_PropertyHeadBase<PropertyBatch>;
+    friend class access::_PropertyHead<PropertyBatch>;
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Access types.
     template<class T>
-    using Access = access::_PropertyHeadBase<T>;
-
-    /// Exception thrown when the initial value of a SceneProperty could not be validated.
-    NOTF_EXCEPTION_TYPE(initial_value_error);
-
-    /// Exception thrown when a PropertyHead without a body tries to access one.
-    NOTF_EXCEPTION_TYPE(no_body_error);
+    using Access = access::_PropertyHead<T>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 protected:
     /// Empty default Constructor.
-    PropertyHeadBase() = default;
+    PropertyHead() = default;
 
     /// Value Constructor.
     /// @param body     PropertyBoy associated with this head.
-    PropertyHeadBase(PropertyBodyBasePtr&& body) : m_body(std::move(body)) {}
+    template<class T>
+    explicit PropertyHead(T value) : m_body(TypedPropertyBody<T>::create(std::forward<T>(value)))
+    {}
 
 public:
     /// Destructor.
-    virtual ~PropertyHeadBase();
+    virtual ~PropertyHead();
 
     /// Returns the SceneNode associated with this PropertyHead (if there is one).
     virtual risky_ptr<SceneNode*> scene_node() { return nullptr; }
 
-private:
+protected:
     /// Updates the value in response to a PropertyEvent.
     /// @param update   PropertyUpdate to apply.
     virtual void _apply_update(valid_ptr<PropertyUpdate*> update) = 0;
 
-    /// Allows all subclasses of PropertyHeadBase to call `_apply_update` on all others.
-    static void _apply_update_to(PropertyHeadBase* property_head, valid_ptr<PropertyUpdate*> update)
+    /// Allows all subclasses of PropertyHead to call `_apply_update` on all others.
+    static void _apply_update_to(PropertyHead* property_head, valid_ptr<PropertyUpdate*> update)
     {
         property_head->_apply_update(update);
     }
@@ -583,29 +581,17 @@ private:
     // fields ------------------------------------------------------------------------------------------------------- //
 protected:
     /// The untyped property body.
-    PropertyBodyBasePtr m_body;
-};
-
-template<class T>
-class PropertyHead : public PropertyHeadBase {
-
-    // methods ------------------------------------------------------------------------------------------------------ //
-protected:
-    /// Empty default Constructor.
-    PropertyHead() = default;
-
-    /// @param value    Initial value of the Property.
-    PropertyHead(T value) : PropertyHeadBase(PropertyBody<T>::create(std::forward<T>(value))) {}
+    PropertyBodyPtr m_body;
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
-class access::_PropertyHeadBase<PropertyBatch> {
+class access::_PropertyHead<PropertyBatch> {
     friend class notf::PropertyBatch;
 
     /// The untyped property body.
-    static PropertyBodyBasePtr& body(PropertyHeadBase& property_head) { return property_head.m_body; }
+    static PropertyBodyPtr& body(PropertyHead& property_head) { return property_head.m_body; }
 };
 
 //====================================================================================================================//
@@ -641,34 +627,63 @@ public:
         }
     }
 
+    /// @{
     /// Set the Property's value and updates downstream Properties.
     /// Removes an existing expression on this Property if one exists.
     /// @param property     Property to update.
     /// @param value        New value.
     template<class T>
-    void set_value(PropertyHead<T>& property, T&& value)
+    void set_value(TypedSceneProperty<T>& property, T&& value)
     {
-        m_updates.emplace_back(std::make_unique<PropertyValueUpdate<T>>(
-            PropertyHeadBase::Access<PropertyBatch>::body(property), std::forward<T>(value)));
+        _set_value<T>(property, std::forward<T>(value));
     }
+    template<class T>
+    void set_value(GlobalProperty<T>& property, T&& value)
+    {
+        _set_value<T>(property, std::forward<T>(value));
+    }
+    /// @}
 
+    /// @{
     /// Set the Property's expression.
     /// Evaluates the expression right away to update the Property's value.
     /// @param target           Property targeted by this update.
     /// @param expression       New expression for the targeted Property.
     /// @param dependencies     Property Readers that the expression depends on.
     template<class T>
-    void set_expression(PropertyHead<T>& property, identity_t<Expression<T>>&& expression, Dependencies&& dependencies)
+    void set_expression(TypedSceneProperty<T>& property, identity_t<Expression<T>>&& expression, Dependencies&& deps)
     {
-        m_updates.emplace_back(std::make_unique<PropertyExpressionUpdate<T>>(
-            PropertyHeadBase::Access<PropertyBatch>::body(property), std::move(expression), std::move(dependencies)));
+        _set_expression<T>(property, std::move(expression), std::move(deps));
     }
+    template<class T>
+    void set_expression(GlobalProperty<T>& property, identity_t<Expression<T>>&& expression, Dependencies&& deps)
+    {
+        _set_expression<T>(property, std::move(expression), std::move(deps));
+    }
+    /// @}
 
     /// Executes this batch.
     /// If any error occurs, this method will throw the exception and not modify the PropertyGraph.
     /// If no exception occurs, the transaction was successfull and the batch is empty again.
     /// @throws no_dag_error    If a Property expression update would cause a cyclic dependency in the graph.
     void execute();
+
+private:
+    /// Sets the Property's value.
+    template<class T>
+    void _set_value(PropertyHead& property, T&& value)
+    {
+        m_updates.emplace_back(std::make_unique<PropertyValueUpdate<T>>(
+            PropertyHead::Access<PropertyBatch>::body(property), std::forward<T>(value)));
+    }
+
+    /// Sets the Property's expression.
+    template<class T>
+    void _set_expression(PropertyHead& property, identity_t<Expression<T>>&& expression, Dependencies&& dependencies)
+    {
+        m_updates.emplace_back(std::make_unique<PropertyExpressionUpdate<T>>(
+            PropertyHead::Access<PropertyBatch>::body(property), std::move(expression), std::move(dependencies)));
+    }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:

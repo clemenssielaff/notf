@@ -97,7 +97,7 @@ valid_ptr<SceneNode*> SceneNode::common_ancestor(valid_ptr<SceneNode*> other)
     valid_ptr<SceneNode*> first = this;
     valid_ptr<SceneNode*> second = other;
     SceneNode* result = nullptr;
-    std::unordered_set<valid_ptr<SceneNode*>> known_ancestors = {first, second};
+    std::unordered_set<valid_ptr<SceneNode*>, pointer_hash<valid_ptr<SceneNode*>>> known_ancestors = {first, second};
     while (1) {
         first = first->parent();
         if (known_ancestors.count(first)) {
@@ -319,6 +319,14 @@ void SceneNode::_clear_children()
     // lock the SceneGraph hierarchy
     NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
     _write_children().clear();
+}
+
+void SceneNode::_clean()
+{
+    NOTF_ASSERT(SceneGraph::Access<SceneNode>::mutex(*graph()).is_locked_by_this_thread());
+    for (auto& it : m_properties) {
+        SceneProperty::Access<SceneNode>::clear_frozen(*it.second.get());
+    }
 }
 
 //====================================================================================================================//

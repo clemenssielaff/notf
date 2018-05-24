@@ -89,56 +89,62 @@ size_t Scene::count_nodes() const
 
 void Scene::clear() { m_root->clear(); }
 
-risky_ptr<Scene::NodeContainer*> Scene::_get_delta(valid_ptr<const SceneNode*> node)
+risky_ptr<Scene::NodeContainer*> Scene::_get_frozen_children(valid_ptr<const SceneNode*> node)
 {
     NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph()));
 
-    auto it = m_deltas.find(node);
-    if (it == m_deltas.end()) {
+    auto it = m_frozen_children.find(node);
+    if (it == m_frozen_children.end()) {
         return nullptr;
     }
     return &it->second;
 }
 
-void Scene::_create_delta(valid_ptr<const SceneNode*> node)
+void Scene::_create_frozen_children(valid_ptr<const SceneNode*> node)
 {
     NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph()));
 
-    auto it = m_deltas.emplace(std::make_pair(node, SceneNode::Access<Scene>::children(*node)));
+    auto it = m_frozen_children.emplace(std::make_pair(node, SceneNode::Access<Scene>::children(*node)));
     NOTF_ASSERT(it.second);
 }
 
-void access::_Scene<SceneGraph>::clear_delta(Scene& scene)
+void Scene::_clear_delta()
 {
+    // clean all dirty nodes, regardless if they were deleted or not
+    for (const valid_ptr<SceneNodePtr>& dirty_node : m_dirty_nodes) {
+        SceneNode::Access<Scene>::clean(*dirty_node.get());
+    }
+    m_dirty_nodes.clear();
+
 #ifdef NOTF_DEBUG
     // In debug mode, I'd like to ensure that each SceneNode is deleted before its parent.
     // If the parent has been modified (creating a delta referencing all child nodes) and is then deleted, calling
     // `deltas.clear()` might end up deleting the parent node before its childen.
     // Therefore we loop over all deltas and pick out those that can safely be deleted.
-    bool progress = true;
-    while (!scene.m_deltas.empty() && progress) {
-        progress = false;
-        for (auto it = scene.m_deltas.begin(); it != scene.m_deltas.end(); ++it) {
+    bool made_progress = true;
+    while (!m_frozen_children.empty() && made_progress) {
+        made_progress = false;
+        for (auto it = m_frozen_children.begin(); it != m_frozen_children.end(); ++it) {
             bool childHasDelta = false;
             const Scene::NodeContainer& container = it->second;
             for (auto& child : container) {
-                if (scene.m_deltas.count(child.raw().get())) {
+                if (m_frozen_children.count(child.raw().get())) {
                     childHasDelta = true;
                     break;
                 }
             }
             if (!childHasDelta) {
-                scene.m_deltas.erase(it);
-                progress = true;
+                m_frozen_children.erase(it);
+                made_progress = true;
                 break;
             }
         }
     }
     // If the loop should be broken because we made no progress, a child delta references a parent...
     // Should that ever happen, something has gone seriously wrong.
-    NOTF_ASSERT(progress);
+    NOTF_ASSERT(made_progress);
 #else
-    scene.m_deltas.clear();
+    m_deltas.clear();
 #endif
 }
 

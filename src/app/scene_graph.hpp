@@ -166,7 +166,7 @@ private:
 
     /// Nodes that registered themselves as "dirty".
     /// If there is one or more dirty Nodes registered, the Window containing this graph must be re-rendered.
-    std::unordered_set<valid_ptr<SceneNode*>, smart_pointer_hash<valid_ptr<SceneNode*>>> m_dirty_nodes;
+    std::unordered_set<valid_ptr<SceneNode*>, pointer_hash<valid_ptr<SceneNode*>>> m_dirty_nodes;
 
     /// Non-owning references to all Scenes that are affected by the graph's "frozen" state.
     std::set<std::weak_ptr<Scene>, std::owner_less<std::weak_ptr<Scene>>> m_scenes;
