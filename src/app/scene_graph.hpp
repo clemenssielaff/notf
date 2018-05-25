@@ -91,7 +91,10 @@ public:
     /// Checks if the SceneGraph currently frozen or not.
     bool is_frozen() const
     {
-        NOTF_ASSERT(m_event_mutex.is_locked_by_this_thread());
+        // TODO: you must be able to check whether a SceneGraph is frozen without holding the event mutex
+        // why did I think this was necessary? Do I need to make the `m_freezing_thread` an atomic?
+        // can we get rid of the event mutex swapping in the scene tests now?
+//        NOTF_ASSERT(m_event_mutex.is_locked_by_this_thread());
         return (m_freezing_thread != 0);
     }
 
@@ -99,7 +102,7 @@ public:
     /// @param thread_id    Id of the thread in question.
     bool is_frozen_by(const std::thread::id& thread_id) const
     {
-        NOTF_ASSERT(m_event_mutex.is_locked_by_this_thread());
+//        NOTF_ASSERT(m_event_mutex.is_locked_by_this_thread());
         return (m_freezing_thread == hash(thread_id));
     }
 

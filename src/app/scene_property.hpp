@@ -78,12 +78,17 @@ private:
 protected:
     /// SceneNode owning this SceneProperty
     valid_ptr<SceneNode*> m_node;
+
+    /// Iterator to this Property in the SceneNode's PropertyMap. Used to access this Property's name.
+    PropertyMap::const_iterator m_name_it = {};
 };
 
 //====================================================================================================================//
 
 template<class T>
 class TypedSceneProperty final : public SceneProperty {
+
+    friend class access::_SceneProperty<SceneNode>;
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -126,7 +131,7 @@ private:
     /// @param node         SceneNode owning this SceneProperty
     /// @param validator    Validator function of this Property.
     /// @param create_body  Iff true, the SceneProperty will have an assoicated PropertyBody available in the -graph.
-    static TypedSceneProperty<T>
+    static TypedScenePropertyPtr<T>
     create(T&& value, valid_ptr<SceneNode*> node, Validator validator, const bool create_body)
     {
         if (create_body) {
@@ -171,22 +176,24 @@ public:
 
     /// Set the Property's value.
     /// Removes an existing expression on this Property if one exists.
-    /// @param value            New value.
-    void set_value(T&& value)
+    /// @param value    New value.
+    /// @returns        True iff the value could be updated, false if the validation failed.
+    bool set_value(T value)
     {
         // do nothing if the value fails to validate
         if (m_validator && !m_validator(value)) {
-            return;
+            return false;
         }
 
         if (risky_ptr<TypedPropertyBody<T>*> body = _body()) {
             PropertyUpdateList effects;
-            body()->set_value(std::forward<T>(value), effects);
+            body->set_value(std::forward<T>(value), effects);
             _update_affected(std::move(effects));
         }
         else {
             _set_value(std::move(value));
         }
+        return true;
     }
 
     /// Sets the Property's expression.
@@ -237,7 +244,7 @@ private:
         // restore the correct update type
         PropertyValueUpdate<T>* typed_update;
 #ifdef NOTF_DEBUG
-        typed_update = dynamic_cast<PropertyValueUpdate<T>*>(update);
+        typed_update = dynamic_cast<PropertyValueUpdate<T>*>(update.get());
         NOTF_ASSERT(typed_update);
 #else
         typed_update = static_cast<PropertyValueUpdate<T>*>(update);
@@ -292,11 +299,8 @@ private:
     /// Optional validator function used to validate a given value.
     Validator m_validator;
 
-    /// Iterator to this Property in the SceneNode's PropertyMap. Used to access this Property's name.
-    PropertyMap::const_iterator m_name_it = {};
-
     /// Pointer to a frozen copy of the value, if it was modified while the SceneGraph was frozen.
-    std::atomic<T*> m_frozen_value = nullptr;
+    std::atomic<T*> m_frozen_value{nullptr};
 
     /// Whether or not changing this property will make the SceneNode dirty (cause a redraw) or not.
     bool m_is_external = true;
@@ -317,14 +321,20 @@ class access::_SceneProperty<SceneNode> {
     /// @param validator    Validator function of this Property.
     /// @param create_body  Iff true, the SceneProperty will have an assoicated PropertyBody available in the -graph.
     template<class T>
-    static TypedSceneProperty<T> create(T value, valid_ptr<SceneNode*> node,
-                                        typename TypedSceneProperty<T>::Validator validator, const bool create_body)
+    static TypedScenePropertyPtr<T> create(T value, valid_ptr<SceneNode*> node,
+                                           typename TypedSceneProperty<T>::Validator validator, const bool create_body)
     {
         return TypedSceneProperty<T>::create(std::forward<T>(value), node, std::move(validator), create_body);
     }
 
     /// Deletes the frozen value copy of the SceneProperty if one exists.
     static void clear_frozen(SceneProperty& property) { property._clear_frozen_value(); }
+
+    /// Updates the name of a SceneProperty, which is stored as an iterator to the SceneNode's property map.
+    static void set_name_iterator(SceneProperty& property, decltype(SceneProperty::m_name_it) iterator)
+    {
+        property.m_name_it = iterator;
+    }
 };
 
 NOTF_CLOSE_NAMESPACE

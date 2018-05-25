@@ -3,7 +3,6 @@
 #include "app/path.hpp"
 #include "app/scene.hpp"
 #include "app/scene_property.hpp"
-#include "common/signal.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -49,12 +48,6 @@ protected:
         FactoryToken() {} // not `= default`, otherwise you could construct a Token via `Token{}`.
     };
 
-    // signals -------------------------------------------------------------------------------------------------------//
-public:
-    /// Emitted when this Node changes its name.
-    /// @param The new name.
-    Signal<const std::string&> on_name_changed;
-
     // methods -------------------------------------------------------------------------------------------------------//
 public:
     NOTF_NO_COPY_OR_ASSIGN(SceneNode);
@@ -84,12 +77,13 @@ public:
     valid_ptr<const SceneNode*> parent() const { return m_parent; }
     /// @}
 
-    /// The user-defined name of this node, is potentially empty and not guaranteed to be unique if set.
-    const std::string& name() const { return m_name; }
+    /// The sibling-unique name of this node.
+    const std::string& name() const { return m_name->value(); }
 
     /// Updates the name of this Node.
-    /// @param name New name of this Node.
-    const std::string& set_name(std::string name);
+    /// @param name     Proposed new name for this node.
+    /// @returns        Actual (sibling-unique) new name of this Node.
+    const std::string& set_name(const std::string& name);
 
     /// Registers this Node as being dirty.
     /// A ScenGraph containing at least one dirty SceneNode causes the Window to be redrawn at the next opportunity.
@@ -308,12 +302,15 @@ protected:
         TypedSceneProperty<T>* result = property.get();
         auto it = m_properties.emplace(std::make_pair(std::move(name), std::move(property)));
         NOTF_ASSERT(it.second);
-        result->m_name_it = it;
+        SceneProperty::Access<SceneNode>::set_name_iterator(*result, std::move(it.first));
 
         return result;
     }
 
 private:
+    /// Registers this node as "unfinalized" and creates the "name" property in the constructor.
+    valid_ptr<TypedSceneProperty<std::string>*> _create_name();
+
     /// Finalizes this SceneNode.
     void _finalize() const { s_unfinalized_nodes.erase(this); }
 
@@ -344,7 +341,7 @@ private:
     SceneProperty::PropertyMap m_properties;
 
     /// The parent-unique name of this Node.
-    std::string m_name;
+    valid_ptr<TypedSceneProperty<std::string>*> const m_name;
 
     /// Only unfinalized nodes can create properties and creating new children in an unfinalized node creates no deltas.
     static thread_local std::set<valid_ptr<const SceneNode*>> s_unfinalized_nodes;

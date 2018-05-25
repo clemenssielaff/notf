@@ -5,6 +5,7 @@
 
 #include "app/scene_graph.hpp"
 #include "common/size2.hpp"
+#include "common/string_view.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -53,6 +54,8 @@ private:
     /// Container for all child nodes of a SceneNode.
     class NodeContainer {
 
+        friend class access::_Scene<SceneNode>;
+
         // methods ------------------------------------------------------------
     public:
         /// Tests if this container is empty.
@@ -64,6 +67,28 @@ private:
         /// Checks if the container contains a SceneNode by the given name.
         /// @param name Name to check for.
         bool contains(const std::string& name) const { return m_names.count(name); }
+
+        /// Checks if the container contains a given SceneNode.
+        /// @param node SceneNode to check for
+        bool contains(const SceneNode* node) const
+        {
+            for (const auto& child : m_order) {
+                if (child.raw().get() == node) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// Returns all names of nodes in this Container.
+        std::set<std::string_view> all_names() const
+        {
+            std::set<std::string_view> result;
+            for (const auto& it : m_names) {
+                result.insert(it.first);
+            }
+            return result;
+        }
 
         /// Adds a new SceneNode to the container.
         /// @param node Node to add.
@@ -127,6 +152,13 @@ private:
         auto& operator[](size_t pos) { return m_order[pos]; }
         const auto& operator[](size_t pos) const { return m_order[pos]; }
         /// @}
+
+    private:
+        /// Updates the name of one of the child nodes.
+        /// This function DOES NOT UPDATE THE NAME OF THE NODE itself, just the name by which the parent knows it.
+        /// @param node         Node to rename, must be part of the container and still have its old name.
+        /// @param new_name     New name of the node.
+        void _rename(valid_ptr<const SceneNode*> node, std::string new_name);
 
         // fields -------------------------------------------------------------
     private:
@@ -278,6 +310,15 @@ class access::_Scene<SceneNode> {
     static void register_tweaked(Scene& scene, valid_ptr<SceneNodePtr> node)
     {
         scene.m_tweaked_nodes.emplace(std::move(node));
+    }
+
+    /// Updates the name of one of the child nodes.
+    /// This function DOES NOT UPDATE THE NAME OF THE NODE itself, just the name by which the parent knows it.
+    /// @param node         Node to rename, must be part of the container and still have its old name.
+    /// @param new_name     New name of the node.
+    static void rename_child(NodeContainer& container, valid_ptr<const SceneNode*> node, std::string name)
+    {
+        container._rename(node, std::move(name));
     }
 };
 

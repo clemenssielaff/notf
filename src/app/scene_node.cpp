@@ -4,6 +4,7 @@
 
 #include "app/property_graph.hpp"
 #include "common/log.hpp"
+#include "common/string_view.hpp"
 
 namespace { // anonymous
 NOTF_USING_NAMESPACE
@@ -16,6 +17,36 @@ std::string next_name()
     std::stringstream ss;
     ss << "SceneNode#" << g_nextID++;
     return ss.str();
+}
+
+/// Creates a unique name from a proposed and a set of existing.
+/// @param existing     All names that are already taken.
+/// @param proposed     New proposed name, is presumably already taken.
+/// @returns            New, unique name.
+std::string make_unique_name(const std::set<std::string_view>& existing, const std::string& proposed)
+{
+    // remove all trailing numbers from the proposed name
+    std::string_view proposed_name;
+    {
+        const auto last_char = proposed.find_last_not_of("0123456789");
+        if (last_char == std::string_view::npos) {
+            proposed_name = proposed;
+        }
+        else {
+            proposed_name = std::string_view(proposed.c_str(), last_char);
+        }
+    }
+
+    // create a unique name by appending trailing numbers until one is unique
+    std::string result;
+    result.reserve(proposed_name.size() + 1);
+    result = proposed_name.to_string();
+    size_t highest_postfix = 1;
+    while (existing.count(result)) {
+        result = proposed_name.to_string();
+        result.append(std::to_string(highest_postfix++));
+    }
+    return result;
 }
 
 } // namespace
@@ -33,12 +64,9 @@ SceneNode::node_finalized_error::~node_finalized_error() = default;
 thread_local std::set<valid_ptr<const SceneNode*>> SceneNode::s_unfinalized_nodes = {};
 
 SceneNode::SceneNode(const FactoryToken&, Scene& scene, valid_ptr<SceneNode*> parent)
-    : m_scene(scene), m_parent(parent), m_name(next_name())
+    : m_scene(scene), m_parent(parent), m_name(_create_name())
 {
-    // register this node as being unfinalized
-    s_unfinalized_nodes.emplace(this);
-
-    log_trace << "Created \"" << m_name << "\"";
+    log_trace << "Created \"" << name() << "\"";
 }
 
 SceneNode::~SceneNode()
@@ -50,24 +78,23 @@ SceneNode::~SceneNode()
     }
 #endif
 
-    log_trace << "Destroying \"" << m_name << "\"";
+    log_trace << "Destroying \"" << name() << "\"";
     _finalize();
 
     try {
         SceneGraph::Access<SceneNode>::remove_dirty(*graph(), this);
     }
     catch (const Scene::no_graph_error&) {
-        // if the SceneGraph has already been deleted, it won't matter if this SceneNode was dirty or not
+        NOTF_NOOP; // if the SceneGraph has already been deleted, it won't matter if this SceneNode was dirty or not
     }
 }
 
-const std::string& SceneNode::set_name(std::string name)
+const std::string& SceneNode::set_name(const std::string& name)
 {
-    if (name != m_name) {
-        m_name = std::move(name);
-        on_name_changed(m_name);
+    if (!m_name->set_value(name)) {
+        log_warning << "Could not validate new name \"" << name << "\" for SceneNode \"" << m_name->value() << "\"";
     }
-    return m_name;
+    return m_name->value();
 }
 
 bool SceneNode::has_ancestor(const valid_ptr<const SceneNode*> ancestor) const
@@ -319,6 +346,34 @@ void SceneNode::_clear_children()
     // lock the SceneGraph hierarchy
     NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
     _write_children().clear();
+}
+
+valid_ptr<TypedSceneProperty<std::string>*> SceneNode::_create_name()
+{
+    // register this node as being unfinalized before creating a property
+    s_unfinalized_nodes.emplace(this);
+
+    // validator function for SceneNode names, is called every time its name changes.
+    TypedSceneProperty<std::string>::Validator validator = [this](std::string& name) -> bool {
+
+        // lock the SceneGraph hierarchy
+        NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+        const NodeContainer& siblings = parent()->_read_children();
+
+        // create unique name
+        if (siblings.contains(name)) {
+            name = make_unique_name(siblings.all_names(), name);
+        }
+
+        // update parent's child container
+        if (siblings.contains(this)) {
+            Scene::Access<SceneNode>::rename_child(parent()->_write_children(), this, name);
+        }
+
+        return true; // always succeeds
+    };
+
+    return _create_property<std::string>("name", next_name(), std::move(validator), /* has_body = */ false);
 }
 
 void SceneNode::_clean_tweaks()

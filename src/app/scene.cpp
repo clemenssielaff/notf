@@ -74,6 +74,15 @@ void Scene::NodeContainer::stack_behind(const size_t index, const valid_ptr<Scen
     notf::move_in_front_of(m_order, node_it, sibling_it);
 }
 
+void Scene::NodeContainer::_rename(valid_ptr<const SceneNode*> node, std::string new_name)
+{
+    auto name_it = m_names.find(node->name());
+    NOTF_ASSERT(name_it != m_names.end());
+    std::weak_ptr<SceneNode> node_ptr = std::move(name_it->second);
+    m_names.erase(name_it);
+    m_names.emplace(std::make_pair(std::move(new_name), std::move(node_ptr)));
+}
+
 //====================================================================================================================//
 
 Scene::Scene(const FactoryToken&, const valid_ptr<SceneGraphPtr>& graph)
