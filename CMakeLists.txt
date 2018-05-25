@@ -101,6 +101,9 @@ add_sources(SOURCE_FILES src
     app/application.hpp
     app/window.cpp
     app/window.hpp
+    app/property_batch.hpp
+    app/property_batch.cpp
+    app/property_reader.hpp
     app/property_graph.hpp
     app/property_graph.cpp
     app/property_global.hpp

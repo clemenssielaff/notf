@@ -2,6 +2,7 @@
 
 #include "app/window.hpp"
 #include "app/property_global.hpp"
+#include "app/property_batch.hpp"
 #include "test_event_manager.hpp"
 #include "test_properties.hpp"
 #include "testenv.hpp"

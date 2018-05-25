@@ -88,7 +88,7 @@ private:
     RendererPtr m_renderer;
 
     /// Whether the RenderTarget is currently dirty or not.
-    bool m_is_dirty;
+    bool m_is_dirty = true;
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -320,13 +320,13 @@ private:
     /// Whether or not this SceneNode has been finalized or not.
     bool _is_finalized() const { return s_unfinalized_nodes.count(this) == 0; }
 
-    /// Registers this SceneNode as being "dirty".
-    /// A SceneNode is dirty when it has one or more Properties that were modified while the SceneGraph was frozen.
-    void _register_as_dirty() { Scene::Access<SceneNode>::register_dirty(m_scene, shared_from_this()); }
+    /// Registers this SceneNode as being "tweaked".
+    /// A SceneNode is tweaked when it has one or more Properties that were modified while the SceneGraph was frozen.
+    void _register_as_tweaked() { Scene::Access<SceneNode>::register_tweaked(m_scene, shared_from_this()); }
 
-    /// Cleans a dirty SceneNode when its SceneGraph is being unfrozen.
-    /// @see _register_as_dirty
-    void _clean();
+    /// Cleans a tweaked SceneNode when its SceneGraph is being unfrozen.
+    /// @see _register_as_tweaked
+    void _clean_tweaks();
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
@@ -365,17 +365,17 @@ class access::_SceneNode<Scene> {
     /// @param node     SceneNode to operate on.
     static const SceneNode::NodeContainer& children(const SceneNode& node) { return node.m_children; }
 
-    /// Cleans a dirty SceneNode when its SceneGraph is being unfrozen.
-    static void clean(SceneNode& node) { node._clean(); }
+    /// Cleans a tweaked SceneNode when its SceneGraph is being unfrozen.
+    static void clean_tweaks(SceneNode& node) { node._clean_tweaks(); }
 };
 
 template<>
 class access::_SceneNode<SceneProperty> {
     friend class notf::SceneProperty;
 
-    /// Registers this SceneNode as being "dirty".
-    /// A SceneNode is dirty when it has one or more Properties that were modified while the SceneGraph was frozen.
-    static void register_node_dirty(SceneNode& node) { node._register_as_dirty(); }
+    /// Registers this SceneNode as being "tweaked".
+    /// A SceneNode is tweaked when it has one or more Properties that were modified while the SceneGraph was frozen.
+    static void register_tweaked(SceneNode& node) { node._register_as_tweaked(); }
 };
 
 // ===================================================================================================================//

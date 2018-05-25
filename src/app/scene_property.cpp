@@ -23,6 +23,8 @@ bool SceneProperty::_is_frozen_by(const std::thread::id& thread_id) const
 
 const std::string& SceneProperty::_node_name() const { return m_node->name(); }
 
-void SceneProperty::_register_node_dirty() const { SceneNode::Access<SceneProperty>::register_node_dirty(*m_node); }
+void SceneProperty::_set_node_tweaked() const { SceneNode::Access<SceneProperty>::register_tweaked(*m_node); }
+
+void SceneProperty::_set_node_dirty() const { m_node->redraw(); }
 
 NOTF_CLOSE_NAMESPACE

@@ -110,11 +110,11 @@ void Scene::_create_frozen_children(valid_ptr<const SceneNode*> node)
 
 void Scene::_clear_delta()
 {
-    // clean all dirty nodes, regardless if they were deleted or not
-    for (const valid_ptr<SceneNodePtr>& dirty_node : m_dirty_nodes) {
-        SceneNode::Access<Scene>::clean(*dirty_node.get());
+    // clean all tweaked nodes, regardless if they were deleted or not
+    for (const valid_ptr<SceneNodePtr>& tweaked_node : m_tweaked_nodes) {
+        SceneNode::Access<Scene>::clean_tweaks(*tweaked_node.get());
     }
-    m_dirty_nodes.clear();
+    m_tweaked_nodes.clear();
 
 #ifdef NOTF_DEBUG
     // In debug mode, I'd like to ensure that each SceneNode is deleted before its parent.

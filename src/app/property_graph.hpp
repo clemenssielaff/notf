@@ -1,9 +1,10 @@
 #pragma once
 
+#ifdef NOTF_TEST
 #include <atomic>
-#include <functional>
+#endif
 
-#include "app/forwards.hpp"
+#include "app/property_reader.hpp"
 #include "common/exception.hpp"
 #include "common/mutex.hpp"
 #include "common/pointer.hpp"
@@ -14,65 +15,10 @@ namespace access { // forwards
 template<class>
 class _PropertyGraph;
 template<class>
-class _PropertyReader;
-template<class>
 class _PropertyBody;
 template<class>
 class _PropertyHead;
 } // namespace access
-
-// ================================================================================================================== //
-
-class PropertyReader {
-
-    friend class access::_PropertyReader<PropertyBody>;
-
-    // types -------------------------------------------------------------------------------------------------------- //
-public:
-    /// Access types.
-    template<class T>
-    using Access = access::_PropertyReader<T>;
-
-    // methods ------------------------------------------------------------------------------------------------------ //
-public:
-    /// Value constructor.
-    /// @param body     Owning pointer to the PropertyBody to read from.
-    PropertyReader(PropertyBodyPtr&& body) : m_body(std::move(body)) {}
-
-    /// Equality operator.
-    /// @param rhs      Other reader to compare against.
-    bool operator==(const PropertyReader& rhs) const { return m_body == rhs.m_body; }
-
-    // fields ------------------------------------------------------------------------------------------------------- //
-protected:
-    /// Owning pointer to the PropertyBody to read from.
-    PropertyBodyPtr m_body;
-};
-
-template<class T>
-class TypedPropertyReader final : public PropertyReader {
-
-    // methods ------------------------------------------------------------------------------------------------------ //
-public:
-    /// Value constructor.
-    /// @param body     Owning pointer to the PropertyBody to read from.
-    TypedPropertyReader(TypedPropertyBodyPtr<T>&& body) : PropertyReader(std::move(body)) {}
-
-    /// Read-access to the value of the PropertyBody.
-    const T& operator()() const { return static_cast<TypedPropertyBody<T>*>(m_body.get())->value(); }
-};
-
-// accessors -------------------------------------------------------------------------------------------------------- //
-
-template<>
-class access::_PropertyReader<PropertyBody> {
-    friend class notf::PropertyBody;
-
-    /// Mutex guarding all Property bodies.
-    static const PropertyBodyPtr& property(const PropertyReader& reader) { return reader.m_body; }
-};
-
-// TODO: PropertyWriters
 
 // ================================================================================================================== //
 
@@ -159,7 +105,7 @@ class access::_PropertyGraph<PropertyBatch> {
 
 //====================================================================================================================//
 
-/// Virtual baseclass, so we can store updates of various property types in one Batch.
+/// Virtual baseclass, so we can store updates of various property types in one PropertyBatch or -Event.
 struct PropertyUpdate {
 
 protected:
@@ -592,103 +538,6 @@ class access::_PropertyHead<PropertyBatch> {
 
     /// The untyped property body.
     static PropertyBodyPtr& body(PropertyHead& property_head) { return property_head.m_body; }
-};
-
-//====================================================================================================================//
-
-class NOTF_NODISCARD PropertyBatch {
-
-    template<class T>
-    using Expression = PropertyGraph::Expression<T>;
-    using Dependencies = PropertyGraph::Dependencies;
-    using PropertyUpdateList = PropertyGraph::PropertyUpdateList;
-
-    // methods ------------------------------------------------------------------------------------------------------ //
-public:
-    NOTF_NO_COPY_OR_ASSIGN(PropertyBatch);
-
-    /// Empty default constructor.
-    PropertyBatch() = default;
-
-    /// Move Constructor.
-    /// @param other    Other Batch to move from.
-    PropertyBatch(PropertyBatch&& other) = default;
-
-    /// Destructor.
-    /// Tries to execute but will swallow any exceptions that might occur.
-    /// In the case of an exception, the PropertyGraph will not be modified.
-    ~PropertyBatch()
-    {
-        try {
-            execute();
-        }
-        catch (...) {
-            // ignore exceptions
-        }
-    }
-
-    /// @{
-    /// Set the Property's value and updates downstream Properties.
-    /// Removes an existing expression on this Property if one exists.
-    /// @param property     Property to update.
-    /// @param value        New value.
-    template<class T>
-    void set_value(TypedSceneProperty<T>& property, T&& value)
-    {
-        _set_value<T>(property, std::forward<T>(value));
-    }
-    template<class T>
-    void set_value(GlobalProperty<T>& property, T&& value)
-    {
-        _set_value<T>(property, std::forward<T>(value));
-    }
-    /// @}
-
-    /// @{
-    /// Set the Property's expression.
-    /// Evaluates the expression right away to update the Property's value.
-    /// @param target           Property targeted by this update.
-    /// @param expression       New expression for the targeted Property.
-    /// @param dependencies     Property Readers that the expression depends on.
-    template<class T>
-    void set_expression(TypedSceneProperty<T>& property, identity_t<Expression<T>>&& expression, Dependencies&& deps)
-    {
-        _set_expression<T>(property, std::move(expression), std::move(deps));
-    }
-    template<class T>
-    void set_expression(GlobalProperty<T>& property, identity_t<Expression<T>>&& expression, Dependencies&& deps)
-    {
-        _set_expression<T>(property, std::move(expression), std::move(deps));
-    }
-    /// @}
-
-    /// Executes this batch.
-    /// If any error occurs, this method will throw the exception and not modify the PropertyGraph.
-    /// If no exception occurs, the transaction was successfull and the batch is empty again.
-    /// @throws no_dag_error    If a Property expression update would cause a cyclic dependency in the graph.
-    void execute();
-
-private:
-    /// Sets the Property's value.
-    template<class T>
-    void _set_value(PropertyHead& property, T&& value)
-    {
-        m_updates.emplace_back(std::make_unique<PropertyValueUpdate<T>>(
-            PropertyHead::Access<PropertyBatch>::body(property), std::forward<T>(value)));
-    }
-
-    /// Sets the Property's expression.
-    template<class T>
-    void _set_expression(PropertyHead& property, identity_t<Expression<T>>&& expression, Dependencies&& dependencies)
-    {
-        m_updates.emplace_back(std::make_unique<PropertyExpressionUpdate<T>>(
-            PropertyHead::Access<PropertyBatch>::body(property), std::move(expression), std::move(dependencies)));
-    }
-
-    // fields ------------------------------------------------------------------------------------------------------- //
-private:
-    /// All updates that make up this batch.
-    PropertyUpdateList m_updates;
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -10,7 +10,7 @@
 NOTF_OPEN_NAMESPACE
 
 RenderTarget::RenderTarget(GraphicsContext& context, Args&& args)
-    : m_framebuffer(), m_renderer(std::move(args.renderer)), m_is_dirty(true)
+    : m_framebuffer(), m_renderer(std::move(args.renderer))
 {
     // create the texture arguments
     Texture::Args texture_args;

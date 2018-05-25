@@ -62,10 +62,13 @@ protected:
     /// The name of the SceneNode.
     const std::string& _node_name() const;
 
+    /// Registers a SceneNode as being "tweaked".
+    /// A SceneNode is tweaked when it has one or more Properties that were modified while the SceneGraph was frozen.
+    void _set_node_tweaked() const;
+
     /// Registers a SceneNode as being "dirty".
-    /// A SceneNode is dirty when it has one or more Properties that were modified while the SceneGraph was frozen.
-    /// @param node         SceneNode to register as dirty.
-    void _register_node_dirty() const;
+    /// A SceneNode is dirty when it requires a redraw.
+    void _set_node_dirty() const;
 
 private:
     /// Deletes the frozen value copy of the SceneProperty if one exists.
@@ -163,6 +166,9 @@ public:
     /// If this method returns false, `set_expression` will throw a `no_body_error`.
     bool supports_expressions() const { return (_body() != nullptr); }
 
+    /// Whether or not changing this property will make the SceneNode dirty (cause a redraw) or not.
+    bool is_external() const { return m_is_external; }
+
     /// Set the Property's value.
     /// Removes an existing expression on this Property if one exists.
     /// @param value            New value.
@@ -204,6 +210,10 @@ public:
         body->_set_expression(std::move(expression), std::move(dependencies), effects);
         _update_affected(std::move(effects));
     }
+
+    /// External properties cause the SceneNode to redraw when changed.
+    void set_external(const bool is_external = true) { m_is_external = is_external; }
+    void set_internal(const bool is_internal = true) { set_external(!is_internal); }
 
 private:
     /// The typed property body.
@@ -256,9 +266,15 @@ private:
             if (!frozen_value) {
                 frozen_value = new T(std::move(m_value));
                 m_frozen_value.store(frozen_value, std::memory_order_release);
-                _register_node_dirty();
+                _set_node_tweaked();
             }
         }
+
+        // if the property is external, changing it dirties the node
+        if (m_is_external) {
+            _set_node_dirty();
+        }
+
         m_value = value;
         on_value_changed(m_value);
     }
@@ -281,6 +297,9 @@ private:
 
     /// Pointer to a frozen copy of the value, if it was modified while the SceneGraph was frozen.
     std::atomic<T*> m_frozen_value = nullptr;
+
+    /// Whether or not changing this property will make the SceneNode dirty (cause a redraw) or not.
+    bool m_is_external = true;
 
     /// Current SceneProperty value.
     T m_value;

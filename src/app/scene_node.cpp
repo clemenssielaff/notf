@@ -321,7 +321,7 @@ void SceneNode::_clear_children()
     _write_children().clear();
 }
 
-void SceneNode::_clean()
+void SceneNode::_clean_tweaks()
 {
     NOTF_ASSERT(SceneGraph::Access<SceneNode>::mutex(*graph()).is_locked_by_this_thread());
     for (auto& it : m_properties) {

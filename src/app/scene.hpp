@@ -220,7 +220,7 @@ private:
     std::unordered_map<const SceneNode*, NodeContainer, pointer_hash<const SceneNode*>> m_frozen_children;
 
     /// Set of SceneNodes containing one or more Properties that were modified while the SceneGraph was frozen.
-    std::unordered_set<valid_ptr<SceneNodePtr>, pointer_hash<valid_ptr<SceneNodePtr>>> m_dirty_nodes;
+    std::unordered_set<valid_ptr<SceneNodePtr>, pointer_hash<valid_ptr<SceneNodePtr>>> m_tweaked_nodes;
 
     /// The singular root node of the scene hierarchy.
     RootPtr m_root;
@@ -271,13 +271,13 @@ class access::_Scene<SceneNode> {
     /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     static void create_delta(Scene& scene, valid_ptr<const SceneNode*> node) { scene._create_frozen_children(node); }
 
-    /// Registers a SceneNode as being "dirty".
-    /// A SceneNode is dirty when it has one or more Properties that were modified while the SceneGraph was frozen.
+    /// Registers a SceneNode as being "tweaked".
+    /// A SceneNode is tweaked when it has one or more Properties that were modified while the SceneGraph was frozen.
     /// @param scene            Scene to operate on.
-    /// @param node             Node to register as dirty.
-    static void register_dirty(Scene& scene, valid_ptr<SceneNodePtr> node)
+    /// @param node             Node to register as tweaked.
+    static void register_tweaked(Scene& scene, valid_ptr<SceneNodePtr> node)
     {
-        scene.m_dirty_nodes.emplace(std::move(node));
+        scene.m_tweaked_nodes.emplace(std::move(node));
     }
 };
 
