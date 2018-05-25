@@ -156,7 +156,27 @@ public:
     }
     ///@}
 
-    // z-order ------------------------------------------------------------
+    // properties -------------------------------------------------------------
+
+    /// Quick check whether this SceneNode contains a Property of any type by the given name.
+    /// @param name     Name of the Property to search for.
+    /// @returns        True iff this SceneNode has a Property with the given name.
+    bool has_property(const std::string& name) const { return m_properties.count(name) != 0; }
+
+    /// Queries a Property by name and type.
+    /// @param name     Name of the requested Property.
+    /// @returns        Requested Property, if one exists that matches both name and type.
+    template<class T>
+    risky_ptr<TypedSceneProperty<T>*> property(const std::string& name) const
+    {
+        auto it = m_properties.find(name);
+        if (it == m_properties.end()) {
+            return nullptr;
+        }
+        return dynamic_cast<TypedSceneProperty<T>*>(it->second.get());
+    }
+
+    // z-order ----------------------------------------------------------------
 
     /// Checks if this Node is in front of all of its siblings.
     /// @throws no_graph_error  If the SceneGraph of the node has been deleted.

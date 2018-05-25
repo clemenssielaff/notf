@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <map>
 
 #include "app/property_graph.hpp"

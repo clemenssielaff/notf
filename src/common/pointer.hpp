@@ -276,18 +276,18 @@ struct risky_ptr {
     /// Value Constructor
     /// @param ptr  Pointer to wrap.
     template<typename U, typename = std::enable_if_t<std::is_convertible<U, T>::value>>
-    constexpr risky_ptr(U&& u) : m_ptr(std::forward<U>(u))
+    constexpr risky_ptr(const U& u) : m_ptr(u)
     {}
 
     /// Copy Constructor.
     /// @param other    Other pointer to copy.
     template<typename U, typename = std::enable_if_t<std::is_convertible<U, T>::value>>
-    constexpr risky_ptr(const risky_ptr<U>& other) : risky_ptr(other.get())
+    constexpr risky_ptr(risky_ptr<U>&& other) : risky_ptr(other.m_ptr)
     {}
 
-    risky_ptr(risky_ptr&& other) = default;
-    risky_ptr(const risky_ptr& other) = default;
-    risky_ptr& operator=(const risky_ptr& other) = default;
+    risky_ptr(risky_ptr&& other) : m_ptr(other.m_ptr) {}
+    risky_ptr(const risky_ptr& other) : m_ptr(other.m_ptr) {}
+    risky_ptr& operator=(const risky_ptr& other) { m_ptr = other.m_ptr; }
 
     /// @{
     /// Access to the wrapped pointer.
