@@ -26,9 +26,34 @@ public:
 
     // methods ------------------------------------------------------------
 private:
+    /// @{
     /// Constructor.
     /// @param node     Handled SceneNode.
-    SceneNodeHandle(const std::shared_ptr<SceneNode>& node) : m_node(node) {}
+    /// @throws SceneNode::no_node_error    If the given SceneNode is empty or of the wrong type.
+    SceneNodeHandle(std::shared_ptr<T> node) : m_node(node)
+    {
+        { // test if the given node is of the correct type
+            if (!dynamic_cast<T*>(node.get())) {
+                notf_throw_format(SceneNode::no_node_error, "Cannot wrap Node \"{}\" into Handler of wrong type",
+                                  node->name());
+            }
+        }
+    }
+    SceneNodeHandle(std::weak_ptr<T> node) : m_node(std::move(node))
+    {
+
+        { // test if the given node is alive and of the correct type
+            SceneNodePtr raw_node = m_node.lock();
+            if (!raw_node) {
+                notf_throw(SceneNode::no_node_error, "Cannot create Handler for empty node");
+            }
+            if (!dynamic_cast<T*>(raw_node.get())) {
+                notf_throw_format(SceneNode::no_node_error, "Cannot wrap Node \"{}\" into Handler of wrong type",
+                                  raw_node->name());
+            }
+        }
+    }
+    /// @}
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(SceneNodeHandle);
@@ -54,7 +79,7 @@ public:
     /// @throws SceneNode::no_node_error    If the handled SceneNode has been deleted.
     T* operator->()
     {
-        std::shared_ptr<SceneNode> raw_node = m_node.lock();
+        SceneNodePtr raw_node = m_node.lock();
         if (NOTF_UNLIKELY(!raw_node)) {
             notf_throw(SceneNode::no_node_error, "SceneNode has been deleted");
         }
@@ -69,7 +94,7 @@ public:
     // fields -------------------------------------------------------------
 private:
     /// Handled SceneNode.
-    std::weak_ptr<SceneNode> m_node;
+    SceneNodeWeakPtr m_node;
 };
 
 // accessors ---------------------------------------------------------------------------------------------------------//
@@ -79,7 +104,7 @@ class access::_SceneNodeHandle {
 
     /// Extracts a shared_ptr from a SceneNodeHandle.
     template<class T>
-    static risky_ptr<std::shared_ptr<SceneNode>> get(const SceneNodeHandle<T>& handle)
+    static risky_ptr<SceneNodePtr> get(const SceneNodeHandle<T>& handle)
     {
         return handle.m_node.lock();
     }

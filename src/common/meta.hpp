@@ -266,10 +266,12 @@ using identity_t = typename identity<T>::type;
     void operator delete[](void*) = delete
 
 /// Convenience macro to define shared pointer types for a given type.
-#define NOTF_DEFINE_SHARED_POINTERS(Tag, Type) \
-    Tag Type;                                  \
-    using Type##Ptr = std::shared_ptr<Type>;   \
-    using Type##ConstPtr = std::shared_ptr<const Type>
+#define NOTF_DEFINE_SHARED_POINTERS(Tag, Type)          \
+    Tag Type;                                           \
+    using Type##Ptr = std::shared_ptr<Type>;            \
+    using Type##ConstPtr = std::shared_ptr<const Type>; \
+    using Type##WeakPtr = std::weak_ptr<Type>;          \
+    using Type##WeakConstPtr = std::weak_ptr<const Type>
 
 /// Convenience macro to define unique pointer types for a given type.
 #define NOTF_DEFINE_UNIQUE_POINTERS(Tag, Type) \
@@ -278,13 +280,17 @@ using identity_t = typename identity<T>::type;
     using Type##ConstPtr = std::unique_ptr<const Type>
 
 /// Convenience macro to define shared pointer types for a given templated type with one template argument.
-#define NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(Tag, Type) \
-    template<typename>                                   \
-    Tag Type;                                            \
-    template<typename T>                                 \
-    using Type##Ptr = std::shared_ptr<Type<T>>;          \
-    template<typename T>                                 \
-    using Type##ConstPtr = std::shared_ptr<const Type<T>>
+#define NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(Tag, Type)   \
+    template<typename>                                     \
+    Tag Type;                                              \
+    template<typename T>                                   \
+    using Type##Ptr = std::shared_ptr<Type<T>>;            \
+    template<typename T>                                   \
+    using Type##ConstPtr = std::shared_ptr<const Type<T>>; \
+    template<typename T>                                   \
+    using Type##WeakPtr = std::weak_ptr<Type<T>>;          \
+    template<typename T>                                   \
+    using Type##WeakConstPtr = std::weak_ptr<const Type<T>>
 
 /// Convenience macro to define unique pointer types for a given templated type with one template argument.
 #define NOTF_DEFINE_UNIQUE_POINTERS_TEMPLATE1(Tag, Type) \

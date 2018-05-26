@@ -94,6 +94,19 @@ private:
             return result;
         }
 
+        /// Requests an non-owning pointer to a child SceneNode in this container by name.
+        /// @param name     Name of the requested child SceneNode.
+        /// @returns        Non-owning pointer to the reqested SceneNode.
+        ///                 Is empty if no node with the given name exists.
+        SceneNodeWeakPtr get(const std::string& name) const
+        {
+            auto it = m_names.find(name);
+            if (it == m_names.end()) {
+                return {};
+            }
+            return it->second;
+        }
+
         /// Adds a new SceneNode to the container.
         /// @param node Node to add.
         /// @returns    True iff the node was inserted successfully, false otherwise.
@@ -170,7 +183,7 @@ private:
         std::vector<valid_ptr<SceneNodePtr>> m_order;
 
         /// Provides name-based lookup of the contained SceneNodes.
-        std::map<std::string, std::weak_ptr<SceneNode>> m_names;
+        std::map<std::string, SceneNodeWeakPtr> m_names;
     };
 
     // methods -------------------------------------------------------------------------------------------------------//
@@ -266,7 +279,7 @@ private:
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// The SceneGraph owning this Scene.
-    std::weak_ptr<SceneGraph> m_graph;
+    SceneGraphWeakPtr m_graph;
 
     /// Graph-unique, immutable name of the Scene.
     const SceneGraph::SceneMap::const_iterator m_name;

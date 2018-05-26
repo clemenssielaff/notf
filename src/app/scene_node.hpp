@@ -93,6 +93,25 @@ public:
 
     // hierarchy --------------------------------------------------------------
 
+    /// Checks if this SceneNode has a child SceneNode with a given name.
+    /// @param name     Name of the requested SceneNode.
+    bool has_child(const std::string& name)
+    {
+        NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+        return _read_children().contains(name);
+    }
+
+    /// Returns a handle to a child SceneNode with the given name.
+    /// If you want to be sure that a child (of any type) by the name exists, call `has_child`.
+    /// @param name     Name of the requested child node.
+    /// @throws no_node_error    If there is no child with the given name, or it is of the wrong type.
+    template<class T>
+    SceneNodeHandle<T> child(const std::string& name)
+    {
+        NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+        return SceneNodeHandle<T>(_read_children().get(name));
+    }
+
     /// The number of direct children of this SceneNode.
     size_t count_children() const
     {

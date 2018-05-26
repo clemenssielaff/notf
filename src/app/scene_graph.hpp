@@ -108,6 +108,18 @@ public:
         return (m_freezing_thread == hash(thread_id));
     }
 
+    /// Returns a Scene in this graph by name.
+    /// @param name Name of the requested Scene.
+    /// @returns    Scene with the given name, can be empty.
+    risky_ptr<ScenePtr> scene(const std::string& name)
+    {
+        auto it = m_scenes.find(name);
+        if(it == m_scenes.end()){
+            return nullptr;
+        }
+        return it->second.lock();
+    }
+
     // state management -------------------------------------------------------
 
     /// Creates a new SceneGraph::State
