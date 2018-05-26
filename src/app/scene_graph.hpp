@@ -1,11 +1,10 @@
 #pragma once
 
-#include <set>
+#include <map>
 #include <unordered_set>
 
 #include "app/forwards.hpp"
 #include "common/mutex.hpp"
-#include "common/hash.hpp"
 #include "common/pointer.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -38,6 +37,9 @@ public:
     template<class T>
     using Access = access::_SceneGraph<T>;
     using SceneNodeHandleAccess = access::_SceneGraph_SceneNodeHandle;
+
+    /// Map containing non-owning references to all Scenes in this graph by name.
+    using SceneMap = std::map<std::string, std::weak_ptr<Scene>>;
 
     // ------------------------------------------------------------------------
 
@@ -94,7 +96,7 @@ public:
         // TODO: you must be able to check whether a SceneGraph is frozen without holding the event mutex
         // why did I think this was necessary? Do I need to make the `m_freezing_thread` an atomic?
         // can we get rid of the event mutex swapping in the scene tests now?
-//        NOTF_ASSERT(m_event_mutex.is_locked_by_this_thread());
+        //        NOTF_ASSERT(m_event_mutex.is_locked_by_this_thread());
         return (m_freezing_thread != 0);
     }
 
@@ -102,7 +104,7 @@ public:
     /// @param thread_id    Id of the thread in question.
     bool is_frozen_by(const std::thread::id& thread_id) const
     {
-//        NOTF_ASSERT(m_event_mutex.is_locked_by_this_thread());
+        //        NOTF_ASSERT(m_event_mutex.is_locked_by_this_thread());
         return (m_freezing_thread == hash(thread_id));
     }
 
@@ -171,8 +173,8 @@ private:
     /// If there is one or more dirty Nodes registered, the Window containing this graph must be re-rendered.
     std::unordered_set<valid_ptr<SceneNode*>, pointer_hash<valid_ptr<SceneNode*>>> m_dirty_nodes;
 
-    /// Non-owning references to all Scenes that are affected by the graph's "frozen" state.
-    std::set<std::weak_ptr<Scene>, std::owner_less<std::weak_ptr<Scene>>> m_scenes;
+    /// All Scenes of this SceneGraph by name.
+    SceneMap m_scenes;
 
     /// Mutex locked while an event is being processed.
     /// This mutex is also aquired by the RenderManager to freeze and unfreeze the graph in between events.
@@ -205,14 +207,23 @@ template<>
 class access::_SceneGraph<Scene> {
     friend class notf::Scene;
 
+    /// Reserves a name for a Scene by registering an expired weak_ptr with the given name.
+    /// It is expected that the Scene factory method registers an actual weak_ptr to a Scene with the same name shortly
+    /// after. Signals success with its return boolean.
+    /// @param graph    SceneGraph to operate on.
+    /// @param name     Scene name to reserve.
+    /// @returns        Pair <iterator, bool> where iterator points to an element in the SceneMap with the given name
+    ///                 and the boolean flag indicates whether the reservation was successfull or not.
+    static auto reserve_scene_name(SceneGraph& graph, std::string name)
+    {
+        NOTF_ASSERT(graph.m_hierarchy_mutex.is_locked_by_this_thread());
+        return graph.m_scenes.emplace(std::move(name), std::weak_ptr<Scene>{});
+    }
+
     /// Registers a new Scene with the graph.
     /// @param graph    SceneGraph to operate on.
     /// @param scene    Scene to register.
-    static void register_scene(SceneGraph& graph, ScenePtr scene)
-    {
-        NOTF_MUTEX_GUARD(graph.m_hierarchy_mutex);
-        graph.m_scenes.emplace(std::move(scene));
-    }
+    static void register_scene(SceneGraph& graph, ScenePtr scene);
 
     /// Direct access to the Graph's hierachy mutex.
     /// @param graph    SceneGraph to operate on.

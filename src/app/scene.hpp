@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <set>
 #include <unordered_map>
 
 #include "app/scene_graph.hpp"
@@ -31,6 +32,9 @@ public:
     template<class T>
     using Access = access::_Scene<T>;
     using SceneNodeHandleAccess = access::_Scene_SceneNodeHandle;
+
+    /// Exception thrown when the name of a Scene is not unique within its SceneGraph.
+    NOTF_EXCEPTION_TYPE(scene_name_error);
 
     /// Exception thrown when the SceneGraph has gone out of scope before a Scene tries to access it.
     NOTF_EXCEPTION_TYPE(no_graph_error);
@@ -175,16 +179,22 @@ public:
 
     /// Constructor.
     /// @param token    Factory token provided by Scene::create.
-    /// @param manager  The SceneGraph owning this Scene.
-    Scene(const FactoryToken&, const valid_ptr<SceneGraphPtr>& graph);
+    /// @param graph    The SceneGraph owning this Scene.
+    /// @param name     Graph-unique, immutable name of the Scene.
+    /// @throws scene_name_error    If the given name is not unique in the SceneGraph.
+    Scene(const FactoryToken&, const valid_ptr<SceneGraphPtr>& graph, std::string name);
 
     /// Scene Factory method.
     /// @param graph    SceneGraph containing the Scene.
+    /// @param name     Graph-unique, immutable name of the Scene.
     /// @param args     Additional arguments for the Scene subclass
+    /// @throws scene_name_error    If the given name is not unique in the SceneGraph.
     template<class T, class... Args, typename = std::enable_if_t<std::is_base_of<Scene, T>::value>>
-    static std::shared_ptr<T> create(const valid_ptr<SceneGraphPtr>& graph, Args... args)
+    static std::shared_ptr<T> create(const valid_ptr<SceneGraphPtr>& graph, std::string name, Args... args)
     {
-        std::shared_ptr<T> scene = std::make_shared<T>(FactoryToken(), graph, std::forward<Args>(args)...);
+        NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph.get()));
+        std::shared_ptr<T> scene
+            = std::make_shared<T>(FactoryToken(), graph, std::move(name), std::forward<Args>(args)...);
         access::_SceneGraph<Scene>::register_scene(*graph, scene);
         return scene;
     }
@@ -212,6 +222,9 @@ public:
     const RootSceneNode& root() const { return *m_root; }
     /// @}
 
+    /// Graph-unique name of the Scene.
+    const std::string& name() const { return m_name->first; }
+
     /// The number of SceneNodes in the Scene including the root node (therefore is always >= 1).
     size_t count_nodes() const;
 
@@ -231,6 +244,13 @@ private:
     /// Called by the SceneGraph after unfreezing, resolves all deltas in this Scene.
     void _clear_delta();
 
+    /// Checks if the given Scene name is unique in the given SceneGraph.
+    /// @param graph    SceneGraph of this Scene.
+    /// @param name     Scene name to test.
+    /// @returns        Iterator to the name reserved in the SceneGraph.
+    /// @throws scene_name_error    If the given name is not unique in the SceneGraph.
+    static SceneGraph::SceneMap::const_iterator _validate_scene_name(SceneGraph& graph, std::string name);
+
     // scene hierarchy --------------------------------------------------------
 private:
     /// Finds and returns the frozen child container for a given node, if one exists.
@@ -247,6 +267,9 @@ private:
 private:
     /// The SceneGraph owning this Scene.
     std::weak_ptr<SceneGraph> m_graph;
+
+    /// Graph-unique, immutable name of the Scene.
+    const SceneGraph::SceneMap::const_iterator m_name;
 
     /// Map containing copieds of ChildContainer that were modified while the SceneGraph was frozen.
     std::unordered_map<const SceneNode*, NodeContainer, pointer_hash<const SceneNode*>> m_frozen_children;

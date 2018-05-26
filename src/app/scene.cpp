@@ -9,6 +9,8 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
+Scene::scene_name_error::~scene_name_error() = default;
+
 Scene::no_graph_error::~no_graph_error() = default;
 
 Scene::hierarchy_error::~hierarchy_error() = default;
@@ -85,8 +87,10 @@ void Scene::NodeContainer::_rename(valid_ptr<const SceneNode*> node, std::string
 
 //====================================================================================================================//
 
-Scene::Scene(const FactoryToken&, const valid_ptr<SceneGraphPtr>& graph)
-    : m_graph(graph.get()), m_root(std::make_shared<RootSceneNode>(SceneNode::Access<Scene>::create_token(), *this))
+Scene::Scene(const FactoryToken&, const valid_ptr<SceneGraphPtr>& graph, std::string name)
+    : m_graph(graph.get())
+    , m_name(_validate_scene_name(*graph.get(), std::move(name)))
+    , m_root(std::make_shared<RootSceneNode>(SceneNode::Access<Scene>::create_token(), *this))
 {}
 
 Scene::~Scene() = default;
@@ -155,6 +159,17 @@ void Scene::_clear_delta()
 #else
     m_deltas.clear();
 #endif
+}
+
+SceneGraph::SceneMap::const_iterator Scene::_validate_scene_name(SceneGraph& graph, std::string name)
+{
+    auto result = SceneGraph::Access<Scene>::reserve_scene_name(graph, std::move(name));
+    if (result.second) {
+        return result.first;
+    }
+    notf_throw_format(scene_name_error,
+                      "Cannot create new Scene because its name \"{}\" is not unique within its SceneGraph",
+                      result.first->first);
 }
 
 NOTF_CLOSE_NAMESPACE

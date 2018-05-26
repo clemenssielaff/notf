@@ -1,8 +1,8 @@
 #include "catch.hpp"
 
-#include "app/window.hpp"
 #include "app/scene_node.hpp"
 #include "app/scene_node_handle.hpp"
+#include "app/window.hpp"
 #include "test_scene.hpp"
 #include "testenv.hpp"
 
@@ -13,7 +13,9 @@ NOTF_USING_NAMESPACE
 //====================================================================================================================//
 
 struct TestScene : public Scene {
-    TestScene(const FactoryToken& token, const valid_ptr<SceneGraphPtr>& graph) : Scene(token, graph) {}
+    TestScene(const FactoryToken& token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
+        : Scene(token, graph, std::move(name))
+    {}
     void _resize_view(Size2i) override {}
 };
 
@@ -116,7 +118,7 @@ struct TestNode : public SceneNode {
 SCENARIO("a Scene can be set up and modified", "[app][scene]")
 {
     SceneGraphPtr scene_graph = SceneGraph::Access<test::Harness>::create(notf_window());
-    std::shared_ptr<TestScene> scene_ptr = TestScene::create<TestScene>(scene_graph);
+    std::shared_ptr<TestScene> scene_ptr = TestScene::create<TestScene>(scene_graph, "TestScene");
     TestScene& scene = *scene_ptr;
 
     SceneGraph::Access<test::Harness> graph_access(*scene_graph);

@@ -11,11 +11,11 @@ NOTF_USING_NAMESPACE
 
 /// Returns the name of the next scene node.
 /// Is thread-safe and ever-increasing.
-std::string next_name()
+std::string next_node_name()
 {
-    static std::atomic_size_t g_nextID(1);
+    static std::atomic_size_t nextID(1);
     std::stringstream ss;
-    ss << "SceneNode#" << g_nextID++;
+    ss << "SceneNode#" << nextID++;
     return ss.str();
 }
 
@@ -373,7 +373,7 @@ valid_ptr<TypedSceneProperty<std::string>*> SceneNode::_create_name()
         return true; // always succeeds
     };
 
-    return _create_property<std::string>("name", next_name(), std::move(validator), /* has_body = */ false);
+    return _create_property<std::string>("name", next_node_name(), std::move(validator), /* has_body = */ false);
 }
 
 void SceneNode::_clean_tweaks()

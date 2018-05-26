@@ -194,7 +194,7 @@ void SceneGraph::_unfreeze(NOTF_UNUSED const std::thread::id thread_id)
 
         // clear old deltas in all scenes
         for (auto it = m_scenes.begin(); it != m_scenes.end();) {
-            if (ScenePtr scene = it->lock()) {
+            if (ScenePtr scene = it->second.lock()) {
                 Scene::Access<SceneGraph>::clear_delta(*scene);
                 ++it;
             }
@@ -214,6 +214,15 @@ void SceneGraph::_enter_state(valid_ptr<StatePtr> state)
         m_current_state = std::move(state);
         m_window.request_redraw();
     }
+}
+
+// ------------------------------------------------------------------------------------------------------------------ //
+
+void access::_SceneGraph<Scene>::register_scene(SceneGraph& graph, ScenePtr scene)
+{
+    NOTF_ASSERT(graph.m_hierarchy_mutex.is_locked_by_this_thread());
+    NOTF_ASSERT(graph.m_scenes.count(scene->name()) == 1); // Scene should have already reserved its name
+    graph.m_scenes[scene->name()] = std::move(scene);
 }
 
 NOTF_CLOSE_NAMESPACE

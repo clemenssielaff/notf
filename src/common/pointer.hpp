@@ -26,33 +26,30 @@ struct is_unique_ptr<std::unique_ptr<T>> : std::true_type {};
 
 //====================================================================================================================//
 
-namespace detail {
-
 /// @{
 /// Returns the raw pointer from any kind of other pointer without increasing the use_count of shared_ptrs.
 template<class T>
-std::enable_if_t<std::is_pointer<T>::value, const T> raw(const T& ptr)
+std::enable_if_t<std::is_pointer<T>::value, const T> raw_pointer(const T& ptr)
 {
     return ptr; // from raw
 }
 template<class T>
-std::enable_if_t<is_shared_ptr<T>::value, const typename T::element_type*> raw(const T& shared_ptr)
+std::enable_if_t<is_shared_ptr<T>::value, const typename T::element_type*> raw_pointer(const T& shared_ptr)
 {
     return shared_ptr.get(); // from shared_ptr<T>
 }
 template<class T>
-std::enable_if_t<is_unique_ptr<T>::value, const typename T::element_type*> raw(const T& unique_ptr)
+std::enable_if_t<is_unique_ptr<T>::value, const typename T::element_type*> raw_pointer(const T& unique_ptr)
 {
     return unique_ptr.get(); // from unique<T>
 }
 template<class T>
-std::enable_if_t<T::is_notf_pointer::value, decltype(raw(typename T::type{}))> raw(const T& notf_pointer)
+std::enable_if_t<T::is_notf_pointer::value, decltype(raw_pointer(typename T::type{}))>
+raw_pointer(const T& notf_pointer)
 {
-    return raw(notf_pointer.raw()); // from notf_pointer
+    return raw_pointer(notf_pointer.raw()); // from notf_pointer
 }
 /// @}
-
-} // namespace detail
 
 //====================================================================================================================//
 
@@ -66,7 +63,7 @@ struct pointer_equal {
     template<class T, class U>
     bool operator()(const T& lhs, const U& rhs) const
     {
-        return detail::raw(lhs) == detail::raw(rhs);
+        return raw_pointer(lhs) == raw_pointer(rhs);
     }
 };
 
@@ -77,7 +74,7 @@ struct pointer_less_than {
     template<class T, class U>
     bool operator()(const T& lhs, const U& rhs) const
     {
-        return detail::raw(lhs) < detail::raw(rhs);
+        return raw_pointer(lhs) < raw_pointer(rhs);
     }
 };
 
@@ -211,37 +208,37 @@ std::ostream& operator<<(std::ostream& os, const valid_ptr<T>& val)
 template<class T, class U>
 auto operator==(const valid_ptr<T>& lhs, const U& rhs)
 {
-    return detail::raw(lhs) == detail::raw(rhs);
+    return raw_pointer(lhs) == raw_pointer(rhs);
 }
 
 template<class T, class U>
 auto operator!=(const valid_ptr<T>& lhs, const U& rhs)
 {
-    return detail::raw(lhs) != detail::raw(rhs);
+    return raw_pointer(lhs) != raw_pointer(rhs);
 }
 
 template<class T, class U>
 auto operator<(const valid_ptr<T>& lhs, const U& rhs)
 {
-    return detail::raw(lhs) < detail::raw(rhs);
+    return raw_pointer(lhs) < raw_pointer(rhs);
 }
 
 template<class T, class U>
 auto operator<=(const valid_ptr<T>& lhs, const U& rhs)
 {
-    return detail::raw(lhs) <= detail::raw(rhs);
+    return raw_pointer(lhs) <= raw_pointer(rhs);
 }
 
 template<class T, class U>
 auto operator>(const valid_ptr<T>& lhs, const U& rhs)
 {
-    return detail::raw(lhs) > detail::raw(rhs);
+    return raw_pointer(lhs) > raw_pointer(rhs);
 }
 
 template<class T, class U>
 auto operator>=(const valid_ptr<T>& lhs, const U& rhs)
 {
-    return detail::raw(lhs) >= detail::raw(rhs);
+    return raw_pointer(lhs) >= raw_pointer(rhs);
 }
 
 // more unwanted operators for `valid_ptr`
@@ -336,37 +333,37 @@ std::ostream& operator<<(std::ostream& os, const risky_ptr<T>& val)
 template<class T, class U>
 auto operator==(const risky_ptr<T>& lhs, const U& rhs)
 {
-    return detail::raw(lhs) == detail::raw(rhs);
+    return raw_pointer(lhs) == raw_pointer(rhs);
 }
 
 template<class T, class U>
 auto operator!=(const risky_ptr<T>& lhs, const U& rhs)
 {
-    return detail::raw(lhs) != detail::raw(rhs);
+    return raw_pointer(lhs) != raw_pointer(rhs);
 }
 
 template<class T, class U>
 auto operator<(const risky_ptr<T>& lhs, const U& rhs)
 {
-    return detail::raw(lhs) < detail::raw(rhs);
+    return raw_pointer(lhs) < raw_pointer(rhs);
 }
 
 template<class T, class U>
 auto operator<=(const risky_ptr<T>& lhs, const U& rhs)
 {
-    return detail::raw(lhs) <= detail::raw(rhs);
+    return raw_pointer(lhs) <= raw_pointer(rhs);
 }
 
 template<class T, class U>
 auto operator>(const risky_ptr<T>& lhs, const U& rhs)
 {
-    return detail::raw(lhs) > detail::raw(rhs);
+    return raw_pointer(lhs) > raw_pointer(rhs);
 }
 
 template<class T, class U>
 auto operator>=(const risky_ptr<T>& lhs, const U& rhs)
 {
-    return detail::raw(lhs) >= detail::raw(rhs);
+    return raw_pointer(lhs) >= raw_pointer(rhs);
 }
 
 // more unwanted operators for `risky_ptr`
@@ -385,7 +382,7 @@ risky_ptr<T> operator+(std::ptrdiff_t, const risky_ptr<T>&) = delete;
 /// Uses `hash_mix` to improve pointer entropy.
 template<typename T>
 struct pointer_hash {
-    size_t operator()(const T& ptr) const noexcept { return hash_mix(to_number(detail::raw(ptr))); }
+    size_t operator()(const T& ptr) const noexcept { return hash_mix(to_number(raw_pointer(ptr))); }
 };
 
 NOTF_CLOSE_NAMESPACE
