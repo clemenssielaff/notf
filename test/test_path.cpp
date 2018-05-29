@@ -8,29 +8,30 @@ NOTF_USING_NAMESPACE
 
 SCENARIO("Application path", "[app], [path]")
 {
-    SECTION("default constructed paths are empty but valid")
+    SECTION("default constructed paths are empty but valid and relative")
     {
         const Path path;
         REQUIRE(path.is_empty());
+        REQUIRE(path.is_relative());
     }
 
     SECTION("non-empty paths can be invalid")
     {
         SECTION("no nodes following a property")
         {
-            REQUIRE_THROWS_AS(Path("test/node:property/wrong"), Path::no_path); //
+            REQUIRE_THROWS_AS(Path("test/node:property/wrong"), Path::construction_error); //
         }
         SECTION("no properties following a property")
         {
-            REQUIRE_THROWS_AS(Path("test/node:property:wrong"), Path::no_path);
+            REQUIRE_THROWS_AS(Path("test/node:property:wrong"), Path::construction_error);
         }
         SECTION("no empty property name")
         {
-            REQUIRE_THROWS_AS(Path("test/wrong:"), Path::no_path); //
+            REQUIRE_THROWS_AS(Path("test/wrong:"), Path::construction_error); //
         }
         SECTION("no going up further than the root in absolute paths")
         {
-            REQUIRE_THROWS_AS(Path("/root/child/../../../nope"), Path::no_path);
+            REQUIRE_THROWS_AS(Path("/root/child/../../../nope"), Path::construction_error);
         }
     }
 
@@ -98,10 +99,10 @@ SCENARIO("Application path", "[app], [path]")
     SECTION("paths can be iterated")
     {
         const Path path("/parent/child/target:property");
-        REQUIRE(path.node_count() == 3);
-        REQUIRE(path.node(0) == "parent");
-        REQUIRE(path.node(1) == "child");
-        REQUIRE(path.node(2) == "target");
+        REQUIRE(path.size() == 3);
+        REQUIRE(path[0] == "parent");
+        REQUIRE(path[1] == "child");
+        REQUIRE(path[2] == "target");
         REQUIRE(path.property() == "property");
     }
 
@@ -156,6 +157,14 @@ SCENARIO("Application path", "[app], [path]")
             const Path resolved = Path("/parent/path/to/some:property") + relative;
             REQUIRE(resolved == absolute);
         }
+
+        SECTION("with an empty absolute graph")
+        {
+            const Path absolute("/path/to/child");
+            const Path relative("path/to/child");
+            const Path resolved = Path("/") + relative;
+            REQUIRE(resolved == absolute);
+        }
     }
 
     SECTION("absolute paths cannot be concatenated")
@@ -164,14 +173,14 @@ SCENARIO("Application path", "[app], [path]")
         {
             const Path absolute("/parent/to/absolute");
             const Path relative("path/to:property");
-            REQUIRE_THROWS_AS(relative + absolute, Path::no_path);
+            REQUIRE_THROWS_AS(relative + absolute, Path::construction_error);
         }
 
         SECTION("to another absolute path")
         {
             const Path absolute1("/parent/to/absolute");
             const Path absolute2("/another/absolute:property");
-            REQUIRE_THROWS_AS(absolute1 + absolute2, Path::no_path);
+            REQUIRE_THROWS_AS(absolute1 + absolute2, Path::construction_error);
         }
     }
 
@@ -185,7 +194,7 @@ SCENARIO("Application path", "[app], [path]")
         REQUIRE(should_work.is_property());
 
         const Path broken("nope/does/not:work");
-        REQUIRE_THROWS_AS(start + broken, Path::no_path);
+        REQUIRE_THROWS_AS(start + broken, Path::construction_error);
     }
 
     SECTION("superfluous symbols are ignored")
@@ -193,7 +202,7 @@ SCENARIO("Application path", "[app], [path]")
         const Path superfluous("/parent/./child/../child/target/");
         const Path normalized("/parent/child/target");
         REQUIRE(superfluous == normalized);
-        REQUIRE(superfluous.node_count() == 3);
+        REQUIRE(superfluous.size() == 3);
     }
 
     SECTION("rvalue paths can be combined effectively")

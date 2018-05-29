@@ -100,6 +100,21 @@ size_t Scene::count_nodes() const
     return m_root->count_descendants() + 1; // +1 is the root node
 }
 
+PropertyReader Scene::property(const Path& path) const
+{
+    if (!path.is_property()) {
+        notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Property", path.to_string())
+    }
+    if (path.is_empty()) {
+        notf_throw_format(Path::path_error, "Cannot query Property from Scene with an empty path");
+    }
+    if (path.is_absolute() && path[0] != name()) {
+        notf_throw_format(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(),
+                          name());
+    }
+    return _property(path);
+}
+
 void Scene::clear() { m_root->clear(); }
 
 risky_ptr<Scene::NodeContainer*> Scene::_get_frozen_children(valid_ptr<const SceneNode*> node)
@@ -119,6 +134,30 @@ void Scene::_create_frozen_children(valid_ptr<const SceneNode*> node)
 
     auto it = m_frozen_children.emplace(std::make_pair(node, SceneNode::Access<Scene>::children(*node)));
     NOTF_ASSERT(it.second);
+}
+
+PropertyReader Scene::_property(const Path& path) const
+{
+    if (path.is_absolute()) {
+        if (path.size() == 1) {
+            notf_throw_format(Path::path_error, "Path \"{}\" does not refer to a Property in Scene \"{}\"",
+                              path.to_string(), name());
+        }
+        if (path.size() == 2) {
+            // TODO: return SceneProperty
+        }
+        else {
+            // TODO: return SceneNodeProperty from root node
+        }
+    }
+    else { // path.is_relative
+        if (path.size() == 1) {
+            // TODO: return SceneProperty
+        }
+        else {
+            // TODO: return SceneNodeProperty from root node
+        }
+    }
 }
 
 void Scene::_clear_delta()

@@ -35,11 +35,13 @@ struct SceneNodeHandle;
 class PropertyHead;
 class PropertyGraph;
 class PropertyBatch;
-class SceneProperty;
+
 NOTF_DEFINE_SHARED_POINTERS(class, PropertyBody);
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, TypedPropertyBody);
 NOTF_DEFINE_UNIQUE_POINTERS(struct, PropertyUpdate);
-NOTF_DEFINE_UNIQUE_POINTERS_TEMPLATE1(class, TypedSceneProperty);
+
+NOTF_DEFINE_SHARED_POINTERS(class, SceneNodeProperty);
+NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, TypedSceneNodeProperty);
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, GlobalProperty);
 
 //

@@ -348,13 +348,13 @@ void SceneNode::_clear_children()
     _write_children().clear();
 }
 
-valid_ptr<TypedSceneProperty<std::string>*> SceneNode::_create_name()
+valid_ptr<TypedSceneNodeProperty<std::string>*> SceneNode::_create_name()
 {
     // register this node as being unfinalized before creating a property
     s_unfinalized_nodes.emplace(this);
 
     // validator function for SceneNode names, is called every time its name changes.
-    TypedSceneProperty<std::string>::Validator validator = [this](std::string& name) -> bool {
+    TypedSceneNodeProperty<std::string>::Validator validator = [this](std::string& name) -> bool {
 
         // lock the SceneGraph hierarchy
         NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
@@ -380,7 +380,7 @@ void SceneNode::_clean_tweaks()
 {
     NOTF_ASSERT(SceneGraph::Access<SceneNode>::mutex(*graph()).is_locked_by_this_thread());
     for (auto& it : m_properties) {
-        SceneProperty::Access<SceneNode>::clear_frozen(*it.second.get());
+        SceneNodeProperty::Access<SceneNode>::clear_frozen(*it.second.get());
     }
 }
 

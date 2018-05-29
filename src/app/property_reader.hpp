@@ -31,6 +31,9 @@ public:
     /// @param rhs      Other reader to compare against.
     bool operator==(const PropertyReader& rhs) const { return m_body == rhs.m_body; }
 
+    /// Checks whether this PropertyReader is valid or not.
+    bool is_valid() const { return static_cast<bool>(m_body); }
+
     // fields ------------------------------------------------------------------------------------------------------- //
 protected:
     /// Owning pointer to the PropertyBody to read from.

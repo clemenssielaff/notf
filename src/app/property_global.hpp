@@ -13,6 +13,10 @@ class GlobalProperty : public PropertyHead {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
+    /// Type of value of the Property.
+    using type = T;
+
+    /// Expression defining a Property of type T.
     using Expression = PropertyGraph::Expression<T>;
 
     // methods ------------------------------------------------------------------------------------------------------ //

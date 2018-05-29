@@ -241,6 +241,11 @@ public:
     /// The number of SceneNodes in the Scene including the root node (therefore is always >= 1).
     size_t count_nodes() const;
 
+    /// Searches for and returns a Property of a SceneNode or the Scene.
+    /// @param path     Path uniquely identifying a Property.
+    /// @throws Path::path_error    If the Path does not lead to a Property.
+    PropertyReader property(const Path& path) const;
+
     /// Removes all nodes (except the root node) from the Scene.
     void clear();
 
@@ -275,6 +280,11 @@ private:
     /// @param node             SceneNode to freeze.
     /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void _create_frozen_children(valid_ptr<const SceneNode*> node);
+
+    /// Private implementation of `property()` assuming sanitized inputs.
+    /// @param path     Path uniquely identifying a Property.
+    /// @throws Path::path_error    If the Path does not lead to a Property.
+    PropertyReader _property(const Path& path) const;
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
@@ -313,6 +323,11 @@ class access::_Scene<SceneGraph> {
     /// Called by the SceneGraph after unfreezing, resolves all deltas in this Scene.
     /// @param scene    Scene to operate on.
     static void clear_delta(Scene& scene) { scene._clear_delta(); }
+
+    /// Searches for and returns a Property of a SceneNode or the Scene.
+    /// @param path     Path uniquely identifying a Property.
+    /// @throws Path::path_error    If the Path does not lead to a Property.
+    static PropertyReader property(const Scene& scene, const Path& path) { return scene._property(path); }
 };
 
 //-----------------------------------------------------------------------------

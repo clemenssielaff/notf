@@ -3,7 +3,8 @@
 #include <map>
 #include <unordered_set>
 
-#include "app/forwards.hpp"
+#include "app/path.hpp"
+#include "app/property_reader.hpp"
 #include "common/mutex.hpp"
 #include "common/pointer.hpp"
 
@@ -114,11 +115,22 @@ public:
     risky_ptr<ScenePtr> scene(const std::string& name)
     {
         auto it = m_scenes.find(name);
-        if(it == m_scenes.end()){
+        if (it == m_scenes.end()) {
             return nullptr;
         }
         return it->second.lock();
     }
+
+    /// Searches for and returns a Property of a SceneNode in the SceneGraph.
+    /// @param path     Path uniquely identifying a Property within the SceneGraph.
+    /// @throws Path::path_error    If the Path does not lead to a Property.
+    PropertyReader property(const Path& path) const;
+
+    /// Searches for and returns a Property of a SceneNode in the SceneGraph.
+    /// @param path     Path uniquely identifying a Property within the SceneGraph.
+    /// @throws Path::path_error    If the Path does not lead to a Property.
+    //    PropertyReader property(const Path& path);
+    // TODO: CONTINUE HERE
 
     // state management -------------------------------------------------------
 

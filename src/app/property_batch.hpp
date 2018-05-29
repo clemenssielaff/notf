@@ -37,40 +37,28 @@ public:
         }
     }
 
-    /// @{
     /// Set the Property's value and updates downstream Properties.
     /// Removes an existing expression on this Property if one exists.
     /// @param property     Property to update.
     /// @param value        New value.
-    template<class T>
-    void set_value(TypedSceneProperty<T>& property, T&& value)
+    template<class T, class U = typename T::type>
+    void set_value(T& property, U&& value)
     {
-        _set_value<T>(property, std::forward<T>(value));
+        static_assert(std::is_base_of<PropertyHead, T>::value, "T must be a subclass of PropertyHead");
+        _set_value<U>(property, std::forward<U>(value));
     }
-    template<class T>
-    void set_value(GlobalProperty<T>& property, T&& value)
-    {
-        _set_value<T>(property, std::forward<T>(value));
-    }
-    /// @}
 
-    /// @{
     /// Set the Property's expression.
     /// Evaluates the expression right away to update the Property's value.
     /// @param target           Property targeted by this update.
     /// @param expression       New expression for the targeted Property.
     /// @param dependencies     Property Readers that the expression depends on.
-    template<class T>
-    void set_expression(TypedSceneProperty<T>& property, identity_t<Expression<T>>&& expression, Dependencies&& deps)
+    template<class T, class U = typename T::type>
+    void set_expression(T& property, identity_t<Expression<U>>&& expression, Dependencies&& deps)
     {
-        _set_expression<T>(property, std::move(expression), std::move(deps));
+        static_assert(std::is_base_of<PropertyHead, T>::value, "T must be a subclass of PropertyHead");
+        _set_expression<U>(property, std::move(expression), std::move(deps));
     }
-    template<class T>
-    void set_expression(GlobalProperty<T>& property, identity_t<Expression<T>>&& expression, Dependencies&& deps)
-    {
-        _set_expression<T>(property, std::move(expression), std::move(deps));
-    }
-    /// @}
 
     /// Executes this batch.
     /// If any error occurs, this method will throw the exception and not modify the PropertyGraph.

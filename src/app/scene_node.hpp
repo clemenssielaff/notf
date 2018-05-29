@@ -2,7 +2,7 @@
 
 #include "app/path.hpp"
 #include "app/scene.hpp"
-#include "app/scene_property.hpp"
+#include "app/scene_node_property.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -16,7 +16,7 @@ class _SceneNode;
 class SceneNode : public receive_signals, public std::enable_shared_from_this<SceneNode> {
 
     friend class access::_SceneNode<Scene>;
-    friend class access::_SceneNode<SceneProperty>;
+    friend class access::_SceneNode<SceneNodeProperty>;
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -186,14 +186,16 @@ public:
     /// @param name     Name of the requested Property.
     /// @returns        Requested Property, if one exists that matches both name and type.
     template<class T>
-    risky_ptr<TypedSceneProperty<T>*> property(const std::string& name) const
+    risky_ptr<TypedSceneNodeProperty<T>*> property(const std::string& name) const
     {
         auto it = m_properties.find(name);
         if (it == m_properties.end()) {
             return nullptr;
         }
-        return dynamic_cast<TypedSceneProperty<T>*>(it->second.get());
+        return dynamic_cast<TypedSceneNodeProperty<T>*>(it->second.get());
     }
+
+    // TODO: SceneNode::operator[] for properties
 
     // z-order ----------------------------------------------------------------
 
@@ -311,10 +313,10 @@ protected:
     ///                 If there already exists a Property of the same name on this SceneNode.
     /// @throws no_graph_error
     ///                 If the SceneGraph of the node has been deleted.
-    /// @throws SceneProperty::initial_value_error
+    /// @throws SceneNodeProperty::initial_value_error
     ///                 If the value of the Property could not be validated.
     template<class T>
-    valid_ptr<TypedSceneProperty<T>*>
+    valid_ptr<TypedSceneNodeProperty<T>*>
     _create_property(std::string name, T&& value, Validator<T> validator = {}, const bool has_body = true)
     {
         if (_is_finalized()) {
@@ -329,26 +331,26 @@ protected:
         }
 
         if (validator && !validator(value)) {
-            notf_throw_format(SceneProperty::initial_value_error,
+            notf_throw_format(SceneNodeProperty::initial_value_error,
                               "Cannot create Property \"{}\" with value \"{}\", "
                               "that did not validate against the supplied Validator function",
                               name, value);
         }
 
         // create the property
-        TypedScenePropertyPtr<T> property
-            = SceneProperty::Access<SceneNode>::create(std::forward<T>(value), this, std::move(validator), has_body);
-        TypedSceneProperty<T>* result = property.get();
+        TypedSceneNodePropertyPtr<T> property
+            = SceneNodeProperty::Access<SceneNode>::create(std::forward<T>(value), this, std::move(validator), has_body);
+        TypedSceneNodeProperty<T>* result = property.get();
         auto it = m_properties.emplace(std::make_pair(std::move(name), std::move(property)));
         NOTF_ASSERT(it.second);
-        SceneProperty::Access<SceneNode>::set_name_iterator(*result, std::move(it.first));
+        SceneNodeProperty::Access<SceneNode>::set_name_iterator(*result, std::move(it.first));
 
         return result;
     }
 
 private:
     /// Registers this node as "unfinalized" and creates the "name" property in the constructor.
-    valid_ptr<TypedSceneProperty<std::string>*> _create_name();
+    valid_ptr<TypedSceneNodeProperty<std::string>*> _create_name();
 
     /// Finalizes this SceneNode.
     void _finalize() const { s_unfinalized_nodes.erase(this); }
@@ -377,10 +379,10 @@ private:
     NodeContainer m_children;
 
     /// All properties of this node, accessible by their (node-unique) name.
-    SceneProperty::PropertyMap m_properties;
+    SceneNodeProperty::PropertyMap m_properties;
 
     /// The parent-unique name of this Node.
-    valid_ptr<TypedSceneProperty<std::string>*> const m_name;
+    valid_ptr<TypedSceneNodeProperty<std::string>*> const m_name;
 
     /// Only unfinalized nodes can create properties and creating new children in an unfinalized node creates no deltas.
     static thread_local std::set<valid_ptr<const SceneNode*>> s_unfinalized_nodes;
@@ -406,8 +408,8 @@ class access::_SceneNode<Scene> {
 };
 
 template<>
-class access::_SceneNode<SceneProperty> {
-    friend class notf::SceneProperty;
+class access::_SceneNode<SceneNodeProperty> {
+    friend class notf::SceneNodeProperty;
 
     /// Registers this SceneNode as being "tweaked".
     /// A SceneNode is tweaked when it has one or more Properties that were modified while the SceneGraph was frozen.

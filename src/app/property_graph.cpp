@@ -19,7 +19,7 @@ PropertyGraph::no_dag_error::~no_dag_error() = default;
 
 void PropertyGraph::fire_event(PropertyUpdateList&& effects)
 {
-    // sort effects by Window containing the affected SceneProperty
+    // sort effects by Window containing the affected SceneNodeProperty
     std::map<valid_ptr<const Window*>, PropertyUpdateList> updates_by_window;
     while (!effects.empty()) {
         PropertyUpdatePtr update = std::move(effects.back());
