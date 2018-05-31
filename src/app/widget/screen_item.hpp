@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/scene_node.hpp"
+#include "app/node.hpp"
 #include "app/widget/claim.hpp"
 #include "common/aabr.hpp"
 
@@ -32,7 +32,7 @@ NOTF_OPEN_NAMESPACE
 /// an pointer of the child at the requested index, or throws an `out_of_bounds` exception if the index is >= the
 /// Container's size.
 ///
-/// SceneNodes keep a raw pointer to their parent. The alternative would be to have a weak_ptr to the parent and lock
+/// Nodes keep a raw pointer to their parent. The alternative would be to have a weak_ptr to the parent and lock
 /// it, whenever we need to go up in the hierarchy. However, going up in the hierarchy is a very common occurrence and
 /// with deeply nested layouts, I assume that the number of locking operations per second will likely go in the
 /// thousands. This is a non-neglible expense for something that can prevented by making sure that you either know that
@@ -44,29 +44,29 @@ NOTF_OPEN_NAMESPACE
 /// ID
 /// ==
 ///
-/// Each SceneNode has a constant unique integer ID assigned to it upon instantiation. It can be used to identify the
+/// Each Node has a constant unique integer ID assigned to it upon instantiation. It can be used to identify the
 /// node in a map, for debugging purposes or in conditionals.
 ///
 /// Name
 /// ====
 ///
-/// In addition to the unique ID, each SceneNode can have a name. The name is assigned by the user and is not guaranteed
-/// to be unique. If the name is not set, it is custom to log the SceneNode id instead, formatted like this:
+/// In addition to the unique ID, each Node can have a name. The name is assigned by the user and is not guaranteed
+/// to be unique. If the name is not set, it is custom to log the Node id instead, formatted like this:
 ///
-///     log_info << "Something cool happened to SceneNode #" << node.id() << ".";
+///     log_info << "Something cool happened to Node #" << node.id() << ".";
 ///
 /// Signals
 /// =======
 ///
-/// SceneNodes communicate with each other either through their relationship in the hierachy (parents to children and
-/// vice-versa) or via Signals. Signals have the advantage of being able to connect every SceneNode regardless of its
+/// Nodes communicate with each other either through their relationship in the hierachy (parents to children and
+/// vice-versa) or via Signals. Signals have the advantage of being able to connect every Node regardless of its
 /// position in the hierarchy. They can be created by the user and enabled/disabled at will.
-/// In order to facilitate Signal handling at the lowest possible level, all SceneNodes derive from the
-/// `receive_signals` class that takes care of removing leftover connections that still exist once the SceneNode goes
+/// In order to facilitate Signal handling at the lowest possible level, all Nodes derive from the
+/// `receive_signals` class that takes care of removing leftover connections that still exist once the Node goes
 /// out of scope.
 ///
 
-/// Abstract baseclass for all SceneNode types in a Widget hierarchy that can occupy space on screen.
+/// Abstract baseclass for all Node types in a Widget hierarchy that can occupy space on screen.
 ///
 /// Layouting
 /// =========
@@ -179,7 +179,7 @@ NOTF_OPEN_NAMESPACE
 /// for an example). If a Widget receives an event but does not handle it, the eventis propagated up the ancestry until
 /// it either reaches the root node or an ancestor sets the event's `is_handled` flag.
 ///
-class ScreenItem : public SceneNode {
+class ScreenItem : public Node {
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -250,9 +250,9 @@ public:
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Constructor.
-    /// @param token        Factory token provided by SceneNode::_create.
+    /// @param token        Factory token provided by Node::_create.
     /// @param container    Container used to store this Item's children.
-    ScreenItem(const Token& token, ChildContainerPtr container) : SceneNode(token, std::move(container)) {}
+    ScreenItem(const Token& token, ChildContainerPtr container) : Node(token, std::move(container)) {}
 
 public:
     /// Destructor.

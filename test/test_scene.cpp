@@ -1,7 +1,7 @@
 #include "catch.hpp"
 
-#include "app/scene_node.hpp"
-#include "app/scene_node_handle.hpp"
+#include "app/node.hpp"
+#include "app/node_handle.hpp"
 #include "app/window.hpp"
 #include "test_scene.hpp"
 #include "testenv.hpp"
@@ -21,19 +21,18 @@ struct TestScene : public Scene {
 
 //====================================================================================================================//
 
-struct LeafNode : public SceneNode {
+struct LeafNode : public Node {
     /// Constructor.
-    LeafNode(const FactoryToken& token, Scene& scene, valid_ptr<SceneNode*> parent) : SceneNode(token, scene, parent) {}
+    LeafNode(const FactoryToken& token, Scene& scene, valid_ptr<Node*> parent) : Node(token, scene, parent) {}
 };
 
 //====================================================================================================================//
 
-struct TwoChildrenNode : public SceneNode {
+struct TwoChildrenNode : public Node {
 
     /// Constructor.
     ///
-    TwoChildrenNode(const FactoryToken& token, Scene& scene, valid_ptr<SceneNode*> parent)
-        : SceneNode(token, scene, parent)
+    TwoChildrenNode(const FactoryToken& token, Scene& scene, valid_ptr<Node*> parent) : Node(token, scene, parent)
     {
         back = _add_child<LeafNode>();
         front = _add_child<LeafNode>();
@@ -43,18 +42,17 @@ struct TwoChildrenNode : public SceneNode {
 
     // fields -----------------------------------------------------------------
 public:
-    SceneNodeHandle<LeafNode> back;
-    SceneNodeHandle<LeafNode> front;
+    NodeHandle<LeafNode> back;
+    NodeHandle<LeafNode> front;
 };
 
 //====================================================================================================================//
 
-struct ThreeChildrenNode : public SceneNode {
+struct ThreeChildrenNode : public Node {
 
     /// Constructor.
     ///
-    ThreeChildrenNode(const FactoryToken& token, Scene& scene, valid_ptr<SceneNode*> parent)
-        : SceneNode(token, scene, parent)
+    ThreeChildrenNode(const FactoryToken& token, Scene& scene, valid_ptr<Node*> parent) : Node(token, scene, parent)
     {
         back = _add_child<LeafNode>();
         center = _add_child<LeafNode>();
@@ -69,43 +67,43 @@ struct ThreeChildrenNode : public SceneNode {
 
     // fields -----------------------------------------------------------------
 public:
-    SceneNodeHandle<LeafNode> back;
-    SceneNodeHandle<LeafNode> center;
-    SceneNodeHandle<LeafNode> front;
+    NodeHandle<LeafNode> back;
+    NodeHandle<LeafNode> center;
+    NodeHandle<LeafNode> front;
 };
 
 //====================================================================================================================//
 
-struct SplitNode : public SceneNode {
+struct SplitNode : public Node {
 
     /// Constructor.
-    SplitNode(const FactoryToken& token, Scene& scene, valid_ptr<SceneNode*> parent) : SceneNode(token, scene, parent)
+    SplitNode(const FactoryToken& token, Scene& scene, valid_ptr<Node*> parent) : Node(token, scene, parent)
     {
         m_center = _add_child<TwoChildrenNode>();
     }
 
     // fields -----------------------------------------------------------------
 private:
-    SceneNodeHandle<TwoChildrenNode> m_center;
+    NodeHandle<TwoChildrenNode> m_center;
 };
 
 //====================================================================================================================//
 
-struct TestNode : public SceneNode {
+struct TestNode : public Node {
     /// Constructor.
-    TestNode(const FactoryToken& token, Scene& scene, valid_ptr<SceneNode*> parent) : SceneNode(token, scene, parent) {}
+    TestNode(const FactoryToken& token, Scene& scene, valid_ptr<Node*> parent) : Node(token, scene, parent) {}
 
     /// Adds a new node as a child of this one.
     /// @param args Arguments that are forwarded to the constructor of the child.
     /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     template<class T, class... Args>
-    SceneNodeHandle<T> add_child(Args&&... args)
+    NodeHandle<T> add_child(Args&&... args)
     {
         return _add_child<T>(std::forward<Args>(args)...);
     }
 
     template<class T>
-    void remove_child(const SceneNodeHandle<T>& handle)
+    void remove_child(const NodeHandle<T>& handle)
     {
         _remove_child<T>(handle);
     }
@@ -149,10 +147,10 @@ SCENARIO("a Scene can be set up and modified", "[app][scene]")
         { // event thread
             NOTF_MUTEX_GUARD(graph_access.event_mutex());
 
-            SceneNodeHandle<TestNode> first_node = scene.root().set_child<TestNode>();         // + 1
-            SceneNodeHandle<TwoChildrenNode> a = first_node->add_child<TwoChildrenNode>();     // + 3
-            SceneNodeHandle<SplitNode> b = first_node->add_child<SplitNode>();                 // + 4
-            SceneNodeHandle<ThreeChildrenNode> c = first_node->add_child<ThreeChildrenNode>(); // + 4 + root
+            NodeHandle<TestNode> first_node = scene.root().set_child<TestNode>();         // + 1
+            NodeHandle<TwoChildrenNode> a = first_node->add_child<TwoChildrenNode>();     // + 3
+            NodeHandle<SplitNode> b = first_node->add_child<SplitNode>();                 // + 4
+            NodeHandle<ThreeChildrenNode> c = first_node->add_child<ThreeChildrenNode>(); // + 4 + root
 
             REQUIRE(scene_access.node_count() == 13);
             REQUIRE(scene_access.delta_count() == 0);
@@ -171,8 +169,8 @@ SCENARIO("a Scene can be set up and modified", "[app][scene]")
     }
     SECTION("modifying nodes in a frozen scene will produce deltas that are resolved when unfrozen")
     {
-        SceneNodeHandle<TestNode> first_node;
-        SceneNodeHandle<TwoChildrenNode> a;
+        NodeHandle<TestNode> first_node;
+        NodeHandle<TwoChildrenNode> a;
         { // event thread
             NOTF_MUTEX_GUARD(graph_access.event_mutex());
             first_node = scene.root().set_child<TestNode>();
@@ -228,10 +226,10 @@ SCENARIO("a Scene can be set up and modified", "[app][scene]")
 
     SECTION("deleting nodes from a frozen scene will produce deltas that are resolved when unfrozen")
     {
-        SceneNodeHandle<TestNode> first_node;
-        SceneNodeHandle<TwoChildrenNode> a;
-        SceneNodeHandle<SplitNode> b;
-        SceneNodeHandle<ThreeChildrenNode> c;
+        NodeHandle<TestNode> first_node;
+        NodeHandle<TwoChildrenNode> a;
+        NodeHandle<SplitNode> b;
+        NodeHandle<ThreeChildrenNode> c;
 
         { // event thread
             NOTF_MUTEX_GUARD(graph_access.event_mutex());
@@ -275,8 +273,8 @@ SCENARIO("a Scene can be set up and modified", "[app][scene]")
 
     SECTION("nodes that are created and modified with a frozen scene will unfreeze with it")
     {
-        SceneNodeHandle<TestNode> first_node;
-        SceneNodeHandle<TwoChildrenNode> a;
+        NodeHandle<TestNode> first_node;
+        NodeHandle<TwoChildrenNode> a;
 
         { // event thread
             NOTF_MUTEX_GUARD(graph_access.event_mutex());
@@ -315,7 +313,7 @@ SCENARIO("a Scene can be set up and modified", "[app][scene]")
 
     SECTION("nodes that are create & removed while frozen do not affect the scene when unfrozen again")
     {
-        SceneNodeHandle<TestNode> first_node;
+        NodeHandle<TestNode> first_node;
 
         { // event thread
             NOTF_MUTEX_GUARD(graph_access.event_mutex());
@@ -330,10 +328,10 @@ SCENARIO("a Scene can be set up and modified", "[app][scene]")
             { // event thread
                 NOTF_MUTEX_GUARD(graph_access.event_mutex());
 
-                SceneNodeHandle<TwoChildrenNode> a = first_node->add_child<TwoChildrenNode>();
-                SceneNodeHandle<SplitNode> b = first_node->add_child<SplitNode>();
-                SceneNodeHandle<ThreeChildrenNode> c = first_node->add_child<ThreeChildrenNode>();
-                SceneNodeHandle<LeafNode> d = first_node->add_child<LeafNode>();
+                NodeHandle<TwoChildrenNode> a = first_node->add_child<TwoChildrenNode>();
+                NodeHandle<SplitNode> b = first_node->add_child<SplitNode>();
+                NodeHandle<ThreeChildrenNode> c = first_node->add_child<ThreeChildrenNode>();
+                NodeHandle<LeafNode> d = first_node->add_child<LeafNode>();
 
                 first_node->clear();
 

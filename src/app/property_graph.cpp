@@ -7,8 +7,8 @@
 #include "app/application.hpp"
 #include "app/event_manager.hpp"
 #include "app/io/property_event.hpp"
+#include "app/node.hpp"
 #include "app/scene_graph.hpp"
-#include "app/scene_node.hpp"
 #include "common/set.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -19,16 +19,16 @@ PropertyGraph::no_dag_error::~no_dag_error() = default;
 
 void PropertyGraph::fire_event(PropertyUpdateList&& effects)
 {
-    // sort effects by Window containing the affected SceneNodeProperty
+    // sort effects by Window containing the affected NodeProperty
     std::map<valid_ptr<const Window*>, PropertyUpdateList> updates_by_window;
     while (!effects.empty()) {
         PropertyUpdatePtr update = std::move(effects.back());
         effects.pop_back();
 
         if (risky_ptr<PropertyHead*> property_head = update->property->head()) {
-            if (risky_ptr<SceneNode*> scene_node = property_head->scene_node()) {
+            if (risky_ptr<Node*> node = property_head->node()) {
                 try {
-                    const Window* window = &(scene_node->graph()->window());
+                    const Window* window = &(node->graph()->window());
                     if (updates_by_window.count(window) == 0) {
                         PropertyUpdateList window_updates;
                         window_updates.reserve(effects.size() + 1); // assume all updates are for the same window

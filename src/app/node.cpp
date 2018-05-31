@@ -1,4 +1,4 @@
-#include "app/scene_node.hpp"
+#include "app/node.hpp"
 
 #include <atomic>
 
@@ -9,13 +9,13 @@
 namespace { // anonymous
 NOTF_USING_NAMESPACE
 
-/// Returns the name of the next scene node.
+/// Returns the name of the next node.
 /// Is thread-safe and ever-increasing.
 std::string next_node_name()
 {
     static std::atomic_size_t nextID(1);
     std::stringstream ss;
-    ss << "SceneNode#" << nextID++;
+    ss << "Node#" << nextID++;
     return ss.str();
 }
 
@@ -55,21 +55,21 @@ NOTF_OPEN_NAMESPACE
 
 //====================================================================================================================//
 
-SceneNode::no_node_error::~no_node_error() = default;
+Node::no_node_error::~no_node_error() = default;
 
-SceneNode::node_finalized_error::~node_finalized_error() = default;
+Node::node_finalized_error::~node_finalized_error() = default;
 
 //====================================================================================================================//
 
-thread_local std::set<valid_ptr<const SceneNode*>> SceneNode::s_unfinalized_nodes = {};
+thread_local std::set<valid_ptr<const Node*>> Node::s_unfinalized_nodes = {};
 
-SceneNode::SceneNode(const FactoryToken&, Scene& scene, valid_ptr<SceneNode*> parent)
+Node::Node(const FactoryToken&, Scene& scene, valid_ptr<Node*> parent)
     : m_scene(scene), m_parent(parent), m_name(_create_name())
 {
     log_trace << "Created \"" << name() << "\"";
 }
 
-SceneNode::~SceneNode()
+Node::~Node()
 {
 #ifdef NOTF_DEBUG
     // all children should be removed with their parent
@@ -82,27 +82,27 @@ SceneNode::~SceneNode()
     _finalize();
 
     try {
-        SceneGraph::Access<SceneNode>::remove_dirty(*graph(), this);
+        SceneGraph::Access<Node>::remove_dirty(*graph(), this);
     }
     catch (const Scene::no_graph_error&) {
-        NOTF_NOOP; // if the SceneGraph has already been deleted, it won't matter if this SceneNode was dirty or not
+        NOTF_NOOP; // if the SceneGraph has already been deleted, it won't matter if this Node was dirty or not
     }
 }
 
-const std::string& SceneNode::set_name(const std::string& name)
+const std::string& Node::set_name(const std::string& name)
 {
     if (!m_name->set_value(name)) {
-        log_warning << "Could not validate new name \"" << name << "\" for SceneNode \"" << m_name->value() << "\"";
+        log_warning << "Could not validate new name \"" << name << "\" for Node \"" << m_name->value() << "\"";
     }
     return m_name->value();
 }
 
-bool SceneNode::has_ancestor(const valid_ptr<const SceneNode*> ancestor) const
+bool Node::has_ancestor(const valid_ptr<const Node*> ancestor) const
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
 
-    valid_ptr<const SceneNode*> next = parent();
+    valid_ptr<const Node*> next = parent();
     while (next != next->parent()) {
         if (next == ancestor) {
             return true;
@@ -112,19 +112,19 @@ bool SceneNode::has_ancestor(const valid_ptr<const SceneNode*> ancestor) const
     return false;
 }
 
-valid_ptr<SceneNode*> SceneNode::common_ancestor(valid_ptr<SceneNode*> other)
+valid_ptr<Node*> Node::common_ancestor(valid_ptr<Node*> other)
 {
     if (this == other) {
         return this;
     }
 
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
 
-    valid_ptr<SceneNode*> first = this;
-    valid_ptr<SceneNode*> second = other;
-    SceneNode* result = nullptr;
-    std::unordered_set<valid_ptr<SceneNode*>, pointer_hash<valid_ptr<SceneNode*>>> known_ancestors = {first, second};
+    valid_ptr<Node*> first = this;
+    valid_ptr<Node*> second = other;
+    Node* result = nullptr;
+    std::unordered_set<valid_ptr<Node*>, pointer_hash<valid_ptr<Node*>>> known_ancestors = {first, second};
     while (1) {
         first = first->parent();
         if (known_ancestors.count(first)) {
@@ -150,30 +150,30 @@ valid_ptr<SceneNode*> SceneNode::common_ancestor(valid_ptr<SceneNode*> other)
     return result;
 }
 
-bool SceneNode::is_in_front() const
+bool Node::is_in_front() const
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
 
     const NodeContainer& siblings = m_parent->_read_children();
     NOTF_ASSERT(!siblings.empty());
     return siblings.front() == this;
 }
 
-bool SceneNode::is_in_back() const
+bool Node::is_in_back() const
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
 
     const NodeContainer& siblings = m_parent->_read_children();
     NOTF_ASSERT(!siblings.empty());
     return siblings.back() == this;
 }
 
-bool SceneNode::is_in_front_of(const valid_ptr<SceneNode*> sibling) const
+bool Node::is_in_front_of(const valid_ptr<Node*> sibling) const
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
 
     const NodeContainer& siblings = m_parent->_read_children();
     const size_t sibling_count = siblings.size();
@@ -198,10 +198,10 @@ bool SceneNode::is_in_front_of(const valid_ptr<SceneNode*> sibling) const
                       sibling->name());
 }
 
-bool SceneNode::is_behind(const valid_ptr<SceneNode*> sibling) const
+bool Node::is_behind(const valid_ptr<Node*> sibling) const
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
 
     const NodeContainer& siblings = m_parent->_read_children();
     const size_t sibling_count = siblings.size();
@@ -226,10 +226,10 @@ bool SceneNode::is_behind(const valid_ptr<SceneNode*> sibling) const
                       sibling->name());
 }
 
-void SceneNode::stack_front()
+void Node::stack_front()
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
 
     // early out to avoid creating unnecessary deltas
     if (is_in_front()) {
@@ -240,10 +240,10 @@ void SceneNode::stack_front()
     siblings.stack_front(this);
 }
 
-void SceneNode::stack_back()
+void Node::stack_back()
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
 
     // early out to avoid creating unnecessary deltas
     if (is_in_back()) {
@@ -254,10 +254,10 @@ void SceneNode::stack_back()
     siblings.stack_back(this);
 }
 
-void SceneNode::stack_before(const valid_ptr<SceneNode*> sibling)
+void Node::stack_before(const valid_ptr<Node*> sibling)
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
 
     size_t my_index;
     { // early out to avoid creating unnecessary deltas
@@ -275,10 +275,10 @@ void SceneNode::stack_before(const valid_ptr<SceneNode*> sibling)
     siblings.stack_before(my_index, sibling);
 }
 
-void SceneNode::stack_behind(const valid_ptr<SceneNode*> sibling)
+void Node::stack_behind(const valid_ptr<Node*> sibling)
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
 
     size_t my_index;
     { // early out to avoid creating unnecessary deltas
@@ -296,11 +296,11 @@ void SceneNode::stack_behind(const valid_ptr<SceneNode*> sibling)
     siblings.stack_behind(my_index, sibling);
 }
 
-const SceneNode::NodeContainer& SceneNode::_read_children() const
+const Node::NodeContainer& Node::_read_children() const
 {
     // make sure the SceneGraph hierarchy is properly locked
     SceneGraphPtr scene_graph = graph();
-    NOTF_ASSERT(SceneGraph::Access<SceneNode>::mutex(*scene_graph).is_locked_by_this_thread());
+    NOTF_ASSERT(SceneGraph::Access<Node>::mutex(*scene_graph).is_locked_by_this_thread());
 
     // direct access if unfrozen or this is the event handling thread
     if (!scene_graph->is_frozen() || !scene_graph->is_frozen_by(std::this_thread::get_id())) {
@@ -308,7 +308,7 @@ const SceneNode::NodeContainer& SceneNode::_read_children() const
     }
 
     // if the scene is frozen by this thread, try to find an existing delta first
-    if (risky_ptr<NodeContainer*> delta = Scene::Access<SceneNode>::get_delta(m_scene, this)) {
+    if (risky_ptr<NodeContainer*> delta = Scene::Access<Node>::get_delta(m_scene, this)) {
         return *delta;
     }
 
@@ -318,11 +318,11 @@ const SceneNode::NodeContainer& SceneNode::_read_children() const
     }
 }
 
-SceneNode::NodeContainer& SceneNode::_write_children()
+Node::NodeContainer& Node::_write_children()
 {
     // make sure the SceneGraph hierarchy is properly locked
     SceneGraphPtr scene_graph = graph();
-    NOTF_ASSERT(SceneGraph::Access<SceneNode>::mutex(*scene_graph).is_locked_by_this_thread());
+    NOTF_ASSERT(SceneGraph::Access<Node>::mutex(*scene_graph).is_locked_by_this_thread());
 
     // direct access if unfrozen or the node hasn't been finalized yet
     if (!scene_graph->is_frozen() || !_is_finalized()) {
@@ -333,31 +333,31 @@ SceneNode::NodeContainer& SceneNode::_write_children()
     NOTF_ASSERT(!scene_graph->is_frozen_by(std::this_thread::get_id()));
 
     // if there is no delta yet, create a new one
-    if (!Scene::Access<SceneNode>::get_delta(m_scene, this)) {
-        Scene::Access<SceneNode>::create_delta(m_scene, this);
+    if (!Scene::Access<Node>::get_delta(m_scene, this)) {
+        Scene::Access<Node>::create_delta(m_scene, this);
     }
 
     // always modify your actual children, not the delta
     return m_children;
 }
 
-void SceneNode::_clear_children()
+void Node::_clear_children()
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
     _write_children().clear();
 }
 
-valid_ptr<TypedSceneNodeProperty<std::string>*> SceneNode::_create_name()
+valid_ptr<TypedNodeProperty<std::string>*> Node::_create_name()
 {
     // register this node as being unfinalized before creating a property
     s_unfinalized_nodes.emplace(this);
 
-    // validator function for SceneNode names, is called every time its name changes.
-    TypedSceneNodeProperty<std::string>::Validator validator = [this](std::string& name) -> bool {
+    // validator function for Node names, is called every time its name changes.
+    TypedNodeProperty<std::string>::Validator validator = [this](std::string& name) -> bool {
 
         // lock the SceneGraph hierarchy
-        NOTF_MUTEX_GUARD(SceneGraph::Access<SceneNode>::mutex(*graph()));
+        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
         const NodeContainer& siblings = parent()->_read_children();
 
         // create unique name
@@ -367,7 +367,7 @@ valid_ptr<TypedSceneNodeProperty<std::string>*> SceneNode::_create_name()
 
         // update parent's child container
         if (siblings.contains(this)) {
-            Scene::Access<SceneNode>::rename_child(parent()->_write_children(), this, name);
+            Scene::Access<Node>::rename_child(parent()->_write_children(), this, name);
         }
 
         return true; // always succeeds
@@ -376,16 +376,16 @@ valid_ptr<TypedSceneNodeProperty<std::string>*> SceneNode::_create_name()
     return _create_property<std::string>("name", next_node_name(), std::move(validator), /* has_body = */ false);
 }
 
-void SceneNode::_clean_tweaks()
+void Node::_clean_tweaks()
 {
-    NOTF_ASSERT(SceneGraph::Access<SceneNode>::mutex(*graph()).is_locked_by_this_thread());
+    NOTF_ASSERT(SceneGraph::Access<Node>::mutex(*graph()).is_locked_by_this_thread());
     for (auto& it : m_properties) {
-        SceneNodeProperty::Access<SceneNode>::clear_frozen(*it.second.get());
+        NodeProperty::Access<Node>::clear_frozen(*it.second.get());
     }
 }
 
 //====================================================================================================================//
 
-RootSceneNode::~RootSceneNode() {}
+RootNode::~RootNode() {}
 
 NOTF_CLOSE_NAMESPACE

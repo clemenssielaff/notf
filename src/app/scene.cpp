@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-#include "app/scene_node.hpp"
+#include "app/node.hpp"
 #include "common/vector.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -17,7 +17,7 @@ Scene::hierarchy_error::~hierarchy_error() = default;
 
 //====================================================================================================================//
 
-bool Scene::NodeContainer::add(valid_ptr<SceneNodePtr> node)
+bool Scene::NodeContainer::add(valid_ptr<NodePtr> node)
 {
     if (contains(node->name())) {
         return false;
@@ -27,7 +27,7 @@ bool Scene::NodeContainer::add(valid_ptr<SceneNodePtr> node)
     return true;
 }
 
-void Scene::NodeContainer::erase(const SceneNodePtr& node)
+void Scene::NodeContainer::erase(const NodePtr& node)
 {
     auto it = std::find(m_order.begin(), m_order.end(), node);
     if (it != m_order.end()) {
@@ -36,7 +36,7 @@ void Scene::NodeContainer::erase(const SceneNodePtr& node)
     }
 }
 
-void Scene::NodeContainer::stack_front(const valid_ptr<SceneNode*> node)
+void Scene::NodeContainer::stack_front(const valid_ptr<Node*> node)
 {
     auto it
         = std::find_if(m_order.begin(), m_order.end(), [&](const auto& sibling) -> bool { return sibling == node; });
@@ -44,7 +44,7 @@ void Scene::NodeContainer::stack_front(const valid_ptr<SceneNode*> node)
     move_to_back(m_order, it); // "in front" means at the end of the vector ordered back to front
 }
 
-void Scene::NodeContainer::stack_back(const valid_ptr<SceneNode*> node)
+void Scene::NodeContainer::stack_back(const valid_ptr<Node*> node)
 {
     auto it
         = std::find_if(m_order.begin(), m_order.end(), [&](const auto& sibling) -> bool { return sibling == node; });
@@ -52,7 +52,7 @@ void Scene::NodeContainer::stack_back(const valid_ptr<SceneNode*> node)
     move_to_front(m_order, it); // "in back" means at the start of the vector ordered back to front
 }
 
-void Scene::NodeContainer::stack_before(const size_t index, const valid_ptr<SceneNode*> sibling)
+void Scene::NodeContainer::stack_before(const size_t index, const valid_ptr<Node*> sibling)
 {
     auto node_it = iterator_at(m_order, index);
     auto sibling_it = std::find(m_order.begin(), m_order.end(), sibling);
@@ -64,7 +64,7 @@ void Scene::NodeContainer::stack_before(const size_t index, const valid_ptr<Scen
     notf::move_behind_of(m_order, node_it, sibling_it);
 }
 
-void Scene::NodeContainer::stack_behind(const size_t index, const valid_ptr<SceneNode*> sibling)
+void Scene::NodeContainer::stack_behind(const size_t index, const valid_ptr<Node*> sibling)
 {
     auto node_it = iterator_at(m_order, index);
     auto sibling_it = std::find(m_order.begin(), m_order.end(), sibling);
@@ -76,11 +76,11 @@ void Scene::NodeContainer::stack_behind(const size_t index, const valid_ptr<Scen
     notf::move_in_front_of(m_order, node_it, sibling_it);
 }
 
-void Scene::NodeContainer::_rename(valid_ptr<const SceneNode*> node, std::string new_name)
+void Scene::NodeContainer::_rename(valid_ptr<const Node*> node, std::string new_name)
 {
     auto name_it = m_names.find(node->name());
     NOTF_ASSERT(name_it != m_names.end());
-    std::weak_ptr<SceneNode> node_ptr = std::move(name_it->second);
+    std::weak_ptr<Node> node_ptr = std::move(name_it->second);
     m_names.erase(name_it);
     m_names.emplace(std::make_pair(std::move(new_name), std::move(node_ptr)));
 }
@@ -90,7 +90,7 @@ void Scene::NodeContainer::_rename(valid_ptr<const SceneNode*> node, std::string
 Scene::Scene(const FactoryToken&, const valid_ptr<SceneGraphPtr>& graph, std::string name)
     : m_graph(graph.get())
     , m_name(_validate_scene_name(*graph.get(), std::move(name)))
-    , m_root(std::make_shared<RootSceneNode>(SceneNode::Access<Scene>::create_token(), *this))
+    , m_root(std::make_shared<RootNode>(Node::Access<Scene>::create_token(), *this))
 {}
 
 Scene::~Scene() = default;
@@ -117,7 +117,7 @@ PropertyReader Scene::property(const Path& path) const
 
 void Scene::clear() { m_root->clear(); }
 
-risky_ptr<Scene::NodeContainer*> Scene::_get_frozen_children(valid_ptr<const SceneNode*> node)
+risky_ptr<Scene::NodeContainer*> Scene::_get_frozen_children(valid_ptr<const Node*> node)
 {
     NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph()));
 
@@ -128,11 +128,11 @@ risky_ptr<Scene::NodeContainer*> Scene::_get_frozen_children(valid_ptr<const Sce
     return &it->second;
 }
 
-void Scene::_create_frozen_children(valid_ptr<const SceneNode*> node)
+void Scene::_create_frozen_children(valid_ptr<const Node*> node)
 {
     NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph()));
 
-    auto it = m_frozen_children.emplace(std::make_pair(node, SceneNode::Access<Scene>::children(*node)));
+    auto it = m_frozen_children.emplace(std::make_pair(node, Node::Access<Scene>::children(*node)));
     NOTF_ASSERT(it.second);
 }
 
@@ -147,7 +147,7 @@ PropertyReader Scene::_property(const Path& path) const
             // TODO: return SceneProperty
         }
         else {
-            // TODO: return SceneNodeProperty from root node
+            // TODO: return NodeProperty from root node
         }
     }
     else { // path.is_relative
@@ -155,7 +155,7 @@ PropertyReader Scene::_property(const Path& path) const
             // TODO: return SceneProperty
         }
         else {
-            // TODO: return SceneNodeProperty from root node
+            // TODO: return NodeProperty from root node
         }
     }
 }
@@ -163,13 +163,13 @@ PropertyReader Scene::_property(const Path& path) const
 void Scene::_clear_delta()
 {
     // clean all tweaked nodes, regardless if they were deleted or not
-    for (const valid_ptr<SceneNodePtr>& tweaked_node : m_tweaked_nodes) {
-        SceneNode::Access<Scene>::clean_tweaks(*tweaked_node.get());
+    for (const valid_ptr<NodePtr>& tweaked_node : m_tweaked_nodes) {
+        Node::Access<Scene>::clean_tweaks(*tweaked_node.get());
     }
     m_tweaked_nodes.clear();
 
 #ifdef NOTF_DEBUG
-    // In debug mode, I'd like to ensure that each SceneNode is deleted before its parent.
+    // In debug mode, I'd like to ensure that each Node is deleted before its parent.
     // If the parent has been modified (creating a delta referencing all child nodes) and is then deleted, calling
     // `deltas.clear()` might end up deleting the parent node before its childen.
     // Therefore we loop over all deltas and pick out those that can safely be deleted.

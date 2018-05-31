@@ -119,11 +119,11 @@ add_sources(SOURCE_FILES src
     app/scene.cpp
     app/scene_graph.hpp
     app/scene_graph.cpp
-    app/scene_node_property.hpp
-    app/scene_node_property.cpp
-    app/scene_node.hpp
-    app/scene_node.cpp
-    app/scene_node_handle.hpp
+    app/node_property.hpp
+    app/node_property.cpp
+    app/node.hpp
+    app/node.cpp
+    app/node_handle.hpp
     app/path.hpp
     app/path.cpp
     app/layer.hpp

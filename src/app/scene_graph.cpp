@@ -54,7 +54,7 @@ void SceneGraph::enter_state(StatePtr new_state)
     event_manger.handle(std::make_unique<StateChangeEvent>(&m_window, std::move(new_state)));
 }
 
-void SceneGraph::_register_dirty(valid_ptr<SceneNode*> node)
+void SceneGraph::_register_dirty(valid_ptr<Node*> node)
 {
     NOTF_MUTEX_GUARD(m_hierarchy_mutex);
 
@@ -64,7 +64,7 @@ void SceneGraph::_register_dirty(valid_ptr<SceneNode*> node)
     m_dirty_nodes.insert(node);
 }
 
-void SceneGraph::_remove_dirty(valid_ptr<SceneNode*> node)
+void SceneGraph::_remove_dirty(valid_ptr<Node*> node)
 {
     NOTF_MUTEX_GUARD(m_hierarchy_mutex);
 

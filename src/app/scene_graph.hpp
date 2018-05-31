@@ -13,7 +13,7 @@ NOTF_OPEN_NAMESPACE
 namespace access { // forwards
 template<class>
 class _SceneGraph;
-class _SceneGraph_SceneNodeHandle;
+class _SceneGraph_NodeHandle;
 } // namespace access
 
 // ===================================================================================================================//
@@ -24,10 +24,10 @@ class SceneGraph {
 
     friend class access::_SceneGraph<Window>;
     friend class access::_SceneGraph<Scene>;
-    friend class access::_SceneGraph<SceneNode>;
+    friend class access::_SceneGraph<Node>;
     friend class access::_SceneGraph<EventManager>;
     friend class access::_SceneGraph<RenderManager>;
-    friend class access::_SceneGraph_SceneNodeHandle;
+    friend class access::_SceneGraph_NodeHandle;
 #ifdef NOTF_TEST
     friend class access::_SceneGraph<test::Harness>;
 #endif
@@ -37,7 +37,7 @@ public:
     /// Access types.
     template<class T>
     using Access = access::_SceneGraph<T>;
-    using SceneNodeHandleAccess = access::_SceneGraph_SceneNodeHandle;
+    using NodeHandleAccess = access::_SceneGraph_NodeHandle;
 
     /// Map containing non-owning references to all Scenes in this graph by name.
     using SceneMap = std::map<std::string, std::weak_ptr<Scene>>;
@@ -121,12 +121,12 @@ public:
         return it->second.lock();
     }
 
-    /// Searches for and returns a Property of a SceneNode in the SceneGraph.
+    /// Searches for and returns a Property of a Node in the SceneGraph.
     /// @param path     Path uniquely identifying a Property within the SceneGraph.
     /// @throws Path::path_error    If the Path does not lead to a Property.
     PropertyReader property(const Path& path) const;
 
-    /// Searches for and returns a Property of a SceneNode in the SceneGraph.
+    /// Searches for and returns a Property of a Node in the SceneGraph.
     /// @param path     Path uniquely identifying a Property within the SceneGraph.
     /// @throws Path::path_error    If the Path does not lead to a Property.
     //    PropertyReader property(const Path& path);
@@ -152,14 +152,14 @@ public:
     void enter_state(StatePtr new_state);
 
 private:
-    /// Registers a SceneNode as dirty.
+    /// Registers a Node as dirty.
     /// @param node     Node to register as dirty.
-    void _register_dirty(valid_ptr<SceneNode*> node);
+    void _register_dirty(valid_ptr<Node*> node);
 
     /// Unregisters a (previously registered) dirty node as being clean again.
     /// If the node wasn't registered as dirty to begin with, nothing changes.
     /// @param node     Node to unregister.
-    void _remove_dirty(valid_ptr<SceneNode*> node);
+    void _remove_dirty(valid_ptr<Node*> node);
 
     /// Propagates the event into the scenes.
     /// @param untyped_event
@@ -195,7 +195,7 @@ private:
 
     /// Nodes that registered themselves as "dirty".
     /// If there is one or more dirty Nodes registered, the Window containing this graph must be re-rendered.
-    std::unordered_set<valid_ptr<SceneNode*>, pointer_hash<valid_ptr<SceneNode*>>> m_dirty_nodes;
+    std::unordered_set<valid_ptr<Node*>, pointer_hash<valid_ptr<Node*>>> m_dirty_nodes;
 
     /// All Scenes of this SceneGraph by name.
     SceneMap m_scenes;
@@ -205,7 +205,7 @@ private:
     Mutex m_event_mutex;
 
     /// Mutex guarding the scene.
-    /// Needs to be recursive, because deleting a SceneNodeHandle will require the use of the hierarchy mutex, in case
+    /// Needs to be recursive, because deleting a NodeHandle will require the use of the hierarchy mutex, in case
     /// the graph is currently frozen. However, the deletion will also delete all of the node's children who *also* need
     /// the hierachy mutex in case the graph is currently frozen. QED.
     mutable RecursiveMutex m_hierarchy_mutex;
@@ -257,20 +257,20 @@ class access::_SceneGraph<Scene> {
 //-----------------------------------------------------------------------------
 
 template<>
-class access::_SceneGraph<SceneNode> {
-    friend class notf::SceneNode;
-    friend class notf::RootSceneNode;
+class access::_SceneGraph<Node> {
+    friend class notf::Node;
+    friend class notf::RootNode;
 
-    /// Registers a new SceneNode as dirty.
+    /// Registers a new Node as dirty.
     /// @param graph    SceneGraph to operate on.
     /// @param node     Node to register as dirty.
-    static void register_dirty(SceneGraph& graph, valid_ptr<SceneNode*> node) { graph._register_dirty(node); }
+    static void register_dirty(SceneGraph& graph, valid_ptr<Node*> node) { graph._register_dirty(node); }
 
     /// Unregisters a (previously registered) dirty node as being clean again.
     /// If the node wasn't registered as dirty to begin with, nothing changes.
     /// @param graph    SceneGraph to operate on.
     /// @param node     Node to unregister.
-    static void remove_dirty(SceneGraph& graph, valid_ptr<SceneNode*> node) { graph._remove_dirty(node); }
+    static void remove_dirty(SceneGraph& graph, valid_ptr<Node*> node) { graph._remove_dirty(node); }
 
     /// Direct access to the Graph's hierachy mutex.
     /// @param graph    SceneGraph to operate on.
@@ -312,11 +312,11 @@ class access::_SceneGraph<RenderManager> {
 
 //-----------------------------------------------------------------------------
 
-class access::_SceneGraph_SceneNodeHandle {
+class access::_SceneGraph_NodeHandle {
     template<class>
-    friend struct notf::SceneNodeHandle;
+    friend struct notf::NodeHandle;
 
-    /// Direct access to the Graph's hierachy mutex.SceneNode
+    /// Direct access to the Graph's hierachy mutex.Node
     /// @param graph    SceneGraph to operate on.
     static RecursiveMutex& mutex(SceneGraph& graph) { return graph.m_hierarchy_mutex; }
 };

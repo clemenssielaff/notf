@@ -5,7 +5,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-/// Event object generated when a SceneNode gains or looses focus.
+/// Event object generated when a Node gains or looses focus.
 /// Unlike other events, a 'focus gained' event is propagated up the hierarchy if (and only if) the receiving Widget
 /// handles it.
 /// 'focus lost' events are handled by design.

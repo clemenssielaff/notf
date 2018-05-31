@@ -11,91 +11,91 @@ NOTF_OPEN_NAMESPACE
 
 namespace access { // forwards
 template<class>
-class _SceneNodeProperty;
+class _NodeProperty;
 template<class>
-class _SceneNodePropertyHandle;
+class _NodePropertyHandle;
 } // namespace access
 
 //====================================================================================================================//
 
-class SceneNodeProperty : public PropertyHead {
+class NodeProperty : public PropertyHead {
 
-    friend class access::_SceneNodeProperty<SceneNode>;
+    friend class access::_NodeProperty<Node>;
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
     /// Access types.
     template<class T>
-    using Access = access::_SceneNodeProperty<T>;
+    using Access = access::_NodeProperty<T>;
 
     /// Map to store Properties by their name.
-    using PropertyMap = std::map<std::string, SceneNodePropertyPtr>;
+    using PropertyMap = std::map<std::string, NodePropertyPtr>;
 
-    /// Exception thrown when the initial value of a SceneNodeProperty could not be validated.
+    /// Exception thrown when the initial value of a NodeProperty could not be validated.
     NOTF_EXCEPTION_TYPE(initial_value_error);
 
     /// Exception thrown when a PropertyHead without a body tries to access one.
     NOTF_EXCEPTION_TYPE(no_body_error);
 
-    /// Exception thrown when a SceneNodePropertyHandler tries to access an expired SceneNodeProperty.
+    /// Exception thrown when a NodePropertyHandler tries to access an expired NodeProperty.
     NOTF_EXCEPTION_TYPE(no_property_error);
 
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Constructor.
     /// Does not create a PropertyBody for this -head.
-    SceneNodeProperty(valid_ptr<SceneNode*> node) : PropertyHead(), m_node(node) {}
+    NodeProperty(valid_ptr<Node*> node) : PropertyHead(), m_node(node) {}
 
     /// Constructor.
     /// Creates an associated PropertyBody for this -head.
     template<class T>
-    SceneNodeProperty(T value, valid_ptr<SceneNode*> node) : PropertyHead(std::forward<T>(value)), m_node(node)
+    NodeProperty(T value, valid_ptr<Node*> node) : PropertyHead(std::forward<T>(value)), m_node(node)
     {}
 
 public:
     /// Destructor.
-    ~SceneNodeProperty() override;
+    ~NodeProperty() override;
 
 protected:
-    /// Tests if the given SceneNode is currently frozen.
+    /// Tests if the given Node is currently frozen.
     /// Is implemented in the .cpp file to avoid circular includes.
     bool _is_frozen() const;
 
-    /// Tests if the given SceneNode is currently frozen by a specific thread.
+    /// Tests if the given Node is currently frozen by a specific thread.
     /// Is implemented in the .cpp file to avoid circular includes.
     /// @param thread_id    Id of the thread to test for.
     bool _is_frozen_by(const std::thread::id& thread_id) const;
 
-    /// The name of the SceneNode.
+    /// The name of the Node.
     const std::string& _node_name() const;
 
-    /// Registers a SceneNode as being "tweaked".
-    /// A SceneNode is tweaked when it has one or more Properties that were modified while the SceneGraph was frozen.
+    /// Registers a Node as being "tweaked".
+    /// A Node is tweaked when it has one or more Properties that were modified while the SceneGraph was frozen.
     void _set_node_tweaked() const;
 
-    /// Registers a SceneNode as being "dirty".
-    /// A SceneNode is dirty when it requires a redraw.
+    /// Registers a Node as being "dirty".
+    /// A Node is dirty when it requires a redraw.
     void _set_node_dirty() const;
 
 private:
-    /// Deletes the frozen value copy of the SceneNodeProperty if one exists.
+    /// Deletes the frozen value copy of the NodeProperty if one exists.
     virtual void _clear_frozen_value() = 0;
 
     // fields --------------------------------------------------------------------------------------------------------//
 protected:
-    /// SceneNode owning this SceneNodeProperty
-    valid_ptr<SceneNode*> m_node;
+    /// Node owning this NodeProperty
+    valid_ptr<Node*> m_node;
 
-    /// Iterator to this Property in the SceneNode's PropertyMap. Used to access this Property's name.
+    /// Iterator to this Property in the Node's PropertyMap. Used to access this Property's name.
     PropertyMap::const_iterator m_name_it = {};
 };
 
 //====================================================================================================================//
 
 template<class T>
-class TypedSceneNodeProperty final : public SceneNodeProperty {
+class TypedNodeProperty final : public NodeProperty {
 
-    friend class access::_SceneNodeProperty<SceneNode>;
+    friend class access::_NodeProperty<Node>;
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
@@ -126,46 +126,45 @@ private:
 
     /// Constructor.
     /// Does not create a PropertyBody for this -head.
-    TypedSceneNodeProperty(T value, valid_ptr<SceneNode*> node, Validator validator)
-        : SceneNodeProperty(node), m_validator(std::move(validator)), m_value(std::move(value))
+    TypedNodeProperty(T value, valid_ptr<Node*> node, Validator validator)
+        : NodeProperty(node), m_validator(std::move(validator)), m_value(std::move(value))
     {}
 
     /// Constructor.
     /// Creates an associated PropertyBody for this -head.
-    TypedSceneNodeProperty(T value, valid_ptr<SceneNode*> node, Validator validator, CreateBody)
-        : SceneNodeProperty(value, node), m_validator(std::move(validator)), m_value(std::move(value))
+    TypedNodeProperty(T value, valid_ptr<Node*> node, Validator validator, CreateBody)
+        : NodeProperty(value, node), m_validator(std::move(validator)), m_value(std::move(value))
     {}
 
     /// Factory.
     /// @param value        Initial value of the Property.
-    /// @param node         SceneNode owning this SceneNodeProperty
+    /// @param node         Node owning this NodeProperty
     /// @param validator    Validator function of this Property.
-    /// @param create_body  Iff true, the SceneNodeProperty will have an assoicated PropertyBody available in the
+    /// @param create_body  Iff true, the NodeProperty will have an assoicated PropertyBody available in the
     /// -graph.
-    static TypedSceneNodePropertyPtr<T>
-    create(T&& value, valid_ptr<SceneNode*> node, Validator validator, const bool create_body)
+    static TypedNodePropertyPtr<T> create(T&& value, valid_ptr<Node*> node, Validator validator, const bool create_body)
     {
         if (create_body) {
-            return NOTF_MAKE_UNIQUE_FROM_PRIVATE(TypedSceneNodeProperty<T>, std::forward<T>(value), node,
+            return NOTF_MAKE_UNIQUE_FROM_PRIVATE(TypedNodeProperty<T>, std::forward<T>(value), node,
                                                  std::move(validator), CreateBody{});
         }
         else {
-            return NOTF_MAKE_UNIQUE_FROM_PRIVATE(TypedSceneNodeProperty<T>, std::forward<T>(value), node,
+            return NOTF_MAKE_UNIQUE_FROM_PRIVATE(TypedNodeProperty<T>, std::forward<T>(value), node,
                                                  std::move(validator));
         }
     }
 
 public:
     /// Destructor.
-    ~TypedSceneNodeProperty() { _clear_frozen_value(); }
+    ~TypedNodeProperty() { _clear_frozen_value(); }
 
-    /// Returns the SceneNode associated with this PropertyHead.
-    virtual risky_ptr<SceneNode*> scene_node() override { return m_node; }
+    /// Returns the Node associated with this PropertyHead.
+    virtual risky_ptr<Node*> node() override { return m_node; }
 
     /// The node-unique name of this Property.
     const std::string& name() const { return m_name_it->first; }
 
-    /// Current SceneNodeProperty value.
+    /// Current NodeProperty value.
     const T& value() const
     {
         // if the property is frozen by this thread (the render thread, presumably) and there exists a frozen copy of
@@ -178,14 +177,14 @@ public:
         return m_value;
     }
 
-    /// Returns true if this SceneNodeProperty can be set to hold an expressions.
+    /// Returns true if this NodeProperty can be set to hold an expressions.
     /// If this method returns false, `set_expression` will throw a `no_body_error`.
     bool supports_expressions() const { return (_body() != nullptr); }
 
-    /// Whether or not changing this property will make the SceneNode dirty (cause a redraw) or not.
+    /// Whether or not changing this property will make the Node dirty (cause a redraw) or not.
     bool is_external() const { return m_is_external; }
 
-    /// External properties cause the SceneNode to redraw when changed.
+    /// External properties cause the Node to redraw when changed.
     void set_external(const bool is_external = true) { m_is_external = is_external; }
     void set_internal(const bool is_internal = true) { set_external(!is_internal); }
 
@@ -217,13 +216,13 @@ public:
     /// @param dependencies Properties that the expression depends on.
     /// @throws no_dag_error
     ///                     If the expression would introduce a cyclic dependency into the graph.
-    /// @throws SceneNodeProperty<T>::no_body_error
-    ///                     If this SceneNodeProperty was created without a PropertyBody and cannot accept expressions.
+    /// @throws NodeProperty<T>::no_body_error
+    ///                     If this NodeProperty was created without a PropertyBody and cannot accept expressions.
     void set_expression(Expression&& expression, Dependencies&& dependencies)
     {
         risky_ptr<TypedPropertyBody<T>*> body = _body();
         if (!body) {
-            notf_throw_format(TypedSceneNodeProperty<T>::no_body_error,
+            notf_throw_format(TypedNodeProperty<T>::no_body_error,
                               "Property \"{}\" on Node \"{}\" cannot be defined using an Expression", name(),
                               _node_name());
         }
@@ -266,7 +265,7 @@ private:
         _set_value(std::move(typed_update->value));
     }
 
-    /// Updates the value of the SceneNodeProperty.
+    /// Updates the value of the NodeProperty.
     /// @param value    New value.
     void _set_value(T&& value)
     {
@@ -316,38 +315,37 @@ private:
     /// Pointer to a frozen copy of the value, if it was modified while the SceneGraph was frozen.
     std::atomic<T*> m_frozen_value{nullptr};
 
-    /// Whether or not changing this property will make the SceneNode dirty (cause a redraw) or not.
+    /// Whether or not changing this property will make the Node dirty (cause a redraw) or not.
     bool m_is_external = true;
 
-    /// Current SceneNodeProperty value.
+    /// Current NodeProperty value.
     T m_value;
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
-class access::_SceneNodeProperty<SceneNode> {
-    friend class notf::SceneNode;
+class access::_NodeProperty<Node> {
+    friend class notf::Node;
 
     /// Factory.
     /// @param value        Initial value of the Property.
-    /// @param node         SceneNode owning this SceneNodeProperty
+    /// @param node         Node owning this NodeProperty
     /// @param validator    Validator function of this Property.
-    /// @param create_body  Iff true, the SceneNodeProperty will have an assoicated PropertyBody available in the
+    /// @param create_body  Iff true, the NodeProperty will have an assoicated PropertyBody available in the
     /// -graph.
     template<class T>
-    static TypedSceneNodePropertyPtr<T>
-    create(T value, valid_ptr<SceneNode*> node, typename TypedSceneNodeProperty<T>::Validator validator,
-           const bool create_body)
+    static TypedNodePropertyPtr<T>
+    create(T value, valid_ptr<Node*> node, typename TypedNodeProperty<T>::Validator validator, const bool create_body)
     {
-        return TypedSceneNodeProperty<T>::create(std::forward<T>(value), node, std::move(validator), create_body);
+        return TypedNodeProperty<T>::create(std::forward<T>(value), node, std::move(validator), create_body);
     }
 
-    /// Deletes the frozen value copy of the SceneNodeProperty if one exists.
-    static void clear_frozen(SceneNodeProperty& property) { property._clear_frozen_value(); }
+    /// Deletes the frozen value copy of the NodeProperty if one exists.
+    static void clear_frozen(NodeProperty& property) { property._clear_frozen_value(); }
 
-    /// Updates the name of a SceneNodeProperty, which is stored as an iterator to the SceneNode's property map.
-    static void set_name_iterator(SceneNodeProperty& property, decltype(SceneNodeProperty::m_name_it) iterator)
+    /// Updates the name of a NodeProperty, which is stored as an iterator to the Node's property map.
+    static void set_name_iterator(NodeProperty& property, decltype(NodeProperty::m_name_it) iterator)
     {
         property.m_name_it = iterator;
     }
@@ -356,15 +354,15 @@ class access::_SceneNodeProperty<SceneNode> {
 //====================================================================================================================//
 
 template<class T>
-class SceneNodePropertyHandle {
+class NodePropertyHandle {
 
-    friend class access::_SceneNodePropertyHandle<SceneNode>;
+    friend class access::_NodePropertyHandle<Node>;
 
     // types ---------------------------------------------------------------------------------------------------------//
 public:
     /// Access types.
     template<class U>
-    using Access = access::_SceneNodePropertyHandle<U>;
+    using Access = access::_NodePropertyHandle<U>;
 
     /// Type of value of the Property.
     using type = T;
@@ -382,28 +380,28 @@ private:
 private:
     /// Value constructor.
     /// @param property     Property to handle.
-    SceneNodePropertyHandle(const SceneNodePropertyPtr& property) : m_property(property) {}
+    NodePropertyHandle(const NodePropertyPtr& property) : m_property(property) {}
 
 public:
     /// The node-unique name of this Property.
-    /// @throws SceneNodeProperty::no_property_error    If the SceneNodeProperty has expired.
+    /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
     const std::string& name() const { return _property()->name(); }
 
-    /// Current SceneNodeProperty value.
-    /// @throws SceneNodeProperty::no_property_error    If the SceneNodeProperty has expired.
+    /// Current NodeProperty value.
+    /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
     const T& value() const { return _property()->value(); }
 
-    /// Returns true if this SceneNodeProperty can be set to hold an expressions.
+    /// Returns true if this NodeProperty can be set to hold an expressions.
     /// If this method returns false, `set_expression` will throw a `no_body_error`.
-    /// @throws SceneNodeProperty::no_property_error    If the SceneNodeProperty has expired.
+    /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
     bool supports_expressions() const { return _property()->supports_expressions(); }
 
-    /// Whether or not changing this property will make the SceneNode dirty (cause a redraw) or not.
-    /// @throws SceneNodeProperty::no_property_error    If the SceneNodeProperty has expired.
+    /// Whether or not changing this property will make the Node dirty (cause a redraw) or not.
+    /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
     bool is_external() const { return _property()->is_external(); }
 
-    /// External properties cause the SceneNode to redraw when changed.
-    /// @throws SceneNodeProperty::no_property_error    If the SceneNodeProperty has expired.
+    /// External properties cause the Node to redraw when changed.
+    /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
     void set_external(const bool is_external = true) { _property()->set_external(is_external); }
     void set_internal(const bool is_internal = true) { _property()->set_internal(is_internal); }
 
@@ -411,7 +409,7 @@ public:
     /// Removes an existing expression on this Property if one exists.
     /// @param value    New value.
     /// @returns        True iff the value could be updated, false if the validation failed.
-    /// @throws SceneNodeProperty::no_property_error    If the SceneNodeProperty has expired.
+    /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
     bool set_value(T value) { return _property()->set_value(std::forward<T>(value)); }
 
     /// Sets the Property's expression.
@@ -420,48 +418,48 @@ public:
     /// @param dependencies Properties that the expression depends on.
     /// @throws no_dag_error
     ///                     If the expression would introduce a cyclic dependency into the graph.
-    /// @throws SceneNodeProperty<T>::no_body_error
-    ///                     If this SceneNodeProperty was created without a PropertyBody and cannot accept expressions.
-    /// @throws SceneNodeProperty::no_property_error
-    ///                     If the SceneNodeProperty has expired.
+    /// @throws NodeProperty<T>::no_body_error
+    ///                     If this NodeProperty was created without a PropertyBody and cannot accept expressions.
+    /// @throws NodeProperty::no_property_error
+    ///                     If the NodeProperty has expired.
     void set_expression(Expression&& expression, Dependencies&& dependencies)
     {
         _property()->set_expression(std::move(expression), std::move(dependencies));
     }
 
     /// Returns a PropertyReader for reading the (unbuffered) value of this Property.
-    /// @throws SceneNodeProperty::no_property_error    If the SceneNodeProperty has expired.
+    /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
     PropertyReader reader() const { return _property()->reader(); }
 
 private:
-    /// Locks and returns an owning pointer to the handled SceneNodeProperty.
-    /// @throws SceneNodeProperty::no_property_error    If the SceneNodeProperty has expired.
-    TypedSceneNodePropertyPtr<T> _property() const
+    /// Locks and returns an owning pointer to the handled NodeProperty.
+    /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
+    TypedNodePropertyPtr<T> _property() const
     {
-        if (TypedSceneNodePropertyPtr<T> property = m_property.lock()) {
+        if (TypedNodePropertyPtr<T> property = m_property.lock()) {
             return property;
         }
-        notf_throw(SceneNodeProperty::no_property_error, "SceneNodeProperty has expired");
+        notf_throw(NodeProperty::no_property_error, "NodeProperty has expired");
     }
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:
     /// Handled property.
-    TypedSceneNodePropertyWeakPtr<T> m_property;
+    TypedNodePropertyWeakPtr<T> m_property;
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
-class access::_SceneNodePropertyHandle<SceneNode> {
-    friend class notf::SceneNode;
+class access::_NodePropertyHandle<Node> {
+    friend class notf::Node;
 
     /// Value constructor.
     /// @param property     Property to handle.
     template<class T>
-    static SceneNodePropertyHandle<T> create(const TypedSceneNodePropertyPtr<T>& property)
+    static NodePropertyHandle<T> create(const TypedNodePropertyPtr<T>& property)
     {
-        return SceneNodePropertyHandle<T>(property);
+        return NodePropertyHandle<T>(property);
     }
 };
 

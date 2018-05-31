@@ -26,7 +26,7 @@ class Widget : public ScreenItem {
     // methods -------------------------------------------------------------------------------------------------------//
 protected:
     /// Constructor.
-    /// @param token    Factory token provided by SceneNode::_create.
+    /// @param token    Factory token provided by Node::_create.
     Widget(const Token& token);
 
 public:
@@ -69,12 +69,12 @@ private:
     /// Redraws the Cell with the Widget's current state.
     //    virtual void _paint(Painter& painter) const = 0;
 
-    virtual void _remove_child(const SceneNode*) override { assert(0); } // should never happen
+    virtual void _remove_child(const Node*) override { assert(0); } // should never happen
 
     virtual void widgets_at(const Vector2f& local_pos, std::vector<Widget*>& result) const override;
 
-    // hide SceneNode methods that have no effect for Widgets
-    using SceneNode::children;
+    // hide Node methods that have no effect for Widgets
+    using Node::children;
 
     // fields --------------------------------------------------------------------------------------------------------//
 private:

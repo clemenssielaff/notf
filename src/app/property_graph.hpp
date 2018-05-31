@@ -510,8 +510,8 @@ public:
     /// Destructor.
     virtual ~PropertyHead();
 
-    /// Returns the SceneNode associated with this PropertyHead (if there is one).
-    virtual risky_ptr<SceneNode*> scene_node() { return nullptr; }
+    /// Returns the Node associated with this PropertyHead (if there is one).
+    virtual risky_ptr<Node*> node() { return nullptr; }
 
 protected:
     /// Updates the value in response to a PropertyEvent.
