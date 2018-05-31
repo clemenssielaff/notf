@@ -10,7 +10,7 @@ NOTF_OPEN_NAMESPACE
 /// Event object generated when the Application notices a mouse input.
 struct MouseEvent : public detail::EventBase<MouseEvent> {
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
     /// @param window       Window that the event is meant for.
@@ -39,7 +39,7 @@ public:
     /// Must be called after an event handler handled this event.
     void set_handled() { m_was_handled = true; }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 public:
     /// Position of the mouse cursor relative to the top-left corner of `window`.
     const Vector2f window_pos;

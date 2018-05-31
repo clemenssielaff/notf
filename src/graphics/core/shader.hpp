@@ -10,7 +10,7 @@ NOTF_OPEN_NAMESPACE
 
 // TODO: cache compiled shader binaries next to their text files (like python?)
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 /// Manages the loading and compilation of an OpenGL shader.
 ///
@@ -32,7 +32,7 @@ class Shader : public std::enable_shared_from_this<Shader> {
 
     friend class GraphicsContext; // creates and finally invalidates all of its Shaders when it is destroyed
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Information about a variable (attribute or uniform) of this shader.
     struct Variable {
@@ -84,7 +84,7 @@ protected:
         const char* compute_source = nullptr;
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 protected:
     /// Constructor.
     /// @param context  Render Context in which the Shader lives.
@@ -152,7 +152,7 @@ private:
     /// Deallocates the Shader data and invalidates the Shader.
     void _deallocate();
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Graphics Context in which the Texture lives.
     GraphicsContext& m_graphics_context;
@@ -188,18 +188,18 @@ void Shader::set_uniform(const std::string&, const Vector4f& value);
 template<>
 void Shader::set_uniform(const std::string&, const Matrix4f& value);
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 /// Vertex Shader.
 class VertexShader : public Shader {
 
-    // signals -------------------------------------------------------------------------------------------------------//
+    // signals ------------------------------------------------------------------------------------------------------ //
 public:
     /// Fired when a new Vertex Shader was created.
     /// @param New vertex shader.
     static Signal<VertexShaderPtr> on_shader_created;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
@@ -230,7 +230,7 @@ public:
     /// The vertex shader source code.
     const std::string& source() const { return m_source; }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Vertex Shader code (including injections).
     const std::string m_source;
@@ -239,18 +239,18 @@ private:
     std::vector<Variable> m_attributes;
 };
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 /// Tesselation Shader.
 class TesselationShader : public Shader {
 
-    // signals -------------------------------------------------------------------------------------------------------//
+    // signals ------------------------------------------------------------------------------------------------------ //
 public:
     /// Fired when a new Tesselation Shader was created.
     /// @param New tesselation shader.
     static Signal<TesselationShaderPtr> on_shader_created;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
@@ -280,7 +280,7 @@ public:
     /// The teselation evaluation shader source code.
     const std::string& evaluation_source() const { return m_evaluation_source; }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Teselation control shader code.
     const std::string m_control_source;
@@ -289,18 +289,18 @@ private:
     const std::string m_evaluation_source;
 };
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 /// Geometry Shader.
 class GeometryShader : public Shader {
 
-    // signals -------------------------------------------------------------------------------------------------------//
+    // signals ------------------------------------------------------------------------------------------------------ //
 public:
     /// Fired when a new Geometry Shader was created.
     /// @param New geometry shader.
     static Signal<GeometryShaderPtr> on_shader_created;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
@@ -324,24 +324,24 @@ public:
     /// The geometry shader source code.
     const std::string& source() const { return m_source; }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Geometry Shader code (including injections).
     const std::string m_source;
 };
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 /// Fragment Shader.
 class FragmentShader : public Shader {
 
-    // signals -------------------------------------------------------------------------------------------------------//
+    // signals ------------------------------------------------------------------------------------------------------ //
 public:
     /// Fired when a new Fragment Shader was created.
     /// @param New fragment shader.
     static Signal<FragmentShaderPtr> on_shader_created;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
@@ -365,7 +365,7 @@ public:
     /// The fragment shader source code.
     const std::string& source() const { return m_source; }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Fragment Shader code (including injections).
     const std::string m_source;

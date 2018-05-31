@@ -3,18 +3,16 @@
 #include "app/node.hpp"
 
 NOTF_OPEN_NAMESPACE
+
 namespace access { // forwards
 class _NodeHandle;
 } // namespace access
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 template<class T>
 struct NodeHandle {
     static_assert(std::is_base_of<Node, T>::value, "The type wrapped by NodeHandle<T> must be a subclass of Node");
-
-    template<class U, class... Args, typename>
-    friend NodeHandle<U> Node::_add_child(Args&&... args);
 
     friend class access::_NodeHandle;
 
@@ -23,13 +21,13 @@ public:
     /// Access types.
     using Access = access::_NodeHandle;
 
-    // methods ------------------------------------------------------------
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     /// @{
     /// Constructor.
     /// @param node     Handled Node.
     /// @throws Node::no_node_error    If the given Node is empty or of the wrong type.
-    NodeHandle(std::shared_ptr<T> node) : m_node(node)
+    NodeHandle(const std::shared_ptr<T>& node) : m_node(node)
     {
         { // test if the given node is of the correct type
             if (!dynamic_cast<T*>(node.get())) {
@@ -79,7 +77,7 @@ public:
     T* operator->()
     {
         NodePtr raw_node = m_node.lock();
-        if (NOTF_UNLIKELY(!raw_node)) {
+        if (!raw_node) {
             notf_throw(Node::no_node_error, "Node has been deleted");
         }
         return static_cast<T*>(raw_node.get());
@@ -90,13 +88,13 @@ public:
     /// Checks if the Handle is currently valid.
     bool is_valid() const { return !m_node.expired(); }
 
-    // fields -------------------------------------------------------------
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Handled Node.
     NodeWeakPtr m_node;
 };
 
-// accessors ---------------------------------------------------------------------------------------------------------//
+// accessors -------------------------------------------------------------------------------------------------------- //
 
 class access::_NodeHandle {
     friend class notf::Node;
@@ -107,6 +105,22 @@ class access::_NodeHandle {
     {
         return handle.m_node.lock();
     }
+
+    /// @{
+    /// Factory
+    /// @param node     Handled Node.
+    /// @throws Node::no_node_error    If the given Node is empty or of the wrong type.
+    template<class T>
+    static NodeHandle<T> create(const std::shared_ptr<T>& node)
+    {
+        return NodeHandle<T>(node);
+    }
+    template<class T>
+    static NodeHandle<T> create(std::weak_ptr<T>&& node)
+    {
+        return NodeHandle<T>(std::forward<T>(node));
+    }
+    /// @}
 };
 
 NOTF_CLOSE_NAMESPACE

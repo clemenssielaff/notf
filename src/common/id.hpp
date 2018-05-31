@@ -8,7 +8,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Strongly typed integral identifier.
 /// Is useful if you have multiple types of identifiers that are all the same underlying type and don't want them to be
@@ -18,7 +18,7 @@ struct IdType {
 
     static_assert(std::is_integral<underlying_type>::value, "The underlying type of an IdType must be integral");
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Type identified by the ID.
     using type_t = type;
@@ -30,7 +30,7 @@ public:
     /// Useful, if you want to attach more type information to the ID type.
     using aux_ts = std::tuple<aux...>;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Identifier value of this ID.
     underlying_type m_value;
@@ -39,7 +39,7 @@ public:
     /// Invalid Id.
     static constexpr underlying_type INVALID = 0;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// No default constructor.
     IdType() = delete;
@@ -111,7 +111,7 @@ public:
     explicit operator underlying_type() const { return m_value; }
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Prints the contents of an Id into a std::ostream.
 /// @param os   Output stream, implicitly passed with the << operator.
@@ -125,7 +125,7 @@ std::ostream& operator<<(std::ostream& out, const IdType<Type, underlying_type, 
 
 NOTF_CLOSE_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 namespace std {
 

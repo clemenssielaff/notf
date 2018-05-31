@@ -7,7 +7,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Baseclass for all Widget capabilities.
 /// Used so that we can have common pointer type.
@@ -16,7 +16,7 @@ protected:
     Capability() = default; // you shouldn't instantiate any non-derived Capabilities
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Convenience map for storing Capability subclasses by type.
 /// Internally, it uses a std::vector, even though a map would be the more natural type. However, I expect a widget
@@ -35,7 +35,7 @@ protected:
 /// If you try to get a capability that is not part of the map, a std::out_of_range exception is raised.
 class CapabilityMap {
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Returns a requested capability by type.
     /// @throws out_of_range    If the map does not contain the requested capability type.
@@ -77,7 +77,7 @@ public:
         }
     }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// All capabilties by type (hash).
     std::vector<std::pair<size_t, CapabilityPtr>> m_capabilities;

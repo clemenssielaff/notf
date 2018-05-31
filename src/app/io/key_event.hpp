@@ -9,7 +9,7 @@ NOTF_OPEN_NAMESPACE
 /// Event object generated when the Application receives a keyboard input.
 struct KeyEvent : public detail::EventBase<KeyEvent> {
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
     /// @param window       Window that the event is meant for.
@@ -36,7 +36,7 @@ public:
     /// Must be called after an event handler handled this event.
     void set_handled() { m_was_handled = true; }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 public:
     /// The key that triggered this event.
     const Key key;

@@ -27,7 +27,7 @@ class FontAtlas {
 
     using area_t = Glyph::area_t;
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     using ProtoGlyph = std::pair<codepoint_t, Glyph::Rect>;
 
@@ -92,7 +92,7 @@ private:
         coord_t new_height;
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     NOTF_NO_COPY_OR_ASSIGN(FontAtlas);
 
@@ -133,7 +133,7 @@ private:
     /// Creates a new Skyline node just left of the given node index.
     void _add_node(const size_t node_index, const Glyph::Rect& rect);
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Graphics context owning the texture.
     GraphicsContext& m_graphics_context;

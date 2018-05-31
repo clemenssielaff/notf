@@ -15,7 +15,7 @@ NOTF_OPEN_NAMESPACE
 
 class ScreenItem;
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// A Controller managing Layouts and Widgets.
 /// This class `Controller` serves as the common baseclass for both C++ and Python Controller.
@@ -23,7 +23,7 @@ class ScreenItem;
 /// Property expressions.
 class Controller : public Item {
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 protected:
     /// Constructor.
     /// @param token        Factory token provided by Item::_create.
@@ -43,13 +43,13 @@ protected:
 
     virtual void _remove_child(const Item* child_item) override;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Item at the root of the Controller's Item hierarchy.
     ScreenItem* m_root_item;
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// BaseController is a CRTP baseclass for all Controller implemented in C++.
 /// See https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern
@@ -63,13 +63,13 @@ private:
 template<typename ControllerSubclass>
 class BaseController : public Controller {
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 protected:
     class State;
     using StateMap   = std::map<std::string, std::unique_ptr<State>>;
     using Transition = std::function<void(ControllerSubclass&)>;
 
-    //=======================================================================//
+    // ===================================================================== //
 
     /// A Controller State is a pair of functions (enter and leave) that both take the instance as mutable argument.
     /// This approach seems to be the most general, since the State can not only describe a set of absolute Property
@@ -102,7 +102,7 @@ protected:
         const typename StateMap::const_iterator m_it;
     };
 
-    //=======================================================================//
+    // ===================================================================== //
 
     /// A State Machine is a collection of named States.
     class StateMachine {
@@ -154,7 +154,7 @@ protected:
         StateMap m_states;
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 protected:
     /// Value Constructor.
     /// @param token            Factory token provided by Item::_create.
@@ -195,7 +195,7 @@ protected:
         return m_current_state ? m_current_state->name() : empty;
     }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// The Controller's StateMachine.
     const StateMachine m_state_machine;

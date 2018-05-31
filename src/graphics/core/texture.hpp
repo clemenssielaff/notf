@@ -14,7 +14,7 @@ NOTF_OPEN_NAMESPACE
 // TODO: [engine] a texture streaming method using buffers
 // TODO: [engine] 3D texture
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Manages the loading and setup of an OpenGL texture.
 ///
@@ -31,7 +31,7 @@ class Texture : public std::enable_shared_from_this<Texture> {
 
     friend class GraphicsContext; // creates and finally invalidates all of its Textures when it is destroyed
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Texture format.
     enum class Format : unsigned char {
@@ -120,13 +120,13 @@ public:
         float anisotropy = 1;
     };
 
-    // signals -------------------------------------------------------------------------------------------------------//
+    // signals ------------------------------------------------------------------------------------------------------ //
 public:
     /// Fired when a new Texture was created.
     /// @param New texture.
     static Signal<TexturePtr> on_texture_created;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
@@ -220,7 +220,7 @@ private:
     /// Deallocates the Texture data and invalidates the Texture.
     void _deallocate();
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// OpenGL ID of this Shader.
     TextureId m_id;

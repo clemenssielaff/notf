@@ -195,7 +195,7 @@ const std::string& gl_type_name(GLenum type)
     return t_unknown;
 }
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 GLenum to_gl_type(const GLbyte&) { return GL_BYTE; }
 GLenum to_gl_type(const GLubyte&) { return GL_UNSIGNED_BYTE; }
@@ -206,7 +206,7 @@ GLenum to_gl_type(const GLuint&) { return GL_UNSIGNED_INT; }
 GLenum to_gl_type(const half&) { return GL_HALF_FLOAT; }
 GLenum to_gl_type(const GLfloat&) { return GL_FLOAT; }
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 VaoBindGuard::VaoBindGuard(GLuint vao) : m_vao(vao) { notf_check_gl(glBindVertexArray(m_vao)); }
 

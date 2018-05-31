@@ -9,13 +9,13 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 NOTF_EXCEPTION_TYPE(resource_manager_initialization_error);
 
 NOTF_EXCEPTION_TYPE(resource_identification_error);
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// The Resource Manager owns all dynamically loaded resources.
 /// It is not a Singleton, even though each Application will most likely only have one.
@@ -23,7 +23,7 @@ NOTF_EXCEPTION_TYPE(resource_identification_error);
 /// application to get them by name.
 class ResourceManager : public receive_signals {
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// ResourceManager arguments.
     struct Args {
@@ -40,7 +40,7 @@ public:
         std::string executable_path;
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     NOTF_NO_COPY_OR_ASSIGN(ResourceManager);
 
@@ -98,7 +98,7 @@ private:
     /// @throws resource_identification_error   If the Font has the same name as an existing Font.
     void _add_font(FontPtr font);
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Absolute path to the texture directory.
     std::string m_texture_directory;

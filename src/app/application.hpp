@@ -7,7 +7,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Exception thrown when the Application could not initialize.
 /// The error string will contain more detailed information about the error.
@@ -16,14 +16,14 @@ NOTF_EXCEPTION_TYPE(application_initialization_error);
 /// Exception thrown when you try to access the Application instance after it was shut down.
 NOTF_EXCEPTION_TYPE(no_application_error);
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// The Application class.
 /// After initialization, the Application singleton is available everywhere with `Application::instance()`.
 /// It also manages the lifetime of the LogHandler.
 class Application {
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     NOTF_ALLOW_ACCESS_TYPES(Window);
 
@@ -66,14 +66,14 @@ public:
         uint max_fps = 0;
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     /// Constructor.
     /// @param application_args                     Application arguments.
     /// @throws application_initialization_error    When the Application intialization failed.
     Application(const Args& application_args);
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     NOTF_NO_COPY_OR_ASSIGN(Application);
 
@@ -154,7 +154,7 @@ private:
     /// Is called automatically, after the last Window has been closed.
     void _shutdown();
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// The LogHandler thread used to format and print out log messages in a thread-safe manner.
     LogHandlerPtr m_log_handler;
@@ -184,7 +184,7 @@ private:
     static const Args s_invalid_args;
 };
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 template<>
 class Application::Access<Window> {

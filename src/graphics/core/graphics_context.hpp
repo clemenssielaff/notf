@@ -14,14 +14,14 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// HTML5 canvas-like approach to blending the results of multiple OpenGL drawings.
 /// Modelled after the HTML Canvas API as described in https://www.w3.org/TR/2dcontext/#compositing
 /// The source image is the image being rendered, and the destination image the current state of the bitmap.
 struct BlendMode {
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
     /// Blend mode, can be set for RGB and the alpha channel separately.
     enum Mode : unsigned char {
         SOURCE_OVER,      ///< Display the source image wherever the source image is opaque, the destination image
@@ -42,14 +42,14 @@ struct BlendMode {
         DEFAULT = SOURCE_OVER,
     };
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
     /// Blend mode for colors.
     Mode rgb;
 
     /// Blend mode for transparency.
     Mode alpha;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
     /// Default constructor.
     BlendMode() : rgb(DEFAULT), alpha(DEFAULT) {}
 
@@ -71,7 +71,7 @@ struct BlendMode {
     bool operator!=(const BlendMode& other) const { return rgb != other.rgb || alpha != other.alpha; }
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Direction to cull in the culling test.
 enum CullFace : unsigned char {
@@ -82,17 +82,17 @@ enum CullFace : unsigned char {
     DEFAULT = BACK,
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// The GraphicsContext is an abstraction of the OpenGL graphics context.
 /// It is the object owning all NoTF client objects like shaders and textures.
 class GraphicsContext {
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     NOTF_ALLOW_ACCESS_TYPES(Texture, Shader, FrameBuffer);
 
-    //================================================================================================================//
+    // ============================================================================================================== //
 
     /// Helper struct that can be used to test whether selected extensions are available in the OpenGL ES driver.
     /// Only tests for extensions on first instantiation.
@@ -111,7 +111,7 @@ public:
         bool nv_gpu_shader5;
     };
 
-    //================================================================================================================//
+    // ============================================================================================================== //
 
     /// Helper struct containing variables that need to be read from OpenGL at runtime and won't change over the
     /// course of the app.
@@ -141,13 +141,13 @@ public:
         Environment();
     };
 
-    //================================================================================================================//
+    // ============================================================================================================== //
 
     /// Buffers to clear in a call to `clear`.
     enum Buffer : unsigned char { COLOR = 1u << 1, DEPTH = 1u << 2, STENCIL = 1u << 3 };
     using BufferFlags = std::underlying_type<Buffer>::type;
 
-    //================================================================================================================//
+    // ============================================================================================================== //
 
     /// RAII guard to make sure that a bound Pipeline is always properly unbound after use.
     /// You can nest multiple guards, each will restore the previously bound pipeline.
@@ -199,7 +199,7 @@ public:
     };
     friend class PipelineGuard;
 
-    //================================================================================================================//
+    // ============================================================================================================== //
 
     /// RAII guard to make sure that a bound FrameBuffer is always properly unbound after use.
     /// You can nest multiple guards, each will restore the previously bound pipeline.
@@ -253,7 +253,7 @@ public:
     };
     friend class FramebufferGuard;
 
-    //================================================================================================================//
+    // ============================================================================================================== //
 
     /// Guard that makes sure that a GraphicsContext is properly made current and released on a thread.
     /// Blocks until the GraphicsContext is free to be aquired by this thread.
@@ -307,7 +307,7 @@ public:
         const std::thread::id m_thread_id = std::this_thread::get_id();
     };
 
-    //================================================================================================================//
+    // ============================================================================================================== //
 
 private:
     /// Graphics state.
@@ -332,7 +332,7 @@ private:
         Aabri render_area;
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     NOTF_NO_COPY_OR_ASSIGN(GraphicsContext);
 
@@ -460,7 +460,7 @@ public:
     /// @returns Guard, making sure that the FrameBuffer is properly unbound and the previous one restored after use.
     FramebufferGuard bind_framebuffer(const FrameBufferPtr& framebuffer);
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     /// Makes the OpenGL context current on the current thread.
     /// Does nothing if the context is already current.
@@ -521,7 +521,7 @@ private:
     /// If you compile a new shader after calling this function, the driver will reallocate the compiler.
     void release_shader_compiler();
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// The GLFW window displaying the contents of this context.
     GLFWwindow* m_window;
@@ -558,7 +558,7 @@ private:
     std::unordered_map<FrameBufferId, std::weak_ptr<FrameBuffer>> m_framebuffers;
 };
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 template<>
 class GraphicsContext::Access<Texture> {

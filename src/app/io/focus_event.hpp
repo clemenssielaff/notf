@@ -11,7 +11,7 @@ NOTF_OPEN_NAMESPACE
 /// 'focus lost' events are handled by design.
 /// Layouts will never get to see an unhandled FocusEvent.
 class FocusEvent {
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     // TODO: FocusEvent is probably outdated when we have a hierarchy of focus-handling controllers...?
 
@@ -28,7 +28,7 @@ public:
     /// Must be called after an event handler handled this event.
     void set_handled() { m_was_handled = true; }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 public:
     /// The action that triggered this event.
     const FocusAction action;

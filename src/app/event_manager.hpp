@@ -11,7 +11,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// The EventManager is called from all parts of an Application, whenever an event happens.
 /// Its job is to create Event objects that contain the type and auxiliary information about the event, and propagate
@@ -20,7 +20,7 @@ NOTF_OPEN_NAMESPACE
 /// The EventManager runs on the main thread, because it requires access to GLFW functions.
 class EventManager {
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     NOTF_ALLOW_ACCESS_TYPES(Window);
 
@@ -77,7 +77,7 @@ private:
         bool m_is_running = false;
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     NOTF_NO_COPY_OR_ASSIGN(EventManager);
 
@@ -208,7 +208,7 @@ private:
     /// @param kind     One of GLFW_CONNECTED or GLFW_DISCONNECTED.
     static void _on_joystick_change(int joystick, int kind);
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Relevant data for each Window.
     /// Handlers are unordered.
@@ -224,7 +224,7 @@ private:
     bool m_is_suspended;
 };
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 template<>
 class EventManager::Access<Window> {

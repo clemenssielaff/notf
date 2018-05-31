@@ -20,7 +20,7 @@ class GraphicsContext;
 /// Data type to identify a single Glyph.
 using codepoint_t = utf32_t;
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// A Glyph contains information about how to render a single character from a font atlas.
 /// Glyph coordinates are stored as signed integers, because they can be negative as well.
@@ -84,7 +84,7 @@ struct Glyph {
         Rect(coord_t x, coord_t y, coord_t width, coord_t height) : x(x), y(y), width(width), height(height) {}
     };
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
     /// Rectangle of the FontAtlas that contains the texture of this Glyph.
     Rect rect;
 
@@ -101,7 +101,7 @@ struct Glyph {
     coord_t advance_y;
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// A Font is a manger object for a given font face in the FontManager.
 /// It knows where its Glyphs reside in the FontManager's Font Atlas.
@@ -130,13 +130,13 @@ public: // types
         }
     };
 
-    // signals -------------------------------------------------------------------------------------------------------//
+    // signals ------------------------------------------------------------------------------------------------------ //
 public:
     /// Fired when a new Font was created.
     /// @param New font.
     static Signal<FontPtr> on_font_created;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
@@ -180,7 +180,7 @@ private:
     /// Renders and returns a new Glyph.
     const Glyph& _allocate_glyph(const codepoint_t codepoint) const;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Font Manager.
     FontManager& m_manager;
@@ -211,7 +211,7 @@ private:
 
 NOTF_CLOSE_NAMESPACE
 
-//== std::hash =======================================================================================================//
+//== std::hash ====================================================================================================== //
 
 namespace std {
 

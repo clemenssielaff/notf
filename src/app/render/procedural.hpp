@@ -7,7 +7,7 @@ NOTF_OPEN_NAMESPACE
 /// Renderer rendering a GLSL fragment shader into a quad.
 class ProceduralRenderer : public Renderer {
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
@@ -29,7 +29,7 @@ private:
     /// @param scene    IGNORED
     virtual void _render(risky_ptr<Scene*>) const override;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// GraphicsContext.
     GraphicsContext& m_context;

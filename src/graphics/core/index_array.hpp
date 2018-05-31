@@ -26,12 +26,12 @@ struct gl_smallest_unsigned_type {
 
 } // namespace detail
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// IndexArray baseclass, so other objects can hold pointers to any type of IndexArray.
 class IndexArrayType {
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Arguments for the index array.
     struct Args {
@@ -44,7 +44,7 @@ public:
         GLenum usage = GL_STATIC_DRAW;
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 protected:
     /// Constructor.
     /// @throws runtime_error   If there is no OpenGL context.
@@ -76,7 +76,7 @@ public:
     /// The restart index of the index buffer type.
     virtual GLuint restart_index() const = 0;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 protected:
     /// Arguments used to initialize the index array.
     const Args m_args;
@@ -91,18 +91,18 @@ protected:
     GLsizei m_size;
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Abstraction of an OpenGL index buffer.
 template<typename INDEX_TYPE>
 class IndexArray : public IndexArrayType {
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Value type of the indices.
     using index_t = INDEX_TYPE;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
     /// @throws runtime_error   If there is no OpenGL context.
@@ -175,7 +175,7 @@ private:
     /// Value to use as the restart index.
     virtual GLuint restart_index() const override { return static_cast<GLuint>(std::numeric_limits<index_t>::max()); }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Index data.
     std::vector<index_t> m_indices;
@@ -184,7 +184,7 @@ private:
     GLsizei m_buffer_size;
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Creates an IndexArray object containing the given indices in their smalles representable form.
 /// Passing an index less than zero or larger than a GLuint can contain raises an error during compilation.

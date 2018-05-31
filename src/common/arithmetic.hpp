@@ -10,7 +10,7 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Empty base for all arithmetic types.
 ///
@@ -53,18 +53,18 @@ namespace detail {
 template<typename self_t, typename element_t, typename component_t, size_t dim, typename = void>
 struct ArithmeticImpl;
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Base for all arithmetic types that contain only scalars (i.e. vectors).
 template<typename self_t, typename element_t, typename component_t, size_t dim>
 struct ArithmeticImpl<self_t, element_t, component_t, dim,
                       std::enable_if_t<std::is_same<element_t, component_t>::value>> {
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
     /// Value data array.
     std::array<component_t, dim> data;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
     /// Default constructor.
     ArithmeticImpl() = default;
 
@@ -238,18 +238,18 @@ struct ArithmeticImpl<self_t, element_t, component_t, dim,
     const element_t* as_ptr() const { return &data[0]; }
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Base for all arithmetic types that contain vectors (i.e. matrices).
 template<typename self_t, typename element_t, typename component_t, size_t dim>
 struct ArithmeticImpl<self_t, element_t, component_t, dim,
                       std::enable_if_t<!std::is_same<element_t, component_t>::value>> {
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
     /// Value data array.
     std::array<component_t, dim> data;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
     /// Default constructor.
     ArithmeticImpl() = default;
 
@@ -369,7 +369,7 @@ struct ArithmeticImpl<self_t, element_t, component_t, dim,
     const element_t* as_ptr() const { return data[0].as_ptr(); }
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Helper struct to extract the element type from a component type at compile time.
 template<typename T, typename = void>
@@ -404,10 +404,10 @@ struct Arithmetic : public ArithmeticImpl<SELF, typename get_element_type<COMPON
     /// Base type, different for vectors and matrices.
     using super_t = ArithmeticImpl<self_t, element_t, component_t, DIMENSIONS>;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
     using super_t::data;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
     /// Default constructor.
     Arithmetic() = default;
 
@@ -601,7 +601,7 @@ protected:
 
 } // namespace detail
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Linear interpolation between two values.
 ///

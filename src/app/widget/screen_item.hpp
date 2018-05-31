@@ -6,7 +6,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// A ScreenNode is the virtual base class for all objects in the Item hierarchy. Its three main specializations are
 /// `Widgets`, `Layouts` and `Controllers`.
@@ -181,7 +181,7 @@ NOTF_OPEN_NAMESPACE
 ///
 class ScreenItem : public Node {
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     NOTF_ALLOW_ACCESS_TYPES(RootLayout);
 
@@ -194,7 +194,7 @@ public:
         WINDOW, // transformation relative to the RootLayout
     };
 
-    // signals -------------------------------------------------------------------------------------------------------//
+    // signals ------------------------------------------------------------------------------------------------------ //
 public:
     /// Emitted, when the size of this ScreenItem has changed.
     /// @param New size.
@@ -247,7 +247,7 @@ public:
     /// @param Focus event.
     Signal<FocusEvent&> on_focus_changed;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 protected:
     /// Constructor.
     /// @param token        Factory token provided by Node::_create.
@@ -375,7 +375,7 @@ private:
     /// Calculates the transformation of this ScreenItem relative to its Window.
     void _window_transform(Matrix3f& result) const;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// The Claim of a ScreenItem determines how much space it receives in the parent Layout.
     /// Claim values are in untransformed local space.
@@ -410,7 +410,7 @@ private:
     bool m_is_visible = true;
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 template<>
 inline const Matrix3f ScreenItem::xform<ScreenItem::Space::LOCAL>() const
@@ -439,7 +439,7 @@ inline const Matrix3f ScreenItem::xform<ScreenItem::Space::PARENT>() const
 template<>
 const Matrix3f ScreenItem::xform<ScreenItem::Space::WINDOW>() const;
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 template<>
 class ScreenItem::Access<RootLayout> {
@@ -456,7 +456,7 @@ class ScreenItem::Access<RootLayout> {
     ScreenItem& m_screen_item;
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 ///@{
 /// Returns the ScreenItem associated with thr given Item - either the Item itself or a Controller's root Item.

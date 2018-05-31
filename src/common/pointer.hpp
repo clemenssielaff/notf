@@ -5,12 +5,12 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Error thrown by risky_ptr, when you try to dereference a nullptr.
 NOTF_EXCEPTION_TYPE(bad_pointer_error);
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Template struct to test whether a given type is a shared pointer or not.
 template<class T>
@@ -24,7 +24,7 @@ struct is_unique_ptr : std::false_type {};
 template<class T>
 struct is_unique_ptr<std::unique_ptr<T>> : std::true_type {};
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// @{
 /// Returns the raw pointer from any kind of other pointer without increasing the use_count of shared_ptrs.
@@ -51,7 +51,7 @@ raw_pointer(const T& notf_pointer)
 }
 /// @}
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Helper struct to use when comparing pointers of different types (raw, valid_ptr, risky_ptr, shared_ptr, unique_ptr).
 /// From:
@@ -78,7 +78,7 @@ struct pointer_less_than {
     }
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// @{
 /// Compares two weak_ptrs without locking them.
@@ -99,7 +99,7 @@ weak_ptr_equal(const std::weak_ptr<T>&, const std::weak_ptr<U>&)
 }
 /// @}
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Restricts a pointer or smart pointer to only hold non-null values.
 /// Has zero size overhead over T.
@@ -178,7 +178,7 @@ struct valid_ptr {
     valid_ptr& operator-=(std::ptrdiff_t) = delete;
     void operator[](std::ptrdiff_t) const = delete;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     mutable T m_ptr;
 };
@@ -251,7 +251,7 @@ valid_ptr<T> operator+(const valid_ptr<T>&, std::ptrdiff_t) = delete;
 template<class T>
 valid_ptr<T> operator+(std::ptrdiff_t, const valid_ptr<T>&) = delete;
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Pointer wrapper to make sure that if a function can return a nullptr, the user either checks it before dereferencing
 /// or doesn't use it.
@@ -317,7 +317,7 @@ struct risky_ptr {
     risky_ptr& operator-=(std::ptrdiff_t) = delete;
     void operator[](std::ptrdiff_t) const = delete;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Wrapped pointer.
     mutable T m_ptr = nullptr;
@@ -376,7 +376,7 @@ risky_ptr<T> operator+(const risky_ptr<T>&, std::ptrdiff_t) = delete;
 template<class T>
 risky_ptr<T> operator+(std::ptrdiff_t, const risky_ptr<T>&) = delete;
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Specialized Hash for pointers.
 /// Uses `hash_mix` to improve pointer entropy.

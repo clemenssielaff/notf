@@ -6,7 +6,7 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 ///  3-dimensional mathematical vector containing real numbers.
 template<typename REAL>
@@ -18,10 +18,10 @@ struct RealVector3 : public detail::Arithmetic<RealVector3<REAL>, REAL, 3> {
     /// Arithmetic base type.
     using super_t = detail::Arithmetic<RealVector3<REAL>, REAL, 3>;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
     using super_t::data;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
     /// Default constructor.
     RealVector3() = default;
 
@@ -138,7 +138,7 @@ struct RealVector3 : public detail::Arithmetic<RealVector3<REAL>, REAL, 3> {
     RealVector3 project_on(const RealVector3& other) const { return other * dot(other); }
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /** 3-dimensional mathematical vector containing integers. */
 template<typename INTEGER>
@@ -150,10 +150,10 @@ struct IntVector3 : public detail::Arithmetic<IntVector3<INTEGER>, INTEGER, 3> {
     /// Arithmetic base type.
     using super_t = detail::Arithmetic<IntVector3<INTEGER>, INTEGER, 3>;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
     using super_t::data;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
     /// Default constructor.
     IntVector3() = default;
 
@@ -196,14 +196,14 @@ struct IntVector3 : public detail::Arithmetic<IntVector3<INTEGER>, INTEGER, 3> {
 
 } // namespace detail
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 using Vector3f = detail::RealVector3<float>;
 using Vector3d = detail::RealVector3<double>;
 using Vector3h = detail::RealVector3<half>;
 using Vector3i = detail::IntVector3<int>;
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Prints the contents of a vector into a std::ostream.
 /// @param os   Output stream, implicitly passed with the << operator.
@@ -214,7 +214,7 @@ std::ostream& operator<<(std::ostream& out, const Vector3d& vec);
 std::ostream& operator<<(std::ostream& out, const Vector3h& vec);
 std::ostream& operator<<(std::ostream& out, const Vector3i& vec);
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Spherical linear interpolation between two vectors.
 /// Travels the torque-minimal path at a constant velocity.
@@ -249,7 +249,7 @@ slerp(const detail::RealVector3<element_t>& from, const detail::RealVector3<elem
 
 NOTF_CLOSE_NAMESPACE
 
-//== std::hash =======================================================================================================//
+//== std::hash ====================================================================================================== //
 
 namespace std {
 

@@ -81,7 +81,7 @@ NOTF_OPEN_NAMESPACE
 //    return true;
 //}
 
-// Line2f ============================================================================================================//
+// Line2f =========================================================================================================== //
 
 std::ostream& operator<<(std::ostream& out, const Segment2f& segment)
 {
@@ -95,7 +95,7 @@ static_assert(sizeof(Segment2f) == sizeof(float) * 4,
 
 static_assert(std::is_pod<Segment2f>::value, "This compiler does not recognize notf::Line2f as a POD.");
 
-// Line3f ============================================================================================================//
+// Line3f =========================================================================================================== //
 
 std::ostream& operator<<(std::ostream& out, const Segment3f& segment)
 {

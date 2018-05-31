@@ -5,7 +5,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 /// A RenderTarget is a 2D image of arbitrary size that is produced (and potentially consumed) by one or more
 /// Renderers. Interally, they have a framebuffer with a single texture attached as color target. When one or
@@ -13,7 +13,7 @@ NOTF_OPEN_NAMESPACE
 /// Renderers in order.
 class RenderTarget {
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// RenderTarget arguments.
     struct Args {
@@ -36,7 +36,7 @@ public:
         bool create_mipmaps = false;
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
@@ -79,7 +79,7 @@ public:
     /// If the target is clean to begin with, this does nothing.
     void clean();
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Framebuffer to render into.
     FrameBufferPtr m_framebuffer;

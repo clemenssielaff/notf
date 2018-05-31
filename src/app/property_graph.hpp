@@ -80,7 +80,7 @@ private:
 #endif
 };
 
-// accessors ---------------------------------------------------------------------------------------------------------//
+// accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
 class access::_PropertyGraph<PropertyBody> {
@@ -103,7 +103,7 @@ class access::_PropertyGraph<PropertyBatch> {
     static RecursiveMutex& mutex() { return PropertyGraph::s_mutex; }
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Virtual baseclass, so we can store updates of various property types in one PropertyBatch or -Event.
 struct PropertyUpdate {
@@ -158,7 +158,7 @@ struct PropertyExpressionUpdate final : public PropertyUpdate {
     Dependencies dependencies; // not const so we can move from it
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 class PropertyBody {
 
@@ -166,7 +166,7 @@ class PropertyBody {
     friend class TypedPropertyBody;
     friend class access::_PropertyBody<PropertyBatch>;
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 private:
     using Dependencies = PropertyGraph::Dependencies;
     using PropertyUpdateList = PropertyGraph::PropertyUpdateList;

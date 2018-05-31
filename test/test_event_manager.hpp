@@ -10,7 +10,7 @@ NOTF_OPEN_NAMESPACE
 template<>
 class EventManager::Access<test::Harness> {
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
     /// @param manager    EventManager to access.
@@ -19,7 +19,7 @@ public:
     /// Returns the number of items in the EventManager's backlog.
     size_t backlog_size() const { return m_manager.m_backlog.size(); }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// EventManager to access.
     EventManager& m_manager;

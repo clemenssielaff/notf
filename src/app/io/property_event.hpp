@@ -10,7 +10,7 @@ struct PropertyEvent : public detail::EventBase<PropertyEvent> {
 
     using PropertyUpdateList = PropertyGraph::PropertyUpdateList;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
     /// @param window   Window that the event is meant for.
@@ -22,7 +22,7 @@ public:
     /// Destructor.
     ~PropertyEvent() override;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 public:
     /// Updates contained in this Event.
     PropertyUpdateList updates;

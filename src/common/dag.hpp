@@ -4,12 +4,12 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Thrown by Dag::topological_sort, if the graph is not a DAG.
 NOTF_EXCEPTION_TYPE(no_dag);
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// A Direct Acyclic Graph.
 ///
@@ -31,7 +31,7 @@ class Dag {
     static_assert(std::is_integral<index_t>::value && std::is_unsigned<index_t>::value, "DAG index type must be an "
                                                                                         "unsigned integral");
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Default constructor.
     /// @param vertex_count     Number of vertices in the graph.
@@ -121,7 +121,7 @@ public:
     /// Will be invalid, if `reinit` has been called since.
     const std::vector<index_t>& last_result() const { return m_result; }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// The index of the outer vector is the origin of the edge, entries in the inner vector are edge targets.
     std::vector<std::vector<index_t>> m_edges;

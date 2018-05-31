@@ -78,7 +78,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 class ItemHierarchy : public Scene {
     friend class Scene; // befriend parent so it can construct instances
@@ -86,7 +86,7 @@ class ItemHierarchy : public Scene {
     struct Traversal;
     friend struct Traversal; // defined in compilation unit
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 protected:
     /// Constructor.
     ItemHierarchy(const Token& token);
@@ -121,7 +121,7 @@ public:
     /// @param size     New size.
     virtual void resize(const Size2i& size) override;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// The RootLayout of this Hierarchy.
     RootLayoutPtr m_root;

@@ -11,7 +11,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 namespace detail {
 
@@ -32,7 +32,7 @@ constexpr decltype(auto) extract_trait_types(const std::tuple<Ts...>& tuple)
 
 } // namespace detail
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Definitions used to identify VertexArray traits to the Geometry factory.
 /// Used to tell the GeometryFactory how to construct a VertexArray<Traits...>::Vertex instance.
@@ -55,7 +55,7 @@ struct AttributeKind {
     struct Other {};
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Base of all attribute kinds.
 /// The base holds defaults for all trait types - some of which must be overwritten in subclasses in order to
@@ -118,12 +118,12 @@ constexpr inline bool is_trait_tuple(const std::tuple<Ts...>& tuple)
     return detail::is_trait_tuple_impl(tuple, Indices{});
 }
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// VertexArray baseclass, so other objects can hold pointers to any type of VertexArray.
 class VertexArrayType {
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Arguments for the vertex array.
     struct Args {
@@ -139,7 +139,7 @@ public:
         bool per_instance = false;
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 protected:
     /// Constructor.
     /// @throws runtime_error   If there is no OpenGL context.
@@ -165,7 +165,7 @@ public:
     /// Checks whether the array is empty.
     bool is_empty() const { return m_size == 0; }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 protected:
     /// Arguments used to initialize the vertex array.
     const Args m_args;
@@ -180,7 +180,7 @@ protected:
     static constexpr GLuint INVALID_ID = std::numeric_limits<GLuint>::max();
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// The Vertex array manages an array of vertex attributes.
 /// The array's layout is defined at compile-time using traits.
@@ -211,7 +211,7 @@ class VertexArray : public VertexArrayType {
     template<typename>
     friend class PrefabFactory;
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Traits defining the array layout.
     using Traits = std::tuple<Ts...>;
@@ -219,7 +219,7 @@ public:
     /// A tuple containing one array for each trait.
     using Vertex = decltype(detail::extract_trait_types(Traits{}));
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
     /// @param args             VertexArray arguments (defaults to default constructed argument struct).
@@ -339,7 +339,7 @@ private:
         }
     }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Vertices stored in the array.
     std::vector<Vertex> m_vertices;

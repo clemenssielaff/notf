@@ -4,7 +4,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Every ScreenItem has a Claim that determines how much space is alloted for it in its parent Layout.
 /// The user can declare Claims manually for both Widgets and Layouts, although Layouts usually have a mechanism to
@@ -37,7 +37,7 @@ NOTF_OPEN_NAMESPACE
 /// You can modify the two Stretches of a Claim individually, or set them both using the Claim's functions.
 class Claim {
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Horizontal or vertical Stretch of the Claim.
     class Stretch {
@@ -234,7 +234,7 @@ public:
         int m_priority = 0;
     };
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 private:
     /// A height-for-width ratio constraint of the Claim.
     /// Is its own class so two Ratios can be properly added.
@@ -303,7 +303,7 @@ private:
         float m_height = 0;
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     ///@{
     /// Returns a Claim with fixed height and width.
@@ -491,7 +491,7 @@ public:
     /// @return  Constrainted size.
     Size2f apply(const Size2f& size) const;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// The vertical part of this Claim.
     Stretch m_horizontal;
@@ -503,7 +503,7 @@ private:
     std::pair<Ratio, Ratio> m_ratios = std::make_pair(Ratio{}, Ratio{});
 };
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 /// Prints the contents of a Claim::Stretch into a std::ostream.
 /// @param out       Output stream, implicitly passed with the << operator.
@@ -519,7 +519,7 @@ std::ostream& operator<<(std::ostream& out, const Claim& aabr);
 
 NOTF_CLOSE_NAMESPACE
 
-//== std::hash =======================================================================================================//
+//== std::hash ====================================================================================================== //
 
 namespace std {
 

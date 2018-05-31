@@ -4,7 +4,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Test Accessor providing test-related access functions to a SceneGraph.
 /// The test::Harness accessors subvert about any safety guards in place and are only to be used for testing under
@@ -12,7 +12,7 @@ NOTF_OPEN_NAMESPACE
 template<>
 class access::_SceneGraph<test::Harness> {
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// RAII object to make sure that a frozen scene is ALWAYS unfrozen again
     struct NOTF_NODISCARD FreezeGuard {
@@ -52,7 +52,7 @@ public:
         const std::thread::id m_thread_id;
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
     /// @param graph    SceneGraph to access.
@@ -83,13 +83,13 @@ public:
     /// @param thread_id    (pretend) Id of the thread assumed to be the render thread by the Scene.
     void set_render_thread(const std::thread::id thread_id) { m_graph.m_freezing_thread = hash(thread_id); }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// SceneGraph to access.
     SceneGraph& m_graph;
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Test Accessor providing test-related access functions to a Scene.
 /// The test::Harness accessors subvert about any safety guards in place and are only to be used for testing under
@@ -97,7 +97,7 @@ private:
 template<>
 class access::_Scene<test::Harness> {
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
     /// @param scene    Scene to access.
@@ -109,7 +109,7 @@ public:
     /// Returns the number of deltas in the Scene.
     size_t delta_count() { return m_scene.m_frozen_children.size(); }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Scene to access.
     Scene& m_scene;

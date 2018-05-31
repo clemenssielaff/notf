@@ -4,7 +4,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-// Matrix4f ==========================================================================================================//
+// Matrix4f ========================================================================================================= //
 
 template<>
 std::ostream& operator<<(std::ostream& out, const Matrix4f& mat)
@@ -22,7 +22,7 @@ static_assert(sizeof(Matrix4f) == sizeof(float) * 16,
 
 static_assert(std::is_pod<Matrix4f>::value, "This compiler does not recognize notf::Matrix4f as a POD.");
 
-// Matrix4d ==========================================================================================================//
+// Matrix4d ========================================================================================================= //
 
 template<>
 std::ostream& operator<<(std::ostream& out, const Matrix4d& mat)

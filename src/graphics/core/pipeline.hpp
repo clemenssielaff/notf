@@ -4,13 +4,13 @@
 
 NOTF_OPEN_NAMESPACE
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 /// Render Pipeline
 /// Is not managed by the context, but keeps their Shaders alive.
 class Pipeline : public std::enable_shared_from_this<Pipeline> {
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
@@ -70,7 +70,7 @@ public:
     /// Fragment shader attached to this Pipeline.
     const FragmentShaderPtr& fragment_shader() const { return m_fragment_shader; }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Graphics context containing this Pipeline.
     GraphicsContext& m_graphics_context;

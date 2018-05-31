@@ -11,7 +11,7 @@
 #include "common/thread.hpp"
 #include "common/time.hpp"
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 NOTF_OPEN_NAMESPACE
 
@@ -24,7 +24,7 @@ class TimerManager {
     friend class IntervalTimer;
     friend class VariableTimer;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Default Constructor.
     TimerManager();
@@ -47,7 +47,7 @@ private:
     /// Current time point.
     static time_point_t _now() { return std::chrono::time_point_cast<duration_t>(clock_t::now()); }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// All registered Timers, ordered by their next timeout.
     std::forward_list<TimerPtr> m_timer;
@@ -69,7 +69,7 @@ private:
     bool m_is_running = true;
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// The Timer class is fully thread-safe.
 /// Timers are manged through shared pointers. If a Timer is scheduled when its last user-held shared_ptr goes out of
@@ -81,12 +81,12 @@ private:
 class Timer : public std::enable_shared_from_this<Timer> {
     friend class notf::TimerManager;
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 protected:
     /// Callback signature.
     using Callback = std::function<void()>;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 protected:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
@@ -147,7 +147,7 @@ protected:
     /// If the user wants to have the Callback repeated this much, it might as well be infinity.
     constexpr static size_t _infinity() { return std::numeric_limits<size_t>::max(); }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 protected:
     /// Function called when this Timer times out.
     Callback m_callback;
@@ -160,12 +160,12 @@ protected:
     size_t m_times_left = 0;
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// An IntervalTimer fires continuously with a fixed interval.
 class IntervalTimer : public Timer {
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
@@ -196,23 +196,23 @@ private:
     /// Time to wait between this Timer fires.
     duration_t _interval() const override { return m_interval; }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Time between firing.
     duration_t m_interval = duration_t(0);
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// An Variable fires continuously with an interval determined through a user-defined lambda.
 class VariableTimer : public Timer {
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Interval function signature.
     using IntervalFunction = std::function<duration_t()>;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
@@ -242,7 +242,7 @@ private:
     /// Time to wait between this Timer fires.
     duration_t _interval() const override { return m_function(); }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Function used to determine the next interval of this Timer.
     IntervalFunction m_function;

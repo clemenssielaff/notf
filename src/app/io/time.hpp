@@ -4,7 +4,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 // TODO: time should be in common, some sort of TimER should be in app/io
 
@@ -12,12 +12,12 @@ NOTF_OPEN_NAMESPACE
 class Time {
     friend class Application; // to set the frequency at the start
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Smallest unit of time known to the application.
     using Ticks = uint64_t;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Default constructor.
     Time() = default;
@@ -100,7 +100,7 @@ private: // for Application
     /// Initializes the static fields of the Time class at the beginning of the application.
     static void initialize();
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Ticks since the start of the Application.
     Ticks ticks;

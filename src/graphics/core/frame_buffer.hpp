@@ -6,7 +6,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Base class for all RenderBuffers (color, depth and stencil).
 /// RenderBuffers are not managed by the GraphicsContext, but by FrameBuffers instead.
@@ -14,7 +14,7 @@ NOTF_OPEN_NAMESPACE
 class RenderBuffer {
     friend class FrameBuffer;
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Type of RenderBuffer.
     enum class Type {
@@ -37,7 +37,7 @@ public:
         GLenum internal_format = 0;
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
@@ -86,7 +86,7 @@ private:
     /// Deallocates the framebuffer data and invalidates the RenderBuffer.
     void _deallocate();
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 protected:
     /// OpenGL ID of the render buffer.
     RenderBufferId m_id;
@@ -98,13 +98,13 @@ protected:
     Args m_args;
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 // TODO: read pixels from framebuffer into raw image
 class FrameBuffer {
     friend class GraphicsContext;
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// A FrameBuffer's color target can be either a RenderBuffer or a Texture.
     using ColorTarget = std::variant<TexturePtr, RenderBufferPtr>;
@@ -134,7 +134,7 @@ public:
         RenderBufferPtr stencil_target;
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
@@ -175,7 +175,7 @@ private:
     /// @throws runtime_error   ...if we dont.
     void _validate_arguments() const;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// GraphicsContext containing the frame buffer.
     GraphicsContext& m_context;

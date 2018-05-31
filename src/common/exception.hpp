@@ -9,7 +9,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// NoTF base exception type.
 /// Logs the message with log level `critical`.
@@ -31,7 +31,7 @@ struct notf_exception : public std::exception {
     const std::string message;
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Declare a new NoTF exception type.
 /// Note that this declares but does not implement the virtual destructor, in order to avoid warnings about emitting the
@@ -50,7 +50,7 @@ NOTF_COMPILER_WARNING(
     "Macro 'NOTF_EXCEPTION_TYPE' is already defined - NoTF's NOTF_EXCEPTION_TYPE macro will remain disabled.")
 #endif
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Convenience macro to throw a notf_exception with a message, that additionally contains the line, file and function
 /// where the error occured.
@@ -64,7 +64,7 @@ NOTF_COMPILER_WARNING(
     "Macro 'notf_throw_format' is already defined - NoTF's notf_throw_format macro will remain disabled.")
 #endif
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Convenience macro to trow a notf_exception with a message from a constexpr function.
 #ifndef notf_throw
@@ -73,7 +73,7 @@ NOTF_COMPILER_WARNING(
 NOTF_COMPILER_WARNING("Macro 'notf_throw' is already defined - NoTF's notf_throw macro will remain disabled.")
 #endif
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Specialized exception that logs the message and then behaves like a regular std::runtime_error.
 NOTF_EXCEPTION_TYPE(runtime_error);
@@ -96,7 +96,7 @@ NOTF_EXCEPTION_TYPE(internal_error);
 /// Error thrown when the wrong thread does something.
 NOTF_EXCEPTION_TYPE(thread_error);
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Save narrowing cast.
 /// https://github.com/Microsoft/GSL/blob/master/include/gsl/gsl_util

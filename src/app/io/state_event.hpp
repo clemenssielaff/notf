@@ -8,7 +8,7 @@ NOTF_OPEN_NAMESPACE
 /// Event object scheduled for a Window to change its State.
 struct StateChangeEvent : public detail::EventBase<StateChangeEvent> {
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
     /// @param window       Window that the event is meant for.
@@ -20,7 +20,7 @@ public:
     /// Destructor.
     ~StateChangeEvent() override;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 public:
     /// New State of the Window after the event was handled.
     const valid_ptr<SceneGraph::StatePtr> new_state;

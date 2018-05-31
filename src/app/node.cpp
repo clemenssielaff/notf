@@ -53,13 +53,13 @@ std::string make_unique_name(const std::set<std::string_view>& existing, const s
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 Node::no_node_error::~no_node_error() = default;
 
 Node::node_finalized_error::~node_finalized_error() = default;
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 thread_local std::set<valid_ptr<const Node*>> Node::s_unfinalized_nodes = {};
 
@@ -296,7 +296,7 @@ void Node::stack_behind(const valid_ptr<Node*> sibling)
     siblings.stack_behind(my_index, sibling);
 }
 
-const Node::NodeContainer& Node::_read_children() const
+const NodeContainer& Node::_read_children() const
 {
     // make sure the SceneGraph hierarchy is properly locked
     SceneGraphPtr scene_graph = graph();
@@ -318,7 +318,7 @@ const Node::NodeContainer& Node::_read_children() const
     }
 }
 
-Node::NodeContainer& Node::_write_children()
+NodeContainer& Node::_write_children()
 {
     // make sure the SceneGraph hierarchy is properly locked
     SceneGraphPtr scene_graph = graph();
@@ -362,12 +362,16 @@ valid_ptr<TypedNodeProperty<std::string>*> Node::_create_name()
 
         // create unique name
         if (siblings.contains(name)) {
-            name = make_unique_name(siblings.all_names(), name);
+            std::set<std::string_view> all_names;
+            for (const auto& it : NodeContainer::Access<Node>::name_map(siblings)) {
+                all_names.insert(it.first);
+            }
+            name = make_unique_name(all_names, name);
         }
 
         // update parent's child container
         if (siblings.contains(this)) {
-            Scene::Access<Node>::rename_child(parent()->_write_children(), this, name);
+            NodeContainer::Access<Node>::rename_child(parent()->_write_children(), this, name);
         }
 
         return true; // always succeeds
@@ -383,9 +387,5 @@ void Node::_clean_tweaks()
         NodeProperty::Access<Node>::clear_frozen(*it.second.get());
     }
 }
-
-//====================================================================================================================//
-
-RootNode::~RootNode() {}
 
 NOTF_CLOSE_NAMESPACE

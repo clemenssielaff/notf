@@ -1,13 +1,10 @@
 #include "app/scene.hpp"
 
-#include <algorithm>
-
-#include "app/node.hpp"
-#include "common/vector.hpp"
+#include "app/root_node.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 Scene::scene_name_error::~scene_name_error() = default;
 
@@ -15,82 +12,12 @@ Scene::no_graph_error::~no_graph_error() = default;
 
 Scene::hierarchy_error::~hierarchy_error() = default;
 
-//====================================================================================================================//
-
-bool Scene::NodeContainer::add(valid_ptr<NodePtr> node)
-{
-    if (contains(node->name())) {
-        return false;
-    }
-    m_names.emplace(std::make_pair(node->name(), node.raw()));
-    m_order.emplace_back(std::move(node));
-    return true;
-}
-
-void Scene::NodeContainer::erase(const NodePtr& node)
-{
-    auto it = std::find(m_order.begin(), m_order.end(), node);
-    if (it != m_order.end()) {
-        m_names.erase((*it)->name());
-        m_order.erase(it);
-    }
-}
-
-void Scene::NodeContainer::stack_front(const valid_ptr<Node*> node)
-{
-    auto it
-        = std::find_if(m_order.begin(), m_order.end(), [&](const auto& sibling) -> bool { return sibling == node; });
-    NOTF_ASSERT(it != m_order.end());
-    move_to_back(m_order, it); // "in front" means at the end of the vector ordered back to front
-}
-
-void Scene::NodeContainer::stack_back(const valid_ptr<Node*> node)
-{
-    auto it
-        = std::find_if(m_order.begin(), m_order.end(), [&](const auto& sibling) -> bool { return sibling == node; });
-    NOTF_ASSERT(it != m_order.end());
-    move_to_front(m_order, it); // "in back" means at the start of the vector ordered back to front
-}
-
-void Scene::NodeContainer::stack_before(const size_t index, const valid_ptr<Node*> sibling)
-{
-    auto node_it = iterator_at(m_order, index);
-    auto sibling_it = std::find(m_order.begin(), m_order.end(), sibling);
-    if (sibling_it == m_order.end()) {
-        notf_throw_format(hierarchy_error,
-                          "Cannot stack node \"{}\" before node \"{}\" because the two are not siblings.",
-                          (*node_it)->name(), sibling->name());
-    }
-    notf::move_behind_of(m_order, node_it, sibling_it);
-}
-
-void Scene::NodeContainer::stack_behind(const size_t index, const valid_ptr<Node*> sibling)
-{
-    auto node_it = iterator_at(m_order, index);
-    auto sibling_it = std::find(m_order.begin(), m_order.end(), sibling);
-    if (sibling_it == m_order.end()) {
-        notf_throw_format(hierarchy_error,
-                          "Cannot stack node \"{}\" before node \"{}\" because the two are not siblings.",
-                          (*node_it)->name(), sibling->name());
-    }
-    notf::move_in_front_of(m_order, node_it, sibling_it);
-}
-
-void Scene::NodeContainer::_rename(valid_ptr<const Node*> node, std::string new_name)
-{
-    auto name_it = m_names.find(node->name());
-    NOTF_ASSERT(name_it != m_names.end());
-    std::weak_ptr<Node> node_ptr = std::move(name_it->second);
-    m_names.erase(name_it);
-    m_names.emplace(std::make_pair(std::move(new_name), std::move(node_ptr)));
-}
-
-//====================================================================================================================//
+// ================================================================================================================== //
 
 Scene::Scene(const FactoryToken&, const valid_ptr<SceneGraphPtr>& graph, std::string name)
     : m_graph(graph.get())
     , m_name(_validate_scene_name(*graph.get(), std::move(name)))
-    , m_root(std::make_shared<RootNode>(Node::Access<Scene>::create_token(), *this))
+    , m_root(RootNode::Access<Scene>::create(*this))
 {}
 
 Scene::~Scene() = default;
@@ -117,7 +44,7 @@ PropertyReader Scene::property(const Path& path) const
 
 void Scene::clear() { m_root->clear(); }
 
-risky_ptr<Scene::NodeContainer*> Scene::_get_frozen_children(valid_ptr<const Node*> node)
+risky_ptr<NodeContainer*> Scene::_get_frozen_children(valid_ptr<const Node*> node)
 {
     NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph()));
 
@@ -178,7 +105,7 @@ void Scene::_clear_delta()
         made_progress = false;
         for (auto it = m_frozen_children.begin(); it != m_frozen_children.end(); ++it) {
             bool childHasDelta = false;
-            const Scene::NodeContainer& container = it->second;
+            const NodeContainer& container = it->second;
             for (auto& child : container) {
                 if (m_frozen_children.count(child.raw().get())) {
                     childHasDelta = true;

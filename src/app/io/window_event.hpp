@@ -10,7 +10,7 @@ NOTF_OPEN_NAMESPACE
 /// last Layer in a Window.
 struct WindowEvent : public detail::EventBase<WindowEvent> {
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     enum class Type {
         CURSOR_ENTERED, ///< Emitted when the mouse cursor entered the client area of this Window.
@@ -18,7 +18,7 @@ public:
         CLOSE,          ///< Emitted just before this Window is closed.
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
     /// @param window       Window that the event is meant for.
@@ -28,20 +28,20 @@ public:
     /// Destructor.
     ~WindowEvent() override;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 public:
     /// The type of this event.
     const Type type;
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Event object generated when a Window is resized.
 /// Unlike other events, this one cannot be handled by a Layer in the front but is always propagated all the way to the
 /// last Layer in a Window.
 struct WindowResizeEvent : public detail::EventBase<WindowResizeEvent> {
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
     /// @param window       Window that the event is meant for.
@@ -53,7 +53,7 @@ public:
     /// Destructor.
     ~WindowResizeEvent() override;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 public:
     /// Old size of the Window.
     const Size2i old_size;

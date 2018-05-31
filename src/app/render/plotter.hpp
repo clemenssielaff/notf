@@ -8,7 +8,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 /// Manager for rendering 2D vector graphics.
 /// Conceptually, the Plotter knows of two pictures: the one that you can easily (and cheaply) draw on the screen using
@@ -18,7 +18,7 @@ NOTF_OPEN_NAMESPACE
 class Plotter : public Renderer {
     friend class Renderer;
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Information necessary to draw a predefined stroke.
     struct StrokeInfo {
@@ -99,7 +99,7 @@ private:
         // TODO: the pixel ratio was important for NanoVG, is it important for the Plotter?
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 protected:
     /// Construct a new Plotter.
     /// @param token            Token to make sure that the instance can only be created by a call to `_create`.
@@ -143,7 +143,7 @@ private:
     /// Render the current contents of the Plotter.
     virtual void _render() const override;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Graphics Context in which the Plotter lives.
     GraphicsContext& m_graphics_context;

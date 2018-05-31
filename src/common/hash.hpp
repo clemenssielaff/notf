@@ -32,7 +32,7 @@ enum class HashID : size_t {
 
 } // namespace detail
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Buils a hash value from hashing all passed data types in sequence and combining their hashes.
 /// Similar to boost::hash_combine but adaptive to the system's hash value type.

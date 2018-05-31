@@ -6,7 +6,7 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// 2-dimensional mathematical Vector containing real numbers.
 template<typename REAL>
@@ -18,10 +18,10 @@ struct RealVector2 : public detail::Arithmetic<RealVector2<REAL>, REAL, 2> {
     /// Arithmetic base type.
     using super_t = detail::Arithmetic<RealVector2<element_t>, element_t, 2>;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
     using super_t::data;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
     /// Default constructor.
     RealVector2() = default;
 
@@ -157,7 +157,7 @@ struct RealVector2 : public detail::Arithmetic<RealVector2<REAL>, REAL, 2> {
     }
 };
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /** 2-dimensional mathematical vector containing integers. */
 template<typename INTEGER>
@@ -169,10 +169,10 @@ struct IntVector2 : public detail::Arithmetic<IntVector2<INTEGER>, INTEGER, 2> {
     /// Arithmetic base type.
     using super_t = detail::Arithmetic<IntVector2<INTEGER>, INTEGER, 2>;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
     using super_t::data;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
     /// Default constructor.
     IntVector2() = default;
 
@@ -215,7 +215,7 @@ struct IntVector2 : public detail::Arithmetic<IntVector2<INTEGER>, INTEGER, 2> {
 
 } // namespace detail
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 using Vector2f = detail::RealVector2<float>;
 using Vector2d = detail::RealVector2<double>;
@@ -223,7 +223,7 @@ using Vector2h = detail::RealVector2<half>;
 using Vector2i = detail::IntVector2<int>;
 using Vector2s = detail::IntVector2<short>;
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Prints the contents of a vector into a std::ostream.
 /// @param os   Output stream, implicitly passed with the << operator.
@@ -237,7 +237,7 @@ std::ostream& operator<<(std::ostream& out, const Vector2s& vec);
 
 NOTF_CLOSE_NAMESPACE
 
-//== std::hash =======================================================================================================//
+//== std::hash ====================================================================================================== //
 
 namespace std {
 

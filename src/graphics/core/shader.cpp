@@ -237,7 +237,7 @@ std::string build_glsl_header(const GraphicsContext& context)
         }
     }
 
-    result += "//=========================================================\n";
+    result += "// ========================================================\n";
 
     return result;
 }
@@ -281,7 +281,7 @@ void assert_is_valid(const Shader&) {} // noop
 
 } // namespace
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 NOTF_OPEN_NAMESPACE
 
@@ -559,7 +559,7 @@ void Shader::set_uniform(const std::string& name, const Matrix4f& value)
     }
 }
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 Signal<VertexShaderPtr> VertexShader::on_shader_created;
 
@@ -632,7 +632,7 @@ GLuint VertexShader::attribute(const std::string& attribute_name) const
     notf_throw_format(runtime_error, "No attribute named \"{}\" in shader \"{}\"", attribute_name, name());
 }
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 Signal<TesselationShaderPtr> TesselationShader::on_shader_created;
 
@@ -668,7 +668,7 @@ TesselationShader::create(GraphicsContext& context, const std::string& name, std
     return result;
 }
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 Signal<GeometryShaderPtr> GeometryShader::on_shader_created;
 
@@ -698,7 +698,7 @@ GeometryShader::create(GraphicsContext& context, std::string name, const std::st
     return result;
 }
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 Signal<FragmentShaderPtr> FragmentShader::on_shader_created;
 

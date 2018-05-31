@@ -18,7 +18,7 @@ constexpr long double KAPPA = 0.552284749830793398402251632279597438092895833835
 
 } // namespace detail
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 template<typename Real = long double>
 constexpr Real pi()
@@ -156,7 +156,7 @@ inline Real save_div(const Real divident, const Real divisor)
     return divident / divisor;
 }
 
-//= precision ========================================================================================================//
+//= precision ======================================================================================================= //
 
 /// Type dependent constant for low-precision approximation (useful for use in "noisy" functions).
 /// Don't be fooled by the name though, "low" precision is still pretty precise on a human scale.
@@ -209,7 +209,7 @@ constexpr int precision_high<int>()
     return 0;
 }
 
-//= approx ===========================================================================================================//
+//= approx ========================================================================================================== //
 
 /// Test if two Reals are approximately the same value.
 /// Returns true also if the difference is exactly epsilon, which allows epsilon to be zero for exact comparison.

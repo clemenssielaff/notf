@@ -5,7 +5,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// A Widget is something drawn on screen that the user can interact with.
 /// The term "Widget" is a mixture of "Window" and "Gadget".
@@ -23,7 +23,7 @@ NOTF_OPEN_NAMESPACE
 /// be queried by the TextLayout and used to position the Widget correctly.
 class Widget : public ScreenItem {
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 protected:
     /// Constructor.
     /// @param token    Factory token provided by Node::_create.
@@ -76,7 +76,7 @@ private:
     // hide Node methods that have no effect for Widgets
     using Node::children;
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Widget capabilities.
     CapabilityMap m_capabilities;

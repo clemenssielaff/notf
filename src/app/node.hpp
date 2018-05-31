@@ -1,5 +1,7 @@
 #pragma once
 
+#include <set>
+
 #include "app/node_property.hpp"
 #include "app/path.hpp"
 #include "app/scene.hpp"
@@ -11,21 +13,18 @@ template<class>
 class _Node;
 } // namespace access
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 class Node : public receive_signals, public std::enable_shared_from_this<Node> {
 
     friend class access::_Node<Scene>;
     friend class access::_Node<NodeProperty>;
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Access types.
     template<class T>
     using Access = access::_Node<T>;
-
-    /// Container used to store the children of a Node.
-    using NodeContainer = Scene::Access<Node>::NodeContainer;
 
     /// Thrown when a node did not have the expected position in the hierarchy.
     using hierarchy_error = Scene::hierarchy_error;
@@ -34,6 +33,9 @@ public:
     template<class T>
     using Validator = PropertyGraph::Validator<T>;
 
+    /// Map to store Properties by their name.
+    using PropertyMap = NodeProperty::PropertyMap;
+
     /// Exception thrown when the Node has gone out of scope (Scene must have been deleted).
     NOTF_EXCEPTION_TYPE(no_node_error);
 
@@ -41,14 +43,14 @@ public:
     NOTF_EXCEPTION_TYPE(node_finalized_error);
 
 protected:
-    /// Factory token object to make sure that Node instances can only be created by a call to `_add_child`.
+    /// Factory token object to make sure that Node instances can only be created by correct factory methods.
     class FactoryToken {
         friend class Node;
-        friend class access::_Node<Scene>;
+        friend class RootNode;
         FactoryToken() {} // not `= default`, otherwise you could construct a Token via `Token{}`.
     };
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     NOTF_NO_COPY_OR_ASSIGN(Node);
 
@@ -91,6 +93,28 @@ public:
     /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     virtual void redraw() { SceneGraph::Access<Node>::register_dirty(*graph(), this); }
 
+    // properties -------------------------------------------------------------
+
+    /// Quick check whether this Node contains a Property of any type by the given name.
+    /// @param name     Name of the Property to search for.
+    /// @returns        True iff this Node has a Property with the given name.
+    bool has_property(const std::string& name) const { return m_properties.count(name) != 0; }
+
+    /// Queries a Property by name and type.
+    /// @param name     Name of the requested Property.
+    /// @returns        Requested Property, if one exists that matches both name and type.
+    template<class T>
+    risky_ptr<TypedNodeProperty<T>*> property(const std::string& name) const
+    {
+        auto it = m_properties.find(name);
+        if (it == m_properties.end()) {
+            return nullptr;
+        }
+        return dynamic_cast<TypedNodeProperty<T>*>(it->second.get());
+    }
+
+    // TODO: Node::operator[] for properties
+
     // hierarchy --------------------------------------------------------------
 
     /// Checks if this Node has a child Node with a given name.
@@ -111,6 +135,8 @@ public:
         NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
         return NodeHandle<T>(_read_children().get(name));
     }
+
+    // TODO: methods to get child in the front / back / nth
 
     /// The number of direct children of this Node.
     size_t count_children() const
@@ -174,28 +200,6 @@ public:
         return const_cast<const Node*>(this)->first_ancestor<T>();
     }
     ///@}
-
-    // properties -------------------------------------------------------------
-
-    /// Quick check whether this Node contains a Property of any type by the given name.
-    /// @param name     Name of the Property to search for.
-    /// @returns        True iff this Node has a Property with the given name.
-    bool has_property(const std::string& name) const { return m_properties.count(name) != 0; }
-
-    /// Queries a Property by name and type.
-    /// @param name     Name of the requested Property.
-    /// @returns        Requested Property, if one exists that matches both name and type.
-    template<class T>
-    risky_ptr<TypedNodeProperty<T>*> property(const std::string& name) const
-    {
-        auto it = m_properties.find(name);
-        if (it == m_properties.end()) {
-            return nullptr;
-        }
-        return dynamic_cast<TypedNodeProperty<T>*>(it->second.get());
-    }
-
-    // TODO: Node::operator[] for properties
 
     // z-order ----------------------------------------------------------------
 
@@ -274,7 +278,7 @@ protected:
         // create the node
         auto child = std::make_shared<T>(FactoryToken(), m_scene, this, std::forward<Args>(args)...);
         child->_finalize();
-        auto handle = NodeHandle<T>(child);
+        auto handle = NodeHandle<T>::Access::template create<T>(child);
 
         { // store the node as a child
             NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
@@ -366,20 +370,19 @@ private:
     /// @see _register_as_tweaked
     void _clean_tweaks();
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// The scene containing this node.
     Scene& m_scene;
 
-    /// The parent of this node.
-    /// Is guaranteed to outlive this node.
+    /// The parent of this node, is guaranteed to outlive this Node.
     valid_ptr<Node*> const m_parent;
 
-    /// All children of this node, ordered from back to front.
+    /// All children of this node, ordered from back to front and accessible by their (node-unique) name.
     NodeContainer m_children;
 
     /// All properties of this node, accessible by their (node-unique) name.
-    NodeProperty::PropertyMap m_properties;
+    PropertyMap m_properties;
 
     /// The parent-unique name of this Node.
     valid_ptr<TypedNodeProperty<std::string>*> const m_name;
@@ -388,20 +391,17 @@ private:
     static thread_local std::set<valid_ptr<const Node*>> s_unfinalized_nodes;
 };
 
-// accessors ---------------------------------------------------------------------------------------------------------//
+// accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
 class access::_Node<Scene> {
     friend class notf::Scene;
 
-    /// Creates a factory Token so the Scene can create its RootNode.
-    static Node::FactoryToken create_token() { return notf::Node::FactoryToken{}; }
-
     /// All children of this node, ordered from back to front.
     /// It is okay to access the child container directly here, because the function is only used by the Scene to create
     /// a new delta NodeContainer.
     /// @param node     Node to operate on.
-    static const Node::NodeContainer& children(const Node& node) { return node.m_children; }
+    static const NodeContainer& children(const Node& node) { return node.m_children; }
 
     /// Cleans a tweaked Node when its SceneGraph is being unfrozen.
     static void clean_tweaks(Node& node) { node._clean_tweaks(); }
@@ -414,36 +414,6 @@ class access::_Node<NodeProperty> {
     /// Registers this Node as being "tweaked".
     /// A Node is tweaked when it has one or more Properties that were modified while the SceneGraph was frozen.
     static void register_tweaked(Node& node) { node._register_as_tweaked(); }
-};
-
-// ===================================================================================================================//
-
-/// The singular root node of a Scene hierarchy.
-class RootNode : public Node {
-
-    // methods -------------------------------------------------------------------------------------------------------//
-public:
-    /// Constructor.
-    /// @param token    Factory token provided by the Scene.
-    /// @param scene    Scene to manage the node.
-    RootNode(const FactoryToken& token, Scene& scene) : Node(token, scene, this) {}
-
-    /// Destructor.
-    virtual ~RootNode();
-
-    /// Sets  a new child at the top of the Scene hierarchy (below the root).
-    /// @param args Arguments that are forwarded to the constructor of the child.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
-    template<class T, class... Args>
-    NodeHandle<T> set_child(Args&&... args)
-    {
-        _clear_children();
-        return _add_child<T>(std::forward<Args>(args)...);
-    }
-
-    /// Removes the child of the root node, effectively clearing the Scene.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
-    void clear() { _clear_children(); }
 };
 
 NOTF_CLOSE_NAMESPACE

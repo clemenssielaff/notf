@@ -12,11 +12,11 @@ NOTF_OPEN_NAMESPACE
 ///     https://sourceforge.net/p/half/code/HEAD/tree/tags/release-1.12.0/include/half.hpp
 struct half {
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
     /// Half value.
     short value;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
     /// Default constructor.
     half() = default;
 
@@ -60,7 +60,7 @@ inline std::pair<half, half> unpackHalfs(unsigned int pack)
     return std::make_pair(converter.out[0], converter.out[1]);
 }
 
-//====================================================================================================================//
+// ================================================================================================================== //
 
 /// Prints the value of a half into a std::ostream.
 /// @param out      Output stream, implicitly passed with the << operator.

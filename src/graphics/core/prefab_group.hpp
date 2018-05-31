@@ -12,7 +12,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-// ===================================================================================================================//
+// ================================================================================================================== //
 
 /// A prefab group contains 0-n prefabs that share the same vertex layout, and are rendered with the same shader.
 /// It contains a single vertex buffer containing the vertices of all prefab types and a single index array to store
@@ -26,7 +26,7 @@ class PrefabGroup {
     template<typename>
     friend class PrefabFactory;
 
-    // types ---------------------------------------------------------------------------------------------------------//
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     using vertex_array_t = VERTEX_ARRAY;
 
@@ -36,7 +36,7 @@ public:
 
     using InstanceData = typename instance_array_t::Vertex;
 
-    // methods -------------------------------------------------------------------------------------------------------//
+    // methods ------------------------------------------------------------------------------------------------------ //
 public:
     NOTF_NO_COPY_OR_ASSIGN(PrefabGroup);
 
@@ -132,7 +132,7 @@ public:
         }
     }
 
-    // fields --------------------------------------------------------------------------------------------------------//
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /** OpenGL handle of the internal vertex array object. */
     GLuint m_vao_id;

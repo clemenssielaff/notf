@@ -24,8 +24,8 @@ struct CharEvent;
 NOTF_DEFINE_SHARED_POINTERS(class, Scene);
 NOTF_DEFINE_SHARED_POINTERS(class, SceneGraph);
 
-class RootNode;
 NOTF_DEFINE_SHARED_POINTERS(class, Node);
+NOTF_DEFINE_SHARED_POINTERS(class, RootNode);
 
 template<typename>
 struct NodeHandle;
