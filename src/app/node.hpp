@@ -100,20 +100,28 @@ public:
     /// @returns        True iff this Node has a Property with the given name.
     bool has_property(const std::string& name) const { return m_properties.count(name) != 0; }
 
-    /// Queries a Property by name and type.
+    /// Returns a Property of this Node by name and type.
     /// @param name     Name of the requested Property.
     /// @returns        Requested Property, if one exists that matches both name and type.
     template<class T>
-    risky_ptr<TypedNodeProperty<T>*> property(const std::string& name) const
+    NodePropertyHandle<T> property(const std::string& name) const
     {
         auto it = m_properties.find(name);
         if (it == m_properties.end()) {
-            return nullptr;
+            return {}; // empty default
         }
-        return dynamic_cast<TypedNodeProperty<T>*>(it->second.get());
+        return NodePropertyHandle<T>(std::dynamic_pointer_cast<TypedNodePropertyPtr<T>>(it->second));
     }
 
-    // TODO: Node::operator[] for properties
+    /// Returns a Property of this Node by path and type.
+    /// @param path     Path uniquely identifying the requested Property.
+    /// @returns        Requested Property, if one exists that matches both name and type.
+    /// @throws Path::path_error    If the Path does not lead to a Node.
+    template<class T>
+    NodePropertyHandle<T> property(const Path& path)
+    {
+        return NodePropertyHandle<T>(std::dynamic_pointer_cast<TypedNodePropertyPtr<T>>(_property(path)));
+    }
 
     // hierarchy --------------------------------------------------------------
 
@@ -128,12 +136,23 @@ public:
     /// Returns a handle to a child Node with the given name.
     /// If you want to be sure that a child (of any type) by the name exists, call `has_child`.
     /// @param name     Name of the requested child node.
+    /// @returns        The requested child Node.
     /// @throws no_node_error    If there is no child with the given name, or it is of the wrong type.
     template<class T>
     NodeHandle<T> child(const std::string& name)
     {
         NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
         return NodeHandle<T>(_read_children().get(name));
+    }
+
+    /// Searches for and returns a descendant of this Node.
+    /// @param path     Relative path uniquely identifying a Node.
+    /// @returns        The requested Node.
+    /// @throws Path::path_error    If the Path does not lead to a Node.
+    template<class T>
+    NodeHandle<T> node(const Path& path)
+    {
+        return NodeHandle<T>(std::dynamic_pointer_cast<T>(_node(path)));
     }
 
     // TODO: methods to get child in the front / back / nth
@@ -244,6 +263,31 @@ public:
     void stack_behind(const valid_ptr<Node*> sibling);
 
 protected:
+    /// Private and untyped implementation of `property` assuming sanitized inputs.
+    /// @param path     Path uniquely identifying a Property.
+    /// @returns        The requested NodeProperty.
+    /// @throws Path::path_error    If the Path does not lead to a Property.
+    NodePropertyPtr _property(const Path& path);
+
+    /// Recursive path iteration method to query a related Property.
+    /// @param path     Path uniquely identifying a Property.
+    /// @param index    Numer of components in the path that led to this Node.
+    /// @param result   [OUT] Result of the query.
+    /// @throws Path::path_error    If the Path does not lead to a Property.
+    void _property(const Path& path, const uint index, NodePropertyPtr& result);
+
+    /// Private and untyped implementation of `node` assuming sanitized inputs.
+    /// @param path     Path uniquely identifying a Node.
+    /// @throws Path::path_error    If the Path does not lead to a Node.
+    NodePtr _node(const Path& path);
+
+    /// Recursive path iteration method to query a descendant Node.
+    /// @param path     Path uniquely identifying a Node.
+    /// @param index    Numer of components in the path that led to this Node.
+    /// @param result   [OUT] Result of the query.
+    /// @throws Path::path_error    If the Path does not lead to a Node.
+    void _node(const Path& path, const uint index, NodePtr& result);
+
     /// Recursive implementation of `count_descendants`.
     void _count_descendants_impl(size_t& result) const
     {
@@ -309,8 +353,10 @@ protected:
     void _clear_children();
 
     /// Constructs a new Property on this Node.
-    /// @param name     Name of the Property.
-    /// @param value    Initial value of the Property (also determines its type unless specified explicitly).
+    /// @param name         Name of the Property.
+    /// @param value        Initial value of the Property (also determines its type unless specified explicitly).
+    /// @param validator    Optional validator function.
+    /// @param has_body     Whether or not the Property will have a Property body in the Property Graph.
     /// @throws node_finalized_error
     ///                 If you call this method from anywhere but the constructor.
     /// @throws Path::not_unique_error
@@ -320,7 +366,7 @@ protected:
     /// @throws NodeProperty::initial_value_error
     ///                 If the value of the Property could not be validated.
     template<class T>
-    valid_ptr<TypedNodeProperty<T>*>
+    NodePropertyHandle<T>
     _create_property(std::string name, T&& value, Validator<T> validator = {}, const bool has_body = true)
     {
         if (_is_finalized()) {
@@ -343,13 +389,26 @@ protected:
 
         // create the property
         TypedNodePropertyPtr<T> property
-            = NodeProperty::Access<Node>::create(std::forward<T>(value), this, std::move(validator), has_body);
-        TypedNodeProperty<T>* result = property.get();
-        auto it = m_properties.emplace(std::make_pair(std::move(name), std::move(property)));
-        NOTF_ASSERT(it.second);
-        NodeProperty::Access<Node>::set_name_iterator(*result, std::move(it.first));
+            = _create_property_impl(std::move(name), std::forward<T>(value), std::move(validator), has_body);
+        return NodePropertyHandle<T>::template Access<Node>::create(std::move(property));
+    }
 
-        return result;
+private:
+    /// Creates a new Property on the node, used by `_create_property` and `_create_name`.
+    /// @param name         Name of the Property.
+    /// @param value        Initial value of the Property (also determines its type unless specified explicitly).
+    /// @param validator    Optional validator function.
+    /// @param has_body     Whether or not the Property will have a Property body in the Property Graph.
+    template<class T>
+    TypedNodePropertyPtr<T>
+    _create_property_impl(std::string name, T&& value, Validator<T> validator, const bool has_body)
+    {
+        TypedNodePropertyPtr<T> property
+            = NodeProperty::Access<Node>::create(std::forward<T>(value), this, std::move(validator), has_body);
+        auto it = m_properties.emplace(std::make_pair(std::move(name), property));
+        NOTF_ASSERT(it.second);
+        NodeProperty::Access<Node>::set_name_iterator(*property, std::move(it.first));
+        return property;
     }
 
 private:
@@ -370,7 +429,8 @@ private:
     /// @see _register_as_tweaked
     void _clean_tweaks();
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields
+    // ------------------------------------------------------------------------------------------------------- //
 private:
     /// The scene containing this node.
     Scene& m_scene;
@@ -387,19 +447,21 @@ private:
     /// The parent-unique name of this Node.
     valid_ptr<TypedNodeProperty<std::string>*> const m_name;
 
-    /// Only unfinalized nodes can create properties and creating new children in an unfinalized node creates no deltas.
+    /// Only unfinalized nodes can create properties and creating new children in an unfinalized node creates no
+    /// deltas.
     static thread_local std::set<valid_ptr<const Node*>> s_unfinalized_nodes;
 };
 
-// accessors -------------------------------------------------------------------------------------------------------- //
+// accessors
+// -------------------------------------------------------------------------------------------------------- //
 
 template<>
 class access::_Node<Scene> {
     friend class notf::Scene;
 
     /// All children of this node, ordered from back to front.
-    /// It is okay to access the child container directly here, because the function is only used by the Scene to create
-    /// a new delta NodeContainer.
+    /// It is okay to access the child container directly here, because the function is only used by the Scene to
+    /// create a new delta NodeContainer.
     /// @param node     Node to operate on.
     static const NodeContainer& children(const Node& node) { return node.m_children; }
 

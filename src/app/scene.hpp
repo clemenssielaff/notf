@@ -99,13 +99,13 @@ public:
     const RootNode& root() const { return *m_root; }
     /// @}
 
-    /// The number of Nodes in the Scene including the root node (therefore is always >= 1).
-    size_t count_nodes() const;
-
     /// Searches for and returns a Property of a Node or the Scene.
     /// @param path     Path uniquely identifying a Property.
     /// @throws Path::path_error    If the Path does not lead to a Property.
     PropertyReader property(const Path& path) const;
+
+    /// The number of Nodes in the Scene including the root node (therefore is always >= 1).
+    size_t count_nodes() const;
 
     /// Removes all nodes (except the root node) from the Scene.
     void clear();
@@ -142,7 +142,7 @@ private:
     /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void _create_frozen_children(valid_ptr<const Node*> node);
 
-    /// Private implementation of `property()` assuming sanitized inputs.
+    /// Private implementation of `property` assuming sanitized inputs.
     /// @param path     Path uniquely identifying a Property.
     /// @throws Path::path_error    If the Path does not lead to a Property.
     PropertyReader _property(const Path& path) const;

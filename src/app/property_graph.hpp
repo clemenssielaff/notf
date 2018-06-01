@@ -76,7 +76,7 @@ private:
 
 #ifdef NOTF_TEST
     /// Number of existing Property bodies (for testing only).
-    static std::atomic_size_t s_property_count;
+    static std::atomic_size_t s_body_count;
 #endif
 };
 
@@ -88,7 +88,7 @@ class access::_PropertyGraph<PropertyBody> {
 
 #ifdef NOTF_TEST
     /// Direct access to the PropertyGraph's property counter.
-    static std::atomic_size_t& property_count() { return PropertyGraph::s_property_count; }
+    static std::atomic_size_t& property_count() { return PropertyGraph::s_body_count; }
 #endif
 
     /// Mutex guarding all Property bodies.
@@ -195,7 +195,7 @@ public:
 protected:
     /// Updates the Property by evaluating its expression.
     /// Then continues to update all downstream nodes as well.
-    /// @param effects      [OUT] All properties affected of the change.
+    /// @param effects      [OUT] All properties affected by the change.
     virtual void _update(PropertyUpdateList& effects) = 0;
 
     /// Removes this Property as affected (downstream) of all of its dependencies (upstream).
@@ -209,7 +209,7 @@ protected:
     /// Allows an untyped Property to ingest an untyped Update from a Batch.
     /// Note that this method moves the value/expression out of the update.
     /// @param update       Update to apply.
-    /// @param effects      [OUT] All properties affected of the change.
+    /// @param effects      [OUT] All properties affected by the change.
     virtual void _apply_update(valid_ptr<PropertyUpdate*> update, PropertyUpdateList& effects) = 0;
 
     /// Tests whether the propposed upstream can be accepted, or would introduce a cyclic dependency.
@@ -292,7 +292,7 @@ public:
     /// Removes an existing expression on this Property if one exists.
     /// Does not fire a PropertyEvent, but instead passes all effects into the output argument.
     /// @param value        New value.
-    /// @param effects      [OUT] All properties affected of the change.
+    /// @param effects      [OUT] All properties affected by the change.
     void set_value(T&& value, PropertyUpdateList& effects)
     {
         NOTF_MUTEX_GUARD(_mutex());
@@ -318,7 +318,7 @@ public:
     /// Does not fire a PropertyEvent, but instead passes all effects into the output argument.
     /// @param expression       Expression to set.
     /// @param dependencies     Properties that the expression depends on.
-    /// @param effects          [OUT] All properties affected of the change.
+    /// @param effects          [OUT] All properties affected by the change.
     /// @throws no_dag_error    If the expression would introduce a cyclic dependency into the graph.
     void set_expression(Expression expression, Dependencies dependencies, PropertyUpdateList& effects)
     {
@@ -340,7 +340,7 @@ public:
 private:
     /// Changes the value of this Property if the new one is different and then updates all affected Properties.
     /// @param value        New value.
-    /// @param effects      [OUT] All properties affected of the change.
+    /// @param effects      [OUT] All properties affected by the change.
     void _set_value(T&& value, PropertyUpdateList& effects)
     {
         NOTF_ASSERT(_mutex().is_locked_by_this_thread());
@@ -366,7 +366,7 @@ private:
     /// Evaluates the expression right away to update the Property's value.
     /// @param expression       Expression to set.
     /// @param dependencies     Properties that the expression depends on.
-    /// @param effects          [OUT] All properties affected of the change.
+    /// @param effects          [OUT] All properties affected by the change.
     /// @throws no_dag_error    If the expression would introduce a cyclic dependency into the graph.
     void _set_expression(Expression expression, Dependencies dependencies, PropertyUpdateList& effects)
     {
@@ -387,7 +387,7 @@ private:
 
     /// Updates the Property by evaluating its expression.
     /// Then continues to update all downstream nodes as well.
-    /// @param effects      [OUT] All properties affected of the change.
+    /// @param effects      [OUT] All properties affected by the change.
     void _update(PropertyUpdateList& effects) override
     {
         NOTF_ASSERT(_mutex().is_locked_by_this_thread());
@@ -422,7 +422,7 @@ private:
     /// Allows an untyped Property to ingest an untyped Update from a Batch.
     /// Note that this method moves the value/expression out of the update.
     /// @param update       Update to apply.
-    /// @param effects      [OUT] All properties affected of the change.
+    /// @param effects      [OUT] All properties affected by the change.
     void _apply_update(valid_ptr<PropertyUpdate*> raw_update, PropertyUpdateList& effects) override
     {
         NOTF_ASSERT(_mutex().is_locked_by_this_thread());
@@ -475,7 +475,7 @@ class access::_PropertyBody<PropertyBatch> {
     /// Note that this method moves the value/expression out of the update.
     /// @param property         Property to access.
     /// @param update           Update to apply.
-    /// @param effects          [OUT] All properties affected of the change.
+    /// @param effects          [OUT] All properties affected by the change.
     /// @throws no_dag_error    If the update is an expression that would introduce a cyclic dependency.
     static void apply_update(PropertyBodyPtr& property, const PropertyUpdatePtr& update, PropertyUpdateList& effects)
     {

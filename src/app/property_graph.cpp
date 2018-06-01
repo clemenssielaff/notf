@@ -59,7 +59,7 @@ void PropertyGraph::fire_event(PropertyUpdateList&& effects)
 RecursiveMutex PropertyGraph::s_mutex = {};
 
 #ifdef NOTF_TEST
-std::atomic_size_t PropertyGraph::s_property_count{0};
+std::atomic_size_t PropertyGraph::s_body_count{0};
 #endif
 
 // ================================================================================================================== //

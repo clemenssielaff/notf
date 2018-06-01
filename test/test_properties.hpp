@@ -12,7 +12,7 @@ class access::_PropertyGraph<test::Harness> {
 public:
     /// Number of properties in the graph.
     /// /// @param graph    PropertyGraph to operate on.
-    static size_t size() { return PropertyGraph::s_property_count; }
+    static size_t size() { return PropertyGraph::s_body_count; }
 };
 
 NOTF_CLOSE_NAMESPACE

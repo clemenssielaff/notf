@@ -296,6 +296,87 @@ void Node::stack_behind(const valid_ptr<Node*> sibling)
     siblings.stack_behind(my_index, sibling);
 }
 
+NodePropertyPtr Node::_property(const Path& path)
+{
+    if (path.is_empty()) {
+        notf_throw_format(Path::path_error, "Cannot query a Property with an empty path");
+    }
+    if (path.is_node()) {
+        notf_throw_format(Path::path_error, "Path \"{}\" does not refer to a Property of Node \"{}\"", path.to_string(),
+                          name());
+    }
+    if (path.is_absolute()) {
+        notf_throw_format(Path::path_error, "Path \"{}\" cannot be used to query a Property of Node \"{}\"",
+                          path.to_string(), name());
+        // TODO: accept absolute paths if it refers to this node
+    }
+    NOTF_ASSERT(path[path.size() - 2] == name());
+
+    // lock the SceneGraph hierarchy
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+
+    NodePropertyPtr result;
+    _property(path, 0, result);
+    return result;
+}
+
+void Node::_property(const Path& path, const uint index, NodePropertyPtr& result)
+{
+    NOTF_ASSERT(SceneGraph::Access<Node>::mutex(*graph()).is_locked_by_this_thread());
+    NOTF_ASSERT(path[index] == name());
+    if (index + 1 == path.size()) {
+        auto it = m_properties.find(path.property());
+        if (it == m_properties.end()) {
+            result.reset();
+        }
+        else {
+            result = it->second;
+        }
+    }
+    else {
+        NodePtr child = _read_children().get(path[index + 1]).lock();
+        NOTF_ASSERT(child);
+        child->_property(path, index + 1, result);
+    }
+}
+
+NodePtr Node::_node(const Path& path)
+{
+    if (path.is_empty()) {
+        notf_throw_format(Path::path_error, "Cannot query a Node with an empty path");
+    }
+    if (path.is_property()) {
+        notf_throw_format(Path::path_error, "Path \"{}\" does not refer to a descenant of Node \"{}\"",
+                          path.to_string(), name());
+    }
+    if (path.is_absolute()) {
+        notf_throw_format(Path::path_error, "Path \"{}\" cannot be used to query descenant of Node \"{}\"",
+                          path.to_string(), name());
+        // TODO: accept absolute paths if it refers to this node
+    }
+
+    // lock the SceneGraph hierarchy
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+
+    NodePtr result;
+    _node(path, 0, result);
+    return result;
+}
+
+void Node::_node(const Path& path, const uint index, NodePtr& result)
+{
+    NOTF_ASSERT(SceneGraph::Access<Node>::mutex(*graph()).is_locked_by_this_thread());
+    NOTF_ASSERT(path[index] == name());
+    if (index + 1 == path.size()) {
+        result = shared_from_this();
+    }
+    else {
+        NodePtr child = _read_children().get(path[index + 1]).lock();
+        NOTF_ASSERT(child);
+        child->_node(path, index + 1, result);
+    }
+}
+
 const NodeContainer& Node::_read_children() const
 {
     // make sure the SceneGraph hierarchy is properly locked
@@ -377,7 +458,9 @@ valid_ptr<TypedNodeProperty<std::string>*> Node::_create_name()
         return true; // always succeeds
     };
 
-    return _create_property<std::string>("name", next_node_name(), std::move(validator), /* has_body = */ false);
+    TypedNodePropertyPtr<std::string> name_property
+        = _create_property_impl<std::string>("name", next_node_name(), std::move(validator), /* has_body = */ false);
+    return name_property.get();
 }
 
 void Node::_clean_tweaks()

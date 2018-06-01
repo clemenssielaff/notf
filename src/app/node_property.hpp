@@ -380,9 +380,12 @@ private:
 private:
     /// Value constructor.
     /// @param property     Property to handle.
-    NodePropertyHandle(const NodePropertyPtr& property) : m_property(property) {}
+    NodePropertyHandle(const TypedNodePropertyPtr<T>& property) : m_property(property) {}
 
 public:
+    /// Checks whether the PropertyHandle is valid or not.
+    bool is_valid() const { return !m_property.expired(); }
+
     /// The node-unique name of this Property.
     /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
     const std::string& name() const { return _property()->name(); }

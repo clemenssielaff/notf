@@ -22,24 +22,24 @@ Scene::Scene(const FactoryToken&, const valid_ptr<SceneGraphPtr>& graph, std::st
 
 Scene::~Scene() = default;
 
-size_t Scene::count_nodes() const
-{
-    return m_root->count_descendants() + 1; // +1 is the root node
-}
-
 PropertyReader Scene::property(const Path& path) const
 {
-    if (!path.is_property()) {
-        notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Property", path.to_string())
-    }
     if (path.is_empty()) {
         notf_throw_format(Path::path_error, "Cannot query Property from Scene with an empty path");
+    }
+    if (!path.is_property()) {
+        notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Property", path.to_string())
     }
     if (path.is_absolute() && path[0] != name()) {
         notf_throw_format(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(),
                           name());
     }
     return _property(path);
+}
+
+size_t Scene::count_nodes() const
+{
+    return m_root->count_descendants() + 1; // +1 is the root node
 }
 
 void Scene::clear() { m_root->clear(); }
