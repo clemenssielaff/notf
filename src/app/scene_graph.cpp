@@ -72,9 +72,7 @@ void SceneGraph::_propagate_event(EventPtr&& untyped_event)
             if (!layer->is_active()) {
                 continue;
             }
-            if (risky_ptr<Scene*> scene = layer->scene()) {
-                Scene::Access<SceneGraph>::handle_event(*scene, *event);
-            }
+            Scene::Access<SceneGraph>::handle_event(layer->scene(), *event);
             if (event->was_handled()) { // TODO: maybe add virtual "is_handled" function? Or "is_handleable_ subtype
                 break;                  // this way we wouldn't have to differentiate between Mouse, Key, CharEvents
             }                           // they are all handled the same anyway
@@ -88,9 +86,7 @@ void SceneGraph::_propagate_event(EventPtr&& untyped_event)
             if (!layer->is_active()) {
                 continue;
             }
-            if (risky_ptr<Scene*> scene = layer->scene()) {
-                Scene::Access<SceneGraph>::handle_event(*scene, *event);
-            }
+            Scene::Access<SceneGraph>::handle_event(layer->scene(), *event);
             if (event->was_handled()) {
                 break;
             }
@@ -104,9 +100,7 @@ void SceneGraph::_propagate_event(EventPtr&& untyped_event)
             if (!layer->is_active()) {
                 continue;
             }
-            if (risky_ptr<Scene*> scene = layer->scene()) {
-                Scene::Access<SceneGraph>::handle_event(*scene, *event);
-            }
+            Scene::Access<SceneGraph>::handle_event(layer->scene(), *event);
             if (event->was_handled()) {
                 break;
             }
@@ -119,9 +113,7 @@ void SceneGraph::_propagate_event(EventPtr&& untyped_event)
             if (!layer->is_active()) {
                 continue;
             }
-            if (risky_ptr<Scene*> scene = layer->scene()) {
-                Scene::Access<SceneGraph>::handle_event(*scene, *untyped_event);
-            }
+            Scene::Access<SceneGraph>::handle_event(layer->scene(), *untyped_event);
         }
     }
 
@@ -132,9 +124,7 @@ void SceneGraph::_propagate_event(EventPtr&& untyped_event)
             if (!layer->is_fullscreen()) {
                 continue;
             }
-            if (risky_ptr<Scene*> scene = layer->scene()) {
-                Scene::Access<SceneGraph>::resize_view(*scene, event->new_size);
-            }
+            Scene::Access<SceneGraph>::resize_view(layer->scene(), event->new_size);
         }
     }
 

@@ -17,6 +17,7 @@ class _Node;
 
 class Node : public receive_signals, public std::enable_shared_from_this<Node> {
 
+    friend class RootNode;
     friend class access::_Node<Scene>;
     friend class access::_Node<NodeProperty>;
 
@@ -412,8 +413,7 @@ private:
     /// @see _register_as_tweaked
     void _clean_tweaks();
 
-    // fields
-    // ------------------------------------------------------------------------------------------------------- //
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// The scene containing this node.
     Scene& m_scene;
@@ -435,8 +435,7 @@ private:
     static thread_local std::set<valid_ptr<const Node*>> s_unfinalized_nodes;
 };
 
-// accessors
-// -------------------------------------------------------------------------------------------------------- //
+// accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
 class access::_Node<Scene> {

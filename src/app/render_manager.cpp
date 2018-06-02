@@ -71,7 +71,7 @@ void RenderManager::RenderThread::_run()
         { // render the frame
             GraphicsContext::CurrentGuard current_guard = context.make_current();
 
-            SceneGraph& scene_graph = window->scene_graph();
+            SceneGraphPtr& scene_graph = window->scene_graph();
 
             //        // TODO: clean all the render targets here
             //        // in order to sort them, use typeid(*ptr).hash_code()
@@ -82,7 +82,7 @@ void RenderManager::RenderThread::_run()
                 // render all Layers from back to front
                 //                for (const LayerPtr& layer : reverse(scene_graph.current_state()->layers())) { //
                 //                TODO: BROKEN?
-                for (const auto& layer : scene_graph.current_state()->layers()) {
+                for (const auto& layer : scene_graph->current_state()->layers()) {
                     layer->render();
                 }
             }

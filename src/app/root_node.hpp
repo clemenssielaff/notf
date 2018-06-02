@@ -32,8 +32,14 @@ private:
     RootNode(const FactoryToken& token, Scene& scene) : Node(token, scene, this) {}
 
     /// Factory.
+    /// Creates an unfinalized RootNode.
     /// @param scene    Scene to manage the RootNode.
-    static RootNodePtr create(Scene& scene) { return NOTF_MAKE_SHARED_FROM_PRIVATE(RootNode, FactoryToken(), scene); }
+    static RootNodePtr create(Scene& scene)
+    {
+        RootNodePtr result = NOTF_MAKE_SHARED_FROM_PRIVATE(RootNode, FactoryToken(), scene);
+        s_unfinalized_nodes.emplace(result.get());
+        return result;
+    }
 
 public:
     /// Destructor.
@@ -52,6 +58,10 @@ public:
     /// Removes the child of the root node, effectively clearing the Scene.
     /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void clear() { _clear_children(); }
+
+private:
+    /// Finalizes the RootNode.
+    void _finalize() { s_unfinalized_nodes.erase(this); }
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //
@@ -63,6 +73,9 @@ class access::_RootNode<Scene> {
     /// Factory.
     /// @param scene    Scene to manage the RootNode.
     static RootNodePtr create(Scene& scene) { return RootNode::create(scene); }
+
+    /// Finalizes the RootNode.
+    static void finalize(RootNode* root_node) { root_node->_finalize(); }
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -10,7 +10,7 @@
 NOTF_OPEN_NAMESPACE
 
 RenderTarget::RenderTarget(GraphicsContext& context, Args&& args)
-    : m_framebuffer(), m_renderer(std::move(args.renderer))
+    : m_framebuffer(), m_scene(std::move(args.scene)), m_renderer(std::move(args.renderer))
 {
     // create the texture arguments
     Texture::Args texture_args;
@@ -64,7 +64,7 @@ void RenderTarget::clean()
     context.clear(Color::black());
 
     // render everything
-    Renderer::Access<RenderTarget>(*m_renderer).render();
+    Renderer::Access<RenderTarget>::render(*m_renderer, m_scene.get());
 }
 
 NOTF_CLOSE_NAMESPACE

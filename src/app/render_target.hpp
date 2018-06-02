@@ -18,6 +18,9 @@ public:
     /// RenderTarget arguments.
     struct Args {
 
+        /// The Scene to render.
+        ScenePtr scene;
+
         /// The Renderer that define the contents of the target.
         RendererPtr renderer;
 
@@ -57,6 +60,9 @@ public:
         if (!args.renderer) {
             notf_throw(value_error, "Cannot create a RenderTarget without a Renderer");
         }
+        if (!args.scene) {
+            notf_throw(value_error, "Cannot create a RenderTarget without a Scene to render");
+        }
         return NOTF_MAKE_SHARED_FROM_PRIVATE(RenderTarget, context, std::forward<Args>(args));
     }
 
@@ -83,6 +89,9 @@ public:
 private:
     /// Framebuffer to render into.
     FrameBufferPtr m_framebuffer;
+
+    /// The Scene to render.
+    ScenePtr m_scene;
 
     /// Renderer that draws into the target.
     RendererPtr m_renderer;

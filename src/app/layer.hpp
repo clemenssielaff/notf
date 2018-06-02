@@ -23,20 +23,17 @@ private:
     /// @param window       Window containing this Layer.
     /// @param renderer     Renderer that renders the Scene into this Layer.
     /// @param scene        Scene displayed in this Layer.
-    Layer(Window& window, RendererPtr renderer, ScenePtr scene);
+    Layer(Window& window, valid_ptr<RendererPtr> renderer, valid_ptr<ScenePtr> scene);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(Layer);
 
-    /// @{
     /// Factory.
     /// Constructs a full-screen, visible Layer.
     /// @param window       Window containing this Layer.
     /// @param renderer     Renderer that renders the Scene into this Layer.
-    /// @param scene        (optional) Scene displayed in this Layer.
-    static LayerPtr create(Window& window, RendererPtr renderer); // `scene = {}` doesn't work
-    static LayerPtr create(Window& window, RendererPtr renderer, ScenePtr scene);
-    /// @}
+    /// @param scene        Scene displayed in this Layer.
+    static LayerPtr create(Window& window, valid_ptr<RendererPtr> renderer, valid_ptr<ScenePtr> scene);
 
     /// Destructor.
     ~Layer();
@@ -50,19 +47,20 @@ public:
     /// Whether the Layer is fullscreen or not.
     bool is_fullscreen() const { return m_is_fullscreen; }
 
-    /// Checks if this Layer has a Scene or not.
-    bool has_scene() const { return (m_scene != nullptr); }
-
     /// Area of this Layer when not fullscreen.
     const Aabri& area() const { return m_area; }
 
     /// The Scene displayed in this Layer, might be empty.
-    risky_ptr<Scene*> scene() { return m_scene.get(); }
+    Scene& scene() { return *raw_pointer(m_scene); }
 
     /// Invisible Layers are not drawn on screen.
     /// Note that this method also changes the `active` state of the Layer to the visibility state.
     /// If you want a hidden/active or visible/inactive combo, call `set_active` after this method.
-    void set_visible(const bool is_visible) { m_is_visible = is_visible; m_is_active = is_visible;}
+    void set_visible(const bool is_visible)
+    {
+        m_is_visible = is_visible;
+        m_is_active = is_visible;
+    }
 
     /// Inactive Layers do not participate in event propagation.
     void set_active(const bool is_active) { m_is_active = is_active; }
@@ -83,10 +81,10 @@ private:
     Window& m_window;
 
     /// The Scene displayed in this Layer.
-    ScenePtr m_scene;
+    valid_ptr<ScenePtr> m_scene;
 
     /// Renderer that renders the Scene into this Layer.
-    RendererPtr m_renderer;
+    valid_ptr<RendererPtr> m_renderer;
 
     /// Area of this Layer when not fullscreen.
     Aabri m_area = Aabri::zero();

@@ -29,17 +29,17 @@ struct is_unique_ptr<std::unique_ptr<T>> : std::true_type {};
 /// @{
 /// Returns the raw pointer from any kind of other pointer without increasing the use_count of shared_ptrs.
 template<class T>
-std::enable_if_t<std::is_pointer<T>::value, const T> raw_pointer(const T& ptr)
+std::enable_if_t<std::is_pointer<T>::value, T> raw_pointer(const T& ptr)
 {
     return ptr; // from raw
 }
 template<class T>
-std::enable_if_t<is_shared_ptr<T>::value, const typename T::element_type*> raw_pointer(const T& shared_ptr)
+std::enable_if_t<is_shared_ptr<T>::value, typename T::element_type*> raw_pointer(const T& shared_ptr)
 {
     return shared_ptr.get(); // from shared_ptr<T>
 }
 template<class T>
-std::enable_if_t<is_unique_ptr<T>::value, const typename T::element_type*> raw_pointer(const T& unique_ptr)
+std::enable_if_t<is_unique_ptr<T>::value, typename T::element_type*> raw_pointer(const T& unique_ptr)
 {
     return unique_ptr.get(); // from unique<T>
 }

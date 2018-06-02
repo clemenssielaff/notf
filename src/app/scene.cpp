@@ -96,6 +96,8 @@ NodePtr Scene::_node(const Path& path)
     }
 }
 
+void Scene::_finalize_root(RootNode& root) { RootNode::Access<Scene>::finalize(&root); }
+
 void Scene::_clear_delta()
 {
     // clean all tweaked nodes, regardless if they were deleted or not

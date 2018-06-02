@@ -95,7 +95,7 @@ void EventManager::WindowHandler::_run()
         }
 
         // forward the next event object to your Window's SceneGraph, that will then propagate it to the Scenes
-        SceneGraph::Access<EventManager>::propagate_event(m_window->scene_graph(), std::move(m_events.front()));
+        SceneGraph::Access<EventManager>::propagate_event(*m_window->scene_graph(), std::move(m_events.front()));
         m_events.pop_front();
     }
 }

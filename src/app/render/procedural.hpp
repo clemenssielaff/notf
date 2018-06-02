@@ -27,7 +27,7 @@ public:
 private:
     /// Subclass-defined implementation of the Renderer's rendering.
     /// @param scene    IGNORED
-    virtual void _render(risky_ptr<Scene*>) const override;
+    virtual void _render(valid_ptr<Scene*>) const override;
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:

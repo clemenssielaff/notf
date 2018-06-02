@@ -73,8 +73,8 @@ public:
 
     ///@{
     /// Scenes displayed in the Window.
-    SceneGraph& scene_graph() { return *m_scene_graph; }
-    const SceneGraph& scene_graph() const { return *m_scene_graph; }
+    SceneGraphPtr& scene_graph() { return m_scene_graph; }
+    const SceneGraphPtr& scene_graph() const { return m_scene_graph; }
     ///@}
 
     ///@{

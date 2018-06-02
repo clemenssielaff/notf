@@ -76,10 +76,10 @@ Node::~Node()
     }
 #endif
 
-    log_trace << "Destroying \"" << name() << "\"";
     _finalize();
 
     try {
+        log_trace << "Destroying \"" << name() << "\"";
         SceneGraph::Access<Node>::remove_dirty(*graph(), this);
     }
     catch (const Scene::no_graph_error&) {

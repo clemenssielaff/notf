@@ -69,6 +69,7 @@ public:
         NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph.get()));
         std::shared_ptr<T> scene
             = std::make_shared<T>(FactoryToken(), graph, std::move(name), std::forward<Args>(args)...);
+        _finalize_root(scene->root());
         access::_SceneGraph<Scene>::register_scene(*graph, scene);
         return scene;
     }
@@ -170,6 +171,10 @@ private:
     /// @returns        Handle to the requested Node. Is empty if the Node doesn't exist.
     /// @throws Path::path_error    If the Path does not lead to a Node.
     NodePtr _node(const Path& path);
+
+    /// Finalizes the RootNode of this Scene after creation.
+    /// @param root     RootNode to finalize.
+    static void _finalize_root(RootNode& root);
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
