@@ -1,12 +1,9 @@
 #pragma once
 
-#include <map>
 #include <unordered_set>
 
+#include "app/node_property.hpp"
 #include "app/path.hpp"
-#include "app/property_reader.hpp"
-#include "common/mutex.hpp"
-#include "common/pointer.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -85,11 +82,49 @@ public:
     /// Needed, because otherwise we'd have to include types contained in member unique_ptrs in the header.
     ~SceneGraph();
 
+    // getter -----------------------------------------------------------------
+
     /// @{
     /// Window owning this SceneGraph.
     Window& window() { return m_window; }
     const Window& window() const { return m_window; }
     /// @}
+
+    /// Returns a Scene in this graph by name.
+    /// @param name Name of the requested Scene.
+    /// @returns    Scene with the given name, can be empty.
+    risky_ptr<ScenePtr> scene(const std::string& name)
+    {
+        auto it = m_scenes.find(name);
+        if (it == m_scenes.end()) {
+            return nullptr;
+        }
+        return it->second.lock();
+    }
+
+    /// Searches for and returns a Property in the SceneGraph.
+    /// @param path     Path uniquely identifying a Property in the SceneGraph.
+    /// @returns        Handle to the requested NodeProperty.
+    ///                 Is empty if the Property doesn't exist or is of the wrong type.
+    /// @throws Path::path_error    If the Path is invalid.
+    template<class T>
+    PropertyHandle<T> property(const Path& path)
+    {
+        return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodePropertyPtr<T>>(_property(path)));
+    }
+
+    /// Searches for and returns a Node in the SceneGraph.
+    /// @param path     Path uniquely identifying a Node in the SceneGraph.
+    /// @returns        Handle to the requested Node.
+    ///                 Is empty if the Node doesn't exist or is of the wrong type.
+    /// @throws Path::path_error    If the Path is invalid.
+    template<class T>
+    NodeHandle<T> node(const Path& path)
+    {
+        return NodeHandle<T>(std::dynamic_pointer_cast<T>(_node(path)));
+    }
+
+    // freezing ---------------------------------------------------------------
 
     /// Checks if the SceneGraph currently frozen or not.
     bool is_frozen() const
@@ -108,29 +143,6 @@ public:
         //        NOTF_ASSERT(m_event_mutex.is_locked_by_this_thread());
         return (m_freezing_thread == hash(thread_id));
     }
-
-    /// Returns a Scene in this graph by name.
-    /// @param name Name of the requested Scene.
-    /// @returns    Scene with the given name, can be empty.
-    risky_ptr<ScenePtr> scene(const std::string& name)
-    {
-        auto it = m_scenes.find(name);
-        if (it == m_scenes.end()) {
-            return nullptr;
-        }
-        return it->second.lock();
-    }
-
-    /// Searches for and returns a Property of a Node in the SceneGraph.
-    /// @param path     Path uniquely identifying a Property within the SceneGraph.
-    /// @throws Path::path_error    If the Path does not lead to a Property.
-    PropertyReader property(const Path& path) const;
-
-    /// Searches for and returns a Property of a Node in the SceneGraph.
-    /// @param path     Path uniquely identifying a Property within the SceneGraph.
-    /// @throws Path::path_error    If the Path does not lead to a Property.
-    //    PropertyReader property(const Path& path);
-    // TODO: CONTINUE HERE
 
     // state management -------------------------------------------------------
 
@@ -164,6 +176,20 @@ private:
     /// Propagates the event into the scenes.
     /// @param untyped_event
     void _propagate_event(EventPtr&& untyped_event);
+
+    // getter -----------------------------------------------------------------
+
+    /// Private and untyped implementation of `property` assuming sanitized inputs.
+    /// @param path     Path uniquely identifying a Property.
+    /// @returns        Handle to the requested NodeProperty. Is empty if the Property doesn't exist.
+    /// @throws Path::path_error    If the Path does not lead to a Property.
+    NodePropertyPtr _property(const Path& path);
+
+    /// Private and untyped implementation of `node` assuming sanitized inputs.
+    /// @param path     Path uniquely identifying a Node.
+    /// @returns        Handle to the requested Node. Is empty if the Node doesn't exist.
+    /// @throws Path::path_error    If the Path does not lead to a Node.
+    NodePtr _node(const Path& path);
 
     // freezing ---------------------------------------------------------------
 

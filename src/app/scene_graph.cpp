@@ -18,25 +18,6 @@ SceneGraph::SceneGraph(Window& window) : m_window(window), m_current_state(creat
 
 SceneGraph::~SceneGraph() = default;
 
-PropertyReader SceneGraph::property(const Path& path) const
-{
-    if (!path.is_property()) {
-        notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Property", path.to_string())
-    }
-    if (path.is_empty()) {
-        notf_throw_format(Path::path_error, "Cannot query Property from SceneGraph with an empty path");
-    }
-    const std::string& scene_name = path[0];
-    auto scene_it = m_scenes.find(scene_name);
-    if (scene_it != m_scenes.end()) {
-        if (ScenePtr scene = scene_it->second.lock()) {
-            return Scene::Access<SceneGraph>::property(*scene, path);
-        }
-    }
-    notf_throw_format(Path::path_error, "Path \"{}\" refers to unknown Scene \"{}\" in SceneGraph", path.to_string(),
-                      scene_name);
-}
-
 SceneGraph::StatePtr SceneGraph::current_state()
 {
     NOTF_MUTEX_GUARD(m_hierarchy_mutex);
@@ -167,6 +148,44 @@ void SceneGraph::_propagate_event(EventPtr&& untyped_event)
     else {
         log_warning << "Unhandled event of type: " << event_type;
     }
+}
+
+NodePropertyPtr SceneGraph::_property(const Path& path)
+{
+    if (path.is_empty()) {
+        notf_throw_format(Path::path_error, "Cannot query a Property from a SceneGraph with an empty path");
+    }
+    if (path.is_node()) {
+        notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Property", path.to_string())
+    }
+    const std::string& scene_name = path[0];
+    auto scene_it = m_scenes.find(scene_name);
+    if (scene_it != m_scenes.end()) {
+        if (ScenePtr scene = scene_it->second.lock()) {
+            return Scene::Access<SceneGraph>::property(*scene, path);
+        }
+    }
+    notf_throw_format(Path::path_error, "Path \"{}\" refers to unknown Scene \"{}\" in SceneGraph", path.to_string(),
+                      scene_name);
+}
+
+NodePtr SceneGraph::_node(const Path& path)
+{
+    if (path.is_empty()) {
+        notf_throw_format(Path::path_error, "Cannot query a Node  from a SceneGraph with an empty path");
+    }
+    if (path.is_property()) {
+        notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Node", path.to_string())
+    }
+    const std::string& scene_name = path[0];
+    auto scene_it = m_scenes.find(scene_name);
+    if (scene_it != m_scenes.end()) {
+        if (ScenePtr scene = scene_it->second.lock()) {
+            return Scene::Access<SceneGraph>::node(*scene, path);
+        }
+    }
+    notf_throw_format(Path::path_error, "Path \"{}\" refers to unknown Scene \"{}\" in SceneGraph", path.to_string(),
+                      scene_name);
 }
 
 bool SceneGraph::_freeze(const std::thread::id thread_id)

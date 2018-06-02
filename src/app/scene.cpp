@@ -22,21 +22,6 @@ Scene::Scene(const FactoryToken&, const valid_ptr<SceneGraphPtr>& graph, std::st
 
 Scene::~Scene() = default;
 
-PropertyReader Scene::property(const Path& path) const
-{
-    if (path.is_empty()) {
-        notf_throw_format(Path::path_error, "Cannot query Property from Scene with an empty path");
-    }
-    if (!path.is_property()) {
-        notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Property", path.to_string())
-    }
-    if (path.is_absolute() && path[0] != name()) {
-        notf_throw_format(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(),
-                          name());
-    }
-    return _property(path);
-}
-
 size_t Scene::count_nodes() const
 {
     return m_root->count_descendants() + 1; // +1 is the root node
@@ -63,27 +48,51 @@ void Scene::_create_frozen_children(valid_ptr<const Node*> node)
     NOTF_ASSERT(it.second);
 }
 
-PropertyReader Scene::_property(const Path& path) const
+NodePropertyPtr Scene::_property(const Path& path)
 {
+    if (path.is_empty()) {
+        notf_throw_format(Path::path_error, "Cannot query a Property from a Scene with an empty path");
+    }
+    if (path.is_node()) {
+        notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Property", path.to_string())
+    }
     if (path.is_absolute()) {
+        if (path[0] != name()) {
+            notf_throw_format(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(),
+                              name());
+        }
         if (path.size() == 1) {
             notf_throw_format(Path::path_error, "Path \"{}\" does not refer to a Property in Scene \"{}\"",
                               path.to_string(), name());
         }
-        if (path.size() == 2) {
-            // TODO: return SceneProperty
-        }
-        else {
-            // TODO: return NodeProperty from root node
-        }
+        return Node::Access<Scene>::property(*m_root, path, 1);
     }
     else { // path.is_relative
+        return Node::Access<Scene>::property(*m_root, path, 0);
+    }
+}
+
+NodePtr Scene::_node(const Path& path)
+{
+    if (path.is_empty()) {
+        notf_throw_format(Path::path_error, "Cannot query a Node from a Scene with an empty path");
+    }
+    if (path.is_property()) {
+        notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Node", path.to_string())
+    }
+    if (path.is_absolute()) {
+        if (path[0] != name()) {
+            notf_throw_format(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(),
+                              name());
+        }
         if (path.size() == 1) {
-            // TODO: return SceneProperty
+            notf_throw_format(Path::path_error, "Path \"{}\" does not refer to a Node in Scene \"{}\"",
+                              path.to_string(), name());
         }
-        else {
-            // TODO: return NodeProperty from root node
-        }
+        return Node::Access<Scene>::node(*m_root, path, 1);
+    }
+    else { // path.is_relative
+        return Node::Access<Scene>::node(*m_root, path, 0);
     }
 }
 
@@ -97,9 +106,9 @@ void Scene::_clear_delta()
 
 #ifdef NOTF_DEBUG
     // In debug mode, I'd like to ensure that each Node is deleted before its parent.
-    // If the parent has been modified (creating a delta referencing all child nodes) and is then deleted, calling
-    // `deltas.clear()` might end up deleting the parent node before its childen.
-    // Therefore we loop over all deltas and pick out those that can safely be deleted.
+    // If the parent has been modified (creating a frozen node container referencing all child nodes) and is then
+    // deleted, calling `deltas.clear()` might end up deleting the parent node before its childen.
+    // Therefore we loop over all deltas and pick out those that can safely be deleted first.
     bool made_progress = true;
     while (!m_frozen_children.empty() && made_progress) {
         made_progress = false;

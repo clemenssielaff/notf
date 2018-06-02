@@ -55,8 +55,6 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-Node::no_node_error::~no_node_error() = default;
-
 Node::node_finalized_error::~node_finalized_error() = default;
 
 // ================================================================================================================== //
@@ -102,20 +100,20 @@ bool Node::has_ancestor(const valid_ptr<const Node*> ancestor) const
     // lock the SceneGraph hierarchy
     NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
 
-    valid_ptr<const Node*> next = parent();
-    while (next != next->parent()) {
+    valid_ptr<const Node*> next = m_parent;
+    while (next != next->m_parent) {
         if (next == ancestor) {
             return true;
         }
-        next = next->parent();
+        next = next->m_parent;
     }
     return false;
 }
 
-valid_ptr<Node*> Node::common_ancestor(valid_ptr<Node*> other)
+NodeHandle<Node> Node::common_ancestor(valid_ptr<Node*> other)
 {
     if (this == other) {
-        return this;
+        return NodeHandle<Node>(this);
     }
 
     // lock the SceneGraph hierarchy
@@ -126,14 +124,14 @@ valid_ptr<Node*> Node::common_ancestor(valid_ptr<Node*> other)
     Node* result = nullptr;
     std::unordered_set<valid_ptr<Node*>, pointer_hash<valid_ptr<Node*>>> known_ancestors = {first, second};
     while (1) {
-        first = first->parent();
+        first = first->m_parent;
         if (known_ancestors.count(first)) {
             result = first;
             break;
         }
         known_ancestors.insert(first);
 
-        second = second->parent();
+        second = second->m_parent;
         if (known_ancestors.count(second)) {
             result = second;
             break;
@@ -143,11 +141,11 @@ valid_ptr<Node*> Node::common_ancestor(valid_ptr<Node*> other)
     NOTF_ASSERT(result);
 
     // if the result is a scene root node, we need to make sure that it is in fact the root of BOTH nodes
-    if (result->parent() == result && (!has_ancestor(result) || !other->has_ancestor(result))) {
+    if (result->m_parent == result && (!has_ancestor(result) || !other->has_ancestor(result))) {
         notf_throw_format(hierarchy_error, "Nodes \"{}\" and \"{}\" are not part of the same hierarchy", name(),
                           other->name());
     }
-    return result;
+    return NodeHandle<Node>(result);
 }
 
 bool Node::is_in_front() const
@@ -310,7 +308,6 @@ NodePropertyPtr Node::_property(const Path& path)
                           path.to_string(), name());
         // TODO: accept absolute paths if it refers to this node
     }
-    NOTF_ASSERT(path[path.size() - 2] == name());
 
     // lock the SceneGraph hierarchy
     NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
@@ -323,7 +320,9 @@ NodePropertyPtr Node::_property(const Path& path)
 void Node::_property(const Path& path, const uint index, NodePropertyPtr& result)
 {
     NOTF_ASSERT(SceneGraph::Access<Node>::mutex(*graph()).is_locked_by_this_thread());
-    NOTF_ASSERT(path[index] == name());
+    NOTF_ASSERT(index < path.size());
+
+    // if this is the last step on the path, try to find the property
     if (index + 1 == path.size()) {
         auto it = m_properties.find(path.property());
         if (it == m_properties.end()) {
@@ -333,8 +332,10 @@ void Node::_property(const Path& path, const uint index, NodePropertyPtr& result
             result = it->second;
         }
     }
+
+    // if this isn't the last step yet, continue the search from the next child node
     else {
-        NodePtr child = _read_children().get(path[index + 1]).lock();
+        NodePtr child = _read_children().get(path[index]).lock();
         NOTF_ASSERT(child);
         child->_property(path, index + 1, result);
     }
@@ -366,13 +367,19 @@ NodePtr Node::_node(const Path& path)
 void Node::_node(const Path& path, const uint index, NodePtr& result)
 {
     NOTF_ASSERT(SceneGraph::Access<Node>::mutex(*graph()).is_locked_by_this_thread());
-    NOTF_ASSERT(path[index] == name());
+    NOTF_ASSERT(index < path.size());
+
+    // find the next node in the path
+    NodePtr child = _read_children().get(path[index]).lock();
+    NOTF_ASSERT(child);
+
+    // if this is the last step on the path, we have found what we are looking for
     if (index + 1 == path.size()) {
-        result = shared_from_this();
+        result = child;
     }
+
+    // if this isn't the last node yet, continue the search from the child
     else {
-        NodePtr child = _read_children().get(path[index + 1]).lock();
-        NOTF_ASSERT(child);
         child->_node(path, index + 1, result);
     }
 }
@@ -426,6 +433,7 @@ void Node::_clear_children()
 {
     // lock the SceneGraph hierarchy
     NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+
     _write_children().clear();
 }
 
@@ -439,7 +447,7 @@ valid_ptr<TypedNodeProperty<std::string>*> Node::_create_name()
 
         // lock the SceneGraph hierarchy
         NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
-        const NodeContainer& siblings = parent()->_read_children();
+        const NodeContainer& siblings = m_parent->_read_children();
 
         // create unique name
         if (siblings.contains(name)) {
@@ -452,7 +460,7 @@ valid_ptr<TypedNodeProperty<std::string>*> Node::_create_name()
 
         // update parent's child container
         if (siblings.contains(this)) {
-            NodeContainer::Access<Node>::rename_child(parent()->_write_children(), this, name);
+            NodeContainer::Access<Node>::rename_child(m_parent->_write_children(), this, name);
         }
 
         return true; // always succeeds

@@ -12,8 +12,6 @@ NOTF_OPEN_NAMESPACE
 namespace access { // forwards
 template<class>
 class _NodeProperty;
-template<class>
-class _NodePropertyHandle;
 } // namespace access
 
 // ================================================================================================================== //
@@ -37,7 +35,7 @@ public:
     /// Exception thrown when a PropertyHead without a body tries to access one.
     NOTF_EXCEPTION_TYPE(no_body_error);
 
-    /// Exception thrown when a NodePropertyHandler tries to access an expired NodeProperty.
+    /// Exception thrown when a PropertyHandle tries to access an expired NodeProperty.
     NOTF_EXCEPTION_TYPE(no_property_error);
 
     // methods ------------------------------------------------------------------------------------------------------ //
@@ -117,7 +115,7 @@ private:
 
     // signals ------------------------------------------------------------------------------------------------------ //
 public:
-    /// Fired when the value of the Property Handler changed.
+    /// Fired when the value of the Property Handle changed.
     Signal<const T&> on_value_changed;
 
     // methods ------------------------------------------------------------------------------------------------------ //
@@ -239,7 +237,7 @@ private:
     /// The typed property body.
     risky_ptr<TypedPropertyBody<T>*> _body() const { return static_cast<TypedPropertyBody<T>*>(m_body.get()); }
 
-    /// Shallow update of affected PropertyHandlers
+    /// Shallow update of affected PropertyHandles.
     /// @param effects  Effects on other Properties that were affected by a change to this one.
     void _update_affected(PropertyUpdateList&& effects)
     {
@@ -354,16 +352,10 @@ class access::_NodeProperty<Node> {
 // ================================================================================================================== //
 
 template<class T>
-class NodePropertyHandle {
-
-    friend class access::_NodePropertyHandle<Node>;
+class PropertyHandle {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    /// Access types.
-    template<class U>
-    using Access = access::_NodePropertyHandle<U>;
-
     /// Type of value of the Property.
     using type = T;
 
@@ -377,12 +369,11 @@ private:
     using Dependencies = PropertyGraph::Dependencies;
 
     // methods ------------------------------------------------------------------------------------------------------ //
-private:
+public:
     /// Value constructor.
     /// @param property     Property to handle.
-    NodePropertyHandle(const TypedNodePropertyPtr<T>& property) : m_property(property) {}
+    PropertyHandle(const TypedNodePropertyPtr<T>& property) : m_property(property) {}
 
-public:
     /// Checks whether the PropertyHandle is valid or not.
     bool is_valid() const { return !m_property.expired(); }
 
@@ -449,21 +440,6 @@ private:
 private:
     /// Handled property.
     TypedNodePropertyWeakPtr<T> m_property;
-};
-
-// accessors -------------------------------------------------------------------------------------------------------- //
-
-template<>
-class access::_NodePropertyHandle<Node> {
-    friend class notf::Node;
-
-    /// Value constructor.
-    /// @param property     Property to handle.
-    template<class T>
-    static NodePropertyHandle<T> create(const TypedNodePropertyPtr<T>& property)
-    {
-        return NodePropertyHandle<T>(property);
-    }
 };
 
 NOTF_CLOSE_NAMESPACE

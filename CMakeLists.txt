@@ -128,6 +128,7 @@ add_sources(SOURCE_FILES src
     app/node_container.hpp
     app/node_container.cpp
     app/node_handle.hpp
+    app/node_handle.cpp
     app/path.hpp
     app/path.cpp
     app/layer.hpp

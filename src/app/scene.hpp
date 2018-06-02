@@ -101,8 +101,25 @@ public:
 
     /// Searches for and returns a Property of a Node or the Scene.
     /// @param path     Path uniquely identifying a Property.
-    /// @throws Path::path_error    If the Path does not lead to a Property.
-    PropertyReader property(const Path& path) const;
+    /// @returns        Handle to the requested NodeProperty.
+    ///                 Is empty if the Property doesn't exist or is of the wrong type.
+    /// @throws Path::path_error    If the Path is invalid.
+    template<class T>
+    PropertyHandle<T> property(const Path& path)
+    {
+        return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodePropertyPtr<T>>(_property(path)));
+    }
+
+    /// Searches for and returns a Node in this Scene.
+    /// @param path     Path uniquely identifying a Node.
+    /// @returns        Handle to the requested Node.
+    ///                 Is empty if the Node doesn't exist or is of the wrong type.
+    /// @throws Path::path_error    If the Path is invalid.
+    template<class T>
+    NodeHandle<T> node(const Path& path)
+    {
+        return NodeHandle<T>(std::dynamic_pointer_cast<T>(_node(path)));
+    }
 
     /// The number of Nodes in the Scene including the root node (therefore is always >= 1).
     size_t count_nodes() const;
@@ -142,10 +159,17 @@ private:
     /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void _create_frozen_children(valid_ptr<const Node*> node);
 
-    /// Private implementation of `property` assuming sanitized inputs.
+    /// Private and untyped implementation of `property` assuming sanitized inputs.
     /// @param path     Path uniquely identifying a Property.
+    /// @returns        Handle to the requested NodeProperty. Is empty if the Property doesn't exist.
     /// @throws Path::path_error    If the Path does not lead to a Property.
-    PropertyReader _property(const Path& path) const;
+    NodePropertyPtr _property(const Path& path);
+
+    /// Private and untyped implementation of `node` assuming sanitized inputs.
+    /// @param path     Path uniquely identifying a Node.
+    /// @returns        Handle to the requested Node. Is empty if the Node doesn't exist.
+    /// @throws Path::path_error    If the Path does not lead to a Node.
+    NodePtr _node(const Path& path);
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
@@ -187,8 +211,15 @@ class access::_Scene<SceneGraph> {
 
     /// Searches for and returns a Property of a Node or the Scene.
     /// @param path     Path uniquely identifying a Property.
-    /// @throws Path::path_error    If the Path does not lead to a Property.
-    static PropertyReader property(const Scene& scene, const Path& path) { return scene._property(path); }
+    /// @returns        The requested NodeProperty, is empty is none exists.
+    /// @throws Path::path_error    If the Path is invalid.
+    static NodePropertyPtr property(Scene& scene, const Path& path) { return scene._property(path); }
+
+    /// Searches for and returns a Node in the Scene.
+    /// @param path     Path uniquely identifying a Node.
+    /// @returns        The requested Node, is empty is none exists.
+    /// @throws Path::path_error    If the Path is invalid.
+    static NodePtr node(Scene& scene, const Path& path) { return scene._node(path); }
 };
 
 //-----------------------------------------------------------------------------

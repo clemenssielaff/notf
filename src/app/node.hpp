@@ -2,7 +2,7 @@
 
 #include <set>
 
-#include "app/node_property.hpp"
+#include "app/node_handle.hpp"
 #include "app/path.hpp"
 #include "app/scene.hpp"
 
@@ -35,9 +35,6 @@ public:
 
     /// Map to store Properties by their name.
     using PropertyMap = NodeProperty::PropertyMap;
-
-    /// Exception thrown when the Node has gone out of scope (Scene must have been deleted).
-    NOTF_EXCEPTION_TYPE(no_node_error);
 
     /// Exception thrown when you try to do something that is only allowed to do if the node hasn't been finalized yet.
     NOTF_EXCEPTION_TYPE(node_finalized_error);
@@ -75,8 +72,8 @@ public:
 
     /// @{
     /// The parent of this node.
-    valid_ptr<Node*> parent() { return m_parent; }
-    valid_ptr<const Node*> parent() const { return m_parent; }
+    NodeHandle<Node> parent() { return NodeHandle<Node>(raw_pointer(m_parent)); }
+    const NodeHandle<Node> parent() const { return NodeHandle<Node>(raw_pointer(m_parent)); }
     /// @}
 
     /// The sibling-unique name of this node.
@@ -104,13 +101,13 @@ public:
     /// @param name     Name of the requested Property.
     /// @returns        Requested Property, if one exists that matches both name and type.
     template<class T>
-    NodePropertyHandle<T> property(const std::string& name) const
+    PropertyHandle<T> property(const std::string& name) const
     {
         auto it = m_properties.find(name);
         if (it == m_properties.end()) {
             return {}; // empty default
         }
-        return NodePropertyHandle<T>(std::dynamic_pointer_cast<TypedNodePropertyPtr<T>>(it->second));
+        return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodePropertyPtr<T>>(it->second));
     }
 
     /// Returns a Property of this Node by path and type.
@@ -118,9 +115,9 @@ public:
     /// @returns        Requested Property, if one exists that matches both name and type.
     /// @throws Path::path_error    If the Path does not lead to a Node.
     template<class T>
-    NodePropertyHandle<T> property(const Path& path)
+    PropertyHandle<T> property(const Path& path)
     {
-        return NodePropertyHandle<T>(std::dynamic_pointer_cast<TypedNodePropertyPtr<T>>(_property(path)));
+        return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodePropertyPtr<T>>(_property(path)));
     }
 
     // hierarchy --------------------------------------------------------------
@@ -146,16 +143,15 @@ public:
     }
 
     /// Searches for and returns a descendant of this Node.
-    /// @param path     Relative path uniquely identifying a Node.
-    /// @returns        The requested Node.
-    /// @throws Path::path_error    If the Path does not lead to a Node.
+    /// @param path     Path uniquely identifying a child Node.
+    /// @returns        Handle to the requested child Node.
+    ///                 Is empty if the Node doesn't exist or is of the wrong type.
+    /// @throws Path::path_error    If the Path is invalid.
     template<class T>
     NodeHandle<T> node(const Path& path)
     {
         return NodeHandle<T>(std::dynamic_pointer_cast<T>(_node(path)));
     }
-
-    // TODO: methods to get child in the front / back / nth
 
     /// The number of direct children of this Node.
     size_t count_children() const
@@ -178,47 +174,33 @@ public:
     /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     bool has_ancestor(const valid_ptr<const Node*> ancestor) const;
 
-    ///@{
     /// Finds and returns the first common ancestor of two Nodes.
     /// The root node is always a common ancestor, iff the two nodes are in the same scene.
     /// @param other            Other Node to find the common ancestor for.
     /// @throws hierarchy_error If the two nodes are not in the same scene.
     /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
-    valid_ptr<Node*> common_ancestor(valid_ptr<Node*> other);
-    valid_ptr<const Node*> common_ancestor(valid_ptr<const Node*> other) const
-    {
-        return const_cast<Node*>(this)->common_ancestor(const_cast<Node*>(other.get()));
-    }
-    ///@}
+    NodeHandle<Node> common_ancestor(valid_ptr<Node*> other);
 
-    ///@{
     /// Returns the first ancestor of this Node that has a specific type (can be empty if none is found).
+    /// @returns    Typed handle of the first ancestor with the requested type, can be empty if none was found.
     /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
-    template<class T>
-    risky_ptr<const T*> first_ancestor() const // TODO: this should return a Handle, right?
+    template<class T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
+    NodeHandle<T> first_ancestor()
     {
-        if (!std::is_base_of<Node, T>::value) {
-            return nullptr;
-        }
-
         // lock the SceneGraph hierarchy
         NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*m_scene.graph()));
 
-        valid_ptr<const Node*> next = parent();
-        while (next != next->parent()) {
+        valid_ptr<const Node*> next = m_parent;
+        while (next != next->m_parent) {
             if (const T* result = dynamic_cast<T*>(next)) {
-                return result;
+                return NodeHandle<T>(result);
             }
-            next = next->parent();
+            next = next->m_parent;
         }
-        return nullptr;
+        return {};
     }
-    template<class T>
-    risky_ptr<T*> first_ancestor()
-    {
-        return const_cast<const Node*>(this)->first_ancestor<T>();
-    }
-    ///@}
+
+    // TODO: methods to get child in the front / back / nth
 
     // z-order ----------------------------------------------------------------
 
@@ -271,19 +253,20 @@ protected:
 
     /// Recursive path iteration method to query a related Property.
     /// @param path     Path uniquely identifying a Property.
-    /// @param index    Numer of components in the path that led to this Node.
+    /// @param index    Index of the next child in the path
     /// @param result   [OUT] Result of the query.
     /// @throws Path::path_error    If the Path does not lead to a Property.
     void _property(const Path& path, const uint index, NodePropertyPtr& result);
 
     /// Private and untyped implementation of `node` assuming sanitized inputs.
     /// @param path     Path uniquely identifying a Node.
+    /// @returns        Handle to the requested Node. Is empty if the Node doesn't exist.
     /// @throws Path::path_error    If the Path does not lead to a Node.
     NodePtr _node(const Path& path);
 
     /// Recursive path iteration method to query a descendant Node.
     /// @param path     Path uniquely identifying a Node.
-    /// @param index    Numer of components in the path that led to this Node.
+    /// @param index    Index of the next child in the path
     /// @param result   [OUT] Result of the query.
     /// @throws Path::path_error    If the Path does not lead to a Node.
     void _node(const Path& path, const uint index, NodePtr& result);
@@ -322,7 +305,7 @@ protected:
         // create the node
         auto child = std::make_shared<T>(FactoryToken(), m_scene, this, std::forward<Args>(args)...);
         child->_finalize();
-        auto handle = NodeHandle<T>::Access::template create<T>(child);
+        auto handle = NodeHandle<T>(child);
 
         { // store the node as a child
             NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
@@ -366,7 +349,7 @@ protected:
     /// @throws NodeProperty::initial_value_error
     ///                 If the value of the Property could not be validated.
     template<class T>
-    NodePropertyHandle<T>
+    PropertyHandle<T>
     _create_property(std::string name, T&& value, Validator<T> validator = {}, const bool has_body = true)
     {
         if (_is_finalized()) {
@@ -390,7 +373,7 @@ protected:
         // create the property
         TypedNodePropertyPtr<T> property
             = _create_property_impl(std::move(name), std::forward<T>(value), std::move(validator), has_body);
-        return NodePropertyHandle<T>::template Access<Node>::create(std::move(property));
+        return PropertyHandle<T>(std::move(property));
     }
 
 private:
@@ -467,6 +450,32 @@ class access::_Node<Scene> {
 
     /// Cleans a tweaked Node when its SceneGraph is being unfrozen.
     static void clean_tweaks(Node& node) { node._clean_tweaks(); }
+
+    /// Recursive path iteration method to query a related Property.
+    /// @param node     Node to operate on.
+    /// @param path     Path uniquely identifying a Property.
+    /// @param index    Index of the next child in the path
+    /// @param returns  Requested Property, if one exists that matches both name and type.
+    /// @throws Path::path_error    If the Path does not lead to a Property.
+    static NodePropertyPtr property(Node& node, const Path& path, const uint index)
+    {
+        NodePropertyPtr result;
+        node._property(path, index, result);
+        return result;
+    }
+
+    /// Recursive path iteration method to query a descendant Node.
+    /// @param node     Node to operate on.
+    /// @param path     Path uniquely identifying a Node.
+    /// @param index    Index of the next child in the path
+    /// @param returns  Requested Node, if one exists that matches both name and type.
+    /// @throws Path::path_error    If the Path does not lead to a Node.
+    static NodePtr node(Node& node, const Path& path, const uint index)
+    {
+        NodePtr result;
+        node._node(path, index, result);
+        return result;
+    }
 };
 
 template<>
