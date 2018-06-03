@@ -157,8 +157,19 @@ void PropertyBody::_add_downstream(const valid_ptr<PropertyBody*> affected)
     m_downstream.emplace_back(affected);
 }
 
+void PropertyBody::_remove_head()
+{
+    NOTF_MUTEX_GUARD(_mutex());
+    m_head = nullptr;
+}
+
 // ================================================================================================================== //
 
-PropertyHead::~PropertyHead() = default;
+PropertyHead::~PropertyHead()
+{
+    if (m_body) {
+        PropertyBody::Access<PropertyHead>::remove_head(*m_body);
+    }
+}
 
 NOTF_CLOSE_NAMESPACE

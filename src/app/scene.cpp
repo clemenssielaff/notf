@@ -29,6 +29,8 @@ size_t Scene::count_nodes() const
 
 void Scene::clear() { m_root->clear(); }
 
+access::_RootNode<Scene> Scene::_root() { return RootNode::Access<Scene>(*m_root); }
+
 risky_ptr<NodeContainer*> Scene::_get_frozen_children(valid_ptr<const Node*> node)
 {
     NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph()));
@@ -96,7 +98,7 @@ NodePtr Scene::_node(const Path& path)
     }
 }
 
-void Scene::_finalize_root(RootNode& root) { RootNode::Access<Scene>::finalize(&root); }
+void Scene::_finalize_root() { _root().finalize(); }
 
 void Scene::_clear_delta()
 {

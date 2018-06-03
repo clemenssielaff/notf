@@ -70,12 +70,42 @@ template<>
 class access::_RootNode<Scene> {
     friend class notf::Scene;
 
+    /// Constructor.
+    /// @param root_node    RootNode to operate on.
+    _RootNode(RootNode& root_node) : m_root_node(root_node) {}
+
     /// Factory.
     /// @param scene    Scene to manage the RootNode.
     static RootNodePtr create(Scene& scene) { return RootNode::create(scene); }
 
     /// Finalizes the RootNode.
-    static void finalize(RootNode* root_node) { root_node->_finalize(); }
+    void finalize() { m_root_node._finalize(); }
+
+public:
+    /// Constructs a new Property on the RootNode.
+    /// @param name         Name of the Property.
+    /// @param value        Initial value of the Property (also determines its type unless specified explicitly).
+    /// @param validator    Optional validator function.
+    /// @param has_body     Whether or not the Property will have a Property body in the Property Graph.
+    /// @throws node_finalized_error
+    ///                 If you call this method from anywhere but the constructor.
+    /// @throws Path::not_unique_error
+    ///                 If there already exists a Property of the same name on this Node.
+    /// @throws no_graph_error
+    ///                 If the SceneGraph of the node has been deleted.
+    /// @throws NodeProperty::initial_value_error
+    ///                 If the value of the Property could not be validated.
+    template<class T>
+    PropertyHandle<T>
+    create_property(std::string name, T&& value, PropertyGraph::Validator<T> validator = {}, const bool has_body = true)
+    {
+        return m_root_node._create_property(std::move(name), std::forward<T>(value), std::move(validator), has_body);
+    }
+
+    // fields -----------------------------------------------------------------
+private:
+    /// RootNode to operate on.
+    RootNode& m_root_node;
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -52,6 +52,8 @@ void RenderManager::RenderThread::stop()
 
 void RenderManager::RenderThread::_run()
 {
+    size_t frame_counter = 0;
+
     while (1) {
         { // wait until the next frame is ready
             std::unique_lock<std::mutex> lock(m_mutex);
@@ -63,6 +65,7 @@ void RenderManager::RenderThread::_run()
                 return;
             }
         }
+        log_trace << "Rendering frame: " << frame_counter++;
 
         Window* window = m_windows.front();
         m_windows.pop_front();

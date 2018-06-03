@@ -12,6 +12,8 @@ namespace access { // forwards
 template<class>
 class _Scene;
 class _Scene_NodeHandle;
+template<class>
+class _RootNode;
 } // namespace access
 
 // ================================================================================================================== //
@@ -69,7 +71,7 @@ public:
         NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph.get()));
         std::shared_ptr<T> scene
             = std::make_shared<T>(FactoryToken(), graph, std::move(name), std::forward<Args>(args)...);
-        _finalize_root(scene->root());
+        scene->_finalize_root();
         access::_SceneGraph<Scene>::register_scene(*graph, scene);
         return scene;
     }
@@ -128,6 +130,10 @@ public:
     /// Removes all nodes (except the root node) from the Scene.
     void clear();
 
+protected:
+    /// Special access to this Scene's RootNode.
+    access::_RootNode<Scene> _root();  // TODO: instead of this, offer a _create_property method
+
     // event handling ---------------------------------------------------------
 private:
     /// Handles an untyped event.
@@ -173,8 +179,7 @@ private:
     NodePtr _node(const Path& path);
 
     /// Finalizes the RootNode of this Scene after creation.
-    /// @param root     RootNode to finalize.
-    static void _finalize_root(RootNode& root);
+    void _finalize_root();
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:

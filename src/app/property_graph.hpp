@@ -165,6 +165,7 @@ class PropertyBody {
     template<class>
     friend class TypedPropertyBody;
     friend class access::_PropertyBody<PropertyBatch>;
+    friend class access::_PropertyBody<PropertyHead>;
 
     // types -------------------------------------------------------------------------------------------------------- //
 private:
@@ -178,13 +179,15 @@ public:
 
     // methods ------------------------------------------------------------------------------------------------------ //
 protected:
-#ifndef NOTF_TEST
-    /// Default constructor.
-    PropertyBody() = default;
-#else
-    /// Default constructor.
-    PropertyBody() { ++PropertyGraph::Access<PropertyBody>::property_count(); }
+    /// Value constructor.
+    /// @param head     Head of this Property body.
+    PropertyBody(valid_ptr<PropertyHead*> head) : m_head(std::move(head))
+    {
+#ifdef NOTF_TEST
+        ++PropertyGraph::Access<PropertyBody>::property_count();
 #endif
+    }
+
 public:
     /// Destructor.
     virtual ~PropertyBody();
@@ -224,6 +227,9 @@ protected:
     /// Adds a new downstream property that is affected by this one through an expression.
     void _add_downstream(const valid_ptr<PropertyBody*> affected);
 
+    /// Called by the head of this Property when it is deleted.
+    void _remove_head();
+
     /// Mutex guarding all Property bodies.
     RecursiveMutex& _mutex() const { return PropertyGraph::Access<PropertyBody>::mutex(); }
 
@@ -251,14 +257,17 @@ private:
 
     /// Value constructor.
     /// @param value    Value held by the Property, is used to determine the property type.
-    TypedPropertyBody(T&& value) : PropertyBody(), m_value(std::forward<T>(value)) {}
+    TypedPropertyBody(valid_ptr<PropertyHead*> head, T&& value)
+        : PropertyBody(std::move(head)), m_value(std::forward<T>(value))
+    {}
 
 public:
     /// Factory function, making sure that all PropertyBodies are managed by a shared_ptr.
     /// @param value    Value held by the Property, is used to determine the property type.
-    static std::enable_if_t<PropertyGraph::is_property_type_v<T>, TypedPropertyBodyPtr<T>> create(T&& value)
+    static std::enable_if_t<PropertyGraph::is_property_type_v<T>, TypedPropertyBodyPtr<T>>
+    create(valid_ptr<PropertyHead*> head, T&& value)
     {
-        return NOTF_MAKE_SHARED_FROM_PRIVATE(TypedPropertyBody<T>, std::forward<T>(value));
+        return NOTF_MAKE_SHARED_FROM_PRIVATE(TypedPropertyBody<T>, std::move(head), std::forward<T>(value));
     }
 
     /// Checks if the Property is grounded or not (has an expression).
@@ -272,7 +281,7 @@ public:
     bool has_expression() const { return !is_grounded(); }
 
     /// The Property's value.
-    const T& value() const
+    const T& value() const // TODO: maybe Property.set / get instead of set_value, value, set_expression etc?
     {
         NOTF_MUTEX_GUARD(_mutex());
         return m_value;
@@ -483,6 +492,14 @@ class access::_PropertyBody<PropertyBatch> {
     }
 };
 
+template<>
+class access::_PropertyBody<PropertyHead> {
+    friend class notf::PropertyHead;
+
+    /// Called by the head of this Property when it is deleted.
+    static void remove_head(PropertyBody& property) { property._remove_head(); }
+};
+
 // ================================================================================================================== //
 
 class PropertyHead {
@@ -503,7 +520,7 @@ protected:
     /// Value Constructor.
     /// @param body     PropertyBoy associated with this head.
     template<class T>
-    explicit PropertyHead(T value) : m_body(TypedPropertyBody<T>::create(std::forward<T>(value)))
+    explicit PropertyHead(T value) : m_body(TypedPropertyBody<T>::create(this, std::forward<T>(value)))
     {}
 
 public:
