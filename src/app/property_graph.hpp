@@ -246,7 +246,7 @@ protected:
 };
 
 template<class T>
-class TypedPropertyBody final : public PropertyBody, public std::enable_shared_from_this<TypedPropertyBody<T>> {
+class TypedPropertyBody : public PropertyBody, public std::enable_shared_from_this<TypedPropertyBody<T>> {
 
     using Expression = PropertyGraph::Expression<T>;
     using std::enable_shared_from_this<TypedPropertyBody<T>>::shared_from_this;
@@ -397,7 +397,7 @@ private:
     /// Updates the Property by evaluating its expression.
     /// Then continues to update all downstream nodes as well.
     /// @param effects      [OUT] All properties affected by the change.
-    void _update(PropertyUpdateList& effects) override
+    void _update(PropertyUpdateList& effects) final override
     {
         NOTF_ASSERT(_mutex().is_locked_by_this_thread());
 
@@ -407,7 +407,7 @@ private:
     }
 
     /// Removes this Property as affected (downstream) of all of its dependencies (upstream).
-    void _ground() override
+    void _ground() final override
     {
         NOTF_ASSERT(_mutex().is_locked_by_this_thread());
 
@@ -418,7 +418,7 @@ private:
     /// Checks if a given update would succeed if executed or not.
     /// @param update           Untyped update to test (only PropertyExpressionUpdated can fail).
     /// @throws no_dag_error    If the update is an expression that would introduce a cyclic dependency.
-    void _validate_update(valid_ptr<PropertyUpdate*> update) override
+    void _validate_update(valid_ptr<PropertyUpdate*> update) final override
     {
         NOTF_ASSERT(_mutex().is_locked_by_this_thread());
 
@@ -432,7 +432,7 @@ private:
     /// Note that this method moves the value/expression out of the update.
     /// @param update       Update to apply.
     /// @param effects      [OUT] All properties affected by the change.
-    void _apply_update(valid_ptr<PropertyUpdate*> raw_update, PropertyUpdateList& effects) override
+    void _apply_update(valid_ptr<PropertyUpdate*> raw_update, PropertyUpdateList& effects) final override
     {
         NOTF_ASSERT(_mutex().is_locked_by_this_thread());
 

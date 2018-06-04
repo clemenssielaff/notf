@@ -99,11 +99,11 @@ SCENARIO("Application path", "[app], [path]")
     SECTION("paths can be iterated")
     {
         const Path path("/parent/child/target:property");
-        REQUIRE(path.size() == 3);
+        REQUIRE(path.size() == 4);
         REQUIRE(path[0] == "parent");
         REQUIRE(path[1] == "child");
         REQUIRE(path[2] == "target");
-        REQUIRE(path.property() == "property");
+        REQUIRE(path[3] == "property");
     }
 
     SECTION("relative paths can be resolved to equivalent absolute")

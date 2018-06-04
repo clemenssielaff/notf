@@ -299,7 +299,7 @@ NodePropertyPtr Node::_property(const Path& path)
     if (path.is_empty()) {
         notf_throw_format(Path::path_error, "Cannot query a Property with an empty path");
     }
-    if (path.is_node()) {
+    if (path.size() > 1 && path.is_node()) {
         notf_throw_format(Path::path_error, "Path \"{}\" does not refer to a Property of Node \"{}\"", path.to_string(),
                           name());
     }
@@ -324,7 +324,7 @@ void Node::_property(const Path& path, const uint index, NodePropertyPtr& result
 
     // if this is the last step on the path, try to find the property
     if (index + 1 == path.size()) {
-        auto it = m_properties.find(path.property());
+        auto it = m_properties.find(path[index]);
         if (it == m_properties.end()) {
             result.reset();
         }
@@ -346,7 +346,7 @@ NodePtr Node::_node(const Path& path)
     if (path.is_empty()) {
         notf_throw_format(Path::path_error, "Cannot query a Node with an empty path");
     }
-    if (path.is_property()) {
+    if (path.size() > 1 && path.is_property()) { // TODO: should one-component paths always be node AND property?
         notf_throw_format(Path::path_error, "Path \"{}\" does not refer to a descenant of Node \"{}\"",
                           path.to_string(), name());
     }

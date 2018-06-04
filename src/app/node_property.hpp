@@ -91,7 +91,7 @@ protected:
 // ================================================================================================================== //
 
 template<class T>
-class TypedNodeProperty final : public NodeProperty {
+class TypedNodeProperty : public NodeProperty {
 
     friend class access::_NodeProperty<Node>;
 
@@ -157,7 +157,7 @@ public:
     ~TypedNodeProperty() { _clear_frozen_value(); }
 
     /// Returns the Node associated with this PropertyHead.
-    virtual risky_ptr<Node*> node() override { return m_node; }
+    risky_ptr<Node*> node() final override { return m_node; }
 
     /// The node-unique name of this Property.
     const std::string& name() const { return m_name_it->first; }
@@ -250,15 +250,15 @@ private:
 
     /// Updates the value in response to a PropertyEvent.
     /// @param update   PropertyUpdate to apply.
-    void _apply_update(valid_ptr<PropertyUpdate*> update) override
+    void _apply_update(valid_ptr<PropertyUpdate*> update) final override
     {
         // restore the correct update type
         PropertyValueUpdate<T>* typed_update;
 #ifdef NOTF_DEBUG
-        typed_update = dynamic_cast<PropertyValueUpdate<T>*>(update.get());
+        typed_update = dynamic_cast<PropertyValueUpdate<T>*>(raw_pointer(update));
         NOTF_ASSERT(typed_update);
 #else
-        typed_update = static_cast<PropertyValueUpdate<T>*>(update);
+        typed_update = static_cast<PropertyValueUpdate<T>*>(raw_pointer(update));
 #endif
         _set_value(std::move(typed_update->value));
     }
@@ -298,7 +298,7 @@ private:
     }
 
     /// Deletes the frozen value copy.
-    void _clear_frozen_value() override
+    void _clear_frozen_value() final override
     {
         if (T* frozen_ptr = m_frozen_value.exchange(nullptr)) {
             delete frozen_ptr;
@@ -374,8 +374,11 @@ public:
     /// @param property     Property to handle.
     PropertyHandle(const TypedNodePropertyPtr<T>& property) : m_property(property) {}
 
+    /// @{
     /// Checks whether the PropertyHandle is valid or not.
     bool is_valid() const { return !m_property.expired(); }
+    explicit operator bool() const { return is_valid(); }
+    /// @}
 
     /// The node-unique name of this Property.
     /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.

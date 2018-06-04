@@ -56,11 +56,10 @@ Window::Window(const Args& args)
 
     // create the auxiliary objects
     m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window.get());
-    {
-        auto guard = m_graphics_context->make_current();
-        m_scene_graph = SceneGraph::Access<Window>::create(*this);
-        m_font_manager = FontManager::create(*m_graphics_context);
-    }
+
+    auto context_guard = m_graphics_context->make_current();
+    m_scene_graph = SceneGraph::Access<Window>::create(*this);
+    m_font_manager = FontManager::create(*m_graphics_context);
 
     // connect the window callbacks
     EventManager::Access<Window>().register_window(*this);

@@ -55,7 +55,7 @@ NodePropertyPtr Scene::_property(const Path& path)
     if (path.is_empty()) {
         notf_throw_format(Path::path_error, "Cannot query a Property from a Scene with an empty path");
     }
-    if (path.is_node()) {
+    if (path.size() > 1 && path.is_node()) {
         notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Property", path.to_string())
     }
     if (path.is_absolute()) {
@@ -67,10 +67,16 @@ NodePropertyPtr Scene::_property(const Path& path)
             notf_throw_format(Path::path_error, "Path \"{}\" does not refer to a Property in Scene \"{}\"",
                               path.to_string(), name());
         }
-        return Node::Access<Scene>::property(*m_root, path, 1);
     }
-    else { // path.is_relative
-        return Node::Access<Scene>::property(*m_root, path, 0);
+    {
+        NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph()));
+
+        if (path.is_absolute()) {
+            return Node::Access<Scene>::property(*m_root, path, 1);
+        }
+        else { // path.is_relative
+            return Node::Access<Scene>::property(*m_root, path, 0);
+        }
     }
 }
 
@@ -79,7 +85,7 @@ NodePtr Scene::_node(const Path& path)
     if (path.is_empty()) {
         notf_throw_format(Path::path_error, "Cannot query a Node from a Scene with an empty path");
     }
-    if (path.is_property()) {
+    if (path.size() > 1 && path.is_property()) {
         notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Node", path.to_string())
     }
     if (path.is_absolute()) {
@@ -91,10 +97,16 @@ NodePtr Scene::_node(const Path& path)
             notf_throw_format(Path::path_error, "Path \"{}\" does not refer to a Node in Scene \"{}\"",
                               path.to_string(), name());
         }
-        return Node::Access<Scene>::node(*m_root, path, 1);
     }
-    else { // path.is_relative
-        return Node::Access<Scene>::node(*m_root, path, 0);
+    {
+        NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph()));
+
+        if (path.is_absolute()) {
+            return Node::Access<Scene>::node(*m_root, path, 1);
+        }
+        else { // path.is_relative
+            return Node::Access<Scene>::node(*m_root, path, 0);
+        }
     }
 }
 
@@ -136,7 +148,7 @@ void Scene::_clear_delta()
     // Should that ever happen, something has gone seriously wrong.
     NOTF_ASSERT(made_progress);
 #else
-    m_deltas.clear();
+    m_frozen_children.clear();
 #endif
 }
 

@@ -78,7 +78,7 @@ public:
     std::string to_string() const;
 
     /// Number of components in the path.
-    size_t size() const { return m_components.size() - (m_is_property ? 1 : 0); }
+    size_t size() const { return m_components.size(); }
 
     /// Returns the nth component name of the path.
     /// @throws path_error  If the index does not identify a component of this path.
@@ -88,16 +88,6 @@ public:
             return m_components[index];
         }
         notf_throw_format(path_error, "Index {} is out of bounds for path \"{}\"", index, to_string());
-    }
-
-    /// Returns the name of the property identified by this path.
-    /// @throws path_error  If this path does not contain a property.
-    const std::string& property() const
-    {
-        if (m_is_property) {
-            return m_components.back();
-        }
-        notf_throw_format(path_error, "Path \"{}\" does not contain a property", to_string());
     }
 
     /// Lexical equality comparison of two Paths.

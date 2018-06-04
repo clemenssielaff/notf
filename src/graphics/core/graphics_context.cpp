@@ -40,7 +40,7 @@ GraphicsContext::Extensions::Extensions()
 {
     std::set<std::string> extensions;
     { // create a set of all available extensions
-        GLint extension_count;
+        GLint extension_count = 0;
         notf_check_gl(glGetIntegerv(GL_NUM_EXTENSIONS, &extension_count));
         for (GLint i = 0; i < extension_count; ++i) {
             //  log_trace << "Found OpenGL extension: " << glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i));

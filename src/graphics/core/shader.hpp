@@ -116,6 +116,9 @@ public:
     /// The name of this Shader.
     const std::string& name() const { return m_name; }
 
+    /// All uniforms of this shader.
+    const std::vector<Variable>& uniforms() const { return m_uniforms; }
+
     /// Updates the value of a uniform in the shader.
     /// @throws runtime_error   If the uniform cannot be found.
     /// @throws runtime_error   If the value type and the uniform type are not compatible.

@@ -2,7 +2,9 @@
 
 #include "app/application.hpp"
 #include "app/resource_manager.hpp"
+#include "app/scene.hpp"
 #include "app/window.hpp"
+#include "common/log.hpp"
 #include "common/system.hpp"
 #include "graphics/core/gl_errors.hpp"
 #include "graphics/core/graphics_context.hpp"
@@ -55,10 +57,24 @@ ProceduralRendererPtr ProceduralRenderer::create(Window& window, const std::stri
     return NOTF_MAKE_SHARED_FROM_PRIVATE(ProceduralRenderer, window.graphics_context(), shader_name);
 }
 
-void ProceduralRenderer::_render(valid_ptr<Scene*>) const
+void ProceduralRenderer::_render(valid_ptr<Scene*> scene) const
 {
-    const auto pipeline_guard = m_context.bind_pipeline(m_pipeline);
-    notf_check_gl(glDrawArrays(GL_TRIANGLES, 0, 3));
+    // match scene properties with shader uniforms
+    const FragmentShaderPtr& fragment_shader = m_pipeline->fragment_shader();
+    for (const auto& variable : fragment_shader->uniforms()) {
+        switch (variable.type) {
+        case GL_FLOAT:
+            if (PropertyHandle<float> float_property = scene->property<float>(variable.name)) {
+                fragment_shader->set_uniform(variable.name, float_property.value());
+            }
+            break;
+        }
+    }
+
+    {
+        const auto pipeline_guard = m_context.bind_pipeline(m_pipeline);
+        notf_check_gl(glDrawArrays(GL_TRIANGLES, 0, 3));
+    }
 }
 
 NOTF_CLOSE_NAMESPACE

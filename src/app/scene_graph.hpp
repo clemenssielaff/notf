@@ -334,6 +334,7 @@ class access::_SceneGraph<RenderManager> {
     /// @param graph        SceneGraph to operate on.
     /// @param thread_id    Id of the calling thread (for safety reasons).
     static void unfreeze(SceneGraph& graph, const std::thread::id thread_id) { graph._unfreeze(std::move(thread_id)); }
+    // TODO: freeze guard?
 };
 
 //-----------------------------------------------------------------------------

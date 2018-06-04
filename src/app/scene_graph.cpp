@@ -145,14 +145,18 @@ NodePropertyPtr SceneGraph::_property(const Path& path)
     if (path.is_empty()) {
         notf_throw_format(Path::path_error, "Cannot query a Property from a SceneGraph with an empty path");
     }
-    if (path.is_node()) {
+    if (path.size() > 1 && path.is_node()) {
         notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Property", path.to_string())
     }
     const std::string& scene_name = path[0];
-    auto scene_it = m_scenes.find(scene_name);
-    if (scene_it != m_scenes.end()) {
-        if (ScenePtr scene = scene_it->second.lock()) {
-            return Scene::Access<SceneGraph>::property(*scene, path);
+    {
+        NOTF_MUTEX_GUARD(m_hierarchy_mutex);
+
+        auto scene_it = m_scenes.find(scene_name);
+        if (scene_it != m_scenes.end()) {
+            if (ScenePtr scene = scene_it->second.lock()) {
+                return Scene::Access<SceneGraph>::property(*scene, path);
+            }
         }
     }
     notf_throw_format(Path::path_error, "Path \"{}\" refers to unknown Scene \"{}\" in SceneGraph", path.to_string(),
@@ -164,14 +168,18 @@ NodePtr SceneGraph::_node(const Path& path)
     if (path.is_empty()) {
         notf_throw_format(Path::path_error, "Cannot query a Node  from a SceneGraph with an empty path");
     }
-    if (path.is_property()) {
+    if (path.size() > 1 && path.is_property()) {
         notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Node", path.to_string())
     }
     const std::string& scene_name = path[0];
-    auto scene_it = m_scenes.find(scene_name);
-    if (scene_it != m_scenes.end()) {
-        if (ScenePtr scene = scene_it->second.lock()) {
-            return Scene::Access<SceneGraph>::node(*scene, path);
+    {
+        NOTF_MUTEX_GUARD(m_hierarchy_mutex);
+
+        auto scene_it = m_scenes.find(scene_name);
+        if (scene_it != m_scenes.end()) {
+            if (ScenePtr scene = scene_it->second.lock()) {
+                return Scene::Access<SceneGraph>::node(*scene, path);
+            }
         }
     }
     notf_throw_format(Path::path_error, "Path \"{}\" refers to unknown Scene \"{}\" in SceneGraph", path.to_string(),
@@ -198,6 +206,9 @@ bool SceneGraph::_freeze(const std::thread::id thread_id)
     {
         NOTF_MUTEX_GUARD(m_hierarchy_mutex);
         m_frozen_state = m_current_state;
+
+        // remove all dirty nodes, any further changes from this point onward will trigger a new redraw
+        m_dirty_nodes.clear();
     }
 
     return true;

@@ -52,7 +52,7 @@ void RenderManager::RenderThread::stop()
 
 void RenderManager::RenderThread::_run()
 {
-    size_t frame_counter = 0;
+//    size_t frame_counter = 0;
 
     while (1) {
         { // wait until the next frame is ready
@@ -65,7 +65,7 @@ void RenderManager::RenderThread::_run()
                 return;
             }
         }
-        log_trace << "Rendering frame: " << frame_counter++;
+//        log_trace << "Rendering frame: " << frame_counter++;
 
         Window* window = m_windows.front();
         m_windows.pop_front();
@@ -75,6 +75,7 @@ void RenderManager::RenderThread::_run()
             GraphicsContext::CurrentGuard current_guard = context.make_current();
 
             SceneGraphPtr& scene_graph = window->scene_graph();
+            SceneGraph::Access<RenderManager>::freeze(*scene_graph, std::this_thread::get_id());
 
             //        // TODO: clean all the render targets here
             //        // in order to sort them, use typeid(*ptr).hash_code()
@@ -95,6 +96,7 @@ void RenderManager::RenderThread::_run()
             }
 
             context.finish_frame();
+            SceneGraph::Access<RenderManager>::unfreeze(*scene_graph, std::this_thread::get_id());
         }
     }
 }

@@ -11,7 +11,7 @@ precision mediump float;
 in vec2 uv;
 
 //uniform vec2 u_resolution;
-//uniform float u_time;
+uniform float time;
 
 layout(location=0) out vec4 f_color;
 
@@ -58,19 +58,18 @@ float fbm ( in vec2 _st) {
 }
 
 void main() {
-    float u_time = 2.3f;
     f_color = vec4(0., 1., 0. ,1.);
     
-    // uv += uv * abs(sin(u_time*0.1)*3.0);
+    //vec2 my_uv = uv * abs(sin(time*0.1)*3.0);
     vec3 color = vec3(0.0);
 
     vec2 q = vec2(0.);
-    q.x = fbm( uv + 0.00*u_time);
+    q.x = fbm( uv + 0.00*time);
     q.y = fbm( uv + vec2(1.0));
 
     vec2 r = vec2(0.);
-    r.x = fbm( uv + 1.0*q + vec2(1.7,9.2)+ 0.15*u_time );
-    r.y = fbm( uv + 1.0*q + vec2(8.3,2.8)+ 0.126*u_time);
+    r.x = fbm( uv + 1.0*q + vec2(1.7,9.2)+ 0.15*time );
+    r.y = fbm( uv + 1.0*q + vec2(8.3,2.8)+ 0.126*time);
 
     float f = fbm(uv+r);
 

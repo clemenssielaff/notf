@@ -290,6 +290,8 @@ const Shader::Defines Shader::s_no_defines = {};
 Shader::Shader(GraphicsContext& context, const GLuint id, Stage::Flags stages, std::string name)
     : m_graphics_context(context), m_id(id), m_stages(stages), m_name(std::move(name)), m_uniforms()
 {
+    auto context_guard = m_graphics_context.make_current();
+
     // discover uniforms
     GLint uniform_count = 0;
     notf_check_gl(glGetProgramiv(m_id.value(), GL_ACTIVE_UNIFORMS, &uniform_count));

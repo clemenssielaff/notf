@@ -36,6 +36,9 @@ class PropertyHead;
 class PropertyGraph;
 class PropertyBatch;
 
+template<class T>
+class PropertyHandle;
+
 NOTF_DEFINE_SHARED_POINTERS(class, PropertyBody);
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, TypedPropertyBody);
 NOTF_DEFINE_UNIQUE_POINTERS(struct, PropertyUpdate);

@@ -26,8 +26,8 @@ public:
 
 private:
     /// Subclass-defined implementation of the Renderer's rendering.
-    /// @param scene    IGNORED
-    virtual void _render(valid_ptr<Scene*>) const override;
+    /// @param scene    Scene providing Properties matching the Shader's uniforms.
+    virtual void _render(valid_ptr<Scene*> scene) const override;
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:

@@ -20,11 +20,11 @@ NOTF_USING_NAMESPACE
 
 struct CloudScene : public Scene {
     CloudScene(const FactoryToken& token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
-        : Scene(token, graph, std::move(name)), p_framecount(_root().create_property<size_t>("framecount", 0))
+        : Scene(token, graph, std::move(name)), p_time(_root().create_property<float>("time", 0))
     {
         m_timer = IntervalTimer::create([&] {
-            const size_t last_count = p_framecount.value();
-            p_framecount.set_value(last_count + 1);
+            const float last_time = p_time.value();
+            p_time.set_value(last_time + 1.f / 60.0f); // TODO: get global time
         });
 
         using namespace notf::literals;
@@ -33,7 +33,7 @@ struct CloudScene : public Scene {
     void _resize_view(Size2i) override {}
 
 private: // fields
-    PropertyHandle<size_t> p_framecount;
+    PropertyHandle<float> p_time;
     IntervalTimerPtr m_timer;
 };
 
