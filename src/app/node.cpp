@@ -40,10 +40,10 @@ std::string make_unique_name(const std::set<std::string_view>& existing, const s
     // create a unique name by appending trailing numbers until one is unique
     std::string result;
     result.reserve(proposed_name.size() + 1);
-    result = proposed_name.to_string();
+    result = std::string(proposed_name);
     size_t highest_postfix = 1;
     while (existing.count(result)) {
-        result = proposed_name.to_string();
+        result = std::string(proposed_name);
         result.append(std::to_string(highest_postfix++));
     }
     return result;

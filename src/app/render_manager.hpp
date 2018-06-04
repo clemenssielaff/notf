@@ -51,7 +51,7 @@ private:
         Mutex m_mutex;
 
         /// Condition variable to wait for.
-        std::condition_variable m_condition;
+        ConditionVariable m_condition;
 
         /// Is true as long at the thread is alive.
         bool m_is_running = false;

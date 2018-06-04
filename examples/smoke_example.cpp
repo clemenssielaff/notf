@@ -1,7 +1,5 @@
 #include "smoke_example.hpp"
 
-#include <chrono>
-#include <condition_variable>
 #include <iostream>
 #include <thread>
 
@@ -24,11 +22,11 @@ struct CloudScene : public Scene {
     {
         m_timer = IntervalTimer::create([&] {
             const float last_time = p_time.value();
-            p_time.set_value(last_time + 1.f / 60.0f); // TODO: get global time
+            p_time.set_value(last_time + 1.f / 20.0f); // TODO: get global time
         });
 
         using namespace notf::literals;
-        m_timer->start(60_fps);
+        m_timer->start(20_fps);
     }
     void _resize_view(Size2i) override {}
 

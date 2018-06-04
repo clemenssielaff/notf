@@ -282,9 +282,9 @@ struct risky_ptr {
     constexpr risky_ptr(risky_ptr<U>&& other) : risky_ptr(other.m_ptr)
     {}
 
-    risky_ptr(risky_ptr&& other) : m_ptr(other.m_ptr) {}
-    risky_ptr(const risky_ptr& other) : m_ptr(other.m_ptr) {}
-    risky_ptr& operator=(const risky_ptr& other) { m_ptr = other.m_ptr; }
+    risky_ptr(risky_ptr&& other) = default;
+    risky_ptr(const risky_ptr& other) = default;
+    risky_ptr& operator=(const risky_ptr& other) = default;
 
     /// @{
     /// Access to the wrapped pointer.

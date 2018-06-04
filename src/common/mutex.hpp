@@ -1,5 +1,6 @@
 #pragma once
 
+#include <condition_variable>
 #include <mutex>
 #include <thread>
 
@@ -78,11 +79,15 @@ private:
     size_t m_counter = 0;
 };
 
+/// In order to work with notf::Mutex in debug mode, we have to use condition_variable_any for condition variables.
+using ConditionVariable = std::condition_variable_any;
+
 #else // !NOTF_DEBUG
 
 /// In release mode, the notf mutexes are just std.
 using Mutex = std::mutex;
 using RecursiveMutex = std::recursive_mutex;
+using ConditionVariable = std::condition_variable;
 
 #endif // NOTF_DEBUG
 

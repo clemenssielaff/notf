@@ -46,7 +46,7 @@ static GlobalState g_state;
 void EventManager::WindowHandler::start()
 {
     {
-        std::lock_guard<Mutex> lock(m_mutex);
+        NOTF_MUTEX_GUARD(m_mutex);
         if (m_is_running) {
             return;
         }
@@ -59,7 +59,7 @@ void EventManager::WindowHandler::start()
 void EventManager::WindowHandler::enqueue_event(EventPtr&& event)
 {
     {
-        std::lock_guard<Mutex> lock(m_mutex);
+        NOTF_MUTEX_GUARD(m_mutex);
         m_events.emplace_back(std::move(event));
     }
     m_condition.notify_one();
@@ -68,7 +68,7 @@ void EventManager::WindowHandler::enqueue_event(EventPtr&& event)
 void EventManager::WindowHandler::stop()
 {
     {
-        std::lock_guard<Mutex> lock(m_mutex);
+        NOTF_MUTEX_GUARD(m_mutex);
         if (!m_is_running) {
             return;
         }
@@ -83,7 +83,7 @@ void EventManager::WindowHandler::_run()
 {
     while (1) {
         { // wait until the next event is ready
-            std::unique_lock<std::mutex> lock(m_mutex);
+            std::unique_lock<Mutex> lock(m_mutex);
             if (m_events.empty() && m_is_running) {
                 m_condition.wait(lock, [&] { return !m_events.empty() || !m_is_running; });
             }

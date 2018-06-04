@@ -9,7 +9,7 @@ TimerManager::TimerManager() { m_thread = ScopedThread(std::thread(&TimerManager
 TimerManager::~TimerManager()
 {
     {
-        std::lock_guard<Mutex> lock(m_mutex);
+        NOTF_MUTEX_GUARD(m_mutex);
         m_is_running = false;
     }
     m_condition.notify_one();
@@ -21,11 +21,7 @@ void TimerManager::_run()
     TimerPtr next_timer = Timer::create([] {});
     while (1) {
         {
-#ifdef NOTF_DEBUG
             std::unique_lock<Mutex> lock(m_mutex);
-#else
-            std::unique_lock<std::mutex> lock(m_mutex);
-#endif
 
             // re-schedule the last timer, if it is repeating AND if this is not the last reference to the timer
             // otherwise we could end up with timer that could never be stopped
@@ -127,7 +123,7 @@ void Timer::start(const time_point_t timeout)
 {
     TimerManager& manager = Application::instance().timer_manager();
     {
-        std::lock_guard<Mutex> lock(manager.m_mutex);
+        NOTF_MUTEX_GUARD(manager.m_mutex);
 
         // unschedule if active
         if (_is_active()) {
@@ -154,7 +150,7 @@ void Timer::stop()
 {
     TimerManager& manager = Application::instance().timer_manager();
     {
-        std::lock_guard<Mutex> lock(manager.m_mutex);
+        NOTF_MUTEX_GUARD(manager.m_mutex);
 
         if (!_is_active()) {
             return;
@@ -178,7 +174,7 @@ void IntervalTimer::start(const duration_t interval, const size_t repetitions)
 
     TimerManager& manager = Application::instance().timer_manager();
     {
-        std::lock_guard<Mutex> lock(manager.m_mutex);
+        NOTF_MUTEX_GUARD(manager.m_mutex);
 
         // unschedule if active
         if (_is_active()) {
@@ -216,7 +212,7 @@ void VariableTimer::start(IntervalFunction function, const size_t repetitions)
 
     TimerManager& manager = Application::instance().timer_manager();
     {
-        std::lock_guard<Mutex> lock(manager.m_mutex);
+        NOTF_MUTEX_GUARD(manager.m_mutex);
 
         // unschedule if active
         if (_is_active()) {

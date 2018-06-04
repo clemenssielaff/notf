@@ -68,7 +68,7 @@ private:
         Mutex m_mutex;
 
         /// Condition variable to wait for.
-        std::condition_variable m_condition;
+        ConditionVariable m_condition;
 
         /// Window to forward the events into.
         Window* const m_window;
@@ -221,7 +221,7 @@ private:
     Mutex m_mutex;
 
     /// When suspended, all events are stored but not handled until the manager resumes handling.
-    bool m_is_suspended;
+    bool m_is_suspended = false;
 };
 
 // ================================================================================================================== //

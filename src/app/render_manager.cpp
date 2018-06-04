@@ -12,7 +12,7 @@ NOTF_OPEN_NAMESPACE
 void RenderManager::RenderThread::start()
 {
     {
-        std::lock_guard<Mutex> lock(m_mutex);
+        NOTF_MUTEX_GUARD(m_mutex);
         if (m_is_running) {
             return;
         }
@@ -25,7 +25,7 @@ void RenderManager::RenderThread::start()
 void RenderManager::RenderThread::request_redraw(Window* window)
 {
     {
-        std::lock_guard<Mutex> lock(m_mutex);
+        NOTF_MUTEX_GUARD(m_mutex);
         for (auto& existing : m_windows) {
             if (window == existing) {
                 return;
@@ -39,7 +39,7 @@ void RenderManager::RenderThread::request_redraw(Window* window)
 void RenderManager::RenderThread::stop()
 {
     {
-        std::lock_guard<Mutex> lock(m_mutex);
+        NOTF_MUTEX_GUARD(m_mutex);
         if (!m_is_running) {
             return;
         }
@@ -56,7 +56,7 @@ void RenderManager::RenderThread::_run()
 
     while (1) {
         { // wait until the next frame is ready
-            std::unique_lock<std::mutex> lock(m_mutex);
+            std::unique_lock<Mutex> lock(m_mutex);
             if (m_windows.empty() && m_is_running) {
                 m_condition.wait(lock, [&] { return !m_windows.empty() || !m_is_running; });
             }
