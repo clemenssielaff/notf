@@ -115,11 +115,11 @@ void TimerManager::_unschedule(const valid_ptr<Timer*> timer)
     }
 }
 
-// ================================================================================================================== //
+// ================================================================================================================= //
 
 Timer::~Timer() = default;
 
-void Timer::start(const time_point_t timeout)
+void Timer::start(const timepoint_t timeout)
 {
     TimerManager& manager = Application::instance().timer_manager();
     {
@@ -135,7 +135,7 @@ void Timer::start(const time_point_t timeout)
 
         // fire right away if the timeout is already in the past
         if (timeout <= TimerManager::_now()) {
-            m_next_timeout = time_point_t();
+            m_next_timeout = timepoint_t();
             return m_callback();
         }
 
@@ -162,7 +162,7 @@ void Timer::stop()
     manager.m_condition.notify_one();
 }
 
-// ================================================================================================================== //
+// ================================================================================================================= //
 
 IntervalTimer::~IntervalTimer() = default;
 
@@ -184,7 +184,7 @@ void IntervalTimer::start(const duration_t interval, const size_t repetitions)
         // fire right away if the timeout is already in the past
         m_interval = interval;
         if (interval == duration_t(0)) {
-            m_next_timeout = time_point_t();
+            m_next_timeout = timepoint_t();
             m_times_left = (repetitions == _infinity()) ? 1 : repetitions;
             for (; m_times_left != 0; --m_times_left) {
                 m_callback();
@@ -200,7 +200,7 @@ void IntervalTimer::start(const duration_t interval, const size_t repetitions)
     manager.m_condition.notify_one();
 }
 
-// ================================================================================================================== //
+// ================================================================================================================= //
 
 VariableTimer::~VariableTimer() = default;
 

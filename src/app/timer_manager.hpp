@@ -45,7 +45,7 @@ private:
     void _unschedule(const valid_ptr<Timer*> timer);
 
     /// Current time point.
-    static time_point_t _now() { return std::chrono::time_point_cast<duration_t>(clock_t::now()); }
+    static timepoint_t _now() { return std::chrono::time_point_cast<duration_t>(clock_t::now()); }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
@@ -113,7 +113,7 @@ public:
     /// If the time point is not in the future, the Callback is called immediately on this thread.
     /// @param timeout      Point in time to run the callback.
     /// @param callback     Callback function.
-    static void one_shot(const time_point_t timeout, Callback callback)
+    static void one_shot(const timepoint_t timeout, Callback callback)
     {
         if (timeout <= TimerManager::_now()) {
             return callback();
@@ -125,7 +125,7 @@ public:
     /// If the Timer is already running, it is restarted with the given value.
     /// If the time point is not in the future, the Callback is called immediately on this thread.
     /// @param timeout      Point in time to call the Callback.
-    void start(const time_point_t timeout);
+    void start(const timepoint_t timeout);
 
     /// Stops the Timer, if it is active.
     void stop();
@@ -135,7 +135,7 @@ protected:
     virtual duration_t _interval() const { return duration_t(0); }
 
     /// Tests whether the Timer is currently active or not.
-    bool _is_active() const { return m_next_timeout != time_point_t(); }
+    bool _is_active() const { return m_next_timeout != timepoint_t(); }
 
     /// Tests whether this Timer repeats infinitely.
     bool _is_infinite() const { return m_times_left == _infinity(); }
@@ -149,7 +149,7 @@ protected:
     Callback m_callback;
 
     /// Time when the timer fires next.
-    time_point_t m_next_timeout = time_point_t();
+    timepoint_t m_next_timeout = timepoint_t();
 
     /// How often the Timer will fire, if it is continuous.
     /// A value of zero is used for infinite
