@@ -238,7 +238,7 @@ endif()
 
 if(NOTF_BUILD_TESTS)
 
-    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-DNOTF_TEST")
+    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-DNOTF_TEST -fprofile-arcs -ftest-coverage")
 
     include_directories(
         /home/clemens/code/thirdparty/glm-0.9.8.5/include/

@@ -26,6 +26,9 @@ class _EventManager;
 class EventManager {
 
     friend class access::_EventManager<Window>;
+#ifdef NOTF_TEST
+    friend class access::_EventManager<test::Harness>;
+#endif
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:

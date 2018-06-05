@@ -413,7 +413,7 @@ NodeContainer& Node::_write_children()
     }
 
     // the render thread should never modify the hierarchy
-    NOTF_ASSERT(!scene_graph->is_frozen_by(std::this_thread::get_id()));
+    NOTF_ASSERT(!scene_graph.is_frozen_by(std::this_thread::get_id()));
 
     // if there is no delta yet, create a new one
     if (!Scene::Access<Node>::get_delta(m_scene, this)) {

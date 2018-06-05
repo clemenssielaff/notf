@@ -8,13 +8,13 @@ NOTF_OPEN_NAMESPACE
 /// The test::Harness accessors subvert about any safety guards in place and are only to be used for testing under
 /// controlled circumstances (and only from a single thread)!
 template<>
-class EventManager::Access<test::Harness> {
+class access::_EventManager<test::Harness> {
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
     /// @param manager    EventManager to access.
-    Access(EventManager& manager) : m_manager(manager) {}
+    _EventManager(EventManager& manager) : m_manager(manager) {}
 
     /// Returns the number of items in the EventManager's backlog.
     size_t backlog_size() const { return m_manager.m_backlog.size(); }

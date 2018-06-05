@@ -256,7 +256,7 @@ protected:
     /// Recursive implementation of `count_descendants`.
     void _count_descendants_impl(size_t& result) const
     {
-        NOTF_ASSERT(SceneGraph::Access<Node>::mutex(*graph()).is_locked_by_this_thread());
+        NOTF_ASSERT(SceneGraph::Access<Node>::mutex(graph()).is_locked_by_this_thread());
         result += _read_children().size();
         for (const auto& child : _read_children()) {
             child->_count_descendants_impl(result);
