@@ -11,7 +11,6 @@ NOTF_OPEN_NAMESPACE
 namespace access { // forwards
 template<class>
 class _Scene;
-class _Scene_NodeHandle;
 template<class>
 class _RootNode;
 } // namespace access
@@ -19,9 +18,9 @@ class _RootNode;
 // ================================================================================================================== //
 
 class Scene {
+
     friend class access::_Scene<SceneGraph>;
     friend class access::_Scene<Node>;
-    friend class access::_Scene_NodeHandle;
 #ifdef NOTF_TEST
     friend class access::_Scene<test::Harness>;
 #endif
@@ -31,13 +30,9 @@ public:
     /// Access types.
     template<class T>
     using Access = access::_Scene<T>;
-    using NodeHandleAccess = access::_Scene_NodeHandle;
 
     /// Exception thrown when the name of a Scene is not unique within its SceneGraph.
     NOTF_EXCEPTION_TYPE(scene_name_error);
-
-    /// Exception thrown when the SceneGraph has gone out of scope before a Scene tries to access it.
-    NOTF_EXCEPTION_TYPE(no_graph_error);
 
     /// Thrown when a node did not have the expected position in the hierarchy.
     NOTF_EXCEPTION_TYPE(hierarchy_error);
@@ -79,28 +74,14 @@ public:
     /// Destructor.
     virtual ~Scene();
 
-    /// @{
     /// The SceneGraph owning this Scene.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
-    valid_ptr<SceneGraphPtr> graph()
-    {
-        SceneGraphPtr scene_graph = m_graph.lock();
-        if (NOTF_UNLIKELY(!scene_graph)) {
-            notf_throw(no_graph_error, "SceneGraph has been deleted");
-        }
-        return scene_graph;
-    }
-    valid_ptr<SceneGraphConstPtr> graph() const { return const_cast<Scene*>(this)->graph(); }
-    /// @}
+    SceneGraph& graph() const { return *m_graph; }
 
     /// Graph-unique name of the Scene.
     const std::string& name() const { return m_name->first; }
 
-    /// @{
     /// The unique root node of this Scene.
-    RootNode& root() { return *m_root; }
-    const RootNode& root() const { return *m_root; }
-    /// @}
+    RootNode& root() const { return *m_root; }
 
     /// Searches for and returns a Property of a Node or the Scene.
     /// @param path     Path uniquely identifying a Property.
@@ -132,7 +113,7 @@ public:
 
 protected:
     /// Special access to this Scene's RootNode.
-    access::_RootNode<Scene> _root();  // TODO: instead of this, offer a _create_property method
+    access::_RootNode<Scene> _root(); // TODO: instead of this, offer a _create_property method
 
     // event handling ---------------------------------------------------------
 private:
@@ -158,12 +139,10 @@ private:
 private:
     /// Finds and returns the frozen child container for a given node, if one exists.
     /// @param node             Frozen Node.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     risky_ptr<NodeContainer*> _get_frozen_children(valid_ptr<const Node*> node);
 
     /// Creates a frozen child container for the given node.
     /// @param node             Node to freeze.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void _create_frozen_children(valid_ptr<const Node*> node);
 
     /// Private and untyped implementation of `property` assuming sanitized inputs.
@@ -184,7 +163,7 @@ private:
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// The SceneGraph owning this Scene.
-    SceneGraphWeakPtr m_graph;
+    SceneGraphPtr m_graph;
 
     /// Graph-unique, immutable name of the Scene.
     const SceneGraph::SceneMap::const_iterator m_name;
@@ -241,7 +220,6 @@ class access::_Scene<Node> {
     /// Finds a delta for the given child container and returns it, if it exists.
     /// @param scene            Scene to operate on.
     /// @param node             Node whose delta to return.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     static risky_ptr<NodeContainer*> get_delta(Scene& scene, valid_ptr<const Node*> node)
     {
         return scene._get_frozen_children(node);
@@ -250,7 +228,6 @@ class access::_Scene<Node> {
     /// Creates a new delta for the given child container.
     /// @param scene            Scene to operate on.
     /// @param node             Node whose delta to create a delta for.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     static void create_delta(Scene& scene, valid_ptr<const Node*> node) { scene._create_frozen_children(node); }
 
     /// Registers a Node as being "tweaked".

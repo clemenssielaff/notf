@@ -61,21 +61,14 @@ public:
     /// Destructor.
     virtual ~Node();
 
-    /// @{
     /// The Scene containing this node.
-    Scene& scene() { return m_scene; }
-    const Scene& scene() const { return m_scene; }
-    /// @}
+    Scene& scene() const { return m_scene; }
 
     /// The SceneGraph containing this node.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
-    valid_ptr<SceneGraphPtr> graph() const { return m_scene.graph(); }
+    SceneGraph& graph() const { return m_scene.graph(); }
 
-    /// @{
     /// The parent of this node.
-    NodeHandle<Node> parent() { return NodeHandle<Node>(raw_pointer(m_parent)); }
-    const NodeHandle<Node> parent() const { return NodeHandle<Node>(raw_pointer(m_parent)); }
-    /// @}
+    NodeHandle<Node> parent() const { return NodeHandle<Node>(raw_pointer(m_parent)); }
 
     /// The sibling-unique name of this node.
     const std::string& name() const { return m_name->value(); }
@@ -88,8 +81,7 @@ public:
     /// Registers this Node as being dirty.
     /// A ScenGraph containing at least one dirty Node causes the Window to be redrawn at the next opportunity.
     /// Is virtual, so subclasses may decide to ignore this method, for example if the node is invisible.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
-    virtual void redraw() { SceneGraph::Access<Node>::register_dirty(*graph(), this); }
+    virtual void redraw() { SceneGraph::Access<Node>::register_dirty(graph(), this); }
 
     // properties -------------------------------------------------------------
 
@@ -127,7 +119,7 @@ public:
     /// @param name     Name of the requested Node.
     bool has_child(const std::string& name)
     {
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
         return _read_children().contains(name);
     }
 
@@ -139,7 +131,7 @@ public:
     template<class T>
     NodeHandle<T> child(const std::string& name)
     {
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
         return NodeHandle<T>(_read_children().get(name));
     }
 
@@ -157,14 +149,14 @@ public:
     /// The number of direct children of this Node.
     size_t count_children() const
     {
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
         return _read_children().size();
     }
 
     /// The number of all (direct and indirect) descendants of this Node.
     size_t count_descendants() const
     {
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
         size_t result = 0;
         _count_descendants_impl(result);
         return result;
@@ -172,24 +164,21 @@ public:
 
     /// Tests, if this Node is a descendant of the given ancestor.
     /// @param ancestor         Potential ancestor to verify.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     bool has_ancestor(const valid_ptr<const Node*> ancestor) const;
 
     /// Finds and returns the first common ancestor of two Nodes.
     /// The root node is always a common ancestor, iff the two nodes are in the same scene.
     /// @param other            Other Node to find the common ancestor for.
     /// @throws hierarchy_error If the two nodes are not in the same scene.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     NodeHandle<Node> common_ancestor(valid_ptr<Node*> other);
 
     /// Returns the first ancestor of this Node that has a specific type (can be empty if none is found).
     /// @returns    Typed handle of the first ancestor with the requested type, can be empty if none was found.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     template<class T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
     NodeHandle<T> first_ancestor()
     {
         // lock the SceneGraph hierarchy
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*m_scene.graph()));
+        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(m_scene.graph()));
 
         valid_ptr<const Node*> next = m_parent;
         while (next != next->m_parent) {
@@ -206,43 +195,35 @@ public:
     // z-order ----------------------------------------------------------------
 
     /// Checks if this Node is in front of all of its siblings.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     bool is_in_front() const;
 
     /// Checks if this Node is behind all of its siblings.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     bool is_in_back() const;
 
     /// Returns true if this node is stacked anywhere in front of the given sibling.
     /// @param sibling  Sibling node to test against.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     bool is_in_front_of(const valid_ptr<Node*> sibling) const;
 
     /// Returns true if this node is stacked anywhere behind the given sibling.
     /// @param sibling  Sibling node to test against.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     bool is_behind(const valid_ptr<Node*> sibling) const;
 
     /// Moves this Node in front of all of its siblings.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void stack_front();
 
     /// Moves this Node behind all of its siblings.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void stack_back();
 
     /// Moves this Node before a given sibling.
     /// @param sibling  Sibling to stack before.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void stack_before(const valid_ptr<Node*> sibling);
 
     /// Moves this Node behind a given sibling.
     /// @param sibling  Sibling to stack behind.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void stack_behind(const valid_ptr<Node*> sibling);
 
 protected:
@@ -286,20 +267,17 @@ protected:
     /// Never creates a delta.
     /// Note that you will need to hold the SceneGraph hierarchy mutex while calling this method, as well as for the
     /// entire lifetime of the returned reference!
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     const NodeContainer& _read_children() const;
 
     /// All children of this node, orded from back to front.
     /// Will create a new delta if the scene is frozen.
     /// Note that you will need to hold the SceneGraph hierarchy mutex while calling this method, as well as for the
     /// entire lifetime of the returned reference!
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     NodeContainer& _write_children();
 
     /// Creates and adds a new child to this node.
     /// @param args Arguments that are forwarded to the constructor of the child.
     ///             Note that all arguments for the Node base class are supplied automatically by this method.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     template<class T, class... Args, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
     NodeHandle<T> _add_child(Args&&... args)
     {
@@ -309,7 +287,7 @@ protected:
         auto handle = NodeHandle<T>(child);
 
         { // store the node as a child
-            NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+            NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
             _write_children().add(std::move(child));
         }
 
@@ -326,14 +304,13 @@ protected:
         NOTF_ASSERT(node);
 
         { // remove the node from the child container
-            NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+            NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
             NodeContainer& children = _write_children();
             children.erase(node);
         }
     }
 
     /// Removes all children of this node.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void _clear_children();
 
     /// Constructs a new Property on this Node.
@@ -345,8 +322,6 @@ protected:
     ///                 If you call this method from anywhere but the constructor.
     /// @throws Path::not_unique_error
     ///                 If there already exists a Property of the same name on this Node.
-    /// @throws no_graph_error
-    ///                 If the SceneGraph of the node has been deleted.
     /// @throws NodeProperty::initial_value_error
     ///                 If the value of the Property could not be validated.
     template<class T>

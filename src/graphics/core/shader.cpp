@@ -439,7 +439,7 @@ GLuint Shader::_build(const std::string& name, const Args& args)
 void Shader::_register_with_context(const ShaderPtr& shader)
 {
     assert(shader && shader->is_valid());
-    GraphicsContext::Access<Shader>(shader->m_graphics_context).register_new(shader);
+    GraphicsContext::Access<Shader>::register_new(shader->m_graphics_context, shader);
 }
 
 const Shader::Variable& Shader::_uniform(const std::string& name) const

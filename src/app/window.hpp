@@ -6,11 +6,10 @@
 
 NOTF_OPEN_NAMESPACE
 
-// ================================================================================================================== //
-
-/// Exception thrown when the OpenGL context of a Window could not be initialized.
-/// The error string will contain more detailed information about the error.
-NOTF_EXCEPTION_TYPE(window_initialization_error);
+namespace access { // forwards
+template<class>
+class _Window;
+} // namespace access
 
 // ================================================================================================================== //
 
@@ -26,9 +25,14 @@ void window_deleter(GLFWwindow* glfw_window);
 /// The Window is a OS window containing an OpenGL context.
 class Window {
 
+    friend class access::_Window<Application>;
+    friend class access::_Window<EventManager>;
+
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    NOTF_ALLOW_ACCESS_TYPES(Application, EventManager);
+    /// Access types.
+    template<class T>
+    using Access = access::_Window<T>;
 
     /// Whether the window is minimzed, windowed or maxmized.
     enum class State {
@@ -40,20 +44,27 @@ public:
     /// Helper struct to create a Window instance.
     using Args = detail::WindowArguments;
 
+    /// Exception thrown when the OpenGL context of a Window could not be initialized.
+    /// The error string will contain more detailed information about the error.
+    NOTF_EXCEPTION_TYPE(initialization_error);
+
+    /// Exception thrown when the SceneGraph tries to access its Window after it has been detached.
+    NOTF_EXCEPTION_TYPE(deleted_error);
+
     // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Constructor.
     /// @param args                                 Initialization arguments.
-    /// @throws window_initialization_error         If the OpenGL context creation for this Window failed
-    /// @throws application_initialization_error    When you try to instantiate a Window without an Application.
+    /// @throws initialization_error                If the OpenGL context creation for this Window failed
+    /// @throws Application::initialization_error   When you try to instantiate a Window without an Application.
     Window(const Args& args);
 
     /// Factory.
     /// @param args     Initialization arguments.
-    /// @throws window_initialization_error         If the OpenGL context creation for this Window failed
-    /// @throws application_initialization_error    When you try to instantiate a Window without an Application.
+    /// @throws initialization_error                If the OpenGL context creation for this Window failed
+    /// @throws Application::initialization_error   When you try to instantiate a Window without an Application.
     static WindowPtr _create(const Args& args);
 
 public:
@@ -147,33 +158,25 @@ private:
 // ================================================================================================================== //
 
 template<>
-class Window::Access<Application> {
-    friend class Application;
+class access::_Window<Application> {
+    friend class notf::Application;
 
     /// Factory.
     /// @param args     Initialization arguments.
-    /// @throws window_initialization_error         If the OpenGL context creation for this Window failed
-    /// @throws application_initialization_error    When you try to instantiate a Window without an Application.
-    static WindowPtr create(const Args& args = Window::s_default_args) { return Window::_create(args); }
+    /// @throws initialization_error                If the OpenGL context creation for this Window failed
+    /// @throws Application::initialization_error   When you try to instantiate a Window without an Application.
+    static WindowPtr create(const Window::Args& args = Window::s_default_args) { return Window::_create(args); }
 };
 
 // ================================================================================================================== //
 
 template<>
-class Window::Access<EventManager> {
-    friend class EventManager;
-
-    /// Constructor.
-    /// @param window   Window granting access.
-    Access(Window& window) : m_window(window) {}
+class access::_Window<EventManager> {
+    friend class notf::EventManager;
 
     /// The GLFW window wrapped by the accessed notf Window.
-    GLFWwindow* glfw_window() { return m_window.m_glfw_window.get(); }
-
-    // fields ------------------------------------------------------------------------------------------------------- //
-private:
-    /// Window granting access.
-    Window& m_window;
+    /// @param window   Window granting access.
+    static GLFWwindow* glfw_window(Window& window) { return window.m_glfw_window.get(); }
 };
 
 // ================================================================================================================== //

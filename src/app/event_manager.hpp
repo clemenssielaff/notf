@@ -11,6 +11,11 @@
 
 NOTF_OPEN_NAMESPACE
 
+namespace access { // forwards
+template<class>
+class _EventManager;
+} // namespace access
+
 // ================================================================================================================== //
 
 /// The EventManager is called from all parts of an Application, whenever an event happens.
@@ -20,9 +25,13 @@ NOTF_OPEN_NAMESPACE
 /// The EventManager runs on the main thread, because it requires access to GLFW functions.
 class EventManager {
 
+    friend class access::_EventManager<Window>;
+
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    NOTF_ALLOW_ACCESS_TYPES(Window);
+    /// Access types.
+    template<class T>
+    using Access = access::_EventManager<T>;
 
 private:
     /// Per-window data.
@@ -104,6 +113,16 @@ private:
     /// Handles a given event.
     /// @param event    Event to handle.
     void _handle(EventPtr&& event);
+
+    // window management ------------------------------------------------------
+
+    /// Adds a new Window to the manager.
+    /// @param window   Window to register.
+    void _register_window(Window& window);
+
+    /// Removes a Window from the manager - all remaining events for the Window are dropped immediately.
+    /// @param window   Window to remove.
+    void _remove_window(Window& window);
 
     // glfw event handler -----------------------------------------------------
 private:
@@ -227,16 +246,18 @@ private:
 // ================================================================================================================== //
 
 template<>
-class EventManager::Access<Window> {
-    friend class Window;
+class access::_EventManager<Window> {
+    friend class notf::Window;
 
     /// Adds a new Window to the manager.
-    /// @param window   Window to register.
-    void register_window(Window& window);
+    /// @param event_manager    EventManager to operate on.
+    /// @param window           Window to register.
+    static void register_window(EventManager& event_manager, Window& window) { event_manager._register_window(window); }
 
     /// Removes a Window from the manager - all remaining events for the Window are dropped immediately.
-    /// @param window   Window to remove.
-    void remove_window(Window& window);
+    /// @param event_manager    EventManager to operate on.
+    /// @param window           Window to remove.
+    static void remove_window(EventManager& event_manager, Window& window) { event_manager._remove_window(window); }
 };
 
 NOTF_CLOSE_NAMESPACE

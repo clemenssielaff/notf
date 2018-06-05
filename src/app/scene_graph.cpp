@@ -14,11 +14,19 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-SceneGraph::SceneGraph(Window& window) : m_window(window), m_current_state(create_state({})) {}
+SceneGraph::SceneGraph(Window& window) : m_window(&window), m_current_state(create_state({})) {}
 
 SceneGraph::~SceneGraph() = default;
 
-SceneGraph::StatePtr SceneGraph::current_state()
+Window& SceneGraph::window() const
+{
+    if (NOTF_LIKELY(m_window)) {
+        return *m_window;
+    }
+    notf_throw(Window::deleted_error, "Window of SceneGraph has been deleted");
+}
+
+SceneGraph::StatePtr SceneGraph::current_state() const
 {
     NOTF_MUTEX_GUARD(m_hierarchy_mutex);
 
@@ -31,16 +39,19 @@ SceneGraph::StatePtr SceneGraph::current_state()
 
 void SceneGraph::enter_state(StatePtr new_state)
 {
+    if (NOTF_UNLIKELY(!m_window)) {
+        return;
+    }
     EventManager& event_manger = Application::instance().event_manager();
-    event_manger.handle(std::make_unique<StateChangeEvent>(&m_window, std::move(new_state)));
+    event_manger.handle(std::make_unique<StateChangeEvent>(m_window, std::move(new_state)));
 }
 
 void SceneGraph::_register_dirty(valid_ptr<Node*> node)
 {
     NOTF_MUTEX_GUARD(m_hierarchy_mutex);
 
-    if (m_dirty_nodes.empty()) {
-        m_window.request_redraw();
+    if (m_dirty_nodes.empty() && NOTF_LIKELY(m_window)) {
+        m_window->request_redraw();
     }
     m_dirty_nodes.insert(node);
 }
@@ -251,8 +262,16 @@ void SceneGraph::_enter_state(valid_ptr<StatePtr> state)
     NOTF_MUTEX_GUARD(m_hierarchy_mutex);
     if (state != m_current_state) {
         m_current_state = std::move(state);
-        m_window.request_redraw();
+        if (NOTF_LIKELY(m_window)) {
+            m_window->request_redraw();
+        }
     }
+}
+
+void SceneGraph::_detach_from_window()
+{
+    NOTF_MUTEX_GUARD(m_event_mutex);
+    m_window = nullptr;
 }
 
 // ------------------------------------------------------------------------------------------------------------------ //

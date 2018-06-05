@@ -78,13 +78,8 @@ Node::~Node()
 
     _finalize();
 
-    try {
-        log_trace << "Destroying \"" << name() << "\"";
-        SceneGraph::Access<Node>::remove_dirty(*graph(), this);
-    }
-    catch (const Scene::no_graph_error&) {
-        NOTF_NOOP; // if the SceneGraph has already been deleted, it won't matter if this Node was dirty or not
-    }
+    log_trace << "Destroying \"" << name() << "\"";
+    SceneGraph::Access<Node>::remove_dirty(graph(), this);
 }
 
 const std::string& Node::set_name(const std::string& name)
@@ -98,7 +93,7 @@ const std::string& Node::set_name(const std::string& name)
 bool Node::has_ancestor(const valid_ptr<const Node*> ancestor) const
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
 
     valid_ptr<const Node*> next = m_parent;
     while (next != next->m_parent) {
@@ -117,7 +112,7 @@ NodeHandle<Node> Node::common_ancestor(valid_ptr<Node*> other)
     }
 
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
 
     valid_ptr<Node*> first = this;
     valid_ptr<Node*> second = other;
@@ -151,7 +146,7 @@ NodeHandle<Node> Node::common_ancestor(valid_ptr<Node*> other)
 bool Node::is_in_front() const
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
 
     const NodeContainer& siblings = m_parent->_read_children();
     NOTF_ASSERT(!siblings.empty());
@@ -161,7 +156,7 @@ bool Node::is_in_front() const
 bool Node::is_in_back() const
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
 
     const NodeContainer& siblings = m_parent->_read_children();
     NOTF_ASSERT(!siblings.empty());
@@ -171,7 +166,7 @@ bool Node::is_in_back() const
 bool Node::is_in_front_of(const valid_ptr<Node*> sibling) const
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
 
     const NodeContainer& siblings = m_parent->_read_children();
     const size_t sibling_count = siblings.size();
@@ -199,7 +194,7 @@ bool Node::is_in_front_of(const valid_ptr<Node*> sibling) const
 bool Node::is_behind(const valid_ptr<Node*> sibling) const
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
 
     const NodeContainer& siblings = m_parent->_read_children();
     const size_t sibling_count = siblings.size();
@@ -227,7 +222,7 @@ bool Node::is_behind(const valid_ptr<Node*> sibling) const
 void Node::stack_front()
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
 
     // early out to avoid creating unnecessary deltas
     if (is_in_front()) {
@@ -241,7 +236,7 @@ void Node::stack_front()
 void Node::stack_back()
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
 
     // early out to avoid creating unnecessary deltas
     if (is_in_back()) {
@@ -255,7 +250,7 @@ void Node::stack_back()
 void Node::stack_before(const valid_ptr<Node*> sibling)
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
 
     size_t my_index;
     { // early out to avoid creating unnecessary deltas
@@ -276,7 +271,7 @@ void Node::stack_before(const valid_ptr<Node*> sibling)
 void Node::stack_behind(const valid_ptr<Node*> sibling)
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
 
     size_t my_index;
     { // early out to avoid creating unnecessary deltas
@@ -310,7 +305,7 @@ NodePropertyPtr Node::_property(const Path& path)
     }
 
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
 
     NodePropertyPtr result;
     _property(path, 0, result);
@@ -319,7 +314,7 @@ NodePropertyPtr Node::_property(const Path& path)
 
 void Node::_property(const Path& path, const uint index, NodePropertyPtr& result)
 {
-    NOTF_ASSERT(SceneGraph::Access<Node>::mutex(*graph()).is_locked_by_this_thread());
+    NOTF_ASSERT(SceneGraph::Access<Node>::mutex(graph()).is_locked_by_this_thread());
     NOTF_ASSERT(index < path.size());
 
     // if this is the last step on the path, try to find the property
@@ -357,7 +352,7 @@ NodePtr Node::_node(const Path& path)
     }
 
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
 
     NodePtr result;
     _node(path, 0, result);
@@ -366,7 +361,7 @@ NodePtr Node::_node(const Path& path)
 
 void Node::_node(const Path& path, const uint index, NodePtr& result)
 {
-    NOTF_ASSERT(SceneGraph::Access<Node>::mutex(*graph()).is_locked_by_this_thread());
+    NOTF_ASSERT(SceneGraph::Access<Node>::mutex(graph()).is_locked_by_this_thread());
     NOTF_ASSERT(index < path.size());
 
     // find the next node in the path
@@ -387,11 +382,11 @@ void Node::_node(const Path& path, const uint index, NodePtr& result)
 const NodeContainer& Node::_read_children() const
 {
     // make sure the SceneGraph hierarchy is properly locked
-    SceneGraphPtr scene_graph = graph();
-    NOTF_ASSERT(SceneGraph::Access<Node>::mutex(*scene_graph).is_locked_by_this_thread());
+    SceneGraph& scene_graph = graph();
+    NOTF_ASSERT(SceneGraph::Access<Node>::mutex(scene_graph).is_locked_by_this_thread());
 
     // direct access if unfrozen or this is the event handling thread
-    if (!scene_graph->is_frozen() || !scene_graph->is_frozen_by(std::this_thread::get_id())) {
+    if (!scene_graph.is_frozen() || !scene_graph.is_frozen_by(std::this_thread::get_id())) {
         return m_children;
     }
 
@@ -409,11 +404,11 @@ const NodeContainer& Node::_read_children() const
 NodeContainer& Node::_write_children()
 {
     // make sure the SceneGraph hierarchy is properly locked
-    SceneGraphPtr scene_graph = graph();
-    NOTF_ASSERT(SceneGraph::Access<Node>::mutex(*scene_graph).is_locked_by_this_thread());
+    SceneGraph& scene_graph = graph();
+    NOTF_ASSERT(SceneGraph::Access<Node>::mutex(scene_graph).is_locked_by_this_thread());
 
     // direct access if unfrozen or the node hasn't been finalized yet
-    if (!scene_graph->is_frozen() || !_is_finalized()) {
+    if (!scene_graph.is_frozen() || !_is_finalized()) {
         return m_children;
     }
 
@@ -432,7 +427,7 @@ NodeContainer& Node::_write_children()
 void Node::_clear_children()
 {
     // lock the SceneGraph hierarchy
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
 
     _write_children().clear();
 }
@@ -446,7 +441,7 @@ valid_ptr<TypedNodeProperty<std::string>*> Node::_create_name()
     TypedNodeProperty<std::string>::Validator validator = [this](std::string& name) -> bool {
 
         // lock the SceneGraph hierarchy
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(*graph()));
+        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
         const NodeContainer& siblings = m_parent->_read_children();
 
         // create unique name
@@ -473,7 +468,7 @@ valid_ptr<TypedNodeProperty<std::string>*> Node::_create_name()
 
 void Node::_clean_tweaks()
 {
-    NOTF_ASSERT(SceneGraph::Access<Node>::mutex(*graph()).is_locked_by_this_thread());
+    NOTF_ASSERT(SceneGraph::Access<Node>::mutex(graph()).is_locked_by_this_thread());
     for (auto& it : m_properties) {
         NodeProperty::Access<Node>::clear_frozen(*it.second.get());
     }

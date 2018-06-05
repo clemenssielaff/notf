@@ -8,8 +8,6 @@ NOTF_OPEN_NAMESPACE
 
 Scene::scene_name_error::~scene_name_error() = default;
 
-Scene::no_graph_error::~no_graph_error() = default;
-
 Scene::hierarchy_error::~hierarchy_error() = default;
 
 // ================================================================================================================== //
@@ -33,7 +31,7 @@ access::_RootNode<Scene> Scene::_root() { return RootNode::Access<Scene>(*m_root
 
 risky_ptr<NodeContainer*> Scene::_get_frozen_children(valid_ptr<const Node*> node)
 {
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(graph()));
 
     auto it = m_frozen_children.find(node);
     if (it == m_frozen_children.end()) {
@@ -44,9 +42,9 @@ risky_ptr<NodeContainer*> Scene::_get_frozen_children(valid_ptr<const Node*> nod
 
 void Scene::_create_frozen_children(valid_ptr<const Node*> node)
 {
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(graph()));
 
-    auto it = m_frozen_children.emplace(std::make_pair(node, Node::Access<Scene>::children(*node)));
+    NOTF_UNUSED auto it = m_frozen_children.emplace(std::make_pair(node, Node::Access<Scene>::children(*node)));
     NOTF_ASSERT(it.second);
 }
 
@@ -69,7 +67,7 @@ NodePropertyPtr Scene::_property(const Path& path)
         }
     }
     {
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph()));
+        NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(graph()));
 
         if (path.is_absolute()) {
             return Node::Access<Scene>::property(*m_root, path, 1);
@@ -99,7 +97,7 @@ NodePtr Scene::_node(const Path& path)
         }
     }
     {
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(*graph()));
+        NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::mutex(graph()));
 
         if (path.is_absolute()) {
             return Node::Access<Scene>::node(*m_root, path, 1);

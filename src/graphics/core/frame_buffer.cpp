@@ -237,7 +237,7 @@ FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_context(cont
 FrameBufferPtr FrameBuffer::create(GraphicsContext& context, Args&& args)
 {
     FrameBufferPtr framebuffer = NOTF_MAKE_SHARED_FROM_PRIVATE(FrameBuffer, context, std::move(args));
-    GraphicsContext::Access<FrameBuffer>(context).register_new(framebuffer);
+    GraphicsContext::Access<FrameBuffer>::register_new(context, framebuffer);
     return framebuffer;
 }
 

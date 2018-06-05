@@ -130,12 +130,12 @@ private:
     /// When an Item handles a mouse press event, it will also receive -move and -release events, even if the cursor is
     /// no longer within the Item.
     /// May be empty.
-    std::weak_ptr<Widget> m_mouse_item;
+    WidgetWeakPtr m_mouse_item;
 
     /// The first Item to receive keyboard events.
     /// The 'focused' Item.
     /// May be empty.
-    std::weak_ptr<Widget> m_keyboard_item;
+    WidgetWeakPtr m_keyboard_item;
 };
 
 NOTF_CLOSE_NAMESPACE

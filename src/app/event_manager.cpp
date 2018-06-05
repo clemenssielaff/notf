@@ -156,6 +156,93 @@ void EventManager::_handle(EventPtr&& event)
     }
 }
 
+void EventManager::_register_window(Window& window)
+{
+    // create the handler
+    EventManager& manager = Application::instance().event_manager();
+    for (const auto& handler : manager.m_handler) {
+        if (handler->window() == &window) {
+            log_critical << "Ignoring duplicate event handler registration of Window: " << window.title();
+            return;
+        }
+    }
+    WindowHandler* handler;
+    {
+        std::lock_guard<Mutex> lock(manager.m_mutex);
+        manager.m_handler.emplace_back(std::make_unique<WindowHandler>(&window));
+        handler = manager.m_handler.back().get();
+    }
+
+    //
+    // register all glfw callbacks
+    GLFWwindow* glfw_window = Window::Access<EventManager>::glfw_window(window);
+
+    // input callbacks
+    glfwSetMouseButtonCallback(glfw_window, EventManager::_on_mouse_button);
+    glfwSetCursorPosCallback(glfw_window, EventManager::_on_cursor_move);
+    glfwSetCursorEnterCallback(glfw_window, EventManager::_on_cursor_entered);
+    glfwSetScrollCallback(glfw_window, EventManager::_on_scroll);
+    glfwSetKeyCallback(glfw_window, EventManager::_on_token_key);
+    glfwSetCharCallback(glfw_window, EventManager::_on_char_input);
+    glfwSetCharModsCallback(glfw_window, EventManager::_on_shortcut);
+
+    // window callbacks
+    glfwSetWindowPosCallback(glfw_window, EventManager::_on_window_move);
+    glfwSetWindowSizeCallback(glfw_window, EventManager::_on_window_resize);
+    glfwSetFramebufferSizeCallback(glfw_window, EventManager::_on_framebuffer_resize);
+    glfwSetWindowRefreshCallback(glfw_window, EventManager::_on_window_refresh);
+    glfwSetWindowFocusCallback(glfw_window, EventManager::_on_window_focus);
+    glfwSetDropCallback(glfw_window, EventManager::_on_file_drop);
+    glfwSetWindowIconifyCallback(glfw_window, EventManager::_on_window_minimize);
+    glfwSetWindowCloseCallback(glfw_window, EventManager::_on_window_close);
+
+    // other callbacks
+    glfwSetMonitorCallback(EventManager::_on_monitor_change);
+    glfwSetJoystickCallback(EventManager::_on_joystick_change);
+
+    handler->start();
+}
+
+void EventManager::_remove_window(Window& window)
+{
+    // disconnect the window callbacks
+    GLFWwindow* glfw_window = Window::Access<EventManager>::glfw_window(window);
+    glfwSetMouseButtonCallback(glfw_window, nullptr);
+    glfwSetCursorPosCallback(glfw_window, nullptr);
+    glfwSetCursorEnterCallback(glfw_window, nullptr);
+    glfwSetScrollCallback(glfw_window, nullptr);
+    glfwSetKeyCallback(glfw_window, nullptr);
+    glfwSetCharCallback(glfw_window, nullptr);
+    glfwSetCharModsCallback(glfw_window, nullptr);
+    glfwSetWindowPosCallback(glfw_window, nullptr);
+    glfwSetWindowSizeCallback(glfw_window, nullptr);
+    glfwSetFramebufferSizeCallback(glfw_window, nullptr);
+    glfwSetWindowRefreshCallback(glfw_window, nullptr);
+    glfwSetWindowFocusCallback(glfw_window, nullptr);
+    glfwSetDropCallback(glfw_window, nullptr);
+    glfwSetWindowIconifyCallback(glfw_window, nullptr);
+    glfwSetWindowCloseCallback(glfw_window, nullptr);
+    glfwSetMonitorCallback(nullptr);
+    glfwSetJoystickCallback(nullptr);
+
+    // remove handler
+    EventManager& manager = Application::instance().event_manager();
+    {
+        std::lock_guard<Mutex> lock(manager.m_mutex);
+        auto it = std::find_if(manager.m_handler.begin(), manager.m_handler.end(),
+                               [&](const std::unique_ptr<WindowHandler>& handler) -> bool {
+                                   return handler->window() == &window;
+                               });
+        if (it == manager.m_handler.end()) {
+            log_critical << "Ignoring unregistration of unknown Window: " << window.title();
+            return;
+        }
+        it->get()->stop();
+        *it = std::move(manager.m_handler.back());
+        manager.m_handler.pop_back();
+    }
+}
+
 void EventManager::_on_error(int error_number, const char* message)
 {
 #ifdef NOTF_DEBUG
@@ -424,94 +511,5 @@ void EventManager::_on_window_close(GLFWwindow* glfw_window)
 void EventManager::_on_monitor_change(GLFWmonitor* /*glfw_monitor*/, int /*kind*/) { NOTF_NOOP; }
 
 void EventManager::_on_joystick_change(int /*joystick*/, int /*kind*/) { NOTF_NOOP; }
-
-// ================================================================================================================== //
-
-void EventManager::Access<Window>::register_window(Window& window)
-{
-    // create the handler
-    EventManager& manager = Application::instance().event_manager();
-    for (const auto& handler : manager.m_handler) {
-        if (handler->window() == &window) {
-            log_critical << "Ignoring duplicate event handler registration of Window: " << window.title();
-            return;
-        }
-    }
-    WindowHandler* handler;
-    {
-        std::lock_guard<Mutex> lock(manager.m_mutex);
-        manager.m_handler.emplace_back(std::make_unique<WindowHandler>(&window));
-        handler = manager.m_handler.back().get();
-    }
-
-    //
-    // register all glfw callbacks
-    GLFWwindow* glfw_window = Window::Access<EventManager>(window).glfw_window();
-
-    // input callbacks
-    glfwSetMouseButtonCallback(glfw_window, EventManager::_on_mouse_button);
-    glfwSetCursorPosCallback(glfw_window, EventManager::_on_cursor_move);
-    glfwSetCursorEnterCallback(glfw_window, EventManager::_on_cursor_entered);
-    glfwSetScrollCallback(glfw_window, EventManager::_on_scroll);
-    glfwSetKeyCallback(glfw_window, EventManager::_on_token_key);
-    glfwSetCharCallback(glfw_window, EventManager::_on_char_input);
-    glfwSetCharModsCallback(glfw_window, EventManager::_on_shortcut);
-
-    // window callbacks
-    glfwSetWindowPosCallback(glfw_window, EventManager::_on_window_move);
-    glfwSetWindowSizeCallback(glfw_window, EventManager::_on_window_resize);
-    glfwSetFramebufferSizeCallback(glfw_window, EventManager::_on_framebuffer_resize);
-    glfwSetWindowRefreshCallback(glfw_window, EventManager::_on_window_refresh);
-    glfwSetWindowFocusCallback(glfw_window, EventManager::_on_window_focus);
-    glfwSetDropCallback(glfw_window, EventManager::_on_file_drop);
-    glfwSetWindowIconifyCallback(glfw_window, EventManager::_on_window_minimize);
-    glfwSetWindowCloseCallback(glfw_window, EventManager::_on_window_close);
-
-    // other callbacks
-    glfwSetMonitorCallback(EventManager::_on_monitor_change);
-    glfwSetJoystickCallback(EventManager::_on_joystick_change);
-
-    handler->start();
-}
-
-void EventManager::Access<Window>::remove_window(Window& window)
-{
-    // disconnect the window callbacks
-    GLFWwindow* glfw_window = Window::Access<EventManager>(window).glfw_window();
-    glfwSetMouseButtonCallback(glfw_window, nullptr);
-    glfwSetCursorPosCallback(glfw_window, nullptr);
-    glfwSetCursorEnterCallback(glfw_window, nullptr);
-    glfwSetScrollCallback(glfw_window, nullptr);
-    glfwSetKeyCallback(glfw_window, nullptr);
-    glfwSetCharCallback(glfw_window, nullptr);
-    glfwSetCharModsCallback(glfw_window, nullptr);
-    glfwSetWindowPosCallback(glfw_window, nullptr);
-    glfwSetWindowSizeCallback(glfw_window, nullptr);
-    glfwSetFramebufferSizeCallback(glfw_window, nullptr);
-    glfwSetWindowRefreshCallback(glfw_window, nullptr);
-    glfwSetWindowFocusCallback(glfw_window, nullptr);
-    glfwSetDropCallback(glfw_window, nullptr);
-    glfwSetWindowIconifyCallback(glfw_window, nullptr);
-    glfwSetWindowCloseCallback(glfw_window, nullptr);
-    glfwSetMonitorCallback(nullptr);
-    glfwSetJoystickCallback(nullptr);
-
-    // remove handler
-    EventManager& manager = Application::instance().event_manager();
-    {
-        std::lock_guard<Mutex> lock(manager.m_mutex);
-        auto it = std::find_if(manager.m_handler.begin(), manager.m_handler.end(),
-                               [&](const std::unique_ptr<WindowHandler>& handler) -> bool {
-                                   return handler->window() == &window;
-                               });
-        if (it == manager.m_handler.end()) {
-            log_critical << "Ignoring unregistration of unknown Window: " << window.title();
-            return;
-        }
-        it->get()->stop();
-        *it = std::move(manager.m_handler.back());
-        manager.m_handler.pop_back();
-    }
-}
 
 NOTF_CLOSE_NAMESPACE

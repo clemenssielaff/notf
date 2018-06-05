@@ -183,7 +183,7 @@ TexturePtr Texture::create_empty(GraphicsContext& context, std::string name, Siz
 
     // return the loaded texture on success
     TexturePtr texture = Texture::_create(context, id, GL_TEXTURE_2D, std::move(name), std::move(size), args.format);
-    GraphicsContext::Access<Texture>(context).register_new(texture);
+    GraphicsContext::Access<Texture>::register_new(context, texture);
     return texture;
 }
 
@@ -356,7 +356,7 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
     // return the loaded texture on success
     TexturePtr texture
         = Texture::_create(context, id, GL_TEXTURE_2D, std::move(name), std::move(image_size), texture_format);
-    GraphicsContext::Access<Texture>(context).register_new(texture);
+    GraphicsContext::Access<Texture>::register_new(context, texture);
 
     on_texture_created(texture);
     return texture;

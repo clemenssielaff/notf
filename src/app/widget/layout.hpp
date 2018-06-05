@@ -26,7 +26,7 @@ class Layout : public ScreenItem {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    NOTF_ALLOW_ACCESS_TYPES(ScreenItem);
+//    NOTF_ALLOW_ACCESS_TYPES(ScreenItem);
 
     // signals ------------------------------------------------------------------------------------------------------ //
 public:

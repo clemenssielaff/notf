@@ -12,7 +12,7 @@ class RootLayout : public Layout {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    NOTF_ALLOW_ACCESS_TYPES(ItemHierarchy);
+//    NOTF_ALLOW_ACCESS_TYPES(ItemHierarchy);
 
     // methods ------------------------------------------------------------------------------------------------------ //
 protected:

@@ -37,7 +37,7 @@ public:
     using NodeHandleAccess = access::_SceneGraph_NodeHandle;
 
     /// Map containing non-owning references to all Scenes in this graph by name.
-    using SceneMap = std::map<std::string, std::weak_ptr<Scene>>;
+    using SceneMap = std::map<std::string, SceneWeakPtr>;
 
     // ------------------------------------------------------------------------
 
@@ -84,11 +84,9 @@ public:
 
     // getter -----------------------------------------------------------------
 
-    /// @{
     /// Window owning this SceneGraph.
-    Window& window() { return m_window; }
-    const Window& window() const { return m_window; }
-    /// @}
+    /// @throws Window::deleted_error  If the ScenGraph's Window has already been deleted.
+    Window& window() const;
 
     /// Returns a Scene in this graph by name.
     /// @param name Name of the requested Scene.
@@ -153,11 +151,8 @@ public:
         return NOTF_MAKE_SHARED_FROM_PRIVATE(State, std::move(layers));
     }
 
-    /// @{
     /// The current State of the SceneGraph.
-    StatePtr current_state();
-    const StatePtr current_state() const { return const_cast<SceneGraph*>(this)->current_state(); }
-    /// @}
+    StatePtr current_state() const;
 
     /// Schedule this SceneGraph to switch to a new state.
     /// Generates a StateChangeEvent and pushes it onto the event queue for the Window.
@@ -208,10 +203,13 @@ private:
     /// @param state    New state to enter.
     void _enter_state(valid_ptr<StatePtr> state);
 
+    /// Called by the SceneGraph's Window when it goes out of scope to let the SceneGraph know.
+    void _detach_from_window();
+
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Window owning this SceneGraph.
-    Window& m_window;
+    risky_ptr<Window*> m_window;
 
     /// Current State of the SceneGraph.
     valid_ptr<StatePtr> m_current_state;
@@ -249,6 +247,10 @@ class access::_SceneGraph<Window> {
     /// Factory.
     /// @param window   Window owning this SceneGraph.
     static SceneGraphPtr create(Window& window) { return SceneGraph::_create(window); }
+
+    /// Called by the SceneGraph's Window when it goes out of scope to let the SceneGraph know.
+    /// @param graph    SceneGraph to operate on.
+    static void detach(SceneGraph& scene_graph) { scene_graph._detach_from_window(); }
 };
 
 //-----------------------------------------------------------------------------
@@ -267,7 +269,7 @@ class access::_SceneGraph<Scene> {
     static auto reserve_scene_name(SceneGraph& graph, std::string name)
     {
         NOTF_ASSERT(graph.m_hierarchy_mutex.is_locked_by_this_thread());
-        return graph.m_scenes.emplace(std::move(name), std::weak_ptr<Scene>{});
+        return graph.m_scenes.emplace(std::move(name), SceneWeakPtr{});
     }
 
     /// Registers a new Scene with the graph.

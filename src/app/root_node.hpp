@@ -47,7 +47,6 @@ public:
 
     /// Sets  a new child at the top of the Scene hierarchy (below the root).
     /// @param args Arguments that are forwarded to the constructor of the child.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     template<class T, class... Args>
     NodeHandle<T> set_child(Args&&... args)
     {
@@ -56,7 +55,6 @@ public:
     }
 
     /// Removes the child of the root node, effectively clearing the Scene.
-    /// @throws no_graph_error  If the SceneGraph of the node has been deleted.
     void clear() { _clear_children(); }
 
 private:
@@ -91,8 +89,6 @@ public:
     ///                 If you call this method from anywhere but the constructor.
     /// @throws Path::not_unique_error
     ///                 If there already exists a Property of the same name on this Node.
-    /// @throws no_graph_error
-    ///                 If the SceneGraph of the node has been deleted.
     /// @throws NodeProperty::initial_value_error
     ///                 If the value of the Property could not be validated.
     template<class T>

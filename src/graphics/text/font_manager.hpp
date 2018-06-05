@@ -64,7 +64,7 @@ private:
     FontAtlas m_atlas;
 
     /// All managed Fonts, uniquely identified by a filename/size-pair.
-    std::unordered_map<Font::Identifier, std::weak_ptr<Font>> m_fonts;
+    std::unordered_map<Font::Identifier, FontWeakPtr> m_fonts;
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -4,21 +4,21 @@
 
 #include "app/event_manager.hpp"
 #include "app/glfw.hpp"
+#include "app/io/time.hpp"
 #include "app/render_manager.hpp"
 #include "app/resource_manager.hpp"
 #include "app/timer_manager.hpp"
 #include "app/window.hpp"
-#include "app/io/time.hpp"
 #include "common/log.hpp"
 #include "common/thread_pool.hpp"
 
-// ================================================================================================================== //
-
 NOTF_OPEN_NAMESPACE
 
-application_initialization_error::~application_initialization_error() {}
+// ================================================================================================================== //
 
-no_application_error::~no_application_error() {}
+Application::initialization_error::~initialization_error() {}
+
+Application::shut_down_error::~shut_down_error() {}
 
 // ================================================================================================================== //
 
@@ -40,9 +40,9 @@ Application::Application(const Args& application_args)
 
     // exit here, if the user failed to call Application::initialize()
     if (application_args.argc == -1) {
-        notf_throw_format(application_initialization_error, "Cannot start an uninitialized Application!\n"
-                                                            "Make sure to call `Application::initialize()` in `main()` "
-                                                            "before creating the first NoTF object");
+        notf_throw_format(initialization_error, "Cannot start an uninitialized Application!\n"
+                                                "Make sure to call `Application::initialize()` in `main()` "
+                                                "before creating the first NoTF object");
     }
 
     try { // create the resource manager
@@ -54,13 +54,13 @@ Application::Application(const Args& application_args)
         m_resource_manager = std::make_unique<ResourceManager>(std::move(args));
     }
     catch (const resource_manager_initialization_error& error) {
-        notf_throw(application_initialization_error, error.what());
+        notf_throw(initialization_error, error.what());
     }
 
     // initialize GLFW
     if (!glfwInit()) {
         _shutdown();
-        notf_throw(application_initialization_error, "GLFW initialization failed");
+        notf_throw(initialization_error, "GLFW initialization failed");
     }
     log_info << "GLFW version: " << glfwGetVersionString();
 

@@ -9,6 +9,7 @@
 #include "app/io/property_event.hpp"
 #include "app/node.hpp"
 #include "app/scene_graph.hpp"
+#include "app/window.hpp"
 #include "common/set.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -27,20 +28,21 @@ void PropertyGraph::fire_event(PropertyUpdateList&& effects)
 
         if (risky_ptr<PropertyHead*> property_head = update->property->head()) {
             if (risky_ptr<Node*> node = property_head->node()) {
+                Window* window;
                 try {
-                    const Window* window = &(node->graph()->window());
-                    if (updates_by_window.count(window) == 0) {
-                        PropertyUpdateList window_updates;
-                        window_updates.reserve(effects.size() + 1); // assume all updates are for the same window
-                        window_updates.emplace_back(std::move(update));
-                        updates_by_window[window] = std::move(window_updates);
-                    }
-                    else {
-                        updates_by_window[window].emplace_back(std::move(update));
-                    }
+                    window = &(node->graph().window());
                 }
-                catch (const Scene::no_graph_error&) {
-                    // ignore events for SceneGraphs that have been deleted
+                catch (const Window::deleted_error&) {
+                    continue;
+                }
+                if (updates_by_window.count(window) == 0) {
+                    PropertyUpdateList window_updates;
+                    window_updates.reserve(effects.size() + 1); // assume all updates are for the same window
+                    window_updates.emplace_back(std::move(update));
+                    updates_by_window[window] = std::move(window_updates);
+                }
+                else {
+                    updates_by_window[window].emplace_back(std::move(update));
                 }
             }
         }

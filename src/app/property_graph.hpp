@@ -64,7 +64,7 @@ public:
     // methods ------------------------------------------------------------------------------------------------------ //
 
     /// Generates one or more PropertyEvents targeted at the SceneGraphs of affected SceneProperties.
-    /// @throws no_application_error    If the global Application has already finished.
+    /// @throws Application::shut_down_error    If the global Application has already finished.
     static void fire_event(PropertyUpdateList&& effects);
 
     // fields ------------------------------------------------------------------------------------------------------- //

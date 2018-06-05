@@ -8,14 +8,24 @@
 
 NOTF_OPEN_NAMESPACE
 
+namespace access { // forwards
+template<class>
+class _Renderer;
+} // namespace access
+
 // ================================================================================================================== //
 
 /// Base class for Renderer.
 class Renderer {
 
+    friend class access::_Renderer<Layer>;
+    friend class access::_Renderer<RenderTarget>;
+
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    NOTF_ALLOW_ACCESS_TYPES(Layer, RenderTarget);
+    /// Access types.
+    template<class T>
+    using Access = access::_Renderer<T>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
@@ -36,8 +46,8 @@ private:
 // ================================================================================================================== //
 
 template<>
-class Renderer::Access<Layer> {
-    friend class Layer;
+class access::_Renderer<Layer> {
+    friend class notf::Layer;
 
     /// Invokes the Renderer.
     /// @param scene    Scene to render.
@@ -45,8 +55,8 @@ class Renderer::Access<Layer> {
 };
 
 template<>
-class Renderer::Access<RenderTarget> {
-    friend class RenderTarget;
+class access::_Renderer<RenderTarget> {
+    friend class notf::RenderTarget;
 
     /// Invokes the Renderer.
     /// @param scene    Scene to render.

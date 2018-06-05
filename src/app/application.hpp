@@ -7,14 +7,10 @@
 
 NOTF_OPEN_NAMESPACE
 
-// ================================================================================================================== //
-
-/// Exception thrown when the Application could not initialize.
-/// The error string will contain more detailed information about the error.
-NOTF_EXCEPTION_TYPE(application_initialization_error);
-
-/// Exception thrown when you try to access the Application instance after it was shut down.
-NOTF_EXCEPTION_TYPE(no_application_error);
+namespace access { // forwards
+template<class>
+class _Application;
+} // namespace access
 
 // ================================================================================================================== //
 
@@ -23,9 +19,13 @@ NOTF_EXCEPTION_TYPE(no_application_error);
 /// It also manages the lifetime of the LogHandler.
 class Application {
 
+    friend class access::_Application<Window>;
+
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    NOTF_ALLOW_ACCESS_TYPES(Window);
+    /// Access types.
+    template<class T>
+    using Access = access::_Application<T>;
 
     /// Application arguments.
     ///
@@ -66,11 +66,18 @@ public:
         uint max_fps = 0;
     };
 
+    /// Exception thrown when the Application could not initialize.
+    /// The error string will contain more detailed information about the error.
+    NOTF_EXCEPTION_TYPE(initialization_error);
+
+    /// Exception thrown when you try to access the Application instance after it was shut down.
+    NOTF_EXCEPTION_TYPE(shut_down_error);
+
     // methods ------------------------------------------------------------------------------------------------------ //
 private:
     /// Constructor.
-    /// @param application_args                     Application arguments.
-    /// @throws application_initialization_error    When the Application intialization failed.
+    /// @param application_args         Application arguments.
+    /// @throws initialization_error    When the Application intialization failed.
     Application(const Args& application_args);
 
     // methods ------------------------------------------------------------------------------------------------------ //
@@ -83,11 +90,11 @@ public:
     // initialization  --------------------------------------------------------
 
     /// Initializes the Application through an user-defined ApplicationInfo object.
-    /// @throws application_initialization_error    When the Application intialization failed.
+    /// @throws initialization_error    When the Application intialization failed.
     static Application& initialize(const Args& application_args) { return _instance(application_args); }
 
     /// Initializes the Application using only the command line arguments passed by the OS.
-    /// @throws application_initialization_error    When the Application intialization failed.
+    /// @throws initialization_error    When the Application intialization failed.
     static Application& initialize(const int argc, char* argv[])
     {
         Args args;
@@ -111,12 +118,12 @@ public:
 
     /// The singleton Application instance.
     /// @returns    The Application singleton.
-    /// @throws application_initialization_error    When the Application intialization failed.
-    /// @throws no_application_error          When this method is called after the Application was shut down.
+    /// @throws initialization_error    When the Application intialization failed.
+    /// @throws shut_down_error         When this method is called after the Application was shut down.
     static Application& instance()
     {
         if (NOTF_UNLIKELY(was_closed())) {
-            notf_throw(no_application_error, "You may not access the Application after it was shut down");
+            notf_throw(shut_down_error, "You may not access the Application after it was shut down");
         }
         return _instance();
     }
@@ -187,11 +194,11 @@ private:
 // ================================================================================================================== //
 
 template<>
-class Application::Access<Window> {
-    friend class Window;
+class access::_Application<Window> {
+    friend class notf::Window;
 
     /// Unregisters an existing Window from this Application.
-    void unregister(Window* window) { Application::instance()._unregister_window(window); }
+    static void unregister(Window* window) { Application::instance()._unregister_window(window); }
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -301,21 +301,6 @@ using identity_t = typename identity<T>::type;
     template<typename T>                                 \
     using Type##ConstPtr = std::unique_ptr<const Type<T>>
 
-/// Private access type template.
-/// Used for finer grained friend control and is compiled away completely (if you should worry).
-#ifdef NOTF_TEST
-#define NOTF_ALLOW_ACCESS_TYPES(...)                                                                             \
-    template<typename ACCESS_TYPE_CHECKER,                                                                       \
-             typename                                                                                            \
-             = std::enable_if_t<is_one_of<ACCESS_TYPE_CHECKER, test::Harness NOTF_VA_ARGS(__VA_ARGS__)>::value>> \
-    class Access
-#else
-#define NOTF_ALLOW_ACCESS_TYPES(...)                                                                       \
-    template<typename ACCESS_TYPE_CHECKER,                                                                 \
-             typename = std::enable_if_t<is_one_of<ACCESS_TYPE_CHECKER NOTF_VA_ARGS(__VA_ARGS__)>::value>> \
-    class Access
-#endif
-
 // ================================================================================================================== //
 
 /// Opens the NoTF namespace.

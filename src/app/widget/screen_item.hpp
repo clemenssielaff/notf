@@ -183,7 +183,7 @@ class ScreenItem : public Node {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    NOTF_ALLOW_ACCESS_TYPES(RootLayout);
+//    NOTF_ALLOW_ACCESS_TYPES(RootLayout);
 
     /// Spaces that the transformation of a ScreenItem passes through.
     enum class Space : uchar {

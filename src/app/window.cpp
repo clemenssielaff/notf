@@ -26,7 +26,9 @@ void window_deleter(GLFWwindow* glfw_window)
 
 // ================================================================================================================== //
 
-window_initialization_error::~window_initialization_error() {}
+Window::initialization_error::~initialization_error() {}
+
+Window::deleted_error::~deleted_error() {}
 
 // ================================================================================================================== //
 
@@ -48,8 +50,7 @@ Window::Window(const Args& args)
     // create the GLFW window
     m_glfw_window.reset(glfwCreateWindow(m_size.width, m_size.height, m_title.c_str(), nullptr, nullptr));
     if (!m_glfw_window) {
-        notf_throw_format(window_initialization_error, "Window or OpenGL context creation failed for Window \"{}\"",
-                          title());
+        notf_throw_format(initialization_error, "Window or OpenGL context creation failed for Window \"{}\"", title());
     }
     glfwSetWindowUserPointer(m_glfw_window.get(), this);
     set_state(m_state);
@@ -62,7 +63,7 @@ Window::Window(const Args& args)
     m_font_manager = FontManager::create(*m_graphics_context);
 
     // connect the window callbacks
-    EventManager::Access<Window>().register_window(*this);
+    EventManager::Access<Window>::register_window(Application::instance().event_manager(), *this);
 
     // apply the Window icon
     // Showing the icon in Ubuntu 16.04 is as bit more complicated:
@@ -162,7 +163,10 @@ void Window::close()
     log_trace << "Closing Window \"" << m_title << "\"";
 
     // disconnect the window callbacks
-    EventManager::Access<Window>().remove_window(*this);
+    EventManager::Access<Window>::remove_window(Application::instance().event_manager(), *this);
+
+    // detach the SceneGraph
+    SceneGraph::Access<Window>::detach(*m_scene_graph);
 
     m_scene_graph.reset();
     m_font_manager.reset();
@@ -171,7 +175,7 @@ void Window::close()
 
     m_size = Size2i::invalid();
 
-    Application::Access<Window>().unregister(this);
+    Application::Access<Window>::unregister(this);
 }
 
 NOTF_CLOSE_NAMESPACE

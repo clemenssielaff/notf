@@ -116,10 +116,9 @@ public:
         other.m_node.reset();
     }
 
-    /// @{
     /// The managed BaseNode instance correctly typed.
     /// @throws Node::no_node_error    If the handled Node has been deleted.
-    T* operator->()
+    T* operator->() const
     {
         NodePtr raw_node = m_node.lock();
         if (!raw_node) {
@@ -127,8 +126,6 @@ public:
         }
         return static_cast<T*>(raw_node.get());
     }
-    const T* operator->() const { return const_cast<NodeHandle<T>*>(this)->operator->(); }
-    /// @}
 
     /// Checks if the Handle is currently valid.
     bool is_valid() const { return !m_node.expired(); }

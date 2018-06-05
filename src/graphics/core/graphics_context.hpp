@@ -14,6 +14,11 @@
 
 NOTF_OPEN_NAMESPACE
 
+namespace access { // forwards
+template<class>
+class _GraphicsContext;
+} // namespace access
+
 // ================================================================================================================== //
 
 /// HTML5 canvas-like approach to blending the results of multiple OpenGL drawings.
@@ -88,9 +93,15 @@ enum CullFace : unsigned char {
 /// It is the object owning all NoTF client objects like shaders and textures.
 class GraphicsContext {
 
+    friend class access::_GraphicsContext<Texture>;
+    friend class access::_GraphicsContext<Shader>;
+    friend class access::_GraphicsContext<FrameBuffer>;
+
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    NOTF_ALLOW_ACCESS_TYPES(Texture, Shader, FrameBuffer);
+    /// Access types.
+    template<class T>
+    using Access = access::_GraphicsContext<T>;
 
     // ============================================================================================================== //
 
@@ -547,68 +558,56 @@ private:
     /// All Textures managed by this Context.
     /// Note that the Context doesn't "own" the textures, they are shared pointers, but the Render Context deallocates
     /// all Textures when it is deleted.
-    std::unordered_map<TextureId, std::weak_ptr<Texture>> m_textures;
+    std::unordered_map<TextureId, TextureWeakPtr> m_textures;
 
     /// All Shaders managed by this Context.
     /// See `m_textures` for details on management.
-    std::unordered_map<ShaderId, std::weak_ptr<Shader>> m_shaders;
+    std::unordered_map<ShaderId, ShaderWeakPtr> m_shaders;
 
     /// All FrameBuffers managed by this Context.
     /// See `m_textures` for details on management.
-    std::unordered_map<FrameBufferId, std::weak_ptr<FrameBuffer>> m_framebuffers;
+    std::unordered_map<FrameBufferId, FrameBufferWeakPtr> m_framebuffers;
 };
 
 // ================================================================================================================== //
 
 template<>
-class GraphicsContext::Access<Texture> {
-    friend class Texture;
-
-    /// Constructor.
-    /// @param context  GraphicsContext to access.
-    Access(GraphicsContext& context) : m_context(context) {}
+class access::_GraphicsContext<Texture> {
+    friend class notf::Texture;
 
     /// Registers a new Texture.
+    /// @param context          GraphicsContext to access.
     /// @param texture          New Texture to register.
     /// @throws internal_error  If another Texture with the same ID already exists.
-    void register_new(TexturePtr texture) { m_context._register_new(std::move(texture)); }
-
-    /// The GraphicsContext to access.
-    GraphicsContext& m_context;
+    static void register_new(GraphicsContext& context, TexturePtr texture)
+    {
+        context._register_new(std::move(texture));
+    }
 };
 
 template<>
-class GraphicsContext::Access<Shader> {
-    friend class Shader;
-
-    /// Constructor.
-    /// @param context  GraphicsContext to access.
-    Access(GraphicsContext& context) : m_context(context) {}
+class access::_GraphicsContext<Shader> {
+    friend class notf::Shader;
 
     /// Registers a new Shader.
+    /// @param context          GraphicsContext to access.
     /// @param shader           New Shader to register.
     /// @throws internal_error  If another Shader with the same ID already exists.
-    void register_new(ShaderPtr shader) { m_context._register_new(std::move(shader)); }
-
-    /// The GraphicsContext to access.
-    GraphicsContext& m_context;
+    static void register_new(GraphicsContext& context, ShaderPtr shader) { context._register_new(std::move(shader)); }
 };
 
 template<>
-class GraphicsContext::Access<FrameBuffer> {
-    friend class FrameBuffer;
-
-    /// Constructor.
-    /// @param context  GraphicsContext to access.
-    Access(GraphicsContext& context) : m_context(context) {}
+class access::_GraphicsContext<FrameBuffer> {
+    friend class notf::FrameBuffer;
 
     /// Registers a new FrameBuffer.
+    /// @param context          GraphicsContext to access.
     /// @param framebuffer      New FrameBuffer to register.
     /// @throws internal_error  If another FrameBuffer with the same ID already exists.
-    void register_new(FrameBufferPtr framebuffer) { m_context._register_new(std::move(framebuffer)); }
-
-    /// The GraphicsContext to access.
-    GraphicsContext& m_context;
+    static void register_new(GraphicsContext& context, FrameBufferPtr framebuffer)
+    {
+        context._register_new(std::move(framebuffer));
+    }
 };
 
 NOTF_CLOSE_NAMESPACE

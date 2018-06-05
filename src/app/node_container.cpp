@@ -71,7 +71,7 @@ void NodeContainer::_rename(valid_ptr<const Node*> node, std::string new_name)
 {
     auto name_it = m_names.find(node->name());
     NOTF_ASSERT(name_it != m_names.end());
-    std::weak_ptr<Node> node_ptr = std::move(name_it->second);
+    NodeWeakPtr node_ptr = std::move(name_it->second);
     m_names.erase(name_it);
     m_names.emplace(std::make_pair(std::move(new_name), std::move(node_ptr)));
 }
