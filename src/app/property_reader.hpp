@@ -50,7 +50,7 @@ public:
     TypedPropertyReader(TypedPropertyBodyPtr<T>&& body) : PropertyReader(std::move(body)) {}
 
     /// Read-access to the value of the PropertyBody.
-    const T& operator()() const { return static_cast<TypedPropertyBody<T>*>(m_body.get())->value(); }
+    const T& operator()() const { return static_cast<TypedPropertyBody<T>*>(m_body.get())->get(); }
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //

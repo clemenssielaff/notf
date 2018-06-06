@@ -281,7 +281,7 @@ public:
     bool has_expression() const { return !is_grounded(); }
 
     /// The Property's value.
-    const T& value() const // TODO: maybe Property.set / get instead of set_value, value, set_expression etc?
+    const T& get() const
     {
         NOTF_MUTEX_GUARD(_mutex());
         return m_value;
@@ -290,10 +290,10 @@ public:
     /// Sets the Property's value and fires a PropertyEvent.
     /// Fires a PropertyEvent, if the call had any effect.
     /// @param value        New value.
-    void set_value(T&& value)
+    void set(T&& value)
     {
         PropertyUpdateList effects;
-        set_value(std::forward<T>(value), effects);
+        set(std::forward<T>(value), effects);
         PropertyGraph::fire_event(std::move(effects));
     }
 
@@ -302,7 +302,7 @@ public:
     /// Does not fire a PropertyEvent, but instead passes all effects into the output argument.
     /// @param value        New value.
     /// @param effects      [OUT] All properties affected by the change.
-    void set_value(T&& value, PropertyUpdateList& effects)
+    void set(T&& value, PropertyUpdateList& effects)
     {
         NOTF_MUTEX_GUARD(_mutex());
         if (m_expression) {
@@ -316,10 +316,10 @@ public:
     /// @param expression       Expression to set.
     /// @param dependencies     Properties that the expression depends on.
     /// @throws no_dag_error    If the expression would introduce a cyclic dependency into the graph.
-    void set_expression(Expression expression, Dependencies dependencies)
+    void set(Expression expression, Dependencies dependencies)
     {
         PropertyUpdateList effects;
-        set_expression(std::move(expression), std::move(dependencies), effects);
+        set(std::move(expression), std::move(dependencies), effects);
         PropertyGraph::fire_event(std::move(effects));
     }
 
@@ -329,7 +329,7 @@ public:
     /// @param dependencies     Properties that the expression depends on.
     /// @param effects          [OUT] All properties affected by the change.
     /// @throws no_dag_error    If the expression would introduce a cyclic dependency into the graph.
-    void set_expression(Expression expression, Dependencies dependencies, PropertyUpdateList& effects)
+    void set(Expression expression, Dependencies dependencies, PropertyUpdateList& effects)
     {
         NOTF_MUTEX_GUARD(_mutex());
 

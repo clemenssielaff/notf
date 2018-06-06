@@ -153,8 +153,6 @@ add_sources(SOURCE_FILES src
     app/io/property_event.cpp
     app/io/state_event.hpp
     app/io/state_event.cpp
-    app/io/time.hpp
-    app/io/time.cpp
     app/io/window_event.hpp
     app/io/window_event.cpp
     app/render/procedural.hpp

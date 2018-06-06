@@ -30,7 +30,7 @@ void check_concat(const Path& lhs, const Path& rhs)
                           "Cannot combine paths \"{}\" and \"{}\", because the latter one is absolute", lhs.to_string(),
                           rhs.to_string());
     }
-    if (lhs.is_property() && rhs.size() > 0 && rhs[0] != "..") {
+    if (!lhs.is_node() && rhs.size() > 0 && rhs[0] != "..") {
         notf_throw_format(Path::construction_error,
                           "Cannot combine paths \"{}\" and \"{}\", because the latter one must start with a \"..\"",
                           lhs.to_string(), rhs.to_string());
@@ -51,8 +51,8 @@ Path::not_unique_error::~not_unique_error() = default;
 
 // ================================================================================================================== //
 
-Path::Path(std::vector<std::string>&& components, const bool is_absolute, const bool is_property)
-    : m_components(std::move(components)), m_is_absolute(is_absolute), m_is_property(is_property)
+Path::Path(std::vector<std::string>&& components, const bool is_absolute, const Kind kind)
+    : m_components(std::move(components)), m_is_absolute(is_absolute), m_kind(kind)
 {
     _normalize();
 }
@@ -65,6 +65,7 @@ Path::Path(const std::string_view& string)
 
     // check if the path is absolute or not
     m_is_absolute = (string[0] == component_delimiter);
+    bool has_component_delimiter = m_is_absolute;
 
     const std::string::size_type property_delimiter_pos = string.find_first_of(property_delimiter);
 
@@ -93,6 +94,7 @@ Path::Path(const std::string_view& string)
             }
             string_pos = delimiter_pos + 1;
             delimiter_pos = string.find_first_of(component_delimiter, string_pos);
+            has_component_delimiter = true;
         }
 
         // last node
@@ -108,7 +110,17 @@ Path::Path(const std::string_view& string)
         const auto component_length = string.length() - string_pos;
         NOTF_ASSERT(component_length > 0);
         m_components.emplace_back(&string[string_pos], component_length);
-        m_is_property = true;
+        m_kind = PROPERTY;
+    }
+
+    // if it's not a property, it is most likely a node
+    else if (has_component_delimiter || (string[0] == '.')) {
+        m_kind = NODE;
+    }
+
+    // if it is a single component without any delimiters, its kind is ambiguous
+    else {
+        m_kind = AMBIGUOUS;
     }
 
     _normalize();
@@ -129,12 +141,37 @@ std::string Path::to_string() const
     }
 }
 
-bool Path::operator==(const Path& other) const
+bool Path::begins_with(const Path& other) const
 {
-    if (m_is_property != other.m_is_property) {
+    if (other.size() > size()) {
         return false;
     }
+    if (m_is_absolute != other.m_is_absolute && other.m_kind != AMBIGUOUS) {
+        return false;
+    }
+    if (m_kind == AMBIGUOUS && other.m_kind != AMBIGUOUS) {
+        return false;
+    }
+    if (m_kind == NODE && other.m_kind == PROPERTY) {
+        return false;
+    }
+    if (m_kind == PROPERTY && size() == other.size() && other.m_kind != PROPERTY) {
+        return false;
+    }
+    for (size_t i = 0, end = other.size(); i < end; ++i) {
+        if (m_components[i] != other.m_components[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool Path::operator==(const Path& other) const
+{
     if (m_is_absolute != other.m_is_absolute) {
+        return false;
+    }
+    if (m_kind != other.m_kind) {
         return false;
     }
     if (m_components.size() != other.m_components.size()) {
@@ -154,7 +191,7 @@ Path Path::operator+(const Path& other) const&
 
     std::vector<std::string> combined_components = m_components;
     extend(combined_components, other.m_components);
-    return Path(std::move(combined_components), is_absolute(), other.is_property());
+    return Path(std::move(combined_components), is_absolute(), other.is_node() ? NODE : PROPERTY);
 }
 
 Path&& Path::operator+(Path&& other) &&
@@ -162,7 +199,7 @@ Path&& Path::operator+(Path&& other) &&
     check_concat(*this, other);
 
     extend(m_components, std::move(other.m_components));
-    m_is_property = other.m_is_property;
+    m_kind = other.is_node() ? NODE : PROPERTY;
     return std::move(*this);
 }
 

@@ -71,7 +71,7 @@ public:
     NodeHandle<Node> parent() const { return NodeHandle<Node>(raw_pointer(m_parent)); }
 
     /// The sibling-unique name of this node.
-    const std::string& name() const { return m_name->value(); }
+    const std::string& name() const { return m_name->get(); }
 
     /// Updates the name of this Node.
     /// @param name     Proposed new name for this node.
@@ -114,6 +114,15 @@ public:
     }
 
     // hierarchy --------------------------------------------------------------
+
+    /// Graph-unique path to this Node.
+    const Path& path() const
+    {
+        if (!m_path) {
+            _initialize_path();
+        }
+        return *m_path;
+    }
 
     /// Checks if this Node has a child Node with a given name.
     /// @param name     Name of the requested Node.
@@ -370,7 +379,6 @@ private:
         return property;
     }
 
-private:
     /// Registers this node as "unfinalized" and creates the "name" property in the constructor.
     valid_ptr<TypedNodeProperty<std::string>*> _create_name();
 
@@ -388,6 +396,14 @@ private:
     /// @see _register_as_tweaked
     void _clean_tweaks();
 
+    /// Initializes the Path of this Node the first time it is requested.
+    void _initialize_path() const;
+
+    /// Recursive initialization of the Path components.
+    /// @param depth        Depth of the recursion (used to reserve component space).
+    /// @param components   [OUT] Components of the path.
+    void _initialize_path_impl(const size_t depth, std::vector<std::string>& components) const;
+
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// The scene containing this node.
@@ -404,6 +420,10 @@ private:
 
     /// The parent-unique name of this Node.
     valid_ptr<TypedNodeProperty<std::string>*> const m_name;
+
+    /// Graph-unique path to this Node.
+    /// Is initialized the first time it is requested.
+    mutable std::unique_ptr<Path> m_path;
 
     /// Only unfinalized nodes can create properties and creating new children in an unfinalized node creates no
     /// deltas.

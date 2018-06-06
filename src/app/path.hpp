@@ -6,13 +6,33 @@
 
 NOTF_OPEN_NAMESPACE
 
+namespace access { // forwards
+template<class>
+class _Path;
+} // namespace access
+
 // ================================================================================================================== //
 
 /// Every Path is immutable, and guaranteed valid when created successfully.
 class Path {
 
+    friend class access::_Path<Node>;
+
     // types -------------------------------------------------------------------------------------------------------- //
+private:
+    /// Path("A") can refer to either a Node or a Property.
+    /// Path(":A") is definitely a Property, Path(".A") is definitely a node.
+    enum Kind : char {
+        NODE,      //< Definitely a node.
+        AMBIGUOUS, //< Single component Path without enforced node or property prefix
+        PROPERTY,  //< Definitely a property.
+    };
+
 public:
+    /// Access types.
+    template<class T>
+    using Access = access::_Path<T>;
+
     /// Thrown when a Path could not be constructed.
     NOTF_EXCEPTION_TYPE(construction_error);
 
@@ -32,7 +52,7 @@ public:
 private:
     /// Value constructor.
     /// For internal use only.
-    Path(std::vector<std::string>&& components, const bool is_absolute, const bool is_property);
+    Path(std::vector<std::string>&& components, const bool is_absolute, const Kind kind);
 
 public:
     /// Default constructor.
@@ -54,7 +74,7 @@ public:
     {
         m_components = std::move(other.m_components);
         m_is_absolute = other.m_is_absolute;
-        m_is_property = other.m_is_property;
+        m_kind = other.m_kind;
         _normalize();
     }
 
@@ -69,16 +89,20 @@ public:
     bool is_relative() const { return !m_is_absolute; }
 
     /// Checks whether or not the last component in the Path is a node name.
-    bool is_node() const { return !m_is_property; }
+    bool is_node() const { return m_kind != PROPERTY; }
 
     /// Checks whether or not the last component in the Path is a property name.
-    bool is_property() const { return m_is_property; }
+    bool is_property() const { return m_kind != NODE; }
 
     /// Returns the normalized string representation of this Path.
     std::string to_string() const;
 
     /// Number of components in the path.
     size_t size() const { return m_components.size(); }
+
+    /// Checks whether this Path shares the first n components with the other.
+    /// @param other    Other path with n components.
+    bool begins_with(const Path& other) const;
 
     /// Returns the nth component name of the path.
     /// @throws path_error  If the index does not identify a component of this path.
@@ -123,8 +147,22 @@ private:
     /// Whether or not the Path is absolute or relative.
     bool m_is_absolute = false;
 
-    /// Whether or not the last component in the Path is a property name.
-    bool m_is_property = false;
+    /// If this Path identifies a Node, a Property or is ambiguous.
+    Kind m_kind = AMBIGUOUS;
+};
+
+// accessors -------------------------------------------------------------------------------------------------------- //
+
+template<>
+class access::_Path<Node> {
+    friend class notf::Node;
+
+    /// Creates a new Path.
+    /// @param components   Components for an absolute node path.
+    static std::unique_ptr<Path> create(std::vector<std::string>&& components)
+    {
+        return std::unique_ptr<Path>(new Path(std::move(components), /* is_absolute = */ true, Path::Kind::NODE));
+    }
 };
 
 NOTF_CLOSE_NAMESPACE

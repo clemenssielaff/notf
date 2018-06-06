@@ -37,17 +37,17 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
             GlobalPropertyPtr<std::string> sprop1 = create_global_property<std::string>("derbe");
             REQUIRE(PropertyGraph::Access<test::Harness>::size() == 3);
 
-            REQUIRE(iprop1->value() == 48);
-            REQUIRE(iprop2->value() == 2);
-            REQUIRE(sprop1->value() == "derbe");
+            REQUIRE(iprop1->get() == 48);
+            REQUIRE(iprop2->get() == 2);
+            REQUIRE(sprop1->get() == "derbe");
 
-            iprop1->set_value(24);
-            iprop2->set_value(16);
-            sprop1->set_value("ultraderbe");
+            iprop1->set(24);
+            iprop2->set(16);
+            sprop1->set("ultraderbe");
 
-            REQUIRE(iprop1->value() == 24);
-            REQUIRE(iprop2->value() == 16);
-            REQUIRE(sprop1->value() == "ultraderbe");
+            REQUIRE(iprop1->get() == 24);
+            REQUIRE(iprop2->get() == 16);
+            REQUIRE(sprop1->get() == "ultraderbe");
 
             REQUIRE(EventManager::Access<test::Harness>(event_manager).backlog_size() == 0);
         }
@@ -63,18 +63,18 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
 
         {
             auto reader = iprop2->reader();
-            iprop1->set_expression([reader]() -> int { return reader() + 7; }, {reader});
+            iprop1->set([reader]() -> int { return reader() + 7; }, {reader});
         }
         REQUIRE(iprop1->has_expression());
 
-        REQUIRE(iprop1->value() == 9);
-        REQUIRE(iprop2->value() == 2);
+        REQUIRE(iprop1->get() == 9);
+        REQUIRE(iprop2->get() == 2);
 
         iprop2.reset();
-        REQUIRE(iprop1->value() == 9);
+        REQUIRE(iprop1->get() == 9);
         REQUIRE(iprop1->has_expression()); // ipropr2 lives on in iprop1's expression
 
-        iprop1->set_value(9);
+        iprop1->set(9);
         REQUIRE(iprop1->is_grounded());
 
         REQUIRE(EventManager::Access<test::Harness>(event_manager).backlog_size() == 0);
@@ -90,18 +90,18 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
             PropertyBatch batch;
             {
                 TypedPropertyReader<int> reader = iprop2->reader();
-                batch.set_expression(*iprop1, [reader]() -> int { return reader() + 5; }, {reader});
+                batch.set(*iprop1, [reader]() -> int { return reader() + 5; }, {reader});
             }
-            batch.set_value(*iprop2, 32);
+            batch.set(*iprop2, 32);
 
             REQUIRE(iprop1->is_grounded());
-            REQUIRE(iprop2->value() == 2);
+            REQUIRE(iprop2->get() == 2);
 
             batch.execute();
 
             REQUIRE(iprop1->has_expression());
-            REQUIRE(iprop1->value() == 37);
-            REQUIRE(iprop2->value() == 32);
+            REQUIRE(iprop1->get() == 37);
+            REQUIRE(iprop2->get() == 32);
         }
         // even though iprop2 is partially owned by the expression on iprop2, it should be removed by now
         REQUIRE(PropertyGraph::Access<test::Harness>::size() == 0);
@@ -126,17 +126,17 @@ SCENARIO("a PropertyGraph must work with a SceneGraph", "[app][property_graph][s
 
     //            AND_THEN("change a value")
     //            {
-    //                iprop->set_value(24);
-    //                sprop->set_value("after");
+    //                iprop->set(24);
+    //                sprop->set("after");
 
     //                THEN("the new value will replace the old one for all but the render thread")
     //                {
-    //                    REQUIRE(iprop->value() == 24);
+    //                    REQUIRE(iprop->get() == 24);
     //                    REQUIRE(graph_access.read_property(*iprop, some_thread_id) == 24);
     //                    REQUIRE(graph_access.read_property(*iprop, other_thread_id) == 24);
     //                    REQUIRE(graph_access.read_property(*iprop, render_thread_id) == 48);
 
-    //                    REQUIRE(sprop->value() == "after");
+    //                    REQUIRE(sprop->get() == "after");
     //                    REQUIRE(graph_access.read_property(*sprop, some_thread_id) == "after");
     //                    REQUIRE(graph_access.read_property(*sprop, other_thread_id) == "after");
     //                    REQUIRE(graph_access.read_property(*sprop, render_thread_id) == "before");
@@ -148,12 +148,12 @@ SCENARIO("a PropertyGraph must work with a SceneGraph", "[app][property_graph][s
 
     //                    THEN("the new value will replace the old one")
     //                    {
-    //                        REQUIRE(iprop->value() == 24);
+    //                        REQUIRE(iprop->get() == 24);
     //                        REQUIRE(graph_access.read_property(*iprop, some_thread_id) == 24);
     //                        REQUIRE(graph_access.read_property(*iprop, other_thread_id) == 24);
     //                        REQUIRE(graph_access.read_property(*iprop, render_thread_id) == 24);
 
-    //                        REQUIRE(sprop->value() == "after");
+    //                        REQUIRE(sprop->get() == "after");
     //                        REQUIRE(graph_access.read_property(*sprop, other_thread_id) == "after");
     //                        REQUIRE(graph_access.read_property(*sprop, some_thread_id) == "after");
     //                        REQUIRE(graph_access.read_property(*sprop, render_thread_id) == "after");
@@ -165,7 +165,7 @@ SCENARIO("a PropertyGraph must work with a SceneGraph", "[app][property_graph][s
     //            {
     //                graph_access.delete_property(iprop->node().get(), some_thread_id);
 
-    //                REQUIRE_THROWS(iprop->value()); // property is actually deleted (not possible without test
+    //                REQUIRE_THROWS(iprop->get()); // property is actually deleted (not possible without test
     //                harness)
 
     //                THEN("the render thread will still be able to access the property")
@@ -178,11 +178,11 @@ SCENARIO("a PropertyGraph must work with a SceneGraph", "[app][property_graph][s
     //            AND_THEN("define an expression for a property")
     //            {
     //                Property<int>& iprop_ref = *iprop.get();
-    //                iprop2->set_expression([&iprop_ref] { return iprop_ref.value() + 1; }, {iprop_ref});
+    //                iprop2->set([&iprop_ref] { return iprop_ref.get() + 1; }, {iprop_ref});
 
     //                THEN("the expression will replace the old value for all but the render thread")
     //                {
-    //                    REQUIRE(iprop2->value() == 49);
+    //                    REQUIRE(iprop2->get() == 49);
     //                    REQUIRE(graph_access.read_property(*iprop2, some_thread_id) == 49);
     //                    REQUIRE(graph_access.read_property(*iprop2, other_thread_id) == 49);
     //                    REQUIRE(graph_access.read_property(*iprop2, render_thread_id) == 0);
@@ -194,7 +194,7 @@ SCENARIO("a PropertyGraph must work with a SceneGraph", "[app][property_graph][s
 
     //                    THEN("the expression will replace the old value")
     //                    {
-    //                        REQUIRE(iprop2->value() == 49);
+    //                        REQUIRE(iprop2->get() == 49);
     //                        REQUIRE(graph_access.read_property(*iprop2, some_thread_id) == 49);
     //                        REQUIRE(graph_access.read_property(*iprop2, other_thread_id) == 49);
     //                        REQUIRE(graph_access.read_property(*iprop2, render_thread_id) == 49);

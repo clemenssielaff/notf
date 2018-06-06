@@ -53,7 +53,7 @@ NodePropertyPtr Scene::_property(const Path& path)
     if (path.is_empty()) {
         notf_throw_format(Path::path_error, "Cannot query a Property from a Scene with an empty path");
     }
-    if (path.size() > 1 && path.is_node()) {
+    if (!path.is_property()) {
         notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Property", path.to_string())
     }
     if (path.is_absolute()) {
@@ -83,7 +83,7 @@ NodePtr Scene::_node(const Path& path)
     if (path.is_empty()) {
         notf_throw_format(Path::path_error, "Cannot query a Node from a Scene with an empty path");
     }
-    if (path.size() > 1 && path.is_property()) {
+    if (!path.is_node()) {
         notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Node", path.to_string())
     }
     if (path.is_absolute()) {

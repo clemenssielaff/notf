@@ -65,7 +65,7 @@ void ProceduralRenderer::_render(valid_ptr<Scene*> scene) const
         switch (variable.type) {
         case GL_FLOAT:
             if (PropertyHandle<float> float_property = scene->property<float>(variable.name)) {
-                fragment_shader->set_uniform(variable.name, float_property.value());
+                fragment_shader->set_uniform(variable.name, float_property.get());
             }
             break;
         }

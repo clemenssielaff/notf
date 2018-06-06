@@ -104,6 +104,22 @@ SCENARIO("Application path", "[app], [path]")
         REQUIRE(path[1] == "child");
         REQUIRE(path[2] == "target");
         REQUIRE(path[3] == "property");
+        REQUIRE_THROWS_AS(path[4], Path::path_error);
+    }
+
+    SECTION("paths can be compared")
+    {
+        REQUIRE(Path("") == Path());
+        REQUIRE(Path("") != Path(".")); // left one is ambiguous, right one is node
+        REQUIRE(Path("") != Path("/")); // left one is relative, right one is absolute
+        REQUIRE(Path("node") != Path("/node"));
+        REQUIRE(Path("node") != Path(".node"));
+        REQUIRE(Path("property") != Path(":property"));
+        REQUIRE(Path("one") != Path("one/two"));
+        REQUIRE(Path("one/two") != Path("one/two/three"));
+        REQUIRE(Path("one/two") != Path("one/three"));
+        REQUIRE(Path("one/two") == Path("one/two"));
+        REQUIRE(Path("one/two:three") == Path("one/two:three"));
     }
 
     SECTION("relative paths can be resolved to equivalent absolute")
@@ -209,5 +225,137 @@ SCENARIO("Application path", "[app], [path]")
     {
         const Path combined = Path("/absolute") + std::string("parent") + Path(".") + "child" + Path(":property");
         REQUIRE(combined == Path("/absolute/parent/child:property"));
+    }
+
+    SECTION("single component paths can be ambiguous")
+    {
+        const Path ambiguous("Ambiguous");
+        REQUIRE(ambiguous.is_property());
+        REQUIRE(ambiguous.is_node());
+
+        const Path property(":property");
+        REQUIRE(property.is_property());
+        REQUIRE(!property.is_node());
+
+        const Path property_relative(".:property");
+        REQUIRE(property_relative.is_property());
+        REQUIRE(!property_relative.is_node());
+
+        const Path property_multicomponent("node:property");
+        REQUIRE(property_multicomponent.is_property());
+        REQUIRE(!property_multicomponent.is_node());
+
+        const Path node_relativ(".node");
+        REQUIRE(!node_relativ.is_property());
+        REQUIRE(node_relativ.is_node());
+
+        const Path node_absolute("/node");
+        REQUIRE(!node_absolute.is_property());
+        REQUIRE(node_absolute.is_node());
+
+        const Path node_multicomponent("node/other_node");
+        REQUIRE(!node_multicomponent.is_property());
+        REQUIRE(node_multicomponent.is_node());
+    }
+
+    SECTION("two ambiguous paths are assumed to refer to a node when concatenated")
+    {
+        const Path ambiguous_one("one");
+        REQUIRE(ambiguous_one.is_property());
+        REQUIRE(ambiguous_one.is_node());
+
+        const Path ambiguous_two("two");
+        REQUIRE(ambiguous_two.is_property());
+        REQUIRE(ambiguous_two.is_node());
+
+        const Path conatenated = ("one/two");
+        REQUIRE(!conatenated.is_property());
+        REQUIRE(conatenated.is_node());
+
+        REQUIRE(ambiguous_one + ambiguous_two == conatenated);
+    }
+
+    SECTION("paths can be converted back into a string")
+    {
+        REQUIRE(Path().to_string() == "");
+        REQUIRE(Path("ambiguous").to_string() == "ambiguous");
+        REQUIRE(Path("/absolute/node").to_string() == "/absolute/node");
+        REQUIRE(Path("/absolute/node:property").to_string() == "/absolute/node:property");
+        REQUIRE(Path("relative/node:property").to_string() == "relative/node:property");
+    }
+
+    SECTION("paths check whether they begin with another path")
+    {
+        const Path absolute_node("/parent/node/absolute");
+        REQUIRE(absolute_node.begins_with(Path()));
+        REQUIRE(absolute_node.begins_with(Path("/")));
+        REQUIRE(absolute_node.begins_with(Path("/parent")));
+        REQUIRE(absolute_node.begins_with(Path("/parent/")));
+        REQUIRE(absolute_node.begins_with(Path("/parent/node/")));
+        REQUIRE(absolute_node.begins_with(Path("/parent/node/absolute")));
+        REQUIRE(absolute_node.begins_with(Path("parent"))); // ambiguous paths are also allowed
+        REQUIRE(!absolute_node.begins_with(Path(".parent")));
+        REQUIRE(!absolute_node.begins_with(Path("parent/")));
+        REQUIRE(!absolute_node.begins_with(Path("/blub")));
+        REQUIRE(!absolute_node.begins_with(Path("/parent/blub")));
+        REQUIRE(!absolute_node.begins_with(Path("/parent/node/absolute/not")));
+        REQUIRE(!absolute_node.begins_with(Path("/parent/node:absolute")));
+
+        const Path relative_node("./parent/node/relative");
+        REQUIRE(relative_node.begins_with(Path()));
+        REQUIRE(relative_node.begins_with(Path("./parent")));
+        REQUIRE(relative_node.begins_with(Path("./parent/")));
+        REQUIRE(relative_node.begins_with(Path("./parent/node")));
+        REQUIRE(relative_node.begins_with(Path("./parent/node/relative")));
+        REQUIRE(relative_node.begins_with(Path("parent"))); // ambiguous paths are also allowed
+        REQUIRE(relative_node.begins_with(Path("parent/")));
+        REQUIRE(relative_node.begins_with(Path("parent/node")));
+        REQUIRE(relative_node.begins_with(Path("parent/node/relative")));
+        REQUIRE(!relative_node.begins_with(Path("/")));
+        REQUIRE(!relative_node.begins_with(Path("/parent")));
+        REQUIRE(!relative_node.begins_with(Path("blub")));
+        REQUIRE(!relative_node.begins_with(Path("parent/blub")));
+        REQUIRE(!relative_node.begins_with(Path("parent/node/relative/not")));
+        REQUIRE(!relative_node.begins_with(Path("parent/node/relative:not")));
+
+        const Path ambiguous("ambiguous");
+        REQUIRE(ambiguous.begins_with(Path()));
+        REQUIRE(!ambiguous.begins_with(Path("/")));
+        REQUIRE(!ambiguous.begins_with(Path(".")));
+        REQUIRE(!ambiguous.begins_with(Path("blub")));
+        REQUIRE(!ambiguous.begins_with(Path("ambiguous/not")));
+        REQUIRE(!ambiguous.begins_with(Path("ambiguous:not")));
+
+        const Path absolute_property("/parent/node:absolute");
+        REQUIRE(absolute_property.begins_with(Path()));
+        REQUIRE(absolute_property.begins_with(Path("/")));
+        REQUIRE(absolute_property.begins_with(Path("/parent")));
+        REQUIRE(absolute_property.begins_with(Path("/parent/")));
+        REQUIRE(absolute_property.begins_with(Path("/parent/node/")));
+        REQUIRE(absolute_property.begins_with(Path("/parent/node:absolute")));
+        REQUIRE(absolute_property.begins_with(Path("parent"))); // ambiguous paths are also allowed
+        REQUIRE(!absolute_property.begins_with(Path(".parent")));
+        REQUIRE(!absolute_property.begins_with(Path("parent/")));
+        REQUIRE(!absolute_property.begins_with(Path("/blub")));
+        REQUIRE(!absolute_property.begins_with(Path("/parent/blub")));
+        REQUIRE(!absolute_property.begins_with(Path("/parent/node/absolute")));
+        REQUIRE(!absolute_property.begins_with(Path("/parent/node:not")));
+
+        const Path relative_property("./parent/node:relative");
+        REQUIRE(relative_property.begins_with(Path()));
+        REQUIRE(relative_property.begins_with(Path("./parent")));
+        REQUIRE(relative_property.begins_with(Path("./parent/")));
+        REQUIRE(relative_property.begins_with(Path("./parent/node")));
+        REQUIRE(relative_property.begins_with(Path("./parent/node:relative")));
+        REQUIRE(relative_property.begins_with(Path("parent"))); // ambiguous paths are also allowed
+        REQUIRE(relative_property.begins_with(Path("parent/")));
+        REQUIRE(relative_property.begins_with(Path("parent/node")));
+        REQUIRE(relative_property.begins_with(Path("parent/node:relative")));
+        REQUIRE(!relative_property.begins_with(Path("/")));
+        REQUIRE(!relative_property.begins_with(Path("/parent")));
+        REQUIRE(!relative_property.begins_with(Path("blub")));
+        REQUIRE(!relative_property.begins_with(Path("parent/blub")));
+        REQUIRE(!relative_property.begins_with(Path("parent/node/relative")));
+        REQUIRE(!relative_property.begins_with(Path("parent/node:not")));
     }
 }

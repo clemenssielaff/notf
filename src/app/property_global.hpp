@@ -36,19 +36,19 @@ public:
     }
 
     /// The Property's value.
-    const T& value() const { return _body().value(); }
+    const T& get() const { return _body().get(); }
 
     /// Sets the Property's value and fires a PropertyEvent.
     /// @param value        New value.
-    void set_value(T&& value) { return _body().set_value(std::forward<T>(value)); }
+    void set(T&& value) { return _body().set(std::forward<T>(value)); }
 
     /// Set the Property's expression.
     /// @param expression       Expression to set.
     /// @param dependencies     Properties that the expression depends on.
     /// @throws no_dag_error    If the expression would introduce a cyclic dependency into the graph.
-    void set_expression(Expression expression, Dependencies dependencies)
+    void set(Expression expression, Dependencies dependencies)
     {
-        _body().set_expression(std::move(expression), std::move(dependencies));
+        _body().set(std::move(expression), std::move(dependencies));
     }
 
     /// Checks if the Property is grounded or not (has an expression).

@@ -84,10 +84,10 @@ Node::~Node()
 
 const std::string& Node::set_name(const std::string& name)
 {
-    if (!m_name->set_value(name)) {
-        log_warning << "Could not validate new name \"" << name << "\" for Node \"" << m_name->value() << "\"";
+    if (!m_name->set(name)) {
+        log_warning << "Could not validate new name \"" << name << "\" for Node \"" << m_name->get() << "\"";
     }
-    return m_name->value();
+    return m_name->get();
 }
 
 bool Node::has_ancestor(const valid_ptr<const Node*> ancestor) const
@@ -294,14 +294,13 @@ NodePropertyPtr Node::_property(const Path& path)
     if (path.is_empty()) {
         notf_throw_format(Path::path_error, "Cannot query a Property with an empty path");
     }
-    if (path.size() > 1 && path.is_node()) {
+    if (!path.is_property()) {
         notf_throw_format(Path::path_error, "Path \"{}\" does not refer to a Property of Node \"{}\"", path.to_string(),
                           name());
     }
-    if (path.is_absolute()) {
+    if (!this->path().begins_with(path)) {
         notf_throw_format(Path::path_error, "Path \"{}\" cannot be used to query a Property of Node \"{}\"",
                           path.to_string(), name());
-        // TODO: accept absolute paths if it refers to this node
     }
 
     // lock the SceneGraph hierarchy
@@ -341,14 +340,13 @@ NodePtr Node::_node(const Path& path)
     if (path.is_empty()) {
         notf_throw_format(Path::path_error, "Cannot query a Node with an empty path");
     }
-    if (path.size() > 1 && path.is_property()) { // TODO: should one-component paths always be node AND property?
+    if (!path.is_node()) {
         notf_throw_format(Path::path_error, "Path \"{}\" does not refer to a descenant of Node \"{}\"",
                           path.to_string(), name());
     }
-    if (path.is_absolute()) {
+    if (!this->path().begins_with(path)) {
         notf_throw_format(Path::path_error, "Path \"{}\" cannot be used to query descenant of Node \"{}\"",
                           path.to_string(), name());
-        // TODO: accept absolute paths if it refers to this node
     }
 
     // lock the SceneGraph hierarchy
@@ -471,6 +469,29 @@ void Node::_clean_tweaks()
     NOTF_ASSERT(SceneGraph::Access<Node>::mutex(graph()).is_locked_by_this_thread());
     for (auto& it : m_properties) {
         NodeProperty::Access<Node>::clear_frozen(*it.second.get());
+    }
+}
+
+void Node::_initialize_path() const
+{
+    NOTF_ASSERT(!m_path); // this method should only be called once
+    std::vector<std::string> components;
+    _initialize_path_impl(1, components);
+    m_path = Path::Access<Node>::create(std::move(components));
+}
+
+void Node::_initialize_path_impl(const size_t depth, std::vector<std::string>& components) const
+{
+    if (m_parent == this) {
+        // root node
+        NOTF_ASSERT(components.empty());
+        components.reserve(depth);
+        components.push_back(m_scene.name());
+    }
+    else {
+        // ancestor node
+        m_parent->_initialize_path_impl(depth + 1, components);
+        components.push_back(name());
     }
 }
 

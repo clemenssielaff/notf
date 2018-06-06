@@ -4,7 +4,6 @@
 
 #include "app/event_manager.hpp"
 #include "app/glfw.hpp"
-#include "app/io/time.hpp"
 #include "app/render_manager.hpp"
 #include "app/resource_manager.hpp"
 #include "app/timer_manager.hpp"
@@ -24,6 +23,7 @@ Application::shut_down_error::~shut_down_error() {}
 
 const Application::Args Application::s_invalid_args;
 std::atomic<bool> Application::s_was_closed{false};
+timepoint_t Application::s_start_time;
 
 Application::Application(const Args& application_args)
     : m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
@@ -63,9 +63,6 @@ Application::Application(const Args& application_args)
         notf_throw(initialization_error, "GLFW initialization failed");
     }
     log_info << "GLFW version: " << glfwGetVersionString();
-
-    // initialize other NoTF mechanisms
-    Time::initialize();
 }
 
 Application::~Application() { _shutdown(); }
@@ -84,6 +81,9 @@ Window& Application::create_window(const detail::WindowArguments& args)
 
 int Application::exec()
 {
+    // set the start time
+    s_start_time = clock_t::now();
+
     // loop until there are no more windows open
     while (m_windows.size() > 0) {
 

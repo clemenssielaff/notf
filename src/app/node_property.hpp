@@ -163,7 +163,7 @@ public:
     const std::string& name() const { return m_name_it->first; }
 
     /// Current NodeProperty value.
-    const T& value() const
+    const T& get() const
     {
         // if the property is frozen by this thread (the render thread, presumably) and there exists a frozen copy of
         // the value, use that instead of the current one
@@ -176,7 +176,7 @@ public:
     }
 
     /// Returns true if this NodeProperty can be set to hold an expressions.
-    /// If this method returns false, `set_expression` will throw a `no_body_error`.
+    /// If this method returns false, trying to set an expression will throw a `no_body_error`.
     bool supports_expressions() const { return (_body() != nullptr); }
 
     /// Whether or not changing this property will make the Node dirty (cause a redraw) or not.
@@ -190,7 +190,7 @@ public:
     /// Removes an existing expression on this Property if one exists.
     /// @param value    New value.
     /// @returns        True iff the value could be updated, false if the validation failed.
-    bool set_value(T value)
+    bool set(T value)
     {
         // do nothing if the value fails to validate
         if (m_validator && !m_validator(value)) {
@@ -199,7 +199,7 @@ public:
 
         if (risky_ptr<TypedPropertyBody<T>*> body = _body()) {
             PropertyUpdateList effects;
-            body->set_value(std::forward<T>(value), effects);
+            body->set(std::forward<T>(value), effects);
             _update_affected(std::move(effects));
         }
         else {
@@ -216,7 +216,7 @@ public:
     ///                     If the expression would introduce a cyclic dependency into the graph.
     /// @throws NodeProperty<T>::no_body_error
     ///                     If this NodeProperty was created without a PropertyBody and cannot accept expressions.
-    void set_expression(Expression&& expression, Dependencies&& dependencies)
+    void set(Expression&& expression, Dependencies&& dependencies)
     {
         risky_ptr<TypedPropertyBody<T>*> body = _body();
         if (!body) {
@@ -386,10 +386,10 @@ public:
 
     /// Current NodeProperty value.
     /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
-    const T& value() const { return _property()->value(); }
+    const T& get() const { return _property()->get(); }
 
     /// Returns true if this NodeProperty can be set to hold an expressions.
-    /// If this method returns false, `set_expression` will throw a `no_body_error`.
+    /// If this method returns false, trying to set an expression will throw a `no_body_error`.
     /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
     bool supports_expressions() const { return _property()->supports_expressions(); }
 
@@ -407,7 +407,7 @@ public:
     /// @param value    New value.
     /// @returns        True iff the value could be updated, false if the validation failed.
     /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
-    bool set_value(T value) { return _property()->set_value(std::forward<T>(value)); }
+    bool set(T value) { return _property()->set(std::forward<T>(value)); }
 
     /// Sets the Property's expression.
     /// Evaluates the expression right away to update the Property's value.
@@ -419,9 +419,9 @@ public:
     ///                     If this NodeProperty was created without a PropertyBody and cannot accept expressions.
     /// @throws NodeProperty::no_property_error
     ///                     If the NodeProperty has expired.
-    void set_expression(Expression&& expression, Dependencies&& dependencies)
+    void set(Expression&& expression, Dependencies&& dependencies)
     {
-        _property()->set_expression(std::move(expression), std::move(dependencies));
+        _property()->set(std::move(expression), std::move(dependencies));
     }
 
     /// Returns a PropertyReader for reading the (unbuffered) value of this Property.

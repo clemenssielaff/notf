@@ -21,8 +21,8 @@ struct CloudScene : public Scene {
         : Scene(token, graph, std::move(name)), p_time(_root().create_property<float>("time", 0))
     {
         m_timer = IntervalTimer::create([&] {
-            const float last_time = p_time.value();
-            p_time.set_value(last_time + 1.f / 20.0f); // TODO: get global time
+            const auto age_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Application::age()).count();
+            p_time.set(static_cast<float>(age_in_ms / 1000.));
         });
 
         using namespace notf::literals;

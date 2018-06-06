@@ -42,7 +42,7 @@ public:
     /// @param property     Property to update.
     /// @param value        New value.
     template<class T, class U = typename T::type>
-    void set_value(T& property, U&& value)
+    void set(T& property, U&& value)
     {
         static_assert(std::is_base_of<PropertyHead, T>::value, "T must be a subclass of PropertyHead");
         _set_value<U>(property, std::forward<U>(value));
@@ -54,7 +54,7 @@ public:
     /// @param expression       New expression for the targeted Property.
     /// @param dependencies     Property Readers that the expression depends on.
     template<class T, class U = typename T::type>
-    void set_expression(T& property, identity_t<Expression<U>>&& expression, Dependencies&& deps)
+    void set(T& property, identity_t<Expression<U>>&& expression, Dependencies&& deps)
     {
         static_assert(std::is_base_of<PropertyHead, T>::value, "T must be a subclass of PropertyHead");
         _set_expression<U>(property, std::move(expression), std::move(deps));

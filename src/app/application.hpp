@@ -4,6 +4,7 @@
 
 #include "app/forwards.hpp"
 #include "common/exception.hpp"
+#include "common/time.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -146,6 +147,15 @@ public:
     /// The Application's Timer Manager.
     TimerManager& timer_manager() { return *m_timer_manager; }
 
+    /// Timepoint when the Application was started.
+    static const timepoint_t& start_time() { return s_start_time; }
+
+    /// Age of this Application instance.
+    static duration_t age()
+    {
+        return (s_start_time == timepoint_t{}) ? duration_t{0} : (clock_t::now() - s_start_time);
+    }
+
 private:
     /// Static (private) function holding the actual Application instance.
     static Application& _instance(const Args& application_args = s_invalid_args)
@@ -183,6 +193,9 @@ private:
 
     /// All Windows known the the Application.
     std::vector<WindowPtr> m_windows;
+
+    /// Timepoint when the Application was started.
+    static timepoint_t s_start_time;
 
     /// Flag to indicate that the Application was open and is now closed.
     static std::atomic<bool> s_was_closed;
