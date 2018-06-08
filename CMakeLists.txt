@@ -28,6 +28,11 @@ endmacro()
 macro(remove_subdir module name)
 endmacro()
 
+# CONFIGURATION ########################################################################################################
+
+include(CheckIPOSupported)
+check_ipo_supported(RESULT IS_LTO_SUPPORTED OUTPUT LTO_ERROR)
+
 # OPTIONS ##############################################################################################################
 
 option(NOTF_BUILD_APP "Build application" ON)
@@ -76,7 +81,7 @@ endif()
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g -DNOTF_DEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-DNOTF_DEBUG")
 
 if(NOTF_LOG_PRETTY_FUNCTION)
     add_definitions(-DNOTF_LOG_PRETTY_FUNCTION)
@@ -213,7 +218,7 @@ if(NOTF_BUILD_APP)
 
     add_sources(SOURCE_FILES src main.cpp)
 
-    add_executable(notf
+    add_executable(notf-app
         ${common_MODULE}
 #        ${app_MODULE}
         ${graphics_MODULE}
@@ -223,12 +228,21 @@ if(NOTF_BUILD_APP)
         ${RESOURCE_FILES}
     )
 
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(notf-app
         ${OPENGL_gl_LIBRARY}
         glfw
         freetype
         ${PYTHON_LIBRARIES}
     )
+
+    if(CMAKE_BUILD_TYPE MATCHES "Release")
+        if(IS_LTO_SUPPORTED)
+            message(STATUS "Building notf-app with LTO enabled")
+            set_property(TARGET notf-app PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+        else()
+            message(STATUS "LTO not supported: <${LTO_ERROR}>")
+        endif()
+    endif()
 
 endif()
 
