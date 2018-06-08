@@ -24,20 +24,22 @@ macro(create_module name)
     set(${name}_MODULE ${${name}_SOURCE} ${${name}_HEADERS} ${${name}_MARKDOWN})
 endmacro()
 
-
-macro(remove_subdir module name)
-endmacro()
-
 # CONFIGURATION ########################################################################################################
 
 include(CheckIPOSupported)
 check_ipo_supported(RESULT IS_LTO_SUPPORTED OUTPUT LTO_ERROR)
 
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+endif(CCACHE_FOUND)
+
 # OPTIONS ##############################################################################################################
 
 option(NOTF_BUILD_APP "Build application" ON)
 option(NOTF_USE_LIBCXX "Use LLVM's libc++ instead of libstdc++" OFF)
-option(NOTF_USE_OPENMP "Use OpenMP" ON)
+option(NOTF_USE_OPENMP "Use OpenMP" OFF)
 option(NOTF_BUILD_TESTS "Build tests" OFF)
 option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
 option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
@@ -47,7 +49,7 @@ option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
 # libcxx
 if(NOTF_USE_LIBCXX)
     set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
-    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-stdlib=libc++")
+#    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-stdlib=libc++")
 endif()
 
 # glfw
@@ -81,7 +83,7 @@ endif()
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-DNOTF_DEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DNOTF_DEBUG")
 
 if(NOTF_LOG_PRETTY_FUNCTION)
     add_definitions(-DNOTF_LOG_PRETTY_FUNCTION)
@@ -91,7 +93,8 @@ include_directories(
     src/
     thirdparty/
     res/
-    /home/clemens/code/thirdparty/freetype-2.8.1/include
+    /home/clemens/code/thirdparty/freetype-2.8.1/include/
+    /home/clemens/code/thirdparty/glm-0.9.8.5/include/
     examples/
 )
 
@@ -99,7 +102,6 @@ create_module(common)
 #create_module(app)
 create_module(graphics)
 create_module(utils)
-
 
 add_sources(SOURCE_FILES src
     app/application.cpp
@@ -214,35 +216,38 @@ add_sources(THIRDPARTY_FILES thirdparty
 #    shaders/clouds.frag
 #)
 
+add_library(notf
+    ${common_MODULE}
+#        ${app_MODULE}
+    ${graphics_MODULE}
+    ${utils_MODULE}
+    ${SOURCE_FILES}
+    ${THIRDPARTY_FILES}
+    ${RESOURCE_FILES}
+)
+
+target_link_libraries(notf
+    ${OPENGL_gl_LIBRARY}
+    glfw
+    freetype
+    ${PYTHON_LIBRARIES}
+)
+
+if(CMAKE_BUILD_TYPE MATCHES "Release")
+    if(IS_LTO_SUPPORTED)
+        message(STATUS "Building notf with LTO enabled")
+        set_property(TARGET notf PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    else()
+        message(STATUS "LTO failed:\n${LTO_ERROR}")
+    endif()
+endif()
+
+# APP ##################################################################################################################
+
 if(NOTF_BUILD_APP)
 
-    add_sources(SOURCE_FILES src main.cpp)
-
-    add_executable(notf-app
-        ${common_MODULE}
-#        ${app_MODULE}
-        ${graphics_MODULE}
-        ${utils_MODULE}
-        ${SOURCE_FILES}
-        ${THIRDPARTY_FILES}
-        ${RESOURCE_FILES}
-    )
-
-    target_link_libraries(notf-app
-        ${OPENGL_gl_LIBRARY}
-        glfw
-        freetype
-        ${PYTHON_LIBRARIES}
-    )
-
-    if(CMAKE_BUILD_TYPE MATCHES "Release")
-        if(IS_LTO_SUPPORTED)
-            message(STATUS "Building notf-app with LTO enabled")
-            set_property(TARGET notf-app PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-        else()
-            message(STATUS "LTO not supported: <${LTO_ERROR}>")
-        endif()
-    endif()
+    add_executable (notf-app src/main.cpp)
+    target_link_libraries (notf-app notf)
 
 endif()
 
@@ -250,11 +255,10 @@ endif()
 
 if(NOTF_BUILD_TESTS)
 
-    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-DNOTF_TEST -fprofile-arcs -ftest-coverage")
+    message(STATUS "Building Tests")
 
-    include_directories(
-        /home/clemens/code/thirdparty/glm-0.9.8.5/include/
-    )
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNOTF_TEST")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
 
     add_sources(TEST_SOURCES test
         catch.hpp
@@ -283,23 +287,8 @@ if(NOTF_BUILD_TESTS)
 #        test_vector2.cpp
     )
 
-    add_executable(notf-test
-        ${common_MODULE}
-#        ${app_MODULE}
-        ${graphics_MODULE}
-        ${utils_MODULE}
-        ${SOURCE_FILES}
-        ${THIRDPARTY_FILES}
-        ${RESOURCE_FILES}
-        ${TEST_SOURCES}
-    )
-
-    target_link_libraries(notf-test
-        ${OPENGL_gl_LIBRARY}
-        glfw
-        freetype
-        ${PYTHON_LIBRARIES}
-    )
+    add_executable(notf-test ${TEST_SOURCES})
+    target_link_libraries(notf-test notf)
 
 endif()
 
@@ -331,10 +320,3 @@ if(NOTF_BUILD_BENCHMARKS)
 
 endif()
 
-# CCACHE ###############################################################################################################
-
-find_program(CCACHE_FOUND ccache)
-if(CCACHE_FOUND)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
-endif(CCACHE_FOUND)

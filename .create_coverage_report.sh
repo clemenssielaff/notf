@@ -7,12 +7,12 @@
 # 3: Copy this file into the build directory (for example ${NOTF}/build/gcc/debug) and execute it
 
 # generate coverage.info file from the CMake build
-lcov --directory "${PWD}/CMakeFiles/notf-test.dir/" --capture --output-file coverage.info
+lcov --directory "${PWD}/CMakeFiles/" --capture --output-file coverage.info
 
 # remove all output but the one generated from the src/ subdirecty
 lcov --extract coverage.info "*/notf/src/*" --output-file coverage.info
 
 # create HTML report in ./coverage directory
 rm -rf ./coverage
-genhtml -o ./coverage -t "notf Test Coverage Report" coverage.info 
+genhtml -o ./coverage -t "NoTF Test Coverage Report" coverage.info
 
