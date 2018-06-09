@@ -144,6 +144,23 @@ public:
         return NodeHandle<T>(_read_children().get(name));
     }
 
+    /// Returns a handle to a child Node at the given index.
+    /// Index 0 is the node furthest back, inded `size() - 1` is the child drawn at the front.
+    /// @param index    Index of the Node.
+    /// @returns        The requested child Node.
+    /// @throws no_node_error    If the index is out-of-bounds or the child Node is of the wrong type.
+    template<class T>
+    NodeHandle<T> child(const size_t index)
+    {
+        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
+        const NodeContainer& children = _read_children();
+        if (index < children.size()) {
+            return NodeHandle<T>(children[index].raw());
+        }
+        notf_throw(detail::NodeHandleBase::no_node_error, "Index {} is out-of-bounds for Node \"{}\" with {} children",
+                   index, name(), child_count());
+    }
+
     /// Searches for and returns a descendant of this Node.
     /// @param path     Path uniquely identifying a child Node.
     /// @returns        Handle to the requested child Node.
@@ -156,7 +173,7 @@ public:
     }
 
     /// The number of direct children of this Node.
-    size_t count_children() const
+    size_t child_count() const
     {
         NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
         return _read_children().size();
@@ -198,8 +215,6 @@ public:
         }
         return {};
     }
-
-    // TODO: methods to get child in the front / back / nth
 
     // z-order ----------------------------------------------------------------
 
@@ -338,21 +353,20 @@ protected:
     _create_property(std::string name, T&& value, Validator<T> validator = {}, const bool has_body = true)
     {
         if (_is_finalized()) {
-            notf_throw_format(node_finalized_error,
-                              "Cannot create Property \"{}\" (or any new Property) on Node \"{}\", "
-                              "or in fact any Node that has already been finalized",
-                              name, this->name());
+            notf_throw(node_finalized_error,
+                       "Cannot create Property \"{}\" (or any new Property) on Node \"{}\", "
+                       "or in fact any Node that has already been finalized",
+                       name, this->name());
         }
         if (m_properties.count(name)) {
-            notf_throw_format(Path::not_unique_error, "Node \"{}\" already has a Property named \"{}\"", this->name(),
-                              name);
+            notf_throw(Path::not_unique_error, "Node \"{}\" already has a Property named \"{}\"", this->name(), name);
         }
 
         if (validator && !validator(value)) {
-            notf_throw_format(NodeProperty::initial_value_error,
-                              "Cannot create Property \"{}\" with value \"{}\", "
-                              "that did not validate against the supplied Validator function",
-                              name, value);
+            notf_throw(NodeProperty::initial_value_error,
+                       "Cannot create Property \"{}\" with value \"{}\", "
+                       "that did not validate against the supplied Validator function",
+                       name, value);
         }
 
         // create the property

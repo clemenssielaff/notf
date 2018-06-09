@@ -128,7 +128,7 @@ protected:
             bool success;
             std::tie(it, success) = m_states.emplace(std::make_pair(std::move(name), nullptr));
             if (!success) {
-                notf_throw_format(runtime_error, "Cannot replace existing State \"" << name << "\" in StateMachine");
+                notf_throw(runtime_error, "Cannot replace existing State \"" << name << "\" in StateMachine");
             }
             it->second.reset(new State(enter, leave, it));
             return it->second.get();
@@ -144,7 +144,7 @@ protected:
         {
             auto it = m_states.find(name);
             if (it == m_states.end()) {
-                notf_throw_format(runtime_error, "Unknown State \"" << name << "\" requested");
+                notf_throw(runtime_error, "Unknown State \"" << name << "\" requested");
             }
             return it->second.get();
         }

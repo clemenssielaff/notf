@@ -65,17 +65,16 @@ void RenderManager::RenderThread::_run()
                 return;
             }
         }
-//        log_trace << "Rendering frame: " << frame_counter++;
+        //        log_trace << "Rendering frame: " << frame_counter++;
 
         Window* window = m_windows.front();
         m_windows.pop_front();
 
         GraphicsContext& context = window->graphics_context();
         { // render the frame
-            GraphicsContext::CurrentGuard current_guard = context.make_current();
-
             SceneGraphPtr& scene_graph = window->scene_graph();
-            SceneGraph::Access<RenderManager>::freeze(*scene_graph, std::this_thread::get_id());
+            SceneGraph::FreezeGuard freeze_guard = SceneGraph::Access<RenderManager>::freeze(*scene_graph);
+            GraphicsContext::CurrentGuard context_guard = context.make_current();
 
             //        // TODO: clean all the render targets here
             //        // in order to sort them, use typeid(*ptr).hash_code()
@@ -84,9 +83,7 @@ void RenderManager::RenderThread::_run()
 
             try {
                 // render all Layers from back to front
-                //                for (const LayerPtr& layer : reverse(scene_graph.current_state()->layers())) { //
-                //                TODO: BROKEN?
-                for (const auto& layer : scene_graph->current_state()->layers()) {
+                for (const auto& layer : reverse(scene_graph->current_state()->layers())) { //
                     layer->render();
                 }
             }
@@ -96,7 +93,6 @@ void RenderManager::RenderThread::_run()
             }
 
             context.finish_frame();
-            SceneGraph::Access<RenderManager>::unfreeze(*scene_graph, std::this_thread::get_id());
         }
     }
 }

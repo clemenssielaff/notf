@@ -51,18 +51,18 @@ void Scene::_create_frozen_children(valid_ptr<const Node*> node)
 NodePropertyPtr Scene::_property(const Path& path)
 {
     if (path.is_empty()) {
-        notf_throw_format(Path::path_error, "Cannot query a Property from a Scene with an empty path");
+        notf_throw(Path::path_error, "Cannot query a Property from a Scene with an empty path");
     }
     if (!path.is_property()) {
-        notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Property", path.to_string())
+        notf_throw(Path::path_error, "Path \"{}\" does not identify a Property", path.to_string())
     }
     if (path.is_absolute()) {
         if (path[0] != name()) {
-            notf_throw_format(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(),
+            notf_throw(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(),
                               name());
         }
         if (path.size() == 1) {
-            notf_throw_format(Path::path_error, "Path \"{}\" does not refer to a Property in Scene \"{}\"",
+            notf_throw(Path::path_error, "Path \"{}\" does not refer to a Property in Scene \"{}\"",
                               path.to_string(), name());
         }
     }
@@ -81,18 +81,18 @@ NodePropertyPtr Scene::_property(const Path& path)
 NodePtr Scene::_node(const Path& path)
 {
     if (path.is_empty()) {
-        notf_throw_format(Path::path_error, "Cannot query a Node from a Scene with an empty path");
+        notf_throw(Path::path_error, "Cannot query a Node from a Scene with an empty path");
     }
     if (!path.is_node()) {
-        notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Node", path.to_string())
+        notf_throw(Path::path_error, "Path \"{}\" does not identify a Node", path.to_string())
     }
     if (path.is_absolute()) {
         if (path[0] != name()) {
-            notf_throw_format(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(),
+            notf_throw(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(),
                               name());
         }
         if (path.size() == 1) {
-            notf_throw_format(Path::path_error, "Path \"{}\" does not refer to a Node in Scene \"{}\"",
+            notf_throw(Path::path_error, "Path \"{}\" does not refer to a Node in Scene \"{}\"",
                               path.to_string(), name());
         }
     }
@@ -156,7 +156,7 @@ SceneGraph::SceneMap::const_iterator Scene::_validate_scene_name(SceneGraph& gra
     if (result.second) {
         return result.first;
     }
-    notf_throw_format(scene_name_error,
+    notf_throw(scene_name_error,
                       "Cannot create new Scene because its name \"{}\" is not unique within its SceneGraph",
                       result.first->first);
 }

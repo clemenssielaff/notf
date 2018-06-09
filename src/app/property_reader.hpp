@@ -59,7 +59,7 @@ template<>
 class access::_PropertyReader<PropertyBody> {
     friend class notf::PropertyBody;
 
-    /// Mutex guarding all Property bodies.
+    /// Owning pointer to the PropertyBody to read from.
     static const PropertyBodyPtr& property(const PropertyReader& reader) { return reader.m_body; }
 };
 

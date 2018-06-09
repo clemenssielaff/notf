@@ -54,7 +54,7 @@ public:
 
     public:
         /// Layers that make up the State, ordered from front to back.
-        const std::vector<valid_ptr<LayerPtr>> layers() const { return m_layers; }
+        const std::vector<valid_ptr<LayerPtr>>& layers() const { return m_layers; }
 
         // fields -------------------------------------------------------------
     private:
@@ -62,6 +62,49 @@ public:
         std::vector<valid_ptr<LayerPtr>> m_layers;
     };
     using StatePtr = std::shared_ptr<State>;
+
+    // ------------------------------------------------------------------------
+
+    /// RAII object to make sure that a frozen scene is ALWAYS unfrozen again
+    class NOTF_NODISCARD FreezeGuard {
+
+        friend class SceneGraph;
+
+        /// Constructor.
+        /// @param graph        SceneGraph to freeze.
+        /// @param thread_id    ID of the freezing thread, uses the calling thread by default. (exposed for testability)
+        FreezeGuard(valid_ptr<SceneGraph*> graph, std::thread::id thread_id = std::this_thread::get_id())
+            : m_graph(graph), m_thread_id(std::move(thread_id))
+        {
+            if (!m_graph->_freeze(m_thread_id)) {
+                m_graph = nullptr;
+            }
+        }
+
+    public:
+        NOTF_NO_COPY_OR_ASSIGN(FreezeGuard);
+        NOTF_NO_HEAP_ALLOCATION(FreezeGuard);
+
+        /// Move constructor.
+        /// @param other    FreezeGuard to move from.
+        FreezeGuard(FreezeGuard&& other) : m_graph(other.m_graph) { other.m_graph = nullptr; }
+
+        /// Destructor.
+        ~FreezeGuard()
+        {
+            if (m_graph) { // don't unfreeze if this guard tried to double-freeze the scene
+                m_graph->_unfreeze(m_thread_id);
+            }
+        }
+
+        // fields -------------------------------------------------------------
+    private:
+        /// Scene to freeze.
+        risky_ptr<SceneGraph*> m_graph;
+
+        /// Id of the freezing thread.
+        const std::thread::id m_thread_id;
+    };
 
     // methods ------------------------------------------------------------------------------------------------------ //
 private:
@@ -125,22 +168,11 @@ public:
     // freezing ---------------------------------------------------------------
 
     /// Checks if the SceneGraph currently frozen or not.
-    bool is_frozen() const
-    {
-        // TODO: you must be able to check whether a SceneGraph is frozen without holding the event mutex
-        // why did I think this was necessary? Do I need to make the `m_freezing_thread` an atomic?
-        // can we get rid of the event mutex swapping in the scene tests now?
-        //        NOTF_ASSERT(m_event_mutex.is_locked_by_this_thread());
-        return (m_freezing_thread != 0);
-    }
+    bool is_frozen() const { return (m_freezing_thread != 0); }
 
     /// Checks if the SceneGraph is currently frozen by a given thread.
     /// @param thread_id    Id of the thread in question.
-    bool is_frozen_by(const std::thread::id& thread_id) const
-    {
-        //        NOTF_ASSERT(m_event_mutex.is_locked_by_this_thread());
-        return (m_freezing_thread == hash(thread_id));
-    }
+    bool is_frozen_by(const std::thread::id& thread_id) const { return (m_freezing_thread == hash(thread_id)); }
 
     // state management -------------------------------------------------------
 
@@ -187,6 +219,13 @@ private:
     NodePtr _node(const Path& path);
 
     // freezing ---------------------------------------------------------------
+
+    /// Creates and returns a FreezeGuard that keeps the scene frozen while it is alive.
+    /// @param thread_id    Id of the freezing thread (should only be used in tests).
+    FreezeGuard _freeze_guard(const std::thread::id thread_id = std::this_thread::get_id())
+    {
+        return FreezeGuard(this, std::move(thread_id));
+    }
 
     /// Freezes the Scene if it is not already frozen.
     /// @param thread_id    Id of the calling thread.
@@ -235,7 +274,7 @@ private:
     mutable RecursiveMutex m_hierarchy_mutex;
 
     /// Thread that has frozen the SceneGraph (is 0 if the graph is not frozen).
-    size_t m_freezing_thread = 0;
+    std::atomic_size_t m_freezing_thread{0};
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //
@@ -328,15 +367,8 @@ class access::_SceneGraph<RenderManager> {
 
     /// Freezes the Scene if it is not already frozen.
     /// @param graph        SceneGraph to operate on.
-    /// @param thread_id    Id of the calling thread.
     /// @returns            True iff the Scene was frozen.
-    static bool freeze(SceneGraph& graph, std::thread::id thread_id) { return graph._freeze(std::move(thread_id)); }
-
-    /// Unfreezes the Scene again.
-    /// @param graph        SceneGraph to operate on.
-    /// @param thread_id    Id of the calling thread (for safety reasons).
-    static void unfreeze(SceneGraph& graph, const std::thread::id thread_id) { graph._unfreeze(std::move(thread_id)); }
-    // TODO: freeze guard?
+    static SceneGraph::FreezeGuard freeze(SceneGraph& graph) { return graph._freeze_guard(std::this_thread::get_id()); }
 };
 
 //-----------------------------------------------------------------------------

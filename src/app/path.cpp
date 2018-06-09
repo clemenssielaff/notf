@@ -26,12 +26,12 @@ construct_error_message(const char* input, const size_t error_position, const si
 void check_concat(const Path& lhs, const Path& rhs)
 {
     if (rhs.is_absolute()) {
-        notf_throw_format(Path::construction_error,
+        notf_throw(Path::construction_error,
                           "Cannot combine paths \"{}\" and \"{}\", because the latter one is absolute", lhs.to_string(),
                           rhs.to_string());
     }
     if (!lhs.is_node() && rhs.size() > 0 && rhs[0] != "..") {
-        notf_throw_format(Path::construction_error,
+        notf_throw(Path::construction_error,
                           "Cannot combine paths \"{}\" and \"{}\", because the latter one must start with a \"..\"",
                           lhs.to_string(), rhs.to_string());
     }
@@ -216,7 +216,7 @@ void Path::_normalize()
         if (component == "..") {
             if (next_valid_index == 0) {
                 if (is_absolute()) {
-                    notf_throw_format(construction_error, "Absolute path \"{}\" cannot be resolved", to_string());
+                    notf_throw(construction_error, "Absolute path \"{}\" cannot be resolved", to_string());
                 }
                 // if the path is relative, we allow 0-n ".." components at the start
             }

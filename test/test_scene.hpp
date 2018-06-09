@@ -12,46 +12,6 @@ NOTF_OPEN_NAMESPACE
 template<>
 class access::_SceneGraph<test::Harness> {
 
-    // types -------------------------------------------------------------------------------------------------------- //
-public:
-    /// RAII object to make sure that a frozen scene is ALWAYS unfrozen again
-    struct NOTF_NODISCARD FreezeGuard {
-
-        NOTF_NO_COPY_OR_ASSIGN(FreezeGuard);
-        NOTF_NO_HEAP_ALLOCATION(FreezeGuard);
-
-        /// Constructor.
-        /// @param graph        SceneGraph to freeze.
-        /// @param thread_id    ID of the freezing thread, uses the calling thread by default. (exposed for testability)
-        FreezeGuard(SceneGraph* graph, const std::thread::id thread_id = std::this_thread::get_id())
-            : m_graph(graph), m_thread_id(thread_id)
-        {
-            if (!m_graph->_freeze(m_thread_id)) {
-                m_graph = nullptr;
-            }
-        }
-
-        /// Move constructor.
-        /// @param other    FreezeGuard to move from.
-        FreezeGuard(FreezeGuard&& other) : m_graph(other.m_graph) { other.m_graph = nullptr; }
-
-        /// Destructor.
-        ~FreezeGuard()
-        {
-            if (m_graph) { // don't unfreeze if this guard tried to double-freeze the scene
-                m_graph->_unfreeze(m_thread_id);
-            }
-        }
-
-        // fields -------------------------------------------------------------
-    private:
-        /// Scene to freeze.
-        SceneGraph* m_graph;
-
-        /// Id of the freezing thread.
-        const std::thread::id m_thread_id;
-    };
-
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
@@ -63,9 +23,9 @@ public:
 
     /// Creates and returns a FreezeGuard that keeps the scene frozen while it is alive.
     /// @param thread_id    (pretend) Id of the freezing thread.
-    FreezeGuard freeze_guard(const std::thread::id thread_id = std::this_thread::get_id())
+    SceneGraph::FreezeGuard freeze_guard(const std::thread::id thread_id = std::this_thread::get_id())
     {
-        return FreezeGuard(&m_graph, thread_id);
+        return m_graph._freeze_guard(thread_id);
     }
 
     /// Freezes the Scene.

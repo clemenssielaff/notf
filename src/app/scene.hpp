@@ -113,7 +113,7 @@ public:
 
 protected:
     /// Special access to this Scene's RootNode.
-    access::_RootNode<Scene> _root(); // TODO: instead of this, offer a _create_property method
+    access::_RootNode<Scene> _root();
 
     // event handling ---------------------------------------------------------
 private:

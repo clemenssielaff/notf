@@ -154,10 +154,10 @@ void SceneGraph::_propagate_event(EventPtr&& untyped_event)
 NodePropertyPtr SceneGraph::_property(const Path& path)
 {
     if (path.is_empty()) {
-        notf_throw_format(Path::path_error, "Cannot query a Property from a SceneGraph with an empty path");
+        notf_throw(Path::path_error, "Cannot query a Property from a SceneGraph with an empty path");
     }
     if (!path.is_property()) {
-        notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Property", path.to_string())
+        notf_throw(Path::path_error, "Path \"{}\" does not identify a Property", path.to_string())
     }
     const std::string& scene_name = path[0];
     {
@@ -170,17 +170,17 @@ NodePropertyPtr SceneGraph::_property(const Path& path)
             }
         }
     }
-    notf_throw_format(Path::path_error, "Path \"{}\" refers to unknown Scene \"{}\" in SceneGraph", path.to_string(),
+    notf_throw(Path::path_error, "Path \"{}\" refers to unknown Scene \"{}\" in SceneGraph", path.to_string(),
                       scene_name);
 }
 
 NodePtr SceneGraph::_node(const Path& path)
 {
     if (path.is_empty()) {
-        notf_throw_format(Path::path_error, "Cannot query a Node  from a SceneGraph with an empty path");
+        notf_throw(Path::path_error, "Cannot query a Node  from a SceneGraph with an empty path");
     }
     if (!path.is_node()) {
-        notf_throw_format(Path::path_error, "Path \"{}\" does not identify a Node", path.to_string())
+        notf_throw(Path::path_error, "Path \"{}\" does not identify a Node", path.to_string())
     }
     const std::string& scene_name = path[0];
     {
@@ -193,7 +193,7 @@ NodePtr SceneGraph::_node(const Path& path)
             }
         }
     }
-    notf_throw_format(Path::path_error, "Path \"{}\" refers to unknown Scene \"{}\" in SceneGraph", path.to_string(),
+    notf_throw(Path::path_error, "Path \"{}\" refers to unknown Scene \"{}\" in SceneGraph", path.to_string(),
                       scene_name);
 }
 
@@ -234,7 +234,7 @@ void SceneGraph::_unfreeze(NOTF_UNUSED const std::thread::id thread_id)
     }
     NOTF_ASSERT_MSG(m_freezing_thread == hash(thread_id),
                     "Thread #{} must not unfreeze the SceneGraph, because it was frozen by a different thread (#{}).",
-                    hash(thread_id), hash(m_freezing_thread));
+                    hash(thread_id), hash(m_freezing_thread.load()));
 
     {
         NOTF_MUTEX_GUARD(m_hierarchy_mutex);

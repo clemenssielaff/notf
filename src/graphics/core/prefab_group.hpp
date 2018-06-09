@@ -98,7 +98,7 @@ public:
         if (it != m_prefab_types.end()) {
             return *it;
         }
-        notf_throw_format(runtime_error, "Unkown prefab type \"{}\"", name);
+        notf_throw(runtime_error, "Unkown prefab type \"{}\"", name);
     }
 
     /// Go through all prefab types of this group and render all instances of each type.

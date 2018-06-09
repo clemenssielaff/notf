@@ -54,21 +54,11 @@ NOTF_COMPILER_WARNING(
 
 /// Convenience macro to throw a notf_exception with a message, that additionally contains the line, file and function
 /// where the error occured.
-#ifndef notf_throw_format // TODO: there is no difference between notf_throw and notf_throw_format anymore
-#define notf_throw_format(TYPE, ...)                                                                     \
+#ifndef notf_throw
+#define notf_throw(TYPE, ...)                                                                            \
     {                                                                                                    \
         throw TYPE(notf::basename(__FILE__), NOTF_CURRENT_FUNCTION, __LINE__, fmt::format(__VA_ARGS__)); \
     }
-#else
-NOTF_COMPILER_WARNING(
-    "Macro 'notf_throw_format' is already defined - NoTF's notf_throw_format macro will remain disabled.")
-#endif
-
-// ================================================================================================================== //
-
-/// Convenience macro to trow a notf_exception with a message from a constexpr function.
-#ifndef notf_throw
-#define notf_throw(TYPE, MSG) (throw TYPE(notf::basename(__FILE__), NOTF_CURRENT_FUNCTION, __LINE__, MSG))
 #else
 NOTF_COMPILER_WARNING("Macro 'notf_throw' is already defined - NoTF's notf_throw macro will remain disabled.")
 #endif

@@ -40,9 +40,9 @@ Application::Application(const Args& application_args)
 
     // exit here, if the user failed to call Application::initialize()
     if (application_args.argc == -1) {
-        notf_throw_format(initialization_error, "Cannot start an uninitialized Application!\n"
-                                                "Make sure to call `Application::initialize()` in `main()` "
-                                                "before creating the first NoTF object");
+        notf_throw(initialization_error, "Cannot start an uninitialized Application!\n"
+                                         "Make sure to call `Application::initialize()` in `main()` "
+                                         "before creating the first NoTF object");
     }
 
     try { // create the resource manager

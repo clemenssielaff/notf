@@ -62,6 +62,11 @@ public:
         return it->second;
     }
 
+    /// Returns an non-owning pointer to a child Node in this container by index.
+    /// Does not perform error checking.
+    /// @param index    Index of the chid.
+    NodeWeakPtr get(const size_t index) const { return m_order[index].raw(); }
+
     /// Adds a new Node to the container.
     /// @param node Node to add.
     /// @returns    True iff the node was inserted successfully, false otherwise.

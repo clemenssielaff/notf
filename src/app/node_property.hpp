@@ -220,7 +220,7 @@ public:
     {
         risky_ptr<TypedPropertyBody<T>*> body = _body();
         if (!body) {
-            notf_throw_format(TypedNodeProperty<T>::no_body_error,
+            notf_throw(TypedNodeProperty<T>::no_body_error,
                               "Property \"{}\" on Node \"{}\" cannot be defined using an Expression", name(),
                               _node_name());
         }

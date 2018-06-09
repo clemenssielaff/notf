@@ -137,8 +137,8 @@ NodeHandle<Node> Node::common_ancestor(valid_ptr<Node*> other)
 
     // if the result is a scene root node, we need to make sure that it is in fact the root of BOTH nodes
     if (result->m_parent == result && (!has_ancestor(result) || !other->has_ancestor(result))) {
-        notf_throw_format(hierarchy_error, "Nodes \"{}\" and \"{}\" are not part of the same hierarchy", name(),
-                          other->name());
+        notf_throw(hierarchy_error, "Nodes \"{}\" and \"{}\" are not part of the same hierarchy", name(),
+                   other->name());
     }
     return NodeHandle<Node>(result);
 }
@@ -186,9 +186,8 @@ bool Node::is_in_front_of(const valid_ptr<Node*> sibling) const
             return true;
         }
     }
-    notf_throw_format(hierarchy_error,
-                      "Cannot compare z-order of nodes \"{}\" and \"{}\", because they are not siblings.", name(),
-                      sibling->name());
+    notf_throw(hierarchy_error, "Cannot compare z-order of nodes \"{}\" and \"{}\", because they are not siblings.",
+               name(), sibling->name());
 }
 
 bool Node::is_behind(const valid_ptr<Node*> sibling) const
@@ -214,9 +213,8 @@ bool Node::is_behind(const valid_ptr<Node*> sibling) const
             return true;
         }
     }
-    notf_throw_format(hierarchy_error,
-                      "Cannot compare z-order of nodes \"{}\" and \"{}\", because they are not siblings.", name(),
-                      sibling->name());
+    notf_throw(hierarchy_error, "Cannot compare z-order of nodes \"{}\" and \"{}\", because they are not siblings.",
+               name(), sibling->name());
 }
 
 void Node::stack_front()
@@ -292,15 +290,15 @@ void Node::stack_behind(const valid_ptr<Node*> sibling)
 NodePropertyPtr Node::_property(const Path& path)
 {
     if (path.is_empty()) {
-        notf_throw_format(Path::path_error, "Cannot query a Property with an empty path");
+        notf_throw(Path::path_error, "Cannot query a Property with an empty path");
     }
     if (!path.is_property()) {
-        notf_throw_format(Path::path_error, "Path \"{}\" does not refer to a Property of Node \"{}\"", path.to_string(),
-                          name());
+        notf_throw(Path::path_error, "Path \"{}\" does not refer to a Property of Node \"{}\"", path.to_string(),
+                   name());
     }
     if (!this->path().begins_with(path)) {
-        notf_throw_format(Path::path_error, "Path \"{}\" cannot be used to query a Property of Node \"{}\"",
-                          path.to_string(), name());
+        notf_throw(Path::path_error, "Path \"{}\" cannot be used to query a Property of Node \"{}\"", path.to_string(),
+                   name());
     }
 
     // lock the SceneGraph hierarchy
@@ -338,15 +336,15 @@ void Node::_property(const Path& path, const uint index, NodePropertyPtr& result
 NodePtr Node::_node(const Path& path)
 {
     if (path.is_empty()) {
-        notf_throw_format(Path::path_error, "Cannot query a Node with an empty path");
+        notf_throw(Path::path_error, "Cannot query a Node with an empty path");
     }
     if (!path.is_node()) {
-        notf_throw_format(Path::path_error, "Path \"{}\" does not refer to a descenant of Node \"{}\"",
-                          path.to_string(), name());
+        notf_throw(Path::path_error, "Path \"{}\" does not refer to a descenant of Node \"{}\"", path.to_string(),
+                   name());
     }
     if (!this->path().begins_with(path)) {
-        notf_throw_format(Path::path_error, "Path \"{}\" cannot be used to query descenant of Node \"{}\"",
-                          path.to_string(), name());
+        notf_throw(Path::path_error, "Path \"{}\" cannot be used to query descenant of Node \"{}\"", path.to_string(),
+                   name());
     }
 
     // lock the SceneGraph hierarchy
@@ -437,7 +435,6 @@ valid_ptr<TypedNodeProperty<std::string>*> Node::_create_name()
 
     // validator function for Node names, is called every time its name changes.
     TypedNodeProperty<std::string>::Validator validator = [this](std::string& name) -> bool {
-
         // lock the SceneGraph hierarchy
         NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
         const NodeContainer& siblings = m_parent->_read_children();

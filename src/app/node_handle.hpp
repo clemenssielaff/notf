@@ -55,7 +55,7 @@ public:
     {
         { // test if the given node is of the correct type
             if (!dynamic_cast<T*>(node.get())) {
-                notf_throw_format(no_node_error, "Cannot wrap Node \"{}\" into Handle of wrong type", node->name());
+                notf_throw(no_node_error, "Cannot wrap Node \"{}\" into Handle of wrong type", node->name());
             }
         }
     }
@@ -68,7 +68,7 @@ public:
                 notf_throw(no_node_error, "Cannot create Handle for empty node");
             }
             if (!dynamic_cast<T*>(raw_node.get())) {
-                notf_throw_format(no_node_error, "Cannot wrap Node \"{}\" into Handle of wrong type",
+                notf_throw(no_node_error, "Cannot wrap Node \"{}\" into Handle of wrong type",
                                   _name(raw_node.get()));
             }
         }

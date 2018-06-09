@@ -103,7 +103,7 @@ GraphicsContext::GraphicsContext(GLFWwindow* window) : m_window(window)
             const GLubyte* version;
             notf_check_gl(version = glGetString(GL_VERSION));
             if (!version) {
-                notf_throw_format(runtime_error, "Failed to create an OpenGL context");
+                notf_throw(runtime_error, "Failed to create an OpenGL context");
             }
         }
 
@@ -350,7 +350,7 @@ TexturePtr GraphicsContext::texture(const TextureId& id) const
 {
     auto it = m_textures.find(id);
     if (it == m_textures.end()) {
-        notf_throw_format(out_of_bounds, "GraphicsContext does not contain a Texture with ID \"{}\"", id);
+        notf_throw(out_of_bounds, "GraphicsContext does not contain a Texture with ID \"{}\"", id);
     }
     return it->second.lock();
 }
@@ -362,7 +362,7 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot)
     }
 
     if (slot >= environment().texture_slot_count) {
-        notf_throw_format(runtime_error, "Invalid texture slot: {} - largest texture slot is: {}", slot,
+        notf_throw(runtime_error, "Invalid texture slot: {} - largest texture slot is: {}", slot,
                           environment().texture_slot_count - 1);
     }
 
@@ -371,7 +371,7 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot)
     }
 
     if (!texture->is_valid()) {
-        notf_throw_format(runtime_error, "Cannot bind invalid texture \"{}\"", texture->name());
+        notf_throw(runtime_error, "Cannot bind invalid texture \"{}\"", texture->name());
     }
 
     notf_check_gl(glActiveTexture(GL_TEXTURE0 + slot));
@@ -383,7 +383,7 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot)
 void GraphicsContext::unbind_texture(uint slot)
 {
     if (slot >= environment().texture_slot_count) {
-        notf_throw_format(runtime_error, "Invalid texture slot: {} - largest texture slot is: {}", slot,
+        notf_throw(runtime_error, "Invalid texture slot: {} - largest texture slot is: {}", slot,
                           environment().texture_slot_count - 1);
     }
 
@@ -408,7 +408,7 @@ ShaderPtr GraphicsContext::shader(const ShaderId& id) const
 {
     auto it = m_shaders.find(id);
     if (it == m_shaders.end()) {
-        notf_throw_format(out_of_bounds, "GraphicsContext does not contain a Shader with ID \"{}\"", id);
+        notf_throw(out_of_bounds, "GraphicsContext does not contain a Shader with ID \"{}\"", id);
     }
     return it->second.lock();
 }
@@ -423,7 +423,7 @@ FrameBufferPtr GraphicsContext::framebuffer(const FrameBufferId& id) const
 {
     auto it = m_framebuffers.find(id);
     if (it == m_framebuffers.end()) {
-        notf_throw_format(out_of_bounds, "GraphicsContext does not contain a FrameBuffer with ID \"{}\"", id);
+        notf_throw(out_of_bounds, "GraphicsContext does not contain a FrameBuffer with ID \"{}\"", id);
     }
     return it->second.lock();
 }
@@ -522,7 +522,7 @@ void GraphicsContext::_register_new(TexturePtr texture)
         it->second = texture; // update expired
     }
     else {
-        notf_throw_format(internal_error,
+        notf_throw(internal_error,
                           "Failed to register a new texture with the same ID as an existing texture: \"{}\"",
                           texture->id());
     }
@@ -538,7 +538,7 @@ void GraphicsContext::_register_new(ShaderPtr shader)
         it->second = shader; // update expired
     }
     else {
-        notf_throw_format(internal_error,
+        notf_throw(internal_error,
                           "Failed to register a new shader with the same ID as an existing shader: \"{}\"",
                           shader->id());
     }
@@ -554,7 +554,7 @@ void GraphicsContext::_register_new(FrameBufferPtr framebuffer)
         it->second = framebuffer; // update expired
     }
     else {
-        notf_throw_format(internal_error,
+        notf_throw(internal_error,
                           "Failed to register a new framebuffer with the same ID as an existing framebuffer: \"{}\"",
                           framebuffer->id());
     }

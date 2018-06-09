@@ -3,7 +3,7 @@
 #include <inttypes.h>
 #include <iostream>
 
-#include "tinyutf8/tinyutf8.h" // TODO: split utf8 into header and body
+#include "tinyutf8/tinyutf8.h"
 
 #include "common/meta.hpp"
 

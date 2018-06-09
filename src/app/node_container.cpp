@@ -48,9 +48,9 @@ void NodeContainer::stack_before(const size_t index, const valid_ptr<Node*> sibl
     auto node_it = iterator_at(m_order, index);
     auto sibling_it = std::find(m_order.begin(), m_order.end(), sibling);
     if (sibling_it == m_order.end()) {
-        notf_throw_format(Scene::hierarchy_error,
-                          "Cannot stack node \"{}\" before node \"{}\" because the two are not siblings.",
-                          (*node_it)->name(), sibling->name());
+        notf_throw(Scene::hierarchy_error,
+                   "Cannot stack node \"{}\" before node \"{}\" because the two are not siblings.", (*node_it)->name(),
+                   sibling->name());
     }
     notf::move_behind_of(m_order, node_it, sibling_it);
 }
@@ -60,9 +60,9 @@ void NodeContainer::stack_behind(const size_t index, const valid_ptr<Node*> sibl
     auto node_it = iterator_at(m_order, index);
     auto sibling_it = std::find(m_order.begin(), m_order.end(), sibling);
     if (sibling_it == m_order.end()) {
-        notf_throw_format(Scene::hierarchy_error,
-                          "Cannot stack node \"{}\" before node \"{}\" because the two are not siblings.",
-                          (*node_it)->name(), sibling->name());
+        notf_throw(Scene::hierarchy_error,
+                   "Cannot stack node \"{}\" before node \"{}\" because the two are not siblings.", (*node_it)->name(),
+                   sibling->name());
     }
     notf::move_in_front_of(m_order, node_it, sibling_it);
 }
