@@ -20,6 +20,9 @@ class Node : public receive_signals, public std::enable_shared_from_this<Node> {
     friend class RootNode;
     friend class access::_Node<Scene>;
     friend class access::_Node<NodeProperty>;
+#ifdef NOTF_TEST
+    friend class access::_Node<test::Harness>;
+#endif
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
@@ -128,7 +131,7 @@ public:
     /// @param name     Name of the requested Node.
     bool has_child(const std::string& name)
     {
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
+        NOTF_MUTEX_GUARD(_hierarchy_mutex());
         return _read_children().contains(name);
     }
 
@@ -140,7 +143,7 @@ public:
     template<class T>
     NodeHandle<T> child(const std::string& name)
     {
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
+        NOTF_MUTEX_GUARD(_hierarchy_mutex());
         return NodeHandle<T>(_read_children().get(name));
     }
 
@@ -152,7 +155,7 @@ public:
     template<class T>
     NodeHandle<T> child(const size_t index)
     {
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
+        NOTF_MUTEX_GUARD(_hierarchy_mutex());
         const NodeContainer& children = _read_children();
         if (index < children.size()) {
             return NodeHandle<T>(children[index].raw());
@@ -175,14 +178,14 @@ public:
     /// The number of direct children of this Node.
     size_t child_count() const
     {
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
+        NOTF_MUTEX_GUARD(_hierarchy_mutex());
         return _read_children().size();
     }
 
     /// The number of all (direct and indirect) descendants of this Node.
     size_t count_descendants() const
     {
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
+        NOTF_MUTEX_GUARD(_hierarchy_mutex());
         size_t result = 0;
         _count_descendants_impl(result);
         return result;
@@ -203,8 +206,7 @@ public:
     template<class T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
     NodeHandle<T> first_ancestor()
     {
-        // lock the SceneGraph hierarchy
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(m_scene.graph()));
+        NOTF_MUTEX_GUARD(_hierarchy_mutex());
 
         valid_ptr<const Node*> next = m_parent;
         while (next != next->m_parent) {
@@ -280,15 +282,18 @@ protected:
     /// Recursive implementation of `count_descendants`.
     void _count_descendants_impl(size_t& result) const
     {
-        NOTF_ASSERT(SceneGraph::Access<Node>::mutex(graph()).is_locked_by_this_thread());
+        NOTF_ASSERT(_hierarchy_mutex().is_locked_by_this_thread());
         result += _read_children().size();
         for (const auto& child : _read_children()) {
             child->_count_descendants_impl(result);
         }
     }
 
+    /// Direct access to the mutex protecting this node's hierarchy.
+    RecursiveMutex& _hierarchy_mutex() const { return SceneGraph::Access<Node>::mutex(graph()); }
+
     /// All children of this node, orded from back to front.
-    /// Never creates a delta.
+    /// Never creates a delta.f
     /// Note that you will need to hold the SceneGraph hierarchy mutex while calling this method, as well as for the
     /// entire lifetime of the returned reference!
     const NodeContainer& _read_children() const;
@@ -311,7 +316,7 @@ protected:
         auto handle = NodeHandle<T>(child);
 
         { // store the node as a child
-            NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
+            NOTF_MUTEX_GUARD(_hierarchy_mutex());
             _write_children().add(std::move(child));
         }
 
@@ -328,7 +333,7 @@ protected:
         NOTF_ASSERT(node);
 
         { // remove the node from the child container
-            NOTF_MUTEX_GUARD(SceneGraph::Access<Node>::mutex(graph()));
+            NOTF_MUTEX_GUARD(_hierarchy_mutex());
             NodeContainer& children = _write_children();
             children.erase(node);
         }

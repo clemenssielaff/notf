@@ -75,4 +75,16 @@ private:
     Scene& m_scene;
 };
 
+// ================================================================================================================== //
+
+struct TestScene : public Scene {
+    TestScene(const FactoryToken& token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
+        : Scene(token, graph, std::move(name))
+    {}
+
+    ~TestScene() override;
+
+    void _resize_view(Size2i) override {}
+};
+
 NOTF_CLOSE_NAMESPACE

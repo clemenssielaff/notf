@@ -102,6 +102,9 @@ public:
     /// @throws hierarchy_error     If the sibling is not a sibling of this node.
     void stack_behind(const size_t index, const valid_ptr<Node*> sibling);
 
+    /// Reverses the order of all nodes in the container.
+    void reverse();
+
     /// @{
     /// Reference to the Node in the back of the stack.
     auto& back() { return m_order.front(); }

@@ -68,8 +68,7 @@ public:
                 notf_throw(no_node_error, "Cannot create Handle for empty node");
             }
             if (!dynamic_cast<T*>(raw_node.get())) {
-                notf_throw(no_node_error, "Cannot wrap Node \"{}\" into Handle of wrong type",
-                                  _name(raw_node.get()));
+                notf_throw(no_node_error, "Cannot wrap Node \"{}\" into Handle of wrong type", _name(raw_node.get()));
             }
         }
     }
@@ -138,8 +137,15 @@ private:
 
 // accessors -------------------------------------------------------------------------------------------------------- //
 
+#ifdef NOTF_TEST
+struct TestNode;
+#endif
+
 class access::_NodeHandle {
     friend class notf::Node;
+#ifdef NOTF_TEST
+    friend struct notf::TestNode;
+#endif
 
     /// Extracts a shared_ptr from a NodeHandle.
     template<class T>

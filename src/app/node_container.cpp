@@ -67,6 +67,8 @@ void NodeContainer::stack_behind(const size_t index, const valid_ptr<Node*> sibl
     notf::move_in_front_of(m_order, node_it, sibling_it);
 }
 
+void NodeContainer::reverse() { std::reverse(m_order.begin(), m_order.end()); }
+
 void NodeContainer::_rename(valid_ptr<const Node*> node, std::string new_name)
 {
     auto name_it = m_names.find(node->name());

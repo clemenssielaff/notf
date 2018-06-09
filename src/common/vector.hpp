@@ -224,4 +224,5 @@ bool contains(const std::vector<T>& vec, const T& value)
 {
     return std::find(vec.begin(), vec.end(), value) != vec.end();
 }
+
 NOTF_CLOSE_NAMESPACE

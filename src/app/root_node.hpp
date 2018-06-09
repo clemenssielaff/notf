@@ -59,7 +59,7 @@ public:
 
 private:
     /// Finalizes the RootNode.
-    void _finalize() { s_unfinalized_nodes.erase(this); }
+    using Node::_finalize;
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //
