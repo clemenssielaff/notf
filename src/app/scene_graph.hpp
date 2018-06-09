@@ -318,7 +318,7 @@ class access::_SceneGraph<Scene> {
 
     /// Direct access to the Graph's hierachy mutex.
     /// @param graph    SceneGraph to operate on.
-    static RecursiveMutex& mutex(SceneGraph& graph) { return graph.m_hierarchy_mutex; }
+    static RecursiveMutex& hierarchy_mutex(SceneGraph& graph) { return graph.m_hierarchy_mutex; }
 };
 
 //-----------------------------------------------------------------------------
@@ -341,7 +341,11 @@ class access::_SceneGraph<Node> {
 
     /// Direct access to the Graph's hierachy mutex.
     /// @param graph    SceneGraph to operate on.
-    static RecursiveMutex& mutex(SceneGraph& graph) { return graph.m_hierarchy_mutex; }
+    static RecursiveMutex& hierarchy_mutex(SceneGraph& graph) { return graph.m_hierarchy_mutex; }
+
+    /// Direct access to the Graph's event mutex.
+    /// @param graph    SceneGraph to operate on.
+    static Mutex& event_mutex(SceneGraph& graph) { return graph.m_event_mutex; }
 };
 
 //-----------------------------------------------------------------------------
@@ -379,7 +383,7 @@ class access::_SceneGraph_NodeHandle {
 
     /// Direct access to the Graph's hierachy mutex.Node
     /// @param graph    SceneGraph to operate on.
-    static RecursiveMutex& mutex(SceneGraph& graph) { return graph.m_hierarchy_mutex; }
+    static RecursiveMutex& hierarchy_mutex(SceneGraph& graph) { return graph.m_hierarchy_mutex; }
 };
 
 NOTF_CLOSE_NAMESPACE

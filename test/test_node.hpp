@@ -33,6 +33,20 @@ struct TestNode : public Node {
         return _add_child<T>(std::forward<Args>(args)...);
     }
 
+    /// Constructs a new Property on this Node.
+    /// @param name         Name of the Property.
+    /// @param value        Initial value of the Property (also determines its type unless specified explicitly).
+    /// @param validator    Optional validator function.
+    /// @param has_body     Whether or not the Property will have a Property body in the Property Graph.
+    template<class T>
+    PropertyHandle<T> add_property(std::string name, T&& value, Validator<T> validator = {}, const bool has_body = true)
+    {
+        Node::Access<test::Harness>::unfinalize(*this);
+        auto result = _create_property(std::move(name), std::forward<T>(value), std::move(validator), has_body);
+        Node::Access<test::Harness>::finalize(*this);
+        return result;
+    }
+
     /// Adds a child node that itself has a given number of children.
     /// @param grandchildren_count  Numer of children in the newly created child node.
     NodeHandle<TestNode> add_subtree(const size_t grandchildren_count)

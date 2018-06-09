@@ -19,6 +19,9 @@ class _NodeProperty;
 class NodeProperty : public PropertyHead {
 
     friend class access::_NodeProperty<Node>;
+#ifdef NOTF_TEST
+    friend class access::_NodeProperty<test::Harness>;
+#endif
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
@@ -94,6 +97,9 @@ template<class T>
 class TypedNodeProperty : public NodeProperty {
 
     friend class access::_NodeProperty<Node>;
+#ifdef NOTF_TEST
+    friend class access::_NodeProperty<test::Harness>;
+#endif
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
@@ -163,17 +169,7 @@ public:
     const std::string& name() const { return m_name_it->first; }
 
     /// Current NodeProperty value.
-    const T& get() const
-    {
-        // if the property is frozen by this thread (the render thread, presumably) and there exists a frozen copy of
-        // the value, use that instead of the current one
-        if (_is_frozen_by(std::this_thread::get_id())) {
-            if (T* frozen_value = m_frozen_value.load(std::memory_order_consume)) {
-                return *frozen_value;
-            }
-        }
-        return m_value;
-    }
+    const T& get() const { return _get(std::this_thread::get_id()); }
 
     /// Returns true if this NodeProperty can be set to hold an expressions.
     /// If this method returns false, trying to set an expression will throw a `no_body_error`.
@@ -192,11 +188,6 @@ public:
     /// @returns        True iff the value could be updated, false if the validation failed.
     bool set(T value)
     {
-        // do nothing if the value fails to validate
-        if (m_validator && !m_validator(value)) {
-            return false;
-        }
-
         if (risky_ptr<TypedPropertyBody<T>*> body = _body()) {
             PropertyUpdateList effects;
             body->set(std::forward<T>(value), effects);
@@ -221,8 +212,7 @@ public:
         risky_ptr<TypedPropertyBody<T>*> body = _body();
         if (!body) {
             notf_throw(TypedNodeProperty<T>::no_body_error,
-                              "Property \"{}\" on Node \"{}\" cannot be defined using an Expression", name(),
-                              _node_name());
+                       "Property \"{}\" on Node \"{}\" cannot be defined using an Expression", name(), _node_name());
         }
 
         PropertyUpdateList effects;
@@ -234,6 +224,20 @@ public:
     PropertyReader reader() const { return PropertyReader(m_body); }
 
 private:
+    /// Current NodeProperty value.
+    /// @param thread_id    (pretend) Id of this thread. Is exposed so it can be overridden by tests.
+    const T& _get(const std::thread::id thread_id) const
+    {
+        // if the property is frozen by this thread (the render thread, presumably) and there exists a frozen copy of
+        // the value, use that instead of the current one
+        if (_is_frozen_by(thread_id)) {
+            if (T* frozen_value = m_frozen_value.load(std::memory_order_consume)) {
+                return *frozen_value;
+            }
+        }
+        return m_value;
+    }
+
     /// The typed property body.
     risky_ptr<TypedPropertyBody<T>*> _body() const { return static_cast<TypedPropertyBody<T>*>(m_body.get()); }
 
@@ -354,6 +358,10 @@ class access::_NodeProperty<Node> {
 template<class T>
 class PropertyHandle {
 
+#ifdef NOTF_TEST
+    friend class access::_NodeProperty<test::Harness>;
+#endif
+
     // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Type of value of the Property.
@@ -370,9 +378,27 @@ private:
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
+    NOTF_NO_COPY_OR_ASSIGN(PropertyHandle);
+
+    /// Empty default constructor.
+    PropertyHandle() = default;
+
     /// Value constructor.
     /// @param property     Property to handle.
     PropertyHandle(const TypedNodePropertyPtr<T>& property) : m_property(property) {}
+
+    /// Move constructor.
+    /// @param other    PropertyHandle to move from.
+    PropertyHandle(PropertyHandle&& other) : m_property(std::move(other.m_property)) { other.m_property.reset(); }
+
+    /// Move assignment operator.
+    /// @param other    PropertyHandle to move from.
+    PropertyHandle& operator=(PropertyHandle&& other)
+    {
+        m_property = std::move(other.m_property);
+        other.m_property.reset();
+        return *this;
+    }
 
     /// @{
     /// Checks whether the PropertyHandle is valid or not.

@@ -19,7 +19,7 @@ SCENARIO("Application path", "[app], [path]")
     {
         SECTION("no nodes following a property")
         {
-            REQUIRE_THROWS_AS(Path("test/node:property/wrong"), Path::construction_error); //
+            REQUIRE_THROWS_AS(Path("test/node:property/wrong"), Path::construction_error);
         }
         SECTION("no properties following a property")
         {

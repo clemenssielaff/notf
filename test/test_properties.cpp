@@ -1,10 +1,13 @@
 #include "catch.hpp"
 
-#include "app/window.hpp"
-#include "app/property_global.hpp"
 #include "app/property_batch.hpp"
+#include "app/property_global.hpp"
+#include "app/root_node.hpp"
+#include "app/window.hpp"
 #include "test_event_manager.hpp"
+#include "test_node.hpp"
 #include "test_properties.hpp"
+#include "test_scene.hpp"
 #include "testenv.hpp"
 
 NOTF_USING_NAMESPACE
@@ -110,6 +113,53 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
 
 SCENARIO("a PropertyGraph must work with a SceneGraph", "[app][property_graph][scene]")
 {
+    SceneGraphPtr scene_graph = SceneGraph::Access<test::Harness>::create(notf_window());
+    std::shared_ptr<TestScene> scene_ptr = TestScene::create<TestScene>(scene_graph, "TestScene");
+    TestScene& scene = *scene_ptr;
+
+    SceneGraph::Access<test::Harness> graph_access(*scene_graph);
+    Scene::Access<test::Harness> scene_access(scene);
+    using PropertyAccess = NodeProperty::Access<test::Harness>;
+
+    std::thread::id event_thread_id = std::this_thread::get_id();
+    std::thread::id some_thread_id(2);
+    std::thread::id render_thread_id(3);
+
+    NodeHandle<TestNode> node;
+    PropertyHandle<int> iprop1, iprop2;
+    PropertyHandle<std::string> sprop;
+    { // event thread
+        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+        node = scene.root().set_child<TestNode>();
+        iprop1 = node->add_property("i1", 48);
+        iprop2 = node->add_property("i2", 0);
+        sprop = node->add_property<std::string>("s", "before");
+    }
+
+    SECTION("change a property within a frozen graph")
+    {
+        graph_access.freeze(render_thread_id);
+        iprop1.set(24);
+        sprop.set("after");
+
+        REQUIRE(iprop1.get() == 24);
+        REQUIRE(PropertyAccess::get<int>(PropertyAccess::raw(iprop1), some_thread_id) == 24);
+        REQUIRE(PropertyAccess::get<int>(PropertyAccess::raw(iprop1), render_thread_id) == 48);
+
+        REQUIRE(sprop.get() == "after");
+        REQUIRE(PropertyAccess::get<std::string>(PropertyAccess::raw(sprop), some_thread_id) == "after");
+        REQUIRE(PropertyAccess::get<std::string>(PropertyAccess::raw(sprop), render_thread_id) == "before");
+
+        graph_access.unfreeze(render_thread_id);
+
+        REQUIRE(iprop1.get() == 24);
+        REQUIRE(PropertyAccess::get<int>(PropertyAccess::raw(iprop1), some_thread_id) == 24);
+        REQUIRE(PropertyAccess::get<int>(PropertyAccess::raw(iprop1), render_thread_id) == 24);
+
+        REQUIRE(sprop.get() == "after");
+        REQUIRE(PropertyAccess::get<std::string>(PropertyAccess::raw(sprop), some_thread_id) == "after");
+        REQUIRE(PropertyAccess::get<std::string>(PropertyAccess::raw(sprop), render_thread_id) == "after");
+    }
 
 #if 1
 #else
@@ -124,42 +174,7 @@ SCENARIO("a PropertyGraph must work with a SceneGraph", "[app][property_graph][s
 
     //            graph_access.freeze(render_thread_id);
 
-    //            AND_THEN("change a value")
-    //            {
-    //                iprop->set(24);
-    //                sprop->set("after");
 
-    //                THEN("the new value will replace the old one for all but the render thread")
-    //                {
-    //                    REQUIRE(iprop->get() == 24);
-    //                    REQUIRE(graph_access.read_property(*iprop, some_thread_id) == 24);
-    //                    REQUIRE(graph_access.read_property(*iprop, other_thread_id) == 24);
-    //                    REQUIRE(graph_access.read_property(*iprop, render_thread_id) == 48);
-
-    //                    REQUIRE(sprop->get() == "after");
-    //                    REQUIRE(graph_access.read_property(*sprop, some_thread_id) == "after");
-    //                    REQUIRE(graph_access.read_property(*sprop, other_thread_id) == "after");
-    //                    REQUIRE(graph_access.read_property(*sprop, render_thread_id) == "before");
-    //                }
-
-    //                AND_WHEN("the graph is unfrozen again")
-    //                {
-    //                    graph_access.unfreeze();
-
-    //                    THEN("the new value will replace the old one")
-    //                    {
-    //                        REQUIRE(iprop->get() == 24);
-    //                        REQUIRE(graph_access.read_property(*iprop, some_thread_id) == 24);
-    //                        REQUIRE(graph_access.read_property(*iprop, other_thread_id) == 24);
-    //                        REQUIRE(graph_access.read_property(*iprop, render_thread_id) == 24);
-
-    //                        REQUIRE(sprop->get() == "after");
-    //                        REQUIRE(graph_access.read_property(*sprop, other_thread_id) == "after");
-    //                        REQUIRE(graph_access.read_property(*sprop, some_thread_id) == "after");
-    //                        REQUIRE(graph_access.read_property(*sprop, render_thread_id) == "after");
-    //                    }
-    //                }
-    //            }
 
     //            AND_THEN("delete a property")
     //            {

@@ -18,5 +18,5 @@ else
 
     # create HTML report in ./coverage directory
     rm -rf ./coverage
-    genhtml -o ./coverage -t "NoTF Test Coverage Report" coverage.info
+    genhtml -o ./coverage-report -t "NoTF Test Coverage Report" coverage.info
 fi

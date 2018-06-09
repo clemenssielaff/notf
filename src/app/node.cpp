@@ -387,6 +387,7 @@ const NodeContainer& Node::_read_children() const
 NodeContainer& Node::_write_children()
 {
     NOTF_ASSERT(_hierarchy_mutex().is_locked_by_this_thread());
+    NOTF_ASSERT(SceneGraph::Access<Node>::event_mutex(graph()).is_locked_by_this_thread());
 
     // direct access if unfrozen or the node hasn't been finalized yet
     SceneGraph& scene_graph = graph();
@@ -453,15 +454,7 @@ void Node::_clean_tweaks()
     }
 }
 
-void Node::_initialize_path() const
-{
-    NOTF_ASSERT(!m_path); // this method should only be called once
-    std::vector<std::string> components;
-    _initialize_path_impl(1, components);
-    m_path = Path::Access<Node>::create(std::move(components));
-}
-
-void Node::_initialize_path_impl(const size_t depth, std::vector<std::string>& components) const
+void Node::_initialize_path(const size_t depth, std::vector<std::string>& components) const
 {
     if (m_parent == this) {
         // root node
@@ -471,7 +464,7 @@ void Node::_initialize_path_impl(const size_t depth, std::vector<std::string>& c
     }
     else {
         // ancestor node
-        m_parent->_initialize_path_impl(depth + 1, components);
+        m_parent->_initialize_path(depth + 1, components);
         components.push_back(name());
     }
 }

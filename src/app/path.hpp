@@ -159,9 +159,9 @@ class access::_Path<Node> {
 
     /// Creates a new Path.
     /// @param components   Components for an absolute node path.
-    static std::unique_ptr<Path> create(std::vector<std::string>&& components)
+    static Path create(std::vector<std::string>&& components)
     {
-        return std::unique_ptr<Path>(new Path(std::move(components), /* is_absolute = */ true, Path::Kind::NODE));
+        return Path(std::move(components), /* is_absolute = */ true, Path::Kind::NODE);
     }
 };
 

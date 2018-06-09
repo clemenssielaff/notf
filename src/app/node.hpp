@@ -119,12 +119,11 @@ public:
     // hierarchy --------------------------------------------------------------
 
     /// Graph-unique path to this Node.
-    const Path& path() const
+    Path path() const
     {
-        if (!m_path) {
-            _initialize_path();
-        }
-        return *m_path;
+        std::vector<std::string> components;
+        _initialize_path(1, components);
+        return Path::Access<Node>::create(std::move(components));
     }
 
     /// Checks if this Node has a child Node with a given name.
@@ -290,7 +289,7 @@ protected:
     }
 
     /// Direct access to the mutex protecting this node's hierarchy.
-    RecursiveMutex& _hierarchy_mutex() const { return SceneGraph::Access<Node>::mutex(graph()); }
+    RecursiveMutex& _hierarchy_mutex() const { return SceneGraph::Access<Node>::hierarchy_mutex(graph()); }
 
     /// All children of this node, orded from back to front.
     /// Never creates a delta.f
@@ -323,6 +322,8 @@ protected:
         return handle;
     }
 
+    /// Removes a child from this node.
+    /// @param handle   Handle of the node to remove.
     template<class T>
     void _remove_child(const NodeHandle<T>& handle)
     {
@@ -415,13 +416,10 @@ private:
     /// @see _register_as_tweaked
     void _clean_tweaks();
 
-    /// Initializes the Path of this Node the first time it is requested.
-    void _initialize_path() const;
-
     /// Recursive initialization of the Path components.
     /// @param depth        Depth of the recursion (used to reserve component space).
     /// @param components   [OUT] Components of the path.
-    void _initialize_path_impl(const size_t depth, std::vector<std::string>& components) const;
+    void _initialize_path(const size_t depth, std::vector<std::string>& components) const;
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
@@ -439,10 +437,6 @@ private:
 
     /// The parent-unique name of this Node.
     valid_ptr<TypedNodeProperty<std::string>*> const m_name;
-
-    /// Graph-unique path to this Node.
-    /// Is initialized the first time it is requested.
-    mutable std::unique_ptr<Path> m_path;
 
     /// Only unfinalized nodes can create properties and creating new children in an unfinalized node creates no
     /// deltas.
