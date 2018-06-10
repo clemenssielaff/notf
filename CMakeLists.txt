@@ -35,6 +35,10 @@ if(CCACHE_FOUND)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
 endif(CCACHE_FOUND)
 
+if(COMMAND cmake_policy)
+    cmake_policy(SET CMP0072 OLD)
+endif()
+
 # OPTIONS ##############################################################################################################
 
 option(NOTF_BUILD_APP "Build application" ON)
