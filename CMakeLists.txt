@@ -38,45 +38,22 @@ endif(CCACHE_FOUND)
 # OPTIONS ##############################################################################################################
 
 option(NOTF_BUILD_APP "Build application" ON)
-option(NOTF_USE_LIBCXX "Use LLVM's libc++ instead of libstdc++" OFF)
-option(NOTF_USE_OPENMP "Use OpenMP" OFF)
 option(NOTF_BUILD_TESTS "Build tests" OFF)
-option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
 option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
 
 # LIBRARIES ############################################################################################################
-
-# libcxx
-if(NOTF_USE_LIBCXX)
-    set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
-#    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-stdlib=libc++")
-endif()
 
 # glfw
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-add_subdirectory(/home/clemens/code/thirdparty/glfw-3.2.1/ thirdparty/glfw)
+add_subdirectory(thirdparty/glfw-3.2.1)
 
 # opengl
 find_package(OpenGL REQUIRED)
 
 # freetype
-add_subdirectory(/home/clemens/code/thirdparty/freetype-2.8.1/ thirdparty/freetype)
-
-# benchmark
-if(NOTF_BUILD_BENCHMARKS)
-    add_subdirectory(/home/clemens/code/thirdparty/benchmark/ thirdparty/benchmark)
-endif()
-
-# OpenMP
-if(NOTF_USE_OPENMP)
-    find_package(OpenMP)
-    if(OPENMP_FOUND)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-    endif()
-endif()
+add_subdirectory(thirdparty/freetype-2.9.1)
 
 # NOTF #################################################################################################################
 
@@ -91,11 +68,11 @@ endif()
 
 include_directories(
     src/
-    thirdparty/
     res/
-    /home/clemens/code/thirdparty/freetype-2.8.1/include/
-    /home/clemens/code/thirdparty/glm-0.9.8.5/include/
     examples/
+    thirdparty/
+    thirdparty/glfw-3.2.1/include
+    thirdparty/freetype-2.9.1/include
 )
 
 create_module(common)
@@ -234,12 +211,19 @@ target_link_libraries(notf
 )
 
 if(CMAKE_BUILD_TYPE MATCHES "Release")
+
+
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
+    endif()
+
     if(IS_LTO_SUPPORTED)
         message(STATUS "Building notf with LTO enabled")
         set_property(TARGET notf PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     else()
         message(STATUS "LTO failed:\n${LTO_ERROR}")
     endif()
+
 endif()
 
 # APP ##################################################################################################################
@@ -293,32 +277,3 @@ if(NOTF_BUILD_TESTS)
     target_link_libraries(notf-test notf)
 
 endif()
-
-# BENCHMARK ############################################################################################################
-
-if(NOTF_BUILD_BENCHMARKS)
-
-    include_directories(
-        /home/clemens/code/thirdparty/benchmark/INSTALL/include/
-    )
-
-    add_sources(BENCHMARK_SOURCES benchmark
-        bench_vector4.cpp
-        benchmark.cpp
-    )
-
-    add_executable(notf-benchmark
-        ${common_MODULE}
-        ${utils_MODULE}
-        ${BENCHMARK_SOURCES}
-        ${THIRDPARTY_FILES}
-    )
-
-    target_link_libraries(notf-benchmark
-        glfw
-        benchmark
-        pthread
-    )
-
-endif()
-
