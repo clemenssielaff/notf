@@ -51,7 +51,7 @@ GraphicsContext::Extensions::Extensions()
 
     // initialize the members
     CHECK_EXTENSION(anisotropic_filter, "GL_EXT_texture_filter_anisotropic");
-    CHECK_EXTENSION(nv_gpu_shader5, "GL_NV_gpu_shader5");
+    CHECK_EXTENSION(nv_gpu_shader5, "GL_EXT_gpu_shader5");
 }
 
 #undef CHECK_EXTENSION

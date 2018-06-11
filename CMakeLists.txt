@@ -26,17 +26,27 @@ endmacro()
 
 # CONFIGURATION ########################################################################################################
 
+# hide symbols by default
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+
 include(CheckIPOSupported)
 check_ipo_supported(RESULT IS_LTO_SUPPORTED OUTPUT LTO_ERROR)
 
+# ccache
 find_program(CCACHE_FOUND ccache)
 if(CCACHE_FOUND)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
 endif(CCACHE_FOUND)
 
+# policies
 if(COMMAND cmake_policy)
-    cmake_policy(SET CMP0072 OLD)
+    cmake_policy(PUSH)
+
+    if(POLICY CMP0072)
+        cmake_policy(SET CMP0072 OLD)
+    endif()
 endif()
 
 # OPTIONS ##############################################################################################################
@@ -280,4 +290,11 @@ if(NOTF_BUILD_TESTS)
     add_executable(notf-test ${TEST_SOURCES})
     target_link_libraries(notf-test notf)
 
+endif()
+
+
+########################################################################################################################
+
+if(COMMAND cmake_policy)
+    cmake_policy(POP)
 endif()

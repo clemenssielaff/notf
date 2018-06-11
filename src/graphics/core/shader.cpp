@@ -175,7 +175,7 @@ std::string build_glsl_header(const GraphicsContext& context)
     { // ... then extensions ...
         bool any_extensions = false;
         if (context.extensions().nv_gpu_shader5) {
-            result += "#extension GL_NV_gpu_shader5 : enable\n";
+            result += "#extension GL_EXT_gpu_shader5 : enable\n";
             any_extensions = true;
         }
         if (any_extensions) {
