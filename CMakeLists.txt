@@ -36,6 +36,7 @@ check_ipo_supported(RESULT IS_LTO_SUPPORTED OUTPUT LTO_ERROR)
 # ccache
 find_program(CCACHE_FOUND ccache)
 if(CCACHE_FOUND)
+    message(STATUS "Using ccache")
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
 endif(CCACHE_FOUND)
@@ -45,8 +46,9 @@ if(COMMAND cmake_policy)
     cmake_policy(PUSH)
 
     if(POLICY CMP0072)
-        cmake_policy(SET CMP0072 OLD)
+        cmake_policy(SET CMP0072 NEW)
     endif()
+
 endif()
 
 # OPTIONS ##############################################################################################################
@@ -80,7 +82,7 @@ if(NOTF_LOG_PRETTY_FUNCTION)
     add_definitions(-DNOTF_LOG_PRETTY_FUNCTION)
 endif()
 
-include_directories(
+include_directories(notf
     src/
     res/
     examples/
@@ -171,20 +173,14 @@ add_sources(SOURCE_FILES examples
 
 add_sources(THIRDPARTY_FILES thirdparty
     tinyutf8/tinyutf8.cpp
-    randutils/randutils.hpp
-    abseil/abseil.hpp
-    abseil/any.hpp
+
     abseil/any.cpp
-    abseil/optional.hpp
     abseil/optional.cpp
-    mpark/variant.hpp
+
+    glad/glad.c
 
     fmt/format.cc
-    fmt/format.h
     fmt/ostream.cc
-    fmt/ostream.h
-    fmt/string.h
-    fmt/time.h
 )
 
 #add_sources(RESOURCE_FILES res
@@ -218,7 +214,7 @@ add_library(notf
 )
 
 target_link_libraries(notf
-    ${OPENGL_gl_LIBRARY}
+    GLESv2
     glfw
     freetype
     ${PYTHON_LIBRARIES}

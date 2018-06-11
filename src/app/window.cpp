@@ -55,10 +55,11 @@ Window::Window(const Args& args)
     glfwSetWindowUserPointer(m_glfw_window.get(), this);
     set_state(m_state);
 
-    // create the auxiliary objects
+    // create the graphics context
     m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window.get());
-
     auto context_guard = m_graphics_context->make_current();
+
+    // create auxiliary objects
     m_scene_graph = SceneGraph::Access<Window>::create(*this);
     m_font_manager = FontManager::create(*m_graphics_context);
 
