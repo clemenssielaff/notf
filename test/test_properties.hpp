@@ -17,6 +17,15 @@ public:
 template<>
 class access::_NodeProperty<test::Harness> {
 public:
+    /// Extracts and returns a reference from a PropertyHandle.
+    template<class T>
+    static TypedNodeProperty<T>& raw(PropertyHandle<T>& handle)
+    {
+        TypedNodePropertyPtr<T> property = handle.m_property.lock();
+        NOTF_ASSERT(property);
+        return *property;
+    }
+
     /// Current NodeProperty value.
     /// @param property     Property to operate on.
     /// @param thread_id    (pretend) Id of this thread. Is exposed so it can be overridden by tests.
@@ -25,14 +34,10 @@ public:
     {
         return property._get(thread_id);
     }
-
-    /// Extracts and returns a reference from a PropertyHandle.
     template<class T>
-    static TypedNodeProperty<T>& raw(PropertyHandle<T>& handle)
+    static const T& get(PropertyHandle<T>& handle, const std::thread::id thread_id)
     {
-        TypedNodePropertyPtr<T> property = handle.m_property.lock();
-        NOTF_ASSERT(property);
-        return *property;
+        return get(raw(handle), thread_id);
     }
 };
 

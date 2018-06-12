@@ -109,6 +109,23 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
         // even though iprop2 is partially owned by the expression on iprop2, it should be removed by now
         REQUIRE(PropertyGraph::Access<test::Harness>::size() == 0);
     }
+
+    SECTION("PropertyBatches are executed automatically when they go out of scope")
+    {
+        GlobalPropertyPtr<int> iprop1 = create_global_property<int>(48);
+
+        {
+            PropertyBatch batch; // fails, but failure is ignored
+            batch.set(*iprop1, []() -> int { throw std::runtime_error("nope"); }, {});
+        }
+        REQUIRE(iprop1->get() == 48);
+
+        {
+            PropertyBatch batch;
+            batch.set(*iprop1, []() -> int { return 7*6; }, {});
+        }
+        REQUIRE(iprop1->get() == 42);
+    }
 }
 
 SCENARIO("a PropertyGraph must work with a SceneGraph", "[app][property_graph][scene]")
@@ -138,87 +155,62 @@ SCENARIO("a PropertyGraph must work with a SceneGraph", "[app][property_graph][s
 
     SECTION("change a property within a frozen graph")
     {
-        graph_access.freeze(render_thread_id);
-        iprop1.set(24);
-        sprop.set("after");
+        {
+            auto freeze_guard = graph_access.freeze_guard(render_thread_id);
+
+            iprop1.set(24);
+            sprop.set("after");
+
+            REQUIRE(iprop1.get() == 24);
+            REQUIRE(PropertyAccess::get<int>(iprop1, some_thread_id) == 24);
+            REQUIRE(PropertyAccess::get<int>(iprop1, render_thread_id) == 48);
+
+            REQUIRE(sprop.get() == "after");
+            REQUIRE(PropertyAccess::get<std::string>(sprop, some_thread_id) == "after");
+            REQUIRE(PropertyAccess::get<std::string>(sprop, render_thread_id) == "before");
+        }
 
         REQUIRE(iprop1.get() == 24);
-        REQUIRE(PropertyAccess::get<int>(PropertyAccess::raw(iprop1), some_thread_id) == 24);
-        REQUIRE(PropertyAccess::get<int>(PropertyAccess::raw(iprop1), render_thread_id) == 48);
+        REQUIRE(PropertyAccess::get<int>(iprop1, some_thread_id) == 24);
+        REQUIRE(PropertyAccess::get<int>(iprop1, render_thread_id) == 24);
 
         REQUIRE(sprop.get() == "after");
-        REQUIRE(PropertyAccess::get<std::string>(PropertyAccess::raw(sprop), some_thread_id) == "after");
-        REQUIRE(PropertyAccess::get<std::string>(PropertyAccess::raw(sprop), render_thread_id) == "before");
-
-        graph_access.unfreeze(render_thread_id);
-
-        REQUIRE(iprop1.get() == 24);
-        REQUIRE(PropertyAccess::get<int>(PropertyAccess::raw(iprop1), some_thread_id) == 24);
-        REQUIRE(PropertyAccess::get<int>(PropertyAccess::raw(iprop1), render_thread_id) == 24);
-
-        REQUIRE(sprop.get() == "after");
-        REQUIRE(PropertyAccess::get<std::string>(PropertyAccess::raw(sprop), some_thread_id) == "after");
-        REQUIRE(PropertyAccess::get<std::string>(PropertyAccess::raw(sprop), render_thread_id) == "after");
+        REQUIRE(PropertyAccess::get<std::string>(sprop, some_thread_id) == "after");
+        REQUIRE(PropertyAccess::get<std::string>(sprop, render_thread_id) == "after");
     }
 
-#if 1
-#else
-    //        WHEN("create a graph with a few properties and freeze it")
-    //        {
-    //            std::unique_ptr<Property<int>> iprop = std::make_unique<Property<int>>(graph, 48);
-    //            std::unique_ptr<Property<int>> iprop2 = std::make_unique<Property<int>>(graph, 0);
-    //            std::unique_ptr<Property<std::string>> sprop = std::make_unique<Property<std::string>>(graph,
-    //            "before");
+    SECTION("the render thread will still be able to access a deleted property from a frozen graph")
+    {
+        auto freeze_guard = graph_access.freeze_guard(render_thread_id);
 
-    //            PropertyGraph::Access<test::Harness> graph_access(graph);
+        { // event thread
+            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            scene.root().set_child<TestNode>();
+        }
 
-    //            graph_access.freeze(render_thread_id);
+        REQUIRE(PropertyAccess::get<int>(iprop1, render_thread_id) == 48);
+        REQUIRE(PropertyAccess::get<int>(iprop2, render_thread_id) == 0);
+        REQUIRE(PropertyAccess::get<std::string>(sprop, render_thread_id) == "before");
+    }
 
+    SECTION("defining an expression for a property in a frozen graph will "
+            "replace the old value for all but the render thread")
+    {
+        {
+            auto freeze_guard = graph_access.freeze_guard(render_thread_id);
 
+            {
+                auto a = iprop1.reader();
+                iprop2.set([=] { return a() + 1; }, {a});
+            }
 
-    //            AND_THEN("delete a property")
-    //            {
-    //                graph_access.delete_property(iprop->node().get(), some_thread_id);
+            REQUIRE(PropertyAccess::get(iprop2, event_thread_id) == 49);
+            REQUIRE(PropertyAccess::get(iprop2, some_thread_id) == 49);
+            REQUIRE(PropertyAccess::get(iprop2, render_thread_id) == 0);
+        }
 
-    //                REQUIRE_THROWS(iprop->get()); // property is actually deleted (not possible without test
-    //                harness)
-
-    //                THEN("the render thread will still be able to access the property")
-    //                {
-    //                    REQUIRE(graph_access.read_property(*iprop, render_thread_id) == 48);
-    //                }
-    //                iprop->node() = nullptr; // to avoid double-freeing the node
-    //            }
-
-    //            AND_THEN("define an expression for a property")
-    //            {
-    //                Property<int>& iprop_ref = *iprop.get();
-    //                iprop2->set([&iprop_ref] { return iprop_ref.get() + 1; }, {iprop_ref});
-
-    //                THEN("the expression will replace the old value for all but the render thread")
-    //                {
-    //                    REQUIRE(iprop2->get() == 49);
-    //                    REQUIRE(graph_access.read_property(*iprop2, some_thread_id) == 49);
-    //                    REQUIRE(graph_access.read_property(*iprop2, other_thread_id) == 49);
-    //                    REQUIRE(graph_access.read_property(*iprop2, render_thread_id) == 0);
-    //                }
-
-    //                AND_WHEN("the graph is unfrozen again")
-    //                {
-    //                    graph_access.unfreeze();
-
-    //                    THEN("the expression will replace the old value")
-    //                    {
-    //                        REQUIRE(iprop2->get() == 49);
-    //                        REQUIRE(graph_access.read_property(*iprop2, some_thread_id) == 49);
-    //                        REQUIRE(graph_access.read_property(*iprop2, other_thread_id) == 49);
-    //                        REQUIRE(graph_access.read_property(*iprop2, render_thread_id) == 49);
-    //                    }
-    //                }
-    //            }
-
-    //            graph_access.unfreeze(); // always unfreeze!
-    //        }
-    //    }
-#endif
+        REQUIRE(PropertyAccess::get(iprop2, event_thread_id) == 49);
+        REQUIRE(PropertyAccess::get(iprop2, some_thread_id) == 49);
+        REQUIRE(PropertyAccess::get(iprop2, render_thread_id) == 49);
+    }
 }

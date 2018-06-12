@@ -297,20 +297,6 @@ public:
         PropertyGraph::fire_event(std::move(effects));
     }
 
-    /// Set the Property's value and updates downstream Properties.
-    /// Removes an existing expression on this Property if one exists.
-    /// Does not fire a PropertyEvent, but instead passes all effects into the output argument.
-    /// @param value        New value.
-    /// @param effects      [OUT] All properties affected by the change.
-    void set(T&& value, PropertyUpdateList& effects)
-    {
-        NOTF_MUTEX_GUARD(_mutex());
-        if (m_expression) {
-            _ground();
-        }
-        _set_value(std::forward<T>(value), effects);
-    }
-
     /// Set the Property's expression.
     /// Fires a PropertyEvent, if the call had any effect.
     /// @param expression       Expression to set.
@@ -323,6 +309,18 @@ public:
         PropertyGraph::fire_event(std::move(effects));
     }
 
+    /// Set the Property's value and updates downstream Properties.
+    /// Removes an existing expression on this Property if one exists.
+    /// Does not fire a PropertyEvent, but instead passes all effects into the output argument.
+    /// @param value        New value.
+    /// @param effects      [OUT] All properties affected by the change.
+    void set(T&& value, PropertyUpdateList& effects)
+    {
+        NOTF_MUTEX_GUARD(_mutex());
+        _ground();
+        _set_value(std::forward<T>(value), effects);
+    }
+
     /// Set the Property's expression.
     /// Does not fire a PropertyEvent, but instead passes all effects into the output argument.
     /// @param expression       Expression to set.
@@ -332,18 +330,8 @@ public:
     void set(Expression expression, Dependencies dependencies, PropertyUpdateList& effects)
     {
         NOTF_MUTEX_GUARD(_mutex());
-
-        // always remove the current expression, even if the new one might be invalid
-        _ground();
-
-        if (expression) {
-            // update connections on yourself and upstream
-            _set_upstream(std::move(dependencies)); // might throw no_dag_error
-            m_expression = std::move(expression);
-
-            // update the value of yourself and all downstream properties
-            _update(effects);
-        }
+        _ground(); // always remove the current expression, even if the new one might be invalid
+        _set_expression(std::move(expression), std::move(dependencies), effects);
     }
 
 private:
@@ -411,8 +399,10 @@ private:
     {
         NOTF_ASSERT(_mutex().is_locked_by_this_thread());
 
-        PropertyBody::_ground();
-        m_expression = {};
+        if (m_expression) {
+            PropertyBody::_ground();
+            m_expression = {};
+        }
     }
 
     /// Checks if a given update would succeed if executed or not.

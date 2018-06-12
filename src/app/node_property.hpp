@@ -216,12 +216,15 @@ public:
         }
 
         PropertyUpdateList effects;
-        body->_set_expression(std::move(expression), std::move(dependencies), effects);
+        body->set(std::move(expression), std::move(dependencies), effects);
         _update_affected(std::move(effects));
     }
 
     /// Returns a PropertyReader for reading the (unbuffered) value of this Property.
-    PropertyReader reader() const { return PropertyReader(m_body); }
+    TypedPropertyReader<T> reader() const
+    {
+        return TypedPropertyReader<T>(std::static_pointer_cast<TypedPropertyBody<T>>(m_body));
+    }
 
 private:
     /// Current NodeProperty value.
@@ -452,7 +455,7 @@ public:
 
     /// Returns a PropertyReader for reading the (unbuffered) value of this Property.
     /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
-    PropertyReader reader() const { return _property()->reader(); }
+    TypedPropertyReader<T> reader() const { return _property()->reader(); }
 
 private:
     /// Locks and returns an owning pointer to the handled NodeProperty.
