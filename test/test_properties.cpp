@@ -22,7 +22,7 @@ struct SuspensionGuard {
 
 } // namespace
 
-SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
+SCENARIO("simple PropertyGraph with global properties", "[app][property_graph]")
 {
     const std::thread::id some_thread_id{1};
     const std::thread::id other_thread_id{2};
@@ -122,13 +122,13 @@ SCENARIO("a PropertyGraph can be set up and modified", "[app][property_graph]")
 
         {
             PropertyBatch batch;
-            batch.set(*iprop1, []() -> int { return 7*6; }, {});
+            batch.set(*iprop1, []() -> int { return 7 * 6; }, {});
         }
         REQUIRE(iprop1->get() == 42);
     }
 }
 
-SCENARIO("a PropertyGraph must work with a SceneGraph", "[app][property_graph][scene]")
+SCENARIO("NodeProperties in a SceneGraph hierarchy", "[app][property_graph][scene]")
 {
     SceneGraphPtr scene_graph = SceneGraph::Access<test::Harness>::create(notf_window());
     std::shared_ptr<TestScene> scene_ptr = TestScene::create<TestScene>(scene_graph, "TestScene");
@@ -142,28 +142,33 @@ SCENARIO("a PropertyGraph must work with a SceneGraph", "[app][property_graph][s
     std::thread::id some_thread_id(2);
     std::thread::id render_thread_id(3);
 
-    NodeHandle<TestNode> node;
+    NodeHandle<TestNode> first_node;
     PropertyHandle<int> iprop1, iprop2;
     PropertyHandle<std::string> sprop;
     { // event thread
         NOTF_MUTEX_GUARD(graph_access.event_mutex());
-        node = scene.root().set_child<TestNode>();
-        iprop1 = node->add_property("i1", 48);
-        iprop2 = node->add_property("i2", 0);
-        sprop = node->add_property<std::string>("s", "before");
+        first_node = scene.root().set_child<TestNode>();
+        iprop1 = first_node->add_property("i1", 48);
+        iprop2 = first_node->add_property("i2", 0);
+        sprop = first_node->add_property<std::string>("s", "before");
     }
 
-    SECTION("change a property within a frozen graph")
+    SECTION("change a property value in a frozen graph")
     {
         {
             auto freeze_guard = graph_access.freeze_guard(render_thread_id);
 
             iprop1.set(24);
+            iprop2.set(0); // doesn't actually change
             sprop.set("after");
 
             REQUIRE(iprop1.get() == 24);
             REQUIRE(PropertyAccess::get<int>(iprop1, some_thread_id) == 24);
             REQUIRE(PropertyAccess::get<int>(iprop1, render_thread_id) == 48);
+
+            REQUIRE(iprop2.get() == 0);
+            REQUIRE(PropertyAccess::get<int>(iprop2, some_thread_id) == 0);
+            REQUIRE(PropertyAccess::get<int>(iprop2, render_thread_id) == 0);
 
             REQUIRE(sprop.get() == "after");
             REQUIRE(PropertyAccess::get<std::string>(sprop, some_thread_id) == "after");
@@ -174,27 +179,16 @@ SCENARIO("a PropertyGraph must work with a SceneGraph", "[app][property_graph][s
         REQUIRE(PropertyAccess::get<int>(iprop1, some_thread_id) == 24);
         REQUIRE(PropertyAccess::get<int>(iprop1, render_thread_id) == 24);
 
+        REQUIRE(iprop2.get() == 0);
+        REQUIRE(PropertyAccess::get<int>(iprop2, some_thread_id) == 0);
+        REQUIRE(PropertyAccess::get<int>(iprop2, render_thread_id) == 0);
+
         REQUIRE(sprop.get() == "after");
         REQUIRE(PropertyAccess::get<std::string>(sprop, some_thread_id) == "after");
         REQUIRE(PropertyAccess::get<std::string>(sprop, render_thread_id) == "after");
     }
 
-    SECTION("the render thread will still be able to access a deleted property from a frozen graph")
-    {
-        auto freeze_guard = graph_access.freeze_guard(render_thread_id);
-
-        { // event thread
-            NOTF_MUTEX_GUARD(graph_access.event_mutex());
-            scene.root().set_child<TestNode>();
-        }
-
-        REQUIRE(PropertyAccess::get<int>(iprop1, render_thread_id) == 48);
-        REQUIRE(PropertyAccess::get<int>(iprop2, render_thread_id) == 0);
-        REQUIRE(PropertyAccess::get<std::string>(sprop, render_thread_id) == "before");
-    }
-
-    SECTION("defining an expression for a property in a frozen graph will "
-            "replace the old value for all but the render thread")
+    SECTION("change a property expression in a frozen graph")
     {
         {
             auto freeze_guard = graph_access.freeze_guard(render_thread_id);
@@ -212,5 +206,112 @@ SCENARIO("a PropertyGraph must work with a SceneGraph", "[app][property_graph][s
         REQUIRE(PropertyAccess::get(iprop2, event_thread_id) == 49);
         REQUIRE(PropertyAccess::get(iprop2, some_thread_id) == 49);
         REQUIRE(PropertyAccess::get(iprop2, render_thread_id) == 49);
+    }
+
+    SECTION("delete a property from a frozen graph")
+    {
+        auto freeze_guard = graph_access.freeze_guard(render_thread_id);
+
+        { // event thread
+            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            scene.root().set_child<TestNode>();
+        }
+
+        REQUIRE(PropertyAccess::get<int>(iprop1, render_thread_id) == 48);
+        REQUIRE(PropertyAccess::get<int>(iprop2, render_thread_id) == 0);
+        REQUIRE(PropertyAccess::get<std::string>(sprop, render_thread_id) == "before");
+    }
+
+    SECTION("PropertyHandles can go out of scope")
+    { // event thread
+        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+        PropertyHandle<float> fprop = first_node->add_property<float>("f1", 48.0);
+        scene.root().set_child<TestNode>();
+        REQUIRE_THROWS_AS(fprop.set(123.f), NodeProperty::no_property_error);
+    }
+
+    SECTION("NodeProperties can have validator functions attached")
+    {
+        PropertyHandle<float> fprop;
+        { // event thread
+            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+
+            fprop = first_node->add_property("f1", 50.f, [](float& value) -> bool {
+                if (value < 0) {
+                    return false;
+                }
+                if (value > 100.f) {
+                    value = 100.f;
+                }
+                return true;
+            });
+            REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 50.f);
+
+            fprop.set(99.f);
+            REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 99.f);
+
+            fprop.set(101.f);
+            REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 100.f);
+
+            fprop.set(-1.f);
+            REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 100.f);
+        }
+        { // frozen scope
+            auto freeze_guard = graph_access.freeze_guard(render_thread_id);
+
+            REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 100.f);
+            REQUIRE(PropertyAccess::get(fprop, render_thread_id) == 100.f);
+
+            fprop.set(101.f);
+            REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 100.f);
+            REQUIRE(PropertyAccess::get(fprop, render_thread_id) == 100.f);
+
+            fprop.set(0.f);
+            REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 0.f);
+            REQUIRE(PropertyAccess::get(fprop, render_thread_id) == 100.f);
+
+            fprop.set(-1.f);
+            REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 0.f);
+            REQUIRE(PropertyAccess::get(fprop, render_thread_id) == 100.f);
+        }
+
+        REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 0.f);
+        REQUIRE(PropertyAccess::get(fprop, render_thread_id) == 0.f);
+
+        // creating a value with an invalid default throws an exception
+        REQUIRE_THROWS_AS(first_node->add_property("f2", 0.f, [](float&) { return false; }),
+                          NodeProperty::initial_value_error);
+    }
+
+    SECTION("NodeProperties can exist without Property bodies")
+    {
+        PropertyHandle<float> fprop;
+        { // event thread
+            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            fprop = first_node->add_property("f1", 0.f, {}, /* had_body = */ false);
+            REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 0.f);
+
+            fprop.set(1.f);
+            REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 1.f);
+
+            fprop.set(1.f);
+            REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 1.f);
+
+            REQUIRE_THROWS_AS(fprop.set([] { return 13.f + 2.f; }, {}), NodeProperty::no_body_error);
+            REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 1.f);
+        }
+        { // frozen scope
+            auto freeze_guard = graph_access.freeze_guard(render_thread_id);
+
+            REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 1.f);
+            REQUIRE(PropertyAccess::get(fprop, render_thread_id) == 1.f);
+
+            fprop.set(10.f);
+            REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 10.f);
+            REQUIRE(PropertyAccess::get(fprop, render_thread_id) == 1.f);
+        }
+
+        REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 10.f);
+        REQUIRE(PropertyAccess::get(fprop, render_thread_id) == 10.f);
     }
 }

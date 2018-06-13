@@ -237,7 +237,7 @@ void EventManager::_remove_window(Window& window)
             log_critical << "Ignoring unregistration of unknown Window: " << window.title();
             return;
         }
-        it->get()->stop();
+        it->get()->stop(); // blocks until finished
         *it = std::move(manager.m_handler.back());
         manager.m_handler.pop_back();
     }

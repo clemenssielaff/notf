@@ -106,8 +106,8 @@ public:
 
     /// @{
     /// Creates a new Window instance with the given arguments.
-    Window& create_window();
-    Window& create_window(const detail::WindowArguments& args);
+    WindowPtr create_window();
+    WindowPtr create_window(const detail::WindowArguments& args);
     /// @}
 
     /// Starts the application's main loop.

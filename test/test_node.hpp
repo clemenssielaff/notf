@@ -39,7 +39,8 @@ struct TestNode : public Node {
     /// @param validator    Optional validator function.
     /// @param has_body     Whether or not the Property will have a Property body in the Property Graph.
     template<class T>
-    PropertyHandle<T> add_property(std::string name, T&& value, Validator<T> validator = {}, const bool has_body = true)
+    PropertyHandle<T>
+    add_property(std::string name, T&& value, identity_t<Validator<T>> validator = {}, const bool has_body = true)
     {
         Node::Access<test::Harness>::unfinalize(*this);
         auto result = _create_property(std::move(name), std::forward<T>(value), std::move(validator), has_body);

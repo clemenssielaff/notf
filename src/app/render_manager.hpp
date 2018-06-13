@@ -5,6 +5,7 @@
 
 #include "app/forwards.hpp"
 #include "common/mutex.hpp"
+#include "common/pointer.hpp"
 #include "common/thread.hpp"
 
 // ================================================================================================================== //
@@ -29,7 +30,7 @@ private:
 
         /// Requests a redraw of the given Window at the next opportunity.
         /// @param window   Window to redraw.
-        void request_redraw(Window* window);
+        void request_redraw(valid_ptr<WindowPtr> window);
 
         /// Stop the RenderThread.
         /// Blocks until the worker thread joined.
@@ -45,7 +46,7 @@ private:
         ScopedThread m_thread;
 
         /// Windows to render.
-        std::deque<Window*> m_windows;
+        std::deque<valid_ptr<WindowPtr>> m_windows;
 
         /// Mutex guarding the RenderThread's state.
         Mutex m_mutex;
@@ -69,7 +70,7 @@ public:
 
     /// Renders the given Window at the next opportunity.
     /// @param window   Window to render.
-    void render(Window* window);
+    void render(valid_ptr<WindowPtr> window);
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:

@@ -14,17 +14,11 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-SceneGraph::SceneGraph(Window& window) : m_window(&window), m_current_state(create_state({})) {}
+SceneGraph::SceneGraph(valid_ptr<WindowPtr> window)
+    : m_window(std::move(window).raw()), m_current_state(create_state({}))
+{}
 
 SceneGraph::~SceneGraph() = default;
-
-Window& SceneGraph::window() const
-{
-    if (NOTF_LIKELY(m_window)) {
-        return *m_window;
-    }
-    notf_throw(Window::deleted_error, "Window of SceneGraph has been deleted");
-}
 
 SceneGraph::StatePtr SceneGraph::current_state() const
 {
@@ -39,19 +33,23 @@ SceneGraph::StatePtr SceneGraph::current_state() const
 
 void SceneGraph::enter_state(StatePtr new_state)
 {
-    if (NOTF_UNLIKELY(!m_window)) {
+    risky_ptr<WindowPtr> window = getWindow();
+    if (NOTF_UNLIKELY(!window)) {
         return;
     }
     EventManager& event_manger = Application::instance().event_manager();
-    event_manger.handle(std::make_unique<StateChangeEvent>(m_window, std::move(new_state)));
+    event_manger.handle(std::make_unique<StateChangeEvent>(raw_pointer(window), std::move(new_state)));
 }
 
 void SceneGraph::_register_dirty(valid_ptr<Node*> node)
 {
     NOTF_MUTEX_GUARD(m_hierarchy_mutex);
 
-    if (m_dirty_nodes.empty() && NOTF_LIKELY(m_window)) {
-        m_window->request_redraw();
+    if (m_dirty_nodes.empty()) {
+        risky_ptr<WindowPtr> window = getWindow();
+        if (NOTF_LIKELY(window)) {
+            raw_pointer(window)->request_redraw();
+        }
     }
     m_dirty_nodes.insert(node);
 }
@@ -171,7 +169,7 @@ NodePropertyPtr SceneGraph::_property(const Path& path)
         }
     }
     notf_throw(Path::path_error, "Path \"{}\" refers to unknown Scene \"{}\" in SceneGraph", path.to_string(),
-                      scene_name);
+               scene_name);
 }
 
 NodePtr SceneGraph::_node(const Path& path)
@@ -194,7 +192,7 @@ NodePtr SceneGraph::_node(const Path& path)
         }
     }
     notf_throw(Path::path_error, "Path \"{}\" refers to unknown Scene \"{}\" in SceneGraph", path.to_string(),
-                      scene_name);
+               scene_name);
 }
 
 bool SceneGraph::_freeze(const std::thread::id thread_id)
@@ -262,16 +260,11 @@ void SceneGraph::_enter_state(valid_ptr<StatePtr> state)
     NOTF_MUTEX_GUARD(m_hierarchy_mutex);
     if (state != m_current_state) {
         m_current_state = std::move(state);
-        if (NOTF_LIKELY(m_window)) {
-            m_window->request_redraw();
+        risky_ptr<WindowPtr> window = getWindow();
+        if (NOTF_LIKELY(window)) {
+            raw_pointer(window)->request_redraw();
         }
     }
-}
-
-void SceneGraph::_detach_from_window()
-{
-    NOTF_MUTEX_GUARD(m_event_mutex);
-    m_window = nullptr;
 }
 
 // ------------------------------------------------------------------------------------------------------------------ //

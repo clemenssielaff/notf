@@ -112,11 +112,14 @@ private:
 
     /// Constructor.
     /// @param window   Window owning this SceneGraph.
-    SceneGraph(Window& window);
+    SceneGraph(valid_ptr<WindowPtr> window);
 
     /// Factory.
     /// @param window   Window owning this SceneGraph.
-    static SceneGraphPtr _create(Window& window) { return NOTF_MAKE_SHARED_FROM_PRIVATE(SceneGraph, window); }
+    static SceneGraphPtr _create(valid_ptr<WindowPtr> window)
+    {
+        return NOTF_MAKE_SHARED_FROM_PRIVATE(SceneGraph, std::move(window));
+    }
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(SceneGraph);
@@ -127,9 +130,8 @@ public:
 
     // getter -----------------------------------------------------------------
 
-    /// Window owning this SceneGraph.
-    /// @throws Window::deleted_error  If the ScenGraph's Window has already been deleted.
-    Window& window() const;
+    /// Window owning this SceneGraph. Is empty if the Window was already closed.
+    risky_ptr<WindowPtr> getWindow() const { return m_window.lock(); }
 
     /// Returns a Scene in this graph by name.
     /// @param name Name of the requested Scene.
@@ -242,13 +244,10 @@ private:
     /// @param state    New state to enter.
     void _enter_state(valid_ptr<StatePtr> state);
 
-    /// Called by the SceneGraph's Window when it goes out of scope to let the SceneGraph know.
-    void _detach_from_window();
-
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Window owning this SceneGraph.
-    risky_ptr<Window*> m_window;
+    WindowWeakPtr m_window;
 
     /// Current State of the SceneGraph.
     valid_ptr<StatePtr> m_current_state;
@@ -285,11 +284,7 @@ class access::_SceneGraph<Window> {
 
     /// Factory.
     /// @param window   Window owning this SceneGraph.
-    static SceneGraphPtr create(Window& window) { return SceneGraph::_create(window); }
-
-    /// Called by the SceneGraph's Window when it goes out of scope to let the SceneGraph know.
-    /// @param graph    SceneGraph to operate on.
-    static void detach(SceneGraph& scene_graph) { scene_graph._detach_from_window(); }
+    static SceneGraphPtr create(valid_ptr<WindowPtr> window) { return SceneGraph::_create(std::move(window)); }
 };
 
 //-----------------------------------------------------------------------------

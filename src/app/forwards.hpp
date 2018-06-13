@@ -56,8 +56,8 @@ NOTF_DEFINE_SHARED_POINTERS(class, IntervalTimer);
 NOTF_DEFINE_SHARED_POINTERS(class, VariableTimer);
 NOTF_DEFINE_SHARED_POINTERS(class, Renderer);
 NOTF_DEFINE_SHARED_POINTERS(class, ProceduralRenderer);
+NOTF_DEFINE_SHARED_POINTERS(class, Window);
 
-NOTF_DEFINE_UNIQUE_POINTERS(class, Window);
 NOTF_DEFINE_UNIQUE_POINTERS(class, ResourceManager);
 NOTF_DEFINE_UNIQUE_POINTERS(class, EventManager);
 NOTF_DEFINE_UNIQUE_POINTERS(class, RenderManager);

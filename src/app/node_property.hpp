@@ -205,13 +205,13 @@ public:
     /// @param dependencies Properties that the expression depends on.
     /// @throws no_dag_error
     ///                     If the expression would introduce a cyclic dependency into the graph.
-    /// @throws NodeProperty<T>::no_body_error
+    /// @throws NodeProperty::no_body_error
     ///                     If this NodeProperty was created without a PropertyBody and cannot accept expressions.
     void set(Expression&& expression, Dependencies&& dependencies)
     {
         risky_ptr<TypedPropertyBody<T>*> body = _body();
         if (!body) {
-            notf_throw(TypedNodeProperty<T>::no_body_error,
+            notf_throw(NodeProperty::no_body_error,
                        "Property \"{}\" on Node \"{}\" cannot be defined using an Expression", name(), _node_name());
         }
 
@@ -444,7 +444,7 @@ public:
     /// @param dependencies Properties that the expression depends on.
     /// @throws no_dag_error
     ///                     If the expression would introduce a cyclic dependency into the graph.
-    /// @throws NodeProperty<T>::no_body_error
+    /// @throws NodeProperty::no_body_error
     ///                     If this NodeProperty was created without a PropertyBody and cannot accept expressions.
     /// @throws NodeProperty::no_property_error
     ///                     If the NodeProperty has expired.

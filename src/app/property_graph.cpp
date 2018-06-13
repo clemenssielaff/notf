@@ -28,21 +28,21 @@ void PropertyGraph::fire_event(PropertyUpdateList&& effects)
 
         if (risky_ptr<PropertyHead*> property_head = update->property->head()) {
             if (risky_ptr<Node*> node = property_head->node()) {
-                Window* window;
-                try {
-                    window = &(node->graph().window());
+                WindowPtr window;
+                if (risky_ptr<WindowPtr> risky = node->graph().getWindow()) {
+                    window = std::move(risky);
                 }
-                catch (const Window::deleted_error&) {
+                else {
                     continue;
                 }
-                if (updates_by_window.count(window) == 0) {
+                if (updates_by_window.count(window.get()) == 0) {
                     PropertyUpdateList window_updates;
                     window_updates.reserve(effects.size() + 1); // assume all updates are for the same window
                     window_updates.emplace_back(std::move(update));
-                    updates_by_window[window] = std::move(window_updates);
+                    updates_by_window[window.get()] = std::move(window_updates);
                 }
                 else {
-                    updates_by_window[window].emplace_back(std::move(update));
+                    updates_by_window[window.get()].emplace_back(std::move(update));
                 }
             }
         }

@@ -28,8 +28,6 @@ void window_deleter(GLFWwindow* glfw_window)
 
 Window::initialization_error::~initialization_error() {}
 
-Window::deleted_error::~deleted_error() {}
-
 // ================================================================================================================== //
 
 const Window::Args Window::s_default_args = {};
@@ -60,7 +58,6 @@ Window::Window(const Args& args)
     auto context_guard = m_graphics_context->make_current();
 
     // create auxiliary objects
-    m_scene_graph = SceneGraph::Access<Window>::create(*this);
     m_font_manager = FontManager::create(*m_graphics_context);
 
     // connect the window callbacks
@@ -98,9 +95,12 @@ Window::Window(const Args& args)
 
 WindowPtr Window::_create(const Args& args)
 {
-    // inititalize the window
-    WindowPtr window = NOTF_MAKE_UNIQUE_FROM_PRIVATE(Window, args);
-    return window;
+    WindowPtr result = NOTF_MAKE_SHARED_FROM_PRIVATE(Window, args);
+
+    // the SceneGraph requires a fully initialized WindowPtr
+    result->m_scene_graph = SceneGraph::Access<Window>::create(result);
+
+    return result;
 }
 
 Window::~Window() { close(); }
@@ -138,7 +138,7 @@ Vector2f Window::mouse_pos() const
     return {static_cast<float>(mouse_x), static_cast<float>(mouse_y)};
 }
 
-void Window::request_redraw() { Application::instance().render_manager().render(this); }
+void Window::request_redraw() { Application::instance().render_manager().render(shared_from_this()); }
 
 void Window::set_state(const State state)
 {
@@ -157,25 +157,17 @@ void Window::set_state(const State state)
 
 void Window::close()
 {
-    if (!m_glfw_window) {
+    if (is_closed()) {
         return;
     }
+    m_is_closed.store(true, std::memory_order_release);
 
     log_trace << "Closing Window \"" << m_title << "\"";
 
-    // disconnect the window callbacks
+    // disconnect the window callbacks (blocks until all queued events are handled)
     EventManager::Access<Window>::remove_window(Application::instance().event_manager(), *this);
 
-    // detach the SceneGraph
-    SceneGraph::Access<Window>::detach(*m_scene_graph);
-
-    m_scene_graph.reset();
-    m_font_manager.reset();
-    m_graphics_context.reset();
-    m_glfw_window.reset();
-
-    m_size = Size2i::invalid();
-
+    // remove yourself from the Application (deletes the Window if there are no more shared_ptrs to it)
     Application::Access<Window>::unregister(this);
 }
 

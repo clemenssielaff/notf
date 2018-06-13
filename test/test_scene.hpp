@@ -19,7 +19,7 @@ public:
     _SceneGraph(SceneGraph& graph) : m_graph(graph) {}
 
     /// Factory method.
-    static SceneGraphPtr create(Window& window) { return SceneGraph::_create(window); }
+    static SceneGraphPtr create(valid_ptr<WindowPtr> window) { return SceneGraph::_create(std::move(window)); }
 
     /// Creates and returns a FreezeGuard that keeps the scene frozen while it is alive.
     /// @param thread_id    (pretend) Id of the freezing thread.

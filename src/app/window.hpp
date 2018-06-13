@@ -23,7 +23,7 @@ void window_deleter(GLFWwindow* glfw_window);
 // ================================================================================================================== //
 
 /// The Window is a OS window containing an OpenGL context.
-class Window {
+class Window : public std::enable_shared_from_this<Window> {
 
     friend class access::_Window<Application>;
     friend class access::_Window<EventManager>;
@@ -47,9 +47,6 @@ public:
     /// Exception thrown when the OpenGL context of a Window could not be initialized.
     /// The error string will contain more detailed information about the error.
     NOTF_EXCEPTION_TYPE(initialization_error);
-
-    /// Exception thrown when the SceneGraph tries to access its Window after it has been detached.
-    NOTF_EXCEPTION_TYPE(deleted_error);
 
     // methods ------------------------------------------------------------------------------------------------------ //
 private:
@@ -122,7 +119,7 @@ public:
     void close();
 
     /// Returns false if the GLFW window is still open or true if it was closed.
-    bool is_closed() const { return !(static_cast<bool>(m_glfw_window)); }
+    bool is_closed() const { return m_is_closed.load(std::memory_order_acquire); }
 
 private:
     /// The wrapped GLFW window.
@@ -150,6 +147,9 @@ private:
 
     /// The Window size.
     Size2i m_size;
+
+    /// Flag to indicate whether the Window is still open or already closed.
+    std::atomic<bool> m_is_closed{false};
 
     /// Default arguments, when the user didn't supply any.
     static const Args s_default_args;

@@ -11,17 +11,17 @@
 NOTF_USING_NAMESPACE
 
 namespace {
-std::optional<std::reference_wrapper<Window>> g_window_reference;
+std::optional<WindowPtr> g_window;
 }
 
 NOTF_OPEN_NAMESPACE
 
-Window& notf_window()
+WindowPtr notf_window()
 {
-    if (!g_window_reference.has_value()) {
+    if (!g_window.has_value()) {
         notf_throw(internal_error, "Could not get NoTF Window for testing");
     }
-    return g_window_reference.value();
+    return g_window.value();
 }
 
 NOTF_CLOSE_NAMESPACE
@@ -36,13 +36,13 @@ int main(int argc, char* argv[])
     { // initialize the window
         Window::Args args;
         args.state = Window::State::MINIMIZED;
-        g_window_reference = Application::instance().create_window(args);
+        g_window = Application::instance().create_window(args);
     }
 
     int result = Catch::Session().run(argc, argv);
 
     // shut down the application by closing the test window
-    notf_window().close();
+    notf_window()->close();
 
     return result;
 }

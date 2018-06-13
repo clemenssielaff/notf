@@ -22,7 +22,7 @@ void RenderManager::RenderThread::start()
     m_thread = ScopedThread(std::thread(&RenderThread::_run, this));
 }
 
-void RenderManager::RenderThread::request_redraw(Window* window)
+void RenderManager::RenderThread::request_redraw(valid_ptr<WindowPtr> window)
 {
     {
         NOTF_MUTEX_GUARD(m_mutex);
@@ -31,7 +31,7 @@ void RenderManager::RenderThread::request_redraw(Window* window)
                 return;
             }
         }
-        m_windows.emplace_back(window);
+        m_windows.emplace_back(std::move(window));
     }
     m_condition.notify_one();
 }
@@ -52,7 +52,7 @@ void RenderManager::RenderThread::stop()
 
 void RenderManager::RenderThread::_run()
 {
-//    size_t frame_counter = 0;
+    //    size_t frame_counter = 0;
 
     while (1) {
         { // wait until the next frame is ready
@@ -67,12 +67,16 @@ void RenderManager::RenderThread::_run()
         }
         //        log_trace << "Rendering frame: " << frame_counter++;
 
-        Window* window = m_windows.front();
+        // get the window
+        valid_ptr<WindowPtr> window = std::move(m_windows.front());
         m_windows.pop_front();
-
+        if (window->is_closed()) {
+            continue;
+        }
+        SceneGraphPtr& scene_graph = window->scene_graph();
         GraphicsContext& context = window->graphics_context();
+
         { // render the frame
-            SceneGraphPtr& scene_graph = window->scene_graph();
             SceneGraph::FreezeGuard freeze_guard = SceneGraph::Access<RenderManager>::freeze(*scene_graph);
             GraphicsContext::CurrentGuard context_guard = context.make_current();
 
@@ -106,6 +110,6 @@ RenderManager::~RenderManager()
     m_render_thread.reset(); // blocks until the thread has joined
 }
 
-void RenderManager::render(Window* window) { m_render_thread->request_redraw(window); }
+void RenderManager::render(valid_ptr<WindowPtr> window) { m_render_thread->request_redraw(std::move(window)); }
 
 NOTF_CLOSE_NAMESPACE

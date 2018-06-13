@@ -6,7 +6,7 @@ NOTF_OPEN_NAMESPACE
 
 /// The global Window to be used in tests.
 /// Is defined in main.cpp.
-Window& notf_window();
+WindowPtr notf_window();
 
 namespace test {
 
