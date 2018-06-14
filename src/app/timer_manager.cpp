@@ -32,25 +32,25 @@ void TimerManager::_run()
 
             next_timer.reset();
             while (!next_timer) {
-                // stop the thread
-                if (!m_is_running) {
-                    return;
-                }
-
-                // pop the next timer if one is available
-                if (!m_timer.empty() && m_timer.front()->m_next_timeout <= _now()) {
-                    next_timer = std::move(m_timer.front());
-                    break;
-                }
-
                 // wait until there is a timeout to wait for
                 if (m_timer.empty()) {
                     m_condition.wait(lock, [&] { return !m_timer.empty() || !m_is_running; });
                 }
 
+                // stop the thread
+                if (!m_is_running) {
+                    return;
+                }
+                NOTF_ASSERT(!m_timer.empty());
+
                 // wait for the next timeout
+                const auto next_timeout = m_timer.front()->m_next_timeout;
+                if (next_timeout <= _now()) {
+                    next_timer = std::move(m_timer.front());
+                    break;
+                }
                 else {
-                    m_condition.wait_until(lock, m_timer.front()->m_next_timeout, [&] {
+                    m_condition.wait_until(lock, next_timeout, [&] {
                         return (!m_timer.empty() && m_timer.front()->m_next_timeout <= _now()) || !m_is_running;
                     });
                 }
@@ -164,7 +164,7 @@ void Timer::stop()
 
 // ================================================================================================================= //
 
-IntervalTimer::~IntervalTimer() = default;
+IntervalTimer::~IntervalTimer() { stop(); }
 
 void IntervalTimer::start(const duration_t interval, const size_t repetitions)
 {

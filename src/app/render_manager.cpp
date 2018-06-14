@@ -55,6 +55,8 @@ void RenderManager::RenderThread::_run()
     //    size_t frame_counter = 0;
 
     while (1) {
+
+        WindowPtr window;
         { // wait until the next frame is ready
             std::unique_lock<Mutex> lock(m_mutex);
             if (m_windows.empty() && m_is_running) {
@@ -64,21 +66,23 @@ void RenderManager::RenderThread::_run()
             if (!m_is_running) {
                 return;
             }
-        }
-        //        log_trace << "Rendering frame: " << frame_counter++;
 
-        // get the window
-        valid_ptr<WindowPtr> window = std::move(m_windows.front());
-        m_windows.pop_front();
+            window = std::move(m_windows.front());
+            m_windows.pop_front();
+        }
+        NOTF_ASSERT(window);
         if (window->is_closed()) {
             continue;
         }
+
         SceneGraphPtr& scene_graph = window->scene_graph();
         GraphicsContext& context = window->graphics_context();
 
         { // render the frame
             SceneGraph::FreezeGuard freeze_guard = SceneGraph::Access<RenderManager>::freeze(*scene_graph);
             GraphicsContext::CurrentGuard context_guard = context.make_current();
+
+            // log_trace << "Rendering frame: " << frame_counter++;
 
             //        // TODO: clean all the render targets here
             //        // in order to sort them, use typeid(*ptr).hash_code()

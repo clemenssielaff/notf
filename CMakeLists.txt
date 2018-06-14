@@ -24,6 +24,13 @@ macro(create_module name)
     set(${name}_MODULE ${${name}_SOURCE} ${${name}_HEADERS} ${${name}_MARKDOWN})
 endmacro()
 
+# OPTIONS ##############################################################################################################
+
+option(NOTF_BUILD_APP "Build application" ON)
+option(NOTF_BUILD_TESTS "Build tests" OFF)
+option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
+option(NOTF_THREAD_SANITIZATION "Enable thread sanitization" OFF)
+
 # CONFIGURATION ########################################################################################################
 
 # hide symbols by default
@@ -48,14 +55,19 @@ if(COMMAND cmake_policy)
     if(POLICY CMP0072)
         cmake_policy(SET CMP0072 NEW)
     endif()
-
 endif()
 
-# OPTIONS ##############################################################################################################
-
-option(NOTF_BUILD_APP "Build application" ON)
-option(NOTF_BUILD_TESTS "Build tests" OFF)
-option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
+# thread sanitization
+if(NOTF_THREAD_SANITIZATION)
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        add_compile_options("-fsanitize=thread")
+        link_libraries("-fsanitize=thread")
+        message(STATUS "Building using thread sanitization")
+    else()
+        set(NOTF_THREAD_SANITIZATION OFF)
+        message(AUTHOR_WARNING "Thread sanitization is only supported for build using Clang")
+    endif()
+endif()
 
 # LIBRARIES ############################################################################################################
 
@@ -222,7 +234,6 @@ target_link_libraries(notf
 
 if(CMAKE_BUILD_TYPE MATCHES "Release")
 
-
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
         set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
     endif()
@@ -252,7 +263,12 @@ if(NOTF_BUILD_TESTS)
     message(STATUS "Building Tests")
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNOTF_TEST")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
+
+    if(NOTF_THREAD_SANITIZATION)
+        message(AUTHOR_WARNING "Disabling coverage to avoid interference with thread sanitization.")
+    else()
+        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
+    endif()
 
     add_sources(TEST_SOURCES test
         catch.hpp
