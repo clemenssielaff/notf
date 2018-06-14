@@ -228,7 +228,7 @@ public:
     /// Returns true if this node is stacked anywhere in front of the given sibling.
     /// @param sibling  Sibling node to test against.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    bool is_in_front_of(const valid_ptr<Node*> sibling) const;
+    bool is_before(const valid_ptr<Node*> sibling) const;
 
     /// Returns true if this node is stacked anywhere behind the given sibling.
     /// @param sibling  Sibling node to test against.
@@ -292,7 +292,7 @@ protected:
     RecursiveMutex& _hierarchy_mutex() const { return SceneGraph::Access<Node>::hierarchy_mutex(graph()); }
 
     /// All children of this node, orded from back to front.
-    /// Never creates a delta.f
+    /// Never creates a delta.
     /// Note that you will need to hold the SceneGraph hierarchy mutex while calling this method, as well as for the
     /// entire lifetime of the returned reference!
     const NodeContainer& _read_children() const;
@@ -420,6 +420,11 @@ private:
     /// @param depth        Depth of the recursion (used to reserve component space).
     /// @param components   [OUT] Components of the path.
     void _initialize_path(const size_t depth, std::vector<std::string>& components) const;
+
+    /// Checks if the given sibling (which is not this node) is stacked behind this node.
+    /// @param sibling  Sibling node to test against.
+    /// @throws hierarchy_error If the sibling is not a sibling of this node.
+    bool _is_behind(const valid_ptr<Node*> sibling) const;
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:

@@ -267,6 +267,7 @@ if(NOTF_BUILD_TESTS)
     if(NOTF_THREAD_SANITIZATION)
         message(AUTHOR_WARNING "Disabling coverage to avoid interference with thread sanitization.")
     else()
+        message(STATUS "Building with coverage.")
         set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
     endif()
 

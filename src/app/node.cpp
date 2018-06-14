@@ -159,56 +159,20 @@ bool Node::is_in_back() const
     return siblings.back() == this;
 }
 
-bool Node::is_in_front_of(const valid_ptr<Node*> sibling) const
+bool Node::is_before(const valid_ptr<Node*> sibling) const
 {
-    NOTF_MUTEX_GUARD(_hierarchy_mutex());
-
-    const NodeContainer& siblings = m_parent->_read_children();
-    const size_t sibling_count = siblings.size();
-    size_t my_index = 0;
-    for (; my_index < sibling_count; ++my_index) {
-        if (siblings[my_index] == this) {
-            break;
-        }
-        else if (siblings[my_index] == sibling) {
-            return false;
-        }
+    if (this == sibling) {
+        return false;
     }
-    NOTF_ASSERT(my_index < sibling_count);
-
-    for (size_t sibling_index = my_index + 1; sibling_index < sibling_count; ++sibling_index) {
-        if (siblings[sibling_index] == sibling) {
-            return true;
-        }
-    }
-    notf_throw(hierarchy_error, "Cannot compare z-order of nodes \"{}\" and \"{}\", because they are not siblings.",
-               name(), sibling->name());
+    return !_is_behind(sibling);
 }
 
 bool Node::is_behind(const valid_ptr<Node*> sibling) const
 {
-    NOTF_MUTEX_GUARD(_hierarchy_mutex());
-
-    const NodeContainer& siblings = m_parent->_read_children();
-    const size_t sibling_count = siblings.size();
-    size_t sibling_index = 0;
-    for (; sibling_index < sibling_count; ++sibling_index) {
-        if (siblings[sibling_index] == sibling) {
-            break;
-        }
-        else if (siblings[sibling_index] == this) {
-            return false;
-        }
+    if (this == sibling) {
+        return false;
     }
-
-    NOTF_ASSERT(sibling_index < sibling_count);
-    for (size_t my_index = sibling_index + 1; my_index < sibling_count; ++my_index) {
-        if (siblings[my_index] == this) {
-            return true;
-        }
-    }
-    notf_throw(hierarchy_error, "Cannot compare z-order of nodes \"{}\" and \"{}\", because they are not siblings.",
-               name(), sibling->name());
+    return _is_behind(sibling);
 }
 
 void Node::stack_front()
@@ -467,6 +431,27 @@ void Node::_initialize_path(const size_t depth, std::vector<std::string>& compon
         m_parent->_initialize_path(depth + 1, components);
         components.push_back(name());
     }
+}
+
+bool Node::_is_behind(const valid_ptr<Node*> sibling) const
+{
+    if (m_parent != sibling->m_parent) {
+        notf_throw(hierarchy_error, "Cannot compare z-order of nodes \"{}\" and \"{}\", because they are not siblings.",
+                   name(), sibling->name());
+    }
+    {
+        NOTF_MUTEX_GUARD(_hierarchy_mutex());
+        const NodeContainer& siblings = m_parent->_read_children();
+        for (size_t index = 0; index < siblings.size(); ++index) {
+            if (siblings[index] == this) {
+                return true;
+            }
+            else if (siblings[index] == sibling) {
+                return false;
+            }
+        }
+    }
+    NOTF_ASSERT(false);
 }
 
 NOTF_CLOSE_NAMESPACE

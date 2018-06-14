@@ -73,6 +73,56 @@ SCENARIO("creation / modification of a node hierarchy", "[app][node]")
             REQUIRE(b->path() == Path("/TestScene/not_a/b"));
         }
     }
+
+    SECTION("Nodes have a z-order that can be modified")
+    {
+        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+
+        NodeHandle<TestNode> first = scene.root().set_child<TestNode>();
+        NodeHandle<TestNode> a = first->add_node<TestNode>();
+        NodeHandle<TestNode> b = first->add_node<TestNode>();
+        NodeHandle<TestNode> c = first->add_node<TestNode>();
+
+        REQUIRE(a->is_in_back());
+        REQUIRE(b->is_before(a));
+        REQUIRE(b->is_behind(c));
+        REQUIRE(!b->is_before(b));
+        REQUIRE(!b->is_behind(b));
+        REQUIRE(c->is_in_front());
+
+        a->stack_front();
+        a->stack_front(); // unneccessary, but on purpose
+        REQUIRE(a->is_in_front());
+        REQUIRE(b->is_in_back());
+        REQUIRE(c->is_before(b));
+        REQUIRE(c->is_behind(a));
+
+        c->stack_back();
+        c->stack_back(); // unneccessary, but on purpose
+        REQUIRE(a->is_in_front());
+        REQUIRE(b->is_before(c));
+        REQUIRE(b->is_behind(a));
+        REQUIRE(c->is_in_back());
+
+        NodeHandle<TestNode> d = first->add_node<TestNode>();
+        REQUIRE(d->is_in_front());
+
+        d->stack_behind(b);
+        d->stack_behind(b); // unneccessary, but on purpose
+        REQUIRE(a->is_in_front());
+        REQUIRE(b->is_before(d));
+        REQUIRE(d->is_behind(b));
+        REQUIRE(c->is_in_back());
+
+        c->stack_before(d);
+        c->stack_before(d); // unneccessary, but on purpose
+        REQUIRE(a->is_in_front());
+        REQUIRE(b->is_behind(a));
+        REQUIRE(c->is_before(d));
+        REQUIRE(d->is_in_back());
+
+        REQUIRE_THROWS_AS(first->is_before(d), Node::hierarchy_error);
+    }
 }
 
 // ================================================================================================================== //
