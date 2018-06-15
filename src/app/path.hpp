@@ -52,7 +52,7 @@ public:
 private:
     /// Value constructor.
     /// For internal use only.
-    Path(std::vector<std::string>&& components, const bool is_absolute, const Kind kind);
+    Path(std::vector<std::string>&& components, bool is_absolute, Kind kind);
 
 public:
     /// Default constructor.
@@ -62,15 +62,15 @@ public:
     /// Value constructor.
     /// @param string       Input to parse as a path.
     /// @throws construction_error  If the string failed to be parsed.
-    Path(const std::string_view& to_string);
-    Path(const std::string& string) : Path(std::string_view(string)) {}
-    Path(const char* string) : Path(std::string_view(string)) {}
+    explicit Path(std::string_view to_string);
+    explicit Path(const std::string& string) : Path(std::string_view(string)) {}
+    explicit Path(const char* string) : Path(std::string_view(string)) {}
     /// @}
 
     /// Move constructor.
     /// @param other        Path to move from.
     /// @throws construction_error  If the string failed to be parsed.
-    Path(Path&& other)
+    Path(Path&& other) noexcept
     {
         m_components = std::move(other.m_components);
         m_is_absolute = other.m_is_absolute;
@@ -164,5 +164,14 @@ class access::_Path<Node> {
         return Path(std::move(components), /* is_absolute = */ true, Path::Kind::NODE);
     }
 };
+
+// ================================================================================================================== //
+
+namespace literals {
+
+/// String literal for convenient Path construction.
+inline Path operator"" _path(const char* input, size_t size) { return Path(std::string_view(input, size)); }
+
+} // namespace literals
 
 NOTF_CLOSE_NAMESPACE

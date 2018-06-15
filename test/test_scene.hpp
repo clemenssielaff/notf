@@ -78,7 +78,7 @@ private:
 // ================================================================================================================== //
 
 struct TestScene : public Scene {
-    TestScene(const FactoryToken& token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
+    TestScene(FactoryToken token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
         : Scene(token, graph, std::move(name))
     {}
 

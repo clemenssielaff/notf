@@ -15,14 +15,14 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-Application::initialization_error::~initialization_error() {}
+Application::initialization_error::~initialization_error() = default;
 
-Application::shut_down_error::~shut_down_error() {}
+Application::shut_down_error::~shut_down_error() = default;
 
 // ================================================================================================================== //
 
 const Application::Args Application::s_invalid_args;
-std::atomic<bool> Application::s_was_closed{false};
+std::atomic<bool> Application::s_is_running{true};
 timepoint_t Application::s_start_time;
 
 Application::Application(const Args& application_args)
@@ -32,7 +32,6 @@ Application::Application(const Args& application_args)
     , m_render_manager(std::make_unique<RenderManager>())
     , m_event_manager(std::make_unique<EventManager>())
     , m_timer_manager(std::make_unique<TimerManager>())
-    , m_windows()
 {
     // install the log handler first, to catch errors right away
     install_log_message_handler(std::bind(&LogHandler::push_log, m_log_handler.get(), std::placeholders::_1));
@@ -58,7 +57,7 @@ Application::Application(const Args& application_args)
     }
 
     // initialize GLFW
-    if (!glfwInit()) {
+    if (glfwInit() == 0) {
         _shutdown();
         notf_throw(initialization_error, "GLFW initialization failed");
     }
@@ -85,7 +84,7 @@ int Application::exec()
     s_start_time = clock_t::now();
 
     // loop until there are no more windows open
-    while (m_windows.size() > 0) {
+    while (!m_windows.empty()) {
 
         // wait for the next event or the next time to fire an animation frame
         glfwWaitEvents();
@@ -107,9 +106,10 @@ void Application::_unregister_window(Window* window)
 void Application::_shutdown()
 {
     // you can only close the application once
-    if (was_closed()) {
+    if (!is_running()) {
         return;
     }
+    s_is_running.store(false);
 
     // close all remaining windows and their scenes
     for (WindowPtr& window : m_windows) {
@@ -118,11 +118,7 @@ void Application::_shutdown()
     m_windows.clear();
     m_render_manager.reset();
 
-    // stop the event loop
     glfwTerminate();
-
-    // by this point, the application is considered "closed"
-    s_was_closed.store(true, std::memory_order_release);
 
     // release all resources and objects
     m_thread_pool.reset();

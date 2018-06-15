@@ -27,7 +27,7 @@ void NodeContainer::erase(const NodePtr& node)
     }
 }
 
-void NodeContainer::stack_front(const valid_ptr<Node*> node)
+void NodeContainer::stack_front(valid_ptr<const Node*> node)
 {
     auto it
         = std::find_if(m_order.begin(), m_order.end(), [&](const auto& sibling) -> bool { return sibling == node; });
@@ -35,7 +35,7 @@ void NodeContainer::stack_front(const valid_ptr<Node*> node)
     move_to_back(m_order, it); // "in front" means at the end of the vector ordered back to front
 }
 
-void NodeContainer::stack_back(const valid_ptr<Node*> node)
+void NodeContainer::stack_back(valid_ptr<const Node*> node)
 {
     auto it
         = std::find_if(m_order.begin(), m_order.end(), [&](const auto& sibling) -> bool { return sibling == node; });
@@ -43,7 +43,7 @@ void NodeContainer::stack_back(const valid_ptr<Node*> node)
     move_to_front(m_order, it); // "in back" means at the start of the vector ordered back to front
 }
 
-void NodeContainer::stack_before(const size_t index, const valid_ptr<Node*> sibling)
+void NodeContainer::stack_before(const size_t index, valid_ptr<const Node*> sibling)
 {
     auto node_it = iterator_at(m_order, index);
     auto sibling_it = std::find(m_order.begin(), m_order.end(), sibling);
@@ -55,7 +55,7 @@ void NodeContainer::stack_before(const size_t index, const valid_ptr<Node*> sibl
     notf::move_behind_of(m_order, node_it, sibling_it);
 }
 
-void NodeContainer::stack_behind(const size_t index, const valid_ptr<Node*> sibling)
+void NodeContainer::stack_behind(const size_t index, valid_ptr<const Node*> sibling)
 {
     auto node_it = iterator_at(m_order, index);
     auto sibling_it = std::find(m_order.begin(), m_order.end(), sibling);

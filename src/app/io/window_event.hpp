@@ -47,7 +47,7 @@ public:
     /// @param window       Window that the event is meant for.
     /// @param type         The type of this event.
     WindowResizeEvent(valid_ptr<const Window*> window, Size2i old_size, Size2i new_size)
-        : detail::EventBase<WindowResizeEvent>(window), old_size(std::move(old_size)), new_size(std::move(new_size))
+        : detail::EventBase<WindowResizeEvent>(window), old_size(old_size), new_size(new_size)
     {}
 
     /// Destructor.

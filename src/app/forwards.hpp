@@ -63,6 +63,16 @@ NOTF_DEFINE_UNIQUE_POINTERS(class, EventManager);
 NOTF_DEFINE_UNIQUE_POINTERS(class, RenderManager);
 NOTF_DEFINE_UNIQUE_POINTERS(class, TimerManager);
 
+// tests
+
+#ifdef NOTF_TEST
+
+struct TestNode;
+
+#endif
+
+// details
+
 namespace detail {
 
 struct WindowArguments;

@@ -432,7 +432,7 @@
 
         if ( pe32_header.magic != WINFNT_PE_MAGIC /* check full signature */ ||
              pe32_header.machine != 0x014C /* i386 */                        ||
-             pe32_header.size_of_optional_header != 0xE0 /* FIXME */         ||
+             pe32_header.size_of_optional_header != 0xE0                     ||
              pe32_header.magic32 != 0x10B                                    )
         {
           FT_TRACE2(( "this file has an invalid PE header\n" ));

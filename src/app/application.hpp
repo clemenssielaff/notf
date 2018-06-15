@@ -79,7 +79,7 @@ private:
     /// Constructor.
     /// @param application_args         Application arguments.
     /// @throws initialization_error    When the Application intialization failed.
-    Application(const Args& application_args);
+    explicit Application(const Args& application_args);
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
@@ -101,7 +101,7 @@ public:
         Args args;
         args.argc = argc;
         args.argv = argv;
-        return _instance(std::move(args));
+        return _instance(args);
     }
 
     /// @{
@@ -123,14 +123,14 @@ public:
     /// @throws shut_down_error         When this method is called after the Application was shut down.
     static Application& instance()
     {
-        if (NOTF_UNLIKELY(was_closed())) {
-            notf_throw(shut_down_error, "You may not access the Application after it was shut down");
+        if (NOTF_LIKELY(is_running())) {
+            return _instance();
         }
-        return _instance();
+        notf_throw(shut_down_error, "You may not access the Application after it was shut down");
     }
 
     /// Checks if the Application was once open but is now closed.
-    static bool was_closed() { return s_was_closed.load(std::memory_order_acquire); }
+    static bool is_running() { return s_is_running.load(); }
 
     /// The Application's Resource Manager.
     ResourceManager& resource_manager() { return *m_resource_manager; }
@@ -197,8 +197,8 @@ private:
     /// Timepoint when the Application was started.
     static timepoint_t s_start_time;
 
-    /// Flag to indicate that the Application was open and is now closed.
-    static std::atomic<bool> s_was_closed;
+    /// Flag to indicate whether the Application is currently running or not.
+    static std::atomic<bool> s_is_running;
 
     /// Invalid arguments, used when you call `get_instance` without initializing the Application first.
     static const Args s_invalid_args;

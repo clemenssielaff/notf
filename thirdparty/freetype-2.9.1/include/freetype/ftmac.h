@@ -18,9 +18,9 @@
 
 /***************************************************************************/
 /*                                                                         */
-/* NOTE: Include this file after FT_FREETYPE_H and after any               */
-/*       Mac-specific headers (because this header uses Mac types such as  */
-/*       Handle, FSSpec, FSRef, etc.)                                      */
+/* Include this file after FT_FREETYPE_H and after any                     */
+/* Mac-specific headers (because this header uses Mac types such as        */
+/* Handle, FSSpec, FSRef, etc.)                                            */
 /*                                                                         */
 /***************************************************************************/
 

@@ -225,7 +225,7 @@ protected:
     void _set_upstream(Dependencies&& dependencies);
 
     /// Adds a new downstream property that is affected by this one through an expression.
-    void _add_downstream(const valid_ptr<PropertyBody*> affected);
+    void _add_downstream(valid_ptr<PropertyBody*> affected);
 
     /// Called by the head of this Property when it is deleted.
     void _remove_head();
@@ -257,9 +257,7 @@ private:
 
     /// Value constructor.
     /// @param value    Value held by the Property, is used to determine the property type.
-    TypedPropertyBody(valid_ptr<PropertyHead*> head, T&& value)
-        : PropertyBody(std::move(head)), m_value(std::forward<T>(value))
-    {}
+    TypedPropertyBody(valid_ptr<PropertyHead*> head, T&& value) : PropertyBody(head), m_value(std::forward<T>(value)) {}
 
 public:
     /// Factory function, making sure that all PropertyBodies are managed by a shared_ptr.
@@ -267,7 +265,7 @@ public:
     static std::enable_if_t<PropertyGraph::is_property_type_v<T>, TypedPropertyBodyPtr<T>>
     create(valid_ptr<PropertyHead*> head, T&& value)
     {
-        return NOTF_MAKE_SHARED_FROM_PRIVATE(TypedPropertyBody<T>, std::move(head), std::forward<T>(value));
+        return NOTF_MAKE_SHARED_FROM_PRIVATE(TypedPropertyBody<T>, head, std::forward<T>(value));
     }
 
     /// Checks if the Property is grounded or not (has an expression).
@@ -385,7 +383,7 @@ private:
     /// Updates the Property by evaluating its expression.
     /// Then continues to update all downstream nodes as well.
     /// @param effects      [OUT] All properties affected by the change.
-    void _update(PropertyUpdateList& effects) final override
+    void _update(PropertyUpdateList& effects) final
     {
         NOTF_ASSERT(_mutex().is_locked_by_this_thread());
 
@@ -395,7 +393,7 @@ private:
     }
 
     /// Removes this Property as affected (downstream) of all of its dependencies (upstream).
-    void _ground() final override
+    void _ground() final
     {
         NOTF_ASSERT(_mutex().is_locked_by_this_thread());
 
@@ -408,12 +406,12 @@ private:
     /// Checks if a given update would succeed if executed or not.
     /// @param update           Untyped update to test (only PropertyExpressionUpdated can fail).
     /// @throws no_dag_error    If the update is an expression that would introduce a cyclic dependency.
-    void _validate_update(valid_ptr<PropertyUpdate*> update) final override
+    void _validate_update(valid_ptr<PropertyUpdate*> update) final
     {
         NOTF_ASSERT(_mutex().is_locked_by_this_thread());
 
         // check if an exception would introduce a cyclic dependency
-        if (PropertyExpressionUpdate<T>* expression_update = dynamic_cast<PropertyExpressionUpdate<T>*>(update.get())) {
+        if (auto* expression_update = dynamic_cast<PropertyExpressionUpdate<T>*>(update.get())) {
             _test_upstream(expression_update->dependencies);
         }
     }
@@ -422,18 +420,18 @@ private:
     /// Note that this method moves the value/expression out of the update.
     /// @param update       Update to apply.
     /// @param effects      [OUT] All properties affected by the change.
-    void _apply_update(valid_ptr<PropertyUpdate*> raw_update, PropertyUpdateList& effects) final override
+    void _apply_update(valid_ptr<PropertyUpdate*> raw_update, PropertyUpdateList& effects) final
     {
         NOTF_ASSERT(_mutex().is_locked_by_this_thread());
 
         // update with a ground value
-        if (PropertyValueUpdate<T>* update = dynamic_cast<PropertyValueUpdate<T>*>(raw_update.get())) {
+        if (auto* update = dynamic_cast<PropertyValueUpdate<T>*>(raw_update.get())) {
             NOTF_ASSERT(update->property.get() == this);
             _set_value(std::forward<T>(update->value), effects);
         }
 
         // update with an expression
-        else if (PropertyExpressionUpdate<T>* update = dynamic_cast<PropertyExpressionUpdate<T>*>(raw_update.get())) {
+        else if (auto* update = dynamic_cast<PropertyExpressionUpdate<T>*>(raw_update.get())) {
             NOTF_ASSERT(update->property.get() == this);
             _set_expression(std::move(update->expression), std::move(update->dependencies), effects);
         }

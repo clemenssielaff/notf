@@ -90,7 +90,7 @@ void PropertyBody::_ground()
         PropertyBody* dependency = PropertyReader::Access<PropertyBody>::property(reader).get();
         auto it = std::find(dependency->m_downstream.begin(), dependency->m_downstream.end(), this);
         NOTF_ASSERT(it != dependency->m_downstream.end());
-        *it = std::move(dependency->m_downstream.back());
+        *it = dependency->m_downstream.back();
         dependency->m_downstream.pop_back();
     }
     m_upstream.clear();
@@ -148,7 +148,7 @@ void PropertyBody::_set_upstream(Dependencies&& dependencies)
     }
 }
 
-void PropertyBody::_add_downstream(const valid_ptr<PropertyBody*> affected)
+void PropertyBody::_add_downstream(valid_ptr<PropertyBody*> affected)
 {
     NOTF_ASSERT(_mutex().is_locked_by_this_thread());
 

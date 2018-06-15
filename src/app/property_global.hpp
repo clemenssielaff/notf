@@ -67,12 +67,8 @@ private:
     /// The typed property body.
     TypedPropertyBody<T>& _body() const { return *(static_cast<TypedPropertyBody<T>*>(m_body.get())); }
 
-    /// Updates the value in response to a PropertyEvent.
-    /// @param update   PropertyUpdate to apply.
-    void _apply_update(valid_ptr<PropertyUpdate*>) override
-    {
-        NOTF_NOOP; // a global property does not need to react to changes of its body
-    }
+    // a global property does not need to react to changes of its body
+    void _apply_update(valid_ptr<PropertyUpdate*>) override { NOTF_NOOP; }
 };
 
 /// Creates a global property with automatic type deduction.

@@ -17,7 +17,7 @@ NOTF_USING_NAMESPACE
 #pragma clang diagnostic ignored "-Wweak-vtables"
 
 struct CloudScene : public Scene {
-    CloudScene(const FactoryToken& token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
+    CloudScene(FactoryToken token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
         : Scene(token, graph, std::move(name)), p_time(_root().create_property<float>("time", 0))
     {
         m_timer = IntervalTimer::create([&] {

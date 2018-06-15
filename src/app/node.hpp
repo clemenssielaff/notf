@@ -59,10 +59,10 @@ public:
     /// @param token    Factory token provided by Node::_add_child.
     /// @param scene    Scene to manage the node.
     /// @param parent   Parent of this node.
-    Node(const FactoryToken&, Scene& scene, valid_ptr<Node*> parent);
+    Node(FactoryToken, Scene& scene, valid_ptr<Node*> parent);
 
     /// Destructor.
-    virtual ~Node();
+     ~Node() override;
 
     /// The Scene containing this node.
     Scene& scene() const { return m_scene; }
@@ -103,17 +103,17 @@ public:
         if (it == m_properties.end()) {
             return {}; // empty default
         }
-        return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodePropertyPtr<T>>(it->second));
+        return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodeProperty<T>>(it->second));
     }
 
     /// Returns a Property of this Node by path and type.
     /// @param path     Path uniquely identifying the requested Property.
     /// @returns        Requested Property, if one exists that matches both name and type.
-    /// @throws Path::path_error    If the Path does not lead to a Node.
+    /// @throws Path::path_error    If the Path does not lead to a Property.
     template<class T>
     PropertyHandle<T> property(const Path& path)
     {
-        return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodePropertyPtr<T>>(_property(path)));
+        return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodeProperty<T>>(_property(path)));
     }
 
     // hierarchy --------------------------------------------------------------
@@ -169,7 +169,7 @@ public:
     ///                 Is empty if the Node doesn't exist or is of the wrong type.
     /// @throws Path::path_error    If the Path is invalid.
     template<class T>
-    NodeHandle<T> node(const Path& path)
+    NodeHandle<T> child(const Path& path)
     {
         return NodeHandle<T>(std::dynamic_pointer_cast<T>(_node(path)));
     }
@@ -192,7 +192,7 @@ public:
 
     /// Tests, if this Node is a descendant of the given ancestor.
     /// @param ancestor         Potential ancestor to verify.
-    bool has_ancestor(const valid_ptr<const Node*> ancestor) const;
+    bool has_ancestor(valid_ptr<const Node*> ancestor) const;
 
     /// Finds and returns the first common ancestor of two Nodes.
     /// The root node is always a common ancestor, iff the two nodes are in the same scene.
@@ -207,14 +207,16 @@ public:
     {
         NOTF_MUTEX_GUARD(_hierarchy_mutex());
 
-        valid_ptr<const Node*> next = m_parent;
-        while (next != next->m_parent) {
-            if (const T* result = dynamic_cast<T*>(next)) {
+        valid_ptr<Node*> next = m_parent;
+        while (true) {
+            if (T* result = dynamic_cast<T*>(raw_pointer(next))) {
                 return NodeHandle<T>(result);
+            }
+            if (next == next->m_parent) {
+                return {};
             }
             next = next->m_parent;
         }
-        return {};
     }
 
     // z-order ----------------------------------------------------------------
@@ -228,12 +230,12 @@ public:
     /// Returns true if this node is stacked anywhere in front of the given sibling.
     /// @param sibling  Sibling node to test against.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    bool is_before(const valid_ptr<Node*> sibling) const;
+    bool is_before(valid_ptr<const Node *> sibling) const;
 
     /// Returns true if this node is stacked anywhere behind the given sibling.
     /// @param sibling  Sibling node to test against.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    bool is_behind(const valid_ptr<Node*> sibling) const;
+    bool is_behind(valid_ptr<const Node*> sibling) const;
 
     /// Moves this Node in front of all of its siblings.
     void stack_front();
@@ -244,12 +246,12 @@ public:
     /// Moves this Node before a given sibling.
     /// @param sibling  Sibling to stack before.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    void stack_before(const valid_ptr<Node*> sibling);
+    void stack_before(valid_ptr<const Node*> sibling);
 
     /// Moves this Node behind a given sibling.
     /// @param sibling  Sibling to stack behind.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    void stack_behind(const valid_ptr<Node*> sibling);
+    void stack_behind(valid_ptr<const Node*> sibling);
 
 protected:
     /// Private and untyped implementation of `property` assuming sanitized inputs.
@@ -263,7 +265,7 @@ protected:
     /// @param index    Index of the next child in the path
     /// @param result   [OUT] Result of the query.
     /// @throws Path::path_error    If the Path does not lead to a Property.
-    void _property(const Path& path, const uint index, NodePropertyPtr& result);
+    void _property(const Path& path, uint index, NodePropertyPtr& result);
 
     /// Private and untyped implementation of `node` assuming sanitized inputs.
     /// @param path     Path uniquely identifying a Node.
@@ -276,7 +278,7 @@ protected:
     /// @param index    Index of the next child in the path
     /// @param result   [OUT] Result of the query.
     /// @throws Path::path_error    If the Path does not lead to a Node.
-    void _node(const Path& path, const uint index, NodePtr& result);
+    void _node(const Path& path, uint index, NodePtr& result);
 
     /// Recursive implementation of `count_descendants`.
     void _count_descendants_impl(size_t& result) const
@@ -419,12 +421,12 @@ private:
     /// Recursive initialization of the Path components.
     /// @param depth        Depth of the recursion (used to reserve component space).
     /// @param components   [OUT] Components of the path.
-    void _initialize_path(const size_t depth, std::vector<std::string>& components) const;
+    void _initialize_path(size_t depth, std::vector<std::string>& components) const;
 
     /// Checks if the given sibling (which is not this node) is stacked behind this node.
     /// @param sibling  Sibling node to test against.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    bool _is_behind(const valid_ptr<Node*> sibling) const;
+    bool _is_behind(valid_ptr<const Node*> sibling) const;
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:

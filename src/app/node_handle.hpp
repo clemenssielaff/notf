@@ -18,11 +18,6 @@ struct NodeHandleBase {
 
     /// Exception thrown when the Node has gone out of scope (Scene must have been deleted).
     NOTF_EXCEPTION_TYPE(no_node_error);
-
-    // methods ------------------------------------------------------------------------------------------------------ //
-protected:
-    /// Returns the name of a Node.
-    static const std::string& _name(valid_ptr<const Node*> node);
 };
 
 } // namespace detail
@@ -34,6 +29,9 @@ struct NodeHandle : public detail::NodeHandleBase {
     static_assert(std::is_base_of<Node, T>::value, "The type wrapped by NodeHandle<T> must be a subclass of Node");
 
     friend class access::_NodeHandle;
+
+    template<class>
+    friend struct NodeHandle; // befriend all other NodeHandle<> implementations
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
@@ -50,42 +48,22 @@ public:
     /// @{
     /// Value Constructor.
     /// @param node     Handled Node.
-    /// @throws Node::no_node_error    If the given Node is empty or of the wrong type.
-    NodeHandle(const std::shared_ptr<T>& node) : m_node(node)
-    {
-        { // test if the given node is of the correct type
-            if (!dynamic_cast<T*>(node.get())) {
-                notf_throw(no_node_error, "Cannot wrap Node \"{}\" into Handle of wrong type", node->name());
-            }
-        }
-    }
-    NodeHandle(std::weak_ptr<T> node) : m_node(std::move(node))
-    {
-
-        { // test if the given node is alive and of the correct type
-            auto raw_node = m_node.lock();
-            if (!raw_node) {
-                notf_throw(no_node_error, "Cannot create Handle for empty node");
-            }
-            if (!dynamic_cast<T*>(raw_node.get())) {
-                notf_throw(no_node_error, "Cannot wrap Node \"{}\" into Handle of wrong type", _name(raw_node.get()));
-            }
-        }
-    }
+    NodeHandle(std::shared_ptr<T> node) : m_node(std::move(node)) {}
+    NodeHandle(std::weak_ptr<T> node) : m_node(std::move(node)) {}
     template<class U, typename = std::enable_if_t<std::is_base_of<U, T>::value>>
-    NodeHandle(const std::shared_ptr<U>& other) : NodeHandle(std::dynamic_pointer_cast<T>(other))
+    NodeHandle(const std::shared_ptr<U>& node) : NodeHandle(std::dynamic_pointer_cast<T>(node))
     {}
     template<class U, typename = std::enable_if_t<std::is_base_of<U, T>::value>>
-    NodeHandle(std::weak_ptr<U>&& other) : NodeHandle(std::dynamic_pointer_cast<T>(other.lock()))
+    NodeHandle(std::weak_ptr<U>&& node) : NodeHandle(std::dynamic_pointer_cast<T>(node.lock()))
     {}
     template<class U, typename = std::enable_if_t<std::is_base_of<U, T>::value>>
-    NodeHandle(U* other) : NodeHandle(std::dynamic_pointer_cast<T>(other->shared_from_this()))
+    NodeHandle(U* node) : NodeHandle(std::dynamic_pointer_cast<T>(node->shared_from_this()))
     {}
     /// @}
 
     /// Move constructor.
     /// @param other    NodeHandle to move from.
-    NodeHandle(NodeHandle&& other) : m_node(std::move(other.m_node)) { other.m_node.reset(); }
+    NodeHandle(NodeHandle&& other) noexcept : m_node(std::move(other.m_node)) { other.m_node.reset(); }
 
     /// Move constructor for NodeHandles of any base class of T.
     /// The resulting NodeHandle will be invalid, if the other handle cannot be dynamic-cast to T.
@@ -98,7 +76,7 @@ public:
 
     /// Move assignment operator.
     /// @param other    NodeHandle to move from.
-    NodeHandle& operator=(NodeHandle&& other)
+    NodeHandle& operator=(NodeHandle&& other) noexcept
     {
         m_node = std::move(other.m_node);
         other.m_node.reset();
@@ -130,6 +108,14 @@ public:
     }
     T* operator->() { return operator T*(); }
 
+    /// Comparison operator with another NodeHandle of arbitrary type.
+    /// @param other    NodeHandle to compare to.
+    template<class U>
+    bool operator==(const NodeHandle<U>& other) const
+    {
+        return weak_ptr_equal(m_node, other.m_node);
+    }
+
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Handled Node.
@@ -137,10 +123,6 @@ private:
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //
-
-#ifdef NOTF_TEST
-struct TestNode;
-#endif
 
 class access::_NodeHandle {
     friend class notf::Node;

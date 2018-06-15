@@ -17,19 +17,19 @@ NOTF_USING_NAMESPACE
 struct GlobalState {
 
     /// The current state of all keyboard keys.
-    KeyStateSet key_states;
+    KeyStateSet key_states{};
 
     /// The current state of all mouse buttons.
-    ButtonStateSet button_states;
+    ButtonStateSet button_states{};
 
     /// Current position of the mouse cursor in screen coordinates.
-    Vector2f cursor_pos;
+    Vector2f cursor_pos{};
 
     /// Previous position of the mouse cursor in screen coordinates.
-    Vector2f prev_cursor_pos;
+    Vector2f prev_cursor_pos{};
 
     /// Currently pressed key modifiers.
-    KeyModifiers key_modifiers;
+    KeyModifiers key_modifiers{};
 
     /// Mutex protecting the global state.
     Mutex mutex;
@@ -37,7 +37,7 @@ struct GlobalState {
 
 /// The global state, used to store auxiliary information about events that are unique in the context of the application
 /// (like the cursor position).
-static GlobalState g_state;
+GlobalState g_state;
 
 } // namespace
 
@@ -81,7 +81,7 @@ void EventManager::WindowHandler::stop()
 
 void EventManager::WindowHandler::_run()
 {
-    while (1) {
+    while (true) {
         { // wait until the next event is ready
             std::unique_lock<Mutex> lock(m_mutex);
             if (m_events.empty() && m_is_running) {
@@ -328,15 +328,17 @@ void EventManager::_on_mouse_button(GLFWwindow* glfw_window, int button, int act
     }
 
     // let the window handle the event
-    EventPtr event = std::make_unique<MouseEvent>(
-        window,                                                        // Window that the event is meant for
-        Vector2f{cursor_pos.x() - static_cast<float>(window_pos.x()),  // event position in window coordinates
-                 cursor_pos.y() - static_cast<float>(window_pos.y())}, //
-        Vector2f::zero(),                                              // mouse cursor delta in window coordinates
-        notf_button,                                                   // mouse button that triggered the event
-        notf_action,                                                   // either PRESS or RELEASE
-        notf_modifiers,                                                // active key modifiers
-        std::move(button_states));                                     // state of all mouse buttons
+    EventPtr event
+        = std::make_unique<MouseEvent>(window, // Window that the event is meant for
+                                       Vector2f{cursor_pos.x() - static_cast<float>(window_pos.x()),  // event position
+                                                                                                      // in window
+                                                                                                      // coordinates
+                                                cursor_pos.y() - static_cast<float>(window_pos.y())}, //
+                                       Vector2f::zero(), // mouse cursor delta in window coordinates
+                                       notf_button,      // mouse button that triggered the event
+                                       notf_action,      // either PRESS or RELEASE
+                                       notf_modifiers,   // active key modifiers
+                                       button_states);   // state of all mouse buttons
     Application::instance().event_manager().handle(std::move(event));
 }
 
@@ -369,14 +371,17 @@ void EventManager::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
     }
 
     // let the window handle the event
-    EventPtr event = std::make_unique<MouseEvent>(
-        window,                                                 // Window that the event is meant for
-        Vector2f{static_cast<float>(x), static_cast<float>(y)}, // event position in window coordinates
-        cursor_pos - prev_cursor_pos,                           // mouse cursor delta in window coordinates
-        Button::NO_BUTTON,                                      // move events are not triggered by a button
-        MouseAction::MOVE,                                      // action
-        key_modifiers,                                          // active key modifiers
-        button_states);                                         // state of all mouse buttons
+    EventPtr event = std::make_unique<MouseEvent>(window, // Window that the event is meant for
+                                                  Vector2f{static_cast<float>(x), static_cast<float>(y)}, // event
+                                                                                                          // position in
+                                                                                                          // window
+                                                                                                          // coordinates
+                                                  cursor_pos - prev_cursor_pos, // mouse cursor delta in window
+                                                                                // coordinates
+                                                  Button::NO_BUTTON, // move events are not triggered by a button
+                                                  MouseAction::MOVE, // action
+                                                  key_modifiers,     // active key modifiers
+                                                  button_states);    // state of all mouse buttons
     Application::instance().event_manager().handle(std::move(event));
 }
 
@@ -412,15 +417,18 @@ void EventManager::_on_scroll(GLFWwindow* glfw_window, double x, double y)
     }
 
     // let the window handle the event
-    EventPtr event = std::make_unique<MouseEvent>(
-        window,                                                        // Window that the event is meant for
-        Vector2f{cursor_pos.x() - static_cast<float>(window_pos.x()),  // event position in window coordinates
-                 cursor_pos.y() - static_cast<float>(window_pos.y())}, //
-        Vector2f{static_cast<float>(x), static_cast<float>(-y)},       // mouse cursor delta in window coordinates
-        Button::NO_BUTTON,                                             // scroll events are not triggered by a button
-        MouseAction::SCROLL,                                           // action
-        key_modifiers,                                                 // active key modifiers
-        button_states);                                                // state of all mouse buttons
+    EventPtr event
+        = std::make_unique<MouseEvent>(window, // Window that the event is meant for
+                                       Vector2f{cursor_pos.x() - static_cast<float>(window_pos.x()),  // event position
+                                                                                                      // in window
+                                                                                                      // coordinates
+                                                cursor_pos.y() - static_cast<float>(window_pos.y())}, //
+                                       Vector2f{static_cast<float>(x), static_cast<float>(-y)}, // mouse cursor delta in
+                                                                                                // window coordinates
+                                       Button::NO_BUTTON,   // scroll events are not triggered by a button
+                                       MouseAction::SCROLL, // action
+                                       key_modifiers,       // active key modifiers
+                                       button_states);      // state of all mouse buttons
     Application::instance().event_manager().handle(std::move(event));
 }
 

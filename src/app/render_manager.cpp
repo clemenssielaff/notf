@@ -54,7 +54,7 @@ void RenderManager::RenderThread::_run()
 {
     //    size_t frame_counter = 0;
 
-    while (1) {
+    while (true) {
 
         WindowPtr window;
         { // wait until the next frame is ready

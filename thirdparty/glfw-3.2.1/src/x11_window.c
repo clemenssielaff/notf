@@ -389,7 +389,7 @@ static void updateWindowMode(_GLFWwindow* window)
 }
 
 // Splits and translates a text/uri-list into separate file paths
-// NOTE: This function destroys the provided string
+// This function destroys the provided string
 //
 static char** parseUriList(char* text, int* count)
 {
@@ -1312,7 +1312,7 @@ static void processEvent(XEvent *event)
             else if (event->xclient.message_type == _glfw.x11.XdndEnter)
             {
                 // A drag operation has entered the window
-                // TODO: Check if UTF-8 string is supported by the source
+                // Check if UTF-8 string is supported by the source
             }
             else if (event->xclient.message_type == _glfw.x11.XdndDrop)
             {

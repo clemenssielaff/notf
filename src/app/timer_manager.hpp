@@ -42,7 +42,7 @@ private:
 
     /// Unschedules an existing Timer.
     /// @param timer    Timer to unschedule.
-    void _unschedule(const valid_ptr<Timer*> timer);
+    void _unschedule(valid_ptr<Timer*> timer);
 
     /// Current time point.
     static timepoint_t _now() { return std::chrono::time_point_cast<duration_t>(clock_t::now()); }
@@ -116,7 +116,8 @@ public:
     static void one_shot(const timepoint_t timeout, Callback callback)
     {
         if (timeout <= TimerManager::_now()) {
-            return callback();
+            callback();
+            return;
         }
         create(std::move(callback))->start(timeout);
     }
@@ -125,7 +126,7 @@ public:
     /// If the Timer is already running, it is restarted with the given value.
     /// If the time point is not in the future, the Callback is called immediately on this thread.
     /// @param timeout      Point in time to call the Callback.
-    void start(const timepoint_t timeout);
+    void start(timepoint_t timeout);
 
     /// Stops the Timer, if it is active.
     void stop();
@@ -186,7 +187,7 @@ public:
     /// parameter says, except if it is infinite - then the Callback is executed just once.
     /// @param interval     Interval wait time of the Timer, starts from now.
     /// @param repetitions  How often the Timer should fire. Default is infinite.
-    void start(const duration_t interval, const size_t repetitions = _infinity());
+    void start(duration_t interval, size_t repetitions = _infinity());
 
 private:
     /// Time to wait between this Timer fires.
@@ -232,7 +233,7 @@ public:
     /// The Timer is always scheduled, even if the given function returns zero.
     /// @param function     Function used to determine the next interval of this Timer.
     /// @param repetitions  How often the Timer should fire. Default is infinite.
-    void start(IntervalFunction function, const size_t repetitions = _infinity());
+    void start(IntervalFunction function, size_t repetitions = _infinity());
 
 private:
     /// Time to wait between this Timer fires.

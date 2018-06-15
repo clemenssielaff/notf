@@ -65,7 +65,7 @@ protected:
     /// Tests if the given Node is currently frozen by a specific thread.
     /// Is implemented in the .cpp file to avoid circular includes.
     /// @param thread_id    Id of the thread to test for.
-    bool _is_frozen_by(const std::thread::id& thread_id) const;
+    bool _is_frozen_by(std::thread::id thread_id) const;
 
     /// The name of the Node.
     const std::string& _node_name() const;
@@ -152,18 +152,16 @@ private:
             return NOTF_MAKE_UNIQUE_FROM_PRIVATE(TypedNodeProperty<T>, std::forward<T>(value), node,
                                                  std::move(validator), CreateBody{});
         }
-        else {
-            return NOTF_MAKE_UNIQUE_FROM_PRIVATE(TypedNodeProperty<T>, std::forward<T>(value), node,
-                                                 std::move(validator));
-        }
+
+        return NOTF_MAKE_UNIQUE_FROM_PRIVATE(TypedNodeProperty<T>, std::forward<T>(value), node, std::move(validator));
     }
 
 public:
     /// Destructor.
-    ~TypedNodeProperty() { _clear_frozen_value(); }
+    ~TypedNodeProperty() override { _clear_frozen_value(); }
 
     /// Returns the Node associated with this PropertyHead.
-    risky_ptr<Node*> node() final override { return m_node; }
+    risky_ptr<Node*> node() final { return m_node; }
 
     /// The node-unique name of this Property.
     const std::string& name() const { return m_name_it->first; }
@@ -257,7 +255,7 @@ private:
 
     /// Updates the value in response to a PropertyEvent.
     /// @param update   PropertyUpdate to apply.
-    void _apply_update(valid_ptr<PropertyUpdate*> update) final override
+    void _apply_update(valid_ptr<PropertyUpdate*> update) final
     {
         // restore the correct update type
         PropertyValueUpdate<T>* typed_update;
@@ -305,7 +303,7 @@ private:
     }
 
     /// Deletes the frozen value copy.
-    void _clear_frozen_value() final override
+    void _clear_frozen_value() final
     {
         if (T* frozen_ptr = m_frozen_value.exchange(nullptr)) {
             delete frozen_ptr;
@@ -392,11 +390,14 @@ public:
 
     /// Move constructor.
     /// @param other    PropertyHandle to move from.
-    PropertyHandle(PropertyHandle&& other) : m_property(std::move(other.m_property)) { other.m_property.reset(); }
+    PropertyHandle(PropertyHandle&& other) noexcept : m_property(std::move(other.m_property))
+    {
+        other.m_property.reset();
+    }
 
     /// Move assignment operator.
     /// @param other    PropertyHandle to move from.
-    PropertyHandle& operator=(PropertyHandle&& other)
+    PropertyHandle& operator=(PropertyHandle&& other) noexcept
     {
         m_property = std::move(other.m_property);
         other.m_property.reset();
@@ -456,6 +457,12 @@ public:
     /// Returns a PropertyReader for reading the (unbuffered) value of this Property.
     /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
     TypedPropertyReader<T> reader() const { return _property()->reader(); }
+
+    /// Comparison operator with another PropertyHandle of the same type as this.
+    /// Tests for identity, not equality - meaning two handles of different properties that just happen to contain the
+    /// same value are not considered equal.
+    /// @param other    PropertyHandle to compare to.
+    bool operator==(const PropertyHandle<T>& other) const { return weak_ptr_equal(m_property, other.m_property); }
 
 private:
     /// Locks and returns an owning pointer to the handled NodeProperty.

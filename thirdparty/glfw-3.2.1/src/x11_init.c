@@ -550,8 +550,6 @@ static GLFWbool initExtensions(void)
     }
 
     // Update the key code LUT
-    // FIXME: We should listen to XkbMapNotify events to track changes to
-    // the keyboard mapping.
     createKeyTables();
 
     // Detect whether an EWMH-conformant window manager is running
@@ -803,8 +801,8 @@ void _glfwPlatformTerminate(void)
         _glfw.x11.display = NULL;
     }
 
-    // NOTE: This needs to be done after XCloseDisplay, as libGL registers
-    //       cleanup callbacks that get called by it
+    // This needs to be done after XCloseDisplay, as libGL registers
+    // cleanup callbacks that get called by it
     _glfwTerminateGLX();
 
     _glfwTerminateJoysticksLinux();

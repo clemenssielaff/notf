@@ -21,27 +21,6 @@ constexpr long double operator"" _deg(unsigned long long int deg)
     return static_cast<long double>(deg) * detail::deg_to_rad();
 }
 
-/// String literal for os-aware paths.
-std::string operator"" _path(const char* input, size_t)
-{
-#ifdef NOTF_LINUX
-    static const char wrong = '\\';
-    static const char right = '/';
-#else
-#    ifdef NOTF_WINDOWS
-    static const char wrong = '/';
-    static const char right = '\\';
-#    endif
-#endif
-    std::string result = input;
-    std::size_t found  = result.find_first_of(wrong);
-    while (found != std::string::npos) {
-        result[found] = right;
-        found         = result.find_first_of(wrong, found + 1);
-    }
-    return result;
-}
-
 } // namespace literals
 
 NOTF_CLOSE_NAMESPACE

@@ -53,7 +53,7 @@ public:
     /// @param graph    The SceneGraph owning this Scene.
     /// @param name     Graph-unique, immutable name of the Scene.
     /// @throws scene_name_error    If the given name is not unique in the SceneGraph.
-    Scene(const FactoryToken&, const valid_ptr<SceneGraphPtr>& graph, std::string name);
+    Scene(FactoryToken, const valid_ptr<SceneGraphPtr>& graph, std::string name);
 
     /// Scene Factory method.
     /// @param graph    SceneGraph containing the Scene.
@@ -83,6 +83,7 @@ public:
     /// The unique root node of this Scene.
     RootNode& root() const { return *m_root; }
 
+    /// @{
     /// Searches for and returns a Property of a Node or the Scene.
     /// @param path     Path uniquely identifying a Property.
     /// @returns        Handle to the requested NodeProperty.
@@ -93,7 +94,14 @@ public:
     {
         return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodeProperty<T>>(_property(path)));
     }
+    template<class T>
+    PropertyHandle<T> property(const std::string& path)
+    {
+        return property<T>(Path(path));
+    }
+    /// @}
 
+    /// @{
     /// Searches for and returns a Node in this Scene.
     /// @param path     Path uniquely identifying a Node.
     /// @returns        Handle to the requested Node.
@@ -104,6 +112,12 @@ public:
     {
         return NodeHandle<T>(std::dynamic_pointer_cast<T>(_node(path)));
     }
+    template<class T>
+    NodeHandle<T> node(const std::string& path)
+    {
+        return NodeHandle<T>(Path(path));
+    }
+    /// @}
 
     /// The number of Nodes in the Scene including the root node (therefore is always >= 1).
     size_t count_nodes() const;

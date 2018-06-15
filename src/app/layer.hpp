@@ -70,7 +70,7 @@ public:
     void set_fullscreen(const bool is_fullscreen) { m_is_fullscreen = is_fullscreen; }
 
     /// Sets a new are for this Layer to render into (but does not change its `fullscreen` state).
-    void set_area(Aabri area) { m_area = std::move(area); }
+    void set_area(Aabri area) { m_area = area; }
 
     /// Render the Layer.
     void render();

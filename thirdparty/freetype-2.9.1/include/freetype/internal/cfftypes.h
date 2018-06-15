@@ -334,7 +334,7 @@ FT_BEGIN_HEADER
   {
     FT_Library       library;
     FT_Stream        stream;
-    FT_Memory        memory;        /* TODO: take this from stream->memory? */
+    FT_Memory        memory;
     FT_ULong         base_offset;   /* offset to start of CFF */
     FT_UInt          num_faces;
     FT_UInt          num_glyphs;

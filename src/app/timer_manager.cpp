@@ -19,7 +19,7 @@ TimerManager::~TimerManager()
 void TimerManager::_run()
 {
     TimerPtr next_timer = Timer::create([] {});
-    while (1) {
+    while (true) {
         {
             std::unique_lock<Mutex> lock(m_mutex);
 
@@ -49,11 +49,9 @@ void TimerManager::_run()
                     next_timer = std::move(m_timer.front());
                     break;
                 }
-                else {
-                    m_condition.wait_until(lock, next_timeout, [&] {
-                        return (!m_timer.empty() && m_timer.front()->m_next_timeout <= _now()) || !m_is_running;
-                    });
-                }
+                m_condition.wait_until(lock, next_timeout, [&] {
+                    return (!m_timer.empty() && m_timer.front()->m_next_timeout <= _now()) || !m_is_running;
+                });
             }
             m_timer.pop_front();
 
@@ -136,7 +134,8 @@ void Timer::start(const timepoint_t timeout)
         // fire right away if the timeout is already in the past
         if (timeout <= TimerManager::_now()) {
             m_next_timeout = timepoint_t();
-            return m_callback();
+            m_callback();
+            return;
         }
 
         // or schedule the timer
@@ -164,7 +163,7 @@ void Timer::stop()
 
 // ================================================================================================================= //
 
-IntervalTimer::~IntervalTimer() { stop(); }
+IntervalTimer::~IntervalTimer() = default;
 
 void IntervalTimer::start(const duration_t interval, const size_t repetitions)
 {

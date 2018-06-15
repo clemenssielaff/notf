@@ -12,7 +12,7 @@ Scene::hierarchy_error::~hierarchy_error() = default;
 
 // ================================================================================================================== //
 
-Scene::Scene(const FactoryToken&, const valid_ptr<SceneGraphPtr>& graph, std::string name)
+Scene::Scene(FactoryToken, const valid_ptr<SceneGraphPtr>& graph, std::string name)
     : m_graph(graph.get())
     , m_name(_validate_scene_name(*graph.get(), std::move(name)))
     , m_root(RootNode::Access<Scene>::create(*this))
@@ -58,12 +58,11 @@ NodePropertyPtr Scene::_property(const Path& path)
     }
     if (path.is_absolute()) {
         if (path[0] != name()) {
-            notf_throw(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(),
-                              name());
+            notf_throw(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(), name());
         }
         if (path.size() == 1) {
-            notf_throw(Path::path_error, "Path \"{}\" does not refer to a Property in Scene \"{}\"",
-                              path.to_string(), name());
+            notf_throw(Path::path_error, "Path \"{}\" does not refer to a Property in Scene \"{}\"", path.to_string(),
+                       name());
         }
     }
     {
@@ -72,9 +71,8 @@ NodePropertyPtr Scene::_property(const Path& path)
         if (path.is_absolute()) {
             return Node::Access<Scene>::property(*m_root, path, 1);
         }
-        else { // path.is_relative
-            return Node::Access<Scene>::property(*m_root, path, 0);
-        }
+        // path.is_relative
+        return Node::Access<Scene>::property(*m_root, path, 0);
     }
 }
 
@@ -88,12 +86,11 @@ NodePtr Scene::_node(const Path& path)
     }
     if (path.is_absolute()) {
         if (path[0] != name()) {
-            notf_throw(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(),
-                              name());
+            notf_throw(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(), name());
         }
         if (path.size() == 1) {
-            notf_throw(Path::path_error, "Path \"{}\" does not refer to a Node in Scene \"{}\"",
-                              path.to_string(), name());
+            notf_throw(Path::path_error, "Path \"{}\" does not refer to a Node in Scene \"{}\"", path.to_string(),
+                       name());
         }
     }
     {
@@ -102,9 +99,8 @@ NodePtr Scene::_node(const Path& path)
         if (path.is_absolute()) {
             return Node::Access<Scene>::node(*m_root, path, 1);
         }
-        else { // path.is_relative
-            return Node::Access<Scene>::node(*m_root, path, 0);
-        }
+        // path.is_relative
+        return Node::Access<Scene>::node(*m_root, path, 0);
     }
 }
 
@@ -156,9 +152,8 @@ SceneGraph::SceneMap::const_iterator Scene::_validate_scene_name(SceneGraph& gra
     if (result.second) {
         return result.first;
     }
-    notf_throw(scene_name_error,
-                      "Cannot create new Scene because its name \"{}\" is not unique within its SceneGraph",
-                      result.first->first);
+    notf_throw(scene_name_error, "Cannot create new Scene because its name \"{}\" is not unique within its SceneGraph",
+               result.first->first);
 }
 
 NOTF_CLOSE_NAMESPACE

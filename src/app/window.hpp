@@ -113,7 +113,7 @@ public:
     /// Sets the current state of the Window.
     /// If the new state is equal to the old one this method does nothing.
     /// @param state    New state.
-    void set_state(const State state);
+    void set_state(State state);
 
     /// Closes this Window.
     void close();
@@ -195,11 +195,11 @@ struct WindowArguments {
     /// Initial size of the Window.
     Size2i size = {640, 480};
 
-    /// If the Window is resizeable or not.
-    bool is_resizeable = true;
-
     /// Initial state of the Window.
     Window::State state = Window::State::WINDOWED;
+
+    /// If the Window is resizeable or not.
+    bool is_resizeable = true;
 };
 
 } // namespace detail

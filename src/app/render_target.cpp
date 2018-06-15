@@ -10,7 +10,7 @@
 NOTF_OPEN_NAMESPACE
 
 RenderTarget::RenderTarget(GraphicsContext& context, Args&& args)
-    : m_framebuffer(), m_scene(std::move(args.scene)), m_renderer(std::move(args.renderer))
+    : m_scene(std::move(args.scene)), m_renderer(std::move(args.renderer))
 {
     // create the texture arguments
     Texture::Args texture_args;
@@ -40,8 +40,7 @@ RenderTarget::RenderTarget(GraphicsContext& context, Args&& args)
     {
         std::stringstream ss;
         ss << "RenderTargetTexture#" << this;
-        framebuffer_args.set_color_target(0, Texture::create_empty(context, ss.str(), std::move(args.size),
-                                                                   std::move(texture_args)));
+        framebuffer_args.set_color_target(0, Texture::create_empty(context, ss.str(), args.size, texture_args));
     }
 
     m_framebuffer = FrameBuffer::create(context, std::move(framebuffer_args));

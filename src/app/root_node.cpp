@@ -4,6 +4,6 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-RootNode::~RootNode() {}
+RootNode::~RootNode() = default;
 
 NOTF_CLOSE_NAMESPACE

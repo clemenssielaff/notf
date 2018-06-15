@@ -17,7 +17,7 @@ namespace detail {
 
 void window_deleter(GLFWwindow* glfw_window)
 {
-    if (glfw_window) {
+    if (glfw_window != nullptr) {
         glfwDestroyWindow(glfw_window);
     }
 }
@@ -26,7 +26,7 @@ void window_deleter(GLFWwindow* glfw_window)
 
 // ================================================================================================================== //
 
-Window::initialization_error::~initialization_error() {}
+Window::initialization_error::~initialization_error() = default;
 
 // ================================================================================================================== //
 
@@ -85,7 +85,7 @@ Window::Window(const Args& args)
                 log_trace << "Loaded icon for Window \"" << title() << "\" from \"" << icon_path << "\"";
             }
         }
-        catch (std::runtime_error) {
+        catch (const std::runtime_error&) {
             log_warning << "Failed to load icon for Window \"" << title() << "\" from \"" << icon_path << "\"";
         }
     }
@@ -138,7 +138,12 @@ Vector2f Window::mouse_pos() const
     return {static_cast<float>(mouse_x), static_cast<float>(mouse_y)};
 }
 
-void Window::request_redraw() { Application::instance().render_manager().render(shared_from_this()); }
+void Window::request_redraw()
+{
+    if (Application::is_running()) {
+        Application::instance().render_manager().render(shared_from_this());
+    }
+}
 
 void Window::set_state(const State state)
 {

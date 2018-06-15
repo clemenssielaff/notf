@@ -145,6 +145,7 @@ public:
         return it->second.lock();
     }
 
+    /// @{
     /// Searches for and returns a Property in the SceneGraph.
     /// @param path     Path uniquely identifying a Property in the SceneGraph.
     /// @returns        Handle to the requested NodeProperty.
@@ -155,7 +156,14 @@ public:
     {
         return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodePropertyPtr<T>>(_property(path)));
     }
+    template<class T>
+    PropertyHandle<T> property(const std::string& path)
+    {
+        return PropertyHandle<T>(Path(path));
+    }
+    /// @}
 
+    /// @{
     /// Searches for and returns a Node in the SceneGraph.
     /// @param path     Path uniquely identifying a Node in the SceneGraph.
     /// @returns        Handle to the requested Node.
@@ -166,6 +174,12 @@ public:
     {
         return NodeHandle<T>(std::dynamic_pointer_cast<T>(_node(path)));
     }
+    template<class T>
+    NodeHandle<T> node(const std::string& path)
+    {
+        return NodeHandle<T>(Path(path));
+    }
+    /// @}
 
     // freezing ---------------------------------------------------------------
 
@@ -174,7 +188,7 @@ public:
 
     /// Checks if the SceneGraph is currently frozen by a given thread.
     /// @param thread_id    Id of the thread in question.
-    bool is_frozen_by(const std::thread::id& thread_id) const { return (m_freezing_thread == hash(thread_id)); }
+    bool is_frozen_by(std::thread::id thread_id) const { return (m_freezing_thread == hash(thread_id)); }
 
     // state management -------------------------------------------------------
 

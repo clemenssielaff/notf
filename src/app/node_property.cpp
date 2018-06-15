@@ -18,7 +18,7 @@ NodeProperty::~NodeProperty() = default;
 
 bool NodeProperty::_is_frozen() const { return m_node->graph().is_frozen(); }
 
-bool NodeProperty::_is_frozen_by(const std::thread::id& thread_id) const
+bool NodeProperty::_is_frozen_by(std::thread::id thread_id) const
 {
     return m_node->graph().is_frozen_by(thread_id);
 }

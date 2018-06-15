@@ -8,6 +8,8 @@ NOTF_USING_NAMESPACE
 
 SCENARIO("Application path", "[app], [path]")
 {
+    using namespace notf::literals;
+
     SECTION("default constructed paths are empty but valid and relative")
     {
         const Path path;
@@ -223,7 +225,7 @@ SCENARIO("Application path", "[app], [path]")
 
     SECTION("rvalue paths can be combined effectively")
     {
-        const Path combined = Path("/absolute") + std::string("parent") + Path(".") + "child" + Path(":property");
+        const Path combined = Path("/absolute") + "parent"_path + Path(".") + Path("child") + ":property"_path;
         REQUIRE(combined == Path("/absolute/parent/child:property"));
     }
 
@@ -268,7 +270,7 @@ SCENARIO("Application path", "[app], [path]")
         REQUIRE(ambiguous_two.is_property());
         REQUIRE(ambiguous_two.is_node());
 
-        const Path conatenated = ("one/two");
+        const Path conatenated = Path("one/two");
         REQUIRE(!conatenated.is_property());
         REQUIRE(conatenated.is_node());
 

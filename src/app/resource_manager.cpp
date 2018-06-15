@@ -46,9 +46,9 @@ void remove_unused(T& container)
 
 NOTF_OPEN_NAMESPACE
 
-resource_manager_initialization_error::~resource_manager_initialization_error() {}
+resource_manager_initialization_error::~resource_manager_initialization_error() = default;
 
-resource_identification_error::~resource_identification_error() {}
+resource_identification_error::~resource_identification_error() = default;
 
 // ================================================================================================================== //
 

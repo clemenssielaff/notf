@@ -29,7 +29,7 @@ private:
     /// Constructor.
     /// @param token    Factory token provided by the Scene.
     /// @param scene    Scene to manage the RootNode.
-    RootNode(const FactoryToken& token, Scene& scene) : Node(token, scene, this) {}
+    RootNode(FactoryToken token, Scene& scene) : Node(token, scene, this) {}
 
     /// Factory.
     /// Creates an unfinalized RootNode.

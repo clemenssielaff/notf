@@ -44,7 +44,7 @@ private:
     public:
         /// Constructor.
         /// @param window   Window to forward the events into.
-        WindowHandler(Window* window) : m_window(window) {}
+        explicit WindowHandler(Window* window) : m_window(window) {}
 
         /// Destructor.
         ~WindowHandler() { stop(); }

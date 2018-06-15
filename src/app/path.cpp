@@ -27,13 +27,13 @@ void check_concat(const Path& lhs, const Path& rhs)
 {
     if (rhs.is_absolute()) {
         notf_throw(Path::construction_error,
-                          "Cannot combine paths \"{}\" and \"{}\", because the latter one is absolute", lhs.to_string(),
-                          rhs.to_string());
+                   "Cannot combine paths \"{}\" and \"{}\", because the latter one is absolute", lhs.to_string(),
+                   rhs.to_string());
     }
     if (!lhs.is_node() && rhs.size() > 0 && rhs[0] != "..") {
         notf_throw(Path::construction_error,
-                          "Cannot combine paths \"{}\" and \"{}\", because the latter one must start with a \"..\"",
-                          lhs.to_string(), rhs.to_string());
+                   "Cannot combine paths \"{}\" and \"{}\", because the latter one must start with a \"..\"",
+                   lhs.to_string(), rhs.to_string());
     }
 }
 
@@ -57,7 +57,7 @@ Path::Path(std::vector<std::string>&& components, const bool is_absolute, const 
     _normalize();
 }
 
-Path::Path(const std::string_view& string)
+Path::Path(std::string_view string)
 {
     if (string.empty()) {
         return;
@@ -135,10 +135,8 @@ std::string Path::to_string() const
     if (is_node()) {
         return fmt::format("{}{}", is_absolute() ? delimiter : "", join(m_components, delimiter));
     }
-    else {
-        return fmt::format("{}{}:{}", is_absolute() ? delimiter : "",
-                           join(m_components.cbegin(), --m_components.cend(), delimiter), m_components.back());
-    }
+    return fmt::format("{}{}:{}", is_absolute() ? delimiter : "",
+                       join(m_components.cbegin(), --m_components.cend(), delimiter), m_components.back());
 }
 
 bool Path::begins_with(const Path& other) const

@@ -20,7 +20,13 @@ public:
 struct TestNode : public Node {
 
     /// Constructor.
-    TestNode(const FactoryToken& token, Scene& scene, valid_ptr<Node*> parent) : Node(token, scene, parent) {}
+    TestNode(FactoryToken token, Scene& scene, valid_ptr<Node*> parent, const std::string& name = {})
+        : Node(token, scene, parent)
+    {
+        if (!name.empty()) {
+            set_name(name);
+        }
+    }
 
     /// Destructor.
     ~TestNode() override;
@@ -79,6 +85,10 @@ struct TestNode : public Node {
 
     /// Reverses the order of all child Nodes.
     void reverse_children();
+
+    // naughty functions that try to break stuff -------------------------------------------------------------------- //
+
+    void _BROKEN_create_property_after_finalized() { _create_property("nope", 0); }
 };
 
 NOTF_CLOSE_NAMESPACE

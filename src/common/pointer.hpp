@@ -80,24 +80,25 @@ struct pointer_less_than {
 
 // ================================================================================================================== //
 
-/// @{
 /// Compares two weak_ptrs without locking them.
-/// If the two pointers are not of the same type, they are not considered equal.
+/// You can have the first argument provide the common type or explicitly define one,
+/// for example if both a and b are (potenially different) subclasses of T.
 /// @param a    First weak_ptr.
 /// @param b    Second weak_ptr.
-template<typename T, typename U>
-typename std::enable_if_t<std::is_same<T, U>::value, bool>
-weak_ptr_equal(const std::weak_ptr<T>& a, const std::weak_ptr<U>& b)
+template<class T>
+bool weak_ptr_equal(const std::weak_ptr<T>& a, const identity_t<std::weak_ptr<T>>& b)
 {
     return !a.owner_before(b) && !b.owner_before(a);
 }
-template<typename T, typename U>
-typename std::enable_if_t<(!std::is_same<T, U>::value), bool>
-weak_ptr_equal(const std::weak_ptr<T>&, const std::weak_ptr<U>&)
+
+/// Checks if a weak_ptr is empty.
+/// @param ptr  Weak pointer to test
+/// @returns    True iff the weak pointer is empty (not initialized).
+template<class T>
+bool weak_ptr_empty(const std::weak_ptr<T>& ptr)
 {
-    return false;
+    return weak_ptr_equal(ptr, std::weak_ptr<T>{});
 }
-/// @}
 
 // ================================================================================================================== //
 
@@ -132,7 +133,7 @@ struct valid_ptr {
     /// @param ptr  Pointer to wrap.
     /// @throws bad_pointer_error   If you try to instantiate with a nullptr.
     template<typename U, typename = std::enable_if_t<std::is_convertible<U, T>::value>>
-    constexpr valid_ptr(U&& u) : m_ptr(std::forward<U>(u))
+    valid_ptr(U&& u) : m_ptr(std::forward<U>(u))
     {
         if (NOTF_UNLIKELY(m_ptr == nullptr)) {
             notf_throw(bad_pointer_error, "Failed to dereference an empty pointer");
@@ -142,7 +143,7 @@ struct valid_ptr {
     /// Copy Constructor.
     /// @param other    Other pointer to copy.
     template<typename U, typename = std::enable_if_t<std::is_convertible<U, T>::value>>
-    constexpr valid_ptr(const valid_ptr<U>& other) : valid_ptr(other.get())
+    valid_ptr(const valid_ptr<U>& other) : valid_ptr(other.get())
     {}
 
     valid_ptr(valid_ptr&& other) = default;
@@ -152,17 +153,17 @@ struct valid_ptr {
     /// @{
     /// The wrapped pointer.
     /// @throws bad_pointer_error   If the wrapped pointer is empty.
-    constexpr T& raw() const
+    T& raw() const
     {
         if (NOTF_UNLIKELY(m_ptr == nullptr)) {
             notf_throw(bad_pointer_error, "Failed to dereference an empty pointer");
         }
         return m_ptr;
     }
-    constexpr T get() const { return raw(); }
-    constexpr operator T() const { return raw(); }
-    constexpr T& operator->() const { return raw(); }
-    constexpr decltype(auto) operator*() const { return *raw(); }
+    T get() const { return raw(); }
+    operator T() const { return raw(); }
+    T& operator->() const { return raw(); }
+    decltype(auto) operator*() const { return *raw(); }
     /// @}
 
     // prevents compilation when someone attempts to assign a null pointer constant
@@ -273,13 +274,13 @@ struct risky_ptr {
     /// Value Constructor
     /// @param ptr  Pointer to wrap.
     template<typename U, typename = std::enable_if_t<std::is_convertible<U, T>::value>>
-    constexpr risky_ptr(const U& u) : m_ptr(u)
+    risky_ptr(const U& u) : m_ptr(u)
     {}
 
     /// Copy Constructor.
     /// @param other    Other pointer to copy.
     template<typename U, typename = std::enable_if_t<std::is_convertible<U, T>::value>>
-    constexpr risky_ptr(risky_ptr<U>&& other) : risky_ptr(other.m_ptr)
+    risky_ptr(risky_ptr<U>&& other) : risky_ptr(other.m_ptr)
     {}
 
     risky_ptr(risky_ptr&& other) = default;
@@ -289,17 +290,17 @@ struct risky_ptr {
     /// @{
     /// Access to the wrapped pointer.
     /// @throws bad_pointer_error   If the wrapped pointer is empty.
-    constexpr T& raw() const
+    T& raw() const
     {
         if (NOTF_UNLIKELY(m_ptr == nullptr)) {
             notf_throw(bad_pointer_error, "Failed to dereference an empty pointer");
         }
         return m_ptr;
     }
-    constexpr T get() const { return raw(); }
-    constexpr operator T() const { return raw(); }
-    constexpr T& operator->() const { return raw(); }
-    constexpr decltype(auto) operator*() const { return *raw(); }
+    T get() const { return raw(); }
+    operator T() const { return raw(); }
+    T& operator->() const { return raw(); }
+    decltype(auto) operator*() const { return *raw(); }
     /// @}
 
     /// Tests if the contained pointer is save.

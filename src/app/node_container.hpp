@@ -84,23 +84,23 @@ public:
 
     /// Moves the given node in front of all of its siblings.
     /// @param node     Node to move.
-    void stack_front(const valid_ptr<Node*> node);
+    void stack_front(valid_ptr<const Node*> node);
 
     /// Moves the given node behind all of its siblings.
     /// @param node     Node to move.
-    void stack_back(const valid_ptr<Node*> node);
+    void stack_back(valid_ptr<const Node*> node);
 
     /// Moves the node at a given index before a given sibling.
     /// @param index    Index of the node to move
     /// @param sibling  Sibling to stack before.
     /// @throws hierarchy_error     If the sibling is not a sibling of this node.
-    void stack_before(const size_t index, const valid_ptr<Node*> relative);
+    void stack_before(size_t index, valid_ptr<const Node *> relative);
 
     /// Moves the node at a given index behind a given sibling.
     /// @param index    Index of the node to move
     /// @param sibling  Sibling to stack behind.
     /// @throws hierarchy_error     If the sibling is not a sibling of this node.
-    void stack_behind(const size_t index, const valid_ptr<Node*> sibling);
+    void stack_behind(size_t index, valid_ptr<const Node*> sibling);
 
     /// Reverses the order of all nodes in the container.
     void reverse();

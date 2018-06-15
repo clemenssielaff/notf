@@ -193,7 +193,7 @@ using KeyStateSet = std::bitset<to_number(Key::__last)>;
 /// @param state_set KeyStateSet to test.
 /// @param key       Key to test.
 /// @return          True iff the key is pressed, false otherwise.
-inline bool test_key(const KeyStateSet& state_set, Key key)
+inline bool test_key(KeyStateSet state_set, Key key)
 {
     NOTF_ASSERT(key >= Key::__first && key <= Key::__last);
     return state_set.test(static_cast<size_t>(to_number(key)));
@@ -218,7 +218,7 @@ using ButtonStateSet = std::bitset<to_number(Button::__last)>;
 /// @param state_set ButtonStateSet to test.
 /// @param button    Button to test.
 /// @return          True iff the button is pressed, false otherwise.
-inline bool test_button(const ButtonStateSet& state_set, Button button)
+inline bool test_button(ButtonStateSet state_set, Button button)
 {
     NOTF_ASSERT(button >= Button::__first && button <= Button::__last);
     return state_set.test(static_cast<size_t>(to_number(button)));

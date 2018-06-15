@@ -33,7 +33,7 @@ std::string make_unique_name(const std::set<std::string_view>& existing, const s
             proposed_name = proposed;
         }
         else {
-            proposed_name = std::string_view(proposed.c_str(), last_char);
+            proposed_name = std::string_view(proposed.c_str(), last_char + 1);
         }
     }
 
@@ -61,7 +61,7 @@ Node::node_finalized_error::~node_finalized_error() = default;
 
 thread_local std::set<valid_ptr<const Node*>> Node::s_unfinalized_nodes = {};
 
-Node::Node(const FactoryToken&, Scene& scene, valid_ptr<Node*> parent)
+Node::Node(FactoryToken, Scene& scene, valid_ptr<Node*> parent)
     : m_scene(scene), m_parent(parent), m_name(_create_name())
 {
     log_trace << "Created \"" << name() << "\"";
@@ -84,13 +84,12 @@ Node::~Node()
 
 const std::string& Node::set_name(const std::string& name)
 {
-    if (!m_name->set(name)) {
-        log_warning << "Could not validate new name \"" << name << "\" for Node \"" << m_name->get() << "\"";
-    }
+    NOTF_UNUSED const bool success = m_name->set(name);
+    NOTF_ASSERT(success);
     return m_name->get();
 }
 
-bool Node::has_ancestor(const valid_ptr<const Node*> ancestor) const
+bool Node::has_ancestor(valid_ptr<const Node*> ancestor) const
 {
     NOTF_MUTEX_GUARD(_hierarchy_mutex());
 
@@ -116,7 +115,7 @@ NodeHandle<Node> Node::common_ancestor(valid_ptr<Node*> other)
     valid_ptr<Node*> second = other;
     Node* result = nullptr;
     std::unordered_set<valid_ptr<Node*>, pointer_hash<valid_ptr<Node*>>> known_ancestors = {first, second};
-    while (1) {
+    while (true) {
         first = first->m_parent;
         if (known_ancestors.count(first)) {
             result = first;
@@ -159,7 +158,7 @@ bool Node::is_in_back() const
     return siblings.back() == this;
 }
 
-bool Node::is_before(const valid_ptr<Node*> sibling) const
+bool Node::is_before(valid_ptr<const Node*> sibling) const
 {
     if (this == sibling) {
         return false;
@@ -167,7 +166,7 @@ bool Node::is_before(const valid_ptr<Node*> sibling) const
     return !_is_behind(sibling);
 }
 
-bool Node::is_behind(const valid_ptr<Node*> sibling) const
+bool Node::is_behind(valid_ptr<const Node*> sibling) const
 {
     if (this == sibling) {
         return false;
@@ -201,7 +200,7 @@ void Node::stack_back()
     siblings.stack_back(this);
 }
 
-void Node::stack_before(const valid_ptr<Node*> sibling)
+void Node::stack_before(valid_ptr<const Node*> sibling)
 {
     NOTF_MUTEX_GUARD(_hierarchy_mutex());
 
@@ -221,7 +220,7 @@ void Node::stack_before(const valid_ptr<Node*> sibling)
     siblings.stack_before(my_index, sibling);
 }
 
-void Node::stack_behind(const valid_ptr<Node*> sibling)
+void Node::stack_behind(valid_ptr<const Node*> sibling)
 {
     NOTF_MUTEX_GUARD(_hierarchy_mutex());
 
@@ -250,15 +249,21 @@ NodePropertyPtr Node::_property(const Path& path)
         notf_throw(Path::path_error, "Path \"{}\" does not refer to a Property of Node \"{}\"", path.to_string(),
                    name());
     }
-    if (!this->path().begins_with(path)) {
-        notf_throw(Path::path_error, "Path \"{}\" cannot be used to query a Property of Node \"{}\"", path.to_string(),
-                   name());
+
+    uint offset = 0;
+    if (path.is_absolute()) {
+        const Path myPath = this->path();
+        if (!path.begins_with(myPath)) {
+            notf_throw(Path::path_error, "Absolute path \"{}\" cannot be used to query a Property of Node \"{}\"",
+                       path.to_string(), name());
+        }
+        offset = narrow_cast<uint>(myPath.size());
     }
 
     NOTF_MUTEX_GUARD(_hierarchy_mutex());
 
     NodePropertyPtr result;
-    _property(path, 0, result);
+    _property(path, offset, result);
     return result;
 }
 
@@ -295,15 +300,21 @@ NodePtr Node::_node(const Path& path)
         notf_throw(Path::path_error, "Path \"{}\" does not refer to a descenant of Node \"{}\"", path.to_string(),
                    name());
     }
-    if (!this->path().begins_with(path)) {
-        notf_throw(Path::path_error, "Path \"{}\" cannot be used to query descenant of Node \"{}\"", path.to_string(),
-                   name());
+
+    uint offset = 0;
+    if (path.is_absolute()) {
+        const Path myPath = this->path();
+        if (!path.begins_with(myPath)) {
+            notf_throw(Path::path_error, "Path \"{}\" cannot be used to query descenant of Node \"{}\"",
+                       path.to_string(), name());
+        }
+        offset = narrow_cast<uint>(myPath.size());
     }
 
     NOTF_MUTEX_GUARD(_hierarchy_mutex());
 
     NodePtr result;
-    _node(path, 0, result);
+    _node(path, offset, result);
     return result;
 }
 
@@ -343,9 +354,7 @@ const NodeContainer& Node::_read_children() const
     }
 
     // if there is no delta, allow direct read access
-    else {
-        return m_children;
-    }
+    return m_children;
 }
 
 NodeContainer& Node::_write_children()
@@ -433,7 +442,7 @@ void Node::_initialize_path(const size_t depth, std::vector<std::string>& compon
     }
 }
 
-bool Node::_is_behind(const valid_ptr<Node*> sibling) const
+bool Node::_is_behind(valid_ptr<const Node*> sibling) const
 {
     if (m_parent != sibling->m_parent) {
         notf_throw(hierarchy_error, "Cannot compare z-order of nodes \"{}\" and \"{}\", because they are not siblings.",
@@ -442,11 +451,11 @@ bool Node::_is_behind(const valid_ptr<Node*> sibling) const
     {
         NOTF_MUTEX_GUARD(_hierarchy_mutex());
         const NodeContainer& siblings = m_parent->_read_children();
-        for (size_t index = 0; index < siblings.size(); ++index) {
-            if (siblings[index] == this) {
+        for (const auto& it : siblings) {
+            if (it == this) {
                 return true;
             }
-            else if (siblings[index] == sibling) {
+            if (it == sibling) {
                 return false;
             }
         }

@@ -143,7 +143,6 @@
     if ( service )
       error = service->get_advance( face, gindex, aadvance );
     else
-      /* XXX: TODO: PROVIDE ADVANCE-LOADING METHOD TO ALL FONT DRIVERS */
       error = FT_THROW( Invalid_Argument );
 
     return error;
