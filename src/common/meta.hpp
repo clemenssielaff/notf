@@ -176,6 +176,7 @@ using conditional_t = typename conditional<B, T, F>::type;
 #endif
 
 #ifndef __cpp_lib_logical_traits
+#ifndef NOTF_MSVC
 
 /// Variadic logical AND metafunction
 /// http://en.cppreference.com/w/cpp/types/conjunction
@@ -200,9 +201,11 @@ struct disjunction<T, TList...> : std::conditional_t<T::value, T, disjunction<TL
 template<typename T>
 struct negation : std::integral_constant<bool, !T::value> {};
 
+#endif // NOTF_MSVC
 #endif // __cpp_lib_logical_traits
 
 #ifndef __cpp_lib_void_t
+#ifndef NOTF_MSVC
 
 /// Void type.
 template<typename... Ts>
@@ -212,6 +215,7 @@ struct make_void {
 template<typename... Ts>
 using void_t = typename make_void<Ts...>::type;
 
+#endif // NOTF_MSVC
 #endif // __cpp_lib_void_t
 
 } // namespace std
