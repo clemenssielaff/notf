@@ -151,10 +151,7 @@ public:
     static const timepoint_t& start_time() { return s_start_time; }
 
     /// Age of this Application instance.
-    static duration_t age()
-    {
-        return (s_start_time == timepoint_t{}) ? duration_t{0} : (clock_t::now() - s_start_time);
-    }
+    static duration_t age() { return clock_t::now() - s_start_time; }
 
 private:
     /// Static (private) function holding the actual Application instance.
@@ -195,7 +192,7 @@ private:
     std::vector<WindowPtr> m_windows;
 
     /// Timepoint when the Application was started.
-    static timepoint_t s_start_time;
+    static const timepoint_t s_start_time;
 
     /// Flag to indicate whether the Application is currently running or not.
     static std::atomic<bool> s_is_running;

@@ -23,11 +23,10 @@ Application::shut_down_error::~shut_down_error() = default;
 
 const Application::Args Application::s_invalid_args;
 std::atomic<bool> Application::s_is_running{true};
-timepoint_t Application::s_start_time;
+const timepoint_t Application::s_start_time = clock_t::now();
 
 Application::Application(const Args& application_args)
     : m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
-    , m_resource_manager()
     , m_thread_pool(std::make_unique<ThreadPool>())
     , m_render_manager(std::make_unique<RenderManager>())
     , m_event_manager(std::make_unique<EventManager>())
@@ -80,9 +79,6 @@ WindowPtr Application::create_window(const detail::WindowArguments& args)
 
 int Application::exec()
 {
-    // set the start time
-    s_start_time = clock_t::now();
-
     // loop until there are no more windows open
     while (!m_windows.empty()) {
 
