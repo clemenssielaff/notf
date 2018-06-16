@@ -66,7 +66,7 @@ enum class Key : unsigned char {
     TAB,
     BACKSPACE,
     INSERT,
-    DELETE,
+    DEL, // DELETE seems to be a reserved macro in MVSC
     RIGHT,
     LEFT,
     DOWN,

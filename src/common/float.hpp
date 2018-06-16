@@ -57,16 +57,16 @@ constexpr typename std::common_type<LHS, RHS>::type min(LHS&& lhs, RHS&& rhs, RE
 }
 
 /// Variadic max using auto type deduction.
-template<typename LAST>
-constexpr LAST&& max(LAST&& val)
+template<class T>
+constexpr T&& max(T&& val)
 {
-    return std::forward<LAST>(val);
+    return std::forward<T>(val);
 }
-template<typename LHS, typename RHS, typename... REST>
-constexpr typename std::common_type<LHS, RHS>::type max(LHS&& lhs, RHS&& rhs, REST&&... tail)
+template<class L, class R, typename... TAIL, typename T = std::common_type<L, R>::type>
+constexpr T max(L&& lhs, R&& rhs, TAIL&&... tail)
 {
-    const auto rest = max(rhs, std::forward<REST>(tail)...);
-    return rest > lhs ? rest : lhs; // returns lhs if both are equal
+    const T rest = max(rhs, std::forward<TAIL>(tail)...);
+    return rest > static_cast<T>(lhs) ? rest : static_cast<T>(lhs); // returns lhs if both are equal
 }
 
 /// Tests whether a given value is NAN.
@@ -142,8 +142,8 @@ inline Real norm_angle(Real alpha)
     if (!is_real(alpha)) {
         notf_throw(logic_error, "Cannot normalize an invalid number");
     }
-    const float modulo = fmod(alpha, detail::PI * 2);
-    return modulo >= 0 ? modulo : (detail::PI * 2) + modulo;
+    const float modulo = fmod(alpha, static_cast<Real>(detail::PI * 2));
+    return static_cast<Real>(modulo >= 0 ? modulo : (detail::PI * 2) + modulo);
 }
 
 /// Save division, throws a std::logic_error if the divisor is 0.
@@ -211,95 +211,24 @@ constexpr int precision_high<int>()
 
 //= approx ========================================================================================================== //
 
-/// Test if two Reals are approximately the same value.
-/// Returns true also if the difference is exactly epsilon, which allows epsilon to be zero for exact comparison.
-/// Note that, regardless of the signature, comparison to an _approx object is destructive and definetly NOT const.
-/// Use only as directed and don't keep it around for multiple comparisons.
-///
-/// Example:
-///
-/// ```
-/// bool is_approx = 1.1234 == approx(1.2345, 0.1);
-/// ```
-///
-/// Approx-class idea from catch:
-/// https://github.com/philsquared/Catch/blob/master/include/catch.hpp
-///
-/// Floating point comparison from:
-/// https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
-
-template<typename Real, typename = std::enable_if_t<std::is_floating_point<Real>::value>(Real)>
-struct _approx {
-
-    /// Value to compare against.
-    mutable Real value;
-
-    /// Smallest difference which is still considered equal.
-    mutable Real epsilon;
-
-    _approx(Real value, Real epsilon) : value(value), epsilon(abs(epsilon)) {}
-
-    template<typename Other, typename = std::enable_if_t<std::is_floating_point<Real>::value>(Other)>
-    friend bool operator==(Other b, const _approx& a)
-    {
-        if (!is_real(a.value) || !is_real(b)) {
-            return false;
-        }
-
-        a.epsilon = max(static_cast<Other>(a.epsilon), std::numeric_limits<Other>::epsilon());
-
-        // if the numbers are really small, use the absolute epsilon
-        const Real diff = abs(a.value - b);
-        if (diff <= a.epsilon) {
-            return true;
-        }
-
-        // use a relative epsilon if the numbers are larger
-        a.value = abs(a.value);
-        b       = abs(b);
-        if (diff <= ((a.value > b) ? a.value : b) * a.epsilon) {
-            return true;
-        }
-
+template<class L, class R, typename T = std::common_type<L, R>::type>
+bool approx(const L lhs, const R rhs)
+{
+    if (!is_real(lhs) || !is_real(rhs)) {
         return false;
     }
 
-    template<typename Other, typename = std::enable_if_t<std::is_floating_point<Real>::value>(Other)>
-    friend bool operator==(const _approx& lhs, Other rhs)
-    {
-        return operator==(rhs, lhs);
+    // if the numbers are really small, use the absolute epsilon
+    if (abs(lhs - rhs) <= std::numeric_limits<T>::epsilon()) {
+        return true;
     }
 
-    template<typename Other, typename = std::enable_if_t<std::is_floating_point<Real>::value>(Other)>
-    friend bool operator!=(Other lhs, const _approx& rhs)
-    {
-        return !operator==(lhs, rhs);
+    // use a relative epsilon if the numbers are larger
+    if (abs(lhs - rhs) <= ((abs(lhs) > abs(rhs)) ? abs(lhs) : abs(rhs)) * std::numeric_limits<T>::epsilon()) {
+        return true;
     }
 
-    template<typename Other, typename = std::enable_if_t<std::is_floating_point<Real>::value>(Other)>
-    friend bool operator!=(const _approx& lhs, Other rhs)
-    {
-        return !operator==(rhs, lhs);
-    }
-};
-
-template<typename Real>
-std::ostream& operator<<(std::ostream& os, const _approx<Real>& value)
-{
-    os << std::string("approx(") << value.value << ", " << value.epsilon << ")";
-    return os;
-}
-
-template<typename Real, typename = std::enable_if_t<std::is_floating_point<Real>::value>(Real)>
-auto approx(const Real value)
-{
-    return _approx<Real>(value, precision_high<Real>());
-}
-
-template<typename Real, typename = std::enable_if_t<std::is_floating_point<Real>::value>(Real)>
-auto approx(const Real value, const Real epsilon)
-{
-    return _approx<Real>(value, epsilon);
+    return false;
 }
 
 NOTF_CLOSE_NAMESPACE

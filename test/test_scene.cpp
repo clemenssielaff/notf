@@ -19,8 +19,8 @@ SCENARIO("a Scene can be set up and modified", "[app][scene]")
     SceneGraph::Access<test::Harness> graph_access(*scene_graph);
     Scene::Access<test::Harness> scene_access(scene);
 
-    std::thread::id event_thread_id = std::this_thread::get_id();
-    std::thread::id render_thread_id(1);
+    const std::thread::id event_thread_id = std::this_thread::get_id();
+    const std::thread::id render_thread_id;
 
     SECTION("freezing an empty scene has no effect")
     {

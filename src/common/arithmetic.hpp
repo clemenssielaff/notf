@@ -449,9 +449,9 @@ struct Arithmetic : public ArithmeticImpl<SELF, typename get_element_type<COMPON
     }
 
     /// The contents of this value as a const array.
-    const std::array<element_t, super_t::size()>& as_array() const
+    const auto& as_array() const
     {
-        return *reinterpret_cast<const std::array<element_t, super_t::size()>*>(super_t::as_ptr());
+        return *(reinterpret_cast<const std::array<element_t, super_t::size()>*>(super_t::as_ptr()));
     }
 
     /// Set all elements to zero.

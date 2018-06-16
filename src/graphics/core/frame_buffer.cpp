@@ -5,6 +5,7 @@
 #include <set>
 #include <sstream>
 
+#include "common/assert.hpp"
 #include "common/exception.hpp"
 #include "common/log.hpp"
 #include "graphics/core/gl_errors.hpp"
@@ -30,6 +31,8 @@ const char* type_to_str(const RenderBuffer::Type type)
     case RenderBuffer::Type::DEPTH_STENCIL:
         return "DEPTH_STENCIL";
     }
+    NOTF_ASSERT(false);
+    return ""; // to squelch warnings
 }
 
 /// Humand-readable error string for status returned by glCheckFramebufferStatus.

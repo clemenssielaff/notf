@@ -91,7 +91,7 @@
 /// Compiler attribute detection, as described in:
 ///     https://clang.llvm.org/docs/LanguageExtensions.html#has-cpp-attribute
 #ifndef __has_cpp_attribute
-#define __has_cpp_attribute(x) NOTF_NOOP // Compatibility with non-clang compilers.
+#define __has_cpp_attribute(x) 0
 #endif
 
 /// NOTF_NODISCARD attribute to make sure that the return value of a function is not immediately discarded.
@@ -179,26 +179,26 @@ using conditional_t = typename conditional<B, T, F>::type;
 
 /// Variadic logical AND metafunction
 /// http://en.cppreference.com/w/cpp/types/conjunction
-template<typename...>
-struct conjunction : std::true_type {};
-template<typename T>
-struct conjunction<T> : T {};
-template<typename T, typename... TList>
-struct conjunction<T, TList...> : std::conditional_t<T::value, conjunction<TList...>, T> {};
+//template<typename...>
+//struct conjunction : std::true_type {};
+//template<typename T>
+//struct conjunction<T> : T {};
+//template<typename T, typename... TList>
+//struct conjunction<T, TList...> : std::conditional_t<T::value, conjunction<TList...>, T> {};
 
 /// Variadic logical OR metafunction
 /// http://en.cppreference.com/w/cpp/types/disjunction
-template<typename...>
-struct disjunction : std::false_type {};
-template<typename T>
-struct disjunction<T> : T {};
-template<typename T, typename... TList>
-struct disjunction<T, TList...> : std::conditional_t<T::value, T, disjunction<TList...>> {};
+//template<typename...>
+//struct disjunction : std::false_type {};
+//template<typename T>
+//struct disjunction<T> : T {};
+//template<typename T, typename... TList>
+//struct disjunction<T, TList...> : std::conditional_t<T::value, T, disjunction<TList...>> {};
 
 /// Logical NOT metafunction.
 /// http://en.cppreference.com/w/cpp/types/negation
-template<typename T>
-struct negation : std::integral_constant<bool, !T::value> {};
+//template<typename T>
+//struct negation : std::integral_constant<bool, !T::value> {};
 
 #endif
 
@@ -209,8 +209,8 @@ template<typename... Ts>
 struct make_void {
     typedef void type;
 };
-template<typename... Ts>
-using void_t = typename make_void<Ts...>::type;
+//template<typename... Ts>
+//using void_t = typename make_void < Ts... > ::type;
 
 #endif
 
@@ -318,6 +318,9 @@ using identity_t = typename identity<T>::type;
 NOTF_OPEN_NAMESPACE
 
 using uchar = unsigned char;
+using ushort = unsigned short;
+using uint = unsigned int;
+using ulong = unsigned long;
 
 // ================================================================================================================== //
 

@@ -461,6 +461,7 @@ bool Node::_is_behind(valid_ptr<const Node*> sibling) const
         }
     }
     NOTF_ASSERT(false);
+    return false; // to squelch warnings
 }
 
 NOTF_CLOSE_NAMESPACE

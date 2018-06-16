@@ -119,7 +119,7 @@ Key from_glfw_key(int key)
     case GLFW_KEY_INSERT:
         return Key::INSERT;
     case GLFW_KEY_DELETE:
-        return Key::DELETE;
+        return Key::DEL;
     case GLFW_KEY_RIGHT:
         return Key::RIGHT;
     case GLFW_KEY_LEFT:

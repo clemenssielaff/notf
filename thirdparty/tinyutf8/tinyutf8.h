@@ -29,6 +29,7 @@
 #include <iostream> // for ostream/istream overloadings
 #include <memory>   // for std::unique_ptr
 #include <string>   // for std::string
+#include <algorithm>// for std::min/max
 
 namespace tinyutf8 {
 

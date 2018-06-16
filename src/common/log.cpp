@@ -5,9 +5,10 @@
 #include "common/integer.hpp"
 
 namespace { // anonymous
+NOTF_USING_NAMESPACE
 
 /// Constructs a terminal color prefix for the given color.
-inline std::string color_prefix(u_short color) { return "\033[38;5;" + std::to_string(color) + "m"; }
+inline std::string color_prefix(ushort color) { return "\033[38;5;" + std::to_string(color) + "m"; }
 
 } // namespace
 
@@ -55,7 +56,7 @@ void LogHandler::join()
     flush_buffer(m_write_buffer);
 }
 
-void LogHandler::set_color(LogMessage::LEVEL level, u_char color)
+void LogHandler::set_color(LogMessage::LEVEL level, uchar color)
 {
     switch (level) {
     case LogMessage::LEVEL::FORMAT:

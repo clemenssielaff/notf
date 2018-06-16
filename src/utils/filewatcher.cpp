@@ -1,3 +1,4 @@
+#if 0
 #include <cassert>
 #include <iostream>
 #include <memory>
@@ -165,3 +166,4 @@ const int FileWatcher::s_CLOSED = -1;
 //    std::thread watcher(&FileWatcher::start_watching, &file_watcher, "/home/clemens/code/scratch/test/",
 //    FileWatcher::ALL); std::cin.get(); // wait for an `enter` file_watcher.stop_watching(); watcher.join(); return 0;
 //}
+#endif

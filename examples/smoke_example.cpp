@@ -38,7 +38,12 @@ private: // fields
 int smoke_main(int argc, char* argv[])
 {
     // initialize the application
-    Application& app = Application::initialize(argc, argv);
+    Application::Args args;
+    args.argc = argc;
+    args.argv = argv;
+	args.shader_directory = "C:/Users/Clemens/Code/notf/res/shaders";
+	args.texture_directory = "C:/Users/Clemens/Code/notf/res/textures";
+    Application& app = Application::initialize(args);
 
     // initialize the window
     WindowPtr window = Application::instance().create_window();

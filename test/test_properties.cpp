@@ -24,9 +24,8 @@ struct SuspensionGuard {
 
 SCENARIO("simple PropertyGraph with global properties", "[app][property_graph]")
 {
-    const std::thread::id some_thread_id{1};
-    const std::thread::id other_thread_id{2};
-    const std::thread::id render_thread_id{3};
+    const std::thread::id event_thread_id = std::this_thread::get_id();
+    const std::thread::id render_thread_id;
 
     auto& app = Application::instance();
     EventManager& event_manager = app.event_manager();
@@ -140,9 +139,8 @@ SCENARIO("NodeProperties in a SceneGraph hierarchy", "[app][property_graph][scen
     Scene::Access<test::Harness> scene_access(scene);
     using PropertyAccess = NodeProperty::Access<test::Harness>;
 
-    std::thread::id event_thread_id = std::this_thread::get_id();
-    std::thread::id some_thread_id(2);
-    std::thread::id render_thread_id(3);
+    const std::thread::id event_thread_id = std::this_thread::get_id();
+    const std::thread::id render_thread_id;
 
     NodeHandle<TestNode> first_node;
     PropertyHandle<int> iprop1, iprop2;
@@ -165,28 +163,28 @@ SCENARIO("NodeProperties in a SceneGraph hierarchy", "[app][property_graph][scen
             sprop.set("after");
 
             REQUIRE(iprop1.get() == 24);
-            REQUIRE(PropertyAccess::get<int>(iprop1, some_thread_id) == 24);
+            REQUIRE(PropertyAccess::get<int>(iprop1, event_thread_id) == 24);
             REQUIRE(PropertyAccess::get<int>(iprop1, render_thread_id) == 48);
 
             REQUIRE(iprop2.get() == 0);
-            REQUIRE(PropertyAccess::get<int>(iprop2, some_thread_id) == 0);
+            REQUIRE(PropertyAccess::get<int>(iprop2, event_thread_id) == 0);
             REQUIRE(PropertyAccess::get<int>(iprop2, render_thread_id) == 0);
 
             REQUIRE(sprop.get() == "after");
-            REQUIRE(PropertyAccess::get<std::string>(sprop, some_thread_id) == "after");
+            REQUIRE(PropertyAccess::get<std::string>(sprop, event_thread_id) == "after");
             REQUIRE(PropertyAccess::get<std::string>(sprop, render_thread_id) == "before");
         }
 
         REQUIRE(iprop1.get() == 24);
-        REQUIRE(PropertyAccess::get<int>(iprop1, some_thread_id) == 24);
+        REQUIRE(PropertyAccess::get<int>(iprop1, event_thread_id) == 24);
         REQUIRE(PropertyAccess::get<int>(iprop1, render_thread_id) == 24);
 
         REQUIRE(iprop2.get() == 0);
-        REQUIRE(PropertyAccess::get<int>(iprop2, some_thread_id) == 0);
+        REQUIRE(PropertyAccess::get<int>(iprop2, event_thread_id) == 0);
         REQUIRE(PropertyAccess::get<int>(iprop2, render_thread_id) == 0);
 
         REQUIRE(sprop.get() == "after");
-        REQUIRE(PropertyAccess::get<std::string>(sprop, some_thread_id) == "after");
+        REQUIRE(PropertyAccess::get<std::string>(sprop, event_thread_id) == "after");
         REQUIRE(PropertyAccess::get<std::string>(sprop, render_thread_id) == "after");
     }
 
@@ -201,12 +199,10 @@ SCENARIO("NodeProperties in a SceneGraph hierarchy", "[app][property_graph][scen
             }
 
             REQUIRE(PropertyAccess::get(iprop2, event_thread_id) == 49);
-            REQUIRE(PropertyAccess::get(iprop2, some_thread_id) == 49);
             REQUIRE(PropertyAccess::get(iprop2, render_thread_id) == 0);
         }
 
         REQUIRE(PropertyAccess::get(iprop2, event_thread_id) == 49);
-        REQUIRE(PropertyAccess::get(iprop2, some_thread_id) == 49);
         REQUIRE(PropertyAccess::get(iprop2, render_thread_id) == 49);
     }
 

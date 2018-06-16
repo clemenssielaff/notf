@@ -37,6 +37,7 @@ option(NOTF_THREAD_SANITIZATION "Enable thread sanitization" OFF)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
+# link-time optimization
 include(CheckIPOSupported)
 check_ipo_supported(RESULT IS_LTO_SUPPORTED OUTPUT LTO_ERROR)
 
@@ -226,10 +227,11 @@ add_library(notf
 )
 
 target_link_libraries(notf
-    GLESv2
+    #GLESv2
     glfw
     freetype
     ${PYTHON_LIBRARIES}
+	${OPENGL_LIBRARIES}
 )
 
 if(CMAKE_BUILD_TYPE MATCHES "Release")
@@ -264,12 +266,14 @@ if(NOTF_BUILD_TESTS)
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNOTF_TEST")
 
-    if(NOTF_THREAD_SANITIZATION)
-        message(AUTHOR_WARNING "Disabling coverage to avoid interference with thread sanitization.")
-    else()
-        message(STATUS "Building with coverage.")
-        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
-    endif()
+	if(NOT MSVC)
+		if(NOTF_THREAD_SANITIZATION)
+			message(AUTHOR_WARNING "Disabling coverage to avoid interference with thread sanitization.")
+		else()
+			message(STATUS "Building with coverage.")
+			set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
+		endif()
+	endif()
 
     add_sources(TEST_SOURCES test
         catch.hpp

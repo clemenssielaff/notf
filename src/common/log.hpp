@@ -43,6 +43,7 @@
 #include <sstream>
 #include <thread>
 #include <vector>
+#include <atomic>
 
 #include "common/meta.hpp"
 #include "common/string.hpp"
@@ -110,7 +111,7 @@ public: // methods
      * @param file     File in which this constructor is called.
      * @param caller   Name of the function from where this constructor is called.
      */
-    __attribute__((noinline))
+    //__attribute__((noinline))
     LogMessageFactory(LogMessage::LEVEL level, uint line, std::string file, std::string caller) noexcept
         : message(), input()
     {
@@ -203,7 +204,7 @@ public: // methods
      * @param level    Log message level to color.
      * @param color    Which color to use, see description for details.
      */
-    void set_color(LogMessage::LEVEL level, u_char color);
+    void set_color(LogMessage::LEVEL level, uchar color);
 
 private: // methods
     /** Thread execution function. */

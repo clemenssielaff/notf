@@ -96,13 +96,13 @@ struct Color {
     /** Tests whether two Colors are equal. */
     bool operator==(const Color& other) const
     {
-        return (r == approx(other.r) && g == approx(other.g) && b == approx(other.b) && a == approx(other.a));
+        return (approx(r, other.r) && approx(g, other.g) && approx(b, other.b) && approx(a, other.a));
     }
 
     /** Tests whether two Colors are not equal. */
     bool operator!=(const Color& other) const
     {
-        return (r != approx(other.r) || g != approx(other.g) || b != approx(other.b) || a != approx(other.a));
+        return (!approx(r, other.r) || !approx(g, other.g) || !approx(b, other.b) || !approx(a, other.a));
     }
 
     /** Modifiers *****************************************************************************************************/
@@ -120,7 +120,7 @@ struct Color {
     float* as_ptr() { return &r; }
 };
 
-/* FREE FUNCTIONS *****************************************************************************************************/
+// free functions ==================================================================================================== //
 
 /** Linear interpolation between two Colors.
  * @param from      Left Color, full weight at bend = 0.
@@ -149,7 +149,7 @@ std::ostream& operator<<(std::ostream& out, const Color& color);
 
 NOTF_CLOSE_NAMESPACE
 
-/* std::hash **********************************************************************************************************/
+// std::hash ======================================================================================================== //
 
 namespace std {
 
