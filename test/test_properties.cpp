@@ -67,6 +67,8 @@ SCENARIO("simple PropertyGraph with global properties", "[app][property_graph]")
         {
             auto reader = iprop2->reader();
             iprop1->set([reader]() -> int { return reader() + 7; }, {reader});
+
+            REQUIRE(iprop2->reader() == reader);
         }
         REQUIRE(iprop1->has_expression());
 
