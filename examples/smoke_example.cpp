@@ -41,13 +41,14 @@ int smoke_main(int argc, char* argv[])
     Application::Args args;
     args.argc = argc;
     args.argv = argv;
-	args.shader_directory = "C:/Users/Clemens/Code/notf/res/shaders";
-	args.texture_directory = "C:/Users/Clemens/Code/notf/res/textures";
+#ifdef NOTF_MSVC
+    args.shader_directory = "C:/Users/Clemens/Code/notf/res/shaders";
+    args.texture_directory = "C:/Users/Clemens/Code/notf/res/textures";
+#endif // NOTF_MSVC
     Application& app = Application::initialize(args);
 
-    // initialize the window
-    WindowPtr window = Application::instance().create_window();
-    {
+    { // initialize the window
+        WindowPtr window = Application::instance().create_window();
         auto scene = Scene::create<CloudScene>(window->scene_graph(), "clouds_scene");
 
         auto renderer = ProceduralRenderer::create(*window, "clouds.frag");

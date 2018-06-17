@@ -37,13 +37,13 @@
  * Non-constexpr functions might have runtime side-effects and can therefore not be discarted by the compiler.
  */
 
+#include <atomic>
 #include <functional>
 #include <iostream>
 #include <mutex>
 #include <sstream>
 #include <thread>
 #include <vector>
-#include <atomic>
 
 #include "common/meta.hpp"
 #include "common/string.hpp"

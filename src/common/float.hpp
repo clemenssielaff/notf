@@ -13,24 +13,24 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-constexpr long double PI    = 3.141592653589793238462643383279502884197169399375105820975l;
+constexpr long double PI = 3.141592653589793238462643383279502884197169399375105820975l;
 constexpr long double KAPPA = 0.552284749830793398402251632279597438092895833835930764235l;
 
 } // namespace detail
 
 // ================================================================================================================== //
 
-template<typename Real = long double>
-constexpr Real pi()
+template<class T = long double>
+constexpr T pi()
 {
-    return static_cast<Real>(detail::PI);
+    return static_cast<T>(detail::PI);
 }
 
 /// Length of a bezier control vector to draw a circle with radius 1.
-template<typename Real = long double>
-constexpr Real kappa()
+template<class T = long double>
+constexpr T kappa()
 {
-    return static_cast<Real>(detail::KAPPA);
+    return static_cast<T>(detail::KAPPA);
 }
 
 using std::abs;
@@ -44,16 +44,16 @@ using std::sqrt;
 using std::tan;
 
 /// Variadic min using auto type deduction.
-template<typename LAST>
-constexpr LAST&& min(LAST&& val)
+template<class T>
+constexpr T&& min(T&& val)
 {
-    return std::forward<LAST>(val);
+    return std::forward<T>(val);
 }
-template<typename LHS, typename RHS, typename... REST>
-constexpr typename std::common_type<LHS, RHS>::type min(LHS&& lhs, RHS&& rhs, REST&&... tail)
+template<class L, class R, typename... TAIL, typename T = std::common_type_t<L, R>>
+constexpr T min(L&& lhs, R&& rhs, TAIL&&... tail)
 {
-    const auto rest = min(rhs, std::forward<REST>(tail)...);
-    return rest < lhs ? rest : lhs; // returns lhs if both are equal
+    const T rest = min(rhs, std::forward<TAIL>(tail)...);
+    return rest < static_cast<T>(lhs) ? rest : static_cast<T>(lhs); // returns lhs if both are equal
 }
 
 /// Variadic max using auto type deduction.
@@ -62,7 +62,7 @@ constexpr T&& max(T&& val)
 {
     return std::forward<T>(val);
 }
-template<class L, class R, typename... TAIL, typename T = std::common_type<L, R>::type>
+template<class L, class R, typename... TAIL, typename T = std::common_type_t<L, R>>
 constexpr T max(L&& lhs, R&& rhs, TAIL&&... tail)
 {
     const T rest = max(rhs, std::forward<TAIL>(tail)...);
@@ -70,36 +70,36 @@ constexpr T max(L&& lhs, R&& rhs, TAIL&&... tail)
 }
 
 /// Tests whether a given value is NAN.
-template<typename Real>
-inline bool is_nan(Real&& value)
+template<class T>
+inline bool is_nan(const T value)
 {
-    return std::isnan(std::forward<Real>(value));
+    return std::isnan(value);
 }
 
 /// Tests whether a given value is INFINITY.
-template<typename Real>
-inline bool is_inf(Real&& value)
+template<class T>
+inline bool is_inf(const T value)
 {
-    return std::isinf(std::forward<Real>(value));
+    return std::isinf(value);
 }
 
 /// Tests whether a given value is a valid float value (not NAN, not INFINITY).
-template<typename Real>
-inline bool is_real(Real&& value)
+template<class T>
+inline bool is_real(const T value)
 {
     return !is_nan(value) && !is_inf(value);
 }
 
 /// Tests, if a value is positive or negative.
 /// @return  -1 if the value is negative, 1 if it is zero or above.
-template<typename T>
-inline T sign(const T&& value)
+template<class T>
+inline T sign(const T value)
 {
     return std::signbit(value) ? -1 : 1;
 }
 
 /// Clamps an input value to a given range.
-template<typename Value, typename Min, typename Max>
+template<class Value, class Min, class Max>
 inline Value clamp(const Value value, const Min min, const Max max)
 {
     return notf::max(static_cast<Value>(min), notf::min(static_cast<Value>(max), value));
@@ -107,48 +107,48 @@ inline Value clamp(const Value value, const Min min, const Max max)
 
 /// Save asin calculation.
 /// @param value     Input, is clamped to the range of [-1.0 ... 1.0], prior to the call to asin.
-template<typename Real>
-inline Real asin(Real&& value)
+template<class T>
+inline T asin(const T value)
 {
-    return std::asin(clamp(std::forward<Real>(value), -1, 1));
+    return std::asin(clamp(value, -1, 1));
 }
 
 /// Save acos calculation.
 /// @param value     Input, is clamped to the range of [-1.0 ... 1.0], prior to the call to asin.
-template<typename Real>
-inline Real acos(Real&& value)
+template<class T>
+inline T acos(const T value)
 {
-    return std::acos(clamp(std::forward<Real>(value), -1, 1));
+    return std::acos(clamp(value, -1, 1));
 }
 
 /// Degree to Radians.
-template<typename Real>
-inline Real deg_to_rad(Real&& degrees)
+template<class T>
+inline T deg_to_rad(const T degrees)
 {
-    return degrees * (detail::PI / 180.l);
+    return degrees * static_cast<T>(detail::PI / 180.l);
 }
 
 /// Degree to Radians.
-template<typename Real>
-inline Real rad_to_deg(Real&& radians)
+template<class T>
+inline T rad_to_deg(const T radians)
 {
-    return radians * (180.l / detail::PI);
+    return radians * static_cast<T>(180.l / detail::PI);
 }
 
 /// Normalize Radians to a value within [-pi, pi].
-template<typename Real>
-inline Real norm_angle(Real alpha)
+template<class T>
+inline T norm_angle(const T alpha)
 {
     if (!is_real(alpha)) {
         notf_throw(logic_error, "Cannot normalize an invalid number");
     }
-    const float modulo = fmod(alpha, static_cast<Real>(detail::PI * 2));
-    return static_cast<Real>(modulo >= 0 ? modulo : (detail::PI * 2) + modulo);
+    const T modulo = fmod(alpha, static_cast<T>(detail::PI * 2));
+    return static_cast<T>(modulo >= 0 ? modulo : (detail::PI * 2) + modulo);
 }
 
 /// Save division, throws a std::logic_error if the divisor is 0.
-template<typename Real>
-inline Real save_div(const Real divident, const Real divisor)
+template<class L, class R, typename T = std::common_type_t<L, R>>
+inline T save_div(const L divident, const R divisor)
 {
     if (divisor == 0) {
         notf_throw(logic_error, "Division by zero");
@@ -160,8 +160,8 @@ inline Real save_div(const Real divident, const Real divisor)
 
 /// Type dependent constant for low-precision approximation (useful for use in "noisy" functions).
 /// Don't be fooled by the name though, "low" precision is still pretty precise on a human scale.
-template<typename Type>
-constexpr Type precision_low();
+template<class T>
+constexpr T precision_low();
 
 template<>
 constexpr float precision_low<float>()
@@ -182,8 +182,8 @@ constexpr int precision_low<int>()
 }
 
 /// Type dependent constant for high-precision approximation.
-template<typename Type>
-constexpr Type precision_high();
+template<class T>
+constexpr T precision_high();
 
 template<>
 constexpr float precision_high<float>()
@@ -209,9 +209,14 @@ constexpr int precision_high<int>()
     return 0;
 }
 
-//= approx ========================================================================================================== //
+// approx =========================================================================================================== //
 
-template<class L, class R, typename T = std::common_type<L, R>::type>
+/// Test if two Reals are approximately the same value.
+/// Returns true also if the difference is exactly epsilon, which allows epsilon to be zero for exact comparison.
+///
+/// Floating point comparison from:
+/// https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+template<class L, class R, typename T = std::common_type_t<L, R>>
 bool approx(const L lhs, const R rhs)
 {
     if (!is_real(lhs) || !is_real(rhs)) {

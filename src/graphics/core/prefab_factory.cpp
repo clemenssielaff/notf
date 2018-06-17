@@ -2,11 +2,6 @@
 
 #include "utils/make_const.hpp"
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846   // pi
-#define M_PI_2 1.57079632679489661923 // pi/2
-#endif
-
 /*
  *
  *
@@ -66,8 +61,8 @@ PrefabFactoryImpl::Product PrefabFactoryImpl::_produce(const Box& def)
     studies[6].position = v7;
     studies[7].position = v2;
 
-    studies[8].position  = v0; // left
-    studies[9].position  = v7;
+    studies[8].position = v0; // left
+    studies[9].position = v7;
     studies[10].position = v4;
     studies[11].position = v3;
 
@@ -97,8 +92,8 @@ PrefabFactoryImpl::Product PrefabFactoryImpl::_produce(const Box& def)
     studies[6].normal = depth_axis;
     studies[7].normal = depth_axis;
 
-    studies[8].normal  = -orient_axis; // left
-    studies[9].normal  = -orient_axis;
+    studies[8].normal = -orient_axis; // left
+    studies[9].normal = -orient_axis;
     studies[10].normal = -orient_axis;
     studies[11].normal = -orient_axis;
 
@@ -128,8 +123,8 @@ PrefabFactoryImpl::Product PrefabFactoryImpl::_produce(const Box& def)
     studies[6].tex_coord = Vector2d(0, 1);
     studies[7].tex_coord = Vector2d(1, 0);
 
-    studies[8].tex_coord  = Vector2d(0, 0); // left
-    studies[9].tex_coord  = Vector2d(1, 1);
+    studies[8].tex_coord = Vector2d(0, 0); // left
+    studies[9].tex_coord = Vector2d(1, 1);
     studies[10].tex_coord = Vector2d(0, 1);
     studies[11].tex_coord = Vector2d(1, 0);
 
@@ -176,34 +171,34 @@ PrefabFactoryImpl::Product PrefabFactoryImpl::_produce(const Box& def)
 PrefabFactoryImpl::Product PrefabFactoryImpl::_produce(const Sphere& def)
 {
     const uint segment_count = max(3, def.segments);
-    const uint ring_count    = max(1, def.rings);
+    const uint ring_count = max(1, def.rings);
 
-    const double ring_angle    = 1. / static_cast<double>(ring_count + 1);
+    const double ring_angle = 1. / static_cast<double>(ring_count + 1);
     const double segment_angle = 1. / static_cast<double>(segment_count);
 
     std::vector<Study> studies((segment_count * ring_count) + 2); // +2 pole vertices
     {                                                             // positions, normals and texture coordinates
-        Study& south_pole    = studies.front();
-        south_pole.position  = def.center + Vector3d(0, -def.radius, 0);
-        south_pole.normal    = Vector3d(0, -1, 0);
+        Study& south_pole = studies.front();
+        south_pole.position = def.center + Vector3d(0, -def.radius, 0);
+        south_pole.normal = Vector3d(0, -1, 0);
         south_pole.tex_coord = Vector2d(0, 0);
 
         for (uint r = 1; r <= ring_count; ++r) {
             for (uint s = 0; s < segment_count; ++s) {
-                const double x = cos(2 * M_PI * s * segment_angle) * sin(M_PI * r * ring_angle);
-                const double y = sin(-M_PI_2 + M_PI * r * ring_angle);
-                const double z = sin(2 * M_PI * s * segment_angle) * sin(M_PI * r * ring_angle);
+                const double x = cos(2 * pi<double>() * s * segment_angle) * sin(pi<double>() * r * ring_angle);
+                const double y = sin(pi<double>() * -0.5 + pi<double>() * r * ring_angle);
+                const double z = sin(2 * pi<double>() * s * segment_angle) * sin(pi<double>() * r * ring_angle);
 
-                Study& study    = studies[((r - 1) * s) + 1];
-                study.position  = def.center + Vector3d(x * def.radius, y * def.radius, z * def.radius);
-                study.normal    = Vector3d(x, y, z);
+                Study& study = studies[((r - 1) * s) + 1];
+                study.position = def.center + Vector3d(x * def.radius, y * def.radius, z * def.radius);
+                study.normal = Vector3d(x, y, z);
                 study.tex_coord = Vector2d(s * segment_angle * 2. * def.tileU, r * ring_angle * def.tileV);
             }
         }
 
-        Study& north_pole    = studies.back();
-        north_pole.position  = def.center + Vector3d(0, def.radius, 0);
-        north_pole.normal    = Vector3d(0, 1, 0);
+        Study& north_pole = studies.back();
+        north_pole.position = def.center + Vector3d(0, def.radius, 0);
+        north_pole.normal = Vector3d(0, 1, 0);
         north_pole.tex_coord = Vector2d(0, 1);
     }
 

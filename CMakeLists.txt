@@ -227,11 +227,10 @@ add_library(notf
 )
 
 target_link_libraries(notf
-    #GLESv2
     glfw
     freetype
     ${PYTHON_LIBRARIES}
-	${OPENGL_LIBRARIES}
+    ${OPENGL_LIBRARIES}
 )
 
 if(CMAKE_BUILD_TYPE MATCHES "Release")
@@ -266,14 +265,14 @@ if(NOTF_BUILD_TESTS)
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNOTF_TEST")
 
-	if(NOT MSVC)
-		if(NOTF_THREAD_SANITIZATION)
-			message(AUTHOR_WARNING "Disabling coverage to avoid interference with thread sanitization.")
-		else()
-			message(STATUS "Building with coverage.")
-			set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
-		endif()
-	endif()
+    if(NOT MSVC)
+        if(NOTF_THREAD_SANITIZATION)
+            message(AUTHOR_WARNING "Disabling coverage to avoid interference with thread sanitization.")
+        else()
+            message(STATUS "Building with coverage.")
+            set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
+        endif()
+    endif()
 
     add_sources(TEST_SOURCES test
         catch.hpp

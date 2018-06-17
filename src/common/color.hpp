@@ -120,7 +120,7 @@ struct Color {
     float* as_ptr() { return &r; }
 };
 
-// free functions ==================================================================================================== //
+// free functions =================================================================================================== //
 
 /** Linear interpolation between two Colors.
  * @param from      Left Color, full weight at bend = 0.
