@@ -41,8 +41,11 @@ int main(int argc, char* argv[])
 
     int result = Catch::Session().run(argc, argv);
 
-    // shut down the application by closing the test window
-    notf_window()->close();
+    { // shut down the application by closing the test window
+        WindowPtr window = notf_window();
+        g_window.value().reset();
+        window->close();
+    }
 
     return result;
 }

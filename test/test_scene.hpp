@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/root_node.hpp"
 #include "app/scene.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -79,12 +80,15 @@ private:
 
 struct TestScene : public Scene {
     TestScene(FactoryToken token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
-        : Scene(token, graph, std::move(name))
+        : Scene(token, graph, std::move(name)), p_root_float(_root().create_property<float>("root_float", 0))
     {}
 
     ~TestScene() override;
 
     void _resize_view(Size2i) override {}
+
+public: // fields
+    PropertyHandle<float> p_root_float;
 };
 
 NOTF_CLOSE_NAMESPACE

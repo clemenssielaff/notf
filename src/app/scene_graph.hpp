@@ -169,15 +169,15 @@ public:
     /// @returns        Handle to the requested Node.
     ///                 Is empty if the Node doesn't exist or is of the wrong type.
     /// @throws Path::path_error    If the Path is invalid.
-    template<class T>
+    template<class T = Node>
     NodeHandle<T> node(const Path& path)
     {
         return NodeHandle<T>(std::dynamic_pointer_cast<T>(_node(path)));
     }
-    template<class T>
+    template<class T = Node>
     NodeHandle<T> node(const std::string& path)
     {
-        return NodeHandle<T>(Path(path));
+        return node<T>(Path(path));
     }
     /// @}
 

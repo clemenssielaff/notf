@@ -22,11 +22,74 @@ SCENARIO("a Scene can be set up and modified", "[app][scene]")
     const std::thread::id event_thread_id = std::this_thread::get_id();
     const std::thread::id render_thread_id;
 
+    //              A
+    //         +----+------+
+    //         |           |
+    //         B           C
+    //     +---+---+       +
+    //     |       |       |
+    //     D       E       F
+    //         +---+---+
+    //         |   |   |
+    //         G   H   I
+    //
+    SECTION("Scenes manage their nodes and -properties")
+    {
+        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+
+        NodeHandle<TestNode> a = scene.root().set_child<TestNode>("a");
+        NodeHandle<TestNode> b = a->add_node<TestNode>("b");
+        NodeHandle<TestNode> c = a->add_node<TestNode>("c");
+        NodeHandle<TestNode> d = b->add_node<TestNode>("d");
+        NodeHandle<TestNode> e = b->add_node<TestNode>("e");
+        NodeHandle<TestNode> f = c->add_node<TestNode>("f");
+        NodeHandle<TestNode> g = e->add_node<TestNode>("g");
+        NodeHandle<TestNode> h = e->add_node<TestNode>("h");
+        NodeHandle<TestNode> i = e->add_node<TestNode>("i");
+
+        PropertyHandle<int> d1 = d->add_property<int>("d1", 1);
+
+        REQUIRE(scene.node<TestNode>("/TestScene/a/b/d") == d);
+        REQUIRE(scene.node<TestNode>("a") == a);
+        REQUIRE(scene.node<TestNode>("a/b/d") == d);
+
+        REQUIRE_THROWS_AS(scene.node<TestNode>(Path()), Path::path_error);
+        REQUIRE_THROWS_AS(scene.node<TestNode>("/TestScene/a:property"), Path::path_error);
+        REQUIRE_THROWS_AS(scene.node<TestNode>("/OtherScene/a/b/d"), Path::path_error);
+        REQUIRE_THROWS_AS(scene.node<TestNode>("/TestScene"), Path::path_error);
+
+        REQUIRE(scene.property<int>("/TestScene/a/b/d:d1") == d1);
+        REQUIRE(scene.property<float>("root_float") == scene.p_root_float);
+
+        REQUIRE_THROWS_AS(scene.property<int>(Path()), Path::path_error);
+        REQUIRE_THROWS_AS(scene.property<int>(Path("/:TestScene")), Path::path_error);
+        REQUIRE_THROWS_AS(scene.property<int>(Path("/TestScene/a/b/d")), Path::path_error);
+        REQUIRE_THROWS_AS(scene.property<int>(Path("/OtherScene/a/b/d:d1")), Path::path_error);
+    }
+
+    SECTION("Scenes will always contain at least the root node")
+    {
+        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+
+        NodeHandle<TestNode> a = scene.root().set_child<TestNode>("a");
+        NodeHandle<TestNode> b = a->add_node<TestNode>("b");
+        NodeHandle<TestNode> c = a->add_node<TestNode>("c");
+        REQUIRE(scene_access.node_count() == 4);
+
+        scene.clear();
+        REQUIRE(scene_access.node_count() == 1);
+    }
+
+    SECTION("Scenes must have an unique name")
+    {
+        REQUIRE_THROWS_AS(TestScene::create<TestScene>(scene_graph, "TestScene"), Scene::scene_name_error);
+    }
+
     SECTION("freezing an empty scene has no effect")
     {
         { // event thread
             NOTF_MUTEX_GUARD(graph_access.event_mutex());
-            REQUIRE(scene_access.node_count() == 1); // root node
+            REQUIRE(scene_access.node_count() == 1);
             REQUIRE(scene_access.delta_count() == 0);
         }
         { // render thread
