@@ -21,6 +21,7 @@ NOTF_OPEN_NAMESPACE
 /// Only use it to modify Properties or create Events.
 class TimerManager {
     friend class Timer;
+    friend class OneShotTimer;
     friend class IntervalTimer;
     friend class VariableTimer;
 
@@ -84,8 +85,6 @@ protected:
 
     // methods ------------------------------------------------------------------------------------------------------ //
 protected:
-    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
-
     /// Value Constructor.
     /// @param callback     Function called when this Timer times out.
     Timer(Callback callback) : m_callback(std::move(callback)) {}
@@ -95,32 +94,6 @@ public:
 
     /// Destructor.
     virtual ~Timer();
-
-    /// Factory.
-    /// @param callback     Function called when this Timer times out.
-    static TimerPtr create(Callback callback) { return NOTF_MAKE_SHARED_FROM_PRIVATE(Timer, std::move(callback)); }
-
-    /// Schedules a one-off Timer to fire the given Callback at a certain point in the future.
-    /// If the time point is not in the future, the Callback is called immediately on this thread.
-    /// @param duration     Wait time until the Callback from now.
-    /// @param callback     Callback function.
-    static void one_shot(const duration_t interval, Callback callback)
-    {
-        one_shot(TimerManager::_now() + interval, std::move(callback));
-    }
-
-    /// Schedules a one-off Timer to fire the given Callback at a certain point in the future.
-    /// If the time point is not in the future, the Callback is called immediately on this thread.
-    /// @param timeout      Point in time to run the callback.
-    /// @param callback     Callback function.
-    static void one_shot(const timepoint_t timeout, Callback callback)
-    {
-        if (timeout <= TimerManager::_now()) {
-            callback();
-            return;
-        }
-        create(std::move(callback))->start(timeout);
-    }
 
     /// Starts the Timer to fire once at a given point in the future.
     /// If the Timer is already running, it is restarted with the given value.
@@ -133,7 +106,7 @@ public:
 
 protected:
     /// Time to wait between this Timer fires.
-    virtual duration_t _interval() const { return duration_t(0); }
+    virtual duration_t _interval() const = 0;
 
     /// Tests whether the Timer is currently active or not.
     bool _is_active() const { return m_next_timeout != timepoint_t(); }
@@ -155,6 +128,56 @@ protected:
     /// How often the Timer will fire, if it is continuous.
     /// A value of zero is used for infinite
     size_t m_times_left = 0;
+};
+
+// ================================================================================================================== //
+
+class OneShotTimer : public Timer {
+
+    // methods ------------------------------------------------------------------------------------------------------ //
+private:
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
+
+    /// Value Constructor.
+    /// @param callback     Function called when this Timer times out.
+    OneShotTimer(Callback callback) : Timer(std::move(callback)) {}
+
+    /// Factory.
+    /// @param callback     Function called when this Timer times out.
+    static OneShotTimerPtr create(Callback callback)
+    {
+        return NOTF_MAKE_SHARED_FROM_PRIVATE(OneShotTimer, std::move(callback));
+    }
+
+public:
+    /// Destructor.
+    ~OneShotTimer() override;
+
+    /// Schedules a one-off Timer to fire the given Callback at a certain point in the future.
+    /// If the time point is not in the future, the Callback is called immediately on this thread.
+    /// @param duration     Wait time until the Callback from now.
+    /// @param callback     Callback function.
+    static void create(const duration_t interval, Callback callback)
+    {
+        create(TimerManager::_now() + interval, std::move(callback));
+    }
+
+    /// Schedules a one-off Timer to fire the given Callback at a certain point in the future.
+    /// If the time point is not in the future, the Callback is called immediately on this thread.
+    /// @param timeout      Point in time to run the callback.
+    /// @param callback     Callback function.
+    static void create(const timepoint_t timeout, Callback callback)
+    {
+        if (timeout <= TimerManager::_now()) {
+            callback();
+            return;
+        }
+        create(std::move(callback))->start(timeout);
+    }
+
+protected:
+    /// Time to wait between this Timer fires.
+    virtual duration_t _interval() const override { return duration_t(0); } // is never actually called
 };
 
 // ================================================================================================================== //

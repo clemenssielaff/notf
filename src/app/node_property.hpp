@@ -160,9 +160,6 @@ public:
     /// Destructor.
     ~TypedNodeProperty() override { _clear_frozen_value(); }
 
-    /// Returns the Node associated with this PropertyHead.
-    risky_ptr<Node*> node() final { return m_node; }
-
     /// The node-unique name of this Property.
     const std::string& name() const { return m_name_it->first; }
 

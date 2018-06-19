@@ -49,6 +49,11 @@ raw_pointer(const T& notf_pointer)
 {
     return raw_pointer(notf_pointer.raw()); // from notf_pointer
 }
+template<class T>
+std::enable_if_t<std::is_same<std::decay_t<T>, std::nullptr_t>::value, std::nullptr_t> raw_pointer(T)
+{
+    return nullptr; // from nullptr
+}
 /// @}
 
 // ================================================================================================================== //
@@ -327,7 +332,7 @@ private:
 template<class T>
 std::ostream& operator<<(std::ostream& os, const risky_ptr<T>& val)
 {
-    os << *val;
+    os << *raw_pointer(val);
     return os;
 }
 

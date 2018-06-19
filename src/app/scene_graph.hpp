@@ -154,7 +154,7 @@ public:
     template<class T>
     PropertyHandle<T> property(const Path& path)
     {
-        return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodePropertyPtr<T>>(_property(path)));
+        return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodeProperty<T>>(_property(path)));
     }
     template<class T>
     PropertyHandle<T> property(const std::string& path)

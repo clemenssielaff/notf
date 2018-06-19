@@ -108,13 +108,22 @@ public:
     }
     T* operator->() { return operator T*(); }
 
+    /// @{
     /// Comparison operator with another NodeHandle of arbitrary type.
+    /// Tests the identity of both handles, meaning two expired Handles will still be different.
+    /// Two empty handles are equal, but one empty / one expired are not.
     /// @param other    NodeHandle to compare to.
     template<class U>
     bool operator==(const NodeHandle<U>& other) const
     {
         return weak_ptr_equal(m_node, other.m_node);
     }
+    template<class U>
+    bool operator!=(const NodeHandle<U>& other) const
+    {
+        return !operator==(other);
+    }
+    /// @}
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:

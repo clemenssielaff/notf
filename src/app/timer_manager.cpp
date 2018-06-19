@@ -18,7 +18,7 @@ TimerManager::~TimerManager()
 
 void TimerManager::_run()
 {
-    TimerPtr next_timer = Timer::create([] {});
+    TimerPtr next_timer = IntervalTimer::create([] {});
     while (true) {
         {
             std::unique_lock<Mutex> lock(m_mutex);
@@ -113,7 +113,7 @@ void TimerManager::_unschedule(const valid_ptr<Timer*> timer)
     }
 }
 
-// ================================================================================================================= //
+// ================================================================================================================== //
 
 Timer::~Timer() = default;
 
@@ -161,7 +161,11 @@ void Timer::stop()
     manager.m_condition.notify_one();
 }
 
-// ================================================================================================================= //
+// ================================================================================================================== //
+
+OneShotTimer::~OneShotTimer() = default;
+
+// ================================================================================================================== //
 
 IntervalTimer::~IntervalTimer() = default;
 
@@ -199,7 +203,7 @@ void IntervalTimer::start(const duration_t interval, const size_t repetitions)
     manager.m_condition.notify_one();
 }
 
-// ================================================================================================================= //
+// ================================================================================================================== //
 
 VariableTimer::~VariableTimer() = default;
 

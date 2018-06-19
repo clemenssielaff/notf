@@ -21,8 +21,15 @@ SCENARIO("Timer can be used to schedule asyncronous callbacks", "[app], [timer]"
     SECTION("a single-shot Timer schedules a callback for the future")
     {
         std::atomic_size_t counter(0);
-        Timer::one_shot(50ms, [&] { ++counter; });
+        OneShotTimer::create(50ms, [&] { ++counter; });
         std::this_thread::sleep_for(55ms);
+        REQUIRE(counter == 1);
+    }
+
+    SECTION("a single-shot Timer is called immediately if the time has already passed")
+    {
+        std::atomic_size_t counter(0);
+        OneShotTimer::create(0ms, [&] { ++counter; });
         REQUIRE(counter == 1);
     }
 

@@ -291,6 +291,8 @@ if(NOTF_BUILD_TESTS)
         test_node.cpp
         test_scene.hpp
         test_scene.cpp
+        test_scene_graph.hpp
+        test_scene_graph.cpp
         test_timer.cpp
         test_path.cpp
         test_properties.hpp

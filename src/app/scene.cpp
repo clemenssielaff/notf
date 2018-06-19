@@ -68,7 +68,7 @@ NodePropertyPtr Scene::_property(const Path& path)
     {
         NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::hierarchy_mutex(graph()));
 
-        if (path.is_absolute()) {
+        if (path.is_absolute() || path[0] == name()) { // Path("Scene/node") is relative but still requires index = 1
             return Node::Access<Scene>::property(*m_root, path, 1);
         }
         // path.is_relative
@@ -96,7 +96,7 @@ NodePtr Scene::_node(const Path& path)
     {
         NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::hierarchy_mutex(graph()));
 
-        if (path.is_absolute()) {
+        if (path.is_absolute() || path[0] == name()) { // Path("Scene/node") is relative but still requires index = 1
             return Node::Access<Scene>::node(*m_root, path, 1);
         }
         // path.is_relative

@@ -3,6 +3,7 @@
 #include "app/root_node.hpp"
 #include "test_node.hpp"
 #include "test_scene.hpp"
+#include "test_scene_graph.hpp"
 #include "testenv.hpp"
 
 NOTF_USING_NAMESPACE
@@ -185,6 +186,9 @@ SCENARIO("creation / modification of a node hierarchy", "[app][node]")
         REQUIRE(j->is_in_back());
 
         REQUIRE_THROWS_AS(a->is_before(j), Node::hierarchy_error);
+        REQUIRE_THROWS_AS(a->is_behind(j), Node::hierarchy_error);
+        REQUIRE_THROWS_AS(a->stack_before(j), Node::hierarchy_error);
+        REQUIRE_THROWS_AS(a->stack_behind(j), Node::hierarchy_error);
     }
 
     SECTION("Nodes are represented by handles in user-space")
@@ -195,6 +199,8 @@ SCENARIO("creation / modification of a node hierarchy", "[app][node]")
 
         NodeHandle<TestNode> x = scene.root().set_child<TestNode>("x");
 
+        REQUIRE(!NodeHandle<TestNode>().is_valid());
+        REQUIRE(NodeHandle<TestNode>() != b); // test is for identity, not whether both are equal
         REQUIRE(!b.is_valid());
         REQUIRE_THROWS_AS(b->name(), NodeHandle<TestNode>::no_node_error);
     }

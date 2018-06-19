@@ -8,6 +8,7 @@
 #include "test_node.hpp"
 #include "test_properties.hpp"
 #include "test_scene.hpp"
+#include "test_scene_graph.hpp"
 #include "testenv.hpp"
 
 NOTF_USING_NAMESPACE
@@ -63,6 +64,10 @@ SCENARIO("simple PropertyGraph with global properties", "[app][property_graph]")
         GlobalPropertyPtr<int> iprop1 = create_global_property<int>(48);
         GlobalPropertyPtr<int> iprop2 = create_global_property<int>(2);
 
+        iprop1->set({}, {}); // no empty expressions
+        REQUIRE(!iprop1->has_expression());
+        REQUIRE(iprop1->get() == 48);
+
         {
             auto reader = iprop2->reader();
             iprop1->set([reader]() -> int { return reader() + 7; }, {reader});
@@ -73,6 +78,13 @@ SCENARIO("simple PropertyGraph with global properties", "[app][property_graph]")
 
         REQUIRE(iprop1->get() == 9);
         REQUIRE(iprop2->get() == 2);
+
+        {
+            auto reader = iprop1->reader();
+            REQUIRE_THROWS_AS(iprop2->set([reader]() -> int { return reader() + 7; }, {reader}),
+                              PropertyGraph::no_dag_error);
+            REQUIRE(iprop2->get() == 2);
+        }
 
         iprop2.reset();
         REQUIRE(iprop1->get() == 9);

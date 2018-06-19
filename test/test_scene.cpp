@@ -4,13 +4,14 @@
 #include "app/window.hpp"
 #include "test_node.hpp"
 #include "test_scene.hpp"
+#include "test_scene_graph.hpp"
 #include "testenv.hpp"
 
 NOTF_USING_NAMESPACE
 
 // ================================================================================================================== //
 
-SCENARIO("a Scene can be set up and modified", "[app][scene]")
+SCENARIO("Scene", "[app][scene]")
 {
     SceneGraphPtr scene_graph = SceneGraph::Access<test::Harness>::create(notf_window());
     std::shared_ptr<TestScene> scene_ptr = TestScene::create<TestScene>(scene_graph, "TestScene");
