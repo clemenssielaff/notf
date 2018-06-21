@@ -76,7 +76,7 @@ endif()
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-add_subdirectory(thirdparty/glfw-3.2.1)
+add_subdirectory(thirdparty/glfw-3.3.0)
 
 # opengl
 find_package(OpenGL REQUIRED)
@@ -100,7 +100,7 @@ include_directories(notf
     res/
     examples/
     thirdparty/
-    thirdparty/glfw-3.2.1/include
+    thirdparty/glfw-3.3.0/include
     thirdparty/freetype-2.9.1/include
 )
 
