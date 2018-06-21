@@ -1,7 +1,6 @@
 #include "app/widget/claim.hpp"
 
-#include <cassert>
-
+#include "common/assert.hpp"
 #include "common/log.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -30,7 +29,7 @@ void Claim::set_width_to_height(const float ratio_min, const float ratio_max)
         return;
     }
 
-    if (ratio_min == approx(0.)) {
+    if (approx(ratio_min, 0)) {
         m_ratios = std::make_pair(min_ratio, min_ratio);
         return;
     }
@@ -43,21 +42,21 @@ Size2f Claim::apply(const Size2f& size) const
     Size2f result = size;
 
     // clamp to size first
-    result.width  = clamp(size.width, m_horizontal.min(), m_horizontal.max());
-    result.height = clamp(size.height, m_vertical.min(), m_vertical.max());
+    result.width = clamp(size.width, m_horizontal.get_min(), m_horizontal.get_max());
+    result.height = clamp(size.height, m_vertical.get_min(), m_vertical.get_max());
 
     // apply ratio constraints by shrinking one side within the valid range
     if (size.area() > precision_high<float>() && m_ratios.first.is_valid()) {
-        assert(m_ratios.second.is_valid());
+        NOTF_ASSERT(m_ratios.second.is_valid());
 
         const float current_ratio = size.height / size.width;
         const float valid_ratio
             = clamp(current_ratio, m_ratios.first.height_for_width(), m_ratios.second.height_for_width());
         if (valid_ratio < current_ratio) {
-            result.height = clamp(size.width * valid_ratio, m_vertical.min(), m_vertical.max());
+            result.height = clamp(size.width * valid_ratio, m_vertical.get_min(), m_vertical.get_max());
         }
         else if (valid_ratio > current_ratio) {
-            result.width = clamp(size.height / valid_ratio, m_horizontal.min(), m_horizontal.max());
+            result.width = clamp(size.height / valid_ratio, m_horizontal.get_min(), m_horizontal.get_max());
         }
     }
 
@@ -66,22 +65,23 @@ Size2f Claim::apply(const Size2f& size) const
 
 std::ostream& operator<<(std::ostream& out, const Claim::Stretch& stretch)
 {
-    return out << "Claim::Stretch([ " << stretch.min() << "<= stretch.get_preferred()"
-               << " <= " << stretch.max() << ", factor: " << stretch.scale_factor() << ", priority "
-               << stretch.priority() << "])";
+    return out << "Claim::Stretch([ " << stretch.get_min() << "<= stretch.get_preferred()"
+               << " <= " << stretch.get_max() << ", factor: " << stretch.get_scale_factor() << ", priority "
+               << stretch.get_priority() << "])";
 }
 
 std::ostream& operator<<(std::ostream& out, const Claim& claim)
 {
-    const Claim::Stretch& horizontal    = claim.horizontal();
-    const Claim::Stretch& vertical      = claim.horizontal();
-    const std::pair<float, float> ratio = claim.width_to_height();
+    const Claim::Stretch& horizontal = claim.get_horizontal();
+    const Claim::Stretch& vertical = claim.get_horizontal();
+    const std::pair<float, float> ratio = claim.get_width_to_height();
     return out << "Claim(\n"
-               << "\thorizontal: [" << horizontal.min() << " <= " << horizontal.preferred()
-               << " <= " << horizontal.max() << ", factor: " << horizontal.scale_factor() << ", priority "
-               << horizontal.priority() << "]\n\tvertical: [" << vertical.min() << " <= " << vertical.preferred()
-               << " <=" << vertical.max() << ", factor: " << vertical.scale_factor() << ", priority "
-               << vertical.priority() << "]\n\tratio: " << ratio.first << " : " << ratio.second << ")";
+               << "\thorizontal: [" << horizontal.get_min() << " <= " << horizontal.get_preferred()
+               << " <= " << horizontal.get_max() << ", factor: " << horizontal.get_scale_factor() << ", priority "
+               << horizontal.get_priority() << "]\n\tvertical: [" << vertical.get_min()
+               << " <= " << vertical.get_preferred() << " <=" << vertical.get_max()
+               << ", factor: " << vertical.get_scale_factor() << ", priority " << vertical.get_priority()
+               << "]\n\tratio: " << ratio.first << " : " << ratio.second << ")";
 }
 
 NOTF_CLOSE_NAMESPACE

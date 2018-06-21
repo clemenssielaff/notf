@@ -43,7 +43,7 @@ public:
     std::shared_ptr<CAPABILITY> get()
     {
         const size_t id = typeid(CAPABILITY).hash_code();
-        auto it         = std::find_if(m_capabilities.begin(), m_capabilities.end(),
+        auto it = std::find_if(m_capabilities.begin(), m_capabilities.end(),
                                [&](const auto& candidate) { return candidate.first == id; });
         if (it == m_capabilities.end()) {
             notf_throw(out_of_bounds, "CapabilityMap does not contain requested Capability type");
@@ -67,7 +67,7 @@ public:
     void set(std::shared_ptr<CAPABILITY> capability)
     {
         const size_t id = typeid(CAPABILITY).hash_code();
-        auto it         = std::find_if(m_capabilities.begin(), m_capabilities.end(),
+        auto it = std::find_if(m_capabilities.begin(), m_capabilities.end(),
                                [&](const auto& candidate) { return candidate.first == id; });
         if (it == m_capabilities.end()) {
             m_capabilities.emplace_back(std::make_pair(id, capability));

@@ -170,6 +170,9 @@ add_sources(SOURCE_FILES src
     app/io/window_event.cpp
     app/render/procedural.hpp
     app/render/procedural.cpp
+    app/widget/capability.hpp
+    app/widget/claim.hpp
+    app/widget/claim.cpp
     app/README.md
 )
 

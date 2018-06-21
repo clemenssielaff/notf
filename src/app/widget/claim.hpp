@@ -6,33 +6,30 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-/// Every ScreenItem has a Claim that determines how much space is alloted for it in its parent Layout.
-/// The user can declare Claims manually for both Widgets and Layouts, although Layouts usually have a mechanism to
-/// calculate their own Claim based on the combined Claims of their children.
-/// A Claim is made up of serveral parts:
+/// Every Widget has a Claim that determines how much space is alloted for it in its parent's Layout.
+/// The user can declare Claims manually, although Layouts usually have a mechanism to calculate their own Claim based
+/// on the combined Claims of their children. A Claim is made up of serveral parts:
 ///
 /// Stretches
 /// ---------
 /// A Claim has 2 `Stretch` fields, one for its horizontal and one for its vertical expansion.
 /// Each Stretch consists of a `minimum` value, a `maximum` and a preferred value.
-/// Usually, the ScreenItem assumes its `preferred` size first and is then regulated up or down, depending on how much
-/// space is left in its parent Layout.
+/// Usually, the Widget assumes its `preferred` size first and is then regulated up or down, depending on how much space
+/// is left in its parent's Layout.
 ///
-/// The `Stretch factor` of a Strech determines, how fast a ScreenItem grows in relation to its siblings.
-/// Two ScreenItems with Stretch factors of 1 each, will grow at the same rate when more space becomes available.
-/// If one of them had a Stretch factor of 2, it would grow twice as fast as the other, until it reaches its maximum.
-/// Conversely, a Stretch factor of 0.5 would make it grow only half as fast.
-/// Stretch factors have to be larger than zero, assigning a stretch factor of <= 0 will cause a warning and the factor
-/// will be clamped to a value > 0.
+/// The `Stretch factor` of a Strech determines, how fast a Widget grows in relation to its siblings. Two Widgets with a
+/// Stretch factors of 1 each, will grow at the same rate when more space becomes available. If one of them had a
+/// Stretch factor of 2, it would grow twice as fast as the other, until it reaches its maximum. Conversely, a Stretch
+/// factor of 0.5 would make it grow only half as fast. Stretch factors have to be larger than zero, assigning a Stretch
+/// factor of <= 0 will cause a warning and the factor will be clamped to a value > 0.
 ///
-/// The `priority` of a Stretch comes into play, when you want one ScreenItem to fully expand before any others are even
+/// The `priority` of a Stretch comes into play, when you want one Widget to fully expand before any others are even
 /// considered.
-/// If you have 3 ScreenItems A, B and C and C has a priority of 1, while A and B have a priority of 0, then C will take
-/// up all available space without giving any to A and B.
-/// Only after C has reached its maximum size is the additional space distributed to A and B (using their individual
-/// Stretch factors).
-/// Conversely, if the available space should shrink then A and B are the first ones to give up their additional space.
-/// C will only shrink after A and B have both reached their minimum size.
+/// If you have 3 Widgetss A, B and C and C has a priority of 1, while A and B have a priority of 0, then C will take
+/// up all available space without giving any to A and B. Only after C has reached its maximum size is the additional
+/// space distributed to A and B (using their individual Stretch factors). Conversely, if the available space should
+/// shrink then A and B are the first ones to give up their additional space. C will only shrink after A and B have both
+/// reached their minimum size.
 ///
 /// You can modify the two Stretches of a Claim individually, or set them both using the Claim's functions.
 class Claim {
@@ -48,33 +45,33 @@ public:
         Stretch() = default;
 
         /// Value Constructor.
-        /// @param preferred    Preferred size in local units, is limited to values >= 0.
-        /// @param min          Minimum size, is clamped to 0 <= value <= preferred, defaults to 'preferred'.
-        /// @param max          Maximum size, is clamped to preferred <= value, can be INFINITY, defaults to
-        /// 'preferred'.
+        /// After construction the following contraints hold:
+        ///
+        ///     0 <= min <= preferred <= max <= infinity
+        ///
+        /// @param preferred    Preferred size in local units.
+        /// @param min          Minimum size, defaults to `preferred`.
+        /// @param max          Maximum size, defaults to `preferred`.
         Stretch(const float preferred, const float min = NAN, const float max = NAN)
-            : m_preferred(is_real(preferred) ? notf::max(preferred, 0) : 0.f)
+            : m_preferred(is_nan(preferred) ? 0 : notf::max(preferred, 0))
             , m_min(is_real(min) ? notf::min(notf::max(0, min), m_preferred) : m_preferred)
-            , m_max(is_real(preferred) ? (is_nan(max) ? m_preferred : notf::max(max, m_preferred)) : 0.f)
+            , m_max(is_nan(max) ? m_preferred : notf::max(max, m_preferred))
         {}
 
-        /// Copy constructor.
-        Stretch(const Stretch& other) = default;
-
         /// Minimum size in local units, is 0 <= min <= preferred.
-        float min() const { return m_min; }
+        float get_min() const { return m_min; }
 
         /// Preferred size in local units, is >= 0.
-        float preferred() const { return m_preferred; }
+        float get_preferred() const { return m_preferred; }
 
         /// Maximum size in local units, is >= preferred.
-        float max() const { return m_max; }
+        float get_max() const { return m_max; }
 
         /// Returns the scale factor.
-        float scale_factor() const { return m_scale_factor; }
+        float get_scale_factor() const { return m_scale_factor; }
 
         /// Returns the scale priority.
-        int priority() const { return m_priority; }
+        int get_priority() const { return m_priority; }
 
         /// Tests if this Stretch is a fixed size where all 3 values are the same.
         bool is_fixed() const
@@ -87,62 +84,35 @@ public:
         /// @param min  Minimum size, must be 0 <= size < INFINITY.
         void set_min(const float min)
         {
-            if (!is_real(min) || min < 0) {
-                m_min = 0;
-            }
-            else {
-                m_min = min;
-            }
-            if (m_min > m_preferred) {
-                m_preferred = m_min;
-                if (m_min > m_max) {
-                    m_max = m_min;
-                }
-            }
+            m_min = is_nan(min) ? 0 : max(min, 0);
+            m_preferred = max(m_preferred, m_min);
+            m_max = max(m_max, m_min);
         }
 
-        /// Sets a new preferred size, accomodates both the min and max size if necessary.
-        /// @param preferred    Preferred size, must be 0 <= size < INFINITY.
+        /// Sets a new preferred size, accomodates the min or max size if necessary.
+        /// @param preferred    Preferred size, must be >= 0.
         void set_preferred(const float preferred)
         {
-            if (!is_real(preferred) || preferred < 0) {
-                m_preferred = 0;
-            }
-            else {
-                m_preferred = preferred;
-            }
-            if (m_preferred < m_min) {
-                m_min = m_preferred;
-            }
-            if (m_preferred > m_max) {
-                m_max = m_preferred;
-            }
+            m_preferred = is_nan(preferred) ? 0 : max(preferred, 0);
+            m_min = min(m_min, m_preferred);
+            m_max = max(m_max, m_preferred);
         }
 
         /// Sets a new maximum size, accomodates both the min and preferred size if necessary.
         /// @param max  Maximum size, must be 0 <= size <= INFINITY.
         void set_max(const float max)
         {
-            if (is_nan(max) || max < 0) {
-                m_max = 0;
-            }
-            else {
-                m_max = max;
-            }
-            if (m_max < m_preferred) {
-                m_preferred = m_max;
-                if (m_max < m_min) {
-                    m_min = m_max;
-                }
-            }
+            m_max = is_nan(max) ? 0 : notf::max(max, 0);
+            m_preferred = min(m_preferred, m_max);
+            m_min = min(m_min, m_max);
         }
 
         /// Sets a new scale factor.
-        /// @param factor    Scale factor, is clamped to 0 < factor < INFINITY.
+        /// @param factor    Scale factor, is >= 0 and != infinity.
         void set_scale_factor(const float factor)
         {
             static constexpr float min_scale_factor = 0.00001f;
-            if (!is_real(factor) || factor <= 0) {
+            if (factor <= 0 || !is_real(factor)) {
                 m_scale_factor = min_scale_factor;
             }
             else {
@@ -151,68 +121,72 @@ public:
         }
 
         /// Sets a new scaling priority (0 = default).
+        /// @param priority     New scaling priority.
         void set_priority(const int priority) { m_priority = priority; }
 
         /// Sets a fixed size.
+        /// @param size     New min/max and preferred size.
         void set_fixed(const float size) { m_min = m_max = m_preferred = size; }
 
-        /// Adds an offset to the min, max and preferred value.
+        /// Adds a positive offset to the min, max and preferred value.
         /// Useful, for example, if you want to add a fixed "spacing" to the Claim of a Layout.
-        /// The offset can be negative.
-        /// Fields are truncated to be >= 0, invalid values are ignored.
-        void grow_by(const float offset)
+        /// @param offset   Offset, is truncated to be >= 0, invalid values are ignored.
+        void grow_by(float offset)
         {
-            if (!is_real(offset)) {
-                return;
-            }
-            m_min       = notf::max(0, m_min + offset);
-            m_max       = notf::max(0, m_max + offset);
-            m_preferred = notf::max(0, m_preferred + offset);
+            offset = is_real(offset) ? max(offset, 0) : 0;
+            m_preferred += offset;
+            m_min += offset;
+            m_max += offset;
+        }
+
+        /// Adds a negative offset to the min, max and preferred value.
+        /// Useful, for example, if you want to undo the effect of growing a Claim.
+        /// All values are clamped to be >= 0.
+        /// @param offset   Offset, is truncated to be >= 0, invalid values are ignored.
+        void shrink_by(float offset)
+        {
+            offset = is_real(offset) ? max(offset, 0) : 0;
+            m_preferred = max(m_preferred - offset, 0);
+            m_min = max(m_min - offset, 0);
+            m_max = max(m_max - offset, 0);
         }
 
         /// In-place max operator.
+        /// @param other    Stretch to max against.
         Stretch& maxed(const Stretch& other)
         {
-            m_preferred    = notf::max(m_preferred, other.m_preferred);
-            m_min          = notf::max(m_min, other.m_min);
-            m_max          = notf::max(m_max, other.m_max);
-            m_scale_factor = notf::max(m_scale_factor, other.m_scale_factor);
-            m_priority     = notf::max(m_priority, other.m_priority);
-            return *this;
-        }
-
-        /// Assignment operator.
-        Stretch& operator=(const Stretch& other)
-        {
-            m_preferred    = other.m_preferred;
-            m_min          = other.m_min;
-            m_max          = other.m_max;
-            m_scale_factor = other.m_scale_factor;
-            m_priority     = other.m_priority;
+            m_preferred = max(m_preferred, other.m_preferred);
+            m_min = max(m_min, other.m_min);
+            m_max = max(m_max, other.m_max);
+            m_scale_factor = max(m_scale_factor, other.m_scale_factor);
+            m_priority = max(m_priority, other.m_priority);
             return *this;
         }
 
         /// Equality comparison operator.
+        /// @param other    Stretch to compare against.
         bool operator==(const Stretch& other) const
         {
-            return (abs(m_preferred - other.m_preferred) < precision_high<float>()
+            return (m_priority == other.m_priority // first because integer comparison is fastest
+                    && abs(m_preferred - other.m_preferred) < precision_high<float>()
                     && abs(m_min - other.m_min) < precision_high<float>()
                     && (abs(m_max - other.m_max) < precision_high<float>() || (is_inf(m_max) && is_inf(other.m_max)))
-                    && abs(m_scale_factor - other.m_scale_factor) < precision_high<float>()
-                    && m_priority == other.m_priority);
+                    && abs(m_scale_factor - other.m_scale_factor) < precision_high<float>());
         }
 
         /// Inequality comparison operator.
+        /// @param other    Stretch to compare against.
         bool operator!=(const Stretch& other) const { return !(*this == other); }
 
         /// In-place addition operator.
+        /// @param other    Stretch to add.
         Stretch& operator+=(const Stretch& other)
         {
             m_preferred += other.m_preferred;
             m_min += other.m_min;
             m_max += other.m_max;
-            m_scale_factor = notf::max(m_scale_factor, other.m_scale_factor);
-            m_priority     = notf::max(m_priority, other.m_priority);
+            m_scale_factor = max(m_scale_factor, other.m_scale_factor);
+            m_priority = max(m_priority, other.m_priority);
             return *this;
         }
 
@@ -253,7 +227,7 @@ private:
         Ratio(const float width, const float height = 1) : m_width(width), m_height(height)
         {
             if (!is_real(width) || !is_real(height) || width <= 0 || height <= 0) {
-                m_width  = 0;
+                m_width = 0;
                 m_height = 0;
             }
         }
@@ -271,6 +245,7 @@ private:
         }
 
         /// In-place, horizontal addition operator.
+        /// @param other    Ratio to add on the horizontal axis.
         Ratio& add_horizontal(const Ratio& other)
         {
             m_width += other.m_width;
@@ -279,6 +254,7 @@ private:
         }
 
         /// In-place, vertical addition operator.
+        /// @param other    Ratio to add on the vertical axis.
         Ratio& add_vertical(const Ratio& other)
         {
             m_width = max(m_width, other.m_width);
@@ -286,12 +262,16 @@ private:
             return *this;
         }
 
+        /// Equality operator
+        /// @param other    Ratio to compare against.
         bool operator==(const Ratio& other) const
         {
             return (abs(m_width - other.m_width) < precision_high<float>())
                    && (abs(m_height - other.m_height) < precision_high<float>());
         }
 
+        /// Ineequality operator
+        /// @param other    Ratio to compare against.
         bool operator!=(const Ratio& other) const { return !(*this == other); }
 
         // fields -------------------------------------------------------------
@@ -305,9 +285,19 @@ private:
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
+    /// Default Constructor.
+    Claim() = default;
+
+    /// Value Constructor.
+    /// @param horizontal   Horizontal Stretch.
+    /// @param vertical     Vertical Stretch.
+    Claim(Claim::Stretch horizontal, Claim::Stretch vertical)
+        : m_horizontal(std::move(horizontal)), m_vertical(std::move(vertical))
+    {}
+
     ///@{
     /// Returns a Claim with fixed height and width.
-    static Claim fixed(float width, float height)
+    static Claim fixed(const float width, const float height)
     {
         Claim::Stretch horizontal, vertical;
         horizontal.set_fixed(width);
@@ -326,29 +316,16 @@ public:
         return {horizontal, vertical};
     }
 
-    /// Default Constructor.
-    Claim() = default;
-
-    /// Value Constructor.
-    /// @param horizontal   Horizontal Stretch.
-    /// @param vertical     Vertical Stretch.
-    Claim(Claim::Stretch horizontal, Claim::Stretch vertical)
-        : m_horizontal(std::move(horizontal)), m_vertical(std::move(vertical))
-    {}
-
-    /// Copy Constructor.
-    Claim(const Claim& other) = default;
-
     ///@{
     /// Returns the horizontal part of this Claim.
-    Stretch& horizontal() { return m_horizontal; }
-    const Stretch& horizontal() const { return m_horizontal; }
+    Stretch& get_horizontal() { return m_horizontal; }
+    const Stretch& get_horizontal() const { return m_horizontal; }
     ///@}
 
     ///@{
     /// Returns the vertical part of this Claim.
-    Stretch& vertical() { return m_vertical; }
-    const Stretch& vertical() const { return m_vertical; }
+    Stretch& get_vertical() { return m_vertical; }
+    const Stretch& get_vertical() const { return m_vertical; }
     ///@}
 
     /// Tests if both Stretches of this Claim are fixed.
@@ -412,14 +389,23 @@ public:
     void set_fixed(const Size2f& size) { set_fixed(size.width, size.height); }
     ///@}
 
-    /// Adds an offset to the min, max and preferred value of both Stretches.
+    /// Adds a positive offset to the min, max and preferred value.
     /// Useful, for example, if you want to add a fixed "spacing" to the Claim of a Layout.
-    /// The offset can be negative.
-    /// Fields are truncated to be >= 0, invalid values are ignored.
+    /// @param offset   Offset, is truncated to be >= 0, invalid values are ignored.
     void grow_by(const float offset)
     {
         m_horizontal.grow_by(offset);
         m_vertical.grow_by(offset);
+    }
+
+    /// Adds a negative offset to the min, max and preferred value.
+    /// Useful, for example, if you want to undo the effect of growing a Claim.
+    /// All values are clamped to be >= 0.
+    /// @param offset   Offset, is truncated to be >= 0, invalid values are ignored.
+    void shrink_by(const float offset)
+    {
+        m_horizontal.shrink_by(offset);
+        m_vertical.shrink_by(offset);
     }
 
     /// In-place, horizontal addition operator for Claims.
@@ -447,8 +433,8 @@ public:
     }
 
     /// Returns the min and max ratio constraints.
-    /// 0 means no constraint, is: 0 <= min <= max < INFINITY
-    std::pair<float, float> width_to_height() const
+    /// (0, 0) means there exists no constraint.
+    std::pair<float, float> get_width_to_height() const
     {
         return {m_ratios.first.height_for_width(), m_ratios.second.height_for_width()};
     }
@@ -463,18 +449,9 @@ public:
     {
         m_horizontal.maxed(other.m_horizontal);
         m_vertical.maxed(other.m_vertical);
-        const std::pair<float, float> my_ratios    = width_to_height();
-        const std::pair<float, float> other_ratios = other.width_to_height();
+        const std::pair<float, float> my_ratios = get_width_to_height();
+        const std::pair<float, float> other_ratios = other.get_width_to_height();
         set_width_to_height(min(my_ratios.first, other_ratios.first), max(my_ratios.second, other_ratios.second));
-        return *this;
-    }
-
-    /// Assignment operator.
-    Claim& operator=(const Claim& other)
-    {
-        m_horizontal = other.m_horizontal;
-        m_vertical   = other.m_vertical;
-        m_ratios     = other.m_ratios;
         return *this;
     }
 
@@ -528,8 +505,8 @@ template<>
 struct hash<notf::Claim::Stretch> {
     size_t operator()(const notf::Claim::Stretch& stretch) const
     {
-        return notf::hash(stretch.preferred(), stretch.min(), stretch.max(), stretch.scale_factor(),
-                          stretch.priority());
+        return notf::hash(stretch.get_preferred(), stretch.get_min(), stretch.get_max(), stretch.get_scale_factor(),
+                          stretch.get_priority());
     }
 };
 
@@ -538,8 +515,8 @@ template<>
 struct hash<notf::Claim> {
     size_t operator()(const notf::Claim& claim) const
     {
-        const std::pair<float, float> ratio = claim.width_to_height();
-        return notf::hash(claim.horizontal(), claim.horizontal(), ratio.first, ratio.second);
+        const std::pair<float, float> ratio = claim.get_width_to_height();
+        return notf::hash(claim.get_horizontal(), claim.get_horizontal(), ratio.first, ratio.second);
     }
 };
 

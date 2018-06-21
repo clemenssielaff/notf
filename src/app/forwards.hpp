@@ -47,7 +47,7 @@ NOTF_DEFINE_SHARED_POINTERS(class, NodeProperty);
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, TypedNodeProperty);
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, GlobalProperty);
 
-//
+// app
 
 NOTF_DEFINE_SHARED_POINTERS(class, RenderTarget);
 NOTF_DEFINE_SHARED_POINTERS(class, Layer);
@@ -63,6 +63,10 @@ NOTF_DEFINE_UNIQUE_POINTERS(class, ResourceManager);
 NOTF_DEFINE_UNIQUE_POINTERS(class, EventManager);
 NOTF_DEFINE_UNIQUE_POINTERS(class, RenderManager);
 NOTF_DEFINE_UNIQUE_POINTERS(class, TimerManager);
+
+// app / widget
+
+NOTF_DEFINE_SHARED_POINTERS(struct, Capability);
 
 // tests
 
