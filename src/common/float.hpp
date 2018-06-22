@@ -18,7 +18,7 @@ constexpr long double KAPPA = 0.552284749830793398402251632279597438092895833835
 
 } // namespace detail
 
-// ================================================================================================================== //
+// constants ======================================================================================================== //
 
 template<class T = long double>
 constexpr T pi()
@@ -32,6 +32,61 @@ constexpr T kappa()
 {
     return static_cast<T>(detail::KAPPA);
 }
+
+// precision ======================================================================================================== //
+
+/// Type dependent constant for low-precision approximation (useful for use in "noisy" functions).
+/// Don't be fooled by the name though, "low" precision is still pretty precise on a human scale.
+template<class T>
+constexpr T precision_low();
+
+template<>
+constexpr float precision_low<float>()
+{
+    return std::numeric_limits<float>::epsilon() * 100;
+}
+
+template<>
+constexpr double precision_low<double>()
+{
+    return std::numeric_limits<double>::epsilon() * 100;
+}
+
+template<>
+constexpr int precision_low<int>()
+{
+    return 0;
+}
+
+/// Type dependent constant for high-precision approximation.
+template<class T>
+constexpr T precision_high();
+
+template<>
+constexpr float precision_high<float>()
+{
+    return std::numeric_limits<float>::epsilon() * 3;
+}
+
+template<>
+constexpr double precision_high<double>()
+{
+    return std::numeric_limits<double>::epsilon() * 3;
+}
+
+template<>
+constexpr short precision_high<short>()
+{
+    return 0;
+}
+
+template<>
+constexpr int precision_high<int>()
+{
+    return 0;
+}
+
+// operations ======================================================================================================= //
 
 using std::abs;
 using std::atan2;
@@ -88,6 +143,13 @@ template<class T>
 inline bool is_real(const T value)
 {
     return !is_nan(value) && !is_inf(value);
+}
+
+/// Tests whether a given value is (almost) zero.
+template<class T>
+inline bool is_zero(const T value, const T epsilon = precision_high<T>())
+{
+    return abs(value) < epsilon;
 }
 
 /// Tests, if a value is positive or negative.
@@ -156,59 +218,6 @@ inline T save_div(const L divident, const R divisor)
     return divident / divisor;
 }
 
-//= precision ======================================================================================================= //
-
-/// Type dependent constant for low-precision approximation (useful for use in "noisy" functions).
-/// Don't be fooled by the name though, "low" precision is still pretty precise on a human scale.
-template<class T>
-constexpr T precision_low();
-
-template<>
-constexpr float precision_low<float>()
-{
-    return std::numeric_limits<float>::epsilon() * 100;
-}
-
-template<>
-constexpr double precision_low<double>()
-{
-    return std::numeric_limits<double>::epsilon() * 100;
-}
-
-template<>
-constexpr int precision_low<int>()
-{
-    return 0;
-}
-
-/// Type dependent constant for high-precision approximation.
-template<class T>
-constexpr T precision_high();
-
-template<>
-constexpr float precision_high<float>()
-{
-    return std::numeric_limits<float>::epsilon() * 3;
-}
-
-template<>
-constexpr double precision_high<double>()
-{
-    return std::numeric_limits<double>::epsilon() * 3;
-}
-
-template<>
-constexpr short precision_high<short>()
-{
-    return 0;
-}
-
-template<>
-constexpr int precision_high<int>()
-{
-    return 0;
-}
-
 // approx =========================================================================================================== //
 
 /// Test if two Reals are approximately the same value.
@@ -217,9 +226,9 @@ constexpr int precision_high<int>()
 /// Floating point comparison from:
 /// https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 template<class L, class R, typename T = std::common_type_t<L, R>>
-bool approx(const L lhs, const R rhs)
+bool is_approx(const L lhs, const R rhs)
 {
-    if (!is_real(lhs) || !is_real(rhs)) {
+    if (is_nan(lhs) || is_nan(rhs)) {
         return false;
     }
 
@@ -230,6 +239,11 @@ bool approx(const L lhs, const R rhs)
 
     // use a relative epsilon if the numbers are larger
     if (abs(lhs - rhs) <= ((abs(lhs) > abs(rhs)) ? abs(lhs) : abs(rhs)) * std::numeric_limits<T>::epsilon()) {
+        return true;
+    }
+
+    // infinities are always approximately equal...
+    if (is_inf(lhs) && is_inf(rhs)) {
         return true;
     }
 

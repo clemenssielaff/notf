@@ -18,7 +18,7 @@ NOTF_USING_NAMESPACE
 
 struct CloudScene : public Scene {
     CloudScene(FactoryToken token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
-        : Scene(token, graph, std::move(name)), p_time(_root().create_property<float>("time", 0))
+        : Scene(token, graph, std::move(name)), p_time(_get_root().create_property<float>("time", 0))
     {
         m_timer = IntervalTimer::create([&] {
             const auto age_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Application::age()).count();
@@ -49,12 +49,12 @@ int smoke_main(int argc, char* argv[])
 
     { // initialize the window
         WindowPtr window = Application::instance().create_window();
-        auto scene = Scene::create<CloudScene>(window->scene_graph(), "clouds_scene");
+        auto scene = Scene::create<CloudScene>(window->get_scene_graph(), "clouds_scene");
 
         auto renderer = ProceduralRenderer::create(*window, "clouds.frag");
         std::vector<valid_ptr<LayerPtr>> layers = {Layer::create(*window, std::move(renderer), scene)};
-        SceneGraph::StatePtr state = window->scene_graph()->create_state(std::move(layers));
-        window->scene_graph()->enter_state(state);
+        SceneGraph::StatePtr state = window->get_scene_graph()->create_state(std::move(layers));
+        window->get_scene_graph()->enter_state(state);
     }
     return app.exec();
 }

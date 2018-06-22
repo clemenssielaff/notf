@@ -159,7 +159,7 @@ SCENARIO("NodeProperties in a SceneGraph hierarchy", "[app][property_graph][scen
     PropertyHandle<std::string> sprop;
     { // event thread
         NOTF_MUTEX_GUARD(graph_access.event_mutex());
-        first_node = scene.root().set_child<TestNode>();
+        first_node = scene.get_root().set_child<TestNode>();
         iprop1 = first_node->add_property("i1", 48);
         iprop2 = first_node->add_property("i2", 0);
         sprop = first_node->add_property<std::string>("s", "before");
@@ -224,7 +224,7 @@ SCENARIO("NodeProperties in a SceneGraph hierarchy", "[app][property_graph][scen
 
         { // event thread
             NOTF_MUTEX_GUARD(graph_access.event_mutex());
-            scene.root().set_child<TestNode>();
+            scene.get_root().set_child<TestNode>();
         }
 
         REQUIRE(PropertyAccess::get<int>(iprop1, render_thread_id) == 48);
@@ -236,7 +236,7 @@ SCENARIO("NodeProperties in a SceneGraph hierarchy", "[app][property_graph][scen
     { // event thread
         NOTF_MUTEX_GUARD(graph_access.event_mutex());
         PropertyHandle<float> fprop = first_node->add_property<float>("f1", 48.0);
-        scene.root().set_child<TestNode>();
+        scene.get_root().set_child<TestNode>();
         REQUIRE_THROWS_AS(fprop.set(123.f), NodeProperty::no_property_error);
     }
 

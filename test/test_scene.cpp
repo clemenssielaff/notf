@@ -38,7 +38,7 @@ SCENARIO("Scene", "[app][scene]")
     {
         NOTF_MUTEX_GUARD(graph_access.event_mutex());
 
-        NodeHandle<TestNode> a = scene.root().set_child<TestNode>("a");
+        NodeHandle<TestNode> a = scene.get_root().set_child<TestNode>("a");
         NodeHandle<TestNode> b = a->add_node<TestNode>("b");
         NodeHandle<TestNode> c = a->add_node<TestNode>("c");
         NodeHandle<TestNode> d = b->add_node<TestNode>("d");
@@ -50,29 +50,29 @@ SCENARIO("Scene", "[app][scene]")
 
         PropertyHandle<int> d1 = d->add_property<int>("d1", 1);
 
-        REQUIRE(scene.node<TestNode>("/TestScene/a/b/d") == d);
-        REQUIRE(scene.node<TestNode>("a") == a);
-        REQUIRE(scene.node<TestNode>("a/b/d") == d);
+        REQUIRE(scene.get_node<TestNode>("/TestScene/a/b/d") == d);
+        REQUIRE(scene.get_node<TestNode>("a") == a);
+        REQUIRE(scene.get_node<TestNode>("a/b/d") == d);
 
-        REQUIRE_THROWS_AS(scene.node<TestNode>(Path()), Path::path_error);
-        REQUIRE_THROWS_AS(scene.node<TestNode>("/TestScene/a:property"), Path::path_error);
-        REQUIRE_THROWS_AS(scene.node<TestNode>("/OtherScene/a/b/d"), Path::path_error);
-        REQUIRE_THROWS_AS(scene.node<TestNode>("/TestScene"), Path::path_error);
+        REQUIRE_THROWS_AS(scene.get_node<TestNode>(Path()), Path::path_error);
+        REQUIRE_THROWS_AS(scene.get_node<TestNode>("/TestScene/a:property"), Path::path_error);
+        REQUIRE_THROWS_AS(scene.get_node<TestNode>("/OtherScene/a/b/d"), Path::path_error);
+        REQUIRE_THROWS_AS(scene.get_node<TestNode>("/TestScene"), Path::path_error);
 
-        REQUIRE(scene.property<int>("/TestScene/a/b/d:d1") == d1);
-        REQUIRE(scene.property<float>("root_float") == scene.p_root_float);
+        REQUIRE(scene.get_property<int>("/TestScene/a/b/d:d1") == d1);
+        REQUIRE(scene.get_property<float>("root_float") == scene.p_root_float);
 
-        REQUIRE_THROWS_AS(scene.property<int>(Path()), Path::path_error);
-        REQUIRE_THROWS_AS(scene.property<int>(Path("/:TestScene")), Path::path_error);
-        REQUIRE_THROWS_AS(scene.property<int>(Path("/TestScene/a/b/d")), Path::path_error);
-        REQUIRE_THROWS_AS(scene.property<int>(Path("/OtherScene/a/b/d:d1")), Path::path_error);
+        REQUIRE_THROWS_AS(scene.get_property<int>(Path()), Path::path_error);
+        REQUIRE_THROWS_AS(scene.get_property<int>(Path("/:TestScene")), Path::path_error);
+        REQUIRE_THROWS_AS(scene.get_property<int>(Path("/TestScene/a/b/d")), Path::path_error);
+        REQUIRE_THROWS_AS(scene.get_property<int>(Path("/OtherScene/a/b/d:d1")), Path::path_error);
     }
 
     SECTION("Scenes will always contain at least the root node")
     {
         NOTF_MUTEX_GUARD(graph_access.event_mutex());
 
-        NodeHandle<TestNode> a = scene.root().set_child<TestNode>("a");
+        NodeHandle<TestNode> a = scene.get_root().set_child<TestNode>("a");
         NodeHandle<TestNode> b = a->add_node<TestNode>("b");
         NodeHandle<TestNode> c = a->add_node<TestNode>("c");
         REQUIRE(scene_access.node_count() == 4);
@@ -108,10 +108,10 @@ SCENARIO("Scene", "[app][scene]")
         { // event thread
             NOTF_MUTEX_GUARD(graph_access.event_mutex());
 
-            NodeHandle<TestNode> first_node = scene.root().set_child<TestNode>(); // + 1
-            NodeHandle<TestNode> a = first_node->add_subtree(2);                  // + 3
-            NodeHandle<TestNode> b = first_node->add_subtree(3);                  // + 4
-            NodeHandle<TestNode> c = first_node->add_subtree(3);                  // + 4 + root
+            NodeHandle<TestNode> first_node = scene.get_root().set_child<TestNode>(); // + 1
+            NodeHandle<TestNode> a = first_node->add_subtree(2);                      // + 3
+            NodeHandle<TestNode> b = first_node->add_subtree(3);                      // + 4
+            NodeHandle<TestNode> c = first_node->add_subtree(3);                      // + 4 + root
 
             REQUIRE(scene_access.node_count() == 13);
             REQUIRE(scene_access.delta_count() == 0);
@@ -134,7 +134,7 @@ SCENARIO("Scene", "[app][scene]")
 
         { // event thread
             NOTF_MUTEX_GUARD(graph_access.event_mutex());
-            NodeHandle<TestNode> first = scene.root().set_child<TestNode>();
+            NodeHandle<TestNode> first = scene.get_root().set_child<TestNode>();
             node = first->add_subtree(2);
 
             REQUIRE(scene_access.node_count() == 5);
@@ -142,8 +142,8 @@ SCENARIO("Scene", "[app][scene]")
         }
         { // frozen scope
             auto guard = graph_access.freeze_guard(render_thread_id);
-            back = node->child<TestNode>(0);
-            front = node->child<TestNode>(1);
+            back = node->get_child<TestNode>(0);
+            front = node->get_child<TestNode>(1);
 
             { // event thread
                 NOTF_MUTEX_GUARD(graph_access.event_mutex());
@@ -196,7 +196,7 @@ SCENARIO("Scene", "[app][scene]")
 
         { // event thread
             NOTF_MUTEX_GUARD(graph_access.event_mutex());
-            first_node = scene.root().set_child<TestNode>();
+            first_node = scene.get_root().set_child<TestNode>();
             a = first_node->add_subtree(2);
             b = first_node->add_subtree(3);
             c = first_node->add_subtree(3);
@@ -240,7 +240,7 @@ SCENARIO("Scene", "[app][scene]")
 
         { // event thread
             NOTF_MUTEX_GUARD(graph_access.event_mutex());
-            first_node = scene.root().set_child<TestNode>();
+            first_node = scene.get_root().set_child<TestNode>();
         }
 
         {
@@ -249,8 +249,8 @@ SCENARIO("Scene", "[app][scene]")
             { // event thread
                 NOTF_MUTEX_GUARD(graph_access.event_mutex());
                 node = first_node->add_subtree(2);
-                back = node->child<TestNode>(0);
-                front = node->child<TestNode>(1);
+                back = node->get_child<TestNode>(0);
+                front = node->get_child<TestNode>(1);
 
                 CHECK(front->is_in_front());
                 CHECK(back->is_in_back());
@@ -281,7 +281,7 @@ SCENARIO("Scene", "[app][scene]")
 
         { // event thread
             NOTF_MUTEX_GUARD(graph_access.event_mutex());
-            first_node = scene.root().set_child<TestNode>();
+            first_node = scene.get_root().set_child<TestNode>();
 
             REQUIRE(scene_access.node_count() == 2);
             REQUIRE(scene_access.delta_count() == 0);

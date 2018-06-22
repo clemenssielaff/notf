@@ -16,8 +16,8 @@
 
 NOTF_OPEN_NAMESPACE
 
-ProceduralRenderer::ProceduralRenderer(GraphicsContext& context, const std::string& shader_name)
-    : Renderer(), m_context(context)
+ProceduralRenderer::ProceduralRenderer(Window& window, const std::string& shader_name)
+    : Renderer(), m_context(window.get_graphics_context())
 {
     ResourceManager& resource_manager = Application::instance().resource_manager();
 
@@ -31,7 +31,7 @@ ProceduralRenderer::ProceduralRenderer(GraphicsContext& context, const std::stri
     }
     if (!vertex_shader) {
         const std::string vertex_src = load_file(fmt::format("{}fullscreen.vert", resource_manager.shader_directory()));
-        vertex_shader = VertexShader::create(context, "__fullscreen.vert", vertex_src);
+        vertex_shader = VertexShader::create(m_context, "__fullscreen.vert", vertex_src);
     }
 
     // load or get the custom fragment shader.
@@ -44,17 +44,12 @@ ProceduralRenderer::ProceduralRenderer(GraphicsContext& context, const std::stri
         }
         if (!fragment_shader) {
             const std::string custom_shader_src = load_file(resource_manager.shader_directory() + shader_name);
-            fragment_shader = FragmentShader::create(context, custom_name, custom_shader_src);
+            fragment_shader = FragmentShader::create(m_context, custom_name, custom_shader_src);
         }
     }
 
     // create the render pipeline
-    m_pipeline = Pipeline::create(context, vertex_shader, fragment_shader);
-}
-
-ProceduralRendererPtr ProceduralRenderer::create(Window& window, const std::string& shader_name)
-{
-    return NOTF_MAKE_SHARED_FROM_PRIVATE(ProceduralRenderer, window.graphics_context(), shader_name);
+    m_pipeline = Pipeline::create(m_context, vertex_shader, fragment_shader);
 }
 
 void ProceduralRenderer::_render(valid_ptr<Scene*> scene) const
@@ -64,7 +59,7 @@ void ProceduralRenderer::_render(valid_ptr<Scene*> scene) const
     for (const auto& variable : fragment_shader->uniforms()) {
         switch (variable.type) {
         case GL_FLOAT:
-            if (PropertyHandle<float> float_property = scene->property<float>(variable.name)) {
+            if (PropertyHandle<float> float_property = scene->get_property<float>(variable.name)) {
                 fragment_shader->set_uniform(variable.name, float_property.get());
             }
             break;

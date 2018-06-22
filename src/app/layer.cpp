@@ -26,7 +26,7 @@ void Layer::render()
     }
 
     // define render area
-    GraphicsContext& context = m_window.graphics_context();
+    GraphicsContext& context = m_window.get_graphics_context();
     if (m_is_fullscreen) {
         context.set_render_area(context.window_size());
     }

@@ -131,12 +131,12 @@ public:
     // getter -----------------------------------------------------------------
 
     /// Window owning this SceneGraph. Is empty if the Window was already closed.
-    risky_ptr<WindowPtr> getWindow() const { return m_window.lock(); }
+    risky_ptr<WindowPtr> get_window() const { return m_window.lock(); }
 
     /// Returns a Scene in this graph by name.
     /// @param name Name of the requested Scene.
     /// @returns    Scene with the given name, can be empty.
-    risky_ptr<ScenePtr> scene(const std::string& name)
+    risky_ptr<ScenePtr> get_scene(const std::string& name)
     {
         auto it = m_scenes.find(name);
         if (it == m_scenes.end()) {
@@ -152,12 +152,12 @@ public:
     ///                 Is empty if the Property doesn't exist or is of the wrong type.
     /// @throws Path::path_error    If the Path is invalid.
     template<class T>
-    PropertyHandle<T> property(const Path& path)
+    PropertyHandle<T> get_property(const Path& path)
     {
-        return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodeProperty<T>>(_property(path)));
+        return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodeProperty<T>>(_get_property(path)));
     }
     template<class T>
-    PropertyHandle<T> property(const std::string& path)
+    PropertyHandle<T> get_property(const std::string& path)
     {
         return PropertyHandle<T>(Path(path));
     }
@@ -170,14 +170,14 @@ public:
     ///                 Is empty if the Node doesn't exist or is of the wrong type.
     /// @throws Path::path_error    If the Path is invalid.
     template<class T = Node>
-    NodeHandle<T> node(const Path& path)
+    NodeHandle<T> get_node(const Path& path)
     {
-        return NodeHandle<T>(std::dynamic_pointer_cast<T>(_node(path)));
+        return NodeHandle<T>(std::dynamic_pointer_cast<T>(_get_node(path)));
     }
     template<class T = Node>
-    NodeHandle<T> node(const std::string& path)
+    NodeHandle<T> get_node(const std::string& path)
     {
-        return node<T>(Path(path));
+        return get_node<T>(Path(path));
     }
     /// @}
 
@@ -226,13 +226,13 @@ private:
     /// @param path     Path uniquely identifying a Property.
     /// @returns        Handle to the requested NodeProperty. Is empty if the Property doesn't exist.
     /// @throws Path::path_error    If the Path does not lead to a Property.
-    NodePropertyPtr _property(const Path& path);
+    NodePropertyPtr _get_property(const Path& path);
 
     /// Private and untyped implementation of `node` assuming sanitized inputs.
     /// @param path     Path uniquely identifying a Node.
     /// @returns        Handle to the requested Node. Is empty if the Node doesn't exist.
     /// @throws Path::path_error    If the Path does not lead to a Node.
-    NodePtr _node(const Path& path);
+    NodePtr _get_node(const Path& path);
 
     // freezing ---------------------------------------------------------------
 

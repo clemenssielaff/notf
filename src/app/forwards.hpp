@@ -56,7 +56,6 @@ NOTF_DEFINE_SHARED_POINTERS(class, OneShotTimer);
 NOTF_DEFINE_SHARED_POINTERS(class, IntervalTimer);
 NOTF_DEFINE_SHARED_POINTERS(class, VariableTimer);
 NOTF_DEFINE_SHARED_POINTERS(class, Renderer);
-NOTF_DEFINE_SHARED_POINTERS(class, ProceduralRenderer);
 NOTF_DEFINE_SHARED_POINTERS(class, Window);
 
 NOTF_DEFINE_UNIQUE_POINTERS(class, ResourceManager);
@@ -67,6 +66,11 @@ NOTF_DEFINE_UNIQUE_POINTERS(class, TimerManager);
 // app / widget
 
 NOTF_DEFINE_SHARED_POINTERS(struct, Capability);
+
+// app / render
+
+NOTF_DEFINE_SHARED_POINTERS(class, Plotter);
+NOTF_DEFINE_SHARED_POINTERS(class, ProceduralRenderer);
 
 // tests
 

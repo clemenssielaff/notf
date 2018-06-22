@@ -75,8 +75,8 @@ void RenderManager::RenderThread::_run()
             continue;
         }
 
-        SceneGraphPtr& scene_graph = window->scene_graph();
-        GraphicsContext& context = window->graphics_context();
+        SceneGraphPtr& scene_graph = window->get_scene_graph();
+        GraphicsContext& context = window->get_graphics_context();
 
         { // render the frame
             SceneGraph::FreezeGuard freeze_guard = SceneGraph::Access<RenderManager>::freeze(*scene_graph);

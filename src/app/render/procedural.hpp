@@ -12,22 +12,25 @@ private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Constructor.
-    /// @param context      Graphics context.
+    /// @param window       Window in which the renderer is displayed.
     /// @param shader_name  Name of a fragment shader to use (file path in relation to the shader directory).
-    ProceduralRenderer(GraphicsContext& context, const std::string& shader_name);
+    ProceduralRenderer(Window& window, const std::string& shader_name);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(ProceduralRenderer);
 
     /// Factory.
-    /// @param window       Window in which the renderer is displayed.
+
     /// @param shader_name  Name of a fragment shader to use (file path in relation to the shader directory).
-    static ProceduralRendererPtr create(Window& window, const std::string& shader_name);
+    static ProceduralRendererPtr create(Window& window, const std::string& shader_name)
+    {
+        return NOTF_MAKE_SHARED_FROM_PRIVATE(ProceduralRenderer, window, shader_name);
+    }
 
 private:
     /// Subclass-defined implementation of the Renderer's rendering.
     /// @param scene    Scene providing Properties matching the Shader's uniforms.
-    virtual void _render(valid_ptr<Scene*> scene) const override;
+    void _render(valid_ptr<Scene*> scene) const override;
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:

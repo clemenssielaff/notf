@@ -69,8 +69,7 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
     assert(stage_name);
 
     if (!shader) {
-        notf_throw(runtime_error, "Failed to create {} shader object for for program \"{}\"", stage_name,
-                          program_name);
+        notf_throw(runtime_error, "Failed to create {} shader object for for program \"{}\"", stage_name, program_name);
     }
 
     // compile the shader
@@ -88,7 +87,7 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
         notf_check_gl(glDeleteShader(shader));
 
         notf_throw(runtime_error, "Failed to compile {} stage for shader \"{}\"\n\t{}", stage_name, program_name,
-                          error_message.data());
+                   error_message.data());
     }
 
     assert(shader);
@@ -272,7 +271,7 @@ void assert_is_valid(const Shader& shader)
 {
     if (!shader.is_valid()) {
         notf_throw(resource_error, "Shader \"{}\" was deallocated! Has the GraphicsContext been deleted?",
-                          shader.name());
+                   shader.name());
     }
 }
 #else
@@ -473,8 +472,8 @@ void Shader::set_uniform(const std::string& name, const int& value)
     }
     else {
         notf_throw(runtime_error,
-                          "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"int\"",
-                          name, m_name, gl_type_name(uniform.type));
+                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"int\"", name,
+                   m_name, gl_type_name(uniform.type));
     }
 }
 
@@ -490,10 +489,9 @@ void Shader::set_uniform(const std::string& name, const unsigned int& value)
         notf_check_gl(glProgramUniform1i(m_id.value(), uniform.location, static_cast<GLint>(value)));
     }
     else {
-        notf_throw(
-            runtime_error,
-            "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"unsigned int\"", name,
-            m_name, gl_type_name(uniform.type));
+        notf_throw(runtime_error,
+                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"unsigned int\"",
+                   name, m_name, gl_type_name(uniform.type));
     }
 }
 
@@ -507,8 +505,8 @@ void Shader::set_uniform(const std::string& name, const float& value)
     }
     else {
         notf_throw(runtime_error,
-                          "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"float\"",
-                          name, m_name, gl_type_name(uniform.type));
+                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"float\"", name,
+                   m_name, gl_type_name(uniform.type));
     }
 }
 
@@ -521,10 +519,9 @@ void Shader::set_uniform(const std::string& name, const Vector2f& value)
         notf_check_gl(glProgramUniform2fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
     }
     else {
-        notf_throw(
-            runtime_error,
-            "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"Vector2f\"", name,
-            m_name, gl_type_name(uniform.type));
+        notf_throw(runtime_error,
+                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"Vector2f\"",
+                   name, m_name, gl_type_name(uniform.type));
     }
 }
 
@@ -537,10 +534,9 @@ void Shader::set_uniform(const std::string& name, const Vector4f& value)
         notf_check_gl(glProgramUniform4fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
     }
     else {
-        notf_throw(
-            runtime_error,
-            "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"Vector2f\"", name,
-            m_name, gl_type_name(uniform.type));
+        notf_throw(runtime_error,
+                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"Vector2f\"",
+                   name, m_name, gl_type_name(uniform.type));
     }
 }
 
@@ -554,10 +550,9 @@ void Shader::set_uniform(const std::string& name, const Matrix4f& value)
                                                 value.as_ptr()));
     }
     else {
-        notf_throw(
-            runtime_error,
-            "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"Vector2f\"", name,
-            m_name, gl_type_name(uniform.type));
+        notf_throw(runtime_error,
+                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"Vector2f\"",
+                   name, m_name, gl_type_name(uniform.type));
     }
 }
 
@@ -639,15 +634,15 @@ GLuint VertexShader::attribute(const std::string& attribute_name) const
 Signal<TesselationShaderPtr> TesselationShader::on_shader_created;
 
 TesselationShader::TesselationShader(GraphicsContext& context, const GLuint program, std::string shader_name,
-                                     std::string control_source, std::string evaluation_source)
+                                     const std::string& control_source, const std::string& evaluation_source)
     : Shader(context, program, Stage::TESS_CONTROL | Stage::TESS_EVALUATION, std::move(shader_name))
     , m_control_source(std::move(control_source))
     , m_evaluation_source(std::move(evaluation_source))
 {}
 
 TesselationShaderPtr
-TesselationShader::create(GraphicsContext& context, const std::string& name, std::string& control_source,
-                          std::string& evaluation_source, const Defines& defines)
+TesselationShader::create(GraphicsContext& context, const std::string& name, const std::string& control_source,
+                          const std::string& evaluation_source, const Defines& defines)
 {
     const std::string injection_string = glsl_header(context) + build_defines(defines);
     const std::string modified_control_source = inject_header(control_source, injection_string);

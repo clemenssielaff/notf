@@ -95,7 +95,7 @@ void EventManager::WindowHandler::_run()
         }
 
         // forward the next event object to your Window's SceneGraph, that will then propagate it to the Scenes
-        SceneGraph::Access<EventManager>::propagate_event(*m_window->scene_graph(), std::move(m_events.front()));
+        SceneGraph::Access<EventManager>::propagate_event(*m_window->get_scene_graph(), std::move(m_events.front()));
         m_events.pop_front();
     }
 }
@@ -162,7 +162,7 @@ void EventManager::_register_window(Window& window)
     EventManager& manager = Application::instance().event_manager();
     for (const auto& handler : manager.m_handler) {
         if (handler->window() == &window) {
-            log_critical << "Ignoring duplicate event handler registration of Window: " << window.title();
+            log_critical << "Ignoring duplicate event handler registration of Window: " << window.get_title();
             return;
         }
     }
@@ -234,7 +234,7 @@ void EventManager::_remove_window(Window& window)
                                    return handler->window() == &window;
                                });
         if (it == manager.m_handler.end()) {
-            log_critical << "Ignoring unregistration of unknown Window: " << window.title();
+            log_critical << "Ignoring unregistration of unknown Window: " << window.get_title();
             return;
         }
         it->get()->stop(); // blocks until finished
@@ -306,7 +306,7 @@ void EventManager::_on_mouse_button(GLFWwindow* glfw_window, int button, int act
     // invert the y-coordinate (by default, y grows down)
     Vector2i window_pos;
     glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
-    window_pos.y() = window->window_size().height - window_pos.y();
+    window_pos.y() = window->get_window_size().height - window_pos.y();
 
     // parse raw arguments
     const Button notf_button = static_cast<Button>(button);
@@ -349,7 +349,7 @@ void EventManager::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
     // invert the y-coordinate (by default, y grows down)
     Vector2i window_pos;
     glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
-    window_pos.y() = window->window_size().height - window_pos.y();
+    window_pos.y() = window->get_window_size().height - window_pos.y();
 
     // parse raw arguments
     const Vector2f cursor_pos = {static_cast<float>(window_pos.x()) + static_cast<float>(x),
@@ -403,7 +403,7 @@ void EventManager::_on_scroll(GLFWwindow* glfw_window, double x, double y)
     // invert the y-coordinate (by default, y grows down)
     Vector2i window_pos;
     glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
-    window_pos.y() = window->window_size().height - window_pos.y();
+    window_pos.y() = window->get_window_size().height - window_pos.y();
 
     // update the global state
     Vector2f cursor_pos;
@@ -490,9 +490,9 @@ void EventManager::_on_window_move(GLFWwindow* /*glfw_window*/, int /*x*/, int /
 void EventManager::_on_window_resize(GLFWwindow* glfw_window, int width, int height)
 {
     valid_ptr<Window*> window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-    EventPtr event = std::make_unique<WindowResizeEvent>(window,                 // Window that the event is meant for
-                                                         window->window_size(),  // old size
-                                                         Size2i{width, height}); // new size
+    EventPtr event = std::make_unique<WindowResizeEvent>(window, // Window that the event is meant for
+                                                         window->get_window_size(), // old size
+                                                         Size2i{width, height});    // new size
     Application::instance().event_manager().handle(std::move(event));
 }
 

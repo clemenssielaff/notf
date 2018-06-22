@@ -39,7 +39,6 @@ Window::Window(const Args& args)
     Application& app = Application::instance();
 
     // NoTF uses OpenGL ES 3.2
-    //    glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
@@ -48,7 +47,7 @@ Window::Window(const Args& args)
     // create the GLFW window
     m_glfw_window.reset(glfwCreateWindow(m_size.width, m_size.height, m_title.c_str(), nullptr, nullptr));
     if (!m_glfw_window) {
-        notf_throw(initialization_error, "Window or OpenGL context creation failed for Window \"{}\"", title());
+        notf_throw(initialization_error, "Window or OpenGL context creation failed for Window \"{}\"", get_title());
     }
     glfwSetWindowUserPointer(m_glfw_window.get(), this);
     set_state(m_state);
@@ -82,15 +81,15 @@ Window::Window(const Args& args)
             else {
                 const GLFWimage glfw_icon{icon.width(), icon.height(), const_cast<uchar*>(icon.data())};
                 glfwSetWindowIcon(m_glfw_window.get(), 1, &glfw_icon);
-                log_trace << "Loaded icon for Window \"" << title() << "\" from \"" << icon_path << "\"";
+                log_trace << "Loaded icon for Window \"" << get_title() << "\" from \"" << icon_path << "\"";
             }
         }
         catch (const std::runtime_error&) {
-            log_warning << "Failed to load icon for Window \"" << title() << "\" from \"" << icon_path << "\"";
+            log_warning << "Failed to load icon for Window \"" << get_title() << "\" from \"" << icon_path << "\"";
         }
     }
 
-    log_info << "Created Window \"" << title() << "\" using OpenGl version: " << glGetString(GL_VERSION);
+    log_info << "Created Window \"" << get_title() << "\" using OpenGl version: " << glGetString(GL_VERSION);
 }
 
 WindowPtr Window::_create(const Args& args)
@@ -105,7 +104,7 @@ WindowPtr Window::_create(const Args& args)
 
 Window::~Window() { close(); }
 
-Size2i Window::framed_window_size() const
+Size2i Window::get_framed_window_size() const
 {
     if (!m_glfw_window) {
         return Size2i::invalid();
@@ -117,7 +116,7 @@ Size2i Window::framed_window_size() const
     return result;
 }
 
-Size2i Window::buffer_size() const
+Size2i Window::get_buffer_size() const
 {
     if (!m_glfw_window) {
         return Size2i::invalid();
@@ -128,7 +127,7 @@ Size2i Window::buffer_size() const
     return result;
 }
 
-Vector2f Window::mouse_pos() const
+Vector2f Window::get_mouse_pos() const
 {
     if (!m_glfw_window) {
         return Vector2f::zero();

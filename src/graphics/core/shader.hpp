@@ -263,8 +263,8 @@ private:
     /// @param name                 Human readable name of the Shader.
     /// @param control_source       Tesselation control shader source.
     /// @param evaluation_source    Tesselation evaluation shader source.
-    TesselationShader(GraphicsContext& context, const GLuint program, std::string name, std::string control_source,
-                      std::string evaluation_source);
+    TesselationShader(GraphicsContext& context, const GLuint program, std::string name,
+                      const std::string& control_source, const std::string& evaluation_source);
 
 public:
     /// Factory.
@@ -274,8 +274,9 @@ public:
     /// @param evaluation_source    Tesselation evaluation shader source.
     /// @param defines              Additional definitions to inject into the shader code.
     /// @throws internal_error      If another Shader with the same ID already exists.
-    static TesselationShaderPtr create(GraphicsContext& context, const std::string& name, std::string& control_source,
-                                       std::string& evaluation_source, const Defines& defines = s_no_defines);
+    static TesselationShaderPtr
+    create(GraphicsContext& context, const std::string& name, const std::string& control_source,
+           const std::string& evaluation_source, const Defines& defines = s_no_defines);
 
     /// The teselation control shader source code.
     const std::string& control_source() const { return m_control_source; }

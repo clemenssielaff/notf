@@ -33,7 +33,7 @@ SceneGraph::StatePtr SceneGraph::current_state() const
 
 void SceneGraph::enter_state(StatePtr new_state)
 {
-    risky_ptr<WindowPtr> window = getWindow();
+    risky_ptr<WindowPtr> window = get_window();
     if (NOTF_UNLIKELY(!window)) {
         return;
     }
@@ -46,7 +46,7 @@ void SceneGraph::_register_dirty(valid_ptr<Node*> node)
     NOTF_MUTEX_GUARD(m_hierarchy_mutex);
 
     if (m_dirty_nodes.empty()) {
-        risky_ptr<WindowPtr> window = getWindow();
+        risky_ptr<WindowPtr> window = get_window();
         if (NOTF_LIKELY(window)) {
             raw_pointer(window)->request_redraw();
         }
@@ -149,7 +149,7 @@ void SceneGraph::_propagate_event(EventPtr&& untyped_event)
     }
 }
 
-NodePropertyPtr SceneGraph::_property(const Path& path)
+NodePropertyPtr SceneGraph::_get_property(const Path& path)
 {
     if (path.is_empty()) {
         notf_throw(Path::path_error, "Cannot query a Property from a SceneGraph with an empty path");
@@ -164,7 +164,7 @@ NodePropertyPtr SceneGraph::_property(const Path& path)
         auto scene_it = m_scenes.find(scene_name);
         if (scene_it != m_scenes.end()) {
             if (ScenePtr scene = scene_it->second.lock()) {
-                return Scene::Access<SceneGraph>::property(*scene, path);
+                return Scene::Access<SceneGraph>::get_property(*scene, path);
             }
         }
     }
@@ -172,7 +172,7 @@ NodePropertyPtr SceneGraph::_property(const Path& path)
                scene_name);
 }
 
-NodePtr SceneGraph::_node(const Path& path)
+NodePtr SceneGraph::_get_node(const Path& path)
 {
     if (path.is_empty()) {
         notf_throw(Path::path_error, "Cannot query a Node  from a SceneGraph with an empty path");
@@ -187,7 +187,7 @@ NodePtr SceneGraph::_node(const Path& path)
         auto scene_it = m_scenes.find(scene_name);
         if (scene_it != m_scenes.end()) {
             if (ScenePtr scene = scene_it->second.lock()) {
-                return Scene::Access<SceneGraph>::node(*scene, path);
+                return Scene::Access<SceneGraph>::get_node(*scene, path);
             }
         }
     }
@@ -260,7 +260,7 @@ void SceneGraph::_enter_state(valid_ptr<StatePtr> state)
     NOTF_MUTEX_GUARD(m_hierarchy_mutex);
     if (state != m_current_state) {
         m_current_state = std::move(state);
-        risky_ptr<WindowPtr> window = getWindow();
+        risky_ptr<WindowPtr> window = get_window();
         if (NOTF_LIKELY(window)) {
             raw_pointer(window)->request_redraw();
         }
@@ -272,8 +272,8 @@ void SceneGraph::_enter_state(valid_ptr<StatePtr> state)
 void access::_SceneGraph<Scene>::register_scene(SceneGraph& graph, ScenePtr scene)
 {
     NOTF_ASSERT(graph.m_hierarchy_mutex.is_locked_by_this_thread());
-    NOTF_ASSERT(graph.m_scenes.count(scene->name()) == 1); // Scene should have already reserved its name
-    graph.m_scenes[scene->name()] = std::move(scene);
+    NOTF_ASSERT(graph.m_scenes.count(scene->get_name()) == 1); // Scene should have already reserved its name
+    graph.m_scenes[scene->get_name()] = std::move(scene);
 }
 
 NOTF_CLOSE_NAMESPACE

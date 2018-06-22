@@ -105,76 +105,9 @@ include_directories(notf
 )
 
 create_module(common)
-#create_module(app)
+create_module(app)
 create_module(graphics)
 create_module(utils)
-
-add_sources(SOURCE_FILES src
-    app/application.cpp
-    app/application.hpp
-    app/window.cpp
-    app/window.hpp
-    app/property_batch.hpp
-    app/property_batch.cpp
-    app/property_reader.hpp
-    app/property_graph.hpp
-    app/property_graph.cpp
-    app/property_global.hpp
-    app/resource_manager.hpp
-    app/resource_manager.cpp
-    app/event_manager.hpp
-    app/event_manager.cpp
-    app/render_target.hpp
-    app/render_target.cpp
-    app/render_manager.hpp
-    app/render_manager.cpp
-    app/scene.hpp
-    app/scene.cpp
-    app/scene_graph.hpp
-    app/scene_graph.cpp
-    app/node_property.hpp
-    app/node_property.cpp
-    app/root_node.hpp
-    app/root_node.cpp
-    app/node.hpp
-    app/node.cpp
-    app/node_container.hpp
-    app/node_container.cpp
-    app/node_handle.hpp
-    app/node_handle.cpp
-    app/path.hpp
-    app/path.cpp
-    app/layer.hpp
-    app/layer.cpp
-    app/timer_manager.cpp
-    app/timer_manager.hpp
-    app/renderer.hpp
-    app/renderer.cpp
-    app/forwards.hpp
-    app/glfw.hpp
-    app/io/char_event.hpp
-    app/io/char_event.cpp
-    app/io/event.hpp
-    app/io/event.cpp
-    app/io/key_event.hpp
-    app/io/key_event.cpp
-    app/io/keyboard.hpp
-    app/io/keyboard.cpp
-    app/io/mouse_event.hpp
-    app/io/mouse_event.cpp
-    app/io/property_event.hpp
-    app/io/property_event.cpp
-    app/io/state_event.hpp
-    app/io/state_event.cpp
-    app/io/window_event.hpp
-    app/io/window_event.cpp
-    app/render/procedural.hpp
-    app/render/procedural.cpp
-    app/widget/capability.hpp
-    app/widget/claim.hpp
-    app/widget/claim.cpp
-    app/README.md
-)
 
 add_sources(SOURCE_FILES examples
 #    framebuffer_example.cpp
@@ -221,7 +154,7 @@ add_sources(THIRDPARTY_FILES thirdparty
 
 add_library(notf
     ${common_MODULE}
-#        ${app_MODULE}
+    ${app_MODULE}
     ${graphics_MODULE}
     ${utils_MODULE}
     ${SOURCE_FILES}
@@ -298,6 +231,7 @@ if(NOTF_BUILD_TESTS)
         test_scene_graph.cpp
         test_timer.cpp
         test_path.cpp
+        test_claim.cpp
         test_properties.hpp
         test_properties.cpp
         test_event_manager.hpp

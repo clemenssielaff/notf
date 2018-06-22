@@ -37,7 +37,7 @@ SCENARIO("creation / modification of a node hierarchy", "[app][node]")
     {
         NOTF_MUTEX_GUARD(graph_access.event_mutex());
 
-        a = scene.root().set_child<TestNode>("a");
+        a = scene.get_root().set_child<TestNode>("a");
         b = a->add_node<TestNode>("b");
         c = a->add_node<TestNode>("c");
         d = b->add_node<TestNode>("d");
@@ -54,30 +54,30 @@ SCENARIO("creation / modification of a node hierarchy", "[app][node]")
     {
         NOTF_MUTEX_GUARD(graph_access.event_mutex());
 
-        REQUIRE(a->child_count() == 2);
-        REQUIRE(e->child_count() == 3);
-        REQUIRE(g->child_count() == 0);
+        REQUIRE(a->count_children() == 2);
+        REQUIRE(e->count_children() == 3);
+        REQUIRE(g->count_children() == 0);
 
-        REQUIRE(b->child<TestNode>("d") == d);
-        REQUIRE(e->child<TestNode>("i") == i);
-        REQUIRE(!e->child<TestNode>("x").is_valid());
+        REQUIRE(b->get_child<TestNode>("d") == d);
+        REQUIRE(e->get_child<TestNode>("i") == i);
+        REQUIRE(!e->get_child<TestNode>("x").is_valid());
 
         REQUIRE(b->has_child("d"));
         REQUIRE(c->has_child("f"));
         REQUIRE(!a->has_child("d"));
 
-        REQUIRE(b->child<TestNode>(0) == d);
-        REQUIRE(b->child<TestNode>(1) == e);
-        REQUIRE_THROWS_AS(b->child<TestNode>(2), NodeHandle<TestNode>::no_node_error);
+        REQUIRE(b->get_child<TestNode>(0) == d);
+        REQUIRE(b->get_child<TestNode>(1) == e);
+        REQUIRE_THROWS_AS(b->get_child<TestNode>(2), NodeHandle<TestNode>::no_node_error);
 
         REQUIRE(f->has_ancestor(c));
         REQUIRE(f->has_ancestor(a));
         REQUIRE(!f->has_ancestor(b));
         REQUIRE(!f->has_ancestor(e));
 
-        REQUIRE(g->common_ancestor(c) == a);
-        REQUIRE(f->common_ancestor(e) == a);
-        REQUIRE(e->common_ancestor(e) == e);
+        REQUIRE(g->get_common_ancestor(c) == a);
+        REQUIRE(f->get_common_ancestor(e) == a);
+        REQUIRE(e->get_common_ancestor(e) == e);
     }
 
     SECTION("Child nodes cannot have the same name")
@@ -85,16 +85,16 @@ SCENARIO("creation / modification of a node hierarchy", "[app][node]")
         NOTF_MUTEX_GUARD(graph_access.event_mutex());
 
         b->set_name("unique");
-        REQUIRE(b->name() == "unique");
+        REQUIRE(b->get_name() == "unique");
 
         c->set_name("unique");
-        REQUIRE(c->name() == "unique1");
+        REQUIRE(c->get_name() == "unique1");
 
         b->set_name("007");
-        REQUIRE(b->name() == "007");
+        REQUIRE(b->get_name() == "007");
 
         c->set_name("007");
-        REQUIRE(c->name() == "0071");
+        REQUIRE(c->get_name() == "0071");
     }
 
     SECTION("Nodes can have properties")
@@ -108,39 +108,39 @@ SCENARIO("creation / modification of a node hierarchy", "[app][node]")
         REQUIRE(d1.get() == 1);
         REQUIRE_THROWS_AS(d->add_property<int>("unique", 2), Path::not_unique_error);
 
-        REQUIRE(d->property<int>("unique") == d1);
-        REQUIRE(b->property<int>(Path("./d:unique")) == d1);
-        REQUIRE(b->property<int>(Path("/TestScene/a/b/d:unique")) == d1);
-        REQUIRE(a->property<int>(Path("/TestScene/a/b/d:unique")) == d1);
+        REQUIRE(d->get_property<int>("unique") == d1);
+        REQUIRE(b->get_property<int>(Path("./d:unique")) == d1);
+        REQUIRE(b->get_property<int>(Path("/TestScene/a/b/d:unique")) == d1);
+        REQUIRE(a->get_property<int>(Path("/TestScene/a/b/d:unique")) == d1);
 
-        REQUIRE(!a->property<int>("nope").is_valid());
-        REQUIRE(!a->property<int>(Path("/TestScene/a/b/d:doesn_exist")).is_valid());
+        REQUIRE(!a->get_property<int>("nope").is_valid());
+        REQUIRE(!a->get_property<int>(Path("/TestScene/a/b/d:doesn_exist")).is_valid());
 
-        REQUIRE_THROWS_AS(d->property<int>(Path()), Path::path_error);
-        REQUIRE_THROWS_AS(d->property<int>(Path("/TestScene/a/c:nope")), Path::path_error);
-        REQUIRE_THROWS_AS(d->property<int>(Path("/TestScene/a/b/d")), Path::path_error);
+        REQUIRE_THROWS_AS(d->get_property<int>(Path()), Path::path_error);
+        REQUIRE_THROWS_AS(d->get_property<int>(Path("/TestScene/a/c:nope")), Path::path_error);
+        REQUIRE_THROWS_AS(d->get_property<int>(Path("/TestScene/a/b/d")), Path::path_error);
     }
 
     SECTION("Nodes can be uniquely identified via their path")
     {
         NOTF_MUTEX_GUARD(graph_access.event_mutex());
 
-        REQUIRE(a->path() == Path("/TestScene/a"));
-        REQUIRE(b->path() == Path("/TestScene/a/b"));
-        REQUIRE(c->path() == Path("/TestScene/a/c"));
-        REQUIRE(d->path() == Path("/TestScene/a/b/d"));
+        REQUIRE(a->get_path() == Path("/TestScene/a"));
+        REQUIRE(b->get_path() == Path("/TestScene/a/b"));
+        REQUIRE(c->get_path() == Path("/TestScene/a/c"));
+        REQUIRE(d->get_path() == Path("/TestScene/a/b/d"));
 
         c->set_name("not_c");
-        REQUIRE(f->path() == Path("/TestScene/a/not_c/f"));
+        REQUIRE(f->get_path() == Path("/TestScene/a/not_c/f"));
 
-        REQUIRE(a->child<TestNode>(Path("./b")) == b);
-        REQUIRE(a->child<TestNode>(Path("./b/e")) == e);
-        REQUIRE(a->child<TestNode>(Path("/TestScene/a/b/e/h")) == h);
+        REQUIRE(a->get_child<TestNode>(Path("./b")) == b);
+        REQUIRE(a->get_child<TestNode>(Path("./b/e")) == e);
+        REQUIRE(a->get_child<TestNode>(Path("/TestScene/a/b/e/h")) == h);
 
-        REQUIRE_THROWS_AS(b->child<TestNode>(Path()), Path::path_error);
-        REQUIRE_THROWS_AS(b->child<TestNode>(Path("/TestScene/b/x")), Path::path_error);
-        REQUIRE_THROWS_AS(b->child<TestNode>(Path("/TestScene/c/f")), Path::path_error);
-        REQUIRE_THROWS_AS(b->child<TestNode>(Path("/TestScene/b:property")), Path::path_error);
+        REQUIRE_THROWS_AS(b->get_child<TestNode>(Path()), Path::path_error);
+        REQUIRE_THROWS_AS(b->get_child<TestNode>(Path("/TestScene/b/x")), Path::path_error);
+        REQUIRE_THROWS_AS(b->get_child<TestNode>(Path("/TestScene/c/f")), Path::path_error);
+        REQUIRE_THROWS_AS(b->get_child<TestNode>(Path("/TestScene/b:property")), Path::path_error);
     }
 
     SECTION("Nodes have a z-order that can be modified")
@@ -197,20 +197,20 @@ SCENARIO("creation / modification of a node hierarchy", "[app][node]")
 
         REQUIRE(b.is_valid());
 
-        NodeHandle<TestNode> x = scene.root().set_child<TestNode>("x");
+        NodeHandle<TestNode> x = scene.get_root().set_child<TestNode>("x");
 
         REQUIRE(!NodeHandle<TestNode>().is_valid());
         REQUIRE(NodeHandle<TestNode>() != b); // test is for identity, not whether both are equal
         REQUIRE(!b.is_valid());
-        REQUIRE_THROWS_AS(b->name(), NodeHandle<TestNode>::no_node_error);
+        REQUIRE_THROWS_AS(b->get_name(), NodeHandle<TestNode>::no_node_error);
     }
 
     SECTION("Nodes have access to all of their ancestors")
     {
         NOTF_MUTEX_GUARD(graph_access.event_mutex());
 
-        REQUIRE(e->first_ancestor<TestNode>() == b);
-        REQUIRE(e->first_ancestor<RootNode>() == a->parent());
+        REQUIRE(e->get_first_ancestor<TestNode>() == b);
+        REQUIRE(e->get_first_ancestor<RootNode>() == a->get_parent());
     }
 }
 
@@ -220,6 +220,6 @@ TestNode::~TestNode() = default;
 
 void TestNode::reverse_children()
 {
-    NOTF_MUTEX_GUARD(_hierarchy_mutex());
+    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
     _write_children().reverse();
 }

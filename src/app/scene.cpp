@@ -27,11 +27,11 @@ size_t Scene::count_nodes() const
 
 void Scene::clear() { m_root->clear(); }
 
-access::_RootNode<Scene> Scene::_root() { return RootNode::Access<Scene>(*m_root); }
+access::_RootNode<Scene> Scene::_get_root() { return RootNode::Access<Scene>(*m_root); }
 
 risky_ptr<NodeContainer*> Scene::_get_frozen_children(valid_ptr<const Node*> node)
 {
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::hierarchy_mutex(graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::hierarchy_mutex(get_graph()));
 
     auto it = m_frozen_children.find(node);
     if (it == m_frozen_children.end()) {
@@ -42,13 +42,13 @@ risky_ptr<NodeContainer*> Scene::_get_frozen_children(valid_ptr<const Node*> nod
 
 void Scene::_create_frozen_children(valid_ptr<const Node*> node)
 {
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::hierarchy_mutex(graph()));
+    NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::hierarchy_mutex(get_graph()));
 
     NOTF_UNUSED auto it = m_frozen_children.emplace(std::make_pair(node, Node::Access<Scene>::children(*node)));
     NOTF_ASSERT(it.second);
 }
 
-NodePropertyPtr Scene::_property(const Path& path)
+NodePropertyPtr Scene::_get_property(const Path& path)
 {
     if (path.is_empty()) {
         notf_throw(Path::path_error, "Cannot query a Property from a Scene with an empty path");
@@ -57,18 +57,20 @@ NodePropertyPtr Scene::_property(const Path& path)
         notf_throw(Path::path_error, "Path \"{}\" does not identify a Property", path.to_string())
     }
     if (path.is_absolute()) {
-        if (path[0] != name()) {
-            notf_throw(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(), name());
+        if (path[0] != get_name()) {
+            notf_throw(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(),
+                       get_name());
         }
         if (path.size() == 1) {
             notf_throw(Path::path_error, "Path \"{}\" does not refer to a Property in Scene \"{}\"", path.to_string(),
-                       name());
+                       get_name());
         }
     }
     {
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::hierarchy_mutex(graph()));
+        NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::hierarchy_mutex(get_graph()));
 
-        if (path.is_absolute() || path[0] == name()) { // Path("Scene/node") is relative but still requires index = 1
+        if (path.is_absolute() || path[0] == get_name()) { // Path("Scene/node") is relative but still requires index =
+                                                           // 1
             return Node::Access<Scene>::property(*m_root, path, 1);
         }
         // path.is_relative
@@ -76,7 +78,7 @@ NodePropertyPtr Scene::_property(const Path& path)
     }
 }
 
-NodePtr Scene::_node(const Path& path)
+NodePtr Scene::_get_node(const Path& path)
 {
     if (path.is_empty()) {
         notf_throw(Path::path_error, "Cannot query a Node from a Scene with an empty path");
@@ -85,18 +87,20 @@ NodePtr Scene::_node(const Path& path)
         notf_throw(Path::path_error, "Path \"{}\" does not identify a Node", path.to_string())
     }
     if (path.is_absolute()) {
-        if (path[0] != name()) {
-            notf_throw(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(), name());
+        if (path[0] != get_name()) {
+            notf_throw(Path::path_error, "Path \"{}\" does not refer to this Scene (\"{}\")", path.to_string(),
+                       get_name());
         }
         if (path.size() == 1) {
             notf_throw(Path::path_error, "Path \"{}\" does not refer to a Node in Scene \"{}\"", path.to_string(),
-                       name());
+                       get_name());
         }
     }
     {
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::hierarchy_mutex(graph()));
+        NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::hierarchy_mutex(get_graph()));
 
-        if (path.is_absolute() || path[0] == name()) { // Path("Scene/node") is relative but still requires index = 1
+        if (path.is_absolute() || path[0] == get_name()) { // Path("Scene/node") is relative but still requires index =
+                                                           // 1
             return Node::Access<Scene>::node(*m_root, path, 1);
         }
         // path.is_relative
@@ -104,7 +108,7 @@ NodePtr Scene::_node(const Path& path)
     }
 }
 
-void Scene::_finalize_root() { _root().finalize(); }
+void Scene::_finalize_root() { _get_root().finalize(); }
 
 void Scene::_clear_delta()
 {

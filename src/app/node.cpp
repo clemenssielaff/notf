@@ -64,7 +64,7 @@ thread_local std::set<valid_ptr<const Node*>> Node::s_unfinalized_nodes = {};
 Node::Node(FactoryToken, Scene& scene, valid_ptr<Node*> parent)
     : m_scene(scene), m_parent(parent), m_name(_create_name())
 {
-    log_trace << "Created \"" << name() << "\"";
+    log_trace << "Created \"" << get_name() << "\"";
 }
 
 Node::~Node()
@@ -78,8 +78,8 @@ Node::~Node()
 
     _finalize();
 
-    log_trace << "Destroying \"" << name() << "\"";
-    SceneGraph::Access<Node>::remove_dirty(graph(), this);
+    log_trace << "Destroying \"" << get_name() << "\"";
+    SceneGraph::Access<Node>::remove_dirty(get_graph(), this);
 }
 
 const std::string& Node::set_name(const std::string& name)
@@ -91,7 +91,7 @@ const std::string& Node::set_name(const std::string& name)
 
 bool Node::has_ancestor(valid_ptr<const Node*> ancestor) const
 {
-    NOTF_MUTEX_GUARD(_hierarchy_mutex());
+    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
 
     valid_ptr<const Node*> next = m_parent;
     while (next != next->m_parent) {
@@ -103,13 +103,13 @@ bool Node::has_ancestor(valid_ptr<const Node*> ancestor) const
     return false;
 }
 
-NodeHandle<Node> Node::common_ancestor(valid_ptr<Node*> other)
+NodeHandle<Node> Node::get_common_ancestor(valid_ptr<Node*> other)
 {
     if (this == other) {
         return NodeHandle<Node>(this);
     }
 
-    NOTF_MUTEX_GUARD(_hierarchy_mutex());
+    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
 
     valid_ptr<Node*> first = this;
     valid_ptr<Node*> second = other;
@@ -134,15 +134,15 @@ NodeHandle<Node> Node::common_ancestor(valid_ptr<Node*> other)
 
     // if the result is a scene root node, we need to make sure that it is in fact the root of BOTH nodes
     if (result->m_parent == result && (!has_ancestor(result) || !other->has_ancestor(result))) {
-        notf_throw(hierarchy_error, "Nodes \"{}\" and \"{}\" are not part of the same hierarchy", name(),
-                   other->name());
+        notf_throw(hierarchy_error, "Nodes \"{}\" and \"{}\" are not part of the same hierarchy", get_name(),
+                   other->get_name());
     }
     return NodeHandle<Node>(result);
 }
 
 bool Node::is_in_front() const
 {
-    NOTF_MUTEX_GUARD(_hierarchy_mutex());
+    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
 
     const NodeContainer& siblings = m_parent->_read_children();
     NOTF_ASSERT(!siblings.empty());
@@ -151,7 +151,7 @@ bool Node::is_in_front() const
 
 bool Node::is_in_back() const
 {
-    NOTF_MUTEX_GUARD(_hierarchy_mutex());
+    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
 
     const NodeContainer& siblings = m_parent->_read_children();
     NOTF_ASSERT(!siblings.empty());
@@ -176,7 +176,7 @@ bool Node::is_behind(valid_ptr<const Node*> sibling) const
 
 void Node::stack_front()
 {
-    NOTF_MUTEX_GUARD(_hierarchy_mutex());
+    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
 
     // early out to avoid creating unnecessary deltas
     if (is_in_front()) {
@@ -189,7 +189,7 @@ void Node::stack_front()
 
 void Node::stack_back()
 {
-    NOTF_MUTEX_GUARD(_hierarchy_mutex());
+    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
 
     // early out to avoid creating unnecessary deltas
     if (is_in_back()) {
@@ -202,7 +202,7 @@ void Node::stack_back()
 
 void Node::stack_before(valid_ptr<const Node*> sibling)
 {
-    NOTF_MUTEX_GUARD(_hierarchy_mutex());
+    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
 
     size_t my_index;
     { // early out to avoid creating unnecessary deltas
@@ -222,7 +222,7 @@ void Node::stack_before(valid_ptr<const Node*> sibling)
 
 void Node::stack_behind(valid_ptr<const Node*> sibling)
 {
-    NOTF_MUTEX_GUARD(_hierarchy_mutex());
+    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
 
     size_t my_index;
     { // early out to avoid creating unnecessary deltas
@@ -240,36 +240,36 @@ void Node::stack_behind(valid_ptr<const Node*> sibling)
     siblings.stack_behind(my_index, sibling);
 }
 
-NodePropertyPtr Node::_property(const Path& path)
+NodePropertyPtr Node::_get_property(const Path& path)
 {
     if (path.is_empty()) {
         notf_throw(Path::path_error, "Cannot query a Property with an empty path");
     }
     if (!path.is_property()) {
         notf_throw(Path::path_error, "Path \"{}\" does not refer to a Property of Node \"{}\"", path.to_string(),
-                   name());
+                   get_name());
     }
 
     uint offset = 0;
     if (path.is_absolute()) {
-        const Path myPath = this->path();
+        const Path myPath = get_path();
         if (!path.begins_with(myPath)) {
             notf_throw(Path::path_error, "Absolute path \"{}\" cannot be used to query a Property of Node \"{}\"",
-                       path.to_string(), name());
+                       path.to_string(), get_name());
         }
         offset = narrow_cast<uint>(myPath.size());
     }
 
-    NOTF_MUTEX_GUARD(_hierarchy_mutex());
+    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
 
     NodePropertyPtr result;
-    _property(path, offset, result);
+    _get_property(path, offset, result);
     return result;
 }
 
-void Node::_property(const Path& path, const uint index, NodePropertyPtr& result)
+void Node::_get_property(const Path& path, const uint index, NodePropertyPtr& result)
 {
-    NOTF_ASSERT(_hierarchy_mutex().is_locked_by_this_thread());
+    NOTF_ASSERT(_get_hierarchy_mutex().is_locked_by_this_thread());
     NOTF_ASSERT(index < path.size());
 
     // if this is the last step on the path, try to find the property
@@ -287,40 +287,40 @@ void Node::_property(const Path& path, const uint index, NodePropertyPtr& result
     else {
         NodePtr child = _read_children().get(path[index]).lock();
         NOTF_ASSERT(child);
-        child->_property(path, index + 1, result);
+        child->_get_property(path, index + 1, result);
     }
 }
 
-NodePtr Node::_node(const Path& path)
+NodePtr Node::_get_node(const Path& path)
 {
     if (path.is_empty()) {
         notf_throw(Path::path_error, "Cannot query a Node with an empty path");
     }
     if (!path.is_node()) {
         notf_throw(Path::path_error, "Path \"{}\" does not refer to a descenant of Node \"{}\"", path.to_string(),
-                   name());
+                   get_name());
     }
 
     uint offset = 0;
     if (path.is_absolute()) {
-        const Path myPath = this->path();
+        const Path myPath = get_path();
         if (!path.begins_with(myPath)) {
             notf_throw(Path::path_error, "Path \"{}\" cannot be used to query descenant of Node \"{}\"",
-                       path.to_string(), name());
+                       path.to_string(), get_name());
         }
         offset = narrow_cast<uint>(myPath.size());
     }
 
-    NOTF_MUTEX_GUARD(_hierarchy_mutex());
+    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
 
     NodePtr result;
-    _node(path, offset, result);
+    _get_node(path, offset, result);
     return result;
 }
 
-void Node::_node(const Path& path, const uint index, NodePtr& result)
+void Node::_get_node(const Path& path, const uint index, NodePtr& result)
 {
-    NOTF_ASSERT(_hierarchy_mutex().is_locked_by_this_thread());
+    NOTF_ASSERT(_get_hierarchy_mutex().is_locked_by_this_thread());
     NOTF_ASSERT(index < path.size());
 
     // find the next node in the path
@@ -334,16 +334,16 @@ void Node::_node(const Path& path, const uint index, NodePtr& result)
 
     // if this isn't the last node yet, continue the search from the child
     else {
-        child->_node(path, index + 1, result);
+        child->_get_node(path, index + 1, result);
     }
 }
 
 const NodeContainer& Node::_read_children() const
 {
-    NOTF_ASSERT(_hierarchy_mutex().is_locked_by_this_thread());
+    NOTF_ASSERT(_get_hierarchy_mutex().is_locked_by_this_thread());
 
     // direct access if unfrozen or this is the event handling thread
-    SceneGraph& scene_graph = graph();
+    SceneGraph& scene_graph = get_graph();
     if (!scene_graph.is_frozen() || !scene_graph.is_frozen_by(std::this_thread::get_id())) {
         return m_children;
     }
@@ -359,11 +359,11 @@ const NodeContainer& Node::_read_children() const
 
 NodeContainer& Node::_write_children()
 {
-    NOTF_ASSERT(_hierarchy_mutex().is_locked_by_this_thread());
-    NOTF_ASSERT(SceneGraph::Access<Node>::event_mutex(graph()).is_locked_by_this_thread());
+    NOTF_ASSERT(_get_hierarchy_mutex().is_locked_by_this_thread());
+    NOTF_ASSERT(SceneGraph::Access<Node>::event_mutex(get_graph()).is_locked_by_this_thread());
 
     // direct access if unfrozen or the node hasn't been finalized yet
-    SceneGraph& scene_graph = graph();
+    SceneGraph& scene_graph = get_graph();
     if (!scene_graph.is_frozen() || !_is_finalized()) {
         return m_children;
     }
@@ -382,7 +382,7 @@ NodeContainer& Node::_write_children()
 
 void Node::_clear_children()
 {
-    NOTF_MUTEX_GUARD(_hierarchy_mutex());
+    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
 
     _write_children().clear();
 }
@@ -394,7 +394,7 @@ valid_ptr<TypedNodeProperty<std::string>*> Node::_create_name()
 
     // validator function for Node names, is called every time its name changes.
     TypedNodeProperty<std::string>::Validator validator = [this](std::string& name) -> bool {
-        NOTF_MUTEX_GUARD(_hierarchy_mutex());
+        NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
         const NodeContainer& siblings = m_parent->_read_children();
 
         // create unique name
@@ -421,7 +421,7 @@ valid_ptr<TypedNodeProperty<std::string>*> Node::_create_name()
 
 void Node::_clean_tweaks()
 {
-    NOTF_ASSERT(_hierarchy_mutex().is_locked_by_this_thread());
+    NOTF_ASSERT(_get_hierarchy_mutex().is_locked_by_this_thread());
     for (auto& it : m_properties) {
         NodeProperty::Access<Node>::clear_frozen(*it.second.get());
     }
@@ -433,12 +433,12 @@ void Node::_initialize_path(const size_t depth, std::vector<std::string>& compon
         // root node
         NOTF_ASSERT(components.empty());
         components.reserve(depth);
-        components.push_back(m_scene.name());
+        components.push_back(m_scene.get_name());
     }
     else {
         // ancestor node
         m_parent->_initialize_path(depth + 1, components);
-        components.push_back(name());
+        components.push_back(get_name());
     }
 }
 
@@ -446,10 +446,10 @@ bool Node::_is_behind(valid_ptr<const Node*> sibling) const
 {
     if (m_parent != sibling->m_parent) {
         notf_throw(hierarchy_error, "Cannot compare z-order of nodes \"{}\" and \"{}\", because they are not siblings.",
-                   name(), sibling->name());
+                   get_name(), sibling->get_name());
     }
     {
-        NOTF_MUTEX_GUARD(_hierarchy_mutex());
+        NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
         const NodeContainer& siblings = m_parent->_read_children();
         for (const auto& it : siblings) {
             if (it == this) {

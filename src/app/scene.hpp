@@ -75,13 +75,13 @@ public:
     virtual ~Scene();
 
     /// The SceneGraph owning this Scene.
-    SceneGraph& graph() const { return *m_graph; }
+    SceneGraph& get_graph() const { return *m_graph; }
 
     /// Graph-unique name of the Scene.
-    const std::string& name() const { return m_name->first; }
+    const std::string& get_name() const { return m_name->first; }
 
     /// The unique root node of this Scene.
-    RootNode& root() const { return *m_root; }
+    RootNode& get_root() const { return *m_root; }
 
     /// @{
     /// Searches for and returns a Property of a Node or the Scene.
@@ -90,14 +90,14 @@ public:
     ///                 Is empty if the Property doesn't exist or is of the wrong type.
     /// @throws Path::path_error    If the Path is invalid.
     template<class T>
-    PropertyHandle<T> property(const Path& path)
+    PropertyHandle<T> get_property(const Path& path)
     {
-        return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodeProperty<T>>(_property(path)));
+        return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodeProperty<T>>(_get_property(path)));
     }
     template<class T>
-    PropertyHandle<T> property(const std::string& path)
+    PropertyHandle<T> get_property(const std::string& path)
     {
-        return property<T>(Path(path));
+        return get_property<T>(Path(path));
     }
     /// @}
 
@@ -108,14 +108,14 @@ public:
     ///                 Is empty if the Node doesn't exist or is of the wrong type.
     /// @throws Path::path_error    If the Path is invalid.
     template<class T = Node>
-    NodeHandle<T> node(const Path& path)
+    NodeHandle<T> get_node(const Path& path)
     {
-        return NodeHandle<T>(std::dynamic_pointer_cast<T>(_node(path)));
+        return NodeHandle<T>(std::dynamic_pointer_cast<T>(_get_node(path)));
     }
     template<class T = Node>
-    NodeHandle<T> node(const std::string& path)
+    NodeHandle<T> get_node(const std::string& path)
     {
-        return node<T>(Path(path));
+        return get_node<T>(Path(path));
     }
     /// @}
 
@@ -127,7 +127,7 @@ public:
 
 protected:
     /// Special access to this Scene's RootNode.
-    access::_RootNode<Scene> _root();
+    access::_RootNode<Scene> _get_root();
 
     // event handling ---------------------------------------------------------
 private:
@@ -163,13 +163,13 @@ private:
     /// @param path     Path uniquely identifying a Property.
     /// @returns        Handle to the requested NodeProperty. Is empty if the Property doesn't exist.
     /// @throws Path::path_error    If the Path does not lead to a Property.
-    NodePropertyPtr _property(const Path& path);
+    NodePropertyPtr _get_property(const Path& path);
 
     /// Private and untyped implementation of `node` assuming sanitized inputs.
     /// @param path     Path uniquely identifying a Node.
     /// @returns        Handle to the requested Node. Is empty if the Node doesn't exist.
     /// @throws Path::path_error    If the Path does not lead to a Node.
-    NodePtr _node(const Path& path);
+    NodePtr _get_node(const Path& path);
 
     /// Finalizes the RootNode of this Scene after creation.
     void _finalize_root();
@@ -216,13 +216,13 @@ class access::_Scene<SceneGraph> {
     /// @param path     Path uniquely identifying a Property.
     /// @returns        The requested NodeProperty, is empty is none exists.
     /// @throws Path::path_error    If the Path is invalid.
-    static NodePropertyPtr property(Scene& scene, const Path& path) { return scene._property(path); }
+    static NodePropertyPtr get_property(Scene& scene, const Path& path) { return scene._get_property(path); }
 
     /// Searches for and returns a Node in the Scene.
     /// @param path     Path uniquely identifying a Node.
     /// @returns        The requested Node, is empty is none exists.
     /// @throws Path::path_error    If the Path is invalid.
-    static NodePtr node(Scene& scene, const Path& path) { return scene._node(path); }
+    static NodePtr get_node(Scene& scene, const Path& path) { return scene._get_node(path); }
 };
 
 //-----------------------------------------------------------------------------

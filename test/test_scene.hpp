@@ -35,7 +35,7 @@ private:
 
 struct TestScene : public Scene {
     TestScene(FactoryToken token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
-        : Scene(token, graph, std::move(name)), p_root_float(_root().create_property<float>("root_float", 0))
+        : Scene(token, graph, std::move(name)), p_root_float(_get_root().create_property<float>("root_float", 0))
     {}
 
     ~TestScene() override;

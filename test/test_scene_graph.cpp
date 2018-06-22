@@ -38,7 +38,7 @@ SCENARIO("a Scene can be set up and modified", "[app][scene_graph]")
     {
         NOTF_MUTEX_GUARD(graph_access.event_mutex());
 
-        NodeHandle<TestNode> a = scene.root().set_child<TestNode>("a");
+        NodeHandle<TestNode> a = scene.get_root().set_child<TestNode>("a");
         NodeHandle<TestNode> b = a->add_node<TestNode>("b");
         NodeHandle<TestNode> c = a->add_node<TestNode>("c");
         NodeHandle<TestNode> d = b->add_node<TestNode>("d");
@@ -50,23 +50,23 @@ SCENARIO("a Scene can be set up and modified", "[app][scene_graph]")
 
         PropertyHandle<int> d1 = d->add_property<int>("d1", 1);
 
-        REQUIRE((scene_graph->scene("TestScene") == scene_ptr) == true);
-        REQUIRE(!scene_graph->scene("OtherScene"));
+        REQUIRE((scene_graph->get_scene("TestScene") == scene_ptr) == true);
+        REQUIRE(!scene_graph->get_scene("OtherScene"));
 
-        REQUIRE(scene_graph->node<TestNode>("/TestScene/a/b/d") == d);
-        REQUIRE(scene_graph->node<TestNode>("TestScene/a") == a);
+        REQUIRE(scene_graph->get_node<TestNode>("/TestScene/a/b/d") == d);
+        REQUIRE(scene_graph->get_node<TestNode>("TestScene/a") == a);
 
-        REQUIRE_THROWS_AS(scene_graph->node<TestNode>(Path()), Path::path_error);
-        REQUIRE_THROWS_AS(scene_graph->node<TestNode>("/TestScene/a:property"), Path::path_error);
-        REQUIRE_THROWS_AS(scene_graph->node<TestNode>("/OtherScene/a/b/d"), Path::path_error);
-        REQUIRE_THROWS_AS(scene_graph->node<TestNode>("/TestScene"), Path::path_error);
+        REQUIRE_THROWS_AS(scene_graph->get_node<TestNode>(Path()), Path::path_error);
+        REQUIRE_THROWS_AS(scene_graph->get_node<TestNode>("/TestScene/a:property"), Path::path_error);
+        REQUIRE_THROWS_AS(scene_graph->get_node<TestNode>("/OtherScene/a/b/d"), Path::path_error);
+        REQUIRE_THROWS_AS(scene_graph->get_node<TestNode>("/TestScene"), Path::path_error);
 
-        REQUIRE(scene.property<int>("/TestScene/a/b/d:d1") == d1);
+        REQUIRE(scene.get_property<int>("/TestScene/a/b/d:d1") == d1);
 
-        REQUIRE_THROWS_AS(scene_graph->property<int>(Path()), Path::path_error);
-        REQUIRE_THROWS_AS(scene_graph->property<int>(Path("/:TestScene")), Path::path_error);
-        REQUIRE_THROWS_AS(scene_graph->property<int>(Path("/TestScene/a/b/d")), Path::path_error);
-        REQUIRE_THROWS_AS(scene_graph->property<int>(Path("/OtherScene/a/b/d:d1")), Path::path_error);
+        REQUIRE_THROWS_AS(scene_graph->get_property<int>(Path()), Path::path_error);
+        REQUIRE_THROWS_AS(scene_graph->get_property<int>(Path("/:TestScene")), Path::path_error);
+        REQUIRE_THROWS_AS(scene_graph->get_property<int>(Path("/TestScene/a/b/d")), Path::path_error);
+        REQUIRE_THROWS_AS(scene_graph->get_property<int>(Path("/OtherScene/a/b/d:d1")), Path::path_error);
     }
 }
 

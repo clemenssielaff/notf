@@ -54,7 +54,7 @@ public:
         /// @param max          Maximum size, defaults to `preferred`.
         Stretch(const float preferred, const float min = NAN, const float max = NAN)
             : m_preferred(is_nan(preferred) ? 0 : notf::max(preferred, 0))
-            , m_min(is_real(min) ? notf::min(notf::max(0, min), m_preferred) : m_preferred)
+            , m_min(is_real(min) ? clamp(min, 0, m_preferred) : m_preferred)
             , m_max(is_nan(max) ? m_preferred : notf::max(max, m_preferred))
         {}
 
@@ -74,11 +74,7 @@ public:
         int get_priority() const { return m_priority; }
 
         /// Tests if this Stretch is a fixed size where all 3 values are the same.
-        bool is_fixed() const
-        {
-            return abs(m_preferred - m_min) < precision_high<float>()
-                   && abs(m_preferred - m_max) < precision_high<float>();
-        }
+        bool is_fixed() const { return is_approx(m_min, m_preferred) && is_approx(m_preferred, m_max); }
 
         /// Sets a new minimum size, accomodates both the preferred and max size if necessary.
         /// @param min  Minimum size, must be 0 <= size < INFINITY.
@@ -126,7 +122,7 @@ public:
 
         /// Sets a fixed size.
         /// @param size     New min/max and preferred size.
-        void set_fixed(const float size) { m_min = m_max = m_preferred = size; }
+        void set_fixed(const float size) { m_min = m_max = m_preferred = max(size, 0); }
 
         /// Adds a positive offset to the min, max and preferred value.
         /// Useful, for example, if you want to add a fixed "spacing" to the Claim of a Layout.
@@ -167,11 +163,9 @@ public:
         /// @param other    Stretch to compare against.
         bool operator==(const Stretch& other) const
         {
-            return (m_priority == other.m_priority // first because integer comparison is fastest
-                    && abs(m_preferred - other.m_preferred) < precision_high<float>()
-                    && abs(m_min - other.m_min) < precision_high<float>()
-                    && (abs(m_max - other.m_max) < precision_high<float>() || (is_inf(m_max) && is_inf(other.m_max)))
-                    && abs(m_scale_factor - other.m_scale_factor) < precision_high<float>());
+            return (m_priority == other.m_priority && is_approx(m_preferred, other.m_preferred)
+                    && is_approx(m_min, other.m_min) && is_approx(m_max, other.m_max)
+                    && is_approx(m_scale_factor, other.m_scale_factor));
         }
 
         /// Inequality comparison operator.
@@ -233,7 +227,7 @@ private:
         }
 
         /// Tests if this Ratio is valid.
-        bool is_valid() const { return m_width > precision_high<float>() && m_height > precision_high<float>(); }
+        bool is_valid() const { return !is_zero(m_width) && !is_zero(m_height); }
 
         /// Returns the ratio, is 0 if invalid.
         float height_for_width() const
@@ -266,8 +260,7 @@ private:
         /// @param other    Ratio to compare against.
         bool operator==(const Ratio& other) const
         {
-            return (abs(m_width - other.m_width) < precision_high<float>())
-                   && (abs(m_height - other.m_height) < precision_high<float>());
+            return is_approx(m_width, other.m_width) && is_approx(m_height, other.m_height);
         }
 
         /// Ineequality operator
@@ -281,6 +274,28 @@ private:
 
         /// Height.
         float m_height = 0;
+    };
+
+    /// A Claim has two different ratio-constraints, one for the minimum ratio - one for the max.
+    struct Ratios {
+        /// Equality operator
+        /// @param other    Ratio to compare against.
+        bool operator==(const Ratios& other) const
+        {
+            return (lower_bound == other.lower_bound) && (upper_bound == other.upper_bound);
+        }
+
+        /// Ineequality operator
+        /// @param other    Ratio to compare against.
+        bool operator!=(const Ratios& other) const { return !(*this == other); }
+
+        // fields -------------------------------------------------------------
+    public:
+        /// Minimum Ratio.
+        Ratio lower_bound = {};
+
+        /// Maximum Ratio.
+        Ratio upper_bound = {};
     };
 
     // methods ------------------------------------------------------------------------------------------------------ //
@@ -297,6 +312,8 @@ public:
 
     ///@{
     /// Returns a Claim with fixed height and width.
+    /// @param width    Width, is clamped to be >= 0.
+    /// @param height   Height, is clamped to be >= 0.
     static Claim fixed(const float width, const float height)
     {
         Claim::Stretch horizontal, vertical;
@@ -333,7 +350,7 @@ public:
 
     ///@{
     /// Sets a new minimum size of both Stretches, accomodates both the preferred and max size if necessary.
-    /// @param size  Minimum size, must be 0 <= size < INFINITY.
+    /// @param size  Minimum size, must be 0 <= size < INFINITY in each dimension.
     void set_min(const float width, const float height)
     {
         m_horizontal.set_min(width);
@@ -344,7 +361,7 @@ public:
 
     ///@{
     /// Sets a new preferred size of both Stretches, accomodates both the min and max size if necessary.
-    /// @param size  Preferred size, must be 0 <= size < INFINITY.
+    /// @param size  Preferred size, must be 0 <= size < INFINITY in each dimension.
     void set_preferred(const float width, const float height)
     {
         m_horizontal.set_preferred(width);
@@ -355,7 +372,7 @@ public:
 
     ///@{
     /// Sets a new maximum size of both Stretches, accomodates both the min and preferred size if necessary.
-    /// @param size  Maximum size, must be 0 <= size <= INFINITY.
+    /// @param size  Maximum size, must be 0 <= size <= INFINITY in each dimension.
     void set_max(const float width, const float height)
     {
         m_horizontal.set_max(width);
@@ -372,7 +389,8 @@ public:
         m_vertical.set_scale_factor(factor);
     }
 
-    /// Sets the the priority of both Stretches (0 = default).
+    /// Sets the the priority of both Stretches.
+    /// @param priority    Priority.
     void set_priority(const int priority)
     {
         m_horizontal.set_priority(priority);
@@ -381,6 +399,8 @@ public:
 
     ///@{
     /// Sets both Stretches to a fixed size.
+    /// @param width    Width, is clamped to be >= 0.
+    /// @param height   Height, is clamped to be >= 0.
     void set_fixed(const float width, const float height)
     {
         m_horizontal.set_fixed(width);
@@ -409,25 +429,27 @@ public:
     }
 
     /// In-place, horizontal addition operator for Claims.
+    /// @param other    Claim to add.
     Claim& add_horizontal(const Claim& other)
     {
         m_horizontal += other.m_horizontal;
         m_vertical.maxed(other.m_vertical);
         m_ratios = {
-            m_ratios.first.add_horizontal(other.m_ratios.first),
-            m_ratios.second.add_horizontal(other.m_ratios.second),
+            m_ratios.lower_bound.add_horizontal(other.m_ratios.lower_bound),
+            m_ratios.upper_bound.add_horizontal(other.m_ratios.upper_bound),
         };
         return *this;
     }
 
     /// In-place, vertical addition operator for Claims.
+    /// @param other    Claim to add.
     Claim& add_vertical(const Claim& other)
     {
         m_horizontal.maxed(other.m_horizontal);
         m_vertical += other.m_vertical;
         m_ratios = {
-            m_ratios.first.add_vertical(other.m_ratios.first),
-            m_ratios.second.add_vertical(other.m_ratios.second),
+            m_ratios.lower_bound.add_vertical(other.m_ratios.lower_bound),
+            m_ratios.upper_bound.add_vertical(other.m_ratios.upper_bound),
         };
         return *this;
     }
@@ -436,15 +458,16 @@ public:
     /// (0, 0) means there exists no constraint.
     std::pair<float, float> get_width_to_height() const
     {
-        return {m_ratios.first.height_for_width(), m_ratios.second.height_for_width()};
+        return {m_ratios.lower_bound.height_for_width(), m_ratios.upper_bound.height_for_width()};
     }
 
     /// Sets the ratio constraint.
     /// @param ratio_min    Width to Height (min/fixed value), is used as minimum value if the second parameter is set.
     /// @param ratio_max    Width to Height (max value), 'ratio_min' is use by default.
-    void set_width_to_height(const float ratio_min, const float ratio_max = NAN);
+    void set_width_to_height(float ratio_min, float ratio_max = NAN);
 
     /// In-place max operator.
+    /// @param other    Claim to max width.
     Claim& maxed(const Claim& other)
     {
         m_horizontal.maxed(other.m_horizontal);
@@ -456,15 +479,18 @@ public:
     }
 
     /// Equality comparison operator.
+    /// @param other    Claim to compare width.
     bool operator==(const Claim& other) const
     {
         return (m_horizontal == other.m_horizontal && m_vertical == other.m_vertical && m_ratios == other.m_ratios);
     }
 
     /// Inequality comparison operator.
+    /// @param other    Claim to compare width.
     bool operator!=(const Claim& other) const { return !(*this == other); }
 
     /// Applies the constraints of this Claim to a given size.
+    /// @param size Input size.
     /// @return  Constrainted size.
     Size2f apply(const Size2f& size) const;
 
@@ -477,7 +503,7 @@ private:
     Stretch m_vertical;
 
     /// Minimum and maximum ratio scaling constraint.
-    std::pair<Ratio, Ratio> m_ratios = std::make_pair(Ratio{}, Ratio{});
+    Ratios m_ratios;
 };
 
 // ================================================================================================================== //

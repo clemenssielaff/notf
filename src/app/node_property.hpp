@@ -161,14 +161,14 @@ public:
     ~TypedNodeProperty() override { _clear_frozen_value(); }
 
     /// The node-unique name of this Property.
-    const std::string& name() const { return m_name_it->first; }
+    const std::string& get_name() const { return m_name_it->first; }
 
     /// Current NodeProperty value.
     const T& get() const { return _get(std::this_thread::get_id()); }
 
     /// Returns true if this NodeProperty can be set to hold an expressions.
     /// If this method returns false, trying to set an expression will throw a `no_body_error`.
-    bool supports_expressions() const { return (_body() != nullptr); }
+    bool supports_expressions() const { return (_get_body() != nullptr); }
 
     /// Whether or not changing this property will make the Node dirty (cause a redraw) or not.
     bool is_external() const { return m_is_external; }
@@ -183,7 +183,7 @@ public:
     /// @returns        True iff the value could be updated, false if the validation failed.
     bool set(T value)
     {
-        if (risky_ptr<TypedPropertyBody<T>*> body = _body()) {
+        if (risky_ptr<TypedPropertyBody<T>*> body = _get_body()) {
             PropertyUpdateList effects;
             body->set(std::forward<T>(value), effects);
             _update_affected(std::move(effects));
@@ -204,10 +204,11 @@ public:
     ///                     If this NodeProperty was created without a PropertyBody and cannot accept expressions.
     void set(Expression&& expression, Dependencies&& dependencies)
     {
-        risky_ptr<TypedPropertyBody<T>*> body = _body();
+        risky_ptr<TypedPropertyBody<T>*> body = _get_body();
         if (!body) {
             notf_throw(NodeProperty::no_body_error,
-                       "Property \"{}\" on Node \"{}\" cannot be defined using an Expression", name(), _node_name());
+                       "Property \"{}\" on Node \"{}\" cannot be defined using an Expression", get_name(),
+                       _node_name());
         }
 
         PropertyUpdateList effects;
@@ -237,7 +238,7 @@ private:
     }
 
     /// The typed property body.
-    risky_ptr<TypedPropertyBody<T>*> _body() const { return static_cast<TypedPropertyBody<T>*>(m_body.get()); }
+    risky_ptr<TypedPropertyBody<T>*> _get_body() const { return static_cast<TypedPropertyBody<T>*>(m_body.get()); }
 
     /// Shallow update of affected PropertyHandles.
     /// @param effects  Effects on other Properties that were affected by a change to this one.

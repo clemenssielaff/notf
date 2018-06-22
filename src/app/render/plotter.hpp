@@ -16,7 +16,6 @@ NOTF_OPEN_NAMESPACE
 /// After calling `parse`, the render image is replaced by the new one and the buffer is cleared.
 /// Technically, the conceptual images consist of OpenGl buffers and draw calls.
 class Plotter : public Renderer {
-    friend class Renderer;
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
@@ -100,19 +99,21 @@ private:
     };
 
     // methods ------------------------------------------------------------------------------------------------------ //
-protected:
+private:
+    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
+
     /// Construct a new Plotter.
-    /// @param token            Token to make sure that the instance can only be created by a call to `_create`.
-    /// @param graph            SceneGraph.
+    /// @param scene            Scene to plot
     /// @throws runtime_error   If the OpenGL VAO could not be generated.
-    Plotter(const Token& token, SceneGraph& graph);
+    Plotter(Scene& scene);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(Plotter);
 
     /// Factory.
-    /// @param graph    SceneGraph.
-    static PlotterPtr create(SceneGraph& graph) { return _create<Plotter>(graph); }
+    /// @param scene    Scene to plot
+    /// @throws runtime_error   If the OpenGL VAO could not be generated.
+    static PlotterPtr create(Scene& scene) { return NOTF_MAKE_SHARED_FROM_PRIVATE(Plotter, scene); }
 
     /// Destructor.
     virtual ~Plotter() override;
@@ -141,7 +142,7 @@ public:
 
 private:
     /// Render the current contents of the Plotter.
-    virtual void _render() const override;
+    void _render(valid_ptr<Scene*> scene) const override;
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
@@ -167,7 +168,7 @@ private:
     std::vector<Batch> m_batch_buffer;
 
     /// OpenGL handle of the internal vertex array object.
-    GLuint m_vao_id;
+    GLuint m_vao_id = 0;
 
     /// State of the Plotter pipeline.
     mutable State m_state;

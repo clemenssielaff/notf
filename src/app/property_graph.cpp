@@ -29,7 +29,7 @@ void PropertyGraph::fire_event(PropertyUpdateList&& effects)
         if (risky_ptr<PropertyHead*> property_head = update->property->head()) {
             if (risky_ptr<Node*> node = property_head->node()) {
                 WindowPtr window;
-                if (risky_ptr<WindowPtr> risky = node->graph().getWindow()) {
+                if (risky_ptr<WindowPtr> risky = node->get_graph().get_window()) {
                     window = std::move(risky);
                 }
                 else {

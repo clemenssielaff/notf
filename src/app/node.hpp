@@ -62,19 +62,19 @@ public:
     Node(FactoryToken, Scene& scene, valid_ptr<Node*> parent);
 
     /// Destructor.
-     ~Node() override;
+    ~Node() override;
 
     /// The Scene containing this node.
-    Scene& scene() const { return m_scene; }
+    Scene& get_scene() const { return m_scene; }
 
     /// The SceneGraph containing this node.
-    SceneGraph& graph() const { return m_scene.graph(); }
+    SceneGraph& get_graph() const { return m_scene.get_graph(); }
 
     /// The parent of this node.
-    NodeHandle<Node> parent() const { return NodeHandle<Node>(raw_pointer(m_parent)); }
+    NodeHandle<Node> get_parent() const { return NodeHandle<Node>(raw_pointer(m_parent)); }
 
     /// The sibling-unique name of this node.
-    const std::string& name() const { return m_name->get(); }
+    const std::string& get_name() const { return m_name->get(); }
 
     /// Updates the name of this Node.
     /// @param name     Proposed new name for this node.
@@ -84,7 +84,7 @@ public:
     /// Registers this Node as being dirty.
     /// A ScenGraph containing at least one dirty Node causes the Window to be redrawn at the next opportunity.
     /// Is virtual, so subclasses may decide to ignore this method, for example if the node is invisible.
-    virtual void redraw() { SceneGraph::Access<Node>::register_dirty(graph(), this); }
+    virtual void redraw() { SceneGraph::Access<Node>::register_dirty(get_graph(), this); }
 
     // properties -------------------------------------------------------------
 
@@ -97,7 +97,7 @@ public:
     /// @param name     Name of the requested Property.
     /// @returns        Requested Property, if one exists that matches both name and type.
     template<class T>
-    PropertyHandle<T> property(const std::string& name) const
+    PropertyHandle<T> get_property(const std::string& name) const
     {
         auto it = m_properties.find(name);
         if (it == m_properties.end()) {
@@ -111,15 +111,15 @@ public:
     /// @returns        Requested Property, if one exists that matches both name and type.
     /// @throws Path::path_error    If the Path does not lead to a Property.
     template<class T>
-    PropertyHandle<T> property(const Path& path)
+    PropertyHandle<T> get_property(const Path& path)
     {
-        return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodeProperty<T>>(_property(path)));
+        return PropertyHandle<T>(std::dynamic_pointer_cast<TypedNodeProperty<T>>(_get_property(path)));
     }
 
     // hierarchy --------------------------------------------------------------
 
     /// Graph-unique path to this Node.
-    Path path() const
+    Path get_path() const
     {
         std::vector<std::string> components;
         _initialize_path(1, components);
@@ -130,7 +130,7 @@ public:
     /// @param name     Name of the requested Node.
     bool has_child(const std::string& name)
     {
-        NOTF_MUTEX_GUARD(_hierarchy_mutex());
+        NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
         return _read_children().contains(name);
     }
 
@@ -140,9 +140,9 @@ public:
     /// @returns        The requested child Node.
     /// @throws no_node_error    If there is no child with the given name, or it is of the wrong type.
     template<class T>
-    NodeHandle<T> child(const std::string& name)
+    NodeHandle<T> get_child(const std::string& name)
     {
-        NOTF_MUTEX_GUARD(_hierarchy_mutex());
+        NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
         return NodeHandle<T>(_read_children().get(name));
     }
 
@@ -152,15 +152,15 @@ public:
     /// @returns        The requested child Node.
     /// @throws no_node_error    If the index is out-of-bounds or the child Node is of the wrong type.
     template<class T>
-    NodeHandle<T> child(const size_t index)
+    NodeHandle<T> get_child(const size_t index)
     {
-        NOTF_MUTEX_GUARD(_hierarchy_mutex());
+        NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
         const NodeContainer& children = _read_children();
         if (index < children.size()) {
             return NodeHandle<T>(children[index].raw());
         }
         notf_throw(detail::NodeHandleBase::no_node_error, "Index {} is out-of-bounds for Node \"{}\" with {} children",
-                   index, name(), child_count());
+                   index, get_name(), count_children());
     }
 
     /// Searches for and returns a descendant of this Node.
@@ -169,22 +169,22 @@ public:
     ///                 Is empty if the Node doesn't exist or is of the wrong type.
     /// @throws Path::path_error    If the Path is invalid.
     template<class T>
-    NodeHandle<T> child(const Path& path)
+    NodeHandle<T> get_child(const Path& path)
     {
-        return NodeHandle<T>(std::dynamic_pointer_cast<T>(_node(path)));
+        return NodeHandle<T>(std::dynamic_pointer_cast<T>(_get_node(path)));
     }
 
     /// The number of direct children of this Node.
-    size_t child_count() const
+    size_t count_children() const
     {
-        NOTF_MUTEX_GUARD(_hierarchy_mutex());
+        NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
         return _read_children().size();
     }
 
     /// The number of all (direct and indirect) descendants of this Node.
     size_t count_descendants() const
     {
-        NOTF_MUTEX_GUARD(_hierarchy_mutex());
+        NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
         size_t result = 0;
         _count_descendants_impl(result);
         return result;
@@ -198,14 +198,14 @@ public:
     /// The root node is always a common ancestor, iff the two nodes are in the same scene.
     /// @param other            Other Node to find the common ancestor for.
     /// @throws hierarchy_error If the two nodes are not in the same scene.
-    NodeHandle<Node> common_ancestor(valid_ptr<Node*> other);
+    NodeHandle<Node> get_common_ancestor(valid_ptr<Node*> other);
 
     /// Returns the first ancestor of this Node that has a specific type (can be empty if none is found).
     /// @returns    Typed handle of the first ancestor with the requested type, can be empty if none was found.
     template<class T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
-    NodeHandle<T> first_ancestor()
+    NodeHandle<T> get_first_ancestor()
     {
-        NOTF_MUTEX_GUARD(_hierarchy_mutex());
+        NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
 
         valid_ptr<Node*> next = m_parent;
         while (true) {
@@ -230,7 +230,7 @@ public:
     /// Returns true if this node is stacked anywhere in front of the given sibling.
     /// @param sibling  Sibling node to test against.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    bool is_before(valid_ptr<const Node *> sibling) const;
+    bool is_before(valid_ptr<const Node*> sibling) const;
 
     /// Returns true if this node is stacked anywhere behind the given sibling.
     /// @param sibling  Sibling node to test against.
@@ -258,32 +258,32 @@ protected:
     /// @param path     Path uniquely identifying a Property.
     /// @returns        The requested NodeProperty.
     /// @throws Path::path_error    If the Path does not lead to a Property.
-    NodePropertyPtr _property(const Path& path);
+    NodePropertyPtr _get_property(const Path& path);
 
     /// Recursive path iteration method to query a related Property.
     /// @param path     Path uniquely identifying a Property.
     /// @param index    Index of the next child in the path
     /// @param result   [OUT] Result of the query.
     /// @throws Path::path_error    If the Path does not lead to a Property.
-    void _property(const Path& path, uint index, NodePropertyPtr& result);
+    void _get_property(const Path& path, uint index, NodePropertyPtr& result);
 
     /// Private and untyped implementation of `node` assuming sanitized inputs.
     /// @param path     Path uniquely identifying a Node.
     /// @returns        Handle to the requested Node. Is empty if the Node doesn't exist.
     /// @throws Path::path_error    If the Path does not lead to a Node.
-    NodePtr _node(const Path& path);
+    NodePtr _get_node(const Path& path);
 
     /// Recursive path iteration method to query a descendant Node.
     /// @param path     Path uniquely identifying a Node.
     /// @param index    Index of the next child in the path
     /// @param result   [OUT] Result of the query.
     /// @throws Path::path_error    If the Path does not lead to a Node.
-    void _node(const Path& path, uint index, NodePtr& result);
+    void _get_node(const Path& path, uint index, NodePtr& result);
 
     /// Recursive implementation of `count_descendants`.
     void _count_descendants_impl(size_t& result) const
     {
-        NOTF_ASSERT(_hierarchy_mutex().is_locked_by_this_thread());
+        NOTF_ASSERT(_get_hierarchy_mutex().is_locked_by_this_thread());
         result += _read_children().size();
         for (const auto& child : _read_children()) {
             child->_count_descendants_impl(result);
@@ -291,7 +291,7 @@ protected:
     }
 
     /// Direct access to the mutex protecting this node's hierarchy.
-    RecursiveMutex& _hierarchy_mutex() const { return SceneGraph::Access<Node>::hierarchy_mutex(graph()); }
+    RecursiveMutex& _get_hierarchy_mutex() const { return SceneGraph::Access<Node>::hierarchy_mutex(get_graph()); }
 
     /// All children of this node, orded from back to front.
     /// Never creates a delta.
@@ -317,7 +317,7 @@ protected:
         auto handle = NodeHandle<T>(child);
 
         { // store the node as a child
-            NOTF_MUTEX_GUARD(_hierarchy_mutex());
+            NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
             _write_children().add(std::move(child));
         }
 
@@ -336,7 +336,7 @@ protected:
         NOTF_ASSERT(node);
 
         { // remove the node from the child container
-            NOTF_MUTEX_GUARD(_hierarchy_mutex());
+            NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
             NodeContainer& children = _write_children();
             children.erase(node);
         }
@@ -364,10 +364,10 @@ protected:
             notf_throw(node_finalized_error,
                        "Cannot create Property \"{}\" (or any new Property) on Node \"{}\", "
                        "or in fact any Node that has already been finalized",
-                       name, this->name());
+                       name, get_name());
         }
         if (m_properties.count(name)) {
-            notf_throw(Path::not_unique_error, "Node \"{}\" already has a Property named \"{}\"", this->name(), name);
+            notf_throw(Path::not_unique_error, "Node \"{}\" already has a Property named \"{}\"", get_name(), name);
         }
 
         if (validator && !validator(value)) {
@@ -474,7 +474,7 @@ class access::_Node<Scene> {
     static NodePropertyPtr property(Node& node, const Path& path, const uint index)
     {
         NodePropertyPtr result;
-        node._property(path, index, result);
+        node._get_property(path, index, result);
         return result;
     }
 
@@ -487,7 +487,7 @@ class access::_Node<Scene> {
     static NodePtr node(Node& node, const Path& path, const uint index)
     {
         NodePtr result;
-        node._node(path, index, result);
+        node._get_node(path, index, result);
         return result;
     }
 };

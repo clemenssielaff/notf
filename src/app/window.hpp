@@ -71,41 +71,41 @@ public:
     virtual ~Window();
 
     /// The Window's title.
-    const std::string& title() const { return m_title; }
+    const std::string& get_title() const { return m_title; }
 
     ///@{
     /// Internal GraphicsContext.
-    GraphicsContext& graphics_context() { return *m_graphics_context; }
-    const GraphicsContext& graphics_context() const { return *m_graphics_context; }
+    GraphicsContext& get_graphics_context() { return *m_graphics_context; }
+    const GraphicsContext& get_graphics_context() const { return *m_graphics_context; }
     ///@}
 
     ///@{
     /// Scenes displayed in the Window.
-    SceneGraphPtr& scene_graph() { return m_scene_graph; }
-    const SceneGraphPtr& scene_graph() const { return m_scene_graph; }
+    SceneGraphPtr& get_scene_graph() { return m_scene_graph; }
+    const SceneGraphPtr& get_scene_graph() const { return m_scene_graph; }
     ///@}
 
     ///@{
     /// FontManager used to render text.
-    FontManager& font_manager() { return *m_font_manager; }
-    const FontManager& font_manager() const { return *m_font_manager; }
+    FontManager& get_font_manager() { return *m_font_manager; }
+    const FontManager& get_font_manager() const { return *m_font_manager; }
     ///@}
 
     /// Returns the Window's size in screen coordinates (not pixels).
     /// Returns an invalid size if the GLFW window was already closed.
-    Size2i window_size() const { return m_size; }
+    Size2i get_window_size() const { return m_size; }
 
     /// Returns the size of the Window including decorators added by the OS in screen coordinates (not pixels).
     /// Returns an invalid size if the GLFW window was already closed.
-    Size2i framed_window_size() const;
+    Size2i get_framed_window_size() const;
 
     /// Returns the size of the Window's framebuffer in pixels.
     /// Returns an invalid size if the GLFW window was already closed.
-    Size2i buffer_size() const;
+    Size2i get_buffer_size() const;
 
     /// Returns the position of the mouse pointer relativ to the Window's top-left corner in screen coordinates.
     /// Returns zero if the GLFW window was already closed.
-    Vector2f mouse_pos() const;
+    Vector2f get_mouse_pos() const;
 
     /// Tell the RenderManager to redraw this Window at the next opportunity.
     void request_redraw();
@@ -123,7 +123,7 @@ public:
 
 private:
     /// The wrapped GLFW window.
-    GLFWwindow* _glfw_window() { return m_glfw_window.get(); }
+    GLFWwindow* _get_glfw_window() { return m_glfw_window.get(); }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:

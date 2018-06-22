@@ -96,13 +96,13 @@ struct Color {
     /** Tests whether two Colors are equal. */
     bool operator==(const Color& other) const
     {
-        return (approx(r, other.r) && approx(g, other.g) && approx(b, other.b) && approx(a, other.a));
+        return (is_approx(r, other.r) && is_approx(g, other.g) && is_approx(b, other.b) && is_approx(a, other.a));
     }
 
     /** Tests whether two Colors are not equal. */
     bool operator!=(const Color& other) const
     {
-        return (!approx(r, other.r) || !approx(g, other.g) || !approx(b, other.b) || !approx(a, other.a));
+        return (!is_approx(r, other.r) || !is_approx(g, other.g) || !is_approx(b, other.b) || !is_approx(a, other.a));
     }
 
     /** Modifiers *****************************************************************************************************/
