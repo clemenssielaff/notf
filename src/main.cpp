@@ -1,3 +1,5 @@
+#include <iostream>
+
 //#include "framebuffer_example.hpp"
 //#include "line_example.hpp"
 //#include "rendermanager_example.hpp"
@@ -9,6 +11,11 @@
 
 int main(int argc, char* argv[])
 {
+    // disables the synchronization standard streams
+    // (for detail see: https://stackoverflow.com/a/31165481)
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(nullptr);
+
     //    return shape_main(argc, argv);
     //    return line_main(argc, argv);
     //    return wireframe_main(argc, argv);
