@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <vector>
 
 #include "app/forwards.hpp"
 #include "common/exception.hpp"

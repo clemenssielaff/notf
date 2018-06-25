@@ -23,22 +23,22 @@ NOTF_NORETURN inline void assertion_failed(char const* expr, char const* functio
 /// Called when an assertion with a message fails.
 /// Prints out a formatted message with information about the failure and then aborts the program.
 NOTF_NORETURN inline void
-assertion_failed_msg(char const* expr, char const* function, char const* file, long line, fmt::MemoryWriter msg)
+assertion_failed_msg(char const* expr, char const* function, char const* file, long line, fmt::memory_buffer msg)
 {
     using namespace fmt::literals;
     fmt::print(stderr, R"(Assertion "{expr}" failed on "{file}::{line}" in function "{func}" with message: {msg}{br})",
                "expr"_a = expr, "file"_a = notf::basename(file), "line"_a = line, "func"_a = function,
-               "msg"_a = msg.c_str(), "br"_a = "\n");
+               "msg"_a = fmt::to_string(msg), "br"_a = "\n");
     std::abort();
 }
 
 /// Creates an in-memory, formatted message to be printed out by `assertion_failed_msg`.
 template<typename T, typename... Args>
-fmt::MemoryWriter assertion_writer(T&& string, Args&&... args)
+fmt::memory_buffer assertion_writer(T&& string, Args&&... args)
 {
-    fmt::MemoryWriter writer;
-    writer.write(std::forward<T>(string), std::forward<Args>(args)...);
-    return writer;
+    fmt::memory_buffer buffer;
+    fmt::format_to(buffer, std::forward<T>(string), std::forward<Args>(args)...);
+    return buffer;
 }
 
 } // namespace detail

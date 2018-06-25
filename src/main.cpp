@@ -9,6 +9,8 @@
 //#include "wireframe_example.hpp"
 #include "smoke_example.hpp"
 
+#include "common/assert.hpp"
+
 int main(int argc, char* argv[])
 {
     // disables the synchronization standard streams

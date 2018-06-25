@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "common/vector2.hpp"
 
 NOTF_OPEN_NAMESPACE

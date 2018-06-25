@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #ifdef NOTF_TEST
 #include <atomic>
 #endif

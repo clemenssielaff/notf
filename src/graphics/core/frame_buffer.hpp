@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "common/size2.hpp"
 #include "common/variant.hpp"
 #include "graphics/ids.hpp"

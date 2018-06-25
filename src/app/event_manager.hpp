@@ -2,6 +2,7 @@
 
 #include <condition_variable>
 #include <deque>
+#include <vector>
 
 #include "app/forwards.hpp"
 #include "app/io/event.hpp"

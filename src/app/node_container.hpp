@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <vector>
 
 #include "app/forwards.hpp"
 #include "common/pointer.hpp"
@@ -94,7 +95,7 @@ public:
     /// @param index    Index of the node to move
     /// @param sibling  Sibling to stack before.
     /// @throws hierarchy_error     If the sibling is not a sibling of this node.
-    void stack_before(size_t index, valid_ptr<const Node *> relative);
+    void stack_before(size_t index, valid_ptr<const Node*> relative);
 
     /// Moves the node at a given index behind a given sibling.
     /// @param index    Index of the node to move

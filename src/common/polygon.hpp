@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iosfwd>
+#include <vector>
 
 #include "common/exception.hpp"
 #include "common/segment.hpp"
@@ -102,7 +103,7 @@ struct Polygon {
         // count the number of intersections with segments of this Polygon
         uint intersections = 0;
         while (index < vertices.size()) {
-            const vector_t& last_vertex    = vertices[index++];
+            const vector_t& last_vertex = vertices[index++];
             const vector_t& current_vertex = vertices[index % vertices.size()];
             if (Segment2<element_t>(last_vertex, current_vertex).intersects(line)) {
                 ++intersections;
@@ -199,14 +200,14 @@ private:
         }
 
         // TODO: this seems broken
-//        for (size_t i = 1; i < vertices.size(); ++i) {
-//            for (size_t j = i + 1; j < vertices.size(); ++j) {
-//                if (Segment2<element_t>(vertices[i - 1], vertices[i])
-//                        .intersects(Segment2<element_t>(vertices[j - 1], vertices[j]))) {
-//                    notf_throw(runtime_error, "Segments in a Polygon may not intersect");
-//                }
-//            }
-//        }
+        //        for (size_t i = 1; i < vertices.size(); ++i) {
+        //            for (size_t j = i + 1; j < vertices.size(); ++j) {
+        //                if (Segment2<element_t>(vertices[i - 1], vertices[i])
+        //                        .intersects(Segment2<element_t>(vertices[j - 1], vertices[j]))) {
+        //                    notf_throw(runtime_error, "Segments in a Polygon may not intersect");
+        //                }
+        //            }
+        //        }
 
         return vertices;
     }

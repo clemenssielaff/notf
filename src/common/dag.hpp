@@ -1,5 +1,8 @@
-#include <cassert>
+#pragma once
 
+#include <vector>
+
+#include "common/assert.hpp"
 #include "common/exception.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -43,8 +46,8 @@ public:
     void reinit(const index_t vertex_count)
     {
         // clear the old graph
-        assert(m_indegrees.size() == m_edges.size());
-        assert(m_vertex_count <= m_edges.size());
+        NOTF_ASSERT(m_indegrees.size() == m_edges.size());
+        NOTF_ASSERT(m_vertex_count <= m_edges.size());
         for (index_t vertex = 0, end = m_vertex_count; vertex < end; ++vertex) {
             m_edges[vertex].clear();
             m_indegrees[vertex] = 0;

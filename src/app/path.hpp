@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "app/forwards.hpp"
 #include "common/exception.hpp"
 #include "common/string_view.hpp"

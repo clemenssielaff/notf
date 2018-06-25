@@ -122,14 +122,10 @@ add_sources(SOURCE_FILES examples
 
 add_sources(THIRDPARTY_FILES thirdparty
     tinyutf8/tinyutf8.cpp
-
     abseil/any.cpp
     abseil/optional.cpp
-
     glad/glad.c
-
     fmt/format.cc
-    fmt/ostream.cc
 )
 
 #add_sources(RESOURCE_FILES res

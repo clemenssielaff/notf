@@ -2,6 +2,7 @@
 
 #include <deque>
 #include <future>
+#include <vector>
 
 #include "common/exception.hpp"
 
