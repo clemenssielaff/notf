@@ -11,7 +11,7 @@
 NOTF_USING_NAMESPACE
 
 namespace {
-std::optional<WindowPtr> g_window;
+notf::optional<WindowPtr> g_window;
 }
 
 NOTF_OPEN_NAMESPACE

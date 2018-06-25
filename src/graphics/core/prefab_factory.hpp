@@ -47,7 +47,7 @@ protected: // types ************************************************************
 
     /** Base class of all Definitions so we can keep them all in a vector. */
     struct Definition {
-        Definition()                  = default;
+        Definition() = default;
         Definition(const Definition&) = default;
         virtual ~Definition();
         virtual Kind kind() const = 0;
@@ -56,17 +56,17 @@ protected: // types ************************************************************
 public: // types ******************************************************************************************************/
     /** Definition for a box. */
     struct Box : public Definition {
-        Vector3d center      = Vector3d::zero();
-        Vector3d up_axis     = Vector3d::y_axis();
+        Vector3d center = Vector3d::zero();
+        Vector3d up_axis = Vector3d::y_axis();
         Vector3d orient_axis = Vector3d::x_axis();
-        Color color          = Color::grey();
-        double height        = 1;
-        double width         = 1;
-        double depth         = 1;
-        double tileU         = 1;
-        double tileV         = 1;
+        Color color = Color::grey();
+        double height = 1;
+        double width = 1;
+        double depth = 1;
+        double tileU = 1;
+        double tileV = 1;
 
-        Box()           = default;
+        Box() = default;
         Box(const Box&) = default;
         virtual ~Box() override;
         virtual Kind kind() const override { return Kind::BOX; }
@@ -76,14 +76,14 @@ public: // types ***************************************************************
      * Spheres are created with poles in the vertical axis.
      */
     struct Sphere : public Definition {
-        Vector3d center       = Vector3d::zero();
-        double radius         = 1;
-        unsigned int rings    = 12; // latitude
+        Vector3d center = Vector3d::zero();
+        double radius = 1;
+        unsigned int rings = 12;    // latitude
         unsigned int segments = 24; // longitude
-        double tileU          = 1;
-        double tileV          = 1;
+        double tileU = 1;
+        double tileV = 1;
 
-        Sphere()              = default;
+        Sphere() = default;
         Sphere(const Sphere&) = default;
         virtual ~Sphere() override;
         virtual Kind kind() const override { return Kind::SPHERE; }
@@ -180,11 +180,11 @@ public: // methods *************************************************************
         }
 
         // push the created vertices / indices into the library to create the new prefab type
-        auto& library_vertices     = static_cast<vertex_array_t*>(m_library.m_vertex_array.get())->m_vertices;
+        auto& library_vertices = static_cast<vertex_array_t*>(m_library.m_vertex_array.get())->m_vertices;
         const size_t prefab_offset = library_vertices.size();
         extend(library_vertices, _studies_to_vertices(VertexTraitIndices{}));
 
-        auto& library_indices    = static_cast<IndexArray<GLuint>*>(m_library.m_index_array.get())->buffer();
+        auto& library_indices = static_cast<IndexArray<GLuint>*>(m_library.m_index_array.get())->buffer();
         const size_t prefab_size = m_indices.size();
         extend(library_indices, std::move(m_indices));
 

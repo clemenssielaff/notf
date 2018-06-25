@@ -48,7 +48,7 @@ private:
     /// draw call (for example, to render multiple lines of the same width, color etc.).
     struct Batch {
 
-        using Info = std::variant<StrokeInfo, ShapeInfo, TextInfo>;
+        using Info = notf::variant<StrokeInfo, ShapeInfo, TextInfo>;
 
         /// Additional information on how to draw the patches contained in this batch.
         Info info;

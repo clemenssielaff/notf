@@ -559,7 +559,7 @@ void Plotter::_render(valid_ptr<Scene*> /*scene*/) const
     }
 
     for (const Batch& batch : m_batches) {
-        std::visit(GraphicsProducer{*this, batch}, batch.info);
+        notf::visit(GraphicsProducer{*this, batch}, batch.info);
     }
 }
 

@@ -62,9 +62,9 @@ public:
     /// Value constructor.
     /// @param string       Input to parse as a path.
     /// @throws construction_error  If the string failed to be parsed.
-    explicit Path(std::string_view to_string);
-    explicit Path(const std::string& string) : Path(std::string_view(string)) {}
-    explicit Path(const char* string) : Path(std::string_view(string)) {}
+    explicit Path(notf::string_view to_string);
+    explicit Path(const std::string& string) : Path(notf::string_view(string)) {}
+    explicit Path(const char* string) : Path(notf::string_view(string)) {}
     /// @}
 
     /// Move constructor.
@@ -170,7 +170,7 @@ class access::_Path<Node> {
 namespace literals {
 
 /// String literal for convenient Path construction.
-inline Path operator"" _path(const char* input, size_t size) { return Path(std::string_view(input, size)); }
+inline Path operator"" _path(const char* input, size_t size) { return Path(notf::string_view(input, size)); }
 
 } // namespace literals
 

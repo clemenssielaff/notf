@@ -156,27 +156,42 @@
     NOTF_PRAGMA(NOTF_DEFER(NOTF_STR, NOTF_DISABLE_WARNING_STR_(x)))
 #define NOTF_ENABLE_WARNINGS NOTF_PRAGMA("clang diagnostic pop")
 
-/// Throw a compiler warning or error with some additional information.
+/// Print a compiler warning with some additional information.
 #define NOTF_COMPILER_WARNING(x) \
     NOTF_PRAGMA(NOTF_DEFER(NOTF_STR, warning "(warning) on line " NOTF_DEFER(NOTF_STR, __LINE__) ": " x))
 
 // ================================================================================================================== //
 
-/// std namespace injections
-namespace std {
+/// Opens the NoTF namespace.
+/// This macro can later be used to implement namespace versioning.
+#define NOTF_OPEN_NAMESPACE namespace notf {
+
+/// For visual balance with NOTF_OPEN_NAMESPACE.
+#define NOTF_CLOSE_NAMESPACE }
+
+/// Use the versioned namespace.
+#define NOTF_USING_NAMESPACE using namespace notf;
+
+// ================================================================================================================== //
+
+NOTF_OPEN_NAMESPACE
 
 #ifndef NOTF_CPP14
 
+/// SFINAE convenience type
 template<bool B, class T = void>
 using enable_if_t = typename enable_if<B, T>::type;
 
+/// SFINAE convenience type
 template<bool B, class T, class F>
 using conditional_t = typename conditional<B, T, F>::type;
 
+#else
+using std::conditional_t;
+using std::enable_if_t;
 #endif
 
 #ifndef __cpp_lib_logical_traits
-#ifndef NOTF_MSVC
 
 /// Variadic logical AND metafunction
 /// http://en.cppreference.com/w/cpp/types/conjunction
@@ -185,7 +200,7 @@ struct conjunction : std::true_type {};
 template<typename T>
 struct conjunction<T> : T {};
 template<typename T, typename... TList>
-struct conjunction<T, TList...> : std::conditional_t<T::value, conjunction<TList...>, T> {};
+struct conjunction<T, TList...> : notf::conditional_t<T::value, conjunction<TList...>, T> {};
 
 /// Variadic logical OR metafunction
 /// http://en.cppreference.com/w/cpp/types/disjunction
@@ -194,18 +209,20 @@ struct disjunction : std::false_type {};
 template<typename T>
 struct disjunction<T> : T {};
 template<typename T, typename... TList>
-struct disjunction<T, TList...> : std::conditional_t<T::value, T, disjunction<TList...>> {};
+struct disjunction<T, TList...> : notf::conditional_t<T::value, T, disjunction<TList...>> {};
 
 /// Logical NOT metafunction.
 /// http://en.cppreference.com/w/cpp/types/negation
 template<typename T>
 struct negation : std::integral_constant<bool, !T::value> {};
 
-#endif // NOTF_MSVC
+#else
+using notf::conjunction;
+using std::disjunction;
+using std::negation;
 #endif // __cpp_lib_logical_traits
 
 #ifndef __cpp_lib_void_t
-#ifndef NOTF_MSVC
 
 /// Void type.
 template<typename... Ts>
@@ -215,10 +232,9 @@ struct make_void {
 template<typename... Ts>
 using void_t = typename make_void<Ts...>::type;
 
-#endif // NOTF_MSVC
+#else
+using std::void_t;
 #endif // __cpp_lib_void_t
-
-} // namespace std
 
 /// Type template to ensure that a template argument does not participate in type deduction.
 /// Compare:
@@ -307,20 +323,6 @@ using identity_t = typename identity<T>::type;
 
 // ================================================================================================================== //
 
-/// Opens the NoTF namespace.
-/// This macro can later be used to implement namespace versioning.
-#define NOTF_OPEN_NAMESPACE namespace notf {
-
-/// For visual balance with NOTF_OPEN_NAMESPACE.
-#define NOTF_CLOSE_NAMESPACE }
-
-/// Use the versioned namespace.
-#define NOTF_USING_NAMESPACE using namespace notf;
-
-// ================================================================================================================== //
-
-NOTF_OPEN_NAMESPACE
-
 using uchar = unsigned char;
 using ushort = unsigned short;
 using uint = unsigned int;
@@ -329,18 +331,16 @@ using ulong = unsigned long;
 // ================================================================================================================== //
 
 namespace test {
-
 /// Special type used by tests to access Type::Access<test::Harness> instances defined by NOTF_ACESS_TYPES(...).
 /// Is never actually defined.
 struct Harness;
-
 } // namespace test
 
 // ================================================================================================================== //
 
 /// Checks if T is any of the variadic types.
 template<typename T, typename... Ts>
-using is_one_of = std::disjunction<std::is_same<T, Ts>...>;
+using is_one_of = disjunction<std::is_same<T, Ts>...>;
 
 /// The `always_false` struct can be used to create a templated struct that will always evaluate to `false` when
 /// used in a static_assert.
@@ -401,16 +401,28 @@ struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T
 
 // ================================================================================================================== //
 
+namespace detail {
+template<class T>
+constexpr void _notf_is_constexpr_helper(T&&)
+{}
+} // namespace detail
+
+/// Macro to test whether a function call is available at compile time or not.
+/// From: https://stackoverflow.com/a/46920091
+#define NOTF_IS_CONSTEXPR(...) noexcept(detail::_notf_is_constexpr_helper(__VA_ARGS__))
+
+// ================================================================================================================== //
+
 /// Constexpr to use an enum class value as a numeric value.
 /// From "Effective Modern C++ by Scott Mayers': Item #10.
-template<typename Enum, typename = std::enable_if_t<std::is_enum<Enum>::value>>
+template<typename Enum, typename = notf::enable_if_t<std::is_enum<Enum>::value>>
 constexpr auto to_number(Enum enumerator) noexcept
 {
     return static_cast<std::underlying_type_t<Enum>>(enumerator);
 }
 
 /// Converts any pointer to the equivalent integer representation.
-template<typename T, typename = std::enable_if_t<std::is_pointer<T>::value>>
+template<typename T, typename = notf::enable_if_t<std::is_pointer<T>::value>>
 constexpr std::uintptr_t to_number(const T ptr) noexcept
 {
     return reinterpret_cast<std::uintptr_t>(ptr);

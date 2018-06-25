@@ -57,7 +57,7 @@ Path::Path(std::vector<std::string>&& components, const bool is_absolute, const 
     _normalize();
 }
 
-Path::Path(std::string_view string)
+Path::Path(notf::string_view string)
 {
     if (string.empty()) {
         return;

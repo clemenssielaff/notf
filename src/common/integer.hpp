@@ -14,7 +14,7 @@ using ulong     = unsigned long;
 using ulonglong = unsigned long long;
 
 /// Counts the digits in a given integral number.
-template<class Integer, typename = std::enable_if_t<std::is_integral<Integer>::value>>
+template<class Integer, typename = notf::enable_if_t<std::is_integral<Integer>::value>>
 constexpr ushort count_digits(Integer digits)
 {
     ushort counter = 1;
@@ -29,7 +29,7 @@ constexpr ushort count_digits(Integer digits)
  * @param M     n % M
  * @return      n % M, while negative values are wrapped (for example -1%3=2).
  */
-template<class Integer, typename = std::enable_if_t<std::is_integral<Integer>::value>>
+template<class Integer, typename = notf::enable_if_t<std::is_integral<Integer>::value>>
 constexpr Integer wrap_mod(const Integer n, const Integer M)
 {
     return ((n % M) + M) % M;
@@ -44,7 +44,7 @@ constexpr Integer wrap_mod(const Integer n, const Integer M)
  *     value = 61  => interval = 120
  *     ...
  */
-template<class Integer, typename = std::enable_if_t<std::is_integral<Integer>::value>>
+template<class Integer, typename = notf::enable_if_t<std::is_integral<Integer>::value>>
 constexpr Integer next_interval(Integer value, const Integer interval)
 {
     if (!interval) {

@@ -42,7 +42,7 @@ struct Color {
     /** Creates a color from integer RGB(A) values.
      * The parameters are clamped to range [0, 255] before cast to float.
      */
-    template<class Integer, typename = std::enable_if_t<std::is_integral<Integer>::value>>
+    template<class Integer, typename = notf::enable_if_t<std::is_integral<Integer>::value>>
     Color(const Integer r, const Integer g, const Integer b, const Integer a = 255)
         : Color(static_cast<float>(clamp(r, 0, 255)) / 255.f, static_cast<float>(clamp(g, 0, 255)) / 255.f,
                 static_cast<float>(clamp(b, 0, 255)) / 255.f, static_cast<float>(clamp(a, 0, 255)) / 255.f)
@@ -60,7 +60,7 @@ struct Color {
     static Color from_rgb(const float r, const float g, const float b, const float a = 1) { return Color(r, g, b, a); }
 
     /** Creates a Color from integer RGB(A) values in the range [0, 255]. */
-    template<class Integer, typename = std::enable_if_t<std::is_integral<Integer>::value>>
+    template<class Integer, typename = notf::enable_if_t<std::is_integral<Integer>::value>>
     static Color from_rgb(const Integer r, const Integer g, const Integer b, const Integer a = 255)
     {
         return Color(r, g, b, a);

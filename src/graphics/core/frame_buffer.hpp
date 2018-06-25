@@ -107,10 +107,10 @@ class FrameBuffer {
     // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// A FrameBuffer's color target can be either a RenderBuffer or a Texture.
-    using ColorTarget = std::variant<TexturePtr, RenderBufferPtr>;
+    using ColorTarget = notf::variant<TexturePtr, RenderBufferPtr>;
 
     /// A FrameBuffer's depth target can be either a RenderBuffer or a Texture.
-    using DepthTarget = std::variant<TexturePtr, RenderBufferPtr>;
+    using DepthTarget = notf::variant<TexturePtr, RenderBufferPtr>;
 
     /// Arguments used to initialize a Texture.
     /// If you want to set both depth- and stencil targets, both have to refer to the same RenderBuffer and that

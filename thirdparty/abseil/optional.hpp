@@ -535,22 +535,22 @@ public:
     {}
 
     // Value constructor (implicit)
-    template<
-        typename U = T,
-        typename std::enable_if<std::conjunction<std::negation<std::is_same<in_place_t, typename std::decay<U>::type>>,
-                                                 std::negation<std::is_same<optional<T>, typename std::decay<U>::type>>,
-                                                 std::is_convertible<U&&, T>, std::is_constructible<T, U&&>>::value,
-                                bool>::type
-        = false>
+    template<typename U = T,
+             typename std::enable_if<
+                 notf::conjunction<notf::negation<std::is_same<in_place_t, typename std::decay<U>::type>>,
+                                   notf::negation<std::is_same<optional<T>, typename std::decay<U>::type>>,
+                                   std::is_convertible<U&&, T>, std::is_constructible<T, U&&>>::value,
+                 bool>::type
+             = false>
     constexpr optional(U&& v) : data_base(in_place_t(), std::forward<U>(v))
     {}
 
     // Value constructor (explicit)
     template<typename U = T,
              typename std::enable_if<
-                 std::conjunction<std::negation<std::is_same<in_place_t, typename std::decay<U>::type>>,
-                                  std::negation<std::is_same<optional<T>, typename std::decay<U>::type>>,
-                                  std::negation<std::is_convertible<U&&, T>>, std::is_constructible<T, U&&>>::value,
+                 notf::conjunction<notf::negation<std::is_same<in_place_t, typename std::decay<U>::type>>,
+                                   notf::negation<std::is_same<optional<T>, typename std::decay<U>::type>>,
+                                   notf::negation<std::is_convertible<U&&, T>>, std::is_constructible<T, U&&>>::value,
                  bool>::type
              = false>
     explicit constexpr optional(U&& v) : data_base(in_place_t(), std::forward<U>(v))
@@ -559,9 +559,9 @@ public:
     // Converting copy constructor (implicit)
     template<typename U,
              typename std::enable_if<
-                 std::conjunction<std::negation<std::is_same<T, U>>, std::is_constructible<T, const U&>,
-                                  std::negation<optional_internal::is_constructible_convertible_from_optional<T, U>>,
-                                  std::is_convertible<const U&, T>>::value,
+                 notf::conjunction<notf::negation<std::is_same<T, U>>, std::is_constructible<T, const U&>,
+                                   notf::negation<optional_internal::is_constructible_convertible_from_optional<T, U>>,
+                                   std::is_convertible<const U&, T>>::value,
                  bool>::type
              = false>
     optional(const optional<U>& rhs)
@@ -574,9 +574,9 @@ public:
     // Converting copy constructor (explicit)
     template<typename U,
              typename std::enable_if<
-                 std::conjunction<std::negation<std::is_same<T, U>>, std::is_constructible<T, const U&>,
-                                  std::negation<optional_internal::is_constructible_convertible_from_optional<T, U>>,
-                                  std::negation<std::is_convertible<const U&, T>>>::value,
+                 notf::conjunction<notf::negation<std::is_same<T, U>>, std::is_constructible<T, const U&>,
+                                   notf::negation<optional_internal::is_constructible_convertible_from_optional<T, U>>,
+                                   notf::negation<std::is_convertible<const U&, T>>>::value,
                  bool>::type
              = false>
     explicit optional(const optional<U>& rhs)
@@ -589,9 +589,9 @@ public:
     // Converting move constructor (implicit)
     template<typename U,
              typename std::enable_if<
-                 std::conjunction<std::negation<std::is_same<T, U>>, std::is_constructible<T, U&&>,
-                                  std::negation<optional_internal::is_constructible_convertible_from_optional<T, U>>,
-                                  std::is_convertible<U&&, T>>::value,
+                 notf::conjunction<notf::negation<std::is_same<T, U>>, std::is_constructible<T, U&&>,
+                                   notf::negation<optional_internal::is_constructible_convertible_from_optional<T, U>>,
+                                   std::is_convertible<U&&, T>>::value,
                  bool>::type
              = false>
     optional(optional<U>&& rhs)
@@ -604,9 +604,9 @@ public:
     // Converting move constructor (explicit)
     template<typename U,
              typename std::enable_if<
-                 std::conjunction<std::negation<std::is_same<T, U>>, std::is_constructible<T, U&&>,
-                                  std::negation<optional_internal::is_constructible_convertible_from_optional<T, U>>,
-                                  std::negation<std::is_convertible<U&&, T>>>::value,
+                 notf::conjunction<notf::negation<std::is_same<T, U>>, std::is_constructible<T, U&&>,
+                                   notf::negation<optional_internal::is_constructible_convertible_from_optional<T, U>>,
+                                   notf::negation<std::is_convertible<U&&, T>>>::value,
                  bool>::type
              = false>
     explicit optional(optional<U>&& rhs)
@@ -641,9 +641,9 @@ public:
 
     // Value assignment operators
     template<typename U = T,
-             typename = typename std::enable_if<std::conjunction<
-                 std::negation<std::is_same<optional<T>, typename std::decay<U>::type>>,
-                 std::negation<std::conjunction<std::is_scalar<T>, std::is_same<T, typename std::decay<U>::type>>>,
+             typename = typename std::enable_if<notf::conjunction<
+                 notf::negation<std::is_same<optional<T>, typename std::decay<U>::type>>,
+                 notf::negation<notf::conjunction<std::is_scalar<T>, std::is_same<T, typename std::decay<U>::type>>>,
                  std::is_constructible<T, U>, std::is_assignable<T&, U>>::value>::type>
     optional& operator=(U&& v)
     {
@@ -653,9 +653,9 @@ public:
 
     template<
         typename U,
-        typename = typename std::enable_if<std::conjunction<
-            std::negation<std::is_same<T, U>>, std::is_constructible<T, const U&>, std::is_assignable<T&, const U&>,
-            std::negation<optional_internal::is_constructible_convertible_assignable_from_optional<T, U>>>::value>::type>
+        typename = typename std::enable_if<notf::conjunction<
+            notf::negation<std::is_same<T, U>>, std::is_constructible<T, const U&>, std::is_assignable<T&, const U&>,
+            notf::negation<optional_internal::is_constructible_convertible_assignable_from_optional<T, U>>>::value>::type>
     optional& operator=(const optional<U>& rhs)
     {
         if (rhs) {
@@ -669,9 +669,9 @@ public:
 
     template<
         typename U,
-        typename = typename std::enable_if<std::conjunction<
-            std::negation<std::is_same<T, U>>, std::is_constructible<T, U>, std::is_assignable<T&, U>,
-            std::negation<optional_internal::is_constructible_convertible_assignable_from_optional<T, U>>>::value>::type>
+        typename = typename std::enable_if<notf::conjunction<
+            notf::negation<std::is_same<T, U>>, std::is_constructible<T, U>, std::is_assignable<T&, U>,
+            notf::negation<optional_internal::is_constructible_convertible_assignable_from_optional<T, U>>>::value>::type>
     optional& operator=(optional<U>&& rhs)
     {
         if (rhs) {

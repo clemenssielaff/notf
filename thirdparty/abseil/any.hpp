@@ -233,16 +233,16 @@ public:
     // This constructor will not participate in overload resolution if the
     // decayed type of `T` is not copy-constructible.
     template<typename T, typename VT = std::decay_t<T>,
-             std::enable_if_t<!std::disjunction<std::is_same<any, VT>, IsInPlaceType<VT>,
-                                                std::negation<std::is_copy_constructible<VT>>>::value>* = nullptr>
+             std::enable_if_t<!notf::disjunction<std::is_same<any, VT>, IsInPlaceType<VT>,
+                                                 notf::negation<std::is_copy_constructible<VT>>>::value>* = nullptr>
     any(T&& value) : obj_(new Obj<VT>(in_place, std::forward<T>(value)))
     {}
 
     // Constructs an `absl::any` object with a "contained object" of the decayed
     // type of `T`, which is initialized via `std::forward<T>(value)`.
     template<typename T, typename... Args, typename VT = std::decay_t<T>,
-             std::enable_if_t<
-                 std::conjunction<std::is_copy_constructible<VT>, std::is_constructible<VT, Args...>>::value>* = nullptr>
+             std::enable_if_t<notf::conjunction<std::is_copy_constructible<VT>,
+                                                std::is_constructible<VT, Args...>>::value>* = nullptr>
     explicit any(in_place_type_t<T> /*tag*/, Args&&... args) : obj_(new Obj<VT>(in_place, std::forward<Args>(args)...))
     {}
 
@@ -252,8 +252,8 @@ public:
     // `initializer_list, std::forward<Args>(args)...`.
     template<typename T, typename U, typename... Args, typename VT = std::decay_t<T>,
              std::enable_if_t<
-                 std::conjunction<std::is_copy_constructible<VT>,
-                                  std::is_constructible<VT, std::initializer_list<U>&, Args...>>::value>* = nullptr>
+                 notf::conjunction<std::is_copy_constructible<VT>,
+                                   std::is_constructible<VT, std::initializer_list<U>&, Args...>>::value>* = nullptr>
     explicit any(in_place_type_t<T> /*tag*/, std::initializer_list<U> ilist, Args&&... args)
         : obj_(new Obj<VT>(in_place, ilist, std::forward<Args>(args)...))
     {}
@@ -278,8 +278,8 @@ public:
 
     // Assigns an `absl::any` object with a "contained object" of the passed type.
     template<typename T, typename VT = std::decay_t<T>,
-             std::enable_if_t<std::conjunction<std::negation<std::is_same<VT, any>>,
-                                               std::is_copy_constructible<VT>>::value>* = nullptr>
+             std::enable_if_t<notf::conjunction<notf::negation<std::is_same<VT, any>>,
+                                                std::is_copy_constructible<VT>>::value>* = nullptr>
     any& operator=(T&& rhs)
     {
         any tmp(in_place_type_t<VT>(), std::forward<T>(rhs));

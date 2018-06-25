@@ -39,7 +39,7 @@ public:
     /// @param args         Arguments forwareded to the function when the tasks is executed.
     /// @throws             thread_pool_finished When the thread pool has already finished.
     template<typename FUNCTION, typename... Args, typename return_t = typename std::result_of<FUNCTION(Args...)>::type,
-             typename = std::enable_if_t<(std::is_same<void, return_t>::value)>>
+             typename = notf::enable_if_t<(std::is_same<void, return_t>::value)>>
     void enqueue(FUNCTION&& function, Args&&... args)
     {
         { // enqueue the new task, unless the pool has already finished
@@ -64,7 +64,7 @@ public:
     /// @returns            Future containing the result of the function once it finished execution.
     /// @throws             thread_pool_finished When the thread pool has already finished.
     template<typename FUNCTION, typename... Args, typename return_t = typename std::result_of<FUNCTION(Args...)>::type,
-             typename = std::enable_if_t<!(std::is_same<void, return_t>::value)>>
+             typename = notf::enable_if_t<!(std::is_same<void, return_t>::value)>>
     NOTF_NODISCARD std::future<return_t> enqueue(FUNCTION&& function, Args&&... args)
     {
         // create the new task

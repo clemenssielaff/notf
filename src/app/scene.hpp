@@ -60,7 +60,7 @@ public:
     /// @param name     Graph-unique, immutable name of the Scene.
     /// @param args     Additional arguments for the Scene subclass
     /// @throws scene_name_error    If the given name is not unique in the SceneGraph.
-    template<class T, class... Args, typename = std::enable_if_t<std::is_base_of<Scene, T>::value>>
+    template<class T, class... Args, typename = notf::enable_if_t<std::is_base_of<Scene, T>::value>>
     static std::shared_ptr<T> create(const valid_ptr<SceneGraphPtr>& graph, std::string name, Args... args)
     {
         NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::hierarchy_mutex(*graph.get()));

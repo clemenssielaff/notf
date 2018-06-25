@@ -4,37 +4,37 @@
 
 #include "common/meta.hpp"
 
-NOTF_OPEN_NAMESPACE
-namespace detail {
+//NOTF_OPEN_NAMESPACE
+//namespace detail {
 
-template<typename FUNC, typename TUPLE, std::size_t... I>
-auto apply_impl(FUNC&& f, TUPLE&& t, std::index_sequence<I...>)
-{
-    return std::forward<FUNC>(f)(std::get<I>(std::forward<TUPLE>(t))...);
-}
+//template<typename FUNC, typename TUPLE, std::size_t... I>
+//auto apply_impl(FUNC&& f, TUPLE&& t, std::index_sequence<I...>)
+//{
+//    return std::forward<FUNC>(f)(std::get<I>(std::forward<TUPLE>(t))...);
+//}
 
-} // namespace detail
-NOTF_CLOSE_NAMESPACE
+//} // namespace detail
+//NOTF_CLOSE_NAMESPACE
 
-#ifndef NOTF_CPP17
+//#ifndef NOTF_CPP17
 
-namespace std {
+//namespace std {
 
-/// Expands (applies) a tuple to arguments for a function call.
-/// Is included in the std from C++17 onwards.
-///
-/// From http://stackoverflow.com/a/19060157
-/// but virtually identical to reference implementation from: http://en.cppreference.com/w/cpp/utility/apply
-template<typename FUNC, typename TUPLE>
-auto apply(FUNC&& f, TUPLE&& t)
-{
-    using Indices = std::make_index_sequence<std::tuple_size<std::decay_t<TUPLE>>::value>;
-    return notf::detail::apply_impl(std::forward<FUNC>(f), std::forward<TUPLE>(t), Indices());
-}
+///// Expands (applies) a tuple to arguments for a function call.
+///// Is included in the std from C++17 onwards.
+/////
+///// From http://stackoverflow.com/a/19060157
+///// but virtually identical to reference implementation from: http://en.cppreference.com/w/cpp/utility/apply
+//template<typename FUNC, typename TUPLE>
+//auto apply(FUNC&& f, TUPLE&& t)
+//{
+//    using Indices = std::make_index_sequence<std::tuple_size<std::decay_t<TUPLE>>::value>;
+//    return notf::detail::apply_impl(std::forward<FUNC>(f), std::forward<TUPLE>(t), Indices());
+//}
 
-} // namespace std
+//} // namespace std
 
-#endif // #ifndef NOTF_CPP17
+//#endif // #ifndef NOTF_CPP17
 
 NOTF_OPEN_NAMESPACE
 

@@ -50,13 +50,13 @@ public:
     /// @param node     Handled Node.
     NodeHandle(std::shared_ptr<T> node) : m_node(std::move(node)) {}
     NodeHandle(std::weak_ptr<T> node) : m_node(std::move(node)) {}
-    template<class U, typename = std::enable_if_t<std::is_base_of<U, T>::value>>
+    template<class U, typename = notf::enable_if_t<std::is_base_of<U, T>::value>>
     NodeHandle(const std::shared_ptr<U>& node) : NodeHandle(std::dynamic_pointer_cast<T>(node))
     {}
-    template<class U, typename = std::enable_if_t<std::is_base_of<U, T>::value>>
+    template<class U, typename = notf::enable_if_t<std::is_base_of<U, T>::value>>
     NodeHandle(std::weak_ptr<U>&& node) : NodeHandle(std::dynamic_pointer_cast<T>(node.lock()))
     {}
-    template<class U, typename = std::enable_if_t<std::is_base_of<U, T>::value>>
+    template<class U, typename = notf::enable_if_t<std::is_base_of<U, T>::value>>
     NodeHandle(U* node) : NodeHandle(std::dynamic_pointer_cast<T>(node->shared_from_this()))
     {}
     /// @}
@@ -68,7 +68,7 @@ public:
     /// Move constructor for NodeHandles of any base class of T.
     /// The resulting NodeHandle will be invalid, if the other handle cannot be dynamic-cast to T.
     /// @param other    NodeHandle to move from.
-    template<class U, typename = std::enable_if_t<std::is_base_of<U, T>::value>>
+    template<class U, typename = notf::enable_if_t<std::is_base_of<U, T>::value>>
     NodeHandle(NodeHandle<U>&& other) : m_node(std::move(other.m_node))
     {
         other.m_node.reset();
@@ -86,7 +86,7 @@ public:
     /// Move-Assignment operator for NodeHandles of any base class of T.
     /// The resulting NodeHandle will be invalid, if the other handle cannot be dynamic-cast to T.
     /// @param other    NodeHande to move-assign from.
-    template<class U, typename = std::enable_if_t<std::is_base_of<U, T>::value>>
+    template<class U, typename = notf::enable_if_t<std::is_base_of<U, T>::value>>
     NodeHandle& operator=(NodeHandle<U>&& other)
     {
         m_node = std::dynamic_pointer_cast<T>(std::move(other.m_node).lock());
