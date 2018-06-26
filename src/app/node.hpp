@@ -372,9 +372,9 @@ protected:
 
         if (validator && !validator(value)) {
             notf_throw(NodeProperty::initial_value_error,
-                       "Cannot create Property \"{}\" with value \"{}\", "
-                       "that did not validate against the supplied Validator function",
-                       name, value);
+                       "Cannot create Property \"{}\" with a default value "
+                       "that does not validate against the supplied Validator function",
+                       name);
         }
 
         // create the property

@@ -18,6 +18,7 @@ struct PropertyEvent;
 struct MouseEvent;
 struct KeyEvent;
 struct CharEvent;
+struct FocusEvent;
 
 // scene
 

@@ -1,7 +1,9 @@
 #pragma once
 
-#include "app/forwards.hpp"
+#include "app/io/event.hpp"
 #include "app/io/keyboard.hpp"
+#include "app/node_handle.hpp"
+#include "app/widget/widget.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -10,17 +12,26 @@ NOTF_OPEN_NAMESPACE
 /// handles it.
 /// 'focus lost' events are handled by design.
 /// Layouts will never get to see an unhandled FocusEvent.
-class FocusEvent {
+struct FocusEvent : public detail::EventBase<FocusEvent> {
+
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
-    // TODO: FocusEvent is probably outdated when we have a hierarchy of focus-handling controllers...?
-
-    FocusEvent(FocusAction action, WidgetPtr old_focus, WidgetPtr new_focus)
-        : action(action)
+    /// Constructor.
+    /// @param window       Window that the event is meant for.
+    /// @param action       Action that triggered this event.
+    /// @param old_focus    Widget that lost focus.
+    /// @param new_focus    Widget that gained focus.
+    FocusEvent(valid_ptr<const Window*> window, FocusAction action, NodeHandle<Widget> old_focus,
+               NodeHandle<Widget> new_focus)
+        : detail::EventBase<FocusEvent>(window)
+        , action(action)
         , old_focus(std::move(old_focus))
         , new_focus(std::move(new_focus))
         , m_was_handled(action == FocusAction::LOST)
     {}
+
+    /// Destructor.
+    virtual ~FocusEvent() override;
 
     /// Checks whether this event was already handled or not.
     bool was_handled() const { return m_was_handled; }
@@ -34,10 +45,10 @@ public:
     const FocusAction action;
 
     /// Widget that lost the focus - may be empty.
-    WidgetPtr const old_focus;
+    NodeHandle<Widget> old_focus;
 
     /// Widget that gained the focus - may be empty.
-    WidgetPtr const new_focus;
+    NodeHandle<Widget> new_focus;
 
 private:
     /// True iff this event was already handled.
