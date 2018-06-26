@@ -323,10 +323,12 @@ using identity_t = typename identity<T>::type;
 
 // ================================================================================================================== //
 
+// use cool names, just in case your compiler isn't cool enough
 using uchar = unsigned char;
 using ushort = unsigned short;
 using uint = unsigned int;
 using ulong = unsigned long;
+using ulonglong = unsigned long long;
 
 // ================================================================================================================== //
 

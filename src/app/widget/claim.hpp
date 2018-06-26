@@ -7,31 +7,6 @@ NOTF_OPEN_NAMESPACE
 // ================================================================================================================== //
 
 /// Every Widget has a Claim that determines how much space is alloted for it in its parent's Layout.
-/// The user can declare Claims manually, although Layouts usually have a mechanism to calculate their own Claim based
-/// on the combined Claims of their children. A Claim is made up of serveral parts:
-///
-/// Stretches
-/// ---------
-/// A Claim has 2 `Stretch` fields, one for its horizontal and one for its vertical expansion.
-/// Each Stretch consists of a `minimum` value, a `maximum` and a preferred value.
-/// Usually, the Widget assumes its `preferred` size first and is then regulated up or down, depending on how much space
-/// is left in its parent's Layout.
-///
-/// The `Stretch factor` of a Strech determines, how fast a Widget grows in relation to its siblings. Two Widgets with a
-/// Stretch factors of 1 each, will grow at the same rate when more space becomes available. If one of them had a
-/// Stretch factor of 2, it would grow twice as fast as the other, until it reaches its maximum. Conversely, a Stretch
-/// factor of 0.5 would make it grow only half as fast. Stretch factors have to be larger than zero, assigning a Stretch
-/// factor of <= 0 will cause a warning and the factor will be clamped to a value > 0.
-///
-/// The `priority` of a Stretch comes into play, when you want one Widget to fully expand before any others are even
-/// considered.
-/// If you have 3 Widgetss A, B and C and C has a priority of 1, while A and B have a priority of 0, then C will take
-/// up all available space without giving any to A and B. Only after C has reached its maximum size is the additional
-/// space distributed to A and B (using their individual Stretch factors). Conversely, if the available space should
-/// shrink then A and B are the first ones to give up their additional space. C will only shrink after A and B have both
-/// reached their minimum size.
-///
-/// You can modify the two Stretches of a Claim individually, or set them both using the Claim's functions.
 class Claim {
 
     // types -------------------------------------------------------------------------------------------------------- //

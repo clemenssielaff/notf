@@ -9,7 +9,8 @@
 //#include "wireframe_example.hpp"
 #include "smoke_example.hpp"
 
-#include "common/assert.hpp"
+#include "common/meta.hpp"
+NOTF_USING_NAMESPACE;
 
 int main(int argc, char* argv[])
 {
