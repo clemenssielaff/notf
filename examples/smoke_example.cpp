@@ -6,11 +6,11 @@
 #include "app/application.hpp"
 #include "app/layer.hpp"
 #include "app/node_property.hpp"
-#include "app/render/procedural.hpp"
 #include "app/root_node.hpp"
 #include "app/scene.hpp"
 #include "app/timer_manager.hpp"
 #include "app/window.hpp"
+#include "graphics/renderer/procedural.hpp"
 
 NOTF_USING_NAMESPACE
 

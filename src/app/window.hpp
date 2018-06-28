@@ -85,12 +85,6 @@ public:
     const SceneGraphPtr& get_scene_graph() const { return m_scene_graph; }
     ///@}
 
-    ///@{
-    /// FontManager used to render text.
-    FontManager& get_font_manager() { return *m_font_manager; }
-    const FontManager& get_font_manager() const { return *m_font_manager; }
-    ///@}
-
     /// Returns the Window's size in screen coordinates (not pixels).
     /// Returns an invalid size if the GLFW window was already closed.
     Size2i get_window_size() const { return m_size; }
@@ -135,9 +129,6 @@ private:
 
     /// Scenes displayed in the Window.
     SceneGraphPtr m_scene_graph;
-
-    /// FontManager used to render text.
-    FontManagerPtr m_font_manager; // TODO: FontManager per Window doesn't seem right
 
     /// The Window's title (is not accessible through GLFW).
     std::string m_title;

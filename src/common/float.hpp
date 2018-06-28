@@ -42,21 +42,21 @@ using std::sqrt;
 using std::tan;
 
 /// Tests whether a given value is NAN.
-template<class T>
+template<class T, typename = notf::enable_if_t<std::is_floating_point<T>::value>>
 inline bool is_nan(const T value)
 {
     return std::isnan(value);
 }
 
 /// Tests whether a given value is INFINITY.
-template<class T>
+template<class T, typename = notf::enable_if_t<std::is_floating_point<T>::value>>
 inline bool is_inf(const T value)
 {
     return std::isinf(value);
 }
 
 /// Tests whether a given value is a valid float value (not NAN, not INFINITY).
-template<class T>
+template<class T, typename = notf::enable_if_t<std::is_floating_point<T>::value>>
 inline bool is_real(const T value)
 {
     return !is_nan(value) && !is_inf(value);

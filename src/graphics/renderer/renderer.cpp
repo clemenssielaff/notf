@@ -1,4 +1,4 @@
-#include "app/renderer.hpp"
+#include "graphics/renderer/renderer.hpp"
 
 NOTF_OPEN_NAMESPACE
 

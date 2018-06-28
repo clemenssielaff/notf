@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/rational.hpp"
 #include "common/size2.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -177,100 +178,65 @@ public:
         int m_priority = 0;
     };
 
-    // types -------------------------------------------------------------------------------------------------------- //
-private:
-    /// A height-for-width ratio constraint of the Claim.
-    /// Is its own class so two Ratios can be properly added.
-    /// A value of zero means no Ratio constraint.
-    class Ratio {
-
-        // methods ------------------------------------------------------------
-    public:
-        /// Default Constructor.
-        Ratio() = default;
-
-        /// Value Constructor.
-        /// Setting one or both values to zero, results in an invalid Ratio.
-        /// @param width    Width in units, is 0 < width < INFINITY
-        /// @param height   Height in units, is 0 < height < INFINITY
-        Ratio(const float width, const float height = 1) : m_width(width), m_height(height)
-        {
-            if (!is_real(width) || !is_real(height) || width <= 0 || height <= 0) {
-                m_width = 0;
-                m_height = 0;
-            }
-        }
-
-        /// Tests if this Ratio is valid.
-        bool is_valid() const { return !is_zero(m_width) && !is_zero(m_height); }
-
-        /// Returns the ratio, is 0 if invalid.
-        float height_for_width() const
-        {
-            if (!is_valid()) {
-                return 0;
-            }
-            return m_height / m_width;
-        }
-
-        /// In-place, horizontal addition operator.
-        /// @param other    Ratio to add on the horizontal axis.
-        Ratio& add_horizontal(const Ratio& other)
-        {
-            m_width += other.m_width;
-            m_height = max(m_height, other.m_height);
-            return *this;
-        }
-
-        /// In-place, vertical addition operator.
-        /// @param other    Ratio to add on the vertical axis.
-        Ratio& add_vertical(const Ratio& other)
-        {
-            m_width = max(m_width, other.m_width);
-            m_height += other.m_height;
-            return *this;
-        }
-
-        /// Equality operator
-        /// @param other    Ratio to compare against.
-        bool operator==(const Ratio& other) const
-        {
-            return is_approx(m_width, other.m_width) && is_approx(m_height, other.m_height);
-        }
-
-        /// Ineequality operator
-        /// @param other    Ratio to compare against.
-        bool operator!=(const Ratio& other) const { return !(*this == other); }
-
-        // fields -------------------------------------------------------------
-    private:
-        /// Width.
-        float m_width = 0;
-
-        /// Height.
-        float m_height = 0;
-    };
+    // ========================================================================
 
     /// A Claim has two different ratio-constraints, one for the minimum ratio - one for the max.
+    /// Each ratio is represented by a rational number (width / height).
     struct Ratios {
+        friend class Claim;
+
+    private:
+        Ratios() = default;
+
+        Ratios(Rationali lower_bound, Rationali upper_bound)
+            : m_lower_bound(std::move(lower_bound)), m_upper_bound(std::move(upper_bound))
+        {}
+
+    public:
+        /// Lower width / height limit.
+        const Rationali& get_lower_bound() const { return m_lower_bound; }
+
+        /// Upper width / height limit.
+        const Rationali& get_upper_bound() const { return m_upper_bound; }
+
         /// Equality operator
         /// @param other    Ratio to compare against.
         bool operator==(const Ratios& other) const
         {
-            return (lower_bound == other.lower_bound) && (upper_bound == other.upper_bound);
+            return (m_lower_bound == other.m_lower_bound) && (m_upper_bound == other.m_upper_bound);
         }
 
         /// Ineequality operator
         /// @param other    Ratio to compare against.
         bool operator!=(const Ratios& other) const { return !(*this == other); }
 
-        // fields -------------------------------------------------------------
-    public:
-        /// Minimum Ratio.
-        Ratio lower_bound = {};
+        /// Combines these Ratio constraints with another one horizontally.
+        /// @param other    Ratios to add on the horizontal axis.
+        void combine_horizontal(const Ratios& other)
+        {
+            m_lower_bound = Rationali(m_lower_bound.get_numerator() + other.m_lower_bound.get_numerator(),
+                                      max(m_lower_bound.get_denominator(), other.m_lower_bound.get_denominator()));
+            m_upper_bound = Rationali(m_upper_bound.get_numerator() + other.m_upper_bound.get_numerator(),
+                                      max(m_upper_bound.get_denominator(), other.m_upper_bound.get_denominator()));
+        }
 
-        /// Maximum Ratio.
-        Ratio upper_bound = {};
+        /// Combines these Ratio constraints with another one vertically.
+        /// @param other    Ratios to add on the vertical axis.
+        void combine_vertical(const Ratios& other)
+        {
+            m_lower_bound = Rationali(max(m_lower_bound.get_numerator(), other.m_lower_bound.get_numerator()),
+                                      m_lower_bound.get_denominator() + other.m_lower_bound.get_denominator());
+            m_upper_bound = Rationali(max(m_upper_bound.get_numerator(), other.m_upper_bound.get_numerator()),
+                                      m_upper_bound.get_denominator() + other.m_upper_bound.get_denominator());
+        }
+
+        // fields -------------------------------------------------------------
+    private:
+        /// Minimum ratio.
+        Rationali m_lower_bound = {};
+
+        /// Maximum ratio.
+        Rationali m_upper_bound = {};
     };
 
     // methods ------------------------------------------------------------------------------------------------------ //
@@ -409,10 +375,7 @@ public:
     {
         m_horizontal += other.m_horizontal;
         m_vertical.maxed(other.m_vertical);
-        m_ratios = {
-            m_ratios.lower_bound.add_horizontal(other.m_ratios.lower_bound),
-            m_ratios.upper_bound.add_horizontal(other.m_ratios.upper_bound),
-        };
+        m_ratios.combine_horizontal(other.m_ratios);
         return *this;
     }
 
@@ -422,24 +385,18 @@ public:
     {
         m_horizontal.maxed(other.m_horizontal);
         m_vertical += other.m_vertical;
-        m_ratios = {
-            m_ratios.lower_bound.add_vertical(other.m_ratios.lower_bound),
-            m_ratios.upper_bound.add_vertical(other.m_ratios.upper_bound),
-        };
+        m_ratios.combine_vertical(other.m_ratios);
         return *this;
     }
 
     /// Returns the min and max ratio constraints.
     /// (0, 0) means there exists no constraint.
-    std::pair<float, float> get_width_to_height() const
-    {
-        return {m_ratios.lower_bound.height_for_width(), m_ratios.upper_bound.height_for_width()};
-    }
+    const Ratios& get_ratio_limits() const { return m_ratios; }
 
-    /// Sets the ratio constraint.
-    /// @param ratio_min    Width to Height (min/fixed value), is used as minimum value if the second parameter is set.
-    /// @param ratio_max    Width to Height (max value), 'ratio_min' is use by default.
-    void set_width_to_height(float ratio_min, float ratio_max = NAN);
+    /// Sets the ratio constraints (width / height)
+    /// @param ratio_min    Min/fixed value, is used as minimum value if the second parameter is set.
+    /// @param ratio_max    Max value, 'ratio_min' is use by default.
+    void set_ratio_limits(Rationali ratio_min, Rationali ratio_max = Rationali::zero());
 
     /// In-place max operator.
     /// @param other    Claim to max width.
@@ -447,9 +404,9 @@ public:
     {
         m_horizontal.maxed(other.m_horizontal);
         m_vertical.maxed(other.m_vertical);
-        const std::pair<float, float> my_ratios = get_width_to_height();
-        const std::pair<float, float> other_ratios = other.get_width_to_height();
-        set_width_to_height(min(my_ratios.first, other_ratios.first), max(my_ratios.second, other_ratios.second));
+        const Ratios& other_ratios = other.get_ratio_limits();
+        set_ratio_limits(min(m_ratios.get_lower_bound(), other_ratios.get_lower_bound()),
+                         max(m_ratios.get_upper_bound(), other_ratios.get_upper_bound()));
         return *this;
     }
 
@@ -467,7 +424,7 @@ public:
     /// Applies the constraints of this Claim to a given size.
     /// @param size Input size.
     /// @return  Constrainted size.
-    Size2f apply(const Size2f& size) const;
+    Size2f apply(Size2f size) const;
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
@@ -516,8 +473,9 @@ template<>
 struct hash<notf::Claim> {
     size_t operator()(const notf::Claim& claim) const
     {
-        const std::pair<float, float> ratio = claim.get_width_to_height();
-        return notf::hash(claim.get_horizontal(), claim.get_horizontal(), ratio.first, ratio.second);
+        const notf::Claim::Ratios& ratio_limits = claim.get_ratio_limits();
+        return notf::hash(claim.get_horizontal(), claim.get_horizontal(), ratio_limits.get_lower_bound(),
+                          ratio_limits.get_upper_bound());
     }
 };
 

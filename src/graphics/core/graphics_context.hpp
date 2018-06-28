@@ -373,6 +373,11 @@ public:
     /// Area that is rendered into.
     const Aabri& render_area() const { return m_state.render_area; }
 
+    ///@{
+    /// FontManager used to render text.
+    FontManager& get_font_manager() { return *m_font_manager; }
+    const FontManager& get_font_manager() const { return *m_font_manager; }
+    ///@}
     /// En- or disables vsync (enabled by default).
     /// @param enabled  Whether to enable or disable vsync.
     void set_vsync(const bool enabled);
@@ -542,6 +547,9 @@ private:
 
     /// True if this context has vsync enabled.
     bool m_has_vsync = true;
+
+    /// The FontManager associated with this context.
+    FontManagerPtr m_font_manager;
 
     // thread-safety ----------------------------------------------------------
 

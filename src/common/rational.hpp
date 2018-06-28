@@ -8,6 +8,9 @@
 //  in all copies. This software is provided "as is" without express or
 //  implied warranty, and with no claim as to its suitability for any purpose.
 
+#include <iosfwd>
+
+#include "common/hash.hpp"
 #include "common/integer.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -18,6 +21,8 @@ NOTF_OPEN_NAMESPACE
 NOTF_EXCEPTION_TYPE(no_rational_error);
 
 // ================================================================================================================== //
+
+namespace detail {
 
 /// A rational number consisting of an integer fraction.
 template<class Integer, typename = notf::enable_if_t<std::is_integral<Integer>::value>>
@@ -66,10 +71,13 @@ public:
         return *this;
     }
 
+    /// Explicitly creates and returns a zero Rational.
+    constexpr static Rational zero() { return {}; }
+
     /// Numerator of the fraction (above the line).
     constexpr Integer get_numerator() const { return m_num; }
 
-    /// Denominator of the fraction (under the line).
+    /// Denominator of the fraction (below the line).
     constexpr Integer get_denominator() const { return m_den; }
 
     /// Returns the corresponding real value to this fraction.
@@ -77,6 +85,26 @@ public:
     constexpr T as_real() const
     {
         return static_cast<T>(m_num) / static_cast<T>(m_den);
+    }
+
+    /// Checks if this Rational is zero.
+    constexpr bool is_zero() const { return m_num == 0; }
+
+    /// Sets the numerator (above the line).
+    /// @param i    New numerator.
+    constexpr void set_numerator(Integer i)
+    {
+        m_num = i;
+        _normalize();
+    }
+
+    /// Sets the denominator (above the line).
+    /// @param i    New denominator.
+    /// @throws no_rational_error   If the denominator is zero.
+    constexpr void set_denominator(Integer i)
+    {
+        m_den = i;
+        _normalize();
     }
 
     /// Rational addition.
@@ -142,10 +170,10 @@ public:
     /// @param r    Other rational number to divide this fraction by.
     constexpr Rational& operator/=(const Rational& r)
     {
-        if (r.m_num == 0) {
+        if (r.is_zero()) {
             notf_throw(no_rational_error, "Cannot divide by zero");
         }
-        if (m_num == 0) {
+        if (is_zero()) {
             return *this;
         }
 
@@ -201,7 +229,7 @@ public:
         if (i == 0) {
             notf_throw(no_rational_error, "Cannot divide by zero");
         }
-        if (m_num == 0) {
+        if (is_zero()) {
             return *this;
         }
 
@@ -300,7 +328,7 @@ private:
         }
 
         // normal zero
-        if (m_num == 0) {
+        if (is_zero()) {
             m_den = 1;
             return;
         }
@@ -322,7 +350,7 @@ private:
     /// Numerator of the fraction (above the line).
     Integer m_num = 0;
 
-    /// Denominator of the fraction (under the line).
+    /// Denominator of the fraction (below the line).
     Integer m_den = 1;
 };
 
@@ -438,4 +466,33 @@ inline constexpr bool operator!=(const Integer& i, const Rational<T>& r)
     return !(r == i);
 }
 
+} // namespace detail
+
+// ================================================================================================================== //
+
+using Rationali = detail::Rational<int>;
+
+// ================================================================================================================== //
+
+/// Prints the contents of a rational into a std::ostream.
+/// @param os       Output stream, implicitly passed with the << operator.
+/// @param rational Rational number to print.
+/// @return Output stream for further output.
+std::ostream& operator<<(std::ostream& out, const Rationali& rational);
+
 NOTF_CLOSE_NAMESPACE
+
+//== std::hash ====================================================================================================== //
+
+namespace std {
+
+/// std::hash specialization for notf::Rational<T>.
+template<class Integer>
+struct hash<notf::detail::Rational<Integer>> {
+    size_t operator()(const notf::detail::Rational<Integer>& rational) const
+    {
+        return notf::hash(rational.get_numerator(), rational.get_denominator());
+    }
+};
+
+} // namespace std

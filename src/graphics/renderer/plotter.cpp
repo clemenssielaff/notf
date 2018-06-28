@@ -70,7 +70,7 @@
 /// Glyphs require Font Atlas size as input (maybe where the shape gets the center vertex?)
 ///
 
-#include "app/render/plotter.hpp"
+#include "graphics/renderer/plotter.hpp"
 
 #include "app/scene.hpp"
 #include "app/scene_graph.hpp"
@@ -156,7 +156,7 @@ NOTF_OPEN_NAMESPACE
 Plotter::Plotter(Scene& scene)
     : Renderer()
     , m_graphics_context(get_window(scene)->get_graphics_context())
-    , m_font_manager(get_window(scene)->get_font_manager())
+    , m_font_manager(m_graphics_context.get_font_manager())
 {
     // vao
     notf_check_gl(glGenVertexArrays(1, &m_vao_id));

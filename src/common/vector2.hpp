@@ -4,9 +4,9 @@
 
 NOTF_OPEN_NAMESPACE
 
-namespace detail {
-
 // ================================================================================================================== //
+
+namespace detail {
 
 /// 2-dimensional mathematical Vector containing real numbers.
 template<typename REAL>

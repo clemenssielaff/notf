@@ -9,7 +9,6 @@
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/raw_image.hpp"
-#include "graphics/text/font_manager.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -55,9 +54,6 @@ Window::Window(const Args& args)
     // create the graphics context
     m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window.get());
     auto context_guard = m_graphics_context->make_current();
-
-    // create auxiliary objects
-    m_font_manager = FontManager::create(*m_graphics_context);
 
     // connect the window callbacks
     EventManager::Access<Window>::register_window(Application::instance().event_manager(), *this);

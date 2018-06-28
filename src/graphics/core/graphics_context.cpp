@@ -14,6 +14,7 @@
 #include "graphics/core/pipeline.hpp"
 #include "graphics/core/shader.hpp"
 #include "graphics/core/texture.hpp"
+#include "graphics/text/font_manager.hpp"
 
 // ================================================================================================================== //
 
@@ -84,7 +85,7 @@ GraphicsContext::GraphicsContext(GLFWwindow* window) : m_window(window)
 
     { // GLFW defaults
         CurrentGuard guard = make_current();
-        gladLoadGLES2Loader((GLADloadproc)glfwGetProcAddress);
+        gladLoadGLES2Loader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
         glfwSwapInterval(m_has_vsync ? 1 : 0);
 
         { // sanity check (otherwise OpenGL may happily return `null` on all calls until something crashes down the
@@ -105,12 +106,16 @@ GraphicsContext::GraphicsContext(GLFWwindow* window) : m_window(window)
         set_stencil_mask(m_state.stencil_mask, /* force = */ true);
         set_blend_mode(m_state.blend_mode, /* force = */ true);
         clear(m_state.clear_color, Buffer::COLOR, /* force = */ true);
+
+        // create auxiliary objects
+        m_font_manager = FontManager::create(*this);
     }
 }
 
 GraphicsContext::~GraphicsContext()
 {
     // release all resources that are bound by the context
+    m_font_manager.reset();
     unbind_all_textures();
     _unbind_pipeline();
     _unbind_framebuffer();

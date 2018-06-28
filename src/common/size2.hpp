@@ -108,7 +108,7 @@ struct Size2 {
     /// Changes this Size2 to the maximum width and height of this and other.
     Size2& maxed(const Size2& other)
     {
-        width  = max(width, other.width);
+        width = max(width, other.width);
         height = max(height, other.height);
         return *this;
     }
@@ -131,8 +131,6 @@ std::ostream& operator<<(std::ostream& out, const Size2<short>& size);
 using Size2f = detail::Size2<float>;
 using Size2i = detail::Size2<int>;
 using Size2s = detail::Size2<short>;
-
-
 
 NOTF_CLOSE_NAMESPACE
 

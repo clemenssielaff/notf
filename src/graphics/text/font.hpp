@@ -14,9 +14,6 @@ typedef struct FT_FaceRec_* FT_Face;
 
 NOTF_OPEN_NAMESPACE
 
-class FontManager;
-class GraphicsContext;
-
 /// Data type to identify a single Glyph.
 using codepoint_t = utf32_t;
 

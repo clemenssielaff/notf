@@ -35,14 +35,6 @@ private:
 private:
     /// The single Widget underneath the root of this Scene.
     NodeHandle<Widget> m_first;
-
-    /// The lowest Widget to receive mouse events.
-    /// When an Widget handles a mouse press event, it will also receive -move and -release events, even if the cursor
-    /// is no longer within the Widget. May be empty.
-    NodeHandle<Widget> m_mouse_focus;
-
-    /// The lowest Widget to receive keyboard events. May be empty.
-    NodeHandle<Widget> m_keyboard_focus;
 };
 
 NOTF_CLOSE_NAMESPACE

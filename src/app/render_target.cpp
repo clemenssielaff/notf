@@ -2,10 +2,10 @@
 
 #include <sstream>
 
-#include "app/renderer.hpp"
 #include "graphics/core/frame_buffer.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/texture.hpp"
+#include "graphics/renderer/renderer.hpp"
 
 NOTF_OPEN_NAMESPACE
 

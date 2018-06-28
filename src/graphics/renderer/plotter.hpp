@@ -1,10 +1,10 @@
 #pragma once
 
-#include "app/renderer.hpp"
 #include "common/aabr.hpp"
 #include "common/variant.hpp"
 #include "common/vector2.hpp"
 #include "graphics/forwards.hpp"
+#include "graphics/renderer/renderer.hpp"
 
 NOTF_OPEN_NAMESPACE
 

@@ -1,4 +1,4 @@
-#include "app/render/procedural.hpp"
+#include "graphics/renderer/procedural.hpp"
 
 #include "app/application.hpp"
 #include "app/resource_manager.hpp"

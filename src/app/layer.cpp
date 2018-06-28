@@ -1,10 +1,10 @@
 #include "app/layer.hpp"
 
-#include "app/renderer.hpp"
 #include "app/scene.hpp"
 #include "app/window.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
+#include "graphics/renderer/renderer.hpp"
 
 NOTF_OPEN_NAMESPACE
 

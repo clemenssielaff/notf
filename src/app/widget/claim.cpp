@@ -5,56 +5,49 @@
 
 NOTF_OPEN_NAMESPACE
 
-void Claim::set_width_to_height(const float ratio_min, float ratio_max)
+void Claim::set_ratio_limits(Rationali ratio_min, Rationali ratio_max)
 {
-    if (!is_real(ratio_min) || ratio_min < 0) {
-        log_warning << "Invalid min ratio: " << ratio_min << " - using 0 instead.";
-        if (!is_nan(ratio_max)) {
-            log_warning << "Ignoring ratio_max value, since the min ratio constraint is set to 0.";
+    if (ratio_min.is_zero()) {
+        if (!ratio_max.is_zero()) {
+            log_warning << "Ignoring ratio_max value, since the ratio_min constraint is set to zero.";
         }
         m_ratios = {};
         return;
     }
 
     if (ratio_max < ratio_min) {
-        log_warning << "Ignoring ratio_max value " << ratio_max << ", since it is smaller than the min_ratio "
-                    << ratio_min;
-        ratio_max = ratio_min;
+        std::swap(ratio_max, ratio_min);
     }
 
-    const Ratio min_ratio = Ratio(ratio_min);
-    if (is_nan(ratio_max) || is_approx(ratio_min, 0)) {
-        m_ratios = Ratios{min_ratio, std::move(min_ratio)};
+    if (ratio_max.is_zero()) {
+        m_ratios = Ratios{ratio_min, std::move(ratio_min)};
     }
     else {
-        m_ratios = Ratios{std::move(min_ratio), Ratio(ratio_max)};
+        m_ratios = Ratios{std::move(ratio_min), std::move(ratio_max)};
     }
 }
 
-Size2f Claim::apply(const Size2f& size) const
+Size2f Claim::apply(Size2f size) const
 {
-    Size2f result = size;
-
     // clamp to size first
-    result.width = clamp(size.width, m_horizontal.get_min(), m_horizontal.get_max());
-    result.height = clamp(size.height, m_vertical.get_min(), m_vertical.get_max());
+    size.width = clamp(size.width, m_horizontal.get_min(), m_horizontal.get_max());
+    size.height = clamp(size.height, m_vertical.get_min(), m_vertical.get_max());
 
     // apply ratio constraints by shrinking one side within the valid range
-    if (!is_zero(size.area()) && m_ratios.lower_bound.is_valid()) {
-        NOTF_ASSERT(m_ratios.upper_bound.is_valid());
-
-        const float current_ratio = size.height / size.width;
+    if (!is_zero(size.area()) && !m_ratios.get_lower_bound().is_zero()) {
+        NOTF_ASSERT(!m_ratios.get_upper_bound().is_zero());
+        const float current_ratio = size.width / size.height;
         const float valid_ratio
-            = clamp(current_ratio, m_ratios.lower_bound.height_for_width(), m_ratios.upper_bound.height_for_width());
+            = clamp(current_ratio, m_ratios.get_lower_bound().as_real(), m_ratios.get_upper_bound().as_real());
         if (valid_ratio < current_ratio) {
-            result.height = clamp(size.width * valid_ratio, m_vertical.get_min(), m_vertical.get_max());
+            size.height = clamp(size.width / valid_ratio, m_vertical.get_min(), m_vertical.get_max());
         }
         else if (valid_ratio > current_ratio) {
-            result.width = clamp(size.height / valid_ratio, m_horizontal.get_min(), m_horizontal.get_max());
+            size.width = clamp(size.height * valid_ratio, m_horizontal.get_min(), m_horizontal.get_max());
         }
     }
 
-    return result;
+    return size;
 }
 
 std::ostream& operator<<(std::ostream& out, const Claim::Stretch& stretch)
@@ -68,14 +61,14 @@ std::ostream& operator<<(std::ostream& out, const Claim& claim)
 {
     const Claim::Stretch& horizontal = claim.get_horizontal();
     const Claim::Stretch& vertical = claim.get_horizontal();
-    const std::pair<float, float> ratio = claim.get_width_to_height();
+    const Claim::Ratios& ratios = claim.get_ratio_limits();
     return out << "Claim(\n"
                << "\thorizontal: [" << horizontal.get_min() << " <= " << horizontal.get_preferred()
                << " <= " << horizontal.get_max() << ", factor: " << horizontal.get_scale_factor() << ", priority "
                << horizontal.get_priority() << "]\n\tvertical: [" << vertical.get_min()
                << " <= " << vertical.get_preferred() << " <=" << vertical.get_max()
                << ", factor: " << vertical.get_scale_factor() << ", priority " << vertical.get_priority()
-               << "]\n\tratio: " << ratio.first << " : " << ratio.second << ")";
+               << "]\n\tratio: " << ratios.get_lower_bound() << " : " << ratios.get_upper_bound() << ")";
 }
 
 NOTF_CLOSE_NAMESPACE
