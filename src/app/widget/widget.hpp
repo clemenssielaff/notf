@@ -22,57 +22,8 @@ public:
         WINDOW, // transformation relative to the RootLayout
     };
 
-    // signals ------------------------------------------------------------------------------------------------------ //
-public:
-    /// Emitted, when the size of this ScreenItem has changed.
-    /// @param New size.
-    Signal<const Size2f&> on_size_changed;
-
-    /// Emitted, when the transform of this ScreenItem has changed.
-    /// @param New transform in parent space.
-    Signal<const Matrix3f&> on_xform_changed;
-
-    /// Emitted when the visibility flag was changed by the user.
-    /// See `set_visible()` for details.
-    /// @param Whether the ScreenItem is visible or not.
-    Signal<bool> on_visibility_changed;
-
-    /// Emitted, when the opacity of this ScreenItem has changed.
-    /// Note that the effective opacity of a ScreenItem is determined through the multiplication of all of its
-    /// ancestors opacity. If an ancestor changes its opacity, only itself will fire this signal.
-    /// @param New visibility.
-    Signal<float> on_opacity_changed;
-
-    /// Signal invoked when this ScreenItem is asked to handle a Mouse move event.
-    /// @param Mouse event.
-    Signal<MouseEvent&> on_mouse_move;
-
-    /// Signal invoked when this ScreenItem is asked to handle a Mouse button event.
-    /// @param Mouse event.
-    Signal<MouseEvent&> on_mouse_button;
-
-    /// Signal invoked when this ScreenItem is asked to handle a scroll event.
-    /// @param Mouse event.
-    Signal<MouseEvent&> on_mouse_scroll;
-
-    /// Signal invoked, when this ScreenItem is asked to handle a key event.
-    /// @param Key event.
-    Signal<KeyEvent&> on_key;
-
-    /// Signal invoked, when this ScreenItem is asked to handle a character input event.
-    /// @param Char event.
-    Signal<CharEvent&> on_char_input;
-
-    /// Signal invoked when this ScreenItem is asked to handle a WindowEvent.
-    /// @param Window event.
-    Signal<WindowEvent&> on_window_event;
-
-    /// Emitted, when the ScreenItem has gained or lost the Window's focus.
-    /// @param Focus event.
-    Signal<FocusEvent&> on_focus_changed;
-
     // methods ------------------------------------------------------------------------------------------------------ //
-protected:
+public:
     /// Constructor.
     Widget(FactoryToken token, Scene& scene, valid_ptr<Node*> parent, const std::string& name = {})
         : Node(token, scene, parent)
@@ -87,9 +38,7 @@ protected:
         m_layout_transform = _create_property<Matrix3f>("layout_transform", Matrix3f::identity());
         m_offset_transform = _create_property<Matrix3f>("offset_transform", Matrix3f::identity());
         m_content_aabr = _create_property<Aabrf>("content_aabr", Aabrf::zero(), {}, /* has_body = */ false);
-        m_clipper = _create_property<risky_ptr<const Widget*>>("clipper", nullptr, {}, /* has_body = */ false);
         m_grant = _create_property<Size2f>("grant", Size2f::zero(), {}, /* has_body = */ false);
-        m_size = _create_property<Size2f>("size", Size2f::zero(), {}, /* has_body = */ false);
         m_opacity = _create_property<float>("opacity", 1, [](float& v) {
             v = clamp(v, 0, 1);
             return true;
@@ -100,31 +49,48 @@ protected:
     /// Destructor.
     ~Widget() override;
 
+    /// The Claim of this Widget.
+    const Claim& get_claim() const { return m_claim.get(); }
+
+    /// Widget's transformation in the requested space.
+    template<Space space>
+    const Matrix3f get_xform() const
+    {
+        static_assert(always_false<Space, space>{}, "Unsupported Space for Widget::get_xform");
+    }
+
+    /// The axis-aligned bounding rect around this and all children of this Widget in the requested space.
+    template<Space space = Space::LOCAL>
+    Aabrf get_aabr() const
+    {
+        return get_xform<space>().transform(m_content_aabr.get());
+    }
+
+protected:
+    virtual void _paint() = 0;
+
+    /// Updates the size of this and the position/size of all child Widgets.
+    void _relayout();
+
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
-    /// The Claim of a ScreenItem determines how much space it receives in the parent Layout.
+    /// The Claim of a Widget determines how much space it receives in the parent Layout.
     /// Claim values are in untransformed local space.
     PropertyHandle<Claim> m_claim;
 
-    /// 2D transformation of this ScreenItem as determined by its parent Layout.
+    /// 2D transformation of this Widget as determined by its parent Layout.
     PropertyHandle<Matrix3f> m_layout_transform;
 
-    /// 2D transformation of this ScreenItem on top of the layout transformation.
+    /// 2D transformation of this Widget on top of the layout transformation.
     PropertyHandle<Matrix3f> m_offset_transform;
 
-    /// The bounding rect of all descendant ScreenItems.
+    /// The bounding rect of all descendant Widgets.
     PropertyHandle<Aabrf> m_content_aabr;
 
-    /// Reference to a Layout in the ancestry, used to 'clip' this ScreenItem.
-    PropertyHandle<risky_ptr<const Widget*>> m_clipper;
-
-    /// The grant of a ScreenItem is how much space is 'granted' to it by its parent Layout.
-    /// Depending on the parent Layout, the ScreenItem's Claim can be used to influence the grant.
+    /// The grant of a Widget is how much space is 'granted' to it by its parent Layout.
+    /// Depending on the parent Layout, the Widget's Claim can be used to influence the grant.
     /// Note that the grant can also be smaller or bigger than the Claim.
     PropertyHandle<Size2f> m_grant;
-
-    /// The size of a Widget is how much space the Widget claims after receiving the grant from its parent's Layout.
-    PropertyHandle<Size2f> m_size; // TODO: what is this?
 
     /// Opacity of this Widget in the range [0 -> 1].
     PropertyHandle<float> m_opacity;
@@ -134,5 +100,41 @@ private:
     /// If the flag is false however, the Widget is guaranteed to be invisible.
     PropertyHandle<bool> m_visibility;
 };
+
+template<>
+inline const Matrix3f Widget::get_xform<Widget::Space::LOCAL>() const
+{
+    return Matrix3f::identity();
+}
+
+template<>
+inline const Matrix3f Widget::get_xform<Widget::Space::OFFSET>() const
+{
+    return m_offset_transform.get();
+}
+
+template<>
+inline const Matrix3f Widget::get_xform<Widget::Space::LAYOUT>() const
+{
+    return m_layout_transform.get();
+}
+
+template<>
+inline const Matrix3f Widget::get_xform<Widget::Space::PARENT>() const
+{
+    return m_offset_transform.get() * m_layout_transform.get();
+}
+
+template<>
+const Matrix3f Widget::get_xform<Widget::Space::WINDOW>() const;
+
+// ================================================================================================================== //
+
+/// Calculates a transformation from a given Widget to another one.
+/// @param source    Widget providing source coordinates in local space.
+/// @param target    Widget into which the coordinates should be transformed.
+/// @return          Transformation.
+/// @throw           std::runtime_error, if the two Widgets do not share a common ancestor.
+Matrix3f transformation_between(const Widget* source, const Widget* target);
 
 NOTF_CLOSE_NAMESPACE
